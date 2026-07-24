@@ -21,9 +21,11 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<!-- Geoapify Address Autocomplete -->
-<link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete/styles/minimal.css">
-<script src="https://unpkg.com/@geoapify/geocoder-autocomplete/dist/index.min.js" defer></script>
+<!-- Google Maps Places Autocomplete (Delivery address) -->
+<?php $googleMapsApiKey = env('GOOGLE_MAPS_API_KEY', ''); ?>
+<?php if ($googleMapsApiKey): ?>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?php echo urlencode($googleMapsApiKey); ?>&libraries=places&loading=async" async defer></script>
+<?php endif; ?>
 <!-- PhonePe SDK (loaded only when needed) -->
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -619,6 +621,7 @@ body {
   align-items: center; justify-content: center; z-index: 9999;
   padding: 20px;
 }
+.pac-container { z-index: 10000 !important; }
 .modal-overlay .modal-box {
   background: #fff; border-radius: 20px;
   max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto;
@@ -940,8 +943,8 @@ window.enableDinein = <?php echo json_encode($enable_dinein ?? 1, JSON_HEX_TAG |
 window.websiteTableNumber = <?php echo json_encode($qr_table ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantAddress = <?php echo json_encode($restaurant_address ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 
-// Geoapify API key loaded from .env
-window.geoapifyApiKey = <?php echo json_encode(env('GEOAPIFY_API_KEY', ''), JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+// Google Maps API key loaded from .env (used for delivery address autocomplete + geocoding)
+window.googleMapsApiKey = <?php echo json_encode($googleMapsApiKey, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.deliveryRadius = <?php echo json_encode((float)$delivery_radius_km, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantLat = <?php echo json_encode($restaurant_lat !== null ? (float)$restaurant_lat : null, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantLng = <?php echo json_encode($restaurant_lng !== null ? (float)$restaurant_lng : null, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -1961,12 +1964,12 @@ function showCheckoutModal(cartData) {
   var pincodeDisplay = (savedOrderType === 'delivery' && deliveryEnabled) ? '' : 'none';
   html += '<div id="deliveryPincodeSection" class="form-group" style="display:' + pincodeDisplay + '">';
   html += '<label>Delivery Address *</label>';
-  html += '<div id="geoapify-autocomplete" style="position:relative;"></div>';
+  html += '<input type="text" id="google-places-autocomplete" autocomplete="off" placeholder="Search your delivery address..." style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
   html += '<div id="deliveryInfo" style="display:none;margin-top:8px;padding:10px;background:#f0f7f5;border-radius:8px;font-size:13px;"></div>';
   html += '<input type="hidden" id="deliveryZoneId" value="">';
   html += '<input type="hidden" id="deliveryCharge" value="0">';
   html += '<input type="hidden" id="packagingChargeHidden" value="' + PACKAGING_CHARGE + '">';
-  // Hidden fields for Geoapify selected address
+  // Hidden fields for Google Places selected address
   html += '<input type="hidden" id="chkAddressLat" value="">';
   html += '<input type="hidden" id="chkAddressLng" value="">';
   html += '<input type="hidden" id="chkAddressFormatted" value="">';
@@ -2091,7 +2094,7 @@ function showCheckoutModal(cartData) {
   modal.dataset.baseTotal = cartData.finalTotal;
   document.body.appendChild(modal);
 
-  // Init Geoapify address autocomplete after modal is in DOM
+  // Init Google Places address autocomplete after modal is in DOM
   setTimeout(initGeoAutocomplete, 200);
 
   // Order type click handler
@@ -2722,19 +2725,19 @@ function ensureRestaurantCoords(callback) {
     if (callback) callback();
     return;
   }
-  var apiKey = window.geoapifyApiKey;
+  var apiKey = window.googleMapsApiKey;
   if (!apiKey) {
     if (callback) callback();
     return;
   }
-  var url = 'https://api.geoapify.com/v1/geocode/search?text=' + encodeURIComponent(address) + '&apiKey=' + apiKey + '&limit=1';
+  var url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(address) + '&key=' + apiKey;
   fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (data && data.features && data.features.length > 0) {
-        var coords = data.features[0].geometry.coordinates;
-        window.restaurantLat = coords[1];
-        window.restaurantLng = coords[0];
+      if (data && data.status === 'OK' && data.results && data.results.length > 0) {
+        var loc = data.results[0].geometry.location;
+        window.restaurantLat = loc.lat;
+        window.restaurantLng = loc.lng;
       }
       if (callback) callback();
     })
@@ -2755,58 +2758,29 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// ── Geoapify Address Autocomplete ──
-var geoAutocomplete = null;
-function initGeoAutocomplete() {
-  var container = document.getElementById('geoapify-autocomplete');
-  if (!container || typeof autocomplete === 'undefined') return;
-  // Clear container first (prevents duplicates)
-  container.innerHTML = '';
-  if (geoAutocomplete) { try { geoAutocomplete.destroy(); } catch(e) {} }
-  geoAutocomplete = new autocomplete.GeocoderAutocomplete(
-    container,
-    window.geoapifyApiKey,
-    {
-      placeholder: 'Search your delivery address...',
-      lang: 'en',
-      limit: 5,
-      debounceMs: 300
-    }
-  );
+// ── Google Places Address Autocomplete ──
+var googlePlacesAutocomplete = null;
+function initGeoAutocomplete(retries) {
+  retries = retries || 0;
+  var input = document.getElementById('google-places-autocomplete');
+  if (!input) return;
+  if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+    // Google Maps script may still be loading — retry briefly instead of giving up.
+    if (retries < 20) { setTimeout(function() { initGeoAutocomplete(retries + 1); }, 250); }
+    return;
+  }
   // Ensure restaurant coords are available for delivery radius check
   ensureRestaurantCoords();
-  geoAutocomplete.on('select', function(feature) {
-    if (!feature) return;
-    var props = feature.properties;
-    document.getElementById('chkAddressFormatted').value = props.formatted || '';
-    document.getElementById('chkAddressLat').value = props.lat || '';
-    document.getElementById('chkAddressLng').value = props.lon || '';
-    // TEMPORARY: pincode/zone matching is disabled for order placement (see
-    // processOrder). Just stash the postcode for later - don't run the zone
-    // lookup or force the manual pincode box open once an address is picked.
-    document.getElementById('chkPincodeAuto').value = props.postcode || '';
-    // Show delivery info with selected address
-    var infoEl = document.getElementById('deliveryInfo');
-    if (infoEl) {
-      var distanceHtml = '';
-      var radius = parseFloat(window.deliveryRadius) || 0;
-      var restLat = parseFloat(window.restaurantLat);
-      var restLng = parseFloat(window.restaurantLng);
-      var custLat = parseFloat(props.lat);
-      var custLng = parseFloat(props.lon);
-      if (radius > 0 && restLat && restLng && custLat && custLng) {
-        var dist = haversineDistance(restLat, restLng, custLat, custLng);
-        if (dist <= radius) {
-          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ Within delivery area (' + dist.toFixed(1) + ' km / ' + radius + ' km max)</div>';
-        } else {
-          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#f8d7da;color:#721c24;border-radius:6px;font-size:13px;"><strong>⚠ Sorry, we don\'t deliver here</strong><br>Distance: ' + dist.toFixed(1) + ' km (max ' + radius + ' km)</div>';
-        }
-      }
-      infoEl.style.display = 'block';
-      infoEl.innerHTML = '<strong>✓ Address selected</strong><br>' + esc(props.formatted || '') + '<br><span style="font-size:11px;color:#999">Lat: ' + (props.lat || '').substring(0,8) + ', Lng: ' + (props.lon || '').substring(0,8) + '</span>' + distanceHtml;
-    }
+
+  if (googlePlacesAutocomplete) {
+    try { google.maps.event.clearInstanceListeners(input); } catch (e) {}
+  }
+  googlePlacesAutocomplete = new google.maps.places.Autocomplete(input, {
+    fields: ['formatted_address', 'geometry', 'address_components'],
+    types: ['geocode']
   });
-  geoAutocomplete.on('clear', function() {
+
+  function resetSelectedAddress() {
     document.getElementById('chkAddressFormatted').value = '';
     document.getElementById('chkAddressLat').value = '';
     document.getElementById('chkAddressLng').value = '';
@@ -2819,10 +2793,60 @@ function initGeoAutocomplete() {
     if (feeRow) feeRow.style.display = 'none';
     var infoEl = document.getElementById('deliveryInfo');
     if (infoEl) { infoEl.style.display = 'none'; }
+  }
+
+  googlePlacesAutocomplete.addListener('place_changed', function() {
+    var place = googlePlacesAutocomplete.getPlace();
+    if (!place || !place.geometry || !place.geometry.location) {
+      resetSelectedAddress();
+      return;
+    }
+    var lat = place.geometry.location.lat();
+    var lng = place.geometry.location.lng();
+    var formatted = place.formatted_address || input.value;
+    var postcode = '';
+    (place.address_components || []).forEach(function(c) {
+      if (c.types && c.types.indexOf('postal_code') !== -1) postcode = c.long_name;
+    });
+
+    document.getElementById('chkAddressFormatted').value = formatted;
+    document.getElementById('chkAddressLat').value = lat;
+    document.getElementById('chkAddressLng').value = lng;
+    // TEMPORARY: pincode/zone matching is disabled for order placement (see
+    // processOrder). Just stash the postcode for later - don't run the zone
+    // lookup or force the manual pincode box open once an address is picked.
+    document.getElementById('chkPincodeAuto').value = postcode;
+
+    // Show delivery info with selected address
+    var infoEl = document.getElementById('deliveryInfo');
+    if (infoEl) {
+      var distanceHtml = '';
+      var radius = parseFloat(window.deliveryRadius) || 0;
+      var restLat = parseFloat(window.restaurantLat);
+      var restLng = parseFloat(window.restaurantLng);
+      if (radius > 0 && restLat && restLng) {
+        var dist = haversineDistance(restLat, restLng, lat, lng);
+        if (dist <= radius) {
+          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ Within delivery area (' + dist.toFixed(1) + ' km / ' + radius + ' km max)</div>';
+        } else {
+          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#f8d7da;color:#721c24;border-radius:6px;font-size:13px;"><strong>⚠ Sorry, we don\'t deliver here</strong><br>Distance: ' + dist.toFixed(1) + ' km (max ' + radius + ' km)</div>';
+        }
+      }
+      infoEl.style.display = 'block';
+      infoEl.innerHTML = '<strong>✓ Address selected</strong><br>' + esc(formatted) + '<br><span style="font-size:11px;color:#999">Lat: ' + String(lat).substring(0,8) + ', Lng: ' + String(lng).substring(0,8) + '</span>' + distanceHtml;
+    }
   });
+
+  // Google's widget has no native "clear" event — detect manual clearing ourselves.
+  if (!input.dataset.clearBound) {
+    input.dataset.clearBound = '1';
+    input.addEventListener('input', function() {
+      if (input.value.trim() === '') resetSelectedAddress();
+    });
+  }
 }
 function togglePincodeFallback() {
-  var autoEl = document.getElementById('geoapify-autocomplete');
+  var autoEl = document.getElementById('google-places-autocomplete');
   var fallbackEl = document.getElementById('pincodeFallback');
   var toggleLink = document.getElementById('togglePincodeLink');
   if (autoEl && fallbackEl && toggleLink) {
@@ -2832,7 +2856,7 @@ function togglePincodeFallback() {
   }
 }
 function toggleAddressAutocomplete() {
-  var autoEl = document.getElementById('geoapify-autocomplete');
+  var autoEl = document.getElementById('google-places-autocomplete');
   var fallbackEl = document.getElementById('pincodeFallback');
   var toggleLink = document.getElementById('togglePincodeLink');
   if (autoEl && fallbackEl && toggleLink) {
