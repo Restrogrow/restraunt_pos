@@ -221,10 +221,16 @@ try {
             $restaurant_logo = '../assets/images/logo-transparent.png';
 }
 ?>
+<?php $googleMapsApiKey = function_exists('env') ? env('GOOGLE_MAPS_API_KEY', '') : ''; ?>
 <!DOCTYPE html>
 <!-- Coding By CodingNepal - youtube.com/@codingnepal -->
 <html lang="en">
 <head>
+  <?php if ($googleMapsApiKey): ?>
+  <!-- Google Maps Places Autocomplete (Restaurant address setup) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo urlencode($googleMapsApiKey); ?>&libraries=places&loading=async" async defer></script>
+  <script>window.googleMapsApiKey = <?php echo json_encode($googleMapsApiKey); ?>;</script>
+  <?php endif; ?>
   <script>
 (function(){
   var msg=function(a){
@@ -2519,7 +2525,12 @@ function toggleGatewayMode() {
                     <span class="material-symbols-rounded">location_on</span>
                     Address
                   </label>
-                  <textarea id="restaurantAddress" rows="3" placeholder="Enter restaurant address"></textarea>
+                  <input type="text" id="restaurantAddress" autocomplete="off" placeholder="Search your restaurant's address...">
+                  <button type="button" id="restaurantMapPickerBtn" style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border:2px solid #dc2626;border-radius:10px;background:#fff;color:#dc2626;font-size:13px;font-weight:600;cursor:pointer;">📍 Select Exact Location on Map</button>
+                  <div id="restaurantMapPreview" style="display:none;margin-top:10px;width:100%;height:180px;border-radius:10px;overflow:hidden;border:2px solid #e0e0e0;"></div>
+                  <input type="hidden" id="restaurantAddressLat" value="">
+                  <input type="hidden" id="restaurantAddressLng" value="">
+                  <p style="color:#6b7280;font-size:0.8rem;margin-top:6px;">Search your address, or use the map to drop a pin at your exact location — this improves delivery-radius accuracy.</p>
                 </div>
 
                 <div class="form-group">
@@ -2716,7 +2727,7 @@ function toggleGatewayMode() {
                 Delivery Radius (km)
               </label>
               <p style="color:#666;font-size:0.85rem;margin-bottom:6px;">
-                Maximum distance in km for delivery. Set to 0 to disable radius check. Uses your restaurant address with Geoapify to calculate distance.
+                Maximum distance in km for delivery. Set to 0 to disable radius check. Uses your restaurant's map location above to calculate distance.
               </p>
               <input type="number" id="deliveryRadius" class="form-control" step="0.5" min="0" placeholder="e.g. 10" style="max-width:200px">
             </div>

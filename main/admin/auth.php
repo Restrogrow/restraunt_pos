@@ -699,6 +699,8 @@ function handleUpdateRestaurantSettings() {
     $minimumOrderValue = isset($_POST['minimum_order_value']) && $_POST['minimum_order_value'] !== '' ? floatval($_POST['minimum_order_value']) : 0;
     $packagingCharge = isset($_POST['packaging_charge']) && $_POST['packaging_charge'] !== '' ? floatval($_POST['packaging_charge']) : 0;
     $deliveryRadius = isset($_POST['delivery_radius_km']) && $_POST['delivery_radius_km'] !== '' ? floatval($_POST['delivery_radius_km']) : 0;
+    $clientLat = isset($_POST['restaurant_lat']) && $_POST['restaurant_lat'] !== '' ? floatval($_POST['restaurant_lat']) : null;
+    $clientLng = isset($_POST['restaurant_lng']) && $_POST['restaurant_lng'] !== '' ? floatval($_POST['restaurant_lng']) : null;
     $googleMapsLink = isset($_POST['google_maps_link']) ? trim($_POST['google_maps_link']) : '';
     $ownerName = isset($_POST['owner_name']) ? trim($_POST['owner_name']) : '';
     $enableGst = isset($_POST['enable_gst']) ? (int)$_POST['enable_gst'] : 1;
@@ -779,15 +781,21 @@ function handleUpdateRestaurantSettings() {
             $_SESSION['email'] = $email;
         }
         
-        // ── Geocode restaurant address if delivery radius is set ──
-        if ($deliveryRadius > 0 && !empty($address)) {
-            // Load env_loader for Geoapify API key if not already loaded
+        // ── Store restaurant coordinates ──
+        // Prefer coordinates the client already resolved (via Places Autocomplete or the
+        // map picker) — they're more accurate and avoid an extra geocoding call. Only fall
+        // back to server-side geocoding when the admin typed the address manually.
+        if ($clientLat !== null && $clientLng !== null && $clientLat && $clientLng) {
+            $updateCoords = $pdo->prepare("UPDATE users SET restaurant_lat = ?, restaurant_lng = ?, updated_at = NOW() WHERE id = ?");
+            $updateCoords->execute([$clientLat, $clientLng, $userId]);
+        } elseif ($deliveryRadius > 0 && !empty($address)) {
+            // Load env_loader for Google Maps API key if not already loaded
             if (!function_exists('env') && file_exists(__DIR__ . '/../config/env_loader.php')) {
                 require_once __DIR__ . '/../config/env_loader.php';
             }
-            $geoKey = function_exists('env') ? env('GEOAPIFY_API_KEY', '') : '';
+            $geoKey = function_exists('env') ? env('GOOGLE_MAPS_API_KEY', '') : '';
             if (!empty($geoKey)) {
-                $geoUrl = 'https://api.geoapify.com/v1/geocode/search?text=' . urlencode($address) . '&apiKey=' . $geoKey . '&limit=1';
+                $geoUrl = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($address) . '&key=' . $geoKey;
                 $ch = curl_init();
                 if ($ch !== false) {
                     curl_setopt_array($ch, [
@@ -801,9 +809,9 @@ function handleUpdateRestaurantSettings() {
                     curl_close($ch);
                     if ($httpCode === 200 && $geoResp) {
                         $geoData = json_decode($geoResp, true);
-                        if (!empty($geoData['features'][0]['geometry']['coordinates'])) {
-                            $lng = (float)$geoData['features'][0]['geometry']['coordinates'][0];
-                            $lat = (float)$geoData['features'][0]['geometry']['coordinates'][1];
+                        if (($geoData['status'] ?? '') === 'OK' && !empty($geoData['results'][0]['geometry']['location'])) {
+                            $lat = (float)$geoData['results'][0]['geometry']['location']['lat'];
+                            $lng = (float)$geoData['results'][0]['geometry']['location']['lng'];
                             if ($lat && $lng) {
                                 $updateCoords = $pdo->prepare("UPDATE users SET restaurant_lat = ?, restaurant_lng = ?, updated_at = NOW() WHERE id = ?");
                                 $updateCoords->execute([$lat, $lng, $userId]);

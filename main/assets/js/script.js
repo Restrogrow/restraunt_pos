@@ -10323,7 +10323,23 @@ async function loadSettingsData() {
       // Packaging Charge
       const packagingCharge = document.getElementById('packagingCharge');
       if (packagingCharge) packagingCharge.value = parseFloat(user.packaging_charge || 0).toFixed(2);
-      
+
+      // Delivery Radius + saved restaurant coordinates
+      const deliveryRadiusEl = document.getElementById('deliveryRadius');
+      if (deliveryRadiusEl) deliveryRadiusEl.value = user.delivery_radius_km ? parseFloat(user.delivery_radius_km) : '';
+      const restaurantAddressLat = document.getElementById('restaurantAddressLat');
+      const restaurantAddressLng = document.getElementById('restaurantAddressLng');
+      if (user.restaurant_lat && user.restaurant_lng) {
+        if (restaurantAddressLat) restaurantAddressLat.value = user.restaurant_lat;
+        if (restaurantAddressLng) restaurantAddressLng.value = user.restaurant_lng;
+        if (typeof updateRestaurantMapPreview === 'function') {
+          updateRestaurantMapPreview(user.restaurant_lat, user.restaurant_lng);
+        }
+      }
+      if (typeof initRestaurantAddressAutocomplete === 'function') {
+        initRestaurantAddressAutocomplete();
+      }
+
       // Google Maps Link
       const restaurantGoogleMapsLink = document.getElementById('restaurantGoogleMapsLink');
       if (restaurantGoogleMapsLink) restaurantGoogleMapsLink.value = user.google_maps_link || '';
@@ -10548,7 +10564,7 @@ function setupSettingsForms() {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}`
+          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}`
         });
         
         const result = await response.json();
@@ -10573,7 +10589,27 @@ function setupSettingsForms() {
       }
     });
   }
-  
+
+  // Restaurant address: Google Places Autocomplete + map picker
+  const restaurantMapPickerBtn = document.getElementById('restaurantMapPickerBtn');
+  if (restaurantMapPickerBtn && !restaurantMapPickerBtn.dataset.handlerAttached) {
+    restaurantMapPickerBtn.dataset.handlerAttached = 'true';
+    restaurantMapPickerBtn.addEventListener('click', openRestaurantMapPicker);
+  }
+  const restaurantAddressInputEl = document.getElementById('restaurantAddress');
+  if (restaurantAddressInputEl && !restaurantAddressInputEl.dataset.clearBound) {
+    restaurantAddressInputEl.dataset.clearBound = '1';
+    restaurantAddressInputEl.addEventListener('input', function() {
+      if (restaurantAddressInputEl.value.trim() === '') {
+        var latEl = document.getElementById('restaurantAddressLat');
+        var lngEl = document.getElementById('restaurantAddressLng');
+        if (latEl) latEl.value = '';
+        if (lngEl) lngEl.value = '';
+        var previewEl = document.getElementById('restaurantMapPreview');
+        if (previewEl) previewEl.style.display = 'none';
+      }
+    });
+  }
 
   // Profile Settings Form
   const profileSettingsForm = document.getElementById('profileSettingsForm');
@@ -11052,6 +11088,195 @@ function setupSettingsForms() {
       }
     });
   }
+}
+
+// ── Restaurant address: Google Places Autocomplete + map picker ──
+// (used by the Settings page "Address" field, see setupSettingsForms() above)
+
+var restaurantPlacesAutocomplete = null;
+
+function applySelectedRestaurantAddress(lat, lng, formatted) {
+  var addrInput = document.getElementById('restaurantAddress');
+  if (addrInput && formatted) addrInput.value = formatted;
+  var latEl = document.getElementById('restaurantAddressLat');
+  var lngEl = document.getElementById('restaurantAddressLng');
+  if (latEl) latEl.value = lat;
+  if (lngEl) lngEl.value = lng;
+  updateRestaurantMapPreview(lat, lng);
+}
+
+// Small draggable-pin map preview shown below the address field
+var restaurantPreviewMap = null;
+var restaurantPreviewMarker = null;
+function updateRestaurantMapPreview(lat, lng) {
+  var container = document.getElementById('restaurantMapPreview');
+  if (!container || typeof google === 'undefined' || !google.maps) return;
+  container.style.display = 'block';
+  var pos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+  if (!restaurantPreviewMap) {
+    restaurantPreviewMap = new google.maps.Map(container, {
+      center: pos, zoom: 16,
+      streetViewControl: false, mapTypeControl: false, fullscreenControl: false
+    });
+    restaurantPreviewMarker = new google.maps.Marker({ position: pos, map: restaurantPreviewMap, draggable: true });
+    restaurantPreviewMarker.addListener('dragend', function() {
+      var p = restaurantPreviewMarker.getPosition();
+      reverseGeocode(p.lat(), p.lng(), function(formatted) {
+        applySelectedRestaurantAddress(p.lat(), p.lng(), formatted);
+      });
+    });
+  } else {
+    google.maps.event.trigger(restaurantPreviewMap, 'resize');
+    restaurantPreviewMap.setCenter(pos);
+    restaurantPreviewMarker.setPosition(pos);
+  }
+}
+
+// Generic reverse geocode helper (lat/lng -> formatted address)
+function reverseGeocode(lat, lng, callback) {
+  var apiKey = window.googleMapsApiKey;
+  if (!apiKey) { callback(''); return; }
+  var url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' + lat + ',' + lng + '&key=' + apiKey;
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.status === 'OK' && data.results && data.results.length > 0) {
+        callback(data.results[0].formatted_address);
+      } else {
+        callback('');
+      }
+    })
+    .catch(function() { callback(''); });
+}
+
+function initRestaurantAddressAutocomplete(retries) {
+  retries = retries || 0;
+  var input = document.getElementById('restaurantAddress');
+  if (!input) return;
+  if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+    if (retries < 20) { setTimeout(function() { initRestaurantAddressAutocomplete(retries + 1); }, 250); }
+    return;
+  }
+  if (restaurantPlacesAutocomplete) {
+    try { google.maps.event.clearInstanceListeners(input); } catch (e) {}
+  }
+  restaurantPlacesAutocomplete = new google.maps.places.Autocomplete(input, {
+    fields: ['formatted_address', 'geometry'],
+    types: ['geocode']
+  });
+  restaurantPlacesAutocomplete.addListener('place_changed', function() {
+    var place = restaurantPlacesAutocomplete.getPlace();
+    if (!place || !place.geometry || !place.geometry.location) return;
+    var lat = place.geometry.location.lat();
+    var lng = place.geometry.location.lng();
+    applySelectedRestaurantAddress(lat, lng, place.formatted_address || input.value);
+  });
+}
+
+// ── Map picker modal: drop/drag a pin to set the restaurant's exact location ──
+var restaurantMapPickerMap = null;
+var restaurantMapPickerMarker = null;
+
+function openRestaurantMapPicker() {
+  if (typeof google === 'undefined' || !google.maps) {
+    if (typeof showNotification === 'function') { showNotification('Map is still loading, please try again in a moment', 'error'); }
+    return;
+  }
+  var modal = document.getElementById('restaurantMapPickerModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'restaurantMapPickerModal';
+    modal.className = 'modal';
+    modal.innerHTML =
+      '<div class="modal-content" style="max-width:520px;">' +
+        '<div class="modal-header">' +
+          '<h2>Select Restaurant Location</h2>' +
+          '<span class="modal-close" onclick="closeRestaurantMapPicker()">&times;</span>' +
+        '</div>' +
+        '<div class="modal-body">' +
+          '<p style="font-size:12px;color:#666;margin-bottom:8px;">Drag the pin, tap the map, or use your current location to set your restaurant\'s exact spot.</p>' +
+          '<div id="restaurantMapPickerCanvas" style="width:100%;height:320px;border-radius:10px;overflow:hidden;background:#eee;"></div>' +
+          '<div id="restaurantMapPickerAddress" style="margin-top:10px;font-size:13px;color:#333;min-height:18px;">Locating...</div>' +
+          '<div style="display:flex;gap:10px;margin-top:14px;">' +
+            '<button type="button" class="btn btn-secondary" onclick="useCurrentLocationOnRestaurantMap()" style="flex:1;">📍 Use Current Location</button>' +
+            '<button type="button" class="btn btn-primary" onclick="confirmRestaurantMapLocation()" style="flex:1;">Use This Location</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  var existingLat = parseFloat(document.getElementById('restaurantAddressLat')?.value);
+  var existingLng = parseFloat(document.getElementById('restaurantAddressLng')?.value);
+  var startCenter = (!isNaN(existingLat) && !isNaN(existingLng)) ? { lat: existingLat, lng: existingLng }
+    : { lat: 20.5937, lng: 78.9629 }; // fallback: center of India
+
+  restaurantMapPickerMap = new google.maps.Map(document.getElementById('restaurantMapPickerCanvas'), {
+    center: startCenter, zoom: 16,
+    streetViewControl: false, mapTypeControl: false, fullscreenControl: false
+  });
+  restaurantMapPickerMarker = new google.maps.Marker({ position: startCenter, map: restaurantMapPickerMap, draggable: true });
+
+  restaurantMapPickerMap.addListener('click', function(e) {
+    restaurantMapPickerMarker.setPosition(e.latLng);
+    reverseGeocodeForRestaurantPicker(e.latLng.lat(), e.latLng.lng());
+  });
+  restaurantMapPickerMarker.addListener('dragend', function() {
+    var pos = restaurantMapPickerMarker.getPosition();
+    reverseGeocodeForRestaurantPicker(pos.lat(), pos.lng());
+  });
+
+  reverseGeocodeForRestaurantPicker(startCenter.lat, startCenter.lng);
+}
+
+function closeRestaurantMapPicker() {
+  var modal = document.getElementById('restaurantMapPickerModal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+  restaurantMapPickerMap = null;
+  restaurantMapPickerMarker = null;
+}
+
+function useCurrentLocationOnRestaurantMap() {
+  var addrEl = document.getElementById('restaurantMapPickerAddress');
+  if (!navigator.geolocation) {
+    if (addrEl) addrEl.textContent = 'Location access is not available on this device.';
+    return;
+  }
+  if (addrEl) addrEl.textContent = 'Getting your current location...';
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    if (restaurantMapPickerMap && restaurantMapPickerMarker) {
+      restaurantMapPickerMap.setCenter(latLng);
+      restaurantMapPickerMap.setZoom(17);
+      restaurantMapPickerMarker.setPosition(latLng);
+    }
+    reverseGeocodeForRestaurantPicker(latLng.lat, latLng.lng);
+  }, function() {
+    if (addrEl) addrEl.textContent = 'Could not get your location. Please allow location access, or drag the pin manually.';
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function reverseGeocodeForRestaurantPicker(lat, lng) {
+  var addrEl = document.getElementById('restaurantMapPickerAddress');
+  if (!window.googleMapsApiKey) return;
+  if (addrEl) addrEl.textContent = 'Looking up address...';
+  reverseGeocode(lat, lng, function(formatted) {
+    if (!addrEl) return;
+    addrEl.dataset.formatted = formatted;
+    addrEl.textContent = formatted || 'Could not resolve an address for this spot, but you can still use it.';
+  });
+}
+
+function confirmRestaurantMapLocation() {
+  if (!restaurantMapPickerMarker) { closeRestaurantMapPicker(); return; }
+  var pos = restaurantMapPickerMarker.getPosition();
+  var addrEl = document.getElementById('restaurantMapPickerAddress');
+  var formatted = (addrEl && addrEl.dataset.formatted) ? addrEl.dataset.formatted : (addrEl ? addrEl.textContent : '');
+  applySelectedRestaurantAddress(pos.lat(), pos.lng(), formatted);
+  closeRestaurantMapPicker();
 }
 
 // Load Reports Data

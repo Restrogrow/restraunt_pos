@@ -54,7 +54,7 @@ try {
 
     if ($isAdmin) {
         try {
-            $stmt = $conn->prepare("SELECT id, subscription_status, trial_end_date, renewal_date, created_at, email, role, phone, address, description, description_format, opening_hours, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, minimum_order_value, payment_gateway_type, currency_symbol, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, packaging_charge FROM users WHERE id = :id LIMIT 1");
+            $stmt = $conn->prepare("SELECT id, subscription_status, trial_end_date, renewal_date, created_at, email, role, phone, address, description, description_format, opening_hours, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, minimum_order_value, payment_gateway_type, currency_symbol, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng FROM users WHERE id = :id LIMIT 1");
             $stmt->execute([':id' => $_SESSION['user_id']]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (PDOException $e) {
@@ -159,6 +159,9 @@ try {
         'enable_dinein' => $row['enable_dinein'] ?? 1,
         'minimum_order_value' => $row['minimum_order_value'] ?? 0,
         'packaging_charge' => $row['packaging_charge'] ?? 0,
+        'delivery_radius_km' => $row['delivery_radius_km'] ?? 0,
+        'restaurant_lat' => (isset($row['restaurant_lat']) && $row['restaurant_lat'] !== '') ? (float)$row['restaurant_lat'] : null,
+        'restaurant_lng' => (isset($row['restaurant_lng']) && $row['restaurant_lng'] !== '') ? (float)$row['restaurant_lng'] : null,
         'instagram_link' => $row['instagram_link'] ?? null,
         'facebook_link' => $row['facebook_link'] ?? null,
         'twitter_link' => $row['twitter_link'] ?? null,
