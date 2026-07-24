@@ -1965,6 +1965,7 @@ function showCheckoutModal(cartData) {
   html += '<div id="deliveryPincodeSection" class="form-group" style="display:' + pincodeDisplay + '">';
   html += '<label>Delivery Address *</label>';
   html += '<input type="text" id="google-places-autocomplete" autocomplete="off" placeholder="Search your delivery address..." style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
+  html += '<div style="margin-top:6px;"><span onclick="openMapPicker()" style="font-size:12px;color:#1a3934;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-weight:500;">📍 Select exact location on map</span></div>';
   html += '<div id="deliveryInfo" style="display:none;margin-top:8px;padding:10px;background:#f0f7f5;border-radius:8px;font-size:13px;"></div>';
   html += '<input type="hidden" id="deliveryZoneId" value="">';
   html += '<input type="hidden" id="deliveryCharge" value="0">';
@@ -2760,6 +2761,62 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 
 // ── Google Places Address Autocomplete ──
 var googlePlacesAutocomplete = null;
+
+function resetSelectedAddress() {
+  document.getElementById('chkAddressFormatted').value = '';
+  document.getElementById('chkAddressLat').value = '';
+  document.getElementById('chkAddressLng').value = '';
+  document.getElementById('chkPincodeAuto').value = '';
+  var zoneIdEl = document.getElementById('deliveryZoneId');
+  if (zoneIdEl) zoneIdEl.value = '';
+  var chargeEl = document.getElementById('deliveryCharge');
+  if (chargeEl) chargeEl.value = '0';
+  var feeRow = document.getElementById('deliveryFeeRow');
+  if (feeRow) feeRow.style.display = 'none';
+  var infoEl = document.getElementById('deliveryInfo');
+  if (infoEl) { infoEl.style.display = 'none'; }
+}
+
+// Shared by both the text-search autocomplete and the map picker
+function applySelectedAddress(lat, lng, formatted, postcode) {
+  var addrInput = document.getElementById('google-places-autocomplete');
+  if (addrInput) addrInput.value = formatted || addrInput.value;
+  document.getElementById('chkAddressFormatted').value = formatted || '';
+  document.getElementById('chkAddressLat').value = lat;
+  document.getElementById('chkAddressLng').value = lng;
+  // TEMPORARY: pincode/zone matching is disabled for order placement (see
+  // processOrder). Just stash the postcode for later - don't run the zone
+  // lookup or force the manual pincode box open once an address is picked.
+  document.getElementById('chkPincodeAuto').value = postcode || '';
+
+  // Show delivery info with selected address
+  var infoEl = document.getElementById('deliveryInfo');
+  if (infoEl) {
+    var distanceHtml = '';
+    var radius = parseFloat(window.deliveryRadius) || 0;
+    var restLat = parseFloat(window.restaurantLat);
+    var restLng = parseFloat(window.restaurantLng);
+    if (radius > 0 && restLat && restLng) {
+      var dist = haversineDistance(restLat, restLng, lat, lng);
+      if (dist <= radius) {
+        distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ Within delivery area (' + dist.toFixed(1) + ' km / ' + radius + ' km max)</div>';
+      } else {
+        distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#f8d7da;color:#721c24;border-radius:6px;font-size:13px;"><strong>⚠ Sorry, we don\'t deliver here</strong><br>Distance: ' + dist.toFixed(1) + ' km (max ' + radius + ' km)</div>';
+      }
+    }
+    infoEl.style.display = 'block';
+    infoEl.innerHTML = '<strong>✓ Address selected</strong><br>' + esc(formatted || '') + '<br><span style="font-size:11px;color:#999">Lat: ' + String(lat).substring(0,8) + ', Lng: ' + String(lng).substring(0,8) + '</span>' + distanceHtml;
+  }
+}
+
+function extractPostcode(addressComponents) {
+  var postcode = '';
+  (addressComponents || []).forEach(function(c) {
+    if (c.types && c.types.indexOf('postal_code') !== -1) postcode = c.long_name;
+  });
+  return postcode;
+}
+
 function initGeoAutocomplete(retries) {
   retries = retries || 0;
   var input = document.getElementById('google-places-autocomplete');
@@ -2780,21 +2837,6 @@ function initGeoAutocomplete(retries) {
     types: ['geocode']
   });
 
-  function resetSelectedAddress() {
-    document.getElementById('chkAddressFormatted').value = '';
-    document.getElementById('chkAddressLat').value = '';
-    document.getElementById('chkAddressLng').value = '';
-    document.getElementById('chkPincodeAuto').value = '';
-    var zoneIdEl = document.getElementById('deliveryZoneId');
-    if (zoneIdEl) zoneIdEl.value = '';
-    var chargeEl = document.getElementById('deliveryCharge');
-    if (chargeEl) chargeEl.value = '0';
-    var feeRow = document.getElementById('deliveryFeeRow');
-    if (feeRow) feeRow.style.display = 'none';
-    var infoEl = document.getElementById('deliveryInfo');
-    if (infoEl) { infoEl.style.display = 'none'; }
-  }
-
   googlePlacesAutocomplete.addListener('place_changed', function() {
     var place = googlePlacesAutocomplete.getPlace();
     if (!place || !place.geometry || !place.geometry.location) {
@@ -2804,37 +2846,7 @@ function initGeoAutocomplete(retries) {
     var lat = place.geometry.location.lat();
     var lng = place.geometry.location.lng();
     var formatted = place.formatted_address || input.value;
-    var postcode = '';
-    (place.address_components || []).forEach(function(c) {
-      if (c.types && c.types.indexOf('postal_code') !== -1) postcode = c.long_name;
-    });
-
-    document.getElementById('chkAddressFormatted').value = formatted;
-    document.getElementById('chkAddressLat').value = lat;
-    document.getElementById('chkAddressLng').value = lng;
-    // TEMPORARY: pincode/zone matching is disabled for order placement (see
-    // processOrder). Just stash the postcode for later - don't run the zone
-    // lookup or force the manual pincode box open once an address is picked.
-    document.getElementById('chkPincodeAuto').value = postcode;
-
-    // Show delivery info with selected address
-    var infoEl = document.getElementById('deliveryInfo');
-    if (infoEl) {
-      var distanceHtml = '';
-      var radius = parseFloat(window.deliveryRadius) || 0;
-      var restLat = parseFloat(window.restaurantLat);
-      var restLng = parseFloat(window.restaurantLng);
-      if (radius > 0 && restLat && restLng) {
-        var dist = haversineDistance(restLat, restLng, lat, lng);
-        if (dist <= radius) {
-          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ Within delivery area (' + dist.toFixed(1) + ' km / ' + radius + ' km max)</div>';
-        } else {
-          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#f8d7da;color:#721c24;border-radius:6px;font-size:13px;"><strong>⚠ Sorry, we don\'t deliver here</strong><br>Distance: ' + dist.toFixed(1) + ' km (max ' + radius + ' km)</div>';
-        }
-      }
-      infoEl.style.display = 'block';
-      infoEl.innerHTML = '<strong>✓ Address selected</strong><br>' + esc(formatted) + '<br><span style="font-size:11px;color:#999">Lat: ' + String(lat).substring(0,8) + ', Lng: ' + String(lng).substring(0,8) + '</span>' + distanceHtml;
-    }
+    applySelectedAddress(lat, lng, formatted, extractPostcode(place.address_components));
   });
 
   // Google's widget has no native "clear" event — detect manual clearing ourselves.
@@ -2844,6 +2856,134 @@ function initGeoAutocomplete(retries) {
       if (input.value.trim() === '') resetSelectedAddress();
     });
   }
+}
+
+// ── Map Picker: let the user drop/drag a pin to set their exact location ──
+var mapPickerMap = null;
+var mapPickerMarker = null;
+
+function openMapPicker() {
+  if (typeof google === 'undefined' || !google.maps) {
+    if (typeof showToast === 'function') { showToast('Map is still loading, please try again in a moment', 'error'); }
+    else { alert('Map is still loading, please try again in a moment'); }
+    return;
+  }
+  if (document.getElementById('mapPickerOverlay')) return; // already open
+
+  var restLat = parseFloat(window.restaurantLat);
+  var restLng = parseFloat(window.restaurantLng);
+  var existingLat = parseFloat(document.getElementById('chkAddressLat')?.value);
+  var existingLng = parseFloat(document.getElementById('chkAddressLng')?.value);
+  var startCenter = (!isNaN(existingLat) && !isNaN(existingLng)) ? { lat: existingLat, lng: existingLng }
+    : (!isNaN(restLat) && !isNaN(restLng)) ? { lat: restLat, lng: restLng }
+    : { lat: 20.5937, lng: 78.9629 }; // fallback: center of India
+
+  var overlay = document.createElement('div');
+  overlay.id = 'mapPickerOverlay';
+  overlay.className = 'modal-overlay';
+  overlay.style.zIndex = '10050';
+  overlay.innerHTML =
+    '<div class="modal-box" style="max-width:520px;width:100%;">' +
+      '<div class="modal-header">' +
+        '<h2>Select Your Location</h2>' +
+        '<button class="modal-close" type="button" onclick="closeMapPicker()">&times;</button>' +
+      '</div>' +
+      '<div class="modal-body">' +
+        '<p style="font-size:12px;color:#666;margin-bottom:8px;">Drag the pin, tap the map, or use your current location to set your exact delivery spot.</p>' +
+        '<div id="mapPickerCanvas" style="width:100%;height:320px;border-radius:10px;overflow:hidden;background:#eee;"></div>' +
+        '<div id="mapPickerAddress" style="margin-top:10px;font-size:13px;color:#333;min-height:18px;">Locating...</div>' +
+        '<div class="btn-group" style="margin-top:14px;">' +
+          '<button type="button" class="btn btn-secondary" onclick="useCurrentLocationOnMap()">📍 Use Current Location</button>' +
+          '<button type="button" class="btn btn-primary" onclick="confirmMapLocation()">Use This Location</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  mapPickerMap = new google.maps.Map(document.getElementById('mapPickerCanvas'), {
+    center: startCenter,
+    zoom: 16,
+    streetViewControl: false,
+    mapTypeControl: false,
+    fullscreenControl: false
+  });
+  mapPickerMarker = new google.maps.Marker({
+    position: startCenter,
+    map: mapPickerMap,
+    draggable: true
+  });
+
+  mapPickerMap.addListener('click', function(e) {
+    mapPickerMarker.setPosition(e.latLng);
+    reverseGeocodeForPicker(e.latLng.lat(), e.latLng.lng());
+  });
+  mapPickerMarker.addListener('dragend', function() {
+    var pos = mapPickerMarker.getPosition();
+    reverseGeocodeForPicker(pos.lat(), pos.lng());
+  });
+
+  reverseGeocodeForPicker(startCenter.lat, startCenter.lng);
+}
+
+function closeMapPicker() {
+  var overlay = document.getElementById('mapPickerOverlay');
+  if (overlay) overlay.remove();
+  mapPickerMap = null;
+  mapPickerMarker = null;
+}
+
+function useCurrentLocationOnMap() {
+  if (!navigator.geolocation) {
+    document.getElementById('mapPickerAddress').textContent = 'Location access is not available on this device.';
+    return;
+  }
+  document.getElementById('mapPickerAddress').textContent = 'Getting your current location...';
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    if (mapPickerMap && mapPickerMarker) {
+      mapPickerMap.setCenter(latLng);
+      mapPickerMap.setZoom(17);
+      mapPickerMarker.setPosition(latLng);
+    }
+    reverseGeocodeForPicker(latLng.lat, latLng.lng);
+  }, function() {
+    document.getElementById('mapPickerAddress').textContent = 'Could not get your location. Please allow location access, or drag the pin manually.';
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function reverseGeocodeForPicker(lat, lng) {
+  var addrEl = document.getElementById('mapPickerAddress');
+  var apiKey = window.googleMapsApiKey;
+  if (!apiKey) return;
+  if (addrEl) addrEl.textContent = 'Looking up address...';
+  var url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' + lat + ',' + lng + '&key=' + apiKey;
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!addrEl) return;
+      if (data && data.status === 'OK' && data.results && data.results.length > 0) {
+        addrEl.dataset.formatted = data.results[0].formatted_address;
+        addrEl.dataset.postcode = extractPostcode(data.results[0].address_components);
+        addrEl.textContent = data.results[0].formatted_address;
+      } else {
+        addrEl.dataset.formatted = '';
+        addrEl.dataset.postcode = '';
+        addrEl.textContent = 'Could not resolve an address for this spot, but you can still use it.';
+      }
+    })
+    .catch(function() {
+      if (addrEl) addrEl.textContent = 'Could not resolve an address for this spot, but you can still use it.';
+    });
+}
+
+function confirmMapLocation() {
+  if (!mapPickerMarker) { closeMapPicker(); return; }
+  var pos = mapPickerMarker.getPosition();
+  var addrEl = document.getElementById('mapPickerAddress');
+  var formatted = (addrEl && addrEl.dataset.formatted) ? addrEl.dataset.formatted : (addrEl ? addrEl.textContent : '');
+  var postcode = (addrEl && addrEl.dataset.postcode) ? addrEl.dataset.postcode : '';
+  applySelectedAddress(pos.lat(), pos.lng(), formatted, postcode);
+  closeMapPicker();
 }
 function togglePincodeFallback() {
   var autoEl = document.getElementById('google-places-autocomplete');
