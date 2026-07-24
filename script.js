@@ -108,19 +108,11 @@ if (showcaseCards.length > 0) {
 }
 
 // Navbar Scroll Effect
-let lastScroll = 0;
 const navbar = document.querySelector('.navbar');
 
 window.addEventListener('scroll', () => {
-    const currentScroll = window.pageYOffset;
-    
-    if (currentScroll > 100) {
-        navbar.style.boxShadow = '0 4px 30px rgba(0, 0, 0, 0.1)';
-    } else {
-        navbar.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.05)';
-    }
-    
-    lastScroll = currentScroll;
+    if (!navbar) return;
+    navbar.classList.toggle('scrolled', window.pageYOffset > 40);
 });
 
 // Contact Form Submission
@@ -173,52 +165,20 @@ if (contactForm) {
     });
 }
 
-// Optimized Intersection Observer for Animations
-const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-};
-
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry, index) => {
-        if (entry.isIntersecting) {
-            // Use requestAnimationFrame for smoother animations
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    entry.target.classList.add('visible');
-                }, index * 50); // Reduced stagger delay
-            });
-            observer.unobserve(entry.target);
-        }
-    });
-}, observerOptions);
-
-// Observe all animated elements
-const animatedElements = document.querySelectorAll('.feature-card, .benefit-item, .pricing-card, .contact-item, .section-header');
-animatedElements.forEach((el, index) => {
-    el.classList.add('fade-in');
-    observer.observe(el);
-});
-
-// Stagger animation for feature cards
-document.querySelectorAll('.feature-card').forEach((card, index) => {
-    card.style.transitionDelay = `${index * 0.1}s`;
-});
-
-// Stagger animation for pricing cards
-document.querySelectorAll('.pricing-card').forEach((card, index) => {
-    card.style.transitionDelay = `${index * 0.1}s`;
-});
+// Content is visible by default (no scroll-gated opacity system - see design brief:
+// the previous IntersectionObserver fade-in setup could leave sections permanently
+// invisible in some render paths). Hero content still gets a light on-load reveal
+// via CSS animation only (see .hero-text / .hero-image in style.css).
 
 // Enhanced Counter Animation for Stats
-const animateCounter = (element, target, suffix = '') => {
+const animateCounter = (element, target, prefix = '', suffix = '') => {
     let current = 0;
     const duration = 2000;
     const increment = target / (duration / 16);
     const timer = setInterval(() => {
         current += increment;
         if (current >= target) {
-            element.textContent = target + suffix;
+            element.textContent = prefix + target + suffix;
             clearInterval(timer);
             // Add a bounce effect
             element.style.transform = 'scale(1.2)';
@@ -227,7 +187,7 @@ const animateCounter = (element, target, suffix = '') => {
                 element.style.transition = 'transform 0.3s ease';
             }, 100);
         } else {
-            element.textContent = Math.floor(current) + suffix;
+            element.textContent = prefix + Math.floor(current) + suffix;
         }
     }, 16);
 };
@@ -239,18 +199,19 @@ statNumbers.forEach(stat => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const text = entry.target.textContent;
-                // Extract number and suffix
-                const match = text.match(/(\d+)(.*)/);
+                // Extract optional leading prefix (e.g. "₹"), the number, and any suffix
+                const match = text.match(/^(\D*)(\d+)(.*)$/);
                 if (match) {
-                    const number = parseInt(match[1]);
-                    const suffix = match[2];
-                    animateCounter(entry.target, number, suffix);
+                    const prefix = match[1];
+                    const number = parseInt(match[2]);
+                    const suffix = match[3];
+                    animateCounter(entry.target, number, prefix, suffix);
                     observer.unobserve(entry.target);
                 }
             }
         });
     }, { threshold: 0.5 });
-    
+
     observer.observe(stat);
 });
 
@@ -285,7 +246,7 @@ const createScrollProgress = () => {
         left: 0;
         width: 0%;
         height: 3px;
-        background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+        background: linear-gradient(90deg, var(--accent), var(--accent-dark));
         z-index: 10000;
         transform: translate3d(0, 0, 0);
         will-change: transform;

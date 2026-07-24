@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+
     <!-- Primary Meta Tags -->
     <title>Restro Grow - Complete Restaurant POS & Management System | Order Tracking, KOT, Staff Management</title>
     <meta name="title" content="Restro Grow - Complete Restaurant POS & Management System | Order Tracking, KOT, Staff Management">
@@ -14,7 +14,7 @@
     <meta name="language" content="English">
     <meta name="revisit-after" content="7 days">
     <link rel="canonical" href="https://restrogrow.com/">
-    
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://restrogrow.com/">
@@ -25,20 +25,20 @@
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="Restro Grow">
     <meta property="og:locale" content="en_IN">
-    
+
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://restrogrow.com/">
     <meta property="twitter:title" content="Restro Grow - Complete Restaurant POS & Management System">
     <meta property="twitter:description" content="Powerful restaurant POS system with KOT management, order tracking, staff management, and real-time analytics. Perfect for restaurants of all sizes.">
     <meta property="twitter:image" content="https://restrogrow.com/assets/images/logo-transparent.png">
-    
+
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="assets/images/logo-transparent.png">
     <link rel="apple-touch-icon" href="assets/images/logo-transparent.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-transparent.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/images/logo-transparent.png">
-    
+
     <!-- Structured Data - Organization -->
     <script type="application/ld+json">
     {
@@ -62,7 +62,7 @@
         ]
     }
     </script>
-    
+
     <!-- Structured Data - SoftwareApplication -->
     <script type="application/ld+json">
     {
@@ -99,7 +99,7 @@
         ]
     }
     </script>
-    
+
     <!-- Structured Data - LocalBusiness -->
     <script type="application/ld+json">
     {
@@ -129,7 +129,7 @@
         }
     }
     </script>
-    
+
     <!-- Structured Data - SiteNavigationElement for Sitelinks -->
     <script type="application/ld+json">
     {
@@ -185,7 +185,7 @@
         }
     }
     </script>
-    
+
     <!-- Structured Data - BreadcrumbList -->
     <script type="application/ld+json">
     {
@@ -201,27 +201,54 @@
         ]
     }
     </script>
-    
+
     <!-- Resource Hints for Performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
     <link rel="dns-prefetch" href="https://fonts.gstatic.com">
-    
+
     <!-- Critical CSS -->
-    <link rel="stylesheet" href="style.css?v=2.2">
-    
-    <!-- Optimized Font Loading -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
+    <link rel="stylesheet" href="style.css?v=3.0">
+
+    <!-- Optimized Font Loading: Archivo (display), Public Sans (body), IBM Plex Mono (numerals/POS nod) -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
 </head>
 <body>
+
+    <!-- Icon System: single consistent line-icon set, referenced via <use> -->
+    <svg style="display:none" aria-hidden="true">
+        <symbol id="i-pos" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 11h18"/><path d="M7 15.5h4"/><circle cx="17" cy="15.5" r="1" fill="currentColor" stroke="none"/><path d="M8 7V5.3A2.3 2.3 0 0 1 10.3 3h3.4A2.3 2.3 0 0 1 16 5.3V7"/></symbol>
+        <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4.5 3h15v14.2l-1.7-1.1-1.7 1.1-1.7-1.1-1.7 1.1-1.7-1.1-1.7 1.1-1.7-1.1-1.7 1.1-1.7-1.1V3Z"/><path d="M7.5 7.2h9M7.5 10.4h9M7.5 13.6h5.5"/></symbol>
+        <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8.2" r="3.1"/><path d="M3.2 20c0-3.1 2.6-5.4 5.8-5.4s5.8 2.3 5.8 5.4"/><circle cx="17.1" cy="9" r="2.3"/><path d="M15.4 13c2.6.4 4.5 2.4 4.8 5"/></symbol>
+        <symbol id="i-table" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2.2v3.6M12 18.2v3.6M2.2 12h3.6M18.2 12h3.6"/></symbol>
+        <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/><path d="M14.5 5.5h6.5V12"/></symbol>
+        <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="20.3" r="1.2" fill="currentColor" stroke="none"/><circle cx="18" cy="20.3" r="1.2" fill="currentColor" stroke="none"/><path d="M2.5 3.2h2.4l2.1 12a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6l1.4-8.2H6"/></symbol>
+        <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5.2" width="18" height="13.6" rx="2.2"/><path d="M3 10h18"/><path d="M7 14.6h4"/></symbol>
+        <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 10.2a6 6 0 0 1 12 0c0 3.9 1.4 5.4 1.4 5.4H4.6S6 14.1 6 10.2Z"/><path d="M10 18.8a2 2 0 0 0 4 0"/></symbol>
+        <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.4" rx="2"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/><path d="M7.5 14h2M11 14h2M14.5 14h2"/></symbol>
+        <symbol id="i-person-add" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M2.4 20c0-3.4 2.9-6 6.6-6s6.6 2.6 6.6 6"/><path d="M18.5 8v5M16 10.5h5"/></symbol>
+        <symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M9 12h11M4 18h13M20 18h0"/><circle cx="15" cy="6" r="2"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+        <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2.5v3.4M12 18.1v3.4M4.4 4.4l2.4 2.4M17.2 17.2l2.4 2.4M2.5 12h3.4M18.1 12h3.4M4.4 19.6l2.4-2.4M17.2 6.8l2.4-2.4"/><circle cx="12" cy="12" r="2.6"/></symbol>
+        <symbol id="i-speed" viewBox="0 0 24 24"><path d="M4 15.4a8 8 0 1 1 16 0"/><path d="M12 15.4l4.3-5.3"/><circle cx="12" cy="15.4" r="1.1" fill="currentColor" stroke="none"/></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.8-3 8.2-7 9-4-.8-7-4.2-7-9V6Z"/><path d="M9 12.2l2 2 4-4.4"/></symbol>
+        <symbol id="i-devices" viewBox="0 0 24 24"><rect x="2.6" y="4.2" width="14" height="10" rx="1.4"/><path d="M7 17h5"/><rect x="15.4" y="9.4" width="6" height="10.4" rx="1.4"/></symbol>
+        <symbol id="i-support" viewBox="0 0 24 24"><path d="M4 13.4v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13.4" width="4" height="6" rx="1.4"/><rect x="17" y="13.4" width="4" height="6" rx="1.4"/><path d="M20 19.4v.4A3.5 3.5 0 0 1 16.5 23.2H13"/></symbol>
+        <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5 12 13l8.5-6.5"/></symbol>
+        <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1.3 1.3 0 0 1 1.4-.3c1 .4 2.2.6 3.3.5a1.3 1.3 0 0 1 1.3 1.3V20a1.3 1.3 0 0 1-1.3 1.3A17.3 17.3 0 0 1 2.7 4.3 1.3 1.3 0 0 1 4 3h3.4a1.3 1.3 0 0 1 1.3 1.3c-.1 1.1.1 2.3.5 3.3a1.3 1.3 0 0 1-.3 1.4z"/></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+        <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4.5 14h6L10 22l9-12.5h-6.2z" fill="currentColor" stroke="none"/></symbol>
+        <symbol id="i-mobile" viewBox="0 0 24 24"><rect x="7" y="2.4" width="10" height="19.2" rx="2.2"/><path d="M11 19h2"/></symbol>
+    </svg>
+
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container">
-            <a href="./index.html" class="nav-brand" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+            <a href="./index.html" class="nav-brand">
                 <img src="assets/images/logo-transparent.png" alt="Restro Grow Logo" class="brand-logo">
                 <span class="brand-text">Restro Grow</span>
             </a>
@@ -235,23 +262,24 @@
                 <li><a href="#contact">Contact</a></li>
                 <li><a href="main/admin/login.php" class="btn-nav">Login</a></li>
             </ul>
-            <button class="nav-toggle">
-                <span class="material-symbols-rounded">menu</span>
+            <button class="nav-toggle" aria-label="Toggle menu">
+                <svg class="icon"><use href="#i-menu"></use></svg>
             </button>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="hero">
+    <section class="hero grain">
         <div class="container">
             <div class="hero-content">
                 <div class="hero-text">
+                    <p class="eyebrow"><span class="eyebrow-dot"></span>Built for real restaurant floors</p>
                     <h1 class="hero-title">
                         Stop juggling orders, staff, and chaos.<br>
                         <span class="highlight">Restro Grow</span> runs your restaurant smoothly.
                     </h1>
                     <p class="hero-description">
-                        We built this because we were tired of losing orders, confusing the kitchen, and watching waiters run around clueless. 
+                        We built this because we were tired of losing orders, confusing the kitchen, and watching waiters run around clueless.
                         Now your POS actually works the way your restaurant does - fast, simple, and without the headaches.
                     </p>
                     <div class="hero-buttons">
@@ -274,19 +302,19 @@
                     </div>
                 </div>
                 <div class="hero-image">
-                    <div class="dashboard-preview">
-                        <div class="preview-header">
-                            <span></span>
-                            <span></span>
-                            <span></span>
+                    <div class="device-frame">
+                        <div class="device-bar">
+                            <span class="device-dot" aria-hidden="true"></span>
+                            <span class="device-url">restrogrow.com/admin &mdash; live</span>
                         </div>
-                        <div class="preview-content">
+                        <div class="device-screen">
                             <img src="assets/images/restro-grow-dashboard.png" alt="Restro Grow Dashboard - Complete Restaurant Management System" class="dashboard-screenshot" />
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        <div class="ticket-seam" aria-hidden="true"></div>
     </section>
 
     <!-- Features Section -->
@@ -298,65 +326,47 @@
             </div>
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <span class="material-symbols-rounded">point_of_sale</span>
-                    </div>
+                    <div class="feature-icon"><svg class="icon"><use href="#i-pos"></use></svg></div>
                     <h3>Take Orders Without Losing Your Mind</h3>
                     <p>Your waiters can take orders on tablets or phones. No more running back and forth to the counter. Orders go straight to the kitchen. Cash, card, UPI - we handle it all.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <span class="material-symbols-rounded">restaurant_menu</span>
-                    </div>
+                    <div class="feature-icon"><svg class="icon"><use href="#i-ticket"></use></svg></div>
                     <h3>Kitchen Actually Knows What's Coming</h3>
                     <p>KOT tickets print automatically (or show on screen). Chefs see orders in real-time. Mark items as cooking, ready, or served. No more "where's my order?" chaos.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <span class="material-symbols-rounded">groups</span>
-                    </div>
+                    <div class="feature-icon"><svg class="icon"><use href="#i-team"></use></svg></div>
                     <h3>Everyone Gets Their Own Dashboard</h3>
                     <p>Managers see sales and reports. Chefs see pending orders. Waiters see their tables and requests. Admins control everything. No one sees what they shouldn't.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <span class="material-symbols-rounded">table_restaurant</span>
-                    </div>
+                    <div class="feature-icon"><svg class="icon"><use href="#i-table"></use></svg></div>
                     <h3>Know Which Tables Are Free</h3>
                     <p>Organize tables by areas (indoor, outdoor, rooftop). See what's occupied, what's reserved, what's dirty. Stop double-booking tables.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <span class="material-symbols-rounded">bar_chart</span>
-                    </div>
+                    <div class="feature-icon"><svg class="icon"><use href="#i-trend"></use></svg></div>
                     <h3>See What's Actually Selling</h3>
                     <p>Daily sales reports. Which items are popular. Which waiter is selling more. What time you're busiest. Make decisions based on real data, not guesses.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <span class="material-symbols-rounded">shopping_cart</span>
-                    </div>
+                    <div class="feature-icon"><svg class="icon"><use href="#i-cart"></use></svg></div>
                     <h3>Customers Order Online Too</h3>
                     <p>Put QR codes on tables. Customers scan, browse menu, order, pay. Or they order from your website. Orders come straight to your kitchen. No third-party apps taking 30%.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <span class="material-symbols-rounded">credit_card</span>
-                    </div>
+                    <div class="feature-icon"><svg class="icon"><use href="#i-card"></use></svg></div>
                     <h3>Accept All Payment Types</h3>
                     <p>Cash, card swipe, UPI (PhonePe, Google Pay, Paytm), online payments. Track everything. Split bills. Partial payments. Refunds. It's all there.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <span class="material-symbols-rounded">notifications</span>
-                    </div>
+                    <div class="feature-icon"><svg class="icon"><use href="#i-bell"></use></svg></div>
                     <h3>Customers Can Call Waiters</h3>
                     <p>Customer needs something? They tap a button on their phone. Waiter gets notified instantly. No more waving hands or shouting across the restaurant.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <span class="material-symbols-rounded">calendar_month</span>
-                    </div>
+                    <div class="feature-icon"><svg class="icon"><use href="#i-calendar"></use></svg></div>
                     <h3>Handle Reservations Properly</h3>
                     <p>Customers book tables online. You see all reservations. Check availability before confirming. Send reminders. Stop overbooking or losing reservations.</p>
                 </div>
@@ -373,32 +383,22 @@
             </div>
             <div class="steps-grid">
                 <div class="step-card">
-                    <div class="step-number">1</div>
-                    <div class="step-icon-wrap">
-                        <span class="material-symbols-rounded">person_add</span>
-                    </div>
+                    <div class="step-number">01</div>
+                    <div class="step-icon-wrap"><svg class="icon"><use href="#i-person-add"></use></svg></div>
                     <h3>Create Your Account</h3>
                     <p>Sign up with your restaurant details. No credit card needed. Takes 2 minutes.</p>
                 </div>
-                <div class="step-connector">
-                    <span class="material-symbols-rounded">arrow_forward</span>
-                </div>
+                <div class="step-connector"><svg class="icon"><use href="#i-arrow"></use></svg></div>
                 <div class="step-card">
-                    <div class="step-number">2</div>
-                    <div class="step-icon-wrap">
-                        <span class="material-symbols-rounded">tune</span>
-                    </div>
+                    <div class="step-number">02</div>
+                    <div class="step-icon-wrap"><svg class="icon"><use href="#i-tune"></use></svg></div>
                     <h3>Set Up Your Restaurant</h3>
                     <p>Add your menu, tables, staff, and opening hours. Customize your online presence with your logo and theme.</p>
                 </div>
-                <div class="step-connector">
-                    <span class="material-symbols-rounded">arrow_forward</span>
-                </div>
+                <div class="step-connector"><svg class="icon"><use href="#i-arrow"></use></svg></div>
                 <div class="step-card">
-                    <div class="step-number">3</div>
-                    <div class="step-icon-wrap">
-                        <span class="material-symbols-rounded">celebration</span>
-                    </div>
+                    <div class="step-number">03</div>
+                    <div class="step-icon-wrap"><svg class="icon"><use href="#i-spark"></use></svg></div>
                     <h3>Start Serving</h3>
                     <p>Print QR codes for tables, share your online ordering link, and watch orders come in. Your staff is ready to go.</p>
                 </div>
@@ -407,41 +407,41 @@
     </section>
 
     <!-- Benefits Section -->
-    <section id="benefits" class="benefits">
+    <section id="benefits" class="benefits grain grain-dark">
         <div class="container">
             <div class="benefits-content">
                 <div class="benefits-text">
                     <h2 class="section-title">Why Restaurants Actually Switch</h2>
                     <div class="benefit-item">
-                        <span class="material-symbols-rounded benefit-icon">speed</span>
+                        <svg class="icon benefit-icon"><use href="#i-speed"></use></svg>
                         <div>
                             <h3>It's Actually Fast</h3>
                             <p>No lag. No freezing. Orders go through instantly, even during rush hour. We tested it with real restaurants, not in a lab.</p>
                         </div>
                     </div>
                     <div class="benefit-item">
-                        <span class="material-symbols-rounded benefit-icon">security</span>
+                        <svg class="icon benefit-icon"><use href="#i-shield"></use></svg>
                         <div>
                             <h3>Your Data Stays Yours</h3>
                             <p>We don't sell your customer data. Everything is encrypted. Daily backups. If something breaks, we fix it. Simple.</p>
                         </div>
                     </div>
                     <div class="benefit-item">
-                        <span class="material-symbols-rounded benefit-icon">devices</span>
+                        <svg class="icon benefit-icon"><use href="#i-devices"></use></svg>
                         <div>
                             <h3>Works on Whatever You Have</h3>
                             <p>Old Android tablet? Works. New iPad? Works. Windows PC? Works. Your phone? Works. Use what you already own.</p>
                         </div>
                     </div>
                     <div class="benefit-item">
-                        <span class="material-symbols-rounded benefit-icon">trending_up</span>
+                        <svg class="icon benefit-icon"><use href="#i-trend"></use></svg>
                         <div>
                             <h3>Stop Guessing, Start Knowing</h3>
                             <p>See which dishes sell, which don't. Know your busy hours. Track which staff performs best. Make changes that actually work.</p>
                         </div>
                     </div>
                     <div class="benefit-item">
-                        <span class="material-symbols-rounded benefit-icon">support_agent</span>
+                        <svg class="icon benefit-icon"><use href="#i-support"></use></svg>
                         <div>
                             <h3>We Actually Answer</h3>
                             <p>Email us. Call us. WhatsApp us. We respond. No bots. No "your call is important to us" nonsense. Real people, real help.</p>
@@ -451,17 +451,17 @@
                 <div class="benefits-visual">
                     <div class="feature-showcase">
                         <div class="showcase-card active">
-                            <div class="showcase-icon">📱</div>
+                            <svg class="icon showcase-icon"><use href="#i-mobile"></use></svg>
                             <h4>Use Your Existing Devices</h4>
                             <p>Works on tablets, phones, computers. No expensive hardware needed.</p>
                         </div>
                         <div class="showcase-card">
-                            <div class="showcase-icon">⚡</div>
+                            <svg class="icon showcase-icon"><use href="#i-bolt"></use></svg>
                             <h4>Updates Instantly</h4>
                             <p>Order placed? Kitchen sees it immediately. No delays, no confusion.</p>
                         </div>
                         <div class="showcase-card">
-                            <div class="showcase-icon">💳</div>
+                            <svg class="icon showcase-icon"><use href="#i-card"></use></svg>
                             <h4>All Payment Methods</h4>
                             <p>Cash, card, UPI, online. Accept everything your customers want to pay with.</p>
                         </div>
@@ -485,30 +485,102 @@
                     <button class="tab-btn" data-tab="waiter">Waiter Dashboard</button>
                 </div>
                 <div class="dashboard-content">
+
                     <div class="dashboard-panel active" data-panel="admin">
                         <div class="panel-grid">
-                            <div class="panel-stat">Today's Revenue</div>
-                            <div class="panel-stat">Active Orders</div>
-                            <div class="panel-stat">Popular Items</div>
-                            <div class="panel-list">Recent Orders</div>
+                            <div class="panel-stat">
+                                <span class="panel-stat-label">Today's Revenue</span>
+                                <span class="panel-stat-value mono">&#8377;28,450</span>
+                                <span class="panel-stat-delta up">&#9650; 12% vs. yesterday</span>
+                            </div>
+                            <div class="panel-stat">
+                                <span class="panel-stat-label">Active Orders</span>
+                                <span class="panel-stat-value mono">12</span>
+                                <span class="panel-stat-delta">4 dine-in &middot; 5 online &middot; 3 takeaway</span>
+                            </div>
+                            <div class="panel-stat">
+                                <span class="panel-stat-label">Popular Item</span>
+                                <span class="panel-stat-value">Butter Chicken</span>
+                                <span class="panel-stat-delta mono">34 orders today</span>
+                            </div>
+                        </div>
+                        <div class="panel-list">
+                            <div class="panel-list-head">
+                                <span>Recent Orders</span>
+                                <span class="panel-list-head-meta mono">table &middot; amount &middot; status</span>
+                            </div>
+                            <ul class="order-rows">
+                                <li><span class="order-id mono">#1094</span><span class="order-table">Table 4</span><span class="order-amount mono">&#8377;1,240</span><span class="status-tag preparing">Preparing</span></li>
+                                <li><span class="order-id mono">#1093</span><span class="order-table">Table 9</span><span class="order-amount mono">&#8377;860</span><span class="status-tag ready">Ready</span></li>
+                                <li><span class="order-id mono">#1092</span><span class="order-table">Online</span><span class="order-amount mono">&#8377;2,150</span><span class="status-tag served">Served</span></li>
+                                <li><span class="order-id mono">#1091</span><span class="order-table">Table 2</span><span class="order-amount mono">&#8377;640</span><span class="status-tag served">Served</span></li>
+                            </ul>
                         </div>
                     </div>
+
                     <div class="dashboard-panel" data-panel="chef">
                         <div class="panel-grid">
-                            <div class="panel-stat">Pending Orders</div>
-                            <div class="panel-stat">In Kitchen</div>
-                            <div class="panel-stat">Ready to Serve</div>
-                            <div class="panel-list">KOT Orders</div>
+                            <div class="panel-stat">
+                                <span class="panel-stat-label">Pending Orders</span>
+                                <span class="panel-stat-value mono">06</span>
+                                <span class="panel-stat-delta">waiting on kitchen</span>
+                            </div>
+                            <div class="panel-stat">
+                                <span class="panel-stat-label">In Kitchen</span>
+                                <span class="panel-stat-value mono">04</span>
+                                <span class="panel-stat-delta">currently cooking</span>
+                            </div>
+                            <div class="panel-stat">
+                                <span class="panel-stat-label">Ready to Serve</span>
+                                <span class="panel-stat-value mono">02</span>
+                                <span class="panel-stat-delta up">waiting on waiter</span>
+                            </div>
+                        </div>
+                        <div class="panel-list">
+                            <div class="panel-list-head">
+                                <span>KOT Queue</span>
+                                <span class="panel-list-head-meta mono">table &middot; items &middot; elapsed</span>
+                            </div>
+                            <ul class="order-rows kot-rows">
+                                <li><span class="order-id mono">#1095</span><span class="order-table">Table 7 &mdash; 2&times; Butter Chicken, 1&times; Naan</span><span class="order-amount mono">6 min</span><span class="status-tag preparing">Cooking</span></li>
+                                <li><span class="order-id mono">#1094</span><span class="order-table">Table 4 &mdash; 1&times; Paneer Tikka, 2&times; Roti</span><span class="order-amount mono">3 min</span><span class="status-tag preparing">Cooking</span></li>
+                                <li><span class="order-id mono">#1093</span><span class="order-table">Table 9 &mdash; 3&times; Masala Dosa</span><span class="order-amount mono">9 min</span><span class="status-tag ready">Ready</span></li>
+                                <li><span class="order-id mono">#1090</span><span class="order-table">Online &mdash; 1&times; Thali Special</span><span class="order-amount mono">1 min</span><span class="status-tag preparing">Queued</span></li>
+                            </ul>
                         </div>
                     </div>
+
                     <div class="dashboard-panel" data-panel="waiter">
                         <div class="panel-grid">
-                            <div class="panel-stat">Active Requests</div>
-                            <div class="panel-stat">Orders Ready</div>
-                            <div class="panel-stat">Tables Served</div>
-                            <div class="panel-list">Waiter Requests</div>
+                            <div class="panel-stat">
+                                <span class="panel-stat-label">Active Requests</span>
+                                <span class="panel-stat-value mono">03</span>
+                                <span class="panel-stat-delta">from the floor</span>
+                            </div>
+                            <div class="panel-stat">
+                                <span class="panel-stat-label">Orders Ready</span>
+                                <span class="panel-stat-value mono">02</span>
+                                <span class="panel-stat-delta up">pick up from kitchen</span>
+                            </div>
+                            <div class="panel-stat">
+                                <span class="panel-stat-label">Tables Served</span>
+                                <span class="panel-stat-value mono">18</span>
+                                <span class="panel-stat-delta">since opening</span>
+                            </div>
+                        </div>
+                        <div class="panel-list">
+                            <div class="panel-list-head">
+                                <span>Waiter Requests</span>
+                                <span class="panel-list-head-meta mono">table &middot; request &middot; time</span>
+                            </div>
+                            <ul class="order-rows">
+                                <li><span class="order-id mono">T-04</span><span class="order-table">Water refill</span><span class="order-amount mono">2 min ago</span><span class="status-tag preparing">Pending</span></li>
+                                <li><span class="order-id mono">T-09</span><span class="order-table">Bill request</span><span class="order-amount mono">1 min ago</span><span class="status-tag preparing">Pending</span></li>
+                                <li><span class="order-id mono">T-02</span><span class="order-table">Order ready for pickup</span><span class="order-amount mono">just now</span><span class="status-tag ready">Ready</span></li>
+                            </ul>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -523,139 +595,69 @@
         <div class="testimonials-floating-wrap">
             <div class="testimonials-track" id="testimonialsTrack">
                 <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                    </div>
                     <p class="testimonial-quote">"We switched from a bulky POS system and Restro Grow was a game changer. Setup took 10 minutes and my staff picked it up immediately. The online ordering alone increased our orders by 30%."</p>
                     <div class="testimonial-author">
-                        <div class="testimonial-avatar">RK</div>
-                        <div>
-                            <strong>Rajesh Khanna</strong>
-                            <span>Owner, Punjabi Dhaba</span>
-                        </div>
+                        <strong>Rajesh Khanna</strong>
+                        <span>Owner, Punjabi Dhaba</span>
                     </div>
                 </div>
                 <div class="testimonial-card featured">
-                    <div class="testimonial-stars">
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
+                    <div class="chat-bubble">
+                        <p class="testimonial-quote">"The KOT system is brilliant. No more paper slips getting lost. Our kitchen is faster and mistakes are almost zero. The waiter call feature is a hit with customers too."</p>
                     </div>
-                    <p class="testimonial-quote">"The KOT system is brilliant. No more paper slips getting lost. Our kitchen is faster and mistakes are almost zero. The waiter call feature is a hit with customers too."</p>
-                    <div class="testimonial-author">
+                    <div class="testimonial-author chat-author">
                         <div class="testimonial-avatar">PM</div>
                         <div>
                             <strong>Priya Mehra</strong>
-                            <span>Owner, Spice Garden Restaurant</span>
+                            <span>Owner, Spice Garden Restaurant &middot; via WhatsApp</span>
                         </div>
                     </div>
                 </div>
                 <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                    </div>
                     <p class="testimonial-quote">"I run two restaurants and managing both from one dashboard is incredible. The analytics help me see what's working and what's not. Support team actually answers the phone!"</p>
                     <div class="testimonial-author">
-                        <div class="testimonial-avatar">AV</div>
-                        <div>
-                            <strong>Arun Verma</strong>
-                            <span>Owner, The Cafe Group</span>
-                        </div>
+                        <strong>Arun Verma</strong>
+                        <span>Owner, The Cafe Group</span>
                     </div>
                 </div>
                 <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                    </div>
                     <p class="testimonial-quote">"The QR code ordering is a lifesaver. Customers just scan and order. No more waiting for waiters during rush hour. My revenue went up 25% in the first month."</p>
                     <div class="testimonial-author">
-                        <div class="testimonial-avatar">SN</div>
-                        <div>
-                            <strong>Sunita Nair</strong>
-                            <span>Owner, Malabar Coast</span>
-                        </div>
+                        <strong>Sunita Nair</strong>
+                        <span>Owner, Malabar Coast</span>
                     </div>
                 </div>
                 <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                    </div>
                     <p class="testimonial-quote">"I was using pen and paper before this. Now everything is digital — orders, payments, reports. My staff loves how simple it is. Best decision I made for my restaurant."</p>
                     <div class="testimonial-author">
-                        <div class="testimonial-avatar">VP</div>
-                        <div>
-                            <strong>Vikram Patel</strong>
-                            <span>Owner, Sharma's Bistro</span>
-                        </div>
+                        <strong>Vikram Patel</strong>
+                        <span>Owner, Sharma's Bistro</span>
                     </div>
                 </div>
                 <div class="testimonial-card featured">
-                    <div class="testimonial-stars">
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
+                    <div class="chat-bubble">
+                        <p class="testimonial-quote">"The delivery tracking feature is exactly what we needed. Our customers love being able to see where their order is in real-time. Riders use the QR scan and it just works."</p>
                     </div>
-                    <p class="testimonial-quote">"The delivery tracking feature is exactly what we needed. Our customers love being able to see where their order is in real-time. Riders use the QR scan and it just works."</p>
-                    <div class="testimonial-author">
+                    <div class="testimonial-author chat-author">
                         <div class="testimonial-avatar">AJ</div>
                         <div>
                             <strong>Anita Joshi</strong>
-                            <span>Owner, Delhi 6 Cafe</span>
+                            <span>Owner, Delhi 6 Cafe &middot; via WhatsApp</span>
                         </div>
                     </div>
                 </div>
                 <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                    </div>
                     <p class="testimonial-quote">"Managing 15 tables was chaotic until we started using Restro Grow. Table management and staff dashboards made everything smooth. Highly recommended for busy restaurants."</p>
                     <div class="testimonial-author">
-                        <div class="testimonial-avatar">MK</div>
-                        <div>
-                            <strong>Manish Kumar</strong>
-                            <span>Owner, The Grand Bites</span>
-                        </div>
+                        <strong>Manish Kumar</strong>
+                        <span>Owner, The Grand Bites</span>
                     </div>
                 </div>
                 <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                        <span class="material-symbols-rounded star-filled">star</span>
-                    </div>
                     <p class="testimonial-quote">"The reports section is gold. I can see exactly which dishes sell, what time we're busiest, and how each staff member is performing. Data-driven decisions changed my business."</p>
                     <div class="testimonial-author">
-                        <div class="testimonial-avatar">RS</div>
-                        <div>
-                            <strong>Rohit Sharma</strong>
-                            <span>Owner, Taste of India</span>
-                        </div>
+                        <strong>Rohit Sharma</strong>
+                        <span>Owner, Taste of India</span>
                     </div>
                 </div>
             </div>
@@ -678,17 +680,18 @@
                         <h3>Small Restaurant</h3>
                         <div class="price">
                             <span class="currency">₹</span>
-                            <span class="amount">2,999</span>
+                            <span class="amount mono">2,999</span>
                             <span class="period">/month</span>
                         </div>
-                        <p style="color: var(--gray); font-size: 0.9rem; margin-top: 8px;">For 1-5 tables</p>
+                        <p class="pricing-sub">For 1-5 tables</p>
                     </div>
+                    <div class="pricing-divider" aria-hidden="true"></div>
                     <ul class="pricing-features">
-                        <li><span class="material-symbols-rounded">check</span> Full POS system</li>
-                        <li><span class="material-symbols-rounded">check</span> KOT management</li>
-                        <li><span class="material-symbols-rounded">check</span> Online ordering</li>
-                        <li><span class="material-symbols-rounded">check</span> Basic reports</li>
-                        <li><span class="material-symbols-rounded">check</span> Email support</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Full POS system</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> KOT management</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Online ordering</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Basic reports</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Email support</li>
                     </ul>
                     <a href="main/admin/login.php" class="btn btn-outline">Start Free Trial</a>
                 </div>
@@ -698,18 +701,19 @@
                         <h3>Growing Restaurant</h3>
                         <div class="price">
                             <span class="currency">₹</span>
-                            <span class="amount">4,999</span>
+                            <span class="amount mono">4,999</span>
                             <span class="period">/month</span>
                         </div>
-                        <p style="color: var(--gray); font-size: 0.9rem; margin-top: 8px;">For 6-20 tables</p>
+                        <p class="pricing-sub">For 6-20 tables</p>
                     </div>
+                    <div class="pricing-divider" aria-hidden="true"></div>
                     <ul class="pricing-features">
-                        <li><span class="material-symbols-rounded">check</span> Everything in Small</li>
-                        <li><span class="material-symbols-rounded">check</span> Staff management</li>
-                        <li><span class="material-symbols-rounded">check</span> Advanced analytics</li>
-                        <li><span class="material-symbols-rounded">check</span> Table reservations</li>
-                        <li><span class="material-symbols-rounded">check</span> Priority support</li>
-                        <li><span class="material-symbols-rounded">check</span> Custom training</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Everything in Small</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Staff management</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Advanced analytics</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Table reservations</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Priority support</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Custom training</li>
                     </ul>
                     <a href="main/admin/login.php" class="btn btn-primary">Start Free Trial</a>
                 </div>
@@ -718,18 +722,19 @@
                         <h3>Multiple Locations</h3>
                         <div class="price">
                             <span class="currency">₹</span>
-                            <span class="amount">9,999</span>
+                            <span class="amount mono">9,999</span>
                             <span class="period">/month</span>
                         </div>
-                        <p style="color: var(--gray); font-size: 0.9rem; margin-top: 8px;">For 2+ restaurants</p>
+                        <p class="pricing-sub">For 2+ restaurants</p>
                     </div>
+                    <div class="pricing-divider" aria-hidden="true"></div>
                     <ul class="pricing-features">
-                        <li><span class="material-symbols-rounded">check</span> Everything in Growing</li>
-                        <li><span class="material-symbols-rounded">check</span> Multi-location support</li>
-                        <li><span class="material-symbols-rounded">check</span> Centralized reporting</li>
-                        <li><span class="material-symbols-rounded">check</span> Dedicated account manager</li>
-                        <li><span class="material-symbols-rounded">check</span> Phone + WhatsApp support</li>
-                        <li><span class="material-symbols-rounded">check</span> Custom features</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Everything in Growing</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Multi-location support</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Centralized reporting</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Dedicated account manager</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Phone + WhatsApp support</li>
+                        <li><svg class="icon"><use href="#i-check"></use></svg> Custom features</li>
                     </ul>
                     <a href="#contact" class="btn btn-outline">Contact Us</a>
                 </div>
@@ -750,21 +755,21 @@
             <div class="contact-content">
                 <div class="contact-info">
                     <div class="contact-item">
-                        <span class="material-symbols-rounded">email</span>
+                        <svg class="icon"><use href="#i-mail"></use></svg>
                         <div>
                             <h4>Email</h4>
-                            <p><a href="mailto:restrogrow@gmail.com" style="color: var(--gray); text-decoration: none;">restrogrow@gmail.com</a></p>
+                            <p><a href="mailto:restrogrow@gmail.com" class="contact-link">restrogrow@gmail.com</a></p>
                         </div>
                     </div>
                     <div class="contact-item">
-                        <span class="material-symbols-rounded">phone</span>
+                        <svg class="icon"><use href="#i-phone"></use></svg>
                         <div>
                             <h4>Phone</h4>
-                            <p><a href="tel:+916377568749" style="color: var(--gray); text-decoration: none;">+91 63775 68749</a></p>
+                            <p><a href="tel:+916377568749" class="contact-link">+91 63775 68749</a></p>
                         </div>
                     </div>
                     <div class="contact-item">
-                        <span class="material-symbols-rounded">schedule</span>
+                        <svg class="icon"><use href="#i-clock"></use></svg>
                         <div>
                             <h4>Business Hours</h4>
                             <p>Mon - Sat: 9:00 AM - 6:00 PM</p>
@@ -831,15 +836,14 @@
             </div>
             <div class="footer-bottom">
                 <p>&copy; 2024 Restro Grow. All rights reserved.</p>
-                <p style="margin-top: 8px; font-size: 0.9rem;">
-                    <a href="mailto:restrogrow@gmail.com" style="color: var(--gray-light); text-decoration: none; margin-right: 16px;">restrogrow@gmail.com</a>
-                    <a href="tel:+916377568749" style="color: var(--gray-light); text-decoration: none;">+91 63775 68749</a>
+                <p class="footer-contact-line">
+                    <a href="mailto:restrogrow@gmail.com">restrogrow@gmail.com</a>
+                    <a href="tel:+916377568749">+91 63775 68749</a>
                 </p>
             </div>
         </div>
     </footer>
 
-    <script src="script.js?v=2.2"></script>
+    <script src="script.js?v=3.0"></script>
 </body>
 </html>
-
