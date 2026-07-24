@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ - Frequently Asked Questions - Restro Grow Restaurant POS</title>
+    <meta name="description" content="Frequently Asked Questions about Restro Grow Restaurant Management System. Find answers about features, pricing, setup, support, and how our POS system works.">
+    <meta name="keywords" content="restro grow FAQ, restaurant POS questions, restaurant management system FAQ, POS system help">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://restrogrow.com/faq/">
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://restrogrow.com/faq/">
+    <meta property="og:title" content="FAQ - Frequently Asked Questions - Restro Grow">
+    <meta property="og:description" content="Find answers about Restro Grow features, pricing, setup, and support.">
+    <meta property="og:image" content="https://restrogrow.com/assets/images/logo-transparent.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary">
+    <meta property="twitter:url" content="https://restrogrow.com/faq/">
+    <meta property="twitter:title" content="FAQ - Restro Grow">
+    <meta property="twitter:description" content="Find answers about Restro Grow restaurant POS system.">
+    
+    <!-- Structured Data - FAQPage -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [{
+            "@type": "Question",
+            "name": "What is Restro Grow?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Restro Grow is a complete restaurant POS and management system that helps restaurants manage orders, staff, tables, payments, and analytics in one platform."
+            }
+        }, {
+            "@type": "Question",
+            "name": "How much does Restro Grow cost?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Restro Grow pricing starts at ₹2,999/month for small restaurants (1-5 tables), ₹4,999/month for growing restaurants (6-20 tables), and ₹9,999/month for multiple locations. We offer a 7-day free trial with no credit card required."
+            }
+        }, {
+            "@type": "Question",
+            "name": "Do I need special hardware?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No, Restro Grow works on any device - tablets, phones, computers. You can use your existing Android tablets, iPads, or Windows PCs. No expensive hardware needed."
+            }
+        }]
+    }
+    </script>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../assets/images/logo-transparent.png">
+    <link rel="apple-touch-icon" href="../assets/images/logo-transparent.png">
+    
+    <!-- Resource Hints for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Critical CSS -->
+    <link rel="stylesheet" href="../style.css?v=2.2">
+    
+    <!-- Optimized Font Loading -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
+    
+    <style>
+        .faq-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .faq-item {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-lighter);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        
+        .faq-item:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary);
+        }
+        
+        .faq-item.active {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .faq-question {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0;
+        }
+        
+        .faq-item.active .faq-question {
+            color: var(--primary);
+        }
+        
+        .faq-icon {
+            font-size: 24px;
+            color: var(--primary);
+            transition: transform 0.3s;
+            flex-shrink: 0;
+            margin-left: 16px;
+        }
+        
+        .faq-item.active .faq-icon {
+            transform: rotate(180deg);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            padding-top: 0;
+            color: var(--gray);
+            line-height: 1.8;
+        }
+        
+        .faq-item.active .faq-answer {
+            max-height: 500px;
+            padding-top: 16px;
+        }
+        
+        .faq-category {
+            margin-top: 3rem;
+            margin-bottom: 2rem;
+        }
+        
+        .faq-category:first-child {
+            margin-top: 0;
+        }
+        
+        .faq-category-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 1.5rem;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--gray-lighter);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="../" class="nav-brand" style="text-decoration: none; display: flex; align-items: center; gap: 12px;">
+                <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="brand-logo">
+                <span class="brand-text">Restro Grow</span>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="../index.html#features">Features</a></li>
+                <li><a href="../index.html#benefits">Benefits</a></li>
+                <li><a href="../index.html#pricing">Pricing</a></li>
+                <li><a href="../index.html#contact">Contact</a></li>
+                <li><a href="../main/admin/login.php" class="btn-nav">Login</a></li>
+            </ul>
+            <button class="nav-toggle">
+                <span class="material-symbols-rounded">menu</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- FAQ Section -->
+    <section class="features" style="padding-top: 120px; padding-bottom: 80px;">
+        <div class="container">
+            <div class="section-header">
+                <h1 class="section-title">Frequently Asked Questions</h1>
+                <p class="section-subtitle">Everything you need to know about Restro Grow</p>
+            </div>
+            
+            <div class="faq-container">
+                <div class="faq-category">
+                    <h2 class="faq-category-title">Getting Started</h2>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>How do I get started with Restro Grow?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Getting started is easy! Sign up for a free 7-day trial, no credit card required. Our setup takes just 5 minutes - you'll add your restaurant details, menu items, and staff members. We'll guide you through every step.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>Do I need any special hardware or equipment?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>No special hardware needed! Restro Grow works on any device - tablets, phones, computers. Use what you already have. You can use Android tablets, iPads, Windows PCs, or even smartphones. As long as it has a browser, it works.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>How long does setup take?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Most restaurants are up and running in 5-10 minutes. You'll add your menu items, set up tables, and create staff accounts. If you have a lot of menu items, it might take a bit longer, but you can always add more later.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="faq-category">
+                    <h2 class="faq-category-title">Pricing & Plans</h2>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>What's included in the free trial?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>The 7-day free trial includes all features - full POS system, KOT management, online ordering, staff management, reports, everything. No limitations, no credit card required. Cancel anytime during the trial with no charges.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>Can I change my plan later?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Absolutely! You can upgrade or downgrade your plan anytime. Changes take effect immediately. If you upgrade mid-month, we'll prorate the difference. If you downgrade, the new plan starts on your next billing cycle.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>Are there any hidden fees or setup costs?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>No hidden fees, no setup costs. What you see is what you pay. Monthly subscription only. No transaction fees, no per-order charges, no surprise bills. The price on the website is the price you pay.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="faq-category">
+                    <h2 class="faq-category-title">Features & Functionality</h2>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>Can customers order online through my restaurant?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Yes! Customers can order online through your website or by scanning QR codes on tables. Orders come straight to your kitchen. You can also accept orders through your website. No third-party apps taking 30% commission.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>How does the KOT (Kitchen Order Ticket) system work?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>When an order is placed, a KOT is automatically created and sent to the kitchen. Chefs can see all pending orders, mark items as cooking or ready. Waiters get notified when orders are ready. Everything updates in real-time across all devices.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>What payment methods can I accept?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>You can accept cash, card (swipe/insert), UPI (PhonePe, Google Pay, Paytm), and online payments. All payment methods are tracked in your system. You can split bills, do partial payments, and process refunds easily.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>Can I manage multiple restaurant locations?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Yes, with our Enterprise plan. You can manage multiple locations from one dashboard, see combined reports, or location-specific reports. Each location can have its own menu, staff, and settings while sharing the same account.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="faq-category">
+                    <h2 class="faq-category-title">Support & Technical</h2>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>What kind of support do you provide?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>We provide email support for all plans. Professional and Enterprise plans get priority support with faster response times. Enterprise customers also get phone and WhatsApp support plus a dedicated account manager.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>Is my data safe and backed up?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Yes. All data is encrypted and stored securely. We perform daily automated backups. Your data belongs to you - we never sell it or share it. You can export your data anytime, and if you cancel, we'll help you download everything.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>What happens if the internet goes down?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Restro Grow is cloud-based, so you need internet to use it. However, we're working on offline mode for basic order taking. For now, we recommend having a backup internet connection (mobile hotspot) for critical operations.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>Can I integrate with other systems?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Currently, Restro Grow works as a standalone system. We're working on integrations with accounting software, inventory systems, and delivery platforms. Enterprise customers can request custom integrations - contact us to discuss your needs.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="faq-category">
+                    <h2 class="faq-category-title">Account & Billing</h2>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>How do I cancel my subscription?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>You can cancel anytime from your account settings. No questions asked, no penalties. Your subscription will remain active until the end of your current billing period. After that, you'll lose access but can export all your data.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span>What payment methods do you accept for subscriptions?</span>
+                            <span class="faq-icon material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>We accept all major credit cards, debit cards, UPI, and bank transfers. You can pay monthly or annually (save 2 months with annual billing). All payments are processed securely through our payment gateway.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 4rem; padding-top: 3rem; border-top: 1px solid var(--gray-lighter);">
+                <h3 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--dark);">Still have questions?</h3>
+                <p style="color: var(--gray); margin-bottom: 2rem;">Can't find what you're looking for? We're here to help.</p>
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <a href="/#contact" class="btn btn-primary">Contact Us</a>
+                    <a href="/" class="btn btn-secondary">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-brand">
+                        <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="footer-logo">
+                        <span>Restro Grow</span>
+                    </div>
+                    <p>Complete restaurant management solution for modern restaurants.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="../index.html#features">Features</a></li>
+                        <li><a href="../index.html#pricing">Pricing</a></li>
+                        <li><a href="../main/admin/login.php">Login</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="../index.html#contact">Contact Us</a></li>
+                        <li><a href="../about/">About</a></li>
+                        <li><a href="../blog/">Blog</a></li>
+                        <li><a href="../faq/">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="../privacy-policy/">Privacy Policy</a></li>
+                        <li><a href="../terms-of-service/">Terms of Service</a></li>
+                        <li><a href="../refund-policy/">Refund & Return Policy</a></li>
+                        <li><a href="../cookie-policy/">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Restro Grow. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../script.js?v=2.2"></script>
+    <script>
+        // FAQ Accordion Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const faqItems = document.querySelectorAll('.faq-item');
+            
+            faqItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const isActive = this.classList.contains('active');
+                    
+                    // Close all items
+                    faqItems.forEach(faq => faq.classList.remove('active'));
+                    
+                    // Open clicked item if it wasn't active
+                    if (!isActive) {
+                        this.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
