@@ -1965,7 +1965,8 @@ function showCheckoutModal(cartData) {
   html += '<div id="deliveryPincodeSection" class="form-group" style="display:' + pincodeDisplay + '">';
   html += '<label>Delivery Address *</label>';
   html += '<input type="text" id="google-places-autocomplete" autocomplete="off" placeholder="Search your delivery address..." style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
-  html += '<div style="margin-top:6px;"><span onclick="openMapPicker()" style="font-size:12px;color:#1a3934;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-weight:500;">📍 Select exact location on map</span></div>';
+  html += '<button type="button" onclick="openMapPicker()" style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border:2px solid #1a3934;border-radius:10px;background:#fff;color:#1a3934;font-size:13px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;">📍 Select Exact Location on Map</button>';
+  html += '<div id="deliveryMapPreview" style="display:none;margin-top:10px;width:100%;height:160px;border-radius:10px;overflow:hidden;border:2px solid #e0e0e0;"></div>';
   html += '<div id="deliveryInfo" style="display:none;margin-top:8px;padding:10px;background:#f0f7f5;border-radius:8px;font-size:13px;"></div>';
   html += '<input type="hidden" id="deliveryZoneId" value="">';
   html += '<input type="hidden" id="deliveryCharge" value="0">';
@@ -2129,7 +2130,9 @@ function showCheckoutModal(cartData) {
       if (pincodeSec) {
         var isDelivery = ot === 'delivery' && (window.enableDelivery == 1 || window.enableDelivery === true);
         pincodeSec.style.display = isDelivery ? '' : 'none';
-        if (!isDelivery) {
+        if (isDelivery) {
+          requestDeliveryLocation();
+        } else {
           checkoutDeliveryCharge = 0;
           var zoneIdEl = document.getElementById('deliveryZoneId');
           if (zoneIdEl) zoneIdEl.value = '';
@@ -2160,6 +2163,7 @@ function showCheckoutModal(cartData) {
   if (initPincodeSec) {
     var initIsDelivery = savedOt === 'delivery' && (window.enableDelivery == 1 || window.enableDelivery === true);
     initPincodeSec.style.display = initIsDelivery ? '' : 'none';
+    if (initIsDelivery) { requestDeliveryLocation(); }
   }
   refreshCheckoutTotal();
 
@@ -2775,6 +2779,8 @@ function resetSelectedAddress() {
   if (feeRow) feeRow.style.display = 'none';
   var infoEl = document.getElementById('deliveryInfo');
   if (infoEl) { infoEl.style.display = 'none'; }
+  var previewEl = document.getElementById('deliveryMapPreview');
+  if (previewEl) { previewEl.style.display = 'none'; }
 }
 
 // Shared by both the text-search autocomplete and the map picker
@@ -2788,6 +2794,8 @@ function applySelectedAddress(lat, lng, formatted, postcode) {
   // processOrder). Just stash the postcode for later - don't run the zone
   // lookup or force the manual pincode box open once an address is picked.
   document.getElementById('chkPincodeAuto').value = postcode || '';
+
+  updateDeliveryMapPreview(lat, lng);
 
   // Show delivery info with selected address
   var infoEl = document.getElementById('deliveryInfo');
@@ -2807,6 +2815,73 @@ function applySelectedAddress(lat, lng, formatted, postcode) {
     infoEl.style.display = 'block';
     infoEl.innerHTML = '<strong>✓ Address selected</strong><br>' + esc(formatted || '') + '<br><span style="font-size:11px;color:#999">Lat: ' + String(lat).substring(0,8) + ', Lng: ' + String(lng).substring(0,8) + '</span>' + distanceHtml;
   }
+}
+
+// Small always-visible map preview below the address field, with a
+// draggable pin so customers can fine-tune without opening the big picker.
+var deliveryPreviewMap = null;
+var deliveryPreviewMarker = null;
+function updateDeliveryMapPreview(lat, lng) {
+  var container = document.getElementById('deliveryMapPreview');
+  if (!container || typeof google === 'undefined' || !google.maps) return;
+  container.style.display = 'block';
+  var pos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+  if (!deliveryPreviewMap) {
+    deliveryPreviewMap = new google.maps.Map(container, {
+      center: pos, zoom: 16,
+      streetViewControl: false, mapTypeControl: false, fullscreenControl: false
+    });
+    deliveryPreviewMarker = new google.maps.Marker({ position: pos, map: deliveryPreviewMap, draggable: true });
+    deliveryPreviewMarker.addListener('dragend', function() {
+      var p = deliveryPreviewMarker.getPosition();
+      reverseGeocode(p.lat(), p.lng(), function(formatted, postcode) {
+        applySelectedAddress(p.lat(), p.lng(), formatted, postcode);
+      });
+    });
+  } else {
+    // trigger a resize in case the container was hidden (0x0) when the map was first created
+    google.maps.event.trigger(deliveryPreviewMap, 'resize');
+    deliveryPreviewMap.setCenter(pos);
+    deliveryPreviewMarker.setPosition(pos);
+  }
+}
+
+// Generic reverse geocode helper (lat/lng -> formatted address + postcode)
+function reverseGeocode(lat, lng, callback) {
+  var apiKey = window.googleMapsApiKey;
+  if (!apiKey) { callback('', ''); return; }
+  var url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' + lat + ',' + lng + '&key=' + apiKey;
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.status === 'OK' && data.results && data.results.length > 0) {
+        callback(data.results[0].formatted_address, extractPostcode(data.results[0].address_components));
+      } else {
+        callback('', '');
+      }
+    })
+    .catch(function() { callback('', ''); });
+}
+
+// Ask for the customer's location as soon as they choose Delivery, so we can
+// pre-fill the address for them (falls back silently to manual search/map-pick
+// if permission is denied or unavailable). Only asked once per checkout visit.
+var deliveryLocationRequested = false;
+function requestDeliveryLocation() {
+  if (deliveryLocationRequested) return;
+  deliveryLocationRequested = true;
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var addrInput = document.getElementById('google-places-autocomplete');
+    // Don't clobber an address the customer already typed/picked while we were waiting.
+    if (addrInput && addrInput.value.trim() !== '') return;
+    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+    reverseGeocode(lat, lng, function(formatted, postcode) {
+      applySelectedAddress(lat, lng, formatted, postcode);
+    });
+  }, function() {
+    // Permission denied or position unavailable — no-op, customer can still search or use the map picker.
+  }, { enableHighAccuracy: false, timeout: 8000 });
 }
 
 function extractPostcode(addressComponents) {
@@ -2953,27 +3028,14 @@ function useCurrentLocationOnMap() {
 
 function reverseGeocodeForPicker(lat, lng) {
   var addrEl = document.getElementById('mapPickerAddress');
-  var apiKey = window.googleMapsApiKey;
-  if (!apiKey) return;
+  if (!window.googleMapsApiKey) return;
   if (addrEl) addrEl.textContent = 'Looking up address...';
-  var url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' + lat + ',' + lng + '&key=' + apiKey;
-  fetch(url)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (!addrEl) return;
-      if (data && data.status === 'OK' && data.results && data.results.length > 0) {
-        addrEl.dataset.formatted = data.results[0].formatted_address;
-        addrEl.dataset.postcode = extractPostcode(data.results[0].address_components);
-        addrEl.textContent = data.results[0].formatted_address;
-      } else {
-        addrEl.dataset.formatted = '';
-        addrEl.dataset.postcode = '';
-        addrEl.textContent = 'Could not resolve an address for this spot, but you can still use it.';
-      }
-    })
-    .catch(function() {
-      if (addrEl) addrEl.textContent = 'Could not resolve an address for this spot, but you can still use it.';
-    });
+  reverseGeocode(lat, lng, function(formatted, postcode) {
+    if (!addrEl) return;
+    addrEl.dataset.formatted = formatted;
+    addrEl.dataset.postcode = postcode;
+    addrEl.textContent = formatted || 'Could not resolve an address for this spot, but you can still use it.';
+  });
 }
 
 function confirmMapLocation() {
