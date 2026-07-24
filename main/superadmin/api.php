@@ -1415,6 +1415,133 @@ break;
       }
       break;
 
+    case 'generateMenuItemsFromImages':
+      set_time_limit(120);
+      require_once __DIR__ . '/../config/env_loader.php';
+      $geminiApiKey = env('GEMINI_API_KEY', '');
+      if (!$geminiApiKey) throw new Exception('Gemini API key is not configured. Add GEMINI_API_KEY to main/.env.');
+
+      $restaurant_id = trim($_POST['restaurant_id'] ?? '');
+      $existingCategories = trim($_POST['categories'] ?? '');
+      if (!$restaurant_id) throw new Exception('restaurant_id required');
+
+      if (empty($_FILES['images']) || empty($_FILES['images']['name'][0])) {
+        throw new Exception('Please upload at least one menu photo.');
+      }
+
+      $allowedMimes = ['image/jpeg' => true, 'image/png' => true, 'image/webp' => true, 'image/gif' => true];
+      $maxFileSize = 8 * 1024 * 1024; // 8MB per image
+      $maxFiles = 6;
+
+      $names = $_FILES['images']['name'];
+      $tmpNames = $_FILES['images']['tmp_name'];
+      $uploadErrors = $_FILES['images']['error'];
+      $fileCount = count($names);
+      if ($fileCount > $maxFiles) throw new Exception("Please upload at most $maxFiles photos at a time.");
+
+      $imageParts = [];
+      $finfo = finfo_open(FILEINFO_MIME_TYPE);
+      for ($i = 0; $i < $fileCount; $i++) {
+        if ($uploadErrors[$i] !== UPLOAD_ERR_OK) {
+          throw new Exception("Upload failed for \"{$names[$i]}\" (error code {$uploadErrors[$i]}).");
+        }
+        if (!is_uploaded_file($tmpNames[$i])) continue;
+        if (filesize($tmpNames[$i]) > $maxFileSize) {
+          finfo_close($finfo);
+          throw new Exception("Image \"{$names[$i]}\" is larger than 8MB.");
+        }
+        $mime = finfo_file($finfo, $tmpNames[$i]);
+        if (!isset($allowedMimes[$mime])) {
+          finfo_close($finfo);
+          throw new Exception("Image \"{$names[$i]}\" must be JPG, PNG, WEBP, or GIF.");
+        }
+        $bytes = file_get_contents($tmpNames[$i]);
+        $imageParts[] = ['inline_data' => ['mime_type' => $mime, 'data' => base64_encode($bytes)]];
+      }
+      finfo_close($finfo);
+      if (empty($imageParts)) throw new Exception('No valid images were uploaded.');
+
+      $promptText = "You are a restaurant menu data extractor. Look at the attached menu photo(s) carefully and extract every dish/item you can read.\n\n"
+        . "Output ONLY plain text lines in this exact pipe-delimited format, one item per line, and NOTHING else (no markdown, no code fences, no headings, no explanations, no numbering):\n\n"
+        . "Category[ > Subcategory] | Item Name | Price | Type | Description | PrepTime | Calories | Stock | Variations(Name:Price) | ImageURL\n\n"
+        . "RULES (strictly follow these):\n"
+        . "1. SEPARATOR: Use | (pipe) between fields, never commas.\n"
+        . "2. CATEGORY: Infer a sensible category from the menu section headings (e.g. Starters, Main Course, Pizza, Beverages, Desserts). Use \" > \" only if the photo actually groups items under a subheading within a category; never make the subcategory equal to the category name.\n"
+        . "3. PRICE: Numbers only (e.g. 199, 12.99), no currency symbols. If a price is unreadable, put 0.\n"
+        . "4. TYPE: One of exactly: Veg, Non Veg, Egg, Drink, Dessert, Other.\n"
+        . "5. DESCRIPTION: Write a short realistic 5-15 word description based on the item name and type.\n"
+        . "6. PREPTIME: Estimate minutes based on item type (appetizers 5-10, mains 15-25, desserts 5-10, drinks 2-5).\n"
+        . "7. CALORIES: Estimate a realistic number, or leave blank if unsure.\n"
+        . "8. STOCK: Always 1.\n"
+        . "9. VARIATIONS: If the photo shows sizes/options with different prices, use \"Small:99,Medium:149,Large:199\" format, otherwise leave blank.\n"
+        . "10. IMAGEURL: Always leave this field blank — do not invent a URL.\n"
+        . "11. Extract every item visible in the photo(s). Do not invent items that are not in the photo(s).\n\n"
+        . "Example correct lines:\n"
+        . "Pizza > Margherita | Classic Margherita | 199 | Veg | Fresh mozzarella and basil | 15 | 350 | 1 | Small:149,Medium:199 |\n"
+        . "Beverages | Coke | 49 | Drink | 330ml can | 2 | 140 | 1 | |\n";
+
+      if ($existingCategories !== '') {
+        $promptText .= "\nThese categories already exist in the system — reuse the matching one by exact name where it fits: {$existingCategories}\n";
+      }
+
+      $parts = array_merge([['text' => $promptText]], $imageParts);
+      $requestBody = [
+        'contents' => [['parts' => $parts]],
+        'generationConfig' => [
+          'temperature' => 0.4,
+          'maxOutputTokens' => 16384,
+          'thinkingConfig' => ['thinkingBudget' => 0]
+        ]
+      ];
+
+      $geminiModel = env('GEMINI_MODEL', 'gemini-3.5-flash');
+      $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent";
+
+      $ch = curl_init($geminiUrl);
+      curl_setopt($ch, CURLOPT_POST, true);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_TIMEOUT, 100);
+      curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'x-goog-api-key: ' . $geminiApiKey
+      ]);
+      $geminiResponse = curl_exec($ch);
+      $curlErr = curl_error($ch);
+      $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      curl_close($ch);
+
+      if ($curlErr) throw new Exception('Could not reach the Gemini API: ' . $curlErr);
+      $result = json_decode($geminiResponse, true);
+
+      if ($httpCode !== 200) {
+        $apiMsg = $result['error']['message'] ?? ('HTTP ' . $httpCode);
+        throw new Exception('Gemini API error: ' . $apiMsg);
+      }
+
+      $text = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
+      $finishReason = $result['candidates'][0]['finishReason'] ?? '';
+      if ($text === '') {
+        if ($finishReason === 'SAFETY') throw new Exception('Gemini declined to process these images (safety filter). Try different photos.');
+        throw new Exception('Gemini did not return any text. Please try again with clearer photos.');
+      }
+
+      // Strip markdown code fences if the model added any despite instructions
+      $text = preg_replace('/^```[a-zA-Z]*\s*$/m', '', $text);
+      $text = str_replace('```', '', $text);
+
+      // Keep only lines that look like pipe-delimited item rows
+      $itemLines = array_values(array_filter(array_map('trim', explode("\n", $text)), function ($l) {
+        return $l !== '' && strpos($l, '|') !== false;
+      }));
+
+      if (empty($itemLines)) {
+        throw new Exception('Could not detect any menu items in the uploaded photo(s). Try clearer, well-lit photos.');
+      }
+
+      echo json_encode(['success' => true, 'text' => implode("\n", $itemLines), 'count' => count($itemLines)]);
+      break;
+
     case 'getSettlements':
       $page = max(1, (int)($_GET['page'] ?? 1));
       $limit = min(50, max(5, (int)($_GET['limit'] ?? 20)));

@@ -323,13 +323,25 @@ require_superadmin();
             <button class="btn btn-primary" id="saveMenuCategories">Save Categories & Subcategories</button>
             <hr style="margin:16px 0;">
             <div id="parsedMenuPreview"></div>
-            <div style="margin-top:16px;padding:12px;border:1px dashed var(--border);border-radius:8px;background:#f9fafb;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <strong style="font-size:0.9rem;">AI Prompt — Copy & paste with your menu screenshot</strong>
-                <button class="btn btn-sm btn-outline" onclick="copyPrompt()">Copy</button>
-              </div>
-              <textarea id="aiPromptText" rows="4" style="width:100%;font-size:0.8rem;font-family:monospace;background:#fff;" readonly></textarea>
+
+            <div style="margin-top:16px;padding:14px;border:1px solid #16a34a;border-radius:8px;background:#f0fdf4;">
+              <div style="font-size:0.95rem;font-weight:600;margin-bottom:4px;">✨ Generate Menu Items from Photos (AI)</div>
+              <div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Select the restaurant above, upload photos of the menu, and AI will read them and fill in the items below automatically. You still review before saving.</div>
+              <input type="file" id="menuImagesInput" accept="image/png,image/jpeg,image/webp,image/gif" multiple style="width:100%;margin-bottom:10px;">
+              <button class="btn btn-primary" id="generateFromImagesBtn" type="button">Generate Items with AI</button>
+              <div id="aiGenerateStatus" style="font-size:0.8rem;margin-top:8px;"></div>
             </div>
+
+            <details style="margin-top:16px;">
+              <summary style="cursor:pointer;font-size:0.85rem;color:var(--muted);">Prefer to use ChatGPT / another AI manually instead?</summary>
+              <div style="margin-top:10px;padding:12px;border:1px dashed var(--border);border-radius:8px;background:#f9fafb;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <strong style="font-size:0.9rem;">AI Prompt — Copy & paste with your menu screenshot</strong>
+                  <button class="btn btn-sm btn-outline" onclick="copyPrompt()">Copy</button>
+                </div>
+                <textarea id="aiPromptText" rows="4" style="width:100%;font-size:0.8rem;font-family:monospace;background:#fff;" readonly></textarea>
+              </div>
+            </details>
             <hr style="margin:20px 0;">
             <div class="form-group">
               <label>Bulk Menu Items</label>
@@ -1737,6 +1749,68 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
       el.select();
       navigator.clipboard.writeText(el.value).then(() => showSuperAlert('Prompt copied!', 'success')).catch(() => { document.execCommand('copy'); showSuperAlert('Prompt copied!', 'success'); });
     }
+
+    async function confirmSuper(message, title = 'Confirm') {
+      if (window.Swal) {
+        const { isConfirmed } = await Swal.fire({
+          title, text: message, icon: 'question', showCancelButton: true,
+          confirmButtonColor: '#111827', cancelButtonColor: '#6b7280',
+          confirmButtonText: 'Yes', cancelButtonText: 'Cancel'
+        });
+        return isConfirmed;
+      }
+      return window.confirm(message);
+    }
+
+    document.getElementById('generateFromImagesBtn')?.addEventListener('click', async () => {
+      const restaurantId = document.getElementById('menuRestaurantSelect').value;
+      if (!restaurantId) { showSuperAlert('Select a restaurant first.', 'error'); return; }
+
+      const filesInput = document.getElementById('menuImagesInput');
+      const files = filesInput.files;
+      if (!files || files.length === 0) { showSuperAlert('Choose at least one menu photo first.', 'error'); return; }
+      if (files.length > 6) { showSuperAlert('Please upload at most 6 photos at a time.', 'error'); return; }
+
+      const existingText = document.getElementById('menuItemsInput').value.trim();
+      if (existingText) {
+        const ok = await confirmSuper('This will replace the current content of "Bulk Menu Items" below with the AI-generated items. Continue?');
+        if (!ok) return;
+      }
+
+      const btn = document.getElementById('generateFromImagesBtn');
+      const status = document.getElementById('aiGenerateStatus');
+      btn.disabled = true;
+      btn.textContent = 'Analyzing photos...';
+      status.style.color = 'var(--muted)';
+      status.textContent = 'This can take up to a minute, especially with multiple photos.';
+
+      try {
+        const fd = new FormData();
+        fd.append('restaurant_id', restaurantId);
+        fd.append('categories', document.getElementById('menuCategoriesInput').value.trim());
+        for (const f of files) fd.append('images[]', f);
+
+        const res = await fetch('api.php?action=generateMenuItemsFromImages', { method: 'POST', body: fd });
+        const d = await res.json();
+
+        if (d.success) {
+          document.getElementById('menuItemsInput').value = d.text;
+          renderItemsPreview();
+          status.style.color = '#16a34a';
+          status.textContent = `Found ${d.count} item(s). Review below, then click "Add / Update Only" or "Replace All Items" to save.`;
+          filesInput.value = '';
+        } else {
+          status.style.color = '#dc2626';
+          status.textContent = d.message || 'Failed to generate items from these photos.';
+        }
+      } catch (e) {
+        status.style.color = '#dc2626';
+        status.textContent = 'Network error while contacting AI. Please try again.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generate Items with AI';
+      }
+    });
 
     function renderItemsPreview() {
       const input = document.getElementById('menuItemsInput').value.trim();
