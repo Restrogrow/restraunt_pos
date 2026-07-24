@@ -189,14 +189,8 @@ $conn->beginTransaction();
             echo json_encode(['success' => false, 'message' => 'Invalid or expired coupon code'], JSON_UNESCAPED_UNICODE);
             exit();
         }
-        if ((float)$coupon['minimum_order_amount'] > 0 && (float)$total < (float)$coupon['minimum_order_amount']) {
-            $conn->rollBack();
-            ob_end_clean();
-            echo json_encode(['success' => false, 'message' => 'Minimum order of ' . number_format((float)$coupon['minimum_order_amount'], 2) . ' required for this coupon'], JSON_UNESCAPED_UNICODE);
-            exit();
-        }
     }
-    
+
     // --- Server-side price verification ---
     // Verifies menu item prices, variation prices, AND addon prices
     // against the database to prevent price manipulation by clients.
@@ -304,6 +298,27 @@ $conn->beginTransaction();
     $total += $calculatedGlobalAddonTotal;
     $global_addons = $verifiedGlobalAddons;
     // --- End server-side global addon verification ---
+
+    // --- Server-side discount verification ---
+    // Recompute the discount from the coupon's actual type/value in the DB.
+    // Never trust the client-submitted discount_amount - it can be set to
+    // any value to reduce the total, effectively making orders free.
+    $discount_amount = 0;
+    if (!empty($coupon_code) && isset($coupon)) {
+        if ((float)$coupon['minimum_order_amount'] > 0 && $total < (float)$coupon['minimum_order_amount']) {
+            $conn->rollBack();
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Minimum order of ' . number_format((float)$coupon['minimum_order_amount'], 2) . ' required for this coupon'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        if ($coupon['discount_type'] === 'percent') {
+            $discount_amount = round($total * (float)$coupon['discount_value'] / 100, 2);
+        } else {
+            $discount_amount = (float)$coupon['discount_value'];
+        }
+        if ($discount_amount > $total) $discount_amount = $total;
+    }
+    // --- End server-side discount verification ---
 
     // Generate unique order number function
     if (!function_exists('generateOrderNumber')) {

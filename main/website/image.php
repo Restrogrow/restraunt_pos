@@ -18,6 +18,27 @@ function sendPlaceholderSvg($text = 'Image', $width = 200, $height = 200) {
     exit();
 }
 
+// Resolve a user-supplied relative path to a real file inside uploads/,
+// rejecting anything that escapes that directory via '..' segments.
+// Uses realpath() canonicalization rather than string stripping, which is
+// bypassable (e.g. 'uploads/../../.env' still starts with 'uploads/').
+function resolveUploadPath($imagePath) {
+    $uploadsBase = realpath(dirname(__DIR__) . '/uploads');
+    if ($uploadsBase === false) return false;
+
+    $imagePath = ltrim(str_replace('\\', '/', $imagePath), '/');
+    if (strpos($imagePath, 'uploads/') === 0) {
+        $imagePath = substr($imagePath, strlen('uploads/'));
+    }
+
+    $real = realpath($uploadsBase . '/' . $imagePath);
+    if ($real === false) return false;
+    if ($real !== $uploadsBase && strpos($real, $uploadsBase . DIRECTORY_SEPARATOR) !== 0) {
+        return false;
+    }
+    return $real;
+}
+
 // Quick check: if no valid parameters, return placeholder immediately (avoids DB load)
 $imagePath = $_GET['path'] ?? '';
 $imageType = $_GET['type'] ?? ''; // 'logo', 'item', or 'banner'
@@ -200,10 +221,8 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
             }
         } elseif ($imageType === 'file' && !empty($imagePath)) {
             // Serve a file-based image with correct MIME type
-            // Security check
-            $normalized = str_replace('../', '', $imagePath);
-            $fullPath = dirname(__DIR__) . '/' . $normalized;
-            if (file_exists($fullPath)) {
+            $fullPath = resolveUploadPath($imagePath);
+            if ($fullPath !== false && is_file($fullPath)) {
                 $finfo = finfo_open(FILEINFO_MIME_TYPE);
                 $mimeType = finfo_file($finfo, $fullPath);
                 finfo_close($finfo);
@@ -274,19 +293,14 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
 }
 
 // Fallback: File-based image (backward compatibility)
-// Normalize path to ensure it points inside uploads directory
-if (strpos($imagePath, '../uploads/') === 0) {
-    $imagePath = substr($imagePath, 3); // Remove "../"
-}
-
-// Security check - only allow images from uploads directory
-if (empty($imagePath) || strpos($imagePath, 'uploads/') !== 0) {
+// Only allow images from inside the uploads directory - resolveUploadPath()
+// canonicalizes the path with realpath() so '..' segments can't escape it.
+if (empty($imagePath)) {
     sendPlaceholderSvg('Image');
 }
 
-// Build full path relative to project root
-$fullPath = dirname(__DIR__) . '/' . $imagePath;
-if (!file_exists($fullPath)) {
+$fullPath = resolveUploadPath($imagePath);
+if ($fullPath === false || !is_file($fullPath)) {
     sendPlaceholderSvg('Image');
 }
 
