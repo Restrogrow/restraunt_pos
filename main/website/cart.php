@@ -1970,6 +1970,8 @@ function showCheckoutModal(cartData) {
   html += '<input type="hidden" id="chkAddressLat" value="">';
   html += '<input type="hidden" id="chkAddressLng" value="">';
   html += '<input type="hidden" id="chkAddressFormatted" value="">';
+  // Hidden pincode from autocomplete
+  html += '<input type="hidden" id="chkPincodeAuto" value="">';
   // Pincode manual fallback (hidden by default)
   html += '<div id="pincodeFallback" style="display:none;margin-top:8px;">';
   html += '<div style="display:flex;gap:8px;">';
@@ -2203,7 +2205,7 @@ function processOrder(cartData) {
   var name = document.getElementById('chkName').value.trim();
   var phone = document.getElementById('chkPhone').value.trim();
   var email = document.getElementById('chkEmail').value.trim();
-  var addressEl = document.getElementById('chkAddress');
+  var addressEl = document.getElementById('chkAddressFormatted');
   var address = addressEl ? addressEl.value.trim() : '';
   var payment = document.getElementById('chkPayment').value;
   var orderTypeRadio = document.querySelector('input[name="orderType"]:checked');
@@ -2248,9 +2250,10 @@ function processOrder(cartData) {
 
   var isDeliveryEnabled = window.enableDelivery == 1 || window.enableDelivery === true;
   if (orderType === 'Delivery' && isDeliveryEnabled) {
-    var zoneId = document.getElementById('deliveryZoneId')?.value || '';
-    if (!zoneId) {
-      showModal('Delivery Error', 'Please enter a valid delivery pincode');
+    // TEMPORARY: pincode/zone matching disabled - just require a saved address.
+    // Re-enable the zoneId requirement once Google Maps based radius checking is wired up.
+    if (!address) {
+      showModal('Delivery Error', 'Please enter your delivery address');
       var btn = document.querySelector('#checkoutForm button[type=submit]');
       if (btn) { btn.textContent = 'Place Order'; btn.disabled = false; }
       return;
@@ -2778,6 +2781,10 @@ function initGeoAutocomplete() {
     document.getElementById('chkAddressFormatted').value = props.formatted || '';
     document.getElementById('chkAddressLat').value = props.lat || '';
     document.getElementById('chkAddressLng').value = props.lon || '';
+    // TEMPORARY: pincode/zone matching is disabled for order placement (see
+    // processOrder). Just stash the postcode for later - don't run the zone
+    // lookup or force the manual pincode box open once an address is picked.
+    document.getElementById('chkPincodeAuto').value = props.postcode || '';
     // Show delivery info with selected address
     var infoEl = document.getElementById('deliveryInfo');
     if (infoEl) {
@@ -2803,6 +2810,13 @@ function initGeoAutocomplete() {
     document.getElementById('chkAddressFormatted').value = '';
     document.getElementById('chkAddressLat').value = '';
     document.getElementById('chkAddressLng').value = '';
+    document.getElementById('chkPincodeAuto').value = '';
+    var zoneIdEl = document.getElementById('deliveryZoneId');
+    if (zoneIdEl) zoneIdEl.value = '';
+    var chargeEl = document.getElementById('deliveryCharge');
+    if (chargeEl) chargeEl.value = '0';
+    var feeRow = document.getElementById('deliveryFeeRow');
+    if (feeRow) feeRow.style.display = 'none';
     var infoEl = document.getElementById('deliveryInfo');
     if (infoEl) { infoEl.style.display = 'none'; }
   });

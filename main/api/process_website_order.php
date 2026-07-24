@@ -134,6 +134,11 @@ try {
     
     // BEGIN TRANSACTION for all writes
     // ── Delivery Radius Server-Side Check ──
+    // TEMPORARILY DISABLED: re-enable once Google Maps based radius checking
+    // is wired up. Currently also blocks every delivery order on databases
+    // where the delivery_radius_km/restaurant_lat/restaurant_lng columns
+    // haven't been migrated onto the users table yet.
+    /*
 $orderType = strtolower(trim($input['order_type'] ?? 'Delivery'));
 if ($orderType === 'delivery') {
     $stmtRest = $conn->prepare("SELECT delivery_radius_km, restaurant_lat, restaurant_lng FROM users WHERE restaurant_id = ? LIMIT 1");
@@ -145,7 +150,7 @@ if ($orderType === 'delivery') {
         $restLng = isset($restRow['restaurant_lng']) ? (float)$restRow['restaurant_lng'] : null;
         $custLat = isset($input['address_lat']) ? (float)$input['address_lat'] : 0;
         $custLng = isset($input['address_lng']) ? (float)$input['address_lng'] : 0;
-        
+
         if ($deliveryRadiusKm > 0 && $restLat && $restLng && $custLat && $custLng) {
             // Haversine distance calculation
             $earthRadius = 6371;
@@ -156,7 +161,7 @@ if ($orderType === 'delivery') {
                  sin($dLon / 2) * sin($dLon / 2);
             $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
             $distance = $earthRadius * $c;
-            
+
             if ($distance > $deliveryRadiusKm) {
                 http_response_code(400);
                 echo json_encode([
@@ -169,6 +174,7 @@ if ($orderType === 'delivery') {
         }
     }
 }
+    */
 
 $conn->beginTransaction();
     
