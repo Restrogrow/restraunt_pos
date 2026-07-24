@@ -1110,8 +1110,8 @@ window.socialLinks = {
           <div class="divider"></div>
           <a onclick="closeDropdown();scrollToSection('homeSection',document.querySelector('.nav-item'))"><i class="fa fa-home"></i> Home</a>
           <a onclick="closeDropdown();scrollToSection('socialSection',document.querySelector('.nav-item'))"><i class="fa fa-share-alt"></i> Social</a>
-          <a onclick="closeDropdown();window.location.href=restaurantPageUrl('about')"><i class="fa fa-info-circle"></i> About Us</a>
-          <a onclick="closeDropdown();window.location.href=restaurantPageUrl('contact')"><i class="fa fa-address-card"></i> Contact Us</a>
+          <a onclick="closeDropdown();window.location.href='<?php echo restaurantPageUrl('about'); ?>'"><i class="fa fa-info-circle"></i> About Us</a>
+          <a onclick="closeDropdown();window.location.href='<?php echo restaurantPageUrl('contact'); ?>'"><i class="fa fa-address-card"></i> Contact Us</a>
           <div class="divider"></div>
           <?php if ($show_install_app): ?><a onclick="closeDropdown();promptInstall()" id="installDropdownLink" style="display:none"><i class="fa fa-download"></i> Install App</a><?php endif; ?>
         </div>
@@ -1181,7 +1181,7 @@ window.socialLinks = {
       <div class="link-icon" style="background:#e17055"><i class="fa fa-download link-icon-i"></i></div>
       <div><div class="link-name">Install App</div><div class="link-desc">Add to your home screen</div></div>
     </div><?php endif; ?>
-    <div class="link-card" onclick="window.location.href=restaurantPageUrl('about')">
+    <div class="link-card" onclick="window.location.href='<?php echo restaurantPageUrl('about'); ?>'">
       <div class="link-icon" style="background:#d63031"><i class="fa fa-info link-icon-i"></i></div>
       <div><div class="link-name">About Us</div><div class="link-desc">Our story & values</div></div>
     </div>
@@ -1198,7 +1198,7 @@ window.socialLinks = {
       <div class="link-icon" style="background:#8b5cf6"><i class="fa fa-qrcode link-icon-i"></i></div>
       <div><div class="link-name">QR</div><div class="link-desc">My QR</div></div>
     </div>
-    <div class="link-card" onclick="window.location.href=restaurantPageUrl('contact')">
+    <div class="link-card" onclick="window.location.href='<?php echo restaurantPageUrl('contact'); ?>'">
       <div class="link-icon" style="background:#f59e0b"><i class="fa fa-address-card link-icon-i"></i></div>
       <div><div class="link-name">Contact Us</div><div class="link-desc">Get in touch</div></div>
     </div>
@@ -1256,15 +1256,15 @@ window.socialLinks = {
 
   <div class="footer-section">
     <div class="footer-links">
-      <a href="<?php echo restaurantPageUrl('privacy-policy'); ?>" onclick="event.preventDefault();window.location.href=restaurantPageUrl('privacy-policy')">Privacy Policy</a>
+      <a href="<?php echo restaurantPageUrl('privacy-policy'); ?>">Privacy Policy</a>
       <span>|</span>
-      <a href="<?php echo restaurantPageUrl('terms-of-service'); ?>" onclick="event.preventDefault();window.location.href=restaurantPageUrl('terms-of-service')">Terms of Service</a>
+      <a href="<?php echo restaurantPageUrl('terms-of-service'); ?>">Terms of Service</a>
       <span>|</span>
-      <a href="<?php echo restaurantPageUrl('refund-policy'); ?>" onclick="event.preventDefault();window.location.href=restaurantPageUrl('refund-policy')">Refund Policy</a>
+      <a href="<?php echo restaurantPageUrl('refund-policy'); ?>">Refund Policy</a>
       <span>|</span>
-      <a href="<?php echo restaurantPageUrl('shipping-policy'); ?>" onclick="event.preventDefault();window.location.href=restaurantPageUrl('shipping-policy')">Shipping Policy</a>
+      <a href="<?php echo restaurantPageUrl('shipping-policy'); ?>">Shipping Policy</a>
       <span>|</span>
-      <a href="<?php echo restaurantPageUrl('cookie-policy'); ?>" onclick="event.preventDefault();window.location.href=restaurantPageUrl('cookie-policy')">Cookie Policy</a>
+      <a href="<?php echo restaurantPageUrl('cookie-policy'); ?>">Cookie Policy</a>
     </div>
     <div class="footer-brand">&copy; <?php echo date('Y'); ?> <strong><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></strong>. All rights reserved.</div>
   </div>
@@ -1276,7 +1276,7 @@ window.socialLinks = {
       <i class="fa fa-home nav-icon"></i>
       <span>Home</span>
     </div>
-    <div class="nav-item" onclick="window.location.href=restaurantPageUrl('menu')">
+    <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'">
       <i class="fa fa-utensils nav-icon"></i>
       <span>Menu</span>
     </div>
@@ -1284,12 +1284,12 @@ window.socialLinks = {
       <i class="fa fa-share-alt nav-icon"></i>
       <span>Social</span>
     </div>
-    <div class="nav-item" onclick="window.location.href=restaurantPageUrl('cart')">
+    <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
       <i class="fa fa-shopping-cart nav-icon"></i>
       <span>Cart</span>
       <div class="cart-badge">0</div>
     </div>
-    <button class="login-btn" onclick="window.location.href=restaurantPageUrl('profile')" title="Profile" style="font-size:16px;padding:6px 10px;"><i class="fa fa-user"></i></button>
+    <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="Profile" style="font-size:16px;padding:6px 10px;"><i class="fa fa-user"></i></button>
   </div>
 </div>
 

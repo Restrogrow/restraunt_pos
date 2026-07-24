@@ -1957,9 +1957,6 @@ function showCheckoutModal(cartData) {
     savedOrderType = localStorage.getItem('dvaniOrderType') || 'delivery';
   }
 
-  var addrDisplay = (savedOrderType === 'dinein' || savedOrderType === 'takeaway') ? 'none' : '';
-  html += '<div id="addressSection" class="form-group" style="display:' + addrDisplay + '"><label>Delivery Address</label><textarea id="chkAddress" rows="2" placeholder="Delivery address (optional)">' + esc((cd && cd.address) || '') + '</textarea></div>';
-
   var deliveryEnabled = window.enableDelivery == 1 || window.enableDelivery === true;
   var pincodeDisplay = (savedOrderType === 'delivery' && deliveryEnabled) ? '' : 'none';
   html += '<div id="deliveryPincodeSection" class="form-group" style="display:' + pincodeDisplay + '">';
