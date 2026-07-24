@@ -1,0 +1,36 @@
+{
+  "id": "restrogrow-admin",
+  "name": "RestroGrow Admin",
+  "short_name": "RG Admin",
+  "description": "Manage your restaurant - orders, menu, staff, and analytics on the go",
+  "start_url": "login.php",
+  "scope": "../",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#ff6b35",
+  "dir": "ltr",
+  "lang": "en",
+  "categories": ["business", "food", "productivity"],
+  "prefer_related_applications": false,
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "icons": [
+    {
+      "src": "../assets/images/logo-transparent.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "../assets/images/logo-transparent.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": []
+}

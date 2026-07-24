@@ -1,0 +1,255 @@
+// Print Order
+window.printOrder = async function(orderId) {
+  try {
+    // Fetch order details
+    const response = await fetch(`../api/get_order_details_by_id.php?id=${orderId}`);
+    const data = await response.json();
+    
+    if (!data.success || !data.order) {
+      showSweetAlert('Unable to load order details');
+      return;
+    }
+    
+    const order = data.order;
+    const items = Array.isArray(order.items) ? order.items : [];
+
+    // Fetch restaurant info with GST settings
+    let restaurantInfo = {
+      name: 'Restaurant Name',
+      logo: '',
+      address: '',
+      phone: '',
+      email: '',
+      business_qr_code_path: '',
+      enable_gst: true
+    };
+    
+    try {
+      const infoRes = await fetch('../admin/get_session.php');
+      const infoData = await infoRes.json();
+      
+      if (checkSessionExpired(infoRes, infoData)) return;
+      
+      if (infoData.success && infoData.data) {
+        restaurantInfo.name = infoData.data.restaurant_name || restaurantInfo.name;
+        restaurantInfo.logo = infoData.data.restaurant_logo || '';
+        restaurantInfo.user_id = infoData.data.user_id || infoData.data.id || '';
+        restaurantInfo.address = infoData.data.address || '';
+        restaurantInfo.phone = infoData.data.phone || '';
+        restaurantInfo.email = infoData.data.email || '';
+        restaurantInfo.business_qr_code_path = infoData.data.business_qr_code_path || '';
+        restaurantInfo.enable_gst = infoData.data.enable_gst !== undefined ? Boolean(Number(infoData.data.enable_gst)) : true;
+      }
+    } catch (e) {
+      console.warn('Could not load restaurant info:', e);
+    }
+
+    const gstEnabled = restaurantInfo.enable_gst;
+
+    // Build printable HTML with professional GST invoice design
+    const now = new Date(order.created_at);
+    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    
+    const subtotal = parseFloat(order.subtotal || 0);
+    const tax = parseFloat(order.tax || 0);
+    const discount = parseFloat(order.discount || 0);
+    const total = parseFloat(order.total || 0);
+    
+    // Calculate CGST / SGST (5% GST = 2.5% + 2.5%)
+    const cgst = gstEnabled ? (tax / 2) : 0;
+    const sgst = gstEnabled ? (tax / 2) : 0;
+    
+    // Professional items table: # | Item | Qty | Rate | Amount
+    const itemsHtml = items.map((it, idx) => {
+      const itemTotal = (parseFloat(it.total_price) || 0);
+      const itemRate = (parseFloat(it.price) || 0);
+      const qty = it.quantity || 1;
+      return `
+        <tr>
+          <td style="text-align:center; padding:4px 2px; font-size:11px; border-bottom:1px dashed #d1d5db; color:#6b7280; width:18px;">${idx + 1}</td>
+          <td style="padding:4px 2px; font-size:12px; border-bottom:1px dashed #d1d5db;">
+            <div style="font-weight:600; color:#111827;">${escapeHtml(it.item_name || it.name)}</div>
+            ${(it.notes || it.special_instructions) ? `<div style="color:#b45309; font-size:10px; font-style:italic;">${escapeHtml(it.notes || it.special_instructions)}</div>` : ''}
+          </td>
+          <td style="text-align:center; padding:4px 2px; font-size:11px; border-bottom:1px dashed #d1d5db; width:22px;">${qty}</td>
+          <td style="text-align:right; padding:4px 2px; font-size:11px; border-bottom:1px dashed #d1d5db; width:55px;">${formatCurrency(itemRate)}</td>
+          <td style="text-align:right; padding:4px 2px; font-weight:600; font-size:12px; border-bottom:1px dashed #d1d5db; width:60px;">${formatCurrency(itemTotal)}</td>
+        </tr>
+      `;
+    }).join('');
+    
+    const tableOrType = order.table_name || order.table_number ? `Table ${order.table_name || order.table_number}${order.area_name ? ' - ' + escapeHtml(order.area_name) : ''}` : (order.order_type || 'Walk-in');
+    
+    // Logo HTML
+    let logoHtml = '';
+    if (restaurantInfo.logo) {
+      let logoPath;
+      if (restaurantInfo.logo.startsWith('db:')) {
+        const userId = restaurantInfo.user_id || restaurantInfo.id || '';
+        logoPath = `../api/image.php?type=logo&id=${userId}`;
+      } else if (restaurantInfo.logo.startsWith('http')) {
+        logoPath = restaurantInfo.logo;
+      } else if (restaurantInfo.logo.startsWith('uploads/')) {
+        logoPath = '../' + restaurantInfo.logo;
+      } else {
+        logoPath = '../uploads/' + restaurantInfo.logo;
+      }
+      logoHtml = `<img src="${logoPath}" alt="Logo" style="max-width:70px; max-height:70px; object-fit:contain; margin-bottom:6px;" onerror="this.style.display='none';">`;
+    }
+    
+    // Payment method display
+    const paymentMethod = order.payment_method || 'Cash';
+    const paymentStatus = order.payment_status || 'Pending';
+    
+    // Business QR Code HTML - only show if QR code exists
+    let businessQRHtml = '';
+    if (restaurantInfo.business_qr_code_path) {
+      const userId = restaurantInfo.user_id || restaurantInfo.id || '';
+      const qrCodeUrl = `../api/image.php?type=business_qr&id=${userId}`;
+      businessQRHtml = `
+        <div style="margin-top:12px; padding-top:12px; border-top:1px dashed #d1d5db; text-align:center;">
+          <div style="font-size:9px; color:#6b7280; margin-bottom:6px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Scan to Pay</div>
+          <img src="${qrCodeUrl}" alt="Payment QR" style="max-width:100px; max-height:100px; object-fit:contain; border:1px solid #e5e7eb; padding:4px; background:#fff;" onerror="this.style.display='none';">
+        </div>
+      `;
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #${order.order_number}</title>
+      <style>
+        @media print { @page { margin:8mm; size:80mm auto; } body { margin:0; padding:0; } }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Courier New', Courier, monospace; padding:12px; max-width:280px; margin:0 auto; background:#fff; color:#111827; font-size:12px; }
+        .header { text-align:center; border-bottom:3px double #111827; padding-bottom:8px; margin-bottom:10px; }
+        .logo { margin-bottom:4px; }
+        .restaurant-name { font-size:17px; font-weight:800; color:#111827; text-transform:uppercase; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .restaurant-details { font-size:10px; color:#6b7280; line-height:1.3; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .gst-line { font-size:9px; color:#6b7280; margin-top:2px; font-weight:600; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .invoice-banner { text-align:center; margin:10px 0; padding:8px; border:2px solid #111827; }
+        .invoice-banner h2 { font-size:20px; font-weight:900; letter-spacing:2px; color:#111827; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .invoice-banner .invoice-number { font-size:16px; font-weight:700; color:#111827; margin-top:2px; }
+        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; margin:8px 0; padding:8px; background:#f9fafb; border-left:3px solid #111827; font-size:11px; }
+        .info-item { display:flex; justify-content:space-between; }
+        .info-label { color:#6b7280; font-weight:600; }
+        .info-value { color:#111827; font-weight:700; text-align:right; }
+        .full-row { grid-column:1 / -1; }
+        .items-section { margin:10px 0; }
+        .items-header-row { display:flex; font-size:10px; font-weight:700; text-transform:uppercase; padding:4px 0; border-bottom:2px solid #111827; margin-bottom:2px; color:#111827; }
+        .col-hash { width:18px; text-align:center; }
+        .col-item { flex:1; padding-left:2px; }
+        .col-qty { width:22px; text-align:center; }
+        .col-rate { width:55px; text-align:right; }
+        .col-amt { width:60px; text-align:right; }
+        table { width:100%; border-collapse:collapse; }
+        .totals { margin-top:8px; padding-top:8px; border-top:2px solid #111827; }
+        .total-row { display:flex; justify-content:space-between; padding:3px 0; font-size:12px; }
+        .total-row.grand { font-size:15px; font-weight:800; color:#111827; padding-top:6px; margin-top:4px; border-top:2px solid #111827; }
+        .total-label { color:#6b7280; }
+        .total-value { font-weight:700; color:#111827; }
+        .payment-row { text-align:center; margin:8px 0; padding:6px; border:1px dashed #d1d5db; font-size:11px; }
+        .footer { text-align:center; margin-top:12px; padding-top:8px; border-top:2px dashed #d1d5db; }
+        .footer-text { font-size:10px; color:#6b7280; margin-bottom:2px; }
+        .divider { border:none; border-top:1px dashed #d1d5db; margin:6px 0; }
+      </style>
+    </head><body>
+      <div class="header">
+        ${logoHtml}
+        <div class="restaurant-name">${escapeHtml(restaurantInfo.name)}</div>
+        ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
+        ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
+        ${restaurantInfo.email ? `<div class="restaurant-details">Email: ${escapeHtml(restaurantInfo.email)}</div>` : ''}
+
+      </div>
+      
+      <div class="invoice-banner">
+        ${gstEnabled ? '<h2>TAX INVOICE</h2>' : '<h2>RECEIPT</h2>'}
+        <div class="invoice-number">#${escapeHtml(order.order_number || order.id)}</div>
+        <hr class="divider">
+        <div style="font-size:10px; color:#6b7280;">${dateStr} | ${timeStr}</div>
+      </div>
+      
+      <div class="info-grid">
+        <div class="info-item full-row">
+          <span class="info-label">ORDER TYPE</span>
+          <span class="info-value">${escapeHtml(tableOrType)}</span>
+        </div>
+        ${order.customer_name ? `
+        <div class="info-item full-row">
+          <span class="info-label">CUSTOMER</span>
+          <span class="info-value">${escapeHtml(order.customer_name)}</span>
+        </div>
+        ` : ''}
+        ${order.customer_phone ? `
+        <div class="info-item">
+          <span class="info-label">PHONE</span>
+          <span class="info-value">${escapeHtml(order.customer_phone)}</span>
+        </div>
+        ` : ''}
+        <div class="info-item">
+          <span class="info-label">STATUS</span>
+          <span class="info-value">${escapeHtml(order.order_status || 'Pending')}</span>
+        </div>
+      </div>
+      
+      <div class="items-section">
+        <div class="items-header-row">
+          <span class="col-hash">#</span>
+          <span class="col-item">Item</span>
+          <span class="col-qty">Qty</span>
+          <span class="col-rate">Rate</span>
+          <span class="col-amt">Amt</span>
+        </div>
+        <table>${itemsHtml}</table>
+      </div>
+      
+      <div class="totals">
+        <div class="total-row">
+          <span class="total-label">Subtotal</span>
+          <span class="total-value">${formatCurrency(subtotal)}</span>
+        </div>
+        ${gstEnabled && tax > 0 ? `
+        <div class="total-row">
+          <span class="total-label">CGST (2.5%)</span>
+          <span class="total-value">${formatCurrency(cgst)}</span>
+        </div>
+        <div class="total-row">
+          <span class="total-label">SGST (2.5%)</span>
+          <span class="total-value">${formatCurrency(sgst)}</span>
+        </div>
+        ` : tax > 0 ? `
+        <div class="total-row">
+          <span class="total-label">Tax</span>
+          <span class="total-value">${formatCurrency(tax)}</span>
+        </div>
+        ` : ''}
+        ${discount > 0 ? `
+        <div class="total-row">
+          <span class="total-label">Discount</span>
+          <span class="total-value">-${formatCurrency(discount)}</span>
+        </div>
+        ` : ''}
+        <div class="total-row grand">
+          <span class="total-label">GRAND TOTAL</span>
+          <span class="total-value">${formatCurrency(total)}</span>
+        </div>
+      </div>
+      
+      <div class="payment-row">
+        <strong>Payment:</strong> ${escapeHtml(paymentMethod)} (${escapeHtml(paymentStatus)})
+      </div>
+      
+      ${businessQRHtml}
+      
+      <div class="footer">
+        <div class="footer-text">Thank you! Visit again!</div>
+        <div class="footer-text" style="font-size:8px;">Powered by RestroGrow</div>
+      </div>
+    </body></html>`;
+
+    showPrintPreview('Invoice #' + order.order_number, html);
+  } catch (e) {
+    console.error('Print error', e);
+    showSweetAlert('Failed to print order');
+  }
+};
+

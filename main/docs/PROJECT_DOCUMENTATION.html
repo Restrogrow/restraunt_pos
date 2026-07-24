@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant POS System - Complete Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        header {
+            background: linear-gradient(135deg, #F70000 0%, #DA020E 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 10px;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #F70000;
+            border-bottom: 3px solid #F70000;
+            padding-bottom: 10px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #DA020E;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #fafafa;
+            border-radius: 8px;
+            border-left: 4px solid #F70000;
+        }
+        .update-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #28a745;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .update-date {
+            color: #666;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #F70000;
+            color: white;
+            font-weight: bold;
+        }
+        tr:hover {
+            background: #f5f5f5;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+        .badge-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .badge-warning {
+            background: #ffc107;
+            color: #333;
+        }
+        .badge-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .alert {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border-left: 4px solid;
+        }
+        .alert-info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        .alert-warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        .alert-success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .toc ul {
+            list-style: none;
+            margin-left: 0;
+        }
+        .toc li {
+            margin: 8px 0;
+        }
+        .toc a {
+            color: #F70000;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        .backup-command {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            margin-top: 40px;
+            border-top: 2px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍽️ Restaurant POS System</h1>
+            <p>Complete Documentation & Update Log</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">Last Updated: <span id="currentDate"></span></p>
+        </header>
+
+        <div class="toc">
+            <h2>📑 Table of Contents</h2>
+            <ul>
+                <li><a href="#overview">1. Project Overview</a></li>
+                <li><a href="#updates">2. Update History</a></li>
+                <li><a href="#authentication">3. Authentication System</a></li>
+                <li><a href="#database">4. Database Schema & Migrations</a></li>
+                <li><a href="#backup">5. Database Backup & Restore</a></li>
+                <li><a href="#setup">6. Setup Instructions</a></li>
+                <li><a href="#usage">7. Usage Guide</a></li>
+                <li><a href="#api">8. API Documentation</a></li>
+                <li><a href="#troubleshooting">9. Troubleshooting</a></li>
+            </ul>
+        </div>
+
+        <!-- Project Overview -->
+        <section id="overview" class="section">
+            <h2>1. Project Overview</h2>
+            <p><strong>Restaurant POS System</strong> is a comprehensive Point of Sale solution for restaurant management including:</p>
+            <ul>
+                <li>📱 Customer-facing website for online ordering</li>
+                <li>👨‍💼 Admin dashboard for restaurant management</li>
+                <li>👥 Staff management (Manager, Waiter, Chef roles)</li>
+                <li>🍽️ Menu management with categories and items</li>
+                <li>📊 Order management and KOT (Kitchen Order Ticket) system</li>
+                <li>💳 Payment processing</li>
+                <li>📅 Table reservations</li>
+                <li>🔔 Waiter call system</li>
+                <li>🎨 Website theme customization</li>
+                <li>📸 Banner management</li>
+                <li>👤 Customer profile and order history</li>
+            </ul>
+            
+            <h3>Technology Stack</h3>
+            <ul>
+                <li><strong>Frontend:</strong> HTML5, CSS3, JavaScript (Vanilla)</li>
+                <li><strong>Backend:</strong> PHP 7.4+</li>
+                <li><strong>Database:</strong> MySQL/MariaDB</li>
+                <li><strong>Server:</strong> XAMPP (Apache + MySQL)</li>
+            </ul>
+        </section>
+
+        <!-- Update History -->
+        <section id="updates" class="section">
+            <h2>2. Update History</h2>
+            
+            <div class="update-item">
+                <div class="update-date">Latest Update - January 2025</div>
+                <h3>Profile Functionality & UI Fixes</h3>
+                <ul>
+                    <li>✅ Added customer profile modal with personal information display</li>
+                    <li>✅ Implemented order history viewing by phone number</li>
+                    <li>✅ Added profile editing functionality</li>
+                    <li>✅ Fixed cart summary bar positioning on desktop (PC mode)</li>
+                    <li>✅ Fixed bottom navigation not showing on desktop after closing cart</li>
+                    <li>✅ Added API endpoint for customer orders retrieval</li>
+                </ul>
+            </div>
+
+            <div class="update-item">
+                <div class="update-date">Previous Update</div>
+                <h3>Reservation System</h3>
+                <ul>
+                    <li>✅ Added table reservation functionality</li>
+                    <li>✅ Implemented reservation availability checking</li>
+                    <li>✅ Added table capacity validation</li>
+                    <li>✅ Created reservation management in dashboard</li>
+                </ul>
+            </div>
+
+            <div class="update-item">
+                <div class="update-date">Previous Update</div>
+                <h3>Banner Management</h3>
+                <ul>
+                    <li>✅ Added multiple banner upload support</li>
+                    <li>✅ Implemented 3-second automatic slideshow</li>
+                    <li>✅ Created website_banners table for storing multiple banners</li>
+                    <li>✅ Enhanced banner preview UI in dashboard</li>
+                </ul>
+            </div>
+
+            <div class="update-item">
+                <div class="update-date">Previous Update</div>
+                <h3>Website Theme Customization</h3>
+                <ul>
+                    <li>✅ Added website appearance settings</li>
+                    <li>✅ Implemented color theme customization (Primary Red, Dark Red, Yellow)</li>
+                    <li>✅ Added theme API for dynamic CSS variables</li>
+                </ul>
+            </div>
+
+            <div class="update-item">
+                <div class="update-date">Previous Update</div>
+                <h3>Payment System</h3>
+                <ul>
+                    <li>✅ Added payments table for transaction tracking</li>
+                    <li>✅ Implemented multiple payment methods (Cash, Card, UPI, PhonePe)</li>
+                    <li>✅ Added payment status tracking</li>
+                </ul>
+            </div>
+
+            <div class="update-item">
+                <div class="update-date">Previous Update</div>
+                <h3>Subscription Management</h3>
+                <ul>
+                    <li>✅ Added subscription fields to users table</li>
+                    <li>✅ Implemented trial period tracking</li>
+                    <li>✅ Added subscription payments table</li>
+                    <li>✅ Created subscription status management</li>
+                </ul>
+            </div>
+
+            <div class="update-item">
+                <div class="update-date">Initial Release</div>
+                <h3>Core Features</h3>
+                <ul>
+                    <li>✅ Admin authentication system</li>
+                    <li>✅ Staff management with role-based access</li>
+                    <li>✅ Menu and menu items management</li>
+                    <li>✅ Order management system</li>
+                    <li>✅ KOT (Kitchen Order Ticket) system</li>
+                    <li>✅ Table and area management</li>
+                    <li>✅ Customer website for ordering</li>
+                    <li>✅ Dashboard with statistics</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Authentication System -->
+        <section id="authentication" class="section">
+            <h2>3. Authentication System</h2>
+            
+            <h3>3.1 Admin Authentication</h3>
+            <p><strong>Location:</strong> <code>admin/login.php</code></p>
+            <p><strong>Session Management:</strong> <code>admin/auth.php</code></p>
+            
+            <h4>Login Credentials:</h4>
+            <ul>
+                <li>Username and password stored in <code>users</code> table</li>
+                <li>Password is hashed using PHP <code>password_hash()</code></li>
+                <li>Session stored in <code>$_SESSION['user_id']</code> and <code>$_SESSION['restaurant_id']</code></li>
+            </ul>
+
+            <h4>Session Variables:</h4>
+            <table>
+                <tr>
+                    <th>Variable</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>$_SESSION['user_id']</code></td>
+                    <td>Admin user ID</td>
+                </tr>
+                <tr>
+                    <td><code>$_SESSION['restaurant_id']</code></td>
+                    <td>Restaurant identifier (e.g., RES001)</td>
+                </tr>
+                <tr>
+                    <td><code>$_SESSION['restaurant_name']</code></td>
+                    <td>Restaurant name</td>
+                </tr>
+            </table>
+
+            <h3>3.2 Staff Authentication</h3>
+            <p><strong>Location:</strong> Staff login through dashboard</p>
+            <p><strong>Roles:</strong></p>
+            <ul>
+                <li><span class="badge badge-success">Admin</span> - Full access</li>
+                <li><span class="badge badge-info">Manager</span> - Management access</li>
+                <li><span class="badge badge-warning">Waiter</span> - Order management</li>
+                <li><span class="badge badge-danger">Chef</span> - Kitchen orders only</li>
+            </ul>
+
+            <h4>Staff Session Variables:</h4>
+            <table>
+                <tr>
+                    <th>Variable</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>$_SESSION['staff_id']</code></td>
+                    <td>Staff member ID</td>
+                </tr>
+                <tr>
+                    <td><code>$_SESSION['staff_role']</code></td>
+                    <td>Staff role (Admin, Manager, Waiter, Chef)</td>
+                </tr>
+                <tr>
+                    <td><code>$_SESSION['restaurant_id']</code></td>
+                    <td>Restaurant identifier</td>
+                </tr>
+            </table>
+
+            <h3>3.3 Super Admin</h3>
+            <p><strong>Location:</strong> <code>superadmin/login.php</code></p>
+            <p>Super admin has access to all restaurants and can manage subscriptions.</p>
+            
+            <div class="alert alert-info">
+                <strong>Note:</strong> Super admin credentials are created via migration: <code>migrations/003_create_super_admins.sql</code>
+            </div>
+        </section>
+
+        <!-- Database Schema -->
+        <section id="database" class="section">
+            <h2>4. Database Schema & Migrations</h2>
+            
+            <h3>4.1 Master Database</h3>
+            <p><strong>Database Name:</strong> <code>restro2</code></p>
+            <p><strong>Character Set:</strong> <code>utf8mb4</code></p>
+            <p><strong>Collation:</strong> <code>utf8mb4_unicode_ci</code></p>
+
+            <h3>4.2 Core Tables</h3>
+            <table>
+                <tr>
+                    <th>Table Name</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>users</code></td>
+                    <td>Admin users with subscription management</td>
+                </tr>
+                <tr>
+                    <td><code>staff</code></td>
+                    <td>Staff members with roles</td>
+                </tr>
+                <tr>
+                    <td><code>menu</code></td>
+                    <td>Menu categories</td>
+                </tr>
+                <tr>
+                    <td><code>menu_items</code></td>
+                    <td>Menu items with prices and details</td>
+                </tr>
+                <tr>
+                    <td><code>areas</code></td>
+                    <td>Restaurant areas/sections</td>
+                </tr>
+                <tr>
+                    <td><code>tables</code></td>
+                    <td>Restaurant tables</td>
+                </tr>
+                <tr>
+                    <td><code>orders</code></td>
+                    <td>Customer orders</td>
+                </tr>
+                <tr>
+                    <td><code>order_items</code></td>
+                    <td>Order line items</td>
+                </tr>
+                <tr>
+                    <td><code>kot</code></td>
+                    <td>Kitchen Order Tickets</td>
+                </tr>
+                <tr>
+                    <td><code>kot_items</code></td>
+                    <td>KOT line items</td>
+                </tr>
+                <tr>
+                    <td><code>customers</code></td>
+                    <td>Customer information</td>
+                </tr>
+                <tr>
+                    <td><code>reservations</code></td>
+                    <td>Table reservations</td>
+                </tr>
+                <tr>
+                    <td><code>waiter_requests</code></td>
+                    <td>Waiter call requests</td>
+                </tr>
+                <tr>
+                    <td><code>payments</code></td>
+                    <td>Payment transactions</td>
+                </tr>
+                <tr>
+                    <td><code>website_settings</code></td>
+                    <td>Website theme and settings</td>
+                </tr>
+                <tr>
+                    <td><code>website_banners</code></td>
+                    <td>Website banner images</td>
+                </tr>
+                <tr>
+                    <td><code>subscription_payments</code></td>
+                    <td>Subscription payment history</td>
+                </tr>
+                <tr>
+                    <td><code>schema_migrations</code></td>
+                    <td>Migration tracking</td>
+                </tr>
+            </table>
+
+            <h3>4.3 Database Migrations</h3>
+            <p><strong>Migration System:</strong> Located in <code>migrations/</code> folder</p>
+            <p><strong>Run Migrations:</strong> Visit <code>run_migrations.php</code> in browser</p>
+
+            <h4>Available Migrations:</h4>
+            <ol>
+                <li><code>001_create_initial_schema.sql</code> - Initial schema setup</li>
+                <li><code>002_create_payments_table.sql</code> - Payments table</li>
+                <li><code>003_create_super_admins.sql</code> - Super admin users</li>
+                <li><code>004_create_website_settings.sql</code> - Website settings</li>
+                <li><code>005_add_subscription_fields.sql</code> - Subscription fields</li>
+                <li><code>006_create_subscription_payments.sql</code> - Subscription payments</li>
+                <li><code>007_add_banner_image.sql</code> - Banner image field</li>
+                <li><code>008_create_website_banners_table.sql</code> - Multiple banners</li>
+            </ol>
+
+            <div class="alert alert-warning">
+                <strong>Important:</strong> Always backup your database before running migrations!
+            </div>
+
+            <h3>4.4 Database Schema File</h3>
+            <p><strong>Main Schema:</strong> <code>database_schema.sql</code></p>
+            <p>This file contains the complete database structure. Use it to:</p>
+            <ul>
+                <li>Create a fresh database</li>
+                <li>Understand the complete schema</li>
+                <li>Restore database structure</li>
+            </ul>
+        </section>
+
+        <!-- Database Backup -->
+        <section id="backup" class="section">
+            <h2>5. Database Backup & Restore</h2>
+            
+            <h3>5.1 Manual Backup (XAMPP)</h3>
+            
+            <h4>Using phpMyAdmin:</h4>
+            <ol>
+                <li>Open phpMyAdmin: <code>http://localhost/phpmyadmin</code></li>
+                <li>Select database <code>restro2</code></li>
+                <li>Click <strong>Export</strong> tab</li>
+                <li>Choose <strong>Quick</strong> or <strong>Custom</strong> method</li>
+                <li>Select format: <strong>SQL</strong></li>
+                <li>Click <strong>Go</strong> to download backup</li>
+            </ol>
+
+            <h4>Using Command Line (MySQL):</h4>
+            <div class="backup-command">
+# Backup database
+mysqldump -u root -p restro2 > backup_restro2_$(date +%Y%m%d_%H%M%S).sql
+
+# Backup with structure and data
+mysqldump -u root -p --routines --triggers restro2 > full_backup_restro2.sql
+            </div>
+
+            <h4>Using Command Line (Windows XAMPP):</h4>
+            <div class="backup-command">
+# Navigate to XAMPP MySQL bin directory
+cd C:\xampp\mysql\bin
+
+# Backup database
+mysqldump.exe -u root -p restro2 > C:\backups\restro2_backup.sql
+            </div>
+
+            <h3>5.2 Automated Backup Script</h3>
+            <p>Create a PHP script for automated backups:</p>
+            <pre><code>&lt;?php
+// backup_database.php
+$backup_file = 'backups/restro2_backup_' . date('Y-m-d_H-i-s') . '.sql';
+$command = "mysqldump -u root restro2 > " . $backup_file;
+exec($command);
+echo "Backup created: " . $backup_file;
+?&gt;</code></pre>
+
+            <h3>5.3 Restore Database</h3>
+            
+            <h4>Using phpMyAdmin:</h4>
+            <ol>
+                <li>Open phpMyAdmin</li>
+                <li>Select database <code>restro2</code></li>
+                <li>Click <strong>Import</strong> tab</li>
+                <li>Choose backup file</li>
+                <li>Click <strong>Go</strong></li>
+            </ol>
+
+            <h4>Using Command Line:</h4>
+            <div class="backup-command">
+# Restore database
+mysql -u root -p restro2 &lt; backup_restro2.sql
+            </div>
+
+            <h3>5.4 Backup Schedule Recommendations</h3>
+            <ul>
+                <li><strong>Daily:</strong> Full database backup</li>
+                <li><strong>Weekly:</strong> Full backup + file system backup</li>
+                <li><strong>Before Updates:</strong> Always backup before running migrations</li>
+                <li><strong>Before Major Changes:</strong> Backup before schema changes</li>
+            </ul>
+
+            <div class="alert alert-success">
+                <strong>Best Practice:</strong> Store backups in a separate location (cloud storage, external drive)
+            </div>
+        </section>
+
+        <!-- Setup Instructions -->
+        <section id="setup" class="section">
+            <h2>6. Setup Instructions</h2>
+            
+            <h3>6.1 XAMPP Installation</h3>
+            <ol>
+                <li>Download XAMPP from <a href="https://www.apachefriends.org/" target="_blank">apachefriends.org</a></li>
+                <li>Install XAMPP (default location: <code>C:\xampp</code>)</li>
+                <li>Start Apache and MySQL from XAMPP Control Panel</li>
+                <li>Verify installation: <code>http://localhost</code></li>
+            </ol>
+
+            <h3>6.2 Project Setup</h3>
+            <ol>
+                <li>Place project in: <code>C:\xampp\htdocs\restraunt_pos\</code></li>
+                <li>Open phpMyAdmin: <code>http://localhost/phpmyadmin</code></li>
+                <li>Create database: <code>restro2</code></li>
+                <li>Import schema: Run <code>database_schema.sql</code></li>
+                <li>Configure database: Edit <code>db_connection.php</code></li>
+            </ol>
+
+            <h3>6.3 Database Configuration</h3>
+            <p><strong>File:</strong> <code>db_connection.php</code></p>
+            <pre><code>&lt;?php
+function getConnection() {
+    $host = 'localhost';
+    $dbname = 'restro2';
+    $username = 'root';
+    $password = ''; // XAMPP default is empty
+    
+    try {
+        $conn = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", 
+                       $username, $password);
+        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return $conn;
+    } catch(PDOException $e) {
+        die("Connection failed: " . $e->getMessage());
+    }
+}
+?&gt;</code></pre>
+
+            <h3>6.4 Run Migrations</h3>
+            <ol>
+                <li>Visit: <code>http://localhost/restraunt_pos/run_migrations.php</code></li>
+                <li>Follow on-screen instructions</li>
+                <li>Migrations will run automatically</li>
+            </ol>
+
+            <h3>6.5 Create Admin User</h3>
+            <p>After running migrations, create admin user via:</p>
+            <ul>
+                <li>phpMyAdmin: Insert into <code>users</code> table</li>
+                <li>Or use admin registration (if available)</li>
+            </ul>
+
+            <h3>6.6 File Permissions</h3>
+            <ul>
+                <li><code>uploads/</code> folder: Write permissions</li>
+                <li><code>migrations/</code> folder: Write permissions</li>
+                <li>PHP files: Read permissions</li>
+            </ul>
+        </section>
+
+        <!-- Usage Guide -->
+        <section id="usage" class="section">
+            <h2>7. Usage Guide</h2>
+            
+            <h3>7.1 Admin Dashboard</h3>
+            <p><strong>URL:</strong> <code>http://localhost/restraunt_pos/admin/</code></p>
+            <ul>
+                <li>Login with admin credentials</li>
+                <li>Manage menus, items, tables, staff</li>
+                <li>View orders, payments, reservations</li>
+                <li>Configure website settings</li>
+            </ul>
+
+            <h3>7.2 Staff Dashboards</h3>
+            <ul>
+                <li><strong>Manager:</strong> <code>manager_dashboard.php</code></li>
+                <li><strong>Waiter:</strong> <code>waiter_dashboard.php</code></li>
+                <li><strong>Chef:</strong> <code>chef_dashboard.php</code></li>
+            </ul>
+
+            <h3>7.3 Customer Website</h3>
+            <p><strong>URL:</strong> <code>http://localhost/restraunt_pos/website/index.php?restaurant_id=RES001</code></p>
+            <ul>
+                <li>Browse menu items</li>
+                <li>Add items to cart</li>
+                <li>Place orders</li>
+                <li>Make reservations</li>
+                <li>Call waiter</li>
+                <li>View profile and order history</li>
+            </ul>
+
+            <h3>7.4 Key Features Usage</h3>
+            
+            <h4>Menu Management:</h4>
+            <ol>
+                <li>Go to Dashboard → Menu</li>
+                <li>Create menu categories</li>
+                <li>Add menu items with images</li>
+                <li>Set prices and availability</li>
+            </ol>
+
+            <h4>Order Processing:</h4>
+            <ol>
+                <li>Select table (if dine-in)</li>
+                <li>Add items to cart</li>
+                <li>Create order</li>
+                <li>KOT is automatically generated</li>
+                <li>Update order status as it progresses</li>
+            </ol>
+
+            <h4>Website Customization:</h4>
+            <ol>
+                <li>Go to Dashboard → Website Appearance</li>
+                <li>Set theme colors</li>
+                <li>Upload banners</li>
+                <li>Changes reflect on customer website</li>
+            </ol>
+        </section>
+
+        <!-- API Documentation -->
+        <section id="api" class="section">
+            <h2>8. API Documentation</h2>
+            
+            <h3>8.1 Website API</h3>
+            <p><strong>Base URL:</strong> <code>website/api.php</code></p>
+
+            <h4>Get Menus:</h4>
+            <pre><code>GET api.php?action=getMenus&restaurant_id=RES001</code></pre>
+
+            <h4>Get Menu Items:</h4>
+            <pre><code>GET api.php?action=getMenuItems&restaurant_id=RES001&menu_id=1&category=Main&type=Veg</code></pre>
+
+            <h4>Search Items:</h4>
+            <pre><code>GET api.php?action=searchItems&q=pizza&restaurant_id=RES001</code></pre>
+
+            <h4>Get Customer Orders:</h4>
+            <pre><code>GET api.php?action=getCustomerOrders&restaurant_id=RES001&phone=1234567890</code></pre>
+
+            <h3>8.2 Order Processing</h3>
+            <p><strong>Endpoint:</strong> <code>process_website_order.php</code></p>
+            <pre><code>POST process_website_order.php
+Content-Type: application/json
+
+{
+    "customer_name": "John Doe",
+    "customer_phone": "1234567890",
+    "customer_email": "john@example.com",
+    "customer_address": "123 Main St",
+    "items": [
+        {
+            "id": 1,
+            "name": "Pizza",
+            "price": 500,
+            "quantity": 2
+        }
+    ],
+    "total": 1000,
+    "payment_method": "Cash"
+}</code></pre>
+
+            <h3>8.3 Reservation API</h3>
+            <p><strong>Check Availability:</strong> <code>check_reservation_availability.php</code></p>
+            <pre><code>GET check_reservation_availability.php?restaurant_id=RES001&table_id=1&reservation_date=2025-01-15&time_slot=12:00</code></pre>
+
+            <p><strong>Create Reservation:</strong> <code>create_reservation.php</code></p>
+            <pre><code>POST create_reservation.php?restaurant_id=RES001
+Content-Type: application/json
+
+{
+    "table_id": 1,
+    "reservation_date": "2025-01-15",
+    "time_slot": "12:00",
+    "no_of_guests": 4,
+    "meal_type": "Lunch",
+    "customer_name": "John Doe",
+    "phone": "1234567890",
+    "email": "john@example.com",
+    "special_request": "Window seat please"
+}</code></pre>
+        </section>
+
+        <!-- Troubleshooting -->
+        <section id="troubleshooting" class="section">
+            <h2>9. Troubleshooting</h2>
+            
+            <h3>9.1 Common Issues</h3>
+            
+            <h4>Database Connection Error:</h4>
+            <div class="alert alert-warning">
+                <strong>Solution:</strong>
+                <ul>
+                    <li>Check MySQL is running in XAMPP</li>
+                    <li>Verify database name in <code>db_connection.php</code></li>
+                    <li>Check username/password</li>
+                </ul>
+            </div>
+
+            <h4>Images Not Loading:</h4>
+            <div class="alert alert-warning">
+                <strong>Solution:</strong>
+                <ul>
+                    <li>Check <code>uploads/</code> folder permissions</li>
+                    <li>Verify image paths in database</li>
+                    <li>Check <code>image.php</code> is accessible</li>
+                </ul>
+            </div>
+
+            <h4>Session Not Working:</h4>
+            <div class="alert alert-warning">
+                <strong>Solution:</strong>
+                <ul>
+                    <li>Check <code>session_start()</code> is called</li>
+                    <li>Verify session save path is writable</li>
+                    <li>Check PHP session configuration</li>
+                </ul>
+            </div>
+
+            <h4>Migrations Not Running:</h4>
+            <div class="alert alert-warning">
+                <strong>Solution:</strong>
+                <ul>
+                    <li>Check <code>migrations/</code> folder exists</li>
+                    <li>Verify folder has write permissions</li>
+                    <li>Check database connection</li>
+                    <li>Review error logs</li>
+                </ul>
+            </div>
+
+            <h3>9.2 Error Logs</h3>
+            <ul>
+                <li><strong>PHP Errors:</strong> <code>C:\xampp\php\logs\php_error_log</code></li>
+                <li><strong>Apache Errors:</strong> <code>C:\xampp\apache\logs\error.log</code></li>
+                <li><strong>MySQL Errors:</strong> <code>C:\xampp\mysql\data\mysql_error.log</code></li>
+            </ul>
+
+            <h3>9.3 Debug Mode</h3>
+            <p>Enable error display in PHP:</p>
+            <pre><code>ini_set('display_errors', 1);
+error_reporting(E_ALL);</code></pre>
+
+            <div class="alert alert-danger">
+                <strong>Warning:</strong> Disable error display in production!
+            </div>
+        </section>
+
+        <footer>
+            <p>📚 Restaurant POS System Documentation</p>
+            <p>For support, check the troubleshooting section or review the code comments</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">Generated: <span id="generatedDate"></span></p>
+        </footer>
+    </div>
+
+    <script>
+        // Set current date
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        document.getElementById('generatedDate').textContent = new Date().toLocaleString('en-US');
+    </script>
+</body>
+</html>
+

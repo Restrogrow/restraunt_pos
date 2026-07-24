@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaaS Scorecard Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#0b0d14; color:#d1d5db; padding:1.5rem; }
+.dash { max-width:1320px; margin:0 auto; }
+
+h1 { font-size:1.8rem; font-weight:700; color:#f1f5f9; margin-bottom:0.25rem; }
+.subtitle { color:#64748b; font-size:0.95rem; margin-bottom:1.5rem; }
+.subtitle a { color:#818cf8; text-decoration:none; }
+.subtitle a:hover { text-decoration:underline; }
+
+.grid { display:grid; gap:1rem; margin-bottom:1rem; }
+.grid-4 { grid-template-columns:repeat(4,1fr); }
+.grid-2 { grid-template-columns:repeat(2,1fr); }
+.grid-3 { grid-template-columns:repeat(3,1fr); }
+
+.card { background:#111827; border:1px solid #1e293b; border-radius:12px; padding:1.25rem; }
+.card-title { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:#64748b; font-weight:600; margin-bottom:0.5rem; }
+.card-value { font-size:2.2rem; font-weight:700; line-height:1.1; }
+.card-sub { font-size:0.8rem; color:#64748b; margin-top:0.2rem; }
+.card canvas { max-height:260px; max-width:100%; }
+
+.chart-container { position:relative; width:100%; }
+.chart-container.h-300 { height:300px; }
+.chart-container.h-250 { height:250px; }
+
+.row { display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
+.row > * { flex:1; min-width:280px; }
+
+.badge { display:inline-block; padding:0.15rem 0.5rem; border-radius:4px; font-size:0.7rem; font-weight:600; text-transform:uppercase; }
+.badge-red { background:#7f1d1d; color:#fca5a5; }
+.badge-orange { background:#7c2d12; color:#fdba74; }
+.badge-yellow { background:#713f12; color:#fde68a; }
+.badge-green { background:#14532d; color:#86efac; }
+.badge-blue { background:#1e3a5f; color:#93c5fd; }
+.badge-gray { background:#1e293b; color:#94a3b8; }
+
+.score-ring { width:160px; height:160px; border-radius:50%; position:relative; margin:0 auto; display:flex; align-items:center; justify-content:center; }
+.score-ring svg { position:absolute; top:0; left:0; }
+.score-ring .score-text { text-align:center; z-index:1; }
+.score-ring .score-text .num { font-size:2.8rem; font-weight:700; color:#f1f5f9; line-height:1; }
+.score-ring .score-text .lbl { font-size:0.7rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; }
+
+.finding-list { list-style:none; }
+.finding-list li { display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid #1a1d2e; font-size:0.85rem; }
+.finding-list li:last-child { border:none; }
+.finding-list .count { font-weight:700; font-size:1.1rem; }
+
+.rev-list { list-style:none; }
+.rev-list li { display:flex; justify-content:space-between; align-items:center; padding:0.35rem 0; border-bottom:1px solid #1a1d2e; font-size:0.82rem; }
+.rev-list li:last-child { border:none; }
+.rev-list .rank-num { color:#818cf8; font-weight:700; margin-right:0.5rem; }
+.rev-list .val { color:#34d399; font-weight:600; font-size:0.8rem; }
+
+.status-bar { display:flex; height:8px; border-radius:4px; overflow:hidden; margin:0.5rem 0; }
+.status-bar .seg { transition:width 0.3s; }
+.seg-critical { background:#ef4444; }
+.seg-high { background:#f97316; }
+.seg-medium { background:#eab308; }
+.seg-low { background:#3b82f6; }
+
+@media (max-width:900px) {
+  .grid-4 { grid-template-columns:repeat(2,1fr); }
+  .grid-2 { grid-template-columns:1fr; }
+  .grid-3 { grid-template-columns:1fr; }
+  body { padding:0.75rem; }
+}
+</style>
+</head>
+<body>
+<div class="dash">
+
+<h1>&#128202; SaaS Scorecard Dashboard</h1>
+<p class="subtitle"><a href="index.html">&larr; Back to navigation</a> &nbsp;·&nbsp; MenuWebsite &nbsp;·&nbsp; July 2026 &nbsp;·&nbsp; Overall: <strong style="color:#22c55e;">53/100</strong> &nbsp;·&nbsp; <span style="color:#86efac;">23 issues resolved</span> &nbsp;·&nbsp; <span style="color:#34d399;">▲ +15 from 38</span></p>
+
+<!-- TOP STATS ROW -->
+<div class="grid grid-4">
+  <div class="card" style="grid-column:span 1;">
+    <div class="card-title">SaaS Readiness</div>
+    <div class="score-ring" id="scoreGauge">
+      <svg width="160" height="160" viewBox="0 0 160 160">
+        <circle cx="80" cy="80" r="68" fill="none" stroke="#1e293b" stroke-width="8"/>
+        <circle cx="80" cy="80" r="68" fill="none" stroke="url(#gaugeGrad)" stroke-width="8" stroke-dasharray="427" stroke-dashoffset="201" stroke-linecap="round" transform="rotate(-90,80,80)"/>
+        <defs><linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#ef4444"/><stop offset="50%" stop-color="#f97316"/><stop offset="100%" stop-color="#22c55e"/></linearGradient></defs>
+      </svg>
+      <div class="score-text"><div class="num">53</div><div class="lbl">of 100</div></div>
+    </div>
+    <div style="text-align:center;margin-top:0.3rem;"><span class="badge" style="background:#713f12;color:#fde68a;">IMPROVING</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Total Findings</div>
+    <div class="card-value" style="color:#818cf8;">65</div>
+    <div class="card-sub"><span style="color:#34d399;">23 resolved</span> · 42 open</div>
+    <div class="status-bar">
+      <div class="seg" style="width:0%;background:#059669;"></div>
+      <div class="seg seg-high" style="width:4.8%"></div>
+      <div class="seg seg-medium" style="width:40.5%"></div>
+      <div class="seg seg-low" style="width:61.9%"></div>
+    </div>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;font-size:0.75rem;">
+      <span><span style="color:#34d399;">&#9632;</span> 0 Critical (all fixed)</span>
+      <span><span style="color:#f97316;">&#9632;</span> 2 High open</span>
+      <span><span style="color:#eab308;">&#9632;</span> 21 Medium open</span>
+      <span><span style="color:#3b82f6;">&#9632;</span> 26 Low/Info</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Fix Estimate</div>
+    <div class="card-value" style="color:#f97316;">~660</div>
+    <div class="card-sub">person-hours to resolve all</div>
+    <div style="margin-top:0.5rem;font-size:0.82rem;color:#94a3b8;">
+      <div style="display:flex;justify-content:space-between;"><span>Sprint 1 (blockers)</span><span style="color:#ef4444;font-weight:600;">~160 hrs</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:0.15rem;"><span>Sprint 2 (revenue + SEO)</span><span style="color:#f97316;font-weight:600;">~260 hrs</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:0.15rem;"><span>Sprint 3 (code quality)</span><span style="color:#eab308;font-weight:600;">~120 hrs</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:0.15rem;"><span>Sprint 4 (retention)</span><span style="color:#22c55e;font-weight:600;">~120 hrs</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Revenue Opportunity</div>
+    <div class="card-value" style="color:#34d399;">5-50&times;</div>
+    <div class="card-sub">potential MRR increase</div>
+    <div style="margin-top:0.5rem;font-size:0.82rem;color:#94a3b8;">
+      Top 3 levers: subscription plans, per-order fee, white-label add-on
+    </div>
+  </div>
+</div>
+
+<!-- RADAR + BREAKDOWN -->
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-title">9-Dimension Radar</div>
+    <div class="chart-container h-300"><canvas id="radarChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Category Breakdown</div>
+    <div class="chart-container h-300"><canvas id="barChart"></canvas></div>
+  </div>
+</div>
+
+<!-- SEVERITY + PRIORITY -->
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-title">Risk Severity Distribution</div>
+    <div class="chart-container h-250"><canvas id="pieChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Priority Matrix (Impact vs. Effort)</div>
+    <div class="chart-container h-250"><canvas id="matrixChart"></canvas></div>
+  </div>
+</div>
+
+<!-- TIMELINE + REVENUE -->
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-title">90-Day Sprint Timeline</div>
+    <div class="chart-container h-250"><canvas id="timelineChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Top Revenue Opportunities</div>
+    <div class="chart-container h-250"><canvas id="revenueChart"></canvas></div>
+  </div>
+</div>
+
+<!-- DETAILED SCORECARD TABLE + FINDINGS -->
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-title">Detailed Category Scores</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+      <tr><th style="text-align:left;padding:0.4rem 0.3rem;color:#64748b;font-size:0.7rem;text-transform:uppercase;border-bottom:1px solid #1e293b;">Category</th><th style="text-align:right;padding:0.4rem 0.3rem;color:#64748b;font-size:0.7rem;text-transform:uppercase;border-bottom:1px solid #1e293b;">Score</th><th style="text-align:right;padding:0.4rem 0.3rem;color:#64748b;font-size:0.7rem;text-transform:uppercase;border-bottom:1px solid #1e293b;">Rating</th></tr>
+      <tr><td style="padding:0.5rem 0.3rem;border-bottom:1px solid #1a1d2e;">Security</td><td style="text-align:right;padding:0.5rem 0.3rem;font-weight:700;color:#22c55e;">55</td><td style="text-align:right;padding:0.5rem 0.3rem;"><span class="badge" style="background:#14532d;color:#86efac;">IMPROVED</span></td></tr>
+      <tr><td style="padding:0.5rem 0.3rem;border-bottom:1px solid #1a1d2e;">User Experience</td><td style="text-align:right;padding:0.5rem 0.3rem;font-weight:700;color:#eab308;">38</td><td style="text-align:right;padding:0.5rem 0.3rem;"><span class="badge badge-yellow">FAIR</span></td></tr>
+      <tr><td style="padding:0.5rem 0.3rem;border-bottom:1px solid #1a1d2e;">Scalability</td><td style="text-align:right;padding:0.5rem 0.3rem;font-weight:700;color:#eab308;">30</td><td style="text-align:right;padding:0.5rem 0.3rem;"><span class="badge badge-yellow">FAIR</span></td></tr>
+      <tr><td style="padding:0.5rem 0.3rem;border-bottom:1px solid #1a1d2e;">Business Model</td><td style="text-align:right;padding:0.5rem 0.3rem;font-weight:700;color:#dc2626;">10</td><td style="text-align:right;padding:0.5rem 0.3rem;"><span class="badge badge-red">FAIL</span></td></tr>
+      <tr><td style="padding:0.5rem 0.3rem;border-bottom:1px solid #1a1d2e;">Retention</td><td style="text-align:right;padding:0.5rem 0.3rem;font-weight:700;color:#f97316;">30</td><td style="text-align:right;padding:0.5rem 0.3rem;"><span class="badge badge-orange">WEAK</span></td></tr>
+      <tr><td style="padding:0.5rem 0.3rem;border-bottom:1px solid #1a1d2e;">Monetization Features</td><td style="text-align:right;padding:0.5rem 0.3rem;font-weight:700;color:#dc2626;">10</td><td style="text-align:right;padding:0.5rem 0.3rem;"><span class="badge badge-red">FAIL</span></td></tr>
+      <tr><td style="padding:0.5rem 0.3rem;">Competitive Advantage</td><td style="text-align:right;padding:0.5rem 0.3rem;font-weight:700;color:#eab308;">35</td><td style="text-align:right;padding:0.5rem 0.3rem;"><span class="badge badge-yellow">FAIR</span></td></tr>
+      <tr><td style="padding:0.5rem 0.3rem;">Category SEO</td><td style="text-align:right;padding:0.5rem 0.3rem;font-weight:700;color:#ef4444;">15</td><td style="text-align:right;padding:0.5rem 0.3rem;"><span class="badge badge-red">POOR</span></td></tr>
+      <tr><td style="padding:0.5rem 0.3rem;">Code Quality</td><td style="text-align:right;padding:0.5rem 0.3rem;font-weight:700;color:#ef4444;">15</td><td style="text-align:right;padding:0.5rem 0.3rem;"><span class="badge badge-red">POOR</span></td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">Risk Summary by Area</div>
+    <ul class="finding-list">
+      <li><span>Security vulnerabilities</span><span class="count" style="color:#eab308;">8</span></li>
+      <li><span>Business logic / revenue leaks</span><span class="count" style="color:#f97316;">15</span></li>
+      <li><span>UX friction points</span><span class="count" style="color:#eab308;">15</span></li>
+      <li><span>Scalability blockers</span><span class="count" style="color:#f97316;">12</span></li>
+      <li><span>Category SEO gaps</span><span class="count" style="color:#f97316;">12</span></li>
+      <li><span>Code quality issues</span><span class="count" style="color:#f97316;">16</span></li>
+      <li><span>Missing product features</span><span class="count" style="color:#3b82f6;">20+</span></li>
+      <li><span>Non-functional UI (fake settings)</span><span class="count" style="color:#ef4444;">3</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- QUICK WINS -->
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-title">Quick Wins &amp; Recent Fixes (&lt; 4 hours each)</div>
+    <ol style="padding-left:1.25rem;font-size:0.85rem;color:#94a3b8;line-height:1.8;">
+      <li><strong style="color:#22c55e;"><s>Delete debug scripts</s> ✓ Done</strong> — debug_db.php, check_*.php removed</li>
+      <li><strong style="color:#22c55e;"><s>Set session GC probability > 0</s> ✓ Done</strong> — session_config.php updated</li>
+      <li><strong style="color:#22c55e;"><s>Hide payment secrets from API</s> ✓ Done</strong> — maskSecret() in auth.php, get_session.php</li>
+      <li><strong style="color:#22c55e;"><s>Remove runtime ALTER TABLE</s> ✓ Done</strong> — removed from 10 files</li>
+      <li><strong style="color:#22c55e;"><s>Move hardcoded DB creds to .env</s> ✓ Done</strong> — db_connection.php uses env() via env_loader.php</li>
+      <li><strong style="color:#22c55e;"><s>Fix SQL injection in search</s> ✓ Done</strong> — website/api.php sanitized, LIKE wildcards escaped</li>
+      <li><strong style="color:#22c55e;"><s>Add auth rate limiting</s> ✓ Done</strong> — login 5/min, signup 3/hour, forgot 3/5min, reset 5/15min + lockout</li>
+      <li><strong style="color:#22c55e;"><s>Fix sujay API auth</s> ✓ Done</strong> — DB-based auth (user: sujay) with password_hash verification</li>
+      <li><strong style="color:#22c55e;"><s>Fix payment callback signatures</s> ✓ Done</strong> — X-VERIFY verification, removed auto-confirm from redirect</li>
+      <li><strong style="color:#22c55e;"><s>Order state machine with row locking</s> ✓ Done</strong> — config/order_state_machine.php with validated transitions, SELECT FOR UPDATE, atomic helpers. 9 files updated.</li>
+      <li><strong style="color:#22c55e;"><s>Addon prices validated server-side</s> ✓ Done</strong> — process_website_order.php now validates every addon against meal_addons DB prices. Client price manipulation blocked.</li>
+      <li><strong style="color:#22c55e;"><s>Password reset token expiry fixed</s> ✓ Done</strong> — superadmin forgot_password.php: reduced from 1 hour to 5 minutes. Already had rate limiting.</li>
+      <li><strong style="color:#22c55e;"><s>sujay API auth consolidated</s> ✓ Done</strong> — C3 (duplicate of C1) resolved. sujay/api.php authenticates every request against DB.</li>
+      <li><strong style="color:#22c55e;"><s>PhonePe auto-confirm from redirect removed</s> ✓ Done</strong> — X-VERIFY signature verification added. Only status API and webhook trusted.</li>
+      <li><strong style="color:#22c55e;"><s>Tax mismatch client vs server fixed</s> ✓ Done</strong> — cart.php: no GST on packaging. Packaging added after tax. Matches server formula.</li>
+      <li><strong style="color:#22c55e;"><s>Add confirmation for destructive actions</s> ✓ Done</strong> — SweetAlert confirm added to updateOrderStatus for Cancelled status. Covers cancel order, delete menu/item already had modals.</li>
+      <li><strong style="color:#22c55e;"><s>Fix auto-login token in URL (C6)</s> ✓ Done</strong> — Token moved from GET param to PHP session. Never logged in server access logs or browser history.</li>
+      <li><strong style="color:#22c55e;"><s>Remove Cashfree remnants</s> ✓ Done</strong> — All Cashfree files/settings/payment flow removed. PhonePe-only now.</li>
+      <li><strong style="color:#e2e8f0;">Add missing composite indexes</strong> — kot, reservations, orders tables</li>
+    </ol>
+  </div>
+  <div class="card">
+    <div class="card-title">Biggest Revenue Leaks</div>
+    <ol style="padding-left:1.25rem;font-size:0.85rem;color:#94a3b8;line-height:1.8;">
+      <li><strong style="color:#e2e8f0;">No inventory system</strong> — overselling items = customer refunds + lost trust</li>
+      <li><strong style="color:#e2e8f0;">Addon prices not validated</strong> — customers can underpay</li>
+      <li><strong style="color:#e2e8f0;">KOT records Cash Paid before payment</strong> — inflated reports, no actual collection</li>
+      <li><strong style="color:#e2e8f0;">No cancellation/refund flow</strong> — can't process returns, legal exposure</li>
+      <li><strong style="color:#e2e8f0;">Subscription billing non-functional</strong> — $0 revenue from 100% of customers</li>
+    </ol>
+  </div>
+</div>
+
+<div style="text-align:center;margin-top:2rem;padding-top:1.5rem;border-top:1px solid #1e293b;color:#475569;font-size:0.82rem;">
+  Audit generated July 2026 &nbsp;·&nbsp; <span style="color:#34d399;">23 issues resolved</span> &nbsp;·&nbsp; Full report: <a href="report.html" style="color:#818cf8;text-decoration:none;">report.html</a>
+</div>
+
+</div>
+
+<script>
+// Colors
+const colors = { red:'#ef4444', orange:'#f97316', yellow:'#eab308', green:'#22c55e', blue:'#3b82f6', indigo:'#818cf8', purple:'#a855f7', pink:'#ec4899' };
+
+// 1. RADAR CHART
+new Chart(document.getElementById('radarChart'), {
+  type:'radar',
+  data:{
+    labels:['Security','User Experience','Scalability','Business Model','Retention','Monetization','Competitive Adv.','Category SEO','Code Quality'],
+    datasets:[{
+      label:'Current Score',
+    data:[55,38,30,10,30,10,35,15,15],
+    backgroundColor:'rgba(99,102,241,0.15)',
+    borderColor:'#818cf8',
+    borderWidth:2,
+    pointBackgroundColor:'#818cf8',
+    pointBorderColor:'#111827',
+    pointBorderWidth:2
+  },{
+    label:'Target (Production Ready)',
+      data:[75,70,65,70,65,60,65,70,70],
+      backgroundColor:'rgba(34,197,94,0.05)',
+      borderColor:'rgba(34,197,94,0.3)',
+      borderWidth:1,
+      borderDash:[5,5],
+      pointBackgroundColor:'transparent',
+      pointBorderColor:'transparent'
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    scales:{ r:{ beginAtZero:true, max:100, ticks:{ stepSize:20, color:'#64748b', backdropColor:'transparent' }, grid:{ color:'#1e293b' }, angleLines:{ color:'#1e293b' }, pointLabels:{ color:'#94a3b8', font:{size:11} } } },
+    plugins:{ legend:{ labels:{ color:'#94a3b8', font:{size:11}, boxWidth:12, padding:12 } } }
+  }
+});
+
+// 2. BAR CHART
+new Chart(document.getElementById('barChart'), {
+  type:'bar',
+  data:{
+    labels:['Security','UX','Scalability','Business','Retention','Monetization','Competitive','Cat. SEO','Code Qual.'],
+    datasets:[{
+      label:'Score',
+    data:[55,38,30,10,30,10,35,15,15],
+    backgroundColor:['#22c55e','#eab308','#eab308','#dc2626','#f97316','#dc2626','#eab308','#dc2626','#dc2626'],
+      borderRadius:4
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    indexAxis:'y',
+    scales:{
+      x:{ beginAtZero:true, max:100, grid:{ color:'#1e293b' }, ticks:{ color:'#64748b', stepSize:20 } },
+      y:{ grid:{ display:false }, ticks:{ color:'#94a3b8', font:{size:10} } }
+    },
+    plugins:{ legend:{ display:false } }
+  }
+});
+
+// 3. PIE CHART
+new Chart(document.getElementById('pieChart'), {
+  type:'doughnut',
+  data:{
+    labels:['Critical (3)','High (9)','Medium (27)','Low/Info (26)'],
+    datasets:[{
+      data:[3,9,27,26],
+      backgroundColor:['#ef4444','#f97316','#eab308','#3b82f6'],
+      borderWidth:2,
+      borderColor:'#111827'
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{ position:'bottom', labels:{ color:'#94a3b8', font:{size:11}, boxWidth:12, padding:12 } }
+    }
+  }
+});
+
+// 4. PRIORITY MATRIX (scatter)
+const matrixLabels = [
+  'sujay API auth','Payment callback sig','Hardcoded creds','Debug endpoints (FIXED)','Auto-login URL',
+  'No cancellation','No inventory','No CSRF','PhonePe auto-confirm','Session never expires (FIXED)',
+  'Runtime ALTER TABLE (FIXED)','No subscription billing',  'No state machine (FIXED)','Payment secrets in API (FIXED)',
+  'No rate limiting','No pagination','No backups','Addon prices (FIXED)','Mass assignment','Email dupes'
+];
+const matrixData = matrixLabels.map((_,i) => {
+  // Impact: higher = more severe. Effort: lower = easier.
+  const pts = [
+    [9,2],[10,5],[10,1],[10,1],[8,3],
+    [9,6],[9,8],[8,3],[8,4],[9,2],
+    [8,4],[10,8],[7,4],[7,2],[8,2],
+    [7,3],[10,2],[7,4],[6,3],[5,3]
+  ];
+  return { x:pts[i][1], y:pts[i][0] };
+});
+
+new Chart(document.getElementById('matrixChart'), {
+  type:'scatter',
+  data:{
+    datasets:[{
+      label:'Issues',
+      data:matrixData,
+      backgroundColor:matrixData.map(d => d.y >= 9 ? '#ef4444' : d.y >= 7 ? '#f97316' : '#eab308'),
+      pointRadius:7,
+      pointHoverRadius:9
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    scales:{
+      x:{ title:{ display:true, text:'Effort (1=easy, 10=hard)', color:'#64748b', font:{size:10} }, min:0, max:10, grid:{ color:'#1e293b' }, ticks:{ color:'#64748b', stepSize:2 } },
+      y:{ title:{ display:true, text:'Impact (1=low, 10=critical)', color:'#64748b', font:{size:10} }, min:0, max:10, grid:{ color:'#1e293b' }, ticks:{ color:'#64748b', stepSize:2 } }
+    },
+    plugins:{
+      tooltip:{ callbacks:{ label:(ctx) => matrixLabels[ctx.dataIndex] } },
+      legend:{ display:false }
+    }
+  }
+});
+
+// 5. TIMELINE (stacked horizontal bars)
+new Chart(document.getElementById('timelineChart'), {
+  type:'bar',
+  data:{
+    labels:['Sprint 1\nBlockers','Sprint 2\nRevenue','Sprint 3\nCode Quality','Sprint 4\nRetention'],
+    datasets:[
+      { label:'Critical', data:[6,0,0,0], backgroundColor:'#ef4444', borderRadius:2 },
+      { label:'High', data:[8,3,3,0], backgroundColor:'#f97316', borderRadius:2 },
+      { label:'Medium', data:[2,7,8,3], backgroundColor:'#eab308', borderRadius:2 },
+      { label:'Low/New', data:[0,5,5,10], backgroundColor:'#3b82f6', borderRadius:2 }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    scales:{
+      x:{ stacked:true, grid:{ display:false }, ticks:{ color:'#94a3b8', font:{size:10} } },
+      y:{ stacked:true, beginAtZero:true, grid:{ color:'#1e293b' }, ticks:{ color:'#64748b', stepSize:5 } }
+    },
+    plugins:{
+      legend:{ position:'bottom', labels:{ color:'#94a3b8', font:{size:10}, boxWidth:10, padding:8 } }
+    }
+  }
+});
+
+// 6. REVENUE OPPORTUNITY
+new Chart(document.getElementById('revenueChart'), {
+  type:'bar',
+  data:{
+    labels:['Sub Plans','Per-order Fee','White-label','WA Credits','Analytics','Multi-outlet','Translation','KDS','Loyalty','QR Print'],
+    datasets:[{
+      label:'Relative Impact',
+      data:[10,8,7,5,6,8,4,7,5,3],
+      backgroundColor:['#818cf8','#6366f1','#a855f7','#8b5cf6','#6366f1','#818cf8','#a855f7','#7c3aed','#6366f1','#8b5cf6'],
+      borderRadius:4
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    indexAxis:'y',
+    scales:{
+      x:{ beginAtZero:true, max:11, grid:{ color:'#1e293b' }, ticks:{ color:'#64748b', stepSize:2 } },
+      y:{ grid:{ display:false }, ticks:{ color:'#94a3b8', font:{size:9} } }
+    },
+    plugins:{ legend:{ display:false } }
+  }
+});
+
+// Animate score ring on load
+// (static SVG already shows 24/100)
+</script>
+</body>
+</html>

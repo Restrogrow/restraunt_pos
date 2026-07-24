@@ -1,0 +1,21 @@
+# robots.txt for Restro Grow
+User-agent: *
+Allow: /
+Disallow: /main/admin/
+Disallow: /main/superadmin/
+Disallow: /main/api/
+Disallow: /main/controllers/
+Disallow: /main/config/
+Disallow: /main/database/
+Disallow: /main/uploads/
+Disallow: /main/views/
+Disallow: /main/docs/
+Disallow: /*.php$
+Allow: /index.html
+Allow: /style.css
+Allow: /script.js
+Allow: /assets/
+
+# Sitemap
+Sitemap: https://restrogrow.com/sitemap.xml
+

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Menu - Dvani Cafe & Grill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+}
+body {
+  font-family: 'Poppins', sans-serif;
+  background: #e8ecf2;
+  color: #1a1b1f;
+}
+.phone-frame {
+  width: 100%; max-width: 425px;
+  margin: 0 auto;
+  height: 100dvh;
+  background: #fff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.08);
+}
+@media (min-width: 768px) {
+  .phone-frame { margin: 20px auto; height: calc(100dvh - 40px); border-radius: 28px; }
+}
+
+.bg-wrapper {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.pr-share-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 8px 12px;
+  border-bottom: 1.5px solid #ccc;
+}
+.back-btn-cmon {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 8px;
+  background: linear-gradient(to right, #846241, #1a3934);
+  color: #fff; border: none; cursor: pointer; font-size: 22px;
+  flex-shrink: 0;
+}
+.category-breadcrumb {
+  display: flex; align-items: center;
+  background: linear-gradient(to right, #846241, #1a3934);
+  border-radius: 8px;
+  font-size: 11px; font-weight: 700; color: #fff;
+  min-height: 30px; padding: 0 10px;
+  white-space: nowrap;
+}
+.header-actions {
+  display: flex; align-items: center; gap: 8px;
+  margin-left: auto;
+}
+.header-action-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 8px;
+  background: linear-gradient(to right, #846241, #1a3934);
+  color: #fff; border: none; cursor: pointer; font-size: 18px;
+  flex-shrink: 0;
+}
+
+.layout-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.side-nav {
+  width: 86px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 4px 20px;
+  border-right: 1.5px solid #ccc;
+  overflow-y: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  height: 100%;
+  min-height: 0;
+}
+.side-nav::-webkit-scrollbar { display: none; }
+.sub-views { display: flex; }
+.side-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 72px;
+  padding: 10px 4px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: 'Poppins', sans-serif;
+  color: #1a1b1f;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  transition: all 0.2s;
+}
+.side-nav-btn img {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.side-nav-btn.active {
+  background: linear-gradient(to right, #846241, #1a3934);
+  color: #fff;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  padding: 12px 12px 80px;
+  background: #f5f5f5;
+}
+.main-content::-webkit-scrollbar { display: none; }
+
+.category-overview {
+  background: #fff;
+  padding: 8px 12px 6px;
+  border-radius: 0 0 14px 14px;
+}
+.category-overview h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1b1f;
+  margin: 0;
+  padding: 0 4px;
+}
+
+.search-rapper {
+  display: none; padding: 10px 16px;
+}
+.search-rapper.show {
+  display: flex;
+}
+.search-container {
+  display: flex; align-items: center;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #1a3934;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.search-input {
+  flex: 1; border: none; outline: none;
+  padding: 6px 14px;
+  font-size: 14px; font-family: 'Poppins', sans-serif;
+  height: 32px;
+  background: transparent;
+  color: #111;
+}
+.search-input::placeholder {
+  color: #999; font-size: 13px;
+}
+.search-btn {
+  width: 39px; height: 38px;
+  border: none; border-left: 1px solid #ddd;
+  background: transparent;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #333; font-size: 16px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1.5px solid #000;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+.card-img-wrap {
+  position: relative;
+}
+
+.card-img-wrap img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  display: block;
+}
+
+.veg-dot {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+
+.veg-dot img {
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+}
+
+.card-body {
+  padding: 10px 12px 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1b1f;
+  line-height: 1.3;
+}
+
+.card-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a3934;
+}
+
+.add-btn {
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(to right, #846241, #1a3934);
+  color: #fff;
+  font-size: 12px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  min-height: 32px;
+}
+
+.qty-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: linear-gradient(to right, #846241, #1a3934);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.qty-inline button {
+  width: 30px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Poppins', sans-serif;
+}
+.qty-inline .qty-num {
+  min-width: 24px;
+  text-align: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+
+.fab-search {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 50;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(to right, #846241, #1a3934);
+  color: #fff;
+  border: 2px solid #fff;
+  cursor: pointer;
+  font-size: 18px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+</style>
+</head>
+<body>
+<div class="phone-frame">
+  <div class="bg-wrapper">
+    <div class="pr-share-header">
+      <button class="back-btn-cmon" onclick="goBack()"><i class="fa fa-arrow-circle-left"></i></button>
+      <div class="category-breadcrumb" id="breadcrumb"><span>PASTA</span></div>
+      <div class="header-actions">
+        <button class="header-action-btn" style="opacity:0;pointer-events:none"><i class="fa fa-filter"></i></button>
+        <button class="header-action-btn" onclick="alert('Share')"><i class="fa-solid fa-share-nodes"></i></button>
+        <button class="header-action-btn" onclick="window.location.href='index.html'"><i class="fa fa-home"></i></button>
+      </div>
+    </div>
+
+    <div class="search-rapper">
+      <div class="search-container">
+        <input type="text" class="search-input" placeholder="Search your favorite food fast ⚡">
+        <button type="button" class="search-btn"><i class="bi bi-search"></i></button>
+      </div>
+    </div>
+
+    <div class="layout-container">
+      <div class="side-nav" id="sideNav"></div>
+      <div class="main-content">
+        <div class="category-overview">
+          <h2 id="categoryTitle">PASTA</h2>
+        </div>
+        <div class="product-grid" id="productGrid"></div>
+      </div>
+    </div>
+
+  <div class="fab-search" onclick="toggleSearch()">
+    <i id="fabIcon" class="bi bi-search"></i>
+  </div>
+</div>
+
+</div>
+
+<script>
+var cartItems = {};
+var currentCategory = null;
+
+var allMenuData = [
+  {
+    name: "PASTA",
+    count: 4,
+    image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765370225.jpg",
+    items: [
+      { name: "Aglio Olio Pasta", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764680226.jpg" },
+      { name: "Arabita Pasta", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764641903.jpg" },
+      { name: "Four Cheese Pasta", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764627549.jpg" },
+      { name: "Pesto Cheese Pasta", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764665083.jpg" }
+    ]
+  },
+  {
+    name: "BURGER",
+    count: 2,
+    image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images%20(5)_1781765401062.jpg",
+    items: [
+      { name: "Hop Express", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764705201.jpg" },
+      { name: "Pesto Paneer Burger", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764722971.jpg" }
+    ]
+  },
+  {
+    name: "HANDROLLED PIZZA (8\" & 12\")",
+    count: 3,
+    image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/download%20(26)_1781765432482.jpg",
+    items: [
+      { name: "Margrita Pizza", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764738648.jpg" },
+      { name: "Pesto Veggies Pizza", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764756616.jpg" },
+      { name: "Primeveera Pizza", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764770813.jpg" }
+    ]
+  },
+  {
+    name: "MUNCHIES",
+    count: 9,
+    image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images%20(6)_1781765473975.jpg",
+    items: [
+      { name: "Trio Nachos", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764786019.jpg" },
+      { name: "Belgium Fries", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764801263.jpg" },
+      { name: "Dutch Fries", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764816283.jpg" },
+      { name: "Peri Peri Fries", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764837641.jpg" },
+      { name: "Salted Fries", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764859485.jpg" },
+      { name: "Chipotle Corn Bhel", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764874405.jpg" },
+      { name: "Honey Chilli Potato", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764889852.jpg" },
+      { name: "Spring Roll", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764906840.jpg" },
+      { name: "Cheesy Crunchy Dahi Roll", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764924190.jpg" }
+    ]
+  },
+  {
+    name: "STARTERS",
+    count: 14,
+    image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images%20(7)_1781765501836.jpg",
+    items: [
+      { name: "Paneer Tikka Soya Chap", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764940368.jpg" },
+      { name: "Cajun Deviled Potato", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764954911.jpg" },
+      { name: "Crispy Corn", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764969377.jpg" },
+      { name: "Chili Corn", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781764980860.jpg" },
+      { name: "Honey Cinnamon Pineapple", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765007370.jpg" },
+      { name: "Hummus With Pita Bread", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765023570.jpg" },
+      { name: "Paneer Coin Patty", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765043180.jpg" },
+      { name: "Mushroom Cheese Ball", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765057350.jpg" },
+      { name: "Veg Shammi Kabab", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765073187.jpg" },
+      { name: "Hara Bhara Kabab", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765097915.jpg" },
+      { name: "Onion Rings", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765117078.jpg" },
+      { name: "Cheesy Corn Spring Roll", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765153356.jpg" },
+      { name: "Markash Roll", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765175628.jpg" },
+      { name: "Hing Matar Ki Tikki", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765193597.jpg" }
+    ]
+  },
+  {
+    name: "SHAKES",
+    count: 8,
+    image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images%20(8)_1781765530219.jpg",
+    items: [
+      { name: "Oreo Shake", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765214660.jpg" },
+      { name: "Kitkat Shaker", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765226897.jpg" },
+      { name: "Fruit Punch", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765244341.jpg" },
+      { name: "Ice Tea", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765258352.jpg" },
+      { name: "Bubblegum Shake", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765274492.jpg" },
+      { name: "Mint Mojito", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765288306.jpg" },
+      { name: "Blue Curaco Mojito", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765303723.jpg" },
+      { name: "Fresh Lime Soda", price: "₹1.00", image: "https://knowwu.s3.us-east-2.amazonaws.com/staging/6a338e47d9b0ddd310d94daa/6a338e8f1670b97963e08937/images_1781765323421.jpg" }
+    ]
+  }
+];
+
+function getQty(catIdx, idx) {
+  var key = catIdx + '-' + idx;
+  return cartItems[key] || 0;
+}
+
+function renderCartBtn(catIdx, idx) {
+  var qty = getQty(catIdx, idx);
+  if (qty === 0) {
+    return '<button class="add-btn" onclick="event.stopPropagation();addToCart(' + catIdx + ',' + idx + ')">Add To Cart</button>';
+  }
+  return '<div class="qty-inline">' +
+    '<button onclick="event.stopPropagation();removeFromCart(' + catIdx + ',' + idx + ')"><i class="fa fa-minus"></i></button>' +
+    '<span class="qty-num">' + qty + '</span>' +
+    '<button onclick="event.stopPropagation();addToCart(' + catIdx + ',' + idx + ')"><i class="fa fa-plus"></i></button>' +
+  '</div>';
+}
+
+function addToCart(catIdx, idx) {
+  var key = catIdx + '-' + idx;
+  cartItems[key] = (cartItems[key] || 0) + 1;
+  var el = document.getElementById('btn-' + catIdx + '-' + idx);
+  if (el) el.innerHTML = renderCartBtn(catIdx, idx);
+  saveCart();
+}
+
+function removeFromCart(catIdx, idx) {
+  var key = catIdx + '-' + idx;
+  if (cartItems[key] > 0) cartItems[key]--;
+  var el = document.getElementById('btn-' + catIdx + '-' + idx);
+  if (el) el.innerHTML = renderCartBtn(catIdx, idx);
+  saveCart();
+}
+
+function saveCart() {
+  try { localStorage.setItem('dvaniCart', JSON.stringify(cartItems)); } catch(e) {}
+}
+
+function loadCart() {
+  try {
+    var saved = localStorage.getItem('dvaniCart');
+    if (saved) { cartItems = JSON.parse(saved); }
+  } catch(e) {}
+}
+
+function renderProducts(catIdx) {
+  var cat = allMenuData[catIdx];
+  if (!cat) return;
+  currentCategory = cat.name;
+  var el = document.getElementById('productGrid');
+  var titleEl = document.getElementById('categoryTitle');
+  var breadcrumbEl = document.getElementById('breadcrumb');
+  var displayName = cat.name.replace(/ \(.*\)/, '');
+  titleEl.textContent = displayName + ' (' + cat.count + ')';
+  breadcrumbEl.innerHTML = '<span>' + displayName + '</span>';
+  var html = '';
+  for (var i = 0; i < cat.items.length; i++) {
+    var item = cat.items[i];
+    html += '<div class="card" onclick="showItemDetail(' + catIdx + ',' + i + ')">' +
+      '<div class="card-img-wrap">' +
+        '<img src="' + item.image + '" alt="' + item.name + '" loading="lazy">' +
+        '<div class="veg-dot"><img src="https://knowwu.s3.us-east-2.amazonaws.com/staging/main/restaurant/veg.png" alt="Veg"></div>' +
+      '</div>' +
+      '<div class="card-body">' +
+        '<div class="card-name">' + item.name + '</div>' +
+        '<div class="card-price">' + item.price + '</div>' +
+        '<span id="btn-' + catIdx + '-' + i + '">' + renderCartBtn(catIdx, i) + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+  el.innerHTML = html;
+  updateNavActive(catIdx);
+}
+
+function showItemDetail(catIdx, idx) {
+  var cat = allMenuData[catIdx];
+  if (!cat) return;
+  var item = cat.items[idx];
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:360px;width:90%;overflow:hidden;animation:slideUp 0.25s;position:relative">' +
+    '<button onclick="this.closest(\'div[style]\').remove()" style="position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.5);color:#fff;font-size:18px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center"><i class="fa fa-times"></i></button>' +
+    '<img src="' + item.image + '" alt="' + item.name + '" style="width:100%;height:220px;object-fit:cover;display:block">' +
+    '<div style="padding:16px 20px 20px">' +
+      '<h3 style="font-size:18px;font-weight:700;color:#1a1b1f;margin:0 0 4px">' + item.name + '</h3>' +
+      '<div style="font-size:20px;font-weight:700;color:#1a3934;margin:8px 0 14px">' + item.price + '</div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button onclick="var p=this.closest(\'[style]\').querySelector(\'[id^=btn-]\');if(p){var a=p.id.split(\'-\');addToCart(parseInt(a[1]),parseInt(a[2]));this.closest(\'[style]\').remove()}" style="flex:1;padding:10px;border:none;border-radius:8px;background:linear-gradient(to right,#846241,#1a3934);color:#fff;font-size:14px;font-family:\'Poppins\',sans-serif;font-weight:600;cursor:pointer">Add to Cart</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  document.body.appendChild(overlay);
+  var style = document.createElement('style');
+  style.textContent = '@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}';
+  document.head.appendChild(style);
+}
+
+function updateNavActive(catIdx) {
+  var btns = document.querySelectorAll('.side-nav-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active');
+    if (parseInt(btns[i].dataset.index) === catIdx) {
+      btns[i].classList.add('active');
+    }
+  }
+}
+
+function renderSideNav() {
+  var el = document.getElementById('sideNav');
+  var html = '';
+  for (var i = 0; i < allMenuData.length; i++) {
+    var c = allMenuData[i];
+    var active = i === 0 ? ' active' : '';
+    html += '<div class="sub-views">' +
+      '<button class="side-nav-btn' + active + '" data-index="' + i + '">' +
+        '<img src="' + c.image + '" alt="' + c.name + '" loading="lazy"><br>' + c.name.replace(/ \(.*\)/, '') +
+      '</button>' +
+    '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function switchCategory(catIdx) {
+  renderProducts(catIdx);
+}
+
+function toggleSearch() {
+  var el = document.querySelector('.search-rapper');
+  var icon = document.getElementById('fabIcon');
+  el.classList.toggle('show');
+  if (el.classList.contains('show')) {
+    icon.className = 'bi bi-x';
+    icon.style.color = '#ff4444';
+    setTimeout(function() { el.querySelector('.search-input').focus(); }, 100);
+  } else {
+    icon.className = 'bi bi-search';
+    icon.style.color = '';
+  }
+}
+
+function goBack() {
+  if (document.referrer && document.referrer.includes(window.location.host)) {
+    window.history.back();
+  } else {
+    window.location.href = 'index.html';
+  }
+}
+
+function getQueryParam(name) {
+  var url = new URL(window.location.href);
+  return url.searchParams.get(name);
+}
+
+loadCart();
+document.addEventListener('DOMContentLoaded', function() {
+  renderSideNav();
+  var catParam = getQueryParam('cat');
+  var startIdx = 0;
+  if (catParam) {
+    for (var i = 0; i < allMenuData.length; i++) {
+      if (allMenuData[i].name === catParam) { startIdx = i; break; }
+    }
+  }
+  renderProducts(startIdx);
+  document.getElementById('sideNav').addEventListener('click', function(e) {
+    var btn = e.target.closest('.side-nav-btn');
+    if (btn) switchCategory(parseInt(btn.dataset.index));
+  });
+  var searchInput = document.querySelector('.search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      var q = this.value.toLowerCase().trim();
+      var cards = document.querySelectorAll('.card');
+      for (var i = 0; i < cards.length; i++) {
+        var name = cards[i].querySelector('.card-name');
+        if (name) {
+          cards[i].style.display = name.textContent.toLowerCase().includes(q) ? '' : 'none';
+        }
+      }
+    });
+  }
+});
+</script>
+</body>
+</html>

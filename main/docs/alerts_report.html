@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Alerts Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .header .stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .stat-box {
+            background: rgba(255,255,255,0.2);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        .stat-box .number {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
+        .stat-box .label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 2rem;
+        }
+        .section {
+            margin-bottom: 3rem;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .alert-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .alert-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .alert-type {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        .type-alert {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .type-confirm {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .type-prompt {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .file-name {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+        .line-number {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .message {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            color: #1f2937;
+            margin-top: 0.5rem;
+            border: 1px solid #e5e7eb;
+        }
+        .context {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+        .summary {
+            background: #f0f9ff;
+            border: 2px solid #0ea5e9;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .summary h2 {
+            color: #0c4a6e;
+            margin-bottom: 1rem;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .summary-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .summary-item .number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #0ea5e9;
+        }
+        .summary-item .label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 JavaScript Alerts Report</h1>
+            <p>Complete list of all basic JavaScript dialogs in the codebase</p>
+            <div class="stats">
+                <div class="stat-box">
+                    <span class="number">31</span>
+                    <span class="label">Total Instances</span>
+                </div>
+                <div class="stat-box">
+                    <span class="number">25</span>
+                    <span class="label">alert() calls</span>
+                </div>
+                <div class="stat-box">
+                    <span class="number">10</span>
+                    <span class="label">confirm() calls</span>
+                </div>
+                <div class="stat-box">
+                    <span class="number">2</span>
+                    <span class="label">prompt() calls</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="summary">
+                <h2>📋 Summary</h2>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="number">26</div>
+                        <div class="label">script.js (Main Dashboard)</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="number">6</div>
+                        <div class="label">superadmin/dashboard.php</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="number">5</div>
+                        <div class="label">chef_dashboard.php</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- script.js Alerts -->
+            <div class="section">
+                <div class="section-title">
+                    <span>📄 script.js</span>
+                    <span style="font-size: 1rem; color: #6b7280;">(Main Dashboard - 26 instances)</span>
+                </div>
+
+                <h3 style="color: #dc2626; margin: 1.5rem 0 1rem 0;">alert() - 15 instances</h3>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 2795</div>
+                    <div class="message">'No order items found'</div>
+                    <div class="context">When trying to view order details but no items are found</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 2891</div>
+                    <div class="message">'Order not found'</div>
+                    <div class="context">When order ID doesn't exist in database</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 2895</div>
+                    <div class="message">'Failed to load order details'</div>
+                    <div class="context">Error loading order details from API</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 3863</div>
+                    <div class="message">'No orders to export.'</div>
+                    <div class="context">When trying to export orders but no data available</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 3895</div>
+                    <div class="message">'No customers to export.'</div>
+                    <div class="context">When trying to export customers but no data available</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 3913</div>
+                    <div class="message">'No staff to export.'</div>
+                    <div class="context">When trying to export staff but no data available</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 3931</div>
+                    <div class="message">'No payments to export.'</div>
+                    <div class="context">When trying to export payments but no data available</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4119</div>
+                    <div class="message">'Unable to load KOT'</div>
+                    <div class="context">When KOT data fails to load from API</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4121</div>
+                    <div class="message">'KOT not found'</div>
+                    <div class="context">When KOT ID doesn't exist</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4153</div>
+                    <div class="message">'Popup blocked. Allow popups to print.'</div>
+                    <div class="context">When browser blocks print popup window</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4158</div>
+                    <div class="message">'Failed to print KOT'</div>
+                    <div class="context">Error during KOT printing process</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4185</div>
+                    <div class="message">'Failed to update order status'</div>
+                    <div class="context">Error updating order status via API</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4189</div>
+                    <div class="message">'Error updating order status'</div>
+                    <div class="context">General error when updating order status</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4962</div>
+                    <div class="message">'Failed to load reports: ' + error.message</div>
+                    <div class="context">Error loading sales reports data</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4969</div>
+                    <div class="message">'No data to export. Please load reports first.'</div>
+                    <div class="context">When trying to export reports without loading data first</div>
+                </div>
+
+                <h3 style="color: #d97706; margin: 1.5rem 0 1rem 0;">confirm() - 10 instances</h3>
+
+                <div class="alert-item">
+                    <span class="alert-type type-confirm">confirm()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 1460</div>
+                    <div class="message">`Are you sure you want to delete "${areaName}"? This action cannot be undone.`</div>
+                    <div class="context">Delete confirmation for area</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-confirm">confirm()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 1920</div>
+                    <div class="message">`Are you sure you want to delete table "${tableNumber}"? This action cannot be undone.`</div>
+                    <div class="context">Delete confirmation for table</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-confirm">confirm()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 2294</div>
+                    <div class="message">`Are you sure you want to delete reservation for "${customerName}"? This action cannot be undone.`</div>
+                    <div class="context">Delete confirmation for reservation</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-confirm">confirm()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 2509</div>
+                    <div class="message">`Are you sure you want to delete customer "${customerName}"? This action cannot be undone.`</div>
+                    <div class="context">Delete confirmation for customer</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-confirm">confirm()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 3161</div>
+                    <div class="message">`Are you sure you want to delete staff member "${memberName}"? This action cannot be undone.`</div>
+                    <div class="context">Delete confirmation for staff member</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-confirm">confirm()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 3669</div>
+                    <div class="message">"Are you sure you want to logout?"</div>
+                    <div class="context">Logout confirmation</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-confirm">confirm()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4086</div>
+                    <div class="message">"Are you sure you want to cancel this KOT?"</div>
+                    <div class="context">Cancel KOT confirmation</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-confirm">confirm()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 4164</div>
+                    <div class="message">"Are you sure you want to cancel this order?"</div>
+                    <div class="context">Cancel order confirmation</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-confirm">confirm()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 5096</div>
+                    <div class="message">'Are you sure you want to delete this banner?'</div>
+                    <div class="context">Delete banner confirmation in website theme settings</div>
+                </div>
+
+                <h3 style="color: #2563eb; margin: 1.5rem 0 1rem 0;">prompt() - 2 instances</h3>
+
+                <div class="alert-item">
+                    <span class="alert-type type-prompt">prompt()</span>
+                    <div class="file-name">script.js</div>
+                    <div class="line-number">Line 2385</div>
+                    <div class="message">"Assign Table:\n\n" + tableOptions + "\n\nEnter table number:"</div>
+                    <div class="context">Prompt to assign table to reservation</div>
+                </div>
+            </div>
+
+            <!-- superadmin/dashboard.php Alerts -->
+            <div class="section">
+                <div class="section-title">
+                    <span>📄 superadmin/dashboard.php</span>
+                    <span style="font-size: 1rem; color: #6b7280;">(6 instances)</span>
+                </div>
+
+                <h3 style="color: #dc2626; margin: 1.5rem 0 1rem 0;">alert() - 5 instances</h3>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">superadmin/dashboard.php</div>
+                    <div class="line-number">Line 497</div>
+                    <div class="message">'All fields are required'</div>
+                    <div class="context">Form validation when creating new restaurant</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">superadmin/dashboard.php</div>
+                    <div class="line-number">Line 506</div>
+                    <div class="message">'Created. Restaurant ID: '+data.restaurant_id</div>
+                    <div class="context">Success message after creating restaurant</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">superadmin/dashboard.php</div>
+                    <div class="line-number">Line 507</div>
+                    <div class="message">data.message||'Error'</div>
+                    <div class="context">Error message when restaurant creation fails</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">superadmin/dashboard.php</div>
+                    <div class="line-number">Line 515</div>
+                    <div class="message">data.message||'Error'</div>
+                    <div class="context">Error message when toggling restaurant status fails</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">superadmin/dashboard.php</div>
+                    <div class="line-number">Line 523</div>
+                    <div class="message">data.message||'Error'</div>
+                    <div class="context">Error message when resetting password fails</div>
+                </div>
+
+                <h3 style="color: #2563eb; margin: 1.5rem 0 1rem 0;">prompt() - 1 instance</h3>
+
+                <div class="alert-item">
+                    <span class="alert-type type-prompt">prompt()</span>
+                    <div class="file-name">superadmin/dashboard.php</div>
+                    <div class="line-number">Line 519</div>
+                    <div class="message">'New password for user id '+id+':'</div>
+                    <div class="context">Prompt to enter new password for user</div>
+                </div>
+            </div>
+
+            <!-- chef_dashboard.php Alerts -->
+            <div class="section">
+                <div class="section-title">
+                    <span>📄 chef_dashboard.php</span>
+                    <span style="font-size: 1rem; color: #6b7280;">(5 instances)</span>
+                </div>
+
+                <h3 style="color: #dc2626; margin: 1.5rem 0 1rem 0;">alert() - 5 instances</h3>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">chef_dashboard.php</div>
+                    <div class="line-number">Line 384</div>
+                    <div class="message">'Error: ' + (result.message || 'Failed to update status')</div>
+                    <div class="context">Error when updating KOT order status</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">chef_dashboard.php</div>
+                    <div class="line-number">Line 388</div>
+                    <div class="message">'Error updating status'</div>
+                    <div class="context">General error when updating order status</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">chef_dashboard.php</div>
+                    <div class="line-number">Line 403</div>
+                    <div class="message">'Order completed! Order moved to main Orders tab.'</div>
+                    <div class="context">Success message when order is completed</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">chef_dashboard.php</div>
+                    <div class="line-number">Line 406</div>
+                    <div class="message">'Error: ' + (result.message || 'Failed to complete order')</div>
+                    <div class="context">Error when completing order</div>
+                </div>
+
+                <div class="alert-item">
+                    <span class="alert-type type-alert">alert()</span>
+                    <div class="file-name">chef_dashboard.php</div>
+                    <div class="line-number">Line 410</div>
+                    <div class="message">'Error completing order'</div>
+                    <div class="context">General error when completing order</div>
+                </div>
+            </div>
+
+            <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 1.5rem; margin-top: 2rem;">
+                <h3 style="color: #92400e; margin-bottom: 0.5rem;">💡 Recommendation</h3>
+                <p style="color: #78350f; line-height: 1.6;">
+                    Consider replacing all basic JavaScript alerts with a custom notification system for better UX. 
+                    The dashboard already has a <code>showNotification()</code> function that provides styled, non-blocking notifications.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

@@ -1,0 +1,8 @@
+meout(function() {
+      try {
+        var previewStyle = iframeDoc.createElement('style');
+        previewStyle.textContent = '\n' +
+          '/* Preview-only: zoom the entire receipt proportionally */\n' +
+          'body { zoom: 1.6; }\n' +
+          '@media print { body { zoom: 1; } }';
+       

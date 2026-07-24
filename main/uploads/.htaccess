@@ -1,0 +1,18 @@
+# Allow image access
+<IfModule mod_headers.c>
+    # Set proper MIME types for images
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
+        Header set Content-Type "image/jpeg"
+        Header set Cache-Control "public, max-age=31536000"
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+</IfModule>
+
+# Enable directory listing for images (optional, for testing)
+Options +Indexes
+
+# Prevent execution of PHP files in uploads directory (security - Apache 2.4+ compatible)
+<FilesMatch "\.php$">
+    Require all denied
+</FilesMatch>
+

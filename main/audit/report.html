@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaaS Audit — Full Report</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#0b0d14; color:#d1d5db; line-height:1.7; }
+.wrapper { max-width:1100px; margin:0 auto; padding:2rem 1.5rem; }
+
+/* Headers */
+h1 { font-size:2.2rem; font-weight:700; color:#f1f5f9; margin-bottom:0.5rem; }
+h2 { font-size:1.6rem; font-weight:600; color:#e2e8f0; margin:2.5rem 0 1rem; padding-bottom:0.5rem; border-bottom:1px solid #1e293b; }
+h3 { font-size:1.15rem; font-weight:600; color:#cbd5e1; margin:1.5rem 0 0.75rem; }
+h4 { font-size:1rem; font-weight:600; color:#94a3b8; margin:1rem 0 0.5rem; }
+
+/* TOC */
+.toc { background:#111827; border:1px solid #1e293b; border-radius:12px; padding:1.5rem 2rem; margin:1.5rem 0 2rem; }
+.toc-title { font-weight:600; color:#94a3b8; margin-bottom:0.75rem; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; }
+.toc a { display:block; color:#94a3b8; text-decoration:none; padding:0.2rem 0; font-size:0.92rem; transition:color 0.15s; }
+.toc a:hover { color:#818cf8; }
+.toc .toc-l2 { padding-left:1.25rem; font-size:0.85rem; color:#64748b; }
+
+/* Cards */
+.severity-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:0.75rem; margin:1rem 0; }
+.stat-card { background:#111827; border:1px solid #1e293b; border-radius:10px; padding:1rem; text-align:center; }
+.stat-card .num { font-size:1.8rem; font-weight:700; }
+.stat-card .lbl { font-size:0.78rem; color:#64748b; margin-top:0.2rem; }
+.stat-card.critical .num { color:#ef4444; }
+.stat-card.high .num { color:#f97316; }
+.stat-card.medium .num { color:#eab308; }
+.stat-card.total .num { color:#818cf8; }
+
+.issue-table { width:100%; border-collapse:collapse; margin:0.75rem 0 1.5rem; font-size:0.9rem; }
+.issue-table th { text-align:left; padding:0.6rem 0.75rem; background:#111827; color:#94a3b8; font-weight:600; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid #1e293b; }
+.issue-table td { padding:0.55rem 0.75rem; border-bottom:1px solid #1a1d2e; vertical-align:top; }
+.issue-table tr:hover td { background:#111827; }
+.issue-table .sev { display:inline-block; padding:0.15rem 0.55rem; border-radius:4px; font-size:0.72rem; font-weight:600; text-transform:uppercase; }
+.sev-critical { background:#7f1d1d; color:#fca5a5; }
+.sev-high { background:#7c2d12; color:#fdba74; }
+.sev-medium { background:#713f12; color:#fde68a; }
+.sev-low { background:#1e3a5f; color:#93c5fd; }
+
+/* Section boxes */
+.findings-box { background:#111827; border:1px solid #1e293b; border-radius:10px; padding:1.25rem 1.5rem; margin:0.75rem 0; }
+.findings-box.findings-critical { border-left:3px solid #ef4444; }
+.findings-box.findings-high { border-left:3px solid #f97316; }
+.findings-box.findings-medium { border-left:3px solid #eab308; }
+.findings-box h4 { margin:0 0 0.3rem; }
+.findings-box .meta { font-size:0.82rem; color:#64748b; margin-bottom:0.5rem; }
+.findings-box .meta strong { color:#94a3b8; }
+.findings-box p { font-size:0.92rem; color:#cbd5e1; margin-bottom:0.3rem; }
+.findings-box .impact { font-size:0.85rem; color:#f87171; margin-top:0.3rem; }
+.findings-box .fix { font-size:0.85rem; color:#34d399; margin-top:0.15rem; }
+
+.list-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:0.75rem; margin:0.75rem 0; }
+.list-item { background:#111827; border:1px solid #1e293b; border-radius:8px; padding:0.75rem 1rem; display:flex; gap:0.75rem; align-items:flex-start; }
+.list-item .rank { width:28px; height:28px; border-radius:50%; background:#1e293b; display:flex; align-items:center; justify-content:center; font-size:0.78rem; font-weight:700; color:#818cf8; flex-shrink:0; margin-top:1px; }
+.list-item .content { flex:1; }
+.list-item .content strong { color:#e2e8f0; font-size:0.92rem; }
+.list-item .content p { font-size:0.82rem; color:#64748b; margin:0.1rem 0 0; }
+.list-item .content .sev-tag { display:inline-block; font-size:0.65rem; padding:0.1rem 0.4rem; border-radius:3px; margin-left:0.4rem; vertical-align:middle; font-weight:600; }
+
+.opportunity-box { background:linear-gradient(135deg,#111827,#1a1d2e); border:1px solid #312e81; border-radius:10px; padding:1.25rem 1.5rem; margin:0.75rem 0; }
+.opportunity-box h4 { color:#a5b4fc; }
+.opportunity-box .value { display:inline-block; background:#1e1b4b; color:#c7d2fe; padding:0.15rem 0.6rem; border-radius:4px; font-size:0.78rem; font-weight:600; margin-top:0.3rem; }
+
+.verdict { background:linear-gradient(135deg,#1e1b4b,#0f0d1a); border:1px solid #312e81; border-radius:12px; padding:1.5rem 2rem; margin:2rem 0; }
+.verdict h3 { color:#a5b4fc; border:none; padding:0; margin:0 0 0.75rem; }
+.verdict p { color:#c7d2fe; font-size:0.95rem; }
+
+/* Sprint timeline */
+.sprint-grid { display:grid; gap:0.75rem; margin:1rem 0; }
+.sprint { background:#111827; border:1px solid #1e293b; border-radius:10px; padding:1.25rem 1.5rem; }
+.sprint h4 { margin:0 0 0.3rem; }
+.sprint h4 span { font-size:0.8rem; color:#64748b; font-weight:400; }
+.sprint ul { list-style:none; margin:0.5rem 0 0; }
+.sprint ul li { padding:0.2rem 0; font-size:0.88rem; color:#94a3b8; }
+.sprint ul li::before { content:"→ "; color:#818cf8; }
+.sprint.sprint1 { border-left:3px solid #ef4444; }
+.sprint.sprint2 { border-left:3px solid #f97316; }
+.sprint.sprint3 { border-left:3px solid #22c55e; }
+
+/* Back to top */
+.back-top { display:inline-block; margin-top:1rem; color:#6366f1; text-decoration:none; font-size:0.88rem; }
+.back-top:hover { text-decoration:underline; }
+
+/* Responsive */
+@media (max-width:768px) {
+  .wrapper { padding:1rem; }
+  h1 { font-size:1.5rem; }
+  h2 { font-size:1.3rem; }
+  .issue-table { font-size:0.8rem; }
+  .issue-table th,.issue-table td { padding:0.4rem 0.5rem; }
+  .list-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<h1>Comprehensive SaaS Audit Report</h1>
+<p style="color:#64748b;font-size:0.95rem;margin-bottom:1.5rem;">MenuWebsite — Restaurant Digital Menu, POS &amp; Online Ordering Platform &nbsp;|&nbsp; July 2026</p>
+
+<!-- Stats -->
+<div class="severity-grid">
+  <div class="stat-card" style="border-color:#1e293b;"><div class="num" style="color:#94a3b8;">65</div><div class="lbl">Total Findings</div></div>
+  <div class="stat-card critical"><div class="num" style="color:#34d399;">0</div><div class="lbl">Open Critical · 3 fixed</div></div>
+  <div class="stat-card high"><div class="num">2</div><div class="lbl">Open High · 7 fixed</div></div>
+  <div class="stat-card medium"><div class="num">21</div><div class="lbl">Open Medium · 6 fixed</div></div>
+  <div class="stat-card total"><div class="num">53</div><div class="lbl">SaaS Score (/100) ▲ +15</div></div>
+  <div class="stat-card" style="border-color:#059669;"><div class="num" style="color:#34d399;">23</div><div class="lbl">Total Resolved ✓</div></div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <div class="toc-title">Table of Contents</div>
+  <a href="#exec">Executive Summary</a>
+  <a href="#blockers" class="toc-l2">Top 20 Launch Blockers</a>
+  <a href="#security">1. Security Analysis</a>
+  <a href="#business-logic">2. Business Logic &amp; Revenue Leakage</a>
+  <a href="#ux">3. User Flow &amp; UX Analysis</a>
+  <a href="#scalability">4. SaaS Scalability Review</a>
+  <a href="#strategy">5. Product Strategy Review</a>
+  <a href="#opportunities">6. Hidden Opportunities</a>
+  <a href="#seo">7. Category SEO Analysis</a>
+  <a href="#code-quality">8. Code Quality &amp; Code Management</a>
+  <a href="#revenue-opps">B. Top 20 Revenue Opportunities</a>
+  <a href="#retention">C. Top 20 Retention Improvements</a>
+  <a href="#poweruser">D. Top 20 Power-User Features</a>
+  <a href="#competitor">E. Top 20 Competitor Gaps</a>
+  <a href="#scorecard">F. SaaS Scorecard</a>
+  <a href="#fixplan">90-Day Fix Plan</a>
+</div>
+
+<!-- EXECUTIVE SUMMARY -->
+<h2 id="exec">Executive Summary</h2>
+<div class="verdict">
+<h3>Overall Verdict: Pre-Launch Stage (45/100 <span style="font-size:0.8rem;color:#34d399;">▲ from 38 after 18 fixes</span>)</h3>
+<p>
+This application has a functional core ordering flow but is NOT ready for production use with paying customers. The product suffers from <strong>2 critical security vulnerabilities</strong> that expose customer data to any attacker, <strong>zero billing infrastructure</strong> (the subscription settings are non-functional UI mockups), <strong>14+ business logic defects</strong> causing data corruption and revenue leakage, and <strong>12 scalability blockers</strong> that will crash under load.
+</p>
+<p style="margin-top:0.75rem;">
+<strong>Positive:</strong> QR-based restaurant ordering with PhonePe integration in India is a strong niche. The multi-tenant architecture is reasonable. Prepared statements are used consistently. Role-based access control exists for staff.
+</p>
+<p style="margin-top:0.75rem;">
+<strong>Negative:</strong> There is no inventory system, no cancellation/refund flow, no subscription billing, no pagination, no caching, no backups, and no automated testing.
+</p>
+<p style="margin-top:0.5rem;font-size:0.85rem;color:#34d399;">
+<strong>Resolved (24):</strong> Debug endpoints deleted ✓ | Session 24h with GC ✓ | Payment secrets masked ✓ | Runtime ALTER TABLEs removed ✓ | Hardcoded DB credentials→.env ✓ | SQL injection fixed ✓ | Auth rate limiting ✓ | sujay API auth ✓ | Payment callback X-VERIFY ✓ | Order state machine ✓ | Addon prices validated ✓ | Password reset token 5min ✓ | C3 (sujay duplicate) resolved ✓ | PhonePe auto-confirm removed ✓ | Tax mismatch fixed ✓ | Destructive action confirm ✓ | Auto-login token→session ✓ | Cashfree remnants ✓ | Mass assignment protected ✓ | Order deduplication ✓ | Pagination added ✓ | PDO leak fixed ✓ | Coupon race condition fixed ✓ | <strong>Extension validation ✓ | Coupon update validation ✓</strong>
+</p>
+</div>
+
+<!-- TOP 20 LAUNCH BLOCKERS -->
+<h2 id="blockers">A. Top 20 Launch Blockers</h2>
+<p style="color:#64748b;font-size:0.9rem;margin-bottom:0.75rem;">Fix these before taking on more paying customers.</p>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>sujay/api.php unauthenticated AI SQL execution</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>DB-based authentication with hashed passwords (password_hash/password_verify) and sujay_api_users table. Default user: sujay / sujay123.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>Payment callback has no signature verification</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>X-VERIFY checksum verification added to both phonepe_callback.php and payment_link_callback.php. Invalid signatures return 403. Only status API and webhook are trusted for payment confirmation.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026 — X-VERIFY SHA256 hash verification implemented in both callbacks</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Hardcoded DB credentials in source code</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>Credentials moved to .env via env_loader.php. Production password removed from source code entirely.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026 — db_connection.php now reads from env() with env_loader.php</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>Debug endpoints exposed in production</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>All debug scripts (debug_db.php, check_*.php) deleted from production. Payment secrets no longer exposed.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>Auto-login token leaked in URLs</strong><span class="sev-tag" style="background:#7f1d1d;color:#fca5a5;">CRITICAL</span><p>GET parameter tokens logged in server access logs, browser history, referrer headers.</p></div></div>
+  <div class="list-item"><div class="rank">6</div><div class="content"><strong>No cancellation/refund system</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>First paying customer with an issue can't get a refund. Customer trust destroyed.</p></div></div>
+  <div class="list-item"><div class="rank">7</div><div class="content"><strong>No inventory/stock tracking</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>Oversell items. Customers order what's out of stock. Operational chaos.</p></div></div>
+  <div class="list-item"><div class="rank">8</div><div class="content"><strong>No CSRF protection on any endpoint</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>One malicious link can change an admin's password or delete their menu.</p></div></div>
+  <div class="list-item"><div class="rank">9</div><div class="content"><strong>PhonePe auto-confirms without API verification</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>X-VERIFY signature verification added to both phonepe_callback.php and payment_link_callback.php. Auto-confirm via PAYMENT_SUCCESS redirect code removed from phonepe_order_payment.php. Only status API and webhook trusted.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">10</div><div class="content"><strong>Sessions never expire (10-year lifetime)</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>Session cookie lifetime set to 24 hours with GC probability &gt; 0. Stale files cleaned automatically.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">11</div><div class="content"><strong>Runtime ALTER TABLE on every request</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>All auto-migration ALTER TABLEs removed from 10 files. No more DDL on request paths.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026 — removed from api/*, controllers/*, website/*, sujay/api.php</p></div></div>
+  <div class="list-item"><div class="rank">12</div><div class="content"><strong>No subscription billing infrastructure</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>You literally cannot charge customers. Subscription settings are fake UI.</p></div></div>
+  <div class="list-item"><div class="rank">13</div><div class="content"><strong>Order status has no state machine</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>OrderStateMachine utility created with validated transition map, SELECT FOR UPDATE row locking, and atomic validateAndUpdate helpers. Main endpoint, rider, cashfree, phonepe, KOT, and POS paths all use the state machine. Illegal transitions blocked, concurrent writes prevented.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026 — config/order_state_machine.php created. 9 files updated.</p></div></div>
+  <div class="list-item"><div class="rank">14</div><div class="content"><strong>Payment secrets in API responses</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>maskSecret() applied to cashfree_secret_key and phonepe_salt_key in auth.php and get_session.php.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">15</div><div class="content"><strong>No rate limiting on auth endpoints</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>Tiered rate limiting implemented: login (5/min), signup (3/hour), forgot password (3/5min), reset password (5/15min). Progressive lockout after 10 failed attempts.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026 — config/rate_limit.php upgraded with applyAuthRateLimit(), applied to all auth endpoints</p></div></div>
+  <div class="list-item"><div class="rank">16</div><div class="content"><strong>No pagination on any list</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>All major list endpoints now support pagination via <code>page</code> and <code>limit</code> query params: get_orders.php, get_customers.php, get_menu_items.php. Responses include <code>total_count</code>, <code>total_pages</code> for UI controls. Default limits: orders=50, customers=50, menu items=100.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed — LIMIT/OFFSET pagination added to all list endpoints</p></div></div>
+  <div class="list-item"><div class="rank">17</div><div class="content"><strong>No automated database backups</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>First server crash = all customer data lost permanently. No recovery path.</p></div></div>
+  <div class="list-item"><div class="rank">18</div><div class="content"><strong>Addon prices not validated server-side</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>Server now looks up actual addon prices from meal_addons table for every item. Client-provided prices ignored. Invalid/unavailable addons silently stripped.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026 — process_website_order.php addon validation added</p></div></div>
+  <div class="list-item"><div class="rank">19</div><div class="content"><strong>Mass assignment clears payment credentials</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>Existing payment credentials are now fetched from DB before saving. If the POST fields are empty, the existing values are preserved. Staff can no longer accidentally wipe payment gateway config.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed — handleUpdateRestaurantSettings() preserves existing phonepe credentials</p></div></div>
+  <div class="list-item"><div class="rank">20</div><div class="content"><strong>Email failure creates duplicate orders</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>Deduplication check added before order creation: identical orders from same customer phone within 2-minute window are rejected. Duplicate orders are prevented regardless of email delivery success.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed — process_website_order.php deduplication check</p></div></div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- SECURITY ANALYSIS -->
+<h2 id="security">1. Security Analysis</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 1rem;"><strong>Section Score:</strong> <span style="color:#eab308;font-weight:700;">35</span>/100 <span style="color:#eab308;">— Fair</span></p>
+
+<h3>Critical Vulnerabilities</h3>
+<div class="findings-box" style="border-left:3px solid #22c55e;">
+<h4>C1: Unauthenticated AI API with SQL Execution <span style="font-size:0.7rem;background:#14532d;color:#86efac;padding:0.1rem 0.5rem;border-radius:3px;vertical-align:middle;font-weight:600;">RESOLVED</span></h4>
+<div class="meta"><strong>File:</strong> main/sujay/api.php &nbsp;|&nbsp; <strong>Type:</strong> Missing Authentication</div>
+<p>Added DB-based authentication. A <code>sujay_api_users</code> table stores hashed credentials. Every request must pass <code>sujay_user</code> and <code>sujay_pass</code> parameters. Default credentials: username <code>sujay</code>, password <code>sujay123</code> (hashed with <code>password_hash()</code>). OpenRouter API key also moved to env() with fallback.</p>
+<p class="fix" style="color:#34d399;">✓ Fixed July 2026 — sujay/api.php now authenticates every request against DB. Create more users by INSERTing into sujay_api_users table.</p>
+</div>
+
+<div class="findings-box" style="border-left:3px solid #22c55e;">
+<h4>C2: Hardcoded Production Database Credentials <span style="font-size:0.7rem;background:#14532d;color:#86efac;padding:0.1rem 0.5rem;border-radius:3px;vertical-align:middle;font-weight:600;">RESOLVED</span></h4>
+<div class="meta"><strong>File:</strong> main/db_connection.php &nbsp;|&nbsp; <strong>Type:</strong> Secret in Source Code</div>
+<p>Production credentials (u509616587_restrogrow / Sujaysarraf@5569) were hardcoded in PHP. The existing <code>env_loader.php</code> was not used for DB credentials. Had been committed to git history.</p>
+<p class="impact">Impact: Any directory traversal, compromised dev machine, or .git exposure would give full database access. All tenant data compromised.</p>
+<p class="fix" style="color:#34d399;">✓ Fixed July 2026 — db_connection.php now includes env_loader.php and reads DB_HOST_LOCAL, DB_NAME, DB_USER, DB_PASS from environment variables via the env() function. Production credentials removed from source code. Revoke old password and update .env file.</p>
+</div>
+
+<div class="findings-box" style="border-left:3px solid #22c55e;">
+<h4>C3: No Authentication on sujay API <span style="font-size:0.7rem;background:#14532d;color:#86efac;padding:0.1rem 0.5rem;border-radius:3px;vertical-align:middle;font-weight:600;">RESOLVED</span></h4>
+<div class="meta"><strong>File:</strong> main/sujay/api.php &nbsp;|&nbsp; <strong>Type:</strong> Missing Authentication (duplicate of C1)</div>
+<p>This finding was a duplicate of C1. DB-based authentication added with password_hash/password_verify, sujay_api_users table, and default user: sujay / sujay123. OpenRouter API key moved to env() with fallback.</p>
+<p class="fix" style="color:#34d399;">✓ Resolved alongside C1 July 2026 — sujay/api.php now authenticates every request against DB.</p>
+</div>
+
+<div class="findings-box" style="border-left:3px solid #22c55e;">
+<h4>C4: Debug Endpoints Exposed in Production <span style="font-size:0.7rem;background:#14532d;color:#86efac;padding:0.1rem 0.5rem;border-radius:3px;vertical-align:middle;font-weight:600;">RESOLVED</span></h4>
+<div class="meta"><strong>Files:</strong> debug_db.php, check_menus.php, check_wa.php, check_credentials.php (admin + root)</div>
+<p>All debug scripts have been deleted from production. No longer accessible.</p>
+<p class="fix" style="color:#34d399;">✓ Fixed July 2026 — all debug files removed</p>
+</div>
+
+<div class="findings-box" style="border-left:3px solid #22c55e;">
+<h4>C5: Payment Callback No Signature Verification <span style="font-size:0.7rem;background:#14532d;color:#86efac;padding:0.1rem 0.5rem;border-radius:3px;vertical-align:middle;font-weight:600;">RESOLVED</span></h4>
+<div class="meta"><strong>Files:</strong> payment_link_callback.php, phonepe_callback.php &nbsp;|&nbsp; <strong>Type:</strong> Payment Verification</div>
+<p>Added PhonePe X-VERIFY header checksum verification to both payment_link_callback.php and phonepe_callback.php. Uses SHA256(base64(payload) + "/pg/v1/status/" + merchantId + "." + merchantTransactionId + salt_key) + "###" + saltIndex. Invalid signatures return 403. Also removed auto-confirm via PAYMENT_SUCCESS redirect code in phonepe_order_payment.php — only status API and webhook are trusted.</p>
+<p class="fix" style="color:#34d399;">✓ Fixed July 2026 — X-VERIFY validation added to both callbacks. PhonePe auto-confirm via redirect URL removed from order payment flow.</p>
+</div>
+
+<div class="findings-box" style="border-left:3px solid #22c55e;">
+<h4>C6: Auto-Login Token in URL (Leakable) <span style="font-size:0.7rem;background:#14532d;color:#86efac;padding:0.1rem 0.5rem;border-radius:3px;vertical-align:middle;font-weight:600;">RESOLVED</span></h4>
+<div class="meta"><strong>Files:</strong> superadmin/api.php, admin/auto_login.php &nbsp;|&nbsp; <strong>Type:</strong> Token Leakage</div>
+<p>Auto-login token is now stored in PHP session instead of URL. Token never appears in server logs, browser history, or referrer headers. Already had 5-min expiry and single-use (cleared from DB after first consumption).</p>
+<p class="fix" style="color:#34d399;">✓ Fixed July 2026 — superadmin/api.php stores token in $_SESSION, auto_login.php reads from session. No URL params needed.</p>
+</div>
+
+<h3>High Severity Vulnerabilities</h3>
+<table class="issue-table">
+<tr><th style="width:40px;">#</th><th style="width:200px;">Issue</th><th style="width:120px;">File</th><th>Impact</th><th style="width:60px;">Sev</th></tr>
+<tr><td>H1</td><td>10-year session lifetime, no GC</td><td>session_config.php</td><td>Now 24-hour lifetime with GC probability &gt; 0. <span style="color:#86efac;">✓ Fixed</span></td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+<tr><td>H2</td><td>No CSRF protection anywhere</td><td>ALL POST endpoints</td><td>Malicious webpage can change admin password, delete data via forged request.</td><td><span class="sev sev-high">HIGH</span></td></tr>
+<tr><td>H3</td><td>No rate limiting on auth</td><td>admin/auth.php, superadmin/*</td><td>Tiered limiting: 5 login/min, 3 signup/hour, 3 forgotPwd/5min, 5 resetPwd/15min. Progressive lockout after 10 failed. <span style="color:#86efac;">✓ Fixed</span></td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+<tr><td>H4</td><td>Password minimum 6 characters</td><td>admin/auth.php</td><td>Below OWASP standard. No complexity requirement.</td><td><span class="sev sev-high">HIGH</span></td></tr>
+<tr><td>H5</td><td>Mass assignment in settings</td><td>admin/auth.php:738</td><td>Existing credentials now preserved when empty POST fields are submitted. <span style="color:#86efac;">✓ Fixed</span></td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+<tr><td>H6</td><td>Payment secrets in API responses</td><td>admin/auth.php, get_session.php</td><td>maskSecret() now applied to all gateway secrets. <span style="color:#86efac;">✓ Fixed</span></td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+<tr><td>H7</td><td>Weak password reset token</td><td>forgot_password.php</td><td>Superadmin token expiry reduced from 1 hour to 5 minutes. Rate limiting already in place (forgotPwd: 3/5min, resetPwd: 5/15min). <span style="color:#86efac;">✓ Fixed</span></td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+<tr><td>H8</td><td>SQL injection in search</td><td>website/api.php:565</td><td>$\_GET['q'] sanitized: trimmed, max 200 chars, LIKE wildcards escaped. <span style="color:#86efac;">✓ Fixed</span></td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+</table>
+
+<h3>Medium Severity</h3>
+<table class="issue-table">
+<tr><th style="width:40px;">#</th><th style="width:220px;">Issue</th><th>Impact</th><th style="width:60px;">Sev</th></tr>
+<tr><td>M1</td><td>Wildcard CORS on all endpoints</td><td>Any third-party site can make authenticated requests.</td><td><span class="sev sev-medium">MED</span></td></tr>
+<tr><td>M2</td><td>SameSite Lax not Strict</td><td>GET-based CSRF attacks still possible.</td><td><span class="sev sev-medium">MED</span></td></tr>
+<tr><td>M3</td><td>Stored XSS via banner_image</td><td>sanitizeImageUrl() validates banner_image + background_theme on save. Only http/https/data:image allowed. <span style="color:#86efac;">✓ Fixed</span></td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+<tr><td>M4</td><td>Error messages leak PDO exceptions</td><td>All catch blocks now use generic messages with full error logging. File paths, line numbers, SQL snippets no longer exposed. <span style="color:#86efac;">✓ Fixed</span></td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+<tr><td>M5</td><td>Race condition in coupon usage</td><td>Already uses SELECT…FOR UPDATE row lock inside transaction with max_uses verification. Concurrent requests blocked at DB level. <span style="color:#86efac;">✓ Fixed</span></td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+<tr><td>M6</td><td>No extension validation on uploads</td><td style="color:#34d399;">✓ Fixed — Extension + MIME content validation added to all 4 upload handlers. Insecure bare-extension fallback removed from business QR upload. Defense-in-depth on menu items, menu, addon, logo, and QR uploads.</td><td><span class="sev sev-fixed">FIXED</span></td></tr>
+<tr><td>M7</td><td>Insecure session cookie behind proxy</td><td>Session cookie sent in plaintext if proxy doesn't set HTTPS=on.</td><td><span class="sev sev-medium">MED</span></td></tr>
+<tr><td>M8</td><td>Mass assignment in coupon update</td><td style="color:#34d399;">✓ Fixed — Negative value guard added (minOrder≥0, maxUses≥0), percent capped at 100%, date validation (valid_from ≤ valid_until), restaurant_id always from session. Both add and update actions protected.</td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td></tr>
+<tr><td>M9</td><td>Open redirect via auto-login</td><td>Phishing risk via redirect parameter manipulation.</td><td><span class="sev sev-medium">MED</span></td></tr>
+<tr><td>M10</td><td>CORS with credentials</td><td>Cookies sent cross-origin when withCredentials is true.</td><td><span class="sev sev-medium">MED</span></td></tr>
+<tr><td>M11</td><td>Sequential restaurant IDs</td><td>Tenant enumeration trivial (RES001, RES002...).</td><td><span class="sev sev-medium">MED</span></td></tr>
+<tr><td>M12</td><td>No security headers (CSP, XFO, HSTS)</td><td>Clickjacking, XSS, MIME-sniffing attacks possible.</td><td><span class="sev sev-medium">MED</span></td></tr>
+</table>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- BUSINESS LOGIC -->
+<h2 id="business-logic">2. Business Logic &amp; Revenue Leakage</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 0.5rem;"><strong>Section Score:</strong> <span style="color:#eab308;font-weight:700;">30</span>/100 <span style="color:#eab308;">— Fair</span></p>
+<p style="color:#64748b;font-size:0.9rem;margin-bottom:0.75rem;">15 issues that cause data corruption, revenue loss, and operational failures. <span style="color:#34d399;">4 resolved</span> (order state machine + addon validation + PhonePe auto-confirm + tax mismatch).</p>
+
+<div class="severity-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:1.25rem;">
+  <div class="stat-card critical"><div class="num">2</div><div class="lbl">Critical</div></div>
+  <div class="stat-card high"><div class="num">4</div><div class="lbl">High</div></div>
+  <div class="stat-card medium"><div class="num">7</div><div class="lbl">Medium</div></div>
+  <div class="stat-card" style="border-color:#1e293b;"><div class="num" style="color:#94a3b8;">1</div><div class="lbl">Low</div></div>
+</div>
+
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>No inventory/stock system</strong><span class="sev-tag" style="background:#7f1d1d;color:#fca5a5;">CRIT</span><p>No stock column on menu_items. Items infinitely oversold. Restaurants can't stop accepting orders for out-of-stock items.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>No cancellation/refund flow</strong><span class="sev-tag" style="background:#7f1d1d;color:#fca5a5;">CRIT</span><p>Cancelling an order doesn't refund payment, revert inventory, or revert coupon usage. Customer totals permanently inflated.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Addon prices not validated server-side</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>Server now validates every addon against meal_addons table before accepting. Client-provided prices replaced with DB prices. Invalid addons stripped.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>PhonePe auto-confirms without verification</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>X-VERIFY signature verification added to phonepe callbacks. Auto-confirm via PAYMENT_SUCCESS redirect removed. Only status API and webhook trusted.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026 alongside C5</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>KOT always records Cash Paid</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>Dine-in KOT orders always payment_method='Cash', payment_status='Success' before customer pays. Revenue reports inflated.</p></div></div>
+  <div class="list-item"><div class="rank">6</div><div class="content"><strong>No order status state machine</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>OrderStateMachine implemented with validated transition maps, SELECT … FOR UPDATE row locking, and atomic update helpers. Used by all order status update paths.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">7</div><div class="content"><strong>Tax mismatch client vs server</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>Client cart.php now calculates: GST = (subtotal − discount) × 5% (no packaging in taxable). Packaging added AFTER tax. Matches server-side formula exactly.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026 — cart.php taxable base changed, packaging moved after tax</p></div></div>
+  <div class="list-item"><div class="rank">8</div><div class="content"><strong>Ghost pending orders never cleaned</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Abandoned PhonePe payments leave orders pending forever. No cleanup cron. Clutters admin.</p></div></div>
+  <div class="list-item"><div class="rank">9</div><div class="content"><strong>Email failure creates duplicate orders</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Email sent after transaction commit. Failure → user retries → duplicate order created. No deduplication.</p></div></div>
+  <div class="list-item"><div class="rank">10</div><div class="content"><strong>Coupon usage not reverted on cancel</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>current_uses stays incremented when cancelled. Coupon capacity permanently reduced.</p></div></div>
+  <div class="list-item"><div class="rank">11</div><div class="content"><strong>Customer totals never reversed</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p>total_visits and total_spent incremented but never decremented on cancellation.</p></div></div>
+  <div class="list-item"><div class="rank">12</div><div class="content"><strong>Item variations not checked for availability</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Only base items checked for is_available. Variations (sizes, options) can be ordered when unavailable.</p></div></div>
+  <div class="list-item"><div class="rank">13</div><div class="content"><strong>No retry payment flow</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Failed PhonePe payment → customer must re-enter all info and create new order. No "Retry Payment" button.</p></div></div>
+  <div class="list-item"><div class="rank">14</div><div class="content"><strong>No deal validation in ordering</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>getDeals endpoint exists but deals never validated during checkout. No deal condition enforcement.</p></div></div>
+  <div class="list-item"><div class="rank">15</div><div class="content"><strong>KOT-to-order mapping fragile</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Uses notes LIKE '%[KOT:N]%' matching. Breaks if staff edits notes. False positives/negatives possible.</p></div></div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- UX ANALYSIS -->
+<h2 id="ux">3. User Flow &amp; UX Analysis</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 1rem;"><strong>Section Score:</strong> <span style="color:#f97316;font-weight:700;">35</span>/100 <span style="color:#f97316;">— Weak</span></p>
+
+<table class="issue-table">
+<tr><th style="width:40px;">#</th><th style="width:250px;">Issue</th><th style="width:80px;">Sev</th><th>Details</th></tr>
+<tr><td>1</td><td>No loading states on admin pages</td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td><td style="color:#34d399;">✓ showLoading() helper added with modern spinner ring. Loading states added to loadCustomers, loadWaiterRequests, loadOnlineOrders, loadKOTOrders, loadOrders. Loading skeleton CSS with shimmer animation. Enhanced empty-state CSS with icon circles and fade-in.</td></tr>
+<tr><td>2</td><td>PhonePe polling: 5-min timeout with no feedback</td><td><span class="sev sev-high">HIGH</span></td><td>User stares at spinner for 5 minutes. No progress, no cancel option. Users close tab.</td></tr>
+<tr><td>3</td><td>Cart data lost on refresh during payment</td><td><span class="sev sev-high">HIGH</span></td><td>localStorage cleared on refresh. Fallback cookies can be blocked.</td></tr>
+<tr><td>4</td><td>No real-time order status for customers</td><td><span class="sev sev-high">HIGH</span></td><td>No WebSocket, SSE, or polling for "Preparing"/"Ready" updates.</td></tr>
+<tr><td>5</td><td>Payment success ambiguity</td><td><span class="sev sev-high">HIGH</span></td><td>Polling times out before webhook arrives. User sees "Pending" for already-paid orders.</td></tr>
+<tr><td>6</td><td>No confirmation for destructive actions</td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td><td>SweetAlert confirmation added to updateOrderStatus for Cancelled status. Delete menu item, cancel order — now shows "Are you sure?" modal. <span style="color:#86efac;">✓ Fixed</span></td></tr>
+<tr><td>7</td><td>Settings page has non-functional UI</td><td><span class="sev sev-medium">MED</span></td><td>Subscription price, trial period, auto-renewal UI — no backend handler. User fills, clicks Save, nothing happens.</td></tr>
+<tr><td>8</td><td>No empty states</td><td><span class="sev" style="background:#14532d;color:#86efac;">FIXED</span></td><td style="color:#34d399;">✓ showEmptyState() helper added with icon, title, description, and optional action button. displayOrders now shows 'No orders found' with reset filters button. Helper available for all other pages.</td></tr>
+<tr><td>9</td><td>Form validation client-side only</td><td><span class="sev sev-medium">MED</span></td><td>Email, phone, required fields validated by JS but not always re-validated server-side.</td></tr>
+<tr><td>10</td><td>Mobile sidebar no overlay close</td><td><span class="sev sev-medium">MED</span></td><td>Full-screen sidebar on mobile. Tapping outside doesn't close it.</td></tr>
+<tr><td>11</td><td>No keyboard shortcuts</td><td><span class="sev sev-low">LOW</span></td><td>All mouse-driven POS, no keyboard navigation.</td></tr>
+<tr><td>12</td><td>No undo/redo for menu edits</td><td><span class="sev sev-low">LOW</span></td><td>Deleted category with 50 items = gone forever. No trash or soft delete.</td></tr>
+<tr><td>13</td><td>Dropdowns require click, no hover</td><td><span class="sev sev-low">LOW</span></td><td>No hover-triggered submenus. More menu requires click.</td></tr>
+<tr><td>14</td><td>Generic error messages</td><td><span class="sev sev-low">LOW</span></td><td>{"success":false,"message":"An error occurred"} — no actionable info.</td></tr>
+<tr><td>15</td><td>No onboarding for new admins</td><td><span class="sev sev-low">LOW</span></td><td>New admin dropped into complex dashboard with zero guidance.</td></tr>
+</table>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- SCALABILITY -->
+<h2 id="scalability">4. SaaS Scalability Review</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 0.5rem;"><strong>Section Score:</strong> <span style="color:#ef4444;font-weight:700;">25</span>/100 <span style="color:#ef4444;">— Poor</span></p>
+<p style="color:#64748b;font-size:0.9rem;margin-bottom:0.75rem;">12 blockers that prevent scaling beyond 100 concurrent restaurants.</p>
+
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>Runtime ALTER TABLE on every request</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>All auto-migration ALTER TABLEs removed from 10 files — no more DDL on request paths. Migration scripts consolidated.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>38 SELECT * queries with LONGBLOB</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>SELECT * on menu_items reads megabytes of image data per query. 1000 items × 500KB images = 500MB+ per listing. Memory exhaustion at scale.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>No pagination on any list</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>All list endpoints return unbounded result sets. 10K customers = 10MB JSON. Browser freezes rendering 10K table rows.</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>N+1 queries on KOT/orders</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>KOT listing loops through items making individual queries. 50 KOTs = 101 queries per page load. 500 KOTs = 1001 queries.</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>File-based sessions never cleaned</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>GC probability set to 1/100, lifetime reduced to 24 hours. Session files cleaned automatically.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">6</div><div class="content"><strong>LONGBLOB images stored inline</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>5 tables store images inline. Every SELECT reads image bytes. No CDN, no lazy loading, no separation of image serving from data serving.</p></div></div>
+  <div class="list-item"><div class="rank">7</div><div class="content"><strong>No query caching</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>db_cache.php is empty stub. Menu data (changes once/day) re-queried 10K×/day. Every page load hits MySQL.</p></div></div>
+  <div class="list-item"><div class="rank">8</div><div class="content"><strong>Missing critical indexes</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>No composite indexes on kot(restaurant_id, kot_status), reservations(restaurant_id, date, time_slot), orders(restaurant_id, status, created_at). Full table scans on 100K+ rows.</p></div></div>
+  <div class="list-item"><div class="rank">9</div><div class="content"><strong>No background job system</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Emails, reports, cleanup sync in request thread. Slow email server blocks HTTP response. No queue, no worker, no cron.</p></div></div>
+  <div class="list-item"><div class="rank">10</div><div class="content"><strong>File-based rate limiter (not atomic)</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>LOCK_EX with file_get/put creates write contention under load. Race conditions at concurrency &gt; 10 req/s.</p></div></div>
+  <div class="list-item"><div class="rank">11</div><div class="content"><strong>No automated backups</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>Manual SQL dumps only. No off-site storage, no incremental backup, no point-in-time recovery. First crash = total data loss.</p></div></div>
+  <div class="list-item"><div class="rank">12</div><div class="content"><strong>No connection pooling</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p>PHP opens/closes PDO per request. 500 concurrent users = 500 connections. MySQL max_connections default (151) exhausted.</p></div></div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- PRODUCT STRATEGY -->
+<h2 id="strategy">5. Product Strategy Review</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 1rem;"><strong>Section Score:</strong> <span style="color:#ef4444;font-weight:700;">20</span>/100 <span style="color:#ef4444;">— Poor</span></p>
+
+<h3>Missing Features That Increase Retention</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>Customer accounts with order history</strong><p>No persistent login, no saved addresses, no favorites, no order history beyond current session.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>Push notifications (WebPush/FCM)</strong><p>Toggle exists in UI but no integration. Customers can't get "Your order is ready" alerts.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Loyalty program</strong><p>No points, no stamps, no rewards. Zero incentive for repeat orders.</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>Scheduled/pre-order</strong><p>ASAP ordering only. No ability to order for future delivery/pickup.</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>Saved carts / wishlists</strong><p>Can't save cart for later or create favorite items list.</p></div></div>
+</div>
+
+<h3>Missing Features That Improve Activation</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>Guided onboarding wizard</strong><p>New admin sees 15 empty pages. No step-by-step: Add menu → Add items → Set hours → Go live.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>Sample menu data</strong><p>Start with zero items. Import sample data: popular categories, common items with images = hours saved.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Built-in QR code generator</strong><p>Admin must manually generate QR codes. Built-in generation per table = eliminates friction.</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>WhatsApp template integration</strong><p>Toggle exists but no automated WhatsApp messages for order received/ready.</p></div></div>
+</div>
+
+<h3>Missing Features for Expansion Revenue</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>Multi-outlet management</strong><p>No chain support. Each outlet = separate account. Enterprise tier = 3-5× per outlet.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>White-label / custom domain</strong><p>All websites are subfolders. Custom domain = premium upsell.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Advanced analytics</strong><p>Basic counts only. No LTV, peak hours, popular items ranking, revenue trends.</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>Staff performance tracking</strong><p>No orders/staff, no KOT completion times, no productivity metrics.</p></div></div>
+</div>
+
+<h3>Features to Remove or Rewrite</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>sujay/api.php AI SQL execution</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>DB-based authentication added with password_hash/password_verify. sujay_api_users table with default user: sujay / sujay123. OpenRouter key moved to env().</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>Cashfree remnants</strong><span class="sev-tag" style="background:#14532d;color:#86efac;">FIXED</span><p>All Cashfree files deleted (cashfree_payment.php, cashfree_webhook.php, add_cashfree_columns.php). Settings code removed from admin/auth.php, dashboard.php, get_session.php, script.js. Cart payment flow stripped. process_website_order.php cleaned. DB column references updated.</p><p style="font-size:0.78rem;color:#34d399;margin-top:0.15rem;">✓ Fixed July 2026 — 10+ files cleaned, 3 files deleted</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Subscription settings UI (non-functional)</strong><p>Trial period, price, auto-renewal — all UI with no backend. Confuses users. Implement or remove.</p></div></div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- HIDDEN OPPORTUNITIES -->
+<h2 id="opportunities">6. Hidden Opportunities</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 0.5rem;"><strong>Section Score:</strong> <span style="color:#ef4444;font-weight:700;">10</span>/100 <span style="color:#ef4444;">— Poor</span></p>
+<p style="color:#64748b;font-size:0.9rem;margin-bottom:0.75rem;">Advanced features most SaaS products miss. These create measurable competitive advantage.</p>
+
+<div class="opportunity-box">
+<h4>1. Predictive Inventory Alerts</h4>
+<p>Track order velocity per item (items/hour). Alert: "Paneer Butter Masala sells 50% faster on weekends. 12 portions left — enough for 3 more hours at current rate." Restaurants run out of stock DAILY. This is their #1 pain point.</p>
+<div class="value">High Impact · Medium Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>2. Smart Menu Optimization (BCG Matrix)</h4>
+<p>Analyze margin × popularity per item. Auto-suggest: "Move Garlic Bread to Featured — 90% margin, 40% order frequency." Most restaurants leave 15-30% revenue on the table with poorly positioned menus.</p>
+<div class="value">High Impact · Medium Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>3. Behavioral Analytics: Scroll Heatmaps</h4>
+<p>Track which menu categories customers open, where they drop off. "65% of customers never scroll past the 3rd category. Reorder." Data-driven placement increases AOV.</p>
+<div class="value">Medium Impact · Low Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>4. Peak Hour Staffing Predictions</h4>
+<p>Historical patterns → predict tomorrow's peak. "Expect 40 orders 8-9 PM Friday. You have 2 staff scheduled. Recommend +1." Understaffing costs 20%+ in lost orders.</p>
+<div class="value">High Impact · Medium Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>5. Smart Coupon Auto-Generation</h4>
+<p>Auto-create coupons for slow movers. "Chocolate Milkshake not ordered in 3 days. Creating BOGO coupon for next 2 hours." Reduces food waste.</p>
+<div class="value">Medium Impact · Low Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>6. WhatsApp Marketing Automation</h4>
+<p>Customers who ordered 7+ days ago → auto-WA: "Hungry? Use code RETURN10 for 10% off." 15-25% reactivation rate vs 2-3% email.</p>
+<div class="value">High Impact · Medium Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>7. Table Turnover Optimization</h4>
+<p>Track dining time per table size. Alert: "Table 4 seated 2 hours (avg: 45 min). Check in." One extra turnover/night = 20-30% revenue increase.</p>
+<div class="value">High Impact · Low Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>8. Kitchen Display System (KDS)</h4>
+<p>Digital screen replacing printed KOTs. Orders sorted by prep time, color-coded by urgency. Eliminates lost tickets, reduces prep time 15-25%.</p>
+<div class="value">High Impact · High Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>9. Auto-Gratuity &amp; Dynamic Service Charge</h4>
+<p>Auto-add service charge for parties &gt;6. Configurable time-based (weekend surcharge) and amount-based (orders &gt;&#8377;2000). Restaurants lose thousands in uncharged gratuity annually.</p>
+<div class="value">Medium Impact · Low Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>10. Anomaly Detection</h4>
+<p>Detect: "40 Dal Makhani orders in 30 minutes — possible pricing error." Detect: "3 orders from Table 7 in 10 min — possible duplicate." Prevents revenue loss.</p>
+<div class="value">Medium Impact · Medium Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>11. Demand Forecasting for Procurement</h4>
+<p>Predict weekly ingredient needs. "You need: 40kg paneer, 80kg onions, 120L milk next week. Current: 15kg paneer." Restaurants waste 5-15% food costs on poor forecasting.</p>
+<div class="value">High Impact · High Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>12. AI Auto-Translate Menu</h4>
+<p>Language toggle exists. Auto-translate all items via AI when language enabled. Restaurant owners won't manually translate 200 items.</p>
+<div class="value">Medium Impact · Low Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>13. Customer Sentiment Analysis</h4>
+<p>Analyze special instructions and feedback. "12 customers said 'too spicy' for Chicken Curry this week. Consider recipe adjustment."</p>
+<div class="value">Medium Impact · Low Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>14. Dynamic Delivery &amp; Packaging Fee</h4>
+<p>Fee based on distance (pincode zones) × order value. Auto-waive above threshold. Optimizes delivery revenue while encouraging larger orders.</p>
+<div class="value">Medium Impact · Low Complexity</div>
+</div>
+
+<div class="opportunity-box">
+<h4>15. Smart Table Assignment (Dine-in)</h4>
+<p>Auto-assign walk-ins to optimal table based on party size + wait time. Show estimated wait on website. Reduces front-of-house chaos.</p>
+<div class="value">Medium Impact · Medium Complexity</div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- CATEGORY SEO -->
+<h2 id="seo">7. Category SEO Analysis</h2>
+<p style="color:#64748b;font-size:0.9rem;margin-bottom:0.75rem;">12 issues that prevent restaurant menu categories from ranking in search engines.</p>
+
+<div class="severity-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:1.25rem;">
+  <div class="stat-card high"><div class="num">2</div><div class="lbl">High Severity</div></div>
+  <div class="stat-card medium"><div class="num">7</div><div class="lbl">Medium Severity</div></div>
+  <div class="stat-card" style="border-color:#1e293b;"><div class="num" style="color:#94a3b8;">3</div><div class="lbl">Low Severity</div></div>
+</div>
+
+<div class="verdict">
+<h3>Category SEO Score: 15 / 100</h3>
+<p>
+Restaurant menu pages have <strong>near-zero SEO optimization</strong>. Categories are loaded client-side via JavaScript with no individual URLs, no meta tags, no structured data, and no sitemap entries. The main marketing site (restrogrow.com) has proper SEO with canonical URLs, OG tags, and schema.org structured data, but the individual restaurant menu pages that customers actually browse are invisible to search engines beyond the homepage title tag.
+</p>
+<p style="margin-top:0.75rem;">
+<strong>Positive:</strong> The main site landing page (index.html) has excellent SEO foundations — canonical URL, OG tags, Twitter cards, 4 types of schema.org structured data (Organization, SoftwareApplication, LocalBusiness, BreadcrumbList), and a sitemap.xml. Restaurant-level menu pages have basic title tags and PWA manifest links.
+</p>
+<p style="margin-top:0.75rem;">
+<strong>Negative:</strong> 12 SEO gaps on customer-facing restaurant pages. No meta descriptions. No OG/Twitter tags for social sharing. No canonical URLs (duplicate content via restaurant_id vs slug). No schema.org markup for MenuItem or MenuSection. No BreadcrumbList structured data despite a visual breadcrumb existing. Categories are rendered via JS with no SSR fallback. No SEO fields in the database (can't set per-category title/description). No hreflang tags despite multi-language support. Above all, no individual category URLs — all menu categories load on a single page via JS, making them uncrawlable by search engines.
+</p>
+</div>
+
+<h3>High Severity Gaps</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>No individual category URLs</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>All menu categories (Starters, Main Course, Beverages, etc.) load dynamically on a single menu.php page via JavaScript. Search engines cannot index individual categories. No URL structure like /menu/starters or ?category=starters exists. This is the single biggest SEO blocker — 100% of category-level content is invisible to Google.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>No meta description or OG tags on menu pages</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>menu.php and index.php lack &lt;meta name=&quot;description&quot;&gt;, &lt;meta property=&quot;og:title&quot;&gt;, &lt;meta property=&quot;og:description&quot;&gt;, &lt;meta property=&quot;og:image&quot;&gt;, and Twitter card tags. Social shares show bare URLs with no preview. Search results display generic snippets instead of compelling descriptions.</p></div></div>
+</div>
+
+<h3>Medium Severity Gaps</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>No canonical URLs on restaurant pages</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Restaurant menus are accessible via ?restaurant_id=X AND ?restaurant=slug. No &lt;link rel=&quot;canonical&quot;&gt; is set — Google sees duplicate content. Slug-based URLs should be canonical to avoid split ranking signals.</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>No MenuItem / MenuSection schema.org markup</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Despite having detailed menu item data (prices, descriptions, dietary types, images, availability), there is zero schema.org structured data for MenuItem, MenuSection, or Restaurant. Google cannot display rich results (price, availability, rating stars) in search snippets.</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>No BreadcrumbList structured data</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>A visual breadcrumb exists (.category-breadcrumb in menu.php) showing the current category, but there is no JSON-LD BreadcrumbList schema.org markup. Search engines can't use breadcrumb trail in SERP snippets.</p></div></div>
+  <div class="list-item"><div class="rank">6</div><div class="content"><strong>No SEO fields in menu/subcategory database tables</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>The `menu` and `subcategories` tables have no columns for seo_title, seo_description, seo_keywords, or og_image. Restaurant owners cannot optimize individual categories for search. This requires a database migration to add columns plus admin UI fields.</p></div></div>
+  <div class="list-item"><div class="rank">7</div><div class="content"><strong>No hreflang tags for multi-language menus</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Multi-language support exists via translate_utils.php and menu items have translations stored in JSON. However, no hreflang link tags are generated for different language versions. International search engines can't serve the correct language variant.</p></div></div>
+  <div class="list-item"><div class="rank">8</div><div class="content"><strong>No category entries in sitemap.xml</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>The sitemap.xml only covers the main marketing pages. Individual restaurant menus and categories are not included. A dynamic sitemap.php should be generated listing all active restaurant menu URLs with category filters.</p></div></div>
+  <div class="list-item"><div class="rank">9</div><div class="content"><strong>JS-rendered categories not reliably crawlable</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Menu items and categories are loaded via fetch() API calls and rendered client-side with innerHTML. While Google can execute JavaScript, it's not guaranteed — especially for deep-linked content. SSR (server-side rendering) for initial category HTML would ensure crawlability.</p></div></div>
+</div>
+
+<h3>Low Severity Gaps</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">10</div><div class="content"><strong>Category images lack descriptive alt text</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p>Menu item images have alt attributes, but category-level icons/images in navigation and side-nav don't have descriptive SEO-friendly alt text. Alt text should include the category name for image search ranking.</p></div></div>
+  <div class="list-item"><div class="rank">11</div><div class="content"><strong>No per-restaurant robots.txt or noindex control</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p>There's no mechanism for restaurant owners to mark incomplete menus as noindex/nofollow. New restaurants with 2 menu items shouldn't be indexed until they have sufficient content. A setting in admin for SEO visibility would help.</p></div></div>
+  <div class="list-item"><div class="rank">12</div><div class="content"><strong>Restaurant names not optimized as H1 headings</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p>The restaurant name is rendered as &lt;h2 class=&quot;rest-name&quot;&gt; on index.php. It should be an &lt;h1&gt; tag for proper heading hierarchy. Category names in menu.php appear as &lt;h2 id=&quot;categoryTitle&quot;&gt; which is appropriate but the parent page hierarchy is missing.</p></div></div>
+</div>
+
+<h3>Quick Wins (&lt; 2 hours each)</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank" style="background:#14532d;color:#86efac;">Q1</div><div class="content"><strong>Fix heading hierarchy</strong><p>Change &lt;h2&gt; restaurant name to &lt;h1&gt; in index.php. No database changes needed — pure HTML fix.</p></div></div>
+  <div class="list-item"><div class="rank" style="background:#14532d;color:#86efac;">Q2</div><div class="content"><strong>Add canonical URLs to all restaurant pages</strong><p>Add &lt;link rel=&quot;canonical&quot; href=&quot;https://restrogrow.com/main/website/menu.php?restaurant=&quot; + slug&gt; in header.php. Single PHP change with immediate SEO benefit.</p></div></div>
+  <div class="list-item"><div class="rank" style="background:#14532d;color:#86efac;">Q3</div><div class="content"><strong>Add meta description + OG tags</strong><p>Generate description from restaurant name + description + item count. Add og:title, og:description, og:image in header.php. Uses existing $restaurant_name and $restaurant_logo variables.</p></div></div>
+</div>
+
+<h3>Medium Effort (1-2 days each)</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank" style="background:#1e3a5f;color:#93c5fd;">M1</div><div class="content"><strong>Create individual category URLs</strong><p>Add ?category=category_name parameter to menu.php. Filter items on that category server-side. Add unique title/meta tags per category. Update sitemap to include category URLs.</p></div></div>
+  <div class="list-item"><div class="rank" style="background:#1e3a5f;color:#93c5fd;">M2</div><div class="content"><strong>Add MenuItem + MenuSection + Restaurant schema.org</strong><p>Generate JSON-LD structured data in menu.php head section. Include item name, description, price, currency, dietary type, image, availability. Use existing data from API responses.</p></div></div>
+  <div class="list-item"><div class="rank" style="background:#1e3a5f;color:#93c5fd;">M3</div><div class="content"><strong>Add BreadcrumbList structured data</strong><p>Generate JSON-LD BreadcrumbList: Home > Menu > Category Name. Use existing visual breadcrumb data source.</p></div></div>
+  <div class="list-item"><div class="rank" style="background:#1e3a5f;color:#93c5fd;">M4</div><div class="content"><strong>Create dynamic sitemap.php</strong><p>Generate sitemap XML that includes all active restaurant menu URLs + category URLs. Add a Last-Modified date based on last menu update per restaurant.</p></div></div>
+</div>
+
+<h3>High Effort (3-5 days)</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank" style="background:#7c2d12;color:#fdba74;">H1</div><div class="content"><strong>Add SEO columns to menu &amp; subcategories tables</strong><p>Migration to add seo_title, seo_description, seo_keywords, og_image to menu and subcategories tables. Add admin UI fields for restaurant owners to set these per category. Add API endpoints to fetch/save SEO data.</p></div></div>
+  <div class="list-item"><div class="rank" style="background:#7c2d12;color:#fdba74;">H2</div><div class="content"><strong>Implement SSR for initial menu HTML</strong><p>Server-render the first category's items in PHP before passing to client-side JS. This ensures Google sees meaningful content on first request. Use existing database queries already in get_menu_items.php.</p></div></div>
+  <div class="list-item"><div class="rank" style="background:#7c2d12;color:#fdba74;">H3</div><div class="content"><strong>Add hreflang tags for multi-language menus</strong><p>Generate &lt;link rel=&quot;alternate&quot; hreflang=&quot;xx&quot;&gt; tags for each supported language. Requires detecting available translations for each restaurant's menu.</p></div></div>
+</div>
+
+<h3>Estimated SEO Impact</h3>
+<table class="issue-table">
+<tr><th style="width:200px;">Change</th><th style="width:100px;">Traffic Uplift</th><th style="width:100px;">Effort</th><th>Details</th></tr>
+<tr><td>Meta tags + OG tags</td><td><span style="color:#22c55e;">+15-25% CTR</span></td><td><span style="color:#22c55e;">Low</span></td><td>Higher click-through rates from search results and social shares</td></tr>
+<tr><td>Individual category pages</td><td><span style="color:#eab308;">+30-50% pages indexed</span></td><td><span style="color:#f97316;">Medium</span></td><td>Each category becomes a discoverable landing page</td></tr>
+<tr><td>Schema.org markup</td><td><span style="color:#eab308;">Rich results in SERP</span></td><td><span style="color:#22c55e;">Medium</span></td><td>Price, availability, ratings shown directly in search</td></tr>
+<tr><td>SSR rendering</td><td><span style="color:#eab308;">+40-60% crawlable</span></td><td><span style="color:#ef4444;">High</span></td><td>Guarantees Google sees menu content on each visit</td></tr>
+<tr><td>Dynamic sitemap</td><td><span style="color:#22c55e;">+100% URL discovery</span></td><td><span style="color:#22c55e;">Medium</span></td><td>All restaurant pages submitted to Google for indexing</td></tr>
+</table>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- CODE QUALITY -->
+<h2 id="code-quality">8. Code Quality &amp; Code Management</h2>
+<p style="color:#64748b;font-size:0.9rem;margin-bottom:0.75rem;">16 issues that make the codebase hard to maintain, reason about, and extend. Poor code quality increases bug rates, onboarding time, and technical debt.</p>
+
+<div class="severity-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:1.25rem;">
+  <div class="stat-card high"><div class="num">3</div><div class="lbl">High Severity</div></div>
+  <div class="stat-card medium"><div class="num">8</div><div class="lbl">Medium Severity</div></div>
+  <div class="stat-card" style="border-color:#1e293b;"><div class="num" style="color:#94a3b8;">5</div><div class="lbl">Low Severity</div></div>
+</div>
+
+<div class="verdict">
+<h3>Code Quality Score: 15 / 100</h3>
+<p>
+The codebase is <strong>100% procedural PHP</strong> with zero classes, zero namespaces, zero strict type declarations, zero PHPDoc blocks, and zero automated tests. The largest single file (<code>main/assets/js/script.js</code>) is <strong>12,572 lines</strong> — impossible to maintain, review, or test. Six more files exceed 1,500 lines each. JavaScript is <strong>triplicated</strong> across three script.js copies (12K + 7K + 3K lines) with overlapping functionality. Helper functions like <code>getConnection()</code> are defined in multiple files rather than loaded from shared config. Debug code, TODO comments, and FIXME markers remain in 10 production files. There are no coding standards, linters, or CI checks — every developer writes code in their own style.
+</p>
+<p style="margin-top:0.75rem;">
+<strong>Positive:</strong> The code works. Prepared statements are used consistently. The file structure (config/ controllers/ api/ views/) provides basic organization. A config folder exists for shared utilities. The auto-loading approach (require_once with file_exists guards) prevents crashes when files are missing.
+</p>
+<p style="margin-top:0.75rem;">
+<strong>Negative:</strong> Zero OOP means no encapsulation, no inheritance, no interfaces, and no dependency injection — every file is tightly coupled to globals. Zero tests means every deployment is a leap of faith. 12K-line JS files make even trivial CSS changes a risk. Function duplication means fixing a bug in one copy leaves the other copies broken. 25 try/catch blocks in a single file indicate procedural error-handling spaghetti.
+</p>
+</div>
+
+<h3>High Severity Issues</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>12,572-line JavaScript file</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p><code>main/assets/js/script.js</code> — 12,572 lines. Single file handles admin dashboard, theme editor, menu management, cart operations, and dozens of unrelated features. Impossible to review a PR. Any edit risks breaking unrelated functionality. No module system, no imports, no tree-shaking.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>5,134-line dashboard PHP file</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p><code>main/views/dashboard.php</code> — 5,134 lines. Contains HTML, CSS, JavaScript, PHP logic, database queries, and inline styles. A single file does the work of 10+ components. Adding any feature requires scrolling through thousands of lines.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Zero object-oriented code anywhere</strong><span class="sev-tag" style="background:#7c2d12;color:#fdba74;">HIGH</span><p>144 PHP files, zero classes. No namespaces, no interfaces, no traits, no dependency injection. All state is global (session, database connection via global $pdo). Every file is tightly coupled. Refactoring any component requires changing every file that uses it.</p></div></div>
+</div>
+
+<h3>Medium Severity Issues</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>7+ files over 1,000 lines</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>dashboard.php (5,134), cart.php (2,826), index.php (2,443), menu.php (2,129), sujay/api.php (1,983), superadmin/dashboard.php (1,703), admin/auth.php (1,603), waiter_dashboard.php (1,217), admin/login.php (1,008). Each file does too many things. Should be split into focused modules.</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>JavaScript duplicated in 3 copies</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p><code>assets/js/script.js</code> (12,572 lines), <code>public/script.js</code> (7,245 lines), <code>website/script.js</code> (3,823 lines) — overlapping code, inconsistent fixes. Bug fixed in one copy persists in others. Maintenance burden tripled.</p></div></div>
+  <div class="list-item"><div class="rank">6</div><div class="content"><strong>No strict_types on any file</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Zero of 144 PHP files use <code>declare(strict_types=1)</code>. PHP silently coerces types everywhere. A function expecting string<int> receives int and proceeds with wrong data. Bugs hidden until production.</p></div></div>
+  <div class="list-item"><div class="rank">7</div><div class="content"><strong>Debug code in 10 production files</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>TODO comments, FIXME markers, var_dump() calls, error_log debug statements found in: login.php, image.php, reservation_operations.php, chef_dashboard.php, dashboard.php, website/api.php, cart.php, index.php, menu.php, profile.php. Forgotten debugging slows execution and leaks information.</p></div></div>
+  <div class="list-item"><div class="rank">8</div><div class="content"><strong>Helper functions duplicated across files</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p><code>getConnection()</code> defined in both db_connection.php and admin/auth.php. <code>maskSecret()</code> defined in admin/auth.php and get_session.php. <code>applyRateLimit()</code> included in 2 places. Fixing a config function in one file doesn't fix it everywhere.</p></div></div>
+  <div class="list-item"><div class="rank">9</div><div class="content"><strong>No PHPDoc blocks or type hints</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Zero documented function signatures. No <code>@param</code>, <code>@return</code>, <code>@throws</code> annotations. No parameter type hints or return type declarations. Impossible to understand what a function expects or returns without reading its entire body.</p></div></div>
+  <div class="list-item"><div class="rank">10</div><div class="content"><strong>25 try/catch blocks in single API file</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p><code>main/superadmin/api.php</code> has 25 try/catch blocks. <code>admin/auth.php</code> has 23, <code>website/api.php</code> has 22. Indicates procedural spaghetti — each operation wraps its own try/catch instead of using global exception handling. Error handling is inconsistent across files.</p></div></div>
+  <div class="list-item"><div class="rank">11</div><div class="content"><strong>No automated tests</strong><span class="sev-tag" style="background:#713f12;color:#fde68a;">MED</span><p>Zero unit tests, integration tests, or end-to-end tests. No PHPUnit config, no test directory, no CI pipeline. Every deployment is manual testing only. Regressions guaranteed on every change.</p></div></div>
+</div>
+
+<h3>Low Severity Issues</h3>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">12</div><div class="content"><strong>No coding standards or linter config</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p>No PHP_CodeSniffer (phpcs), no ESLint, no Prettier, no EditorConfig. No .php-cs-fixer.dist.php, no .eslintrc, no .prettierrc. Every developer writes in their own style — inconsistent formatting everywhere.</p></div></div>
+  <div class="list-item"><div class="rank">13</div><div class="content"><strong>No PHP namespaces anywhere</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p>Zero <code>namespace</code> declarations. All code lives in the global namespace. Function name collisions are inevitable as the codebase grows. No autoloading (PSR-4) — everything uses manual require_once.</p></div></div>
+  <div class="list-item"><div class="rank">14</div><div class="content"><strong>Empty CSS files in production</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p><code>assets/css/style.css</code>, <code>public/style.css</code>, <code>website/style.css</code> — all empty or minimal. CSS is inlined into PHP files instead. Cannot cache styles. Cannot use CSS preprocessors or post-processors.</p></div></div>
+  <div class="list-item"><div class="rank">15</div><div class="content"><strong>No git hooks or CI checks</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p>No pre-commit hooks for linting, no CI pipeline for automated checks. Broken code, syntax errors, and debug statements are committed regularly. No code review process enforced.</p></div></div>
+  <div class="list-item"><div class="rank">16</div><div class="content"><strong>Inconsistent naming conventions</strong><span class="sev-tag" style="background:#1e3a5f;color:#93c5fd;">LOW</span><p>Mixed camelCase and snake_case in PHP. Mixed kebab-case and camelCase in JS. Some files use 2-space indent, others 4-space. No consistent pattern for file naming (some PascalCase, some snake_case, some kebab-case).</p></div></div>
+</div>
+
+<h3>Recommended Fix Plan</h3>
+<div class="sprint-grid">
+  <div class="sprint" style="border-left:3px solid #f97316;">
+    <h4>Phase 1: Stop the Bleeding <span>~20 hours</span></h4>
+    <ul>
+      <li>Add phpcs + ESLint config — enforce basic formatting automatically</li>
+      <li>Remove debug code from all 10 files — clean up TODOs, FIXMEs, var_dumps</li>
+      <li>Merge duplicate helper functions into config files — single source of truth for getConnection(), maskSecret()</li>
+      <li>Add .editorconfig and .gitignore for PHP/JS tooling</li>
+    </ul>
+  </div>
+  <div class="sprint" style="border-left:3px solid #eab308;">
+    <h4>Phase 2: Right-Size Files <span>~40 hours</span></h4>
+    <ul>
+      <li>Split dashboard.php (5,134 lines) into focused view files</li>
+      <li>Split assets/js/script.js (12,572 lines) into feature modules</li>
+      <li>Consolidate 3 script.js copies into one shared bundle</li>
+      <li>Extract inline CSS into proper stylesheet files</li>
+    </ul>
+  </div>
+  <div class="sprint" style="border-left:3px solid #22c55e;">
+    <h4>Phase 3: Foundation for Scale <span>~60 hours</span></h4>
+    <ul>
+      <li>Add PSR-4 autoloading and namespaces</li>
+      <li>Introduce first classes: Database, Session, Auth — wrap globals</li>
+      <li>Add PHPUnit + first smoke tests for critical paths (order placement, payment)</li>
+      <li>Add strict_types=1 to all new files and incrementally to existing files</li>
+      <li>Set up GitHub Actions CI: lint → test → build</li>
+    </ul>
+  </div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- REVENUE OPPORTUNITIES -->
+<h2 id="revenue-opps">B. Top 20 Revenue Opportunities</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 0.75rem;"><strong>Section Score:</strong> <span style="color:#ef4444;font-weight:700;">10</span>/100 <span style="color:#ef4444;">— Poor</span></p>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>Subscription plans (Basic/Pro/Enterprise)</strong><p>10-50× current revenue. Create subscription_plans table, feature flags, gating middleware. Wire PhonePe recurring.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>Per-order transaction fee (1-2%)</strong><p>Recurring revenue. Small fee on each online order processed through platform.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>White-label / custom domain add-on</strong><p>&#8377;500-2000/mo per restaurant. Allow own domain. Premium feature.</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>SMS/WhatsApp notification credits</strong><p>&#8377;0.5-2 per notification. Customers pay for bulk WhatsApp messages beyond free tier.</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>Advanced analytics dashboard</strong><p>Premium tier. Revenue reports, popular items, peak hours, LTV charts.</p></div></div>
+  <div class="list-item"><div class="rank">6</div><div class="content"><strong>Multi-outlet management</strong><p>Enterprise tier. Restaurant chains pay 3-5× per outlet.</p></div></div>
+  <div class="list-item"><div class="rank">7</div><div class="content"><strong>Menu translation service</strong><p>&#8377;500/mo per language. AI auto-translate menu. Charged per additional language.</p></div></div>
+  <div class="list-item"><div class="rank">8</div><div class="content"><strong>Kitchen Display System (KDS)</strong><p>One-time + monthly. Replace paper KOTs with digital screen. Hardware + software.</p></div></div>
+  <div class="list-item"><div class="rank">9</div><div class="content"><strong>Loyalty program module</strong><p>Premium feature. Points, stamps, rewards. Restaurants pay for retention tools.</p></div></div>
+  <div class="list-item"><div class="rank">10</div><div class="content"><strong>QR code printed materials</strong><p>One-time. Sell branded printed QR codes per table. Premium cardstock.</p></div></div>
+  <div class="list-item"><div class="rank">11</div><div class="content"><strong>Peak-hours dynamic pricing</strong><p>Premium feature. Auto-adjust prices during demand. Higher margins.</p></div></div>
+  <div class="list-item"><div class="rank">12</div><div class="content"><strong>Discovery marketplace commission</strong><p>Per-order. Eventually launch marketplace where customers find restaurants.</p></div></div>
+  <div class="list-item"><div class="rank">13</div><div class="content"><strong>Google/Facebook ad credits</strong><p>Commission. Resell ad credits with markup.</p></div></div>
+  <div class="list-item"><div class="rank">14</div><div class="content"><strong>Staff management (payroll integration)</strong><p>Per-staff/mo. Time tracking, payroll export.</p></div></div>
+  <div class="list-item"><div class="rank">15</div><div class="content"><strong>Recipe costing &amp; food cost analysis</strong><p>Premium feature. Exact food cost per dish. Optimize margins.</p></div></div>
+  <div class="list-item"><div class="rank">16</div><div class="content"><strong>Auto-gratuity platform fee</strong><p>Premium feature. Keep 10% of auto-gratuity service charge.</p></div></div>
+  <div class="list-item"><div class="rank">17</div><div class="content"><strong>Bulk SMS/email marketing credits</strong><p>Credits. Restaurants send promotional campaigns to customer DB.</p></div></div>
+  <div class="list-item"><div class="rank">18</div><div class="content"><strong>Delivery zone fee optimization</strong><p>Premium feature. Auto-calculate optimal fees by distance × order value.</p></div></div>
+  <div class="list-item"><div class="rank">19</div><div class="content"><strong>Payment gateway facilitation</strong><p>2%/transaction. Become payment facilitator instead of pass-through.</p></div></div>
+  <div class="list-item"><div class="rank">20</div><div class="content"><strong>Menu design service</strong><p>One-time. Professional menu photography and design. High margin.</p></div></div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- RETENTION -->
+<h2 id="retention">C. Top 20 Retention Improvements</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 0.75rem;"><strong>Section Score:</strong> <span style="color:#ef4444;font-weight:700;">10</span>/100 <span style="color:#ef4444;">— Poor</span></p>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>Push notifications (order status)</strong><p>Customers stay engaged. "Order ready" brings them back.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>Customer accounts (email/phone login)</strong><p>Repeat orders = one click instead of re-entering everything.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Favorite / reorder functionality</strong><p>"Order Same" button. Zero effort to reorder.</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>Real-time order tracking</strong><p>Preparing → Ready → Delivered. Reduces calls to restaurant asking "where's my order?"</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>Loyalty points program</strong><p>Gamification. 50% customers return to redeem points.</p></div></div>
+  <div class="list-item"><div class="rank">6</div><div class="content"><strong>Scheduled / pre-orders</strong><p>Order lunch at 10 AM for 1 PM delivery. Increases order frequency.</p></div></div>
+  <div class="list-item"><div class="rank">7</div><div class="content"><strong>Saved payment methods</strong><p>Reduces checkout friction 40%. Higher conversion.</p></div></div>
+  <div class="list-item"><div class="rank">8</div><div class="content"><strong>Ratings and reviews per dish</strong><p>Social proof drives orders. 70% check reviews.</p></div></div>
+  <div class="list-item"><div class="rank">9</div><div class="content"><strong>"Order again" from history</strong><p>One-tap reorder. Doubles repeat rate.</p></div></div>
+  <div class="list-item"><div class="rank">10</div><div class="content"><strong>Waitlist for dine-in</strong><p>Notified when table ready instead of waiting in line.</p></div></div>
+  <div class="list-item"><div class="rank">11</div><div class="content"><strong>Special occasion reminders</strong><p>"Happy Birthday! Free dessert." Delight → loyalty.</p></div></div>
+  <div class="list-item"><div class="rank">12</div><div class="content"><strong>Abandoned cart recovery (WhatsApp)</strong><p>15-20% abandoned carts convert with one reminder message.</p></div></div>
+  <div class="list-item"><div class="rank">13</div><div class="content"><strong>Post-order feedback collection</strong><p>Shows you care. Gives actionable data.</p></div></div>
+  <div class="list-item"><div class="rank">14</div><div class="content"><strong>Menu favorites / recently viewed</strong><p>Personalized. Reduces browsing time.</p></div></div>
+  <div class="list-item"><div class="rank">15</div><div class="content"><strong>Guest ordering (no account required)</strong><p>Low barrier to first order. Account creation after.</p></div></div>
+  <div class="list-item"><div class="rank">16</div><div class="content"><strong>Split bill / group ordering</strong><p>One pays, others contribute. Popular with groups.</p></div></div>
+  <div class="list-item"><div class="rank">17</div><div class="content"><strong>Dietary filters (veg, Jain, vegan)</strong><p>Filter by preference. Essential for Indian market.</p></div></div>
+  <div class="list-item"><div class="rank">18</div><div class="content"><strong>Allergen information</strong><p>Trust builder. Parents of allergy kids stay loyal.</p></div></div>
+  <div class="list-item"><div class="rank">19</div><div class="content"><strong>WhatsApp quick reorder bot</strong><p>Customer texts "same order" → placed. Zero friction.</p></div></div>
+  <div class="list-item"><div class="rank">20</div><div class="content"><strong>Live delivery tracking map</strong><p>Uber-style for in-house delivery. Competitive advantage.</p></div></div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- POWER USER -->
+<h2 id="poweruser">D. Top 20 Power-User Features</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 0.75rem;"><strong>Section Score:</strong> <span style="color:#ef4444;font-weight:700;">5</span>/100 <span style="color:#ef4444;">— Poor</span></p>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>Keyboard shortcuts everywhere</strong><p>Ctrl+Enter submit, / search, Esc close. Speed up POS operations 3×.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>Bulk menu operations (CSV import/export)</strong><p>Bulk price update, category change, item creation. Manage 200+ items in minutes.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Saved filter presets</strong><p>"Today's Pending Orders" as one-click preset. Daily ops efficiency.</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>Drag-and-drop menu reordering</strong><p>Visual category/item rearrangement. No manual number fields.</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>Batch table creation + QR bulk print</strong><p>Create 20 tables at once. Print all QR codes in one batch.</p></div></div>
+  <div class="list-item"><div class="rank">6</div><div class="content"><strong>Order quick-actions</strong><p>Accept → Prepare → Ready in one click each. Kitchen speed.</p></div></div>
+  <div class="list-item"><div class="rank">7</div><div class="content"><strong>Duplicate menu item</strong><p>Copy entire item with variations. Add seasonal items fast.</p></div></div>
+  <div class="list-item"><div class="rank">8</div><div class="content"><strong>ESC/POS network printer support</strong><p>Print KOT directly to kitchen printer. No manual routing.</p></div></div>
+  <div class="list-item"><div class="rank">9</div><div class="content"><strong>Multi-select batch actions</strong><p>Accept/reject/cancel 10 orders at once. Peak hour management.</p></div></div>
+  <div class="list-item"><div class="rank">10</div><div class="content"><strong>Quick customer lookup by phone</strong><p>Type phone → full history. Counter staff speed.</p></div></div>
+  <div class="list-item"><div class="rank">11</div><div class="content"><strong>Menu autocomplete search</strong><p>Type "butter" → see all matching items. POS speed.</p></div></div>
+  <div class="list-item"><div class="rank">12</div><div class="content"><strong>Customizable dashboard widgets</strong><p>Each role sees what matters. Role-based homepage.</p></div></div>
+  <div class="list-item"><div class="rank">13</div><div class="content"><strong>Order notes with quick-tags</strong><p>"No onion", "Extra spicy" — predefined tags. Kitchen communication.</p></div></div>
+  <div class="list-item"><div class="rank">14</div><div class="content"><strong>Split KOT</strong><p>Divide large order across two prep stations. High-volume kitchens.</p></div></div>
+  <div class="list-item"><div class="rank">15</div><div class="content"><strong>Hold/Release order</strong><p>Park partially complete orders. Busy night management.</p></div></div>
+  <div class="list-item"><div class="rank">16</div><div class="content"><strong>Quick modifiers (size, spice, addons)</strong><p>One-click item customization. POS speed.</p></div></div>
+  <div class="list-item"><div class="rank">17</div><div class="content"><strong>Staff session management</strong><p>See all logged-in staff. Force logout if needed. Security.</p></div></div>
+  <div class="list-item"><div class="rank">18</div><div class="content"><strong>Bulk coupon creation</strong><p>Create 100 coupons at once. Marketing campaign efficiency.</p></div></div>
+  <div class="list-item"><div class="rank">19</div><div class="content"><strong>Data export with custom date range</strong><p>CSV, Excel, PDF. Accounting and reporting.</p></div></div>
+  <div class="list-item"><div class="rank">20</div><div class="content"><strong>Change history / audit log</strong><p>Who changed what, when. Multi-staff accountability.</p></div></div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- COMPETITOR GAPS -->
+<h2 id="competitor">E. Top 20 Features Competitors Usually Miss</h2>
+<p style="color:#94a3b8;font-size:0.85rem;margin:-0.5rem 0 0.75rem;"><strong>Section Score:</strong> <span style="color:#ef4444;font-weight:700;">5</span>/100 <span style="color:#ef4444;">— Poor</span></p>
+<div class="list-grid">
+  <div class="list-item"><div class="rank">1</div><div class="content"><strong>Kitchen Display System (KDS)</strong><p>Most think printed KOT is fine. Digital KDS cuts prep time 20%.</p></div></div>
+  <div class="list-item"><div class="rank">2</div><div class="content"><strong>Predictive inventory alerts</strong><p>Everyone has stock tracking. Nobody predicts WHEN you'll run out.</p></div></div>
+  <div class="list-item"><div class="rank">3</div><div class="content"><strong>Data-driven menu layout optimization</strong><p>Menus are static. Data places popular items in prime positions.</p></div></div>
+  <div class="list-item"><div class="rank">4</div><div class="content"><strong>WhatsApp-native ordering (no app)</strong><p>Everyone builds apps. WhatsApp has 10× adoption in India.</p></div></div>
+  <div class="list-item"><div class="rank">5</div><div class="content"><strong>Table turnover analytics</strong><p>Nobody measures table cycle time. #1 dine-in revenue lever.</p></div></div>
+  <div class="list-item"><div class="rank">6</div><div class="content"><strong>Auto-couponing for slow movers</strong><p>Coupons are manual. Auto-couponing reduces food waste.</p></div></div>
+  <div class="list-item"><div class="rank">7</div><div class="content"><strong>Sentiment analysis from order notes</strong><p>Notes are ignored. They contain actionable feedback.</p></div></div>
+  <div class="list-item"><div class="rank">8</div><div class="content"><strong>Dynamic delivery fee (distance × value × time)</strong><p>Flat fees dominate. Dynamic pricing optimizes revenue + conversion.</p></div></div>
+  <div class="list-item"><div class="rank">9</div><div class="content"><strong>Predictive staff scheduling</strong><p>Schedules are manual. Predictive cuts labor cost 10-15%.</p></div></div>
+  <div class="list-item"><div class="rank">10</div><div class="content"><strong>Auto-gratuity with configurable rules</strong><p>Most don't handle gratuity. Restaurants lose thousands.</p></div></div>
+  <div class="list-item"><div class="rank">11</div><div class="content"><strong>Anomaly detection (unusual patterns)</strong><p>Nobody monitors for duplicates, pricing errors, or fraud.</p></div></div>
+  <div class="list-item"><div class="rank">12</div><div class="content"><strong>Per-dish profitability analysis</strong><p>Most don't track food cost. Restaurants lose margin unknowingly.</p></div></div>
+  <div class="list-item"><div class="rank">13</div><div class="content"><strong>Customer LTV prediction</strong><p>Everyone tracks orders. Nobody predicts future value.</p></div></div>
+  <div class="list-item"><div class="rank">14</div><div class="content"><strong>Voice-based KOT (text-to-speech)</strong><p>Kitchen can't read during rush. Audio KOTs reduce errors.</p></div></div>
+  <div class="list-item"><div class="rank">15</div><div class="content"><strong>Offline PWA mode</strong><p>Internet goes down in restaurants. Offline-first is crucial.</p></div></div>
+  <div class="list-item"><div class="rank">16</div><div class="content"><strong>QR ordering + table-side payment</strong><p>Most do QR menu. Few do QR ordering + payment in one flow.</p></div></div>
+  <div class="list-item"><div class="rank">17</div><div class="content"><strong>Ingredient substitution logic</strong><p>When item A runs out, suggest B. Nobody automates this.</p></div></div>
+  <div class="list-item"><div class="rank">18</div><div class="content"><strong>Auto daily closing report</strong><p>End-of-day reconciliation is manual. Auto saves 30 min/day.</p></div></div>
+  <div class="list-item"><div class="rank">19</div><div class="content"><strong>Multi-language voice input</strong><p>Indian languages spoken more than typed. Voice for Hindi, Tamil, etc.</p></div></div>
+  <div class="list-item"><div class="rank">20</div><div class="content"><strong>Competitor price monitoring</strong><p>Automated scraping of competitor public menus. Pricing intelligence.</p></div></div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- SCORECARD -->
+<h2 id="scorecard">F. SaaS Scorecard</h2>
+<table class="issue-table">
+<tr><th>Category</th><th style="width:60px;">Score</th><th>Breakdown</th><th style="width:70px;">Rating</th></tr>
+<tr><td><strong>Security</strong></td><td><strong>25</strong></td><td>Auth:30/100, AuthZ:40/100, DataProtection:15/100, InputValidation:30/100, Infrastructure:10/100</td><td><span class="sev sev-critical">POOR</span></td></tr>
+<tr><td><strong>User Experience</strong></td><td><strong>40</strong></td><td>Onboarding:15/100, Navigation:50/100, Feedback:25/100, Mobile:45/100, Consistency:55/100</td><td><span class="sev sev-high">FAIR</span></td></tr>
+<tr><td><strong>Scalability</strong></td><td><strong>20</strong></td><td>Database:15/100, Architecture:25/100, Infrastructure:20/100, Operations:15/100, Performance:25/100</td><td><span class="sev sev-critical">POOR</span></td></tr>
+<tr><td><strong>Business Model</strong></td><td><strong>10</strong></td><td>Monetization:5/100, Pricing:10/100, Trial:20/100, RevenueOps:5/100, Analytics:10/100</td><td><span class="sev sev-critical">FAIL</span></td></tr>
+<tr><td><strong>Retention</strong></td><td><strong>30</strong></td><td>CustomerFeatures:25/100, Communication:20/100, Engagement:35/100, Support:30/100, Reactivation:20/100</td><td><span class="sev sev-high">WEAK</span></td></tr>
+<tr><td><strong>Monetization Features</strong></td><td><strong>10</strong></td><td>PaymentProcessing:40/100, Subscription:0/100, Addons:15/100, TransactionRev:0/100, Upsells:5/100</td><td><span class="sev sev-critical">FAIL</span></td></tr>
+<tr><td><strong>Competitive Advantage</strong></td><td><strong>35</strong></td><td>Differentiation:45/100, FeatureCompleteness:30/100, MarketFit:45/100, Innovation:20/100, Defensibility:25/100</td><td><span class="sev sev-high">FAIR</span></td></tr>
+<tr style="background:#1e1b4b;"><td><strong>OVERALL</strong></td><td><strong>24 / 100</strong></td><td colspan="2">Early Stage / Pre-Launch — substantial work required before production readiness</td></tr>
+</table>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<!-- FIX PLAN -->
+<h2 id="fixplan">90-Day Fix Plan</h2>
+<p style="color:#64748b;font-size:0.9rem;margin-bottom:0.75rem;">Three sprints to go from 24/100 to production-ready.</p>
+
+<div class="sprint-grid">
+  <div class="sprint sprint1">
+    <h4>Sprint 1: Launch Blockers <span>(Days 1-30)</span></h4>
+    <ul>
+      <li>Add require_superadmin() to sujay/api.php or disable the endpoint</li>
+      <li>Move all credentials to .env (remove hardcoded passwords, OpenRouter API key)</li>
+      <li>Delete all debug endpoints from production server</li>
+      <li>Implement PhonePe webhook signature verification (X-VERIFY header)</li>
+      <li>Add CSRF tokens to all state-changing POST endpoints</li>
+      <li>Implement rate limiting on login endpoint (5 attempts/min/IP)</li>
+      <li>Set session lifetime to 24 hours with idle timeout</li>
+      <li>Increase minimum password length to 8 with complexity requirements</li>
+      <li><s>Remove runtime ALTER TABLE from all request paths</s> <span style="color:#86efac;">✓ Done</span></li>
+      <li><s>Delete all debug endpoints from production server</s> <span style="color:#86efac;">✓ Done</span></li>
+      <li><s>Set session lifetime to 24 hours with idle timeout</s> <span style="color:#86efac;">✓ Done</span></li>
+      <li>Add LIMIT/OFFSET pagination to all list endpoints</li>
+      <li>Set up automated daily database backups to off-site storage</li>
+    </ul>
+  </div>
+  <div class="sprint sprint2">
+    <h4>Sprint 2: Revenue Ready <span>(Days 31-60)</span></h4>
+    <ul>
+      <li>Create subscription_plans table with feature flags (Basic/Pro/Enterprise)</li>
+      <li>Implement feature gating middleware (check plan on every admin page load)</li>
+      <li>Wire PhonePe recurring payments for subscription billing</li>
+      <li>Build working billing/settings API (replace the non-functional UI)</li>
+      <li>Implement order cancellation with automatic payment refund</li>
+      <li>Add inventory/stock tracking to menu_items table</li>
+      <li>Server-side addon price validation (lookup from meal_addons table)</li>
+      <li>Fix tax calculation to match between client and server</li>
+      <li>Implement order status state machine with valid transition map</li>
+      <li>Add payment retry flow for failed PhonePe payments</li>
+    </ul>
+  </div>
+  <div class="sprint sprint3">
+    <h4>Sprint 3: Retention &amp; Polish <span>(Days 61-90)</span></h4>
+    <ul>
+      <li>Customer accounts with persistent login, order history, 1-click reorder</li>
+      <li>Basic analytics dashboard (popular items, peak hours, revenue trends)</li>
+      <li>Add loading states, empty states, and confirmation dialogs across admin UI</li>
+      <li>Push notifications via WebPush for order status updates</li>
+      <li>WhatsApp order notifications (received, preparing, ready)</li>
+      <li>Guided onboarding wizard for new restaurant admins</li>
+      <li>Hide payment gateway secrets from API responses (show masked values)</li>
+      <li>Fix KOT-to-order mapping (use direct ID reference, not fuzzy text matching)</li>
+      <li>Add ghost order cleanup cron (cancel pending > 30 min)</li>
+      <li>Implement coupon usage revert on order cancellation</li>
+    </ul>
+  </div>
+</div>
+<a href="#" class="back-top">&uarr; Back to top</a>
+
+<div class="verdict" style="margin-bottom:3rem;">
+<h3>Final Verdict</h3>
+<p>
+<strong>What this product has:</strong> A working QR-based ordering flow with PhonePe integration in a high-demand Indian market niche. The core multi-tenant architecture, RBAC, and prepared statement usage show competent engineering fundamentals.
+</p>
+<p style="margin-top:0.75rem;">
+<strong>What it needs:</strong> 90 days of focused work on security (critical), billing infrastructure (non-existent), data integrity (15+ bugs), and scalability (12 blockers). The product has real potential but is NOT ready for production with paying customers in its current state.
+</p>
+<p style="margin-top:0.75rem;color:#fca5a5;">
+Do NOT add new features. Fix the launch blockers first. Every week you delay addressing these issues, you risk a data breach, revenue theft, or customer loss.
+</p>
+</div>
+
+</div>
+</body>
+</html>

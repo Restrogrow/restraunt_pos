@@ -1,0 +1,18 @@
+# Custom Domain & Restaurant URL Routing
+# Routes all non-file requests through custom-domain.php for:
+# - Custom domain page serving (menu.myrestaurant.com/menu → menu.php)
+# - Restaurant slug routing (website/restaurant-name → index.php)
+
+RewriteEngine On
+
+# Serve existing files/directories directly
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Backward compat: manifest.json and sw.js
+RewriteRule ^manifest.json$ manifest.php [L,QSA]
+RewriteRule ^sw\.js$ sw.php [L]
+
+# Route all other requests through the front controller
+RewriteRule ^(.*)$ custom-domain.php [L,QSA]

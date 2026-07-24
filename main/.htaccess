@@ -1,0 +1,19 @@
+# RestroGrow POS - Main Application Directory
+# This directory contains all application files
+
+# Allow access to all files
+Options -Indexes
+
+# Security: Prevent direct access to sensitive files (Apache 2.4+ compatible)
+<FilesMatch "\.(sql|md|log)$">
+    Require all denied
+</FilesMatch>
+
+# PHP Settings
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+

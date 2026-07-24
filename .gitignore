@@ -1,0 +1,59 @@
+# Environment files
+.env
+.env.local
+*.env
+!*.env.example
+
+# Logs
+*.log
+logs/
+tmp/
+
+# Database dumps (keep full_database_dump.sql for migration)
+*.sql
+!database/*.sql
+!full_database_dump.sql
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (keep structure)
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# CLI migration scripts (may contain credentials)
+migrate_*_cli.php
+
+# Temporary files
+tmp/*
+!tmp/.gitkeep
+
+# Composer (if added later)
+vendor/
+composer.lock
+
+# Node modules (if added later)
+node_modules/
+package-lock.json
+
+# Session files
+main/sessions/
+
+# Test files
+test_*.php
+*_test.php
+
+nul
+composer.phar

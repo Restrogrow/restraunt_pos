@@ -1,0 +1,8 @@
+frameDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
+    iframeDoc.close();
+  };
+  
+// Print Order
+window.printOrder = async func

@@ -1,0 +1,95 @@
+# Basic Configuration
+RewriteEngine On
+
+# Allow direct access to admin/api scripts (main/ directory)
+RewriteRule ^main/ - [L]
+
+# Custom domain handling — route non-main-domain requests to front controller
+RewriteCond %{HTTP_HOST} !^localhost(:\d+)?$ [NC]
+RewriteCond %{HTTP_HOST} !^127\.0\.0\.1(:\d+)?$ [NC]
+RewriteCond %{HTTP_HOST} !^restrogrow\.com$ [NC]
+RewriteCond %{HTTP_HOST} !^www\.restrogrow\.com$ [NC]
+RewriteCond %{HTTP_HOST} !hstgr\.io$ [NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ main/website/custom-domain.php [L,QSA]
+
+# Clean URLs - Remove .html extension
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.html -f
+RewriteCond %{REQUEST_URI} \.html$
+RewriteRule ^(.*)\.html$ /$1 [R=301,L]
+
+# Add .html extension internally
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.html -f
+RewriteRule ^(.*)$ $1.html [L]
+
+# Clean URLs for pages
+RewriteRule ^about/?$ about/index.html [L]
+RewriteRule ^blog/?$ blog/index.html [L]
+RewriteRule ^faq/?$ faq/index.html [L]
+RewriteRule ^privacy-policy/?$ privacy-policy/index.html [L]
+RewriteRule ^terms-of-service/?$ terms-of-service/index.html [L]
+RewriteRule ^cookie-policy/?$ cookie-policy/index.html [L]
+
+# Restaurant short URLs (e.g., /restaurant-name)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/?$ main/website/index.php?restaurant=$1 [L,QSA]
+
+# Restaurant sub-pages (e.g., /restaurant-name/menu, /restaurant-name/cart, etc.)
+# Individual rules per page for maximum compatibility (avoids $2 backreference issues)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/menu$ main/website/menu.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/cart$ main/website/cart.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/about$ main/website/about.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/contact$ main/website/contact.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/profile$ main/website/profile.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/track$ main/website/track.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/privacy-policy$ main/website/privacy-policy.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/terms-of-service$ main/website/terms-of-service.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/refund-policy$ main/website/refund-policy.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/shipping-policy$ main/website/shipping-policy.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/cookie-policy$ main/website/cookie-policy.php?restaurant=$1 [L,QSA]
+
+# Main domain catch-all — route any unmatched requests on restrogrow.com/localhost through custom-domain.php
+RewriteCond %{HTTP_HOST} ^restrogrow\.com$ [NC,OR]
+RewriteCond %{HTTP_HOST} ^www\.restrogrow\.com$ [NC,OR]
+RewriteCond %{HTTP_HOST} ^localhost(:\d+)?$ [NC,OR]
+RewriteCond %{HTTP_HOST} ^127\.0\.0\.1(:\d+)?$ [NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ main/website/custom-domain.php [L,QSA]
+
+# Prevent directory listing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "^(\.htaccess|\.git|\.env|config\.php)$">
+    Require all denied
+</FilesMatch>
+
+# Set default charset
+AddDefaultCharset UTF-8
