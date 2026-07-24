@@ -121,7 +121,7 @@ if ($restaurant_id) {
     // Also check if currently on a custom domain
     $host = $_SERVER['HTTP_HOST'] ?? '';
     if (strpos($host, ':') !== false) $host = explode(':', $host)[0];
-    $is_custom_request = $host !== 'restrogrow.com' && $host !== 'localhost' && $host !== '127.0.0.1' && strpos($host, 'hstgr.io') === false;
+    $is_custom_request = $host !== 'restrogrow.com' && $host !== 'www.restrogrow.com' && $host !== 'localhost' && $host !== '127.0.0.1' && strpos($host, 'hstgr.io') === false;
     
     if ($has_custom_domain && !$is_custom_request) {
         // Restaurant has a custom domain and visitor is NOT already on it - redirect to custom domain

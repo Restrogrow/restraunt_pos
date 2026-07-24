@@ -263,7 +263,7 @@ if (!empty($opening_hours)) {
 
 $host = $_SERVER['HTTP_HOST'] ?? '';
 if (strpos($host, ':') !== false) $host = explode(':', $host)[0];
-$is_custom_domain = $host !== 'restrogrow.com' && $host !== 'localhost' && $host !== '127.0.0.1' && strpos($host, 'hstgr.io') === false;
+$is_custom_domain = $host !== 'restrogrow.com' && $host !== 'www.restrogrow.com' && $host !== 'localhost' && $host !== '127.0.0.1' && strpos($host, 'hstgr.io') === false;
 
 // Redirect to custom domain if configured and visitor is on the main platform (not already on custom domain)
 if (!empty($custom_domain) && $embed_enabled && !$is_custom_domain) {

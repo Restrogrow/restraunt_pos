@@ -16,7 +16,7 @@ $website_base_href = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
 
 $host = $_SERVER['HTTP_HOST'] ?? '';
 if (strpos($host, ':') !== false) $host = explode(':', $host)[0];
-$is_custom_domain = $host !== 'restrogrow.com' && $host !== 'localhost' && $host !== '127.0.0.1' && strpos($host, 'hstgr.io') === false;
+$is_custom_domain = $host !== 'restrogrow.com' && $host !== 'www.restrogrow.com' && $host !== 'localhost' && $host !== '127.0.0.1' && strpos($host, 'hstgr.io') === false;
 
 function restaurantPageUrl($page = '') {
     global $restaurant_slug, $is_custom_domain, $restaurant_id;

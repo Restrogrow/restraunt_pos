@@ -146,7 +146,7 @@ if ($requested_page !== '') {
                     $has_custom_domain = !empty($r['custom_domain']) && !empty($r['embed_enabled']);
                     $host = $_SERVER['HTTP_HOST'] ?? '';
                     if (strpos($host, ':') !== false) $host = explode(':', $host)[0];
-                    $is_custom_request = $host !== 'restrogrow.com' && $host !== 'localhost' && $host !== '127.0.0.1' && strpos($host, 'hstgr.io') === false;
+                    $is_custom_request = $host !== 'restrogrow.com' && $host !== 'www.restrogrow.com' && $host !== 'localhost' && $host !== '127.0.0.1' && strpos($host, 'hstgr.io') === false;
                     
                     if ($has_custom_domain && !$is_custom_request) {
                         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';

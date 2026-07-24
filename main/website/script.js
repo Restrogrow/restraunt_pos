@@ -8,7 +8,7 @@ function restaurantPageUrl(page) {
     // Fallback: try extracting slug from the current URL path
     if (!slug && slug !== '') {
         var host = window.location.hostname;
-        var isMainDomain = host === 'restrogrow.com' || host === 'localhost' || host === '127.0.0.1';
+        var isMainDomain = host === 'restrogrow.com' || host === 'www.restrogrow.com' || host === 'localhost' || host === '127.0.0.1';
         if (isMainDomain) {
             var pathParts = window.location.pathname.split('/').filter(Boolean);
             // Skip system path segments (main, website, index.php)
