@@ -299,6 +299,163 @@ window.showPaymentMethodSelector = async function showPaymentMethodSelector() {
   return methods[method] || 'Cash';
 }
 
+// Split-payment "Choose Pay Method" modal (Cash / UPI / Card breakdown, return/due, Save & Print / Save & eBill)
+window.showSplitPaymentModal = function(total) {
+  return new Promise((resolve) => {
+    const currency = window.globalCurrencySymbol || '₹';
+    const grandTotal = parseFloat(total) || 0;
+    let resolved = false;
+
+    const existing = document.getElementById('splitPaymentOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'splitPaymentOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background:#fff;border-radius:16px;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;box-shadow:0 25px 80px rgba(0,0,0,0.35);padding:24px;';
+
+    modal.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <h2 style="margin:0;font-size:1.15rem;font-weight:700;color:#111827;">Choose Pay Method (${currency}${grandTotal.toFixed(2)})</h2>
+        <button id="splitPayCloseBtn" style="width:34px;height:34px;flex-shrink:0;border:none;border-radius:50%;background:#10b981;color:#fff;font-size:18px;cursor:pointer;display:grid;place-items:center;">&times;</button>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px;">Enter CASH Amount</label>
+        <input type="number" id="splitPayCash" min="0" step="0.01" value="0" style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:1rem;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px;">Enter UPI Amount</label>
+        <input type="number" id="splitPayUpi" min="0" step="0.01" value="0" style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:1rem;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px;">Enter CARD Amount</label>
+        <input type="number" id="splitPayCard" min="0" step="0.01" value="0" style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:1rem;box-sizing:border-box;">
+      </div>
+
+      <div id="splitPayBalanceText" style="text-align:center;font-weight:700;font-size:1.05rem;margin-bottom:12px;"></div>
+      <div id="splitPayConfirmBanner" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:10px;font-weight:600;margin-bottom:16px;"></div>
+
+      <div style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:20px;border:1px solid #e5e7eb;">
+        <div id="splitChipCash" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div id="splitChipCard" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div id="splitChipUpi" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div id="splitChipDue" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button id="splitPaySaveBillBtn" style="flex:1;padding:13px;border:none;border-radius:10px;background:#10b981;color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;">Save & eBill</button>
+        <button id="splitPaySavePrintBtn" style="flex:1;padding:13px;border:none;border-radius:10px;background:#10b981;color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;">Save & Print</button>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const cashInput = modal.querySelector('#splitPayCash');
+    const upiInput = modal.querySelector('#splitPayUpi');
+    const cardInput = modal.querySelector('#splitPayCard');
+    const balanceText = modal.querySelector('#splitPayBalanceText');
+    const confirmBanner = modal.querySelector('#splitPayConfirmBanner');
+    const chipCash = modal.querySelector('#splitChipCash');
+    const chipCard = modal.querySelector('#splitChipCard');
+    const chipUpi = modal.querySelector('#splitChipUpi');
+    const chipDue = modal.querySelector('#splitChipDue');
+
+    const chipBaseStyle = 'flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    const activeChipStyle = 'background:#0f4c5c;color:#fff;';
+    const inactiveChipStyle = 'background:#fff;color:#111827;';
+
+    function setChip(el, label, active) {
+      el.style.cssText = chipBaseStyle + (active ? activeChipStyle : inactiveChipStyle);
+      el.title = (active ? '✓ ' : '') + label;
+      el.textContent = (active ? '✓' : '') + label;
+    }
+
+    function getAmounts() {
+      const cash = Math.max(parseFloat(cashInput.value) || 0, 0);
+      const upi = Math.max(parseFloat(upiInput.value) || 0, 0);
+      const card = Math.max(parseFloat(cardInput.value) || 0, 0);
+      return { cash, upi, card, entered: cash + upi + card };
+    }
+
+    function recalc() {
+      const { cash, upi, card, entered } = getAmounts();
+      const returnAmt = Math.max(entered - grandTotal, 0);
+      const dueAmt = Math.max(grandTotal - entered, 0);
+
+      if (returnAmt > 0) {
+        balanceText.style.color = '#059669';
+        balanceText.textContent = `Return Amount: ${currency}${returnAmt.toFixed(2)}`;
+      } else if (dueAmt > 0 && entered > 0) {
+        balanceText.style.color = '#d97706';
+        balanceText.textContent = `Due Amount: ${currency}${dueAmt.toFixed(2)}`;
+      } else {
+        balanceText.textContent = '';
+      }
+
+      if (dueAmt <= 0 && entered > 0) {
+        confirmBanner.style.background = '#10b981';
+        confirmBanner.style.color = '#fff';
+        confirmBanner.innerHTML = '✓ Payment confirmed 👍';
+      } else if (entered > 0) {
+        confirmBanner.style.background = '#fef3c7';
+        confirmBanner.style.color = '#92400e';
+        confirmBanner.innerHTML = `⚠️ Partial payment - ${currency}${dueAmt.toFixed(2)} due`;
+      } else {
+        confirmBanner.style.background = '#f3f4f6';
+        confirmBanner.style.color = '#6b7280';
+        confirmBanner.innerHTML = 'Enter amount to proceed, or mark as Due';
+      }
+
+      setChip(chipCash, 'CASH', cash > 0);
+      setChip(chipCard, 'CARD', card > 0);
+      setChip(chipUpi, 'UPI', upi > 0);
+      setChip(chipDue, 'DUE', dueAmt > 0);
+    }
+
+    [cashInput, upiInput, cardInput].forEach((inp) => {
+      inp.addEventListener('input', recalc);
+      inp.addEventListener('focus', () => { if (inp.value === '0') inp.value = ''; });
+    });
+    recalc();
+
+    function finish(action) {
+      if (resolved) return;
+      resolved = true;
+      const { cash, upi, card, entered } = getAmounts();
+      const returnAmt = Math.max(entered - grandTotal, 0);
+      const dueAmt = Math.max(grandTotal - entered, 0);
+      const methods = [];
+      if (cash > 0) methods.push('Cash');
+      if (card > 0) methods.push('Card');
+      if (upi > 0) methods.push('UPI');
+      const paymentMethod = methods.length ? methods.join('+') : 'Due';
+      const paymentStatus = entered <= 0 ? 'Pending' : (dueAmt > 0 ? 'Partially Paid' : 'Paid');
+      overlay.remove();
+      resolve({ action, cash, upi, card, entered, returnAmount: returnAmt, dueAmount: dueAmt, paymentMethod, paymentStatus });
+    }
+
+    modal.querySelector('#splitPayCloseBtn').addEventListener('click', () => {
+      if (resolved) return;
+      resolved = true;
+      overlay.remove();
+      resolve(null);
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay && !resolved) {
+        resolved = true;
+        overlay.remove();
+        resolve(null);
+      }
+    });
+    modal.querySelector('#splitPaySavePrintBtn').addEventListener('click', () => finish('print'));
+    modal.querySelector('#splitPaySaveBillBtn').addEventListener('click', () => finish('ebill'));
+  });
+};
+
 // Update global currency symbol when it changes
 function updateCurrencySymbol(newSymbol) {
   globalCurrencySymbol = newSymbol;
@@ -1050,6 +1207,10 @@ document.addEventListener("DOMContentLoaded", () => {
       window.rejectNewOrder = async function() {
         var orderId = window._currentNotifOrderId;
         if (!orderId) return;
+
+        // Close the order notification popup immediately, then ask for a reason
+        window.closeNewOrderOverlay();
+
         var reason = '';
         if (window.Swal) {
           var result = await Swal.fire({
@@ -1069,10 +1230,6 @@ document.addEventListener("DOMContentLoaded", () => {
           reason = (window.prompt('Why are you rejecting this order?', '') || 'Rejected');
         }
         window._overlayProcessing = true;
-        var btn = document.getElementById('notifRejectBtn');
-        var accBtn = document.getElementById('notifAcceptBtn');
-        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span> Rejecting...'; }
-        if (accBtn) accBtn.disabled = true;
         try {
           var r = await fetch('../api/update_order_status.php', {
             method: 'POST',
@@ -1080,7 +1237,6 @@ document.addEventListener("DOMContentLoaded", () => {
             body: 'orderId=' + orderId + '&status=Rejected&reason=' + encodeURIComponent(reason)
           });
           var d = await r.json();
-          window.closeNewOrderOverlay();
           if (typeof showNotification === 'function') showNotification(d.success ? 'Order rejected' : (d.message || 'Failed'), d.success ? 'info' : 'error');
           if (typeof showPage === 'function') showPage('onlineOrdersPage');
         } catch(e) {
@@ -7482,8 +7638,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Update POS cart display
   function updatePOSCart() {
     const cartItemsContainer = document.getElementById("posCartItems");
-    
+
     if (posCart.length === 0) {
+      window._kotSentForCurrentOrder = false;
       cartItemsContainer.innerHTML = `
         <div class="empty-cart">
           <span class="material-symbols-rounded">shopping_cart</span>
@@ -7623,6 +7780,7 @@ document.addEventListener("DOMContentLoaded", () => {
           window.posCart = [];
         }
         updateCartFn();
+        window._kotSentForCurrentOrder = false;
       }
     });
   }
@@ -7924,18 +8082,137 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
   
-  // Process payment function
+  // Pay button: real submission, same as the original "Process Payment" flow,
+  // just using the new split-payment (Cash/UPI/Card) modal to pick the method.
+
+  // Builds the customer-facing bill receipt HTML from cart + payment breakdown
+  async function buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, kotNumber) {
+    let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', user_id: '' };
+    try {
+      const infoRes = await fetch('../admin/get_session.php');
+      const infoData = await infoRes.json();
+      if (infoData.success && infoData.data) {
+        restaurantInfo.name = infoData.data.restaurant_name || restaurantInfo.name;
+        restaurantInfo.logo = infoData.data.restaurant_logo || '';
+        restaurantInfo.user_id = infoData.data.user_id || infoData.data.id || '';
+        restaurantInfo.address = infoData.data.address || '';
+        restaurantInfo.phone = infoData.data.phone || '';
+      }
+    } catch (e) {
+      console.warn('Could not load restaurant info:', e);
+    }
+
+    const currency = window.globalCurrencySymbol || '₹';
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const itemsHtml = cartSnapshot.map((it) => `
+      <tr>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:center;">${it.quantity}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:right;">${currency}${(parseFloat(it.price) * it.quantity).toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    let logoHtml = '';
+    if (restaurantInfo.logo) {
+      let logoPath;
+      if (restaurantInfo.logo.startsWith('db:')) {
+        logoPath = `../api/image.php?type=logo&id=${restaurantInfo.user_id}`;
+      } else if (restaurantInfo.logo.startsWith('http')) {
+        logoPath = restaurantInfo.logo;
+      } else if (restaurantInfo.logo.startsWith('uploads/')) {
+        logoPath = '../' + restaurantInfo.logo;
+      } else {
+        logoPath = '../uploads/' + restaurantInfo.logo;
+      }
+      logoHtml = `<img src="${logoPath}" alt="Logo" style="max-width:70px;max-height:70px;object-fit:contain;margin-bottom:6px;" onerror="this.style.display='none';">`;
+    }
+
+    const payRows = [];
+    if (payResult.cash > 0) payRows.push(['Cash', payResult.cash]);
+    if (payResult.upi > 0) payRows.push(['UPI', payResult.upi]);
+    if (payResult.card > 0) payRows.push(['Card', payResult.card]);
+    const payRowsHtml = payRows.map(([label, amt]) => `
+      <div style="display:flex;justify-content:space-between;font-size:12px;"><span>${label}</span><span>${currency}${amt.toFixed(2)}</span></div>
+    `).join('');
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bill #${kotNumber}</title>
+      <style>
+        @media print { @page { margin: 8mm; size: 80mm auto; } body { margin:0; padding:0; } }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: 'Courier New', Courier, monospace; padding:12px; max-width:280px; margin:0 auto; background:#fff; color:#111827; }
+        .header { text-align:center; border-bottom:3px double #059669; padding-bottom:10px; margin-bottom:12px; }
+        .restaurant-name { font-size:18px; font-weight:800; color:#059669; text-transform:uppercase; letter-spacing:0.5px; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .restaurant-details { font-size:10px; color:#6b7280; line-height:1.4; margin-top:4px; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .bill-tag { font-size:12px; font-weight:700; color:#059669; margin-top:6px; }
+        .info-box { background:#f9fafb; padding:10px; margin-bottom:12px; border-left:4px solid #059669; font-size:12px; }
+        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; }
+        .info-item { display:flex; justify-content:space-between; }
+        .info-label { color:#6b7280; font-weight:600; }
+        .info-value { color:#111827; font-weight:700; text-align:right; }
+        table { width:100%; border-collapse:collapse; margin:10px 0; }
+        th { font-size:11px; text-transform:uppercase; text-align:left; border-bottom:2px solid #111827; padding-bottom:4px; }
+        .totals { margin-top:10px; font-size:13px; }
+        .totals div { display:flex; justify-content:space-between; padding:2px 0; }
+        .totals .grand { font-size:15px; font-weight:800; border-top:2px dashed #d1d5db; margin-top:6px; padding-top:6px; }
+        .pay-box { margin-top:12px; padding-top:10px; border-top:2px dashed #d1d5db; }
+        .footer { text-align:center; margin-top:14px; padding-top:10px; border-top:2px dashed #e5e7eb; }
+        .footer-text { font-size:10px; color:#6b7280; margin-bottom:2px; }
+      </style>
+    </head><body>
+      <div class="header">
+        ${logoHtml}
+        <div class="restaurant-name">${escapeHtml(restaurantInfo.name)}</div>
+        ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
+        ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
+        <div class="bill-tag">BILL #${escapeHtml(String(kotNumber))}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">${dateStr} | ${timeStr}</div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-grid">
+          <div class="info-item"><span class="info-label">TABLE</span><span class="info-value">${escapeHtml(tableLabel)}</span></div>
+          <div class="info-item"><span class="info-label">STATUS</span><span class="info-value">${escapeHtml(payResult.paymentStatus)}</span></div>
+        </div>
+      </div>
+
+      <table>
+        <thead><tr><th>Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Amt</th></tr></thead>
+        <tbody>${itemsHtml}</tbody>
+      </table>
+
+      <div class="totals">
+        <div><span>Subtotal</span><span>${currency}${subtotal.toFixed(2)}</span></div>
+        ${showGst ? `<div><span>Tax (5%)</span><span>${currency}${tax.toFixed(2)}</span></div>` : ''}
+        <div class="grand"><span>Total</span><span>${currency}${total.toFixed(2)}</span></div>
+      </div>
+
+      <div class="pay-box">
+        ${payRowsHtml}
+        ${payResult.returnAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;color:#059669;font-weight:700;"><span>Return</span><span>${currency}${payResult.returnAmount.toFixed(2)}</span></div>` : ''}
+        ${payResult.dueAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;color:#b45309;font-weight:700;"><span>Due</span><span>${currency}${payResult.dueAmount.toFixed(2)}</span></div>` : ''}
+      </div>
+
+      <div class="footer">
+        <div class="footer-text">Thank you!</div>
+        <div class="footer-text">Powered by Restro Grow</div>
+      </div>
+    </body></html>`;
+  }
+
   async function processPayment() {
     // Support both posCart (admin) and window.posCart (waiter/chef/manager)
     const cart = typeof posCart !== 'undefined' ? posCart : (window.posCart || []);
     const updateCartFn = typeof updatePOSCart !== 'undefined' ? updatePOSCart : (window.updateWaiterPOSCart || window.updatePOSCart || (() => {}));
-    
+
     if (cart.length === 0) {
       const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
       showMsg("Cart is empty", "error");
       return;
     }
-    
+
     const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
     const tax = showGst ? subtotal * 0.05 : 0;
@@ -7943,41 +8220,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const selectPosTable = document.getElementById("selectPosTable");
     const selectedTable = selectPosTable ? selectPosTable.value : '';
     const isTakeaway = !selectedTable;
-    
-    // For all orders (takeaway and dine-in), collect customer details
-    console.log('About to show customer modal, isTakeaway:', isTakeaway, 'selectedTable:', selectedTable);
-    let customerData = null;
-    try {
-      customerData = await showTakeawayCustomerModal(isTakeaway);
-      console.log('Customer data collected:', customerData);
-    } catch (e) {
-      // User cancelled
-      console.log('Customer modal cancelled:', e.message);
-      return;
+    const tableLabel = (selectPosTable && selectedTable && selectPosTable.selectedIndex >= 0)
+      ? selectPosTable.options[selectPosTable.selectedIndex].text
+      : 'Takeaway';
+
+    // Show the split pay-method modal directly - no customer details prompt
+    const payResult = await showSplitPaymentModal(total);
+    if (!payResult) {
+      return; // User cancelled - cart untouched
     }
-    
-    // Show payment method selection
-    const paymentMethodStr = await showPaymentMethodSelector();
-    if (!paymentMethodStr) {
-      return; // User cancelled
-    }
-    
+
+    const currency = window.globalCurrencySymbol || '₹';
     const formData = new URLSearchParams();
     formData.append('action', 'create_kot');
     formData.append('tableId', selectedTable || '');
     formData.append('orderType', isTakeaway ? 'Takeaway' : 'Dine-in');
-    formData.append('customerName', customerData ? customerData.name : (isTakeaway ? 'Takeaway' : 'Table Customer'));
-    if (customerData) {
-      formData.append('customerPhone', customerData.phone || '');
-      formData.append('customerEmail', customerData.email || '');
-      formData.append('customerAddress', customerData.address || '');
-    }
-    formData.append('paymentMethod', paymentMethodStr);
+    formData.append('customerName', isTakeaway ? 'Takeaway' : 'Table Customer');
+    formData.append('paymentMethod', payResult.paymentMethod);
+    formData.append('notes', `Cash: ${currency}${payResult.cash.toFixed(2)}, UPI: ${currency}${payResult.upi.toFixed(2)}, Card: ${currency}${payResult.card.toFixed(2)}${payResult.dueAmount > 0 ? `, Due: ${currency}${payResult.dueAmount.toFixed(2)}` : ''}`);
     formData.append('cartItems', JSON.stringify(cart));
     formData.append('subtotal', subtotal.toFixed(2));
     formData.append('tax', tax.toFixed(2));
     formData.append('total', total.toFixed(2));
-    
+
     try {
       const response = await fetch("../controllers/pos_operations.php", {
         method: "POST",
@@ -7986,35 +8251,39 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         body: formData
       });
-      
-        // Get response text first
-        const responseText = await response.text();
-        console.log('Response status:', response.status);
-        console.log('Response text:', responseText.substring(0, 500)); // First 500 chars
-        
-        // Check if response is ok
-        if (!response.ok) {
-          console.error('Server error response (full):', responseText);
-          // Try to parse as JSON for error message
-          try {
-            const errorResult = JSON.parse(responseText);
-            throw new Error(errorResult.message || `Server error: ${response.status} ${response.statusText}`);
-          } catch (e) {
-            // Not JSON, show raw error
-            throw new Error(`Server error (${response.status}): ${responseText.substring(0, 200)}`);
-          }
-        }
-        
-        // Parse JSON response
-        let result;
+
+      // Get response text first
+      const responseText = await response.text();
+      console.log('Response status:', response.status);
+      console.log('Response text:', responseText.substring(0, 500)); // First 500 chars
+
+      // Check if response is ok
+      if (!response.ok) {
+        console.error('Server error response (full):', responseText);
+        // Try to parse as JSON for error message
         try {
-          result = JSON.parse(responseText);
+          const errorResult = JSON.parse(responseText);
+          throw new Error(errorResult.message || `Server error: ${response.status} ${response.statusText}`);
         } catch (e) {
-          console.error('Invalid JSON response:', responseText);
-          throw new Error('Invalid response from server. Response: ' + responseText.substring(0, 200));
+          // Not JSON, show raw error
+          throw new Error(`Server error (${response.status}): ${responseText.substring(0, 200)}`);
         }
-      
+      }
+
+      // Parse JSON response
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Invalid JSON response:', responseText);
+        throw new Error('Invalid response from server. Response: ' + responseText.substring(0, 200));
+      }
+
       if (result.success) {
+        // Snapshot the cart for the bill preview before clearing it
+        const cartSnapshot = cart.slice();
+        const kotWasAlreadySent = !!window._kotSentForCurrentOrder;
+
         // Clear cart - support both local and window.posCart
         if (typeof posCart !== 'undefined') {
           posCart = [];
@@ -8025,100 +8294,29 @@ document.addEventListener("DOMContentLoaded", () => {
         if (selectPosTable) {
           selectPosTable.value = "";
         }
-        
-        // Show success alert with print option
-        const hasKOT = result.kot_id && result.kot_number;
-        const hasOrder = result.order_id && result.order_number;
-        
-        let title = '';
-        let message = '';
-        let printButtons = '';
-        
-        if (hasKOT && hasOrder) {
-          title = 'KOT & Order Created Successfully!';
-          message = `KOT #${result.kot_number} and Order #${result.order_number} have been created.`;
-          printButtons = `
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
-              <button id="printKOTBtn" style="padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                Print KOT
-              </button>
-              <button id="printOrderBtn" style="padding: 10px 20px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                Print Order
-              </button>
-            </div>
-          `;
-        } else if (hasKOT) {
-          title = 'KOT Created Successfully!';
-          message = `KOT #${result.kot_number} has been created.`;
-          printButtons = `
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
-              <button id="printKOTBtn" style="padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                Print KOT
-              </button>
-            </div>
-          `;
-        } else if (hasOrder) {
-          title = 'Order Created Successfully!';
-          message = `Order #${result.order_number} has been created.`;
-          printButtons = `
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
-              <button id="printOrderBtn" style="padding: 10px 20px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                Print Order
-              </button>
-            </div>
-          `;
+        window._kotSentForCurrentOrder = false;
+
+        const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
+        showMsg(`Payment saved (${payResult.paymentStatus}) - KOT #${result.kot_number}`, "success");
+
+        const showBill = async () => {
+          const billHtml = await buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, result.kot_number);
+          showPrintPreview('Bill #' + result.kot_number, billHtml);
+        };
+
+        if (kotWasAlreadySent) {
+          // Kitchen already saw the KOT (via the KOT button) - just show the bill
+          showBill();
         } else {
-          title = 'Success!';
-          message = result.message || 'Payment processed successfully.';
-        }
-        
-        if (window.Swal) {
-          Swal.fire({
-            icon: 'success',
-            title: title,
-            html: `
-              <p style="margin-bottom: 0;">${message}</p>
-              ${printButtons}
-            `,
-            showConfirmButton: true,
-            confirmButtonText: 'OK',
-            confirmButtonColor: '#dc2626',
-            allowOutsideClick: false,
-            didOpen: () => {
-              // Add click handlers for print buttons
-              if (hasKOT) {
-                const printKOTBtn = document.getElementById('printKOTBtn');
-                if (printKOTBtn && window.printKOT) {
-                  printKOTBtn.addEventListener('click', () => {
-                    Swal.close();
-                    window.printKOT(result.kot_id);
-                  });
-                }
-              }
-              
-              if (hasOrder) {
-                const printOrderBtn = document.getElementById('printOrderBtn');
-                if (printOrderBtn && window.printOrder) {
-                  printOrderBtn.addEventListener('click', () => {
-                    Swal.close();
-                    window.printOrder(result.order_id);
-                  });
-                }
-              }
-            }
-          });
-        } else {
-          const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
-          showMsg(message, "success");
-          
-          // If no SweetAlert, try to print directly
-          if (hasKOT && window.printKOT) {
-            setTimeout(() => window.printKOT(result.kot_id), 500);
-          } else if (hasOrder && window.printOrder) {
-            setTimeout(() => window.printOrder(result.order_id), 500);
+          // Pay clicked directly - kitchen hasn't seen this order yet, so show
+          // the KOT preview first, then the bill preview once it's closed
+          if (window.printKOT) {
+            window.printKOT(result.kot_id, showBill);
+          } else {
+            showBill();
           }
         }
-        
+
         // Reload orders if on the orders page
         const ordersPage = document.getElementById('ordersPage');
         if (ordersPage && ordersPage.classList.contains('active') && typeof loadOrders !== 'undefined') {
@@ -8149,7 +8347,159 @@ document.addEventListener("DOMContentLoaded", () => {
   if (mobileProcessPaymentBtn) {
     mobileProcessPaymentBtn.addEventListener("click", processPayment);
   }
-  
+
+  // Send to kitchen (KOT only, no payment collected)
+  // KOT button: preview-only for now. Nothing is sent to the server and the
+  // cart is left untouched (whether the user prints or just closes the preview).
+  async function sendToKitchen() {
+    // Support both posCart (admin) and window.posCart (waiter/chef/manager)
+    const cart = typeof posCart !== 'undefined' ? posCart : (window.posCart || []);
+
+    if (cart.length === 0) {
+      const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
+      showMsg("Cart is empty", "error");
+      return;
+    }
+
+    // Mark that the kitchen has already seen this order, so Pay (afterwards)
+    // won't show the KOT preview again - just the bill.
+    window._kotSentForCurrentOrder = true;
+
+    const selectPosTable = document.getElementById("selectPosTable");
+    const selectedTable = selectPosTable ? selectPosTable.value : '';
+    const tableLabel = (selectPosTable && selectedTable && selectPosTable.selectedIndex >= 0)
+      ? selectPosTable.options[selectPosTable.selectedIndex].text
+      : 'Takeaway';
+
+    // Fetch restaurant info for the receipt header (best-effort)
+    let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', user_id: '' };
+    try {
+      const infoRes = await fetch('../admin/get_session.php');
+      const infoData = await infoRes.json();
+      if (infoData.success && infoData.data) {
+        restaurantInfo.name = infoData.data.restaurant_name || restaurantInfo.name;
+        restaurantInfo.logo = infoData.data.restaurant_logo || '';
+        restaurantInfo.user_id = infoData.data.user_id || infoData.data.id || '';
+        restaurantInfo.address = infoData.data.address || '';
+        restaurantInfo.phone = infoData.data.phone || '';
+      }
+    } catch (e) {
+      console.warn('Could not load restaurant info:', e);
+    }
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const itemsHtml = cart.map((it) => `
+      <tr>
+        <td style="padding: 6px 0; border-bottom: 1px dashed #d1d5db; font-size: 13px;">
+          <table style="width:100%;"><tr>
+            <td style="width:40px; text-align:center; font-weight:700; font-size:14px;">${it.quantity}</td>
+            <td style="padding-left:6px;">
+              <div style="font-weight:600; font-size:14px; color:#111827;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280; font-weight:400;">(${escapeHtml(it.variationName)})</span>` : ''}</div>
+            </td>
+          </tr></table>
+        </td>
+      </tr>
+    `).join('');
+
+    let logoHtml = '';
+    if (restaurantInfo.logo) {
+      let logoPath;
+      if (restaurantInfo.logo.startsWith('db:')) {
+        logoPath = `../api/image.php?type=logo&id=${restaurantInfo.user_id}`;
+      } else if (restaurantInfo.logo.startsWith('http')) {
+        logoPath = restaurantInfo.logo;
+      } else if (restaurantInfo.logo.startsWith('uploads/')) {
+        logoPath = '../' + restaurantInfo.logo;
+      } else {
+        logoPath = '../uploads/' + restaurantInfo.logo;
+      }
+      logoHtml = `<img src="${logoPath}" alt="Logo" style="max-width:70px; max-height:70px; object-fit:contain; margin-bottom:6px;" onerror="this.style.display='none';">`;
+    }
+
+    const itemsCount = cart.length;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT Preview</title>
+      <style>
+        @media print { @page { margin: 8mm; size: 80mm auto; } body { margin:0; padding:0; } }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: 'Courier New', Courier, monospace; padding:12px; max-width:280px; margin:0 auto; background:#fff; color:#111827; }
+        .header { text-align:center; border-bottom:3px double #dc2626; padding-bottom:10px; margin-bottom:12px; }
+        .logo { margin-bottom:6px; }
+        .restaurant-name { font-size:18px; font-weight:800; color:#dc2626; text-transform:uppercase; letter-spacing:0.5px; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .restaurant-details { font-size:10px; color:#6b7280; line-height:1.4; margin-top:4px; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .kot-banner h2 { font-size:28px; font-weight:900; color:#dc2626; letter-spacing:3px; margin-bottom:2px; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .kot-number { font-size:14px; font-weight:700; color:#b45309; }
+        .info-box { background:#f9fafb; padding:10px; margin-bottom:12px; border-left:4px solid #dc2626; font-size:12px; }
+        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; }
+        .info-item { display:flex; justify-content:space-between; }
+        .info-label { color:#6b7280; font-weight:600; }
+        .info-value { color:#111827; font-weight:700; text-align:right; }
+        .items-section { margin:12px 0; }
+        .items-header { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; padding:6px 0; border-bottom:2px solid #111827; margin-bottom:4px; display:flex; justify-content:space-between; }
+        table { width:100%; border-collapse:collapse; }
+        .divider { border:none; border-top:2px dashed #d1d5db; margin:10px 0; }
+        .footer { text-align:center; margin-top:14px; padding-top:10px; border-top:2px dashed #e5e7eb; }
+        .footer-text { font-size:10px; color:#6b7280; margin-bottom:2px; }
+        .total-items { font-size:12px; font-weight:700; color:#111827; margin-top:6px; }
+        .sep-line { border:none; border-top:1px dashed #d1d5db; margin:6px 0; }
+      </style>
+    </head><body>
+      <div class="header">
+        ${logoHtml}
+        <div class="restaurant-name">${escapeHtml(restaurantInfo.name)}</div>
+        ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
+        ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
+      </div>
+        <h2>KOT</h2>
+        <div class="kot-number">PREVIEW - NOT SENT</div>
+        <hr class="sep-line">
+        <div style="font-size:11px; color:#6b7280;">${dateStr} | ${timeStr}</div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-grid">
+          <div class="info-item"><span class="info-label">TABLE</span><span class="info-value">${escapeHtml(tableLabel)}</span></div>
+          <div class="info-item"><span class="info-label">STATUS</span><span class="info-value">Preview</span></div>
+        </div>
+      </div>
+
+      <div class="items-section">
+        <div class="items-header">
+          <span>QTY</span>
+          <span>ITEM</span>
+        </div>
+        <table>${itemsHtml}</table>
+      </div>
+
+      <hr class="divider">
+
+      <div class="footer">
+        <div style="font-size:11px; font-weight:600; margin-bottom:4px;">Total Items: ${itemsCount}</div>
+        <div class="footer-text">Thank you!</div>
+        <div class="footer-text">Powered by Restro Grow</div>
+      </div>
+    </body></html>`;
+
+    showPrintPreview('KOT Preview', html);
+  }
+
+  // Make sendToKitchen globally available
+  window.sendToKitchen = sendToKitchen;
+
+  // Send to kitchen button listeners
+  const sendKotBtn = document.getElementById("sendKotBtn");
+  if (sendKotBtn) {
+    sendKotBtn.addEventListener("click", sendToKitchen);
+  }
+
+  const mobileSendKotBtn = document.getElementById("mobileSendKotBtn");
+  if (mobileSendKotBtn) {
+    mobileSendKotBtn.addEventListener("click", sendToKitchen);
+  }
+
   // Add CSS for notifications
   const style = document.createElement('style');
   style.textContent = `
@@ -8735,16 +9085,22 @@ function displayKOTOrders(kots) {
     
     return `
     <div class="kot-order-card" style="border-left: 4px solid ${kotStatus === 'Pending' ? '#f59e0b' : kotStatus === 'Preparing' ? '#3b82f6' : kotStatus === 'Ready' ? '#10b981' : '#6b7280'};">
-      <div class="kot-header">
+      <div class="kot-header" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;">
+          <span class="kot-status ${statusClass}" style="padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.875rem; white-space:nowrap; background: ${kotStatus === 'Pending' ? '#fef3c7' : kotStatus === 'Preparing' ? '#dbeafe' : kotStatus === 'Ready' ? '#d1fae5' : '#f3f4f6'}; color: ${kotStatus === 'Pending' ? '#92400e' : kotStatus === 'Preparing' ? '#1e40af' : kotStatus === 'Ready' ? '#065f46' : '#6b7280'};">
+            ${kotStatus === 'Preparing' ? 'IN KITCHEN' : kotStatus === 'Pending' ? 'PENDING' : kotStatus}
+          </span>
+          <p style="margin: 0; color: #6b7280; font-size: 0.8rem; white-space:nowrap;">${new Date(kot.created_at).toLocaleString()}</p>
+        </div>
         <div class="kot-title">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#dc2626;color:#fff;font-weight:800;font-size:0.85rem;flex-shrink:0;">${_kotSerialCounter}</span>
-            <h3 style="color: #dc2626; margin: 0; font-size: 1.2rem;">KOT #${kot.kot_number || kot.id}</h3>
-            <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;background:${kotPaymentMethod === 'Cash' ? '#d1fae5' : '#dbeafe'};color:${kotPaymentMethod === 'Cash' ? '#065f46' : '#1e40af'};margin-left:auto;">
-              <span class="material-symbols-rounded" style="font-size:14px;">${kotPaymentMethod === 'Cash' ? 'payments' : 'phone_android'}</span>
-              ${kotPaymentMethod}
-            </span>
+          <div style="display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:6px;">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#dc2626;color:#fff;font-weight:800;font-size:0.8rem;flex-shrink:0;">${_kotSerialCounter}</span>
+            <h3 style="color: #dc2626; margin: 0; font-size: 1.05rem; min-width:0; white-space: nowrap; overflow:hidden; text-overflow:ellipsis;">KOT #${kot.kot_number || kot.id}</h3>
           </div>
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;background:${kotPaymentMethod === 'Cash' ? '#d1fae5' : '#dbeafe'};color:${kotPaymentMethod === 'Cash' ? '#065f46' : '#1e40af'};white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;">
+            <span class="material-symbols-rounded" style="font-size:14px;flex-shrink:0;">${kotPaymentMethod === 'Cash' ? 'payments' : 'phone_android'}</span>
+            ${kotPaymentMethod}
+          </span>
           <p style="margin: 5px 0; color: #6b7280; font-size: 0.9rem;">${kot.item_count || (kot.items?.length || 0)} Item(s)</p>
           <p style="margin: 5px 0; color: #6b7280; font-size: 0.85rem;">Table: ${kot.table_number || 'Takeaway'} | ${kot.area_name || ''}</p>
           ${kot.customer_name && kot.customer_name !== 'Table Customer' && kot.customer_name !== 'Takeaway' ? `
@@ -8756,14 +9112,8 @@ function displayKOTOrders(kots) {
             </div>
           ` : ''}
         </div>
-        <div class="kot-order-info">
-          <span class="kot-status ${statusClass}" style="padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.875rem; background: ${kotStatus === 'Pending' ? '#fef3c7' : kotStatus === 'Preparing' ? '#dbeafe' : kotStatus === 'Ready' ? '#d1fae5' : '#f3f4f6'}; color: ${kotStatus === 'Pending' ? '#92400e' : kotStatus === 'Preparing' ? '#1e40af' : kotStatus === 'Ready' ? '#065f46' : '#6b7280'};">
-            ${kotStatus === 'Preparing' ? 'IN KITCHEN' : kotStatus === 'Pending' ? 'PENDING' : kotStatus}
-          </span>
-          <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 0.8rem; text-align: right;">${new Date(kot.created_at).toLocaleString()}</p>
-        </div>
       </div>
-      
+
       <div class="kot-items" style="margin: 16px 0;">
         <h4 style="margin: 15px 0 10px 0; color: #1f2937; font-size: 0.9rem; text-transform: uppercase;">ITEMS</h4>
         ${(kot.items || []).map(item => `
@@ -9157,7 +9507,7 @@ async function cancelKOT(kotId) {
 window.cancelKOT = cancelKOT;
 
 // Print KOT
-window.printKOT = async function(kotId) {
+window.printKOT = async function(kotId, onClose) {
   try {
     // Fetch KOT data for specific KOT
     const res = await fetch('../api/get_kot.php' + (kotId ? '?kot_id=' + kotId : ''));
@@ -9296,7 +9646,7 @@ window.printKOT = async function(kotId) {
       </div>
     </body></html>`;
 
-    showPrintPreview('KOT #' + kot.kot_number, html);
+    showPrintPreview('KOT #' + kot.kot_number, html, onClose);
   } catch (e) {
     console.error('Print error', e);
     showSweetAlert('Failed to print KOT');
@@ -9306,18 +9656,26 @@ window.printKOT = async function(kotId) {
 
   // --- Print Preview Helper ---
   // Shows an on-screen preview of the printable content before actually printing
-  window.showPrintPreview = function(title, htmlContent) {
+  window.showPrintPreview = function(title, htmlContent, onClose) {
     var existing = document.getElementById('printPreviewOverlay');
     if (existing) existing.remove();
-    
+
+    var closed = false;
+    function doClose() {
+      if (closed) return;
+      closed = true;
+      overlay.remove();
+      if (typeof onClose === 'function') onClose();
+    }
+
     var overlay = document.createElement('div');
     overlay.id = 'printPreviewOverlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s;';
-    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
-    
+    overlay.onclick = function(e) { if (e.target === overlay) doClose(); };
+
     var modal = document.createElement('div');
     modal.style.cssText = 'background:#fff;border-radius:16px;width:92%;max-width:640px;height:100vh;max-height:100vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,0.35);';
-    
+
     // Header
     var header = document.createElement('div');
     header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e5e7eb;background:#f9fafb;';
@@ -9329,29 +9687,29 @@ window.printKOT = async function(kotId) {
     closeBtn.style.cssText = 'width:32px;height:32px;border:none;border-radius:8px;background:#e5e7eb;cursor:pointer;font-size:16px;display:grid;place-items:center;color:#6b7280;transition:background 0.15s;';
     closeBtn.onmouseover = function() { closeBtn.style.background = '#d1d5db'; };
     closeBtn.onmouseout = function() { closeBtn.style.background = '#e5e7eb'; };
-    closeBtn.onclick = function() { overlay.remove(); };
+    closeBtn.onclick = function() { doClose(); };
     header.appendChild(titleEl);
     header.appendChild(closeBtn);
-    
+
     // Content area with iframe
     var content = document.createElement('div');
     content.style.cssText = 'flex:1;overflow:auto;padding:20px;background:#f3f4f6;display:flex;align-items:flex-start;justify-content:center;';
-    
+
     var iframe = document.createElement('iframe');
     iframe.style.cssText = 'width:100%;height:100%;border:none;border-radius:8px;background:#fff;display:block;';
     content.appendChild(iframe);
-    
+
     // Footer with buttons
     var footer = document.createElement('div');
     footer.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid #e5e7eb;background:#f9fafb;';
-    
+
     var cancelBtn2 = document.createElement('button');
     cancelBtn2.textContent = 'Cancel';
     cancelBtn2.style.cssText = 'padding:10px 20px;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;font-size:14px;color:#374151;transition:all 0.15s;';
     cancelBtn2.onmouseover = function() { cancelBtn2.style.background = '#f3f4f6'; };
     cancelBtn2.onmouseout = function() { cancelBtn2.style.background = '#fff'; };
-    cancelBtn2.onclick = function() { overlay.remove(); };
-    
+    cancelBtn2.onclick = function() { doClose(); };
+
     var printBtn = document.createElement('button');
     printBtn.innerHTML = '🖐 Print';
     printBtn.style.cssText = 'padding:10px 24px;border:none;border-radius:8px;background:#059669;color:#fff;cursor:pointer;font-weight:600;font-size:14px;display:flex;align-items:center;transition:all 0.15s;';
@@ -9364,9 +9722,9 @@ window.printKOT = async function(kotId) {
       pw.document.close();
       pw.focus();
       setTimeout(function() { pw.print(); }, 300);
-      overlay.remove();
+      doClose();
     };
-    
+
     footer.appendChild(cancelBtn2);
     footer.appendChild(printBtn);
     

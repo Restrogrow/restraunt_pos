@@ -2707,6 +2707,21 @@ select:focus {
   flex: 1;
 }
 
+.btn-kot {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: #f59e0b;
+  color: white;
+  border: none;
+}
+
+.btn-kot:hover {
+  background: #d97706;
+}
+
 @media (max-width: 1024px) {
   .pos-container {
     grid-template-columns: 1fr;
@@ -2930,10 +2945,25 @@ select:focus {
     color: white;
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
   }
-  
+
   .mobile-pos-btn-bill:active {
     background: #2563eb;
     transform: scale(0.98);
+  }
+
+  .mobile-pos-btn-kot {
+    background: #f59e0b;
+    color: white;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  }
+
+  .mobile-pos-btn-kot:active {
+    background: #d97706;
+    transform: scale(0.98);
+  }
+
+  .mobile-pos-bottom-actions-3 .mobile-pos-btn span:last-child {
+    font-size: 0.85rem;
   }
   
   /* Add padding to pos container for bottom buttons and bill summary */

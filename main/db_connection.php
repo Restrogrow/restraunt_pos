@@ -13,6 +13,10 @@
  * - Optimized for 200+ concurrent users
  */
 
+// Force Indian Standard Time everywhere (date(), NOW()-equivalents, timestamps)
+// regardless of the server's own system timezone.
+date_default_timezone_set('Asia/Kolkata');
+
 // Prevent multiple includes
 if (isset($pdo) && $pdo instanceof PDO) {
     return;
@@ -156,6 +160,11 @@ function createDatabaseConnection() {
             $stmt->fetchAll();  // Fetch all results to clear
             $stmt = null;  // Free statement
             
+            // Force Indian Standard Time for this session so NOW()/CURRENT_TIMESTAMP
+            // and any DB-generated timestamps (e.g. created_at defaults) are in IST,
+            // regardless of the MySQL server's own configured timezone.
+            $pdo->exec("SET SESSION time_zone = '+05:30'");
+
             // Set optimized session variables for better performance
             // For non-persistent connections, use shorter timeouts to free connections quickly
             $pdo->exec("SET SESSION wait_timeout = 30");  // 30 seconds for non-persistent connections (frees quickly)

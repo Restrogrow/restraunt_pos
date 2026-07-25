@@ -290,14 +290,18 @@ if (!$currency_symbol) {
                                 </div>
                             </div>
 
-                            <div class="pos-cart-actions">
-                                <button class="btn btn-secondary" id="holdOrderBtn">
-                                    <span class="material-symbols-rounded">pause</span>
-                                    Hold Order
-                                </button>
+                            <div class="pos-cart-actions pos-cart-actions-3">
                                 <button class="btn btn-primary" id="processPaymentBtn">
                                     <span class="material-symbols-rounded">payment</span>
-                                    Process Payment
+                                    Pay
+                                </button>
+                                <button class="btn btn-secondary" id="holdOrderBtn">
+                                    <span class="material-symbols-rounded">pause</span>
+                                    Hold
+                                </button>
+                                <button class="btn btn-kot" id="sendKotBtn">
+                                    <span class="material-symbols-rounded">soup_kitchen</span>
+                                    KOT
                                 </button>
                             </div>
                         </div>
@@ -340,14 +344,18 @@ if (!$currency_symbol) {
                 </div>
                 
                 <!-- Mobile Sticky Bottom Buttons -->
-                <div id="mobilePosBottomActions" class="mobile-pos-bottom-actions" style="display: none;">
-                    <button class="mobile-pos-btn mobile-pos-btn-hold" id="mobileHoldOrderBtn">
-                        <span class="material-symbols-rounded">pause</span>
-                        <span>Save & Hold</span>
-                    </button>
+                <div id="mobilePosBottomActions" class="mobile-pos-bottom-actions mobile-pos-bottom-actions-3" style="display: none;">
                     <button class="mobile-pos-btn mobile-pos-btn-bill" id="mobileProcessPaymentBtn">
                         <span class="material-symbols-rounded">payment</span>
-                        <span>Save & Bill</span>
+                        <span>Pay</span>
+                    </button>
+                    <button class="mobile-pos-btn mobile-pos-btn-hold" id="mobileHoldOrderBtn">
+                        <span class="material-symbols-rounded">pause</span>
+                        <span>Hold</span>
+                    </button>
+                    <button class="mobile-pos-btn mobile-pos-btn-kot" id="mobileSendKotBtn">
+                        <span class="material-symbols-rounded">soup_kitchen</span>
+                        <span>KOT</span>
                     </button>
                 </div>
                 
@@ -1120,6 +1128,7 @@ if (!$currency_symbol) {
             if (!container) return; // Exit if container doesn't exist
             
             if (!window.posCart || window.posCart.length === 0) {
+                window._kotSentForCurrentOrder = false;
                 container.innerHTML = `
                     <div class="empty-cart" style="text-align: center; color: #6b7280; padding: 40px;">
                         <span class="material-symbols-rounded" style="font-size: 3rem; opacity: 0.3; display: block; margin-bottom: 8px;">shopping_cart</span>

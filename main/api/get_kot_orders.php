@@ -9,6 +9,12 @@ require_once __DIR__ . '/../config/authorization_config.php';
 // Require permission to view KOT
 requirePermission(PERMISSION_VIEW_KOT);
 
+// Release the session file lock immediately - this endpoint only reads
+// session data and is auto-refreshed every few seconds on the KOT page, so
+// holding the lock for the whole request would block other requests (e.g.
+// a login attempt) sharing the same session until this one finishes.
+session_write_close();
+
 require_once '../db_connection.php';
 
 try {

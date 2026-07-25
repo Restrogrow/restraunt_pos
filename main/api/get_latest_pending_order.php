@@ -16,6 +16,12 @@ header('Content-Type: application/json; charset=UTF-8');
 
 requirePermission(PERMISSION_MANAGE_ORDERS);
 
+// Release the session file lock immediately - this endpoint only reads
+// session data and is polled every 10s, so holding the lock for the whole
+// request would block other requests (e.g. a login attempt) sharing the
+// same session until this one finishes.
+session_write_close();
+
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
 } else {
