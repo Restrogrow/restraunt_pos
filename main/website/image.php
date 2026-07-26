@@ -48,6 +48,34 @@ if ($hasNoParams) {
     sendPlaceholderSvg('Image');
 }
 
+// Local image library reference (images/<Folder>/<file>, e.g. from AI menu
+// auto-matching): serve straight from disk, no DB lookup needed.
+$localRef = '';
+if (strpos($imagePath, 'local:') === 0) $localRef = $imagePath;
+elseif (strpos($imageId, 'local:') === 0) $localRef = $imageId;
+if ($localRef !== '') {
+    $libraryBase = realpath(dirname(__DIR__) . '/../images');
+    $fullPath = false;
+    if ($libraryBase !== false) {
+        $rel = ltrim(str_replace('\\', '/', substr($localRef, strlen('local:'))), '/');
+        $real = realpath($libraryBase . '/' . $rel);
+        if ($real !== false && ($real === $libraryBase || strpos($real, $libraryBase . DIRECTORY_SEPARATOR) === 0)) {
+            $fullPath = $real;
+        }
+    }
+    if ($fullPath !== false && is_file($fullPath)) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $fullPath);
+        finfo_close($finfo);
+        header('Content-Type: ' . $mimeType);
+        header('Content-Length: ' . filesize($fullPath));
+        header('Cache-Control: public, max-age=31536000');
+        readfile($fullPath);
+        exit();
+    }
+    sendPlaceholderSvg('Image');
+}
+
 // Include database connection
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';

@@ -1539,6 +1539,25 @@ break;
         throw new Exception('Could not detect any menu items in the uploaded photo(s). Try clearer, well-lit photos.');
       }
 
+      // Auto-match each item against our local images/ library (e.g. images/Beverages/*).
+      // Gemini always leaves the ImageURL field blank, so fill it in with a
+      // 'local:<Folder>/<file>' reference when the item name confidently matches
+      // one of our own images; otherwise leave it blank (e.g. Pizza items when
+      // we only have Beverages photos).
+      require_once __DIR__ . '/../includes/menu_image_matcher.php';
+      $itemLines = array_map(function ($line) {
+        $lineParts = array_map('trim', explode('|', $line));
+        while (count($lineParts) < 10) $lineParts[] = '';
+        if ($lineParts[9] === '') {
+          $catRaw = $lineParts[0];
+          $category = $catRaw;
+          if (preg_match('/^(.+?)\s*>\s*(.+)$/', $catRaw, $m)) $category = trim($m[1]);
+          $matched = find_local_menu_item_image($lineParts[1], $category);
+          if ($matched) $lineParts[9] = $matched;
+        }
+        return implode('|', $lineParts);
+      }, $itemLines);
+
       echo json_encode(['success' => true, 'text' => implode("\n", $itemLines), 'count' => count($itemLines)]);
       break;
 

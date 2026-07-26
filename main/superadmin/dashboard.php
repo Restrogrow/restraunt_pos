@@ -1812,6 +1812,12 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
       }
     });
 
+    function previewImageSrc(img) {
+      if (!img) return '';
+      if (img.indexOf('http://') === 0 || img.indexOf('https://') === 0) return img;
+      return '../api/image.php?id=' + encodeURIComponent(img) + '&_=' + Date.now();
+    }
+
     function renderItemsPreview() {
       const input = document.getElementById('menuItemsInput').value.trim();
       const container = document.getElementById('parsedItemsPreview');
@@ -1844,6 +1850,7 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
         }
         html += `<div style="margin-bottom:6px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;font-size:0.85rem;">
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px;">
+            ${imageUrl ? `<img src="${previewImageSrc(imageUrl)}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">` : ''}
             <span class="badge badge-info">${category}</span>${subcategory ? `<span class="badge badge-warning">${subcategory}</span>` : ''}
             <span style="font-weight:600;">${itemName}</span>
             <span style="color:var(--muted);">₹${price}</span>
@@ -1853,7 +1860,7 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
           ${desc ? `<div style="color:var(--muted);font-size:0.8rem;">${desc}</div>` : ''}
           ${prep || cal ? `<div style="color:var(--muted);font-size:0.8rem;margin-top:2px;">Prep: ${prep || '-'}min | Calories: ${cal || '-'}</div>` : ''}
           ${varsHtml ? `<div style="margin-top:4px;">${varsHtml}</div>` : ''}
-          ${imageUrl ? `<div style="margin-top:4px;font-size:0.8rem;color:var(--blue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🖼 ${imageUrl}</div>` : ''}
+          ${imageUrl ? `<div style="margin-top:4px;font-size:0.8rem;color:var(--blue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🖼 ${imageUrl.indexOf('local:') === 0 ? 'Auto-matched: ' + imageUrl.substring(6) : imageUrl}</div>` : ''}
         </div>`;
       });
       container.innerHTML = html;

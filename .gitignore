@@ -29,6 +29,9 @@ Thumbs.db
 uploads/*
 !uploads/.gitkeep
 
+# Local menu image library (uploaded directly to the server, not tracked in git)
+images/
+
 # Logs
 logs/*
 !logs/.gitkeep
