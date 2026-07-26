@@ -5701,11 +5701,11 @@ async function updateOrderStatus(orderId, status) {
     });
     
     const data = await response.json();
-    
+
     if (data.success) {
       loadOrders(); // Reload orders
     } else {
-      showSweetAlert('Failed to update order status');
+      showSweetAlert(data.message || 'Failed to update order status');
     }
   } catch (error) {
     console.error('Error updating order status:', error);

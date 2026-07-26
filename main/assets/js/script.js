@@ -10126,11 +10126,15 @@ async function updateOrderStatus(orderId, status, btn) {
     });
     
     const data = await response.json();
-    
+
     if (data.success) {
-      await loadOrders(); // Reload orders
+      // This function is shared by both the regular Orders tab and the
+      // Online Orders tab — refresh whichever one(s) are actually present
+      // instead of only the regular tab's list.
+      if (document.getElementById('ordersList')) await loadOrders();
+      if (document.getElementById('onlineOrdersList') && typeof loadOnlineOrders === 'function') await loadOnlineOrders();
     } else {
-      showSweetAlert('Failed to update order status');
+      showSweetAlert(data.message || 'Failed to update order status');
     }
   } catch (error) {
     console.error('Error updating order status:', error);
