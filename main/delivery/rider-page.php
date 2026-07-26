@@ -21,7 +21,7 @@ if (empty($token)) {
             $conn = $pdo;
         }
 
-        $stmt = $conn->prepare("SELECT dt.*, o.order_number, o.customer_name, o.customer_phone, o.customer_address, o.delivery_address, o.restaurant_id, u.restaurant_name, u.currency_symbol
+        $stmt = $conn->prepare("SELECT dt.*, o.order_number, o.customer_name, o.customer_phone, o.customer_address, o.delivery_address, o.address_lat, o.address_lng, o.restaurant_id, u.restaurant_name, u.currency_symbol
             FROM delivery_tracking dt
             JOIN orders o ON dt.order_id = o.id
             JOIN users u ON o.restaurant_id = u.restaurant_id
@@ -273,6 +273,19 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
             <span class="label">Address</span>
             <span class="value" style="max-width: 200px;"><?php echo htmlspecialchars($delivery['delivery_address'] ?? 'No address'); ?></span>
         </div>
+        <?php
+            $destLat = $delivery['address_lat'] ?? null;
+            $destLng = $delivery['address_lng'] ?? null;
+            $destText = $delivery['delivery_address'] ?? $delivery['customer_address'] ?? '';
+            $destination = ($destLat && $destLng) ? "$destLat,$destLng" : ($destText !== '' ? rawurlencode($destText) : '');
+        ?>
+        <?php if ($destination !== ''): ?>
+        <a class="btn btn-primary btn-icon" style="text-decoration:none; margin-top: 8px;"
+           href="https://www.google.com/maps/dir/?api=1&destination=<?php echo $destination; ?>&travelmode=driving"
+           target="_blank" rel="noopener">
+            🧭 Navigate in Google Maps
+        </a>
+        <?php endif; ?>
     </div>
 
     <!-- Order Items -->

@@ -8690,6 +8690,9 @@ window.logout = logout;
         updatePendingOrderBadge(pendingCount);
         window.whatsappEnabled = data.whatsapp_enabled || false;
         window.whatsappPhone = data.whatsapp_phone || '';
+        window.restaurantLat = data.restaurant_lat || null;
+        window.restaurantLng = data.restaurant_lng || null;
+        window.restaurantAddressText = data.restaurant_address || '';
         displayOnlineOrders(data.orders);
       } else {
         document.getElementById('onlineOrdersList').innerHTML = '<div class="error">Failed to load online orders</div>';
@@ -8737,6 +8740,52 @@ window.logout = logout;
     });
   }
 
+  function haversineKmOrders(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // Builds a map + distance + "Open Route" block for a Delivery-type order.
+  // Uses stored customer lat/lng when available (precise pin + straight-line
+  // distance); otherwise falls back to letting Google geocode the typed
+  // address text, which still works for the route/embed, just less precisely.
+  function buildDeliveryMapHtml(order) {
+    if (order.order_type !== 'Delivery' || !order.customer_address) return '';
+
+    const rLat = window.restaurantLat ? parseFloat(window.restaurantLat) : null;
+    const rLng = window.restaurantLng ? parseFloat(window.restaurantLng) : null;
+    const cLat = order.address_lat ? parseFloat(order.address_lat) : null;
+    const cLng = order.address_lng ? parseFloat(order.address_lng) : null;
+    const hasCoords = !!(rLat && rLng && cLat && cLng);
+
+    const destination = hasCoords ? `${cLat},${cLng}` : encodeURIComponent(order.customer_address);
+    const origin = hasCoords ? `${rLat},${rLng}` : (window.restaurantAddressText ? encodeURIComponent(window.restaurantAddressText) : '');
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1${origin ? '&origin=' + origin : ''}&destination=${destination}&travelmode=driving`;
+
+    const distanceLabel = hasCoords
+      ? `≈ ${haversineKmOrders(rLat, rLng, cLat, cLng).toFixed(1)} km from restaurant (straight-line)`
+      : 'Delivery route';
+
+    let embedHtml = '';
+    if (window.googleMapsApiKey && origin) {
+      const embedSrc = `https://www.google.com/maps/embed/v1/directions?key=${encodeURIComponent(window.googleMapsApiKey)}&origin=${origin}&destination=${destination}&mode=driving`;
+      embedHtml = `<iframe src="${embedSrc}" width="100%" height="200" style="border:0;border-radius:8px;margin-top:6px;display:block;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+    }
+
+    return `
+      <div class="delivery-map-block" style="margin-top:8px;padding:10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:0.85rem;color:#0369a1;">🗺️ ${distanceLabel}</span>
+          <a href="${directionsUrl}" target="_blank" rel="noopener" style="background:#0ea5e9;color:white;border:none;padding:4px 10px;font-size:0.8rem;text-decoration:none;border-radius:6px;white-space:nowrap;">Open Route in Google Maps</a>
+        </div>
+        ${embedHtml}
+      </div>
+    `;
+  }
+
   function displayOnlineOrders(orders) {
     const container = document.getElementById('onlineOrdersList');
 
@@ -8768,6 +8817,7 @@ window.logout = logout;
               ${order.customer_address ? `<p style="color:#6b7280;font-size:0.85rem">📍 ${escapeHtml(order.customer_address)}</p>` : ''}
               <p style="color:#6b7280;font-size:0.85rem">${new Date(order.created_at).toLocaleString()}</p>
             </div>
+            ${buildDeliveryMapHtml(order)}
             ${order.notes ? `<div class="order-notes" style="background:#fefce8;padding:8px 12px;border-radius:8px;margin:8px 0;font-size:0.85rem;color:#92400e"><strong>Notes:</strong> ${escapeHtml(order.notes)}</div>` : ''}
             <div class="order-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 12px;">
               <button class="btn btn-success" onclick="updateOrderStatus(${order.id}, 'Accepted', this)" style="background: #10b981; color: white; border: none; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
@@ -8828,6 +8878,7 @@ window.logout = logout;
               <p><strong>Time:</strong> ${new Date(order.created_at).toLocaleString()}</p>
               <p><strong>Total:</strong> ${formatCurrency(order.total)}</p>
             </div>
+            ${buildDeliveryMapHtml(order)}
             ${order.notes ? `<div class="order-notes" style="background:#fefce8;padding:8px 12px;border-radius:8px;margin:8px 0;font-size:0.85rem;color:#92400e"><strong>Notes:</strong> ${escapeHtml(order.notes)}</div>` : ''}
             <div class="order-items">
               <h4>Items:</h4>
@@ -8891,6 +8942,7 @@ window.logout = logout;
             <p><strong>Time:</strong> ${new Date(order.created_at).toLocaleString()}</p>
             <p><strong>Total:</strong> ${formatCurrency(order.total)}</p>
           </div>
+          ${buildDeliveryMapHtml(order)}
           ${order.notes ? `<div class="order-notes" style="background:#fefce8;padding:8px 12px;border-radius:8px;margin:8px 0;font-size:0.85rem;color:#92400e"><strong>Notes:</strong> ${escapeHtml(order.notes)}</div>` : ''}
           <div class="order-items">
             <h4>Items:</h4>

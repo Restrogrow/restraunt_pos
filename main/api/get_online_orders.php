@@ -61,13 +61,13 @@ try {
     $whereClause = implode(' AND ', $whereConditions);
 
     // Get whatsapp_orders and phone for the restaurant
-    $waStmt = $conn->prepare("SELECT whatsapp_orders, phone FROM users WHERE restaurant_id = ? LIMIT 1");
+    $waStmt = $conn->prepare("SELECT whatsapp_orders, phone, restaurant_lat, restaurant_lng, address FROM users WHERE restaurant_id = ? LIMIT 1");
     $waStmt->execute([$restaurant_id]);
     $waSettings = $waStmt->fetch(PDO::FETCH_ASSOC);
 
     $sql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
                    o.order_type, o.customer_name, o.customer_phone, o.customer_email,
-                   o.customer_address, o.created_at, o.subtotal, o.tax, o.total, o.notes,
+                   o.customer_address, o.address_lat, o.address_lng, o.created_at, o.subtotal, o.tax, o.total, o.notes,
                    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
             FROM orders o
             WHERE " . $whereClause . "
@@ -96,7 +96,10 @@ try {
         'orders' => $orders,
         'count' => count($orders),
         'whatsapp_enabled' => $whatsappEnabled,
-        'whatsapp_phone' => $whatsappPhone
+        'whatsapp_phone' => $whatsappPhone,
+        'restaurant_lat' => $waSettings['restaurant_lat'] ?? null,
+        'restaurant_lng' => $waSettings['restaurant_lng'] ?? null,
+        'restaurant_address' => $waSettings['address'] ?? ''
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (PDOException $e) {

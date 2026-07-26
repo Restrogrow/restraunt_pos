@@ -39,6 +39,8 @@ $customer_name = $input['customer_name'] ?? '';
 $customer_phone = $input['customer_phone'] ?? '';
 $customer_email = $input['customer_email'] ?? '';
 $customer_address = $input['customer_address'] ?? '';
+$address_lat = isset($input['address_lat']) && $input['address_lat'] !== '' ? (float)$input['address_lat'] : null;
+$address_lng = isset($input['address_lng']) && $input['address_lng'] !== '' ? (float)$input['address_lng'] : null;
 $notes = $input['notes'] ?? '';
 $order_type = $input['order_type'] ?? 'Delivery';
 $table_id = $input['table_id'] ?? null;
@@ -418,8 +420,8 @@ $conn->beginTransaction();
     }
 
     // Create order
-    $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, notes, coupon_code, discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
-    $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $notes, $coupon_code, $discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+    $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, address_lat, address_lng, notes, coupon_code, discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
+    $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
     $order_id = $conn->lastInsertId();
     
     // Insert order items
