@@ -6758,6 +6758,25 @@ document.addEventListener("DOMContentLoaded", () => {
                   </div>
                 </div>
                 
+                ${order.payment_method === 'QR Payment' ? `
+                  <div id="paymentProofSection-${order.id}" style="margin-top: 1rem; padding: 1rem; background: ${order.payment_proof_status === 'Confirmed' ? '#f0fdf4' : order.payment_proof_status === 'Rejected' ? '#fef2f2' : '#fffbeb'}; border-radius: 8px; border: 1px solid ${order.payment_proof_status === 'Confirmed' ? '#86efac' : order.payment_proof_status === 'Rejected' ? '#fca5a5' : '#fde68a'};">
+                    <strong style="color: #78350f;">Payment Proof (Pay Online / QR)</strong>
+                    ${order.payment_proof_status ? `
+                      <div style="margin-top:0.6rem;">
+                        <img src="../api/image.php?type=payment_proof&id=${order.id}" alt="Payment screenshot" style="max-width:220px;max-height:220px;border-radius:8px;border:1px solid #ddd;cursor:zoom-in;" onclick="window.open(this.src, '_blank')">
+                      </div>
+                      <div style="margin-top:0.5rem;">
+                        <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-weight:600;font-size:0.8rem;background:${order.payment_proof_status === 'Confirmed' ? '#dcfce7' : order.payment_proof_status === 'Rejected' ? '#fee2e2' : '#fef3c7'};color:${order.payment_proof_status === 'Confirmed' ? '#166534' : order.payment_proof_status === 'Rejected' ? '#991b1b' : '#92400e'};">${order.payment_proof_status}</span>
+                      </div>
+                      ${order.payment_proof_status === 'Pending' ? `
+                        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+                          <button class="btn btn-success" onclick="reviewPaymentProof(${order.id}, 'confirm', this)" style="background:#16a34a;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">✔ Confirm Payment</button>
+                          <button class="btn btn-danger" onclick="reviewPaymentProof(${order.id}, 'reject', this)" style="background:#dc2626;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">✘ Reject</button>
+                        </div>
+                      ` : ''}
+                    ` : `<p style="margin:0.5rem 0 0 0;color:#92400e;">Customer hasn't uploaded a payment screenshot yet.</p>`}
+                  </div>
+                ` : ''}
                 ${order.order_type === 'Delivery' ? `
                   <div id="qrSection-${order.id}" style="margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
                     <strong style="color: #166534;">Delivery QR</strong>
@@ -6798,7 +6817,37 @@ document.addEventListener("DOMContentLoaded", () => {
       await showSweetAlert('Error', 'Failed to load order details. Please try again.', 'error');
     }
   };
-  
+
+  // Confirm or reject a customer-submitted payment screenshot. Only a
+  // confirmed payment ever flips the order to Paid / counts toward revenue.
+  window.reviewPaymentProof = async function(orderId, action, btn) {
+    const verb = action === 'confirm' ? 'confirm this payment' : 'reject this payment proof';
+    const ok = await showSweetConfirm(`Are you sure you want to ${verb}? This cannot be undone.`, 'Please Confirm');
+    if (!ok) return;
+
+    if (btn) btn.disabled = true;
+    try {
+      const response = await fetch('../api/confirm_payment_proof.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, action: action })
+      });
+      const data = await response.json();
+      if (data.success) {
+        showNotification(data.message || 'Updated', 'success');
+        showFullOrderDetails(orderId);
+        if (typeof loadOnlineOrders === 'function') loadOnlineOrders();
+      } else {
+        showNotification(data.message || 'Failed to update payment proof', 'error');
+        if (btn) btn.disabled = false;
+      }
+    } catch (error) {
+      console.error('Error reviewing payment proof:', error);
+      showNotification('Network error, please try again.', 'error');
+      if (btn) btn.disabled = false;
+    }
+  };
+
   // Show order details modal
   window.showOrder = async function(tableId) {
     try {

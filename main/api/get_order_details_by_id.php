@@ -91,7 +91,20 @@ try {
     $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
     
     $order['items'] = $items;
-    
+
+    // Payment proof status (screenshot itself is served separately via
+    // image.php?type=payment_proof — never inline it here as a BLOB, since
+    // this whole row gets json_encode()'d).
+    $order['payment_proof_status'] = null;
+    try {
+        $proofStmt = $conn->prepare("SELECT status FROM payment_proofs WHERE order_id = ? LIMIT 1");
+        $proofStmt->execute([$order_id]);
+        $proofRow = $proofStmt->fetch(PDO::FETCH_ASSOC);
+        $order['payment_proof_status'] = $proofRow['status'] ?? null;
+    } catch (PDOException $e) {
+        // payment_proofs table not migrated on this DB yet — non-fatal.
+    }
+
     echo json_encode([
         'success' => true,
         'order' => $order

@@ -100,7 +100,12 @@ try {
                 $dateConditionNoAlias = "DATE(created_at) = CURDATE()";
         }
     }
-    
+
+    // Exclude QR-payment orders the restaurant hasn't confirmed yet from every
+    // sales/revenue figure below — money isn't counted until it's verified.
+    $dateCondition .= " AND NOT (o.payment_method = 'QR Payment' AND o.payment_status != 'Paid')";
+    $dateConditionNoAlias .= " AND NOT (payment_method = 'QR Payment' AND payment_status != 'Paid')";
+
     // Get total sales
     $salesParams = array_merge([$restaurant_id], $dateParams, $paymentFilterParams);
     $salesStmt = $conn->prepare("SELECT COALESCE(SUM(total), 0) as total_sales FROM orders WHERE restaurant_id = ? AND " . $dateConditionNoAlias . $paymentFilter);
@@ -210,8 +215,9 @@ try {
                 COUNT(*) as order_count,
                 SUM(total) as total_sales
             FROM orders
-            WHERE restaurant_id = ? 
+            WHERE restaurant_id = ?
             AND DATE(created_at) = CURDATE()
+            AND NOT (payment_method = 'QR Payment' AND payment_status != 'Paid')
             GROUP BY HOUR(created_at)
             ORDER BY hour ASC
         ");

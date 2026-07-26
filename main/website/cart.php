@@ -916,10 +916,12 @@ window.packagingCharge = <?php echo json_encode((float)$packaging_charge, JSON_H
 window.paymentGatewayType = <?php echo json_encode($payment_gateway_type ?? 'cash_only', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 <?php
 $phonepe_configured = false;
+$business_qr_available = false;
+$business_qr_image_url = '';
 if (!empty($restaurant_id) && function_exists('getConnection')) {
   try {
     $gwConn = getConnection();
-    $gwStmt = $gwConn->prepare("SELECT payment_gateway_mode, phonepe_merchant_id FROM users WHERE restaurant_id = ? LIMIT 1");
+    $gwStmt = $gwConn->prepare("SELECT id, payment_gateway_mode, phonepe_merchant_id, (business_qr_code_data IS NOT NULL) AS has_business_qr FROM users WHERE restaurant_id = ? LIMIT 1");
     $gwStmt->execute([$restaurant_id]);
     $gwRow = $gwStmt->fetch(PDO::FETCH_ASSOC);
     if ($gwRow) {
@@ -929,11 +931,17 @@ if (!empty($restaurant_id) && function_exists('getConnection')) {
       } elseif ($gwMode === 'platform') {
         $phonepe_configured = true;
       }
+      if (!empty($gwRow['has_business_qr'])) {
+        $business_qr_available = true;
+        $business_qr_image_url = '../api/image.php?type=business_qr&id=' . urlencode($gwRow['id']);
+      }
     }
   } catch (Exception $e) {}
 }
 ?>
 window.phonepeConfigured = <?php echo json_encode($phonepe_configured, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.businessQrAvailable = <?php echo json_encode($business_qr_available, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.businessQrImageUrl = <?php echo json_encode($business_qr_image_url, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minutes ?? 330, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.enableGst = <?php echo json_encode($enable_gst ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.enableDelivery = <?php echo json_encode($enable_delivery ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -2083,7 +2091,26 @@ function showCheckoutModal(cartData) {
   if (window.phonepeConfigured) {
     html += '<option value="UPI / NetBanking">UPI / NetBanking</option>';
   }
+  if (window.businessQrAvailable) {
+    html += '<option value="QR Payment">Pay Online (Scan QR)</option>';
+  }
   html += '</select></div>';
+
+  if (window.businessQrAvailable) {
+    html += '<div class="form-group" id="payOnlineQrSection" style="display:none;border:1px solid #e0e0e0;border-radius:10px;padding:14px;background:#fafafa;">';
+    html += '<div style="text-align:center;">';
+    html += '<img src="' + window.businessQrImageUrl + '" alt="Payment QR" style="width:180px;height:180px;object-fit:contain;border:1px solid #ddd;border-radius:8px;background:#fff;">';
+    html += '<div style="margin-top:8px;"><a href="' + window.businessQrImageUrl + '" download="payment-qr.png" style="color:#1a3934;font-weight:600;font-size:13px;text-decoration:none;">⬇ Download QR</a></div>';
+    html += '</div>';
+    html += '<label style="display:block;margin:14px 0 6px;font-weight:500;color:#333;font-size:13px">Upload payment screenshot</label>';
+    html += '<input type="file" id="paymentProofInput" accept="image/*" style="width:100%;box-sizing:border-box;font-size:13px;">';
+    html += '<div id="paymentProofPreviewWrap" style="display:none;margin-top:8px;text-align:center;">';
+    html += '<img id="paymentProofPreview" style="max-width:140px;max-height:140px;border-radius:8px;border:1px solid #ddd;">';
+    html += '</div>';
+    html += '<div id="paymentProofError" style="display:none;color:#c0392b;font-size:12px;margin-top:6px;"></div>';
+    html += '<div style="color:#777;font-size:12px;margin-top:6px;">Scan the QR, pay, then upload a screenshot of the successful payment. The restaurant will confirm it before your order is marked as paid.</div>';
+    html += '</div>';
+  }
 
   html += '<div class="btn-group">';
   html += '<button type="button" class="btn btn-secondary" onclick="this.closest(\'.modal-overlay\').remove()">Cancel</button>';
@@ -2095,6 +2122,56 @@ function showCheckoutModal(cartData) {
   modal.innerHTML = html;
   modal.dataset.baseTotal = cartData.finalTotal;
   document.body.appendChild(modal);
+
+  // Reset any payment-proof screenshot from a previous checkout attempt
+  window.__paymentProofBase64 = '';
+
+  // Pay Online (QR) — reveal the QR + screenshot upload panel only while selected
+  var chkPaymentEl = document.getElementById('chkPayment');
+  var payOnlineSection = document.getElementById('payOnlineQrSection');
+  if (chkPaymentEl && payOnlineSection) {
+    chkPaymentEl.addEventListener('change', function() {
+      payOnlineSection.style.display = (chkPaymentEl.value === 'QR Payment') ? '' : 'none';
+    });
+  }
+
+  var proofInput = document.getElementById('paymentProofInput');
+  if (proofInput) {
+    proofInput.addEventListener('change', function() {
+      var errEl = document.getElementById('paymentProofError');
+      var previewWrap = document.getElementById('paymentProofPreviewWrap');
+      var previewImg = document.getElementById('paymentProofPreview');
+      if (errEl) errEl.style.display = 'none';
+      window.__paymentProofBase64 = '';
+      if (previewWrap) previewWrap.style.display = 'none';
+
+      var file = proofInput.files && proofInput.files[0];
+      if (!file) return;
+
+      var allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (allowedTypes.indexOf(file.type) === -1) {
+        if (errEl) { errEl.textContent = 'Please upload a JPG, PNG, WEBP, or GIF image.'; errEl.style.display = ''; }
+        proofInput.value = '';
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        if (errEl) { errEl.textContent = 'Screenshot must be under 5MB.'; errEl.style.display = ''; }
+        proofInput.value = '';
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        window.__paymentProofBase64 = e.target.result;
+        if (previewImg) previewImg.src = e.target.result;
+        if (previewWrap) previewWrap.style.display = '';
+      };
+      reader.onerror = function() {
+        if (errEl) { errEl.textContent = 'Could not read that file, please try another.'; errEl.style.display = ''; }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   // Init Google Places address autocomplete after modal is in DOM
   setTimeout(initGeoAutocomplete, 200);
@@ -2256,6 +2333,13 @@ function processOrder(cartData) {
   if (!name || !phone) { showModal('Error', 'Name and phone are required'); return; }
   if (phone.length < 10 || !/^\d+$/.test(phone)) { showModal('Error', 'Please enter a valid 10-digit phone number'); return; }
 
+  if (payment === 'QR Payment' && !window.__paymentProofBase64) {
+    showModal('Payment Proof Required', 'Please upload a screenshot of your payment before placing the order.');
+    var btn = document.querySelector('#checkoutForm button[type=submit]');
+    if (btn) { btn.textContent = 'Place Order'; btn.disabled = false; }
+    return;
+  }
+
   var isDeliveryEnabled = window.enableDelivery == 1 || window.enableDelivery === true;
   if (orderType === 'Delivery' && isDeliveryEnabled) {
     // TEMPORARY: pincode/zone matching disabled - just require a saved address.
@@ -2350,6 +2434,7 @@ function processOrder(cartData) {
       total: cartData.totalPrice,
       total_payable: total,
       payment_method: payment,
+      payment_proof_base64: (payment === 'QR Payment' && window.__paymentProofBase64) ? window.__paymentProofBase64 : '',
       coupon_code: appliedCoupon ? appliedCoupon.code : '',
       discount_amount: cartData.discountAmount || 0,
       delivery_zone_id: deliveryZoneId,

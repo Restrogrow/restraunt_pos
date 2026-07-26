@@ -375,6 +375,32 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                     throw $e;
                 }
             }
+        } elseif ($imageType === 'payment_proof' && !empty($imageId)) {
+            // Customer payment screenshots are private — require an authenticated
+            // admin/staff session for the restaurant that owns the order, unlike
+            // the other image types on this page which are intentionally public.
+            require_once __DIR__ . '/../config/session_config.php';
+            startSecureSession();
+            require_once __DIR__ . '/../config/authorization_config.php';
+            if (empty($_SESSION['restaurant_id']) || !hasPermission(PERMISSION_MANAGE_ORDERS)) {
+                http_response_code(403);
+                sendPlaceholderSvg('Forbidden');
+            }
+            try {
+                $stmt = $conn->prepare("SELECT proof_data, proof_mime_type FROM payment_proofs WHERE order_id = ? AND restaurant_id = ? LIMIT 1");
+                $stmt->execute([$imageId, $_SESSION['restaurant_id']]);
+                $proof = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($proof && !empty($proof['proof_data'])) {
+                    header('Content-Type: ' . ($proof['proof_mime_type'] ?? 'image/jpeg'));
+                    header('Content-Length: ' . strlen($proof['proof_data']));
+                    header('Cache-Control: private, max-age=3600');
+                    echo $proof['proof_data'];
+                    exit();
+                }
+                sendPlaceholderSvg('No Proof');
+            } catch (PDOException $e) {
+                sendPlaceholderSvg('No Proof');
+            }
         } elseif (!empty($imagePath) && strpos($imagePath, 'db:') === 0) {
             // Extract ID from path (format: db:uniqueid)
             $dbId = str_replace('db:', '', $imagePath);

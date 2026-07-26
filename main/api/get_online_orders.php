@@ -68,8 +68,10 @@ try {
     $sql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
                    o.order_type, o.customer_name, o.customer_phone, o.customer_email,
                    o.customer_address, o.address_lat, o.address_lng, o.created_at, o.subtotal, o.tax, o.total, o.notes,
+                   pp.status as payment_proof_status,
                    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
             FROM orders o
+            LEFT JOIN payment_proofs pp ON pp.order_id = o.id
             WHERE " . $whereClause . "
             ORDER BY o.created_at DESC";
 

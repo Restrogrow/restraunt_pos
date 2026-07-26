@@ -51,6 +51,21 @@ $global_addons = $input['global_addons'] ?? [];
 $total = $input['total'] ?? 0;
 $total_payable = $input['total_payable'] ?? $total;
 $payment_method = $input['payment_method'] ?? 'Cash';
+
+// Optional payment-proof screenshot (customer uploads this when paying via
+// the restaurant's business QR). Stored separately in payment_proofs, not on
+// the orders row, so it starts life unconfirmed and never counts as revenue
+// until the restaurant explicitly reviews and confirms it.
+$paymentProofBytes = null;
+$paymentProofMime = null;
+$payment_proof_base64 = $input['payment_proof_base64'] ?? '';
+if ($payment_proof_base64 !== '' && preg_match('/^data:(image\/(?:jpeg|jpg|png|webp|gif));base64,(.+)$/i', $payment_proof_base64, $proofMatch)) {
+    $decodedProof = base64_decode($proofMatch[2], true);
+    if ($decodedProof !== false && strlen($decodedProof) > 0 && strlen($decodedProof) <= 5 * 1024 * 1024) {
+        $paymentProofBytes = $decodedProof;
+        $paymentProofMime = strtolower($proofMatch[1]) === 'image/jpg' ? 'image/jpeg' : strtolower($proofMatch[1]);
+    }
+}
 $coupon_code = $input['coupon_code'] ?? '';
 $discount_amount = (float)($input['discount_amount'] ?? 0);
 $delivery_zone_id = $input['delivery_zone_id'] ?? '';
@@ -423,7 +438,18 @@ $conn->beginTransaction();
     $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, address_lat, address_lng, notes, coupon_code, discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
     $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
     $order_id = $conn->lastInsertId();
-    
+
+    if ($paymentProofBytes !== null) {
+        try {
+            $conn->prepare("INSERT INTO payment_proofs (order_id, restaurant_id, proof_data, proof_mime_type, status) VALUES (?, ?, ?, ?, 'Pending')")
+                 ->execute([$order_id, $restaurant_id, $paymentProofBytes, $paymentProofMime]);
+        } catch (Exception $e) {
+            // Don't fail the whole order over a proof-storage hiccup — the
+            // restaurant can still follow up with the customer manually.
+            error_log('Failed to store payment proof for order ' . $order_id . ': ' . $e->getMessage());
+        }
+    }
+
     // Insert order items
     $itemStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price, addons) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     
