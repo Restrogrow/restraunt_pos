@@ -75,9 +75,25 @@ try {
             WHERE " . $whereClause . "
             ORDER BY o.created_at DESC";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
-    $result = $stmt->fetchAll();
+    try {
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        // Fall back for databases that haven't run the address_lat/address_lng
+        // or payment_proofs migrations yet, so a missing migration degrades
+        // gracefully instead of 500ing the whole online-orders list.
+        $fallbackSql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
+                       o.order_type, o.customer_name, o.customer_phone, o.customer_email,
+                       o.customer_address, o.created_at, o.subtotal, o.tax, o.total, o.notes,
+                       (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
+                FROM orders o
+                WHERE " . $whereClause . "
+                ORDER BY o.created_at DESC";
+        $stmt = $conn->prepare($fallbackSql);
+        $stmt->execute($params);
+        $result = $stmt->fetchAll();
+    }
 
     $orders = [];
     foreach ($result as $row) {

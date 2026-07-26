@@ -435,8 +435,18 @@ $conn->beginTransaction();
     }
 
     // Create order
-    $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, address_lat, address_lng, notes, coupon_code, discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
-    $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+    try {
+        $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, address_lat, address_lng, notes, coupon_code, discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
+        $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+    } catch (PDOException $e) {
+        // address_lat/address_lng migration hasn't been run on this DB yet —
+        // fall back so order placement never breaks over it.
+        if (stripos($e->getMessage(), 'address_lat') === false && stripos($e->getMessage(), 'address_lng') === false && stripos($e->getMessage(), 'Unknown column') === false) {
+            throw $e;
+        }
+        $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, notes, coupon_code, discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
+        $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $notes, $coupon_code, $discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+    }
     $order_id = $conn->lastInsertId();
 
     if ($paymentProofBytes !== null) {
