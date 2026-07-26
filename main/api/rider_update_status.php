@@ -14,6 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true);
+// Release the session file lock early — this script only needs the session for
+// CSRF/epoch validation, not for writing. Freeing it now prevents the subsequent
+// rider-page auto-refresh from blocking on this request's session lock.
+session_write_close();
 
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/order_state_machine.php';
@@ -80,12 +84,51 @@ try {
     $stmt = $conn->prepare($sql);
     $stmt->execute($updateParams);
 
-    // If delivered, update order status to Completed using state machine
+    // If delivered, update order status to Completed
+    // The order may be in any state (Preparing, Ready, Served, etc.) depending on
+    // whether the restaurant explicitly advanced it. We chain through intermediate
+    // transitions to reach 'Completed' regardless of the current state.
     if ($status === 'Delivered') {
-        $result = validateAndUpdateOrderStatus($conn, (int)$tracking['order_id'], 'Completed');
-        if (!$result['success']) {
-            $conn->rollBack();
-            throw new Exception($result['message']);
+        // Read current order status (row is locked by the transaction)
+        $orderStmt = $conn->prepare("SELECT order_status FROM orders WHERE id = ? FOR UPDATE");
+        $orderStmt->execute([$tracking['order_id']]);
+        $currentOrderStatus = $orderStmt->fetchColumn();
+
+        // Build the chain of statuses needed to reach 'Completed' from the current state.
+        $path = [];
+        switch ($currentOrderStatus) {
+            case 'Served':
+                $path = ['Completed'];
+                break;
+            case 'Ready':
+                $path = ['Served', 'Completed'];
+                break;
+            case 'Preparing':
+                $path = ['Ready', 'Served', 'Completed'];
+                break;
+            case 'Accepted':
+                $path = ['Preparing', 'Ready', 'Served', 'Completed'];
+                break;
+            case 'Pending':
+                $path = ['Accepted', 'Preparing', 'Ready', 'Served', 'Completed'];
+                break;
+            case 'Completed':
+                // Already completed — nothing to do
+                $path = [];
+                break;
+            default:
+                // Terminal state (Cancelled, Rejected) or unknown — skip
+                $path = [];
+                break;
+        }
+
+        // Advance through the chain
+        foreach ($path as $target) {
+            $r = validateAndUpdateOrderStatus($conn, (int)$tracking['order_id'], $target);
+            if (!$r['success']) {
+                $conn->rollBack();
+                throw new Exception($r['message']);
+            }
         }
     }
 

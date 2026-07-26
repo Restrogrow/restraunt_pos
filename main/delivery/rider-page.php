@@ -2,6 +2,10 @@
 // Rider tracking page - accessible via QR scan, no login required
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true);
+// Release the session file lock early — the rider page only reads the session
+// for basic validation, never writes to it. Releasing the lock immediately
+// prevents concurrent requests (status updates, location sharing) from blocking.
+session_write_close();
 
 require_once __DIR__ . '/../db_connection.php';
 
