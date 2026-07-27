@@ -51,6 +51,8 @@ require_superadmin();
   
   <!-- Scripts - Defer non-critical -->
   <script src="../assets/js/sweetalert2.all.min.js" defer></script>
+  <!-- Error Monitor interceptor -->
+  <script src="../public/error-monitor.js" defer></script>
   <style>
     :root{ --bg:#f4f6fb; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280; --primary:#151A2D; --primary-light:#1f2937; --green:#10b981; --red:#ef4444; --orange:#f59e0b; --blue:#3b82f6; --radius:12px; --shadow:0 2px 8px rgba(0,0,0,.05); }
     *{margin:0;padding:0;box-sizing:border-box;}
@@ -151,6 +153,25 @@ require_superadmin();
       .stat-card{padding:12px;}
       .menu-item{padding:10px 16px;}
     }
+    /* ═══ Error Monitor Styles ═══ */
+    #errorMonitorPage .badge {
+      font-size: 11px;
+      padding: 2px 10px;
+    }
+    #errorMonitorPage table tr:not(:hover) td {
+      border-bottom: 1px solid var(--border);
+    }
+    #errorMonitorPage .error-critical td { border-left: 3px solid #dc2626; }
+    #errorMonitorPage .error-error td { border-left: 3px solid #ef4444; }
+    #errorMonitorPage .error-warning td { border-left: 3px solid #f59e0b; }
+    .em-unread { background: #fffbeb !important; }
+    .em-unread td:first-child { border-left: 3px solid #f59e0b; }
+    #saErrorBadge {
+      background: #ef4444;
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -200,6 +221,10 @@ require_superadmin();
         <div class="menu-item" data-page="settings">
           <span class="material-symbols-rounded icon">settings</span>
           <span class="text">Settings</span>
+        </div>
+        <div class="menu-item" data-page="errorMonitor">
+          <span class="material-symbols-rounded icon">bug_report</span>
+          <span class="text">Error Monitor <span id="saErrorBadge" class="badge-new" style="display:none;">0</span></span>
         </div>
       </div>
       <div style="padding:20px;border-top:1px solid rgba(255,255,255,.1);margin-top:auto;">
