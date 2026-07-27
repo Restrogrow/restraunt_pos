@@ -23,11 +23,14 @@ require_once __DIR__ . '/../config/error_monitor.php';
 
 startSecureSession();
 
-// Require login (return JSON on failure)
-requireLogin(true);
-
-// Only admin / manager can view errors
-requirePermission(PERMISSION_VIEW_DASHBOARD, true);
+// Allow superadmin access without requiring dashboard permissions
+$isSuperadmin = isset($_SESSION['superadmin_id']);
+if (!$isSuperadmin) {
+    // Require login (return JSON on failure)
+    requireLogin(true);
+    // Only admin / manager can view errors
+    requirePermission(PERMISSION_VIEW_DASHBOARD, true);
+}
 
 try {
     $conn = getConnection();

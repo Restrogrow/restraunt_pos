@@ -17,8 +17,13 @@ require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/error_monitor.php';
 
 startSecureSession();
-requireLogin(true);
-requirePermission(PERMISSION_VIEW_DASHBOARD, true);
+
+// Allow superadmin access without requiring dashboard permissions
+$isSuperadmin = isset($_SESSION['superadmin_id']);
+if (!$isSuperadmin) {
+    requireLogin(true);
+    requirePermission(PERMISSION_VIEW_DASHBOARD, true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
