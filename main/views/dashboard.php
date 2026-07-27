@@ -552,6 +552,34 @@ try {
     #newOrderOverlay.show {
       display: flex;
     }
+
+    /* ═══ Error Monitor Styles ═══ */
+    #errorMonitorPage .error-row-unread {
+      background: #fffbeb !important;
+      border-left: 3px solid #f59e0b;
+    }
+    #errorMonitorPage .error-row-critical {
+      border-left: 3px solid #dc2626;
+    }
+    #errorMonitorPage .error-row-error {
+      border-left: 3px solid #ef4444;
+    }
+    #errorMonitorPage .error-row-warning {
+      border-left: 3px solid #f59e0b;
+    }
+    #errorMonitorPage table tr:hover {
+      background: #f0fdf4 !important;
+    }
+    #errorMonitorPage .badge-new {
+      background: #059669;
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+      vertical-align: middle;
+      animation: badge-pulse 0.5s ease-in-out 3;
+    }
     @keyframes overlayFadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -1070,6 +1098,13 @@ try {
             <span class="nav-label">Custom Domain</span>
           </a>
           <span class="nav-tooltip">Custom Domain</span>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="errorMonitorPage" onclick="setTimeout(loadErrorLogs, 50)">
+            <span class="nav-icon material-symbols-rounded">bug_report</span>
+            <span class="nav-label">Error Monitor <span class="nav-badge pulse" id="errorMonitorBadge" style="display:none">0</span></span>
+          </a>
+          <span class="nav-tooltip">Error Monitor</span>
         </li>
       </ul>
 
@@ -3843,6 +3878,88 @@ function toggleGatewayMode() {
         </div>
       </div>
     </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ERROR MONITOR PAGE
+         ═══════════════════════════════════════════════════════════ -->
+    <div id="errorMonitorPage" class="page">
+      <div class="page-header">
+        <div class="dashboard-header-row">
+          <div>
+            <h1>Error Monitor <span id="errorMonitorNewBadge" class="badge-new" style="display:none">New</span></h1>
+            <p>Real-time error tracking — PHP, JavaScript, database, API, and logical errors</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <select id="errorSourceFilter" style="padding:6px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;outline:none;">
+              <option value="all">All Sources</option>
+              <option value="php">PHP</option>
+              <option value="js">JavaScript</option>
+              <option value="api">API</option>
+              <option value="auth">Auth</option>
+              <option value="db">Database</option>
+              <option value="state_machine">State Machine</option>
+              <option value="custom">Custom</option>
+            </select>
+            <select id="errorSeverityFilter" style="padding:6px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;outline:none;">
+              <option value="all">All Severities</option>
+              <option value="critical">Critical</option>
+              <option value="error">Error</option>
+              <option value="warning">Warning</option>
+              <option value="info">Info</option>
+            </select>
+            <input type="text" id="errorSearchInput" placeholder="Search errors..." style="padding:6px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;outline:none;width:180px;">
+            <button class="btn-secondary" onclick="loadErrorLogs()" title="Refresh">
+              <span class="material-symbols-rounded" style="font-size:18px;">refresh</span>
+            </button>
+            <button class="btn-secondary" onclick="markAllErrorsRead()" title="Mark all as read">
+              <span class="material-symbols-rounded" style="font-size:18px;">done_all</span>
+              Mark Read
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="page-content">
+        <!-- Status Summary Cards -->
+        <div class="dashboard-content-grid" style="margin-bottom:20px;">
+          <div class="dashboard-card-modern">
+            <div class="card-header-modern">
+              <h3><span class="material-symbols-rounded">error</span> Critical</h3>
+              <span class="badge-today" id="criticalCount">0</span>
+            </div>
+          </div>
+          <div class="dashboard-card-modern">
+            <div class="card-header-modern">
+              <h3><span class="material-symbols-rounded">warning</span> Errors</h3>
+              <span class="badge-today" id="errorCount">0</span>
+            </div>
+          </div>
+          <div class="dashboard-card-modern">
+            <div class="card-header-modern">
+              <h3><span class="material-symbols-rounded">info</span> Warnings</h3>
+              <span class="badge-today" id="warningCount">0</span>
+            </div>
+          </div>
+          <div class="dashboard-card-modern">
+            <div class="card-header-modern">
+              <h3><span class="material-symbols-rounded">visibility</span> Unread</h3>
+              <span class="badge-today" id="unreadCount">0</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Error Logs Table -->
+        <div class="dashboard-card-modern">
+          <div class="card-header-modern">
+            <h3><span class="material-symbols-rounded">list_alt</span> Error Logs</h3>
+            <span id="errorLogTotal" style="font-size:12px;color:#6b7280;"></span>
+          </div>
+          <div class="card-body-modern" id="errorLogsList">
+            <div class="loading">Loading errors...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <!-- Menu Modal (Add/Edit) -->
@@ -4711,6 +4828,10 @@ function toggleGatewayMode() {
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
   <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
+  
+  <!-- Error Monitor — client-side error interceptor (catches console.errors, runtime errors, promise rejections) -->
+  <script src="../public/error-monitor.js?v=<?php echo time(); ?>" defer></script>
+  
   <script>
     // Check payment status on page load (for redirect from PhonePe or Demo)
     window.addEventListener('load', function() {
@@ -6131,6 +6252,304 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ERROR MONITOR — JavaScript Functions
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+// ── Error Monitor ───────────────────────────────────────────────────────────
+var errorMonitorPollTimer = null;
+var lastErrorId = 0;
+
+function loadErrorLogs() {
+  var container = document.getElementById('errorLogsList');
+  if (!container) return;
+  
+  container.innerHTML = '<div class="loading">Loading errors...</div>';
+  
+  var source = (document.getElementById('errorSourceFilter') || {}).value || 'all';
+  var severity = (document.getElementById('errorSeverityFilter') || {}).value || 'all';
+  var search = (document.getElementById('errorSearchInput') || {}).value || '';
+  
+  var url = '../api/get_error_logs.php?limit=100';
+  if (source !== 'all') url += '&source=' + encodeURIComponent(source);
+  if (severity !== 'all') url += '&severity=' + encodeURIComponent(severity);
+  if (search) url += '&search=' + encodeURIComponent(search);
+  
+  fetch(url, { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success) {
+        container.innerHTML = '<div class="empty-state"><h3>Failed to load</h3><p>' + (data.message || '') + '</p></div>';
+        return;
+      }
+      
+      // Update summary counts
+      var critical = 0, errors = 0, warnings = 0;
+      for (var i = 0; i < data.errors.length; i++) {
+        var e = data.errors[i];
+        if (e.severity === 'critical') critical++;
+        else if (e.severity === 'error') errors++;
+        else if (e.severity === 'warning') warnings++;
+      }
+      document.getElementById('criticalCount').textContent = critical;
+      document.getElementById('errorCount').textContent = errors;
+      document.getElementById('warningCount').textContent = warnings;
+      document.getElementById('unreadCount').textContent = data.unread_count;
+      document.getElementById('errorLogTotal').textContent = 'Total: ' + data.total + ' errors';
+      
+      // Update unread badge in sidebar
+      updateErrorBadge(data.unread_count);
+      
+      if (data.errors.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon"><span class="material-symbols-rounded">check_circle</span></div><h3>All Clear!</h3><p>No errors found. Everything is running smoothly.</p></div>';
+        return;
+      }
+      
+      // Track latest ID for polling
+      if (data.errors.length > 0) {
+        var maxId = 0;
+        for (var i = 0; i < data.errors.length; i++) {
+          if (parseInt(data.errors[i].id) > maxId) maxId = parseInt(data.errors[i].id);
+        }
+        lastErrorId = maxId;
+      }
+      
+      // Render table
+      var html = '<div style="overflow-x:auto;">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+      html += '<thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb;">';
+      html += '<th style="padding:10px 12px;text-align:left;font-weight:600;color:#374151;">Time</th>';
+      html += '<th style="padding:10px 12px;text-align:left;font-weight:600;color:#374151;">Source</th>';
+      html += '<th style="padding:10px 12px;text-align:left;font-weight:600;color:#374151;">Severity</th>';
+      html += '<th style="padding:10px 12px;text-align:left;font-weight:600;color:#374151;">Message</th>';
+      html += '<th style="padding:10px 12px;text-align:left;font-weight:600;color:#374151;">File:Line</th>';
+      html += '<th style="padding:10px 12px;text-align:center;font-weight:600;color:#374151;">Actions</th>';
+      html += '</tr></thead><tbody>';
+      
+      for (var i = 0; i < data.errors.length; i++) {
+        var err = data.errors[i];
+        var severityColor = '#6b7280';
+        var severityBg = '#f3f4f6';
+        if (err.severity === 'critical') { severityColor = '#fff'; severityBg = '#dc2626'; }
+        else if (err.severity === 'error') { severityColor = '#fff'; severityBg = '#ef4444'; }
+        else if (err.severity === 'warning') { severityColor = '#92400e'; severityBg = '#fef3c7'; }
+        else if (err.severity === 'info') { severityColor = '#1e40af'; severityBg = '#dbeafe'; }
+        
+        var sourceIcons = { php: '&#60;?&#160;', js: '{ }', api: '&#8594;', auth: '&#128274;', db: '&#128451;', state_machine: '&#9881;', custom: '&#9888;' };
+        var iconColor = err.source === 'php' ? '#777bb3' : err.source === 'js' ? '#f0db4f' : err.source === 'db' ? '#00758f' : err.source === 'auth' ? '#10b981' : '#6b7280';
+        
+        html += '<tr style="border-bottom:1px solid #f3f4f6;' + (err.is_read ? '' : 'background:#fffbeb;') + '">';
+        html += '<td style="padding:10px 12px;white-space:nowrap;color:#6b7280;font-size:12px;">' + (err.created_at_formatted || err.created_at) + '</td>';
+        html += '<td style="padding:10px 12px;"><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;background:#f3f4f6;color:' + iconColor + ';font-weight:600;font-size:11px;font-family:monospace;">' + sourceIcons[err.source] || err.source + ' ' + (err.source || '').toUpperCase() + '</span></td>';
+        html += '<td style="padding:10px 12px;"><span style="display:inline-block;padding:2px 8px;border-radius:10px;background:' + severityBg + ';color:' + severityColor + ';font-weight:600;font-size:11px;">' + (err.severity || 'error').toUpperCase() + '</span></td>';
+        html += '<td style="padding:10px 12px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + htmlEntities(err.message) + '">' + htmlEntities(err.message_short || err.message) + '</td>';
+        html += '<td style="padding:10px 12px;color:#6b7280;font-size:12px;font-family:monospace;">' + htmlEntities((err.file || '') + ':' + (err.line || '')) + '</td>';
+        html += '<td style="padding:10px 12px;text-align:center;white-space:nowrap;">';
+        html += '<button onclick="viewErrorDetail(' + err.id + ')" style="border:none;background:none;cursor:pointer;padding:4px 8px;border-radius:4px;color:#3b82f6;font-size:12px;" title="View details">&#128065;</button>';
+        if (!err.is_read) {
+          html += '<button onclick="markErrorRead(' + err.id + ')" style="border:none;background:none;cursor:pointer;padding:4px 8px;border-radius:4px;color:#10b981;font-size:12px;" title="Mark read">&#10003;</button>';
+        }
+        html += '</td>';
+        html += '</tr>';
+      }
+      
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    })
+    .catch(function(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon"><span class="material-symbols-rounded">error_outline</span></div><h3>Connection Error</h3><p>Could not load error logs. Check your connection.</p></div>';
+    });
+}
+
+function htmlEntities(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function viewErrorDetail(errorId) {
+  // Show error detail in SweetAlert
+  fetch('../api/get_error_logs.php?limit=1&since_id=' + (errorId - 1), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success || !data.errors || data.errors.length === 0) {
+        showSweetAlert('Error details not found', 'error');
+        return;
+      }
+      var err = data.errors[0];
+      if (parseInt(err.id) !== errorId) {
+        showSweetAlert('Error details not found', 'error');
+        return;
+      }
+      
+      var ctxHtml = '';
+      if (err.context) {
+        try {
+          var ctx = typeof err.context === 'string' ? JSON.parse(err.context) : err.context;
+          ctxHtml = '<pre style="background:#1f2937;color:#e5e7eb;padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:200px;text-align:left;">' + htmlEntities(JSON.stringify(ctx, null, 2)) + '</pre>';
+        } catch(e) {}
+      }
+      
+      var traceHtml = '';
+      if (err.trace) {
+        traceHtml = '<div style="margin-top:8px;"><strong style="font-size:13px;">Stack Trace:</strong><pre style="background:#1f2937;color:#e5e7eb;padding:12px;border-radius:8px;font-size:11px;overflow:auto;max-height:200px;text-align:left;margin-top:4px;">' + htmlEntities(err.trace) + '</pre></div>';
+      }
+      
+      showSweetAlert('', 'info', {
+        title: '<span style="font-size:16px;">Error #' + err.id + '</span>',
+        html: '<div style="text-align:left;font-size:13px;">'
+          + '<div style="margin-bottom:8px;"><strong>Message:</strong><br>' + htmlEntities(err.message) + '</div>'
+          + '<div style="margin-bottom:8px;"><strong>Source:</strong> ' + (err.source || 'N/A') + ' | <strong>Severity:</strong> ' + (err.severity || 'N/A') + '</div>'
+          + '<div style="margin-bottom:8px;"><strong>File:</strong> ' + htmlEntities(err.file || 'N/A') + ':' + (err.line || 'N/A') + '</div>'
+          + '<div style="margin-bottom:8px;"><strong>Time:</strong> ' + (err.created_at_formatted || err.created_at) + '</div>'
+          + (err.url ? '<div style="margin-bottom:8px;"><strong>URL:</strong> ' + htmlEntities(err.url) + '</div>' : '')
+          + (err.ip_address ? '<div style="margin-bottom:8px;"><strong>IP:</strong> ' + err.ip_address + '</div>' : '')
+          + ctxHtml
+          + traceHtml
+          + '</div>',
+        confirmButtonText: 'Acknowledge',
+        confirmButtonColor: '#10b981',
+        showCancelButton: true,
+        cancelButtonText: 'Close',
+        cancelButtonColor: '#6b7280',
+      }).then(function(result) {
+        if (result.isConfirmed) {
+          markErrorRead(err.id);
+        }
+      });
+      
+      // Mark as read
+      markErrorRead(err.id, true);
+    })
+    .catch(function() {
+      showSweetAlert('Failed to load error details', 'error');
+    });
+}
+
+function markErrorRead(id, silent) {
+  var formData = new URLSearchParams();
+  formData.append('action', 'mark_read');
+  formData.append('id', id);
+  
+  fetch('../api/clear_error_log.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData.toString()
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success && !silent) {
+      loadErrorLogs();
+    } else if (data.success) {
+      // Still reload to update badges
+      setTimeout(function() { checkErrorBadge(); }, 500);
+    }
+  })
+  .catch(function() {});
+}
+
+function markAllErrorsRead() {
+  showSweetConfirm('Mark all errors as read?', 'Mark All Read').then(function(confirmed) {
+    if (!confirmed) return;
+    
+    var formData = new URLSearchParams();
+    formData.append('action', 'mark_all_read');
+    
+    fetch('../api/clear_error_log.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData.toString()
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        loadErrorLogs();
+        showSweetAlert('All errors marked as read', 'success');
+      }
+    })
+    .catch(function() {});
+  });
+}
+
+function updateErrorBadge(count) {
+  var badge = document.getElementById('errorMonitorBadge');
+  if (!badge) return;
+  
+  if (count > 0) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = count > 99 ? '99+' : count;
+    // Pulse animation
+    badge.classList.remove('pulse');
+    setTimeout(function() { badge.classList.add('pulse'); }, 10);
+  } else {
+    badge.style.display = 'none';
+  }
+  
+  // Also update the title badge on the page
+  var pageBadge = document.getElementById('errorMonitorNewBadge');
+  if (pageBadge) {
+    pageBadge.style.display = count > 0 ? 'inline' : 'none';
+  }
+}
+
+function checkErrorBadge() {
+  fetch('../api/get_error_logs.php?limit=1&unread_only=1', { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        updateErrorBadge(data.unread_count || 0);
+      }
+    })
+    .catch(function() {});
+}
+
+function startErrorMonitorPolling() {
+  // Check badge every 30 seconds
+  if (errorMonitorPollTimer) clearInterval(errorMonitorPollTimer);
+  errorMonitorPollTimer = setInterval(checkErrorBadge, 30000);
+  
+  // Filter change triggers reload
+  setTimeout(function() {
+    var sourceEl = document.getElementById('errorSourceFilter');
+    var severityEl = document.getElementById('errorSeverityFilter');
+    var searchEl = document.getElementById('errorSearchInput');
+    
+    if (sourceEl && !sourceEl.dataset.emListener) {
+      sourceEl.addEventListener('change', loadErrorLogs);
+      sourceEl.dataset.emListener = 'true';
+    }
+    if (severityEl && !severityEl.dataset.emListener) {
+      severityEl.addEventListener('change', loadErrorLogs);
+      severityEl.dataset.emListener = 'true';
+    }
+    if (searchEl && !searchEl.dataset.emListener) {
+      var timeout;
+      searchEl.addEventListener('input', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(loadErrorLogs, 500);
+      });
+      searchEl.dataset.emListener = 'true';
+    }
+  }, 200);
+}
+
+// Initialize error monitor when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+  checkErrorBadge();
+  startErrorMonitorPolling();
+});
+
+// Intercept page loads to trigger error monitor refresh
+var _origShowPage_em = window.showPage;
+window.showPage = function(pageId) {
+  if (typeof _origShowPage_em === 'function') {
+    _origShowPage_em(pageId);
+  }
+  if (pageId === 'errorMonitorPage') {
+    setTimeout(loadErrorLogs, 100);
+  }
+};
+</script>
 
 </body>
 </html>

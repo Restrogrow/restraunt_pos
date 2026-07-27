@@ -1,10 +1,20 @@
 <?php
 /**
  * Centralized Error Handling System
- * Provides consistent error handling, logging, and monitoring
+ * 
+ * NOW INTEGRATED WITH ERROR MONITOR:
+ *   - All errors are logged to the `error_logs` DB table
+ *   - All errors are still logged to files for backup
+ *   - PHP errors/exceptions/fatals are auto-captured
+ *   - View all errors in real-time in Error Monitor dashboard
+ * 
+ * Legacy file-based logging still works for backward compatibility.
  */
 
-// Error log directory
+if (defined('ERROR_HANDLER_LOADED')) return;
+define('ERROR_HANDLER_LOADED', true);
+
+// Error log directory (legacy file-based logging)
 define('ERROR_LOG_DIR', __DIR__ . '/../logs');
 define('SECURITY_LOG_FILE', ERROR_LOG_DIR . '/security.log');
 define('ERROR_LOG_FILE', ERROR_LOG_DIR . '/errors.log');
@@ -12,11 +22,12 @@ define('GENERAL_LOG_FILE', ERROR_LOG_DIR . '/general.log');
 
 // Create logs directory if it doesn't exist
 if (!is_dir(ERROR_LOG_DIR)) {
-    mkdir(ERROR_LOG_DIR, 0755, true);
+    @mkdir(ERROR_LOG_DIR, 0755, true);
 }
 
 /**
- * Log error with different severity levels
+ * Log error with different severity levels (legacy file-based)
+ * Now also logs to DB if error_monitor is loaded.
  */
 function logError($message, $severity = 'ERROR', $context = []) {
     $timestamp = date('Y-m-d H:i:s');
@@ -35,10 +46,22 @@ function logError($message, $severity = 'ERROR', $context = []) {
     }
     
     // Append to log file
-    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+    @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
     
     // Also log to PHP error log
     error_log($logEntry);
+
+    // Also log to DB if error_monitor is available
+    if (function_exists('logErrorToDB') && isset($GLOBALS['_error_monitor_conn'])) {
+        $dbSeverity = 'error';
+        if ($severity === 'SECURITY' || $severity === 'SECURITY_WARNING') $dbSeverity = 'critical';
+        elseif ($severity === 'WARNING') $dbSeverity = 'warning';
+        elseif ($severity === 'INFO') $dbSeverity = 'info';
+
+        logErrorToDB($GLOBALS['_error_monitor_conn'], 'php', $dbSeverity, $message, [
+            'extra' => $context,
+        ]);
+    }
 }
 
 /**
@@ -61,8 +84,6 @@ function logGeneralError($message, $context = []) {
 function logWarning($message, $context = []) {
     logError($message, 'WARNING', $context);
 }
-
-
 
 /**
  * Handle and format errors for API responses
@@ -101,6 +122,11 @@ function handleError($exception, $showDetails = false) {
             'trace' => $trace
         ]);
     }
+
+    // Also log to DB via logException if available
+    if (function_exists('logException') && isset($GLOBALS['_error_monitor_conn'])) {
+        logException($GLOBALS['_error_monitor_conn'], $exception);
+    }
     
     // Set HTTP status code
     http_response_code($errorCode >= 400 && $errorCode < 600 ? $errorCode : 500);
@@ -120,18 +146,17 @@ function handleError($exception, $showDetails = false) {
     return $response;
 }
 
-
-
 /**
  * Clean old log files (older than specified days)
  */
 function cleanOldLogs($daysToKeep = 30) {
     $logDir = ERROR_LOG_DIR;
-    $files = glob($logDir . '/*.log');
+    $files = @glob($logDir . '/*.log');
+    if (!$files) return;
     $cutoffTime = time() - ($daysToKeep * 24 * 60 * 60);
     
     foreach ($files as $file) {
-        if (filemtime($file) < $cutoffTime) {
+        if (@filemtime($file) < $cutoffTime) {
             @unlink($file);
         }
     }
@@ -141,4 +166,3 @@ function cleanOldLogs($daysToKeep = 30) {
 if (rand(1, 100) === 1) {
     cleanOldLogs(30);
 }
-

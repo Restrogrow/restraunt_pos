@@ -29,6 +29,9 @@ if (function_exists('getConnection')) {
 // Load environment variables first (from .env file)
 require_once __DIR__ . '/config/env_loader.php';
 
+// Load error handler (file-based fallback logging)
+require_once __DIR__ . '/config/error_handler.php';
+
 // ============================================================
 // DATABASE CONFIGURATION - READ FROM ENVIRONMENT VARIABLES
 // ============================================================
@@ -197,6 +200,19 @@ function createDatabaseConnection() {
             // Clear any previous transaction state
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
+            }
+
+            // ── Boot error monitor on this connection ──
+            // Installs PHP error/exception/shutdown handlers that log to DB
+            if (!defined('ERROR_MONITOR_LOADED') && file_exists(__DIR__ . '/config/error_monitor.php')) {
+                require_once __DIR__ . '/config/error_monitor.php';
+            }
+            if (function_exists('setupErrorMonitor')) {
+                try {
+                    setupErrorMonitor($pdo);
+                } catch (Exception $_em) {
+                    // Don't let monitoring setup break the app
+                }
             }
             
             // Track connection creation time for monitoring

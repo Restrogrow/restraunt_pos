@@ -162,6 +162,10 @@ function validateAndUpdateOrderStatus(
         } else {
             $msg .= ' — ' . $currentStatus . ' is a terminal state';
         }
+        // Log state machine violation to error monitor
+        if (function_exists('logStateMachineViolation')) {
+            logStateMachineViolation($conn, $orderId, $currentStatus, $newStatus, $restaurantId ?? $order['restaurant_id'] ?? null);
+        }
         return ['success' => false, 'message' => $msg, 'current_status' => $currentStatus];
     }
 
@@ -255,6 +259,10 @@ function validateAndUpdatePaymentStatus(
         $msg = 'Illegal payment transition: cannot go from ' . $currentStatus . ' to ' . $newStatus;
         if (!empty($allowed)) {
             $msg .= '. Allowed: ' . implode(', ', $allowed);
+        }
+        // Log state machine violation to error monitor
+        if (function_exists('logStateMachineViolation')) {
+            logStateMachineViolation($conn, $orderId, $currentStatus, $newStatus, $restaurantId ?? $order['restaurant_id'] ?? null);
         }
         return ['success' => false, 'message' => $msg];
     }
