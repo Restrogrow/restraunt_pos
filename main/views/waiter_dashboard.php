@@ -89,8 +89,15 @@ if (!$currency_symbol) {
     <!-- Scripts - Defer non-critical -->
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
+    <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
     <script src="../assets/js/script.js" defer></script>
     <style>
+        /* SweetAlert2 defaults to z-index:1060, which can render behind this
+           page's own full-screen overlays/modals (up to z-index:10001) -
+           force it above all of them so its buttons stay clickable. */
+        .swal2-container {
+            z-index: 100000 !important;
+        }
         /* Prevent zoom on mobile devices */
         html, body {
             touch-action: manipulation;

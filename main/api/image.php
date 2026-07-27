@@ -57,9 +57,10 @@ $localRef = '';
 if (strpos($imagePath, 'local:') === 0) $localRef = $imagePath;
 elseif (strpos($imageId, 'local:') === 0) $localRef = $imageId;
 if ($localRef !== '') {
-    $libraryBase = realpath(dirname(dirname(__DIR__)) . '/images');
+    require_once __DIR__ . '/../includes/menu_image_matcher.php';
+    $libraryBase = menu_image_library_root();
     $fullPath = false;
-    if ($libraryBase !== false) {
+    if ($libraryBase) {
         $rel = ltrim(str_replace('\\', '/', substr($localRef, strlen('local:'))), '/');
         $real = realpath($libraryBase . '/' . $rel);
         if ($real !== false && ($real === $libraryBase || strpos($real, $libraryBase . DIRECTORY_SEPARATOR) === 0)) {
@@ -391,6 +392,12 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                 $stmt->execute([$imageId, $_SESSION['restaurant_id']]);
                 $proof = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($proof && !empty($proof['proof_data'])) {
+                    // Discard anything already sitting in the output buffer
+                    // (e.g. stray whitespace leaked by an included config
+                    // file) - otherwise it gets prepended to the image bytes
+                    // and corrupts the file signature, same as every other
+                    // branch on this page already does before echoing binary data.
+                    ob_end_clean();
                     header('Content-Type: ' . ($proof['proof_mime_type'] ?? 'image/jpeg'));
                     header('Content-Length: ' . strlen($proof['proof_data']));
                     header('Cache-Control: private, max-age=3600');

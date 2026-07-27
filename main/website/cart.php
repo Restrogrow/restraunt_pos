@@ -1994,6 +1994,10 @@ function showCheckoutModal(cartData) {
   html += '<span onclick="toggleAddressAutocomplete()" style="font-size:11px;color:#e17055;cursor:pointer;margin-top:4px;display:inline-block;">Use address search instead</span>';
   html += '</div>';
   html += '<span onclick="togglePincodeFallback()" id="togglePincodeLink" style="font-size:11px;color:#e17055;cursor:pointer;display:' + (pincodeDisplay === '' ? 'inline-block' : 'none') + ';margin-top:4px;">Enter pincode manually</span>';
+  html += '<div style="margin-top:10px;">';
+  html += '<label>Landmark <span style="color:#999;font-weight:400;">(optional)</span></label>';
+  html += '<input type="text" id="chkLandmark" value="' + esc((cd && cd.landmark) || '') + '" placeholder="e.g. Near City Hospital, Opp. SBI Bank" style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
+  html += '</div>';
   html += '</div>';
 
   html += '<div class="order-summary-box">';
@@ -2423,6 +2427,7 @@ function processOrder(cartData) {
       customer_phone: phone,
       customer_email: email,
       customer_address: address,
+      landmark: document.getElementById('chkLandmark')?.value.trim() || '',
       address_lat: document.getElementById('chkAddressLat')?.value || '',
       address_lng: document.getElementById('chkAddressLng')?.value || '',
       address_formatted: document.getElementById('chkAddressFormatted')?.value || '',

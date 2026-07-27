@@ -306,10 +306,7 @@ function belongsToRestaurant($restaurantId) {
     if (!isLoggedIn()) {
         return false;
     }
-    
+
     return getRestaurantId() === $restaurantId;
 }
-
-
-?>
 

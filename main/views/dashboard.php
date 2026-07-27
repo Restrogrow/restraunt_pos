@@ -542,6 +542,13 @@ try {
       align-items: center;
       animation: overlayFadeIn 0.3s ease;
     }
+    /* SweetAlert2 defaults to z-index:1060, which renders behind #newOrderOverlay
+       (99999) - so confirm dialogs triggered from inside that popup (e.g.
+       "Confirm Payment") were visible but unclickable. Force it above every
+       overlay in the app. */
+    .swal2-container {
+      z-index: 100000 !important;
+    }
     #newOrderOverlay.show {
       display: flex;
     }
@@ -2970,10 +2977,88 @@ function toggleGatewayMode() {
               </form>
             </div>
           </div>
+
+          <!-- Printer Settings Card -->
+          <div class="profile-card-modern">
+            <div class="profile-card-header">
+              <h3>
+                <span class="material-symbols-rounded">print</span>
+                Printer Settings
+              </h3>
+              <p class="card-description">Configure your thermal receipt printer for KOTs, bills and invoices</p>
+            </div>
+            <div class="profile-card-body">
+              <form id="printerSettingsForm" onsubmit="return false;">
+                <div class="form-group">
+                  <label for="printerWidthSelect">
+                    <span class="material-symbols-rounded">receipt_long</span>
+                    Paper Width
+                  </label>
+                  <select id="printerWidthSelect">
+                    <option value="58">58mm (small thermal printer)</option>
+                    <option value="80">80mm (standard thermal printer)</option>
+                  </select>
+                  <p style="color:#666;font-size:0.85rem;margin-top:0.5rem;">Check the paper roll width printed on the box, or measure the roll - this must match your printer exactly or receipts will print cut off or with wasted margin.</p>
+                </div>
+
+                <div class="form-group">
+                  <label for="printerModeSelect">
+                    <span class="material-symbols-rounded">settings_ethernet</span>
+                    Connection Mode
+                  </label>
+                  <select id="printerModeSelect">
+                    <option value="browser">Browser / System Printer (recommended)</option>
+                    <option value="network">Network Printer (ESC/POS, direct - no print dialog)</option>
+                  </select>
+                  <p style="color:#666;font-size:0.85rem;margin-top:0.5rem;">
+                    <strong>Browser/System:</strong> works with any thermal printer that has a Windows/Android driver installed (USB, Bluetooth or network). Opens a print preview and uses your OS print dialog.<br>
+                    <strong>Network Printer:</strong> sends raw print commands straight to a LAN thermal printer's IP address - no driver needed, no dialog, prints instantly like a real POS terminal. Requires a network (Ethernet/Wi-Fi) thermal printer.
+                  </p>
+                </div>
+
+                <div id="printerNetworkFields" style="display:none;">
+                  <div class="form-group">
+                    <label for="printerNetworkIp">
+                      <span class="material-symbols-rounded">lan</span>
+                      Printer IP Address
+                    </label>
+                    <input type="text" id="printerNetworkIp" placeholder="e.g. 192.168.1.50">
+                  </div>
+                  <div class="form-group">
+                    <label for="printerNetworkPort">
+                      <span class="material-symbols-rounded">settings_input_component</span>
+                      Port
+                    </label>
+                    <input type="number" id="printerNetworkPort" value="9100" min="1" max="65535">
+                    <p style="color:#666;font-size:0.85rem;margin-top:0.5rem;">9100 is the standard raw ESC/POS port used by almost all network thermal printers.</p>
+                  </div>
+                </div>
+
+                <div class="form-group" style="border-top:1px solid #e5e7eb;padding-top:1rem;margin-top:0.5rem;">
+                  <label style="display:flex;align-items:center;gap:0.5rem;font-weight:500;">
+                    <span class="material-symbols-rounded" style="color:#0066cc;">science</span>
+                    Don't have a printer yet?
+                  </label>
+                  <p style="font-size:0.85rem;color:#6b7280;margin:0.25rem 0 0.75rem 0;">Run the bundled virtual printer to test the full print flow (including Network mode) with no hardware: open a terminal in <code>main/tools</code> and run <code>php virtual_printer_server.php</code>, then set Connection Mode to Network Printer with address <code>127.0.0.1</code> and port <code>9100</code>. Every print job will show up in that terminal exactly as a real printer would receive it.</p>
+                </div>
+
+                <div class="form-actions">
+                  <button type="button" class="btn btn-save" onclick="savePrinterSettingsForm()">
+                    <span class="material-symbols-rounded">save</span>
+                    Save Printer Settings
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick="testPrintReceipt()" style="margin-left:0.5rem;">
+                    <span class="material-symbols-rounded">print</span>
+                    Test Print
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    
+
     <!-- Profile Page -->
     <div id="profilePage" class="page">
       <div class="page-header">
@@ -4314,6 +4399,7 @@ function toggleGatewayMode() {
               <select id="countryCode" name="countryCode" style="width: 30%;">
                 <option value="+1">+1</option>
                 <option value="+91">+91</option>
+                <option value="+977">+977</option>
                 <option value="+44">+44</option>
                 <option value="+61">+61</option>
               </select>
@@ -4623,6 +4709,7 @@ function toggleGatewayMode() {
   <!-- Script -->
   <!-- Currency utils (extracted from script.js) -->
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
+  <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
   <script>
     // Check payment status on page load (for redirect from PhonePe or Demo)
@@ -6008,6 +6095,11 @@ if ('serviceWorker' in navigator) {
         <span class="label">Address</span>
         <span class="value" id="notifCustomerAddress">---</span>
       </div>
+      <div class="order-detail-row" id="notifLandmarkRow" style="display:none;">
+        <span class="label">Landmark</span>
+        <span class="value" id="notifLandmark">---</span>
+      </div>
+      <div id="notifMapContainer"></div>
       <div class="order-detail-row">
         <span class="label">Order Type</span>
         <span class="value" id="notifOrderType">---</span>
@@ -6016,6 +6108,7 @@ if ('serviceWorker' in navigator) {
         <span class="label">Payment</span>
         <span class="value" id="notifPaymentInfo">---</span>
       </div>
+      <div id="notifPaymentProofContainer"></div>
       <div id="notifItemsContainer" class="order-items-list">
         <div class="items-title">Order Items</div>
         <div id="notifItemsList"></div>

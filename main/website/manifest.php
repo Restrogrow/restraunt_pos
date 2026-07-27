@@ -27,7 +27,7 @@ if ($restaurantId && function_exists('getConnection')) {
             $slug = strtolower($name);
             $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
             $slug = trim($slug, '-');
-            $iconUrl = $siteRoot . 'main/website/image.php?type=logo&id=' . $row['id'];
+            $iconUrl = $siteRoot . 'main/api/image.php?type=logo&id=' . $row['id'];
         }
     } catch (Exception $e) {
     }

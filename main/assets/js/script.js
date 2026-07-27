@@ -1111,15 +1111,33 @@ document.addEventListener("DOMContentLoaded", () => {
         e = document.getElementById('notifCustomerPhone');
         if (e) e.textContent = order.customer_phone || '-';
 
+        var isDelivery = (order.order_type || '').toLowerCase() === 'delivery';
+
         var addrRow = document.getElementById('notifAddressRow');
         var addrEl = document.getElementById('notifCustomerAddress');
         if (addrRow && addrEl) {
-          if (order.customer_address && order.order_type === 'delivery') {
+          if (order.customer_address && isDelivery) {
             addrRow.style.display = 'flex';
             addrEl.textContent = order.customer_address;
           } else {
             addrRow.style.display = 'none';
           }
+        }
+
+        var landmarkRow = document.getElementById('notifLandmarkRow');
+        var landmarkEl = document.getElementById('notifLandmark');
+        if (landmarkRow && landmarkEl) {
+          if (order.landmark && isDelivery) {
+            landmarkRow.style.display = 'flex';
+            landmarkEl.textContent = order.landmark;
+          } else {
+            landmarkRow.style.display = 'none';
+          }
+        }
+
+        var mapContainer = document.getElementById('notifMapContainer');
+        if (mapContainer) {
+          mapContainer.innerHTML = (isDelivery && typeof buildDeliveryMapHtml === 'function') ? buildDeliveryMapHtml(order) : '';
         }
 
         e = document.getElementById('notifOrderType');
@@ -1130,6 +1148,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         e = document.getElementById('notifPaymentInfo');
         if (e) e.textContent = (order.payment_method || 'N/A') + ' (' + (order.payment_status || 'N/A') + ')';
+
+        // QR-payment orders need a review before the restaurant can trust the
+        // money actually landed, so surface the customer's screenshot right
+        // here rather than making the admin dig into the full order details.
+        var proofContainer = document.getElementById('notifPaymentProofContainer');
+        if (proofContainer) {
+          proofContainer.innerHTML = (typeof buildPaymentProofHtml === 'function') ? buildPaymentProofHtml(order, 160) : '';
+        }
 
         var itemsEl = document.getElementById('notifItemsList');
         if (itemsEl) {
@@ -4350,11 +4376,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   // Download QR Code
-  window.downloadQRCode = function(qrUrl, tableName) {
-    const a = document.createElement('a');
-    a.href = qrUrl;
-    a.download = `QR-${tableName}.png`;
-    a.click();
+  // qrUrl points at a cross-origin QR generator (api.qrserver.com), and
+  // browsers silently ignore the `download` attribute on cross-origin links
+  // - it just opens the image instead of saving it. Fetching the image
+  // ourselves and downloading it as a same-origin blob makes it actually work.
+  window.downloadQRCode = async function(qrUrl, tableName) {
+    try {
+      const response = await fetch(qrUrl);
+      if (!response.ok) throw new Error('Failed to fetch QR code image');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `QR-${tableName}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      console.error('QR download failed', e);
+      // Fall back to opening it directly so the user can still save it manually.
+      window.open(qrUrl, '_blank');
+      if (typeof showSweetAlert === 'function') {
+        showSweetAlert('Could not auto-download - opened the QR code in a new tab instead. Right-click it and choose "Save image as...".');
+      }
+    }
   }
   
   // Print QR Code
@@ -6713,9 +6759,12 @@ document.addEventListener("DOMContentLoaded", () => {
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Table:</strong> <span style="color: #111827;">${order.table_name || order.table_number || 'Walk-in'}</span></p>
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Customer:</strong> <span style="color: #111827;">${order.customer_name || 'N/A'}</span></p>
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Type:</strong> <span style="color: #111827;">${order.order_type || 'N/A'}</span></p>
+                  ${order.customer_address ? `<p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Address:</strong> <span style="color: #111827;">${order.customer_address}</span></p>` : ''}
+                  ${order.landmark ? `<p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Landmark:</strong> <span style="color: #111827;">${order.landmark}</span></p>` : ''}
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Status:</strong> <span class="status-badge ${order.order_status.toLowerCase()}">${order.order_status}</span></p>
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Payment:</strong> <span class="status-badge ${order.payment_status.toLowerCase().replace(' ', '-')}">${order.payment_status}</span></p>
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Time:</strong> <span style="color: #111827;">${new Date(order.created_at).toLocaleString()}</span></p>
+                  ${typeof buildDeliveryMapHtml === 'function' ? buildDeliveryMapHtml(order) : ''}
                 </div>
                 
                 <div style="margin-bottom: 1.5rem;">
@@ -6758,25 +6807,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   </div>
                 </div>
                 
-                ${order.payment_method === 'QR Payment' ? `
-                  <div id="paymentProofSection-${order.id}" style="margin-top: 1rem; padding: 1rem; background: ${order.payment_proof_status === 'Confirmed' ? '#f0fdf4' : order.payment_proof_status === 'Rejected' ? '#fef2f2' : '#fffbeb'}; border-radius: 8px; border: 1px solid ${order.payment_proof_status === 'Confirmed' ? '#86efac' : order.payment_proof_status === 'Rejected' ? '#fca5a5' : '#fde68a'};">
-                    <strong style="color: #78350f;">Payment Proof (Pay Online / QR)</strong>
-                    ${order.payment_proof_status ? `
-                      <div style="margin-top:0.6rem;">
-                        <img src="../api/image.php?type=payment_proof&id=${order.id}" alt="Payment screenshot" style="max-width:220px;max-height:220px;border-radius:8px;border:1px solid #ddd;cursor:zoom-in;" onclick="window.open(this.src, '_blank')">
-                      </div>
-                      <div style="margin-top:0.5rem;">
-                        <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-weight:600;font-size:0.8rem;background:${order.payment_proof_status === 'Confirmed' ? '#dcfce7' : order.payment_proof_status === 'Rejected' ? '#fee2e2' : '#fef3c7'};color:${order.payment_proof_status === 'Confirmed' ? '#166534' : order.payment_proof_status === 'Rejected' ? '#991b1b' : '#92400e'};">${order.payment_proof_status}</span>
-                      </div>
-                      ${order.payment_proof_status === 'Pending' ? `
-                        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
-                          <button class="btn btn-success" onclick="reviewPaymentProof(${order.id}, 'confirm', this)" style="background:#16a34a;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">✔ Confirm Payment</button>
-                          <button class="btn btn-danger" onclick="reviewPaymentProof(${order.id}, 'reject', this)" style="background:#dc2626;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">✘ Reject</button>
-                        </div>
-                      ` : ''}
-                    ` : `<p style="margin:0.5rem 0 0 0;color:#92400e;">Customer hasn't uploaded a payment screenshot yet.</p>`}
-                  </div>
-                ` : ''}
+                ${typeof buildPaymentProofHtml === 'function' ? buildPaymentProofHtml(order, 220) : ''}
                 ${order.order_type === 'Delivery' ? `
                   <div id="qrSection-${order.id}" style="margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
                     <strong style="color: #166534;">Delivery QR</strong>
@@ -8187,11 +8218,9 @@ document.addEventListener("DOMContentLoaded", () => {
       <div style="display:flex;justify-content:space-between;font-size:12px;"><span>${label}</span><span>${currency}${amt.toFixed(2)}</span></div>
     `).join('');
 
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bill #${kotNumber}</title>
+    const billHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bill #${kotNumber}</title>
       <style>
-        @media print { @page { margin: 8mm; size: 80mm auto; } body { margin:0; padding:0; } }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: 'Courier New', Courier, monospace; padding:12px; max-width:280px; margin:0 auto; background:#fff; color:#111827; }
+        ${window.getThermalReceiptCSS()}
         .header { text-align:center; border-bottom:3px double #059669; padding-bottom:10px; margin-bottom:12px; }
         .restaurant-name { font-size:18px; font-weight:800; color:#059669; text-transform:uppercase; letter-spacing:0.5px; font-family:'Segoe UI',Tahoma,sans-serif; }
         .restaurant-details { font-size:10px; color:#6b7280; line-height:1.4; margin-top:4px; font-family:'Segoe UI',Tahoma,sans-serif; }
@@ -8249,6 +8278,36 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="footer-text">Powered by Restro Grow</div>
       </div>
     </body></html>`;
+
+    const billPrinterSettings = window.getPrinterSettings();
+    if (billPrinterSettings.mode === 'network') {
+      const escTotals = [['Subtotal', currency + subtotal.toFixed(2)]];
+      if (showGst) escTotals.push(['Tax (5%)', currency + tax.toFixed(2)]);
+      escTotals.push(['TOTAL', currency + total.toFixed(2), true]);
+
+      const escBuilder = window.buildReceiptEscPos({
+        charWidth: window.getPrinterCharWidth(billPrinterSettings.widthMM),
+        restaurantName: restaurantInfo.name,
+        address: restaurantInfo.address,
+        phone: restaurantInfo.phone,
+        title: 'BILL #' + kotNumber,
+        metaLines: [
+          ['Table', tableLabel],
+          ['Status', payResult.paymentStatus]
+        ],
+        items: cartSnapshot.map(it => ({
+          name: it.name + (it.variationName ? ' (' + it.variationName + ')' : ''),
+          qtyRate: it.quantity + ' x ' + currency + parseFloat(it.price).toFixed(2),
+          amount: currency + (parseFloat(it.price) * it.quantity).toFixed(2)
+        })),
+        totals: escTotals,
+        footerLines: ['Thank you!', 'Powered by Restro Grow']
+      });
+      const sent = await window.printViaNetwork(escBuilder);
+      if (sent) return null;
+    }
+
+    return billHtml;
   }
 
   async function processPayment() {
@@ -8350,6 +8409,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const showBill = async () => {
           const billHtml = await buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, result.kot_number);
+          if (billHtml === null) return; // already sent straight to the network printer
           showPrintPreview('Bill #' + result.kot_number, billHtml);
         };
 
@@ -8472,9 +8532,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT Preview</title>
       <style>
-        @media print { @page { margin: 8mm; size: 80mm auto; } body { margin:0; padding:0; } }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: 'Courier New', Courier, monospace; padding:12px; max-width:280px; margin:0 auto; background:#fff; color:#111827; }
+        ${window.getThermalReceiptCSS()}
         .header { text-align:center; border-bottom:3px double #dc2626; padding-bottom:10px; margin-bottom:12px; }
         .logo { margin-bottom:6px; }
         .restaurant-name { font-size:18px; font-weight:800; color:#dc2626; text-transform:uppercase; letter-spacing:0.5px; font-family:'Segoe UI',Tahoma,sans-serif; }
@@ -8835,6 +8893,38 @@ window.logout = logout;
     `;
   }
 
+  // Builds the payment-screenshot review block for a "QR Payment" order -
+  // shared by the new-order popup, the inline online-orders list, and the
+  // full order details modal so all three stay in sync.
+  function buildPaymentProofHtml(order, maxImgSize) {
+    if (order.payment_method !== 'QR Payment') return '';
+    maxImgSize = maxImgSize || 200;
+    const statusColors = {
+      Confirmed: { bg: '#f0fdf4', border: '#86efac', badgeBg: '#dcfce7', badgeText: '#166534' },
+      Rejected: { bg: '#fef2f2', border: '#fca5a5', badgeBg: '#fee2e2', badgeText: '#991b1b' },
+      Pending: { bg: '#fffbeb', border: '#fde68a', badgeBg: '#fef3c7', badgeText: '#92400e' }
+    };
+    const c = statusColors[order.payment_proof_status] || statusColors.Pending;
+    const body = order.payment_proof_status
+      ? `
+        <div style="margin-top:8px;"><img src="../api/image.php?type=payment_proof&id=${order.id}" alt="Payment screenshot" style="max-width:${maxImgSize}px;max-height:${maxImgSize}px;border-radius:8px;border:1px solid #ddd;cursor:zoom-in;" onclick="window.open(this.src, '_blank')"></div>
+        <div style="margin-top:6px;"><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-weight:600;font-size:0.75rem;background:${c.badgeBg};color:${c.badgeText};">${order.payment_proof_status}</span></div>
+        ${order.payment_proof_status === 'Pending' ? `
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+            <button onclick="reviewPaymentProof(${order.id}, 'confirm', this)" style="background:#16a34a;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.8rem;">Confirm Payment</button>
+            <button onclick="reviewPaymentProof(${order.id}, 'reject', this)" style="background:#dc2626;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.8rem;">Reject</button>
+          </div>
+        ` : ''}
+      `
+      : `<p style="margin:6px 0 0 0;font-size:0.8rem;color:#92400e;">Customer hasn't uploaded a payment screenshot yet.</p>`;
+    return `
+      <div style="margin-top:10px;padding:10px;background:${c.bg};border:1px solid ${c.border};border-radius:8px;">
+        <strong style="font-size:0.85rem;color:#78350f;">Payment Proof (Pay Online / QR)</strong>
+        ${body}
+      </div>
+    `;
+  }
+
   function displayOnlineOrders(orders) {
     const container = document.getElementById('onlineOrdersList');
 
@@ -8864,9 +8954,11 @@ window.logout = logout;
               <p><strong>${order.order_type || 'N/A'}</strong> &middot; ${formatCurrency(order.total)}</p>
               <p><strong>${escapeHtml(order.customer_name || 'N/A')}</strong> &middot; ${order.customer_phone || ''}</p>
               ${order.customer_address ? `<p style="color:#6b7280;font-size:0.85rem">📍 ${escapeHtml(order.customer_address)}</p>` : ''}
+              ${order.landmark ? `<p style="color:#6b7280;font-size:0.85rem">🏷️ Landmark: ${escapeHtml(order.landmark)}</p>` : ''}
               <p style="color:#6b7280;font-size:0.85rem">${new Date(order.created_at).toLocaleString()}</p>
             </div>
             ${buildDeliveryMapHtml(order)}
+            ${buildPaymentProofHtml(order)}
             ${order.notes ? `<div class="order-notes" style="background:#fefce8;padding:8px 12px;border-radius:8px;margin:8px 0;font-size:0.85rem;color:#92400e"><strong>Notes:</strong> ${escapeHtml(order.notes)}</div>` : ''}
             <div class="order-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 12px;">
               <button class="btn btn-success" onclick="updateOrderStatus(${order.id}, 'Accepted', this)" style="background: #10b981; color: white; border: none; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
@@ -8924,10 +9016,12 @@ window.logout = logout;
               <p><strong>Phone:</strong> ${order.customer_phone || 'N/A'}</p>
               ${order.customer_email ? `<p><strong>Email:</strong> ${escapeHtml(order.customer_email)}</p>` : ''}
               ${order.customer_address ? `<p><strong>Address:</strong> ${escapeHtml(order.customer_address)}</p>` : ''}
+              ${order.landmark ? `<p><strong>Landmark:</strong> ${escapeHtml(order.landmark)}</p>` : ''}
               <p><strong>Time:</strong> ${new Date(order.created_at).toLocaleString()}</p>
               <p><strong>Total:</strong> ${formatCurrency(order.total)}</p>
             </div>
             ${buildDeliveryMapHtml(order)}
+            ${buildPaymentProofHtml(order)}
             ${order.notes ? `<div class="order-notes" style="background:#fefce8;padding:8px 12px;border-radius:8px;margin:8px 0;font-size:0.85rem;color:#92400e"><strong>Notes:</strong> ${escapeHtml(order.notes)}</div>` : ''}
             <div class="order-items">
               <h4>Items:</h4>
@@ -8988,10 +9082,12 @@ window.logout = logout;
             <p><strong>Phone:</strong> ${order.customer_phone || 'N/A'}</p>
             ${order.customer_email ? `<p><strong>Email:</strong> ${escapeHtml(order.customer_email)}</p>` : ''}
             ${order.customer_address ? `<p><strong>Address:</strong> ${escapeHtml(order.customer_address)}</p>` : ''}
+            ${order.landmark ? `<p><strong>Landmark:</strong> ${escapeHtml(order.landmark)}</p>` : ''}
             <p><strong>Time:</strong> ${new Date(order.created_at).toLocaleString()}</p>
             <p><strong>Total:</strong> ${formatCurrency(order.total)}</p>
           </div>
           ${buildDeliveryMapHtml(order)}
+          ${buildPaymentProofHtml(order)}
           ${order.notes ? `<div class="order-notes" style="background:#fefce8;padding:8px 12px;border-radius:8px;margin:8px 0;font-size:0.85rem;color:#92400e"><strong>Notes:</strong> ${escapeHtml(order.notes)}</div>` : ''}
           <div class="order-items">
             <h4>Items:</h4>
@@ -9325,6 +9421,202 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// --- Printer Settings ---
+// Printer choice (paper width / connection mode) is tied to the physical
+// printer wired to this PC/browser, not to the restaurant account, so it's
+// kept in localStorage rather than the database.
+window.getPrinterSettings = function () {
+  var defaults = { widthMM: 80, mode: 'browser', networkIp: '', networkPort: 9100 };
+  try {
+    var saved = JSON.parse(localStorage.getItem('printerSettings') || '{}');
+    var merged = Object.assign({}, defaults, saved);
+    merged.widthMM = (parseInt(merged.widthMM, 10) === 58) ? 58 : 80;
+    merged.networkPort = parseInt(merged.networkPort, 10) || 9100;
+    return merged;
+  } catch (e) {
+    return defaults;
+  }
+};
+
+window.savePrinterSettings = function (settings) {
+  localStorage.setItem('printerSettings', JSON.stringify(settings));
+};
+
+// Character width of a monospace thermal font per paper size (Font A, the
+// default on essentially every 58mm/80mm ESC/POS printer).
+window.getPrinterCharWidth = function (widthMM) {
+  return widthMM === 58 ? 32 : 48;
+};
+
+// Returns the <style> rules that size a receipt for the printer configured
+// in Printer Settings. Shared by every print template so the paper width
+// only has to be handled correctly in one place. Pass widthMMOverride to
+// size for a specific width regardless of the saved setting (used by Test
+// Print, which previews whatever is currently selected, saved or not).
+window.getThermalReceiptCSS = function (widthMMOverride) {
+  var widthMM = (widthMMOverride === 58 || widthMMOverride === 80)
+    ? widthMMOverride
+    : window.getPrinterSettings().widthMM;
+  var contentMM = widthMM - 4; // printable area after a small safety margin
+  var baseFontPx = widthMM === 58 ? 11 : 12;
+  return (
+    '@media print { @page { size: ' + widthMM + 'mm auto; margin: 0; } body { margin:0; padding:0; } }' +
+    '* { margin:0; padding:0; box-sizing:border-box; }' +
+    'html, body { background:#fff; }' +
+    'body { font-family: "Courier New", Courier, monospace; width:' + contentMM + 'mm; max-width:' + contentMM + 'mm; margin:0 auto; padding:2mm; color:#111827; font-size:' + baseFontPx + 'px; }' +
+    // Thermal heads reproduce solid black reliably but wash out light
+    // greys/tints, so force pure black text and flat white fills when the
+    // job actually goes to a printer (on-screen preview keeps its colors).
+    '@media print { *, *::before, *::after { color:#000 !important; background:#fff !important; border-color:#000 !important; text-shadow:none !important; box-shadow:none !important; } }'
+  );
+};
+
+// Sends raw ESC/POS bytes to a LAN thermal printer via the server-side
+// relay (browsers can't open raw TCP sockets themselves). Returns true on
+// success so callers can fall back to the browser print preview on failure.
+window.printViaNetwork = async function (escPosBuilder) {
+  var settings = window.getPrinterSettings();
+  if (!settings.networkIp) {
+    showSweetAlert('No network printer address configured. Add one in Settings > Printer Settings.');
+    return false;
+  }
+  try {
+    const res = await fetch('../api/print_network.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ip: settings.networkIp,
+        port: settings.networkPort,
+        data: escPosBuilder.toBase64()
+      })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      showSweetAlert(data.message || 'Failed to reach network printer. Showing preview instead.');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Network print error', e);
+    showSweetAlert('Failed to reach network printer. Showing preview instead.');
+    return false;
+  }
+};
+
+// Printer Settings form (Settings page) - populate from localStorage and
+// wire up the mode toggle. Guarded so it no-ops on pages without this form
+// (e.g. the waiter dashboard, which shares this script file).
+document.addEventListener('DOMContentLoaded', function () {
+  var widthSel = document.getElementById('printerWidthSelect');
+  var modeSel = document.getElementById('printerModeSelect');
+  var ipInput = document.getElementById('printerNetworkIp');
+  var portInput = document.getElementById('printerNetworkPort');
+  var networkFields = document.getElementById('printerNetworkFields');
+  if (!widthSel || !modeSel || !ipInput || !portInput || !networkFields) return;
+
+  var settings = window.getPrinterSettings();
+  widthSel.value = String(settings.widthMM);
+  modeSel.value = settings.mode;
+  ipInput.value = settings.networkIp || '';
+  portInput.value = settings.networkPort || 9100;
+  networkFields.style.display = settings.mode === 'network' ? 'block' : 'none';
+
+  modeSel.addEventListener('change', function () {
+    networkFields.style.display = modeSel.value === 'network' ? 'block' : 'none';
+  });
+});
+
+window.savePrinterSettingsForm = function () {
+  var widthSel = document.getElementById('printerWidthSelect');
+  var modeSel = document.getElementById('printerModeSelect');
+  var ipInput = document.getElementById('printerNetworkIp');
+  var portInput = document.getElementById('printerNetworkPort');
+  if (!widthSel || !modeSel) return;
+
+  window.savePrinterSettings({
+    widthMM: parseInt(widthSel.value, 10) === 58 ? 58 : 80,
+    mode: modeSel.value === 'network' ? 'network' : 'browser',
+    networkIp: ipInput.value.trim(),
+    networkPort: parseInt(portInput.value, 10) || 9100
+  });
+
+  var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
+  showMsg('Printer settings saved', 'success');
+};
+
+// Reads the printer settings form's current values directly, so Test Print
+// reflects whatever is selected right now even if "Save" hasn't been
+// clicked yet. Falls back to the saved settings if the form isn't on the
+// current page.
+function getLivePrinterSettings() {
+  var widthSel = document.getElementById('printerWidthSelect');
+  var modeSel = document.getElementById('printerModeSelect');
+  if (!widthSel || !modeSel) return window.getPrinterSettings();
+
+  var ipInput = document.getElementById('printerNetworkIp');
+  var portInput = document.getElementById('printerNetworkPort');
+  return {
+    widthMM: parseInt(widthSel.value, 10) === 58 ? 58 : 80,
+    mode: modeSel.value === 'network' ? 'network' : 'browser',
+    networkIp: ipInput ? ipInput.value.trim() : '',
+    networkPort: (portInput && parseInt(portInput.value, 10)) || 9100
+  };
+}
+
+// Prints (or previews) a sample receipt using whatever printer settings are
+// currently selected in the form, so paper width / connection mode can be
+// verified without a real order - and without owning a printer, via the
+// browser preview or the bundled virtual_printer_server.php for Network mode.
+window.testPrintReceipt = async function () {
+  var settings = getLivePrinterSettings();
+  window.savePrinterSettings(settings); // Test Print always reflects (and locks in) what's on screen right now
+  var currency = window.globalCurrencySymbol || '₹';
+  var restaurantNameEl = document.getElementById('profileRestaurantName');
+  var restaurantName = (restaurantNameEl && restaurantNameEl.textContent && restaurantNameEl.textContent !== 'Loading...')
+    ? restaurantNameEl.textContent
+    : 'Your Restaurant';
+
+  var sampleData = {
+    charWidth: window.getPrinterCharWidth(settings.widthMM),
+    restaurantName: restaurantName,
+    address: '123 Sample Street, City',
+    phone: '+91 98765 43210',
+    title: 'TEST PRINT',
+    subtitle: new Date().toLocaleString('en-IN'),
+    metaLines: [
+      ['Paper', settings.widthMM + 'mm'],
+      ['Mode', settings.mode === 'network' ? 'Network Printer' : 'Browser / System']
+    ],
+    items: [
+      { name: 'Sample Item 1', qtyRate: '2 x ' + currency + '100.00', amount: currency + '200.00' },
+      { name: 'Sample Item 2', qtyRate: '1 x ' + currency + '50.00', amount: currency + '50.00' }
+    ],
+    totals: [['Total', currency + '250.00', true]],
+    footerLines: ['This is a test receipt', 'If this lines up correctly, you are ready to print!', 'Powered by Restro Grow']
+  };
+
+  var builder = window.buildReceiptEscPos(sampleData);
+
+  if (settings.mode === 'network') {
+    const sent = await window.printViaNetwork(builder);
+    if (sent) {
+      var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
+      showMsg('Test print sent to ' + settings.networkIp + ':' + settings.networkPort + '. Check your printer (or the virtual printer terminal).', 'success');
+    }
+    return;
+  }
+
+  // Browser mode: render the exact bytes a real printer would receive as
+  // monospace text, at the configured paper width - the most accurate
+  // preview possible without physical hardware.
+  var plainText = builder.toPlainText();
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Test Print</title><style>' +
+    window.getThermalReceiptCSS(settings.widthMM) +
+    'pre { font-family:"Courier New",Courier,monospace; white-space:pre-wrap; word-break:break-word; }' +
+    '</style></head><body><pre>' + escapeHtml(plainText) + '</pre></body></html>';
+  showPrintPreview('Test Print (' + settings.widthMM + 'mm)', html);
+};
 
 // Export Orders to CSV
 function exportOrdersToCSV() {
@@ -9684,9 +9976,7 @@ window.printKOT = async function(kotId, onClose) {
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT #${kot.kot_number}</title>
       <style>
-        @media print { @page { margin: 8mm; size: 80mm auto; } body { margin:0; padding:0; } }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: 'Courier New', Courier, monospace; padding:12px; max-width:280px; margin:0 auto; background:#fff; color:#111827; }
+        ${window.getThermalReceiptCSS()}
         .header { text-align:center; border-bottom:3px double #dc2626; padding-bottom:10px; margin-bottom:12px; }
         .logo { margin-bottom:6px; }
         .restaurant-name { font-size:18px; font-weight:800; color:#dc2626; text-transform:uppercase; letter-spacing:0.5px; font-family:'Segoe UI',Tahoma,sans-serif; }
@@ -9746,6 +10036,33 @@ window.printKOT = async function(kotId, onClose) {
         <div class="footer-text">Powered by Restro Grow</div>
       </div>
     </body></html>`;
+
+    const kotPrinterSettings = window.getPrinterSettings();
+    if (kotPrinterSettings.mode === 'network') {
+      const escBuilder = window.buildReceiptEscPos({
+        charWidth: window.getPrinterCharWidth(kotPrinterSettings.widthMM),
+        restaurantName: restaurantInfo.name,
+        address: restaurantInfo.address,
+        phone: restaurantInfo.phone,
+        title: 'KOT #' + (kot.kot_number || kot.id),
+        subtitle: dateStr + ' | ' + timeStr,
+        metaLines: [
+          ['Table', tableOrType],
+          ['Status', kot.kot_status || kot.status || 'Pending']
+        ],
+        items: (kot.items || []).map(it => ({
+          name: (it.quantity ? it.quantity + 'x ' : '') + (it.item_name || it.name || ''),
+          sub: (it.notes || it.special_instructions) ? '* ' + (it.notes || it.special_instructions) : ''
+        })),
+        totals: [['Total Items', String(itemsCount), true]],
+        footerLines: ['Thank you!', 'Powered by Restro Grow']
+      });
+      const sent = await window.printViaNetwork(escBuilder);
+      if (sent) {
+        if (typeof onClose === 'function') onClose();
+        return;
+      }
+    }
 
     showPrintPreview('KOT #' + kot.kot_number, html, onClose);
   } catch (e) {
@@ -9850,7 +10167,8 @@ window.printKOT = async function(kotId, onClose) {
         var contentH = bodyEl.scrollHeight;
         var contentW = bodyEl.scrollWidth;
         var availW = iframe.clientWidth - 10;
-        
+        var availH = iframe.clientHeight - 10;
+
         if (contentW > 0 && contentH > 0 && availH > 0) {
           var zoom = (availW / contentW) * 0.92;
           zoom = Math.max(0.6, Math.min(zoom, 2.0));
@@ -9982,9 +10300,7 @@ window.printOrder = async function(orderId) {
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #${order.order_number}</title>
       <style>
-        @media print { @page { margin:6mm; size:80mm auto; } body { margin:0; padding:0; } }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Courier New', Courier, monospace; padding:10px; max-width:280px; margin:0 auto; background:#fff; color:#111827; font-size:11px; }
+        ${window.getThermalReceiptCSS()}
         .header { text-align:center; border-bottom:2px solid #111827; padding-bottom:8px; margin-bottom:8px; }
         .restaurant-name { font-size:16px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; font-family:'Segoe UI',Tahoma,sans-serif; }
         .restaurant-details { font-size:9px; color:#6b7280; line-height:1.3; font-family:'Segoe UI',Tahoma,sans-serif; }
@@ -9997,16 +10313,16 @@ window.printOrder = async function(orderId) {
         .pay-to .name { font-weight:700; font-size:12px; color:#111827; }
         .items-section { margin:8px 0; }
         .items-header { display:flex; font-size:9px; font-weight:700; text-transform:uppercase; padding:4px 0; border-bottom:2px solid #111827; color:#111827; letter-spacing:0.5px; }
-        .items-header .col-item { flex:1; }
-        .items-header .col-qty-rate { width:80px; text-align:center; }
-        .items-header .col-disc { width:45px; text-align:center; }
-        .items-header .col-total { width:60px; text-align:right; }
+        .items-header .col-item { flex:1; min-width:0; }
+        .items-header .col-qty-rate { width:11ch; flex-shrink:0; text-align:center; }
+        .items-header .col-disc { width:6ch; flex-shrink:0; text-align:center; }
+        .items-header .col-total { width:8ch; flex-shrink:0; text-align:right; }
         .item-row { display:flex; font-size:10px; padding:4px 0; border-bottom:1px dashed #d1d5db; }
-        .item-row .col-item { flex:1; }
+        .item-row .col-item { flex:1; min-width:0; overflow-wrap:break-word; }
         .item-row .col-item .item-name { font-weight:600; font-size:11px; }
-        .item-row .col-qty-rate { width:80px; text-align:center; font-size:9px; color:#6b7280; }
-        .item-row .col-disc { width:45px; text-align:center; font-size:9px; color:#6b7280; }
-        .item-row .col-total { width:60px; text-align:right; font-weight:600; font-size:11px; }
+        .item-row .col-qty-rate { width:11ch; flex-shrink:0; text-align:center; font-size:9px; color:#6b7280; }
+        .item-row .col-disc { width:6ch; flex-shrink:0; text-align:center; font-size:9px; color:#6b7280; }
+        .item-row .col-total { width:8ch; flex-shrink:0; text-align:right; font-weight:600; font-size:11px; }
         .sep-line { border:none; border-top:1px dashed #9ca3af; margin:4px 0; }
         .divider { border:none; border-top:2px dashed #9ca3af; margin:8px 0; }
         .totals { margin-top:4px; }
@@ -10088,6 +10404,38 @@ window.printOrder = async function(orderId) {
         <div class="powered">Powered by Restro Grow</div>
       </div>
     </body></html>`
+
+    const orderPrinterSettings = window.getPrinterSettings();
+    if (orderPrinterSettings.mode === 'network') {
+      const escWidth = window.getPrinterCharWidth(orderPrinterSettings.widthMM);
+      const escTotals = [['Gross Amount', formatCurrency(subtotal + tax)]];
+      if (discount > 0) escTotals.push(['Discount', '-' + formatCurrency(discount)]);
+      escTotals.push(['TOTAL', formatCurrency(total), true]);
+
+      const escBuilder = window.buildReceiptEscPos({
+        charWidth: escWidth,
+        restaurantName: restaurantInfo.name,
+        address: restaurantInfo.address,
+        phone: restaurantInfo.phone,
+        title: 'INVOICE',
+        subtitle: '#' + (order.order_number || order.id),
+        metaLines: [
+          [tableOrType.includes('Table') ? 'DineIn' : 'Order', tableOrType],
+          ['Date', dateStr + ' ' + timeStr]
+        ],
+        items: items.map(it => ({
+          name: (it.item_name || it.name || ''),
+          qtyRate: (it.quantity || 1) + ' x ' + formatCurrency(parseFloat(it.price) || 0),
+          amount: formatCurrency(parseFloat(it.total_price) || 0)
+        })),
+        totals: escTotals,
+        footerLines: restaurantInfo.phone
+          ? ['Thank you for visiting', 'Contact: ' + restaurantInfo.phone, 'Powered by Restro Grow']
+          : ['Thank you for visiting', 'Powered by Restro Grow']
+      });
+      const sent = await window.printViaNetwork(escBuilder);
+      if (sent) return;
+    }
 
     showPrintPreview('Invoice #' + order.order_number, html);
   } catch (e) {
@@ -10709,6 +11057,33 @@ async function loadSettingsData() {
         }
       }
       
+      // Function to fill all days with normal restaurant hours (9 AM - 10 PM)
+      window.fillNormalHours = function() {
+        const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+        days.forEach(day => {
+          const toggle = document.getElementById(`day_${day}_open`);
+          if (toggle) toggle.checked = true;
+
+          const openHour = document.getElementById(`opening_hour_${day}`);
+          const openMin = document.getElementById(`opening_min_${day}`);
+          const openAmpm = document.getElementById(`opening_ampm_${day}`);
+          const closeHour = document.getElementById(`closing_hour_${day}`);
+          const closeMin = document.getElementById(`closing_min_${day}`);
+          const closeAmpm = document.getElementById(`closing_ampm_${day}`);
+
+          if (openHour) openHour.value = '09';
+          if (openMin) openMin.value = '00';
+          if (openAmpm) openAmpm.value = 'AM';
+          if (closeHour) closeHour.value = '10';
+          if (closeMin) closeMin.value = '00';
+          if (closeAmpm) closeAmpm.value = 'PM';
+        });
+        // Show a brief confirmation
+        if (typeof showNotification === 'function') {
+          showNotification('All days set to 9:00 AM - 10:00 PM', 'success');
+        }
+      };
+
       // Opening Hours
       if (user.opening_hours) {
         try {
@@ -10742,33 +11117,6 @@ async function loadSettingsData() {
         setTimeout(fillNormalHours, 100);
       }
 
-      // Function to fill all days with normal restaurant hours (9 AM - 10 PM)
-      window.fillNormalHours = function() {
-        const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-        days.forEach(day => {
-          const toggle = document.getElementById(`day_${day}_open`);
-          if (toggle) toggle.checked = true;
-
-          const openHour = document.getElementById(`opening_hour_${day}`);
-          const openMin = document.getElementById(`opening_min_${day}`);
-          const openAmpm = document.getElementById(`opening_ampm_${day}`);
-          const closeHour = document.getElementById(`closing_hour_${day}`);
-          const closeMin = document.getElementById(`closing_min_${day}`);
-          const closeAmpm = document.getElementById(`closing_ampm_${day}`);
-
-          if (openHour) openHour.value = '09';
-          if (openMin) openMin.value = '00';
-          if (openAmpm) openAmpm.value = 'AM';
-          if (closeHour) closeHour.value = '10';
-          if (closeMin) closeMin.value = '00';
-          if (closeAmpm) closeAmpm.value = 'PM';
-        });
-        // Show a brief confirmation
-        if (typeof showNotification === 'function') {
-          showNotification('All days set to 9:00 AM - 10:00 PM', 'success');
-        }
-      };
-      
       // Cashfree removed — use PhonePe only
       // PhonePe Payment Gateway
       const phonepeMerchantId = document.getElementById('phonepeMerchantId');

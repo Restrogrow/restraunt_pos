@@ -67,7 +67,7 @@ try {
 
     $sql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
                    o.order_type, o.customer_name, o.customer_phone, o.customer_email,
-                   o.customer_address, o.address_lat, o.address_lng, o.created_at, o.subtotal, o.tax, o.total, o.notes,
+                   o.customer_address, o.landmark, o.address_lat, o.address_lng, o.created_at, o.subtotal, o.tax, o.total, o.notes,
                    pp.status as payment_proof_status,
                    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
             FROM orders o
@@ -80,9 +80,9 @@ try {
         $stmt->execute($params);
         $result = $stmt->fetchAll();
     } catch (PDOException $e) {
-        // Fall back for databases that haven't run the address_lat/address_lng
-        // or payment_proofs migrations yet, so a missing migration degrades
-        // gracefully instead of 500ing the whole online-orders list.
+        // Fall back for databases that haven't run the landmark/address_lat/
+        // address_lng or payment_proofs migrations yet, so a missing migration
+        // degrades gracefully instead of 500ing the whole online-orders list.
         $fallbackSql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
                        o.order_type, o.customer_name, o.customer_phone, o.customer_email,
                        o.customer_address, o.created_at, o.subtotal, o.tax, o.total, o.notes,

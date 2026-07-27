@@ -48,18 +48,38 @@ try {
     // Get the most recent pending online order (must have at least 1 item)
     $sql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
                    o.order_type, o.customer_name, o.customer_phone, o.customer_email,
-                   o.customer_address, o.created_at, o.subtotal, o.tax, o.total, o.notes,
+                   o.customer_address, o.landmark, o.address_lat, o.address_lng, o.created_at, o.subtotal, o.tax, o.total, o.notes,
+                   pp.status as payment_proof_status,
                    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
             FROM orders o
+            LEFT JOIN payment_proofs pp ON pp.order_id = o.id
             WHERE o.restaurant_id = ? AND o.source = 'website' AND o.order_status = 'Pending'
               AND (o.payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR o.payment_status = 'Paid')
               AND (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) > 0
             ORDER BY o.created_at DESC
             LIMIT 1";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute([$restaurant_id]);
-    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    try {
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$restaurant_id]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Fall back for DBs that haven't run the landmark/address_lat/
+        // address_lng or payment_proofs migrations yet.
+        $fallbackSql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
+                       o.order_type, o.customer_name, o.customer_phone, o.customer_email,
+                       o.customer_address, o.created_at, o.subtotal, o.tax, o.total, o.notes,
+                       (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
+                FROM orders o
+                WHERE o.restaurant_id = ? AND o.source = 'website' AND o.order_status = 'Pending'
+                  AND (o.payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR o.payment_status = 'Paid')
+                  AND (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) > 0
+                ORDER BY o.created_at DESC
+                LIMIT 1";
+        $stmt = $conn->prepare($fallbackSql);
+        $stmt->execute([$restaurant_id]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
     if ($order) {
         // Get order items

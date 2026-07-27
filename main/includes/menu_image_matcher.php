@@ -5,7 +5,33 @@
 // The images/ folder lives at the project root (sibling of main/).
 
 function menu_image_library_root() {
-    return realpath(__DIR__ . '/../../images');
+    static $resolved = null;
+    static $checked = false;
+    if ($checked) return $resolved;
+    $checked = true;
+
+    // The standard layout (images/ as a sibling of main/) resolves correctly
+    // both locally and on most hosts. Some shared-hosting deployments
+    // (e.g. Hostinger, where the document root is public_html and the app
+    // may not sit at the same relative depth as it does locally) need extra
+    // candidate paths, matching the fallback approach already used for
+    // uploads/ elsewhere in this codebase.
+    $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+    $candidates = [
+        __DIR__ . '/../../images',       // main/includes -> main -> project root
+        $docRoot . '/images',
+        $docRoot . '/../images',
+        dirname($docRoot) . '/images',
+    ];
+
+    foreach ($candidates as $candidate) {
+        $real = realpath($candidate);
+        if ($real !== false && is_dir($real)) {
+            $resolved = $real;
+            return $resolved;
+        }
+    }
+    return null;
 }
 
 function menu_image_library_scan() {
@@ -13,7 +39,7 @@ function menu_image_library_scan() {
     if ($library !== null) return $library;
     $library = [];
     $root = menu_image_library_root();
-    if ($root === false) return $library;
+    if (!$root) return $library;
 
     foreach (scandir($root) as $folder) {
         if ($folder === '.' || $folder === '..') continue;

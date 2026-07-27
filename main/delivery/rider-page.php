@@ -25,14 +25,26 @@ if (empty($token)) {
             $conn = $pdo;
         }
 
-        $stmt = $conn->prepare("SELECT dt.*, o.order_number, o.customer_name, o.customer_phone, o.customer_address, o.delivery_address, o.address_lat, o.address_lng, o.restaurant_id, u.restaurant_name, u.currency_symbol
-            FROM delivery_tracking dt
-            JOIN orders o ON dt.order_id = o.id
-            JOIN users u ON o.restaurant_id = u.restaurant_id
-            WHERE dt.qr_token = ? AND dt.qr_expires_at > NOW()
-            LIMIT 1");
-        $stmt->execute([$token]);
-        $delivery = $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $conn->prepare("SELECT dt.*, o.order_number, o.customer_name, o.customer_phone, o.customer_address, o.delivery_address, o.address_lat, o.address_lng, o.landmark, o.restaurant_id, u.restaurant_name, u.currency_symbol
+                FROM delivery_tracking dt
+                JOIN orders o ON dt.order_id = o.id
+                JOIN users u ON o.restaurant_id = u.restaurant_id
+                WHERE dt.qr_token = ? AND dt.qr_expires_at > NOW()
+                LIMIT 1");
+            $stmt->execute([$token]);
+            $delivery = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            // orders.landmark migration not run yet on this DB - degrade gracefully.
+            $stmt = $conn->prepare("SELECT dt.*, o.order_number, o.customer_name, o.customer_phone, o.customer_address, o.delivery_address, o.address_lat, o.address_lng, o.restaurant_id, u.restaurant_name, u.currency_symbol
+                FROM delivery_tracking dt
+                JOIN orders o ON dt.order_id = o.id
+                JOIN users u ON o.restaurant_id = u.restaurant_id
+                WHERE dt.qr_token = ? AND dt.qr_expires_at > NOW()
+                LIMIT 1");
+            $stmt->execute([$token]);
+            $delivery = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
 
         if (!$delivery) {
             $error = 'This QR code is invalid or has expired. Please ask the restaurant for a new one.';
@@ -275,8 +287,14 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
         </div>
         <div class="info-row">
             <span class="label">Address</span>
-            <span class="value" style="max-width: 200px;"><?php echo htmlspecialchars($delivery['delivery_address'] ?? 'No address'); ?></span>
+            <span class="value" style="max-width: 200px;"><?php echo htmlspecialchars($delivery['delivery_address'] ?? $delivery['customer_address'] ?? 'No address'); ?></span>
         </div>
+        <?php if (!empty($delivery['landmark'])): ?>
+        <div class="info-row">
+            <span class="label">Landmark</span>
+            <span class="value" style="max-width: 200px;"><?php echo htmlspecialchars($delivery['landmark']); ?></span>
+        </div>
+        <?php endif; ?>
         <?php
             $destLat = $delivery['address_lat'] ?? null;
             $destLng = $delivery['address_lng'] ?? null;

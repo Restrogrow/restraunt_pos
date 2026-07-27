@@ -25,6 +25,13 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
+// ── Release session file lock early ──
+// The session was started above for auth checks. We close it here so that
+// other requests (e.g. another tab loading login.php, or parallel AJAX calls)
+// don't block on the session file lock while this script does DB work.
+// Handlers that need to write to $_SESSION re-acquire the lock themselves.
+session_write_close();
+
 // Include database connection
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
@@ -171,6 +178,11 @@ try {
 // Don't flush output buffer here - let each function handle it
 
 function handleLogin() {
+    // Re-acquire session lock so we can write $_SESSION vars
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    
     // Get connection using getConnection() for lazy connection support
     if (function_exists('getConnection')) {
         $pdo = getConnection();
@@ -469,6 +481,10 @@ function handleSignup() {
 }
 
 function handleLogout() {
+    // Re-acquire session lock before destroying it
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
     // Use secure session destruction
     destroySession();
     
@@ -508,6 +524,11 @@ function generateRestaurantId() {
 }
 
 function handleUpdateProfile() {
+    // Re-acquire session lock so we can write $_SESSION vars
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    
     // Get connection using getConnection() for lazy connection support
     if (function_exists('getConnection')) {
         $pdo = getConnection();
@@ -666,6 +687,11 @@ function handleChangePassword() {
 }
 
 function handleUpdateRestaurantSettings() {
+    // Re-acquire session lock so we can write $_SESSION vars
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    
     if (function_exists('getConnection')) {
         $pdo = getConnection();
     } else {
@@ -917,6 +943,11 @@ function handleUpdatePaymentGateway() {
 }
 
 function handleUpdateSystemSettings() {
+    // Re-acquire session lock so we can write $_SESSION vars
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    
     // Get connection using getConnection() for lazy connection support
     if (function_exists('getConnection')) {
         $pdo = getConnection();
