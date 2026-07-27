@@ -758,6 +758,69 @@ require_superadmin();
 
     </div>
 
+      <!-- ═══════════════════════════════════════════════════════════
+           ERROR MONITOR PAGE
+           ═══════════════════════════════════════════════════════════ -->
+      <div id="errorMonitorPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <h1>Error Monitor <span id="saErrorNewBadge" class="badge-new" style="display:none;background:#ef4444;">New</span></h1>
+          </div>
+          <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select id="saErrorSource" style="width:130px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);font-size:13px;">
+              <option value="all">All Sources</option>
+              <option value="php">PHP</option>
+              <option value="js">JS</option>
+              <option value="api">API</option>
+              <option value="auth">Auth</option>
+              <option value="db">DB</option>
+              <option value="state_machine">State</option>
+              <option value="custom">Custom</option>
+            </select>
+            <select id="saErrorSeverity" style="width:130px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);font-size:13px;">
+              <option value="all">All Severity</option>
+              <option value="critical">Critical</option>
+              <option value="error">Error</option>
+              <option value="warning">Warning</option>
+              <option value="info">Info</option>
+            </select>
+            <input type="text" id="saErrorSearch" placeholder="Search..." style="width:160px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);font-size:13px;">
+            <button class="btn btn-outline btn-sm" onclick="saLoadErrorLogs()">Refresh</button>
+            <button class="btn btn-outline btn-sm" onclick="saMarkAllRead()">Mark Read</button>
+          </div>
+        </div>
+        <!-- Summary cards -->
+        <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+          <div class="stat-card" style="padding:14px;">
+            <div class="stat-label">Critical</div>
+            <div class="stat-value" id="saCritCount" style="font-size:1.4rem;color:#dc2626;">0</div>
+          </div>
+          <div class="stat-card" style="padding:14px;">
+            <div class="stat-label">Errors</div>
+            <div class="stat-value" id="saErrCount" style="font-size:1.4rem;color:#ef4444;">0</div>
+          </div>
+          <div class="stat-card" style="padding:14px;">
+            <div class="stat-label">Warnings</div>
+            <div class="stat-value" id="saWarnCount" style="font-size:1.4rem;color:#f59e0b;">0</div>
+          </div>
+          <div class="stat-card" style="padding:14px;">
+            <div class="stat-label">Unread</div>
+            <div class="stat-value" id="saUnreadCount" style="font-size:1.4rem;color:#3b82f6;">0</div>
+          </div>
+        </div>
+        <!-- Error table -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Error Logs</div>
+            <span id="saErrorTotal" style="font-size:13px;color:var(--muted);"></span>
+          </div>
+          <div class="card-body" id="saErrorList" style="padding:12px;">
+            <div class="loading">Loading...</div>
+          </div>
+        </div>
+      </div>
+
   <!-- Create Restaurant Modal -->
   <div id="createModal" class="modal">
     <div class="modal-content">
@@ -785,8 +848,169 @@ require_superadmin();
   </div>
 
   <script>
+    // ── Error Monitor Functions ────────────────────────────────────────────
+    var saErrorPollTimer = null;
+    
+    function saLoadErrorLogs() {
+      var container = document.getElementById('saErrorList');
+      if (!container) return;
+      container.innerHTML = '<div class="loading">Loading...</div>';
+      
+      var src = (document.getElementById('saErrorSource')||{}).value || 'all';
+      var sev = (document.getElementById('saErrorSeverity')||{}).value || 'all';
+      var q = (document.getElementById('saErrorSearch')||{}).value || '';
+      
+      var url = '../api/get_error_logs.php?limit=100';
+      if (src !== 'all') url += '&source=' + encodeURIComponent(src);
+      if (sev !== 'all') url += '&severity=' + encodeURIComponent(sev);
+      if (q) url += '&search=' + encodeURIComponent(q);
+      
+      fetch(url, { cache: 'no-store' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (!d.success) { container.innerHTML = '<div class="empty-state"><p>Failed</p></div>'; return; }
+          var crit=0, errs=0, warns=0;
+          for (var i=0; i<d.errors.length; i++) {
+            var e = d.errors[i];
+            if (e.severity === 'critical') crit++;
+            else if (e.severity === 'error') errs++;
+            else if (e.severity === 'warning') warns++;
+          }
+          document.getElementById('saCritCount').textContent = crit;
+          document.getElementById('saErrCount').textContent = errs;
+          document.getElementById('saWarnCount').textContent = warns;
+          document.getElementById('saUnreadCount').textContent = d.unread_count;
+          document.getElementById('saErrorTotal').textContent = 'Total: ' + d.total;
+          
+          // Badge
+          var badge = document.getElementById('saErrorBadge');
+          if (badge) {
+            if (d.unread_count > 0) { badge.style.display = 'inline-block'; badge.textContent = d.unread_count > 99 ? '99+' : d.unread_count; }
+            else { badge.style.display = 'none'; }
+          }
+          var nb = document.getElementById('saErrorNewBadge');
+          if (nb) nb.style.display = d.unread_count > 0 ? 'inline' : 'none';
+          
+          if (d.errors.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="icon">✓</div><h3>All Clear!</h3></div>';
+            return;
+          }
+          
+          var html = '<div style="overflow-x:auto;"><table><thead><tr><th>Time</th><th>Source</th><th>Severity</th><th>Message</th><th>File</th><th></th></tr></thead><tbody>';
+          for (var i=0; i<d.errors.length; i++) {
+            var e = d.errors[i];
+            var sc = '#6b7280', sb = '#f3f4f6';
+            if (e.severity === 'critical') { sc='#fff'; sb='#dc2626'; }
+            else if (e.severity === 'error') { sc='#fff'; sb='#ef4444'; }
+            else if (e.severity === 'warning') { sc='#92400e'; sb='#fef3c7'; }
+            else if (e.severity === 'info') { sc='#1e40af'; sb='#dbeafe'; }
+            var unreadClass = e.is_read ? '' : 'em-unread';
+            var msg = (e.message_short || e.message || '').slice(0, 200);
+            html += '<tr class="' + unreadClass + '"><td style="white-space:nowrap;font-size:12px;color:var(--muted);">' + (e.created_at_formatted||'') + '</td>';
+            html += '<td><span class="badge badge-info" style="font-size:10px;">' + (e.source||'').toUpperCase() + '</span></td>';
+            html += '<td><span class="badge" style="background:'+sb+';color:'+sc+';font-size:10px;">' + (e.severity||'').toUpperCase() + '</span></td>';
+            html += '<td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;">' + saEsc(msg) + '</td>';
+            html += '<td style="font-size:11px;color:var(--muted);font-family:monospace;">' + saEsc((e.file||'') + ':' + (e.line||'')) + '</td>';
+            html += '<td><button class="btn btn-sm btn-outline" onclick="saViewError('+e.id+')">View</button></td></tr>';
+          }
+          html += '</tbody></table></div>';
+          container.innerHTML = html;
+        })
+        .catch(function() { container.innerHTML = '<div class="empty-state"><p>Connection error</p></div>'; });
+    }
+    
+    function saEsc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    
+    function saViewError(id) {
+      fetch('../api/get_error_logs.php?limit=1&since_id=' + (id-1), { cache: 'no-store' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (!d.success || !d.errors || d.errors.length === 0 || parseInt(d.errors[0].id) !== id) {
+            showSuperAlert('Error not found', 'error'); return;
+          }
+          var e = d.errors[0];
+          var ctxHtml = '';
+          if (e.context) {
+            try { var ctx = typeof e.context === 'string' ? JSON.parse(e.context) : e.context;
+              ctxHtml = '<pre style="background:#1f2937;color:#e5e7eb;padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:200px;text-align:left;margin-top:8px;">' + saEsc(JSON.stringify(ctx, null, 2)) + '</pre>'; } catch(ex) {}
+          }
+          var tr = '';
+          if (e.trace) tr = '<div style="margin-top:8px;"><strong>Trace:</strong><pre style="background:#1f2937;color:#e5e7eb;padding:12px;border-radius:8px;font-size:11px;overflow:auto;max-height:200px;text-align:left;margin-top:4px;">' + saEsc(e.trace) + '</pre></div>';
+          
+          if (window.Swal) {
+            Swal.fire({
+              title: 'Error #' + e.id,
+              html: '<div style="text-align:left;font-size:13px;"><div style="margin-bottom:6px;"><strong>Message:</strong><br>' + saEsc(e.message) + '</div>'
+                + '<div style="margin-bottom:6px;"><strong>Source:</strong> ' + (e.source||'N/A') + ' | <strong>Severity:</strong> ' + (e.severity||'N/A') + '</div>'
+                + '<div style="margin-bottom:6px;"><strong>File:</strong> ' + saEsc(e.file||'N/A') + ':' + (e.line||'N/A') + '</div>'
+                + '<div style="margin-bottom:6px;"><strong>Time:</strong> ' + (e.created_at_formatted||e.created_at) + '</div>'
+                + (e.url ? '<div style="margin-bottom:6px;"><strong>URL:</strong> ' + saEsc(e.url) + '</div>' : '')
+                + (e.ip_address ? '<div><strong>IP:</strong> ' + e.ip_address + '</div>' : '')
+                + ctxHtml + tr + '</div>',
+              confirmButtonText: 'Acknowledge',
+              confirmButtonColor: '#111827',
+              showCancelButton: true,
+              cancelButtonText: 'Close',
+            }).then(function(r) { if (r.isConfirmed) saMarkRead(id); });
+          }
+          saMarkRead(id, true);
+        }).catch(function() { showSuperAlert('Failed', 'error'); });
+    }
+    
+    function saMarkRead(id, silent) {
+      var fd = new URLSearchParams(); fd.append('action','mark_read'); fd.append('id',id);
+      fetch('../api/clear_error_log.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:fd.toString() })
+        .then(function(r) { return r.json(); })
+        .then(function(d) { if (d.success) { if (!silent) saLoadErrorLogs(); else setTimeout(saCheckBadge, 500); } })
+        .catch(function() {});
+    }
+    
+    function saMarkAllRead() {
+      if (!window.Swal) return;
+      Swal.fire({ title:'Mark all read?', icon:'question', showCancelButton:true, confirmButtonColor:'#111827', cancelButtonColor:'#6b7280', confirmButtonText:'Yes' })
+        .then(function(r) {
+          if (!r.isConfirmed) return;
+          var fd = new URLSearchParams(); fd.append('action','mark_all_read');
+          fetch('../api/clear_error_log.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:fd.toString() })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if (d.success) { saLoadErrorLogs(); showSuperAlert('All marked read','success'); } })
+            .catch(function() {});
+        });
+    }
+    
+    function saCheckBadge() {
+      fetch('../api/get_error_logs.php?limit=1&unread_only=1', { cache:'no-store' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (!d.success) return;
+          var badge = document.getElementById('saErrorBadge');
+          if (badge) {
+            if (d.unread_count > 0) { badge.style.display = 'inline-block'; badge.textContent = d.unread_count > 99 ? '99+' : d.unread_count; }
+            else { badge.style.display = 'none'; }
+          }
+          var pageBadge = document.getElementById('saErrorNewBadge');
+          if (pageBadge) pageBadge.style.display = d.unread_count > 0 ? 'inline' : 'none';
+        })
+        .catch(function() {});
+    }
+    
+    // Auto-badge polling
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(saCheckBadge, 2000);
+      if (saErrorPollTimer) clearInterval(saErrorPollTimer);
+      saErrorPollTimer = setInterval(saCheckBadge, 30000);
+      
+      setTimeout(function() {
+        var src = document.getElementById('saErrorSource');
+        var sev = document.getElementById('saErrorSeverity');
+        var search = document.getElementById('saErrorSearch');
+        if (src && !src.dataset.saListener) { src.addEventListener('change', saLoadErrorLogs); src.dataset.saListener = '1'; }
+        if (sev && !sev.dataset.saListener) { sev.addEventListener('change', saLoadErrorLogs); sev.dataset.saListener = '1'; }
+        if (search && !search.dataset.saListener) { var to; search.addEventListener('input', function() { clearTimeout(to); to = setTimeout(saLoadErrorLogs, 500); }); search.dataset.saListener = '1'; }
+      }, 200);
+    });
+    
     // Navigation
-    document.querySelectorAll('.menu-item').forEach(item => {
       item.addEventListener('click', function() {
         document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -803,6 +1027,7 @@ require_superadmin();
         else if(pageId === 'branchAdminsPage') loadBranchAdmins();
         else if(pageId === 'menusPage') loadMenuRestaurants();
         else if(pageId === 'settlementsPage') { loadSettlements(); updateSettlementModeUI(); }
+        else if(pageId === 'errorMonitorPage') { saLoadErrorLogs(); }
       });
     });
 
