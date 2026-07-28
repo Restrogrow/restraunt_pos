@@ -23,13 +23,13 @@ echo json_encode([
     'prefer_related_applications' => false,
     'icons' => [
         [
-            'src' => $siteUrl . '/main/assets/images/logo-transparent.png',
+            'src' => $siteUrl . '/main/assets/images/logo-192.png',
             'sizes' => '192x192',
             'type' => 'image/png',
             'purpose' => 'any maskable',
         ],
         [
-            'src' => $siteUrl . '/main/assets/images/logo-transparent.png',
+            'src' => $siteUrl . '/main/assets/images/logo-512.png',
             'sizes' => '512x512',
             'type' => 'image/png',
             'purpose' => 'any maskable',
