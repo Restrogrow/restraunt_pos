@@ -70,17 +70,33 @@ function menu_image_tokenize($text, $stripExtension = false) {
     return $words;
 }
 
-// Two words count as the same word if they're identical, or a typo/plural of
-// each other (small Levenshtein distance relative to word length). Short
-// words (<=4 chars) require an exact match — otherwise word pairs like
-// "iced"/"spiced" would wrongly count as a match just because they're close
-// in edit distance.
+// Strips common English plural endings so "momo"/"momos", "roll"/"rolls",
+// "cake"/"cakes", "dosa"/"dosas" etc. compare equal. Deliberately simple
+// (not a full stemmer) — good enough for short food-item nouns.
+function menu_image_stem($word) {
+    $len = strlen($word);
+    if ($len > 4 && substr($word, -3) === 'ies') return substr($word, 0, -3) . 'y';
+    if ($len > 4 && substr($word, -2) === 'es' && in_array(substr($word, -3, 1), ['s', 'x', 'z', 'h'], true)) {
+        return substr($word, 0, -2);
+    }
+    if ($len > 3 && substr($word, -1) === 's' && substr($word, -2) !== 'ss') return substr($word, 0, -1);
+    return $word;
+}
+
+// Two words count as the same word if they're identical, plural/singular
+// forms of each other, or a typo of each other (small Levenshtein distance
+// relative to word length). Short words (<=4 chars) require an exact/plural
+// match — otherwise word pairs like "iced"/"spiced" would wrongly count as a
+// match just because they're close in edit distance.
 function menu_image_words_similar($a, $b) {
     if ($a === $b) return true;
-    $minLen = min(strlen($a), strlen($b));
+    $stemA = menu_image_stem($a);
+    $stemB = menu_image_stem($b);
+    if ($stemA === $stemB) return true;
+    $minLen = min(strlen($stemA), strlen($stemB));
     if ($minLen <= 4) return false;
     $maxDistance = $minLen >= 8 ? 2 : 1;
-    return levenshtein($a, $b) <= $maxDistance;
+    return levenshtein($stemA, $stemB) <= $maxDistance;
 }
 
 // Fraction of $needleWords that have a similar word somewhere in $haystackWords.
@@ -121,6 +137,15 @@ function find_local_menu_item_image($itemName, $category = '') {
     $nameWords = menu_image_tokenize((string)$itemName);
     if (empty($nameWords)) return null;
 
+    // In "Modifier Dish" style naming ("Chicken Momo", "Veg Manchurian",
+    // "Butter Naan") the last word is almost always the actual dish, and
+    // words before it are protein/style modifiers that plain photo filenames
+    // often don't mention at all. Treat the last word as the core word: a
+    // filename matching it confidently is a strong signal even when the
+    // modifiers aren't present, so it shouldn't be held to the same "nearly
+    // every word must appear" bar as a match with no core-word hit.
+    $coreWord = end($nameWords);
+
     // Prefer folders whose name relates to the item's category (e.g. "Beverages"
     // item under a "Beverages" folder); fall back to searching every folder so
     // new categories still get a chance once matching images exist for them.
@@ -137,10 +162,18 @@ function find_local_menu_item_image($itemName, $category = '') {
     foreach ($candidateFolders as $folder) {
         foreach ($library[$folder] as $entry) {
             $overlap = menu_image_word_overlap($nameWords, $entry['keywords']);
-            if ($overlap < 0.75) continue; // require (almost) every item-name word to be present
+            $coreMatches = false;
+            foreach ($entry['keywords'] as $hw) {
+                if (menu_image_words_similar($coreWord, $hw)) { $coreMatches = true; break; }
+            }
+            // Require (almost) every item-name word to be present, unless the
+            // core dish word itself matched — then a lower bar is enough,
+            // since missing modifier words are expected in generic photos.
+            $minOverlap = $coreMatches ? 0.34 : 0.75;
+            if ($overlap < $minOverlap) continue;
             $textPct = 0.0;
             similar_text(implode(' ', $nameWords), implode(' ', $entry['keywords']), $textPct);
-            $score = ($overlap * 0.7) + (($textPct / 100) * 0.3);
+            $score = ($overlap * 0.6) + (($textPct / 100) * 0.2) + ($coreMatches ? 0.2 : 0.0);
             if ($score > $bestScore + 0.0001) {
                 $bestScore = $score;
                 $best = ['folder' => $folder, 'file' => $entry['file']];
@@ -148,6 +181,6 @@ function find_local_menu_item_image($itemName, $category = '') {
         }
     }
 
-    if ($best === null || $bestScore < 0.55) return null;
+    if ($best === null || $bestScore < 0.5) return null;
     return 'local:' . $best['folder'] . '/' . $best['file'];
 }
