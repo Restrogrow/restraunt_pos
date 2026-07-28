@@ -947,6 +947,7 @@ window.enableGst = <?php echo json_encode($enable_gst ?? 1, JSON_HEX_TAG | JSON_
 window.enableDelivery = <?php echo json_encode($enable_delivery ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.enableTakeaway = <?php echo json_encode($enable_takeaway ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.enableDinein = <?php echo json_encode($enable_dinein ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.codEnabled = <?php echo json_encode($cod_enabled ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 
 window.websiteTableNumber = <?php echo json_encode($qr_table ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantAddress = <?php echo json_encode($restaurant_address ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
@@ -2089,9 +2090,15 @@ function showCheckoutModal(cartData) {
   // Payment method label depends on order type
   var isCounterOrder = (savedOrderType === 'takeaway' || savedOrderType === 'dinein');
   var cashLabel = isCounterOrder ? 'Pay at Counter' : 'Cash on Delivery';
+  // COD can be turned off in restaurant settings, but never leave checkout with
+  // zero payment options — if no online method is configured either, keep Cash.
+  var codEnabled = (window.codEnabled == 1 || window.codEnabled === true || window.codEnabled === undefined);
+  var hasOnlinePayment = !!window.phonepeConfigured || !!window.businessQrAvailable;
   html += '<div class="form-group"><label>Payment Method</label>';
   html += '<select id="chkPayment">';
-  html += '<option value="Cash">' + cashLabel + '</option>';
+  if (codEnabled || !hasOnlinePayment) {
+    html += '<option value="Cash">' + cashLabel + '</option>';
+  }
   if (window.phonepeConfigured) {
     html += '<option value="UPI / NetBanking">UPI / NetBanking</option>';
   }

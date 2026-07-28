@@ -94,6 +94,7 @@ $linkedin_link = null;
 $enable_delivery = 1;
 $enable_takeaway = 1;
 $enable_dinein = 1;
+$cod_enabled = 1;
 
 if ($has_slug_param && !$has_id_param) {
     try {
@@ -139,7 +140,7 @@ if ($restaurant_id) {
         if (function_exists('getConnection')) {
             $conn = getConnection();
             try {
-$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng FROM users WHERE restaurant_id = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng FROM users WHERE restaurant_id = ? LIMIT 1");
                 $stmt->execute([$restaurant_id]);
             } catch (Exception $e2) {
                 // Fallback: new columns (delivery_radius_km, etc.) may not exist - query without them
@@ -176,6 +177,9 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 $custom_domain = $row['custom_domain'] ?? '';
                 $embed_enabled = !empty($row['embed_enabled']);
                 // New columns - silently fall back to defaults if they don't exist
+                if (isset($row['cod_enabled'])) {
+                    $cod_enabled = (int)$row['cod_enabled'];
+                }
                 if (isset($row['delivery_radius_km'])) {
                     $delivery_radius_km = (float)($row['delivery_radius_km'] ?? 0);
                 }

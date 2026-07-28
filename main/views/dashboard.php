@@ -59,6 +59,7 @@ $enable_gst = 1;
 $enable_delivery = 1;
 $enable_takeaway = 1;
 $enable_dinein = 1;
+$cod_enabled = 1;
 $restaurant_custom_domain = '';
 $restaurant_embed_enabled = false;
  
@@ -104,7 +105,7 @@ try {
         
         require_once __DIR__ . '/../config/translate_utils.php';
         ensureLanguageColumns($conn, $restaurant_id);
-        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, enable_language, payment_gateway_mode, custom_domain, embed_enabled FROM users WHERE id = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $userRow = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($userRow) {
@@ -159,6 +160,7 @@ try {
             $enable_delivery = isset($userRow['enable_delivery']) ? (int)$userRow['enable_delivery'] : 1;
             $enable_takeaway = isset($userRow['enable_takeaway']) ? (int)$userRow['enable_takeaway'] : 1;
             $enable_dinein = isset($userRow['enable_dinein']) ? (int)$userRow['enable_dinein'] : 1;
+            $cod_enabled = isset($userRow['cod_enabled']) ? (int)$userRow['cod_enabled'] : 1;
             $enable_language = isset($userRow['enable_language']) ? (int)$userRow['enable_language'] : 1;
             // Force English when language support is disabled
             if (!$enable_language) {
@@ -304,6 +306,7 @@ try {
     window.enableDelivery = <?php echo json_encode((int)$enable_delivery, JSON_HEX_TAG); ?>;
     window.enableTakeaway = <?php echo json_encode((int)$enable_takeaway, JSON_HEX_TAG); ?>;
     window.enableDinein = <?php echo json_encode((int)$enable_dinein, JSON_HEX_TAG); ?>;
+    window.codEnabled = <?php echo json_encode((int)$cod_enabled, JSON_HEX_TAG); ?>;
     localStorage.setItem('system_currency', window.globalCurrencySymbol);
     window.userTimezone = <?php echo json_encode($timezone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     window.userLanguage = <?php echo json_encode($language, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
@@ -2591,6 +2594,18 @@ function toggleGatewayMode() {
                     </label>
                   </div>
                   <p style="color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem;">All are enabled by default. At least one must remain enabled for customers to place orders.</p>
+                </div>
+
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:8px;">
+                    <span class="material-symbols-rounded">payments</span>
+                    Cash on Delivery / Pay at Counter
+                    <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
+                      <input type="checkbox" id="enableCodToggle" <?php echo $cod_enabled ? "checked" : ""; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
+                      <span style="font-size:13px;font-weight:500;color:#374151;" id="enableCodLabel"><?php echo $cod_enabled ? 'Enabled' : 'Disabled'; ?></span>
+                    </label>
+                  </label>
+                  <p style="font-size:12px;color:#6b7280;margin-top:4px;">Turn off to remove Cash as a payment option on the customer website — only online payment methods (UPI/QR) will be offered at checkout. If no online payment method is configured, Cash stays available automatically so customers can still order.</p>
                 </div>
 
                 <!-- Social Media Links Section -->

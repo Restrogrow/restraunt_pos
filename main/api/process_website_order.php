@@ -120,6 +120,31 @@ try {
         exit();
     }
 
+    // Enforce COD availability server-side. The client already hides the Cash
+    // option when disabled, but that alone isn't authoritative.
+    $codEnabled = true;
+    try {
+        $codStmt = $conn->prepare("SELECT cod_enabled, payment_gateway_mode, phonepe_merchant_id, (business_qr_code_data IS NOT NULL) AS has_business_qr FROM users WHERE restaurant_id = ? LIMIT 1");
+        $codStmt->execute([$restaurant_id]);
+        $codRow = $codStmt->fetch(PDO::FETCH_ASSOC);
+        if ($codRow && isset($codRow['cod_enabled']) && (int)$codRow['cod_enabled'] === 0) {
+            $hasOnlinePayment = !empty($codRow['phonepe_merchant_id']) || (int)($codRow['has_business_qr'] ?? 0) === 1;
+            // Never fully block checkout: if no online payment method is
+            // configured either, keep accepting Cash as the only option.
+            $codEnabled = !$hasOnlinePayment;
+        }
+    } catch (PDOException $e) {
+        // cod_enabled column not present yet (migration not run) - default to enabled
+    }
+    if (!$codEnabled && ($payment_method === 'Cash' || $payment_method === '')) {
+        ob_end_clean();
+        echo json_encode([
+            'success' => false,
+            'message' => 'Cash on Delivery is not available for this restaurant. Please choose an online payment method.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
     // Check if restaurant is open (using Indian Standard Time IST consistently)
     $hoursStmt = $conn->prepare("SELECT opening_hours FROM users WHERE restaurant_id = ? LIMIT 1");
     $hoursStmt->execute([$restaurant_id]);
