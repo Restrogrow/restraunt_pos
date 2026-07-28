@@ -4335,19 +4335,26 @@ document.addEventListener("DOMContentLoaded", () => {
     var rid = document.querySelector('meta[name="restaurant-id"]')?.content || window.restaurant_id || document.getElementById('restaurantId')?.textContent || '';
     var restaurantName = document.getElementById('restaurantName')?.textContent?.trim() || '';
 
-    // Determine base URL - use custom domain if available
+    // Determine base URL - prefer a clean, readable link over the raw
+    // restaurant_id: a connected custom domain needs no identifier at all,
+    // and otherwise the restaurant-name-based slug ("/my-restaurant/menu")
+    // that the customer website already supports is used. Only fall back to
+    // "?restaurant_id=" when neither is available.
     var baseUrl;
     if (window.restaurantCustomDomain && window.restaurantEmbedEnabled) {
       var domain = window.restaurantCustomDomain.replace(/^https?:\/\//, '');
       var scheme = window.location.protocol + '//';
-      baseUrl = scheme + domain + '/main/website/index.php?restaurant_id=' + encodeURIComponent(rid);
+      baseUrl = scheme + domain + '/menu';
+    } else if (window.restaurantWebsiteSlug) {
+      var siteRoot = window.location.origin + window.location.pathname.substring(0, window.location.pathname.indexOf('/main/'));
+      baseUrl = siteRoot + '/' + encodeURIComponent(window.restaurantWebsiteSlug) + '/menu';
     } else {
-      var basePath = window.location.origin + window.location.pathname.substring(0, window.location.pathname.indexOf('/main/') + 6) + 'website/index.php';
+      var basePath = window.location.origin + window.location.pathname.substring(0, window.location.pathname.indexOf('/main/') + 6) + 'website/menu.php';
       baseUrl = basePath + '?restaurant_id=' + encodeURIComponent(rid);
     }
-    
+
     qrGrid.innerHTML = tables.map(table => {
-      const tableUrl = `${baseUrl}&table=${encodeURIComponent(table.table_number)}`;
+      const tableUrl = baseUrl + (baseUrl.indexOf('?') > -1 ? '&' : '?') + 'table=' + encodeURIComponent(table.table_number);
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(tableUrl)}`;
       
       return `        <div class="qr-code-card">

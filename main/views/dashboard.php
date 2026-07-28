@@ -301,6 +301,14 @@ try {
     window.globalCurrencySymbol = <?php echo json_encode($currency_symbol, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
     window.restaurantCustomDomain = <?php echo json_encode($restaurant_custom_domain, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
     window.restaurantEmbedEnabled = <?php echo json_encode((bool)$restaurant_embed_enabled, JSON_HEX_TAG); ?>;
+    <?php
+    // Pretty-URL slug for the customer website, derived from restaurant_name
+    // exactly like restaurantPageUrl() in main/website/header.php.
+    $restaurant_website_slug = strtolower($restaurant_name);
+    $restaurant_website_slug = preg_replace('/[^a-z0-9]+/', '-', $restaurant_website_slug);
+    $restaurant_website_slug = trim($restaurant_website_slug, '-');
+    ?>
+    window.restaurantWebsiteSlug = <?php echo json_encode($restaurant_website_slug, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
     window.enableGst = <?php echo json_encode((bool)$enable_gst, JSON_HEX_TAG); ?>;
     window.enableLanguage = <?php echo json_encode((bool)$enable_language, JSON_HEX_TAG); ?>;
     window.enableDelivery = <?php echo json_encode((int)$enable_delivery, JSON_HEX_TAG); ?>;
