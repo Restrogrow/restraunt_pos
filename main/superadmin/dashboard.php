@@ -1011,6 +1011,7 @@ require_superadmin();
     });
     
     // Navigation
+    document.querySelectorAll('.menu-item').forEach(item => {
       item.addEventListener('click', function() {
         document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
