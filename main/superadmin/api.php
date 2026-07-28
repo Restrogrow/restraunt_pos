@@ -122,7 +122,7 @@ try {
 
 
 
-      $sql = "SELECT 
+      $sql = "SELECT
                 id, username, restaurant_id, restaurant_name, is_active, created_at,
                 subscription_status,
                 trial_end_date,
@@ -130,21 +130,33 @@ try {
                 description,
                 show_install_app,
                 whatsapp_orders,
+                photo_gallery_enabled,
                 payment_gateway_type,
                 GREATEST(DATEDIFF(COALESCE(renewal_date, trial_end_date, DATE_ADD(DATE(created_at), INTERVAL 30 DAY)), CURRENT_DATE()), 0) AS days_left,
-                CASE 
+                CASE
                   WHEN subscription_status = 'disabled' THEN 'Disabled'
                   WHEN CURRENT_DATE() < COALESCE(renewal_date, trial_end_date, DATE_ADD(DATE(created_at), INTERVAL 30 DAY)) THEN 'Active'
                   ELSE 'Expired'
                 END AS trial_status
-              FROM users $where 
-              ORDER BY created_at DESC 
+              FROM users $where
+              ORDER BY created_at DESC
               LIMIT :limit OFFSET :offset";
-      $stmt = $conn->prepare($sql);
-      foreach ($params as $k=>$v) $stmt->bindValue($k, $v);
-      $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-      $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-      $stmt->execute();
+      try {
+          $stmt = $conn->prepare($sql);
+          foreach ($params as $k=>$v) $stmt->bindValue($k, $v);
+          $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+          $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+          $stmt->execute();
+      } catch (PDOException $e) {
+          // photo_gallery_enabled column may not exist yet (migration not run) - retry without it
+          if (strpos($e->getMessage(), 'Unknown column') === false) throw $e;
+          $sql = str_replace("photo_gallery_enabled,\n", '', $sql);
+          $stmt = $conn->prepare($sql);
+          foreach ($params as $k=>$v) $stmt->bindValue($k, $v);
+          $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+          $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+          $stmt->execute();
+      }
 
       $countStmt = $conn->prepare("SELECT COUNT(*) as c FROM users $where");
       foreach ($params as $k=>$v) $countStmt->bindValue($k, $v);
@@ -276,6 +288,17 @@ try {
       $stmt = $conn->prepare('UPDATE users SET whatsapp_orders = :whatsapp WHERE id = :id');
       $stmt->execute([':whatsapp' => $whatsapp, ':id' => $id]);
       echo json_encode(['success' => true, 'message' => 'WhatsApp orders setting updated']);
+      break;
+
+    case 'updatePhotoGalleryEnabled':
+      $data = json_decode(file_get_contents('php://input'), true) ?? [];
+      $id = (int)($data['id'] ?? 0);
+      $enabled = (int)($data['photo_gallery_enabled'] ?? 0);
+      if ($id <= 0) throw new Exception('Invalid id');
+
+      $stmt = $conn->prepare('UPDATE users SET photo_gallery_enabled = :enabled WHERE id = :id');
+      $stmt->execute([':enabled' => $enabled, ':id' => $id]);
+      echo json_encode(['success' => true, 'message' => 'Photo Gallery access updated']);
       break;
 
     case 'getPasswordResetData':

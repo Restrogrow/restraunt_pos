@@ -60,6 +60,7 @@ $enable_delivery = 1;
 $enable_takeaway = 1;
 $enable_dinein = 1;
 $cod_enabled = 1;
+$photo_gallery_enabled = 0;
 $restaurant_custom_domain = '';
 $restaurant_embed_enabled = false;
  
@@ -105,7 +106,7 @@ try {
         
         require_once __DIR__ . '/../config/translate_utils.php';
         ensureLanguageColumns($conn, $restaurant_id);
-        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled FROM users WHERE id = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, photo_gallery_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $userRow = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($userRow) {
@@ -161,6 +162,7 @@ try {
             $enable_takeaway = isset($userRow['enable_takeaway']) ? (int)$userRow['enable_takeaway'] : 1;
             $enable_dinein = isset($userRow['enable_dinein']) ? (int)$userRow['enable_dinein'] : 1;
             $cod_enabled = isset($userRow['cod_enabled']) ? (int)$userRow['cod_enabled'] : 1;
+            $photo_gallery_enabled = isset($userRow['photo_gallery_enabled']) ? (int)$userRow['photo_gallery_enabled'] : 0;
             $enable_language = isset($userRow['enable_language']) ? (int)$userRow['enable_language'] : 1;
             // Force English when language support is disabled
             if (!$enable_language) {
@@ -847,6 +849,7 @@ try {
               </a>
               <span class="nav-tooltip">Add-ons</span>
             </li>
+            <?php if ($photo_gallery_enabled): ?>
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="galleryPage">
                 <span class="nav-icon material-symbols-rounded">photo_library</span>
@@ -854,6 +857,7 @@ try {
               </a>
               <span class="nav-tooltip">Photo Gallery</span>
             </li>
+            <?php endif; ?>
           </ul>
         </li>
         <!-- Tables Menu with Submenus -->
@@ -3381,6 +3385,7 @@ function toggleGatewayMode() {
         </div>
       </div>    </div>
 
+    <?php if ($photo_gallery_enabled): ?>
     <!-- Photo Gallery Page -->
     <div id="galleryPage" class="page">
       <div class="page-header">
@@ -3415,6 +3420,7 @@ function toggleGatewayMode() {
         </div>
       </div>
     </div>
+    <?php endif; ?>
 
     <!-- Table Map Page -->
     <div id="tableMapPage" class="page">

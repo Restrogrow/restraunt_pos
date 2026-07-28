@@ -300,7 +300,7 @@ require_superadmin();
               <table id="restaurantsTable">
                 <thead>
                   <tr>
-                    <th>ID</th><th>Username</th><th>Restaurant ID</th><th>Name</th><th>Payment Gateway</th><th>Install App</th><th>WhatsApp Orders</th><th>Trial Status</th><th>Status</th><th>Created</th><th>Actions</th>
+                    <th>ID</th><th>Username</th><th>Restaurant ID</th><th>Name</th><th>Payment Gateway</th><th>Install App</th><th>WhatsApp Orders</th><th>Photo Gallery</th><th>Trial Status</th><th>Status</th><th>Created</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="restaurantsTbody"></tbody>
@@ -1114,6 +1114,7 @@ require_superadmin();
           const isCashOnly = pgType === 'cash_only';
           const showInstall = Number(r.show_install_app) === 1;
           const whatsappOn = Number(r.whatsapp_orders) === 1;
+          const galleryOn = Number(r.photo_gallery_enabled) === 1;
           return `
             <tr>
               <td>${r.id}</td>
@@ -1133,6 +1134,11 @@ require_superadmin();
               <td>
                 <span class="badge ${whatsappOn ? 'badge-success' : 'badge-warning'}" style="cursor:pointer;font-size:0.75rem" onclick="toggleWhatsappOrders(${r.id}, ${whatsappOn})" title="Click to toggle">
                   ${whatsappOn ? 'On' : 'Off'}
+                </span>
+              </td>
+              <td>
+                <span class="badge ${galleryOn ? 'badge-success' : 'badge-warning'}" style="cursor:pointer;font-size:0.75rem" onclick="toggleGalleryEnabled(${r.id}, ${galleryOn})" title="Click to toggle">
+                  ${galleryOn ? 'Allowed' : 'Blocked'}
                 </span>
               </td>
               <td>${trialStatus === 'Active' ? `<span class="badge badge-success">${r.days_left} days</span>` : 
@@ -1405,6 +1411,17 @@ require_superadmin();
       const res = await fetch('api.php?action=updateWhatsappOrders', { method:'POST', body: JSON.stringify({id, whatsapp_orders: newVal}), headers: {'Content-Type': 'application/json'} });
       const data = await res.json();
       if (data.success) { fetchRestaurants(); showSuperAlert('WhatsApp Orders set to '+label, 'success'); }
+      else showSuperAlert(data.message||'Error', 'error');
+    }
+
+    window.toggleGalleryEnabled = async function(id, current){
+      const newVal = current ? 0 : 1;
+      const label = newVal ? 'Allowed' : 'Blocked';
+      const ok = await showSuperPrompt(`Set Photo Gallery to "${label}" for this restaurant?`, 'Confirm');
+      if(!ok) return;
+      const res = await fetch('api.php?action=updatePhotoGalleryEnabled', { method:'POST', body: JSON.stringify({id, photo_gallery_enabled: newVal}), headers: {'Content-Type': 'application/json'} });
+      const data = await res.json();
+      if (data.success) { fetchRestaurants(); showSuperAlert('Photo Gallery set to '+label, 'success'); }
       else showSuperAlert(data.message||'Error', 'error');
     }
 

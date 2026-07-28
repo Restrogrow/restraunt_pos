@@ -24,6 +24,32 @@ header('Access-Control-Allow-Headers: Content-Type');
 // Require permission to manage menu (the gallery exists to pick menu item photos)
 requirePermission(PERMISSION_MANAGE_MENU);
 
+// This feature is opt-in per restaurant, enabled only by the superadmin -
+// enforce it here too, not just by hiding the nav link.
+require_once __DIR__ . '/../db_connection.php';
+$restaurant_id = getRestaurantId();
+$galleryEnabled = false;
+try {
+    $conn = getConnection();
+    $stmt = $conn->prepare("SELECT photo_gallery_enabled FROM users WHERE restaurant_id = ? LIMIT 1");
+    $stmt->execute([$restaurant_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $galleryEnabled = $row && (int)$row['photo_gallery_enabled'] === 1;
+} catch (PDOException $e) {
+    // photo_gallery_enabled column not present yet (migration not run) - deny by default
+    $galleryEnabled = false;
+}
+if (!$galleryEnabled) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Photo Gallery is not enabled for this restaurant.',
+        'categories' => [],
+        'images' => [],
+    ]);
+    exit();
+}
+
 try {
     require_once __DIR__ . '/../includes/menu_image_matcher.php';
     $library = menu_image_library_scan(); // ['Folder' => [['file'=>...,'keywords'=>[...]], ...]]
