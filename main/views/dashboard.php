@@ -2586,8 +2586,8 @@ function toggleGatewayMode() {
                     <span class="material-symbols-rounded">map</span>
                     Google Maps Link (Optional)
                   </label>
-                  <input type="url" id="restaurantGoogleMapsLink" placeholder="e.g. https://maps.google.com/?q=... or Google Maps embed URL">
-                  <p style="color:#6b7280;font-size:0.85rem;margin-top:0.25rem;">Paste your Google Maps location link here. If set, the "Open in Google Maps" button on the customer website will use this link. Leave empty to hide the map section if no address is set.</p>
+                  <input type="url" id="restaurantGoogleMapsLink" placeholder="e.g. https://share.google/..., https://maps.app.goo.gl/..., or https://maps.google.com/?q=...">
+                  <p style="color:#6b7280;font-size:0.85rem;margin-top:0.25rem;">Paste your Google Maps location link here — a full link, a short share link (share.google, maps.app.goo.gl, goo.gl/maps), or an embed URL all work. If set, the "Open in Google Maps" button on the customer website will use this link. Leave empty to hide the map section if no address is set.</p>
                 </div>
 
                 <!-- Order Type Toggles -->

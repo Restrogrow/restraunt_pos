@@ -292,6 +292,10 @@ body {
       </div>
 
       <?php
+      // Works for any Google Maps link format the owner pastes in Settings,
+      // including short links like share.google/... or maps.app.goo.gl/...
+      // Resolution is done locally (no outbound HTTP call) so it stays fast
+      // and doesn't depend on the host allowing external requests.
       $map_query = '';
       $map_final_link = $google_maps_link ?? '';
       if (!empty($google_maps_link)) {
@@ -300,18 +304,11 @@ body {
           parse_str($parts['query'], $qp);
           if (!empty($qp['q'])) $map_query = $qp['q'];
         }
-        if (empty($map_query)) {
-          $ctx = stream_context_create(['http' => ['method' => 'HEAD', 'timeout' => 3]]);
-          $headers = @get_headers($google_maps_link, 1, $ctx);
-          if ($headers && isset($headers['Location'])) {
-            $final = is_array($headers['Location']) ? end($headers['Location']) : $headers['Location'];
-            $map_final_link = $final;
-            $fp = parse_url($final);
-            if ($fp && isset($fp['query'])) {
-              parse_str($fp['query'], $fqp);
-              if (!empty($fqp['q'])) $map_query = $fqp['q'];
-            }
-          }
+        if (empty($map_query) && !empty($parts['path']) && preg_match('/@(-?\d+\.\d+),(-?\d+\.\d+)/', $parts['path'], $m)) {
+          $map_query = $m[1] . ',' . $m[2];
+        }
+        if (empty($map_query) && preg_match('/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/', $google_maps_link, $m)) {
+          $map_query = $m[1] . ',' . $m[2];
         }
       }
       if (empty($map_query) && !empty($restaurant_address)) $map_query = $restaurant_address;
@@ -373,7 +370,7 @@ function goBack() {
   }
 }
 function openMapLink() {
-  var link = <?php echo json_encode($map_final_link ?: $google_maps_link ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+  var link = <?php echo json_encode($google_maps_link ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
   var addr = <?php echo json_encode($restaurant_address ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
   if (link) { window.open(link, '_blank'); }
   else if (addr) { window.open('https://maps.google.com/maps?q=' + encodeURIComponent(addr), '_blank'); }

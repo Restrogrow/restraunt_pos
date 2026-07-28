@@ -12081,7 +12081,7 @@ function updateRestaurantMapPreview(lat, lng) {
     restaurantPreviewMarker = new google.maps.Marker({ position: pos, map: restaurantPreviewMap, draggable: true });
     restaurantPreviewMarker.addListener('dragend', function() {
       var p = restaurantPreviewMarker.getPosition();
-      reverseGeocode(p.lat(), p.lng(), function(formatted) {
+      resolvePinnedLocation(p.lat(), p.lng(), function(formatted) {
         applySelectedRestaurantAddress(p.lat(), p.lng(), formatted);
       });
     });
@@ -12090,6 +12090,49 @@ function updateRestaurantMapPreview(lat, lng) {
     restaurantPreviewMap.setCenter(pos);
     restaurantPreviewMarker.setPosition(pos);
   }
+}
+
+// Shared Places service for looking up the business/POI at a pinned location
+var restaurantPlacesService = null;
+function getRestaurantPlacesService() {
+  if (!restaurantPlacesService && typeof google !== 'undefined' && google.maps && google.maps.places) {
+    restaurantPlacesService = new google.maps.places.PlacesService(document.createElement('div'));
+  }
+  return restaurantPlacesService;
+}
+
+function distanceMetersBetween(lat1, lng1, lat2, lng2) {
+  var R = 6371000;
+  var toRad = function(d) { return d * Math.PI / 180; };
+  var dLat = toRad(lat2 - lat1);
+  var dLng = toRad(lng2 - lng1);
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Resolve a dropped pin to the exact business/place name if one sits right there
+// (plain reverse-geocoding only ever returns the nearest street address, never
+// a business name), falling back to the street address otherwise.
+function resolvePinnedLocation(lat, lng, callback) {
+  var service = getRestaurantPlacesService();
+  if (!service) { reverseGeocode(lat, lng, callback); return; }
+  service.nearbySearch({ location: { lat: lat, lng: lng }, radius: 40 }, function(results, status) {
+    var best = null, bestDist = Infinity;
+    if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+      results.forEach(function(r) {
+        var loc = r.geometry && r.geometry.location;
+        if (!loc) return;
+        var d = distanceMetersBetween(lat, lng, loc.lat(), loc.lng());
+        if (d < bestDist) { bestDist = d; best = r; }
+      });
+    }
+    if (best && bestDist <= 40) {
+      callback(best.name + (best.vicinity ? ', ' + best.vicinity : ''));
+    } else {
+      reverseGeocode(lat, lng, callback);
+    }
+  });
 }
 
 // Generic reverse geocode helper (lat/lng -> formatted address)
@@ -12121,8 +12164,9 @@ function initRestaurantAddressAutocomplete(retries) {
     try { google.maps.event.clearInstanceListeners(input); } catch (e) {}
   }
   restaurantPlacesAutocomplete = new google.maps.places.Autocomplete(input, {
-    fields: ['formatted_address', 'geometry'],
-    types: ['geocode']
+    fields: ['formatted_address', 'geometry']
+    // No `types` filter: 'geocode' would exclude business/establishment names
+    // (e.g. "Royal Sekuwa & Khaja Ghar"), so we allow all place types to match.
   });
   restaurantPlacesAutocomplete.addListener('place_changed', function() {
     var place = restaurantPlacesAutocomplete.getPlace();
@@ -12223,7 +12267,7 @@ function reverseGeocodeForRestaurantPicker(lat, lng) {
   var addrEl = document.getElementById('restaurantMapPickerAddress');
   if (!window.googleMapsApiKey) return;
   if (addrEl) addrEl.textContent = 'Looking up address...';
-  reverseGeocode(lat, lng, function(formatted) {
+  resolvePinnedLocation(lat, lng, function(formatted) {
     if (!addrEl) return;
     addrEl.dataset.formatted = formatted;
     addrEl.textContent = formatted || 'Could not resolve an address for this spot, but you can still use it.';
