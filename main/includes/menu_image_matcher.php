@@ -181,6 +181,6 @@ function find_local_menu_item_image($itemName, $category = '') {
         }
     }
 
-    if ($best === null || $bestScore < 0.5) return null;
+    if ($best === null || $bestScore < 0.6) return null;
     return 'local:' . $best['folder'] . '/' . $best['file'];
 }
