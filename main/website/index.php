@@ -1,7 +1,8 @@
 <?php require_once __DIR__ . '/header.php';
 // If table parameter is present (from QR code), redirect to menu
 if (isset($_GET['table']) && trim($_GET['table']) !== '') {
-    $tableRedirect = restaurantPageUrl('menu') . '?table=' . urlencode(trim($_GET['table']));
+    $menuUrl = restaurantPageUrl('menu');
+    $tableRedirect = $menuUrl . (strpos($menuUrl, '?') !== false ? '&' : '?') . 'table=' . urlencode(trim($_GET['table']));
     header('Location: ' . $tableRedirect);
     exit;
 }
