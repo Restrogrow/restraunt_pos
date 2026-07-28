@@ -350,9 +350,9 @@ require_superadmin();
             <div id="parsedMenuPreview"></div>
 
             <div style="margin-top:16px;padding:14px;border:1px solid #16a34a;border-radius:8px;background:#f0fdf4;">
-              <div style="font-size:0.95rem;font-weight:600;margin-bottom:4px;">✨ Generate Menu Items from Photos (AI)</div>
-              <div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Select the restaurant above, upload photos of the menu, and AI will read them and fill in the items below automatically. You still review before saving.</div>
-              <input type="file" id="menuImagesInput" accept="image/png,image/jpeg,image/webp,image/gif" multiple style="width:100%;margin-bottom:10px;">
+              <div style="font-size:0.95rem;font-weight:600;margin-bottom:4px;">✨ Generate Menu Items from Photos or PDF (AI)</div>
+              <div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Select the restaurant above, upload photos of the menu or a menu PDF, and AI will read it and fill in the items below automatically. You still review before saving.</div>
+              <input type="file" id="menuImagesInput" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.pdf" multiple style="width:100%;margin-bottom:10px;">
               <button class="btn btn-primary" id="generateFromImagesBtn" type="button">Generate Items with AI</button>
               <div id="aiGenerateStatus" style="font-size:0.8rem;margin-top:8px;"></div>
             </div>
@@ -2036,8 +2036,8 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
 
       const filesInput = document.getElementById('menuImagesInput');
       const files = filesInput.files;
-      if (!files || files.length === 0) { showSuperAlert('Choose at least one menu photo first.', 'error'); return; }
-      if (files.length > 6) { showSuperAlert('Please upload at most 6 photos at a time.', 'error'); return; }
+      if (!files || files.length === 0) { showSuperAlert('Choose at least one menu photo or PDF first.', 'error'); return; }
+      if (files.length > 6) { showSuperAlert('Please upload at most 6 files at a time.', 'error'); return; }
 
       const existingText = document.getElementById('menuItemsInput').value.trim();
       if (existingText) {
@@ -2048,9 +2048,9 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
       const btn = document.getElementById('generateFromImagesBtn');
       const status = document.getElementById('aiGenerateStatus');
       btn.disabled = true;
-      btn.textContent = 'Analyzing photos...';
+      btn.textContent = 'Analyzing...';
       status.style.color = 'var(--muted)';
-      status.textContent = 'This can take up to a minute, especially with multiple photos.';
+      status.textContent = 'This can take up to a minute, especially with multiple photos or a multi-page PDF.';
 
       try {
         const fd = new FormData();

@@ -1439,7 +1439,7 @@ break;
       break;
 
     case 'generateMenuItemsFromImages':
-      set_time_limit(120);
+      set_time_limit(180); // PDF menus can have far more items than a few photos, so this can run longer
       require_once __DIR__ . '/../config/env_loader.php';
       $geminiApiKey = env('GEMINI_API_KEY', '');
       if (!$geminiApiKey) throw new Exception('Gemini API key is not configured. Add GEMINI_API_KEY to main/.env.');
@@ -1449,18 +1449,19 @@ break;
       if (!$restaurant_id) throw new Exception('restaurant_id required');
 
       if (empty($_FILES['images']) || empty($_FILES['images']['name'][0])) {
-        throw new Exception('Please upload at least one menu photo.');
+        throw new Exception('Please upload at least one menu photo or PDF.');
       }
 
-      $allowedMimes = ['image/jpeg' => true, 'image/png' => true, 'image/webp' => true, 'image/gif' => true];
-      $maxFileSize = 8 * 1024 * 1024; // 8MB per image
+      $allowedMimes = ['image/jpeg' => true, 'image/png' => true, 'image/webp' => true, 'image/gif' => true, 'application/pdf' => true];
+      $maxImageSize = 8 * 1024 * 1024;  // 8MB per image
+      $maxPdfSize = 20 * 1024 * 1024;   // 20MB per PDF (menus can be multi-page)
       $maxFiles = 6;
 
       $names = $_FILES['images']['name'];
       $tmpNames = $_FILES['images']['tmp_name'];
       $uploadErrors = $_FILES['images']['error'];
       $fileCount = count($names);
-      if ($fileCount > $maxFiles) throw new Exception("Please upload at most $maxFiles photos at a time.");
+      if ($fileCount > $maxFiles) throw new Exception("Please upload at most $maxFiles files at a time.");
 
       $imageParts = [];
       $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -1469,22 +1470,25 @@ break;
           throw new Exception("Upload failed for \"{$names[$i]}\" (error code {$uploadErrors[$i]}).");
         }
         if (!is_uploaded_file($tmpNames[$i])) continue;
-        if (filesize($tmpNames[$i]) > $maxFileSize) {
-          finfo_close($finfo);
-          throw new Exception("Image \"{$names[$i]}\" is larger than 8MB.");
-        }
         $mime = finfo_file($finfo, $tmpNames[$i]);
         if (!isset($allowedMimes[$mime])) {
           finfo_close($finfo);
-          throw new Exception("Image \"{$names[$i]}\" must be JPG, PNG, WEBP, or GIF.");
+          throw new Exception("\"{$names[$i]}\" must be JPG, PNG, WEBP, GIF, or PDF.");
+        }
+        $isPdf = $mime === 'application/pdf';
+        $sizeLimit = $isPdf ? $maxPdfSize : $maxImageSize;
+        if (filesize($tmpNames[$i]) > $sizeLimit) {
+          finfo_close($finfo);
+          $limitLabel = $isPdf ? '20MB' : '8MB';
+          throw new Exception("\"{$names[$i]}\" is larger than {$limitLabel}.");
         }
         $bytes = file_get_contents($tmpNames[$i]);
         $imageParts[] = ['inline_data' => ['mime_type' => $mime, 'data' => base64_encode($bytes)]];
       }
       finfo_close($finfo);
-      if (empty($imageParts)) throw new Exception('No valid images were uploaded.');
+      if (empty($imageParts)) throw new Exception('No valid photos or PDFs were uploaded.');
 
-      $promptText = "You are a restaurant menu data extractor. Look at the attached menu photo(s) carefully and extract every dish/item you can read.\n\n"
+      $promptText = "You are a restaurant menu data extractor. Look at the attached menu photo(s) and/or PDF document carefully and extract every dish/item you can read.\n\n"
         . "Output ONLY plain text lines in this exact pipe-delimited format, one item per line, and NOTHING else (no markdown, no code fences, no headings, no explanations, no numbering):\n\n"
         . "Category[ > Subcategory] | Item Name | Price | Type | Description | PrepTime | Calories | Stock | Variations(Name:Price) | ImageURL\n\n"
         . "RULES (strictly follow these):\n"
@@ -1498,7 +1502,7 @@ break;
         . "8. STOCK: Always 1.\n"
         . "9. VARIATIONS: If the photo shows sizes/options with different prices, use \"Small:99,Medium:149,Large:199\" format, otherwise leave blank.\n"
         . "10. IMAGEURL: Always leave this field blank — do not invent a URL.\n"
-        . "11. Extract every item visible in the photo(s). Do not invent items that are not in the photo(s).\n\n"
+        . "11. Extract every item visible in the photo(s)/PDF. Do not invent items that are not present in the source.\n\n"
         . "Example correct lines:\n"
         . "Pizza > Margherita | Classic Margherita | 199 | Veg | Fresh mozzarella and basil | 15 | 350 | 1 | Small:149,Medium:199 |\n"
         . "Beverages | Coke | 49 | Drink | 330ml can | 2 | 140 | 1 | |\n";
@@ -1512,7 +1516,7 @@ break;
         'contents' => [['parts' => $parts]],
         'generationConfig' => [
           'temperature' => 0.4,
-          'maxOutputTokens' => 16384,
+          'maxOutputTokens' => 32768,
           'thinkingConfig' => ['thinkingBudget' => 0]
         ]
       ];
@@ -1524,7 +1528,7 @@ break;
       curl_setopt($ch, CURLOPT_POST, true);
       curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
       curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_TIMEOUT, 100);
+      curl_setopt($ch, CURLOPT_TIMEOUT, 160);
       curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
         'x-goog-api-key: ' . $geminiApiKey
@@ -1545,8 +1549,8 @@ break;
       $text = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
       $finishReason = $result['candidates'][0]['finishReason'] ?? '';
       if ($text === '') {
-        if ($finishReason === 'SAFETY') throw new Exception('Gemini declined to process these images (safety filter). Try different photos.');
-        throw new Exception('Gemini did not return any text. Please try again with clearer photos.');
+        if ($finishReason === 'SAFETY') throw new Exception('Gemini declined to process these files (safety filter). Try different photos or PDF.');
+        throw new Exception('Gemini did not return any text. Please try again with a clearer photo or PDF.');
       }
 
       // Strip markdown code fences if the model added any despite instructions
@@ -1559,7 +1563,7 @@ break;
       }));
 
       if (empty($itemLines)) {
-        throw new Exception('Could not detect any menu items in the uploaded photo(s). Try clearer, well-lit photos.');
+        throw new Exception('Could not detect any menu items in the uploaded photo(s)/PDF. Try clearer, well-lit photos or a text-readable PDF.');
       }
 
       // Auto-match each item against our local images/ library (e.g. images/Beverages/*).
