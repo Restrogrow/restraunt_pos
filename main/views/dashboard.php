@@ -283,7 +283,7 @@ try {
   <link rel="dns-prefetch" href="https://fonts.gstatic.com">
   
   <!-- Critical CSS -->
-  <link rel="stylesheet" href="../assets/css/style.css">
+  <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo time(); ?>">
   
   <!-- Optimized Font Loading -->
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
