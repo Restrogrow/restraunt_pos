@@ -762,7 +762,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (pageId === "qrCodesPage") {
         loadQRCodes();
       }
-      
+
+      // Load photo gallery if it's the gallery page
+      if (pageId === "galleryPage") {
+        if (typeof window.loadPhotoGallery === 'function') {
+          loadPhotoGallery();
+        }
+      }
+
       // Load Table Map if it's the table map page
       if (pageId === "tableMapPage") {
         renderTableMap();
@@ -4556,7 +4563,115 @@ document.addEventListener("DOMContentLoaded", () => {
   window.generateAllQRCodes = function() {
     showMessage('QR codes are displayed below. Click Download or Print on each card.', 'success');
   }
-  
+
+  // ===== Photo Gallery =====
+  var galleryCategoriesCache = null;
+
+  window.loadPhotoGallery = function() {
+    showGalleryCategories();
+    if (galleryCategoriesCache) {
+      renderGalleryCategories(galleryCategoriesCache);
+      return;
+    }
+    var grid = document.getElementById('galleryCategoryGrid');
+    if (grid) grid.innerHTML = '<div class="loading">Loading photo gallery...</div>';
+    fetch('../api/get_image_library.php')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d.success) {
+          if (grid) grid.innerHTML = '<div class="empty-state"><span class="material-symbols-rounded">error</span><h3>Error</h3><p>' + escapeHtml(d.message || 'Failed to load gallery.') + '</p></div>';
+          return;
+        }
+        galleryCategoriesCache = d.categories || [];
+        renderGalleryCategories(galleryCategoriesCache);
+      })
+      .catch(function() {
+        if (grid) grid.innerHTML = '<div class="empty-state"><span class="material-symbols-rounded">error</span><h3>Error</h3><p>Failed to load gallery.</p></div>';
+      });
+  }
+
+  function renderGalleryCategories(categories) {
+    var grid = document.getElementById('galleryCategoryGrid');
+    if (!grid) return;
+    if (!categories.length) {
+      grid.innerHTML = '<div class="empty-state"><span class="material-symbols-rounded">photo_library</span><h3>No Photos Found</h3><p>The image library is empty.</p></div>';
+      return;
+    }
+    grid.innerHTML = categories.map(function(cat) {
+      var thumbUrl = '../api/image.php?path=' + encodeURIComponent(cat.sample_thumbnail);
+      var safeName = escapeHtml(cat.name);
+      return '<div class="gallery-card" onclick="showGalleryCategory(\'' + encodeURIComponent(cat.name) + '\')">'
+        + '<div class="gallery-card-thumb"><img src="' + thumbUrl + '" alt="' + safeName + '" loading="lazy" onerror="this.style.display=\'none\'"></div>'
+        + '<div class="gallery-card-info">'
+        + '<div class="gallery-card-name">' + safeName + '</div>'
+        + '<div class="gallery-card-count">' + cat.count + ' photo' + (cat.count === 1 ? '' : 's') + '</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  window.showGalleryCategory = function(encodedName) {
+    var name = decodeURIComponent(encodedName);
+    var catGrid = document.getElementById('galleryCategoryGrid');
+    var photoGrid = document.getElementById('galleryPhotoGrid');
+    var backBtn = document.getElementById('galleryBackBtn');
+    var title = document.getElementById('galleryPageTitle');
+    var subtitle = document.getElementById('galleryPageSubtitle');
+    if (catGrid) catGrid.style.display = 'none';
+    if (photoGrid) { photoGrid.style.display = 'grid'; photoGrid.innerHTML = '<div class="loading">Loading photos...</div>'; }
+    if (backBtn) backBtn.style.display = 'inline-flex';
+    if (title) title.textContent = name;
+    if (subtitle) subtitle.textContent = 'Click a photo to preview it full-size';
+
+    fetch('../api/get_image_library.php?category=' + encodeURIComponent(name))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!photoGrid) return;
+        if (!d.success || !d.images || !d.images.length) {
+          photoGrid.innerHTML = '<div class="empty-state"><span class="material-symbols-rounded">photo_library</span><h3>No Photos</h3><p>This category has no photos.</p></div>';
+          return;
+        }
+        photoGrid.innerHTML = d.images.map(function(img) {
+          var url = '../api/image.php?path=' + encodeURIComponent(img.src);
+          var safeFile = escapeHtml(img.file);
+          return '<div class="gallery-card" onclick="openGalleryLightbox(\'' + encodeURIComponent(img.src) + '\', \'' + encodeURIComponent(img.file) + '\')">'
+            + '<div class="gallery-card-thumb"><img src="' + url + '" alt="' + safeFile + '" loading="lazy" onerror="this.style.display=\'none\'"></div>'
+            + '</div>';
+        }).join('');
+      })
+      .catch(function() {
+        if (photoGrid) photoGrid.innerHTML = '<div class="empty-state"><span class="material-symbols-rounded">error</span><h3>Error</h3><p>Failed to load photos.</p></div>';
+      });
+  }
+
+  window.showGalleryCategories = function() {
+    var catGrid = document.getElementById('galleryCategoryGrid');
+    var photoGrid = document.getElementById('galleryPhotoGrid');
+    var backBtn = document.getElementById('galleryBackBtn');
+    var title = document.getElementById('galleryPageTitle');
+    var subtitle = document.getElementById('galleryPageSubtitle');
+    if (catGrid) catGrid.style.display = 'grid';
+    if (photoGrid) photoGrid.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+    if (title) title.textContent = 'Photo Gallery';
+    if (subtitle) subtitle.textContent = 'Browse high-quality stock photos, organized by category';
+  }
+
+  window.openGalleryLightbox = function(encodedSrc, encodedFile) {
+    var src = decodeURIComponent(encodedSrc);
+    var file = decodeURIComponent(encodedFile);
+    var modal = document.getElementById('galleryLightboxModal');
+    var img = document.getElementById('galleryLightboxImg');
+    var title = document.getElementById('galleryLightboxTitle');
+    if (!modal || !img) return;
+    img.src = '../api/image.php?path=' + encodeURIComponent(src);
+    img.alt = file;
+    if (title) title.textContent = file;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+
   function displayTables(tables) {
     const tableList = document.getElementById("tableList");
     

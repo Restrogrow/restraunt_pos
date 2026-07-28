@@ -1184,6 +1184,57 @@ html {
   flex-direction: column;
 }
 
+/* Photo Gallery */
+.gallery-card {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gallery-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #e5e7eb;
+}
+
+.gallery-card-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.gallery-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-card-info {
+  padding: 0.65rem 0.85rem 0.85rem;
+}
+
+.gallery-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gallery-card-count {
+  color: #9ca3af;
+  font-size: 0.78rem;
+  font-weight: 500;
+  margin-top: 0.1rem;
+}
+
 .qr-code-restaurant-name {
   color: #6b7280;
   font-size: 0.75rem;

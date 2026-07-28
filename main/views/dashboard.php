@@ -847,6 +847,13 @@ try {
               </a>
               <span class="nav-tooltip">Add-ons</span>
             </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="galleryPage">
+                <span class="nav-icon material-symbols-rounded">photo_library</span>
+                <span class="nav-label">Photo Gallery</span>
+              </a>
+              <span class="nav-tooltip">Photo Gallery</span>
+            </li>
           </ul>
         </li>
         <!-- Tables Menu with Submenus -->
@@ -3373,7 +3380,42 @@ function toggleGatewayMode() {
           <div class="loading">Loading QR codes...</div>
         </div>
       </div>    </div>
-    
+
+    <!-- Photo Gallery Page -->
+    <div id="galleryPage" class="page">
+      <div class="page-header">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h1 id="galleryPageTitle" style="margin: 0; font-size: 1.5rem;">Photo Gallery</h1>
+            <p id="galleryPageSubtitle" style="margin: 0.25rem 0 0 0; color: #6b7280;">Browse high-quality stock photos, organized by category</p>
+          </div>
+          <button class="btn btn-secondary" id="galleryBackBtn" onclick="showGalleryCategories()" style="display:none; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; font-size: 0.9rem; white-space: nowrap;">
+            <span class="material-symbols-rounded" style="font-size: 1.2rem;">arrow_back</span>
+            Back to Categories
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div id="galleryCategoryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">
+          <div class="loading">Loading photo gallery...</div>
+        </div>
+        <div id="galleryPhotoGrid" style="display:none; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;"></div>
+      </div>
+    </div>
+
+    <!-- Photo Gallery Lightbox -->
+    <div id="galleryLightboxModal" class="modal">
+      <div class="modal-content" style="max-width:700px;">
+        <div class="modal-header">
+          <h2 id="galleryLightboxTitle" style="margin:0;font-size:1rem;font-weight:600;"></h2>
+          <button class="modal-close" onclick="closeModal('galleryLightboxModal')">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align:center;">
+          <img id="galleryLightboxImg" src="" alt="" style="max-width:100%;max-height:70vh;border-radius:8px;object-fit:contain;">
+        </div>
+      </div>
+    </div>
+
     <!-- Table Map Page -->
     <div id="tableMapPage" class="page">
       <div class="page-header">
