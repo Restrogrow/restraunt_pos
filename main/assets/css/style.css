@@ -1184,6 +1184,15 @@ html {
   flex-direction: column;
 }
 
+.qr-code-restaurant-name {
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.15rem;
+}
+
 .qr-code-table-name {
   font-size: 1.1rem;
   font-weight: 700;

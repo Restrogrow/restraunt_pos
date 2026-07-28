@@ -4333,7 +4333,8 @@ document.addEventListener("DOMContentLoaded", () => {
     
         // Get restaurant ID from the dashboard context
     var rid = document.querySelector('meta[name="restaurant-id"]')?.content || window.restaurant_id || document.getElementById('restaurantId')?.textContent || '';
-    
+    var restaurantName = document.getElementById('restaurantName')?.textContent?.trim() || '';
+
     // Determine base URL - use custom domain if available
     var baseUrl;
     if (window.restaurantCustomDomain && window.restaurantEmbedEnabled) {
@@ -4354,6 +4355,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <img src="${qrCodeUrl}" alt="QR Code for ${escapeHtml(table.table_number)}" >
           </div>
           <div class="qr-code-info">
+            ${restaurantName ? `<div class="qr-code-restaurant-name">${escapeHtml(restaurantName)}</div>` : ''}
             <div class="qr-code-table-name">${escapeHtml(table.table_number)}</div>
             <div class="qr-code-area">${escapeHtml(table.area_name)}</div>
             <div class="qr-code-actions">
@@ -4405,12 +4407,13 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Print QR Code
   window.printQRCode = function(qrUrl, tableName) {
+    const restaurantName = document.getElementById('restaurantName')?.textContent?.trim() || '';
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>QR Code - ${tableName}</title>
+          <title>${restaurantName ? escapeHtml(restaurantName) + ' - ' : ''}QR Code - ${tableName}</title>
           <meta charset="UTF-8">
           <style>
             @page {
@@ -4445,13 +4448,22 @@ document.addEventListener("DOMContentLoaded", () => {
               text-align: center;
             }
             
+            .qr-restaurant-name {
+              font-size: 1.4rem;
+              font-weight: 700;
+              color: #1a3934;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              margin-bottom: 0.5rem;
+            }
+
             .qr-title {
               font-size: 2.5rem;
               font-weight: 700;
               color: #151A2D;
               margin-bottom: 0.5rem;
             }
-            
+
             .qr-image {
               width: 250px;
               height: 250px;
@@ -4513,6 +4525,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <body>
           <div class="print-container">
             <div class="qr-logo">🍽️</div>
+            ${restaurantName ? `<div class="qr-restaurant-name">${escapeHtml(restaurantName)}</div>` : ''}
             <h1 class="qr-title">Table ${tableName}</h1>
             <div class="qr-image">
               <img src="${qrUrl}" alt="QR Code for Table ${tableName}">
