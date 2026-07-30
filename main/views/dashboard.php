@@ -2310,7 +2310,7 @@ function toggleGatewayMode() {
                 <label>Discount Type</label>
                 <select id="cpnType" class="form-control">
                   <option value="percent">Percentage (%)</option>
-                  <option value="flat">Flat Amount (₹)</option>
+                  <option value="flat">Flat Amount (<?php echo htmlspecialchars($currency_symbol); ?>)</option>
                 </select>
               </div>
               <div class="form-group" style="flex:1;">
@@ -2324,7 +2324,7 @@ function toggleGatewayMode() {
             </div>
             <div class="row" style="display:flex;gap:12px;">
               <div class="form-group" style="flex:1;">
-                <label>Min. Order Amount (₹)</label>
+                <label>Min. Order Amount (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
                 <input type="number" id="cpnMinOrder" class="form-control" step="1" min="0" value="0">
               </div>
               <div class="form-group" style="flex:1;">
@@ -2406,7 +2406,7 @@ function toggleGatewayMode() {
             </div>
             <div class="row" style="display:flex;gap:12px;">
               <div class="form-group" style="flex:1;">
-                <label>Delivery Charge (₹) *</label>
+                <label>Delivery Charge (<?php echo htmlspecialchars($currency_symbol); ?>) *</label>
                 <input type="number" id="zoneCharge" class="form-control" placeholder="0" min="0" step="0.01" required>
               </div>
             </div>
@@ -2756,7 +2756,7 @@ function toggleGatewayMode() {
             <div class="form-group" >
               <label for="packagingCharge">
                 <span class="material-symbols-rounded">inventory_2</span>
-                Packaging Charge (₹)
+                Packaging Charge (<?php echo htmlspecialchars($currency_symbol); ?>)
               </label>
               <p style="color:#666;font-size:0.85rem;margin-bottom:6px;">
                 A flat packaging fee applied to all delivery orders. Set to 0 to disable.
@@ -4193,7 +4193,7 @@ function toggleGatewayMode() {
                       <div style="font-weight: 600; color: #111827; margin-bottom: 0.25rem;" id="previewItemName">Item Name</div>
                       <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Item Description</div>
                       <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 700; color: #f70000; font-size: 1.125rem;">₹0.00</span>
+                        <span style="font-weight: 700; color: #f70000; font-size: 1.125rem;"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
                         <button style="background: #f70000; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer;">
                           <span class="material-symbols-rounded" style="font-size: 1rem; vertical-align: middle;">add_shopping_cart</span>
                           Add
@@ -4241,7 +4241,7 @@ function toggleGatewayMode() {
                 Add Variation
               </button>
             </div>
-            <p style="margin: 0 0 1rem 0; color: #6b7280; font-size: 0.875rem;">Add different sizes or options with their prices (e.g., Small: ₹100, Medium: ₹150, Large: ₹200)</p>
+            <p style="margin: 0 0 1rem 0; color: #6b7280; font-size: 0.875rem;">Add different sizes or options with their prices (e.g., Small: <?php echo htmlspecialchars($currency_symbol); ?>100, Medium: <?php echo htmlspecialchars($currency_symbol); ?>150, Large: <?php echo htmlspecialchars($currency_symbol); ?>200)</p>
             <div id="variationsList" style="display: flex; flex-direction: column; gap: 0.75rem;">
               <!-- Variations will be added here dynamically -->
             </div>
@@ -5125,7 +5125,7 @@ function loadDeliveryZones() {
         html += "<tr>" +
           "<td>" + z.pincode + "</td>" +
           "<td>" + (z.zone_name || "-") + "</td>" +
-          "<td>₹" + parseFloat(z.delivery_charge).toFixed(2) + "</td>" +
+          "<td>" + (window.globalCurrencySymbol || '₹') + parseFloat(z.delivery_charge).toFixed(2) + "</td>" +
           "<td>" + z.estimated_time + " min</td>" +
           '<td><span class="status-badge ' + activeClass + '">' + activeText + "</span></td>" +
           '<td class="action-btns">' +

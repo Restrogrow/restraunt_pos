@@ -993,7 +993,7 @@ function appendTableParam(url) {
 
     <!-- Checkout Bar -->
     <div class="checkout-bar">
-      <span class="total-label" id="checkoutLabel">₹0.00 (0 Items)</span>
+      <span class="total-label" id="checkoutLabel"><?php echo htmlspecialchars($currency_symbol ?? '₹'); ?>0.00 (0 Items)</span>
       <button class="checkout-btn" id="checkoutBtn" onclick="proceedCheckout()" disabled>Checkout <i class="fa fa-arrow-right"></i></button>
     </div>
 
@@ -1288,7 +1288,7 @@ function renderCart() {
           '<span class="arrow">→</span>' +
         '</div>' +
       '</div>';
-    document.getElementById('checkoutLabel').textContent = '₹0.00 (0 Items)';
+    document.getElementById('checkoutLabel').textContent = (window.globalCurrencySymbol || '₹') + '0.00 (0 Items)';
     document.getElementById('checkoutBtn').disabled = true;
     return;
   }

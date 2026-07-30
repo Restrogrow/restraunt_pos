@@ -17,6 +17,33 @@ if (!isset($_SESSION['staff_id']) || !isset($_SESSION['restaurant_id']) || $_SES
 }
 
 $restaurant_id = $_SESSION['restaurant_id'];
+$currency_symbol = $_SESSION['currency_symbol'] ?? null;
+
+if (!$currency_symbol) {
+    try {
+        if (file_exists(__DIR__ . '/../db_connection.php')) {
+            require_once __DIR__ . '/../db_connection.php';
+            $conn = function_exists('getConnection') ? getConnection() : ($pdo ?? null);
+            if ($conn) {
+                $settingsStmt = $conn->prepare("SELECT currency_symbol FROM users WHERE restaurant_id = ? LIMIT 1");
+                $settingsStmt->execute([$restaurant_id]);
+                $settingsRow = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+                if ($settingsRow && !empty($settingsRow['currency_symbol'])) {
+                    require_once __DIR__ . '/../config/unicode_utils.php';
+                    $db_currency = fixCurrencySymbol($settingsRow['currency_symbol']);
+                    $currency_symbol = htmlspecialchars($db_currency, ENT_QUOTES, 'UTF-8');
+                    $_SESSION['currency_symbol'] = $currency_symbol;
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // Ignore and fallback to default below
+    }
+}
+
+if (!$currency_symbol) {
+    $currency_symbol = '₹';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -39,6 +66,9 @@ $restaurant_id = $_SESSION['restaurant_id'];
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"></noscript>
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
+    <script>
+        window.globalCurrencySymbol = <?php echo json_encode($currency_symbol, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
+    </script>
     <style>
         /* Prevent zoom on mobile devices */
         html, body {
@@ -91,7 +121,7 @@ $restaurant_id = $_SESSION['restaurant_id'];
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-label">Today's Revenue</div>
-                    <div class="stat-value" id="todayRevenue">₹0</div>
+                    <div class="stat-value" id="todayRevenue"><?php echo htmlspecialchars($currency_symbol); ?>0</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Today's Orders</div>
@@ -214,7 +244,7 @@ $restaurant_id = $_SESSION['restaurant_id'];
                 const response = await fetch(`get_dashboard_stats.php?restaurant_id=<?php echo $restaurant_id; ?>`);
                 const result = await response.json();
                 if (result.success) {
-                    document.getElementById('todayRevenue').textContent = (window.CURRENCY_SYMBOL || '₹') + parseFloat(result.today_revenue || 0).toFixed(2);
+                    document.getElementById('todayRevenue').textContent = (window.globalCurrencySymbol || '₹') + parseFloat(result.today_revenue || 0).toFixed(2);
                     document.getElementById('todayOrders').textContent = result.today_orders || 0;
                     document.getElementById('activeTables').textContent = result.active_tables || 0;
                     document.getElementById('pendingRequests').textContent = result.pending_requests || 0;
@@ -234,7 +264,7 @@ $restaurant_id = $_SESSION['restaurant_id'];
                         <tr>
                             <td>#${order.id}</td>
                             <td>${order.table_number || 'Takeaway'}</td>
-                            <td>₹${parseFloat(order.total_amount || 0).toFixed(2)}</td>
+                            <td>${window.globalCurrencySymbol || '₹'}${parseFloat(order.total_amount || 0).toFixed(2)}</td>
                             <td>${order.status || 'Pending'}</td>
                             <td>${new Date(order.created_at).toLocaleString()}</td>
                         </tr>
@@ -260,7 +290,7 @@ $restaurant_id = $_SESSION['restaurant_id'];
                             <td>${customer.phone || 'N/A'}</td>
                             <td>${customer.email || 'N/A'}</td>
                             <td>${customer.total_visits || 0}</td>
-                            <td>₹${parseFloat(customer.total_spent || 0).toFixed(2)}</td>
+                            <td>${window.globalCurrencySymbol || '₹'}${parseFloat(customer.total_spent || 0).toFixed(2)}</td>
                             <td>${customer.last_visit_date || 'N/A'}</td>
                         </tr>
                     `).join('');
@@ -282,7 +312,7 @@ $restaurant_id = $_SESSION['restaurant_id'];
                     tbody.innerHTML = result.payments.map(payment => `
                         <tr>
                             <td>${payment.transaction_id || 'N/A'}</td>
-                            <td>₹${parseFloat(payment.amount || 0).toFixed(2)}</td>
+                            <td>${window.globalCurrencySymbol || '₹'}${parseFloat(payment.amount || 0).toFixed(2)}</td>
                             <td>${payment.payment_method || 'N/A'}</td>
                             <td>${payment.payment_status || 'Pending'}</td>
                             <td>${new Date(payment.created_at).toLocaleString()}</td>
@@ -305,9 +335,9 @@ $restaurant_id = $_SESSION['restaurant_id'];
                 if (result.success) {
                     reportDiv.innerHTML = `
                         <h3>Sales Report</h3>
-                        <p>Total Revenue: ₹${parseFloat(result.total_revenue || 0).toFixed(2)}</p>
+                        <p>Total Revenue: ${window.globalCurrencySymbol || '₹'}${parseFloat(result.total_revenue || 0).toFixed(2)}</p>
                         <p>Total Orders: ${result.total_orders || 0}</p>
-                        <p>Average Order Value: ₹${parseFloat(result.average_order_value || 0).toFixed(2)}</p>
+                        <p>Average Order Value: ${window.globalCurrencySymbol || '₹'}${parseFloat(result.average_order_value || 0).toFixed(2)}</p>
                     `;
                 } else {
                     reportDiv.innerHTML = '<p>Error loading report</p>';

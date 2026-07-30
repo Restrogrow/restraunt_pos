@@ -829,7 +829,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
     </div>
 
   <div class="checkout-bar" id="checkoutBar">
-    <span class="total-label" id="checkoutLabel">₹0.00</span>
+    <span class="total-label" id="checkoutLabel"><?php echo htmlspecialchars($currency_symbol ?? '₹'); ?>0.00</span>
     <button class="checkout-btn" id="checkoutBtn" onclick="goToCheckout()">Checkout <i class="fa fa-arrow-right"></i></button>
   </div>
 </div>
@@ -1146,7 +1146,7 @@ function updateCheckoutBar() {
   if (totalQty > 0) {
     bar.classList.add('show');
     if (content) content.classList.add('has-cart');
-    label.textContent = '₹' + totalPrice.toFixed(2) + ' (' + totalQty + ' Items)';
+    label.textContent = (window.globalCurrencySymbol || '₹') + totalPrice.toFixed(2) + ' (' + totalQty + ' Items)';
     btn.disabled = false;
   } else {
     bar.classList.remove('show');

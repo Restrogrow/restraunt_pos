@@ -973,7 +973,7 @@ body {
               <div class="stat-label">Orders</div>
             </div>
             <div class="stat-card">
-              <div class="stat-number" id="statSpent"><span id="statCurrency">₹</span>0</div>
+              <div class="stat-number" id="statSpent"><span id="statCurrency"><?php echo htmlspecialchars($currency_symbol ?? '₹'); ?></span>0</div>
               <div class="stat-label">Total Spent</div>
             </div>
             <div class="stat-card">

@@ -6521,7 +6521,7 @@ async function loadReports() {
             <td style="padding: 1rem;">${order.customer_name}</td>
             <td style="padding: 1rem;">${order.item_count}</td>
             <td style="padding: 1rem;"><span style="background: #e5f3ff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">${order.payment_method}</span></td>
-            <td style="padding: 1rem; text-align: right; font-weight: 600; color: var(--primary-red);">₹${parseFloat(order.total).toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
+            <td style="padding: 1rem; text-align: right; font-weight: 600; color: var(--primary-red);">${globalCurrencySymbol || '₹'}${parseFloat(order.total).toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
           </tr>
         `).join('');
       } else {
@@ -6539,7 +6539,7 @@ async function loadReports() {
               <div style="font-weight: 600;">${index + 1}. ${item.item_name}</div>
               <div style="font-size: 0.85rem; color: #666;">Qty: ${item.total_quantity}</div>
             </div>
-            <div style="font-weight: 700; color: var(--primary-red);">₹${parseFloat(item.total_revenue).toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
+            <div style="font-weight: 700; color: var(--primary-red);">${globalCurrencySymbol || '₹'}${parseFloat(item.total_revenue).toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
           </div>
         `).join('');
       } else {
@@ -6557,7 +6557,7 @@ async function loadReports() {
               <div style="font-weight: 600;">${method.payment_method}</div>
               <div style="font-size: 0.85rem; color: #666;">${method.count} orders</div>
             </div>
-            <div style="font-weight: 700; color: var(--primary-red);">₹${parseFloat(method.amount).toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
+            <div style="font-weight: 700; color: var(--primary-red);">${globalCurrencySymbol || '₹'}${parseFloat(method.amount).toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
           </div>
         `).join('');
       } else {
