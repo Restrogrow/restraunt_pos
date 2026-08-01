@@ -2070,9 +2070,14 @@ select:focus {
 @media (max-width: 1024px) {
   .main-content {
     margin-left: 0;
-    padding: 15px;
+    /* The sidebar becomes a fixed 56px top bar at this breakpoint (see the
+       ".sidebar { position: fixed; height: 56px; ... }" rule below), but
+       main-content was never given matching top space — every page's
+       heading rendered partly underneath that fixed bar. */
+    padding: 15px 15px 15px 15px;
+    padding-top: calc(56px + 15px);
   }
-  
+
   .menu-items-list {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
