@@ -843,6 +843,11 @@ require_once __DIR__ . '/../config/countries.php';
           <input id="cmPass" type="password" placeholder="Enter password">
         </div>
         <div class="form-group">
+          <label>Admin Email (optional)</label>
+          <input id="cmEmail" type="email" placeholder="owner@restaurant.com">
+          <small style="color:var(--muted);display:block;margin-top:4px;">If left blank, this restaurant's "Forgot Password" won't work until an email is added later in Settings.</small>
+        </div>
+        <div class="form-group">
           <label>Country</label>
           <select id="cmCountry">
             <?php foreach (getCountryData() as $iso2 => $c): ?>
@@ -1369,6 +1374,7 @@ require_once __DIR__ . '/../config/countries.php';
         username: document.getElementById('cmUser').value.trim(),
         password: document.getElementById('cmPass').value,
         restaurant_name: document.getElementById('cmName').value.trim(),
+        email: document.getElementById('cmEmail').value.trim(),
         country: document.getElementById('cmCountry').value,
       };
       if(!payload.username || !payload.password || !payload.restaurant_name){ showSuperAlert('All fields are required'); return; }
@@ -1379,7 +1385,8 @@ require_once __DIR__ . '/../config/countries.php';
         document.getElementById('cmUser').value = '';
         document.getElementById('cmPass').value = '';
         document.getElementById('cmName').value = '';
-        fetchRestaurants(); 
+        document.getElementById('cmEmail').value = '';
+        fetchRestaurants();
         showSuperAlert('Created. Restaurant ID: '+data.restaurant_id); 
       } else showSuperAlert(data.message||'Error');
     });

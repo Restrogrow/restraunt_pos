@@ -425,51 +425,81 @@ function handleSignup() {
     }
     
     $username = isset($_POST['username']) ? trim($_POST['username']) : '';
+    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $password = isset($_POST['password']) ? $_POST['password'] : '';
     $restaurantName = isset($_POST['restaurant_name']) ? trim($_POST['restaurant_name']) : '';
     $country = isset($_POST['country']) ? trim($_POST['country']) : '';
     $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
 
     // Validate input
-    if (empty($username) || empty($password) || empty($restaurantName) || empty($country) || empty($phone)) {
+    if (empty($username) || empty($email) || empty($password) || empty($restaurantName) || empty($country) || empty($phone)) {
         throw new Exception('All fields are required');
     }
 
     // Derive default currency from the chosen country (still editable later in Settings)
     $countryInfo = getCountryByName($country);
     $currencySymbol = $countryInfo['currency_symbol'] ?? '₹';
-    
+
     if (strlen($username) < 3) {
         throw new Exception('Username must be at least 3 characters long');
     }
-    
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new Exception('Please enter a valid email address');
+    }
+
     if (strlen($password) < 6) {
         throw new Exception('Password must be at least 6 characters long');
     }
-    
+
     if (strlen($restaurantName) < 2) {
         throw new Exception('Restaurant name must be at least 2 characters long');
     }
-    
-    // Check if username already exists
+
+    // Validate phone against the chosen country's expected local-number
+    // length so obviously wrong numbers (too short/long, wrong country
+    // entirely) don't get silently accepted — this also matters because
+    // password reset for staff logs in by phone number.
+    if ($countryInfo) {
+        $phoneDigits = preg_replace('/\D/', '', $phone);
+        $dialDigits = preg_replace('/\D/', '', $countryInfo['dial_code']);
+        // Tolerate the country code being typed as part of the number
+        if (strlen($phoneDigits) > $countryInfo['phone_max'] && strpos($phoneDigits, $dialDigits) === 0) {
+            $phoneDigits = substr($phoneDigits, strlen($dialDigits));
+        }
+        if (strlen($phoneDigits) < $countryInfo['phone_min'] || strlen($phoneDigits) > $countryInfo['phone_max']) {
+            $expected = $countryInfo['phone_min'] === $countryInfo['phone_max']
+                ? $countryInfo['phone_min'] . ' digits'
+                : $countryInfo['phone_min'] . '-' . $countryInfo['phone_max'] . ' digits';
+            throw new Exception("Please enter a valid phone number for {$country} ({$expected})");
+        }
+    }
+
+    // Check if username or email already exists
     $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
     $checkStmt->execute([$username]);
     if ($checkStmt->fetchColumn() > 0) {
         throw new Exception('Username already exists');
     }
-    
+
+    $checkEmailStmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
+    $checkEmailStmt->execute([$email]);
+    if ($checkEmailStmt->fetchColumn() > 0) {
+        throw new Exception('An account with this email already exists');
+    }
+
     // Generate restaurant ID
     $restaurantId = generateRestaurantId();
-    
+
     // Hash password
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    
+
     // Insert new user with 30-day trial period, currency derived from chosen country
     $insertStmt = $pdo->prepare("
-        INSERT INTO users (username, password, restaurant_id, restaurant_name, country, phone, currency_symbol, subscription_status, trial_end_date, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), NOW(), NOW())
+        INSERT INTO users (username, email, password, restaurant_id, restaurant_name, country, phone, currency_symbol, subscription_status, trial_end_date, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), NOW(), NOW())
     ");
-    $result = $insertStmt->execute([$username, $hashedPassword, $restaurantId, $restaurantName, $country, $phone, $currencySymbol]);
+    $result = $insertStmt->execute([$username, $email, $hashedPassword, $restaurantId, $restaurantName, $country, $phone, $currencySymbol]);
     
     if ($result) {
         echo json_encode([
@@ -511,22 +541,28 @@ function generateRestaurantId() {
             throw new Exception('Database connection not available');
         }
     }
-    
-    // Get the highest existing restaurant ID
-    $stmt = $pdo->prepare("SELECT restaurant_id FROM users ORDER BY restaurant_id DESC LIMIT 1");
-    $stmt->execute();
-    $lastId = $stmt->fetchColumn();
-    
-    if ($lastId) {
-        // Extract number from last ID (e.g., RES001 -> 1)
-        $lastNumber = (int)substr($lastId, 3);
-        $newNumber = $lastNumber + 1;
-    } else {
-        $newNumber = 1;
+
+    // Random ID + existence check + retry, matching the scheme superadmin's
+    // own restaurant-creation tool already uses. The previous "read the
+    // highest existing ID, add one" approach had two real bugs: (1) it raced
+    // under concurrent signups — two requests could read the same max and
+    // try to insert the same ID, failing one signup outright; (2) restaurant_id
+    // is a VARCHAR, so ORDER BY ... DESC sorts lexicographically, not
+    // numerically — once past 999 restaurants, 'RES999' sorts above
+    // 'RES1000', so "last + 1" would start regenerating already-used IDs and
+    // every signup would fail on the UNIQUE constraint.
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $letters = substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ'), 0, 3);
+        $digits = str_pad((string)random_int(0, 999), 3, '0', STR_PAD_LEFT);
+        $candidate = 'RES' . $letters . $digits;
+        $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE restaurant_id = ?");
+        $check->execute([$candidate]);
+        if ($check->fetchColumn() == 0) {
+            return $candidate;
+        }
     }
-    
-    // Format as RES001, RES002, etc.
-    return 'RES' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+
+    throw new Exception('Failed to generate a unique restaurant ID. Please try again.');
 }
 
 function handleUpdateProfile() {

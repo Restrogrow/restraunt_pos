@@ -55,21 +55,20 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         body {
             margin: 0;
             padding: 0;
-            height: 100vh;
+            min-height: 100vh;
             font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background: #f5f5f0;
             position: relative;
         }
-        
+
         .login-wrapper {
             position: relative;
             z-index: 1;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            overflow: hidden;
         }
         
         .login-container {
@@ -209,7 +208,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             pointer-events: none;
         }
         
-        .form-group input {
+        .form-group input,
+        .form-group select {
             width: 100%;
             padding: 12px 14px 12px 48px;
             border: 1px solid #e5e7eb;
@@ -218,13 +218,24 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             transition: all 0.3s ease;
             background: white;
             color: #1f2937;
+            appearance: none;
+            -webkit-appearance: none;
         }
-        
+
+        .form-group select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 18px;
+            padding-right: 40px;
+        }
+
         .form-group input::placeholder {
             color: #9ca3af;
         }
-        
-        .form-group input:focus {
+
+        .form-group input:focus,
+        .form-group select:focus {
             outline: none;
             border-color: #ff6b35;
             box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
@@ -548,11 +559,16 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 margin-bottom: 6px;
             }
             
-            .form-group input {
+            .form-group input,
+            .form-group select {
                 padding: 13px 16px 13px 48px;
                 font-size: 1rem;
             }
-            
+
+            .form-group select {
+                padding-right: 40px;
+            }
+
             .input-icon {
                 left: 16px;
                 width: 18px;
@@ -706,19 +722,19 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             <div class="login-right">
                 <div class="auth-container">
                     <div class="auth-header">
-                        <h1>Login</h1>
-                        <p>Please sign in to continue.</p>
+                        <h1 id="authHeaderTitle">Login</h1>
+                        <p id="authHeaderSubtitle">Please sign in to continue.</p>
                     </div>
                     
                     <!-- Login Form -->
                     <form id="loginForm" class="auth-form active">
                         <div class="form-group">
-                            <label for="loginUsername">EMAIL</label>
+                            <label for="loginUsername">USERNAME OR EMAIL</label>
                             <div class="input-wrapper">
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                 </svg>
-                                <input type="text" id="loginUsername" name="username" required placeholder="user123@email.com">
+                                <input type="text" id="loginUsername" name="username" required autocomplete="username" placeholder="Your username or email">
                             </div>
                         </div>
                         <div class="form-group">
@@ -727,7 +743,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                                 </svg>
-                                <input type="password" id="loginPassword" name="password" required placeholder="Your password">
+                                <input type="password" id="loginPassword" name="password" required autocomplete="current-password" placeholder="Your password">
                             </div>
                         </div>
                         <div class="form-actions">
@@ -752,8 +768,18 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                 </svg>
-                                <input type="text" id="signupUsername" name="username" required placeholder="Choose a username">
+                                <input type="text" id="signupUsername" name="username" required minlength="3" autocomplete="username" placeholder="Choose a username">
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="signupEmail">EMAIL</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                                <input type="email" id="signupEmail" name="email" required autocomplete="email" placeholder="you@example.com">
+                            </div>
+                            <small style="color:#9ca3af;display:block;margin-top:6px;">Needed to recover your account if you forget your password.</small>
                         </div>
                         <div class="form-group">
                             <label for="signupPassword">PASSWORD</label>
@@ -761,7 +787,16 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                                 </svg>
-                                <input type="password" id="signupPassword" name="password" required placeholder="Choose a password">
+                                <input type="password" id="signupPassword" name="password" required minlength="6" autocomplete="new-password" placeholder="Choose a password">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="signupPasswordConfirm">CONFIRM PASSWORD</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                </svg>
+                                <input type="password" id="signupPasswordConfirm" name="password_confirm" required minlength="6" autocomplete="new-password" placeholder="Re-enter your password">
                             </div>
                         </div>
                         <div class="form-group">
@@ -782,7 +817,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                                 <select id="signupCountry" name="country" required>
                                     <option value="">Select your country</option>
                                     <?php foreach (getCountryData() as $iso2 => $c): ?>
-                                    <option value="<?php echo htmlspecialchars($c['name']); ?>" <?php echo $iso2 === 'IN' ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['name']); ?></option>
+                                    <option value="<?php echo htmlspecialchars($c['name']); ?>" data-dial-code="<?php echo htmlspecialchars($c['dial_code']); ?>" data-phone-min="<?php echo (int)$c['phone_min']; ?>" data-phone-max="<?php echo (int)$c['phone_max']; ?>" <?php echo $iso2 === 'IN' ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['name']); ?> (<?php echo htmlspecialchars($c['dial_code']); ?>)</option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -793,8 +828,9 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
                                 </svg>
-                                <input type="tel" id="signupPhone" name="phone" required placeholder="Enter your phone number">
+                                <input type="tel" id="signupPhone" name="phone" required autocomplete="tel" placeholder="Enter your phone number">
                             </div>
+                            <small id="signupPhoneHint" style="color:#9ca3af;display:block;margin-top:6px;"></small>
                         </div>
                         <button type="submit" class="btn btn-primary" id="signupBtn">
                             SIGN UP
@@ -954,7 +990,18 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             // Update form visibility
             document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
             document.getElementById(tab + 'Form').classList.add('active');
-            
+
+            // Update the shared header — it previously stayed stuck on
+            // "Login / Please sign in to continue." even while the signup
+            // form was showing.
+            if (tab === 'signup') {
+                document.getElementById('authHeaderTitle').textContent = 'Sign Up';
+                document.getElementById('authHeaderSubtitle').textContent = 'Set up your restaurant to get started.';
+            } else {
+                document.getElementById('authHeaderTitle').textContent = 'Login';
+                document.getElementById('authHeaderSubtitle').textContent = 'Please sign in to continue.';
+            }
+
             // Clear messages
             const messages = document.querySelectorAll('.message');
             messages.forEach(msg => msg.remove());
@@ -1075,37 +1122,80 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             }
         });
         
+        // Show the expected phone digit count for the selected country, and
+        // keep it updated as the user changes country.
+        function updateSignupPhoneHint() {
+            const select = document.getElementById('signupCountry');
+            const opt = select.options[select.selectedIndex];
+            const hint = document.getElementById('signupPhoneHint');
+            if (!opt || !opt.value) { hint.textContent = ''; return; }
+            const min = parseInt(opt.dataset.phoneMin, 10);
+            const max = parseInt(opt.dataset.phoneMax, 10);
+            const digits = min === max ? `${min} digits` : `${min}-${max} digits`;
+            hint.textContent = `Enter your local number, ${digits} (without ${opt.dataset.dialCode}).`;
+        }
+        document.getElementById('signupCountry').addEventListener('change', updateSignupPhoneHint);
+        updateSignupPhoneHint();
+
         // Signup form submission
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const username = document.getElementById('signupUsername').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
             const password = document.getElementById('signupPassword').value;
+            const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
             const restaurantName = document.getElementById('restaurantName').value.trim();
-            const country = document.getElementById('signupCountry').value;
+            const countrySelect = document.getElementById('signupCountry');
+            const country = countrySelect.value;
             const phone = document.getElementById('signupPhone').value.trim();
             const signupBtn = document.getElementById('signupBtn');
 
-            if (!username || !password || !restaurantName || !country || !phone) {
+            if (!username || !email || !password || !passwordConfirm || !restaurantName || !country || !phone) {
                 showMessage('Please fill in all fields.', 'error');
                 return;
             }
-            
+
+            if (username.length < 3) {
+                showMessage('Username must be at least 3 characters long.', 'error');
+                return;
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showMessage('Please enter a valid email address.', 'error');
+                return;
+            }
+
             if (password.length < 6) {
                 showMessage('Password must be at least 6 characters long.', 'error');
                 return;
             }
-            
+
+            if (password !== passwordConfirm) {
+                showMessage('Passwords do not match.', 'error');
+                return;
+            }
+
+            const countryOpt = countrySelect.options[countrySelect.selectedIndex];
+            const phoneDigits = phone.replace(/\D/g, '');
+            const phoneMin = parseInt(countryOpt.dataset.phoneMin, 10);
+            const phoneMax = parseInt(countryOpt.dataset.phoneMax, 10);
+            if (phoneDigits.length < phoneMin || phoneDigits.length > phoneMax) {
+                const digits = phoneMin === phoneMax ? `${phoneMin} digits` : `${phoneMin}-${phoneMax} digits`;
+                showMessage(`Please enter a valid phone number for ${country} (${digits}).`, 'error');
+                return;
+            }
+
             signupBtn.disabled = true;
             signupBtn.textContent = 'Creating Account...';
-            
+
             try {
                 const response = await fetch('auth.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: `action=signup&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&restaurant_name=${encodeURIComponent(restaurantName)}&country=${encodeURIComponent(country)}&phone=${encodeURIComponent(phone)}`
+                    body: `action=signup&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&restaurant_name=${encodeURIComponent(restaurantName)}&country=${encodeURIComponent(country)}&phone=${encodeURIComponent(phone)}`
                 });
                 
                 const result = await response.json();

@@ -172,8 +172,16 @@ try {
       $username = trim($data['username'] ?? '');
       $password = $data['password'] ?? '';
       $restaurant_name = trim($data['restaurant_name'] ?? '');
+      $email = trim($data['email'] ?? '');
       if (!$username || !$password || !$restaurant_name) {
         throw new Exception('Missing required fields');
+      }
+      // Optional at creation time (superadmin may not have it on hand), but
+      // if given it must be valid — the restaurant owner's own password-reset
+      // flow only works by email, so a restaurant with no email on file can
+      // never self-service a forgotten password until someone sets one later.
+      if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new Exception('Please enter a valid email address');
       }
       // Derive default currency from the chosen country, same as public
       // self-signup — without this, restaurants the superadmin onboards
@@ -196,8 +204,8 @@ try {
       if (!$restaurant_id) { throw new Exception('Failed to generate restaurant id'); }
 
       $hash = password_hash($password, PASSWORD_DEFAULT);
-      $stmt = $conn->prepare("INSERT INTO users (username, password, restaurant_id, restaurant_name, country, currency_symbol, is_active, payment_gateway_type) VALUES (:u, :p, :rid, :rname, :country, :currency, 1, 'cash_only')");
-      $stmt->execute([':u' => $username, ':p' => $hash, ':rid' => $restaurant_id, ':rname' => $restaurant_name, ':country' => $country, ':currency' => $currencySymbol]);
+      $stmt = $conn->prepare("INSERT INTO users (username, password, restaurant_id, restaurant_name, country, currency_symbol, email, is_active, payment_gateway_type) VALUES (:u, :p, :rid, :rname, :country, :currency, :email, 1, 'cash_only')");
+      $stmt->execute([':u' => $username, ':p' => $hash, ':rid' => $restaurant_id, ':rname' => $restaurant_name, ':country' => $country, ':currency' => $currencySymbol, ':email' => ($email !== '' ? $email : null)]);
       echo json_encode(['success' => true, 'message' => 'Restaurant created', 'restaurant_id' => $restaurant_id]);
       break;
 

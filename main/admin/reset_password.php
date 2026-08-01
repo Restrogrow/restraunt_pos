@@ -350,13 +350,17 @@
             if (existingMessage) {
                 existingMessage.remove();
             }
-            
+
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
             messageDiv.textContent = message;
-            
+
+            // Insert into the container (not the form itself): the invalid-token
+            // case hides the form right after calling this, and a message
+            // inserted inside a display:none form would be hidden along with it.
+            const container = document.querySelector('.auth-container');
             const form = document.getElementById('resetPasswordForm');
-            form.insertBefore(messageDiv, form.firstChild);
+            container.insertBefore(messageDiv, form);
         }
     </script>
 </body>
