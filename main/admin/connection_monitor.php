@@ -251,58 +251,57 @@ $refresh_interval = 5;
             }
         ?>
         
-        <div class="stats-grid">
+        <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
                 <h3>Current Connections</h3>
-                <div class="stat-value <?php echo $status_class; ?>">
+                <div class="stat-value <?php echo $status_class; ?>" id="statCurrentConnections">
                     <?php echo $current_connections; ?>
                 </div>
-                <small>of <?php echo $max_connections; ?> max</small>
+                <small>of <span id="statMaxConnectionsA"><?php echo $max_connections; ?></span> max</small>
             </div>
-            
+
             <div class="stat-card">
                 <h3>Connection Usage</h3>
-                <div class="stat-value <?php echo $status_class; ?>">
+                <div class="stat-value <?php echo $status_class; ?>" id="statConnectionPercentage">
                     <?php echo number_format($connection_percentage, 1); ?>%
                 </div>
-                <small><?php echo $current_connections; ?> / <?php echo $max_connections; ?></small>
+                <small><span id="statCurrentConnectionsB"><?php echo $current_connections; ?></span> / <span id="statMaxConnectionsB"><?php echo $max_connections; ?></span></small>
             </div>
-            
+
             <div class="stat-card">
                 <h3>Max Used (Ever)</h3>
-                <div class="stat-value">
+                <div class="stat-value" id="statMaxUsed">
                     <?php echo $max_used_connections; ?>
                 </div>
                 <small>Peak connections</small>
             </div>
-            
+
             <div class="stat-card">
                 <h3>Running Threads</h3>
-                <div class="stat-value">
+                <div class="stat-value" id="statRunningThreads">
                     <?php echo $running_threads; ?>
                 </div>
                 <small>Active queries</small>
             </div>
-            
+
             <div class="stat-card">
                 <h3>Connection Errors</h3>
-                <div class="stat-value <?php echo $connection_errors > 0 ? 'danger' : 'success'; ?>">
+                <div class="stat-value <?php echo $connection_errors > 0 ? 'danger' : 'success'; ?>" id="statConnectionErrors">
                     <?php echo $connection_errors; ?>
                 </div>
                 <small>Max connections exceeded</small>
             </div>
-            
+
             <div class="stat-card">
                 <h3>Max Per Hour</h3>
-                <div class="stat-value">
+                <div class="stat-value" id="statMaxPerHour">
                     <?php echo $max_connections_per_hour; ?>
                 </div>
                 <small>Connection limit per hour</small>
             </div>
         </div>
 
-        <?php if (!empty($process_list)): ?>
-        <div class="connections-table">
+        <div class="connections-table" id="connectionsTableWrap" <?php echo empty($process_list) ? 'style="display:none;"' : ''; ?>>
             <table>
                 <thead>
                     <tr>
@@ -316,8 +315,8 @@ $refresh_interval = 5;
                         <th>Info</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <?php foreach ($process_list as $process): 
+                <tbody id="processListBody">
+                    <?php foreach ($process_list as $process):
                         $state_class = 'status-active';
                         if ($process['Command'] === 'Sleep') {
                             $state_class = 'status-sleep';
@@ -345,11 +344,10 @@ $refresh_interval = 5;
                 </tbody>
             </table>
         </div>
-        <?php endif; ?>
 
         <div class="log-section">
             <h3>Connection Information</h3>
-            <div class="log-entry">
+            <div class="log-entry" id="connectionInfoLog">
                 <?php
                 // Get connection info
                 global $host, $dbname, $options;
@@ -363,7 +361,7 @@ $refresh_interval = 5;
                 <strong>PHP Version:</strong> <?php echo PHP_VERSION; ?><br>
                 <strong>PDO Driver:</strong> <?php echo $conn->getAttribute(PDO::ATTR_DRIVER_NAME); ?><br>
                 <strong>Server Info:</strong> <?php echo $conn->getAttribute(PDO::ATTR_SERVER_INFO); ?><br>
-                <?php 
+                <?php
                 // Get connection stats if available
                 if (isset($GLOBALS['db_connection_stats'])) {
                     $stats = $GLOBALS['db_connection_stats'];
@@ -395,50 +393,120 @@ $refresh_interval = 5;
     
     <script>
         // Auto-refresh using JavaScript instead of meta refresh (more efficient)
+        // Live-polls get_connection_stats.php and patches the DOM in place —
+        // this used to call window.location.reload() every 5 seconds, which
+        // flashed the whole page and reset scroll position constantly.
         let refreshInterval = null;
         const refreshIntervalMs = <?php echo $refresh_interval * 1000; ?>;
         let lastRefreshTime = Date.now();
-        
-        function refreshData() {
-            // Only refresh if page is visible
-            if (document.hidden) {
-                return;
-            }
-            
-            // Reload the page data
-            if (Date.now() - lastRefreshTime >= refreshIntervalMs) {
+
+        function statClass(pct) {
+            if (pct > 80) return 'danger';
+            if (pct > 60) return 'warning';
+            return 'success';
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = String(str ?? '');
+            return div.innerHTML;
+        }
+
+        function renderProcessRow(p) {
+            let stateClass = 'status-active';
+            if (p.command === 'Sleep') stateClass = 'status-sleep';
+            else if ((p.state || '').indexOf('Locked') !== -1) stateClass = 'status-locked';
+            return `<tr>
+                <td>${escapeHtml(p.id)}</td>
+                <td>${escapeHtml(p.user)}</td>
+                <td>${escapeHtml(p.host)}</td>
+                <td>${escapeHtml(p.db)}</td>
+                <td><span class="status-badge ${stateClass}">${escapeHtml(p.command)}</span></td>
+                <td>${escapeHtml(p.time)}s</td>
+                <td>${escapeHtml(p.state)}</td>
+                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(p.info)}</td>
+            </tr>`;
+        }
+
+        async function refreshData() {
+            if (document.hidden) return;
+            try {
+                const res = await fetch('../api/get_connection_stats.php', { cache: 'no-store' });
+                const data = await res.json();
+                if (!data.success) return;
+
+                const cls = statClass(data.connection_percentage);
+                const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+                const setClass = (id, extra) => { const el = document.getElementById(id); if (el) el.className = 'stat-value ' + extra; };
+
+                setText('statCurrentConnections', data.current_connections);
+                setClass('statCurrentConnections', cls);
+                setText('statMaxConnectionsA', data.max_connections);
+                setText('statConnectionPercentage', data.connection_percentage.toFixed(1) + '%');
+                setClass('statConnectionPercentage', cls);
+                setText('statCurrentConnectionsB', data.current_connections);
+                setText('statMaxConnectionsB', data.max_connections);
+                setText('statMaxUsed', data.max_used_connections);
+                setText('statRunningThreads', data.running_threads);
+                setText('statConnectionErrors', data.connection_errors);
+                setClass('statConnectionErrors', data.connection_errors > 0 ? 'danger' : 'success');
+                setText('statMaxPerHour', data.max_connections_per_hour);
+
+                const tableWrap = document.getElementById('connectionsTableWrap');
+                const tbody = document.getElementById('processListBody');
+                if (data.process_list && data.process_list.length > 0) {
+                    tableWrap.style.display = '';
+                    tbody.innerHTML = data.process_list.map(renderProcessRow).join('');
+                } else {
+                    tableWrap.style.display = 'none';
+                }
+
+                const ci = data.connection_info;
+                let infoHtml = `<strong>Database Host:</strong> ${escapeHtml(ci.host)}<br>
+                    <strong>Database Name:</strong> ${escapeHtml(ci.db_name)}<br>
+                    <strong>Connection Type:</strong> ${ci.is_persistent ? 'Persistent' : 'Non-Persistent (Optimized)'}<br>
+                    <strong>PHP Version:</strong> ${escapeHtml(ci.php_version)}<br>
+                    <strong>PDO Driver:</strong> ${escapeHtml(ci.driver)}<br>
+                    <strong>Server Info:</strong> ${escapeHtml(ci.server_info)}<br>`;
+                if (ci.stats) {
+                    const s = ci.stats;
+                    const rate = (s.attempts || 0) > 0 ? (((s.success || 0) / (s.attempts || 1)) * 100).toFixed(2) : 0;
+                    infoHtml += `<strong>Connection Stats:</strong><br>
+                        &nbsp;&nbsp;Total Attempts: ${s.attempts || 0}<br>
+                        &nbsp;&nbsp;Successful: ${s.success || 0}<br>
+                        &nbsp;&nbsp;Failed: ${s.failures || 0}<br>
+                        &nbsp;&nbsp;Retries: ${s.retries || 0}<br>
+                        &nbsp;&nbsp;Success Rate: ${rate}%`;
+                }
+                document.getElementById('connectionInfoLog').innerHTML = infoHtml;
+
                 lastRefreshTime = Date.now();
-                window.location.reload();
+            } catch (e) {
+                // Network hiccup — try again next tick rather than reloading blind.
+                console.warn('Connection monitor refresh failed:', e);
             }
         }
-        
-        // Start auto-refresh
+
+        // Start live polling
         refreshInterval = setInterval(refreshData, refreshIntervalMs);
-        
-        // Manual refresh button
-        document.getElementById('refreshBtn')?.addEventListener('click', function() {
-            window.location.reload();
-        });
-        
-        // Pause auto-refresh when page is hidden, resume when visible
+
+        // Manual refresh button now also just re-fetches, no page reload
+        document.getElementById('refreshBtn')?.addEventListener('click', refreshData);
+
+        // Pause polling when the tab is hidden, resume (with an immediate
+        // refresh) when it becomes visible again.
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
-                // Page hidden - clear interval
                 if (refreshInterval) {
                     clearInterval(refreshInterval);
                     refreshInterval = null;
                 }
-            } else {
-                // Page visible - resume refresh
-                if (!refreshInterval) {
-                    lastRefreshTime = Date.now();
-                    refreshInterval = setInterval(refreshData, refreshIntervalMs);
-                    // Refresh immediately when page becomes visible
-                    refreshData();
-                }
+            } else if (!refreshInterval) {
+                refreshInterval = setInterval(refreshData, refreshIntervalMs);
+                refreshData();
             }
         });
-        
+
         // Update refresh info display
         function updateRefreshInfo() {
             const refreshInfo = document.querySelector('.refresh-info');
@@ -447,7 +515,7 @@ $refresh_interval = 5;
                 refreshInfo.textContent = `Auto-refresh: <?php echo $refresh_interval; ?>s (Last: ${secondsSinceRefresh}s ago)`;
             }
         }
-        
+
         // Update refresh info every second
         setInterval(updateRefreshInfo, 1000);
     </script>

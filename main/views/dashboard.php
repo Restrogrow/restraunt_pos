@@ -5349,18 +5349,36 @@ function initDeliveryMap() {
   if (deliveryMap) {
     deliveryMap.invalidateSize();
     loadActiveDeliveries();
-    return;
+  } else {
+    deliveryMap = L.map("deliveryMap").setView([20.5937, 78.9629], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(deliveryMap);
+    loadActiveDeliveries();
   }
-  deliveryMap = L.map("deliveryMap").setView([20.5937, 78.9629], 5);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19
-  }).addTo(deliveryMap);
-  loadActiveDeliveries();
-  // Auto-refresh every 30s
-  if (mapRefreshTimer) clearInterval(mapRefreshTimer);
-  mapRefreshTimer = setInterval(loadActiveDeliveries, 30000);
+  startDeliveryMapRefresh();
 }
+
+// Auto-refresh every 30s, but only while the map page is actually showing and
+// the tab is visible — previously this timer kept running forever in the
+// background once the map had been opened once, even after navigating away
+// or backgrounding the tab.
+function startDeliveryMapRefresh() {
+  stopDeliveryMapRefresh();
+  mapRefreshTimer = setInterval(function() {
+    if (document.hidden) return;
+    loadActiveDeliveries();
+  }, 30000);
+}
+
+function stopDeliveryMapRefresh() {
+  if (mapRefreshTimer) {
+    clearInterval(mapRefreshTimer);
+    mapRefreshTimer = null;
+  }
+}
+window.stopDeliveryMapRefresh = stopDeliveryMapRefresh;
 
 function loadActiveDeliveries() {
   var statusEl = document.getElementById("deliveryMapStatus");

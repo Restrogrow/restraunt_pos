@@ -994,6 +994,7 @@ require_once __DIR__ . '/../config/countries.php';
     }
     
     function saCheckBadge() {
+      if (document.hidden) return;
       fetch('../api/get_error_logs.php?limit=1&unread_only=1', { cache:'no-store' })
         .then(function(r) { return r.json(); })
         .then(function(d) {
@@ -1014,7 +1015,10 @@ require_once __DIR__ . '/../config/countries.php';
       setTimeout(saCheckBadge, 2000);
       if (saErrorPollTimer) clearInterval(saErrorPollTimer);
       saErrorPollTimer = setInterval(saCheckBadge, 30000);
-      
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) saCheckBadge();
+      });
+
       setTimeout(function() {
         var src = document.getElementById('saErrorSource');
         var sev = document.getElementById('saErrorSeverity');

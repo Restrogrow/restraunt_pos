@@ -566,20 +566,29 @@ applyRestaurantTimezone($timezone, $conn);
             }
         }
 
+        let lastActiveOrdersSignature = null;
         async function loadActiveOrders() {
             return new Promise(async (resolve, reject) => {
                 try {
                     // Fetch orders with status Ready (orders that are ready to be served)
                     const list = document.getElementById('activeOrdersList');
-                    if (list) {
+                    // Only show the "Refreshing..." placeholder on the very first
+                    // load (empty list) — showing it on every background poll
+                    // wiped the whole list every 10-20s, flashing the screen and
+                    // resetting scroll position even when nothing had changed.
+                    if (list && list.children.length === 0) {
                         list.innerHTML = '<div class="loading">Refreshing orders...</div>';
                     }
                     const response = await fetch(`../api/get_orders.php?restaurant_id=${waiterRestaurantIdQuery}&status=Ready`, { cache: 'no-store' });
                     const result = await response.json();
-                
-                
-                
+
                 if (result.success && result.orders && result.orders.length > 0) {
+                    const signature = JSON.stringify(result.orders.map(o => [o.id, o.order_status || o.status, o.total || o.total_amount]));
+                    if (signature === lastActiveOrdersSignature) {
+                        resolve();
+                        return;
+                    }
+                    lastActiveOrdersSignature = signature;
                     list.innerHTML = result.orders.map(order => {
                         const tableInfo = order.table_name || (order.table_number ? `Table ${order.table_number}${order.area_name ? ` (${order.area_name})` : ''}` : 'Takeaway');
                         const items = order.items || [];
@@ -631,7 +640,10 @@ applyRestaurantTimezone($timezone, $conn);
                     `;
                     }).join('');
                 } else {
-                    list.innerHTML = '<div style="text-align: center; padding: 40px; color: #6b7280;">No active orders ready to serve</div>';
+                    if (lastActiveOrdersSignature !== '[]') {
+                        lastActiveOrdersSignature = '[]';
+                        list.innerHTML = '<div style="text-align: center; padding: 40px; color: #6b7280;">No active orders ready to serve</div>';
+                    }
                 }
                     resolve();
                 } catch (error) {

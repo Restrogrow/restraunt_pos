@@ -682,6 +682,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     
+    // Stop the delivery map's 30s refresh loop when navigating away from it —
+    // it previously kept polling in the background indefinitely once opened.
+    const previousActivePage = document.querySelector('.page.active');
+    if (previousActivePage && previousActivePage.id === 'deliveryMapPage' && pageId !== 'deliveryMapPage') {
+      if (typeof window.stopDeliveryMapRefresh === 'function') {
+        window.stopDeliveryMapRefresh();
+      }
+    }
+
     // Hide all pages
     pages.forEach(page => {
       page.classList.remove("active");
@@ -1054,6 +1063,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Background badge poll for pending order count (always runs, updates nav badges)
       if (!window.pendingOrderBadgePoll) {
         async function fetchPendingCount() {
+          if (document.hidden) return;
           try {
             const r = await fetch('../api/get_pending_online_count.php', { cache: 'no-store' });
             const d = await r.json();
@@ -1077,6 +1087,7 @@ document.addEventListener("DOMContentLoaded", () => {
         window._overlayProcessing = false;
 
         async function checkNewPendingOrder() {
+          if (document.hidden) return;
           try {
             const overlay = document.getElementById('newOrderOverlay');
             if (overlay && overlay.classList.contains('show')) return;
@@ -1101,6 +1112,21 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log('[Notif] Polling for new orders started, will check in 2s...');
         setTimeout(checkNewPendingOrder, 2000);
         window._newOrderPollInterval = setInterval(checkNewPendingOrder, 10000);
+
+        // Both the badge count and new-order polls above now skip their work
+        // while the tab is hidden (see the "if (document.hidden) return"
+        // guards) instead of hammering the server in a backgrounded tab —
+        // catch up immediately as soon as the tab becomes visible again so
+        // the badge/notification isn't stale for up to 30s after switching back.
+        if (!window.badgeVisibilityHandler) {
+          window.badgeVisibilityHandler = function() {
+            if (!document.hidden) {
+              fetchPendingCount();
+              checkNewPendingOrder();
+            }
+          };
+          document.addEventListener('visibilitychange', window.badgeVisibilityHandler);
+        }
       }
 
       function showNewOrderPopup(order) {

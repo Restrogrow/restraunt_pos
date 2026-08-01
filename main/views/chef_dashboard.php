@@ -470,17 +470,33 @@ $restaurant_id = $_SESSION['restaurant_id'];
         window.currentFilter = 'all';
         
         // Display KOTs with filtering
-        function displayKOTs(kots) {
+        let lastKOTSignature = null;
+        function displayKOTs(kots, force) {
             const kotList = document.getElementById('kotOrdersList');
             let filteredKOTs = kots;
-            
+
             if (window.currentFilter !== 'all') {
                 filteredKOTs = kots.filter(kot => {
                     const status = (kot.kot_status || kot.status || 'Pending').toLowerCase();
                     return status === window.currentFilter;
                 });
             }
-            
+
+            // Skip the re-render entirely when nothing actually changed since
+            // last poll — rebuilding the whole list every 10-20s (via
+            // innerHTML) was resetting scroll position on every tick even
+            // when there was nothing new to show, which is disruptive during
+            // a busy kitchen shift. Only the id/status/item-count are
+            // fingerprinted (not timestamps), so an unrelated tick doesn't
+            // force a rebuild just because a few seconds passed.
+            const signature = JSON.stringify(filteredKOTs.map(k => [
+                k.id, k.kot_status || k.status, (k.items || []).length
+            ]));
+            if (!force && signature === lastKOTSignature) {
+                return;
+            }
+            lastKOTSignature = signature;
+
             if (filteredKOTs.length === 0) {
                 const filterLabels = {
                     'pending': '🕐 Pending',
@@ -595,9 +611,10 @@ $restaurant_id = $_SESSION['restaurant_id'];
                 }
             });
             
-            // Display filtered KOTs
+            // Display filtered KOTs (force=true: a manual filter switch should
+            // always re-render, even if the signature happens to match)
             if (window.allKOTs) {
-                displayKOTs(window.allKOTs);
+                displayKOTs(window.allKOTs, true);
             }
         }
         
