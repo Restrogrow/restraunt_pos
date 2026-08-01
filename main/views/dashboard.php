@@ -1164,6 +1164,15 @@ try {
             <button class="btn-refresh-dashboard" onclick="loadDashboardStats()" title="Refresh">
               <span class="material-symbols-rounded">refresh</span>
             </button>
+            <!-- TEMPORARY — remove before production. Diagnostic button to test
+                 push notification delivery end-to-end from the browser. -->
+            <button onclick="testPushNotification(this)" title="Test Notification"
+                    style="display:flex;align-items:center;gap:6px;background:white;border:2px solid #e0e0e0;border-radius:12px;padding:0.6rem 14px;cursor:pointer;transition:all 0.2s;font-size:.8rem;font-weight:700;color:#374151;white-space:nowrap;"
+                    onmouseover="this.style.borderColor='#667eea';this.style.background='#f8f9ff';"
+                    onmouseout="this.style.borderColor='#e0e0e0';this.style.background='white';">
+              <span class="material-symbols-rounded" style="font-size:18px;">notifications_active</span>
+              Test Notification
+            </button>
           </div>
         </div>
       </div>
@@ -6185,7 +6194,7 @@ if ('serviceWorker' in navigator) {
   (function(){
     try {
       // Cache-busting version: bump this when sw.js changes
-      var SW_VERSION = 5;
+      var SW_VERSION = 6;
       var swUrl = '../website/sw.php?v=' + SW_VERSION;
       
       // Calculate proper scope from the service worker URL path
@@ -6286,8 +6295,134 @@ if ('serviceWorker' in navigator) {
   console.warn('%c❌ Service Worker not supported in this browser', 'font-size:12px;color:#ef4444;font-weight:bold;');
 }
 
+// ===== TEMPORARY: Test Notification button — remove before production =====
+// Runs the whole push pipeline (permission -> subscribe -> save -> send) from
+// one click and reports exactly which step failed, so it doubles as a
+// diagnostic tool instead of failing silently like the rest of the flow did.
+function _pushVapidKeyToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
+async function testPushNotification(btn) {
+  var iconHtml = '<span class="material-symbols-rounded" style="font-size:18px;">notifications_active</span> ';
+  var originalText = 'Test Notification';
+  function setStatus(text, color) {
+    btn.innerHTML = iconHtml + text;
+    btn.style.color = color || '#374151';
+  }
+  function resetLater() {
+    setTimeout(function() { setStatus(originalText); }, 5000);
+  }
 
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert('This browser does not support push notifications (Safari on iOS needs the site added to the Home Screen first).');
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    setStatus('Checking permission…');
+    if (Notification.permission === 'denied') {
+      alert('Notifications are blocked for this site. Enable them in your browser/site settings, then try again.');
+      setStatus('Blocked', '#dc2626');
+      resetLater();
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      var perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        alert('Notification permission was not granted.');
+        setStatus('Permission denied', '#dc2626');
+        resetLater();
+        return;
+      }
+    }
+
+    setStatus('Getting subscription…');
+    var reg = await navigator.serviceWorker.ready;
+    var sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      var vapidKey = <?php echo json_encode(env('VAPID_PUBLIC_KEY', '')); ?>;
+      if (!vapidKey) {
+        alert('VAPID_PUBLIC_KEY is not configured on the server (.env) — push notifications cannot be set up at all until that\'s set.');
+        setStatus('Server not configured', '#dc2626');
+        resetLater();
+        return;
+      }
+      setStatus('Subscribing…');
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _pushVapidKeyToUint8Array(vapidKey)
+      });
+    }
+
+    setStatus('Saving subscription…');
+    var saveRes = await fetch('../api/save_push_subscription.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub.toJSON ? sub.toJSON() : sub)
+    });
+    var saveText = await saveRes.text();
+    var saveData;
+    try { saveData = JSON.parse(saveText); } catch (e) {
+      alert('save_push_subscription.php did not return JSON (HTTP ' + saveRes.status + '):\n\n' + saveText.substring(0, 500));
+      setStatus('Save step broken', '#dc2626');
+      resetLater();
+      return;
+    }
+    if (!saveData.success) {
+      alert('Saving the subscription failed: ' + (saveData.message || 'unknown error'));
+      setStatus('Save failed', '#dc2626');
+      resetLater();
+      return;
+    }
+
+    setStatus('Sending test push…');
+    var sendRes = await fetch('../api/send_push_notification.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: '🔔 Test Notification',
+        body: 'If you can see this, push notifications are working end to end!',
+        url: '../views/dashboard.php'
+      })
+    });
+    var sendText = await sendRes.text();
+    var sendData;
+    try { sendData = JSON.parse(sendText); } catch (e) {
+      alert('send_push_notification.php did not return JSON (HTTP ' + sendRes.status + '):\n\n' + sendText.substring(0, 500));
+      setStatus('Send step broken', '#dc2626');
+      resetLater();
+      return;
+    }
+
+    if (sendData.success && sendData.sent > 0) {
+      setStatus('Sent! Watch for it', '#059669');
+    } else {
+      var reason = (sendData.failure_reasons && sendData.failure_reasons.length)
+        ? sendData.failure_reasons.join('; ')
+        : (sendData.message || 'server reported 0 sent, 0 failed — check total_subscribers');
+      alert('Push did not deliver.\nSent: ' + (sendData.sent || 0) + '  Failed: ' + (sendData.failed || 0) + '  Subscribers: ' + (sendData.total_subscribers ?? '?') + '\nReason: ' + reason);
+      setStatus('Not delivered', '#dc2626');
+    }
+    resetLater();
+  } catch (err) {
+    console.error('Test notification error:', err);
+    alert('Error testing notification: ' + err.message);
+    setStatus('Error — see console', '#dc2626');
+    resetLater();
+  } finally {
+    btn.disabled = false;
+  }
+}
+window.testPushNotification = testPushNotification;
 </script>
 
 <!-- New Order Notification Overlay -->

@@ -68,7 +68,7 @@ function sendPushNotification($conn, $restaurantId, $title, $body, $url = '../vi
     ]);
     
     $sent = 0;
-    
+
     foreach ($subscriptions as $sub) {
         try {
             $subscription = Subscription::create([
@@ -78,18 +78,25 @@ function sendPushNotification($conn, $restaurantId, $title, $body, $url = '../vi
                     'auth' => $sub['auth_key'],
                 ],
             ]);
-            $webPush->sendOneNotification($subscription, $payload);
-            $sent++;
-        } catch (Exception $e) {
-            if (strpos($e->getMessage(), 'expired') !== false || 
-                strpos($e->getMessage(), '410') !== false) {
+            // sendOneNotification() sends synchronously and returns a
+            // MessageSentReport — it does NOT throw for a rejected push
+            // (expired subscription, 404/410, bad VAPID auth, etc). The old
+            // code only had a catch block here, so every failed delivery was
+            // silently counted as "sent" and expired subscriptions were
+            // never cleaned up.
+            $report = $webPush->sendOneNotification($subscription, $payload);
+            if ($report->isSuccess()) {
+                $sent++;
+            } elseif ($report->isSubscriptionExpired()) {
                 $stmt = $conn->prepare("DELETE FROM push_subscriptions WHERE id = ?");
                 $stmt->execute([$sub['id']]);
+            } else {
+                error_log('Push notification failed for subscription ' . $sub['id'] . ': ' . $report->getReason());
             }
+        } catch (Exception $e) {
+            error_log('Push notification exception for subscription ' . $sub['id'] . ': ' . $e->getMessage());
         }
     }
-    
-    $webPush->flush();
-    
+
     return ['sent' => $sent, 'total' => count($subscriptions)];
 }

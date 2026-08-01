@@ -4,7 +4,7 @@
  * POST: Send a notification to one or all admin users
  */
 
-require_once __DIR__ . '/../../db_connection.php';
+require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../config/env_loader.php';
 
@@ -96,7 +96,8 @@ try {
     
     $sent = 0;
     $failed = 0;
-    
+    $failureReasons = [];
+
     foreach ($subscriptions as $sub) {
         try {
             $subscription = Subscription::create([
@@ -106,29 +107,36 @@ try {
                     'auth' => $sub['auth_key'],
                 ],
             ]);
-            
-            $webPush->sendOneNotification($subscription, $payload);
-            $sent++;
-        } catch (Exception $e) {
-            // If expired, remove the subscription
-            if (strpos($e->getMessage(), 'expired') !== false || 
-                strpos($e->getMessage(), 'gone') !== false ||
-                strpos($e->getMessage(), '410') !== false) {
-                $stmt = $conn->prepare("DELETE FROM push_subscriptions WHERE id = ?");
-                $stmt->execute([$sub['id']]);
+
+            // sendOneNotification() sends synchronously and returns a
+            // MessageSentReport — it does NOT throw for a rejected push
+            // (expired subscription, 404/410, bad VAPID auth, etc), so the
+            // old try/catch here counted every attempt as "sent" even when
+            // delivery actually failed, and never cleaned up dead
+            // subscriptions since the catch block was effectively dead code.
+            $report = $webPush->sendOneNotification($subscription, $payload);
+            if ($report->isSuccess()) {
+                $sent++;
+            } else {
+                $failed++;
+                $failureReasons[] = $report->getReason();
+                if ($report->isSubscriptionExpired()) {
+                    $stmt = $conn->prepare("DELETE FROM push_subscriptions WHERE id = ?");
+                    $stmt->execute([$sub['id']]);
+                }
             }
+        } catch (Exception $e) {
             $failed++;
+            $failureReasons[] = $e->getMessage();
         }
     }
-    
-    // Send all notifications
-    $webPush->flush();
-    
+
     echo json_encode([
-        'success' => true, 
-        'sent' => $sent, 
+        'success' => true,
+        'sent' => $sent,
         'failed' => $failed,
-        'total_subscribers' => count($subscriptions)
+        'total_subscribers' => count($subscriptions),
+        'failure_reasons' => array_values(array_unique($failureReasons)),
     ]);
     
 } catch (Exception $e) {
