@@ -1072,7 +1072,10 @@ body {
             </div>
             <div class="form-group">
               <label>Phone Number <span style="color:#ef4444">*</span></label>
-              <input type="tel" id="editPhone" required placeholder="Enter your phone number">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:#666;font-size:14px;white-space:nowrap;"><?php echo htmlspecialchars($phone_dial_code ?? '+91'); ?></span>
+                <input type="tel" id="editPhone" required placeholder="Enter your phone number" style="flex:1;">
+              </div>
             </div>
             <div class="form-group">
               <label>Email Address</label>
@@ -1096,6 +1099,13 @@ body {
 <!-- Feedback Modal -->
 <div id="feedbackModalContainer"></div>
 
+<script>
+window.globalCurrencySymbol = <?php echo json_encode($currency_symbol ?? '₹', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+window.restaurantCountry = <?php echo json_encode($country ?? 'India', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+window.restaurantDialCode = <?php echo json_encode($phone_dial_code ?? '+91', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.restaurantPhoneMin = <?php echo json_encode((int)($phone_min_digits ?? 10), JSON_HEX_TAG); ?>;
+window.restaurantPhoneMax = <?php echo json_encode((int)($phone_max_digits ?? 10), JSON_HEX_TAG); ?>;
+</script>
 <script>
 /* ═══════════════════════════════════════════════════════════════
    PROFILE PAGE — JavaScript
@@ -1238,7 +1248,9 @@ function setupProfileForm() {
 
     if (!name) { nameEl.classList.add('error'); nameEl.focus(); showToast('Please enter your name', 'warning'); return; }
     if (!phone) { phoneEl.classList.add('error'); phoneEl.focus(); showToast('Please enter your phone number', 'warning'); return; }
-    if (phone.length < 10) { phoneEl.classList.add('error'); phoneEl.focus(); showToast('Phone number must be at least 10 digits', 'warning'); return; }
+    var phoneMinLen = window.restaurantPhoneMin || 10;
+    var phoneMaxLen = window.restaurantPhoneMax || 10;
+    if (phone.length < phoneMinLen || phone.length > phoneMaxLen) { phoneEl.classList.add('error'); phoneEl.focus(); showToast('Phone number must be ' + (phoneMinLen === phoneMaxLen ? phoneMinLen + ' digits' : phoneMinLen + '-' + phoneMaxLen + ' digits'), 'warning'); return; }
 
     var btn = document.getElementById('saveBtn');
     btn.disabled = true;
@@ -1363,8 +1375,13 @@ function statusIcon(status) {
 
 function formatDate(dateStr) {
   try {
+    // No explicit timeZone here: the server sends a naive local timestamp
+    // (already in the restaurant's own configured timezone), and the browser
+    // parses/renders naive date strings in its own local zone by default.
+    // Forcing timeZone: 'Asia/Kolkata' here used to shift every non-Indian
+    // customer's order time (e.g. Nepal, UTC+5:45) by the gap to IST.
     var d = new Date(dateStr);
-    return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    return d.toLocaleDateString('en-IN', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
   } catch(e) { return dateStr; }
 }
 

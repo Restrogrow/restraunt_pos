@@ -30,9 +30,6 @@ require_once __DIR__ . '/../config/db_cache.php';
     echo json_encode(['success' => false, 'message' => 'Database connection file not found']);
     exit();
 }
-// Ensure consistent local time (IST) for date filters
-date_default_timezone_set('Asia/Kolkata');
-
 try {
     // Get connection using getConnection() for lazy connection support
     if (function_exists('getConnection')) {
@@ -45,7 +42,15 @@ try {
         }
     }
     $restaurant_id = $_SESSION['restaurant_id'];
-    
+
+    // Apply this restaurant's own configured timezone (falls back to Asia/Kolkata)
+    // so "today" is computed in their local time, not a hardcoded one.
+    require_once __DIR__ . '/../config/timezone_utils.php';
+    $tzStmt = $conn->prepare("SELECT timezone FROM users WHERE restaurant_id = ? LIMIT 1");
+    $tzStmt->execute([$restaurant_id]);
+    $tzRow = $tzStmt->fetch(PDO::FETCH_ASSOC);
+    applyRestaurantTimezone($tzRow['timezone'] ?? 'Asia/Kolkata', $conn);
+
     // Get today's date
     $today = date('Y-m-d');
     

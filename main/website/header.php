@@ -8,6 +8,7 @@ header('Expires: 0');
 
 require_once __DIR__ . '/../config/env_loader.php';
 require_once __DIR__ . '/../config/session_config.php';
+require_once __DIR__ . '/../config/countries.php';
 startSecureSession(true);
 
 function createRestaurantSlug($name) {
@@ -66,6 +67,9 @@ if ($qr_table) {
 }
 
 $currency_symbol = '₹';
+$country = 'India';
+$tax_name = 'GST';
+$tax_percent = 5.00;
 $restaurant_name = 'Restaurant';
 // Local SVG placeholder as data URI (avoids external via.placeholder.com which often fails)
 $local_placeholder_svg = 'data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192"><rect width="100%" height="100%" fill="#f0f0f0"/><text x="50%" y="50%" font-family="Arial,sans-serif" font-size="16" fill="#999" text-anchor="middle" dy=".3em">Logo</text></svg>');
@@ -140,7 +144,7 @@ if ($restaurant_id) {
         if (function_exists('getConnection')) {
             $conn = getConnection();
             try {
-$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng FROM users WHERE restaurant_id = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng FROM users WHERE restaurant_id = ? LIMIT 1");
                 $stmt->execute([$restaurant_id]);
             } catch (Exception $e2) {
                 // Fallback: new columns (delivery_radius_km, etc.) may not exist - query without them
@@ -152,6 +156,19 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 $restaurant_name = $row['restaurant_name'] ?? $restaurant_name;
                 if ($row['currency_symbol'] && $row['currency_symbol'] !== '') {
                     $currency_symbol = $row['currency_symbol'];
+                }
+                if (!empty($row['country'])) {
+                    $country = $row['country'];
+                }
+                if (!empty($row['tax_name'])) {
+                    $tax_name = $row['tax_name'];
+                }
+                if (isset($row['tax_percent']) && $row['tax_percent'] !== null) {
+                    $tax_percent = (float)$row['tax_percent'];
+                }
+                if (!empty($row['timezone'])) {
+                    require_once __DIR__ . '/../config/timezone_utils.php';
+                    applyRestaurantTimezone($row['timezone'], $conn);
                 }
                 $restaurant_address = $row['address'] ?? null;
                 $restaurant_description = $row['description'] ?? null;
@@ -239,24 +256,33 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     }
 }
 
-// Determine timezone offset for JavaScript (Indian Standard Time: UTC+5:30 = 330 minutes)
-$timezone_offset_minutes = 330;
+// Derive phone dial code / expected local number length from the restaurant's country
+// (falls back to India's 10-digit format if the country isn't in the reference list)
+$countryPhoneInfo = getCountryByName($country);
+$phone_dial_code = $countryPhoneInfo['dial_code'] ?? '+91';
+$phone_min_digits = $countryPhoneInfo['phone_min'] ?? 10;
+$phone_max_digits = $countryPhoneInfo['phone_max'] ?? 10;
 
-// Determine if restaurant is currently open using Indian Standard Time
+// Timezone offset (minutes) for JavaScript, and opening-hours check below — both derived
+// from the restaurant's own configured timezone (applyRestaurantTimezone() ran above),
+// falling back to Asia/Kolkata (IST, UTC+5:30) if no restaurant/timezone was resolved.
+$restaurant_tz = new DateTimeZone(date_default_timezone_get());
+$timezone_offset_minutes = intdiv($restaurant_tz->getOffset(new DateTime('now', $restaurant_tz)), 60);
+
+// Determine if restaurant is currently open, using the restaurant's own local time
 $restaurant_open = true;
-$india_tz = new DateTimeZone('Asia/Kolkata');
 if (!empty($opening_hours)) {
     $hours = json_decode($opening_hours, true);
     if ($hours) {
-        $now = new DateTime('now', $india_tz);
+        $now = new DateTime('now', $restaurant_tz);
         $day = strtolower($now->format('l'));
         if (!isset($hours[$day]) || empty($hours[$day]['open'])) {
             $restaurant_open = false;
         } else {
             $opening = $hours[$day]['opening'] ?? '09:00 AM';
             $closing = $hours[$day]['closing'] ?? '10:00 PM';
-            $openDT = new DateTime($now->format('Y-m-d') . ' ' . $opening, $india_tz);
-            $closeDT = new DateTime($now->format('Y-m-d') . ' ' . $closing, $india_tz);
+            $openDT = new DateTime($now->format('Y-m-d') . ' ' . $opening, $restaurant_tz);
+            $closeDT = new DateTime($now->format('Y-m-d') . ' ' . $closing, $restaurant_tz);
             if ($closeDT <= $openDT) {
                 $closeDT->modify('+1 day');
             }

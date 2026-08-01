@@ -944,6 +944,12 @@ window.businessQrAvailable = <?php echo json_encode($business_qr_available, JSON
 window.businessQrImageUrl = <?php echo json_encode($business_qr_image_url, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minutes ?? 330, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.enableGst = <?php echo json_encode($enable_gst ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.taxName = <?php echo json_encode($tax_name ?? 'GST', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+window.taxPercent = <?php echo json_encode((float)($tax_percent ?? 5.00), JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.restaurantCountry = <?php echo json_encode($country ?? 'India', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+window.restaurantDialCode = <?php echo json_encode($phone_dial_code ?? '+91', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.restaurantPhoneMin = <?php echo json_encode((int)($phone_min_digits ?? 10), JSON_HEX_TAG); ?>;
+window.restaurantPhoneMax = <?php echo json_encode((int)($phone_max_digits ?? 10), JSON_HEX_TAG); ?>;
 window.enableDelivery = <?php echo json_encode($enable_delivery ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.enableTakeaway = <?php echo json_encode($enable_takeaway ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.enableDinein = <?php echo json_encode($enable_dinein ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -1898,7 +1904,7 @@ function refreshCheckoutTotal() {
 
   var showGst = window.enableGst == 1 || window.enableGst === true;
   var taxable = baseAmt;
-  var gst = showGst ? taxable * 0.05 : 0;
+  var gst = showGst ? taxable * ((window.taxPercent || 5) / 100) : 0;
 
   var gstRow = document.getElementById('gstRow');
   var gstAmount = document.getElementById('gstAmount');
@@ -1957,7 +1963,7 @@ function showCheckoutModal(cartData) {
   html += '<form id="checkoutForm">';
 
   html += '<div class="form-group"><label>Full Name *</label><input type="text" id="chkName" required value="' + esc((cd && cd.name) || '') + '" placeholder="Your name"></div>';
-  html += '<div class="form-group"><label>Phone Number *</label><input type="tel" id="chkPhone" required value="' + esc((cd && cd.phone) || '') + '" placeholder="Your phone"></div>';
+  html += '<div class="form-group"><label>Phone Number *</label><div style="display:flex;align-items:center;gap:6px;"><span style="color:#666;font-size:14px;white-space:nowrap;">' + (window.restaurantDialCode || '+91') + '</span><input type="tel" id="chkPhone" required value="' + esc((cd && cd.phone) || '') + '" placeholder="Your phone" style="flex:1;"></div></div>';
   html += '<div class="form-group"><label>Email</label><input type="email" id="chkEmail" value="' + esc((cd && cd.email) || '') + '" placeholder="Your email (optional)"></div>';
 
   // Determine default order type (used for initial address visibility)
@@ -2028,8 +2034,9 @@ function showCheckoutModal(cartData) {
   html += '<span>Delivery Fee</span><span id="deliveryFeeAmount">' + getCurrency() + '0.00</span>';
   html += '</div>';
   var enableGst = window.enableGst == 1 || window.enableGst === true;
+  var taxLabel = (window.taxName || 'GST') + ' (' + parseFloat(window.taxPercent || 5) + '%)';
   html += '<div id="gstRow" class="summary-row" style="display:' + (enableGst ? 'flex' : 'none') + ';">';
-  html += '<span>GST (5%)</span><span id="gstAmount">' + getCurrency() + '0.00</span>';
+  html += '<span>' + taxLabel + '</span><span id="gstAmount">' + getCurrency() + '0.00</span>';
   html += '</div>';
   html += '<hr class="summary-divider">';
   html += '<div class="summary-total">';
@@ -2342,7 +2349,13 @@ function processOrder(cartData) {
     return;
   }
   if (!name || !phone) { showModal('Error', 'Name and phone are required'); return; }
-  if (phone.length < 10 || !/^\d+$/.test(phone)) { showModal('Error', 'Please enter a valid 10-digit phone number'); return; }
+  var phoneMinLen = window.restaurantPhoneMin || 10;
+  var phoneMaxLen = window.restaurantPhoneMax || 10;
+  if (phone.length < phoneMinLen || phone.length > phoneMaxLen || !/^\d+$/.test(phone)) {
+    var lenMsg = phoneMinLen === phoneMaxLen ? (phoneMinLen + '-digit') : (phoneMinLen + '-' + phoneMaxLen + ' digit');
+    showModal('Error', 'Please enter a valid ' + lenMsg + ' phone number');
+    return;
+  }
 
   if (payment === 'QR Payment' && !window.__paymentProofBase64) {
     showModal('Payment Proof Required', 'Please upload a screenshot of your payment before placing the order.');

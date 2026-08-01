@@ -325,12 +325,13 @@ function handleUpdateKOTStatus() {
                     $kotPaymentMethod = trim($pm[1]);
                 }
                 
-                // Re-verify tax against current enable_gst setting
-                $gstStmt2 = $conn->prepare("SELECT enable_gst FROM users WHERE restaurant_id = ? LIMIT 1");
+                // Re-verify tax against current enable_gst/tax_percent setting
+                $gstStmt2 = $conn->prepare("SELECT enable_gst, tax_percent FROM users WHERE restaurant_id = ? LIMIT 1");
                 $gstStmt2->execute([$restaurant_id]);
                 $gstRow2 = $gstStmt2->fetch(PDO::FETCH_ASSOC);
                 $gstEnabled2 = $gstRow2 ? (bool)$gstRow2['enable_gst'] : true;
-                $recalculatedTax = $gstEnabled2 ? round((float)$kot['subtotal'] * 0.05, 2) : 0;
+                $taxPercent2 = ($gstRow2 && isset($gstRow2['tax_percent']) && $gstRow2['tax_percent'] !== null) ? (float)$gstRow2['tax_percent'] : 5.00;
+                $recalculatedTax = $gstEnabled2 ? round((float)$kot['subtotal'] * ($taxPercent2 / 100), 2) : 0;
                 if (abs((float)$kot['tax'] - $recalculatedTax) > 0.01) {
                     $kot['tax'] = $recalculatedTax;
                     $kot['total'] = round((float)$kot['subtotal'] + (float)$kot['tax'], 2);
@@ -560,12 +561,13 @@ function handleCompleteKOT() {
                     $order_notes = "[KOT: " . $kot['kot_number'] . "]";
                 }
                 
-                // Re-verify tax against current enable_gst setting
-                $gstStmt3 = $conn->prepare("SELECT enable_gst FROM users WHERE restaurant_id = ? LIMIT 1");
+                // Re-verify tax against current enable_gst/tax_percent setting
+                $gstStmt3 = $conn->prepare("SELECT enable_gst, tax_percent FROM users WHERE restaurant_id = ? LIMIT 1");
                 $gstStmt3->execute([$restaurant_id]);
                 $gstRow3 = $gstStmt3->fetch(PDO::FETCH_ASSOC);
                 $gstEnabled3 = $gstRow3 ? (bool)$gstRow3['enable_gst'] : true;
-                $recalculatedTax2 = $gstEnabled3 ? round((float)$kot['subtotal'] * 0.05, 2) : 0;
+                $taxPercent3 = ($gstRow3 && isset($gstRow3['tax_percent']) && $gstRow3['tax_percent'] !== null) ? (float)$gstRow3['tax_percent'] : 5.00;
+                $recalculatedTax2 = $gstEnabled3 ? round((float)$kot['subtotal'] * ($taxPercent3 / 100), 2) : 0;
                 if (abs((float)$kot['tax'] - $recalculatedTax2) > 0.01) {
                     $kot['tax'] = $recalculatedTax2;
                     $kot['total'] = round((float)$kot['subtotal'] + (float)$kot['tax'], 2);

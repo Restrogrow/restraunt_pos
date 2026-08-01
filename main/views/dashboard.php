@@ -47,6 +47,9 @@ $restaurant_id = $_SESSION['restaurant_id'] ?? 'RES001';
 $restaurant_logo = '../assets/images/logo-transparent.png'; // Default fallback
 // Try to get currency from session first (if saved), otherwise default
 $currency_symbol = $_SESSION['currency_symbol'] ?? '₹'; // Default currency
+$country = $_SESSION['country'] ?? 'India';
+$tax_name = $_SESSION['tax_name'] ?? 'GST';
+$tax_percent = $_SESSION['tax_percent'] ?? 5.00;
 $timezone = 'Asia/Kolkata'; // Default timezone
 $language = $_SESSION['language'] ?? 'en';
 $user_email = '';
@@ -71,6 +74,8 @@ $basePath = rtrim(dirname(dirname(dirname($scriptPath))), '/');
 // Dynamically detect base URL path (works on localhost subdirectories like /menuwebsite/ and production root)
 $scriptPath = $_SERVER['SCRIPT_NAME'];
 $basePath = rtrim(dirname(dirname(dirname($scriptPath))), '/');
+
+require_once __DIR__ . '/../config/countries.php';
 
 try {
     // Include database connection
@@ -106,7 +111,7 @@ try {
         
         require_once __DIR__ . '/../config/translate_utils.php';
         ensureLanguageColumns($conn, $restaurant_id);
-        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, photo_gallery_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled FROM users WHERE id = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, photo_gallery_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $userRow = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($userRow) {
@@ -146,10 +151,26 @@ try {
                     // Save to session for faster loading next time
                     $_SESSION['currency_symbol'] = $currency_symbol;
             }
+            // Country
+            if (!empty($userRow['country'])) {
+                $country = htmlspecialchars($userRow['country']);
+                $_SESSION['country'] = $country;
+            }
+            // Tax name/percent (replaces the old fixed-5%-GST assumption)
+            if (!empty($userRow['tax_name'])) {
+                $tax_name = htmlspecialchars($userRow['tax_name']);
+                $_SESSION['tax_name'] = $tax_name;
+            }
+            if (isset($userRow['tax_percent']) && $userRow['tax_percent'] !== null) {
+                $tax_percent = (float)$userRow['tax_percent'];
+                $_SESSION['tax_percent'] = $tax_percent;
+            }
             // Timezone
             if (!empty($userRow['timezone'])) {
                 $timezone = htmlspecialchars($userRow['timezone']);
             }
+            require_once __DIR__ . '/../config/timezone_utils.php';
+            applyRestaurantTimezone($timezone, $conn);
             // Language
             if (!empty($userRow['language'])) {
                 $language = htmlspecialchars($userRow['language']);
@@ -312,6 +333,12 @@ try {
     ?>
     window.restaurantWebsiteSlug = <?php echo json_encode($restaurant_website_slug, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
     window.enableGst = <?php echo json_encode((bool)$enable_gst, JSON_HEX_TAG); ?>;
+    window.taxName = <?php echo json_encode($tax_name, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE); ?>;
+    window.taxPercent = <?php echo json_encode((float)$tax_percent, JSON_HEX_TAG); ?>;
+    <?php $dashCountryInfo = getCountryByName($country); ?>
+    window.restaurantDialCode = <?php echo json_encode($dashCountryInfo['dial_code'] ?? '+91', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+    window.restaurantPhoneMin = <?php echo json_encode((int)($dashCountryInfo['phone_min'] ?? 10), JSON_HEX_TAG); ?>;
+    window.restaurantPhoneMax = <?php echo json_encode((int)($dashCountryInfo['phone_max'] ?? 10), JSON_HEX_TAG); ?>;
     window.enableLanguage = <?php echo json_encode((bool)$enable_language, JSON_HEX_TAG); ?>;
     window.enableDelivery = <?php echo json_encode((int)$enable_delivery, JSON_HEX_TAG); ?>;
     window.enableTakeaway = <?php echo json_encode((int)$enable_takeaway, JSON_HEX_TAG); ?>;
@@ -2734,15 +2761,25 @@ function toggleGatewayMode() {
                 <div class="form-group">
                   <label style="display:flex;align-items:center;gap:8px;">
                     <span class="material-symbols-rounded">receipt_long</span>
-                    Enable GST (5%)
+                    Enable Tax
                     <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
                       <input type="checkbox" id="enableGstToggle" <?php echo $enable_gst ? "checked" : ""; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
                       <span style="font-size:13px;font-weight:500;color:#374151;" id="enableGstLabel">Enabled</span>
                     </label>
                   </label>
-                  <p style="font-size:12px;color:#6b7280;margin-top:4px;">Turn off to remove GST calculation on orders and the customer website.</p>
+                  <p style="font-size:12px;color:#6b7280;margin-top:4px;">Turn off to remove tax calculation on orders and the customer website.</p>
+                  <div class="row" style="display:flex;gap:12px;margin-top:10px;">
+                    <div class="form-group" style="flex:1;margin-bottom:0;">
+                      <label for="taxName" style="font-size:12px;color:#6b7280;">Tax Name</label>
+                      <input type="text" id="taxName" class="form-control" maxlength="50" placeholder="e.g. GST, VAT, Sales Tax" value="<?php echo htmlspecialchars($tax_name); ?>">
+                    </div>
+                    <div class="form-group" style="flex:1;margin-bottom:0;">
+                      <label for="taxPercentInput" style="font-size:12px;color:#6b7280;">Tax Percent (%)</label>
+                      <input type="number" id="taxPercentInput" class="form-control" step="0.01" min="0" max="100" placeholder="e.g. 5" value="<?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$tax_percent, 2), '0'), '.')); ?>">
+                    </div>
+                  </div>
                 </div>
-                
+
                 <div class="form-group" >
                   <label for="minimumOrderValue">
                     <span class="material-symbols-rounded">shopping_cart</span>
@@ -2872,6 +2909,19 @@ function toggleGatewayMode() {
             <div class="profile-card-body">
               <form id="systemSettingsForm">
                 <div class="form-group">
+                  <label for="countrySelect">
+                    <span class="material-symbols-rounded">public</span>
+                    Country
+                  </label>
+                  <p style="color:#666;font-size:0.85rem;margin-bottom:0.75rem;">Sets the default currency below. Change the currency separately if needed.</p>
+                  <select id="countrySelect">
+                    <?php foreach (getCountryData() as $iso2 => $c): ?>
+                    <option value="<?php echo htmlspecialchars($c['name']); ?>" data-currency="<?php echo htmlspecialchars($c['currency_symbol']); ?>" <?php echo $country === $c['name'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['name']); ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+
+                <div class="form-group">
                   <label for="currencySymbolSelect">
                     <span class="material-symbols-rounded">currency_exchange</span>
                     Currency Symbol
@@ -2943,10 +2993,74 @@ function toggleGatewayMode() {
                     Timezone
                   </label>
                   <select id="timezone">
-                    <option value="Asia/Kolkata" <?php echo $timezone === 'Asia/Kolkata' ? 'selected' : ''; ?>>Asia/Kolkata (IST)</option>
-                    <option value="UTC" <?php echo $timezone === 'UTC' ? 'selected' : ''; ?>>UTC</option>
-                    <option value="America/New_York" <?php echo $timezone === 'America/New_York' ? 'selected' : ''; ?>>America/New_York (EST)</option>
-                    <option value="Europe/London" <?php echo $timezone === 'Europe/London' ? 'selected' : ''; ?>>Europe/London (GMT)</option>
+                    <?php
+                    $timezoneOptions = [
+                      'UTC' => 'UTC',
+                      'Asia/Kolkata' => 'Asia/Kolkata (India, IST)',
+                      'Asia/Kathmandu' => 'Asia/Kathmandu (Nepal, NPT)',
+                      'Asia/Dhaka' => 'Asia/Dhaka (Bangladesh)',
+                      'Asia/Colombo' => 'Asia/Colombo (Sri Lanka)',
+                      'Asia/Karachi' => 'Asia/Karachi (Pakistan)',
+                      'Asia/Dubai' => 'Asia/Dubai (UAE)',
+                      'Asia/Riyadh' => 'Asia/Riyadh (Saudi Arabia)',
+                      'Asia/Qatar' => 'Asia/Qatar',
+                      'Asia/Kuwait' => 'Asia/Kuwait',
+                      'Asia/Bahrain' => 'Asia/Bahrain',
+                      'Asia/Muscat' => 'Asia/Muscat (Oman)',
+                      'Asia/Yangon' => 'Asia/Yangon (Myanmar)',
+                      'Asia/Bangkok' => 'Asia/Bangkok (Thailand)',
+                      'Asia/Jakarta' => 'Asia/Jakarta (Indonesia)',
+                      'Asia/Singapore' => 'Asia/Singapore',
+                      'Asia/Kuala_Lumpur' => 'Asia/Kuala_Lumpur (Malaysia)',
+                      'Asia/Manila' => 'Asia/Manila (Philippines)',
+                      'Asia/Ho_Chi_Minh' => 'Asia/Ho_Chi_Minh (Vietnam)',
+                      'Asia/Hong_Kong' => 'Asia/Hong_Kong',
+                      'Asia/Shanghai' => 'Asia/Shanghai (China)',
+                      'Asia/Taipei' => 'Asia/Taipei (Taiwan)',
+                      'Asia/Tokyo' => 'Asia/Tokyo (Japan)',
+                      'Asia/Seoul' => 'Asia/Seoul (South Korea)',
+                      'Asia/Jerusalem' => 'Asia/Jerusalem (Israel)',
+                      'Asia/Istanbul' => 'Asia/Istanbul (Turkey)',
+                      'Europe/London' => 'Europe/London (UK, GMT)',
+                      'Europe/Dublin' => 'Europe/Dublin (Ireland)',
+                      'Europe/Paris' => 'Europe/Paris (France)',
+                      'Europe/Berlin' => 'Europe/Berlin (Germany)',
+                      'Europe/Madrid' => 'Europe/Madrid (Spain)',
+                      'Europe/Rome' => 'Europe/Rome (Italy)',
+                      'Europe/Amsterdam' => 'Europe/Amsterdam (Netherlands)',
+                      'Europe/Lisbon' => 'Europe/Lisbon (Portugal)',
+                      'Europe/Moscow' => 'Europe/Moscow (Russia)',
+                      'Africa/Cairo' => 'Africa/Cairo (Egypt)',
+                      'Africa/Lagos' => 'Africa/Lagos (Nigeria)',
+                      'Africa/Nairobi' => 'Africa/Nairobi (Kenya)',
+                      'Africa/Johannesburg' => 'Africa/Johannesburg (South Africa)',
+                      'Africa/Casablanca' => 'Africa/Casablanca (Morocco)',
+                      'America/New_York' => 'America/New_York (US Eastern)',
+                      'America/Chicago' => 'America/Chicago (US Central)',
+                      'America/Denver' => 'America/Denver (US Mountain)',
+                      'America/Los_Angeles' => 'America/Los_Angeles (US Pacific)',
+                      'America/Toronto' => 'America/Toronto (Canada)',
+                      'America/Mexico_City' => 'America/Mexico_City (Mexico)',
+                      'America/Bogota' => 'America/Bogota (Colombia)',
+                      'America/Sao_Paulo' => 'America/Sao_Paulo (Brazil)',
+                      'America/Argentina/Buenos_Aires' => 'America/Buenos_Aires (Argentina)',
+                      'America/Santiago' => 'America/Santiago (Chile)',
+                      'America/Lima' => 'America/Lima (Peru)',
+                      'Australia/Sydney' => 'Australia/Sydney',
+                      'Australia/Perth' => 'Australia/Perth',
+                      'Pacific/Auckland' => 'Pacific/Auckland (New Zealand)',
+                      'Pacific/Fiji' => 'Pacific/Fiji',
+                    ];
+                    // If the restaurant's saved timezone isn't in the curated list above
+                    // (still a valid IANA zone), include it so the dropdown doesn't silently
+                    // fall back to something else on save.
+                    if (!empty($timezone) && !isset($timezoneOptions[$timezone])) {
+                      $timezoneOptions[$timezone] = $timezone;
+                    }
+                    foreach ($timezoneOptions as $tzValue => $tzLabel):
+                    ?>
+                    <option value="<?php echo htmlspecialchars($tzValue); ?>" <?php echo $timezone === $tzValue ? 'selected' : ''; ?>><?php echo htmlspecialchars($tzLabel); ?></option>
+                    <?php endforeach; ?>
                   </select>
                 </div>
 
@@ -3579,15 +3693,7 @@ function toggleGatewayMode() {
               </div>
               <?php if ($enable_gst): ?>
               <div class="cart-summary-row">
-                <span>CGST (2.5%):</span>
-                <span id="cartCGST"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
-              </div>
-              <div class="cart-summary-row">
-                <span>SGST (2.5%):</span>
-                <span id="cartSGST"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
-              </div>
-              <div class="cart-summary-row">
-                <span>GST (5%):</span>
+                <span><?php echo htmlspecialchars($tax_name); ?> (<?php echo rtrim(rtrim(number_format((float)$tax_percent, 2), '0'), '.'); ?>%):</span>
                 <span id="cartTax"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
               </div>
               <?php endif; ?>
@@ -3632,18 +3738,8 @@ function toggleGatewayMode() {
               <span style="color:#6b7280;">Subtotal:</span>
               <span style="font-weight:600;color:#111827;" id="mobilePosBillSubtotal"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
             </div>
-            <?php if ($enable_gst): ?>
-            <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;font-size:0.85rem;">
-              <span style="color:#6b7280;">CGST (2.5%):</span>
-              <span style="font-weight:600;color:#111827;" id="mobilePosBillCGST"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;font-size:0.85rem;">
-              <span style="color:#6b7280;">SGST (2.5%):</span>
-              <span style="font-weight:600;color:#111827;" id="mobilePosBillSGST"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
-            </div>
-            <?php endif; ?>
             <div style="display:flex;justify-content:space-between;font-size:0.85rem;">
-              <span style="color:#6b7280;">Tax Total:</span>
+              <span style="color:#6b7280;"><?php echo htmlspecialchars($tax_name); ?> (<?php echo rtrim(rtrim(number_format((float)$tax_percent, 2), '0'), '.'); ?>%):</span>
               <span style="font-weight:600;color:#111827;" id="mobilePosBillTax"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
             </div>
           </div>
@@ -4474,11 +4570,12 @@ function toggleGatewayMode() {
             <label for="staffPhone">Restaurant Phone Number:</label>
             <div class="form-row">
               <select id="countryCode" name="countryCode" style="width: 30%;">
-                <option value="+1">+1</option>
-                <option value="+91">+91</option>
-                <option value="+977">+977</option>
-                <option value="+44">+44</option>
-                <option value="+61">+61</option>
+                <?php
+                $staffDialDefault = $dashCountryInfo['dial_code'] ?? '+91';
+                foreach (getCountryData() as $iso2 => $c):
+                ?>
+                <option value="<?php echo htmlspecialchars($c['dial_code']); ?>" <?php echo $c['dial_code'] === $staffDialDefault ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['dial_code'] . ' (' . $c['name'] . ')'); ?></option>
+                <?php endforeach; ?>
               </select>
               <input type="tel" id="staffPhone" name="restaurantPhone" required placeholder="1234567890" style="width: 68%;">
             </div>
@@ -5486,6 +5583,33 @@ function copyEmbedCode() {
   }
 }
 
+// Country -> currency auto-fill (still manually overridable via the Currency Symbol field below)
+document.getElementById('countrySelect').addEventListener('change', function() {
+  var opt = this.options[this.selectedIndex];
+  var currency = opt.getAttribute('data-currency');
+  if (!currency) return;
+  var currencySelect = document.getElementById('currencySymbolSelect');
+  var customInput = document.getElementById('currencySymbol');
+  var matched = false;
+  for (var i = 0; i < currencySelect.options.length; i++) {
+    if (currencySelect.options[i].value === currency) {
+      currencySelect.selectedIndex = i;
+      matched = true;
+      break;
+    }
+  }
+  if (matched) {
+    customInput.style.display = 'none';
+    customInput.value = '';
+  } else {
+    for (var j = 0; j < currencySelect.options.length; j++) {
+      if (currencySelect.options[j].value === 'Custom') { currencySelect.selectedIndex = j; break; }
+    }
+    customInput.style.display = '';
+    customInput.value = currency;
+  }
+});
+
 // System settings form submit handler
 document.getElementById('systemSettingsForm').addEventListener('submit', async function(e) {
   e.preventDefault();
@@ -5495,6 +5619,7 @@ document.getElementById('systemSettingsForm').addEventListener('submit', async f
 
   var formData = new FormData();
   formData.append('action', 'updateSystemSettings');
+  formData.append('country', document.getElementById('countrySelect').value);
   formData.append('currency_symbol', document.getElementById('currencySymbol').value || document.getElementById('currencySymbolSelect').value);
   formData.append('timezone', document.getElementById('timezone').value);
   formData.append('language', document.getElementById('language') ? document.getElementById('language').value : 'en');

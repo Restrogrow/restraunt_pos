@@ -2,6 +2,7 @@
 // Include secure session configuration
 require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../config/env_loader.php';
+require_once __DIR__ . '/../config/countries.php';
 startSecureSession();
 
 // Check if user is already logged in and session is valid
@@ -773,6 +774,20 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                             </div>
                         </div>
                         <div class="form-group">
+                            <label for="signupCountry">COUNTRY</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <select id="signupCountry" name="country" required>
+                                    <option value="">Select your country</option>
+                                    <?php foreach (getCountryData() as $iso2 => $c): ?>
+                                    <option value="<?php echo htmlspecialchars($c['name']); ?>" <?php echo $iso2 === 'IN' ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['name']); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
                             <label for="signupPhone">PHONE NUMBER</label>
                             <div class="input-wrapper">
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1067,10 +1082,11 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             const username = document.getElementById('signupUsername').value.trim();
             const password = document.getElementById('signupPassword').value;
             const restaurantName = document.getElementById('restaurantName').value.trim();
+            const country = document.getElementById('signupCountry').value;
             const phone = document.getElementById('signupPhone').value.trim();
             const signupBtn = document.getElementById('signupBtn');
-            
-            if (!username || !password || !restaurantName || !phone) {
+
+            if (!username || !password || !restaurantName || !country || !phone) {
                 showMessage('Please fill in all fields.', 'error');
                 return;
             }
@@ -1089,7 +1105,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: `action=signup&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&restaurant_name=${encodeURIComponent(restaurantName)}&phone=${encodeURIComponent(phone)}`
+                    body: `action=signup&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&restaurant_name=${encodeURIComponent(restaurantName)}&country=${encodeURIComponent(country)}&phone=${encodeURIComponent(phone)}`
                 });
                 
                 const result = await response.json();

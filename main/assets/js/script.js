@@ -4834,14 +4834,16 @@ document.addEventListener("DOMContentLoaded", () => {
           clearFieldError('phone');
         } else {
           const phoneDigits = phone.replace(/\D/g, '');
-          if (phoneDigits.length !== 10) {
-            showFieldError('phone', 'Phone number must be exactly 10 digits. Please enter a valid 10-digit phone number.');
+          const phoneMinLen = window.restaurantPhoneMin || 10;
+          const phoneMaxLen = window.restaurantPhoneMax || 10;
+          if (phoneDigits.length < phoneMinLen || phoneDigits.length > phoneMaxLen) {
+            showFieldError('phone', 'Please enter a valid phone number.');
           } else {
             clearFieldError('phone');
           }
         }
       });
-      
+
       phoneInput.addEventListener('blur', function(e) {
         const phone = e.target.value.trim();
         if (phone === '') {
@@ -4849,8 +4851,10 @@ document.addEventListener("DOMContentLoaded", () => {
           clearFieldError('phone');
         } else {
           const phoneDigits = phone.replace(/\D/g, '');
-          if (phoneDigits.length !== 10) {
-            showFieldError('phone', 'Phone number must be exactly 10 digits. Please enter a valid 10-digit phone number.');
+          const phoneMinLen = window.restaurantPhoneMin || 10;
+          const phoneMaxLen = window.restaurantPhoneMax || 10;
+          if (phoneDigits.length < phoneMinLen || phoneDigits.length > phoneMaxLen) {
+            showFieldError('phone', 'Please enter a valid phone number.');
           } else {
             clearFieldError('phone');
           }
@@ -5322,9 +5326,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (phone && phone.trim() !== '') {
         // Remove all non-digit characters for validation
         const phoneDigits = phone.replace(/\D/g, '');
-        if (phoneDigits.length !== 10) {
-          errors.push("Phone number must be exactly 10 digits");
-          showFieldError('phone', 'Phone number must be exactly 10 digits. Please enter a valid 10-digit phone number.');
+        const phoneMinLen = window.restaurantPhoneMin || 10;
+        const phoneMaxLen = window.restaurantPhoneMax || 10;
+        if (phoneDigits.length < phoneMinLen || phoneDigits.length > phoneMaxLen) {
+          errors.push("Please enter a valid phone number");
+          showFieldError('phone', 'Please enter a valid phone number.');
         } else {
           clearFieldError('phone');
         }
@@ -7904,53 +7910,31 @@ document.addEventListener("DOMContentLoaded", () => {
   function updatePOSCartSummary() {
     const subtotal = posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
-    const cgst = showGst ? subtotal * 0.025 : 0;
-    const sgst = showGst ? subtotal * 0.025 : 0;
-    const tax = cgst + sgst;
+    const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
     const total = showGst ? (subtotal + tax) : subtotal;
-    
+
     // Update desktop cart summary
     const cartSubtotalEl = document.getElementById("cartSubtotal");
-    const cartCGSTEl = document.getElementById("cartCGST");
-    const cartSGSTEl = document.getElementById("cartSGST");
     const cartTaxEl = document.getElementById("cartTax");
     const cartTotalEl = document.getElementById("cartTotal");
-    
+
     if (cartSubtotalEl) cartSubtotalEl.textContent = formatCurrency(subtotal);
-    // Show/hide GST rows based on enableGst setting
-    if (cartCGSTEl && cartCGSTEl.parentElement) {
-      cartCGSTEl.parentElement.style.display = showGst ? "" : "none";
-    }
-    if (cartSGSTEl && cartSGSTEl.parentElement) {
-      cartSGSTEl.parentElement.style.display = showGst ? "" : "none";
-    }
+    // Show/hide the tax row based on the enableGst setting
     if (cartTaxEl && cartTaxEl.parentElement) {
       cartTaxEl.parentElement.style.display = showGst ? "" : "none";
     }
-    if (cartCGSTEl) cartCGSTEl.textContent = formatCurrency(showGst ? cgst : 0);
-    if (cartSGSTEl) cartSGSTEl.textContent = formatCurrency(showGst ? sgst : 0);
     if (cartTaxEl) cartTaxEl.textContent = formatCurrency(showGst ? tax : 0);
     if (cartTotalEl) cartTotalEl.textContent = formatCurrency(total);
-    
+
     // Update mobile bill summary (POS page)
     const mobilePosBillSubtotalEl = document.getElementById("mobilePosBillSubtotal");
-    const mobilePosBillCGSTEl = document.getElementById("mobilePosBillCGST");
-    const mobilePosBillSGSTEl = document.getElementById("mobilePosBillSGST");
     const mobilePosBillTaxEl = document.getElementById("mobilePosBillTax");
     const mobilePosBillTotalEl = document.getElementById("mobilePosBillTotal");
-    
+
     if (mobilePosBillSubtotalEl) mobilePosBillSubtotalEl.textContent = formatCurrency(subtotal);
-        if (mobilePosBillCGSTEl && mobilePosBillCGSTEl.parentElement) {
-      mobilePosBillCGSTEl.parentElement.style.display = showGst ? "flex" : "none";
-    }
-    if (mobilePosBillSGSTEl && mobilePosBillSGSTEl.parentElement) {
-      mobilePosBillSGSTEl.parentElement.style.display = showGst ? "flex" : "none";
-    }
     if (mobilePosBillTaxEl && mobilePosBillTaxEl.parentElement) {
       mobilePosBillTaxEl.parentElement.style.display = showGst ? "flex" : "none";
     }
-    if (mobilePosBillCGSTEl) mobilePosBillCGSTEl.textContent = formatCurrency(cgst);
-    if (mobilePosBillSGSTEl) mobilePosBillSGSTEl.textContent = formatCurrency(sgst);
     if (mobilePosBillTaxEl) mobilePosBillTaxEl.textContent = formatCurrency(tax);
     if (mobilePosBillTotalEl) mobilePosBillTotalEl.textContent = formatCurrency(total);
   }
@@ -8014,11 +7998,11 @@ document.addEventListener("DOMContentLoaded", () => {
     
       const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
       const showGst = window.enableGst == 1 || window.enableGst === true;
-      const tax = showGst ? subtotal * 0.05 : 0;
+      const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
       const total = subtotal + tax;
       const selectPosTable = document.getElementById("selectPosTable");
       const selectedTable = selectPosTable ? selectPosTable.value : '';
-      
+
       const formData = new URLSearchParams();
       formData.append('action', 'hold_order');
       formData.append('tableId', selectedTable || '');
@@ -8259,7 +8243,7 @@ document.addEventListener("DOMContentLoaded", () => {
           
           // Wait for user to finish typing (500ms delay)
           checkTimeout = setTimeout(async () => {
-            if (phone.length >= 10) {
+            if (phone.length >= (window.restaurantPhoneMin || 10)) {
               try {
                 const response = await fetch('../api/get_customer_by_phone.php', {
                   method: 'POST',
@@ -8458,7 +8442,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
-    const tax = showGst ? subtotal * 0.05 : 0;
+    const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
     const total = subtotal + tax;
     const selectPosTable = document.getElementById("selectPosTable");
     const selectedTable = selectPosTable ? selectPosTable.value : '';
@@ -10374,10 +10358,6 @@ window.printOrder = async function(orderId) {
     const discount = parseFloat(order.discount || 0);
     const total = parseFloat(order.total || 0);
     
-    // Calculate CGST / SGST (5% GST = 2.5% + 2.5%)
-    const cgst = gstEnabled ? (tax / 2) : 0;
-    const sgst = gstEnabled ? (tax / 2) : 0;
-    
     // Professional items table: # | Item | Qty | Rate | Amount
     const itemsHtml = items.map((it, idx) => {
       const itemTotal = (parseFloat(it.total_price) || 0);
@@ -11395,6 +11375,14 @@ async function loadSettingsData() {
           window.enableGst = gstEnabled;
         }
       }
+      if (user.tax_name !== undefined || user.tax_percent !== undefined) {
+        var taxNameInput = document.getElementById('taxName');
+        var taxPercentInput = document.getElementById('taxPercentInput');
+        if (taxNameInput && user.tax_name) taxNameInput.value = user.tax_name;
+        if (taxPercentInput && user.tax_percent !== undefined && user.tax_percent !== null) taxPercentInput.value = user.tax_percent;
+        window.taxName = user.tax_name || 'GST';
+        window.taxPercent = user.tax_percent !== undefined && user.tax_percent !== null ? parseFloat(user.tax_percent) : 5;
+      }
       
       // Set Language Support toggle from saved database settings
       if (user.enable_language !== undefined) {
@@ -11524,7 +11512,7 @@ function setupSettingsForms() {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}`
+          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&tax_name=${encodeURIComponent(document.getElementById('taxName')?.value || 'GST')}&tax_percent=${encodeURIComponent(document.getElementById('taxPercentInput')?.value || '5')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}`
         });
         
         const result = await response.json();

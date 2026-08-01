@@ -18,14 +18,16 @@ if (!isset($_SESSION['staff_id']) || !isset($_SESSION['restaurant_id']) || $_SES
 
 $restaurant_id = $_SESSION['restaurant_id'];
 $currency_symbol = $_SESSION['currency_symbol'] ?? null;
+$timezone = $_SESSION['timezone'] ?? null;
+$conn = null;
 
-if (!$currency_symbol) {
+if (!$currency_symbol || $timezone === null) {
     try {
         if (file_exists(__DIR__ . '/../db_connection.php')) {
             require_once __DIR__ . '/../db_connection.php';
             $conn = function_exists('getConnection') ? getConnection() : ($pdo ?? null);
             if ($conn) {
-                $settingsStmt = $conn->prepare("SELECT currency_symbol FROM users WHERE restaurant_id = ? LIMIT 1");
+                $settingsStmt = $conn->prepare("SELECT currency_symbol, timezone FROM users WHERE restaurant_id = ? LIMIT 1");
                 $settingsStmt->execute([$restaurant_id]);
                 $settingsRow = $settingsStmt->fetch(PDO::FETCH_ASSOC);
                 if ($settingsRow && !empty($settingsRow['currency_symbol'])) {
@@ -34,6 +36,8 @@ if (!$currency_symbol) {
                     $currency_symbol = htmlspecialchars($db_currency, ENT_QUOTES, 'UTF-8');
                     $_SESSION['currency_symbol'] = $currency_symbol;
                 }
+                $timezone = !empty($settingsRow['timezone']) ? $settingsRow['timezone'] : 'Asia/Kolkata';
+                $_SESSION['timezone'] = $timezone;
             }
         }
     } catch (Exception $e) {
@@ -44,6 +48,11 @@ if (!$currency_symbol) {
 if (!$currency_symbol) {
     $currency_symbol = '₹';
 }
+if ($timezone === null) {
+    $timezone = 'Asia/Kolkata';
+}
+require_once __DIR__ . '/../config/timezone_utils.php';
+applyRestaurantTimezone($timezone, $conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">

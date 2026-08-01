@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_superadmin();
+require_once __DIR__ . '/../config/countries.php';
 // Session already started in auth.php
 ?>
 <!DOCTYPE html>
@@ -841,6 +842,15 @@ require_superadmin();
           <label>Admin Password</label>
           <input id="cmPass" type="password" placeholder="Enter password">
         </div>
+        <div class="form-group">
+          <label>Country</label>
+          <select id="cmCountry">
+            <?php foreach (getCountryData() as $iso2 => $c): ?>
+            <option value="<?php echo htmlspecialchars($c['name']); ?>" <?php echo $iso2 === 'IN' ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['name']); ?></option>
+            <?php endforeach; ?>
+          </select>
+          <small style="color:var(--muted);display:block;margin-top:4px;">Sets the restaurant's default currency and menu display — this is not RestroGrow's own subscription billing, which stays in INR.</small>
+        </div>
         <small style="color:var(--muted);display:block;margin-bottom:16px;">Restaurant ID will be generated automatically.</small>
         <button id="cmCreate" class="btn btn-primary">Create Restaurant</button>
       </div>
@@ -1359,6 +1369,7 @@ require_superadmin();
         username: document.getElementById('cmUser').value.trim(),
         password: document.getElementById('cmPass').value,
         restaurant_name: document.getElementById('cmName').value.trim(),
+        country: document.getElementById('cmCountry').value,
       };
       if(!payload.username || !payload.password || !payload.restaurant_name){ showSuperAlert('All fields are required'); return; }
       const res = await fetch('api.php?action=createRestaurant', { method:'POST', body: JSON.stringify(payload), headers: {'Content-Type': 'application/json'} });

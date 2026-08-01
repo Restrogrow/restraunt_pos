@@ -245,17 +245,18 @@ function handleCreateKOT($conn, $restaurant_id) {
         echo json_encode(['success' => false, 'message' => 'Total mismatch: total does not match subtotal + tax'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    // Check if GST is enabled for this restaurant
-    $gstCheck = $conn->prepare("SELECT enable_gst FROM users WHERE restaurant_id = ? LIMIT 1");
+    // Check if tax is enabled for this restaurant, and at what rate
+    $gstCheck = $conn->prepare("SELECT enable_gst, tax_percent FROM users WHERE restaurant_id = ? LIMIT 1");
     $gstCheck->execute([$restaurant_id]);
     $gstRow = $gstCheck->fetch(PDO::FETCH_ASSOC);
     $gstEnabled = $gstRow ? (bool)$gstRow['enable_gst'] : true;
-    $expectedTax = $gstEnabled ? round($subtotal * 0.05, 2) : 0;
+    $taxPercent = ($gstRow && isset($gstRow['tax_percent']) && $gstRow['tax_percent'] !== null) ? (float)$gstRow['tax_percent'] : 5.00;
+    $expectedTax = $gstEnabled ? round($subtotal * ($taxPercent / 100), 2) : 0;
     if (abs($tax - $expectedTax) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'Tax mismatch: calculated tax does not match expected value'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    
+
     // Generate unique KOT number with collision check
     $kotNumber = generateKOTNumber($conn, $restaurant_id);
     
@@ -383,16 +384,17 @@ function handleHoldOrder($conn, $restaurant_id) {
         echo json_encode(['success' => false, 'message' => 'Total mismatch: total does not match subtotal + tax'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    $gstCheck = $conn->prepare("SELECT enable_gst FROM users WHERE restaurant_id = ? LIMIT 1");
+    $gstCheck = $conn->prepare("SELECT enable_gst, tax_percent FROM users WHERE restaurant_id = ? LIMIT 1");
     $gstCheck->execute([$restaurant_id]);
     $gstRow = $gstCheck->fetch(PDO::FETCH_ASSOC);
     $gstEnabled = $gstRow ? (bool)$gstRow['enable_gst'] : true;
-    $expectedTax = $gstEnabled ? round($subtotal * 0.05, 2) : 0;
+    $taxPercent = ($gstRow && isset($gstRow['tax_percent']) && $gstRow['tax_percent'] !== null) ? (float)$gstRow['tax_percent'] : 5.00;
+    $expectedTax = $gstEnabled ? round($subtotal * ($taxPercent / 100), 2) : 0;
     if (abs($tax - $expectedTax) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'Tax mismatch: calculated tax does not match expected value'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    
+
     // Generate unique order number for held order (using same function but with HOLD prefix)
     // For held orders, we'll use a similar pattern but check against orders table
     $maxAttempts = 100;

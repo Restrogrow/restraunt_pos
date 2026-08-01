@@ -18,12 +18,16 @@ if (!isset($_SESSION['staff_id']) || !isset($_SESSION['restaurant_id']) || $_SES
 
 $restaurant_id = $_SESSION['restaurant_id'];
 $currency_symbol = $_SESSION['currency_symbol'] ?? null;
+$tax_name = $_SESSION['tax_name'] ?? null;
+$tax_percent = $_SESSION['tax_percent'] ?? null;
+$timezone = $_SESSION['timezone'] ?? null;
+$conn = null;
 
-if (!$currency_symbol) {
+if (!$currency_symbol || $tax_name === null || $tax_percent === null || $timezone === null) {
     try {
         if (file_exists(__DIR__ . '/../db_connection.php')) {
             require_once __DIR__ . '/../db_connection.php';
-            
+
             // Get connection from db_connection.php
             // Get connection using getConnection() for lazy connection support
     if (function_exists('getConnection')) {
@@ -35,11 +39,11 @@ if (!$currency_symbol) {
             throw new Exception('Database connection not available');
         }
     }
-            
-            $settingsStmt = $conn->prepare("SELECT currency_symbol, enable_gst FROM users WHERE restaurant_id = ? LIMIT 1");
+
+            $settingsStmt = $conn->prepare("SELECT currency_symbol, enable_gst, tax_name, tax_percent, timezone FROM users WHERE restaurant_id = ? LIMIT 1");
             $settingsStmt->execute([$restaurant_id]);
             $settingsRow = $settingsStmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if ($settingsRow && !empty($settingsRow['currency_symbol'])) {
                 // Use centralized Unicode fix function
                 require_once __DIR__ . '/../config/unicode_utils.php';
@@ -48,6 +52,12 @@ if (!$currency_symbol) {
                 $_SESSION['currency_symbol'] = $currency_symbol;
             }
             $enable_gst = $settingsRow ? (int)($settingsRow['enable_gst'] ?? 1) : 1;
+            $tax_name = !empty($settingsRow['tax_name']) ? htmlspecialchars($settingsRow['tax_name'], ENT_QUOTES, 'UTF-8') : 'GST';
+            $tax_percent = isset($settingsRow['tax_percent']) ? (float)$settingsRow['tax_percent'] : 5.00;
+            $timezone = !empty($settingsRow['timezone']) ? $settingsRow['timezone'] : 'Asia/Kolkata';
+            $_SESSION['tax_name'] = $tax_name;
+            $_SESSION['tax_percent'] = $tax_percent;
+            $_SESSION['timezone'] = $timezone;
         }
     } catch (Exception $e) {
         // Ignore and fallback to default below
@@ -57,6 +67,17 @@ if (!$currency_symbol) {
 if (!$currency_symbol) {
     $currency_symbol = '₹';
 }
+if ($tax_name === null) {
+    $tax_name = 'GST';
+}
+if ($tax_percent === null) {
+    $tax_percent = 5.00;
+}
+if ($timezone === null) {
+    $timezone = 'Asia/Kolkata';
+}
+require_once __DIR__ . '/../config/timezone_utils.php';
+applyRestaurantTimezone($timezone, $conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -83,6 +104,8 @@ if (!$currency_symbol) {
     <script>
         window.globalCurrencySymbol = <?php echo json_encode($currency_symbol, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
         window.enableGst = <?php echo json_encode((bool)($enable_gst ?? 1), JSON_HEX_TAG); ?>;
+        window.taxName = <?php echo json_encode($tax_name, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE); ?>;
+        window.taxPercent = <?php echo json_encode((float)$tax_percent, JSON_HEX_TAG); ?>;
         const waiterCurrencySymbol = window.globalCurrencySymbol || '₹';
     </script>
     
@@ -279,15 +302,7 @@ if (!$currency_symbol) {
                                 </div>
                                 <?php if ($enable_gst): ?>
                                 <div class="cart-summary-row">
-                                    <span>CGST (2.5%):</span>
-                                    <span id="cartCGST"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
-                                </div>
-                                <div class="cart-summary-row">
-                                    <span>SGST (2.5%):</span>
-                                    <span id="cartSGST"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
-                                </div>
-                                <div class="cart-summary-row">
-                                    <span>GST (5%):</span>
+                                    <span><?php echo htmlspecialchars($tax_name); ?> (<?php echo rtrim(rtrim(number_format((float)$tax_percent, 2), '0'), '.'); ?>%):</span>
                                     <span id="cartTax"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
                                 </div>
                                 <?php endif; ?>
@@ -332,18 +347,8 @@ if (!$currency_symbol) {
                                 <span style="color:#6b7280;">Subtotal:</span>
                                 <span style="font-weight:600;color:#111827;" id="mobilePosBillSubtotal"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
                             </div>
-                            <?php if ($enable_gst): ?>
-                            <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;font-size:0.85rem;">
-                                <span style="color:#6b7280;">CGST (2.5%):</span>
-                                <span style="font-weight:600;color:#111827;" id="mobilePosBillCGST"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
-                            </div>
-                            <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;font-size:0.85rem;">
-                                <span style="color:#6b7280;">SGST (2.5%):</span>
-                                <span style="font-weight:600;color:#111827;" id="mobilePosBillSGST"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
-                            </div>
-                            <?php endif; ?>
                             <div style="display:flex;justify-content:space-between;font-size:0.85rem;">
-                                <span style="color:#6b7280;">Tax Total:</span>
+                                <span style="color:#6b7280;"><?php echo htmlspecialchars($tax_name); ?> (<?php echo rtrim(rtrim(number_format((float)$tax_percent, 2), '0'), '.'); ?>%):</span>
                                 <span style="font-weight:600;color:#111827;" id="mobilePosBillTax"><?php echo htmlspecialchars($currency_symbol); ?>0.00</span>
                             </div>
                         </div>
@@ -1187,20 +1192,14 @@ if (!$currency_symbol) {
             if (!window.posCart) return;
             const subtotal = window.posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
             const showGst = window.enableGst == 1 || window.enableGst === true;
-            const cgst = showGst ? subtotal * 0.025 : 0;
-            const sgst = showGst ? subtotal * 0.025 : 0;
-            const tax = cgst + sgst;
+            const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
             const total = showGst ? (subtotal + tax) : subtotal;
-            
+
             const subtotalEl = document.getElementById('cartSubtotal');
-            const cgstEl = document.getElementById('cartCGST');
-            const sgstEl = document.getElementById('cartSGST');
             const taxEl = document.getElementById('cartTax');
             const totalEl = document.getElementById('cartTotal');
-            
+
             if (subtotalEl) subtotalEl.textContent = `${waiterCurrencySymbol}${subtotal.toFixed(2)}`;
-            if (cgstEl) cgstEl.textContent = `${waiterCurrencySymbol}${cgst.toFixed(2)}`;
-            if (sgstEl) sgstEl.textContent = `${waiterCurrencySymbol}${sgst.toFixed(2)}`;
             if (taxEl) taxEl.textContent = `${waiterCurrencySymbol}${tax.toFixed(2)}`;
             if (totalEl) totalEl.textContent = `${waiterCurrencySymbol}${total.toFixed(2)}`;
         }

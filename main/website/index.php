@@ -1073,6 +1073,10 @@ body {
 window.websiteRestaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.websiteRestaurantSlug = <?php echo json_encode($restaurant_slug ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.globalCurrencySymbol = <?php echo json_encode($currency_symbol ?? '₹', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+window.restaurantCountry = <?php echo json_encode($country ?? 'India', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+window.restaurantDialCode = <?php echo json_encode($phone_dial_code ?? '+91', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.restaurantPhoneMin = <?php echo json_encode((int)($phone_min_digits ?? 10), JSON_HEX_TAG); ?>;
+window.restaurantPhoneMax = <?php echo json_encode((int)($phone_max_digits ?? 10), JSON_HEX_TAG); ?>;
 window.restaurantName = <?php echo json_encode($restaurant_name ?? 'Restaurant', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantLogo = <?php echo json_encode($restaurant_logo, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantPhone = <?php echo json_encode($restaurant_phone ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;

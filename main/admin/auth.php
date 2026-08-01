@@ -35,6 +35,7 @@ session_write_close();
 // Include database connection
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
+    require_once __DIR__ . '/../config/countries.php';
 } else {
     throw new Exception('Database connection file not found');
 }
@@ -426,12 +427,17 @@ function handleSignup() {
     $username = isset($_POST['username']) ? trim($_POST['username']) : '';
     $password = isset($_POST['password']) ? $_POST['password'] : '';
     $restaurantName = isset($_POST['restaurant_name']) ? trim($_POST['restaurant_name']) : '';
+    $country = isset($_POST['country']) ? trim($_POST['country']) : '';
     $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
-    
+
     // Validate input
-    if (empty($username) || empty($password) || empty($restaurantName) || empty($phone)) {
+    if (empty($username) || empty($password) || empty($restaurantName) || empty($country) || empty($phone)) {
         throw new Exception('All fields are required');
     }
+
+    // Derive default currency from the chosen country (still editable later in Settings)
+    $countryInfo = getCountryByName($country);
+    $currencySymbol = $countryInfo['currency_symbol'] ?? '₹';
     
     if (strlen($username) < 3) {
         throw new Exception('Username must be at least 3 characters long');
@@ -458,12 +464,12 @@ function handleSignup() {
     // Hash password
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
     
-    // Insert new user with 30-day trial period and default INR currency
+    // Insert new user with 30-day trial period, currency derived from chosen country
     $insertStmt = $pdo->prepare("
-        INSERT INTO users (username, password, restaurant_id, restaurant_name, phone, currency_symbol, subscription_status, trial_end_date, created_at, updated_at) 
-        VALUES (?, ?, ?, ?, ?, '₹', 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), NOW(), NOW())
+        INSERT INTO users (username, password, restaurant_id, restaurant_name, country, phone, currency_symbol, subscription_status, trial_end_date, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), NOW(), NOW())
     ");
-    $result = $insertStmt->execute([$username, $hashedPassword, $restaurantId, $restaurantName, $phone]);
+    $result = $insertStmt->execute([$username, $hashedPassword, $restaurantId, $restaurantName, $country, $phone, $currencySymbol]);
     
     if ($result) {
         echo json_encode([
@@ -730,6 +736,10 @@ function handleUpdateRestaurantSettings() {
     $googleMapsLink = isset($_POST['google_maps_link']) ? trim($_POST['google_maps_link']) : '';
     $ownerName = isset($_POST['owner_name']) ? trim($_POST['owner_name']) : '';
     $enableGst = isset($_POST['enable_gst']) ? (int)$_POST['enable_gst'] : 1;
+    $taxName = isset($_POST['tax_name']) && trim($_POST['tax_name']) !== '' ? trim($_POST['tax_name']) : 'GST';
+    $taxPercent = isset($_POST['tax_percent']) && $_POST['tax_percent'] !== '' ? (float)$_POST['tax_percent'] : 5.00;
+    if ($taxPercent < 0) $taxPercent = 0;
+    if ($taxPercent > 100) $taxPercent = 100;
     $enableDelivery = isset($_POST['enable_delivery']) ? (int)$_POST['enable_delivery'] : 1;
     $enableTakeaway = isset($_POST['enable_takeaway']) ? (int)$_POST['enable_takeaway'] : 1;
     $enableDinein = isset($_POST['enable_dinein']) ? (int)$_POST['enable_dinein'] : 1;
@@ -762,8 +772,8 @@ function handleUpdateRestaurantSettings() {
     
     
     try {
-        $updateStmt = $pdo->prepare("UPDATE users SET restaurant_name = ?, email = ?, phone = ?, address = ?, description = ?, description_format = ?, opening_hours = ?, phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, minimum_order_value = ?, google_maps_link = ?, owner_name = ?, enable_gst = ?, instagram_link = ?, facebook_link = ?, twitter_link = ?, youtube_link = ?, linkedin_link = ?, enable_delivery = ?, enable_takeaway = ?, enable_dinein = ?, cod_enabled = ?, enable_language = ?, packaging_charge = ?, delivery_radius_km = ?, updated_at = NOW() WHERE id = ?");
-        $result = $updateStmt->execute([$restaurantName, $email, $phone, $address, $description, $descriptionFormat, $openingHours, $phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $minimumOrderValue, $googleMapsLink, $ownerName, $enableGst, $instagramLink, $facebookLink, $twitterLink, $youtubeLink, $linkedinLink, $enableDelivery, $enableTakeaway, $enableDinein, $codEnabled, $enableLanguage, $packagingCharge, $deliveryRadius, $userId]);
+        $updateStmt = $pdo->prepare("UPDATE users SET restaurant_name = ?, email = ?, phone = ?, address = ?, description = ?, description_format = ?, opening_hours = ?, phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, minimum_order_value = ?, google_maps_link = ?, owner_name = ?, enable_gst = ?, tax_name = ?, tax_percent = ?, instagram_link = ?, facebook_link = ?, twitter_link = ?, youtube_link = ?, linkedin_link = ?, enable_delivery = ?, enable_takeaway = ?, enable_dinein = ?, cod_enabled = ?, enable_language = ?, packaging_charge = ?, delivery_radius_km = ?, updated_at = NOW() WHERE id = ?");
+        $result = $updateStmt->execute([$restaurantName, $email, $phone, $address, $description, $descriptionFormat, $openingHours, $phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $minimumOrderValue, $googleMapsLink, $ownerName, $enableGst, $taxName, $taxPercent, $instagramLink, $facebookLink, $twitterLink, $youtubeLink, $linkedinLink, $enableDelivery, $enableTakeaway, $enableDinein, $codEnabled, $enableLanguage, $packagingCharge, $deliveryRadius, $userId]);
     } catch (PDOException $e) {
         $msg = $e->getMessage();
         if (strpos($msg, 'minimum_order_value') !== false || strpos($msg, 'Unknown column') !== false) {
@@ -967,6 +977,7 @@ function handleUpdateSystemSettings() {
     }
     
     $language = isset($_POST['language']) ? trim($_POST['language']) : 'en';
+    $country = isset($_POST['country']) ? trim($_POST['country']) : 'India';
     $currencySymbolRaw = isset($_POST['currency_symbol']) ? trim($_POST['currency_symbol']) : '₹';
     $timezone = isset($_POST['timezone']) ? trim($_POST['timezone']) : 'Asia/Kolkata';
     $autoSync = isset($_POST['auto_sync']) ? (int)$_POST['auto_sync'] : 0;
@@ -993,14 +1004,18 @@ function handleUpdateSystemSettings() {
         $currencySymbol = '₹';
     }
     
-    if (empty($timezone)) {
+    if (empty($timezone) || !in_array($timezone, timezone_identifiers_list(), true)) {
         $timezone = 'Asia/Kolkata';
     }
-    
+
     if (empty($language)) {
         $language = 'en';
     }
-    
+
+    if (empty($country)) {
+        $country = 'India';
+    }
+
     $userId = $_SESSION['user_id'];
     $restaurantId = $_SESSION['restaurant_id'];
     
@@ -1011,12 +1026,13 @@ function handleUpdateSystemSettings() {
     // Update system settings - handle column existence gracefully
     try {
         // Try to update with all fields
-        $updateStmt = $pdo->prepare("UPDATE users SET currency_symbol = ?, timezone = ?, language = ?, show_install_app = ?, updated_at = NOW() WHERE id = ?");
-        $result = $updateStmt->execute([$currencySymbol, $timezone, $language, $showInstallApp, $userId]);
+        $updateStmt = $pdo->prepare("UPDATE users SET currency_symbol = ?, country = ?, timezone = ?, language = ?, show_install_app = ?, updated_at = NOW() WHERE id = ?");
+        $result = $updateStmt->execute([$currencySymbol, $country, $timezone, $language, $showInstallApp, $userId]);
     } catch (PDOException $e) {
         // If columns don't exist, try without them
-        if (strpos($e->getMessage(), 'currency_symbol') !== false || 
-            strpos($e->getMessage(), 'timezone') !== false || 
+        if (strpos($e->getMessage(), 'currency_symbol') !== false ||
+            strpos($e->getMessage(), 'country') !== false ||
+            strpos($e->getMessage(), 'timezone') !== false ||
             strpos($e->getMessage(), 'language') !== false ||
             strpos($e->getMessage(), 'Unknown column') !== false) {
             try {
@@ -1030,10 +1046,11 @@ function handleUpdateSystemSettings() {
             throw $e;
         }
     }
-    
+
     if ($result) {
         // Save to session so it's immediately available
         $_SESSION['currency_symbol'] = $currencySymbol;
+        $_SESSION['country'] = $country;
         $_SESSION['language'] = $language;
         
         // Auto-translate all items if language changed to non-English
@@ -1050,6 +1067,7 @@ function handleUpdateSystemSettings() {
             'message' => 'System settings updated successfully',
             'data' => [
                 'currency_symbol' => $currencySymbol,
+                'country' => $country,
                 'timezone' => $timezone,
                 'language' => $language
             ]

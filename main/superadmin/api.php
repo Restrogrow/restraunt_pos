@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../db_connection.php';
+require_once __DIR__ . '/../config/countries.php';
 require_once __DIR__ . '/auth.php';
 require_superadmin();
 
@@ -174,6 +175,13 @@ try {
       if (!$username || !$password || !$restaurant_name) {
         throw new Exception('Missing required fields');
       }
+      // Derive default currency from the chosen country, same as public
+      // self-signup — without this, restaurants the superadmin onboards
+      // directly (rather than via self-signup) silently defaulted to
+      // India/INR regardless of the restaurant's actual country.
+      $country = trim($data['country'] ?? '') ?: 'India';
+      $countryInfo = getCountryByName($country);
+      $currencySymbol = $countryInfo['currency_symbol'] ?? '₹';
       // Auto-generate unique restaurant_id: RES + 3 letters + 3 digits
       $generateId = function() use ($conn) {
         $letters = substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ'), 0, 3);
@@ -188,8 +196,8 @@ try {
       if (!$restaurant_id) { throw new Exception('Failed to generate restaurant id'); }
 
       $hash = password_hash($password, PASSWORD_DEFAULT);
-      $stmt = $conn->prepare("INSERT INTO users (username, password, restaurant_id, restaurant_name, is_active, payment_gateway_type) VALUES (:u, :p, :rid, :rname, 1, 'cash_only')");
-      $stmt->execute([':u' => $username, ':p' => $hash, ':rid' => $restaurant_id, ':rname' => $restaurant_name]);
+      $stmt = $conn->prepare("INSERT INTO users (username, password, restaurant_id, restaurant_name, country, currency_symbol, is_active, payment_gateway_type) VALUES (:u, :p, :rid, :rname, :country, :currency, 1, 'cash_only')");
+      $stmt->execute([':u' => $username, ':p' => $hash, ':rid' => $restaurant_id, ':rname' => $restaurant_name, ':country' => $country, ':currency' => $currencySymbol]);
       echo json_encode(['success' => true, 'message' => 'Restaurant created', 'restaurant_id' => $restaurant_id]);
       break;
 

@@ -3496,7 +3496,12 @@ async function loadOrderHistory() {
 
         // Display orders
         orderHistoryDiv.innerHTML = orders.map(order => {
-            const orderDate = new Date(order.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata',
+            // No explicit timeZone here: the server sends a naive local timestamp
+            // (already in the restaurant's own configured timezone), and the browser
+            // parses/renders naive date strings in its own local zone by default.
+            // Forcing timeZone: 'Asia/Kolkata' here used to shift every non-Indian
+            // customer's order time (e.g. Nepal, UTC+5:45) by the gap to IST.
+            const orderDate = new Date(order.created_at).toLocaleDateString('en-IN', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
