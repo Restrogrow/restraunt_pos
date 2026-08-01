@@ -54,7 +54,9 @@ try {
             throw new Exception('Database connection not available');
         }
     }
-    $restaurant_id = $_GET['restaurant_id'] ?? $_SESSION['restaurant_id'] ?? null;
+    // Always scope to the authenticated session's own tenant — never trust a
+    // client-supplied restaurant_id, or one restaurant's staff could read another's order.
+    $restaurant_id = $_SESSION['restaurant_id'] ?? null;
     
     if (!$restaurant_id) {
         http_response_code(400);

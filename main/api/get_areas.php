@@ -51,7 +51,9 @@ if (!isset($_SESSION['restaurant_id']) && (!isset($_SESSION['user_id']) && !isse
     }
 }
 
-$restaurant_id = $_GET['restaurant_id'] ?? $_SESSION['restaurant_id'] ?? null;
+// Always scope to the authenticated session's own tenant — never trust a
+// client-supplied restaurant_id, or one restaurant's staff could read another's areas.
+$restaurant_id = $_SESSION['restaurant_id'] ?? null;
 
 if (!$restaurant_id) {
     http_response_code(400);

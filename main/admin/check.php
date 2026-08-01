@@ -7,6 +7,26 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('log_errors', 0);
 
+// ── Access control ──
+// Discloses server software, document root, and whether MySQL is reachable —
+// must not be open to anonymous visitors. Deliberately avoids a DB-backed
+// login (this page exists to work even when the DB is down), so it's gated on
+// localhost or a secret key from .env (HEALTH_CHECK_KEY) instead. No
+// hardcoded default: if the key isn't configured, only localhost can use it.
+if (file_exists(__DIR__ . '/../config/env_loader.php')) {
+    require_once __DIR__ . '/../config/env_loader.php';
+}
+$__allowedIPs = ['127.0.0.1', '::1'];
+$__isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', $__allowedIPs, true);
+$__configuredKey = function_exists('env') ? env('HEALTH_CHECK_KEY', '') : '';
+$__providedKey = $_GET['key'] ?? '';
+$__keyOk = !empty($__configuredKey) && hash_equals((string)$__configuredKey, (string)$__providedKey);
+if (!$__isLocal && !$__keyOk) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=UTF-8');
+    die('Access denied.');
+}
+
 $checks = [];
 
 function p($label, $status, $detail = '') {

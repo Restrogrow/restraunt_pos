@@ -9,6 +9,13 @@ Options -Indexes
     Require all denied
 </FilesMatch>
 
+# Security: Block .env, .env.local, .git, and any other dotfile from being
+# served directly — these hold live DB/SMTP/PhonePe credentials and must
+# never be reachable over HTTP even if the URL is guessed.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
 # PHP Settings
 <IfModule mod_php7.c>
     php_value upload_max_filesize 10M

@@ -34,12 +34,18 @@ try {
     exit();
 }
 
-$hasPermission = false;
 $requested_restaurant_id = $_GET['restaurant_id'] ?? null;
 
 if (isLoggedIn()) {
-    $hasPermission = true;
-} elseif (!$requested_restaurant_id) {
+    // Authenticated staff/admin: always scope to the session's own tenant.
+    // Never trust a client-supplied restaurant_id here, even if one is present,
+    // otherwise one restaurant's staff could read another restaurant's table status.
+    $restaurant_id = $_SESSION['restaurant_id'];
+} elseif ($requested_restaurant_id) {
+    // Anonymous/public access (e.g. customer QR ordering flow) is allowed by design;
+    // restaurant_id from the request is the only option in this branch.
+    $restaurant_id = $requested_restaurant_id;
+} else {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Restaurant ID required', 'data' => []]);
     exit();
@@ -50,19 +56,6 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 } else {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database connection file not found', 'data' => []]);
-    exit();
-}
-
-if (!isset($_SESSION['restaurant_id']) && !isset($_SESSION['user_id']) && !isset($_SESSION['staff_id']) && !isset($_SESSION['branch_admin_id'])) {
-    if (!isset($_GET['restaurant_id'])) {
-        echo json_encode(['success' => false, 'message' => 'Please login to continue', 'data' => []]);
-        exit();
-    }
-}
-
-$restaurant_id = $requested_restaurant_id ?? $_SESSION['restaurant_id'] ?? null;
-if (!$restaurant_id) {
-    echo json_encode(['success' => false, 'message' => 'Restaurant ID is required', 'data' => []]);
     exit();
 }
 

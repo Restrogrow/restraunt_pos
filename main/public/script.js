@@ -1371,7 +1371,12 @@ document.addEventListener("DOMContentLoaded", () => {
           dropdown.appendChild(opt);
         });
         
-        formGroup.style.display = "block";\n\n        // Set selected value if provided (e.g., when editing)\n        if (selectedValue !== undefined && selectedValue !== null) {\n          dropdown.value = selectedValue;\n        }
+        formGroup.style.display = "block";
+
+        // Set selected value if provided (e.g., when editing)
+        if (selectedValue !== undefined && selectedValue !== null) {
+          dropdown.value = selectedValue;
+        }
       }
     } catch (error) {
       console.error("Error loading subcategory dropdown:", error);
@@ -3598,7 +3603,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Load delivery tracking info if delivery order
         if (isDelivery) {
-          loadDeliveryTracking(${order.id});
+          loadDeliveryTracking(order.id);
         }
       } else {
         showSweetAlert('Order not found');
@@ -4188,16 +4193,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function updatePOSCartSummary() {
     const subtotal = posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
-    const cgst = showGst ? subtotal * 0.025 : 0;
-    const sgst = showGst ? subtotal * 0.025 : 0;
-    const tax = cgst + sgst;
+    const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
     const total = showGst ? (subtotal + tax) : subtotal;
-    
+
     document.getElementById("cartSubtotal").textContent = formatCurrency(subtotal);
-    const cgstEl = document.getElementById("cartCGST");
-    const sgstEl = document.getElementById("cartSGST");
-    if (cgstEl) cgstEl.textContent = formatCurrency(cgst);
-    if (sgstEl) sgstEl.textContent = formatCurrency(sgst);
     const taxEl = document.getElementById("cartTax");
     if (taxEl) taxEl.textContent = formatCurrency(tax);
     document.getElementById("cartTotal").textContent = formatCurrency(total);
@@ -4266,7 +4265,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       const subtotal = posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
       const showGst = window.enableGst == 1 || window.enableGst === true;
-      const tax = showGst ? subtotal * 0.05 : 0;
+      const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
       const total = subtotal + tax;
       const selectedTable = document.getElementById("selectPosTable").value;
       
@@ -4315,7 +4314,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       const subtotal = posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
       const showGst = window.enableGst == 1 || window.enableGst === true;
-      const tax = showGst ? subtotal * 0.05 : 0;
+      const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
       const total = subtotal + tax;
       const selectedTable = document.getElementById("selectPosTable").value;
       
@@ -4404,7 +4403,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Wait for user to finish typing (500ms delay)
         checkTimeout = setTimeout(async () => {
-          if (phone.length >= 10) {
+          if (phone.length >= (window.restaurantPhoneMin || 10)) {
             try {
               const response = await fetch('api/get_customer_by_phone.php', {
                 method: 'POST',

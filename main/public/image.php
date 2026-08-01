@@ -9,6 +9,27 @@ if (ob_get_level()) {
     ob_clean();
 }
 
+// Resolve a user-supplied relative path to a real file inside uploads/,
+// rejecting anything that escapes that directory via '..' segments.
+// Uses realpath() canonicalization rather than string-prefix checks, which
+// are bypassable (e.g. 'uploads/../../.env' still starts with 'uploads/').
+function resolveUploadPath($imagePath) {
+    $uploadsBase = realpath(dirname(__DIR__) . '/uploads');
+    if ($uploadsBase === false) return false;
+
+    $imagePath = ltrim(str_replace('\\', '/', $imagePath), '/');
+    if (strpos($imagePath, 'uploads/') === 0) {
+        $imagePath = substr($imagePath, strlen('uploads/'));
+    }
+
+    $real = realpath($uploadsBase . '/' . $imagePath);
+    if ($real === false) return false;
+    if ($real !== $uploadsBase && strpos($real, $uploadsBase . DIRECTORY_SEPARATOR) !== 0) {
+        return false;
+    }
+    return $real;
+}
+
 // Helper: return a placeholder SVG so the browser doesn't show a broken image
 function sendPlaceholderSvg($text = 'Image', $width = 200, $height = 200) {
     ob_end_clean();
@@ -236,27 +257,30 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
 }
 
 // Fallback: File-based image (backward compatibility)
-// Security check - only allow images from uploads directory
-if (empty($imagePath) || strpos($imagePath, 'uploads/') !== 0) {
+// Security check - only allow images from inside the uploads directory.
+// resolveUploadPath() canonicalizes with realpath() so '..' segments can't
+// escape it (a plain string-prefix check on 'uploads/' can be bypassed and
+// would let a request read arbitrary files such as .env or PHP source).
+if (empty($imagePath)) {
     sendPlaceholderSvg('Image');
 }
 
-// Check if file exists
-if (!file_exists($imagePath)) {
+$fullPath = resolveUploadPath($imagePath);
+if ($fullPath === false || !is_file($fullPath)) {
     sendPlaceholderSvg('Image');
 }
 
 // Get file info
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
-$mimeType = finfo_file($finfo, $imagePath);
+$mimeType = finfo_file($finfo, $fullPath);
 finfo_close($finfo);
 
 // Set appropriate headers
 header('Content-Type: ' . $mimeType);
-header('Content-Length: ' . filesize($imagePath));
+header('Content-Length: ' . filesize($fullPath));
 header('Cache-Control: public, max-age=31536000'); // Cache for 1 year
 
 // Output the image
-readfile($imagePath);
+readfile($fullPath);
 ?>
 

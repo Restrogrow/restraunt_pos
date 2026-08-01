@@ -44,7 +44,10 @@ if (!defined('SMTP_USERNAME')) {
     define('SMTP_USERNAME', env('SMTP_USERNAME', 'restrogrow@gmail.com'));
 }
 if (!defined('SMTP_PASSWORD')) {
-    define('SMTP_PASSWORD', env('SMTP_PASSWORD', 'lcuz kbng dbxc qnzv'));
+    // No hardcoded fallback: a committed default here would mean rotating the
+    // real password in .env doesn't actually revoke the old one. If SMTP_PASSWORD
+    // isn't configured, sendEmail() below already falls back to PHP's mail().
+    define('SMTP_PASSWORD', env('SMTP_PASSWORD', ''));
 }
 if (!defined('SMTP_FROM_EMAIL')) {
     define('SMTP_FROM_EMAIL', env('SMTP_FROM_EMAIL', 'restrogrow@gmail.com'));

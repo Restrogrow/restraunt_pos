@@ -24,7 +24,9 @@ try {
         exit;
     }
     
-    $restaurant_id = $_GET['restaurant_id'] ?? $_SESSION['restaurant_id'] ?? '';
+    // This endpoint requires login above, so always scope to the session's own
+    // tenant — never trust a client-supplied restaurant_id.
+    $restaurant_id = $_SESSION['restaurant_id'] ?? '';
     
     if (empty($restaurant_id)) {
         echo json_encode(['success' => false, 'data' => []]);

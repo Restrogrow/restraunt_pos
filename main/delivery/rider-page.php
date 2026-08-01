@@ -389,20 +389,23 @@ function updateStatus(status) {
         });
 }
 
-function toggleLocation() {
-    if (locationActive) {
-        stopLocation();
-        return;
-    }
+// The page reloads periodically (see the auto-refresh block below) and every
+// reload wipes out navigator.geolocation.watchPosition, which previously made
+// live tracking silently stop until the rider noticed and tapped the button
+// again. Persist the "sharing" intent across reloads so it can resume itself.
+var LOCATION_FLAG = 'riderLocationActive';
 
+function startLocation(isAutoResume) {
     if (!navigator.geolocation) {
-        showMessage('error', 'GPS not available on this device');
+        if (!isAutoResume) showMessage('error', 'GPS not available on this device');
         return;
     }
 
     var btn = document.getElementById('shareLocationBtn');
-    btn.disabled = true;
-    document.getElementById('locationText').textContent = 'Getting location...';
+    if (btn) {
+        btn.disabled = true;
+        document.getElementById('locationText').textContent = 'Getting location...';
+    }
 
     navigator.geolocation.getCurrentPosition(
         function(pos) {
@@ -416,18 +419,33 @@ function toggleLocation() {
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
             );
             locationActive = true;
-            document.getElementById('locationIcon').textContent = 'gps_fixed';
-            document.getElementById('locationText').textContent = 'Sharing Location';
-            btn.classList.add('active');
-            btn.disabled = false;
+            sessionStorage.setItem(LOCATION_FLAG, '1');
+            if (btn) {
+                document.getElementById('locationIcon').textContent = 'gps_fixed';
+                document.getElementById('locationText').textContent = 'Sharing Location';
+                btn.classList.add('active');
+                btn.disabled = false;
+            }
         },
         function(err) {
-            showMessage('error', 'Could not get location: ' + err.message);
-            document.getElementById('locationText').textContent = 'Share Live Location';
-            btn.disabled = false;
+            if (!isAutoResume) {
+                showMessage('error', 'Could not get location: ' + err.message);
+            }
+            if (btn) {
+                document.getElementById('locationText').textContent = 'Share Live Location';
+                btn.disabled = false;
+            }
         },
         { enableHighAccuracy: true, timeout: 15000 }
     );
+}
+
+function toggleLocation() {
+    if (locationActive) {
+        stopLocation();
+        return;
+    }
+    startLocation(false);
 }
 
 function stopLocation() {
@@ -436,10 +454,21 @@ function stopLocation() {
         locationWatchId = null;
     }
     locationActive = false;
+    sessionStorage.removeItem(LOCATION_FLAG);
     var btn = document.getElementById('shareLocationBtn');
-    document.getElementById('locationIcon').textContent = 'my_location';
-    document.getElementById('locationText').textContent = 'Share Live Location';
-    btn.classList.remove('active');
+    if (btn) {
+        document.getElementById('locationIcon').textContent = 'my_location';
+        document.getElementById('locationText').textContent = 'Share Live Location';
+        btn.classList.remove('active');
+    }
+}
+
+// Resume location sharing automatically if it was active before this load
+// (e.g. the page just reloaded from the auto-refresh or status-update flow).
+// Browsers don't re-prompt for a permission already granted, so this succeeds
+// silently instead of leaving the rider's live tracking stopped unnoticed.
+if (currentStatus !== 'Delivered' && sessionStorage.getItem(LOCATION_FLAG) === '1') {
+    startLocation(true);
 }
 
 function sendLocation(lat, lng) {
@@ -460,12 +489,29 @@ function showMessage(type, msg) {
     setTimeout(function() { el.style.display = 'none'; }, 5000);
 }
 
-// Auto-refresh every 15 seconds
-setTimeout(function() {
-    if (currentStatus !== 'Delivered') {
-        location.reload();
-    }
-}, 15000);
+// Poll every 15 seconds for a status change instead of unconditionally
+// reloading the page — most ticks nothing has changed, so this avoids
+// needless flicker/scroll-reset (location sharing now also survives a
+// reload either way, via the sessionStorage resume above, as a second layer
+// of protection).
+function pollForStatusChange() {
+    if (currentStatus === 'Delivered') return;
+
+    fetch('../api/rider_get_delivery.php?token=' + encodeURIComponent(token))
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success && res.delivery && res.delivery.delivery_status !== currentStatus) {
+                location.reload();
+                return;
+            }
+            setTimeout(pollForStatusChange, 15000);
+        })
+        .catch(function() {
+            // Network hiccup — try again next tick rather than reloading blind.
+            setTimeout(pollForStatusChange, 15000);
+        });
+}
+setTimeout(pollForStatusChange, 15000);
 </script>
 </body>
 </html>

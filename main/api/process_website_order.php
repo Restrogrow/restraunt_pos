@@ -145,14 +145,22 @@ try {
         exit();
     }
 
-    // Check if restaurant is open (using Indian Standard Time IST consistently)
-    $hoursStmt = $conn->prepare("SELECT opening_hours FROM users WHERE restaurant_id = ? LIMIT 1");
+    // Check if restaurant is open, using the restaurant's own configured
+    // timezone — not hardcoded IST. Opening/closing times are wall-clock
+    // values meant in the restaurant's local time (e.g. Nepal restaurants
+    // set them in NPT, UTC+5:45), so comparing them against IST would be off
+    // by 15 minutes and could wrongly accept/reject orders near open/close.
+    $hoursStmt = $conn->prepare("SELECT opening_hours, timezone FROM users WHERE restaurant_id = ? LIMIT 1");
     $hoursStmt->execute([$restaurant_id]);
     $hoursRow = $hoursStmt->fetch(PDO::FETCH_ASSOC);
     if ($hoursRow && !empty($hoursRow['opening_hours'])) {
         $hours = json_decode($hoursRow['opening_hours'], true);
         if ($hours) {
-            $india_tz = new DateTimeZone('Asia/Kolkata');
+            $restaurantTzName = !empty($hoursRow['timezone']) ? $hoursRow['timezone'] : 'Asia/Kolkata';
+            if (!in_array($restaurantTzName, timezone_identifiers_list(), true)) {
+                $restaurantTzName = 'Asia/Kolkata';
+            }
+            $india_tz = new DateTimeZone($restaurantTzName);
             $now = new DateTime('now', $india_tz);
             $day = strtolower($now->format('l'));
             $currentTime = $now->getTimestamp();
@@ -246,15 +254,20 @@ $conn->beginTransaction();
         $quantity = (int)($item['quantity'] ?? 0);
         if ($quantity <= 0) continue;
         
-        $menuStmt = $conn->prepare("SELECT id, base_price, is_available FROM menu_items WHERE id = ?");
-        $menuStmt->execute([$menuItemId]);
+        // Scope to this restaurant — without this filter a menu_item id belonging
+        // to a different restaurant could be used to bill an unrelated price.
+        $menuStmt = $conn->prepare("SELECT id, item_name_en, base_price, is_available FROM menu_items WHERE id = ? AND restaurant_id = ?");
+        $menuStmt->execute([$menuItemId, $restaurant_id]);
         $menuRow = $menuStmt->fetch(PDO::FETCH_ASSOC);
         if (!$menuRow || !$menuRow['is_available']) continue;
-        
+
         $unitPrice = (float)$menuRow['base_price'];
         $variationName = $item['variation_name'] ?? '';
-        
+
         if (!empty($variationName)) {
+            // Also scope the variation lookup to this menu item, which is already
+            // scoped to this restaurant above, so a variation can't be borrowed
+            // from another restaurant's item either.
             $varStmt = $conn->prepare("SELECT price FROM menu_item_variations WHERE menu_item_id = ? AND variation_name = ?");
             $varStmt->execute([$menuItemId, $variationName]);
             $varRow = $varStmt->fetch(PDO::FETCH_ASSOC);
@@ -298,7 +311,10 @@ $conn->beginTransaction();
         
         $verifiedItems[] = [
             'id' => $menuRow['id'],
-            'name' => $item['name'],
+            // Always use the DB-verified name, never the client-submitted one —
+            // otherwise a mispriced/foreign item could be displayed under an
+            // arbitrary fabricated name on the order, receipt, and kitchen ticket.
+            'name' => $menuRow['item_name_en'],
             'variation_name' => $variationName,
             'quantity' => $quantity,
             'price' => $unitPrice,
@@ -397,13 +413,17 @@ $conn->beginTransaction();
     // Generate unique order number with collision check
     $order_number = generateOrderNumber($conn, $restaurant_id);
     
-    // Check if GST is enabled for this restaurant
+    // Check if tax is enabled for this restaurant, and at what name/rate
     $gstEnabled = true;
+    $taxName = 'GST';
+    $taxPercent = 5.00;
     try {
-        $gstStmt = $conn->prepare("SELECT enable_gst FROM users WHERE restaurant_id = ? LIMIT 1");
+        $gstStmt = $conn->prepare("SELECT enable_gst, tax_name, tax_percent FROM users WHERE restaurant_id = ? LIMIT 1");
         $gstStmt->execute([$restaurant_id]);
         $gstRow = $gstStmt->fetch(PDO::FETCH_ASSOC);
         $gstEnabled = $gstRow ? (bool)$gstRow['enable_gst'] : true;
+        if ($gstRow && !empty($gstRow['tax_name'])) $taxName = $gstRow['tax_name'];
+        if ($gstRow && isset($gstRow['tax_percent']) && $gstRow['tax_percent'] !== null) $taxPercent = (float)$gstRow['tax_percent'];
     } catch (Exception $e) {
         $gstEnabled = true;
     }
@@ -411,10 +431,10 @@ $conn->beginTransaction();
     // Calculate all financials NOW before any writes
     $deliveryCharge = (float)$delivery_charge;
     $subtotal = (float)$total;
-    // GST is on the discounted subtotal only — packaging is NOT taxable
+    // Tax is on the discounted subtotal only — packaging is NOT taxable
     $taxable = $subtotal - (float)$discount_amount;
     if ($taxable < 0) $taxable = 0;
-    $tax = $gstEnabled ? round($taxable * 0.05, 2) : 0;
+    $tax = $gstEnabled ? round($taxable * ($taxPercent / 100), 2) : 0;
     $grand_total = $taxable + $tax + $deliveryCharge + (float)$packaging_charge;
     
     // Payment starts as Pending
@@ -780,8 +800,8 @@ $conn->beginTransaction();
                 <tfoot>
                     <tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">Subtotal:</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format($subtotal, 2) . '</td></tr>' .
                     ($discount_amount > 0 ? '<tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;color:#e74c3c;">Discount:</td><td style="padding:8px;text-align:right;color:#e74c3c;">-' . $currencySymbol . number_format($discount_amount, 2) . '</td></tr>' : '') .
-                    ($packaging_charge > 0 ? '<tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">Packaging Charge:</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format((float)$packaging_charge, 2) . '</td></tr>' : '') . '
-                    <tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">Tax (5% GST):</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format($tax, 2) . '</td></tr>' .
+                    ($packaging_charge > 0 ? '<tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">Packaging Charge:</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format((float)$packaging_charge, 2) . '</td></tr>' : '') .
+                    ($gstEnabled ? '<tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">' . htmlspecialchars($taxName) . ' (' . rtrim(rtrim(number_format($taxPercent, 2), '0'), '.') . '%):</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format($tax, 2) . '</td></tr>' : '') .
                     ($deliveryCharge > 0 ? '<tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">Delivery Fee:</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format($deliveryCharge, 2) . '</td></tr>' : '') . '
                     <tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;font-size:16px;">Total:</td><td style="padding:8px;text-align:right;font-weight:bold;font-size:16px;">' . $currencySymbol . number_format($grand_total, 2) . '</td></tr>
                 </tfoot>

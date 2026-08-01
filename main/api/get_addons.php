@@ -31,8 +31,16 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
     exit();
 }
 
-// Resolve restaurant ID
-$restaurant_id = $_GET['restaurant_id'] ?? $_SESSION['restaurant_id'] ?? null;
+// Resolve restaurant ID. For an authenticated admin request, always trust the
+// session's own tenant — never a client-supplied restaurant_id — so one
+// restaurant's staff can't read another's add-ons. Anonymous public customer
+// requests (no session) still pass restaurant_id explicitly, which is fine
+// since this data is meant to be publicly visible on the menu page.
+if ($isAdminRequest) {
+    $restaurant_id = $_SESSION['restaurant_id'];
+} else {
+    $restaurant_id = $_GET['restaurant_id'] ?? null;
+}
 
 if (!$restaurant_id) {
     echo json_encode(['success' => false, 'message' => 'Restaurant ID required', 'data' => []], JSON_UNESCAPED_UNICODE);
