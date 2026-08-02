@@ -50,7 +50,32 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
     echo "<p>✓ subscription_payments table created/verified</p>";
-    
+
+    // Step 1b: Patch subscription_payments columns that may be missing on older installs
+    $spColumns = [
+        'duration_months' => "ALTER TABLE subscription_payments ADD COLUMN duration_months INT DEFAULT 1 AFTER subscription_type",
+        'payment_method' => "ALTER TABLE subscription_payments ADD COLUMN payment_method VARCHAR(50) DEFAULT 'phonepe' AFTER payment_status",
+        'notes' => "ALTER TABLE subscription_payments ADD COLUMN notes VARCHAR(255) DEFAULT NULL AFTER phonepe_transaction_id",
+    ];
+    $existingCols = $conn->query("SHOW COLUMNS FROM subscription_payments")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($spColumns as $col => $sql) {
+        if (!in_array($col, $existingCols)) {
+            $conn->exec($sql);
+            echo "<p>✓ {$col} column added to subscription_payments table</p>";
+        } else {
+            echo "<p>— {$col} column already exists on subscription_payments</p>";
+        }
+    }
+
+    // Step 1c: Make sure subscription_type enum includes 'custom'
+    $typeCol = $conn->query("SHOW COLUMNS FROM subscription_payments LIKE 'subscription_type'")->fetch(PDO::FETCH_ASSOC);
+    if ($typeCol && strpos($typeCol['Type'], "'custom'") === false) {
+        $conn->exec("ALTER TABLE subscription_payments MODIFY subscription_type ENUM('monthly','yearly','custom') DEFAULT 'monthly'");
+        echo "<p>✓ subscription_type enum updated to include 'custom'</p>";
+    } else {
+        echo "<p>— subscription_type enum already includes 'custom'</p>";
+    }
+
     // Step 2: Add auto_pay column to users if not exists
     try {
         $conn->exec("ALTER TABLE users ADD COLUMN auto_pay TINYINT(1) DEFAULT 0");

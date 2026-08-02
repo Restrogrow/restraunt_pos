@@ -8,6 +8,7 @@ startSecureSession();
 
 require_once __DIR__ . '/../config/authorization_config.php';
 require_once __DIR__ . '/../config/env_loader.php';
+require_once __DIR__ . '/../config/phonepe_verify.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -111,33 +112,11 @@ try {
             $stmt->execute([$user_id, $restaurant_id, $transaction_id, $amount, $subscription_type, $duration_months]);
             $payment_id = $conn->lastInsertId();
 
-            // ========== PhonePe Integration ==========
-            // Determine which credentials to use
-            // Priority: Restaurant's own > Platform env
-            $restCredStmt = $conn->prepare("SELECT phonepe_merchant_id, phonepe_salt_key, phonepe_environment FROM users WHERE id = ?");
-            $restCredStmt->execute([$user_id]);
-            $restCred = $restCredStmt->fetch(PDO::FETCH_ASSOC);
-
-            $merchantId = env('PHONEPE_MERCHANT_ID', '');
-            $saltKey = env('PHONEPE_SALT_KEY', '');
-            $saltIndex = env('PHONEPE_SALT_INDEX', '1');
-            $environment = env('PHONEPE_ENVIRONMENT', 'test');
-
-            // Check if restaurant has their own credentials configured
-            if (!empty($restCred['phonepe_merchant_id']) && $restCred['phonepe_merchant_id'] !== 'YOUR_MERCHANT_ID') {
-                $merchantId = $restCred['phonepe_merchant_id'];
-                $saltKey = $restCred['phonepe_salt_key'];
-                $environment = $restCred['phonepe_environment'] ?? 'SANDBOX';
-            }
-
-            // Determine base URL
-            $isProduction = ($environment === 'production' || $environment === 'PRODUCTION' || $environment === 'live');
-            $baseUrl = $isProduction
-                ? env('PHONEPE_BASE_URL_PRODUCTION', 'https://api.phonepe.com/apis/pg')
-                : env('PHONEPE_BASE_URL_TEST', 'https://api-preprod.phonepe.com/apis/pg-sandbox');
-
-            // DEMO MODE check
-            $demoMode = empty($merchantId) || empty($saltKey) || $merchantId === 'YOUR_MERCHANT_ID' || $saltKey === 'YOUR_SALT_KEY';
+            // ========== PhonePe Integration (v2 OAuth checkout) ==========
+            // Same credential resolution (restaurant's own > platform env) and
+            // v2 API config as the order-payment flow (phonepe_order_payment.php).
+            $config = phonepeCallbackConfig($restaurant_id);
+            $demoMode = empty($config['client_id']) || empty($config['client_secret']);
 
             if ($demoMode) {
                 // Demo mode - simulate payment
@@ -157,44 +136,41 @@ try {
                 exit();
             }
 
-            // Build PhonePe payment payload
+            // Build redirect URL (dashboard) — v2 has no per-request callbackUrl;
+            // the webhook is configured account-wide in the PhonePe dashboard.
             $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
             $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
             $base_path = dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
             if ($base_path === '/' || $base_path === '\\') $base_path = '';
             $site_url = $scheme . '://' . $host . $base_path;
-
-            // Use subscription-specific callback that updates user subscription
-            $callback_url = $site_url . '/main/api/phonepe_callback.php';
             $redirect_url = $site_url . '/main/views/dashboard.php';
 
+            $accessToken = phonepeCallbackAccessToken($config);
+            if (!$accessToken) {
+                throw new Exception('Failed to authenticate with payment gateway');
+            }
+
             $payload = [
-                'merchantId' => $merchantId,
-                'merchantTransactionId' => $transaction_id,
-                'merchantUserId' => 'USER_' . $user_id,
+                'merchantOrderId' => $transaction_id,
                 'amount' => (int)($amount * 100), // Convert to paise
-                'redirectUrl' => $redirect_url,
-                'redirectMode' => 'GET',
-                'callbackUrl' => $callback_url,
-                'paymentInstrument' => [
-                    'type' => 'PAY_PAGE'
-                ]
+                'expireAfter' => 1200,
+                'paymentFlow' => [
+                    'type' => 'PG_CHECKOUT',
+                    'merchantUrls' => [
+                        'redirectUrl' => $redirect_url,
+                    ],
+                ],
             ];
 
-            $base64_payload = base64_encode(json_encode($payload));
-            $string_to_hash = $base64_payload . '/pg/v1/pay' . $saltKey;
-            $sha256_hash = hash('sha256', $string_to_hash);
-            $x_verify = $sha256_hash . '###' . $saltIndex;
-
-            // Initiate payment via PhonePe API
-            $ch = curl_init($baseUrl . '/pg/v1/pay');
+            // Initiate payment via PhonePe v2 checkout API
+            $ch = curl_init($config['api_url'] . '/checkout/v2/pay');
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['request' => $base64_payload]));
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/json',
                 'Accept: application/json',
-                'X-VERIFY: ' . $x_verify
+                'Authorization: O-Bearer ' . $accessToken,
             ]);
             curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
@@ -209,23 +185,17 @@ try {
 
             $response_data = json_decode($response, true);
 
-            if ($http_code === 200 && isset($response_data['success']) && $response_data['success'] === true) {
-                $payment_url = $response_data['data']['instrumentResponse']['redirectInfo']['url'] ?? null;
-
-                if ($payment_url) {
-                    echo json_encode([
-                        'success' => true,
-                        'message' => 'Payment initiated successfully',
-                        'payment_url' => $payment_url,
-                        'transaction_id' => $transaction_id,
-                        'payment_id' => $payment_id,
-                        'amount' => $amount,
-                        'subscription_type' => $subscription_type,
-                        'demo_mode' => false
-                    ]);
-                } else {
-                    throw new Exception('Payment URL not received from gateway');
-                }
+            if ($http_code === 200 && isset($response_data['redirectUrl'])) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Payment initiated successfully',
+                    'payment_url' => $response_data['redirectUrl'],
+                    'transaction_id' => $transaction_id,
+                    'payment_id' => $payment_id,
+                    'amount' => $amount,
+                    'subscription_type' => $subscription_type,
+                    'demo_mode' => false
+                ]);
             } else {
                 $error_msg = $response_data['message'] ?? ($response_data['code'] ?? 'Payment initiation failed');
                 throw new Exception($error_msg);
@@ -247,53 +217,26 @@ try {
                 throw new Exception('Payment record not found');
             }
 
-            // If still pending, try to check with PhonePe API
+            // If still pending, independently verify with PhonePe's v2 status
+            // API (never trust a redirect/webhook body directly — see
+            // config/phonepe_verify.php).
             if ($payment['payment_status'] === 'pending') {
-                // Get credentials
-                $merchantId = env('PHONEPE_MERCHANT_ID', '');
-                $saltKey = env('PHONEPE_SALT_KEY', '');
-                $saltIndex = env('PHONEPE_SALT_INDEX', '1');
+                $verifiedState = phonepeVerifyOrderState($conn, $restaurant_id, $transaction_id);
 
-                if (!empty($merchantId) && !empty($saltKey) && $merchantId !== 'YOUR_MERCHANT_ID') {
-                    $environment = env('PHONEPE_ENVIRONMENT', 'test');
-                    $isProduction = ($environment === 'production' || $environment === 'PRODUCTION');
-                    $baseUrl = $isProduction
-                        ? env('PHONEPE_BASE_URL_PRODUCTION', 'https://api.phonepe.com/apis/pg')
-                        : env('PHONEPE_BASE_URL_TEST', 'https://api-preprod.phonepe.com/apis/pg-sandbox');
+                if ($verifiedState === 'COMPLETED' || $verifiedState === 'SUCCESS') {
+                    $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = 'success', updated_at = NOW() WHERE id = ?");
+                    $updateStmt->execute([$payment['id']]);
 
-                    $status_url = $baseUrl . '/pg/v1/status/' . urlencode($merchantId) . '/' . urlencode($transaction_id);
-                    $x_verify = hash('sha256', '/pg/v1/status/' . $merchantId . '/' . $transaction_id . $saltKey) . '###' . $saltIndex;
+                    // Activate subscription
+                    activateSubscription($conn, $user_id, $restaurant_id, $payment['duration_months']);
 
-                    $ch = curl_init($status_url);
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                        'X-VERIFY: ' . $x_verify,
-                        'Accept: application/json',
-                    ]);
-                    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-
-                    $resp = curl_exec($ch);
-                    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                    curl_close($ch);
-
-                    if ($http === 200 && $resp) {
-                        $status_data = json_decode($resp, true);
-                        if ($status_data['success'] === true && ($status_data['state'] === 'COMPLETED' || $status_data['state'] === 'SUCCESS')) {
-                            // Update payment record
-                            $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = 'success', updated_at = NOW() WHERE id = ?");
-                            $updateStmt->execute([$payment['id']]);
-
-                            // Activate subscription
-                            activateSubscription($conn, $user_id, $restaurant_id, $payment['duration_months']);
-
-                            $payment['payment_status'] = 'success';
-                        } elseif ($status_data['success'] === false || in_array($status_data['state'] ?? '', ['FAILED', 'REJECTED', 'CANCELLED'])) {
-                            $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = 'failed', updated_at = NOW() WHERE id = ?");
-                            $updateStmt->execute([$payment['id']]);
-                            $payment['payment_status'] = 'failed';
-                        }
-                    }
+                    $payment['payment_status'] = 'success';
+                } elseif (in_array($verifiedState, ['FAILED', 'REJECTED', 'CANCELLED'])) {
+                    $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = 'failed', updated_at = NOW() WHERE id = ?");
+                    $updateStmt->execute([$payment['id']]);
+                    $payment['payment_status'] = 'failed';
                 }
+                // null or PENDING: leave as pending, the client will poll again
             }
 
             echo json_encode([
