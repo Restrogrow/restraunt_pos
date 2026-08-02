@@ -380,7 +380,6 @@ try {
                 p.amount,
                 p.payment_method,
                 p.payment_status,
-                p.subscription_type,
                 p.created_at,
                 u.restaurant_name
               FROM payments p
@@ -735,14 +734,12 @@ break;
       $phonepe_base_url = $isSandbox
           ? 'https://api-preprod.phonepe.com/apis/pg-sandbox'
           : 'https://api.phonepe.com/apis/pg';
-      $phonepe_pay_url = $phonepe_base_url . '/pg/v1/pay';
       $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
       $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
       $base_path = dirname(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/')));
       if ($base_path === '/' || $base_path === '\\') $base_path = '';
       $site_url = $scheme . '://' . $host . $base_path;
       $redirect_url = $site_url . '/main/superadmin/payment_link_redirect.php';
-      $callback_url = $site_url . '/main/superadmin/payment_link_callback.php';
 
       // Generate transaction ID
       $transaction_id = 'SPL_' . strtoupper(substr($restaurant_id, 0, 6)) . '_' . time() . '_' . rand(100, 999);
@@ -770,101 +767,66 @@ break;
         break;
       }
 
-      // Real PhonePe API integration
-      if ($isSandbox) {
-        // Sandbox: use v2 OAuth (same base for auth + checkout, Developer Settings credentials)
-        $auth_url = $phonepe_base_url . '/v1/oauth/token';
-        $ch = curl_init($auth_url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-          'client_id' => $phonepe_client_id,
-          'client_version' => $phonepe_client_version,
-          'client_secret' => $phonepe_client_secret,
-          'grant_type' => 'client_credentials',
-        ]));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        $auth_resp = curl_exec($ch);
-        $auth_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $auth_err = curl_error($ch);
-        curl_close($ch);
+      // Real PhonePe API integration — v2 OAuth checkout for both sandbox
+      // and production. Production used to sign requests with the old v1
+      // hash API (/pg/v1/pay), which PhonePe has since deprecated for this
+      // merchant; sandbox was already correctly on v2. Unified onto v2 here,
+      // matching the working order-payment flow (api/phonepe_order_payment.php).
+      $auth_url = $isSandbox
+          ? $phonepe_base_url . '/v1/oauth/token'
+          : 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
 
-        if ($auth_err) throw new Exception('Auth connection error: ' . $auth_err);
-        $auth_data = json_decode($auth_resp, true);
-        if ($auth_http !== 200 || !isset($auth_data['access_token'])) {
-          throw new Exception('Auth error: ' . ($auth_data['message'] ?? 'HTTP ' . $auth_http));
-        }
+      $ch = curl_init($auth_url);
+      curl_setopt($ch, CURLOPT_POST, true);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'client_id' => $phonepe_client_id,
+        'client_version' => $phonepe_client_version,
+        'client_secret' => $phonepe_client_secret,
+        'grant_type' => 'client_credentials',
+      ]));
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+      curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+      $auth_resp = curl_exec($ch);
+      $auth_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      $auth_err = curl_error($ch);
+      curl_close($ch);
 
-        // Create checkout session
-        $pay_url = $phonepe_base_url . '/checkout/v2/pay';
-        $payload = [
-          'merchantOrderId' => $transaction_id,
-          'amount' => (int)($amount * 100),
-          'expireAfter' => 1200,
-          'callbackUrl' => $callback_url,
-          'paymentFlow' => ['type' => 'PG_CHECKOUT', 'merchantUrls' => ['redirectUrl' => $redirect_url]],
-        ];
+      if ($auth_err) throw new Exception('Auth connection error: ' . $auth_err);
+      $auth_data = json_decode($auth_resp, true);
+      if ($auth_http !== 200 || !isset($auth_data['access_token'])) {
+        throw new Exception('Auth error: ' . ($auth_data['message'] ?? 'HTTP ' . $auth_http));
+      }
 
-        $ch = curl_init($pay_url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-          'Content-Type: application/json',
-          'Authorization: O-Bearer ' . $auth_data['access_token'],
-        ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        $resp = curl_exec($ch);
-        $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+      // Create checkout session
+      $pay_url = $phonepe_base_url . '/checkout/v2/pay';
+      $payload = [
+        'merchantOrderId' => $transaction_id,
+        'amount' => (int)($amount * 100),
+        'expireAfter' => 1200,
+        'paymentFlow' => ['type' => 'PG_CHECKOUT', 'merchantUrls' => ['redirectUrl' => $redirect_url]],
+      ];
 
-        $resp_data = json_decode($resp, true);
-        if ($http === 200 && isset($resp_data['redirectUrl'])) {
-          $payment_url = $resp_data['redirectUrl'];
-          $phonepe_order_id = $resp_data['orderId'] ?? '';
-        } else {
-          $msg = $resp_data['message'] ?? ($resp_data['code'] ?? 'unknown');
-          throw new Exception('Sandbox API error (HTTP ' . $http . '): ' . $msg);
-        }
+      $ch = curl_init($pay_url);
+      curl_setopt($ch, CURLOPT_POST, true);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: O-Bearer ' . $auth_data['access_token'],
+      ]);
+      curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+      $resp = curl_exec($ch);
+      $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      curl_close($ch);
+
+      $resp_data = json_decode($resp, true);
+      if ($http === 200 && isset($resp_data['redirectUrl'])) {
+        $payment_url = $resp_data['redirectUrl'];
+        $phonepe_order_id = $resp_data['orderId'] ?? '';
       } else {
-        // Production: use v1 hash-based API
-        $payload = [
-          'merchantId' => $phonepe_client_id,
-          'merchantTransactionId' => $transaction_id,
-          'merchantUserId' => 'SUPERADMIN',
-          'amount' => (int)($amount * 100),
-          'redirectUrl' => $redirect_url,
-          'redirectMode' => 'GET',
-          'callbackUrl' => $callback_url,
-          'paymentInstrument' => ['type' => 'PAY_PAGE'],
-        ];
-
-        $base64_payload = base64_encode(json_encode($payload));
-        $x_verify = hash('sha256', $base64_payload . '/pg/v1/pay' . $phonepe_client_secret) . '###' . $phonepe_client_version;
-
-        $ch = curl_init($phonepe_pay_url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['request' => $base64_payload]));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'X-VERIFY: ' . $x_verify]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        $resp = curl_exec($ch);
-        $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_err = curl_error($ch);
-        curl_close($ch);
-
-        if ($curl_err) throw new Exception('Connection error: ' . $curl_err);
-        $resp_data = json_decode($resp, true);
-        if ($http === 200 && isset($resp_data['success']) && $resp_data['success'] === true) {
-          $payment_url = $resp_data['data']['instrumentResponse']['redirectInfo']['url'] ?? null;
-          $phonepe_order_id = $resp_data['data']['merchantTransactionId'] ?? '';
-          if (!$payment_url) throw new Exception('No redirect URL in response');
-        } else {
-          $msg = $resp_data['message'] ?? ($resp_data['code'] ?? 'unknown');
-          if (!empty($resp_data['data'])) $msg .= ' | ' . json_encode($resp_data['data']);
-          throw new Exception('Prod API error (HTTP ' . $http . '): ' . $msg);
-        }
+        $msg = $resp_data['message'] ?? ($resp_data['code'] ?? 'unknown');
+        throw new Exception('PhonePe API error (HTTP ' . $http . '): ' . $msg);
       }
 
       $our_payment_url = $redirect_url . '?id=' . $payment_link_id;
