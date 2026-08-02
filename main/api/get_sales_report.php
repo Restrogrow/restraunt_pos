@@ -53,6 +53,9 @@ try {
         exit();
     }
     
+    require_once __DIR__ . '/../config/inventory_tables.php';
+    ensureInventoryTables($conn);
+
     $restaurant_id = $_SESSION['restaurant_id'];
     $period = $_GET['period'] ?? 'today';
     $type = $_GET['type'] ?? 'sales';
@@ -105,6 +108,31 @@ try {
     // sales/revenue figure below — money isn't counted until it's verified.
     $dateCondition .= " AND NOT (o.payment_method = 'QR Payment' AND o.payment_status != 'Paid')";
     $dateConditionNoAlias .= " AND NOT (payment_method = 'QR Payment' AND payment_status != 'Paid')";
+
+    // Same period, but against expenses.expense_date (a DATE column, not a
+    // timestamp) for the money-out side of the report.
+    $expenseDateParams = [];
+    if ($period === 'custom' && !empty($startDate) && !empty($endDate)) {
+        $expenseDateCondition = "expense_date BETWEEN ? AND ?";
+        $expenseDateParams = [$startDate, $endDate];
+    } else {
+        switch ($period) {
+            case 'today':
+                $expenseDateCondition = "expense_date = CURDATE()";
+                break;
+            case 'week':
+                $expenseDateCondition = "expense_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                break;
+            case 'month':
+                $expenseDateCondition = "expense_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                break;
+            case 'year':
+                $expenseDateCondition = "expense_date >= DATE_SUB(CURDATE(), INTERVAL 365 DAY)";
+                break;
+            default:
+                $expenseDateCondition = "expense_date = CURDATE()";
+        }
+    }
 
     // Get total sales
     $salesParams = array_merge([$restaurant_id], $dateParams, $paymentFilterParams);
@@ -253,6 +281,14 @@ try {
         $staffPerformance = [];
     }
     
+    // Get total expenses (includes inventory purchases/wastage — see
+    // controllers/inventory_operations.php)
+    $expensesParams = array_merge([$restaurant_id], $expenseDateParams);
+    $expensesStmt = $conn->prepare("SELECT COALESCE(SUM(amount), 0) as total_expenses FROM expenses WHERE restaurant_id = ? AND " . $expenseDateCondition);
+    $expensesStmt->execute($expensesParams);
+    $expensesRow = $expensesStmt->fetch(PDO::FETCH_ASSOC);
+    $totalExpenses = $expensesRow['total_expenses'] ?? 0;
+
     // Build response based on report type
     $response = [
         'success' => true,
@@ -260,7 +296,9 @@ try {
             'total_sales' => floatval($totalSales),
             'total_orders' => intval($totalOrders),
             'total_items' => intval($totalItems),
-            'total_customers' => intval($totalCustomers)
+            'total_customers' => intval($totalCustomers),
+            'total_expenses' => floatval($totalExpenses),
+            'net_profit' => floatval($totalSales) - floatval($totalExpenses)
         ],
         'sales_details' => $salesDetails,
         'top_items' => $topItems,

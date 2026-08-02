@@ -12329,14 +12329,18 @@ async function loadReports() {
     const totalOrdersEl = document.getElementById('reportTotalOrders');
     const totalItemsEl = document.getElementById('reportTotalItems');
     const totalCustomersEl = document.getElementById('reportTotalCustomers');
+    const totalExpensesEl = document.getElementById('reportTotalExpenses');
+    const netProfitEl = document.getElementById('reportNetProfit');
     const salesTable = document.getElementById('reportSalesTable');
     const topItemsDiv = document.getElementById('reportTopItems');
     const paymentMethodsDiv = document.getElementById('reportPaymentMethods');
-    
+
     if (totalSalesEl) totalSalesEl.textContent = 'Loading...';
     if (totalOrdersEl) totalOrdersEl.textContent = 'Loading...';
     if (totalItemsEl) totalItemsEl.textContent = 'Loading...';
     if (totalCustomersEl) totalCustomersEl.textContent = 'Loading...';
+    if (totalExpensesEl) totalExpensesEl.textContent = 'Loading...';
+    if (netProfitEl) netProfitEl.textContent = 'Loading...';
     if (salesTable) salesTable.innerHTML = '<tr><td colspan="6" style="padding: 2rem; text-align: center; color: #666;">Loading sales data...</td></tr>';
     if (topItemsDiv) topItemsDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #666;">Loading...</div>';
     if (paymentMethodsDiv) paymentMethodsDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #666;">Loading...</div>';
@@ -12403,7 +12407,15 @@ async function loadReports() {
     if (totalCustomersEl) {
       totalCustomersEl.textContent = data.summary?.total_customers || 0;
     }
-    
+    if (totalExpensesEl) {
+      totalExpensesEl.textContent = formatCurrencyNoDecimals(data.summary?.total_expenses || 0);
+    }
+    if (netProfitEl) {
+      const netProfit = data.summary?.net_profit || 0;
+      netProfitEl.textContent = formatCurrencyNoDecimals(netProfit);
+      netProfitEl.style.color = netProfit < 0 ? '#e74c3c' : '#28a745';
+    }
+
     // Update sales table based on report type
     if (salesTable) {
       const tableReportType = data.report_type || 'sales';
@@ -12557,14 +12569,18 @@ async function loadReports() {
     const totalOrdersEl = document.getElementById('reportTotalOrders');
     const totalItemsEl = document.getElementById('reportTotalItems');
     const totalCustomersEl = document.getElementById('reportTotalCustomers');
+    const totalExpensesEl = document.getElementById('reportTotalExpenses');
+    const netProfitEl = document.getElementById('reportNetProfit');
     const salesTable = document.getElementById('reportSalesTable');
     const topItemsDiv = document.getElementById('reportTopItems');
     const paymentMethodsDiv = document.getElementById('reportPaymentMethods');
-    
+
     if (totalSalesEl) totalSalesEl.textContent = formatCurrencyNoDecimals(0);
     if (totalOrdersEl) totalOrdersEl.textContent = '0';
     if (totalItemsEl) totalItemsEl.textContent = '0';
     if (totalCustomersEl) totalCustomersEl.textContent = '0';
+    if (totalExpensesEl) totalExpensesEl.textContent = formatCurrencyNoDecimals(0);
+    if (netProfitEl) netProfitEl.textContent = formatCurrencyNoDecimals(0);
     if (salesTable) salesTable.innerHTML = '<tr><td colspan="6" style="padding: 2rem; text-align: center; color: #ef4444;">Error loading data. Please try again.</td></tr>';
     if (topItemsDiv) topItemsDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;">Error loading data</div>';
     if (paymentMethodsDiv) paymentMethodsDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;">Error loading data</div>';
@@ -13940,7 +13956,312 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// ========== Inventory ==========
+let inventoryItemsCache = [];
 
+async function loadInventory() {
+  const tbody = document.getElementById('inventoryTbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>';
+  try {
+    const r = await fetch('../api/get_inventory.php');
+    const d = await r.json();
+    if (!d.success) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#e74c3c;">' + escHtml(d.message || 'Error') + '</td></tr>'; return; }
+    inventoryItemsCache = d.items || [];
+
+    const totalItemsEl = document.getElementById('invTotalItems');
+    const lowStockEl = document.getElementById('invLowStockCount');
+    const totalValueEl = document.getElementById('invTotalValue');
+    if (totalItemsEl) totalItemsEl.textContent = d.summary?.total_items || 0;
+    if (lowStockEl) lowStockEl.textContent = d.summary?.low_stock_count || 0;
+    if (totalValueEl) totalValueEl.textContent = globalCurrencySymbol + parseFloat(d.summary?.total_stock_value || 0).toFixed(2);
+
+    if (!inventoryItemsCache.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#999;">No inventory items yet. Click "+ New Item" to add one.</td></tr>';
+    } else {
+      tbody.innerHTML = inventoryItemsCache.map(item => {
+        const qty = parseFloat(item.quantity_in_stock);
+        const cost = parseFloat(item.cost_per_unit);
+        const value = parseFloat(item.stock_value);
+        const isLow = item.is_low_stock == true || item.is_low_stock == 1;
+        const statusClass = isLow ? 'badge badge-danger' : 'badge badge-success';
+        const statusText = isLow ? 'Low Stock' : 'OK';
+        return '<tr>' +
+          '<td><strong>' + escHtml(item.item_name) + '</strong>' + (item.notes ? '<br><span style="font-size:0.8em;color:#888;">' + escHtml(item.notes) + '</span>' : '') + '</td>' +
+          '<td>' + escHtml(item.category || '-') + '</td>' +
+          '<td>' + escHtml(item.unit) + '</td>' +
+          '<td>' + qty.toFixed(2) + '</td>' +
+          '<td>' + parseFloat(item.low_stock_threshold).toFixed(2) + '</td>' +
+          '<td>' + globalCurrencySymbol + cost.toFixed(2) + '</td>' +
+          '<td>' + globalCurrencySymbol + value.toFixed(2) + '</td>' +
+          '<td><span class="' + statusClass + '">' + statusText + '</span></td>' +
+          '<td class="actions-cell">' +
+            '<button class="btn btn-sm btn-success" onclick="openRestockModal(' + item.id + ')" title="Restock">📥</button> ' +
+            '<button class="btn btn-sm btn-warning" onclick="openAdjustModal(' + item.id + ')" title="Adjust / Wastage">⚖️</button> ' +
+            '<button class="btn btn-sm btn-secondary" onclick="editInventoryItem(' + item.id + ')" title="Edit">✏️</button> ' +
+            '<button class="btn btn-sm btn-danger" onclick="deleteInventoryItem(' + item.id + ')" title="Delete">🗑️</button>' +
+          '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#e74c3c;">Error loading inventory</td></tr>';
+  }
+  loadInventoryHistory();
+}
+
+async function loadInventoryHistory() {
+  const tbody = document.getElementById('inventoryHistoryTbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>';
+  try {
+    const r = await fetch('../api/get_inventory_transactions.php');
+    const d = await r.json();
+    if (!d.success) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#e74c3c;">' + escHtml(d.message || 'Error') + '</td></tr>'; return; }
+    const txs = d.transactions || [];
+    if (!txs.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">No stock movements yet.</td></tr>'; return; }
+    const typeLabels = { restock: 'Restock', wastage: 'Wastage', adjustment: 'Correction' };
+    const typeColors = { restock: '#28a745', wastage: '#e74c3c', adjustment: '#f59e0b' };
+    tbody.innerHTML = txs.map(tx => {
+      const qty = parseFloat(tx.quantity);
+      const qtyDisplay = (qty > 0 ? '+' : '') + qty.toFixed(2) + ' ' + escHtml(tx.unit);
+      return '<tr>' +
+        '<td>' + (tx.created_at ? escHtml(tx.created_at.split(' ')[0]) : '-') + '</td>' +
+        '<td>' + escHtml(tx.item_name) + '</td>' +
+        '<td><span style="color:' + (typeColors[tx.type] || '#666') + ';font-weight:600;">' + (typeLabels[tx.type] || tx.type) + '</span></td>' +
+        '<td>' + qtyDisplay + '</td>' +
+        '<td>' + globalCurrencySymbol + parseFloat(tx.cost_per_unit).toFixed(2) + '</td>' +
+        '<td>' + globalCurrencySymbol + parseFloat(tx.total_cost).toFixed(2) + '</td>' +
+        '<td>' + escHtml(tx.notes || '-') + '</td>' +
+        '</tr>';
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#e74c3c;">Error loading history</td></tr>';
+  }
+}
+
+function openInventoryModal(data) {
+  const modal = document.getElementById('inventoryModal');
+  const title = document.getElementById('inventoryModalTitle');
+  const idInput = document.getElementById('invId');
+  const nameInput = document.getElementById('invName');
+  const unitSelect = document.getElementById('invUnit');
+  const categoryInput = document.getElementById('invCategory');
+  const thresholdInput = document.getElementById('invThreshold');
+  const costInput = document.getElementById('invCost');
+  const notesInput = document.getElementById('invNotes');
+  const saveBtn = document.getElementById('invSaveBtn');
+  const hint = document.getElementById('invNewItemHint');
+  if (!modal) return;
+  if (data && data.id) {
+    title.textContent = 'Edit Inventory Item';
+    idInput.value = data.id;
+    nameInput.value = data.item_name || '';
+    unitSelect.value = data.unit || 'unit';
+    categoryInput.value = data.category || '';
+    thresholdInput.value = data.low_stock_threshold || 0;
+    costInput.value = data.cost_per_unit || 0;
+    notesInput.value = data.notes || '';
+    saveBtn.textContent = 'Update Item';
+    if (hint) hint.style.display = 'none';
+  } else {
+    title.textContent = 'New Inventory Item';
+    idInput.value = '';
+    nameInput.value = '';
+    unitSelect.value = 'kg';
+    categoryInput.value = '';
+    thresholdInput.value = 0;
+    costInput.value = 0;
+    notesInput.value = '';
+    saveBtn.textContent = 'Save Item';
+    if (hint) hint.style.display = 'block';
+  }
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => { nameInput.focus(); }, 150);
+}
+
+async function saveInventoryItem(event) {
+  event.preventDefault();
+  const id = document.getElementById('invId').value;
+  const name = document.getElementById('invName').value.trim();
+  const unit = document.getElementById('invUnit').value;
+  const category = document.getElementById('invCategory').value.trim();
+  const threshold = document.getElementById('invThreshold').value;
+  const cost = document.getElementById('invCost').value;
+  const notes = document.getElementById('invNotes').value.trim();
+  const saveBtn = document.getElementById('invSaveBtn');
+  if (!name) { showSweetAlert('Please enter an item name.', 'warning'); return false; }
+  const action = id ? 'update' : 'add';
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+  const formData = new FormData();
+  formData.append('action', action);
+  formData.append('item_name', name);
+  formData.append('unit', unit);
+  formData.append('category', category);
+  formData.append('low_stock_threshold', threshold);
+  formData.append('cost_per_unit', cost);
+  formData.append('notes', notes);
+  if (id) formData.append('id', id);
+  try {
+    const r = await fetch('../controllers/inventory_operations.php', { method: 'POST', body: formData });
+    const d = await r.json();
+    if (d.success) {
+      showSweetAlert(d.message, 'success');
+      closeModal('inventoryModal');
+      loadInventory();
+    } else {
+      showSweetAlert(d.message, 'error');
+    }
+  } catch (e) {
+    showSweetAlert('Network error. Please try again.', 'error');
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = id ? 'Update Item' : 'Save Item';
+  }
+  return false;
+}
+
+function editInventoryItem(id) {
+  const item = inventoryItemsCache.find(i => i.id == id);
+  if (item) openInventoryModal(item);
+  else showSweetAlert('Item not found.', 'error');
+}
+
+async function deleteInventoryItem(id) {
+  const result = await Swal.fire({ title: 'Delete Inventory Item?', text: 'Its purchase history will be kept for reports.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', cancelButtonText: 'Cancel', confirmButtonColor: '#e74c3c' });
+  if (!result.isConfirmed) return;
+  const formData = new FormData();
+  formData.append('action', 'delete');
+  formData.append('id', id);
+  try {
+    const r = await fetch('../controllers/inventory_operations.php', { method: 'POST', body: formData });
+    const d = await r.json();
+    if (d.success) { showSweetAlert(d.message, 'success'); loadInventory(); }
+    else showSweetAlert(d.message, 'error');
+  } catch (e) { showSweetAlert('Network error.', 'error'); }
+}
+
+function openRestockModal(id) {
+  const item = inventoryItemsCache.find(i => i.id == id);
+  if (!item) { showSweetAlert('Item not found.', 'error'); return; }
+  document.getElementById('rsItemId').value = id;
+  document.getElementById('rsItemLabel').textContent = item.item_name + ' (currently ' + parseFloat(item.quantity_in_stock).toFixed(2) + ' ' + item.unit + ' in stock)';
+  document.getElementById('rsQuantity').value = '';
+  document.getElementById('rsCost').value = item.cost_per_unit || 0;
+  document.getElementById('rsDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('rsNotes').value = '';
+  const modal = document.getElementById('restockModal');
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => { document.getElementById('rsQuantity').focus(); }, 150);
+}
+
+async function saveRestock(event) {
+  event.preventDefault();
+  const id = document.getElementById('rsItemId').value;
+  const quantity = document.getElementById('rsQuantity').value;
+  const cost = document.getElementById('rsCost').value;
+  const date = document.getElementById('rsDate').value;
+  const notes = document.getElementById('rsNotes').value.trim();
+  const saveBtn = document.getElementById('rsSaveBtn');
+  if (!quantity || parseFloat(quantity) <= 0) { showSweetAlert('Please enter a valid quantity.', 'warning'); return false; }
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+  const formData = new FormData();
+  formData.append('action', 'restock');
+  formData.append('id', id);
+  formData.append('quantity', quantity);
+  formData.append('cost_per_unit', cost);
+  formData.append('expense_date', date);
+  formData.append('notes', notes);
+  try {
+    const r = await fetch('../controllers/inventory_operations.php', { method: 'POST', body: formData });
+    const d = await r.json();
+    if (d.success) {
+      showSweetAlert(d.message, 'success');
+      closeModal('restockModal');
+      loadInventory();
+    } else {
+      showSweetAlert(d.message, 'error');
+    }
+  } catch (e) {
+    showSweetAlert('Network error. Please try again.', 'error');
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = 'Add Stock';
+  }
+  return false;
+}
+
+function openAdjustModal(id) {
+  const item = inventoryItemsCache.find(i => i.id == id);
+  if (!item) { showSweetAlert('Item not found.', 'error'); return; }
+  document.getElementById('adjItemId').value = id;
+  document.getElementById('adjItemLabel').textContent = item.item_name + ' (currently ' + parseFloat(item.quantity_in_stock).toFixed(2) + ' ' + item.unit + ' in stock)';
+  document.getElementById('adjType').value = 'wastage';
+  document.getElementById('adjQuantity').value = '';
+  document.getElementById('adjNotes').value = '';
+  updateAdjustLabel();
+  const modal = document.getElementById('adjustModal');
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => { document.getElementById('adjQuantity').focus(); }, 150);
+}
+
+function updateAdjustLabel() {
+  const type = document.getElementById('adjType').value;
+  const label = document.getElementById('adjQtyLabel');
+  const qtyInput = document.getElementById('adjQuantity');
+  if (!label || !qtyInput) return;
+  if (type === 'wastage') {
+    label.textContent = 'Quantity Lost *';
+    qtyInput.min = '0.01';
+  } else {
+    label.textContent = 'Quantity Change (+/-) *';
+    qtyInput.removeAttribute('min');
+  }
+}
+document.addEventListener('DOMContentLoaded', function() {
+  const adjTypeSelect = document.getElementById('adjType');
+  if (adjTypeSelect) adjTypeSelect.addEventListener('change', updateAdjustLabel);
+  const restockModal = document.getElementById('restockModal');
+  if (restockModal) restockModal.addEventListener('click', function(e) { if (e.target === restockModal) closeModal('restockModal'); });
+  const adjustModal = document.getElementById('adjustModal');
+  if (adjustModal) adjustModal.addEventListener('click', function(e) { if (e.target === adjustModal) closeModal('adjustModal'); });
+  const inventoryModal = document.getElementById('inventoryModal');
+  if (inventoryModal) inventoryModal.addEventListener('click', function(e) { if (e.target === inventoryModal) closeModal('inventoryModal'); });
+});
+
+async function saveAdjust(event) {
+  event.preventDefault();
+  const id = document.getElementById('adjItemId').value;
+  const type = document.getElementById('adjType').value;
+  const quantity = document.getElementById('adjQuantity').value;
+  const notes = document.getElementById('adjNotes').value.trim();
+  const saveBtn = document.getElementById('adjSaveBtn');
+  if (!quantity || parseFloat(quantity) === 0) { showSweetAlert('Please enter a quantity.', 'warning'); return false; }
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+  const formData = new FormData();
+  formData.append('action', 'adjust');
+  formData.append('id', id);
+  formData.append('adjust_type', type);
+  formData.append('quantity', quantity);
+  formData.append('notes', notes);
+  try {
+    const r = await fetch('../controllers/inventory_operations.php', { method: 'POST', body: formData });
+    const d = await r.json();
+    if (d.success) {
+      showSweetAlert(d.message, 'success');
+      closeModal('adjustModal');
+      loadInventory();
+    } else {
+      showSweetAlert(d.message, 'error');
+    }
+  } catch (e) {
+    showSweetAlert('Network error. Please try again.', 'error');
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = 'Save';
+  }
+  return false;
+}
 
 
 // ========== New Order Notification Test ==========

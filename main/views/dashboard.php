@@ -876,6 +876,13 @@ try {
               </a>
               <span class="nav-tooltip">Add-ons</span>
             </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="inventoryPage" onclick="setTimeout(loadInventory, 50)">
+                <span class="nav-icon material-symbols-rounded">inventory_2</span>
+                <span class="nav-label">Inventory</span>
+              </a>
+              <span class="nav-tooltip">Inventory</span>
+            </li>
             <?php if ($photo_gallery_enabled): ?>
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="galleryPage">
@@ -1814,6 +1821,221 @@ try {
       </div>
     </div>
 
+    <!-- Inventory Page -->
+    <div id="inventoryPage" class="page">
+      <div class="page-header">
+        <h1>Inventory</h1>
+        <p>Track stock levels and record purchases/wastage</p>
+      </div>
+      <div class="page-content">
+        <!-- Summary Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div style="width: 50px; height: 50px; background: #e5f3ff; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <span class="material-symbols-rounded" style="color: #0066cc;">inventory_2</span>
+              </div>
+              <div>
+                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Total Items</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #0066cc;" id="invTotalItems">0</div>
+              </div>
+            </div>
+          </div>
+          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div style="width: 50px; height: 50px; background: #fdecea; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <span class="material-symbols-rounded" style="color: #e74c3c;">warning</span>
+              </div>
+              <div>
+                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Low Stock Items</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #e74c3c;" id="invLowStockCount">0</div>
+              </div>
+            </div>
+          </div>
+          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div style="width: 50px; height: 50px; background: #e5f7e5; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <span class="material-symbols-rounded" style="color: #28a745;">payments</span>
+              </div>
+              <div>
+                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Total Stock Value</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;" id="invTotalValue"><?php echo htmlspecialchars($currency_symbol); ?>0.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card" style="margin-bottom:20px;">
+          <div class="section-header">
+            <div class="section-title">Stock Items</div>
+            <button class="btn btn-primary" id="btnNewInventoryItem" onclick="openInventoryModal()">+ New Item</button>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <table class="data-table" id="inventoryTable">
+              <thead>
+                <tr>
+                  <th>Item</th><th>Category</th><th>Unit</th><th>In Stock</th><th>Low Stock At</th><th>Cost/Unit</th><th>Stock Value</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryTbody">
+                <tr><td colspan="9" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Recent Stock Purchases &amp; Adjustments</div>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <table class="data-table" id="inventoryHistoryTable">
+              <thead>
+                <tr>
+                  <th>Date</th><th>Item</th><th>Type</th><th>Quantity</th><th>Cost/Unit</th><th>Total Cost</th><th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryHistoryTbody">
+                <tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory Item Modal -->
+    <div id="inventoryModal" class="modal">
+      <div class="modal-content" style="max-width:520px;">
+        <div class="modal-header">
+          <h2 id="inventoryModalTitle">New Inventory Item</h2>
+          <button class="modal-close" onclick="closeModal('inventoryModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="inventoryForm" onsubmit="return saveInventoryItem(event)">
+            <input type="hidden" id="invId" value="">
+            <div class="form-group">
+              <label>Item Name *</label>
+              <input type="text" id="invName" class="form-control" placeholder="e.g. Chicken Breast" maxlength="255" required>
+            </div>
+            <div class="row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;">
+                <label>Unit</label>
+                <select id="invUnit" class="form-control">
+                  <option value="kg">Kilogram (kg)</option>
+                  <option value="g">Gram (g)</option>
+                  <option value="L">Litre (L)</option>
+                  <option value="ml">Millilitre (ml)</option>
+                  <option value="pcs">Pieces (pcs)</option>
+                  <option value="box">Box</option>
+                  <option value="packet">Packet</option>
+                  <option value="unit">Unit</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label>Category</label>
+                <input type="text" id="invCategory" class="form-control" placeholder="e.g. Produce, Meat, Packaging">
+              </div>
+            </div>
+            <div class="row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;">
+                <label>Low Stock Alert At</label>
+                <input type="number" id="invThreshold" class="form-control" step="0.01" min="0" value="0">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label>Cost per Unit (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
+                <input type="number" id="invCost" class="form-control" step="0.01" min="0" value="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Notes</label>
+              <input type="text" id="invNotes" class="form-control" placeholder="Optional notes">
+            </div>
+            <div style="background:#f0f7ff;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#4b5563;margin-bottom:14px;" id="invNewItemHint">
+              New items start at 0 in stock — use "Restock" on the item after saving to add stock (this also records the purchase cost as an expense).
+            </div>
+            <button type="submit" class="btn btn-primary" id="invSaveBtn" style="width:100%;">Save Item</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Restock Modal -->
+    <div id="restockModal" class="modal">
+      <div class="modal-content" style="max-width:460px;">
+        <div class="modal-header">
+          <h2>Restock Item</h2>
+          <button class="modal-close" onclick="closeModal('restockModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="restockForm" onsubmit="return saveRestock(event)">
+            <input type="hidden" id="rsItemId" value="">
+            <div class="form-group">
+              <label id="rsItemLabel" style="font-weight:700;color:#1a1b1f;"></label>
+            </div>
+            <div class="row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;">
+                <label>Quantity to Add *</label>
+                <input type="number" id="rsQuantity" class="form-control" step="0.01" min="0.01" required>
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label>Cost per Unit (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
+                <input type="number" id="rsCost" class="form-control" step="0.01" min="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Purchase Date</label>
+              <input type="date" id="rsDate" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Notes</label>
+              <input type="text" id="rsNotes" class="form-control" placeholder="e.g. Supplier name / invoice #">
+            </div>
+            <div style="background:#f0fdf4;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#166534;margin-bottom:14px;">
+              This restock will be recorded as an "Inventory Purchase" expense and reflected in Reports.
+            </div>
+            <button type="submit" class="btn btn-primary" id="rsSaveBtn" style="width:100%;">Add Stock</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adjust / Wastage Modal -->
+    <div id="adjustModal" class="modal">
+      <div class="modal-content" style="max-width:460px;">
+        <div class="modal-header">
+          <h2>Adjust Stock</h2>
+          <button class="modal-close" onclick="closeModal('adjustModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="adjustForm" onsubmit="return saveAdjust(event)">
+            <input type="hidden" id="adjItemId" value="">
+            <div class="form-group">
+              <label id="adjItemLabel" style="font-weight:700;color:#1a1b1f;"></label>
+            </div>
+            <div class="form-group">
+              <label>Reason</label>
+              <select id="adjType" class="form-control">
+                <option value="wastage">Wastage / Spoilage (reduces stock, logs a loss expense)</option>
+                <option value="adjustment">Stock Correction (fix a miscount, no expense)</option>
+              </select>
+            </div>
+            <div class="row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;" id="adjQtyWrap">
+                <label id="adjQtyLabel">Quantity Lost *</label>
+                <input type="number" id="adjQuantity" class="form-control" step="0.01" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Notes</label>
+              <input type="text" id="adjNotes" class="form-control" placeholder="e.g. Spilled, expired, miscount">
+            </div>
+            <button type="submit" class="btn btn-primary" id="adjSaveBtn" style="width:100%;">Save</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- Payments Page -->
     <div id="paymentsPage" class="page">
       <div class="page-header">
@@ -2126,6 +2348,30 @@ function toggleGatewayMode() {
               <div>
                 <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Customers</div>
                 <div style="font-size: 1.5rem; font-weight: 700; color: #ffc107;" id="reportTotalCustomers">0</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div style="width: 50px; height: 50px; background: #fdecea; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <span class="material-symbols-rounded" style="color: #e74c3c;">trending_down</span>
+              </div>
+              <div>
+                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Total Expenses</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #e74c3c;" id="reportTotalExpenses"><?php echo htmlspecialchars($currency_symbol); ?>0.00</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div style="width: 50px; height: 50px; background: #e5f7e5; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <span class="material-symbols-rounded" style="color: #28a745;">trending_up</span>
+              </div>
+              <div>
+                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Net Profit (Sales − Expenses)</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;" id="reportNetProfit"><?php echo htmlspecialchars($currency_symbol); ?>0.00</div>
               </div>
             </div>
           </div>
