@@ -857,7 +857,8 @@ body {
 .product-sheet-img {
   width: 100%;
   height: 240px;
-  object-fit: cover;
+  object-fit: contain;
+  background: #f5f5f5;
   flex-shrink: 0;
   display: block;
 }
