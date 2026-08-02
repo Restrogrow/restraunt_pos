@@ -144,15 +144,24 @@ if ($restaurant_id) {
         if (function_exists('getConnection')) {
             $conn = getConnection();
             try {
-$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng FROM users WHERE restaurant_id = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng, subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
                 $stmt->execute([$restaurant_id]);
             } catch (Exception $e2) {
                 // Fallback: new columns (delivery_radius_km, etc.) may not exist - query without them
-                $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, custom_domain, embed_enabled FROM users WHERE restaurant_id = ? LIMIT 1");
+                $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, custom_domain, embed_enabled, subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
                 $stmt->execute([$restaurant_id]);
             }
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($row) {
+                // Restaurant's subscription has lapsed - block the customer-facing
+                // ordering site (admin dashboard still works so they can renew).
+                if (in_array($row['subscription_status'] ?? '', ['expired', 'disabled'], true)) {
+                    $restaurant_name = $row['restaurant_name'] ?? $restaurant_name;
+                    ob_end_clean();
+                    http_response_code(503);
+                    include __DIR__ . '/unavailable.php';
+                    exit();
+                }
                 $restaurant_name = $row['restaurant_name'] ?? $restaurant_name;
                 if ($row['currency_symbol'] && $row['currency_symbol'] !== '') {
                     $currency_symbol = $row['currency_symbol'];

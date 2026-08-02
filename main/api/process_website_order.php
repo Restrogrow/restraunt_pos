@@ -103,7 +103,23 @@ try {
     
     // Resolve restaurant ID: session > query param > default
     $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? 'RES001');
-    
+
+    // Reject orders for restaurants whose subscription has lapsed. The
+    // customer website already blocks browsing in this state (header.php),
+    // but this is the authoritative server-side check for direct API calls.
+    $subStmt = $conn->prepare("SELECT subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
+    $subStmt->execute([$restaurant_id]);
+    $subStatus = $subStmt->fetchColumn();
+    if (in_array($subStatus, ['expired', 'disabled'], true)) {
+        ob_end_clean();
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'message' => 'This restaurant is not currently accepting online orders.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
     // Check minimum order value and fetch packaging charge from DB (server-authoritative)
     $minStmt = $conn->prepare("SELECT minimum_order_value, packaging_charge FROM users WHERE restaurant_id = ? LIMIT 1");
     $minStmt->execute([$restaurant_id]);
