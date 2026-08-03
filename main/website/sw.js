@@ -1,6 +1,6 @@
 // Service Worker for PWA Install Support
 // Version bump on each deploy to bust all caches
-const CACHE_NAME = 'restaurant-cache-v9';
+const CACHE_NAME = 'restaurant-cache-v10';
 
 // Install immediately — no heavy precaching (avoids slow PHP page fetches)
 self.addEventListener('install', function(event) {
@@ -51,7 +51,19 @@ self.addEventListener('fetch', function(event) {
   // Only cache http/https requests (not chrome-extension:// or other schemes)
   var canCache = reqUrl.startsWith('http://') || reqUrl.startsWith('https://');
   if (!canCache) { return; }
-  
+
+  // Live/dynamic data (order status, delivery tracking, KOT/order polling,
+  // etc. — everything under /api/) must never be served from cache when the
+  // network fails. A stale cached JSON response looks identical to a fresh
+  // one to the calling code, so a transient network blip could silently show
+  // a customer an outdated order/delivery status with no "this may be
+  // stale" indication. Let these fail visibly instead so the caller's own
+  // error handling (retry/backoff, "connection lost" UI) can react.
+  if (reqUrl.indexOf('/api/') !== -1) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     fetch(event.request).then(function(response) {
       // Cache successful responses for offline use (clone because response is a stream)
@@ -116,6 +128,45 @@ self.addEventListener('push', function(event) {
     self.registration.showNotification(title, options)
   );
 });
+
+// Browsers periodically rotate a push subscription's endpoint. Without this
+// handler the old subscription just goes dead silently — push notifications
+// stop arriving with no error anywhere, until someone happens to manually
+// re-subscribe. Re-subscribe with the same VAPID key and save the new
+// subscription, mirroring what the page's own subscribeToPush() does.
+self.addEventListener('pushsubscriptionchange', function(event) {
+  event.waitUntil(
+    fetch('../api/get_vapid_key.php').then(function(r) { return r.json(); }).then(function(data) {
+      if (!data || !data.publicKey) {
+        throw new Error('VAPID public key unavailable');
+      }
+      return self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: swUrlBase64ToUint8Array(data.publicKey)
+      });
+    }).then(function(subscription) {
+      return fetch('../api/save_push_subscription.php', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscription.toJSON())
+      });
+    }).catch(function(err) {
+      console.error('[SW] pushsubscriptionchange re-subscribe failed:', err && err.message);
+    })
+  );
+});
+
+function swUrlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = self.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();

@@ -299,8 +299,23 @@ window.showPaymentMethodSelector = async function showPaymentMethodSelector() {
   return methods[method] || 'Cash';
 }
 
-// Split-payment "Choose Pay Method" modal (Cash / UPI / Card breakdown, return/due, Save & Print / Save & eBill)
-window.showSplitPaymentModal = function(total) {
+// Split-payment "Choose Pay Method" modal — one amount input per active
+// payment method (built-ins Cash/Card/UPI plus any custom extras the admin
+// has added), return/due, Save & Print / Save & eBill. The list of methods
+// is loaded from paymentMethodsCache (see loadPaymentMethods()) rather than
+// hardcoded, so adding a payment method in Settings makes it usable at POS
+// immediately without a code change.
+window.showSplitPaymentModal = async function(total) {
+  if (!paymentMethodsCache.length) {
+    await loadPaymentMethods();
+  }
+  let methods = paymentMethodsCache.filter(m => m.is_active == 1 || m.is_active === true);
+  if (!methods.length) {
+    // Absolute fallback if the API/cache is unavailable for some reason —
+    // POS must still be usable.
+    methods = [{ id: 'cash', method_name: 'Cash', emoji: '💵' }, { id: 'card', method_name: 'Card', emoji: '💳' }, { id: 'upi', method_name: 'UPI', emoji: '📱' }];
+  }
+
   return new Promise((resolve) => {
     const currency = window.globalCurrencySymbol || '₹';
     const grandTotal = parseFloat(total) || 0;
@@ -316,33 +331,28 @@ window.showSplitPaymentModal = function(total) {
     const modal = document.createElement('div');
     modal.style.cssText = 'background:#fff;border-radius:16px;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;box-shadow:0 25px 80px rgba(0,0,0,0.35);padding:24px;';
 
+    const inputsHtml = methods.map((m, i) => `
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px;">Enter ${escapeHtml((m.emoji ? m.emoji + ' ' : '') + m.method_name.toUpperCase())} Amount</label>
+        <input type="number" class="splitPayInput" data-method-idx="${i}" min="0" step="0.01" value="0" style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:1rem;box-sizing:border-box;">
+      </div>`).join('');
+
+    const chipsHtml = methods.map((m, i) => `<div class="splitPayChip" data-chip-idx="${i}" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>`).join('')
+      + `<div id="splitChipDue" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>`;
+
     modal.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
         <h2 style="margin:0;font-size:1.15rem;font-weight:700;color:#111827;">Choose Pay Method (${currency}${grandTotal.toFixed(2)})</h2>
         <button id="splitPayCloseBtn" style="width:34px;height:34px;flex-shrink:0;border:none;border-radius:50%;background:#10b981;color:#fff;font-size:18px;cursor:pointer;display:grid;place-items:center;">&times;</button>
       </div>
 
-      <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px;">Enter CASH Amount</label>
-        <input type="number" id="splitPayCash" min="0" step="0.01" value="0" style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:1rem;box-sizing:border-box;">
-      </div>
-      <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px;">Enter UPI Amount</label>
-        <input type="number" id="splitPayUpi" min="0" step="0.01" value="0" style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:1rem;box-sizing:border-box;">
-      </div>
-      <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px;">Enter CARD Amount</label>
-        <input type="number" id="splitPayCard" min="0" step="0.01" value="0" style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:1rem;box-sizing:border-box;">
-      </div>
+      ${inputsHtml}
 
       <div id="splitPayBalanceText" style="text-align:center;font-weight:700;font-size:1.05rem;margin-bottom:12px;"></div>
       <div id="splitPayConfirmBanner" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:10px;font-weight:600;margin-bottom:16px;"></div>
 
-      <div style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:20px;border:1px solid #e5e7eb;">
-        <div id="splitChipCash" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-        <div id="splitChipCard" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-        <div id="splitChipUpi" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-        <div id="splitChipDue" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+      <div style="display:flex;flex-wrap:wrap;border-radius:10px;overflow:hidden;margin-bottom:20px;border:1px solid #e5e7eb;">
+        ${chipsHtml}
       </div>
 
       <div style="display:flex;gap:10px;">
@@ -354,14 +364,10 @@ window.showSplitPaymentModal = function(total) {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    const cashInput = modal.querySelector('#splitPayCash');
-    const upiInput = modal.querySelector('#splitPayUpi');
-    const cardInput = modal.querySelector('#splitPayCard');
+    const methodInputs = Array.from(modal.querySelectorAll('.splitPayInput'));
     const balanceText = modal.querySelector('#splitPayBalanceText');
     const confirmBanner = modal.querySelector('#splitPayConfirmBanner');
-    const chipCash = modal.querySelector('#splitChipCash');
-    const chipCard = modal.querySelector('#splitChipCard');
-    const chipUpi = modal.querySelector('#splitChipUpi');
+    const methodChips = Array.from(modal.querySelectorAll('.splitPayChip'));
     const chipDue = modal.querySelector('#splitChipDue');
 
     const chipBaseStyle = 'flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
@@ -375,14 +381,18 @@ window.showSplitPaymentModal = function(total) {
     }
 
     function getAmounts() {
-      const cash = Math.max(parseFloat(cashInput.value) || 0, 0);
-      const upi = Math.max(parseFloat(upiInput.value) || 0, 0);
-      const card = Math.max(parseFloat(cardInput.value) || 0, 0);
-      return { cash, upi, card, entered: cash + upi + card };
+      const amounts = {};
+      let entered = 0;
+      methodInputs.forEach((inp, i) => {
+        const amt = Math.max(parseFloat(inp.value) || 0, 0);
+        amounts[methods[i].method_name] = amt;
+        entered += amt;
+      });
+      return { amounts, entered };
     }
 
     function recalc() {
-      const { cash, upi, card, entered } = getAmounts();
+      const { amounts, entered } = getAmounts();
       const returnAmt = Math.max(entered - grandTotal, 0);
       const dueAmt = Math.max(grandTotal - entered, 0);
 
@@ -410,13 +420,13 @@ window.showSplitPaymentModal = function(total) {
         confirmBanner.innerHTML = 'Enter amount to proceed, or mark as Due';
       }
 
-      setChip(chipCash, 'CASH', cash > 0);
-      setChip(chipCard, 'CARD', card > 0);
-      setChip(chipUpi, 'UPI', upi > 0);
+      methodChips.forEach((chip, i) => {
+        setChip(chip, methods[i].method_name.toUpperCase(), amounts[methods[i].method_name] > 0);
+      });
       setChip(chipDue, 'DUE', dueAmt > 0);
     }
 
-    [cashInput, upiInput, cardInput].forEach((inp) => {
+    methodInputs.forEach((inp) => {
       inp.addEventListener('input', recalc);
       inp.addEventListener('focus', () => { if (inp.value === '0') inp.value = ''; });
     });
@@ -425,17 +435,27 @@ window.showSplitPaymentModal = function(total) {
     function finish(action) {
       if (resolved) return;
       resolved = true;
-      const { cash, upi, card, entered } = getAmounts();
+      const { amounts, entered } = getAmounts();
       const returnAmt = Math.max(entered - grandTotal, 0);
       const dueAmt = Math.max(grandTotal - entered, 0);
-      const methods = [];
-      if (cash > 0) methods.push('Cash');
-      if (card > 0) methods.push('Card');
-      if (upi > 0) methods.push('UPI');
-      const paymentMethod = methods.length ? methods.join('+') : 'Due';
+      const usedMethods = methods.map(m => m.method_name).filter(name => amounts[name] > 0);
+      const paymentMethod = usedMethods.length ? usedMethods.join('+') : 'Due';
       const paymentStatus = entered <= 0 ? 'Pending' : (dueAmt > 0 ? 'Partially Paid' : 'Paid');
       overlay.remove();
-      resolve({ action, cash, upi, card, entered, returnAmount: returnAmt, dueAmount: dueAmt, paymentMethod, paymentStatus });
+      resolve({
+        action,
+        amounts,
+        entered,
+        returnAmount: returnAmt,
+        dueAmount: dueAmt,
+        paymentMethod,
+        paymentStatus,
+        // Backward-compat convenience fields for the built-in names, so
+        // existing callers reading .cash/.upi/.card keep working untouched.
+        cash: amounts['Cash'] || 0,
+        upi: amounts['UPI'] || 0,
+        card: amounts['Card'] || 0,
+      });
     }
 
     modal.querySelector('#splitPayCloseBtn').addEventListener('click', () => {
@@ -1371,6 +1391,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Load payments if it's the payments page
       if (pageId === "paymentsPage") {
         loadPayments();
+        loadPaymentMethods();
         // Set up payment filter listeners
         setTimeout(() => {
           const paymentSearch = document.getElementById('paymentSearch');
@@ -1424,8 +1445,26 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => {
           setupReportsAutoReload();
         }, 100);
+        loadPaymentMethods().then(() => {
+          updatePaymentMethodFilterOptions(document.getElementById('filterPaymentMethod'), 'All Methods', 'all');
+        });
+        setTimeout(() => {
+          const reportTypeEl = document.getElementById('reportType');
+          const wrapperEl = document.getElementById('paymentMethodFilterWrapper');
+          if (reportTypeEl && wrapperEl && !reportTypeEl.dataset.paymentFilterListenerAttached) {
+            const syncWrapper = () => { wrapperEl.style.display = (reportTypeEl.value === 'payment') ? '' : 'none'; };
+            reportTypeEl.addEventListener('change', syncWrapper);
+            reportTypeEl.dataset.paymentFilterListenerAttached = 'true';
+            syncWrapper();
+          }
+        }, 100);
       }
-      
+
+      // Load payment methods if it's the payment gateway settings page
+      if (pageId === "gatewayPage") {
+        loadPaymentMethods();
+      }
+
       // Load analytics if it's the analytics page
       if (pageId === "analyticsPage") {
         setTimeout(() => loadAnalytics(), 100);
@@ -8490,7 +8529,14 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append('orderType', isTakeaway ? 'Takeaway' : 'Dine-in');
     formData.append('customerName', isTakeaway ? 'Takeaway' : 'Table Customer');
     formData.append('paymentMethod', payResult.paymentMethod);
-    formData.append('notes', `Cash: ${currency}${payResult.cash.toFixed(2)}, UPI: ${currency}${payResult.upi.toFixed(2)}, Card: ${currency}${payResult.card.toFixed(2)}${payResult.dueAmount > 0 ? `, Due: ${currency}${payResult.dueAmount.toFixed(2)}` : ''}`);
+    // Built from whichever payment methods were actually used (built-in or
+    // custom) instead of a hardcoded Cash/UPI/Card list, so a custom method
+    // like "Wallet" shows up correctly in the KOT/bill notes too.
+    const paidBreakdown = Object.keys(payResult.amounts || {})
+      .filter(name => payResult.amounts[name] > 0)
+      .map(name => `${name}: ${currency}${payResult.amounts[name].toFixed(2)}`)
+      .join(', ');
+    formData.append('notes', `${paidBreakdown}${payResult.dueAmount > 0 ? `${paidBreakdown ? ', ' : ''}Due: ${currency}${payResult.dueAmount.toFixed(2)}` : ''}`);
     formData.append('cartItems', JSON.stringify(cart));
     formData.append('subtotal', subtotal.toFixed(2));
     formData.append('tax', tax.toFixed(2));
@@ -10967,6 +11013,7 @@ function renderPaymentMethods() {
     const emoji = (method.emoji || '💳').trim();
     const displayOrder = method.display_order ?? 0;
     const isActive = method.is_active == 1 || method.is_active === true;
+    const isBuiltin = method.is_builtin == 1 || method.is_builtin === true;
     const qrUrl = method.qr_code_url || '';
     
     return `
@@ -10994,7 +11041,7 @@ function renderPaymentMethods() {
           <button onclick="togglePaymentMethodStatus(${method.id})" style="padding: 0.4rem 0.75rem; border-radius: 8px; border: none; background: ${isActive ? '#fef3c7' : '#dcfce7'}; cursor: pointer; font-weight: 600; color: #92400e; font-size: 0.85rem;">
             ${isActive ? 'Disable' : 'Enable'}
           </button>
-          <button onclick="deletePaymentMethodEntry(${method.id})" style="padding: 0.4rem 0.75rem; border-radius: 8px; border: none; background: #fee2e2; cursor: pointer; font-weight: 600; color: #b91c1c; font-size: 0.85rem;">Delete</button>
+          ${isBuiltin ? '' : `<button onclick="deletePaymentMethodEntry(${method.id})" style="padding: 0.4rem 0.75rem; border-radius: 8px; border: none; background: #fee2e2; cursor: pointer; font-weight: 600; color: #b91c1c; font-size: 0.85rem;">Delete</button>`}
         </div>
       </div>
     </div>
@@ -11002,19 +11049,27 @@ function renderPaymentMethods() {
   }).join('');
 }
 
-// Payment method filter options - using default methods
-function updatePaymentMethodFilterOptions(filterEl = document.getElementById('paymentMethodFilter')) {
+// Payment method filter options — built from this restaurant's actual
+// payment_methods list (built-ins + custom extras) instead of a hardcoded
+// array, so a newly added method shows up here without a code change.
+function updatePaymentMethodFilterOptions(filterEl = document.getElementById('paymentMethodFilter'), allLabel = 'All Methods', allValue = '') {
   if (!filterEl) return;
 
   const previousValue = filterEl.value;
-  filterEl.innerHTML = '<option value="">All Methods</option>';
-  
-  // Default payment methods
-  const defaultMethods = ['Cash', 'Card', 'UPI', 'Online', 'Wallet'];
-  defaultMethods.forEach(method => {
+  filterEl.innerHTML = '';
+  const allOption = document.createElement('option');
+  allOption.value = allValue;
+  allOption.textContent = allLabel;
+  filterEl.appendChild(allOption);
+
+  const methods = paymentMethodsCache.length
+    ? paymentMethodsCache.filter(m => m.is_active == 1 || m.is_active === true)
+    : [{ method_name: 'Cash' }, { method_name: 'Card' }, { method_name: 'UPI' }];
+
+  methods.forEach(method => {
     const option = document.createElement('option');
-    option.value = method;
-    option.textContent = method;
+    option.value = method.method_name;
+    option.textContent = method.method_name;
     filterEl.appendChild(option);
   });
 
@@ -11022,6 +11077,184 @@ function updatePaymentMethodFilterOptions(filterEl = document.getElementById('pa
     filterEl.value = previousValue;
   }
 }
+
+// ─── Payment Methods admin CRUD (modal + list) ──────────────────────────────
+
+const PAYMENT_METHOD_EMOJI_DEFAULT = '💳';
+
+function openPaymentMethodModal(data) {
+  const modal = document.getElementById('paymentMethodModal');
+  const title = document.getElementById('paymentMethodModalTitle');
+  const idInput = document.getElementById('paymentMethodId');
+  const nameInput = document.getElementById('paymentMethodName');
+  const emojiInput = document.getElementById('paymentMethodEmoji');
+  const activeInput = document.getElementById('paymentMethodActive');
+  if (!modal) return;
+
+  if (data && data.id) {
+    title.textContent = 'Edit Payment Method';
+    idInput.value = data.id;
+    nameInput.value = data.method_name || '';
+    emojiInput.value = data.emoji || PAYMENT_METHOD_EMOJI_DEFAULT;
+    activeInput.checked = (data.is_active == 1 || data.is_active === true);
+    // Built-in methods (Cash/Card/UPI) keep their name locked — renaming
+    // them would desync every place that already matches on that exact
+    // string (KOT notes, order filters, PhonePe routing checks upstream).
+    nameInput.disabled = !!(data.is_builtin == 1 || data.is_builtin === true);
+  } else {
+    title.textContent = 'Add Payment Method';
+    idInput.value = '';
+    nameInput.value = '';
+    nameInput.disabled = false;
+    emojiInput.value = '';
+    activeInput.checked = true;
+  }
+
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => { if (!nameInput.disabled) nameInput.focus(); }, 150);
+}
+
+function closePaymentMethodModal() {
+  closeModal('paymentMethodModal');
+}
+
+function selectEmoji(emoji) {
+  const emojiInput = document.getElementById('paymentMethodEmoji');
+  if (emojiInput) emojiInput.value = emoji;
+}
+
+async function savePaymentMethod(event) {
+  event.preventDefault();
+  const id = document.getElementById('paymentMethodId').value;
+  const name = document.getElementById('paymentMethodName').value.trim();
+  const emoji = document.getElementById('paymentMethodEmoji').value.trim();
+  const isActive = document.getElementById('paymentMethodActive').checked ? 1 : 0;
+  const saveBtn = event.target.querySelector('button[type=submit]');
+
+  if (!name) { (window.showNotification || alert)('Please enter a method name.', 'error'); return false; }
+
+  const formData = new FormData();
+  formData.append('action', id ? 'update' : 'create');
+  if (id) formData.append('id', id);
+  formData.append('method_name', name);
+  formData.append('emoji', emoji);
+  formData.append('is_active', isActive);
+
+  const origText = saveBtn ? saveBtn.textContent : '';
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+
+  try {
+    const r = await fetch('../api/save_payment_method.php', { method: 'POST', body: formData });
+    const d = await r.json();
+    const notify = window.showNotification || function(m, t) { alert(m); };
+    if (d.success) {
+      notify(d.message || 'Saved', 'success');
+      closePaymentMethodModal();
+      loadPaymentMethods(true);
+    } else {
+      notify(d.message || 'Failed to save payment method', 'error');
+    }
+  } catch (e) {
+    (window.showNotification || alert)('Network error. Please try again.', 'error');
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = origText || 'Save Method'; }
+  }
+  return false;
+}
+
+function editPaymentMethodEntry(id) {
+  const method = getCachedPaymentMethod(id);
+  if (!method) { (window.showNotification || alert)('Payment method not found.', 'error'); return; }
+  openPaymentMethodModal(method);
+}
+
+async function togglePaymentMethodStatus(id) {
+  const formData = new FormData();
+  formData.append('action', 'toggle');
+  formData.append('id', id);
+  try {
+    const r = await fetch('../api/save_payment_method.php', { method: 'POST', body: formData });
+    const d = await r.json();
+    const notify = window.showNotification || function(m, t) { alert(m); };
+    if (d.success) { notify(d.message, 'success'); loadPaymentMethods(true); }
+    else notify(d.message || 'Failed to update status', 'error');
+  } catch (e) {
+    (window.showNotification || alert)('Network error. Please try again.', 'error');
+  }
+}
+
+async function deletePaymentMethodEntry(id) {
+  const method = getCachedPaymentMethod(id);
+  if (method && (method.is_builtin == 1 || method.is_builtin === true)) {
+    (window.showNotification || alert)('Built-in payment methods can be disabled but not deleted.', 'error');
+    return;
+  }
+  if (window.Swal) {
+    const result = await Swal.fire({ title: 'Delete Payment Method?', text: 'This cannot be undone.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', cancelButtonText: 'Cancel', confirmButtonColor: '#e74c3c' });
+    if (!result.isConfirmed) return;
+  } else if (!confirm('Delete this payment method? This cannot be undone.')) {
+    return;
+  }
+  const formData = new FormData();
+  formData.append('action', 'delete');
+  formData.append('id', id);
+  try {
+    const r = await fetch('../api/save_payment_method.php', { method: 'POST', body: formData });
+    const d = await r.json();
+    const notify = window.showNotification || function(m, t) { alert(m); };
+    if (d.success) { notify(d.message, 'success'); loadPaymentMethods(true); }
+    else notify(d.message || 'Failed to delete', 'error');
+  } catch (e) {
+    (window.showNotification || alert)('Network error. Please try again.', 'error');
+  }
+}
+
+function uploadPaymentMethodQR(id) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/png,image/jpeg,image/webp,image/gif';
+  input.style.display = 'none';
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      (window.showNotification || alert)('Image must be under 3MB.', 'error');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('action', 'uploadQR');
+    formData.append('id', id);
+    formData.append('qr_image', file);
+    try {
+      const r = await fetch('../api/save_payment_method.php', { method: 'POST', body: formData });
+      const d = await r.json();
+      const notify = window.showNotification || function(m, t) { alert(m); };
+      if (d.success) { notify(d.message, 'success'); loadPaymentMethods(true); }
+      else notify(d.message || 'Upload failed', 'error');
+    } catch (e) {
+      (window.showNotification || alert)('Network error. Please try again.', 'error');
+    } finally {
+      input.remove();
+    }
+  });
+  document.body.appendChild(input);
+  input.click();
+}
+
+// Outside-click / submit wiring for the Payment Method modal
+document.addEventListener('DOMContentLoaded', function() {
+  const paymentMethodModal = document.getElementById('paymentMethodModal');
+  if (paymentMethodModal) {
+    paymentMethodModal.addEventListener('click', function(e) {
+      if (e.target === paymentMethodModal) closePaymentMethodModal();
+    });
+  }
+  const paymentMethodForm = document.getElementById('paymentMethodForm');
+  if (paymentMethodForm) {
+    paymentMethodForm.addEventListener('submit', savePaymentMethod);
+  }
+});
 
 // Load Payments
 async function loadPayments() {
@@ -11753,81 +11986,11 @@ function setupSettingsForms() {
     }
   };
   
-  // System Settings Form
-  const systemSettingsForm = document.getElementById('systemSettingsForm');
-  if (systemSettingsForm && !systemSettingsForm.dataset.handlerAttached) {
-    systemSettingsForm.dataset.handlerAttached = 'true';
-    systemSettingsForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      // Get currency symbol from dropdown or custom input
-      const currencySymbolSelect = document.getElementById('currencySymbolSelect');
-      const currencySymbolInput = document.getElementById('currencySymbol');
-      let currencySymbol = '';
-      
-      if (currencySymbolSelect && currencySymbolSelect.value === 'Custom') {
-        currencySymbol = currencySymbolInput?.value.trim() || '₹';
-      } else {
-        currencySymbol = currencySymbolSelect?.value || currencySymbolInput?.value.trim() || '₹';
-      }
-      const timezone = document.getElementById('timezone')?.value.trim();
-      const language = document.getElementById('language')?.value || 'en';
-      const autoSync = document.getElementById('autoSync')?.checked;
-      const notifications = document.getElementById('notifications')?.checked;
-      
-      // Save to localStorage
-      if (timezone) localStorage.setItem('system_timezone', timezone);
-      if (autoSync !== undefined) localStorage.setItem('system_autoSync', autoSync ? 'true' : 'false');
-      if (notifications !== undefined) localStorage.setItem('system_notifications', notifications ? 'true' : 'false');
-      
-      // Disable submit button
-      const submitBtn = systemSettingsForm.querySelector('button[type="submit"]');
-      const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="material-symbols-rounded">hourglass_empty</span> Saving...';
-      }
-      
-      try {
-        // Save to database
-        const response = await fetch('../admin/auth.php', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: `action=updateSystemSettings&currency_symbol=${encodeURIComponent(currencySymbol || '₹')}&timezone=${encodeURIComponent(timezone || 'Asia/Kolkata')}&language=${encodeURIComponent(language || 'en')}`
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          showNotification('System settings saved successfully', 'success');
-          // Update currency symbol display if it exists
-          const currencyDisplay = document.getElementById('currencySymbolDisplay');
-          if (currencyDisplay && currencySymbol) {
-            currencyDisplay.textContent = currencySymbol;
-            // Update global currency symbol
-            updateCurrencySymbol(currencySymbol);
-          }
-          // Reload page to apply timezone changes
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        } else {
-          showNotification(result.message || 'Error saving system settings', 'error');
-        }
-      } catch (error) {
-        console.error('Error saving system settings:', error);
-        showNotification('Error saving system settings', 'error');
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = originalBtnText;
-        }
-      }
-    });
-  }
-  
+  // System Settings Form is handled by the inline submit listener in
+  // dashboard.php (includes country/show_install_app, which this duplicate
+  // legacy handler omitted — the two competing requests raced and this one's
+  // country-less request kept overwriting the country back to the default).
+
   // Change Password Form Handler
   const changePasswordForm = document.getElementById('changePasswordForm');
   if (changePasswordForm && !changePasswordForm.dataset.handlerAttached) {

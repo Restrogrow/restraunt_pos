@@ -93,7 +93,13 @@ function sendSMTPEmail($to, $subject, $message, $headers = '') {
             error_log($errorMsg);
             return ['success' => false, 'error' => $errorMsg];
         }
-        
+
+        // Bound every subsequent read/write on this socket. Without this, a
+        // server that accepts the TCP connection but then stalls (firewall
+        // black-holing the port, mail server hung) leaves fgets() blocking
+        // indefinitely with no way for the caller's error handling to run.
+        stream_set_timeout($smtp, 15);
+
         // Read server greeting
         $response = fgets($smtp, 515);
         if (substr($response, 0, 3) != '220') {

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../config/env_loader.php';
 require_once __DIR__ . '/../config/order_state_machine.php';
+require_once __DIR__ . '/../config/phonepe_verify.php';
 startSecureSession();
 
 if (file_exists(__DIR__ . '/../db_connection.php')) {
@@ -124,6 +125,7 @@ try {
         exit();
     }
 
+    $justConfirmedOrderId = null;
     $conn->beginTransaction();
     try {
         $updatePay = $conn->prepare("UPDATE payments SET payment_status = ? WHERE id = ?");
@@ -134,12 +136,26 @@ try {
             $result = validateAndUpdatePaymentStatus($conn, (int)$payment['order_id'], 'Paid');
             if (!$result['success']) {
                 error_log('PhonePe v2 callback: payment_status update skipped - ' . $result['message']);
+            } elseif (!empty($result['transitioned'])) {
+                // This webhook call is the one that actually moved the order
+                // into Paid — fire the kitchen ticket / push / emails exactly
+                // once, now that payment is genuinely confirmed.
+                $justConfirmedOrderId = (int)$payment['order_id'];
             }
         }
         $conn->commit();
     } catch (Exception $e) {
         $conn->rollBack();
         throw $e;
+    }
+
+    if ($justConfirmedOrderId !== null) {
+        require_once __DIR__ . '/../config/order_confirmation.php';
+        try {
+            fireOrderConfirmedActions($conn, $justConfirmedOrderId);
+        } catch (Exception $e) {
+            error_log('Order confirmation actions error (webhook): ' . $e->getMessage());
+        }
     }
 
     error_log('PhonePe v2 callback processed: txn=' . $merchant_transaction_id . ' state=' . $state . ' -> ' . $payment_status);
@@ -151,145 +167,4 @@ try {
     error_log('PhonePe v2 callback error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred processing the payment callback']);
-}
-
-/**
- * Independently confirm a PhonePe order's real status by calling PhonePe's
- * order-status API server-to-server with our own OAuth credentials, instead
- * of trusting the (unauthenticated) webhook body. Mirrors the config/token
- * logic in phonepe_order_payment.php. Returns the verified state string
- * (e.g. 'COMPLETED', 'FAILED', 'PENDING') or null if it couldn't be verified.
- */
-function phonepeVerifyOrderState($conn, $restaurantId, $merchantTransactionId) {
-    try {
-        $config = phonepeCallbackConfig($restaurantId);
-        if (empty($config['client_id']) || empty($config['client_secret'])) {
-            error_log('PhonePe v2 callback: no PhonePe credentials configured for restaurant ' . $restaurantId);
-            return null;
-        }
-
-        $accessToken = phonepeCallbackAccessToken($config);
-        if (!$accessToken) {
-            return null;
-        }
-
-        $statusUrl = $config['api_url'] . '/checkout/v2/order/' . urlencode($merchantTransactionId) . '/status';
-        $ch = curl_init($statusUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: O-Bearer ' . $accessToken,
-        ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($curlError || $httpCode !== 200 || !$response) {
-            error_log('PhonePe v2 callback: status verification call failed (http=' . $httpCode . ', curl_error=' . $curlError . ')');
-            return null;
-        }
-
-        $data = json_decode($response, true);
-        $state = $data['state'] ?? $data['orderStatus'] ?? null;
-        if (!$state) {
-            error_log('PhonePe v2 callback: status verification response had no state field');
-            return null;
-        }
-
-        return $state;
-    } catch (Exception $e) {
-        error_log('PhonePe v2 callback: status verification exception - ' . $e->getMessage());
-        return null;
-    }
-}
-
-function phonepeCallbackConfig($restaurantId) {
-    $isLocalhost = (strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false ||
-                    strpos($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1') !== false);
-
-    if ($isLocalhost) {
-        $clientId = env('PHONEPE_SANDBOX_CLIENT_ID', env('PHONEPE_SANDBOX_MERCHANT_ID', ''));
-        $clientSecret = env('PHONEPE_SANDBOX_CLIENT_SECRET', env('PHONEPE_SANDBOX_SALT_KEY', ''));
-        $clientVersion = env('PHONEPE_SANDBOX_CLIENT_VERSION', env('PHONEPE_SANDBOX_SALT_INDEX', '1'));
-        $isSandbox = true;
-    } else {
-        $dbMerchantId = null;
-        $dbSaltKey = null;
-        $dbEnvironment = null;
-
-        if ($restaurantId) {
-            try {
-                $conn = getConnection();
-                $stmt = $conn->prepare("SELECT phonepe_merchant_id, phonepe_salt_key, phonepe_environment, payment_gateway_mode FROM users WHERE restaurant_id = ? LIMIT 1");
-                $stmt->execute([$restaurantId]);
-                $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                $gwMode = $row['payment_gateway_mode'] ?? 'own';
-                if ($gwMode === 'own' && $row && !empty($row['phonepe_merchant_id']) && !empty($row['phonepe_salt_key'])) {
-                    $dbMerchantId = $row['phonepe_merchant_id'];
-                    $dbSaltKey = $row['phonepe_salt_key'];
-                    $dbEnvironment = $row['phonepe_environment'] ?? 'SANDBOX';
-                }
-            } catch (Exception $e) {
-            }
-        }
-
-        $environment = $dbEnvironment ?: env('PHONEPE_ENVIRONMENT', '');
-        if (empty($environment)) {
-            $environment = 'PRODUCTION';
-        }
-        $clientId = $dbMerchantId ?: env('PHONEPE_CLIENT_ID', '');
-        $clientSecret = $dbSaltKey ?: env('PHONEPE_CLIENT_SECRET', '');
-        $clientVersion = env('PHONEPE_CLIENT_VERSION', '1');
-        $isSandbox = strtoupper($environment) !== 'PRODUCTION';
-    }
-
-    if ($isSandbox) {
-        $apiBase = env('PHONEPE_BASE_URL_TEST', 'https://api-preprod.phonepe.com/apis/pg-sandbox');
-        $authUrl = $apiBase . '/v1/oauth/token';
-    } else {
-        $apiBase = 'https://api.phonepe.com/apis/pg';
-        $authUrl = 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
-    }
-
-    return [
-        'client_id' => $clientId,
-        'client_secret' => $clientSecret,
-        'client_version' => $clientVersion,
-        'api_url' => $apiBase,
-        'auth_url' => $authUrl,
-    ];
-}
-
-function phonepeCallbackAccessToken($config) {
-    $ch = curl_init($config['auth_url']);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'client_id' => $config['client_id'],
-        'client_version' => $config['client_version'],
-        'client_secret' => $config['client_secret'],
-        'grant_type' => 'client_credentials',
-    ]));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    if ($curlError) {
-        error_log('PhonePe v2 callback: auth connection error - ' . $curlError);
-        return null;
-    }
-
-    $data = json_decode($response, true);
-    if ($httpCode !== 200 || !isset($data['access_token'])) {
-        error_log('PhonePe v2 callback: auth error - ' . ($data['message'] ?? ('http ' . $httpCode)));
-        return null;
-    }
-
-    return $data['access_token'];
 }

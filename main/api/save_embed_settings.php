@@ -38,11 +38,33 @@ try {
     require_once __DIR__ . '/../db_connection.php';
     $conn = getConnection();
 
-    $embed_enabled = !empty($input['embed_enabled']) ? 1 : 0;
-    $custom_domain = trim($input['custom_domain'] ?? '');
+    // Only touch the fields actually present in this request. The two
+    // callers on the dashboard (the enable/disable toggle, and the "Save
+    // Custom Domain" button) each only care about one field — an
+    // unconditional two-column UPDATE meant that flipping the toggle alone
+    // (with no custom_domain in that payload) silently blanked out an
+    // already-saved custom domain, which is why it could "disappear" days
+    // after being set with no obvious trigger. Each field is now updated
+    // independently, so acting on one never clobbers the other.
+    $setClauses = [];
+    $params = [];
 
-    $stmt = $conn->prepare("UPDATE users SET embed_enabled = ?, custom_domain = ? WHERE restaurant_id = ?");
-    $stmt->execute([$embed_enabled, $custom_domain, $restaurant_id]);
+    if (array_key_exists('embed_enabled', $input)) {
+        $setClauses[] = 'embed_enabled = ?';
+        $params[] = !empty($input['embed_enabled']) ? 1 : 0;
+    }
+    if (array_key_exists('custom_domain', $input)) {
+        $setClauses[] = 'custom_domain = ?';
+        $params[] = trim($input['custom_domain'] ?? '');
+    }
+
+    if (empty($setClauses)) {
+        throw new Exception('Nothing to save');
+    }
+
+    $params[] = $restaurant_id;
+    $stmt = $conn->prepare("UPDATE users SET " . implode(', ', $setClauses) . " WHERE restaurant_id = ?");
+    $stmt->execute($params);
 
     echo json_encode(['success' => true, 'message' => 'Embed settings saved']);
 } catch (Exception $e) {

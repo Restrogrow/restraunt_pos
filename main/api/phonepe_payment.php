@@ -217,10 +217,11 @@ try {
     }
     
 } catch (Exception $e) {
+    error_log('PhonePe subscription payment error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error initiating payment: ' . $e->getMessage()
+        'message' => 'Error initiating payment. Please try again or contact support.'
     ]);
 }
 ?>

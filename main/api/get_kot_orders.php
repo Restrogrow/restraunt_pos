@@ -45,8 +45,9 @@ try {
             LEFT JOIN tables t ON o.table_id = t.id
             LEFT JOIN areas a ON t.area_id = a.id
             LEFT JOIN order_items oi ON o.id = oi.order_id
-            WHERE o.restaurant_id = ? 
+            WHERE o.restaurant_id = ?
             AND o.order_status IN ('Pending', 'Preparing', 'Ready')
+            AND (o.payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR o.payment_status = 'Paid')
             GROUP BY o.id
             ORDER BY o.created_at DESC";
     

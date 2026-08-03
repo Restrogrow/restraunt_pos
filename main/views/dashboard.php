@@ -251,6 +251,7 @@ try {
 <!-- Coding By CodingNepal - youtube.com/@codingnepal -->
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
   <?php if ($googleMapsApiKey): ?>
   <!-- Google Maps Places Autocomplete (Restaurant address setup) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo urlencode($googleMapsApiKey); ?>&libraries=places&loading=async" async defer></script>
@@ -283,7 +284,6 @@ try {
   });
 })();
 </script>
-  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
@@ -1039,6 +1039,13 @@ try {
           </a>
           <span class="nav-tooltip">Analytics</span>
         </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="marketingPage">
+            <span class="nav-icon material-symbols-rounded">campaign</span>
+            <span class="nav-label">Marketing</span>
+          </a>
+          <span class="nav-tooltip">Marketing</span>
+        </li>
         <li class="nav-item has-submenu">
           <a href="#" class="nav-link submenu-toggle">
             <span class="nav-icon material-symbols-rounded">local_offer</span>
@@ -1170,15 +1177,6 @@ try {
             </div>
             <button class="btn-refresh-dashboard" onclick="loadDashboardStats()" title="Refresh">
               <span class="material-symbols-rounded">refresh</span>
-            </button>
-            <!-- TEMPORARY — remove before production. Diagnostic button to test
-                 push notification delivery end-to-end from the browser. -->
-            <button onclick="testPushNotification(this)" title="Test Notification"
-                    style="display:flex;align-items:center;gap:6px;background:white;border:2px solid #e0e0e0;border-radius:12px;padding:0.6rem 14px;cursor:pointer;transition:all 0.2s;font-size:.8rem;font-weight:700;color:#374151;white-space:nowrap;"
-                    onmouseover="this.style.borderColor='#667eea';this.style.background='#f8f9ff';"
-                    onmouseout="this.style.borderColor='#e0e0e0';this.style.background='white';">
-              <span class="material-symbols-rounded" style="font-size:18px;">notifications_active</span>
-              Test Notification
             </button>
           </div>
         </div>
@@ -2241,6 +2239,21 @@ function toggleGatewayMode() {
           <p>Enable Payment Gateway from Superadmin to configure PhonePe.</p>
         </div>
         <?php endif; ?>
+
+        <div class="card" style="margin-top:2rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+            <div>
+              <h2 style="margin:0;">Payment Methods</h2>
+              <p style="margin:4px 0 0;color:#6b7280;font-size:0.9rem;">Cash, Card and UPI are built in. Add extra methods your restaurant accepts at the counter (Wallet, Bank Transfer, etc.) — they'll show up at POS and in your reports automatically.</p>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="openPaymentMethodModal()" style="white-space:nowrap;">
+              <span class="material-symbols-rounded">add</span> Add Method
+            </button>
+          </div>
+          <div id="paymentMethodsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+            <div style="text-align:center;padding:2rem;color:#6b7280;grid-column:1/-1;">Loading payment methods...</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2282,14 +2295,13 @@ function toggleGatewayMode() {
               <option value="staff">Staff Performance Report</option>
             </select>
           </div>
-          <div id="paymentMethodFilter" style="flex: 1; min-width: 200px; display: none;">
+          <div id="paymentMethodFilterWrapper" style="flex: 1; min-width: 200px; display: none;">
             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Payment Method</label>
             <select id="filterPaymentMethod" style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-gray); border-radius: 8px; font-size: 1rem;">
               <option value="all">All Methods</option>
               <option value="Cash">Cash</option>
               <option value="Card">Card</option>
               <option value="UPI">UPI</option>
-              <option value="Online">Online</option>
             </select>
           </div>
           <div style="display: flex; align-items: flex-end; gap: 0.5rem;">
@@ -2451,6 +2463,23 @@ function toggleGatewayMode() {
           <span class="material-symbols-rounded" style="font-size:64px;color:#ccc;margin-bottom:16px;display:block;">analytics</span>
           <h3 style="margin:0 0 8px;color:#1f2937;font-size:1.3rem;">Loading Analytics...</h3>
           <p style="color:#9ca3af;margin:0;font-size:0.95rem;">Fetching your data.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Marketing Page -->
+    <div id="marketingPage" class="page">
+      <div class="page-header">
+        <div>
+          <h1>Marketing</h1>
+          <p>Promote your restaurant and reach more customers</p>
+        </div>
+      </div>
+      <div class="page-content">
+        <div style="text-align:center;padding:80px 20px;">
+          <span class="material-symbols-rounded" style="font-size:64px;color:#ccc;margin-bottom:16px;display:block;">campaign</span>
+          <h3 style="margin:0 0 8px;color:#1f2937;font-size:1.3rem;">Coming Soon</h3>
+          <p style="color:#9ca3af;margin:0;font-size:0.95rem;">Marketing tools are on the way. Stay tuned!</p>
         </div>
       </div>
     </div>
@@ -5758,7 +5787,16 @@ function loadEmbedSettings() {
   fetch("../api/get_embed_settings.php")
     .then(function(r) { return r.json(); })
     .then(function(res) {
-      if (!res.success) return;
+      if (!res.success) {
+        // Previously silent — left embedSettings as null with no visible
+        // sign anything was wrong, so the toggle switch still looked
+        // interactive. Flipping it while embedSettings was null used to
+        // wipe out the saved custom domain (see toggleEmbedFeature/
+        // saveCustomDomain — now fixed to never do that regardless), but
+        // this is still worth surfacing so a failed load isn't invisible.
+        showNotification('error', res.message || 'Could not load custom domain settings. Please refresh and try again.');
+        return;
+      }
       embedSettings = res.data;
       var enabled = res.data.embed_enabled;
       document.getElementById('embedToggle').checked = enabled;
@@ -5793,21 +5831,29 @@ function loadEmbedSettings() {
         preview.src = '../embed/embed.php?restaurant_id=' + encodeURIComponent(res.data.restaurant_id);
       }
     })
-    .catch(function() {});
+    .catch(function() {
+      showNotification('error', 'Could not load custom domain settings. Please check your connection and refresh.');
+    });
 }
 
 function toggleEmbedFeature(enabled) {
   document.getElementById('embedToggleLabel').textContent = enabled ? 'Enabled' : 'Disabled';
   document.getElementById('embedSettingsContent').style.display = enabled ? 'block' : 'none';
   document.getElementById('embedPreviewSection').style.display = enabled ? 'block' : 'none';
+  // Only send embed_enabled — never re-send custom_domain here. This used
+  // to resend embedSettings.custom_domain "for safety", but if that cached
+  // value was ever null/stale (e.g. the initial GET failed), it silently
+  // blanked out an already-saved custom domain. The API now updates each
+  // field independently, so this only ever touches embed_enabled.
   fetch("../api/save_embed_settings.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ embed_enabled: enabled, custom_domain: embedSettings ? embedSettings.custom_domain : '' })
+    body: JSON.stringify({ embed_enabled: enabled })
   })
     .then(function(r) { return r.json(); })
     .then(function(res) {
       if (res.success) {
+        if (embedSettings) embedSettings.embed_enabled = enabled;
         showNotification('success', enabled ? 'Custom domain / embed enabled' : 'Custom domain / embed disabled');
       } else {
         showNotification('error', res.message || 'Failed to save');
@@ -5820,15 +5866,17 @@ function toggleEmbedFeature(enabled) {
 
 function saveCustomDomain() {
   var domain = document.getElementById('customDomainInput').value.trim();
+  // Only send custom_domain — never re-send embed_enabled here, for the
+  // same reason as toggleEmbedFeature() above.
   fetch("../api/save_embed_settings.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ embed_enabled: embedSettings ? embedSettings.embed_enabled : false, custom_domain: domain })
+    body: JSON.stringify({ custom_domain: domain })
   })
     .then(function(r) { return r.json(); })
     .then(function(res) {
       if (res.success) {
-        embedSettings.custom_domain = domain;
+        if (embedSettings) embedSettings.custom_domain = domain;
         showNotification('success', 'Custom domain saved');
         loadEmbedSettings();
       } else {
@@ -5900,7 +5948,7 @@ document.getElementById('systemSettingsForm').addEventListener('submit', async f
   formData.append('notifications', document.getElementById('notifications').checked ? 1 : 0);
 
   try {
-    var res = await fetch('../../admin/auth.php', { method: 'POST', body: formData });
+    var res = await fetch('../admin/auth.php', { method: 'POST', body: formData });
     var data = await res.json();
     if (data.success) {
       showNotification('success', data.message);

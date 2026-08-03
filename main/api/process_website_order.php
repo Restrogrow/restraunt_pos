@@ -474,12 +474,17 @@ $conn->beginTransaction();
     }
 
     // Deduplication check: if an identical order from the same customer
-    // exists within the last 2 minutes, return it instead of creating a duplicate.
-    // This prevents email failures and timeouts from causing duplicate paid orders.
+    // exists within the last 10 minutes, return it instead of creating a
+    // duplicate. This prevents network failures/timeouts around order
+    // placement or payment initiation from causing duplicate orders when the
+    // customer retries. 10 minutes (rather than the original 2) covers a
+    // customer who checks their bank app before retrying, at the cost of a
+    // rare false-positive if they intentionally reorder the exact same cart
+    // total within that window — acceptable trade-off for launch.
     $dedupStmt = $conn->prepare(
-        "SELECT id, order_number FROM orders 
-         WHERE restaurant_id = ? AND customer_phone = ? AND total = ? 
-         AND created_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE) 
+        "SELECT id, order_number FROM orders
+         WHERE restaurant_id = ? AND customer_phone = ? AND total = ?
+         AND created_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
          ORDER BY id DESC LIMIT 1"
     );
     $dedupStmt->execute([$restaurant_id, $customer_phone, $grand_total]);
@@ -628,9 +633,17 @@ $conn->beginTransaction();
             // Payments table might not exist, skip
         }
     }
-    
-    // Create KOT for Dine-in orders so table map shows as occupied
-    if ($order_type === 'Dine-in' && !empty($table_id)) {
+
+    // Determine payment gateway. Computed here (before KOT/notifications)
+    // because PhonePe orders must NOT alert the kitchen/staff/customer yet —
+    // nobody has actually paid until phonepe_order_callback.php or the
+    // client status poll verifies the payment and calls
+    // fireOrderConfirmedActions() itself.
+    $usePhonePe = ($payment_method === 'UPI / NetBanking');
+
+    // Create KOT for Dine-in orders so table map shows as occupied.
+    // Skipped here for PhonePe orders — fired later once payment is verified.
+    if (!$usePhonePe && $order_type === 'Dine-in' && !empty($table_id)) {
         $kotNumber = null;
         $maxAttempts = 100;
         $attempt = 0;
@@ -722,45 +735,17 @@ $conn->beginTransaction();
     // Commit transaction
     $conn->commit();
 
-    // Fetch WhatsApp & email settings before push notification (needed for currency symbol)
-    $waStmt = $conn->prepare("SELECT whatsapp_orders, phone, email, currency_symbol FROM users WHERE restaurant_id = ? LIMIT 1");
+    // Fetch WhatsApp settings needed for the response payload below
+    $waStmt = $conn->prepare("SELECT whatsapp_orders, phone FROM users WHERE restaurant_id = ? LIMIT 1");
     $waStmt->execute([$restaurant_id]);
     $waSettings = $waStmt->fetch(PDO::FETCH_ASSOC);
-    $currencySymbol = $waSettings ? trim($waSettings['currency_symbol'] ?? '₹') : '₹';
-
-    // Send push notification to admin about new order
-    try {
-        require_once __DIR__ . '/../config/push_notification.php';
-        $orderNum = $order_number ?? '';
-        $restaurantName = $waSettings['restaurant_name'] ?? 'Restaurant';
-        sendPushNotification(
-            $conn,
-            $restaurant_id,
-            '📦 New Order!',
-            'Order #' . $orderNum . ' received - ' . $currencySymbol . number_format($grand_total, 2),
-            '../views/orders.php',
-            $order_id
-        );
-    } catch (Exception $e) {
-        // Don't let push notification failure break the order
-        error_log('Push notification error: ' . $e->getMessage());
-    }
-
     $whatsappEnabled = $waSettings ? (int)$waSettings['whatsapp_orders'] : 0;
     $whatsappPhone = $waSettings ? (string)($waSettings['phone'] ?? '') : '';
-    $restaurantEmail = $waSettings ? trim($waSettings['email'] ?? '') : '';
 
-    // Determine payment gateway
-    $usePhonePe = false;
-    if ($payment_method === 'UPI / NetBanking') {
-        $gwStmt = $conn->prepare("SELECT payment_gateway_mode FROM users WHERE restaurant_id = ? LIMIT 1");
-        $gwStmt->execute([$restaurant_id]);
-        $gwRow = $gwStmt->fetch(PDO::FETCH_ASSOC);
-        $gwMode = $gwRow['payment_gateway_mode'] ?? 'own';
-        // PhonePe is always used; platform mode uses env credentials
-        $usePhonePe = true;
-    }
-
+    // Send the response to the browser NOW, before any slow post-commit work
+    // (push notifications, SMTP email) — the order is already safely saved,
+    // so the customer's "Placing order..." button shouldn't sit frozen
+    // waiting on a mail server that might be slow or unreachable.
     ob_end_clean();
     echo json_encode([
         'success' => true,
@@ -773,72 +758,28 @@ $conn->beginTransaction();
         'whatsapp_phone' => $whatsappPhone,
         'message' => $usePhonePe ? 'Redirecting to payment...' : 'Order placed successfully'
     ], JSON_UNESCAPED_UNICODE);
-    
-    // Send email notifications after response
-    if (file_exists(__DIR__ . '/../config/email_config.php')) {
-        try {
-            require_once __DIR__ . '/../config/email_config.php';
-    $itemsHtml = '';
-    foreach ($items as $item) {
-        $itemName = htmlspecialchars($item['name'] ?? '', ENT_QUOTES, 'UTF-8');
-        $itemQty = (int)($item['quantity'] ?? 1);
-        $itemPrice = (float)($item['price'] ?? 0);
-        $itemTotal = $itemPrice * $itemQty;
-        $itemsHtml .= '<tr><td style="padding:8px;border-bottom:1px solid #ddd;">' . $itemName . '</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:center;">' . $itemQty . '</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;">' . $currencySymbol . number_format($itemPrice, 2) . '</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;">' . $currencySymbol . number_format($itemTotal, 2) . '</td></tr>';
+
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        if (session_id()) { session_write_close(); }
+        if (function_exists('flush')) { @flush(); }
     }
-    $safeOrderNumber = htmlspecialchars($order_number, ENT_QUOTES, 'UTF-8');
-    $safeOrderType = htmlspecialchars($order_type, ENT_QUOTES, 'UTF-8');
-    $safeCustomerName = htmlspecialchars($customer_name, ENT_QUOTES, 'UTF-8');
-    $safeCustomerPhone = htmlspecialchars($customer_phone, ENT_QUOTES, 'UTF-8');
-    $safeCustomerAddress = htmlspecialchars($customer_address, ENT_QUOTES, 'UTF-8');
-    $safeNotes = htmlspecialchars($notes, ENT_QUOTES, 'UTF-8');
-    $orderDetailsHtml = '
-    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;">
-        <div style="background:#2c3e50;color:#fff;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
-            <h1 style="margin:0;font-size:20px;">Order Confirmation</h1>
-            <p style="margin:5px 0 0;opacity:0.9;">' . $safeOrderNumber . '</p>
-        </div>
-        <div style="background:#fff;padding:20px;border:1px solid #ddd;border-top:none;">
-            <p>Dear ' . $safeCustomerName . ',</p>
-            <p>Thank you for your order! Here are the details:</p>
-            <table style="width:100%;border-collapse:collapse;margin:15px 0;">
-                <tr><td style="padding:6px 8px;font-weight:bold;width:120px;">Order Type:</td><td style="padding:6px 8px;">' . $safeOrderType . '</td></tr>
-                <tr><td style="padding:6px 8px;font-weight:bold;">Order No:</td><td style="padding:6px 8px;">' . $safeOrderNumber . '</td></tr>
-                <tr><td style="padding:6px 8px;font-weight:bold;">Name:</td><td style="padding:6px 8px;">' . $safeCustomerName . '</td></tr>
-                <tr><td style="padding:6px 8px;font-weight:bold;">Phone:</td><td style="padding:6px 8px;">' . $safeCustomerPhone . '</td></tr>' .
-                (!empty($customer_address) ? '<tr><td style="padding:6px 8px;font-weight:bold;">Address:</td><td style="padding:6px 8px;">' . $safeCustomerAddress . '</td></tr>' : '') .
-                (!empty($notes) ? '<tr><td style="padding:6px 8px;font-weight:bold;">Notes:</td><td style="padding:6px 8px;">' . $safeNotes . '</td></tr>' : '') . '
-            </table>
-            <h3 style="margin:15px 0 10px;">Order Items</h3>
-            <table style="width:100%;border-collapse:collapse;">
-                <thead><tr style="background:#f8f9fa;"><th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;">Item</th><th style="padding:8px;text-align:center;border-bottom:2px solid #dee2e6;">Qty</th><th style="padding:8px;text-align:right;border-bottom:2px solid #dee2e6;">Price</th><th style="padding:8px;text-align:right;border-bottom:2px solid #dee2e6;">Total</th></tr></thead>
-                <tbody>' . $itemsHtml . '</tbody>
-                <tfoot>
-                    <tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">Subtotal:</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format($subtotal, 2) . '</td></tr>' .
-                    ($discount_amount > 0 ? '<tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;color:#e74c3c;">Discount:</td><td style="padding:8px;text-align:right;color:#e74c3c;">-' . $currencySymbol . number_format($discount_amount, 2) . '</td></tr>' : '') .
-                    ($packaging_charge > 0 ? '<tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">Packaging Charge:</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format((float)$packaging_charge, 2) . '</td></tr>' : '') .
-                    ($gstEnabled ? '<tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">' . htmlspecialchars($taxName) . ' (' . rtrim(rtrim(number_format($taxPercent, 2), '0'), '.') . '%):</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format($tax, 2) . '</td></tr>' : '') .
-                    ($deliveryCharge > 0 ? '<tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;">Delivery Fee:</td><td style="padding:8px;text-align:right;">' . $currencySymbol . number_format($deliveryCharge, 2) . '</td></tr>' : '') . '
-                    <tr><td colspan="3" style="padding:8px;text-align:right;font-weight:bold;font-size:16px;">Total:</td><td style="padding:8px;text-align:right;font-weight:bold;font-size:16px;">' . $currencySymbol . number_format($grand_total, 2) . '</td></tr>
-                </tfoot>
-            </table>
-            <p style="margin-top:20px;color:#666;font-size:13px;">If you have any questions, please contact the restaurant.</p>
-        </div>
-        <div style="background:#f8f9fa;padding:15px;text-align:center;border-radius:0 0 8px 8px;border:1px solid #ddd;border-top:none;color:#999;font-size:12px;">
-            RestroGrow POS — Restaurant Management System
-        </div>
-    </div>';
-            if (!empty($customer_email)) {
-                sendEmail($customer_email, 'Order Confirmed - ' . $safeOrderNumber, $orderDetailsHtml);
-            }
-            if (!empty($restaurantEmail)) {
-                sendEmail($restaurantEmail, 'New Order Received - ' . $safeOrderNumber, '<h2 style="color:#e74c3c;">New Order Alert</h2>' . $orderDetailsHtml);
-            }
-        } catch (Exception $emailErr) {
-            error_log("Email notification error: " . $emailErr->getMessage());
+
+    // Payment methods that are confirmed at order time (Cash, Business QR
+    // proof) get the kitchen ticket + push notification + confirmation
+    // emails right away. PhonePe orders wait until payment is independently
+    // verified — fireOrderConfirmedActions() is called from
+    // phonepe_order_callback.php / phonepe_order_payment.php instead.
+    if (!$usePhonePe) {
+        require_once __DIR__ . '/../config/order_confirmation.php';
+        try {
+            fireOrderConfirmedActions($conn, $order_id);
+        } catch (Exception $e) {
+            error_log('Order confirmation actions error: ' . $e->getMessage());
         }
     }
-    
+
 } catch (Exception $e) {
     // Rollback transaction on any error
     if (isset($conn) && $conn->inTransaction()) {

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config/countries.php';
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
   <script>
 (function(){
   var msg=function(a){
@@ -34,7 +35,6 @@ require_once __DIR__ . '/../config/countries.php';
   });
 })();
 </script>
-  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Superadmin Dashboard</title>
   
@@ -1053,6 +1053,7 @@ require_once __DIR__ . '/../config/countries.php';
 
     // Global variables
     let saPage = 1, saLimit = 10, saQuery = '';
+    const saRestaurantsMap = {};
     let paymentSearchTerm = '', paymentStatus = '';
     const showSuperAlert = (message, type = 'info') => {
       if (window.Swal) {
@@ -1125,6 +1126,7 @@ require_once __DIR__ . '/../config/countries.php';
         const qs = `action=getRestaurants&page=${saPage}&limit=${saLimit}${saQuery?`&q=${encodeURIComponent(saQuery)}`:''}`;
         const res = await fetch('api.php?'+qs);
         const data = await res.json();
+        (data.restaurants||[]).forEach(r => { saRestaurantsMap[r.id] = r; });
         const tbody = document.getElementById('restaurantsTbody');
         tbody.innerHTML = (data.restaurants||[]).map(r => {
           const isActive = Number(r.is_active) === 1;
@@ -1171,6 +1173,7 @@ require_once __DIR__ . '/../config/countries.php';
                 <button class="btn btn-outline" onclick="toggleRestaurant(${r.id}, 1)" ${isActive ? 'disabled' : ''}>Enable</button>
                 <button class="btn btn-outline" onclick="toggleRestaurant(${r.id}, 0)" ${isActive ? '' : 'disabled'}>Disable</button>
                 <button class="btn btn-outline" onclick="resetPassword(${r.id})">Reset PW</button>
+                <button class="btn btn-outline" onclick="sendWhatsappWelcome(${r.id})" title="Send login details on WhatsApp">WhatsApp</button>
               </td>
             </tr>
           `;
@@ -1476,6 +1479,41 @@ require_once __DIR__ . '/../config/countries.php';
     window.openWebsite = function(restaurantId){
       const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname.replace(/\/main\/superadmin\/dashboard\.php.*$/, '');
       window.open(baseUrl + '/main/website/index.php?restaurant_id=' + encodeURIComponent(restaurantId), '_blank');
+    }
+
+    window.sendWhatsappWelcome = async function(id){
+      const r = saRestaurantsMap[id];
+      if (!r) { showSuperAlert('Restaurant data not loaded yet', 'error'); return; }
+      if (!r.phone) { showSuperAlert('No phone number on file for this restaurant', 'error'); return; }
+
+      const password = await showSuperPrompt('Enter the password for "' + r.username + '" to include in the WhatsApp message:', 'Send WhatsApp Welcome');
+      if (!password) return;
+
+      const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname.replace(/\/main\/superadmin\/dashboard\.php.*$/, '');
+      const loginUrl = baseUrl + '/main/admin/login.php';
+      const dialDigits = (r.dial_code || '+91').replace(/\D/g, '');
+      const phoneDigits = String(r.phone).replace(/\D/g, '');
+      // Phone numbers on file are inconsistently stored - some already include
+      // the country code (e.g. "+91 98765..."), some don't. Prepending the
+      // dial code unconditionally doubles it up for the ones that already
+      // have it. A plain startsWith isn't enough either - a bare 10-digit
+      // Indian mobile number can coincidentally start with "91" - so also
+      // require enough digits left over for a real local number.
+      const alreadyHasCode = phoneDigits.startsWith(dialDigits) && (phoneDigits.length - dialDigits.length) >= 8;
+      const fullPhone = alreadyHasCode ? phoneDigits : dialDigits + phoneDigits;
+
+      const message = `Hey ${r.restaurant_name}! 🎉\n\n`
+        + `Great news - your restaurant website is built and live! 🚀\n\n`
+        + `Here's how to log in:\n`
+        + `🔗 ${loginUrl}\n`
+        + `👤 Username: ${r.username}\n`
+        + `🔑 Password: ${password}\n\n`
+        + `Hop in and check out your dashboard - manage your menu, track orders, and watch your restaurant grow, all from one place.\n\n`
+        + `Want to change anything or have a question? We're just a message away:\n`
+        + `📧 restrogrow@gmail.com\n\n`
+        + `Thanks for choosing us - excited to see your restaurant thrive! 🍽️✨`;
+
+      window.open('https://wa.me/' + fullPhone + '?text=' + encodeURIComponent(message), '_blank');
     }
 
     // Search and pagination

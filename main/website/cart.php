@@ -1012,6 +1012,38 @@ var MIN_ORDER = parseFloat(window.minimumOrderValue) || 0;
 var PACKAGING_CHARGE = parseFloat(window.packagingCharge) || 0;
 var flatItems = [];
 
+// Retries a fetch on transient failures (network drop, server 5xx) with
+// short exponential backoff, so a single blip on restaurant wifi/mobile
+// data doesn't force the customer to manually redo the whole action. Does
+// NOT retry on a successful HTTP response with an application-level
+// {success:false} — that's a real validation error (e.g. "Cart is empty"),
+// not something a retry would fix.
+function fetchJsonWithRetry(url, options, maxAttempts) {
+  maxAttempts = maxAttempts || 3;
+  var attempt = 0;
+  function tryOnce() {
+    attempt++;
+    return fetch(url, options).then(function(r) {
+      if (!r.ok && r.status >= 500 && attempt < maxAttempts) {
+        return backoffAndRetry();
+      }
+      return r.json();
+    }).catch(function(err) {
+      if (attempt < maxAttempts) {
+        return backoffAndRetry();
+      }
+      throw err;
+    });
+  }
+  function backoffAndRetry() {
+    var delay = 700 * Math.pow(2, attempt - 1); // 700ms, 1400ms, 2800ms...
+    return new Promise(function(resolve) {
+      setTimeout(function() { resolve(tryOnce()); }, delay);
+    });
+  }
+  return tryOnce();
+}
+
 function getImageUrl(img) {
   if (!img || img === '' || img === 'no-image') return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Image%3C/text%3E%3C/svg%3E';
   if (img.indexOf('http://') === 0 || img.indexOf('https://') === 0) return img;
@@ -1023,12 +1055,10 @@ function loadMenuItems() {
   var rid = window.websiteRestaurantId || document.querySelector('meta[name="restaurant-id"]')?.content || '';
   if (!rid) return;
   var apiBase = 'api.php?restaurant_id=' + encodeURIComponent(rid);
-  fetch(apiBase + '&action=getMenus')
-    .then(function(r) { return r.json(); })
+  fetchJsonWithRetry(apiBase + '&action=getMenus')
     .then(function(menusData) {
       var menus = menusData || [];
-      return fetch(apiBase + '&action=getMenuItems')
-        .then(function(r) { return r.json(); })
+      return fetchJsonWithRetry(apiBase + '&action=getMenuItems')
         .then(function(itemsData) {
           var rawItems = itemsData && itemsData.items ? itemsData.items : (itemsData || []);
           var menuMap = {};
@@ -1068,11 +1098,27 @@ function loadCart() {
   try {
     var saved = localStorage.getItem('dvaniCart');
     if (saved) { cartItems = JSON.parse(saved); }
-  } catch(e) { cartItems = {}; }
+  } catch(e) {
+    cartItems = {};
+    console.warn('Saved cart could not be read, starting empty:', e);
+    if (typeof showToast === 'function') {
+      showToast('We could not restore your previous cart. Starting fresh.', 'warning');
+    }
+  }
 }
 
 function saveCart() {
-  try { localStorage.setItem('dvaniCart', JSON.stringify(cartItems)); } catch(e) {}
+  try {
+    localStorage.setItem('dvaniCart', JSON.stringify(cartItems));
+  } catch(e) {
+    // Storage full / blocked (private browsing edge cases) — the cart still
+    // works for this page view, it just won't survive a refresh. Tell the
+    // customer instead of letting it silently vanish later.
+    console.warn('Could not save cart to this device:', e);
+    if (typeof showToast === 'function') {
+      showToast('Your cart could not be saved on this device. Please complete checkout without refreshing.', 'warning');
+    }
+  }
 }
 
 function getCurrency() {
@@ -1140,19 +1186,37 @@ function clearAddonsForItem(key) {
 }
 
 function cleanCart() {
-  // Remove cart entries for items that no longer exist in the loaded menu
+  // Remove cart entries for items that no longer exist in the loaded menu.
+  // Guard: if the menu failed to load anything meaningful (network hiccup,
+  // partial API response), flatItems is empty/near-empty and every cart item
+  // would look "not found" — that's a loading problem, not evidence the
+  // items were actually removed from the menu. Skip cleaning rather than
+  // wiping the customer's cart over a transient failure.
+  if (!flatItems || flatItems.length === 0) return;
+
   var changed = false;
+  var removedNames = [];
   for (var k in cartItems) {
     if (k.indexOf('addon_') === 0) continue;
     var raw = cartItems[k];
     if (typeof raw !== 'number' && (!raw || typeof raw !== 'object' || raw.isAddon)) continue;
     var item = getItemByKey(k);
     if (!item) {
+      var removedLabel = (raw && typeof raw === 'object' && raw.varName) ? ('item #' + k.split('_v')[0]) : ('item #' + k);
+      removedNames.push(removedLabel);
       delete cartItems[k];
       changed = true;
     }
   }
-  if (changed) saveCart();
+  if (changed) {
+    saveCart();
+    if (typeof showToast === 'function') {
+      var msg = removedNames.length === 1
+        ? '1 item in your cart is no longer available and was removed.'
+        : removedNames.length + ' items in your cart are no longer available and were removed.';
+      showToast(msg, 'warning');
+    }
+  }
 }
 // --- End Add-ons Helpers ---
 
@@ -1979,8 +2043,10 @@ function showCheckoutModal(cartData) {
   var pincodeDisplay = (savedOrderType === 'delivery' && deliveryEnabled) ? '' : 'none';
   html += '<div id="deliveryPincodeSection" class="form-group" style="display:' + pincodeDisplay + '">';
   html += '<label>Delivery Address *</label>';
+  html += '<button type="button" id="useCurrentLocationBtn" onclick="useCurrentLocationForDelivery()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 14px;border:none;border-radius:10px;background:#1a3934;color:#fff;font-size:14px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;">📍 Use My Current Location</button>';
+  html += '<div style="text-align:center;margin:8px 0;font-size:11px;color:#999;">— or —</div>';
   html += '<input type="text" id="google-places-autocomplete" autocomplete="off" placeholder="Search your delivery address..." style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
-  html += '<button type="button" onclick="openMapPicker()" style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border:2px solid #1a3934;border-radius:10px;background:#fff;color:#1a3934;font-size:13px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;">📍 Select Exact Location on Map</button>';
+  html += '<button type="button" onclick="openMapPicker()" style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border:2px solid #1a3934;border-radius:10px;background:#fff;color:#1a3934;font-size:13px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;">🗺️ Pick Location on Map</button>';
   html += '<div id="deliveryMapPreview" style="display:none;margin-top:10px;width:100%;height:160px;border-radius:10px;overflow:hidden;border:2px solid #e0e0e0;"></div>';
   html += '<div id="deliveryInfo" style="display:none;margin-top:8px;padding:10px;background:#f0f7f5;border-radius:8px;font-size:13px;"></div>';
   html += '<input type="hidden" id="deliveryZoneId" value="">';
@@ -2225,9 +2291,7 @@ function showCheckoutModal(cartData) {
       if (pincodeSec) {
         var isDelivery = ot === 'delivery' && (window.enableDelivery == 1 || window.enableDelivery === true);
         pincodeSec.style.display = isDelivery ? '' : 'none';
-        if (isDelivery) {
-          requestDeliveryLocation();
-        } else {
+        if (!isDelivery) {
           checkoutDeliveryCharge = 0;
           var zoneIdEl = document.getElementById('deliveryZoneId');
           if (zoneIdEl) zoneIdEl.value = '';
@@ -2258,7 +2322,6 @@ function showCheckoutModal(cartData) {
   if (initPincodeSec) {
     var initIsDelivery = savedOt === 'delivery' && (window.enableDelivery == 1 || window.enableDelivery === true);
     initPincodeSec.style.display = initIsDelivery ? '' : 'none';
-    if (initIsDelivery) { requestDeliveryLocation(); }
   }
   refreshCheckoutTotal();
 
@@ -2439,7 +2502,7 @@ function processOrder(cartData) {
 
   var rid = document.querySelector('meta[name=restaurant-id]')?.content || 'RES001';
 
-  fetch('../api/process_website_order.php?restaurant_id=' + encodeURIComponent(rid), {
+  fetchJsonWithRetry('../api/process_website_order.php?restaurant_id=' + encodeURIComponent(rid), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -2467,7 +2530,6 @@ function processOrder(cartData) {
       packaging_charge: PACKAGING_CHARGE
     })
   })
-  .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.success) {
       // Save WhatsApp info for redirect after success
@@ -2508,9 +2570,16 @@ function processOrder(cartData) {
     }
   })
   .catch(function(err) {
-    showModal('Error', 'Network error. Please try again.');
     btn.textContent = 'Place Order';
     btn.disabled = false;
+    showModal('Connection Problem', 'We could not reach the server after a few tries. Your order was NOT placed — please check your connection and retry.', function() {
+      var form = document.getElementById('checkoutForm');
+      if (form && typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else if (form) {
+        form.dispatchEvent(new Event('submit', { cancelable: true }));
+      }
+    });
   });
 }
 
@@ -2527,12 +2596,11 @@ function initiatePhonePePayment(orderId, customerPhone) {
   sessionStorage.setItem('phonepe_pending', orderId);
   setCookie('pp_pending', orderId, 30);
 
-  fetch('../api/phonepe_order_payment.php', {
+  fetchJsonWithRetry('../api/phonepe_order_payment.php', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ order_id: orderId, customer_phone: customerPhone })
   })
-  .then(function(r) { return r.json(); })
   .then(function(data) {
     var loader = document.getElementById('phonepeLoader');
     if (loader) loader.remove();
@@ -2542,7 +2610,9 @@ function initiatePhonePePayment(orderId, customerPhone) {
     } else {
       sessionStorage.removeItem('phonepe_pending');
       deleteCookie('pp_pending');
-      showModal('Payment Error', data.message || 'Failed to initiate PhonePe payment.');
+      showModal('Payment Error', data.message || 'Failed to initiate PhonePe payment.', function() {
+        initiatePhonePePayment(orderId, customerPhone);
+      });
     }
   })
   .catch(function(err) {
@@ -2552,7 +2622,14 @@ function initiatePhonePePayment(orderId, customerPhone) {
     sessionStorage.removeItem('phonepe_pending');
     deleteCookie('pp_pending');
     deleteCookie('pp_order_number');
-    showModal('Error', 'Network error. Please try again.');
+    // Note: the order itself was already created and saved server-side
+    // (Pending payment state) before this payment step ran — only the
+    // payment session creation failed. Retrying re-uses the same orderId
+    // (initiatePhonePePayment re-sets the pending markers at its top)
+    // rather than creating a new order.
+    showModal('Connection Problem', 'We could not start the payment after a few tries. Your order is saved — please check your connection and retry payment.', function() {
+      initiatePhonePePayment(orderId, customerPhone);
+    });
   });
 }
 
@@ -2777,7 +2854,7 @@ function goToProfile() {
   window.location.href = '<?php echo restaurantPageUrl('profile'); ?>';
 }
 
-function showModal(title, msg) {
+function showModal(title, msg, onRetry) {
   var existing = document.getElementById('alertModal');
   if (existing) existing.remove();
 
@@ -2786,13 +2863,31 @@ function showModal(title, msg) {
   modal.className = 'modal-overlay';
   modal.onclick = function(e) { if (e.target === this) this.remove(); };
 
+  var retryBtnHtml = '';
+  if (typeof onRetry === 'function') {
+    retryBtnHtml = '<button class="btn-ok" id="alertModalRetryBtn" style="margin-right:8px;">Retry</button>';
+  }
+
   modal.innerHTML = '<div class="alert-box">' +
     '<h3>' + esc(title) + '</h3>' +
     '<p>' + esc(msg) + '</p>' +
+    '<div style="display:flex;justify-content:center;margin-top:10px;">' +
+    retryBtnHtml +
     '<button class="btn-ok" onclick="this.closest(\'.modal-overlay\').remove()">OK</button>' +
+    '</div>' +
   '</div>';
 
   document.body.appendChild(modal);
+
+  if (typeof onRetry === 'function') {
+    var retryBtn = document.getElementById('alertModalRetryBtn');
+    if (retryBtn) {
+      retryBtn.onclick = function() {
+        modal.remove();
+        onRetry();
+      };
+    }
+  }
 }
 
 function loadCustomer() {
@@ -2973,25 +3068,30 @@ function reverseGeocode(lat, lng, callback) {
     .catch(function() { callback('', ''); });
 }
 
-// Ask for the customer's location as soon as they choose Delivery, so we can
-// pre-fill the address for them (falls back silently to manual search/map-pick
-// if permission is denied or unavailable). Only asked once per checkout visit.
-var deliveryLocationRequested = false;
-function requestDeliveryLocation() {
-  if (deliveryLocationRequested) return;
-  deliveryLocationRequested = true;
-  if (!navigator.geolocation) return;
+// Triggered only by the "Use My Current Location" button, so the browser's
+// permission popup appears right after a click the customer understands —
+// not as a surprise prompt when the checkout form first opens.
+function useCurrentLocationForDelivery() {
+  var btn = document.getElementById('useCurrentLocationBtn');
+  if (!navigator.geolocation) {
+    var noGeoMsg = 'Location access is not available on this device. Please search your address or pick it on the map instead.';
+    if (typeof showToast === 'function') { showToast(noGeoMsg, 'error'); } else { alert(noGeoMsg); }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.innerHTML = '📍 Getting your location...'; }
   navigator.geolocation.getCurrentPosition(function(pos) {
-    var addrInput = document.getElementById('google-places-autocomplete');
-    // Don't clobber an address the customer already typed/picked while we were waiting.
-    if (addrInput && addrInput.value.trim() !== '') return;
     var lat = pos.coords.latitude, lng = pos.coords.longitude;
     reverseGeocode(lat, lng, function(formatted, postcode) {
       applySelectedAddress(lat, lng, formatted, postcode);
     });
-  }, function() {
-    // Permission denied or position unavailable — no-op, customer can still search or use the map picker.
-  }, { enableHighAccuracy: false, timeout: 8000 });
+    if (btn) { btn.disabled = false; btn.innerHTML = '📍 Use My Current Location'; }
+  }, function(err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '📍 Use My Current Location'; }
+    var msg = (err && err.code === 1)
+      ? 'Location access was blocked. Please allow location access for this site in your browser settings, or search/pick your address on the map.'
+      : 'Could not get your location. Please search your address or pick it on the map instead.';
+    if (typeof showToast === 'function') { showToast(msg, 'error'); } else { alert(msg); }
+  }, { enableHighAccuracy: true, timeout: 10000 });
 }
 
 function extractPostcode(addressComponents) {

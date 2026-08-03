@@ -415,7 +415,20 @@ function startLocation(isAutoResume) {
                 function(p) {
                     sendLocation(p.coords.latitude, p.coords.longitude);
                 },
-                function() { /* silent fail on watch */ },
+                function(err) {
+                    if (err && err.code === err.PERMISSION_DENIED) {
+                        // Permission revoked mid-delivery — the watch is dead
+                        // for good. Stop pretending we're still sharing
+                        // instead of leaving the UI stuck on "Sharing
+                        // Location" while nothing is actually being sent.
+                        stopLocation();
+                        showMessage('error', 'Location permission was turned off. Please re-enable it and tap Share Live Location again.');
+                    }
+                    // Transient errors (signal lost, timeout): the browser
+                    // keeps retrying watchPosition on its own — the
+                    // staleness watchdog below will flag it on-screen if
+                    // updates don't resume.
+                },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
             );
             locationActive = true;
@@ -471,14 +484,36 @@ if (currentStatus !== 'Delivered' && sessionStorage.getItem(LOCATION_FLAG) === '
     startLocation(true);
 }
 
+var lastLocationSentAt = null;
+
 function sendLocation(lat, lng) {
     var formData = new FormData();
     formData.append('token', token);
     formData.append('lat', lat);
     formData.append('lng', lng);
     fetch('../api/rider_update_location.php', { method: 'POST', body: formData })
-        .catch(function() { /* silent */ });
+        .then(function(r) {
+            if (r.ok) {
+                lastLocationSentAt = Date.now();
+                var textEl = document.getElementById('locationText');
+                if (locationActive && textEl) textEl.textContent = 'Sharing Location';
+            }
+        })
+        .catch(function() { /* network hiccup — the staleness watchdog below flags it if it persists */ });
 }
+
+// If we're supposedly sharing but haven't successfully sent a location
+// update in over a minute, the rider's own screen still says "Sharing
+// Location" while the customer's tracking map is actually frozen with no
+// indication anything is wrong. Surface that here instead of leaving both
+// sides silently out of sync.
+setInterval(function() {
+    if (!locationActive || !lastLocationSentAt) return;
+    if (Date.now() - lastLocationSentAt > 60000) {
+        var textEl = document.getElementById('locationText');
+        if (textEl) textEl.textContent = 'Location signal weak…';
+    }
+}, 20000);
 
 function showMessage(type, msg) {
     var el = document.getElementById('statusMessage');

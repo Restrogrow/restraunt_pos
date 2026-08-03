@@ -355,6 +355,7 @@ function handleStatusCheck() {
                             $state = $statusData['state'] ?? $statusData['orderStatus'] ?? '';
 
                             if (in_array($state, ['COMPLETED', 'SUCCESS', 'PAYMENT_SUCCESS'])) {
+                                $justConfirmedOrderId = null;
                                 $conn->beginTransaction();
                                 try {
                                     $updatePay = $conn->prepare("UPDATE payments SET payment_status = 'Success' WHERE id = ?");
@@ -363,6 +364,8 @@ function handleStatusCheck() {
                                     $payResult = validateAndUpdatePaymentStatus($conn, (int)($payment['order_id'] ?? 0), 'Paid');
                                     if (!$payResult['success']) {
                                         error_log('[PhonePe] State machine rejected: ' . $payResult['message']);
+                                    } elseif (!empty($payResult['transitioned'])) {
+                                        $justConfirmedOrderId = (int)($payment['order_id'] ?? 0);
                                     }
                                     $conn->commit();
                                     $payment['payment_status'] = 'Success';
@@ -370,6 +373,14 @@ function handleStatusCheck() {
                                 } catch (Exception $tx) {
                                     $conn->rollBack();
                                     error_log('[PhonePe] Transaction failed: ' . $tx->getMessage());
+                                }
+                                if ($justConfirmedOrderId !== null) {
+                                    require_once __DIR__ . '/../config/order_confirmation.php';
+                                    try {
+                                        fireOrderConfirmedActions($conn, $justConfirmedOrderId);
+                                    } catch (Exception $e) {
+                                        error_log('Order confirmation actions error (status poll): ' . $e->getMessage());
+                                    }
                                 }
                             } elseif (in_array($state, ['FAILED', 'REJECTED', 'CANCELLED'])) {
                                 $updatePay = $conn->prepare("UPDATE payments SET payment_status = 'Failed' WHERE id = ?");

@@ -250,7 +250,7 @@ function validateAndUpdatePaymentStatus(
     $currentStatus = $order['payment_status'];
 
     if ($currentStatus === $newStatus) {
-        return ['success' => true, 'message' => "Payment already {$currentStatus}"];
+        return ['success' => true, 'transitioned' => false, 'message' => "Payment already {$currentStatus}"];
     }
 
     if (!isAllowedPaymentStatusTransition($currentStatus, $newStatus)) {
@@ -264,11 +264,16 @@ function validateAndUpdatePaymentStatus(
         if (function_exists('logStateMachineViolation')) {
             logStateMachineViolation($conn, $orderId, $currentStatus, $newStatus, $restaurantId ?? $order['restaurant_id'] ?? null);
         }
-        return ['success' => false, 'message' => $msg];
+        return ['success' => false, 'transitioned' => false, 'message' => $msg];
     }
 
     $updateStmt = $conn->prepare('UPDATE orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
     $updateStmt->execute([$newStatus, $orderId]);
 
-    return ['success' => true, 'message' => "Payment updated from {$currentStatus} to {$newStatus}"];
+    // 'transitioned' => true means THIS call is the one that actually moved
+    // payment_status into $newStatus (as opposed to it already being there,
+    // or a retry losing a race under the FOR UPDATE lock). Callers that need
+    // to fire one-time side effects (KOT creation, notifications, emails) on
+    // "payment just became Paid" should gate on this flag, not just 'success'.
+    return ['success' => true, 'transitioned' => true, 'message' => "Payment updated from {$currentStatus} to {$newStatus}"];
 }

@@ -31,7 +31,13 @@ try {
 
     $tracking = null;
     if ($order['order_type'] === 'Delivery') {
-        $tStmt = $conn->prepare("SELECT delivery_status, rider_name, rider_phone, current_lat, current_lng, location_updated_at
+        // Compute staleness in SQL (TIMESTAMPDIFF against the DB's own NOW())
+        // rather than sending the raw timestamp for the client to parse —
+        // comparing a MySQL datetime string against the browser's clock is a
+        // timezone bug waiting to happen, especially since restaurants here
+        // can be configured in non-UTC timezones (see order placement).
+        $tStmt = $conn->prepare("SELECT delivery_status, rider_name, rider_phone, current_lat, current_lng, location_updated_at,
+            TIMESTAMPDIFF(SECOND, location_updated_at, NOW()) AS location_age_seconds
             FROM delivery_tracking WHERE order_id = ? LIMIT 1");
         $tStmt->execute([$order['id']]);
         $tracking = $tStmt->fetch(PDO::FETCH_ASSOC);

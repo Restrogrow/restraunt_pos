@@ -39,9 +39,18 @@ try {
         $authKey = $input['keys']['auth'];
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
-        // Check if this endpoint already exists for this user
-        $stmt = $conn->prepare("SELECT id FROM push_subscriptions WHERE endpoint = ? AND user_id = ?");
-        $stmt->execute([$endpoint, $userId]);
+        // Check if this endpoint already exists for this user. Staff sessions
+        // have $userId === null, and "user_id = NULL" never matches in SQL —
+        // that variant used to insert a fresh duplicate row on every single
+        // save for staff instead of updating, so match on whichever ID this
+        // session actually has.
+        if ($userId !== null) {
+            $stmt = $conn->prepare("SELECT id FROM push_subscriptions WHERE endpoint = ? AND user_id = ?");
+            $stmt->execute([$endpoint, $userId]);
+        } else {
+            $stmt = $conn->prepare("SELECT id FROM push_subscriptions WHERE endpoint = ? AND staff_id = ?");
+            $stmt->execute([$endpoint, $staffId]);
+        }
         $existing = $stmt->fetch();
         
         if ($existing) {

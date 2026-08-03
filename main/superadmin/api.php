@@ -133,6 +133,8 @@ try {
                 whatsapp_orders,
                 photo_gallery_enabled,
                 payment_gateway_type,
+                phone,
+                country,
                 GREATEST(DATEDIFF(COALESCE(renewal_date, trial_end_date, DATE_ADD(DATE(created_at), INTERVAL 30 DAY)), CURRENT_DATE()), 0) AS days_left,
                 CASE
                   WHEN subscription_status = 'disabled' THEN 'Disabled'
@@ -164,7 +166,14 @@ try {
       $countStmt->execute();
       $total = (int)($countStmt->fetch()['c'] ?? 0);
 
-      echo json_encode(['success' => true, 'restaurants' => $stmt->fetchAll(), 'total' => $total, 'page' => $page, 'limit' => $limit]);
+      $restaurants = $stmt->fetchAll();
+      foreach ($restaurants as &$row) {
+        $rowCountry = getCountryByName($row['country'] ?? '');
+        $row['dial_code'] = $rowCountry['dial_code'] ?? '+91';
+      }
+      unset($row);
+
+      echo json_encode(['success' => true, 'restaurants' => $restaurants, 'total' => $total, 'page' => $page, 'limit' => $limit]);
       break;
 
     case 'createRestaurant':
