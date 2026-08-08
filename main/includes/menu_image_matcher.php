@@ -114,6 +114,31 @@ function menu_image_word_overlap($needleWords, $haystackWords) {
     return $matched / count($needleWords);
 }
 
+// Looser than menu_image_words_similar(): also counts a prefix relationship
+// ("veg" / "vegetable", "buff" / "buffalo") as related. Used only to build the
+// candidate shortlist handed to the LLM — the LLM does the real precision
+// judgement, so this side deliberately favors not missing a real match over
+// avoiding the occasional loose one.
+function menu_image_words_related($a, $b) {
+    if (menu_image_words_similar($a, $b)) return true;
+    if (min(strlen($a), strlen($b)) < 3) return false;
+    return strpos($b, $a) === 0 || strpos($a, $b) === 0;
+}
+
+function menu_image_word_overlap_lenient($needleWords, $haystackWords) {
+    if (empty($needleWords)) return 0.0;
+    $matched = 0;
+    foreach ($needleWords as $nw) {
+        foreach ($haystackWords as $hw) {
+            if (menu_image_words_related($nw, $hw)) {
+                $matched++;
+                break;
+            }
+        }
+    }
+    return $matched / count($needleWords);
+}
+
 function menu_image_folder_score($category, $folder) {
     $catWords = menu_image_tokenize((string)$category);
     $folderWords = menu_image_tokenize($folder);
@@ -126,61 +151,52 @@ function menu_image_folder_score($category, $folder) {
 }
 
 /**
- * Finds the best local image match for a menu item.
- * Returns 'local:<Folder>/<filename>' or null when nothing matches confidently
- * enough (callers should leave the image blank in that case).
+ * Returns up to $maxCandidates local images ranked by rough text similarity
+ * to $itemName, as [['folder'=>, 'file'=>, 'score'=>], ...] sorted best-first.
+ * This is deliberately a loose shortlist, not a final decision — it exists to
+ * keep the list small enough to hand to an LLM (which makes the real pick)
+ * without spending tokens on the entire images/ library.
  */
-function find_local_menu_item_image($itemName, $category = '') {
+function find_local_menu_item_image_candidates($itemName, $category = '', $maxCandidates = 8) {
     $library = menu_image_library_scan();
-    if (empty($library)) return null;
+    if (empty($library)) return [];
 
     $nameWords = menu_image_tokenize((string)$itemName);
-    if (empty($nameWords)) return null;
+    if (empty($nameWords)) return [];
 
-    // In "Modifier Dish" style naming ("Chicken Momo", "Veg Manchurian",
-    // "Butter Naan") the last word is almost always the actual dish, and
-    // words before it are protein/style modifiers that plain photo filenames
-    // often don't mention at all. Treat the last word as the core word: a
-    // filename matching it confidently is a strong signal even when the
-    // modifiers aren't present, so it shouldn't be held to the same "nearly
-    // every word must appear" bar as a match with no core-word hit.
-    $coreWord = end($nameWords);
-
-    // Prefer folders whose name relates to the item's category (e.g. "Beverages"
-    // item under a "Beverages" folder); fall back to searching every folder so
-    // new categories still get a chance once matching images exist for them.
     $folderScores = [];
     foreach (array_keys($library) as $folder) {
         $folderScores[$folder] = menu_image_folder_score($category, $folder);
     }
     arsort($folderScores);
     $candidateFolders = array_keys(array_filter($folderScores, function ($s) { return $s >= 0.5; }));
-    if (empty($candidateFolders)) $candidateFolders = array_keys($library);
+    if (empty($candidateFolders)) $candidateFolders = array_keys($folderScores);
 
-    $best = null;
-    $bestScore = 0.0;
+    $scored = [];
     foreach ($candidateFolders as $folder) {
         foreach ($library[$folder] as $entry) {
-            $overlap = menu_image_word_overlap($nameWords, $entry['keywords']);
-            $coreMatches = false;
-            foreach ($entry['keywords'] as $hw) {
-                if (menu_image_words_similar($coreWord, $hw)) { $coreMatches = true; break; }
-            }
-            // Require (almost) every item-name word to be present, unless the
-            // core dish word itself matched — then a lower bar is enough,
-            // since missing modifier words are expected in generic photos.
-            $minOverlap = $coreMatches ? 0.34 : 0.75;
-            if ($overlap < $minOverlap) continue;
+            $overlap = menu_image_word_overlap_lenient($nameWords, $entry['keywords']);
+            if ($overlap <= 0) continue;
             $textPct = 0.0;
             similar_text(implode(' ', $nameWords), implode(' ', $entry['keywords']), $textPct);
-            $score = ($overlap * 0.6) + (($textPct / 100) * 0.2) + ($coreMatches ? 0.2 : 0.0);
-            if ($score > $bestScore + 0.0001) {
-                $bestScore = $score;
-                $best = ['folder' => $folder, 'file' => $entry['file']];
-            }
+            $score = ($overlap * 0.7) + (($textPct / 100) * 0.3);
+            $scored[] = ['folder' => $folder, 'file' => $entry['file'], 'score' => $score];
         }
     }
 
-    if ($best === null || $bestScore < 0.6) return null;
-    return 'local:' . $best['folder'] . '/' . $best['file'];
+    // A short/generic item name (e.g. "Veg" under a "Momo" category) can share
+    // no word at all with any filename. Rather than leaving the LLM with
+    // nothing to choose from, fall back to the best category-matched folder so
+    // it can still reason from the item name + category together.
+    if (empty($scored) && !empty($candidateFolders) && $folderScores[$candidateFolders[0]] >= 0.5) {
+        $folder = $candidateFolders[0];
+        foreach ($library[$folder] as $entry) {
+            $textPct = 0.0;
+            similar_text(implode(' ', $nameWords), implode(' ', $entry['keywords']), $textPct);
+            $scored[] = ['folder' => $folder, 'file' => $entry['file'], 'score' => $textPct / 100];
+        }
+    }
+
+    usort($scored, function ($a, $b) { return $b['score'] <=> $a['score']; });
+    return array_slice($scored, 0, $maxCandidates);
 }

@@ -3832,8 +3832,25 @@ function toggleGatewayMode() {
           <h2 id="galleryLightboxTitle" style="margin:0;font-size:1rem;font-weight:600;"></h2>
           <button class="modal-close" onclick="closeModal('galleryLightboxModal')">&times;</button>
         </div>
-        <div class="modal-body" style="text-align:center;">
-          <img id="galleryLightboxImg" src="" alt="" style="max-width:100%;max-height:70vh;border-radius:8px;object-fit:contain;">
+        <div class="modal-body gallery-lightbox-body">
+          <button type="button" class="gallery-lightbox-nav gallery-lightbox-prev" onclick="navigateGalleryLightbox(-1)" aria-label="Previous photo">
+            <span class="material-symbols-rounded">chevron_left</span>
+          </button>
+          <img id="galleryLightboxImg" src="" alt="" class="gallery-lightbox-img">
+          <button type="button" class="gallery-lightbox-nav gallery-lightbox-next" onclick="navigateGalleryLightbox(1)" aria-label="Next photo">
+            <span class="material-symbols-rounded">chevron_right</span>
+          </button>
+        </div>
+        <div class="gallery-lightbox-actions">
+          <button type="button" class="btn-secondary" onclick="downloadGalleryImage()">
+            <span class="material-symbols-rounded" style="font-size:18px;">download</span> Download
+          </button>
+          <button type="button" class="btn-secondary" onclick="openGalleryImageFullSize()">
+            <span class="material-symbols-rounded" style="font-size:18px;">open_in_new</span> Open Full Size
+          </button>
+          <button type="button" class="btn-secondary" onclick="copyGalleryImage()">
+            <span class="material-symbols-rounded" style="font-size:18px;">content_copy</span> Copy Image
+          </button>
         </div>
       </div>
     </div>

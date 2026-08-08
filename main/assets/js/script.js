@@ -4664,6 +4664,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ===== Photo Gallery =====
   var galleryCategoriesCache = null;
+  var currentGalleryImages = [];
+  var currentGalleryIndex = -1;
 
   window.loadPhotoGallery = function() {
     showGalleryCategories();
@@ -4729,10 +4731,11 @@ document.addEventListener("DOMContentLoaded", () => {
           photoGrid.innerHTML = '<div class="empty-state"><span class="material-symbols-rounded">photo_library</span><h3>No Photos</h3><p>This category has no photos.</p></div>';
           return;
         }
-        photoGrid.innerHTML = d.images.map(function(img) {
+        currentGalleryImages = d.images;
+        photoGrid.innerHTML = d.images.map(function(img, i) {
           var url = '../api/image.php?path=' + encodeURIComponent(img.src);
           var safeFile = escapeHtml(img.file);
-          return '<div class="gallery-card" onclick="openGalleryLightbox(\'' + encodeURIComponent(img.src) + '\', \'' + encodeURIComponent(img.file) + '\')">'
+          return '<div class="gallery-card" onclick="openGalleryLightbox(\'' + encodeURIComponent(img.src) + '\', \'' + encodeURIComponent(img.file) + '\', ' + i + ')">'
             + '<div class="gallery-card-thumb"><img src="' + url + '" alt="' + safeFile + '" loading="lazy" onerror="this.style.display=\'none\'"></div>'
             + '</div>';
         }).join('');
@@ -4755,9 +4758,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (subtitle) subtitle.textContent = 'Browse high-quality stock photos, organized by category';
   }
 
-  window.openGalleryLightbox = function(encodedSrc, encodedFile) {
+  window.openGalleryLightbox = function(encodedSrc, encodedFile, idx) {
     var src = decodeURIComponent(encodedSrc);
     var file = decodeURIComponent(encodedFile);
+    currentGalleryIndex = (typeof idx === 'number') ? idx : -1;
     var modal = document.getElementById('galleryLightboxModal');
     var img = document.getElementById('galleryLightboxImg');
     var title = document.getElementById('galleryLightboxTitle');
@@ -4767,7 +4771,81 @@ document.addEventListener("DOMContentLoaded", () => {
     if (title) title.textContent = file;
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    updateGalleryNavVisibility();
   }
+
+  function updateGalleryNavVisibility() {
+    var show = currentGalleryImages.length > 1;
+    document.querySelectorAll('#galleryLightboxModal .gallery-lightbox-nav').forEach(function(btn) {
+      btn.style.display = show ? 'flex' : 'none';
+    });
+  }
+
+  window.navigateGalleryLightbox = function(direction) {
+    if (!currentGalleryImages.length || currentGalleryIndex < 0) return;
+    currentGalleryIndex = (currentGalleryIndex + direction + currentGalleryImages.length) % currentGalleryImages.length;
+    var imgData = currentGalleryImages[currentGalleryIndex];
+    var img = document.getElementById('galleryLightboxImg');
+    var title = document.getElementById('galleryLightboxTitle');
+    if (img) img.src = '../api/image.php?path=' + encodeURIComponent(imgData.src);
+    if (title) title.textContent = imgData.file;
+  }
+
+  window.downloadGalleryImage = function() {
+    var img = document.getElementById('galleryLightboxImg');
+    var title = document.getElementById('galleryLightboxTitle');
+    if (!img || !img.src) return;
+    var filename = (title && title.textContent) ? title.textContent : 'photo.jpg';
+    fetch(img.src)
+      .then(function(r) { return r.blob(); })
+      .then(function(blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      })
+      .catch(function() { showMessage('Could not download photo.', 'error'); });
+  }
+
+  window.openGalleryImageFullSize = function() {
+    var img = document.getElementById('galleryLightboxImg');
+    if (img && img.src) window.open(img.src, '_blank');
+  }
+
+  window.copyGalleryImage = function() {
+    var img = document.getElementById('galleryLightboxImg');
+    if (!img || !img.src) return;
+    if (!navigator.clipboard || !window.ClipboardItem) {
+      showMessage('Copying images is not supported in this browser.', 'error');
+      return;
+    }
+    fetch(img.src)
+      .then(function(r) { return r.blob(); })
+      .then(function(blob) {
+        return navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      })
+      .then(function() { showMessage('Photo copied to clipboard.', 'success'); })
+      .catch(function() { showMessage('Could not copy photo.', 'error'); });
+  }
+
+  var galleryLightboxModalEl = document.getElementById('galleryLightboxModal');
+  if (galleryLightboxModalEl) {
+    galleryLightboxModalEl.addEventListener('click', function(e) {
+      if (e.target === galleryLightboxModalEl) closeModal('galleryLightboxModal');
+    });
+  }
+
+  document.addEventListener('keydown', function(e) {
+    var modal = document.getElementById('galleryLightboxModal');
+    if (!modal || modal.style.display !== 'flex') return;
+    if (e.key === 'Escape') closeModal('galleryLightboxModal');
+    else if (e.key === 'ArrowLeft') navigateGalleryLightbox(-1);
+    else if (e.key === 'ArrowRight') navigateGalleryLightbox(1);
+  });
 
 
   function displayTables(tables) {
