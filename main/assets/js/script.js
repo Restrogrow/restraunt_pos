@@ -1117,6 +1117,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!r.ok) return;
             const d = await r.json();
             if (d.success && d.order) {
+              // Keep these in sync from whichever endpoint responds first —
+              // the Online Orders list may not have loaded yet if this popup
+              // fires while the admin is on another page.
+              if (d.restaurant_lat) window.restaurantLat = d.restaurant_lat;
+              if (d.restaurant_lng) window.restaurantLng = d.restaurant_lng;
+              if (d.enable_km_delivery !== undefined) window.enableKmDelivery = d.enable_km_delivery;
+              if (d.delivery_rate_per_km !== undefined) window.deliveryRatePerKm = d.delivery_rate_per_km;
               const orderId = parseInt(d.order.id);
               if (orderId > window._lastSeenOrderId) {
                 window._lastSeenOrderId = orderId;
@@ -1152,6 +1159,8 @@ document.addEventListener("DOMContentLoaded", () => {
       function showNewOrderPopup(order) {
         var overlay = document.getElementById('newOrderOverlay');
         if (!overlay) return;
+
+        window._currentNotifOrder = order;
 
         try { playNotificationSound(); } catch(e) {}
 
@@ -1260,8 +1269,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
       window.acceptNewOrder = async function() {
         var orderId = window._currentNotifOrderId;
+        var order = window._currentNotifOrder;
         if (!orderId) return;
         window._overlayProcessing = true;
+
+        var isKmDelivery = order && order.order_type === 'Delivery' && (window.enableKmDelivery == 1 || window.enableKmDelivery === true);
+        if (isKmDelivery) {
+          // Close the popup first so the delivery-charge prompt isn't stacked behind it.
+          window.closeNewOrderOverlay();
+          try {
+            var kd = await acceptOrderWithDeliveryCharge(orderId, order.order_type, order.address_lat, order.address_lng);
+            if (kd && kd.cancelled) { window._overlayProcessing = false; return; }
+            if (typeof showNotification === 'function') showNotification(kd.success ? 'Order accepted!' : (kd.message || 'Failed'), kd.success ? 'success' : 'error');
+            if (typeof showPage === 'function') showPage('onlineOrdersPage');
+          } catch(e) {
+            if (typeof showNotification === 'function') showNotification('Network error', 'error');
+          } finally {
+            window._overlayProcessing = false;
+          }
+          return;
+        }
+
         var btn = document.getElementById('notifAcceptBtn');
         var rejBtn = document.getElementById('notifRejectBtn');
         if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span> Accepting...'; }
@@ -8991,6 +9019,8 @@ window.logout = logout;
         window.restaurantLat = data.restaurant_lat || null;
         window.restaurantLng = data.restaurant_lng || null;
         window.restaurantAddressText = data.restaurant_address || '';
+        window.enableKmDelivery = data.enable_km_delivery || 0;
+        window.deliveryRatePerKm = data.delivery_rate_per_km || 0;
         displayOnlineOrders(data.orders);
       } else {
         document.getElementById('onlineOrdersList').innerHTML = '<div class="error">Failed to load online orders</div>';
@@ -9044,6 +9074,85 @@ window.logout = logout;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // Shared by the Online Orders list "Accept" button and the new-order popup's
+  // Accept button. When KM-based delivery pricing is on, the actual delivery
+  // charge depends on each customer's distance, so the admin confirms/edits
+  // the auto-calculated amount here before the order is accepted. For every
+  // other case this just accepts immediately, unchanged from before.
+  // Returns a Promise resolving to the API response, or {cancelled: true} if
+  // the admin dismissed the prompt without confirming.
+  function acceptOrderWithDeliveryCharge(orderId, orderType, addressLat, addressLng) {
+    const isKmDelivery = orderType === 'Delivery' && (window.enableKmDelivery == 1 || window.enableKmDelivery === true);
+    if (!isKmDelivery) {
+      return fetch('../api/update_order_status.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'orderId=' + orderId + '&status=Accepted'
+      }).then(r => r.json());
+    }
+
+    const rLat = window.restaurantLat ? parseFloat(window.restaurantLat) : null;
+    const rLng = window.restaurantLng ? parseFloat(window.restaurantLng) : null;
+    const rate = parseFloat(window.deliveryRatePerKm) || 0;
+    let suggested = '';
+    let noteHtml;
+    if (rLat && rLng && addressLat && addressLng) {
+      const dist = haversineKmOrders(rLat, rLng, parseFloat(addressLat), parseFloat(addressLng));
+      suggested = (dist * rate).toFixed(2);
+      noteHtml = '<p style="margin:4px 0 12px;font-size:0.85rem;color:#6b7280;">≈ ' + dist.toFixed(1) + ' km × ' + formatCurrency(rate) + '/km</p>';
+    } else {
+      noteHtml = '<p style="margin:4px 0 12px;font-size:0.85rem;color:#ef4444;">Could not auto-calculate distance — please enter the delivery charge manually.</p>';
+    }
+
+    return Swal.fire({
+      icon: 'question',
+      title: 'Confirm Delivery Charge',
+      html: noteHtml,
+      input: 'number',
+      inputValue: suggested,
+      inputAttributes: { min: 0, step: '0.01' },
+      showCancelButton: true,
+      confirmButtonText: 'Accept Order',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#10b981',
+      preConfirm: (value) => {
+        if (value === '' || value === null || isNaN(value) || parseFloat(value) < 0) {
+          Swal.showValidationMessage('Please enter a valid delivery charge');
+        }
+        return value;
+      }
+    }).then((result) => {
+      if (!result.isConfirmed) return { success: false, cancelled: true };
+      return fetch('../api/update_order_status.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'orderId=' + orderId + '&status=Accepted&delivery_charge=' + encodeURIComponent(result.value)
+      }).then(r => r.json());
+    });
+  }
+
+  // Wired to the Pending card's "Accept" button in place of the generic
+  // updateOrderStatus() — this one may show the delivery-charge prompt first.
+  function handleAcceptOrderClick(orderId, orderType, btn, addressLat, addressLng) {
+    const spinner = btn && btn.querySelector('.loading-spinner');
+    if (spinner) spinner.style.display = '';
+    if (btn) btn.disabled = true;
+    acceptOrderWithDeliveryCharge(orderId, orderType, addressLat, addressLng).then((data) => {
+      if (data && data.cancelled) return;
+      if (data && data.success) {
+        if (document.getElementById('ordersList')) loadOrders();
+        if (document.getElementById('onlineOrdersList') && typeof loadOnlineOrders === 'function') loadOnlineOrders();
+      } else {
+        showSweetAlert((data && data.message) || 'Failed to accept order');
+      }
+    }).catch(() => {
+      showSweetAlert('Error accepting order');
+    }).finally(() => {
+      if (spinner) spinner.style.display = 'none';
+      if (btn) btn.disabled = false;
+    });
   }
 
   // Builds a map + distance + "Open Route" block for a Delivery-type order.
@@ -9152,7 +9261,7 @@ window.logout = logout;
             ${buildPaymentProofHtml(order)}
             ${order.notes ? `<div class="order-notes" style="background:#fefce8;padding:8px 12px;border-radius:8px;margin:8px 0;font-size:0.85rem;color:#92400e"><strong>Notes:</strong> ${escapeHtml(order.notes)}</div>` : ''}
             <div class="order-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 12px;">
-              <button class="btn btn-success" onclick="updateOrderStatus(${order.id}, 'Accepted', this)" style="background: #10b981; color: white; border: none; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
+              <button class="btn btn-success" onclick="handleAcceptOrderClick(${order.id}, '${order.order_type}', this, ${order.address_lat != null ? order.address_lat : 'null'}, ${order.address_lng != null ? order.address_lng : 'null'})" style="background: #10b981; color: white; border: none; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
                 <span class="material-symbols-rounded" style="font-size: 1.1rem;">check</span>
                 Accept
                 <span class="loading-spinner" style="display:none"></span>
@@ -11512,6 +11621,21 @@ async function loadSettingsData() {
       // Delivery Radius + saved restaurant coordinates
       const deliveryRadiusEl = document.getElementById('deliveryRadius');
       if (deliveryRadiusEl) deliveryRadiusEl.value = user.delivery_radius_km ? parseFloat(user.delivery_radius_km) : '';
+
+      // KM-based delivery charge toggle + rate
+      if (user.enable_km_delivery !== undefined) {
+        const enableKmDeliveryCb = document.getElementById('enableKmDeliveryToggle');
+        const enableKmDeliveryLabelEl = document.getElementById('enableKmDeliveryLabel');
+        const deliveryRatePerKmGroup = document.getElementById('deliveryRatePerKmGroup');
+        if (enableKmDeliveryCb) {
+          const kmDeliveryEnabled = user.enable_km_delivery == 1 || user.enable_km_delivery === '1';
+          enableKmDeliveryCb.checked = kmDeliveryEnabled;
+          if (enableKmDeliveryLabelEl) enableKmDeliveryLabelEl.textContent = kmDeliveryEnabled ? 'Enabled' : 'Disabled';
+          if (deliveryRatePerKmGroup) deliveryRatePerKmGroup.style.display = kmDeliveryEnabled ? 'block' : 'none';
+        }
+      }
+      const deliveryRatePerKmEl = document.getElementById('deliveryRatePerKm');
+      if (deliveryRatePerKmEl) deliveryRatePerKmEl.value = user.delivery_rate_per_km ? parseFloat(user.delivery_rate_per_km) : '';
       const restaurantAddressLat = document.getElementById('restaurantAddressLat');
       const restaurantAddressLng = document.getElementById('restaurantAddressLng');
       if (user.restaurant_lat && user.restaurant_lng) {
@@ -11702,6 +11826,18 @@ function setupSettingsForms() {
   const restaurantSettingsForm = document.getElementById('restaurantSettingsForm');
   if (restaurantSettingsForm && !restaurantSettingsForm.dataset.handlerAttached) {
     restaurantSettingsForm.dataset.handlerAttached = 'true';
+
+    // KM-based delivery charge toggle — show/hide the rate field and flip the label live
+    const enableKmDeliveryToggleEl = document.getElementById('enableKmDeliveryToggle');
+    if (enableKmDeliveryToggleEl) {
+      enableKmDeliveryToggleEl.addEventListener('change', function() {
+        const labelEl = document.getElementById('enableKmDeliveryLabel');
+        const rateGroup = document.getElementById('deliveryRatePerKmGroup');
+        if (labelEl) labelEl.textContent = this.checked ? 'Enabled' : 'Disabled';
+        if (rateGroup) rateGroup.style.display = this.checked ? 'block' : 'none';
+      });
+    }
+
     // Description format toggle for settings page
     var descToggleS = document.getElementById('descFormatToggleSettings');
     var descInputS = document.getElementById('descriptionFormatSettings');
@@ -11771,7 +11907,7 @@ function setupSettingsForms() {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&tax_name=${encodeURIComponent(document.getElementById('taxName')?.value || 'GST')}&tax_percent=${encodeURIComponent(document.getElementById('taxPercentInput')?.value || '5')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}`
+          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&enable_km_delivery=${encodeURIComponent(document.getElementById('enableKmDeliveryToggle')?.checked ? '1' : '0')}&delivery_rate_per_km=${encodeURIComponent(document.getElementById('deliveryRatePerKm')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&tax_name=${encodeURIComponent(document.getElementById('taxName')?.value || 'GST')}&tax_percent=${encodeURIComponent(document.getElementById('taxPercentInput')?.value || '5')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}`
         });
         
         const result = await response.json();

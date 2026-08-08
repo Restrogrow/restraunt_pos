@@ -767,6 +767,8 @@ function handleUpdateRestaurantSettings() {
     $minimumOrderValue = isset($_POST['minimum_order_value']) && $_POST['minimum_order_value'] !== '' ? floatval($_POST['minimum_order_value']) : 0;
     $packagingCharge = isset($_POST['packaging_charge']) && $_POST['packaging_charge'] !== '' ? floatval($_POST['packaging_charge']) : 0;
     $deliveryRadius = isset($_POST['delivery_radius_km']) && $_POST['delivery_radius_km'] !== '' ? floatval($_POST['delivery_radius_km']) : 0;
+    $enableKmDelivery = isset($_POST['enable_km_delivery']) ? (int)$_POST['enable_km_delivery'] : 0;
+    $deliveryRatePerKm = isset($_POST['delivery_rate_per_km']) && $_POST['delivery_rate_per_km'] !== '' ? floatval($_POST['delivery_rate_per_km']) : 0;
     $clientLat = isset($_POST['restaurant_lat']) && $_POST['restaurant_lat'] !== '' ? floatval($_POST['restaurant_lat']) : null;
     $clientLng = isset($_POST['restaurant_lng']) && $_POST['restaurant_lng'] !== '' ? floatval($_POST['restaurant_lng']) : null;
     $googleMapsLink = isset($_POST['google_maps_link']) ? trim($_POST['google_maps_link']) : '';
@@ -808,8 +810,8 @@ function handleUpdateRestaurantSettings() {
     
     
     try {
-        $updateStmt = $pdo->prepare("UPDATE users SET restaurant_name = ?, email = ?, phone = ?, address = ?, description = ?, description_format = ?, opening_hours = ?, phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, minimum_order_value = ?, google_maps_link = ?, owner_name = ?, enable_gst = ?, tax_name = ?, tax_percent = ?, instagram_link = ?, facebook_link = ?, twitter_link = ?, youtube_link = ?, linkedin_link = ?, enable_delivery = ?, enable_takeaway = ?, enable_dinein = ?, cod_enabled = ?, enable_language = ?, packaging_charge = ?, delivery_radius_km = ?, updated_at = NOW() WHERE id = ?");
-        $result = $updateStmt->execute([$restaurantName, $email, $phone, $address, $description, $descriptionFormat, $openingHours, $phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $minimumOrderValue, $googleMapsLink, $ownerName, $enableGst, $taxName, $taxPercent, $instagramLink, $facebookLink, $twitterLink, $youtubeLink, $linkedinLink, $enableDelivery, $enableTakeaway, $enableDinein, $codEnabled, $enableLanguage, $packagingCharge, $deliveryRadius, $userId]);
+        $updateStmt = $pdo->prepare("UPDATE users SET restaurant_name = ?, email = ?, phone = ?, address = ?, description = ?, description_format = ?, opening_hours = ?, phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, minimum_order_value = ?, google_maps_link = ?, owner_name = ?, enable_gst = ?, tax_name = ?, tax_percent = ?, instagram_link = ?, facebook_link = ?, twitter_link = ?, youtube_link = ?, linkedin_link = ?, enable_delivery = ?, enable_takeaway = ?, enable_dinein = ?, cod_enabled = ?, enable_language = ?, packaging_charge = ?, delivery_radius_km = ?, enable_km_delivery = ?, delivery_rate_per_km = ?, updated_at = NOW() WHERE id = ?");
+        $result = $updateStmt->execute([$restaurantName, $email, $phone, $address, $description, $descriptionFormat, $openingHours, $phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $minimumOrderValue, $googleMapsLink, $ownerName, $enableGst, $taxName, $taxPercent, $instagramLink, $facebookLink, $twitterLink, $youtubeLink, $linkedinLink, $enableDelivery, $enableTakeaway, $enableDinein, $codEnabled, $enableLanguage, $packagingCharge, $deliveryRadius, $enableKmDelivery, $deliveryRatePerKm, $userId]);
     } catch (PDOException $e) {
         $msg = $e->getMessage();
         if (strpos($msg, 'minimum_order_value') !== false || strpos($msg, 'Unknown column') !== false) {

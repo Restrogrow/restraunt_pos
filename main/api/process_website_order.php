@@ -244,6 +244,57 @@ if ($orderType === 'delivery') {
 }
     */
 
+    // ── KM-Based Delivery Charge (server-authoritative) ──
+    // Only runs when the restaurant has explicitly turned this on in settings
+    // (users.enable_km_delivery) — existing flat/pincode-zone delivery charges
+    // are untouched otherwise. Recomputes the charge from the customer's
+    // coordinates rather than trusting the client-submitted delivery_charge
+    // (which is just a hidden form field anyone could edit via devtools), and
+    // rejects orders whose address falls outside the configured radius.
+    if ($order_type === 'Delivery') {
+        try {
+            $kmStmt = $conn->prepare("SELECT enable_km_delivery, delivery_rate_per_km, delivery_radius_km, restaurant_lat, restaurant_lng FROM users WHERE restaurant_id = ? LIMIT 1");
+            $kmStmt->execute([$restaurant_id]);
+            $kmRow = $kmStmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            $kmRow = null;
+        }
+        if ($kmRow && !empty($kmRow['enable_km_delivery'])) {
+            $ratePerKm = (float)($kmRow['delivery_rate_per_km'] ?? 0);
+            $radiusKm = (float)($kmRow['delivery_radius_km'] ?? 0);
+            $restLat = isset($kmRow['restaurant_lat']) && $kmRow['restaurant_lat'] !== null ? (float)$kmRow['restaurant_lat'] : null;
+            $restLng = isset($kmRow['restaurant_lng']) && $kmRow['restaurant_lng'] !== null ? (float)$kmRow['restaurant_lng'] : null;
+
+            if ($restLat && $restLng && $address_lat && $address_lng) {
+                $earthRadius = 6371;
+                $dLat = deg2rad($address_lat - $restLat);
+                $dLon = deg2rad($address_lng - $restLng);
+                $a = sin($dLat / 2) * sin($dLat / 2) +
+                     cos(deg2rad($restLat)) * cos(deg2rad($address_lat)) *
+                     sin($dLon / 2) * sin($dLon / 2);
+                $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+                $distanceKm = $earthRadius * $c;
+
+                if ($radiusKm > 0 && $distanceKm > $radiusKm) {
+                    ob_end_clean();
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => "Sorry, we don't deliver to your address. Your location is " . round($distanceKm, 1) . " km away, but our delivery radius is only " . $radiusKm . " km.",
+                        'error_code' => 'OUTSIDE_DELIVERY_RADIUS'
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit();
+                }
+
+                $delivery_charge = round($distanceKm * $ratePerKm, 2);
+            } else {
+                // No usable coordinates to calculate distance — fall back to 0
+                // rather than trusting an unverifiable client-submitted charge.
+                $delivery_charge = 0;
+            }
+        }
+    }
+
 $conn->beginTransaction();
     
     // Validate coupon if provided (WITH row lock to prevent race condition)

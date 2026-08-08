@@ -90,6 +90,8 @@ $show_install_app = false;
 $delivery_radius_km = 0;
 $restaurant_lat = null;
 $restaurant_lng = null;
+$enable_km_delivery = 0;
+$delivery_rate_per_km = 0;
 $instagram_link = null;
 $facebook_link = null;
 $twitter_link = null;
@@ -144,7 +146,7 @@ if ($restaurant_id) {
         if (function_exists('getConnection')) {
             $conn = getConnection();
             try {
-$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng, subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
                 $stmt->execute([$restaurant_id]);
             } catch (Exception $e2) {
                 // Fallback: new columns (delivery_radius_km, etc.) may not exist - query without them
@@ -214,6 +216,12 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 }
                 if (isset($row['restaurant_lng'])) {
                     $restaurant_lng = $row['restaurant_lng'] !== '' && $row['restaurant_lng'] !== null ? (float)$row['restaurant_lng'] : null;
+                }
+                if (isset($row['enable_km_delivery'])) {
+                    $enable_km_delivery = (int)$row['enable_km_delivery'];
+                }
+                if (isset($row['delivery_rate_per_km'])) {
+                    $delivery_rate_per_km = (float)($row['delivery_rate_per_km'] ?? 0);
                 }
                 if ($row['restaurant_logo']) {
                     $logo = $row['restaurant_logo'];

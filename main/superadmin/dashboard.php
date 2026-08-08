@@ -1186,45 +1186,6 @@ require_once __DIR__ . '/../config/countries.php';
       } catch(e) { console.error('Error:', e); }
     }
 
-    // Subscriptions
-    async function loadSubscriptions(){
-      try {
-        const res = await fetch('api.php?action=getRestaurants&limit=100');
-        const d = await res.json();
-        if(d.success){
-          const restaurants = (d.restaurants || []).map(r => ({
-            ...r,
-            isActive: Number(r.is_active) === 1
-          }));
-          const trial = restaurants.filter(r => r.trial_status === 'Active').length;
-          const active = restaurants.filter(r => r.isActive && r.trial_status === 'Active').length;
-          const expired = restaurants.filter(r => r.trial_status === 'Expired').length;
-          
-          document.getElementById('subActive').textContent = active;
-          document.getElementById('subTrial').textContent = trial;
-          document.getElementById('subExpired').textContent = expired;
-          document.getElementById('subRevenue').textContent = '₹' + (999 * active).toLocaleString('en-IN');
-          
-          const tbody = document.getElementById('subscriptionsTbody');
-          tbody.innerHTML = restaurants.map(r => `
-            <tr>
-              <td>${r.restaurant_name} (${r.restaurant_id})</td>
-              <td>${r.trial_status === 'Active' ? '<span class="badge badge-success">Active</span>' : 
-                  r.trial_status === 'Expired' ? '<span class="badge badge-danger">Expired</span>' : 
-                  '<span class="badge badge-warning">Disabled</span>'}</td>
-              <td>${r.trial_end_date || 'N/A'}</td>
-              <td>${r.renewal_date || 'N/A'}</td>
-              <td style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-outline" onclick="openWebsite('${r.restaurant_id}')">Website</button>
-                <button class="btn btn-outline" onclick="openAdminPanel(${r.id})">Admin</button>
-                <button class="btn btn-outline" onclick="toggleRestaurant(${r.id}, 1)" ${r.isActive ? 'disabled' : ''}>Enable</button>
-                <button class="btn btn-outline" onclick="toggleRestaurant(${r.id}, 0)" ${r.isActive ? '' : 'disabled'}>Disable</button>
-              </td>
-            </tr>
-          `).join('');
-        }
-      } catch(e) { console.error('Error loading subscriptions:', e); }
-    }
 
     // Payments
     async function loadPayments(){
@@ -2230,11 +2191,20 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
     // Subscriptions page
     async function loadSubscriptions() {
       try {
-        const res = await fetch('api.php?action=getRestaurants&limit=50');
-        const data = await res.json();
+        let all = [];
+        let page = 1;
+        const limit = 50;
+        while (true) {
+          const res = await fetch(`api.php?action=getRestaurants&limit=${limit}&page=${page}`);
+          const data = await res.json();
+          all = all.concat(data.restaurants || []);
+          const total = data.total || 0;
+          if (all.length >= total || !(data.restaurants || []).length) break;
+          page++;
+        }
         const tbody = document.getElementById('subscriptionsTbody');
         if (!tbody) return;
-        tbody.innerHTML = (data.restaurants||[]).map(r => {
+        tbody.innerHTML = all.map(r => {
           const status = r.trial_status || 'Unknown';
           const subStatus = r.subscription_status || 'unknown';
           const statusClass = status === 'Active' ? 'badge-success' : (status === 'Expired' ? 'badge-danger' : 'badge-warning');

@@ -63,9 +63,16 @@ try {
     $whereClause = implode(' AND ', $whereConditions);
 
     // Get whatsapp_orders and phone for the restaurant
-    $waStmt = $conn->prepare("SELECT whatsapp_orders, phone, restaurant_lat, restaurant_lng, address FROM users WHERE restaurant_id = ? LIMIT 1");
-    $waStmt->execute([$restaurant_id]);
-    $waSettings = $waStmt->fetch(PDO::FETCH_ASSOC);
+    try {
+        $waStmt = $conn->prepare("SELECT whatsapp_orders, phone, restaurant_lat, restaurant_lng, address, enable_km_delivery, delivery_rate_per_km FROM users WHERE restaurant_id = ? LIMIT 1");
+        $waStmt->execute([$restaurant_id]);
+        $waSettings = $waStmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Fall back for databases that haven't run the KM-delivery migration yet
+        $waStmt = $conn->prepare("SELECT whatsapp_orders, phone, restaurant_lat, restaurant_lng, address FROM users WHERE restaurant_id = ? LIMIT 1");
+        $waStmt->execute([$restaurant_id]);
+        $waSettings = $waStmt->fetch(PDO::FETCH_ASSOC);
+    }
 
     $sql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
                    o.order_type, o.customer_name, o.customer_phone, o.customer_email,
@@ -119,7 +126,9 @@ try {
         'whatsapp_phone' => $whatsappPhone,
         'restaurant_lat' => $waSettings['restaurant_lat'] ?? null,
         'restaurant_lng' => $waSettings['restaurant_lng'] ?? null,
-        'restaurant_address' => $waSettings['address'] ?? ''
+        'restaurant_address' => $waSettings['address'] ?? '',
+        'enable_km_delivery' => isset($waSettings['enable_km_delivery']) ? (int)$waSettings['enable_km_delivery'] : 0,
+        'delivery_rate_per_km' => isset($waSettings['delivery_rate_per_km']) ? (float)$waSettings['delivery_rate_per_km'] : 0
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (PDOException $e) {

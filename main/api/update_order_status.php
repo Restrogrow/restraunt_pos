@@ -42,6 +42,10 @@ try {
     $orderId = (int)($_POST['orderId'] ?? 0);
     $status = $_POST['status'] ?? null;
     $reason = $_POST['reason'] ?? '';
+    // Optional: set when accepting a delivery order priced via the KM-based
+    // delivery system — the admin confirms/edits the auto-calculated charge
+    // at accept time, since it's only an estimate until then.
+    $deliveryCharge = (isset($_POST['delivery_charge']) && $_POST['delivery_charge'] !== '') ? (float)$_POST['delivery_charge'] : null;
     
     if (!$orderId || !$status) {
         echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
@@ -64,15 +68,27 @@ try {
         if ($status === 'Cancelled' && $reason) {
             $appendNotes = '[Cancelled: ' . $reason . ']';
         }
-        
+
+        // When accepting with a delivery charge, update delivery_charge and
+        // fold the difference into total in the same atomic UPDATE — the SET
+        // clauses run left-to-right in MySQL, so total's clause still sees
+        // the OLD delivery_charge value here, before it gets overwritten by
+        // the clause after it.
+        $extraSet = [];
+        $extraParams = [];
+        if ($status === 'Accepted' && $deliveryCharge !== null && $deliveryCharge >= 0) {
+            $extraSet = ['total = total - delivery_charge + ?', 'delivery_charge = ?'];
+            $extraParams = [$deliveryCharge, $deliveryCharge];
+        }
+
         // Perform validated atomic update with row-level locking
         // The $appendNotes parameter handles notes appending inside the lock
         $result = validateAndUpdateOrderStatus(
-            $conn, 
-            $orderId, 
-            $status, 
-            [],       // extraSet 
-            [],       // extraParams
+            $conn,
+            $orderId,
+            $status,
+            $extraSet,
+            $extraParams,
             $restaurant_id,
             $appendNotes
         );

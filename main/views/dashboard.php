@@ -3097,6 +3097,25 @@ function toggleGatewayMode() {
               <input type="number" id="deliveryRadius" class="form-control" step="0.5" min="0" placeholder="e.g. 10" style="max-width:200px">
             </div>
 
+            <!-- KM-Based Delivery Charge -->
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <span class="material-symbols-rounded">social_distance</span>
+                Distance-Based Delivery Charge
+                <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
+                  <input type="checkbox" id="enableKmDeliveryToggle" style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
+                  <span style="font-size:13px;font-weight:500;color:#374151;" id="enableKmDeliveryLabel">Disabled</span>
+                </label>
+              </label>
+              <p style="font-size:12px;color:#6b7280;margin-top:4px;">
+                When on, the delivery charge is calculated automatically as distance (km) × rate — instead of a flat charge. Only applies to customers within your delivery radius above. You'll still confirm the exact amount when you accept each delivery order.
+              </p>
+              <div id="deliveryRatePerKmGroup" style="margin-top:10px;display:none;">
+                <label for="deliveryRatePerKm" style="font-size:12px;color:#6b7280;">Rate per km (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
+                <input type="number" id="deliveryRatePerKm" class="form-control" step="0.5" min="0" placeholder="e.g. 5" style="max-width:200px">
+              </div>
+            </div>
+
                 <div class="form-row" >
                   <div class="form-group">
                     <label for="restaurantPhone">

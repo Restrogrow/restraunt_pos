@@ -218,12 +218,10 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 <span class="label">Address</span>
                 <span class="value" style="max-width:200px;"><?php echo htmlspecialchars($order['customer_address'] ?? 'N/A'); ?></span>
             </div>
-            <?php if ($order['delivery_charge'] > 0): ?>
-            <div class="info-row">
+            <div class="info-row" id="deliveryChargeRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>">
                 <span class="label">Delivery Charge</span>
-                <span class="value"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span>
+                <span class="value" id="deliveryChargeValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span>
             </div>
-            <?php endif; ?>
             <div class="info-row" id="riderRow" style="<?php echo ($tracking && $tracking['rider_name']) ? '' : 'display:none;'; ?>">
                 <span class="label">Rider</span>
                 <span class="value" id="riderName"><?php echo $tracking ? htmlspecialchars($tracking['rider_name'] ?? '') : ''; ?></span>
@@ -245,10 +243,8 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 <?php if ((float)$order['tax'] > 0): ?>
                 <div class="info-row"><span class="label">Tax</span><span class="value"><?php echo $currency . number_format((float)$order['tax'], 2); ?></span></div>
                 <?php endif; ?>
-                <?php if ((float)$order['delivery_charge'] > 0): ?>
-                <div class="info-row"><span class="label">Delivery</span><span class="value"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
-                <?php endif; ?>
-                <div class="info-row" style="font-weight:700;"><span class="label">Total</span><span class="value"><?php echo $currency . number_format((float)$order['total'], 2); ?></span></div>
+                <div class="info-row" id="summaryDeliveryRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>"><span class="label">Delivery</span><span class="value" id="summaryDeliveryValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
+                <div class="info-row" style="font-weight:700;"><span class="label">Total</span><span class="value" id="summaryTotalValue"><?php echo $currency . number_format((float)$order['total'], 2); ?></span></div>
             </div>
         </div>
 
@@ -343,6 +339,27 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 if (statusEl && d.order_status) {
                     statusEl.textContent = statusLabels[d.order_status] || d.order_status;
                     badgeEl.className = 'status-badge status-' + d.order_status.toLowerCase();
+                }
+                // Reflects a delivery charge the restaurant sets when accepting
+                // the order (KM-based delivery pricing) — not present at page
+                // load yet if the order was still Pending, so patch it in live.
+                if (typeof d.delivery_charge !== 'undefined' && d.delivery_charge !== null) {
+                    var dc = parseFloat(d.delivery_charge) || 0;
+                    if (dc > 0) {
+                        var chargeRow = document.getElementById('deliveryChargeRow');
+                        var chargeVal = document.getElementById('deliveryChargeValue');
+                        var summaryRow = document.getElementById('summaryDeliveryRow');
+                        var summaryVal = document.getElementById('summaryDeliveryValue');
+                        var chargeText = '<?php echo $currency; ?>' + dc.toFixed(2);
+                        if (chargeRow) chargeRow.style.display = '';
+                        if (chargeVal) chargeVal.textContent = chargeText;
+                        if (summaryRow) summaryRow.style.display = '';
+                        if (summaryVal) summaryVal.textContent = chargeText;
+                    }
+                }
+                if (typeof d.total !== 'undefined' && d.total !== null) {
+                    var totalVal = document.getElementById('summaryTotalValue');
+                    if (totalVal) totalVal.textContent = '<?php echo $currency; ?>' + parseFloat(d.total).toFixed(2);
                 }
                 if (d.tracking) {
                     if (d.tracking.rider_name) {

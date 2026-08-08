@@ -45,6 +45,27 @@ try {
         throw new Exception('Restaurant ID is required');
     }
 
+    // Restaurant coordinates + KM-based delivery settings, needed so the
+    // "Accept" action on the new-order popup can suggest a delivery charge
+    // without depending on the Online Orders list having loaded first.
+    $restaurantLat = null;
+    $restaurantLng = null;
+    $enableKmDelivery = 0;
+    $deliveryRatePerKm = 0;
+    try {
+        $restStmt = $conn->prepare("SELECT restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km FROM users WHERE restaurant_id = ? LIMIT 1");
+        $restStmt->execute([$restaurant_id]);
+        $restRow = $restStmt->fetch(PDO::FETCH_ASSOC);
+        if ($restRow) {
+            $restaurantLat = $restRow['restaurant_lat'];
+            $restaurantLng = $restRow['restaurant_lng'];
+            $enableKmDelivery = (int)($restRow['enable_km_delivery'] ?? 0);
+            $deliveryRatePerKm = (float)($restRow['delivery_rate_per_km'] ?? 0);
+        }
+    } catch (PDOException $e) {
+        // Columns not migrated yet on this database — leave defaults above
+    }
+
     // Get the most recent pending online order (must have at least 1 item)
     $sql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
                    o.order_type, o.customer_name, o.customer_phone, o.customer_email,
@@ -91,7 +112,11 @@ try {
 
         echo json_encode([
             'success' => true,
-            'order' => $order
+            'order' => $order,
+            'restaurant_lat' => $restaurantLat,
+            'restaurant_lng' => $restaurantLng,
+            'enable_km_delivery' => $enableKmDelivery,
+            'delivery_rate_per_km' => $deliveryRatePerKm
         ], JSON_UNESCAPED_UNICODE);
     } else {
         echo json_encode([

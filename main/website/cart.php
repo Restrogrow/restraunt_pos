@@ -963,6 +963,8 @@ window.googleMapsApiKey = <?php echo json_encode($googleMapsApiKey, JSON_HEX_TAG
 window.deliveryRadius = <?php echo json_encode((float)$delivery_radius_km, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantLat = <?php echo json_encode($restaurant_lat !== null ? (float)$restaurant_lat : null, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantLng = <?php echo json_encode($restaurant_lng !== null ? (float)$restaurant_lng : null, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.enableKmDelivery = <?php echo json_encode((int)$enable_km_delivery, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.deliveryRatePerKm = <?php echo json_encode((float)$delivery_rate_per_km, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 
 // Helper: append ?table=X param from sessionStorage or window var to any URL
 function appendTableParam(url) {
@@ -3009,11 +3011,30 @@ function applySelectedAddress(lat, lng, formatted, postcode) {
     var radius = parseFloat(window.deliveryRadius) || 0;
     var restLat = parseFloat(window.restaurantLat);
     var restLng = parseFloat(window.restaurantLng);
+    var isKmDelivery = window.enableKmDelivery == 1 || window.enableKmDelivery === true;
     if (radius > 0 && restLat && restLng) {
       var dist = haversineDistance(restLat, restLng, lat, lng);
       if (dist <= radius) {
-        distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ Within delivery area (' + dist.toFixed(1) + ' km / ' + radius + ' km max)</div>';
+        if (isKmDelivery) {
+          // Auto-calculated distance-based charge, shown to the customer up
+          // front. The restaurant still confirms/edits the final amount when
+          // they accept the order, since straight-line distance is only an
+          // estimate of the real delivery route.
+          var rate = parseFloat(window.deliveryRatePerKm) || 0;
+          var kmCharge = Math.round(dist * rate * 100) / 100;
+          var chargeEl = document.getElementById('deliveryCharge');
+          if (chargeEl) chargeEl.value = kmCharge;
+          if (typeof updateOrderTotal === 'function') updateOrderTotal(kmCharge);
+          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ Within delivery area (' + dist.toFixed(1) + ' km / ' + radius + ' km max)<br>Delivery Charge: <strong>' + getCurrency() + kmCharge.toFixed(2) + '</strong> (' + dist.toFixed(1) + ' km × ' + getCurrency() + rate + '/km)</div>';
+        } else {
+          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ Within delivery area (' + dist.toFixed(1) + ' km / ' + radius + ' km max)</div>';
+        }
       } else {
+        if (isKmDelivery) {
+          var chargeEl2 = document.getElementById('deliveryCharge');
+          if (chargeEl2) chargeEl2.value = '0';
+          if (typeof updateOrderTotal === 'function') updateOrderTotal(0);
+        }
         distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#f8d7da;color:#721c24;border-radius:6px;font-size:13px;"><strong>⚠ Sorry, we don\'t deliver here</strong><br>Distance: ' + dist.toFixed(1) + ' km (max ' + radius + ' km)</div>';
       }
     }
