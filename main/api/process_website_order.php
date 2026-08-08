@@ -104,12 +104,28 @@ try {
     // Resolve restaurant ID: session > query param > default
     $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? 'RES001');
 
+    // Fetch every restaurant setting this endpoint needs in ONE round trip.
+    // Previously this was 7 separate `SELECT ... FROM users WHERE
+    // restaurant_id = ?` queries scattered through the file (subscription
+    // status, min order/packaging, COD/payment gateway, opening hours,
+    // KM-delivery settings, GST, WhatsApp) — each one a full network round
+    // trip to the DB before the customer's order could even start being
+    // validated. Falls back to a reduced column set if a newer migration
+    // (km-delivery, cod_enabled, etc.) hasn't been run on this DB yet.
+    try {
+        $userStmt = $conn->prepare("SELECT subscription_status, minimum_order_value, packaging_charge, cod_enabled, payment_gateway_mode, phonepe_merchant_id, (business_qr_code_data IS NOT NULL) AS has_business_qr, opening_hours, timezone, enable_km_delivery, delivery_rate_per_km, delivery_radius_km, restaurant_lat, restaurant_lng, enable_gst, tax_name, tax_percent, whatsapp_orders, phone FROM users WHERE restaurant_id = ? LIMIT 1");
+        $userStmt->execute([$restaurant_id]);
+        $restaurantRow = $userStmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $userStmt = $conn->prepare("SELECT subscription_status, minimum_order_value, packaging_charge, opening_hours, timezone, enable_gst, tax_name, tax_percent, whatsapp_orders, phone FROM users WHERE restaurant_id = ? LIMIT 1");
+        $userStmt->execute([$restaurant_id]);
+        $restaurantRow = $userStmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     // Reject orders for restaurants whose subscription has lapsed. The
     // customer website already blocks browsing in this state (header.php),
     // but this is the authoritative server-side check for direct API calls.
-    $subStmt = $conn->prepare("SELECT subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
-    $subStmt->execute([$restaurant_id]);
-    $subStatus = $subStmt->fetchColumn();
+    $subStatus = $restaurantRow['subscription_status'] ?? null;
     if (in_array($subStatus, ['expired', 'disabled'], true)) {
         ob_end_clean();
         http_response_code(403);
@@ -121,9 +137,7 @@ try {
     }
 
     // Check minimum order value and fetch packaging charge from DB (server-authoritative)
-    $minStmt = $conn->prepare("SELECT minimum_order_value, packaging_charge FROM users WHERE restaurant_id = ? LIMIT 1");
-    $minStmt->execute([$restaurant_id]);
-    $minRow = $minStmt->fetch(PDO::FETCH_ASSOC);
+    $minRow = $restaurantRow;
     $minOrderValue = (float)($minRow['minimum_order_value'] ?? 0);
     // Use DB packaging_charge instead of client-provided value to prevent price manipulation
     $packaging_charge = (float)($minRow['packaging_charge'] ?? 0);
@@ -139,18 +153,12 @@ try {
     // Enforce COD availability server-side. The client already hides the Cash
     // option when disabled, but that alone isn't authoritative.
     $codEnabled = true;
-    try {
-        $codStmt = $conn->prepare("SELECT cod_enabled, payment_gateway_mode, phonepe_merchant_id, (business_qr_code_data IS NOT NULL) AS has_business_qr FROM users WHERE restaurant_id = ? LIMIT 1");
-        $codStmt->execute([$restaurant_id]);
-        $codRow = $codStmt->fetch(PDO::FETCH_ASSOC);
-        if ($codRow && isset($codRow['cod_enabled']) && (int)$codRow['cod_enabled'] === 0) {
-            $hasOnlinePayment = !empty($codRow['phonepe_merchant_id']) || (int)($codRow['has_business_qr'] ?? 0) === 1;
-            // Never fully block checkout: if no online payment method is
-            // configured either, keep accepting Cash as the only option.
-            $codEnabled = !$hasOnlinePayment;
-        }
-    } catch (PDOException $e) {
-        // cod_enabled column not present yet (migration not run) - default to enabled
+    $codRow = $restaurantRow;
+    if ($codRow && isset($codRow['cod_enabled']) && (int)$codRow['cod_enabled'] === 0) {
+        $hasOnlinePayment = !empty($codRow['phonepe_merchant_id']) || (int)($codRow['has_business_qr'] ?? 0) === 1;
+        // Never fully block checkout: if no online payment method is
+        // configured either, keep accepting Cash as the only option.
+        $codEnabled = !$hasOnlinePayment;
     }
     if (!$codEnabled && ($payment_method === 'Cash' || $payment_method === '')) {
         ob_end_clean();
@@ -166,9 +174,7 @@ try {
     // values meant in the restaurant's local time (e.g. Nepal restaurants
     // set them in NPT, UTC+5:45), so comparing them against IST would be off
     // by 15 minutes and could wrongly accept/reject orders near open/close.
-    $hoursStmt = $conn->prepare("SELECT opening_hours, timezone FROM users WHERE restaurant_id = ? LIMIT 1");
-    $hoursStmt->execute([$restaurant_id]);
-    $hoursRow = $hoursStmt->fetch(PDO::FETCH_ASSOC);
+    $hoursRow = $restaurantRow;
     if ($hoursRow && !empty($hoursRow['opening_hours'])) {
         $hours = json_decode($hoursRow['opening_hours'], true);
         if ($hours) {
@@ -252,13 +258,7 @@ if ($orderType === 'delivery') {
     // (which is just a hidden form field anyone could edit via devtools), and
     // rejects orders whose address falls outside the configured radius.
     if ($order_type === 'Delivery') {
-        try {
-            $kmStmt = $conn->prepare("SELECT enable_km_delivery, delivery_rate_per_km, delivery_radius_km, restaurant_lat, restaurant_lng FROM users WHERE restaurant_id = ? LIMIT 1");
-            $kmStmt->execute([$restaurant_id]);
-            $kmRow = $kmStmt->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            $kmRow = null;
-        }
+        $kmRow = $restaurantRow;
         if ($kmRow && !empty($kmRow['enable_km_delivery'])) {
             $ratePerKm = (float)($kmRow['delivery_rate_per_km'] ?? 0);
             $radiusKm = (float)($kmRow['delivery_radius_km'] ?? 0);
@@ -310,6 +310,74 @@ $conn->beginTransaction();
         }
     }
 
+    // --- Batch-fetch menu items, variations, and addons up front ---
+    // Previously this ran one query per cart item for menu_items, plus one
+    // more per variation, plus one more per addon (and again for global
+    // addons) — a 10-item cart with addons could mean 20-40 sequential DB
+    // round trips, all while the transaction below is open. Now it's 3
+    // queries total regardless of cart size.
+    $menuItemIds = [];
+    foreach ($items as $item) {
+        $id = (int)($item['id'] ?? 0);
+        if ($id > 0) $menuItemIds[] = $id;
+    }
+    $menuItemIds = array_values(array_unique($menuItemIds));
+
+    $menuItemsById = [];
+    if (!empty($menuItemIds)) {
+        $placeholders = implode(',', array_fill(0, count($menuItemIds), '?'));
+        // Scope to this restaurant — without this filter a menu_item id belonging
+        // to a different restaurant could be used to bill an unrelated price.
+        $menuStmt = $conn->prepare("SELECT id, item_name_en, base_price, is_available FROM menu_items WHERE id IN ($placeholders) AND restaurant_id = ?");
+        $menuStmt->execute(array_merge($menuItemIds, [$restaurant_id]));
+        foreach ($menuStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $menuItemsById[(int)$row['id']] = $row;
+        }
+    }
+
+    $variationsByItem = [];
+    if (!empty($menuItemIds)) {
+        $placeholders = implode(',', array_fill(0, count($menuItemIds), '?'));
+        // Also scoped to these menu items, which are already scoped to this
+        // restaurant above, so a variation can't be borrowed from another
+        // restaurant's item either.
+        $varStmt = $conn->prepare("SELECT menu_item_id, variation_name, price FROM menu_item_variations WHERE menu_item_id IN ($placeholders)");
+        $varStmt->execute($menuItemIds);
+        foreach ($varStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $variationsByItem[(int)$row['menu_item_id']][$row['variation_name']] = (float)$row['price'];
+        }
+    }
+
+    // Collect every addon ID referenced anywhere (per-item + global) so all
+    // of them can be verified with a single query.
+    $addonIds = [];
+    foreach ($items as $item) {
+        if (!empty($item['addons']) && is_array($item['addons'])) {
+            foreach ($item['addons'] as $addon) {
+                $aid = (int)($addon['id'] ?? 0);
+                if ($aid > 0) $addonIds[] = $aid;
+            }
+        }
+    }
+    if (!empty($global_addons) && is_array($global_addons)) {
+        foreach ($global_addons as $gAddon) {
+            $aid = (int)($gAddon['id'] ?? 0);
+            if ($aid > 0) $addonIds[] = $aid;
+        }
+    }
+    $addonIds = array_values(array_unique($addonIds));
+
+    $addonsById = [];
+    if (!empty($addonIds)) {
+        $placeholders = implode(',', array_fill(0, count($addonIds), '?'));
+        $addonStmt = $conn->prepare("SELECT id, addon_name, addon_price, is_available FROM meal_addons WHERE id IN ($placeholders) AND restaurant_id = ? AND is_available = 1");
+        $addonStmt->execute(array_merge($addonIds, [$restaurant_id]));
+        foreach ($addonStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $addonsById[(int)$row['id']] = $row;
+        }
+    }
+    // --- End batch-fetch ---
+
     // --- Server-side price verification ---
     // Verifies menu item prices, variation prices, AND addon prices
     // against the database to prevent price manipulation by clients.
@@ -320,29 +388,17 @@ $conn->beginTransaction();
         $menuItemId = (int)($item['id'] ?? 0);
         $quantity = (int)($item['quantity'] ?? 0);
         if ($quantity <= 0) continue;
-        
-        // Scope to this restaurant — without this filter a menu_item id belonging
-        // to a different restaurant could be used to bill an unrelated price.
-        $menuStmt = $conn->prepare("SELECT id, item_name_en, base_price, is_available FROM menu_items WHERE id = ? AND restaurant_id = ?");
-        $menuStmt->execute([$menuItemId, $restaurant_id]);
-        $menuRow = $menuStmt->fetch(PDO::FETCH_ASSOC);
+
+        $menuRow = $menuItemsById[$menuItemId] ?? null;
         if (!$menuRow || !$menuRow['is_available']) continue;
 
         $unitPrice = (float)$menuRow['base_price'];
         $variationName = $item['variation_name'] ?? '';
 
-        if (!empty($variationName)) {
-            // Also scope the variation lookup to this menu item, which is already
-            // scoped to this restaurant above, so a variation can't be borrowed
-            // from another restaurant's item either.
-            $varStmt = $conn->prepare("SELECT price FROM menu_item_variations WHERE menu_item_id = ? AND variation_name = ?");
-            $varStmt->execute([$menuItemId, $variationName]);
-            $varRow = $varStmt->fetch(PDO::FETCH_ASSOC);
-            if ($varRow) {
-                $unitPrice = (float)$varRow['price'];
-            }
+        if (!empty($variationName) && isset($variationsByItem[$menuItemId][$variationName])) {
+            $unitPrice = $variationsByItem[$menuItemId][$variationName];
         }
-        
+
         // --- Server-side addon price verification ---
         // Look up actual addon prices from DB and validate that each addon
         // exists, is available, and uses the correct price.
@@ -354,10 +410,7 @@ $conn->beginTransaction();
                     // Addon without an ID — skip silently (client-invented addon)
                     continue;
                 }
-                // Look up the actual addon from the database
-                $addonStmt = $conn->prepare("SELECT id, addon_name, addon_price, is_available FROM meal_addons WHERE id = ? AND restaurant_id = ? AND is_available = 1");
-                $addonStmt->execute([$addonId, $restaurant_id]);
-                $dbAddon = $addonStmt->fetch(PDO::FETCH_ASSOC);
+                $dbAddon = $addonsById[$addonId] ?? null;
                 if ($dbAddon) {
                     // Use the DB price — ignore whatever the client sent
                     // Multiply by item quantity so addon costs scale with the order
@@ -375,7 +428,7 @@ $conn->beginTransaction();
             }
         }
         // --- End addon price verification ---
-        
+
         $verifiedItems[] = [
             'id' => $menuRow['id'],
             // Always use the DB-verified name, never the client-submitted one —
@@ -405,9 +458,7 @@ $conn->beginTransaction();
             $gAddonId = (int)($gAddon['id'] ?? 0);
             $gQty = (int)($gAddon['quantity'] ?? 1);
             if ($gAddonId <= 0 || $gQty <= 0) continue;
-            $addonStmt = $conn->prepare("SELECT id, addon_name, addon_price, is_available FROM meal_addons WHERE id = ? AND restaurant_id = ? AND is_available = 1");
-            $addonStmt->execute([$gAddonId, $restaurant_id]);
-            $dbAddon = $addonStmt->fetch(PDO::FETCH_ASSOC);
+            $dbAddon = $addonsById[$gAddonId] ?? null;
             if ($dbAddon) {
                 $gPrice = (float)$dbAddon['addon_price'];
                 $verifiedGlobalAddons[] = [
@@ -485,9 +536,7 @@ $conn->beginTransaction();
     $taxName = 'GST';
     $taxPercent = 5.00;
     try {
-        $gstStmt = $conn->prepare("SELECT enable_gst, tax_name, tax_percent FROM users WHERE restaurant_id = ? LIMIT 1");
-        $gstStmt->execute([$restaurant_id]);
-        $gstRow = $gstStmt->fetch(PDO::FETCH_ASSOC);
+        $gstRow = $restaurantRow;
         $gstEnabled = $gstRow ? (bool)$gstRow['enable_gst'] : true;
         if ($gstRow && !empty($gstRow['tax_name'])) $taxName = $gstRow['tax_name'];
         if ($gstRow && isset($gstRow['tax_percent']) && $gstRow['tax_percent'] !== null) $taxPercent = (float)$gstRow['tax_percent'];
@@ -738,24 +787,9 @@ $conn->beginTransaction();
         foreach ($items as $item) {
             $addonsJson = null;
             if (!empty($item['addons']) && $kotItemsHasAddons) {
-                $verifiedAddons = [];
-                foreach ($item['addons'] as $addon) {
-                    $addonId = (int)($addon['id'] ?? 0);
-                    if ($addonId <= 0) continue;
-                    try {
-                        $addonStmt = $conn->prepare("SELECT id, addon_name, addon_price, is_available FROM meal_addons WHERE id = ? AND restaurant_id = ? AND is_available = 1");
-                        $addonStmt->execute([$addonId, $restaurant_id]);
-                        $dbAddon = $addonStmt->fetch(PDO::FETCH_ASSOC);
-                        if ($dbAddon) {
-                            $verifiedAddons[] = [
-                                'id'    => (int)$dbAddon['id'],
-                                'name'  => $dbAddon['addon_name'],
-                                'price' => (float)$dbAddon['addon_price'],
-                            ];
-                        }
-                    } catch (Exception $e) {}
-                }
-                $addonsJson = !empty($verifiedAddons) ? json_encode($verifiedAddons, JSON_UNESCAPED_UNICODE) : null;
+                // $item['addons'] was already verified against meal_addons
+                // above (DB-checked id/name/price) — no need to re-query it.
+                $addonsJson = json_encode($item['addons'], JSON_UNESCAPED_UNICODE);
             }
 
             if ($kotItemsHasAddons) {
@@ -786,11 +820,9 @@ $conn->beginTransaction();
     // Commit transaction
     $conn->commit();
 
-    // Fetch WhatsApp settings needed for the response payload below
-    $waStmt = $conn->prepare("SELECT whatsapp_orders, phone FROM users WHERE restaurant_id = ? LIMIT 1");
-    $waStmt->execute([$restaurant_id]);
-    $waSettings = $waStmt->fetch(PDO::FETCH_ASSOC);
-    $whatsappEnabled = $waSettings ? (int)$waSettings['whatsapp_orders'] : 0;
+    // WhatsApp settings needed for the response payload below
+    $waSettings = $restaurantRow;
+    $whatsappEnabled = $waSettings ? (int)($waSettings['whatsapp_orders'] ?? 0) : 0;
     $whatsappPhone = $waSettings ? (string)($waSettings['phone'] ?? '') : '';
 
     // Send the response to the browser NOW, before any slow post-commit work

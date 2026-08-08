@@ -412,6 +412,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="card">
           <div class="card-header">
             <div class="card-title">Subscription Details</div>
+            <input id="subSearch" placeholder="Search restaurants..." style="width:300px;">
           </div>
           <div class="card-body">
             <div style="overflow-x:auto;">
@@ -2189,6 +2190,9 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
     document.querySelector('.sidebar-overlay')?.addEventListener('click', toggleSidebar);
 
     // Subscriptions page
+    let subAllRestaurants = [];
+    let subSearchQuery = '';
+
     async function loadSubscriptions() {
       try {
         let all = [];
@@ -2202,29 +2206,45 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
           if (all.length >= total || !(data.restaurants || []).length) break;
           page++;
         }
-        const tbody = document.getElementById('subscriptionsTbody');
-        if (!tbody) return;
-        tbody.innerHTML = all.map(r => {
-          const status = r.trial_status || 'Unknown';
-          const subStatus = r.subscription_status || 'unknown';
-          const statusClass = status === 'Active' ? 'badge-success' : (status === 'Expired' ? 'badge-danger' : 'badge-warning');
-          const statusIcon = status === 'Active' ? '✅' : (status === 'Expired' ? '❌' : '⏳');
-          return `<tr>
-            <td><strong>${r.restaurant_name}</strong><br><small style="color:#6b7280;">${r.restaurant_id}</small></td>
-            <td><span class="badge ${statusClass}">${statusIcon} ${status}</span><br><small style="color:#6b7280;">${subStatus}</small></td>
-            <td>${r.trial_end_date || '--'}</td>
-            <td>${r.renewal_date || '--'}<br><small style="color:#6b7280;">${r.days_left || 0} days left</small></td>
-            <td style="white-space:nowrap;">
-              <button class="btn btn-sm btn-success" onclick="activateSubscription(${r.id})" title="Activate 30 days">✓ Activate</button>
-              <button class="btn btn-sm btn-primary" onclick="customDuration(${r.id}, '${r.restaurant_name}')" title="Custom duration">📅 Custom</button>
-              <button class="btn btn-sm btn-danger" onclick="expireSubscription(${r.id})" title="Mark expired">✗ Expire</button>
-            </td>
-          </tr>`;
-        }).join('') || '<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">No restaurants found</td></tr>';
+        subAllRestaurants = all;
+        renderSubscriptions();
       } catch(e) {
         console.error('Load subscriptions error:', e);
       }
     }
+
+    function renderSubscriptions() {
+      const tbody = document.getElementById('subscriptionsTbody');
+      if (!tbody) return;
+      const q = subSearchQuery.toLowerCase();
+      const filtered = q ? subAllRestaurants.filter(r =>
+        (r.restaurant_name || '').toLowerCase().includes(q) ||
+        (r.restaurant_id || '').toLowerCase().includes(q) ||
+        (r.username || '').toLowerCase().includes(q)
+      ) : subAllRestaurants;
+      tbody.innerHTML = filtered.map(r => {
+        const status = r.trial_status || 'Unknown';
+        const subStatus = r.subscription_status || 'unknown';
+        const statusClass = status === 'Active' ? 'badge-success' : (status === 'Expired' ? 'badge-danger' : 'badge-warning');
+        const statusIcon = status === 'Active' ? '✅' : (status === 'Expired' ? '❌' : '⏳');
+        return `<tr>
+          <td><strong>${r.restaurant_name}</strong><br><small style="color:#6b7280;">${r.restaurant_id}</small></td>
+          <td><span class="badge ${statusClass}">${statusIcon} ${status}</span><br><small style="color:#6b7280;">${subStatus}</small></td>
+          <td>${r.trial_end_date || '--'}</td>
+          <td>${r.renewal_date || '--'}<br><small style="color:#6b7280;">${r.days_left || 0} days left</small></td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm btn-success" onclick="activateSubscription(${r.id})" title="Activate 30 days">✓ Activate</button>
+            <button class="btn btn-sm btn-primary" onclick="customDuration(${r.id}, '${r.restaurant_name}')" title="Custom duration">📅 Custom</button>
+            <button class="btn btn-sm btn-danger" onclick="expireSubscription(${r.id})" title="Mark expired">✗ Expire</button>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">No restaurants found</td></tr>';
+    }
+
+    document.getElementById('subSearch')?.addEventListener('input', (e) => {
+      subSearchQuery = e.target.value.trim();
+      renderSubscriptions();
+    });
 
     async function loadSubscriptionStats() {
       try {

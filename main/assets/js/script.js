@@ -944,6 +944,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const posMenuFilter = document.getElementById("posMenuFilter");
           const posCategoryFilter = document.getElementById("posCategoryFilter");
           const posTypeFilter = document.getElementById("posTypeFilter");
+          const posSearchInput = document.getElementById("posSearchInput");
           if (posMenuFilter && !posMenuFilter.dataset.listenerAttached) {
             posMenuFilter.addEventListener("change", loadPOSMenuItems);
             posMenuFilter.dataset.listenerAttached = 'true';
@@ -955,6 +956,10 @@ document.addEventListener("DOMContentLoaded", () => {
           if (posTypeFilter && !posTypeFilter.dataset.listenerAttached) {
             posTypeFilter.addEventListener("change", loadPOSMenuItems);
             posTypeFilter.dataset.listenerAttached = 'true';
+          }
+          if (posSearchInput && !posSearchInput.dataset.listenerAttached) {
+            posSearchInput.addEventListener("input", handlePOSSearchInput);
+            posSearchInput.dataset.listenerAttached = 'true';
           }
         }, 100);
       }
@@ -7442,19 +7447,49 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Store all POS items for mobile modal
   let allPOSItems = [];
-  
+
+  // Debounced re-filter/re-render for the POS search box, so we don't
+  // re-render the grid on every keystroke while the user is still typing.
+  let posSearchDebounceTimer = null;
+  function handlePOSSearchInput() {
+    clearTimeout(posSearchDebounceTimer);
+    posSearchDebounceTimer = setTimeout(() => {
+      renderPOSMenuGrid(filterPOSItemsBySearch(allPOSItems));
+    }, 250);
+  }
+
   // Display POS menu items
   function displayPOSMenuItems(items) {
-    const posMenuItemsContainer = document.getElementById("posMenuItems");
-    
     // Store items for mobile modal
     allPOSItems = items;
-    
+
+    renderPOSMenuGrid(filterPOSItemsBySearch(items));
+
+    // Update mobile modal items list
+    updateMobileItemsList(items);
+  }
+
+  // Filter POS menu items by the desktop search box
+  function filterPOSItemsBySearch(items) {
+    const searchInput = document.getElementById('posSearchInput');
+    const q = (searchInput?.value || '').toLowerCase().trim();
+    if (!q) return items;
+    return items.filter(item => {
+      const name = (item.item_name_translated || item.item_name_en || '').toLowerCase();
+      const category = (item.item_category || '').toLowerCase();
+      return name.includes(q) || category.includes(q);
+    });
+  }
+
+  // Render the POS menu item grid (desktop)
+  function renderPOSMenuGrid(items) {
+    const posMenuItemsContainer = document.getElementById("posMenuItems");
+
     if (items.length === 0) {
       posMenuItemsContainer.innerHTML = '<div class="empty-state"><span class="material-symbols-rounded">menu</span><h3>No menu items found</h3><p>Add menu items to start selling.</p></div>';
       return;
     }
-    
+
     posMenuItemsContainer.innerHTML = items.map(item => {
       const hasVariations = item.has_variations && item.variations && item.variations.length > 0;
       const priceDisplay = hasVariations ? 
@@ -7505,11 +7540,8 @@ document.addEventListener("DOMContentLoaded", () => {
         handlePOSItemClick(itemId, itemName, basePrice, image, hasVariations, variations);
       });
     });
-    
-    // Update mobile modal items list
-    updateMobileItemsList(items);
   }
-  
+
   // Check if mobile view and show/hide add item button, bill summary, and bottom actions
   function checkMobileView() {
     const mobileBtn = document.getElementById('mobileAddItemBtn');
@@ -7764,7 +7796,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const posMenuFilter = document.getElementById("posMenuFilter");
   const posCategoryFilter = document.getElementById("posCategoryFilter");
   const posTypeFilter = document.getElementById("posTypeFilter");
-  
+  const posSearchInput = document.getElementById("posSearchInput");
+
   if (posMenuFilter) {
     posMenuFilter.addEventListener("change", loadPOSMenuItems);
   }
@@ -7773,6 +7806,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (posTypeFilter) {
     posTypeFilter.addEventListener("change", loadPOSMenuItems);
+  }
+  if (posSearchInput) {
+    posSearchInput.addEventListener("input", handlePOSSearchInput);
   }
   
   // Load menus for POS filters

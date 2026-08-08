@@ -157,44 +157,50 @@ function createDatabaseConnection() {
         try {
             // Create connection
             $pdo = new PDO($dsn, $username, $password, $options);
-            
-            // Verify connection is alive (use buffered query)
-            $stmt = $pdo->query("SELECT 1");
-            $stmt->fetchAll();  // Fetch all results to clear
-            $stmt = null;  // Free statement
-            
-            // Force Indian Standard Time for this session so NOW()/CURRENT_TIMESTAMP
-            // and any DB-generated timestamps (e.g. created_at defaults) are in IST,
-            // regardless of the MySQL server's own configured timezone.
-            $pdo->exec("SET SESSION time_zone = '+05:30'");
 
-            // Set optimized session variables for better performance
-            // For non-persistent connections, use shorter timeouts to free connections quickly
-            $pdo->exec("SET SESSION wait_timeout = 30");  // 30 seconds for non-persistent connections (frees quickly)
-            $pdo->exec("SET SESSION interactive_timeout = 30");
-            
-            // Performance optimizations
-            $pdo->exec("SET SESSION query_cache_type = OFF");  // Disable query cache (let MySQL handle it)
-            $pdo->exec("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO'");
-            
-            // Optimize for high concurrency (only set if supported)
+            // Note: no post-connect "SELECT 1" verify here — the PDO
+            // constructor above already throws on failure, so a fresh
+            // connection is proven alive without an extra round trip.
+
+            // Force IST + tune session timeouts in a single round trip
+            // (previously 4 separate exec() calls, each its own network
+            // round trip to the DB on every single non-persistent connection
+            // — i.e. on every login and every order placed).
+            $pdo->exec("SET SESSION time_zone = '+05:30', wait_timeout = 30, interactive_timeout = 30, sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO'");
+
+            // Best-effort perf tuning - not all MySQL versions/hosts support
+            // these (query_cache_type was removed entirely in MySQL 8+), so
+            // combined into one guarded statement rather than 3 separate ones.
             try {
-                $pdo->exec("SET SESSION net_read_timeout = 30");  // Network read timeout
-                $pdo->exec("SET SESSION net_write_timeout = 30");  // Network write timeout
+                $pdo->exec("SET SESSION query_cache_type = OFF, net_read_timeout = 30, net_write_timeout = 30");
             } catch (PDOException $e) {
                 // Ignore if not supported
             }
-            
-            // Automatically expire trials that have passed their end date (run once per connection)
-            try {
-                $pdo->exec("UPDATE users SET subscription_status = 'expired', is_active = 0 
-                           WHERE subscription_status = 'trial' 
-                           AND trial_end_date IS NOT NULL 
-                           AND trial_end_date < CURRENT_DATE()
-                           LIMIT 100");  // Limit to prevent long-running queries
-            } catch (PDOException $e) {
-                // Silently fail if columns don't exist or other error
-                error_log("Error auto-expiring trials: " . $e->getMessage());
+
+            // Automatically expire trials that have passed their end date.
+            // This used to run on EVERY connection (i.e. every login/order),
+            // adding a full write round trip to each one. Now gated to run
+            // at most once every 2 minutes across all requests via a
+            // timestamp lock file - the sweep is idempotent, so occasionally
+            // running it twice under concurrent load is harmless.
+            $trialSweepLock = __DIR__ . '/tmp/trial_sweep.lock';
+            $lastSweep = @filemtime($trialSweepLock);
+            if ($lastSweep === false || (time() - $lastSweep) > 120) {
+                if (!is_dir(__DIR__ . '/tmp')) {
+                    @mkdir(__DIR__ . '/tmp', 0755, true);
+                }
+                if (@touch($trialSweepLock)) {
+                    try {
+                        $pdo->exec("UPDATE users SET subscription_status = 'expired', is_active = 0
+                                   WHERE subscription_status = 'trial'
+                                   AND trial_end_date IS NOT NULL
+                                   AND trial_end_date < CURRENT_DATE()
+                                   LIMIT 100");  // Limit to prevent long-running queries
+                    } catch (PDOException $e) {
+                        // Silently fail if columns don't exist or other error
+                        error_log("Error auto-expiring trials: " . $e->getMessage());
+                    }
+                }
             }
             
             // Clear any previous transaction state

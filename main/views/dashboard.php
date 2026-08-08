@@ -3936,6 +3936,7 @@ function toggleGatewayMode() {
           <!-- Left Side - Menu Items -->
           <div class="pos-menu-section">
             <div class="pos-filters">
+              <input type="text" id="posSearchInput" class="filter-select" placeholder="Search items...">
               <select id="posMenuFilter" class="filter-select">
                 <option value="">All Menus</option>
               </select>
