@@ -311,6 +311,9 @@ try {
   <!-- Optimized Font Loading -->
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
+
+  <!-- Poster generator fonts (Marketing page) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Playfair+Display:wght@700;800&family=Bebas+Neue&display=swap">
   
   <!-- Cropper.js for image cropping (local files to avoid tracking prevention blocking) -->
   <link rel="stylesheet" href="../assets/libs/cropperjs/cropper.min.css">
@@ -332,6 +335,9 @@ try {
     $restaurant_website_slug = trim($restaurant_website_slug, '-');
     ?>
     window.restaurantWebsiteSlug = <?php echo json_encode($restaurant_website_slug, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+    window.restaurantName = <?php echo json_encode($restaurant_name, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
+    window.restaurantLogoUrl = <?php echo json_encode($restaurant_logo, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+    window.restaurantPhone = <?php echo json_encode($user_phone, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
     window.enableGst = <?php echo json_encode((bool)$enable_gst, JSON_HEX_TAG); ?>;
     window.taxName = <?php echo json_encode($tax_name, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE); ?>;
     window.taxPercent = <?php echo json_encode((float)$tax_percent, JSON_HEX_TAG); ?>;
@@ -1039,12 +1045,36 @@ try {
           </a>
           <span class="nav-tooltip">Analytics</span>
         </li>
-        <li class="nav-item">
-          <a href="#" class="nav-link" data-page="marketingPage">
+        <li class="nav-item has-submenu">
+          <a href="#" class="nav-link submenu-toggle">
             <span class="nav-icon material-symbols-rounded">campaign</span>
             <span class="nav-label">Marketing</span>
+            <span class="submenu-arrow material-symbols-rounded">chevron_right</span>
           </a>
           <span class="nav-tooltip">Marketing</span>
+          <ul class="submenu">
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="marketingPostersPage" onclick="setTimeout(initPosterStudio, 50)">
+                <span class="nav-icon material-symbols-rounded">imagesmode</span>
+                <span class="nav-label">Posters</span>
+              </a>
+              <span class="nav-tooltip">Posters</span>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="marketingCaptionsPage" onclick="setTimeout(initCaptionStudio, 50)">
+                <span class="nav-icon material-symbols-rounded">chat_bubble</span>
+                <span class="nav-label">Social Captions</span>
+              </a>
+              <span class="nav-tooltip">Social Captions</span>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="marketingCalendarPage" onclick="setTimeout(initCampaignCalendar, 50)">
+                <span class="nav-icon material-symbols-rounded">event</span>
+                <span class="nav-label">Campaign Calendar</span>
+              </a>
+              <span class="nav-tooltip">Campaign Calendar</span>
+            </li>
+          </ul>
         </li>
         <li class="nav-item has-submenu">
           <a href="#" class="nav-link submenu-toggle">
@@ -1365,52 +1395,60 @@ try {
             <div id="colorPreviewContainer" style="background: white; border-radius: 8px; padding: 1rem; border: 2px solid #e5e7eb; margin-bottom: 2rem;">
               <div style="font-weight: 700; color: #111827; margin-bottom: 0.75rem;">Preview:</div>
               <div id="heroPreview" style="background: linear-gradient(135deg, #F70000 0%, #DA020E 100%); border-radius: 8px; padding: 1.5rem; color: white; margin-bottom: 1rem;">
-                <div style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Restaurant Name</div>
+                <div id="heroPreviewName" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Restaurant Name</div>
                 <div style="font-size: 0.9rem; opacity: 0.9;">Hero Section Background (Gradient)</div>
               </div>
               <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <div id="categoryButtonPreview" style="border: 2px solid #F70000; color: #F70000; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Category Button</div>
                 <div id="addToCartPreview" style="background: #FFD100; color: #333; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Add to Cart</div>
-                <div id="checkoutPreview" style="background: #F70000; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Checkout</div>
+                <div id="checkoutPreview" style="background: #FFD100; color: #333; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Checkout</div>
               </div>
             </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 16px; padding: 1.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 16px; padding: 1.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
                 <div style="text-align: center; margin-bottom: 1rem;">
                   <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                     <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">palette</span>
-                    Main Color
+                    Primary Color
                   </div>
-                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">Primary brand color</div>
+                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">Buttons, links, header &amp; checkout</div>
                 </div>
-                <input type="color" id="primaryRed" value="#F70000" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onmouseover="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                <div id="primaryRedDisplay" style="margin-top: 0.75rem; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px;">#F70000</div>
+                <input type="color" id="primaryRed" value="#F70000" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer;">
+                <input type="text" id="primaryRedHex" value="#F70000" maxlength="7" placeholder="#F70000" style="margin-top: 0.75rem; width: 100%; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px; border: 2px solid #e5e7eb; text-transform: uppercase;">
               </div>
-              
-              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 16px; padding: 1.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-                <div style="text-align: center; margin-bottom: 1rem;">
-                  <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #991b1b;">gradient</span>
-                    Accent Color
-                  </div>
-                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">Darker shade for gradients</div>
-                </div>
-                <input type="color" id="darkRed" value="#DA020E" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onmouseover="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                <div id="darkRedDisplay" style="margin-top: 0.75rem; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px;">#DA020E</div>
-              </div>
-              
-              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 16px; padding: 1.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
+
+              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 16px; padding: 1.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
                 <div style="text-align: center; margin-bottom: 1rem;">
                   <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                     <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #fbbf24;">star</span>
-                    Highlight Color
+                    Accent Color
                   </div>
-                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">Call-to-action buttons</div>
+                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">"Add to Cart" &amp; highlights</div>
                 </div>
-                <input type="color" id="primaryYellow" value="#FFD100" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onmouseover="this.style.borderColor='#d1d5db'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                <div id="primaryYellowDisplay" style="margin-top: 0.75rem; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px;">#FFD100</div>
+                <input type="color" id="primaryYellow" value="#FFD100" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer;">
+                <input type="text" id="primaryYellowHex" value="#FFD100" maxlength="7" placeholder="#FFD100" style="margin-top: 0.75rem; width: 100%; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px; border: 2px solid #e5e7eb; text-transform: uppercase;">
               </div>
+            </div>
+            <!-- Hidden field: gradient shade auto-derived from Primary Color (no manual picker needed) -->
+            <input type="hidden" id="darkRed" value="#DA020E">
+            <p style="margin: -0.75rem 0 1.5rem; font-size: 0.8rem; color: #9ca3af;">The gradient shade used in headers is generated automatically from your Primary Color.</p>
+
+            <!-- Font Picker -->
+            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #2563eb;">font_download</span>
+                Website Font
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Choose the font used across your customer-facing website.</p>
+              <select id="siteFontSelect" style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; background: #fff; cursor: pointer;">
+                <option value="Poppins" style="font-family: 'Poppins', sans-serif;">Poppins (Default)</option>
+                <option value="Playfair Display" style="font-family: 'Playfair Display', serif;">Playfair Display (Elegant)</option>
+                <option value="Roboto" style="font-family: 'Roboto', sans-serif;">Roboto (Clean)</option>
+                <option value="Montserrat" style="font-family: 'Montserrat', sans-serif;">Montserrat (Modern)</option>
+                <option value="Nunito" style="font-family: 'Nunito', sans-serif;">Nunito (Friendly)</option>
+                <option value="Lora" style="font-family: 'Lora', serif;">Lora (Classic)</option>
+              </select>
             </div>
                         <!-- Background Theme Selector -->
             <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
@@ -1488,7 +1526,11 @@ try {
             </div>
             <div class="form-actions">
               <button type="button" class="btn btn-save" id="saveWebsiteThemeBtn">Save Theme</button>
-              <a href="<?php echo $basePath; ?>/<?php 
+              <button type="button" class="btn btn-outline" id="resetWebsiteThemeBtn" style="display:flex;align-items:center;gap:6px;">
+                <span class="material-symbols-rounded" style="font-size:18px;">restart_alt</span>
+                Reset to Default
+              </button>
+              <a href="<?php echo $basePath; ?>/<?php
                 $restaurant_slug = strtolower($restaurant_name);
                 $restaurant_slug = preg_replace('/[^a-z0-9]+/', '-', $restaurant_slug);
                 $restaurant_slug = trim($restaurant_slug, '-');
@@ -2467,20 +2509,107 @@ function toggleGatewayMode() {
       </div>
     </div>
 
-    <!-- Marketing Page -->
-    <div id="marketingPage" class="page">
+    <!-- Marketing > Posters Page -->
+    <div id="marketingPostersPage" class="page">
       <div class="page-header">
         <div>
-          <h1>Marketing</h1>
-          <p>Promote your restaurant and reach more customers</p>
+          <h1>Posters</h1>
+          <p>Create posters to promote your restaurant on WhatsApp, Instagram & Facebook</p>
         </div>
       </div>
       <div class="page-content">
-        <div style="text-align:center;padding:80px 20px;">
-          <span class="material-symbols-rounded" style="font-size:64px;color:#ccc;margin-bottom:16px;display:block;">campaign</span>
-          <h3 style="margin:0 0 8px;color:#1f2937;font-size:1.3rem;">Coming Soon</h3>
-          <p style="color:#9ca3af;margin:0;font-size:0.95rem;">Marketing tools are on the way. Stay tuned!</p>
+        <div class="poster-studio">
+          <div class="poster-controls-panel">
+            <div class="poster-panel-title">1. Choose a template</div>
+            <div id="posterTemplateGrid" class="poster-template-grid"></div>
+
+            <div class="poster-panel-title" style="margin-top:24px;">2. Customize</div>
+            <div id="posterFieldsContainer" class="poster-fields"></div>
+          </div>
+          <div class="poster-preview-panel">
+            <div class="poster-canvas-wrap">
+              <canvas id="posterCanvas" width="1080" height="1080"></canvas>
+            </div>
+            <button type="button" class="btn-secondary" onclick="downloadPoster()">
+              <span class="material-symbols-rounded" style="font-size:18px;">download</span> Download PNG
+            </button>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Marketing > Social Captions Page -->
+    <div id="marketingCaptionsPage" class="page">
+      <div class="page-header">
+        <div>
+          <h1>Social Captions</h1>
+          <p>Generate ready-to-post captions with hashtags for Instagram, Facebook & WhatsApp</p>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="caption-studio">
+          <div class="caption-controls-panel">
+            <div class="poster-panel-title">1. What are you promoting?</div>
+            <div class="poster-fields">
+              <div class="poster-field">
+                <label for="captionPostType">Post Type</label>
+                <select id="captionPostType">
+                  <option value="new_item">New Dish / Menu Item</option>
+                  <option value="discount">Discount / Offer</option>
+                  <option value="combo">Combo Deal</option>
+                  <option value="happy_hour">Happy Hour</option>
+                  <option value="weekend">Weekend Special</option>
+                  <option value="festive">Festive / Event Special</option>
+                  <option value="now_open">Grand Opening / Now Open</option>
+                  <option value="we_deliver">Delivery Available</option>
+                  <option value="testimonial">Customer Review / Testimonial</option>
+                  <option value="general">General Promotion</option>
+                </select>
+              </div>
+              <div class="poster-field">
+                <label for="captionSubject">Dish / Offer Name</label>
+                <input type="text" id="captionSubject" maxlength="60" placeholder="e.g. Signature Butter Chicken">
+              </div>
+              <div class="poster-field">
+                <label for="captionDetail">Details (price, timing, etc.) - optional</label>
+                <input type="text" id="captionDetail" maxlength="80" placeholder="e.g. Starting at 249, this weekend only">
+              </div>
+              <div class="poster-field">
+                <label for="captionTone">Tone</label>
+                <select id="captionTone">
+                  <option value="fun">Fun & Casual</option>
+                  <option value="elegant">Elegant</option>
+                  <option value="urgent">Urgent / FOMO</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:16px;">
+              <button type="button" class="btn-secondary" style="flex:1;" onclick="generateCaptions()">
+                <span class="material-symbols-rounded" style="font-size:18px;">auto_awesome</span> Generate Captions
+              </button>
+              <button type="button" class="btn-secondary" title="Get different phrasing for the same inputs" onclick="generateCaptions()">
+                <span class="material-symbols-rounded" style="font-size:18px;">shuffle</span>
+              </button>
+            </div>
+          </div>
+          <div class="caption-results-panel">
+            <div class="poster-panel-title">2. Pick a caption to use</div>
+            <div id="captionResultsContainer" class="caption-results"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Marketing > Campaign Calendar Page -->
+    <div id="marketingCalendarPage" class="page">
+      <div class="page-header">
+        <div>
+          <h1>Campaign Calendar</h1>
+          <p>Upcoming occasions worth promoting - jump straight into a poster or caption, pre-filled</p>
+        </div>
+      </div>
+      <div class="page-content">
+        <div id="campaignCalendarGrid" class="campaign-calendar-grid"></div>
       </div>
     </div>
 
@@ -5205,6 +5334,9 @@ function toggleGatewayMode() {
   <!-- Currency utils (extracted from script.js) -->
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
   <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
+  <script src="../assets/js/poster-generator.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/caption-generator.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/campaign-calendar.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
   
 

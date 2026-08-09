@@ -1037,6 +1037,10 @@ body {
             <div class="quick-action-icon qa-contact"><i class="fa fa-headset"></i></div>
             <div><div class="quick-action-text">Contact Us</div><div class="quick-action-sub">Get help</div></div>
           </button>
+          <button class="quick-action-btn" id="accountActionBtn" onclick="handleAccountAction()">
+            <div class="quick-action-icon" id="accountActionIcon" style="background:#e8f5e9;color:#2e7d32;"><i class="fa fa-right-to-bracket"></i></div>
+            <div><div class="quick-action-text" id="accountActionText">Login / Sign Up</div><div class="quick-action-sub" id="accountActionSub">Track orders faster</div></div>
+          </button>
         </div>
 
         <!-- Order History -->
@@ -1105,6 +1109,16 @@ window.restaurantCountry = <?php echo json_encode($country ?? 'India', JSON_HEX_
 window.restaurantDialCode = <?php echo json_encode($phone_dial_code ?? '+91', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantPhoneMin = <?php echo json_encode((int)($phone_min_digits ?? 10), JSON_HEX_TAG); ?>;
 window.restaurantPhoneMax = <?php echo json_encode((int)($phone_max_digits ?? 10), JSON_HEX_TAG); ?>;
+window.loggedInCustomer = <?php echo $logged_in_customer ? json_encode([
+    'name' => $logged_in_customer['customer_name'],
+    'phone' => $logged_in_customer['phone'],
+    'email' => $logged_in_customer['email'],
+], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) : 'null'; ?>;
+window.loginUrl = <?php
+$loginUrlBase = restaurantPageUrl('login');
+$loginUrlSep = strpos($loginUrlBase, '?') !== false ? '&' : '?';
+echo json_encode($loginUrlBase . $loginUrlSep . 'redirect=profile', JSON_HEX_TAG | JSON_HEX_AMP);
+?>;
 </script>
 <script>
 /* ═══════════════════════════════════════════════════════════════
@@ -1163,9 +1177,52 @@ function loadCustomerFromStorage() {
   try { var s = localStorage.getItem('customerDetails'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
 }
 
+/* ── Account (login/logout) ── */
+function handleAccountAction() {
+  if (window.loggedInCustomer) {
+    logoutCustomer();
+  } else {
+    window.location.href = window.loginUrl;
+  }
+}
+function logoutCustomer() {
+  var fd = new FormData();
+  fd.append('action', 'logout');
+  fetch('customer_auth.php', { method: 'POST', body: fd })
+    .then(function() {
+      window.loggedInCustomer = null;
+      try { localStorage.removeItem('customerDetails'); } catch(e) {}
+      showToast('Logged out', 'success');
+      loadProfileData();
+      loadOrderHistory();
+    })
+    .catch(function() { showToast('Could not log out. Please try again.', 'error'); });
+}
+function updateAccountActionUI() {
+  var icon = document.getElementById('accountActionIcon');
+  var text = document.getElementById('accountActionText');
+  var sub = document.getElementById('accountActionSub');
+  var editBtn = document.getElementById('editProfileBtn');
+  if (!icon || !text || !sub) return;
+  if (window.loggedInCustomer) {
+    icon.innerHTML = '<i class="fa fa-right-from-bracket"></i>';
+    icon.style.background = '#fce4ec'; icon.style.color = '#c62828';
+    text.textContent = 'Logout';
+    sub.textContent = 'End your session';
+    if (editBtn) editBtn.style.display = 'none';
+  } else {
+    icon.innerHTML = '<i class="fa fa-right-to-bracket"></i>';
+    icon.style.background = '#e8f5e9'; icon.style.color = '#2e7d32';
+    text.textContent = 'Login / Sign Up';
+    sub.textContent = 'Track orders faster';
+    if (editBtn) editBtn.style.display = '';
+  }
+}
+
 /* ── Load Profile ── */
 function loadProfileData() {
-  var c = loadCustomerFromStorage();
+  updateAccountActionUI();
+  var c = window.loggedInCustomer || loadCustomerFromStorage();
   var name = c ? (c.name || 'Guest') : 'Guest';
   var phone = c ? (c.phone || '') : '';
   var email = c ? (c.email || '') : '';
@@ -1190,8 +1247,15 @@ function loadProfileData() {
   document.getElementById('editEmail').value = email;
   document.getElementById('editAddress').value = address;
 
-  if (!c || !phone) {
-    var badge = document.querySelector('.section-badge');
+  var badge = document.querySelector('.section-badge');
+  if (window.loggedInCustomer) {
+    badge.textContent = ' Logged In';
+    var icon = document.createElement('i');
+    icon.className = 'fa fa-shield-halved';
+    badge.prepend(icon);
+    badge.style.background = '#e8f5e9';
+    badge.style.color = '#2e7d32';
+  } else if (!c || !phone) {
     badge.textContent = ' Incomplete';
     var icon = document.createElement('i');
     icon.className = 'fa fa-info-circle';
@@ -1199,7 +1263,6 @@ function loadProfileData() {
     badge.style.background = '#fef3c7';
     badge.style.color = '#92400e';
   } else {
-    var badge = document.querySelector('.section-badge');
     badge.textContent = ' Saved';
     var icon = document.createElement('i');
     icon.className = 'fa fa-check-circle';
@@ -1289,7 +1352,7 @@ function sortOrders(orders) {
 async function loadOrderHistory() {
   var el = document.getElementById('orderHistory');
   if (!el) return;
-  var c = loadCustomerFromStorage();
+  var c = window.loggedInCustomer || loadCustomerFromStorage();
   if (!c || !c.phone) {
     el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">📋</span><div class="empty-state-title">No Orders Yet</div><div class="empty-state-desc">Save your phone number in your profile to see your order history here.</div></div>';
     return;
@@ -1568,7 +1631,7 @@ function submitFeedback() {
   btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting...';
   document.getElementById('feedbackError').style.display = 'none';
 
-  var c = loadCustomerFromStorage();
+  var c = window.loggedInCustomer || loadCustomerFromStorage();
   var formData = new FormData();
   formData.append('order_number', document.getElementById('feedbackOrderNumber').value);
   formData.append('customer_phone', c ? c.phone : '');
@@ -1648,16 +1711,30 @@ window.addEventListener('appinstalled', function() {
 
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', function() {
+  // Gate: if not logged in and this browser session hasn't already chosen
+  // "Continue as Guest", show the Login / Sign Up / Guest screen first
+  // instead of jumping straight to the (possibly stale) guest details.
+  if (!window.loggedInCustomer) {
+    var guestSessionActive = false;
+    try { guestSessionActive = sessionStorage.getItem('guestSessionActive') === '1'; } catch(e) {}
+    if (!guestSessionActive) {
+      window.location.href = window.loginUrl;
+      return;
+    }
+  }
   loadProfileData();
   loadOrderHistory();
   setupProfileForm();
   var editBtn = document.getElementById('editProfileBtn');
   if (editBtn) editBtn.addEventListener('click', toggleProfileEdit);
   if (window.location.hash === '#edit') toggleProfileEdit();
-  // Auto-show edit form for first-time users with no saved data
-  var c = loadCustomerFromStorage();
-  if (!c || !c.phone) {
-    setTimeout(toggleProfileEdit, 500);
+  // Auto-show edit form for first-time guests with no saved data
+  // (skipped for logged-in accounts - their details already come from the account)
+  if (!window.loggedInCustomer) {
+    var c = loadCustomerFromStorage();
+    if (!c || !c.phone) {
+      setTimeout(toggleProfileEdit, 500);
+    }
   }
 });
 </script>

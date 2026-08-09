@@ -24,13 +24,19 @@ if (isset($_GET['table']) && trim($_GET['table']) !== '') {
 <title><?php echo htmlspecialchars($restaurant_name ?? 'Dvani Cafe & Grill', ENT_QUOTES, 'UTF-8'); ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700<?php echo $font_family_google_param ? '&family=' . $font_family_google_param . ':wght@300;400;500;600;700' : ''; ?>&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
+:root {
+  --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --primary-yellow: <?php echo htmlspecialchars($primary_yellow, ENT_QUOTES, 'UTF-8'); ?>;
+  --site-font: <?php echo $font_family_css; ?>;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   background: #e8ecf2;
   color: #1a1b1f;
   min-height: 100vh;
@@ -66,7 +72,7 @@ body {
 .more-btn {
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
   cursor: pointer; font-size: 20px;
   border: none; position: relative;
@@ -80,11 +86,11 @@ body {
 .more-dropdown a {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 16px; color: #1a1b1f; text-decoration: none;
-  font-size: 14px; font-family: 'Poppins', sans-serif; cursor: pointer;
+  font-size: 14px; font-family: var(--site-font); cursor: pointer;
   transition: background 0.15s;
 }
 .more-dropdown a:hover { background: #f5f5f5; }
-.more-dropdown a i { width: 20px; text-align: center; color: #e17055; }
+.more-dropdown a i { width: 20px; text-align: center; color: var(--primary-red, #e17055); }
 .more-dropdown .divider { height: 1px; background: #eee; margin: 4px 0; }
 
 .profile-section {
@@ -150,7 +156,7 @@ body {
 .location-txt {
   text-align: center; padding: 0;
   font-size: 14px; font-weight: 500; color: #fff;
-  font-family: 'Poppins', sans-serif; margin: 0;
+  font-family: var(--site-font); margin: 0;
 }
 .location-txt i { font-size: 15px; vertical-align: middle; margin-right: 6px; color: rgba(255,255,255,0.85); }
 
@@ -164,7 +170,7 @@ body {
 .bio-web {
   text-align: center;
   font-size: 17px; font-weight: 400; color: #fff;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   line-height: 24px;
   margin: 0;
 }
@@ -187,11 +193,11 @@ body {
 }
 .action-btn-row button {
   padding: 6px 14px; border: none; border-radius: 8px;
-  font-size: 12px; font-family: 'Poppins', sans-serif;
+  font-size: 12px; font-family: var(--site-font);
   cursor: pointer; display: flex; align-items: center; gap: 4px;
 }
 .btn-fill {
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
 }
 .btn-outline {
@@ -208,7 +214,7 @@ body {
   flex: 1; text-align: center; padding: 10px 0;
   font-size: 14px; font-weight: 500; cursor: pointer;
   color: #888; transition: all 0.25s;
-  background: transparent; border: none; font-family: 'Poppins', sans-serif;
+  background: transparent; border: none; font-family: var(--site-font);
   position: relative;
 }
 .order-tab.active {
@@ -373,7 +379,7 @@ body {
 .toast-notification {
   position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
   padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 500;
-  z-index: 99999; font-family: 'Poppins', sans-serif;
+  z-index: 99999; font-family: var(--site-font);
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;
   transform: translateX(-50%) translateY(20px);
@@ -402,7 +408,7 @@ body {
 .gradient-search-input {
   flex: 1; border: none; outline: none;
   padding: 6px 14px;
-  font-size: 14px; font-family: 'Poppins', sans-serif;
+  font-size: 14px; font-family: var(--site-font);
   height: 29px;
   background: transparent;
   color: #111;
@@ -431,7 +437,7 @@ body {
   display: flex; align-items: center; gap: 8px;
 }
 .category-header h3 .count-badge {
-  font-size: 12px; color: #e17055; font-weight: 500;
+  font-size: 12px; color: var(--primary-red, #e17055); font-weight: 500;
 }
 .category-header .collapse-icon {
   color: #999; cursor: pointer; font-size: 14px;
@@ -461,7 +467,7 @@ body {
 .menu-item-desc { font-size: 11px; color: #777; margin-top: 2px; line-height: 1.4; }
 .menu-item-price { font-size: 14px; font-weight: 600; color: #2d3436; margin-top: auto; }
 .menu-item-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
-.menu-item-variant { font-size: 10px; color: #e17055; font-weight: 500; background: #fdf2f2; padding: 2px 8px; border-radius: 4px; }
+.menu-item-variant { font-size: 10px; color: var(--primary-red, #e17055); font-weight: 500; background: #fdf2f2; padding: 2px 8px; border-radius: 4px; }
 .menu-item.oos { opacity: 0.55; pointer-events: none; }
 .menu-item.oos .menu-item-img { filter: grayscale(1); }
 .menu-item-oos-badge { font-size: 10px; font-weight: 600; color: #e74c3c; background: #fdecea; padding: 2px 8px; border-radius: 4px; display: inline-block; text-transform: uppercase; letter-spacing: 0.3px; }
@@ -470,20 +476,20 @@ body {
 .add-btn {
   width: 32px; height: 32px; border-radius: 8px;
   border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #e17055, #d63031);
-  color: #fff; font-size: 18px;
+  background: var(--primary-yellow, #FFD100);
+  color: #1a1b1f; font-size: 18px;
 }
 .qty-control {
   display: flex; align-items: center; gap: 0;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: var(--primary-yellow, #FFD100);
   border-radius: 8px; overflow: hidden;
 }
 .qty-control button {
   width: 30px; height: 32px; border: none;
-  background: transparent; color: #fff;
+  background: transparent; color: #1a1b1f;
   font-size: 16px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .qty-control .qty-num {
   min-width: 24px; text-align: center;
@@ -495,7 +501,7 @@ body {
 .link-card {
   display: flex; align-items: center; gap: 12px;
   padding: 12px; border-radius: 12px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; margin-bottom: 8px; cursor: pointer;
 }
 .link-card .link-icon { width: 36px; height: 36px; border-radius: 6px; overflow: hidden; }
@@ -570,8 +576,8 @@ body {
 .qr-center-logo img { width: 100%; height: 100%; object-fit: cover; }
 .share-btn {
   margin-top: 14px; padding: 10px 40px; border: none; border-radius: 8px;
-  background: linear-gradient(135deg, #e17055, #d63031);
-  color: #fff; font-size: 14px; font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
+  color: #fff; font-size: 14px; font-family: var(--site-font);
   cursor: pointer; font-weight: 500;
 }
 
@@ -606,7 +612,7 @@ body {
 .nav-item {
   flex: 1; display: flex; flex-direction: column; align-items: center;
   gap: 2px; cursor: pointer; position: relative;
-  border: none; background: none; font-family: 'Poppins', sans-serif;
+  border: none; background: none; font-family: var(--site-font);
 }
 .nav-item img { width: 30px; height: 30px; }
 .nav-item span { font-size: 11px; color: #555; }
@@ -622,9 +628,9 @@ body {
   font-weight: 600;
 }
 .login-btn {
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; border: none; border-radius: 8px;
-  padding: 6px 14px; font-size: 11px; font-family: 'Poppins', sans-serif;
+  padding: 6px 14px; font-size: 11px; font-family: var(--site-font);
   cursor: pointer; font-weight: 500;
 }
 
@@ -685,7 +691,7 @@ body {
   justify-content: center;
   font-size: 15px;
   font-weight: 700;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .order-type-modal-body {
   padding: 20px 18px 18px;
@@ -762,7 +768,7 @@ body {
   font-weight: 600;
   border: none;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   transition: all 0.2s;
 }
 .order-type-btn.btn-cancel {
@@ -771,7 +777,7 @@ body {
 }
 .order-type-btn.btn-cancel:hover { background: #f8bbd0; }
 .order-type-btn.btn-confirm {
-  background: #d63031;
+  background: var(--dark-red, #d63031);
   color: #fff;
 }
 .order-type-btn.btn-confirm:hover { background: #c0392b; }
@@ -927,7 +933,7 @@ body {
   color: #1a1b1f;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .variant-chip.selected {
   border-color: #2d3436;
@@ -947,12 +953,12 @@ body {
   padding: 14px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #e17055, #d63031);
-  color: #fff;
+  background: var(--primary-yellow, #FFD100);
+  color: #1a1b1f;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -973,14 +979,14 @@ body {
   height: 40px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
   font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .sheet-qty-btn:active {
   opacity: 0.8;
@@ -1045,7 +1051,7 @@ body {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   transition: opacity 0.2s;
 }
 .closed-overlay-inner button:hover { opacity: 0.9; }
@@ -1184,11 +1190,11 @@ window.socialLinks = {
   <div class="links-grid" id="socialSection">
     <h2>Social</h2>
     <?php if ($show_install_app): ?><div class="link-card" id="installCardLink" onclick="promptInstall()" style="display:none">
-      <div class="link-icon" style="background:#e17055"><i class="fa fa-download link-icon-i"></i></div>
+      <div class="link-icon" style="background:var(--primary-red, #e17055)"><i class="fa fa-download link-icon-i"></i></div>
       <div><div class="link-name">Install App</div><div class="link-desc">Add to your home screen</div></div>
     </div><?php endif; ?>
     <div class="link-card" onclick="window.location.href='<?php echo restaurantPageUrl('about'); ?>'">
-      <div class="link-icon" style="background:#d63031"><i class="fa fa-info link-icon-i"></i></div>
+      <div class="link-icon" style="background:var(--dark-red, #d63031)"><i class="fa fa-info link-icon-i"></i></div>
       <div><div class="link-name">About Us</div><div class="link-desc">Our story & values</div></div>
     </div>
 
@@ -1862,7 +1868,7 @@ function showItemDetail(ci, ii) {
   // Badge row: prep time, type label, category
   var badges = [];
   if (prepTime) {
-    badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#f5f0eb;font-size:11px;font-weight:500;color:#e17055"><i class="fa fa-clock" style="font-size:10px"></i> ' + prepTime + ' min</span>');
+    badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#f5f0eb;font-size:11px;font-weight:500;color:var(--primary-red, #e17055)"><i class="fa fa-clock" style="font-size:10px"></i> ' + prepTime + ' min</span>');
   }
   if (itemCalories > 0) {
     badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#fef3c7;font-size:11px;font-weight:500;color:#d97706"><i class="fa fa-fire" style="font-size:10px"></i> ' + itemCalories + ' kcal</span>');
@@ -1901,7 +1907,7 @@ function showItemDetail(ci, ii) {
       var varOos = varItem.is_available == 0;
       html += '<div class="variant-chip' + (varOos ? ' disabled' : '') + '" data-idx="' + v + '"' + (varOos ? '' : ' onclick="selectVariant(' + v + ')') + '">' +
         varName +
-        (varOos ? ' <span style="color:#999;font-weight:400;font-size:10px">(Unavailable)</span>' : ' <span style="color:#e17055;font-weight:600">' + formatPrice(varPrice) + '</span>') +
+        (varOos ? ' <span style="color:#999;font-weight:400;font-size:10px">(Unavailable)</span>' : ' <span style="color:var(--primary-red, #e17055);font-weight:600">' + formatPrice(varPrice) + '</span>') +
       '</div>';
     }
     html += '</div>';
@@ -2152,7 +2158,7 @@ function showInstallGuide() {
         '<span>Tap <strong>"Add"</strong> to confirm</span>' +
       '</div>' +
     '</div>' +
-    '<button onclick="this.closest(\'div[style]\').remove()" style="padding:10px 32px;border:none;border-radius:10px;background:linear-gradient(135deg,#e17055,#d63031);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:\'Poppins\',sans-serif">Got it!</button>' +
+    '<button onclick="this.closest(\'div[style]\').remove()" style="padding:10px 32px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--primary-red, #e17055),var(--dark-red, #d63031));color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--site-font)">Got it!</button>' +
   '</div>';
   document.body.appendChild(overlay);
 }

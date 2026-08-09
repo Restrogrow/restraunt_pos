@@ -239,38 +239,52 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
             }
         }
     } catch (Exception $e) {
-    }        // Load background_theme from website_settings
-    if ($restaurant_id) {
-        try {
-            $stmt = $conn->prepare('SELECT background_theme FROM website_settings WHERE restaurant_id = :rid');
-            $stmt->execute([':rid' => $restaurant_id]);
-            $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($themeRow && !empty($themeRow['background_theme'])) {
-                // Only use DB value if it's a valid URL (starts with http), not an invalid placeholder
-                $dbBg = trim($themeRow['background_theme']);
-                if (strpos($dbBg, 'http://') === 0 || strpos($dbBg, 'https://') === 0 || strpos($dbBg, 'data:') === 0) {
-                    $background_theme = $dbBg;
-                }
-            }
-        } catch (Exception $e) {
-        }
     }
-    
-    // Load logo_shape and logo_size from website_settings
+    // Load website appearance settings (background, logo, brand colors, font) in one query
+    // so they can be rendered server-side and applied before first paint (no flash of default colors).
     $logo_shape = 'circle';
     $logo_size = 90;
+    $primary_red = '#F70000';
+    $dark_red = '#DA020E';
+    $primary_yellow = '#FFD100';
+    $font_family = 'Poppins';
     if ($restaurant_id) {
         try {
-            $stmt = $conn->prepare('SELECT logo_shape, logo_size FROM website_settings WHERE restaurant_id = :rid');
+            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
-            $logoRow = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($logoRow) {
-                $logo_shape = $logoRow['logo_shape'] ?? 'circle';
-                $logo_size = (int)($logoRow['logo_size'] ?? 90);
+            $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($themeRow) {
+                if (!empty($themeRow['background_theme'])) {
+                    // Only use DB value if it's a valid URL (starts with http), not an invalid placeholder
+                    $dbBg = trim($themeRow['background_theme']);
+                    if (strpos($dbBg, 'http://') === 0 || strpos($dbBg, 'https://') === 0 || strpos($dbBg, 'data:') === 0) {
+                        $background_theme = $dbBg;
+                    }
+                }
+                $logo_shape = $themeRow['logo_shape'] ?? 'circle';
+                $logo_size = (int)($themeRow['logo_size'] ?? 90);
+                if (!empty($themeRow['primary_red'])) $primary_red = $themeRow['primary_red'];
+                if (!empty($themeRow['dark_red'])) $dark_red = $themeRow['dark_red'];
+                if (!empty($themeRow['primary_yellow'])) $primary_yellow = $themeRow['primary_yellow'];
+                if (!empty($themeRow['font_family'])) $font_family = $themeRow['font_family'];
             }
         } catch (Exception $e) {
         }
     }
+    $allowedWebFonts = [
+        'Poppins' => "'Poppins', sans-serif",
+        'Playfair Display' => "'Playfair Display', serif",
+        'Roboto' => "'Roboto', sans-serif",
+        'Montserrat' => "'Montserrat', sans-serif",
+        'Nunito' => "'Nunito', sans-serif",
+        'Lora' => "'Lora', serif",
+    ];
+    if (!array_key_exists($font_family, $allowedWebFonts)) {
+        $font_family = 'Poppins';
+    }
+    $font_family_css = $allowedWebFonts[$font_family];
+    // Only request a second Google Font family when it differs from the Poppins link already in <head>
+    $font_family_google_param = ($font_family !== 'Poppins') ? str_replace(' ', '+', $font_family) : '';
 }
 
 // Derive phone dial code / expected local number length from the restaurant's country
@@ -337,7 +351,7 @@ if (!empty($custom_domain) && $embed_enabled && !$is_custom_domain) {
         } elseif ($basename && $basename !== 'index.php') {
             // Direct .php page access (e.g. cart.php?restaurant_id=X)
             $page_name = str_replace('.php', '', $basename);
-            if (in_array($page_name, ['menu', 'cart', 'about', 'contact', 'profile', 'track', 'track-order', 'privacy-policy', 'terms-of-service', 'refund-policy', 'shipping-policy', 'cookie-policy'])) {
+            if (in_array($page_name, ['menu', 'cart', 'about', 'contact', 'profile', 'login', 'reset_password', 'track', 'track-order', 'privacy-policy', 'terms-of-service', 'refund-policy', 'shipping-policy', 'cookie-policy'])) {
                 $redirect_path = '/' . $page_name;
             }
         }
@@ -421,6 +435,16 @@ if ($restaurant_id) {
     
     // Fire tracking as output-buffered JavaScript (async, invisible)
     echo '<script>(function(){var x=new XMLHttpRequest();x.open("GET","' . $website_base_href . 'track_visit.php?rid=' . urlencode($restaurant_id) . '&page=' . urlencode(substr($track_page, 0, 255)) . '&name=' . urlencode($track_name) . '&ip=' . urlencode($track_ip) . '&ref=' . urlencode($track_ref) . '&ua=' . urlencode(substr($track_ua, 0, 200)) . '",true);x.timeout=3000;x.send();})();</script>' . "\n";
+}
+
+// ── Customer account session ──
+// Resolves a logged-in customer for the restaurant being browsed (customers
+// are scoped per-restaurant, same as the `customers` CRM table), reviving
+// the session from a "remember me" cookie if needed.
+require_once __DIR__ . '/customer_session.php';
+$logged_in_customer = null;
+if ($restaurant_id && isset($conn) && $conn instanceof PDO) {
+    $logged_in_customer = getLoggedInCustomer($conn, $restaurant_id);
 }
 
 ob_end_flush();

@@ -1131,6 +1131,17 @@ async function loadRestaurantDetails() {
                     if (data.theme.primary_red) root.style.setProperty('--primary-red', data.theme.primary_red);
                     if (data.theme.dark_red) root.style.setProperty('--dark-red', data.theme.dark_red);
                     if (data.theme.primary_yellow) root.style.setProperty('--primary-yellow', data.theme.primary_yellow);
+                    if (data.theme.font_family) {
+                        const fontStacks = {
+                            'Poppins': "'Poppins', sans-serif",
+                            'Playfair Display': "'Playfair Display', serif",
+                            'Roboto': "'Roboto', sans-serif",
+                            'Montserrat': "'Montserrat', sans-serif",
+                            'Nunito': "'Nunito', sans-serif",
+                            'Lora': "'Lora', serif"
+                        };
+                        root.style.setProperty('--site-font', fontStacks[data.theme.font_family] || fontStacks['Poppins']);
+                    }
                 }
             }
         }

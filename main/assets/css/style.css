@@ -517,6 +517,328 @@ html {
   justify-content: center;
 }
 
+/* Marketing: Poster Studio */
+.poster-studio {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .poster-studio {
+    grid-template-columns: 1fr;
+  }
+}
+
+.poster-controls-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.poster-panel-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.poster-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.poster-template-card {
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f4f6;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+  position: relative;
+}
+
+.poster-template-card canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.poster-template-card:hover {
+  transform: translateY(-2px);
+}
+
+.poster-template-card.active {
+  border-color: #151A2D;
+}
+
+.poster-template-name {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 3px 4px;
+  line-height: 1.2;
+}
+
+.poster-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.poster-field label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 5px;
+}
+
+.poster-field input[type="text"] {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.poster-field input[type="file"] {
+  width: 100%;
+  font-size: 0.82rem;
+}
+
+.poster-color-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.poster-color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.poster-color-swatch.active {
+  border-color: #151A2D;
+}
+
+.poster-color-picker {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  cursor: pointer;
+  background: none;
+  overflow: hidden;
+}
+
+.poster-color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.poster-color-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.poster-field-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.poster-field-checkbox input {
+  width: 16px;
+  height: 16px;
+}
+
+.poster-preview-panel {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.poster-canvas-wrap {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+#posterCanvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Marketing: Social Captions */
+.caption-studio {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .caption-studio {
+    grid-template-columns: 1fr;
+  }
+}
+
+.caption-controls-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.caption-controls-panel select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.caption-results-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 200px;
+}
+
+.caption-results {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.caption-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  background: #f9fafb;
+}
+
+.caption-card-text {
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+  color: #1f2937;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.caption-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.caption-card-actions .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+}
+
+/* Marketing: Campaign Calendar */
+.campaign-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.campaign-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.campaign-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.campaign-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.campaign-card-pill {
+  flex-shrink: 0;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.campaign-card-pill-soon {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.campaign-card-date {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.campaign-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.campaign-card-actions .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  flex: 1;
+  justify-content: center;
+}
+
 .modal-body {
   padding: 25px;
 }

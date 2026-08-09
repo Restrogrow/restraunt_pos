@@ -16,16 +16,22 @@
 <title>Menu - <?php echo htmlspecialchars($restaurant_name ?? 'Dvani Cafe & Grill', ENT_QUOTES, 'UTF-8'); ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700<?php echo $font_family_google_param ? '&family=' . $font_family_google_param . ':wght@300;400;500;600;700' : ''; ?>&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
+:root {
+  --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --primary-yellow: <?php echo htmlspecialchars($primary_yellow, ENT_QUOTES, 'UTF-8'); ?>;
+  --site-font: <?php echo $font_family_css; ?>;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   height: 100%; overflow: hidden;
 }
 body {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   background: #e8ecf2;
   color: #1a1b1f;
 }
@@ -59,13 +65,13 @@ body {
 .back-btn-cmon {
   display: flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; border-radius: 8px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; border: none; cursor: pointer; font-size: 22px;
   flex-shrink: 0;
 }
 .category-breadcrumb {
   display: flex; align-items: center;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   border-radius: 8px;
   font-size: 11px; font-weight: 700; color: #fff;
   min-height: 30px; padding: 0 10px;
@@ -78,7 +84,7 @@ body {
 .header-action-btn {
   display: flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; border-radius: 8px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; border: none; cursor: pointer; font-size: 18px;
   flex-shrink: 0;
 }
@@ -119,7 +125,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font-size: 11px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   color: #1a1b1f;
   font-weight: 500;
   line-height: 1.2;
@@ -132,7 +138,7 @@ body {
   object-fit: cover;
 }
 .side-nav-btn.active {
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
 }
 
@@ -179,7 +185,7 @@ body {
 .search-input {
   flex: 1; border: none; outline: none;
   padding: 6px 14px;
-  font-size: 14px; font-family: 'Poppins', sans-serif;
+  font-size: 14px; font-family: var(--site-font);
   height: 32px;
   background: transparent;
   color: #111;
@@ -284,10 +290,10 @@ body {
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, #e17055, #d63031);
-  color: #fff;
+  background: var(--primary-yellow, #FFD100);
+  color: #1a1b1f;
   font-size: 12px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   font-weight: 600;
   cursor: pointer;
   letter-spacing: 0.3px;
@@ -299,7 +305,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   border-radius: 8px;
   overflow: hidden;
 }
@@ -314,7 +320,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .qty-inline .qty-num {
   min-width: 24px;
@@ -348,7 +354,7 @@ body {
 .checkout-bar {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 425px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: var(--primary-yellow, #FFD100);
   display: none; justify-content: space-between; align-items: center;
   padding: 14px 18px; z-index: 100;
   box-shadow: 0 -2px 12px rgba(0,0,0,0.15);
@@ -357,12 +363,12 @@ body {
   .checkout-bar { border-radius: 0 0 28px 28px; }
 }
 .checkout-bar.show { display: flex; }
-.checkout-bar .total-label { color: #fff; font-weight: 700; font-size: 15px; }
+.checkout-bar .total-label { color: #1a1b1f; font-weight: 700; font-size: 15px; }
 .checkout-bar .checkout-btn {
-  color: #fff; font-weight: 700; font-size: 15px;
+  color: #1a1b1f; font-weight: 700; font-size: 15px;
   background: none; border: none; cursor: pointer;
   display: flex; align-items: center; gap: 6px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .checkout-bar .checkout-btn:hover { opacity: .85; }
 .checkout-bar .checkout-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -409,7 +415,7 @@ body {
   cursor: pointer;
   transition: background 0.15s;
   border-bottom: 1px solid #f0f0f0;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .filter-option:last-child {
   border-bottom: none;
@@ -555,7 +561,7 @@ body {
   color: #1a1b1f;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .variant-chip.selected {
   border-color: #2d3436;
@@ -575,12 +581,12 @@ body {
   padding: 14px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #e17055, #d63031);
-  color: #fff;
+  background: var(--primary-yellow, #FFD100);
+  color: #1a1b1f;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -601,14 +607,14 @@ body {
   height: 40px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
   font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .sheet-qty-btn:active {
   opacity: 0.8;
@@ -681,14 +687,14 @@ body {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   transition: opacity 0.2s;
 }
 .closed-overlay-inner button:hover { opacity: 0.9; }
 .toast-notification {
   position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
   padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 500;
-  z-index: 99999; font-family: 'Poppins', sans-serif;
+  z-index: 99999; font-family: var(--site-font);
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;
   transform: translateX(-50%) translateY(20px);
@@ -720,7 +726,7 @@ body {
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   border: 1.5px solid #ddd;
   background: #fff;
   color: #1a1b1f;
@@ -730,10 +736,10 @@ body {
 }
 .subcategory-tab:hover {
   border-color: #846241;
-  color: #e17055;
+  color: var(--primary-red, #e17055);
 }
 .subcategory-tab.active {
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
   border-color: transparent;
 }
@@ -1318,7 +1324,7 @@ function showItemDetail(itemId) {
   // Badge row: prep time, type label, menu name
   var badges = [];
   if (prepTime) {
-    badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#fdf2f2;font-size:11px;font-weight:500;color:#e17055"><i class="fa fa-clock" style="font-size:10px"></i> ' + prepTime + ' min</span>');
+    badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#fdf2f2;font-size:11px;font-weight:500;color:var(--primary-red, #e17055)"><i class="fa fa-clock" style="font-size:10px"></i> ' + prepTime + ' min</span>');
   }
   if (itemCalories > 0) {
     badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#fef3c7;font-size:11px;font-weight:500;color:#d97706"><i class="fa fa-fire" style="font-size:10px"></i> ' + itemCalories + ' kcal</span>');
@@ -1355,7 +1361,7 @@ function showItemDetail(itemId) {
       var varOos = varItem.is_available == 0;
       html += '<div class="variant-chip' + (varOos ? ' disabled' : '') + '" data-idx="' + v + '"' + (varOos ? '' : ' onclick="selectVariant(' + v + ')') + '\">' +
         escapeHtml(varName) +
-        (varOos ? ' <span style="color:#999;font-weight:400;font-size:10px">(Unavailable)</span>' : ' <span style="color:#e17055;font-weight:600">' + formatPrice(varPrice) + '</span>') +
+        (varOos ? ' <span style="color:#999;font-weight:400;font-size:10px">(Unavailable)</span>' : ' <span style="color:var(--primary-red, #e17055);font-weight:600">' + formatPrice(varPrice) + '</span>') +
       '</div>';
     }
     html += '</div>';

@@ -38,6 +38,8 @@ if ($customDomainRow) {
         'about' => 'about.php',
         'contact' => 'contact.php',
         'profile' => 'profile.php',
+        'login' => 'login.php',
+        'reset-password' => 'reset_password.php',
         'track' => 'track.php',
         'track-order' => 'track.php',
         'privacy-policy' => 'privacy-policy.php',
@@ -50,7 +52,7 @@ if ($customDomainRow) {
     $page = null;
     if (isset($pageMap[$path])) {
         $page = $pageMap[$path];
-    } elseif (in_array($path, ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php'])) {
+    } elseif (in_array($path, ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'login.php', 'reset_password.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php'])) {
         $page = $path;
     } elseif (preg_match('/^(.+)\.php$/', $path, $m) && isset($pageMap[$m[1]])) {
         $page = $pageMap[$m[1]];
@@ -77,6 +79,8 @@ $pageMap = [
     'about' => 'about.php',
     'contact' => 'contact.php',
     'profile' => 'profile.php',
+    'login' => 'login.php',
+    'reset-password' => 'reset_password.php',
     'track' => 'track.php',
     'track-order' => 'track.php',
     'privacy-policy' => 'privacy-policy.php',
@@ -86,7 +90,7 @@ $pageMap = [
     'cookie-policy' => 'cookie-policy.php',
 ];
 
-if (isset($pageMap[$path]) || in_array($path, ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php']) || preg_match('/^(.+)\.php$/', $path, $m) && isset($pageMap[$m[1]])) {
+if (isset($pageMap[$path]) || in_array($path, ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'login.php', 'reset_password.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php']) || preg_match('/^(.+)\.php$/', $path, $m) && isset($pageMap[$m[1]])) {
     // If a restaurant_id is in query params, serve the correct page instead of always index.php
     if (isset($_GET['restaurant_id']) && $_GET['restaurant_id'] !== '' && $path !== 'index.php') {
         // Determine the correct page file
@@ -97,7 +101,7 @@ if (isset($pageMap[$path]) || in_array($path, ['index.php', 'menu.php', 'cart.ph
             $direct_page = $pageMap[$m[1]];
         }
         // Only serve known PHP files to prevent path traversal
-        $allowed_php = ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php'];
+        $allowed_php = ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'login.php', 'reset_password.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php'];
         if (in_array($direct_page, $allowed_php) && file_exists(__DIR__ . '/' . $direct_page)) {
             include __DIR__ . '/' . $direct_page;
             exit;
@@ -113,7 +117,7 @@ if (strpos($path, '/') !== false) {
     $parts = explode('/', $path, 2);
     $path = $parts[0];          // restaurant slug
     // Validate the page is one we know how to serve
-    $allowed_pages = ['menu', 'cart', 'about', 'contact', 'profile', 'track', 'track-order',
+    $allowed_pages = ['menu', 'cart', 'about', 'contact', 'profile', 'login', 'reset-password', 'track', 'track-order',
                       'privacy-policy', 'terms-of-service', 'refund-policy', 'shipping-policy', 'cookie-policy'];
     if (in_array($parts[1], $allowed_pages)) {
         $requested_page = $parts[1];

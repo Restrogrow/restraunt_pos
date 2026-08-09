@@ -32,12 +32,13 @@ if (function_exists('getConnection')) {
 
 try {
   if ($action === 'get') {
-    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size FROM website_settings WHERE restaurant_id = :rid');
+    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family FROM website_settings WHERE restaurant_id = :rid');
     $stmt->execute([':rid' => $restaurant_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$row) { 
-      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90]; 
+    if (!$row) {
+      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins'];
     } else {
+      if (empty($row['font_family'])) { $row['font_family'] = 'Poppins'; }
       // Ensure banner_image is null if empty string
       if (empty($row['banner_image']) || trim($row['banner_image']) === '') {
         $row['banner_image'] = null;
@@ -101,12 +102,14 @@ try {
     $bi = sanitizeImageUrl($data['banner_image'] ?? null);
     $lc = isset($data['layout_columns']) ? (int)$data['layout_columns'] : 2;
     $bt = sanitizeImageUrl($data['background_theme'] ?? null);
-    $stmt = $conn->prepare('INSERT INTO website_settings (restaurant_id, primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size) VALUES (:rid,:pr,:dr,:py,:bi,:lc,:bt,:ls,:lz)
-      ON DUPLICATE KEY UPDATE primary_red=VALUES(primary_red), dark_red=VALUES(dark_red), primary_yellow=VALUES(primary_yellow), banner_image=VALUES(banner_image), layout_columns=VALUES(layout_columns), background_theme=VALUES(background_theme), logo_shape=VALUES(logo_shape), logo_size=VALUES(logo_size)');
+    $allowedFonts = ['Poppins', 'Playfair Display', 'Roboto', 'Montserrat', 'Nunito', 'Lora'];
+    $ff = in_array($data['font_family'] ?? '', $allowedFonts, true) ? $data['font_family'] : 'Poppins';
+    $stmt = $conn->prepare('INSERT INTO website_settings (restaurant_id, primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family) VALUES (:rid,:pr,:dr,:py,:bi,:lc,:bt,:ls,:lz,:ff)
+      ON DUPLICATE KEY UPDATE primary_red=VALUES(primary_red), dark_red=VALUES(dark_red), primary_yellow=VALUES(primary_yellow), banner_image=VALUES(banner_image), layout_columns=VALUES(layout_columns), background_theme=VALUES(background_theme), logo_shape=VALUES(logo_shape), logo_size=VALUES(logo_size), font_family=VALUES(font_family)');
     // Save logo settings
     $ls = $data['logo_shape'] ?? 'circle';
     $lz = isset($data['logo_size']) ? (int)$data['logo_size'] : 90;
-    $stmt->execute([':rid'=>$restaurant_id, ':pr'=>$pr, ':dr'=>$dr, ':py'=>$py, ':bi'=>$bi, ':lc'=>$lc, ':bt'=>$bt, ':ls'=>$ls, ':lz'=>$lz]);
+    $stmt->execute([':rid'=>$restaurant_id, ':pr'=>$pr, ':dr'=>$dr, ':py'=>$py, ':bi'=>$bi, ':lc'=>$lc, ':bt'=>$bt, ':ls'=>$ls, ':lz'=>$lz, ':ff'=>$ff]);
     echo json_encode(['success'=>true]);
     exit;
   }
@@ -459,7 +462,11 @@ try {
 } catch (Exception $e) {
   http_response_code(500);
   error_log("Error in theme_api.php: " . $e->getMessage());
-  echo json_encode(['success'=>false,'message'=>'An error occurred. Please try again.']);
+  $friendlyMessage = 'An error occurred. Please try again.';
+  if (strpos($e->getMessage(), 'max_allowed_packet') !== false) {
+    $friendlyMessage = 'Image too large to save. Please use a smaller background image.';
+  }
+  echo json_encode(['success'=>false,'message'=>$friendlyMessage]);
 }
 ?>
 

@@ -113,14 +113,15 @@ try {
                     }
                     
                     // Theme colors
-                    $themeStmt = $conn->prepare("SELECT primary_red, dark_red, primary_yellow FROM website_settings WHERE restaurant_id = ? LIMIT 1");
+                    $themeStmt = $conn->prepare("SELECT primary_red, dark_red, primary_yellow, font_family FROM website_settings WHERE restaurant_id = ? LIMIT 1");
                     $themeStmt->execute([$restaurantId]);
                     $themeRow = $themeStmt->fetch(PDO::FETCH_ASSOC);
                     if ($themeRow) {
                         $result['theme'] = [
                             'primary_red' => $themeRow['primary_red'] ?? '#F70000',
                             'dark_red' => $themeRow['dark_red'] ?? '#DA020E',
-                            'primary_yellow' => $themeRow['primary_yellow'] ?? '#FFD100'
+                            'primary_yellow' => $themeRow['primary_yellow'] ?? '#FFD100',
+                            'font_family' => $themeRow['font_family'] ?? 'Poppins'
                         ];
                     }
                 }

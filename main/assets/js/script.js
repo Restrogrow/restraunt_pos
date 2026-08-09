@@ -619,7 +619,11 @@ document.addEventListener("DOMContentLoaded", () => {
     toggle.addEventListener("click", (e) => {
       e.preventDefault();
       const navItem = toggle.closest(".nav-item.has-submenu");
-      navItem.classList.toggle("active");
+      const wasActive = navItem.classList.contains("active");
+      document.querySelectorAll(".nav-item.has-submenu.active").forEach(item => {
+        if (item !== navItem) item.classList.remove("active");
+      });
+      navItem.classList.toggle("active", !wasActive);
     });
   });
   
@@ -13303,10 +13307,104 @@ async function initWebsiteThemeEditor() {
     if (checkSessionExpired(sessRes, sess)) return;
     const rid = (sess && sess.success && sess.data?.restaurant_id) ? sess.data.restaurant_id : '';
     const pr = document.getElementById('primaryRed');
+    const prHex = document.getElementById('primaryRedHex');
     const dr = document.getElementById('darkRed');
     const py = document.getElementById('primaryYellow');
+    const pyHex = document.getElementById('primaryYellowHex');
+    const fontSelect = document.getElementById('siteFontSelect');
     const bannerUpload = document.getElementById('bannerUpload');
     const uploadBannerBtn = document.getElementById('uploadBannerBtn');
+
+    const FONT_STACKS = {
+      'Poppins': "'Poppins', sans-serif",
+      'Playfair Display': "'Playfair Display', serif",
+      'Roboto': "'Roboto', sans-serif",
+      'Montserrat': "'Montserrat', sans-serif",
+      'Nunito': "'Nunito', sans-serif",
+      'Lora': "'Lora', serif"
+    };
+    const DEFAULT_THEME = {
+      primary_red: '#F70000',
+      primary_yellow: '#FFD100',
+      font_family: 'Poppins',
+      layout_columns: 2,
+      logo_shape: 'circle',
+      logo_size: 90,
+      background_theme: ''
+    };
+
+    // Darken a #RRGGBB hex color by a percentage (used to auto-derive the gradient shade from the Primary Color)
+    function shadeColor(hex, percent) {
+      hex = (hex || '#F70000').replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map(function(c){ return c + c; }).join('');
+      var num = parseInt(hex, 16);
+      if (isNaN(num)) return '#DA020E';
+      var amt = Math.round(2.55 * percent);
+      var r = Math.max(Math.min(((num >> 16) & 0xFF) + amt, 255), 0);
+      var g = Math.max(Math.min(((num >> 8) & 0xFF) + amt, 255), 0);
+      var b = Math.max(Math.min((num & 0xFF) + amt, 255), 0);
+      return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1).toUpperCase();
+    }
+    function isValidHex(v) { return /^#[0-9A-Fa-f]{6}$/.test(v); }
+
+    // Apply the currently selected (not-yet-saved) settings directly into the same-origin
+    // live preview iframe, so the preview updates instantly without Save + Refresh.
+    function applyLivePreview() {
+      var frame = document.getElementById('livePreview');
+      if (!frame) return;
+      try {
+        var doc = frame.contentDocument;
+        if (!doc || !doc.documentElement) return;
+        var root = doc.documentElement;
+        var primaryVal = pr ? pr.value : DEFAULT_THEME.primary_red;
+        var darkVal = dr ? dr.value : shadeColor(primaryVal, -12);
+        var accentVal = py ? py.value : DEFAULT_THEME.primary_yellow;
+        root.style.setProperty('--primary-red', primaryVal);
+        root.style.setProperty('--dark-red', darkVal);
+        root.style.setProperty('--primary-yellow', accentVal);
+
+        var fontName = fontSelect ? fontSelect.value : DEFAULT_THEME.font_family;
+        root.style.setProperty('--site-font', FONT_STACKS[fontName] || FONT_STACKS['Poppins']);
+        // Make sure the chosen font is actually loaded inside the iframe for an accurate preview
+        var fontLinkId = 'livePreviewFontLink';
+        var existing = doc.getElementById(fontLinkId);
+        var googleParam = fontName.replace(/ /g, '+');
+        var href = 'https://fonts.googleapis.com/css2?family=' + googleParam + ':wght@300;400;500;600;700&display=swap';
+        if (!existing) {
+          var link = doc.createElement('link');
+          link.id = fontLinkId;
+          link.rel = 'stylesheet';
+          link.href = href;
+          doc.head.appendChild(link);
+        } else if (existing.href !== href) {
+          existing.href = href;
+        }
+
+        // Background theme
+        var bgInput = document.getElementById('backgroundThemeInput');
+        var bgUrl = bgInput ? bgInput.value : '';
+        var homeSection = doc.getElementById('homeSection');
+        if (homeSection) {
+          homeSection.style.backgroundImage = bgUrl ? "url('" + bgUrl + "')" : 'none';
+          if (!bgUrl) homeSection.style.background = 'linear-gradient(135deg, #2d3436, #636e72)';
+        }
+
+        // Logo shape & size
+        var logoWrap = doc.querySelector('.profile-img-wrap');
+        if (logoWrap) {
+          var shapeRadios = document.querySelectorAll('input[name="logoShape"]');
+          var logoShape = 'circle';
+          for (var si = 0; si < shapeRadios.length; si++) { if (shapeRadios[si].checked) { logoShape = shapeRadios[si].value; break; } }
+          logoWrap.classList.toggle('logo-square', logoShape === 'square');
+          var sizeSliderEl = document.getElementById('logoSizeSlider');
+          var logoSize = sizeSliderEl ? parseInt(sizeSliderEl.value) : 90;
+          logoWrap.style.width = logoSize + 'px';
+          logoWrap.style.height = logoSize + 'px';
+        }
+      } catch (err) {
+        // Cross-origin or not-yet-loaded iframe - fail silently, preview just won't be live this tick
+      }
+    }
     
     // Function to render banners grid
     const renderBanners = (banners) => {
@@ -13384,36 +13482,6 @@ async function initWebsiteThemeEditor() {
             if (data.success) {
               showNotification('Banner deleted successfully', 'success');
               loadBanners();
-
-      // Initialize logo shape/size UI from saved settings
-      var savedLogoShape = data.settings.logo_shape || 'circle';
-      var savedLogoSize = data.settings.logo_size || 90;
-      var shapeBtns = document.querySelectorAll('.logo-shape-btn');
-      shapeBtns.forEach(function(btn) {
-        var shape = btn.getAttribute('data-shape');
-        if (shape === savedLogoShape) {
-          btn.style.borderColor = '#dc2626';
-          btn.style.background = '#dc2626';
-          btn.style.color = '#fff';
-          // Check the radio
-          var radio = btn.querySelector('input[name="logoShape"]');
-          if (radio) radio.checked = true;
-        } else {
-          btn.style.borderColor = '#e5e7eb';
-          btn.style.background = '#fff';
-          btn.style.color = '#374151';
-        }
-      });
-      // Init size slider
-      var sizeSlider = document.getElementById('logoSizeSlider');
-      var sizeDisplay = document.getElementById('logoSizeDisplay');
-      if (sizeSlider) {
-        sizeSlider.value = savedLogoSize;
-        sizeSlider.style.background = 'linear-gradient(to right, #dc2626 0%, #dc2626 ' + ((savedLogoSize - 50) / 100 * 100) + '%, #e5e7eb ' + ((savedLogoSize - 50) / 100 * 100) + '%, #e5e7eb 100%)';
-      }
-      if (sizeDisplay) {
-        sizeDisplay.textContent = savedLogoSize;
-      }
             } else {
               showNotification(data.message || 'Failed to delete banner', 'error');
             }
@@ -13546,46 +13614,98 @@ async function initWebsiteThemeEditor() {
       bannersPreview.style.display = 'block';
     }
     
-    // Function to update color previews
+    // Function to update color previews (mini preview + hex fields + gradient shade + live iframe)
     const updateColorPreviews = () => {
-      const primaryRedVal = pr ? pr.value : '#F70000';
-      const darkRedVal = dr ? dr.value : '#DA020E';
-      const primaryYellowVal = py ? py.value : '#FFD100';
-      
-      // Update color value displays
-      const primaryRedDisplay = document.getElementById('primaryRedDisplay');
-      const darkRedDisplay = document.getElementById('darkRedDisplay');
-      const primaryYellowDisplay = document.getElementById('primaryYellowDisplay');
-      
-      if (primaryRedDisplay) primaryRedDisplay.textContent = primaryRedVal;
-      if (darkRedDisplay) darkRedDisplay.textContent = darkRedVal;
-      if (primaryYellowDisplay) primaryYellowDisplay.textContent = primaryYellowVal;
-      
-      // Update hero section gradient
+      const primaryRedVal = (pr && isValidHex(pr.value)) ? pr.value : DEFAULT_THEME.primary_red;
+      const primaryYellowVal = (py && isValidHex(py.value)) ? py.value : DEFAULT_THEME.primary_yellow;
+      const darkRedVal = shadeColor(primaryRedVal, -12);
+      if (dr) dr.value = darkRedVal;
+
+      // Keep hex text fields in sync with the color swatches
+      if (prHex && prHex.value.toUpperCase() !== primaryRedVal.toUpperCase()) prHex.value = primaryRedVal.toUpperCase();
+      if (pyHex && pyHex.value.toUpperCase() !== primaryYellowVal.toUpperCase()) pyHex.value = primaryYellowVal.toUpperCase();
+
+      // Update mini preview inside the dashboard
       const heroPreview = document.getElementById('heroPreview');
       if (heroPreview) {
         heroPreview.style.background = `linear-gradient(135deg, ${primaryRedVal} 0%, ${darkRedVal} 100%)`;
       }
-      
-      // Update category button
       const categoryButtonPreview = document.getElementById('categoryButtonPreview');
       if (categoryButtonPreview) {
         categoryButtonPreview.style.borderColor = primaryRedVal;
         categoryButtonPreview.style.color = primaryRedVal;
       }
-      
-      // Update add to cart button
+      // Add to Cart & Checkout both use the Accent color, matching the real customer site
       const addToCartPreview = document.getElementById('addToCartPreview');
-      if (addToCartPreview) {
-        addToCartPreview.style.background = primaryYellowVal;
-      }
-      
-      // Update checkout button
+      if (addToCartPreview) addToCartPreview.style.background = primaryYellowVal;
       const checkoutPreview = document.getElementById('checkoutPreview');
-      if (checkoutPreview) {
-        checkoutPreview.style.background = primaryRedVal;
+      if (checkoutPreview) checkoutPreview.style.background = primaryYellowVal;
+      if (fontSelect) {
+        const heroName = document.getElementById('heroPreviewName');
+        if (heroName) heroName.style.fontFamily = FONT_STACKS[fontSelect.value] || FONT_STACKS['Poppins'];
       }
+
+      // Push the unsaved changes straight into the live preview iframe
+      applyLivePreview();
     };
+
+    // Two-way sync: color swatch <-> hex text field, both trigger live updates
+    if (pr) pr.addEventListener('input', updateColorPreviews);
+    if (py) py.addEventListener('input', updateColorPreviews);
+    if (prHex) {
+      prHex.addEventListener('input', () => {
+        const v = prHex.value.trim();
+        if (isValidHex(v) && pr) { pr.value = v; updateColorPreviews(); }
+      });
+      prHex.addEventListener('blur', () => { prHex.value = (pr ? pr.value : DEFAULT_THEME.primary_red).toUpperCase(); });
+    }
+    if (pyHex) {
+      pyHex.addEventListener('input', () => {
+        const v = pyHex.value.trim();
+        if (isValidHex(v) && py) { py.value = v; updateColorPreviews(); }
+      });
+      pyHex.addEventListener('blur', () => { pyHex.value = (py ? py.value : DEFAULT_THEME.primary_yellow).toUpperCase(); });
+    }
+    if (fontSelect) fontSelect.addEventListener('change', updateColorPreviews);
+
+    // Logo shape/size and layout controls also feed the live preview (in addition to their own existing UI handlers)
+    document.querySelectorAll('input[name="logoShape"]').forEach(r => r.addEventListener('change', () => setTimeout(applyLivePreview, 0)));
+    const logoSizeSliderEl = document.getElementById('logoSizeSlider');
+    if (logoSizeSliderEl) logoSizeSliderEl.addEventListener('input', applyLivePreview);
+
+    // Reset to Default: restores shipped defaults in the form (Save Theme still required to persist)
+    const resetBtn = document.getElementById('resetWebsiteThemeBtn');
+    if (resetBtn && !resetBtn.dataset.handlerAttached) {
+      resetBtn.dataset.handlerAttached = '1';
+      resetBtn.addEventListener('click', async () => {
+        if (!(await showSweetConfirm('Reset all appearance settings to default? This will not be saved until you click Save Theme.', 'Reset to Default'))) return;
+        if (pr) pr.value = DEFAULT_THEME.primary_red;
+        if (py) py.value = DEFAULT_THEME.primary_yellow;
+        if (fontSelect) fontSelect.value = DEFAULT_THEME.font_family;
+        const lcRadios = document.querySelectorAll('input[name="layoutColumns"]');
+        lcRadios.forEach(r => { r.checked = (parseInt(r.value) === DEFAULT_THEME.layout_columns); });
+        const shapeRadios = document.querySelectorAll('input[name="logoShape"]');
+        shapeRadios.forEach(r => { r.checked = (r.value === DEFAULT_THEME.logo_shape); });
+        document.querySelectorAll('.logo-shape-btn').forEach(btn => {
+          const active = btn.getAttribute('data-shape') === DEFAULT_THEME.logo_shape;
+          btn.style.borderColor = active ? '#dc2626' : '#e5e7eb';
+          btn.style.background = active ? '#dc2626' : '#fff';
+          btn.style.color = active ? '#fff' : '#374151';
+        });
+        const sizeSliderEl = document.getElementById('logoSizeSlider');
+        const sizeDisplayEl = document.getElementById('logoSizeDisplay');
+        if (sizeSliderEl) {
+          sizeSliderEl.value = DEFAULT_THEME.logo_size;
+          sizeSliderEl.style.background = 'linear-gradient(to right, #dc2626 0%, #dc2626 40%, #e5e7eb 40%, #e5e7eb 100%)';
+        }
+        if (sizeDisplayEl) sizeDisplayEl.textContent = DEFAULT_THEME.logo_size;
+        const bgInput = document.getElementById('backgroundThemeInput');
+        if (bgInput) bgInput.value = DEFAULT_THEME.background_theme;
+        if (typeof populateBgThemeGrid === 'function') populateBgThemeGrid(DEFAULT_THEME.background_theme);
+        updateColorPreviews();
+        showNotification('Defaults restored. Click "Save Theme" to make it permanent.', 'success');
+      });
+    }
 
 
 function populateBgThemeGrid(selectedUrl) {
@@ -13651,7 +13771,29 @@ window.selectBgTheme = function(url) {
   if (typeof populateBgThemeGrid === 'function') {
     populateBgThemeGrid(url);
   }
+  if (typeof applyLivePreview === 'function') {
+    applyLivePreview();
+  }
 };
+
+function applyLogoShapeSizeUI(shape, size) {
+  var shapeBtns = document.querySelectorAll('.logo-shape-btn');
+  shapeBtns.forEach(function(btn) {
+    var isActive = btn.getAttribute('data-shape') === shape;
+    btn.style.borderColor = isActive ? '#dc2626' : '#e5e7eb';
+    btn.style.background = isActive ? '#dc2626' : '#fff';
+    btn.style.color = isActive ? '#fff' : '#374151';
+    var radio = btn.querySelector('input[name="logoShape"]');
+    if (radio) radio.checked = isActive;
+  });
+  var sizeSlider = document.getElementById('logoSizeSlider');
+  var sizeDisplay = document.getElementById('logoSizeDisplay');
+  if (sizeSlider) {
+    sizeSlider.value = size;
+    sizeSlider.style.background = 'linear-gradient(to right, #dc2626 0%, #dc2626 ' + ((size - 50) / 100 * 100) + '%, #e5e7eb ' + ((size - 50) / 100 * 100) + '%, #e5e7eb 100%)';
+  }
+  if (sizeDisplay) sizeDisplay.textContent = size;
+}
 
 // Initialize custom themes array
 if (!window.customBgThemes) {
@@ -13665,14 +13807,23 @@ if (!window.customBgThemes) {
     const res = await fetch('../website/theme_api.php' + q);
     const data = await res.json();
     if (data.success && data.settings) {
-      // Set color picker values from saved settings
+      // Set color picker values from saved settings (dark_red is now auto-derived, not saved separately)
       if (pr && data.settings.primary_red) pr.value = data.settings.primary_red;
-      if (dr && data.settings.dark_red) dr.value = data.settings.dark_red;
       if (py && data.settings.primary_yellow) py.value = data.settings.primary_yellow;
-      
+      if (fontSelect && data.settings.font_family) fontSelect.value = data.settings.font_family;
+
+      // Initialize logo shape/size UI from saved settings
+      applyLogoShapeSizeUI(data.settings.logo_shape || 'circle', data.settings.logo_size || 90);
+
+      // Initialize layout columns radios from saved settings
+      const savedLayoutCols = data.settings.layout_columns || 2;
+      document.querySelectorAll('input[name="layoutColumns"]').forEach(r => {
+        r.checked = (parseInt(r.value) === parseInt(savedLayoutCols));
+      });
+
       // Update color previews
       updateColorPreviews();
-      
+
       // Set background theme URL
       const bgUrl = data.settings.background_theme || '';
       const bgInput = document.getElementById('backgroundThemeInput');
@@ -13855,6 +14006,7 @@ if (!window.customBgThemes) {
           }
           var sq = rid ? '?action=save&restaurant_id=' + encodeURIComponent(rid) : '?action=save';
 
+          var siteFontEl = document.getElementById('siteFontSelect');
           var payload = {
             primary_red: pr ? pr.value : '#F70000',
             dark_red: dr ? dr.value : '#DA020E',
@@ -13863,7 +14015,8 @@ if (!window.customBgThemes) {
             layout_columns: lcVal,
             background_theme: bgInput ? bgInput.value : null,
             logo_shape: logoShape,
-            logo_size: logoSize
+            logo_size: logoSize,
+            font_family: siteFontEl ? siteFontEl.value : 'Poppins'
           };
 
           var res = await fetch('../website/theme_api.php' + sq, {
