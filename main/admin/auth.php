@@ -743,10 +743,30 @@ function handleUpdateRestaurantSettings() {
         }
     }
     
-    if (!isset($_SESSION['user_id']) || !isset($_SESSION['restaurant_id'])) {
+    $isBranchAdmin = isset($_SESSION['branch_admin_id']);
+
+    if ((!isset($_SESSION['user_id']) && !$isBranchAdmin) || !isset($_SESSION['restaurant_id'])) {
         throw new Exception('You must be logged in to update restaurant settings');
     }
-    
+
+    // Resolve the numeric users.id to update. Admins have it directly in the
+    // session; branch admins only carry restaurant_id, so look up the owning
+    // account (their linked_restaurants list was already validated at switch time).
+    if ($isBranchAdmin) {
+        $linkedRestaurantIds = array_column($_SESSION['linked_restaurants'] ?? [], 'restaurant_id');
+        if (!in_array($_SESSION['restaurant_id'], $linkedRestaurantIds, true)) {
+            throw new Exception('You are not authorized to update this restaurant');
+        }
+        $ownerLookupStmt = $pdo->prepare("SELECT id FROM users WHERE restaurant_id = ? LIMIT 1");
+        $ownerLookupStmt->execute([$_SESSION['restaurant_id']]);
+        $userId = $ownerLookupStmt->fetchColumn();
+        if (!$userId) {
+            throw new Exception('Restaurant not found');
+        }
+    } else {
+        $userId = $_SESSION['user_id'];
+    }
+
     $restaurantName = isset($_POST['restaurant_name']) ? trim($_POST['restaurant_name']) : '';
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
@@ -797,9 +817,8 @@ function handleUpdateRestaurantSettings() {
         throw new Exception('Valid email address is required');
     }
     
-    $userId = $_SESSION['user_id'];
     $restaurantId = $_SESSION['restaurant_id'];
-    
+
     if (!empty($email)) {
         $checkEmailStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
         $checkEmailStmt->execute([$email, $userId]);

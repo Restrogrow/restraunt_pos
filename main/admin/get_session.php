@@ -105,6 +105,15 @@ try {
             error_log("PDO Error fetching staff data: " . $e->getMessage());
             $row = [];
         }
+    } else if ($isBranchAdmin) {
+        try {
+            $stmt = $conn->prepare("SELECT id, restaurant_name, currency_symbol, email, phone, address, description, description_format, opening_hours, payment_gateway_type, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
+            $stmt->execute([':restaurant_id' => $_SESSION['restaurant_id']]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (PDOException $e) {
+            error_log("PDO Error fetching branch admin restaurant data: " . $e->getMessage());
+            $row = [];
+        }
     }
 
     if ($isAdmin && !empty($row['subscription_status']) && !empty($row['trial_end_date'])) {
