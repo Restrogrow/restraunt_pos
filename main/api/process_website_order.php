@@ -636,72 +636,79 @@ $conn->beginTransaction();
         }
     }
 
-    // Insert order items
-    $itemStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price, addons) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    
+    // Insert order items + their addons as single multi-row INSERTs instead
+    // of one round trip per item/addon. A cart with several items each
+    // carrying addons used to mean 10-20+ sequential queries here, all while
+    // the transaction (and the customer's "Placing order..." spinner) is
+    // open. MySQL/InnoDB guarantees auto-increment ids are consecutive for a
+    // single multi-row INSERT (its row count is known up front, so it's
+    // treated as a "simple insert" regardless of innodb_autoinc_lock_mode),
+    // so the first row's id from lastInsertId() plus its position in the
+    // VALUES list gives every row's real id without needing individual
+    // executes.
+    $itemRows = [];
+    $itemParams = [];
     foreach ($items as $item) {
-        $addonsJson = null;
-        if (!empty($item['addons'])) {
-            $addonsJson = json_encode($item['addons'], JSON_UNESCAPED_UNICODE);
-        }
-        $itemStmt->execute([
-            $order_id,
-            $item['id'],
-            $item['name'],
-            $item['variation_name'] ?? null,
-            $item['quantity'],
-            $item['price'],
-            $item['price'] * $item['quantity'],
-            $addonsJson
-        ]);
-        
-        // Also store in order_item_addons table for backward compatibility
-        $orderItemId = $conn->lastInsertId();
-        if (!empty($item['addons']) && is_array($item['addons'])) {
-            try {
-                $addonItemStmt = $conn->prepare("INSERT INTO order_item_addons (order_item_id, addon_id, addon_name, addon_price, quantity) VALUES (?, ?, ?, ?, 1)");
-                foreach ($item['addons'] as $addon) {
-                    $addonItemStmt->execute([
-                        $orderItemId,
-                        $addon['id'] ?? null,
-                        $addon['name'] ?? '',
-                        $addon['price'] ?? 0
-                    ]);
-                }
-            } catch (PDOException $e) {
-                // order_item_addons table might not exist, skip
-            }
-        }
+        $addonsJson = !empty($item['addons']) ? json_encode($item['addons'], JSON_UNESCAPED_UNICODE) : null;
+        $itemRows[] = '(?, ?, ?, ?, ?, ?, ?, ?)';
+        array_push($itemParams,
+            $order_id, $item['id'], $item['name'], $item['variation_name'] ?? null,
+            $item['quantity'], $item['price'], $item['price'] * $item['quantity'], $addonsJson
+        );
     }
-
-    // --- Insert global addons as order items ---
     if (!empty($global_addons) && is_array($global_addons)) {
         foreach ($global_addons as $gAddon) {
             $gName = $gAddon['name'] ?? 'Add-on';
             $gPrice = (float)($gAddon['price'] ?? 0);
             $gQty = (int)($gAddon['quantity'] ?? 1);
-            $gAddonId = (int)($gAddon['id'] ?? 0);
-            $itemStmt->execute([
-                $order_id,
-                null, // no menu_item_id for global addons
-                $gName,
-                'Add-on',
-                $gQty,
-                $gPrice,
-                $gPrice * $gQty,
-                null // no per-item addons
-            ]);
-            // Also store in order_item_addons
-            $gOrderItemId = $conn->lastInsertId();
+            $itemRows[] = '(?, ?, ?, ?, ?, ?, ?, ?)';
+            array_push($itemParams,
+                $order_id, null, $gName, 'Add-on', $gQty, $gPrice, $gPrice * $gQty, null
+            );
+        }
+    }
+
+    $firstOrderItemId = null;
+    if (!empty($itemRows)) {
+        $itemSql = "INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price, addons) VALUES " . implode(', ', $itemRows);
+        $conn->prepare($itemSql)->execute($itemParams);
+        $firstOrderItemId = (int)$conn->lastInsertId();
+    }
+
+    // Also store per-item and global addons in order_item_addons for
+    // backward compatibility, batched into a single multi-row INSERT.
+    if ($firstOrderItemId !== null) {
+        $addonRows = [];
+        $addonParams = [];
+        $rowIndex = 0;
+        foreach ($items as $item) {
+            $orderItemId = $firstOrderItemId + $rowIndex;
+            $rowIndex++;
+            if (!empty($item['addons']) && is_array($item['addons'])) {
+                foreach ($item['addons'] as $addon) {
+                    $addonRows[] = '(?, ?, ?, ?, 1)';
+                    array_push($addonParams, $orderItemId, $addon['id'] ?? null, $addon['name'] ?? '', $addon['price'] ?? 0);
+                }
+            }
+        }
+        if (!empty($global_addons) && is_array($global_addons)) {
+            foreach ($global_addons as $gAddon) {
+                $gOrderItemId = $firstOrderItemId + $rowIndex;
+                $rowIndex++;
+                $addonRows[] = '(?, ?, ?, ?, ?)';
+                array_push($addonParams, $gOrderItemId, (int)($gAddon['id'] ?? 0), $gAddon['name'] ?? 'Add-on', (float)($gAddon['price'] ?? 0), (int)($gAddon['quantity'] ?? 1));
+            }
+        }
+        if (!empty($addonRows)) {
             try {
-                $addonItemStmt = $conn->prepare("INSERT INTO order_item_addons (order_item_id, addon_id, addon_name, addon_price, quantity) VALUES (?, ?, ?, ?, ?)");
-                $addonItemStmt->execute([$gOrderItemId, $gAddonId, $gName, $gPrice, $gQty]);
+                $addonSql = "INSERT INTO order_item_addons (order_item_id, addon_id, addon_name, addon_price, quantity) VALUES " . implode(', ', $addonRows);
+                $conn->prepare($addonSql)->execute($addonParams);
             } catch (PDOException $e) {
                 // order_item_addons table might not exist, skip
             }
         }
     }
-    // --- End global addon insertion ---
+    // --- End order item + addon insertion ---
     
     // Increment coupon usage AFTER order is created (fixes P1-12: usage before persist)
     // DEFENSIVE: Re-read coupon with lock to verify usage limit not exceeded by concurrent request
@@ -784,36 +791,32 @@ $conn->beginTransaction();
             $kotItemsHasAddons = $checkAddonsCol && $checkAddonsCol->rowCount() > 0;
         } catch (Exception $e) {}
 
+        // Batched into a single multi-row INSERT (same reasoning as
+        // order_items above) instead of one round trip per item.
+        $kotItemRows = [];
+        $kotItemParams = [];
         foreach ($items as $item) {
-            $addonsJson = null;
-            if (!empty($item['addons']) && $kotItemsHasAddons) {
-                // $item['addons'] was already verified against meal_addons
-                // above (DB-checked id/name/price) — no need to re-query it.
-                $addonsJson = json_encode($item['addons'], JSON_UNESCAPED_UNICODE);
-            }
-
             if ($kotItemsHasAddons) {
-                $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $kotItemStmt->execute([
-                    $kotId,
-                    (int)$item['id'],
-                    (string)$item['name'],
-                    (int)$item['quantity'],
-                    (float)$item['price'],
-                    (float)($item['price'] * $item['quantity']),
-                    $addonsJson
-                ]);
+                $addonsJson = !empty($item['addons']) ? json_encode($item['addons'], JSON_UNESCAPED_UNICODE) : null;
+                $kotItemRows[] = '(?, ?, ?, ?, ?, ?, ?)';
+                array_push($kotItemParams,
+                    $kotId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'],
+                    (float)$item['price'], (float)($item['price'] * $item['quantity']), $addonsJson
+                );
             } else {
-                $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
-                $kotItemStmt->execute([
-                    $kotId,
-                    (int)$item['id'],
-                    (string)$item['name'],
-                    (int)$item['quantity'],
-                    (float)$item['price'],
-                    (float)($item['price'] * $item['quantity'])
-                ]);
+                $kotItemRows[] = '(?, ?, ?, ?, ?, ?)';
+                array_push($kotItemParams,
+                    $kotId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'],
+                    (float)$item['price'], (float)($item['price'] * $item['quantity'])
+                );
             }
+        }
+        if (!empty($kotItemRows)) {
+            $kotItemCols = $kotItemsHasAddons
+                ? "(kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons)"
+                : "(kot_id, menu_item_id, item_name, quantity, unit_price, total_price)";
+            $kotItemSql = "INSERT INTO kot_items $kotItemCols VALUES " . implode(', ', $kotItemRows);
+            $conn->prepare($kotItemSql)->execute($kotItemParams);
         }
     }
 
