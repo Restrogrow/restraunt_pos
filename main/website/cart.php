@@ -2054,9 +2054,20 @@ function showCheckoutModal(cartData) {
   html += '<div class="modal-body">';
   html += '<form id="checkoutForm">';
 
+  // Once we already know who's ordering (a logged-in account, or details
+  // saved from a previous guest checkout), show a compact read-only summary
+  // instead of three empty-looking input boxes every single time - "Change"
+  // reveals the real fields for the rare case they need editing.
+  var hasContact = !!(cd && cd.name && cd.phone);
+  html += '<div id="contactSummary" class="form-group" style="display:' + (hasContact ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#f7f7f8;border-radius:10px;">';
+  html += '<div><div style="font-size:13px;font-weight:600;color:#1a1b1f;">' + esc((cd && cd.name) || '') + '</div><div style="font-size:12px;color:#777;margin-top:2px;">' + (window.restaurantDialCode || '+91') + ' ' + esc((cd && cd.phone) || '') + '</div></div>';
+  html += '<span onclick="toggleContactEdit()" style="font-size:12px;color:#e17055;font-weight:600;cursor:pointer;white-space:nowrap;">Change</span>';
+  html += '</div>';
+  html += '<div id="contactFields" style="display:' + (hasContact ? 'none' : '') + '">';
   html += '<div class="form-group"><label>Full Name *</label><input type="text" id="chkName" required value="' + esc((cd && cd.name) || '') + '" placeholder="Your name"></div>';
   html += '<div class="form-group"><label>Phone Number *</label><div style="display:flex;align-items:center;gap:6px;"><span style="color:#666;font-size:14px;white-space:nowrap;">' + (window.restaurantDialCode || '+91') + '</span><input type="tel" id="chkPhone" required value="' + esc((cd && cd.phone) || '') + '" placeholder="Your phone" style="flex:1;"></div></div>';
   html += '<div class="form-group"><label>Email</label><input type="email" id="chkEmail" value="' + esc((cd && cd.email) || '') + '" placeholder="Your email (optional)"></div>';
+  html += '</div>';
 
   // Determine default order type (used for initial address visibility)
   var savedOrderType = 'delivery';
@@ -2071,21 +2082,23 @@ function showCheckoutModal(cartData) {
   var pincodeDisplay = (savedOrderType === 'delivery' && deliveryEnabled) ? '' : 'none';
   html += '<div id="deliveryPincodeSection" class="form-group" style="display:' + pincodeDisplay + '">';
   html += '<label>Delivery Address *</label>';
+
+  // Same "don't ask again" treatment as the contact fields: a saved address
+  // from last time shows as a compact summary; "Change" reveals the full
+  // location picker (current location / search / map) for the rare edit.
+  var hasSavedAddress = !!(cd && cd.address);
+  html += '<div id="addressSummary" style="display:' + (hasSavedAddress ? 'flex' : 'none') + ';align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 14px;background:#f0f7f5;border-radius:10px;border:2px solid #e0e0e0;">';
+  html += '<div style="font-size:13px;color:#1a1b1f;line-height:1.4;">📍 ' + esc((cd && cd.address) || '') + ((cd && cd.landmark) ? '<div style="color:#999;font-size:12px;margin-top:2px;">' + esc(cd.landmark) + '</div>' : '') + '</div>';
+  html += '<span onclick="toggleAddressEdit()" style="font-size:12px;color:#e17055;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Change</span>';
+  html += '</div>';
+
+  html += '<div id="addressPickerFields" style="display:' + (hasSavedAddress ? 'none' : '') + '">';
   html += '<button type="button" id="useCurrentLocationBtn" onclick="useCurrentLocationForDelivery()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 14px;border:none;border-radius:10px;background:#1a3934;color:#fff;font-size:14px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;">📍 Use My Current Location</button>';
   html += '<div style="text-align:center;margin:8px 0;font-size:11px;color:#999;">— or —</div>';
   html += '<input type="text" id="google-places-autocomplete" autocomplete="off" placeholder="Search your delivery address..." style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
   html += '<button type="button" onclick="openMapPicker()" style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border:2px solid #1a3934;border-radius:10px;background:#fff;color:#1a3934;font-size:13px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;">🗺️ Pick Location on Map</button>';
   html += '<div id="deliveryMapPreview" style="display:none;margin-top:10px;width:100%;height:160px;border-radius:10px;overflow:hidden;border:2px solid #e0e0e0;"></div>';
   html += '<div id="deliveryInfo" style="display:none;margin-top:8px;padding:10px;background:#f0f7f5;border-radius:8px;font-size:13px;"></div>';
-  html += '<input type="hidden" id="deliveryZoneId" value="">';
-  html += '<input type="hidden" id="deliveryCharge" value="0">';
-  html += '<input type="hidden" id="packagingChargeHidden" value="' + PACKAGING_CHARGE + '">';
-  // Hidden fields for Google Places selected address
-  html += '<input type="hidden" id="chkAddressLat" value="">';
-  html += '<input type="hidden" id="chkAddressLng" value="">';
-  html += '<input type="hidden" id="chkAddressFormatted" value="">';
-  // Hidden pincode from autocomplete
-  html += '<input type="hidden" id="chkPincodeAuto" value="">';
   // Pincode manual fallback (hidden by default)
   html += '<div id="pincodeFallback" style="display:none;margin-top:8px;">';
   html += '<div style="display:flex;gap:8px;">';
@@ -2099,6 +2112,17 @@ function showCheckoutModal(cartData) {
   html += '<label>Landmark <span style="color:#999;font-weight:400;">(optional)</span></label>';
   html += '<input type="text" id="chkLandmark" value="' + esc((cd && cd.landmark) || '') + '" placeholder="e.g. Near City Hospital, Opp. SBI Bank" style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
   html += '</div>';
+  html += '</div>';
+  // Hidden fields for the selected address - pre-filled from the saved
+  // address so a repeat order can submit without reopening the picker at all.
+  html += '<input type="hidden" id="deliveryZoneId" value="">';
+  html += '<input type="hidden" id="deliveryCharge" value="0">';
+  html += '<input type="hidden" id="packagingChargeHidden" value="' + PACKAGING_CHARGE + '">';
+  html += '<input type="hidden" id="chkAddressLat" value="' + esc((cd && cd.addressLat) || '') + '">';
+  html += '<input type="hidden" id="chkAddressLng" value="' + esc((cd && cd.addressLng) || '') + '">';
+  html += '<input type="hidden" id="chkAddressFormatted" value="' + esc((cd && cd.address) || '') + '">';
+  // Hidden pincode from autocomplete
+  html += '<input type="hidden" id="chkPincodeAuto" value="">';
   html += '</div>';
 
   html += '<div class="order-summary-box">';
@@ -2288,6 +2312,14 @@ function showCheckoutModal(cartData) {
   // Init Google Places address autocomplete after modal is in DOM
   setTimeout(initGeoAutocomplete, 200);
 
+  // A saved address skips the picker UI entirely, but the KM-based delivery
+  // charge/total still needs computing from those coordinates the same way
+  // picking it fresh would - otherwise the on-screen total would look wrong
+  // (no delivery fee shown) even though the server bills it correctly.
+  if (hasSavedAddress && cd.addressLat && cd.addressLng) {
+    applySelectedAddress(cd.addressLat, cd.addressLng, cd.address, '');
+  }
+
   // Order type click handler
   var otLabels = modal.querySelectorAll('.order-type-option');
   for (var oi = 0; oi < otLabels.length; oi++) {
@@ -2474,8 +2506,15 @@ function processOrder(cartData) {
     return;
   }
 
-  // Save to localStorage
-  saveCustomer({ name: name, phone: phone, email: email, address: address });
+  // Save to localStorage - including lat/lng + landmark, not just the display
+  // text, so next checkout can skip straight to the address summary instead
+  // of asking again.
+  saveCustomer({
+    name: name, phone: phone, email: email, address: address,
+    addressLat: document.getElementById('chkAddressLat')?.value || '',
+    addressLng: document.getElementById('chkAddressLng')?.value || '',
+    landmark: document.getElementById('chkLandmark')?.value.trim() || ''
+  });
 
   var items = [];
   var globalAddons = [];
@@ -2919,10 +2958,29 @@ function showModal(title, msg, onRetry) {
 }
 
 function loadCustomer() {
-  if (window.loggedInCustomer) return window.loggedInCustomer;
-  try { var s = localStorage.getItem('customerDetails'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+  var stored = null;
+  try { var s = localStorage.getItem('customerDetails'); stored = s ? JSON.parse(s) : null; } catch(e) {}
+  // Identity (name/phone/email) comes from the account when logged in -
+  // that's the authoritative source. Address/landmark are device-local
+  // (saved from whatever this browser last checked out with) and aren't
+  // part of the account, so keep them from localStorage either way.
+  if (window.loggedInCustomer) return Object.assign({}, stored, window.loggedInCustomer);
+  return stored;
 }
 function saveCustomer(d) { localStorage.setItem('customerDetails', JSON.stringify(d)); }
+
+function toggleContactEdit() {
+  var summary = document.getElementById('contactSummary');
+  var fields = document.getElementById('contactFields');
+  if (summary) summary.style.display = 'none';
+  if (fields) fields.style.display = '';
+}
+function toggleAddressEdit() {
+  var summary = document.getElementById('addressSummary');
+  var fields = document.getElementById('addressPickerFields');
+  if (summary) summary.style.display = 'none';
+  if (fields) fields.style.display = '';
+}
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 
 // Cookie helpers for PhonePe state persistence (cookies survive cross-domain redirects, sessionStorage does not)
