@@ -16,9 +16,30 @@ require_once __DIR__ . '/../db_connection.php';
 if (!function_exists('getConnection')) exit('Server configuration error');
 
 $conn = getConnection();
-$stmt = $conn->prepare("SELECT restaurant_id FROM users WHERE custom_domain = ? AND embed_enabled = 1 LIMIT 1");
-$stmt->execute([$domain]);
-$customDomainRow = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Normalize a domain string for comparison: lowercase, strip any protocol,
+// strip a leading "www.", strip a trailing slash. Restaurants may save their
+// custom domain in any of these forms (they just paste what they have), and
+// visitors may land on "www." or bare — both need to resolve to the same site.
+function normalizeCustomDomain($d) {
+    $d = strtolower(trim((string)$d));
+    $d = preg_replace('#^https?://#', '', $d);
+    $d = preg_replace('/^www\./', '', $d);
+    return rtrim($d, '/');
+}
+
+$domainNormalized = normalizeCustomDomain($domain);
+$customDomainRow = null;
+if ($domainNormalized !== '') {
+    $stmt = $conn->prepare("SELECT restaurant_id, custom_domain FROM users WHERE embed_enabled = 1 AND custom_domain IS NOT NULL AND custom_domain != ''");
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $candidate) {
+        if (normalizeCustomDomain($candidate['custom_domain']) === $domainNormalized) {
+            $customDomainRow = $candidate;
+            break;
+        }
+    }
+}
 
 if ($customDomainRow) {
     // Custom domain request
