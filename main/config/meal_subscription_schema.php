@@ -84,6 +84,8 @@ if (!function_exists('ensureMealSubscriptionTables')) {
             amount_paid DECIMAL(10, 2) NOT NULL,
             delivery_address TEXT DEFAULT NULL,
             delivery_phone VARCHAR(20) DEFAULT NULL,
+            delivery_lat DECIMAL(10, 7) DEFAULT NULL,
+            delivery_lng DECIMAL(10, 7) DEFAULT NULL,
             status ENUM('pending_payment','active','paused','completed','cancelled') NOT NULL DEFAULT 'pending_payment',
             paused_at DATETIME DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -92,6 +94,19 @@ if (!function_exists('ensureMealSubscriptionTables')) {
             INDEX idx_cms_customer (customer_id),
             INDEX idx_cms_status (restaurant_id, status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // Self-heal onto tables created before delivery_lat/lng existed (this
+        // feature already shipped once without them).
+        try {
+            $col = $conn->query("SHOW COLUMNS FROM customer_meal_subscriptions LIKE 'delivery_lat'");
+            if ($col->rowCount() === 0) {
+                $conn->exec("ALTER TABLE customer_meal_subscriptions
+                    ADD COLUMN delivery_lat DECIMAL(10, 7) DEFAULT NULL,
+                    ADD COLUMN delivery_lng DECIMAL(10, 7) DEFAULT NULL");
+            }
+        } catch (PDOException $e) {
+            error_log('ensureMealSubscriptionTables (delivery_lat/lng): ' . $e->getMessage());
+        }
 
         $conn->exec("CREATE TABLE IF NOT EXISTS meal_subscription_skip_dates (
             id INT AUTO_INCREMENT PRIMARY KEY,

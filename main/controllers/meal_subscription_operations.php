@@ -110,6 +110,8 @@ function handleCreateSubscription($conn, $restaurant_id, $customer_id) {
     $mealPlanId = (int)($_POST['mealPlanId'] ?? 0);
     $deliveryAddress = trim($_POST['deliveryAddress'] ?? '');
     $deliveryPhone = trim($_POST['deliveryPhone'] ?? '');
+    $deliveryLat = isset($_POST['deliveryLat']) && $_POST['deliveryLat'] !== '' ? (float)$_POST['deliveryLat'] : null;
+    $deliveryLng = isset($_POST['deliveryLng']) && $_POST['deliveryLng'] !== '' ? (float)$_POST['deliveryLng'] : null;
     $paymentMethod = trim($_POST['paymentMethod'] ?? 'Cash');
 
     if ($mealPlanId <= 0) {
@@ -153,9 +155,9 @@ function handleCreateSubscription($conn, $restaurant_id, $customer_id) {
     $conn->beginTransaction();
     try {
         $stmt = $conn->prepare("INSERT INTO customer_meal_subscriptions
-            (restaurant_id, customer_id, meal_plan_id, plan_name_snapshot, meal_scope_snapshot, credits_total, credits_used, amount_paid, delivery_address, delivery_phone, status)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)");
-        $stmt->execute([$restaurant_id, $customer_id, $mealPlanId, $plan['plan_name'], $plan['meal_scope'], $totalCredits, $amountPaid, $deliveryAddress, $deliveryPhone, $status]);
+            (restaurant_id, customer_id, meal_plan_id, plan_name_snapshot, meal_scope_snapshot, credits_total, credits_used, amount_paid, delivery_address, delivery_phone, delivery_lat, delivery_lng, status)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$restaurant_id, $customer_id, $mealPlanId, $plan['plan_name'], $plan['meal_scope'], $totalCredits, $amountPaid, $deliveryAddress, $deliveryPhone, $deliveryLat, $deliveryLng, $status]);
         $subscriptionId = (int)$conn->lastInsertId();
 
         // Optional Business-QR payment screenshot, same base64 convention as

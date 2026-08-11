@@ -54,6 +54,10 @@ if (!empty($restaurant_id) && function_exists('getConnection')) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<?php $googleMapsApiKey = function_exists('env') ? env('GOOGLE_MAPS_API_KEY', '') : ''; ?>
+<?php if ($googleMapsApiKey): ?>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?php echo urlencode($googleMapsApiKey); ?>&libraries=places&loading=async" async defer></script>
+<?php endif; ?>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; min-height: 100vh; }
@@ -85,6 +89,24 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .qr-block { display: none; text-align: center; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px; margin-bottom: 16px; background: #fafafa; }
 .qr-block img { width: 160px; height: 160px; object-fit: contain; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
 .qr-block input[type=file] { margin-top: 10px; width: 100%; font-size: 12px; }
+
+.loc-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 14px; border: none; border-radius: 10px; background: #1a3934; color: #fff; font-size: 14px; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; }
+.loc-or { text-align: center; margin: 8px 0; font-size: 11px; color: #999; }
+.loc-map-btn { margin-top: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 14px; border: 2px solid #1a3934; border-radius: 10px; background: #fff; color: #1a3934; font-size: 13px; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; }
+.loc-map-preview { display: none; margin-top: 10px; width: 100%; height: 160px; border-radius: 10px; overflow: hidden; border: 2px solid #e0e0e0; }
+.loc-info { display: none; margin-top: 8px; padding: 10px; background: #f0f7f5; border-radius: 8px; font-size: 13px; }
+.loc-info a { color: #1a3934; font-weight: 600; text-decoration: none; }
+.loc-info a:hover { text-decoration: underline; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10050; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.active, .modal-overlay.show { display: flex; }
+.modal-box { background: #fff; border-radius: 16px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid #eee; }
+.modal-header h2 { font-size: 16px; font-weight: 700; margin: 0; }
+.modal-close { width: 30px; height: 30px; border-radius: 8px; border: none; background: #f5f5f5; cursor: pointer; font-size: 18px; color: #666; }
+.modal-body { padding: 18px 20px; }
+.btn-group { display: flex; gap: 10px; }
+.btn-secondary { flex: 1; padding: 11px; border: 1.5px solid #ddd; border-radius: 8px; background: #fff; color: #333; font-weight: 600; font-size: 13px; font-family: 'Poppins', sans-serif; cursor: pointer; }
+.btn-primary { flex: 1; padding: 11px; border: none; border-radius: 8px; background: linear-gradient(135deg, #e17055, #d63031); color: #fff; font-weight: 600; font-size: 13px; font-family: 'Poppins', sans-serif; cursor: pointer; }
 
 .btn-submit {
   width: 100%; padding: 13px; border: none; border-radius: 8px;
@@ -124,7 +146,15 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 
       <div class="form-group">
         <label>Delivery Address *</label>
-        <textarea id="deliveryAddress" rows="3" required placeholder="Full delivery address"></textarea>
+        <button type="button" id="useCurrentLocationBtn" class="loc-btn" onclick="useCurrentLocationForSub()">📍 Use My Current Location</button>
+        <div class="loc-or">— or —</div>
+        <input type="text" id="google-places-autocomplete" autocomplete="off" placeholder="Search your delivery address...">
+        <button type="button" class="loc-map-btn" onclick="openMapPickerSub()">🗺️ Pick Location on Map</button>
+        <div id="deliveryMapPreview" class="loc-map-preview"></div>
+        <div id="deliveryInfo" class="loc-info"></div>
+        <input type="hidden" id="deliveryAddressLat" value="">
+        <input type="hidden" id="deliveryAddressLng" value="">
+        <input type="hidden" id="deliveryAddressFormatted" value="">
       </div>
 
       <div class="form-group">
@@ -150,6 +180,7 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 
 <script>
 window.restaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.googleMapsApiKey = <?php echo json_encode($googleMapsApiKey, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 var PLAN_ID = <?php echo json_encode($plan_id, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 var CURRENCY = <?php echo json_encode($currency_symbol ?? '₹', JSON_UNESCAPED_UNICODE); ?>;
 var scopeLabels = { lunch: 'Lunch Only', dinner: 'Dinner Only', both: 'Lunch + Dinner' };
@@ -187,6 +218,174 @@ if (proofInputEl) {
   });
 }
 
+/* ── Delivery address: Google Places autocomplete + current location + map picker ── */
+var googlePlacesAutocompleteSub = null;
+
+function applySelectedAddressSub(lat, lng, formatted) {
+  var addrInput = document.getElementById('google-places-autocomplete');
+  if (addrInput) addrInput.value = formatted || addrInput.value;
+  document.getElementById('deliveryAddressFormatted').value = formatted || '';
+  document.getElementById('deliveryAddressLat').value = lat;
+  document.getElementById('deliveryAddressLng').value = lng;
+  updateDeliveryMapPreviewSub(lat, lng);
+
+  var infoEl = document.getElementById('deliveryInfo');
+  if (infoEl) {
+    infoEl.style.display = 'block';
+    infoEl.innerHTML = '<strong>✓ Address selected</strong><br>' + escapeHtml(formatted || '') +
+      '<br><a href="https://www.google.com/maps?q=' + lat + ',' + lng + '" target="_blank" rel="noopener"><i class="fa fa-map-marker-alt"></i> Open in Google Maps</a>';
+  }
+}
+
+var deliveryPreviewMapSub = null;
+var deliveryPreviewMarkerSub = null;
+function updateDeliveryMapPreviewSub(lat, lng) {
+  var container = document.getElementById('deliveryMapPreview');
+  if (!container || typeof google === 'undefined' || !google.maps) return;
+  container.style.display = 'block';
+  var pos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+  if (!deliveryPreviewMapSub) {
+    deliveryPreviewMapSub = new google.maps.Map(container, { center: pos, zoom: 16, streetViewControl: false, mapTypeControl: false, fullscreenControl: false });
+    deliveryPreviewMarkerSub = new google.maps.Marker({ position: pos, map: deliveryPreviewMapSub, draggable: true });
+    deliveryPreviewMarkerSub.addListener('dragend', function() {
+      var p = deliveryPreviewMarkerSub.getPosition();
+      reverseGeocodeSub(p.lat(), p.lng(), function(formatted) { applySelectedAddressSub(p.lat(), p.lng(), formatted); });
+    });
+  } else {
+    google.maps.event.trigger(deliveryPreviewMapSub, 'resize');
+    deliveryPreviewMapSub.setCenter(pos);
+    deliveryPreviewMarkerSub.setPosition(pos);
+  }
+}
+
+function reverseGeocodeSub(lat, lng, callback) {
+  var apiKey = window.googleMapsApiKey;
+  if (!apiKey) { callback(''); return; }
+  fetch('https://maps.googleapis.com/maps/api/geocode/json?latlng=' + lat + ',' + lng + '&key=' + apiKey)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      callback(data && data.status === 'OK' && data.results && data.results.length > 0 ? data.results[0].formatted_address : '');
+    })
+    .catch(function() { callback(''); });
+}
+
+function useCurrentLocationForSub() {
+  var btn = document.getElementById('useCurrentLocationBtn');
+  if (!navigator.geolocation) {
+    showFormError('Location access is not available on this device. Please search your address or pick it on the map instead.');
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.innerHTML = '📍 Getting your location...'; }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+    reverseGeocodeSub(lat, lng, function(formatted) { applySelectedAddressSub(lat, lng, formatted); });
+    if (btn) { btn.disabled = false; btn.innerHTML = '📍 Use My Current Location'; }
+  }, function(err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '📍 Use My Current Location'; }
+    showFormError(err && err.code === 1
+      ? 'Location access was blocked. Please allow location access for this site, or search/pick your address on the map.'
+      : 'Could not get your location. Please search your address or pick it on the map instead.');
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function initGeoAutocompleteSub(retries) {
+  retries = retries || 0;
+  var input = document.getElementById('google-places-autocomplete');
+  if (!input) return;
+  if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+    if (retries < 20) { setTimeout(function() { initGeoAutocompleteSub(retries + 1); }, 250); }
+    return;
+  }
+  if (googlePlacesAutocompleteSub) {
+    try { google.maps.event.clearInstanceListeners(input); } catch (e) {}
+  }
+  googlePlacesAutocompleteSub = new google.maps.places.Autocomplete(input, { fields: ['formatted_address', 'geometry'], types: ['geocode'] });
+  googlePlacesAutocompleteSub.addListener('place_changed', function() {
+    var place = googlePlacesAutocompleteSub.getPlace();
+    if (!place || !place.geometry || !place.geometry.location) return;
+    applySelectedAddressSub(place.geometry.location.lat(), place.geometry.location.lng(), place.formatted_address || input.value);
+  });
+}
+setTimeout(initGeoAutocompleteSub, 200);
+
+/* ── Map picker modal ── */
+var mapPickerMapSub = null;
+var mapPickerMarkerSub = null;
+
+function openMapPickerSub() {
+  if (typeof google === 'undefined' || !google.maps) {
+    showFormError('Map is still loading, please try again in a moment');
+    return;
+  }
+  if (document.getElementById('mapPickerOverlaySub')) return;
+
+  var existingLat = parseFloat(document.getElementById('deliveryAddressLat').value);
+  var existingLng = parseFloat(document.getElementById('deliveryAddressLng').value);
+  var startCenter = (!isNaN(existingLat) && !isNaN(existingLng)) ? { lat: existingLat, lng: existingLng } : { lat: 20.5937, lng: 78.9629 };
+
+  var overlay = document.createElement('div');
+  overlay.id = 'mapPickerOverlaySub';
+  overlay.className = 'modal-overlay show';
+  overlay.innerHTML =
+    '<div class="modal-box">' +
+      '<div class="modal-header"><h2>Select Your Location</h2><button class="modal-close" type="button" onclick="closeMapPickerSub()">&times;</button></div>' +
+      '<div class="modal-body">' +
+        '<p style="font-size:12px;color:#666;margin-bottom:8px;">Drag the pin, tap the map, or use your current location.</p>' +
+        '<div id="mapPickerCanvasSub" style="width:100%;height:280px;border-radius:10px;overflow:hidden;background:#eee;"></div>' +
+        '<div id="mapPickerAddressSub" style="margin-top:10px;font-size:13px;color:#333;min-height:18px;">Locating...</div>' +
+        '<div class="btn-group" style="margin-top:14px;">' +
+          '<button type="button" class="btn-secondary" onclick="useCurrentLocationOnMapSub()">📍 Current Location</button>' +
+          '<button type="button" class="btn-primary" onclick="confirmMapLocationSub()">Use This Location</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  mapPickerMapSub = new google.maps.Map(document.getElementById('mapPickerCanvasSub'), { center: startCenter, zoom: 16, streetViewControl: false, mapTypeControl: false, fullscreenControl: false });
+  mapPickerMarkerSub = new google.maps.Marker({ position: startCenter, map: mapPickerMapSub, draggable: true });
+  mapPickerMapSub.addListener('click', function(e) { mapPickerMarkerSub.setPosition(e.latLng); reverseGeocodeForPickerSub(e.latLng.lat(), e.latLng.lng()); });
+  mapPickerMarkerSub.addListener('dragend', function() { var p = mapPickerMarkerSub.getPosition(); reverseGeocodeForPickerSub(p.lat(), p.lng()); });
+  reverseGeocodeForPickerSub(startCenter.lat, startCenter.lng);
+}
+
+function closeMapPickerSub() {
+  var overlay = document.getElementById('mapPickerOverlaySub');
+  if (overlay) overlay.remove();
+  mapPickerMapSub = null;
+  mapPickerMarkerSub = null;
+}
+
+function useCurrentLocationOnMapSub() {
+  if (!navigator.geolocation) { document.getElementById('mapPickerAddressSub').textContent = 'Location access is not available on this device.'; return; }
+  document.getElementById('mapPickerAddressSub').textContent = 'Getting your current location...';
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    if (mapPickerMapSub && mapPickerMarkerSub) { mapPickerMapSub.setCenter(latLng); mapPickerMapSub.setZoom(17); mapPickerMarkerSub.setPosition(latLng); }
+    reverseGeocodeForPickerSub(latLng.lat, latLng.lng);
+  }, function() {
+    document.getElementById('mapPickerAddressSub').textContent = 'Could not get your location. Please allow location access, or drag the pin manually.';
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function reverseGeocodeForPickerSub(lat, lng) {
+  var addrEl = document.getElementById('mapPickerAddressSub');
+  if (addrEl) addrEl.textContent = 'Looking up address...';
+  reverseGeocodeSub(lat, lng, function(formatted) {
+    if (!addrEl) return;
+    addrEl.dataset.formatted = formatted;
+    addrEl.textContent = formatted || 'Could not resolve an address for this spot, but you can still use it.';
+  });
+}
+
+function confirmMapLocationSub() {
+  if (!mapPickerMarkerSub) { closeMapPickerSub(); return; }
+  var pos = mapPickerMarkerSub.getPosition();
+  var addrEl = document.getElementById('mapPickerAddressSub');
+  var formatted = (addrEl && addrEl.dataset.formatted) ? addrEl.dataset.formatted : (addrEl ? addrEl.textContent : '');
+  applySelectedAddressSub(pos.lat(), pos.lng(), formatted);
+  closeMapPickerSub();
+}
+
 if (!PLAN_ID) {
   document.getElementById('planSummary').innerHTML = '<div class="form-error" style="display:block;">No plan selected. Please go back and choose a plan.</div>';
 } else {
@@ -221,11 +420,13 @@ document.getElementById('subscribeForm').addEventListener('submit', function(e) 
   hideFormError();
 
   var phone = document.getElementById('deliveryPhone').value.trim();
-  var address = document.getElementById('deliveryAddress').value.trim();
+  var address = document.getElementById('deliveryAddressFormatted').value.trim() || document.getElementById('google-places-autocomplete').value.trim();
+  var addressLat = document.getElementById('deliveryAddressLat').value;
+  var addressLng = document.getElementById('deliveryAddressLng').value;
   var paymentMethod = document.getElementById('paymentMethod').value;
 
   if (!phone) { showFormError('Please enter a delivery phone number'); return; }
-  if (!address) { showFormError('Please enter a delivery address'); return; }
+  if (!address) { showFormError('Please enter your delivery address (search it, use current location, or pick it on the map)'); return; }
   if (paymentMethod === 'QR Payment' && !__paymentProofBase64) { showFormError('Please upload a screenshot of your payment'); return; }
 
   var btn = document.getElementById('submitBtn');
@@ -237,6 +438,8 @@ document.getElementById('subscribeForm').addEventListener('submit', function(e) 
   fd.append('mealPlanId', PLAN_ID);
   fd.append('deliveryPhone', phone);
   fd.append('deliveryAddress', address);
+  fd.append('deliveryLat', addressLat);
+  fd.append('deliveryLng', addressLng);
   fd.append('paymentMethod', paymentMethod);
   if (__paymentProofBase64) fd.append('paymentProofBase64', __paymentProofBase64);
 

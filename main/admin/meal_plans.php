@@ -16,6 +16,16 @@ $currency_symbol = $_SESSION['currency_symbol'] ?? '₹';
 
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/meal_subscription_schema.php';
+
+// Customer-facing subscribe link base, e.g. https://host/menuwebsite/test22/subscribe
+// - same slug + base-path convention main/views/dashboard.php already uses
+// for its "Restaurant Website Link" (see the Copy Link feature there).
+$subscribeLinkSlug = strtolower($restaurant_name);
+$subscribeLinkSlug = preg_replace('/[^a-z0-9]+/', '-', $subscribeLinkSlug);
+$subscribeLinkSlug = trim($subscribeLinkSlug, '-');
+$subscribeLinkBaseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+$subscribeLinkBasePath = rtrim(dirname(dirname(dirname($_SERVER['SCRIPT_NAME']))), '/');
+$subscribeLinkPrefix = $subscribeLinkBaseUrl . $subscribeLinkBasePath . '/' . urlencode($subscribeLinkSlug) . '/subscribe?plan_id=';
 if (!mealSubscriptionsFeatureEnabled(getConnection(), $restaurant_id)) {
     http_response_code(403);
     exit('This feature is not enabled for your account. Contact support to enable Meal Subscriptions.');
@@ -289,6 +299,7 @@ try {
     <script>
         var API_URL = '../controllers/meal_plan_operations.php';
         var CURRENCY = <?php echo json_encode($currency_symbol, JSON_UNESCAPED_UNICODE); ?>;
+        var SUBSCRIBE_LINK_PREFIX = <?php echo json_encode($subscribeLinkPrefix, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
         var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         var currentDeleteId = null;
         var weeklyMenuData = {}; // key "day_mealtime" -> text
@@ -359,7 +370,9 @@ try {
                 html += '<div class="plan-actions">';
                 html += '<button class="btn btn-edit" onclick=\'editPlan(' + JSON.stringify(p) + ')\'><i class="fa fa-edit"></i> Edit</button>';
                 html += '<button class="btn btn-delete" onclick="deletePlan(' + p.id + ', \'' + escapeHtml(p.plan_name) + '\')"><i class="fa fa-trash"></i> Delete</button>';
-                html += '</div></div>';
+                html += '</div>';
+                html += '<button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="copyPlanLink(' + p.id + ', this)"><i class="fa fa-link"></i> Copy Subscribe Link</button>';
+                html += '</div>';
             }
             grid.innerHTML = html;
         }
@@ -443,6 +456,27 @@ try {
                 });
 
             return false;
+        }
+
+        function copyPlanLink(id, btnEl) {
+            var link = SUBSCRIBE_LINK_PREFIX + id;
+            var restoreLabel = '<i class="fa fa-link"></i> Copy Subscribe Link';
+            var done = function() {
+                if (btnEl) {
+                    btnEl.innerHTML = '<i class="fa fa-check"></i> Link Copied!';
+                    setTimeout(function() { btnEl.innerHTML = restoreLabel; }, 2000);
+                }
+                showToast('Subscribe link copied - share it with a customer and they can sign up and subscribe themselves.', 'success');
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(link).then(done).catch(function() { promptCopyFallback(link); });
+            } else {
+                promptCopyFallback(link);
+            }
+        }
+
+        function promptCopyFallback(link) {
+            window.prompt('Copy this link to share with a customer:', link);
         }
 
         function deletePlan(id, name) {

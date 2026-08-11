@@ -30,6 +30,7 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
     echo json_encode(['success' => false, 'message' => 'Database connection file not found', 'data' => []], JSON_UNESCAPED_UNICODE);
     exit();
 }
+require_once __DIR__ . '/../config/meal_subscription_schema.php';
 
 $restaurant_id = $_SESSION['restaurant_id'];
 $search = trim($_GET['search'] ?? '');
@@ -55,10 +56,14 @@ try {
         echo json_encode(['success' => true, 'data' => []], JSON_UNESCAPED_UNICODE);
         exit();
     }
+    // Table exists but may predate delivery_lat/lng (added after this
+    // feature's first release) - self-heal here too rather than relying on
+    // the admin page's own load always happening first.
+    ensureMealSubscriptionTables($conn);
 
     $sql = "SELECT s.id, s.customer_id, c.customer_name, c.phone, s.plan_name_snapshot, s.meal_scope_snapshot,
                    s.credits_total, s.credits_used, s.amount_paid, s.delivery_address, s.delivery_phone,
-                   s.status, s.paused_at, s.created_at
+                   s.delivery_lat, s.delivery_lng, s.status, s.paused_at, s.created_at
             FROM customer_meal_subscriptions s
             JOIN customers c ON c.id = s.customer_id
             WHERE s.restaurant_id = ?";

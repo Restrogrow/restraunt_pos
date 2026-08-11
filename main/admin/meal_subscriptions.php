@@ -38,6 +38,10 @@ try {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <?php $googleMapsApiKey = function_exists('env') ? env('GOOGLE_MAPS_API_KEY', '') : ''; ?>
+    <?php if ($googleMapsApiKey): ?>
+    <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo urlencode($googleMapsApiKey); ?>&libraries=places&loading=async" async defer></script>
+    <?php endif; ?>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Poppins', sans-serif; background: #f0f2f5; color: #1a1b1f; padding: 20px; }
@@ -208,7 +212,13 @@ try {
 
                     <div class="form-group">
                         <label>Delivery Address *</label>
-                        <input type="text" id="newSubAddress" required placeholder="Full delivery address">
+                        <button type="button" id="adminUseCurrentLocationBtn" class="btn btn-secondary" style="width:100%;margin-bottom:8px;" onclick="useCurrentLocationForAdminSub()"><i class="fa fa-location-crosshairs"></i> Use My Current Location</button>
+                        <input type="text" id="newSubAddress" required placeholder="Search delivery address..." autocomplete="off">
+                        <button type="button" class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="openMapPickerAdminSub()"><i class="fa fa-map-location-dot"></i> Pick Location on Map</button>
+                        <div id="adminDeliveryMapPreview" style="display:none;margin-top:10px;width:100%;height:160px;border-radius:10px;overflow:hidden;border:2px solid #e0e0e0;"></div>
+                        <div id="adminDeliveryInfo" style="display:none;margin-top:8px;padding:10px;background:#f0f7f5;border-radius:8px;font-size:12.5px;"></div>
+                        <input type="hidden" id="newSubAddressLat" value="">
+                        <input type="hidden" id="newSubAddressLng" value="">
                     </div>
 
                     <div class="form-group">
@@ -237,6 +247,7 @@ try {
     <script>
         var API_URL = '../controllers/meal_subscription_admin_operations.php';
         var CURRENCY = <?php echo json_encode($currency_symbol, JSON_UNESCAPED_UNICODE); ?>;
+        window.googleMapsApiKey = <?php echo json_encode($googleMapsApiKey, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
         var scopeLabels = { lunch: 'Lunch Only', dinner: 'Dinner Only', both: 'Lunch + Dinner' };
         var statusLabels = { active: 'Active', paused: 'Paused', pending_payment: 'Payment Pending', completed: 'Completed', cancelled: 'Cancelled' };
         var debounceTimer = null;
@@ -299,7 +310,11 @@ try {
                 (s.skip_dates || []).forEach(function(d) { html += '<span class="skip-chip">' + escapeHtml(d) + '</span>'; });
                 if (!s.skip_dates || !s.skip_dates.length) html += '<span style="color:#ccc">-</span>';
                 html += '</td>';
-                html += '<td style="max-width:200px;">' + escapeHtml(s.delivery_address || '-') + '</td>';
+                html += '<td style="max-width:200px;">' + escapeHtml(s.delivery_address || '-');
+                if (s.delivery_lat && s.delivery_lng) {
+                    html += '<br><a href="https://www.google.com/maps?q=' + s.delivery_lat + ',' + s.delivery_lng + '" target="_blank" rel="noopener" style="font-size:11px;color:#1a3934;font-weight:600;text-decoration:none;"><i class="fa fa-map-marker-alt"></i> Open in Google Maps</a>';
+                }
+                html += '</td>';
                 html += '<td>';
                 if (s.status === 'active') {
                     html += '<button class="btn btn-pause btn-sm" onclick="pauseSub(' + s.id + ')"><i class="fa fa-pause"></i> Pause</button>';
@@ -372,12 +387,160 @@ try {
             document.getElementById('custModeNew').style.display = mode === 'new' ? '' : 'none';
         }
 
+        /* ---------- Delivery address: Google Places + current location + map picker ---------- */
+        var googlePlacesAutocompleteAdmin = null;
+
+        function applySelectedAddressAdmin(lat, lng, formatted) {
+            var addrInput = document.getElementById('newSubAddress');
+            if (addrInput) addrInput.value = formatted || addrInput.value;
+            document.getElementById('newSubAddressLat').value = lat;
+            document.getElementById('newSubAddressLng').value = lng;
+            updateAdminDeliveryMapPreview(lat, lng);
+            var infoEl = document.getElementById('adminDeliveryInfo');
+            if (infoEl) {
+                infoEl.style.display = 'block';
+                infoEl.innerHTML = '<strong>✓ Address selected</strong><br>' + escapeHtml(formatted || '') +
+                    '<br><a href="https://www.google.com/maps?q=' + lat + ',' + lng + '" target="_blank" rel="noopener" style="color:#1a3934;font-weight:600;text-decoration:none;"><i class="fa fa-map-marker-alt"></i> Open in Google Maps</a>';
+            }
+        }
+
+        var adminDeliveryPreviewMap = null;
+        var adminDeliveryPreviewMarker = null;
+        function updateAdminDeliveryMapPreview(lat, lng) {
+            var container = document.getElementById('adminDeliveryMapPreview');
+            if (!container || typeof google === 'undefined' || !google.maps) return;
+            container.style.display = 'block';
+            var pos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+            if (!adminDeliveryPreviewMap) {
+                adminDeliveryPreviewMap = new google.maps.Map(container, { center: pos, zoom: 16, streetViewControl: false, mapTypeControl: false, fullscreenControl: false });
+                adminDeliveryPreviewMarker = new google.maps.Marker({ position: pos, map: adminDeliveryPreviewMap, draggable: true });
+                adminDeliveryPreviewMarker.addListener('dragend', function() {
+                    var p = adminDeliveryPreviewMarker.getPosition();
+                    reverseGeocodeAdmin(p.lat(), p.lng(), function(formatted) { applySelectedAddressAdmin(p.lat(), p.lng(), formatted); });
+                });
+            } else {
+                google.maps.event.trigger(adminDeliveryPreviewMap, 'resize');
+                adminDeliveryPreviewMap.setCenter(pos);
+                adminDeliveryPreviewMarker.setPosition(pos);
+            }
+        }
+
+        function reverseGeocodeAdmin(lat, lng, callback) {
+            var apiKey = window.googleMapsApiKey;
+            if (!apiKey) { callback(''); return; }
+            fetch('https://maps.googleapis.com/maps/api/geocode/json?latlng=' + lat + ',' + lng + '&key=' + apiKey)
+                .then(function(r) { return r.json(); })
+                .then(function(data) { callback(data && data.status === 'OK' && data.results && data.results.length > 0 ? data.results[0].formatted_address : ''); })
+                .catch(function() { callback(''); });
+        }
+
+        function useCurrentLocationForAdminSub() {
+            var btn = document.getElementById('adminUseCurrentLocationBtn');
+            if (!navigator.geolocation) { showToast('Location access is not available on this device.', 'error'); return; }
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Getting location...'; }
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                var lat = pos.coords.latitude, lng = pos.coords.longitude;
+                reverseGeocodeAdmin(lat, lng, function(formatted) { applySelectedAddressAdmin(lat, lng, formatted); });
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-location-crosshairs"></i> Use My Current Location'; }
+            }, function() {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-location-crosshairs"></i> Use My Current Location'; }
+                showToast('Could not get your location. Please search the address or pick it on the map instead.', 'error');
+            }, { enableHighAccuracy: true, timeout: 10000 });
+        }
+
+        function initGeoAutocompleteAdmin(retries) {
+            retries = retries || 0;
+            var input = document.getElementById('newSubAddress');
+            if (!input) return;
+            if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                if (retries < 20) { setTimeout(function() { initGeoAutocompleteAdmin(retries + 1); }, 250); }
+                return;
+            }
+            if (googlePlacesAutocompleteAdmin) {
+                try { google.maps.event.clearInstanceListeners(input); } catch (e) {}
+            }
+            googlePlacesAutocompleteAdmin = new google.maps.places.Autocomplete(input, { fields: ['formatted_address', 'geometry'], types: ['geocode'] });
+            googlePlacesAutocompleteAdmin.addListener('place_changed', function() {
+                var place = googlePlacesAutocompleteAdmin.getPlace();
+                if (!place || !place.geometry || !place.geometry.location) return;
+                applySelectedAddressAdmin(place.geometry.location.lat(), place.geometry.location.lng(), place.formatted_address || input.value);
+            });
+        }
+
+        var mapPickerMapAdmin = null;
+        var mapPickerMarkerAdmin = null;
+
+        function openMapPickerAdminSub() {
+            if (typeof google === 'undefined' || !google.maps) { showToast('Map is still loading, please try again in a moment', 'error'); return; }
+            if (document.getElementById('mapPickerOverlayAdmin')) return;
+
+            var existingLat = parseFloat(document.getElementById('newSubAddressLat').value);
+            var existingLng = parseFloat(document.getElementById('newSubAddressLng').value);
+            var startCenter = (!isNaN(existingLat) && !isNaN(existingLng)) ? { lat: existingLat, lng: existingLng } : { lat: 20.5937, lng: 78.9629 };
+
+            var overlay = document.createElement('div');
+            overlay.id = 'mapPickerOverlayAdmin';
+            overlay.className = 'modal-overlay active';
+            overlay.style.zIndex = '10050';
+            overlay.innerHTML =
+                '<div class="modal-box" style="max-width:520px;">' +
+                    '<div class="modal-header"><h2>Select Delivery Location</h2><button class="modal-close" type="button" onclick="closeMapPickerAdmin()">&times;</button></div>' +
+                    '<div class="modal-body">' +
+                        '<div id="mapPickerCanvasAdmin" style="width:100%;height:300px;border-radius:10px;overflow:hidden;background:#eee;"></div>' +
+                        '<div id="mapPickerAddressAdmin" style="margin-top:10px;font-size:13px;color:#333;min-height:18px;">Locating...</div>' +
+                        '<div class="form-actions">' +
+                            '<button type="button" class="btn btn-secondary" onclick="closeMapPickerAdmin()">Cancel</button>' +
+                            '<button type="button" class="btn btn-primary" onclick="confirmMapLocationAdmin()">Use This Location</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            document.body.appendChild(overlay);
+
+            mapPickerMapAdmin = new google.maps.Map(document.getElementById('mapPickerCanvasAdmin'), { center: startCenter, zoom: 16, streetViewControl: false, mapTypeControl: false, fullscreenControl: false });
+            mapPickerMarkerAdmin = new google.maps.Marker({ position: startCenter, map: mapPickerMapAdmin, draggable: true });
+            mapPickerMapAdmin.addListener('click', function(e) { mapPickerMarkerAdmin.setPosition(e.latLng); reverseGeocodeForPickerAdmin(e.latLng.lat(), e.latLng.lng()); });
+            mapPickerMarkerAdmin.addListener('dragend', function() { var p = mapPickerMarkerAdmin.getPosition(); reverseGeocodeForPickerAdmin(p.lat(), p.lng()); });
+            reverseGeocodeForPickerAdmin(startCenter.lat, startCenter.lng);
+        }
+
+        function closeMapPickerAdmin() {
+            var overlay = document.getElementById('mapPickerOverlayAdmin');
+            if (overlay) overlay.remove();
+            mapPickerMapAdmin = null;
+            mapPickerMarkerAdmin = null;
+        }
+
+        function reverseGeocodeForPickerAdmin(lat, lng) {
+            var addrEl = document.getElementById('mapPickerAddressAdmin');
+            if (addrEl) addrEl.textContent = 'Looking up address...';
+            reverseGeocodeAdmin(lat, lng, function(formatted) {
+                if (!addrEl) return;
+                addrEl.dataset.formatted = formatted;
+                addrEl.textContent = formatted || 'Could not resolve an address for this spot, but you can still use it.';
+            });
+        }
+
+        function confirmMapLocationAdmin() {
+            if (!mapPickerMarkerAdmin) { closeMapPickerAdmin(); return; }
+            var pos = mapPickerMarkerAdmin.getPosition();
+            var addrEl = document.getElementById('mapPickerAddressAdmin');
+            var formatted = (addrEl && addrEl.dataset.formatted) ? addrEl.dataset.formatted : (addrEl ? addrEl.textContent : '');
+            applySelectedAddressAdmin(pos.lat(), pos.lng(), formatted);
+            closeMapPickerAdmin();
+        }
+
+        setTimeout(initGeoAutocompleteAdmin, 300);
+
         function openNewSubModal() {
             document.getElementById('newSubForm').reset();
             clearSelectedCustomer();
             setCustMode('existing');
             document.getElementById('custSearchResults').classList.remove('active');
             document.getElementById('newSubMarkPaid').checked = true;
+            document.getElementById('newSubAddressLat').value = '';
+            document.getElementById('newSubAddressLng').value = '';
+            var adminInfoEl = document.getElementById('adminDeliveryInfo');
+            if (adminInfoEl) adminInfoEl.style.display = 'none';
 
             var planSelect = document.getElementById('newSubPlan');
             planSelect.innerHTML = '<option value="">Loading plans...</option>';
@@ -491,6 +654,8 @@ try {
             fd.append('mealPlanId', planId);
             fd.append('deliveryPhone', phone);
             fd.append('deliveryAddress', address);
+            fd.append('deliveryLat', document.getElementById('newSubAddressLat').value);
+            fd.append('deliveryLng', document.getElementById('newSubAddressLng').value);
             fd.append('paymentMethod', document.getElementById('newSubPayment').value);
             fd.append('markPaid', document.getElementById('newSubMarkPaid').checked ? 1 : 0);
 
