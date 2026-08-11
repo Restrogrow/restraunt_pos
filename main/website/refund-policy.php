@@ -201,57 +201,33 @@ try {
         <h1>Refund Policy</h1>
         <p class="last-updated">Last updated: <?php echo date('F j, Y'); ?></p>
 
-        <p>At <?php echo htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8'); ?>, we strive to ensure your complete satisfaction with every order. This Refund Policy outlines the terms under which refunds, returns, and cancellations are processed.</p>
+        <p>At <?php echo htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8'); ?>, all orders are made to order. Please read this Refund Policy carefully before placing an order.</p>
 
-        <h2>1. Order Cancellations</h2>
-        <h3>1.1 Before Preparation</h3>
-        <p>If you wish to cancel an order, please contact the restaurant immediately. Orders that have not yet entered the preparation stage may be eligible for a full refund.</p>
+        <h2>1. No Refunds</h2>
+        <p><strong>We do not offer refunds.</strong> Once an order has been placed and payment has been completed, it is final and cannot be refunded, cancelled, or exchanged for cash, regardless of the reason.</p>
 
-        <h3>1.2 After Preparation</h3>
-        <p>Once the restaurant has begun preparing your order, cancellations may not be possible. Please contact the restaurant directly to discuss your options.</p>
+        <h2>2. Order Cancellations</h2>
+        <p>If you wish to cancel an order, please contact the restaurant immediately. Cancellation may only be possible before the order has entered the preparation stage, and is at the sole discretion of the restaurant. No monetary refund will be issued even if a cancellation is accepted.</p>
 
-        <h2>2. Refund Eligibility</h2>
-        <p>You may be eligible for a refund in the following circumstances:</p>
-        <ul>
-            <li><strong>Incorrect Order:</strong> If you received items that are different from what you ordered</li>
-            <li><strong>Quality Issues:</strong> If the food quality does not meet acceptable standards</li>
-            <li><strong>Late Delivery:</strong> If your order was delivered significantly beyond the estimated delivery time</li>
-            <li><strong>Missing Items:</strong> If items from your order were not delivered</li>
-        </ul>
+        <h2>3. Order Issues</h2>
+        <p>If you received an incorrect order, missing items, or have a quality concern, please contact the restaurant directly within 24 hours of receiving your order. While we do not issue refunds, the restaurant may, at its sole discretion, offer a replacement or other resolution for genuine issues.</p>
 
-        <h2>3. Refund Process</h2>
-        <p>To request a refund, please follow these steps:</p>
-        <ul>
-            <li>Contact the restaurant directly within 24 hours of receiving your order</li>
-            <li>Provide your order number and a description of the issue</li>
-            <li>Include photographic evidence if applicable (for quality issues or incorrect items)</li>
-            <li>The restaurant will review your request and determine eligibility</li>
-        </ul>
-
-        <h2>4. Refund Methods</h2>
-        <p>Approved refunds will be processed as follows:</p>
-        <ul>
-            <li><strong>Cash Payments:</strong> Refunds will be provided in cash upon verification</li>
-            <li><strong>UPI / Card Payments:</strong> Refunds will be processed to the original payment method within 5-7 business days</li>
-            <li><strong>Digital Wallet:</strong> Refunds will be credited to your wallet within 24-48 hours</li>
-        </ul>
-
-        <h2>5. Non-Refundable Items</h2>
-        <p>The following are generally not eligible for refunds:</p>
+        <h2>4. Non-Refundable Items</h2>
+        <p>All orders, including but not limited to the following, are non-refundable:</p>
         <ul>
             <li>Items consumed or partially consumed</li>
             <li>Orders where the issue is due to customer preferences (e.g., taste, spice level)</li>
-            <li>Promotional or discounted items (unless specified otherwise)</li>
-            <li>Orders cancelled after preparation has begun (subject to restaurant discretion)</li>
+            <li>Promotional or discounted items</li>
+            <li>Orders cancelled after preparation has begun</li>
         </ul>
 
-        <h2>6. Chargebacks</h2>
+        <h2>5. Chargebacks</h2>
         <p>If you believe a charge is incorrect, please contact us before initiating a chargeback with your bank. We are committed to resolving any billing issues promptly and fairly. Unnecessary chargebacks may result in account suspension.</p>
 
-        <h2>7. Dispute Resolution</h2>
+        <h2>6. Dispute Resolution</h2>
         <p>If you are unsatisfied with the resolution provided by the restaurant, please contact our support team at the details below. We will mediate between you and the restaurant to find a fair resolution.</p>
 
-        <h2>8. Contact Us</h2>
+        <h2>7. Contact Us</h2>
         <p>If you have any questions about this Refund Policy, please contact us:</p>
         <p>
             <strong>Owner:</strong> <?php echo htmlspecialchars($restaurant_owner ?: 'Not specified'); ?><br>
