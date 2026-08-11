@@ -33,7 +33,19 @@ test.describe('Guest checkout - place an order end-to-end', () => {
     // finishes loading/validating the cart against the server.
     const cartCheckoutBtn = page.locator('#checkoutBtn');
     await expect(cartCheckoutBtn).toBeEnabled({ timeout: 10000 });
-    await cartCheckoutBtn.click(); // proceedCheckout() - opens the checkout form modal
+    await cartCheckoutBtn.click(); // proceedCheckout()
+
+    // First-time checkout on this browser session is gated behind
+    // login/signup/guest (mirrors profile.php's existing gate) - proceedCheckout()
+    // redirects to login.php?redirect=cart since neither is set yet.
+    await page.waitForURL(/login\.php/, { timeout: 10000 });
+    await page.click('.btn-guest');
+
+    // "Continue as Guest" sets sessionStorage.guestSessionActive and redirects
+    // back to cart.php; the cart (stored in localStorage) survives the round trip.
+    await page.waitForURL(/cart\.php/, { timeout: 10000 });
+    await expect(cartCheckoutBtn).toBeEnabled({ timeout: 10000 });
+    await cartCheckoutBtn.click(); // proceedCheckout() - now opens the checkout form modal
 
     const form = page.locator('#checkoutForm');
     await expect(form).toBeVisible();

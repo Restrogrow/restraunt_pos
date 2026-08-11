@@ -272,8 +272,15 @@ window.restaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG 
 $redirectTargetPage = isset($_GET['redirect']) ? trim($_GET['redirect']) : 'menu';
 $allowedRedirectPages = ['menu', 'cart', 'profile', 'about', 'contact'];
 if (!in_array($redirectTargetPage, $allowedRedirectPages, true)) $redirectTargetPage = 'profile';
+$redirectTargetUrl = restaurantPageUrl($redirectTargetPage);
+// A dine-in QR scan puts ?table=X on the cart URL that sent the customer here
+// (see cart.php's checkout gate) - carry it through so choosing login/signup/
+// guest doesn't drop them back into the delivery/takeaway flow instead.
+if (!empty($_GET['table'])) {
+    $redirectTargetUrl .= (strpos($redirectTargetUrl, '?') !== false ? '&' : '?') . 'table=' . urlencode($_GET['table']);
+}
 ?>
-window.redirectUrl = <?php echo json_encode(restaurantPageUrl($redirectTargetPage), JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.redirectUrl = <?php echo json_encode($redirectTargetUrl, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.alreadyLoggedIn = <?php echo $logged_in_customer ? 'true' : 'false'; ?>;
 
 if (window.alreadyLoggedIn) {

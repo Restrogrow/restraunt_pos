@@ -957,6 +957,16 @@ window.codEnabled = <?php echo json_encode($cod_enabled ?? 1, JSON_HEX_TAG | JSO
 
 window.websiteTableNumber = <?php echo json_encode($qr_table ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantAddress = <?php echo json_encode($restaurant_address ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+window.loggedInCustomer = <?php echo $logged_in_customer ? json_encode([
+    'name' => $logged_in_customer['customer_name'],
+    'phone' => $logged_in_customer['phone'],
+    'email' => $logged_in_customer['email'],
+], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) : 'null'; ?>;
+window.loginUrl = <?php
+$cartLoginUrlBase = restaurantPageUrl('login');
+$cartLoginUrlSep = strpos($cartLoginUrlBase, '?') !== false ? '&' : '?';
+echo json_encode($cartLoginUrlBase . $cartLoginUrlSep . 'redirect=cart', JSON_HEX_TAG | JSON_HEX_AMP);
+?>;
 
 // Google Maps API key loaded from .env (used for delivery address autocomplete + geocoding)
 window.googleMapsApiKey = <?php echo json_encode($googleMapsApiKey, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -1889,6 +1899,22 @@ function proceedCheckout() {
   if (MIN_ORDER > 0 && cart.totalPrice < MIN_ORDER) {
     showModal('Minimum Order', getCurrency() + MIN_ORDER.toFixed(2) + ' minimum. Please add more items.');
     return;
+  }
+  // Gate checkout behind login/signup/guest, same pattern as profile.php:
+  // if this browser session hasn't logged in or already chosen "Continue as
+  // Guest", send them to the login screen first. Guests still land right
+  // back here (login.php redirects to ?redirect=cart) and the checkout form
+  // below asks for the same name/phone/email it always has.
+  if (!window.loggedInCustomer) {
+    var guestSessionActive = false;
+    try { guestSessionActive = sessionStorage.getItem('guestSessionActive') === '1'; } catch(e) {}
+    if (!guestSessionActive) {
+      // Preserve ?table=X (dine-in QR scan) across the login/signup/guest
+      // detour, otherwise login.php would bounce a QR'd-in customer back to
+      // cart.php with no table context.
+      window.location.href = appendTableParam(window.loginUrl);
+      return;
+    }
   }
   showCheckoutModal(cart);
 }
@@ -2893,6 +2919,7 @@ function showModal(title, msg, onRetry) {
 }
 
 function loadCustomer() {
+  if (window.loggedInCustomer) return window.loggedInCustomer;
   try { var s = localStorage.getItem('customerDetails'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
 }
 function saveCustomer(d) { localStorage.setItem('customerDetails', JSON.stringify(d)); }
