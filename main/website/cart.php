@@ -317,25 +317,34 @@ body {
   .coupon-input-row input { width: 100%; }
   .apply-coupon-btn { width: 100%; padding: 12px; }
 }
-.coupon-status { 
-  font-size: 12px; margin-top: 8px; 
-  display: flex; align-items: center; gap: 8px; 
+.coupon-status {
+  font-size: 12px; margin-top: 8px;
+  display: flex; align-items: center; gap: 8px;
   padding: 6px 10px; border-radius: 8px;
   background: #f9f9f9;
+  flex-wrap: nowrap;
 }
-.coupon-status.success { 
-  color: #27ae60; 
+.coupon-status.success {
+  color: #27ae60;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
 }
-.coupon-status.error { 
-  color: #e74c3c; 
+.coupon-status.error {
+  color: #e74c3c;
   background: #fef2f2;
   border: 1px solid #fecaca;
 }
-.coupon-status .remove-coupon { 
-  color: #e74c3c; cursor: pointer; font-weight: 600; font-size: 11px; 
+/* Keep the "CODE applied (X% OFF)" bit on a single line even on narrow
+   phones (it was wrapping to 2 lines there while fitting fine on wider
+   screens) - truncate with an ellipsis instead of wrapping. */
+.coupon-status .cpn-status-text {
+  flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.coupon-status .remove-coupon {
+  color: #e74c3c; cursor: pointer; font-weight: 600; font-size: 11px;
   text-decoration: underline; margin-left: auto; white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Coupon Bottom Sheet */
@@ -379,14 +388,29 @@ body {
   color: #fff; display: grid; place-items: center;
   font-size: 18px; flex-shrink: 0;
 }
-.coupon-item .cpn-info { flex: 1; }
+.coupon-item .cpn-info { flex: 1; min-width: 0; }
+/* .coupon-sheet has no max-width, so it's much wider on a laptop (plenty of
+   room for these lines) than on an actual phone viewport - without an
+   explicit single-line rule, the same text wraps to 2 lines there. Truncate
+   instead so every coupon renders the same compact one-line-per-field card
+   regardless of screen width. */
 .coupon-item .cpn-code {
   font-weight: 700; font-size: 14px;  color: #2d3436;
   letter-spacing: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.coupon-item .cpn-desc { font-size: 12px; color: #555; margin-top: 2px; }
-.coupon-item .cpn-expiry { font-size: 11px; color: #999; margin-top: 4px; }
-.coupon-item .cpn-min { font-size: 11px; color: #e67e22; margin-top: 2px; }
+.coupon-item .cpn-desc {
+  font-size: 12px; color: #555; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.coupon-item .cpn-expiry {
+  font-size: 11px; color: #999; margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.coupon-item .cpn-min {
+  font-size: 11px; color: #e67e22; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .coupon-item .cpn-select {
   padding: 6px 14px; border: none; border-radius: 6px;
   background: linear-gradient(135deg, #e17055, #d63031);
@@ -1443,7 +1467,7 @@ function renderCart() {
   var couponStatusHtml = '';
   if (appliedCoupon) {
     var discLabel = appliedCoupon.type === 'percent' ? appliedCoupon.discount + '% OFF' : (appliedCoupon.type === 'flat' ? getCurrency() + appliedCoupon.discount + ' OFF' : 'FREE DELIVERY');
-    couponStatusHtml = '<div class="coupon-status success">✅ ' + appliedCoupon.code + ' applied (' + discLabel + ')<span class="remove-coupon" onclick="removeCoupon()">Remove</span></div>';
+    couponStatusHtml = '<div class="coupon-status success"><span class="cpn-status-text">✅ ' + appliedCoupon.code + ' applied (' + discLabel + ')</span><span class="remove-coupon" onclick="removeCoupon()">Remove</span></div>';
   } else if (couponError) {
     couponStatusHtml = '<div class="coupon-status error">❌ ' + couponError + '</div>';
   }
