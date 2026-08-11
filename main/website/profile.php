@@ -1,4 +1,8 @@
-<?php require_once __DIR__ . '/header.php'; ?>
+<?php
+require_once __DIR__ . '/header.php';
+require_once __DIR__ . '/../config/meal_subscription_schema.php';
+$meal_subscriptions_feature_enabled = mealSubscriptionsFeatureEnabled($conn, $restaurant_id);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -692,6 +696,7 @@ body {
 .quick-action-icon.qa-cart { background: #fff3e0; color: #e65100; }
 .quick-action-icon.qa-contact { background: #e3f2fd; color: #1565c0; }
 .quick-action-icon.qa-orders { background: #fce4ec; color: #c62828; }
+.quick-action-icon.qa-subscription { background: #eef2ff; color: #4338ca; }
 .quick-action-text { font-size: 12px; color: #1a1b1f; font-weight: 500; }
 .quick-action-sub {
   font-size: 10px;
@@ -1033,6 +1038,12 @@ body {
             <div class="quick-action-icon qa-orders"><i class="fa fa-clipboard-list"></i></div>
             <div><div class="quick-action-text">All Orders</div><div class="quick-action-sub">Order history</div></div>
           </button>
+          <?php if ($meal_subscriptions_feature_enabled): ?>
+          <button class="quick-action-btn" onclick="goToSubscription()">
+            <div class="quick-action-icon qa-subscription"><i class="fa fa-utensils"></i></div>
+            <div><div class="quick-action-text">My Subscription</div><div class="quick-action-sub">Tiffin plan</div></div>
+          </button>
+          <?php endif; ?>
           <button class="quick-action-btn" onclick="goToContact()">
             <div class="quick-action-icon qa-contact"><i class="fa fa-headset"></i></div>
             <div><div class="quick-action-text">Contact Us</div><div class="quick-action-sub">Get help</div></div>
@@ -1167,6 +1178,9 @@ function goToOrders() {
 }
 function goToContact() {
   window.location.href = '<?php echo restaurantPageUrl('contact'); ?>';
+}
+function goToSubscription() {
+  window.location.href = '<?php echo restaurantPageUrl('my-subscription'); ?>';
 }
 
 /* ── Storage ── */

@@ -79,6 +79,18 @@ RewriteRule ^([a-z0-9-]+)/shipping-policy$ main/website/shipping-policy.php?rest
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([a-z0-9-]+)/cookie-policy$ main/website/cookie-policy.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/plans$ main/website/plans.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/subscribe$ main/website/subscribe.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/my-subscription$ main/website/my-subscription.php?restaurant=$1 [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/catering$ main/website/catering.php?restaurant=$1 [L,QSA]
 
 # Main domain catch-all — route any unmatched requests on restrogrow.com/localhost through custom-domain.php
 RewriteCond %{HTTP_HOST} ^restrogrow\.com$ [NC,OR]

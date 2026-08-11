@@ -873,6 +873,7 @@ function fetchAddons() {
   fetch(apiUrl('getAddons')).then(function(r){return r.json()}).then(function(data){
     if (data.success && data.data) {
       addonsList = data.data;
+      updateAddonsNavButton();
     }
   }).catch(function(){});
 }
@@ -1592,14 +1593,43 @@ function renderSideNav() {
       '</button>' +
     '</div>';
   }
-  // Add-ons side nav button
-  html += '<div class="sub-views">' +
-    '<button class="side-nav-btn" data-id="addons">' +
-      '<img src="https://cdn-icons-png.flaticon.com/512/3144/3144456.png" alt="Add-ons" loading="lazy"><br>' +
-      'Add-ons' +
-    '</button>' +
-  '</div>';
+  // Add-ons side nav button - only when this restaurant actually has
+  // add-ons configured. addonsList is usually still empty here (its fetch
+  // is a separate async call from menu load), so this correctly hides it
+  // on first paint; updateAddonsNavButton() adds it in afterward without
+  // touching the rest of the nav if the fetch turns up any add-ons.
+  if (addonsList.length > 0) {
+    html += '<div class="sub-views">' +
+      '<button class="side-nav-btn" data-id="addons">' +
+        '<img src="https://cdn-icons-png.flaticon.com/512/3144/3144456.png" alt="Add-ons" loading="lazy"><br>' +
+        'Add-ons' +
+      '</button>' +
+    '</div>';
+  }
   el.innerHTML = html;
+}
+
+// Adds/removes just the Add-ons nav button in place once fetchAddons()
+// resolves, instead of re-rendering the whole side nav (which would wipe
+// out whatever category the customer already has selected).
+function updateAddonsNavButton() {
+  var sideNav = document.getElementById('sideNav');
+  if (!sideNav) return;
+  var existingBtn = sideNav.querySelector('.side-nav-btn[data-id="addons"]');
+  if (addonsList.length > 0) {
+    if (!existingBtn) {
+      var wrap = document.createElement('div');
+      wrap.className = 'sub-views';
+      wrap.innerHTML = '<button class="side-nav-btn" data-id="addons">' +
+        '<img src="https://cdn-icons-png.flaticon.com/512/3144/3144456.png" alt="Add-ons" loading="lazy"><br>' +
+        'Add-ons' +
+        '</button>';
+      sideNav.appendChild(wrap);
+    }
+  } else if (existingBtn) {
+    var container = existingBtn.closest('.sub-views');
+    (container || existingBtn).remove();
+  }
 }
 
 // --- Add-ons Grid Functions ---

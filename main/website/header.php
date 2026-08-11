@@ -351,7 +351,7 @@ if (!empty($custom_domain) && $embed_enabled && !$is_custom_domain) {
         } elseif ($basename && $basename !== 'index.php') {
             // Direct .php page access (e.g. cart.php?restaurant_id=X)
             $page_name = str_replace('.php', '', $basename);
-            if (in_array($page_name, ['menu', 'cart', 'about', 'contact', 'profile', 'login', 'reset_password', 'track', 'track-order', 'privacy-policy', 'terms-of-service', 'refund-policy', 'shipping-policy', 'cookie-policy'])) {
+            if (in_array($page_name, ['menu', 'cart', 'about', 'contact', 'profile', 'login', 'reset_password', 'track', 'track-order', 'privacy-policy', 'terms-of-service', 'refund-policy', 'shipping-policy', 'cookie-policy', 'plans', 'subscribe', 'my-subscription', 'catering'])) {
                 $redirect_path = '/' . $page_name;
             }
         }

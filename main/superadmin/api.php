@@ -60,6 +60,16 @@ try { $conn->query("SELECT id FROM payment_links LIMIT 1"); } catch (PDOExceptio
 }
 // Ensure phonepe_checkout_url column exists (for existing tables)
 
+// Feature flag: only restaurants a superadmin has explicitly turned this on
+// for can see the meal-subscriptions (tiffin plan) feature, in admin and on
+// their customer website. Off by default for every existing/new restaurant.
+try {
+    $col = $conn->query("SHOW COLUMNS FROM users LIKE 'meal_subscriptions_enabled'");
+    if ($col->rowCount() === 0) {
+        $conn->exec("ALTER TABLE users ADD COLUMN meal_subscriptions_enabled TINYINT(1) NOT NULL DEFAULT 0");
+    }
+} catch (PDOException $e) {}
+
 // Auto-create settlements table if missing
 try { $conn->query("SELECT id FROM settlements LIMIT 1"); } catch (PDOException $e) {
     try {
@@ -132,6 +142,7 @@ try {
                 show_install_app,
                 whatsapp_orders,
                 photo_gallery_enabled,
+                meal_subscriptions_enabled,
                 payment_gateway_type,
                 phone,
                 country,
@@ -151,9 +162,11 @@ try {
           $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
           $stmt->execute();
       } catch (PDOException $e) {
-          // photo_gallery_enabled column may not exist yet (migration not run) - retry without it
+          // photo_gallery_enabled / meal_subscriptions_enabled columns may not
+          // exist yet (self-heal above may have failed, e.g. no ALTER
+          // privilege) - retry without whichever one is missing.
           if (strpos($e->getMessage(), 'Unknown column') === false) throw $e;
-          $sql = str_replace("photo_gallery_enabled,\n", '', $sql);
+          $sql = str_replace(["photo_gallery_enabled,\n", "meal_subscriptions_enabled,\n"], '', $sql);
           $stmt = $conn->prepare($sql);
           foreach ($params as $k=>$v) $stmt->bindValue($k, $v);
           $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
@@ -324,6 +337,17 @@ try {
       $stmt = $conn->prepare('UPDATE users SET photo_gallery_enabled = :enabled WHERE id = :id');
       $stmt->execute([':enabled' => $enabled, ':id' => $id]);
       echo json_encode(['success' => true, 'message' => 'Photo Gallery access updated']);
+      break;
+
+    case 'updateMealSubscriptionsEnabled':
+      $data = json_decode(file_get_contents('php://input'), true) ?? [];
+      $id = (int)($data['id'] ?? 0);
+      $enabled = (int)($data['meal_subscriptions_enabled'] ?? 0);
+      if ($id <= 0) throw new Exception('Invalid id');
+
+      $stmt = $conn->prepare('UPDATE users SET meal_subscriptions_enabled = :enabled WHERE id = :id');
+      $stmt->execute([':enabled' => $enabled, ':id' => $id]);
+      echo json_encode(['success' => true, 'message' => 'Meal Subscriptions access updated']);
       break;
 
     case 'getPasswordResetData':

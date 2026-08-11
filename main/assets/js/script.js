@@ -1274,6 +1274,7 @@ document.addEventListener("DOMContentLoaded", () => {
           document.body.style.overflow = '';
         }
         window._currentNotifOrderId = null;
+        stopNotificationSound();
       };
 
       window.acceptNewOrder = async function() {
@@ -9151,11 +9152,32 @@ window.logout = logout;
 
   function playNotificationSound() {
     try {
-      const audio = new Audio('../../assets/sounds/notification.wav');
-      audio.volume = 0.5;
+      // notification.wav runs several seconds long (not a short beep), and
+      // several independent pollers (badge count, new-order popup, KOT) can
+      // each call this for what's effectively the same event. Reusing one
+      // Audio instance and restarting it from 0 - rather than creating a new
+      // one every call - stops those triggers from stacking into overlapping,
+      // seemingly-endless playback.
+      if (!window._notificationAudio) {
+        window._notificationAudio = new Audio('../../assets/sounds/notification.wav');
+        window._notificationAudio.volume = 0.5;
+      }
+      var audio = window._notificationAudio;
+      audio.pause();
+      audio.currentTime = 0;
       audio.play().catch(() => {});
     } catch(e) {}
   }
+
+  function stopNotificationSound() {
+    try {
+      if (window._notificationAudio) {
+        window._notificationAudio.pause();
+        window._notificationAudio.currentTime = 0;
+      }
+    } catch(e) {}
+  }
+  window.stopNotificationSound = stopNotificationSound;
 
   function playClickSound() {
     try {

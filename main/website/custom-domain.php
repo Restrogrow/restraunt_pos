@@ -47,6 +47,10 @@ if ($customDomainRow) {
         'refund-policy' => 'refund-policy.php',
         'shipping-policy' => 'shipping-policy.php',
         'cookie-policy' => 'cookie-policy.php',
+        'plans' => 'plans.php',
+        'subscribe' => 'subscribe.php',
+        'my-subscription' => 'my-subscription.php',
+        'catering' => 'catering.php',
     ];
 
     $page = null;
@@ -88,6 +92,10 @@ $pageMap = [
     'refund-policy' => 'refund-policy.php',
     'shipping-policy' => 'shipping-policy.php',
     'cookie-policy' => 'cookie-policy.php',
+    'plans' => 'plans.php',
+    'subscribe' => 'subscribe.php',
+    'my-subscription' => 'my-subscription.php',
+    'catering' => 'catering.php',
 ];
 
 if (isset($pageMap[$path]) || in_array($path, ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'login.php', 'reset_password.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php']) || preg_match('/^(.+)\.php$/', $path, $m) && isset($pageMap[$m[1]])) {
@@ -101,7 +109,7 @@ if (isset($pageMap[$path]) || in_array($path, ['index.php', 'menu.php', 'cart.ph
             $direct_page = $pageMap[$m[1]];
         }
         // Only serve known PHP files to prevent path traversal
-        $allowed_php = ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'login.php', 'reset_password.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php'];
+        $allowed_php = ['index.php', 'menu.php', 'cart.php', 'about.php', 'contact.php', 'profile.php', 'login.php', 'reset_password.php', 'track.php', 'privacy-policy.php', 'terms-of-service.php', 'refund-policy.php', 'shipping-policy.php', 'cookie-policy.php', 'plans.php', 'subscribe.php', 'my-subscription.php', 'catering.php'];
         if (in_array($direct_page, $allowed_php) && file_exists(__DIR__ . '/' . $direct_page)) {
             include __DIR__ . '/' . $direct_page;
             exit;
@@ -118,7 +126,8 @@ if (strpos($path, '/') !== false) {
     $path = $parts[0];          // restaurant slug
     // Validate the page is one we know how to serve
     $allowed_pages = ['menu', 'cart', 'about', 'contact', 'profile', 'login', 'reset-password', 'track', 'track-order',
-                      'privacy-policy', 'terms-of-service', 'refund-policy', 'shipping-policy', 'cookie-policy'];
+                      'privacy-policy', 'terms-of-service', 'refund-policy', 'shipping-policy', 'cookie-policy',
+                      'plans', 'subscribe', 'my-subscription', 'catering'];
     if (in_array($parts[1], $allowed_pages)) {
         $requested_page = $parts[1];
     }

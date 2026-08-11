@@ -270,7 +270,7 @@ body {
 window.restaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 <?php
 $redirectTargetPage = isset($_GET['redirect']) ? trim($_GET['redirect']) : 'menu';
-$allowedRedirectPages = ['menu', 'cart', 'profile', 'about', 'contact'];
+$allowedRedirectPages = ['menu', 'cart', 'profile', 'about', 'contact', 'plans', 'subscribe', 'my-subscription', 'catering'];
 if (!in_array($redirectTargetPage, $allowedRedirectPages, true)) $redirectTargetPage = 'profile';
 $redirectTargetUrl = restaurantPageUrl($redirectTargetPage);
 // A dine-in QR scan puts ?table=X on the cart URL that sent the customer here

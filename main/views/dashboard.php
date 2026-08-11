@@ -64,6 +64,7 @@ $enable_takeaway = 1;
 $enable_dinein = 1;
 $cod_enabled = 1;
 $photo_gallery_enabled = 0;
+$meal_subscriptions_enabled = 0;
 $restaurant_custom_domain = '';
 $restaurant_embed_enabled = false;
  
@@ -184,6 +185,18 @@ try {
             $enable_dinein = isset($userRow['enable_dinein']) ? (int)$userRow['enable_dinein'] : 1;
             $cod_enabled = isset($userRow['cod_enabled']) ? (int)$userRow['cod_enabled'] : 1;
             $photo_gallery_enabled = isset($userRow['photo_gallery_enabled']) ? (int)$userRow['photo_gallery_enabled'] : 0;
+            // Separate query (own try/catch) rather than adding this column to
+            // the big SELECT above: the meal_subscriptions_enabled column is
+            // self-healed by main/superadmin/api.php, which a fresh install
+            // may never have hit yet - if that ALTER hasn't run, this
+            // shouldn't take down every other setting loaded above with it.
+            try {
+                $msStmt = $conn->prepare("SELECT meal_subscriptions_enabled FROM users WHERE id = ? LIMIT 1");
+                $msStmt->execute([$_SESSION['user_id']]);
+                $meal_subscriptions_enabled = (int)($msStmt->fetchColumn() ?: 0);
+            } catch (Exception $e) {
+                $meal_subscriptions_enabled = 0;
+            }
             $enable_language = isset($userRow['enable_language']) ? (int)$userRow['enable_language'] : 1;
             // Force English when language support is disabled
             if (!$enable_language) {
@@ -372,6 +385,33 @@ try {
       if (!container) return;
       if (!container.querySelector('iframe')) {
         container.innerHTML = '<iframe src="../admin/addons.php" style="width:100%;height:700px;border:none;border-radius:8px;overflow:auto;"></iframe>';
+      }
+    }
+
+    // Load Meal Plans (tiffin subscription) management page via iframe
+    function loadAdminMealPlans() {
+      var container = document.getElementById('mealPlansList');
+      if (!container) return;
+      if (!container.querySelector('iframe')) {
+        container.innerHTML = '<iframe src="../admin/meal_plans.php" style="width:100%;height:700px;border:none;border-radius:8px;overflow:auto;"></iframe>';
+      }
+    }
+
+    // Load Meal Subscriptions (customer subscribers) management page via iframe
+    function loadAdminMealSubscriptions() {
+      var container = document.getElementById('mealSubscriptionsList');
+      if (!container) return;
+      if (!container.querySelector('iframe')) {
+        container.innerHTML = '<iframe src="../admin/meal_subscriptions.php" style="width:100%;height:700px;border:none;border-radius:8px;overflow:auto;"></iframe>';
+      }
+    }
+
+    // Load Catering (bulk/event orders) management page via iframe
+    function loadAdminCatering() {
+      var container = document.getElementById('cateringList');
+      if (!container) return;
+      if (!container.querySelector('iframe')) {
+        container.innerHTML = '<iframe src="../admin/catering.php" style="width:100%;height:700px;border:none;border-radius:8px;overflow:auto;"></iframe>';
       }
     }
 
@@ -900,6 +940,34 @@ try {
             <?php endif; ?>
           </ul>
         </li>
+        <!-- Subscriptions Menu with Submenus - only for restaurants a
+             superadmin has turned this feature on for (users.meal_subscriptions_enabled) -->
+        <?php if ($meal_subscriptions_enabled): ?>
+        <li class="nav-item has-submenu">
+          <a href="#" class="nav-link submenu-toggle">
+            <span class="nav-icon material-symbols-rounded">event_repeat</span>
+            <span class="nav-label">Subscriptions</span>
+            <span class="submenu-arrow material-symbols-rounded">chevron_right</span>
+          </a>
+          <span class="nav-tooltip">Subscriptions</span>
+          <ul class="submenu">
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="mealPlansPage" onclick="setTimeout(loadAdminMealPlans, 50)">
+                <span class="nav-icon material-symbols-rounded">event_repeat</span>
+                <span class="nav-label">Meal Plans</span>
+              </a>
+              <span class="nav-tooltip">Meal Plans</span>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="mealSubscriptionsPage" onclick="setTimeout(loadAdminMealSubscriptions, 50)">
+                <span class="nav-icon material-symbols-rounded">group</span>
+                <span class="nav-label">Subscribers</span>
+              </a>
+              <span class="nav-tooltip">Subscribers</span>
+            </li>
+          </ul>
+        </li>
+        <?php endif; ?>
         <!-- Tables Menu with Submenus -->
         <li class="nav-item has-submenu">
           <a href="#" class="nav-link submenu-toggle">
@@ -1101,6 +1169,12 @@ try {
               <a href="#" class="nav-link submenu-link" data-page="dealsPage" onclick="setTimeout(function(){loadDealMenus();loadDeals();},50)">
                 <span class="material-symbols-rounded">local_offer</span>
                 <span class="nav-label">Deals</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="cateringPage" onclick="setTimeout(loadAdminCatering, 50)">
+                <span class="material-symbols-rounded">celebration</span>
+                <span class="nav-label">Catering</span>
               </a>
             </li>
           </ul>
@@ -1864,6 +1938,47 @@ try {
       <div class="page-content">
         <div id="addonsList" style="min-height:400px;">
           <div class="loading">Loading add-ons management...</div>
+        </div>
+      </div>
+    </div>
+
+    <?php if ($meal_subscriptions_enabled): ?>
+    <!-- Meal Plans Page -->
+    <div id="mealPlansPage" class="page">
+      <div class="page-header">
+        <h1>Meal Plans</h1>
+        <p>Define tiffin/subscription bundles and their weekly menu</p>
+      </div>
+      <div class="page-content">
+        <div id="mealPlansList" style="min-height:400px;">
+          <div class="loading">Loading meal plans management...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meal Subscriptions (Subscribers) Page -->
+    <div id="mealSubscriptionsPage" class="page">
+      <div class="page-header">
+        <h1>Subscribers</h1>
+        <p>View and manage customer meal plan subscriptions</p>
+      </div>
+      <div class="page-content">
+        <div id="mealSubscriptionsList" style="min-height:400px;">
+          <div class="loading">Loading subscribers...</div>
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Catering Page -->
+    <div id="cateringPage" class="page">
+      <div class="page-header">
+        <h1>Catering</h1>
+        <p>Bulk/event order price tiers and incoming requests</p>
+      </div>
+      <div class="page-content">
+        <div id="cateringList" style="min-height:400px;">
+          <div class="loading">Loading catering management...</div>
         </div>
       </div>
     </div>

@@ -1274,6 +1274,10 @@ function fetchAddons() {
 function renderGlobalAddons() {
   var container = document.getElementById('cartAddonChips');
   if (!container) return;
+  // Hide the whole "Add-ons" card when this restaurant hasn't configured
+  // any add-ons at all, instead of showing an empty upsell section.
+  var cardEl = document.getElementById('cartAddonCard');
+  if (cardEl) cardEl.style.display = addonsList.length > 0 ? '' : 'none';
   var sym = getCurrency();
   var html = '';
   // Show available add-ons to click
@@ -1506,7 +1510,7 @@ function renderCart() {
       '</div>' +
       
     '</div>' +
-    '<div class="card card-pad" id="cartAddonCard">' +
+    '<div class="card card-pad" id="cartAddonCard" style="display:none">' +
       '<div class="coupon-header">' +
         '<div class="icon-wrap"><i class="fa fa-plus-circle"></i></div>' +
         '<div class="header-text">' +

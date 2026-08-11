@@ -301,7 +301,7 @@ require_once __DIR__ . '/../config/countries.php';
               <table id="restaurantsTable">
                 <thead>
                   <tr>
-                    <th>ID</th><th>Username</th><th>Restaurant ID</th><th>Name</th><th>Payment Gateway</th><th>Install App</th><th>WhatsApp Orders</th><th>Photo Gallery</th><th>Trial Status</th><th>Status</th><th>Created</th><th>Actions</th>
+                    <th>ID</th><th>Username</th><th>Restaurant ID</th><th>Name</th><th>Payment Gateway</th><th>Install App</th><th>WhatsApp Orders</th><th>Photo Gallery</th><th>Meal Subscriptions</th><th>Trial Status</th><th>Status</th><th>Created</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="restaurantsTbody"></tbody>
@@ -1137,6 +1137,7 @@ require_once __DIR__ . '/../config/countries.php';
           const showInstall = Number(r.show_install_app) === 1;
           const whatsappOn = Number(r.whatsapp_orders) === 1;
           const galleryOn = Number(r.photo_gallery_enabled) === 1;
+          const mealSubsOn = Number(r.meal_subscriptions_enabled) === 1;
           return `
             <tr>
               <td>${r.id}</td>
@@ -1161,6 +1162,11 @@ require_once __DIR__ . '/../config/countries.php';
               <td>
                 <span class="badge ${galleryOn ? 'badge-success' : 'badge-warning'}" style="cursor:pointer;font-size:0.75rem" onclick="toggleGalleryEnabled(${r.id}, ${galleryOn})" title="Click to toggle">
                   ${galleryOn ? 'Allowed' : 'Blocked'}
+                </span>
+              </td>
+              <td>
+                <span class="badge ${mealSubsOn ? 'badge-success' : 'badge-warning'}" style="cursor:pointer;font-size:0.75rem" onclick="toggleMealSubscriptionsEnabled(${r.id}, ${mealSubsOn})" title="Click to toggle">
+                  ${mealSubsOn ? 'Allowed' : 'Blocked'}
                 </span>
               </td>
               <td>${trialStatus === 'Active' ? `<span class="badge badge-success">${r.days_left} days</span>` : 
@@ -1409,6 +1415,17 @@ require_once __DIR__ . '/../config/countries.php';
       const res = await fetch('api.php?action=updatePhotoGalleryEnabled', { method:'POST', body: JSON.stringify({id, photo_gallery_enabled: newVal}), headers: {'Content-Type': 'application/json'} });
       const data = await res.json();
       if (data.success) { fetchRestaurants(); showSuperAlert('Photo Gallery set to '+label, 'success'); }
+      else showSuperAlert(data.message||'Error', 'error');
+    }
+
+    window.toggleMealSubscriptionsEnabled = async function(id, current){
+      const newVal = current ? 0 : 1;
+      const label = newVal ? 'Allowed' : 'Blocked';
+      const ok = await showSuperPrompt(`Set Meal Subscriptions to "${label}" for this restaurant?`, 'Confirm');
+      if(!ok) return;
+      const res = await fetch('api.php?action=updateMealSubscriptionsEnabled', { method:'POST', body: JSON.stringify({id, meal_subscriptions_enabled: newVal}), headers: {'Content-Type': 'application/json'} });
+      const data = await res.json();
+      if (data.success) { fetchRestaurants(); showSuperAlert('Meal Subscriptions set to '+label, 'success'); }
       else showSuperAlert(data.message||'Error', 'error');
     }
 
