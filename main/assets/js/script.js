@@ -1090,21 +1090,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Background badge poll for pending order count (always runs, updates nav badges)
-      if (!window.pendingOrderBadgePoll) {
-        async function fetchPendingCount() {
-          if (document.hidden) return;
-          try {
-            const r = await fetch('../api/get_pending_online_count.php', { cache: 'no-store' });
-            const d = await r.json();
-            if (d.success) {
-              if (prevOnlineOrderCount > 0 && d.count > prevOnlineOrderCount && window.onlineOrdersSoundEnabled) {
-                playNotificationSound();
-              }
-              prevOnlineOrderCount = d.count;
-              updatePendingOrderBadge(d.count);
+      async function fetchPendingCount() {
+        if (document.hidden) return;
+        try {
+          const r = await fetch('../api/get_pending_online_count.php', { cache: 'no-store' });
+          const d = await r.json();
+          if (d.success) {
+            if (prevOnlineOrderCount > 0 && d.count > prevOnlineOrderCount && window.onlineOrdersSoundEnabled) {
+              playNotificationSound();
             }
-          } catch(e) {}
-        }
+            prevOnlineOrderCount = d.count;
+            updatePendingOrderBadge(d.count);
+          }
+        } catch(e) {}
+      }
+      if (!window.pendingOrderBadgePoll) {
         fetchPendingCount();
         window.pendingOrderBadgePoll = setInterval(fetchPendingCount, 30000);
       }
