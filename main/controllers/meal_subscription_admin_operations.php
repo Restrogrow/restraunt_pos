@@ -167,15 +167,15 @@ function handleSearchCustomers($conn, $restaurant_id) {
 
 function handleAdminCreateSubscription($conn, $restaurant_id) {
     $customerId = (int)($_POST['customerId'] ?? 0);
+    $newCustomerName = trim($_POST['newCustomerName'] ?? '');
+    $newCustomerPhone = trim($_POST['newCustomerPhone'] ?? '');
+    $newCustomerEmail = trim($_POST['newCustomerEmail'] ?? '');
     $mealPlanId = (int)($_POST['mealPlanId'] ?? 0);
     $deliveryAddress = trim($_POST['deliveryAddress'] ?? '');
     $deliveryPhone = trim($_POST['deliveryPhone'] ?? '');
     $paymentMethod = trim($_POST['paymentMethod'] ?? 'Cash');
     $markPaid = isset($_POST['markPaid']) && (int)$_POST['markPaid'] === 1;
 
-    if ($customerId <= 0) {
-        throw new Exception('Please select a customer');
-    }
     if ($mealPlanId <= 0) {
         throw new Exception('Please choose a plan');
     }
@@ -189,12 +189,35 @@ function handleAdminCreateSubscription($conn, $restaurant_id) {
         throw new Exception('Invalid payment method');
     }
 
-    // Customer must belong to this restaurant - staff can't subscribe a
-    // customer that isn't theirs, even by guessing an id.
-    $custStmt = $conn->prepare("SELECT id FROM customers WHERE id = ? AND restaurant_id = ? LIMIT 1");
-    $custStmt->execute([$customerId, $restaurant_id]);
-    if (!$custStmt->fetch()) {
-        throw new Exception('Customer not found');
+    if ($customerId > 0) {
+        // Customer must belong to this restaurant - staff can't subscribe a
+        // customer that isn't theirs, even by guessing an id.
+        $custStmt = $conn->prepare("SELECT id FROM customers WHERE id = ? AND restaurant_id = ? LIMIT 1");
+        $custStmt->execute([$customerId, $restaurant_id]);
+        if (!$custStmt->fetch()) {
+            throw new Exception('Customer not found');
+        }
+    } else {
+        // Creating a new customer inline instead of picking an existing one.
+        if (empty($newCustomerName)) {
+            throw new Exception('Customer name is required');
+        }
+        if (empty($newCustomerPhone)) {
+            throw new Exception('Customer phone is required');
+        }
+        // Same find-or-create-by-phone dedup process_website_order.php uses,
+        // so staff re-entering a phone that already has an account doesn't
+        // spawn a duplicate customer row.
+        $existingStmt = $conn->prepare("SELECT id FROM customers WHERE restaurant_id = ? AND phone = ? LIMIT 1");
+        $existingStmt->execute([$restaurant_id, $newCustomerPhone]);
+        $existing = $existingStmt->fetch(PDO::FETCH_ASSOC);
+        if ($existing) {
+            $customerId = (int)$existing['id'];
+        } else {
+            $insertStmt = $conn->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email) VALUES (?, ?, ?, ?)");
+            $insertStmt->execute([$restaurant_id, $newCustomerName, $newCustomerPhone, $newCustomerEmail ?: null]);
+            $customerId = (int)$conn->lastInsertId();
+        }
     }
 
     $planStmt = $conn->prepare("SELECT * FROM meal_plans WHERE id = ? AND restaurant_id = ? AND is_active = 1 LIMIT 1");

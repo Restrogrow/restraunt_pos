@@ -107,6 +107,9 @@ try {
         .selected-customer-chip.active { display: flex; }
         .selected-customer-chip .remove-cust { color: #ef4444; cursor: pointer; font-weight: 700; }
         .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555; }
+        .cust-mode-tabs { display: flex; gap: 6px; margin-bottom: 10px; background: #f3f4f6; border-radius: 8px; padding: 3px; }
+        .cust-mode-tab { flex: 1; padding: 7px; border: none; background: none; border-radius: 6px; font-size: 12.5px; font-weight: 600; color: #666; cursor: pointer; font-family: 'Poppins', sans-serif; }
+        .cust-mode-tab.active { background: #fff; color: #1a1b1f; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -169,13 +172,26 @@ try {
                 <form id="newSubForm" onsubmit="return submitNewSub(event)">
                     <div class="form-group">
                         <label>Customer *</label>
-                        <input type="text" id="custSearchInput" placeholder="Search by name or phone..." autocomplete="off" oninput="onCustSearchInput()">
-                        <div class="cust-search-results" id="custSearchResults"></div>
-                        <div class="selected-customer-chip" id="selectedCustChip">
-                            <span id="selectedCustLabel"></span>
-                            <span class="remove-cust" onclick="clearSelectedCustomer()">&times;</span>
+                        <div class="cust-mode-tabs">
+                            <button type="button" class="cust-mode-tab active" id="custModeExistingBtn" onclick="setCustMode('existing')">Existing Customer</button>
+                            <button type="button" class="cust-mode-tab" id="custModeNewBtn" onclick="setCustMode('new')">New Customer</button>
                         </div>
-                        <input type="hidden" id="selectedCustomerId" value="">
+
+                        <div id="custModeExisting">
+                            <input type="text" id="custSearchInput" placeholder="Search by name or phone..." autocomplete="off" oninput="onCustSearchInput()">
+                            <div class="cust-search-results" id="custSearchResults"></div>
+                            <div class="selected-customer-chip" id="selectedCustChip">
+                                <span id="selectedCustLabel"></span>
+                                <span class="remove-cust" onclick="clearSelectedCustomer()">&times;</span>
+                            </div>
+                            <input type="hidden" id="selectedCustomerId" value="">
+                        </div>
+
+                        <div id="custModeNew" style="display:none;">
+                            <input type="text" id="newCustName" placeholder="Customer name" style="margin-bottom:8px;">
+                            <input type="text" id="newCustPhone" placeholder="Phone number" style="margin-bottom:8px;">
+                            <input type="text" id="newCustEmail" placeholder="Email (optional)">
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -349,9 +365,17 @@ try {
         /* ---------- New Subscription modal ---------- */
         var custSearchTimer = null;
 
+        function setCustMode(mode) {
+            document.getElementById('custModeExistingBtn').classList.toggle('active', mode === 'existing');
+            document.getElementById('custModeNewBtn').classList.toggle('active', mode === 'new');
+            document.getElementById('custModeExisting').style.display = mode === 'existing' ? '' : 'none';
+            document.getElementById('custModeNew').style.display = mode === 'new' ? '' : 'none';
+        }
+
         function openNewSubModal() {
             document.getElementById('newSubForm').reset();
             clearSelectedCustomer();
+            setCustMode('existing');
             document.getElementById('custSearchResults').classList.remove('active');
             document.getElementById('newSubMarkPaid').checked = true;
 
@@ -433,12 +457,21 @@ try {
 
         function submitNewSub(e) {
             e.preventDefault();
+            var isNewCustomer = document.getElementById('custModeNewBtn').classList.contains('active');
             var customerId = document.getElementById('selectedCustomerId').value;
+            var newCustName = document.getElementById('newCustName').value.trim();
+            var newCustPhone = document.getElementById('newCustPhone').value.trim();
             var planId = document.getElementById('newSubPlan').value;
             var phone = document.getElementById('newSubPhone').value.trim();
             var address = document.getElementById('newSubAddress').value.trim();
 
-            if (!customerId) { showToast('Please select an existing customer', 'error'); return false; }
+            if (isNewCustomer) {
+                if (!newCustName) { showToast('Please enter the customer\'s name', 'error'); return false; }
+                if (!newCustPhone) { showToast('Please enter the customer\'s phone number', 'error'); return false; }
+                if (!phone) phone = newCustPhone; // default delivery phone to the customer's own phone
+            } else if (!customerId) {
+                showToast('Please select an existing customer, or switch to "New Customer"', 'error'); return false;
+            }
             if (!planId) { showToast('Please choose a plan', 'error'); return false; }
             if (!phone || !address) { showToast('Delivery phone and address are required', 'error'); return false; }
 
@@ -448,7 +481,13 @@ try {
 
             var fd = new FormData();
             fd.append('action', 'admin_create_subscription');
-            fd.append('customerId', customerId);
+            if (isNewCustomer) {
+                fd.append('newCustomerName', newCustName);
+                fd.append('newCustomerPhone', newCustPhone);
+                fd.append('newCustomerEmail', document.getElementById('newCustEmail').value.trim());
+            } else {
+                fd.append('customerId', customerId);
+            }
             fd.append('mealPlanId', planId);
             fd.append('deliveryPhone', phone);
             fd.append('deliveryAddress', address);
