@@ -1296,15 +1296,14 @@ window.socialLinks = {
       <i class="fa fa-utensils nav-icon"></i>
       <span>Menu</span>
     </div>
+    <div class="nav-item" onclick="scrollToSection('socialSection', this)">
+      <i class="fa fa-share-alt nav-icon"></i>
+      <span>Social</span>
+    </div>
     <?php if ($indexNavShowPlans): ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('plans'); ?>'">
       <i class="fa fa-calendar-check nav-icon"></i>
       <span>Plans</span>
-    </div>
-    <?php else: ?>
-    <div class="nav-item" onclick="scrollToSection('socialSection', this)">
-      <i class="fa fa-share-alt nav-icon"></i>
-      <span>Social</span>
     </div>
     <?php endif; ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
