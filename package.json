@@ -1,0 +1,15 @@
+{
+  "name": "menuwebsite-e2e-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright end-to-end tests for the restaurant menu/ordering app. Dev-only tooling - not part of the PHP app runtime and not deployed to production.",
+  "scripts": {
+    "pretest": "node scripts/clear-rate-limits.js",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}
