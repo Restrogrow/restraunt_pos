@@ -1061,6 +1061,13 @@ try {
               <span class="nav-tooltip">Posters</span>
             </li>
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="marketingVideosPage" onclick="setTimeout(initVideoStudio, 50)">
+                <span class="nav-icon material-symbols-rounded">movie</span>
+                <span class="nav-label">Videos</span>
+              </a>
+              <span class="nav-tooltip">Videos</span>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="marketingCaptionsPage" onclick="setTimeout(initCaptionStudio, 50)">
                 <span class="nav-icon material-symbols-rounded">chat_bubble</span>
                 <span class="nav-label">Social Captions</span>
@@ -2533,6 +2540,37 @@ function toggleGatewayMode() {
             <button type="button" class="btn-secondary" onclick="downloadPoster()">
               <span class="material-symbols-rounded" style="font-size:18px;">download</span> Download PNG
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Marketing > Videos Page -->
+    <div id="marketingVideosPage" class="page">
+      <div class="page-header">
+        <div>
+          <h1>Videos</h1>
+          <p>Create short animated promo videos for WhatsApp Status, Instagram & Facebook</p>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="poster-studio">
+          <div class="poster-controls-panel">
+            <div class="poster-panel-title">1. Choose a template</div>
+            <div id="videoTemplateGrid" class="poster-template-grid"></div>
+
+            <div class="poster-panel-title" style="margin-top:24px;">2. Customize</div>
+            <div id="videoFieldsContainer" class="poster-fields"></div>
+          </div>
+          <div class="poster-preview-panel">
+            <div class="poster-canvas-wrap">
+              <canvas id="videoCanvas" width="1080" height="1080"></canvas>
+            </div>
+            <button type="button" class="btn-secondary" id="recordVideoBtn" onclick="recordVideo()">
+              <span class="material-symbols-rounded" style="font-size:18px;">videocam</span>
+              <span class="video-record-label">Record &amp; Download Video</span>
+            </button>
+            <p style="color:#9ca3af;font-size:0.8rem;margin-top:8px;">Downloads as MP4 where supported, otherwise WebM. The preview above loops automatically — hit record to save it as a file.</p>
           </div>
         </div>
       </div>
@@ -5335,6 +5373,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
   <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
   <script src="../assets/js/poster-generator.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/video-generator.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/caption-generator.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/campaign-calendar.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
