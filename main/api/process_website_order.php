@@ -833,7 +833,7 @@ $conn->beginTransaction();
     // so the customer's "Placing order..." button shouldn't sit frozen
     // waiting on a mail server that might be slow or unreachable.
     ob_end_clean();
-    echo json_encode([
+    $responseBody = json_encode([
         'success' => true,
         'order_id' => $order_id,
         'order_number' => $order_number,
@@ -846,10 +846,35 @@ $conn->beginTransaction();
     ], JSON_UNESCAPED_UNICODE);
 
     if (function_exists('fastcgi_finish_request')) {
+        // PHP-FPM: this genuinely closes the client connection while the
+        // worker keeps running the code below.
+        echo $responseBody;
         fastcgi_finish_request();
     } else {
+        // Classic Apache mod_php (this app's own XAMPP dev setup, and common
+        // on shared hosting) has no fastcgi_finish_request. Without an
+        // explicit Content-Length, PHP falls back to chunked transfer
+        // encoding, and a browser's fetch() doesn't consider a chunked
+        // response "done" until the terminating chunk — which only gets
+        // written once the whole script (including the SMTP/push work
+        // below) finishes. So the earlier ob_end_clean()+echo alone did NOT
+        // actually get the customer their response early on this SAPI.
+        // Setting Content-Length forces a plain, non-chunked body that ends
+        // exactly at these bytes, so the connection can close (and the
+        // browser resolve) right here instead.
+        ignore_user_abort(true);
+        if (function_exists('apache_setenv')) { @apache_setenv('no-gzip', '1'); }
+        @ini_set('zlib.output_compression', '0');
+        header('Content-Length: ' . strlen($responseBody));
+        header('Connection: close');
+        echo $responseBody;
         if (session_id()) { session_write_close(); }
-        if (function_exists('flush')) { @flush(); }
+        // Pop every buffering level (this app's own ob_start() at the top of
+        // the file, plus XAMPP/php.ini's own implicit output_buffering=4096
+        // wrapping the whole script) so the bytes actually leave PHP instead
+        // of sitting in a buffer until script end.
+        while (ob_get_level() > 0) { @ob_end_flush(); }
+        @flush();
     }
 
     // Payment methods that are confirmed at order time (Cash, Business QR
