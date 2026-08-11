@@ -162,6 +162,45 @@ if (!empty($imagePath) && strpos($imagePath, 'http') !== 0 && empty($imageType))
     }
 }
 
+// Handle bare id parameter without type/path (used by admin addons page, etc.)
+// format: image.php?id=692188df76bd5
+if (empty($imagePath) && empty($imageType) && !empty($imageId)) {
+    try {
+        $stmt = $conn->prepare("SELECT image_data, image_mime_type FROM meal_addons WHERE addon_image = ? AND image_data IS NOT NULL LIMIT 1");
+        $stmt->execute(['db:' . $imageId]);
+        $addon = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($addon && !empty($addon['image_data'])) {
+            ob_end_clean();
+            header('Content-Type: ' . ($addon['image_mime_type'] ?? 'image/jpeg'));
+            header('Content-Length: ' . strlen($addon['image_data']));
+            header('Cache-Control: public, max-age=86400');
+            header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
+            echo $addon['image_data'];
+            exit();
+        }
+    } catch (PDOException $e) {
+        error_log("Addon image lookup failed (bare id): " . $e->getMessage());
+    }
+
+    // Fallback: menu_items by item_image = 'db:' . id (mirrors website/image.php convenience lookup)
+    try {
+        $stmt = $conn->prepare("SELECT image_data, image_mime_type FROM menu_items WHERE item_image = ? AND image_data IS NOT NULL LIMIT 1");
+        $stmt->execute(['db:' . $imageId]);
+        $item = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($item && !empty($item['image_data'])) {
+            ob_end_clean();
+            header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
+            header('Content-Length: ' . strlen($item['image_data']));
+            header('Cache-Control: public, max-age=86400');
+            header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
+            echo $item['image_data'];
+            exit();
+        }
+    } catch (PDOException $e) {
+        error_log("Menu item image lookup failed (bare id): " . $e->getMessage());
+    }
+}
+
 // Check if this is a database-stored image (starts with 'db:') or type-specific request
 if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
     // Retrieve image from database

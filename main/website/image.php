@@ -186,8 +186,26 @@ if (empty($imagePath) && empty($imageType) && !empty($imageId)) {
     } catch (PDOException $e) {
         error_log("Menu image lookup failed: " . $e->getMessage());
     }
+
+    // Fallback: Try meal_addons table (addon images use the same 'db:' + uniqid convention)
+    try {
+        $stmt = $conn->prepare("SELECT image_data, image_mime_type FROM meal_addons WHERE addon_image = ? AND image_data IS NOT NULL LIMIT 1");
+        $stmt->execute(['db:' . $imageId]);
+        $addon = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($addon && !empty($addon['image_data'])) {
+            ob_end_clean();
+            header('Content-Type: ' . ($addon['image_mime_type'] ?? 'image/jpeg'));
+            header('Content-Length: ' . strlen($addon['image_data']));
+            header('Cache-Control: public, max-age=86400');
+            header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
+            echo $addon['image_data'];
+            exit();
+        }
+    } catch (PDOException $e) {
+        error_log("Addon image lookup failed: " . $e->getMessage());
+    }
 }
-        
+
 // Check if this is a database-stored image (starts with 'db:') or type-specific request
 if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
     // Retrieve image from database
