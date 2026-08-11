@@ -63,6 +63,9 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
   <div class="pr-share-header">
     <button class="back-btn" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'" aria-label="Back"><i class="fa fa-arrow-left"></i></button>
     <h1>Meal Plans</h1>
+    <?php if ($logged_in_customer): ?>
+    <button class="back-btn" style="background:#1a3934;font-size:16px;" onclick="window.location.href='<?php echo restaurantPageUrl('my-subscription'); ?>'" title="My Subscription"><i class="fa fa-user-clock"></i></button>
+    <?php endif; ?>
   </div>
 
   <div class="content">

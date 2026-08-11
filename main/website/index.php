@@ -1283,6 +1283,10 @@ window.socialLinks = {
 
   <div style="height:80px"></div>
 
+  <?php
+  require_once __DIR__ . '/../config/meal_subscription_schema.php';
+  $indexNavShowPlans = isset($conn, $restaurant_id) && mealSubscriptionsFeatureEnabled($conn, $restaurant_id);
+  ?>
   <div class="bottom-nav">
     <div class="nav-item active" onclick="scrollToSection('homeSection', this)">
       <i class="fa fa-home nav-icon"></i>
@@ -1292,10 +1296,17 @@ window.socialLinks = {
       <i class="fa fa-utensils nav-icon"></i>
       <span>Menu</span>
     </div>
+    <?php if ($indexNavShowPlans): ?>
+    <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('plans'); ?>'">
+      <i class="fa fa-calendar-check nav-icon"></i>
+      <span>Plans</span>
+    </div>
+    <?php else: ?>
     <div class="nav-item" onclick="scrollToSection('socialSection', this)">
       <i class="fa fa-share-alt nav-icon"></i>
       <span>Social</span>
     </div>
+    <?php endif; ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
       <i class="fa fa-shopping-cart nav-icon"></i>
       <span>Cart</span>
