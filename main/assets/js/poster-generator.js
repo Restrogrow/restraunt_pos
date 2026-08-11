@@ -660,6 +660,287 @@
 
         drawFooterBar(ctx, state, assets, { bg: '#ffffff', textColor: '#111827', subTextColor: '#6b7280' });
       }
+    },
+    {
+      id: 'flash_sale',
+      name: 'Flash Sale',
+      fields: ['headline', 'subtext', 'badge', 'photo', 'showQR'],
+      badgeLabel: 'Discount Badge (e.g. FLAT 30% OFF)',
+      sample: { headline: 'Today Only', subtext: 'Offer ends at midnight - don\'t miss out', badge: 'FLAT 30% OFF' },
+      draw: function(ctx, state, assets) {
+        var accent = state.accentColor;
+        ctx.fillStyle = '#0b0b0f';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        var glow = ctx.createRadialGradient(CANVAS_SIZE / 2, 360, 60, CANVAS_SIZE / 2, 360, 560);
+        glow.addColorStop(0, mixColor(accent, '#ffffff', 0.1) + '66');
+        glow.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        drawSoftShadowFrame(ctx, 74, 64, 932, 470, 26);
+        if (state.photoImg) {
+          drawImageCoverRounded(ctx, state.photoImg, 90, 80, 900, 442, 18);
+        } else {
+          drawPhotoPlaceholder(ctx, 90, 80, 900, 442, 18);
+        }
+
+        // diagonal "limited time" corner ribbon
+        ctx.save();
+        ctx.translate(150, 150);
+        ctx.rotate(-Math.PI / 8);
+        ctx.font = "700 26px 'Poppins'";
+        var ribbonText = 'LIMITED TIME';
+        var ribbonW = ctx.measureText(ribbonText).width + 64;
+        roundRectPath(ctx, -ribbonW / 2, -27, ribbonW, 54, 8);
+        ctx.fillStyle = accent;
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ribbonText, 0, 2);
+        ctx.restore();
+
+        var badgeText = (state.badge || 'FLASH SALE').toUpperCase();
+        ctx.font = "76px 'Bebas Neue'";
+        var badgeW = Math.max(280, ctx.measureText(badgeText).width + 100);
+        var badgeH = 96;
+        var badgeY = 566;
+        roundRectPath(ctx, CANVAS_SIZE / 2 - badgeW / 2, badgeY, badgeW, badgeH, badgeH / 2);
+        ctx.fillStyle = accent;
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badgeText, CANVAS_SIZE / 2, badgeY + badgeH / 2 + 4);
+        ctx.textBaseline = 'alphabetic';
+
+        var headY = badgeY + badgeH + 68;
+        ctx.font = "800 60px 'Poppins'";
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        var headLines = wrapLines(ctx, (state.headline || 'Today Only').toUpperCase(), 900, 2);
+        headLines.forEach(function(l, i) { ctx.fillText(l, CANVAS_SIZE / 2, headY + i * 66); });
+
+        if (state.subtext) {
+          var subY = headY + headLines.length * 66 + 26;
+          ctx.font = "500 28px 'Poppins'";
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          var subLines = wrapLines(ctx, state.subtext, 820, 2);
+          subLines.forEach(function(l, i) { ctx.fillText(l, CANVAS_SIZE / 2, subY + i * 36); });
+        }
+
+        drawFooterBar(ctx, state, assets, { bg: '#111827', textColor: '#ffffff', subTextColor: 'rgba(255,255,255,0.7)' });
+      }
+    },
+    {
+      id: 'chefs_special',
+      name: "Chef's Special",
+      fields: ['headline', 'subtext', 'badge', 'photo', 'showQR'],
+      badgeLabel: 'Price (e.g. 349)',
+      sample: { headline: 'Truffle Mushroom Risotto', subtext: "Chef's signature recipe, made fresh to order", badge: '349' },
+      draw: function(ctx, state, assets) {
+        var accent = state.accentColor;
+        ctx.fillStyle = '#161616';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        // thin gold-style accent border frame
+        ctx.strokeStyle = mixColor(accent, '#ffffff', 0.35);
+        ctx.lineWidth = 3;
+        roundRectPath(ctx, 40, 40, CANVAS_SIZE - 80, CANVAS_SIZE - 80, 4);
+        ctx.stroke();
+
+        ctx.font = "600 24px 'Poppins'";
+        ctx.fillStyle = mixColor(accent, '#ffffff', 0.4);
+        ctx.textAlign = 'center';
+        ctx.fillText("C H E F ' S   S P E C I A L", CANVAS_SIZE / 2, 130);
+
+        drawSoftShadowFrame(ctx, 100, 168, 880, 500, 12);
+        if (state.photoImg) {
+          drawImageCoverRounded(ctx, state.photoImg, 110, 178, 860, 480, 6);
+        } else {
+          drawPhotoPlaceholder(ctx, 110, 178, 860, 480, 6);
+        }
+
+        // circular price "stamp" overlapping the photo corner
+        if (state.badge) {
+          var stampR = 90;
+          var stampCx = CANVAS_SIZE - 190, stampCy = 168 + 500 - 20;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(stampCx, stampCy, stampR, 0, Math.PI * 2);
+          ctx.fillStyle = accent;
+          ctx.fill();
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = '#161616';
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = "600 20px 'Poppins'";
+          ctx.fillText('FROM', stampCx, stampCy - 26);
+          ctx.font = "800 40px 'Poppins'";
+          ctx.fillText(state.badge, stampCx, stampCy + 8);
+          ctx.textBaseline = 'alphabetic';
+          ctx.restore();
+        }
+
+        var headY = 780;
+        ctx.font = "800 54px 'Playfair Display'";
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        var headLines = wrapLines(ctx, state.headline || 'Signature Dish', 780, 2);
+        headLines.forEach(function(l, i) { ctx.fillText(l, CANVAS_SIZE / 2, headY + i * 60); });
+
+        if (state.subtext) {
+          var subY = headY + headLines.length * 60 + 26;
+          ctx.font = "italic 500 28px 'Playfair Display'";
+          ctx.fillStyle = 'rgba(255,255,255,0.7)';
+          var subLines = wrapLines(ctx, state.subtext, 760, 2);
+          subLines.forEach(function(l, i) { ctx.fillText(l, CANVAS_SIZE / 2, subY + i * 36); });
+        }
+
+        drawFooterBar(ctx, state, assets, { bg: '#111827', textColor: '#ffffff', subTextColor: 'rgba(255,255,255,0.7)' });
+      }
+    },
+    {
+      id: 'loyalty_rewards',
+      name: 'Loyalty Rewards',
+      fields: ['headline', 'subtext', 'badge', 'showQR'],
+      badgeLabel: 'CTA Badge (e.g. JOIN FREE)',
+      forceQR: true,
+      sample: { headline: 'Earn While You Eat', subtext: 'Get 1 point for every 100 spent. Redeem for free food.', badge: 'JOIN FREE' },
+      draw: function(ctx, state, assets) {
+        var accent = state.accentColor;
+        var dark = shadeColor(accent, -0.35);
+        ctx.fillStyle = mixColor('#ffffff', accent, 0.05);
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        ctx.font = "800 52px 'Poppins'";
+        ctx.fillStyle = '#111827';
+        ctx.textAlign = 'center';
+        var headLines = wrapLines(ctx, state.headline || 'Earn While You Eat', 880, 2);
+        headLines.forEach(function(l, i) { ctx.fillText(l, CANVAS_SIZE / 2, 130 + i * 58); });
+
+        var afterHead = 130 + headLines.length * 58;
+        if (state.subtext) {
+          ctx.font = "500 28px 'Poppins'";
+          ctx.fillStyle = '#6b7280';
+          var subLines = wrapLines(ctx, state.subtext, 780, 2);
+          subLines.forEach(function(l, i) { ctx.fillText(l, CANVAS_SIZE / 2, afterHead + 42 + i * 36); });
+        }
+
+        // membership card graphic
+        var cardX = 140, cardY = afterHead + 100, cardW = 800, cardH = 300;
+        var grad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+        grad.addColorStop(0, accent);
+        grad.addColorStop(1, dark);
+        drawSoftShadowFrame(ctx, cardX, cardY, cardW, cardH, 28);
+        roundRectPath(ctx, cardX, cardY, cardW, cardH, 28);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.font = "700 26px 'Poppins'";
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.textAlign = 'left';
+        ctx.fillText((window.restaurantName || 'Your Restaurant').toUpperCase(), cardX + 44, cardY + 66);
+
+        ctx.font = "600 22px 'Poppins'";
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillText('REWARDS MEMBER', cardX + 44, cardY + 100);
+
+        // stars row
+        ctx.font = '44px sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('★ ★ ★ ★ ★', cardX + 44, cardY + 190);
+
+        ctx.font = "800 34px 'Poppins'";
+        ctx.textAlign = 'right';
+        ctx.fillText('POINTS', cardX + cardW - 44, cardY + 250);
+
+        if (state.badge) {
+          var badgeY = cardY + cardH + 60;
+          ctx.font = "700 32px 'Poppins'";
+          ctx.textAlign = 'center';
+          var badgeText = state.badge.toUpperCase();
+          var badgeW = ctx.measureText(badgeText).width + 80;
+          roundRectPath(ctx, CANVAS_SIZE / 2 - badgeW / 2, badgeY, badgeW, 64, 32);
+          ctx.fillStyle = accent;
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(badgeText, CANVAS_SIZE / 2, badgeY + 34);
+          ctx.textBaseline = 'alphabetic';
+        }
+
+        drawFooterBar(ctx, state, assets, { bg: '#ffffff', textColor: '#111827', subTextColor: '#6b7280' });
+      }
+    },
+    {
+      id: 'reserve_table',
+      name: 'Reserve a Table',
+      fields: ['headline', 'subtext', 'badge', 'photo'],
+      badgeLabel: 'Occasion Badge (e.g. This Weekend)',
+      sample: { headline: 'Reserve Your Table', subtext: 'Great food deserves a great seat. Book ahead.', badge: 'This Weekend' },
+      draw: function(ctx, state, assets) {
+        var accent = state.accentColor;
+        var dark = shadeColor(accent, -0.35);
+
+        if (state.photoImg) {
+          drawImageCoverRounded(ctx, state.photoImg, 0, 0, CANVAS_SIZE, 560, 0);
+        } else {
+          ctx.fillStyle = '#e5e7eb';
+          ctx.fillRect(0, 0, CANVAS_SIZE, 560);
+        }
+        var fade = ctx.createLinearGradient(0, 380, 0, 560);
+        fade.addColorStop(0, 'rgba(255,255,255,0)');
+        fade.addColorStop(1, '#ffffff');
+        ctx.fillStyle = fade;
+        ctx.fillRect(0, 380, CANVAS_SIZE, 180);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 560, CANVAS_SIZE, CANVAS_SIZE - 560);
+
+        if (state.badge) {
+          ctx.font = "700 28px 'Poppins'";
+          var badgeText = state.badge.toUpperCase();
+          var badgeW = ctx.measureText(badgeText).width + 60;
+          roundRectPath(ctx, CANVAS_SIZE / 2 - badgeW / 2, 610, badgeW, 56, 28);
+          ctx.fillStyle = accent;
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(badgeText, CANVAS_SIZE / 2, 610 + 29);
+          ctx.textBaseline = 'alphabetic';
+        }
+
+        var headY = 748;
+        ctx.font = "800 58px 'Poppins'";
+        ctx.fillStyle = '#111827';
+        ctx.textAlign = 'center';
+        var headLines = wrapLines(ctx, state.headline || 'Reserve Your Table', 880, 2);
+        headLines.forEach(function(l, i) { ctx.fillText(l, CANVAS_SIZE / 2, headY + i * 62); });
+
+        var afterHead = headY + headLines.length * 62;
+        if (state.subtext) {
+          ctx.font = "500 28px 'Poppins'";
+          ctx.fillStyle = '#6b7280';
+          var subLines = wrapLines(ctx, state.subtext, 800, 2);
+          subLines.forEach(function(l, i) { ctx.fillText(l, CANVAS_SIZE / 2, afterHead + 40 + i * 36); });
+        }
+
+        // large call-to-book phone line instead of the usual footer/QR
+        var barY = CANVAS_SIZE - 150;
+        ctx.fillStyle = dark;
+        ctx.fillRect(0, barY, CANVAS_SIZE, 150);
+        ctx.font = "600 26px 'Poppins'";
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.textAlign = 'center';
+        ctx.fillText('CALL TO BOOK', CANVAS_SIZE / 2, barY + 50);
+        ctx.font = "800 52px 'Poppins'";
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(state.phone || 'Add your phone number', CANVAS_SIZE / 2, barY + 106);
+      }
     }
   ];
 
