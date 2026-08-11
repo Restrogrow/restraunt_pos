@@ -185,18 +185,6 @@ try {
             $enable_dinein = isset($userRow['enable_dinein']) ? (int)$userRow['enable_dinein'] : 1;
             $cod_enabled = isset($userRow['cod_enabled']) ? (int)$userRow['cod_enabled'] : 1;
             $photo_gallery_enabled = isset($userRow['photo_gallery_enabled']) ? (int)$userRow['photo_gallery_enabled'] : 0;
-            // Separate query (own try/catch) rather than adding this column to
-            // the big SELECT above: the meal_subscriptions_enabled column is
-            // self-healed by main/superadmin/api.php, which a fresh install
-            // may never have hit yet - if that ALTER hasn't run, this
-            // shouldn't take down every other setting loaded above with it.
-            try {
-                $msStmt = $conn->prepare("SELECT meal_subscriptions_enabled FROM users WHERE id = ? LIMIT 1");
-                $msStmt->execute([$_SESSION['user_id']]);
-                $meal_subscriptions_enabled = (int)($msStmt->fetchColumn() ?: 0);
-            } catch (Exception $e) {
-                $meal_subscriptions_enabled = 0;
-            }
             $enable_language = isset($userRow['enable_language']) ? (int)$userRow['enable_language'] : 1;
             // Force English when language support is disabled
             if (!$enable_language) {
@@ -257,6 +245,21 @@ try {
 } catch (Exception $e) {
     // If database query fails, use defaults
             $restaurant_logo = '../assets/images/logo-transparent.png';
+}
+
+// Independent of everything above (which is all keyed off id = $_SESSION
+// ['user_id'] and silently no-ops for staff/branch-admin logins, since
+// only the owner login sets that session var - see the three-way login
+// check at the top of this file). restaurant_id is the one session var
+// guaranteed set for all three login types, and is exactly what the
+// superadmin toggle is scoped to, so this is checked on its own rather
+// than nested inside the user_id-dependent block above.
+try {
+    $msStmt = $conn->prepare("SELECT meal_subscriptions_enabled FROM users WHERE restaurant_id = ? LIMIT 1");
+    $msStmt->execute([$_SESSION['restaurant_id']]);
+    $meal_subscriptions_enabled = (int)($msStmt->fetchColumn() ?: 0);
+} catch (Exception $e) {
+    $meal_subscriptions_enabled = 0;
 }
 ?>
 <?php $googleMapsApiKey = function_exists('env') ? env('GOOGLE_MAPS_API_KEY', '') : ''; ?>
