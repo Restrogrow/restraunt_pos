@@ -202,6 +202,31 @@ function validateAndUpdateOrderStatus(
     $updateStmt = $conn->prepare($updateSql);
     $updateStmt->execute($allParams);
 
+    // Growth module hook: award loyalty points / complete a pending referral
+    // exactly once, the moment an order lands on 'Completed'. Runs inside
+    // the same lock/transaction as the status update above. Failures here
+    // must never break order completion, so they're swallowed and logged.
+    if ($newStatus === 'Completed') {
+        try {
+            $orderRestaurantId = $restaurantId ?? ($order['restaurant_id'] ?? null);
+            if ($orderRestaurantId) {
+                $detailStmt = $conn->prepare('SELECT customer_phone, total FROM orders WHERE id = ?');
+                $detailStmt->execute([$orderId]);
+                $detail = $detailStmt->fetch(PDO::FETCH_ASSOC);
+                if ($detail && !empty($detail['customer_phone'])) {
+                    require_once __DIR__ . '/growth_helpers.php';
+                    $customerId = findCustomerIdByPhone($conn, $orderRestaurantId, $detail['customer_phone']);
+                    if ($customerId) {
+                        awardLoyaltyPoints($conn, $orderRestaurantId, $customerId, $orderId, (float)$detail['total']);
+                        completeReferralIfPending($conn, $orderRestaurantId, $customerId);
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Growth module hook failed for order ' . $orderId . ': ' . $e->getMessage());
+        }
+    }
+
     return [
         'success'       => true,
         'message'       => "Order status updated from {$currentStatus} to {$newStatus}",

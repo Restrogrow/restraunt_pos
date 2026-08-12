@@ -1184,6 +1184,40 @@ try {
         </li>
         <li class="nav-item has-submenu">
           <a href="#" class="nav-link submenu-toggle">
+            <span class="nav-icon material-symbols-rounded">redeem</span>
+            <span class="nav-label">Growth</span>
+            <span class="submenu-arrow material-symbols-rounded">chevron_right</span>
+          </a>
+          <span class="nav-tooltip">Growth</span>
+          <ul class="submenu">
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="growthSettingsPage" onclick="setTimeout(loadGrowthSettings, 50)">
+                <span class="material-symbols-rounded">loyalty</span>
+                <span class="nav-label">Loyalty & Rewards</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="customerSegmentsPage" onclick="setTimeout(loadCustomerSegments, 50)">
+                <span class="material-symbols-rounded">groups</span>
+                <span class="nav-label">Customer Segments</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="referralsPage" onclick="setTimeout(loadReferrals, 50)">
+                <span class="material-symbols-rounded">group_add</span>
+                <span class="nav-label">Referrals</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="growthReportsPage" onclick="setTimeout(loadGrowthReports, 50)">
+                <span class="material-symbols-rounded">insights</span>
+                <span class="nav-label">Reports</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li class="nav-item has-submenu">
+          <a href="#" class="nav-link submenu-toggle">
             <span class="nav-icon material-symbols-rounded">local_shipping</span>
             <span class="nav-label">Delivery</span>
             <span class="submenu-arrow material-symbols-rounded">chevron_right</span>
@@ -3127,6 +3161,279 @@ function toggleGatewayMode() {
               </thead>
               <tbody id="couponsTbody">
                 <tr><td colspan="9" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ Growth Module: Loyalty Settings ═══════ -->
+    <div id="growthSettingsPage" class="page">
+      <div class="page-header">
+        <h1>Loyalty & Rewards</h1>
+        <p>Configure points, tiers, and the referral program</p>
+      </div>
+      <div class="page-content">
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Loyalty Points</div>
+            <button class="btn btn-primary" id="btnSaveGrowthSettings" onclick="saveGrowthSettings()">Save Settings</button>
+          </div>
+          <div class="section-body">
+            <div class="form-group">
+              <label><input type="checkbox" id="gsLoyaltyEnabled"> Enable loyalty points program</label>
+            </div>
+            <div class="row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;">
+                <label>Spend threshold (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
+                <input type="number" id="gsEarnAmountThreshold" class="form-control" min="0" step="1">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label>Points earned per threshold</label>
+                <input type="number" id="gsEarnPointsPerAmount" class="form-control" min="0" step="1">
+              </div>
+            </div>
+            <div class="row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;">
+                <label>Redemption value per point (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
+                <input type="number" id="gsRedeemValuePerPoint" class="form-control" min="0" step="0.01">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label>Minimum points to redeem</label>
+                <input type="number" id="gsMinRedeemPoints" class="form-control" min="0" step="1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Referral Program</div>
+          </div>
+          <div class="section-body">
+            <div class="form-group">
+              <label><input type="checkbox" id="gsReferralEnabled"> Enable referral program</label>
+            </div>
+            <div class="row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;">
+                <label>Referrer bonus points (friend completes first order)</label>
+                <input type="number" id="gsReferrerRewardPoints" class="form-control" min="0" step="1">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label>New customer welcome bonus points</label>
+                <input type="number" id="gsReferredRewardPoints" class="form-control" min="0" step="1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Customer Segmentation</div>
+          </div>
+          <div class="section-body">
+            <div class="row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;">
+                <label>Days without a visit to be "lapsed"</label>
+                <input type="number" id="gsLapsedDaysThreshold" class="form-control" min="1" step="1">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label>Total spend to be "high spender" (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
+                <input type="number" id="gsHighSpenderThreshold" class="form-control" min="0" step="1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Loyalty Tiers</div>
+            <button class="btn btn-primary" onclick="openTierModal()">+ New Tier</button>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <table class="data-table" id="tiersTable">
+              <thead>
+                <tr><th>Tier</th><th>Min. Total Spent</th><th>Icon</th><th>Order</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="tiersTbody">
+                <tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Loyalty Card QR (for counter display)</div>
+          </div>
+          <div class="section-body" style="text-align:center;">
+            <img id="loyaltyQrImage" src="" alt="Loyalty page QR code" width="180" height="180" style="border:1px solid #eee;border-radius:8px;">
+            <p style="margin-top:10px;color:#666;font-size:13px;">Customers scan this to check their points balance and referral code.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tier Add/Edit Modal -->
+    <div id="tierModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="tierModalTitle">New Tier</h2>
+          <button class="modal-close" onclick="closeModal('tierModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="tierId">
+          <div class="form-group">
+            <label>Tier Name</label>
+            <input type="text" id="tierName" class="form-control" placeholder="e.g. Gold">
+          </div>
+          <div class="form-group">
+            <label>Minimum Total Spent</label>
+            <input type="number" id="tierMinSpent" class="form-control" min="0" step="1">
+          </div>
+          <div class="form-group">
+            <label>Icon (Material Symbol name)</label>
+            <input type="text" id="tierIcon" class="form-control" placeholder="star" value="star">
+          </div>
+          <div class="form-group">
+            <label>Sort Order</label>
+            <input type="number" id="tierSortOrder" class="form-control" min="0" step="1" value="0">
+          </div>
+          <button class="btn btn-primary" onclick="saveTier()">Save Tier</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ Growth Module: Customer Segments ═══════ -->
+    <div id="customerSegmentsPage" class="page">
+      <div class="page-header">
+        <h1>Customer Segments</h1>
+        <p>See who's new, repeat, high-spending, or lapsed</p>
+      </div>
+      <div class="page-content">
+        <div class="section-card">
+          <div class="section-body" id="segmentSummaryCards" style="display:flex;gap:12px;flex-wrap:wrap;">
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Customers</div>
+            <div id="segmentFilterTabs" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <table class="data-table" id="segmentsTable">
+              <thead>
+                <tr><th>Name</th><th>Phone</th><th>Segment</th><th>Visits</th><th>Total Spent</th><th>Last Visit</th><th>Points</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="segmentsTbody">
+                <tr><td colspan="8" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manual Points Adjustment Modal -->
+    <div id="adjustPointsModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Adjust Points</h2>
+          <button class="modal-close" onclick="closeModal('adjustPointsModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="adjustCustomerId">
+          <p id="adjustCustomerName" style="margin-bottom:12px;color:#666;"></p>
+          <div class="form-group">
+            <label>Points Adjustment (use a negative number to deduct)</label>
+            <input type="number" id="adjustPointsDelta" class="form-control" step="1">
+          </div>
+          <div class="form-group">
+            <label>Note</label>
+            <input type="text" id="adjustPointsNote" class="form-control" placeholder="Reason for adjustment">
+          </div>
+          <button class="btn btn-primary" onclick="submitAdjustPoints()">Apply Adjustment</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ Growth Module: Referrals ═══════ -->
+    <div id="referralsPage" class="page">
+      <div class="page-header">
+        <h1>Referrals</h1>
+        <p>Track referral signups and conversions</p>
+      </div>
+      <div class="page-content">
+        <div class="section-card">
+          <div class="section-body" id="referralSummaryCards" style="display:flex;gap:12px;flex-wrap:wrap;">
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Top Referrers</div>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <table class="data-table" id="referralLeaderboardTable">
+              <thead>
+                <tr><th>Customer</th><th>Phone</th><th>Total Referrals</th><th>Completed</th></tr>
+              </thead>
+              <tbody id="referralLeaderboardTbody">
+                <tr><td colspan="4" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">All Referrals</div>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <table class="data-table" id="referralsTable">
+              <thead>
+                <tr><th>Referrer</th><th>Referred</th><th>Code</th><th>Status</th><th>Date</th></tr>
+              </thead>
+              <tbody id="referralsTbody">
+                <tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ Growth Module: Reports ═══════ -->
+    <div id="growthReportsPage" class="page">
+      <div class="page-header">
+        <h1>Growth Reports</h1>
+        <p>Revenue attributable to loyalty and referrals</p>
+      </div>
+      <div class="page-content">
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Loyalty Program ROI</div>
+          </div>
+          <div class="section-body" id="loyaltyRoiCards" style="display:flex;gap:12px;flex-wrap:wrap;">
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Referral Revenue</div>
+          </div>
+          <div class="section-body" id="referralRevenueCards" style="display:flex;gap:12px;flex-wrap:wrap;">
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Revenue by Segment</div>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <table class="data-table" id="segmentRevenueTable">
+              <thead>
+                <tr><th>Segment</th><th>Customers</th><th>Total Revenue</th></tr>
+              </thead>
+              <tbody id="segmentRevenueTbody">
+                <tr><td colspan="3" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -5802,6 +6109,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/video-generator.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/caption-generator.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/campaign-calendar.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/growth.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
   
 

@@ -98,6 +98,19 @@ function handleCustomerSignup($pdo) {
         $pdo->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email, password_hash) VALUES (?, ?, ?, ?, ?)")
             ->execute([$restaurantId, $name, $phone, $email, $hash]);
         $customerId = $pdo->lastInsertId();
+
+        // Referral capture: only for brand-new customers, not guests being
+        // claimed into an account (they may already have unrelated order
+        // history, which would make a post-hoc referral credit gameable).
+        $refCode = isset($_POST['ref']) ? trim($_POST['ref']) : '';
+        if ($refCode !== '') {
+            try {
+                require_once __DIR__ . '/../config/growth_helpers.php';
+                recordPendingReferral($pdo, $restaurantId, $refCode, (int)$customerId);
+            } catch (Exception $e) {
+                error_log('Referral capture failed during signup: ' . $e->getMessage());
+            }
+        }
     }
 
     startSecureSession();

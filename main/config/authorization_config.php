@@ -43,6 +43,7 @@ define('PERMISSION_VIEW_KOT', 'view_kot');
 define('PERMISSION_MANAGE_AREAS', 'manage_areas');
 define('PERMISSION_MANAGE_COUPONS', 'manage_coupons');
 define('PERMISSION_MANAGE_INVENTORY', 'manage_inventory');
+define('PERMISSION_MANAGE_LOYALTY', 'manage_loyalty');
 
 /**
  * Role to permissions mapping
@@ -64,6 +65,7 @@ function getRolePermissions($role) {
             PERMISSION_MANAGE_AREAS,
             PERMISSION_MANAGE_COUPONS,
             PERMISSION_MANAGE_INVENTORY,
+            PERMISSION_MANAGE_LOYALTY,
         ],
         ROLE_MANAGER => [
             PERMISSION_VIEW_DASHBOARD,
@@ -77,6 +79,7 @@ function getRolePermissions($role) {
             PERMISSION_VIEW_KOT,
             PERMISSION_MANAGE_AREAS,
             PERMISSION_MANAGE_INVENTORY,
+            PERMISSION_MANAGE_LOYALTY,
         ],
         ROLE_WAITER => [
             PERMISSION_VIEW_DASHBOARD,

@@ -66,6 +66,14 @@ if ($qr_table) {
     $_SESSION['qr_table'] = $qr_table;
 }
 
+// Handle referral code from a shared loyalty link (?ref=CODE), persisted
+// through navigation the same way qr_table is, so it survives from landing
+// page through to the signup form.
+$referral_code = isset($_GET['ref']) && trim($_GET['ref']) !== '' ? trim($_GET['ref']) : (isset($_SESSION['referral_code']) ? $_SESSION['referral_code'] : null);
+if ($referral_code) {
+    $_SESSION['referral_code'] = $referral_code;
+}
+
 $currency_symbol = '₹';
 $country = 'India';
 $tax_name = 'GST';

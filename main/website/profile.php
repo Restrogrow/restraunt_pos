@@ -1044,6 +1044,10 @@ body {
             <div><div class="quick-action-text">My Subscription</div><div class="quick-action-sub">Tiffin plan</div></div>
           </button>
           <?php endif; ?>
+          <button class="quick-action-btn" onclick="goToLoyalty()">
+            <div class="quick-action-icon" style="background:#fff8e1;color:#f57f17;"><i class="fa fa-gift"></i></div>
+            <div><div class="quick-action-text">Loyalty & Rewards</div><div class="quick-action-sub">Points & referrals</div></div>
+          </button>
           <button class="quick-action-btn" onclick="goToContact()">
             <div class="quick-action-icon qa-contact"><i class="fa fa-headset"></i></div>
             <div><div class="quick-action-text">Contact Us</div><div class="quick-action-sub">Get help</div></div>
@@ -1171,6 +1175,9 @@ function goToMenu() {
 }
 function goToCart() {
   window.location.href = '<?php echo restaurantPageUrl('cart'); ?>';
+}
+function goToLoyalty() {
+  window.location.href = '<?php echo restaurantPageUrl('loyalty'); ?>';
 }
 function goToOrders() {
   document.getElementById('orderHistory')?.scrollIntoView({ behavior: 'smooth' });

@@ -268,6 +268,7 @@ body {
 
 <script>
 window.restaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.referralCode = <?php echo json_encode($referral_code ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 <?php
 $redirectTargetPage = isset($_GET['redirect']) ? trim($_GET['redirect']) : 'menu';
 $allowedRedirectPages = ['menu', 'cart', 'profile', 'about', 'contact', 'plans', 'subscribe', 'my-subscription', 'catering'];
@@ -387,6 +388,7 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
   fd.append('password', password);
   fd.append('confirmPassword', confirmPassword);
   fd.append('remember', document.getElementById('signupRemember').checked ? '1' : '');
+  if (window.referralCode) fd.append('ref', window.referralCode);
 
   fetch('customer_auth.php', { method: 'POST', body: fd })
     .then(function(r) { return r.json(); })
