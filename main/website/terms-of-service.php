@@ -213,10 +213,7 @@ try {
             <?php if ($custom_policy_content !== null): ?>
             <?php echo formatPolicyContent($custom_policy_content); ?>
             <?php else: ?>
-            <?php
-                $show_golden_bird_entity = in_array($host, ['sultaniarestaurant.in', 'www.sultaniarestaurant.in'], true);
-                echo getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone, $show_golden_bird_entity);
-            ?>
+            <?php echo getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone); ?>
             <?php endif; ?>
         </div>
     </div>

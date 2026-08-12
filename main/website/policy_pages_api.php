@@ -10,13 +10,12 @@ $action = $_GET['action'] ?? 'get';
 
 $VALID_TYPES = ['privacy', 'terms', 'refund', 'shipping', 'cookie'];
 
-function buildDefaultPolicyHtml($type, $restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone, $custom_domain) {
+function buildDefaultPolicyHtml($type, $restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone) {
   switch ($type) {
     case 'privacy':
       return getDefaultPrivacyPolicyHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone);
     case 'terms':
-      $showGoldenBird = in_array($custom_domain, ['sultaniarestaurant.in', 'www.sultaniarestaurant.in'], true);
-      return getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone, $showGoldenBird);
+      return getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone);
     case 'refund':
       return getDefaultRefundPolicyHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone);
     case 'shipping':
@@ -88,7 +87,7 @@ try {
       // details filled in) so the admin editor can pre-fill the textarea with real,
       // ready-to-tweak wording instead of an empty box.
       $defaultHtml = '';
-      $userStmt = $conn->prepare('SELECT restaurant_name, owner_name, email, phone, custom_domain FROM users WHERE restaurant_id = :rid LIMIT 1');
+      $userStmt = $conn->prepare('SELECT restaurant_name, owner_name, email, phone FROM users WHERE restaurant_id = :rid LIMIT 1');
       $userStmt->execute([':rid' => $restaurant_id]);
       $userRow = $userStmt->fetch(PDO::FETCH_ASSOC);
       if ($userRow) {
@@ -97,8 +96,7 @@ try {
           $userRow['restaurant_name'] ?? 'Restaurant',
           $userRow['owner_name'] ?? '',
           $userRow['email'] ?? '',
-          $userRow['phone'] ?? '',
-          $userRow['custom_domain'] ?? ''
+          $userRow['phone'] ?? ''
         );
       }
 

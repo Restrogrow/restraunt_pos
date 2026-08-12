@@ -4400,12 +4400,21 @@ function toggleGatewayMode() {
             Back to Categories
           </button>
         </div>
+        <div class="search-wrapper" style="margin-top: 1rem; max-width: 400px; position: relative; border: 2px solid #e5e7eb; border-radius: 10px; padding: 0 0.75rem 0 2.75rem; background: white;">
+          <span class="material-symbols-rounded" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 1.2rem; pointer-events: none; z-index: 1;">search</span>
+          <input type="text" id="gallerySearchInput" placeholder="Search photos or categories..." oninput="filterGalleryItems(this.value)" style="width: 100%; padding: 0.875rem 0; border: none; border-radius: 0; font-size: 0.95rem; transition: all 0.2s; outline: none; background: transparent;" onfocus="this.parentElement.style.borderColor='#f70000'; this.parentElement.style.boxShadow='0 0 0 3px rgba(247,0,0,0.1)'" onblur="this.parentElement.style.borderColor='#e5e7eb'; this.parentElement.style.boxShadow='none';">
+        </div>
       </div>
       <div class="page-content">
         <div id="galleryCategoryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">
           <div class="loading">Loading photo gallery...</div>
         </div>
         <div id="galleryPhotoGrid" style="display:none; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;"></div>
+        <div id="galleryNoResults" class="empty-state" style="display:none;">
+          <span class="material-symbols-rounded">search_off</span>
+          <h3>No Matches</h3>
+          <p>Nothing matches your search.</p>
+        </div>
       </div>
     </div>
 

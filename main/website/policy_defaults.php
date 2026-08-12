@@ -121,13 +121,12 @@ function getDefaultPrivacyPolicyHtml($restaurant_name, $restaurant_owner, $resta
 HTML;
 }
 
-function getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone, $show_golden_bird_entity = false) {
+function getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone) {
     $name = htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8');
     $owner = htmlspecialchars($restaurant_owner ?: 'Not specified', ENT_QUOTES, 'UTF-8');
     $email = htmlspecialchars($restaurant_email ?: 'restrogrow@gmail.com', ENT_QUOTES, 'UTF-8');
     $phone = htmlspecialchars($restaurant_phone ?: '+91 6377568749', ENT_QUOTES, 'UTF-8');
     $ownedByLine = $restaurant_owner ? ' (Owned by ' . htmlspecialchars($restaurant_owner, ENT_QUOTES, 'UTF-8') . ')' : '';
-    $businessEntityLine = $show_golden_bird_entity ? "    <strong>Business Entity:</strong> GOLDEN BIRD TECH<br>\n" : '';
     return <<<HTML
 <p>Welcome to {$name}{$ownedByLine}. These Terms of Service ("Terms") govern your access to and use of our restaurant management and ordering platform. By accessing or using our services, you agree to be bound by these Terms.</p>
 
@@ -199,7 +198,7 @@ function getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $rest
 <h2>12. Contact Information</h2>
 <p>If you have any questions about these Terms of Service, please contact us at:</p>
 <p>
-{$businessEntityLine}    <strong>Owner:</strong> {$owner}<br>
+    <strong>Owner:</strong> {$owner}<br>
     <strong>Email:</strong> {$email}<br>
     <strong>Phone:</strong> {$phone}<br>
     <strong>Address:</strong> {$name}, Customer Support

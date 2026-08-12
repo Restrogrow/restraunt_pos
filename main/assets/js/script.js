@@ -4705,7 +4705,7 @@ document.addEventListener("DOMContentLoaded", () => {
     grid.innerHTML = categories.map(function(cat) {
       var thumbUrl = '../api/image.php?path=' + encodeURIComponent(cat.sample_thumbnail);
       var safeName = escapeHtml(cat.name);
-      return '<div class="gallery-card" onclick="showGalleryCategory(\'' + encodeURIComponent(cat.name) + '\')">'
+      return '<div class="gallery-card" data-search="' + safeName.toLowerCase() + '" onclick="showGalleryCategory(\'' + encodeURIComponent(cat.name) + '\')">'
         + '<div class="gallery-card-thumb"><img src="' + thumbUrl + '" alt="' + safeName + '" loading="lazy" onerror="this.style.display=\'none\'"></div>'
         + '<div class="gallery-card-info">'
         + '<div class="gallery-card-name">' + safeName + '</div>'
@@ -4713,6 +4713,7 @@ document.addEventListener("DOMContentLoaded", () => {
         + '</div>'
         + '</div>';
     }).join('');
+    filterGalleryItems(document.getElementById('gallerySearchInput') ? document.getElementById('gallerySearchInput').value : '');
   }
 
   window.showGalleryCategory = function(encodedName) {
@@ -4727,6 +4728,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (backBtn) backBtn.style.display = 'inline-flex';
     if (title) title.textContent = name;
     if (subtitle) subtitle.textContent = 'Click a photo to preview it full-size';
+    var searchInput = document.getElementById('gallerySearchInput');
+    if (searchInput) searchInput.value = '';
+    var noResults = document.getElementById('galleryNoResults');
+    if (noResults) noResults.style.display = 'none';
 
     fetch('../api/get_image_library.php?category=' + encodeURIComponent(name))
       .then(function(r) { return r.json(); })
@@ -4740,10 +4745,11 @@ document.addEventListener("DOMContentLoaded", () => {
         photoGrid.innerHTML = d.images.map(function(img, i) {
           var url = '../api/image.php?path=' + encodeURIComponent(img.src);
           var safeFile = escapeHtml(img.file);
-          return '<div class="gallery-card" onclick="openGalleryLightbox(\'' + encodeURIComponent(img.src) + '\', \'' + encodeURIComponent(img.file) + '\', ' + i + ')">'
+          return '<div class="gallery-card" data-search="' + safeFile.toLowerCase() + '" onclick="openGalleryLightbox(\'' + encodeURIComponent(img.src) + '\', \'' + encodeURIComponent(img.file) + '\', ' + i + ')">'
             + '<div class="gallery-card-thumb"><img src="' + url + '" alt="' + safeFile + '" loading="lazy" onerror="this.style.display=\'none\'"></div>'
             + '</div>';
         }).join('');
+        filterGalleryItems(document.getElementById('gallerySearchInput') ? document.getElementById('gallerySearchInput').value : '');
       })
       .catch(function() {
         if (photoGrid) photoGrid.innerHTML = '<div class="empty-state"><span class="material-symbols-rounded">error</span><h3>Error</h3><p>Failed to load photos.</p></div>';
@@ -4756,11 +4762,35 @@ document.addEventListener("DOMContentLoaded", () => {
     var backBtn = document.getElementById('galleryBackBtn');
     var title = document.getElementById('galleryPageTitle');
     var subtitle = document.getElementById('galleryPageSubtitle');
+    var searchInput = document.getElementById('gallerySearchInput');
     if (catGrid) catGrid.style.display = 'grid';
     if (photoGrid) photoGrid.style.display = 'none';
     if (backBtn) backBtn.style.display = 'none';
     if (title) title.textContent = 'Photo Gallery';
     if (subtitle) subtitle.textContent = 'Browse high-quality stock photos, organized by category';
+    if (searchInput) searchInput.value = '';
+    filterGalleryItems('');
+  }
+
+  // Client-side search: filters whichever grid (categories or photos) is currently
+  // visible by matching against each card's data-search attribute, no extra
+  // network call needed since both are already loaded/cached.
+  window.filterGalleryItems = function(term) {
+    var catGrid = document.getElementById('galleryCategoryGrid');
+    var photoGrid = document.getElementById('galleryPhotoGrid');
+    var noResults = document.getElementById('galleryNoResults');
+    var activeGrid = (photoGrid && photoGrid.style.display !== 'none') ? photoGrid : catGrid;
+    if (!activeGrid) return;
+    var needle = (term || '').trim().toLowerCase();
+    var cards = activeGrid.querySelectorAll('.gallery-card');
+    var visibleCount = 0;
+    cards.forEach(function(card) {
+      var haystack = card.getAttribute('data-search') || '';
+      var match = !needle || haystack.indexOf(needle) !== -1;
+      card.style.display = match ? '' : 'none';
+      if (match) visibleCount++;
+    });
+    if (noResults) noResults.style.display = (needle && cards.length && visibleCount === 0) ? 'block' : 'none';
   }
 
   window.openGalleryLightbox = function(encodedSrc, encodedFile, idx) {
