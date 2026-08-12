@@ -48,6 +48,8 @@ $restaurant_phone = '';
 $restaurant_owner = '';
 $custom_policy_content = null;
 
+require_once __DIR__ . '/policy_defaults.php';
+
 try {
     require_once __DIR__ . '/db_config.php';
     // Get connection using getConnection() for lazy connection support
@@ -61,7 +63,7 @@ try {
             throw new Exception('Database connection not available');
         }
     }
-    
+
     if ($restaurant_id) {
         $stmt = $conn->prepare("SELECT restaurant_name, currency_symbol, email, phone, owner_name FROM users WHERE restaurant_id = ? LIMIT 1");
         $stmt->execute([$restaurant_id]);
@@ -209,86 +211,12 @@ try {
         
         <div class="policy-content">
             <?php if ($custom_policy_content !== null): ?>
-            <?php echo $custom_policy_content; ?>
+            <?php echo formatPolicyContent($custom_policy_content); ?>
             <?php else: ?>
-            <p>Welcome to <?php echo htmlspecialchars($restaurant_name); ?><?php if ($restaurant_owner): ?> (Owned by <?php echo htmlspecialchars($restaurant_owner); ?>)<?php endif; ?>. These Terms of Service ("Terms") govern your access to and use of our restaurant management and ordering platform. By accessing or using our services, you agree to be bound by these Terms.</p>
-
-            <h2>1. Acceptance of Terms</h2>
-            <p>By accessing or using <?php echo htmlspecialchars($restaurant_name); ?>, you acknowledge that you have read, understood, and agree to be bound by these Terms and our Privacy Policy. If you do not agree to these Terms, you may not use our services.</p>
-            
-            <h2>2. Description of Service</h2>
-            <p><?php echo htmlspecialchars($restaurant_name); ?> provides a platform for restaurants to manage their operations and for customers to place orders, make reservations, and interact with restaurants. We reserve the right to modify, suspend, or discontinue any aspect of the service at any time.</p>
-            
-            <h2>3. User Accounts</h2>
-            <h3>3.1 Account Creation</h3>
-            <p>To use certain features of our platform, you may be required to create an account. You agree to:</p>
-            <ul>
-                <li>Provide accurate, current, and complete information</li>
-                <li>Maintain and update your account information</li>
-                <li>Maintain the security of your account credentials</li>
-                <li>Accept responsibility for all activities under your account</li>
-            </ul>
-            
-            <h3>3.2 Account Termination</h3>
-            <p>We reserve the right to suspend or terminate your account if you violate these Terms or engage in fraudulent, abusive, or illegal activity.</p>
-            
-            <h2>4. Orders and Payments</h2>
-            <h3>4.1 Order Placement</h3>
-            <p>When you place an order through our platform:</p>
-            <ul>
-                <li>You agree to pay the prices displayed for the items you order</li>
-                <li>All prices are subject to change without notice</li>
-                <li>Orders are subject to availability</li>
-                <li>The restaurant reserves the right to refuse or cancel any order</li>
-            </ul>
-            
-            <h3>4.2 Payment</h3>
-            <p>Payment must be made at the time of order placement or as otherwise specified. We accept various payment methods as displayed on the platform. All payments are processed securely through third-party payment processors.</p>
-            
-            <h3>4.3 Refunds and Cancellations</h3>
-            <p>Refund and cancellation policies are determined by the individual restaurant. Please contact the restaurant directly for refund or cancellation requests.</p>
-            
-            <h2>5. User Conduct</h2>
-            <p>You agree not to:</p>
-            <ul>
-                <li>Use the service for any illegal purpose</li>
-                <li>Violate any applicable laws or regulations</li>
-                <li>Infringe upon the rights of others</li>
-                <li>Transmit any harmful, offensive, or inappropriate content</li>
-                <li>Interfere with or disrupt the service</li>
-                <li>Attempt to gain unauthorized access to any part of the service</li>
-                <li>Use automated systems to access the service without permission</li>
-            </ul>
-            
-            <h2>6. Intellectual Property</h2>
-            <p>All content, features, and functionality of <?php echo htmlspecialchars($restaurant_name); ?>, including but not limited to text, graphics, logos, images, and software, are owned by <?php echo htmlspecialchars($restaurant_name); ?> or its licensors and are protected by copyright, trademark, and other intellectual property laws.</p>
-            
-            <h2>7. Disclaimers</h2>
-            <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED. WE DO NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE.</p>
-            
-            <h2>8. Limitation of Liability</h2>
-            <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, <?php echo htmlspecialchars($restaurant_name); ?> SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY.</p>
-            
-            <h2>9. Indemnification</h2>
-            <p>You agree to indemnify and hold harmless <?php echo htmlspecialchars($restaurant_name); ?>, its affiliates, and their respective officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses arising out of your use of the service or violation of these Terms.</p>
-            
-            <h2>10. Modifications to Terms</h2>
-            <p>We reserve the right to modify these Terms at any time. We will notify users of any material changes by posting the updated Terms on this page and updating the "Last updated" date. Your continued use of the service after such modifications constitutes acceptance of the updated Terms.</p>
-            
-            <h2>11. Governing Law</h2>
-            <p>These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which <?php echo htmlspecialchars($restaurant_name); ?> operates, without regard to its conflict of law provisions.</p>
-            
-            <h2>12. Contact Information</h2>
-            <p>If you have any questions about these Terms of Service, please contact us at:</p>
-            <p>
-                <?php if (in_array($host, ['sultaniarestaurant.in', 'www.sultaniarestaurant.in'], true)): ?>
-                <strong>Business Entity:</strong> GOLDEN BIRD TECH<br>
-                <?php endif; ?>
-                <strong>Owner:</strong> <?php echo htmlspecialchars($restaurant_owner ?: 'Not specified'); ?><br>
-                <strong>Email:</strong> <?php echo htmlspecialchars($restaurant_email ?: 'restrogrow@gmail.com'); ?><br>
-                <strong>Phone:</strong> <?php echo htmlspecialchars($restaurant_phone ?: '+91 6377568749'); ?><br>
-                <strong>Address:</strong> <?php echo htmlspecialchars($restaurant_name); ?>, Customer Support
-            </p>
+            <?php
+                $show_golden_bird_entity = in_array($host, ['sultaniarestaurant.in', 'www.sultaniarestaurant.in'], true);
+                echo getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone, $show_golden_bird_entity);
+            ?>
             <?php endif; ?>
         </div>
     </div>

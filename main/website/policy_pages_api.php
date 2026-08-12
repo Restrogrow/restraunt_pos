@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../db_connection.php';
+require_once __DIR__ . '/policy_defaults.php';
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config/session_config.php';
@@ -8,6 +9,23 @@ startSecureSession(true); // Skip timeout validation for public customer website
 $action = $_GET['action'] ?? 'get';
 
 $VALID_TYPES = ['privacy', 'terms', 'refund', 'shipping', 'cookie'];
+
+function buildDefaultPolicyHtml($type, $restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone, $custom_domain) {
+  switch ($type) {
+    case 'privacy':
+      return getDefaultPrivacyPolicyHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone);
+    case 'terms':
+      $showGoldenBird = in_array($custom_domain, ['sultaniarestaurant.in', 'www.sultaniarestaurant.in'], true);
+      return getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone, $showGoldenBird);
+    case 'refund':
+      return getDefaultRefundPolicyHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone);
+    case 'shipping':
+      return getDefaultShippingPolicyHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone);
+    case 'cookie':
+      return getDefaultCookiePolicyHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone);
+  }
+  return '';
+}
 
 // Get connection using getConnection() for lazy connection support
 if (function_exists('getConnection')) {
@@ -65,7 +83,31 @@ try {
       $stmt = $conn->prepare('SELECT content, updated_at FROM policy_pages WHERE restaurant_id = :rid AND policy_type = :type LIMIT 1');
       $stmt->execute([':rid' => $restaurant_id, ':type' => $type]);
       $row = $stmt->fetch(PDO::FETCH_ASSOC);
-      echo json_encode(['success' => true, 'content' => $row['content'] ?? '', 'updated_at' => $row['updated_at'] ?? null]);
+
+      // Build the default template text (with this restaurant's own name/owner/contact
+      // details filled in) so the admin editor can pre-fill the textarea with real,
+      // ready-to-tweak wording instead of an empty box.
+      $defaultHtml = '';
+      $userStmt = $conn->prepare('SELECT restaurant_name, owner_name, email, phone, custom_domain FROM users WHERE restaurant_id = :rid LIMIT 1');
+      $userStmt->execute([':rid' => $restaurant_id]);
+      $userRow = $userStmt->fetch(PDO::FETCH_ASSOC);
+      if ($userRow) {
+        $defaultHtml = buildDefaultPolicyHtml(
+          $type,
+          $userRow['restaurant_name'] ?? 'Restaurant',
+          $userRow['owner_name'] ?? '',
+          $userRow['email'] ?? '',
+          $userRow['phone'] ?? '',
+          $userRow['custom_domain'] ?? ''
+        );
+      }
+
+      echo json_encode([
+        'success' => true,
+        'content' => $row['content'] ?? '',
+        'default_html' => $defaultHtml,
+        'updated_at' => $row['updated_at'] ?? null
+      ]);
       exit;
     }
 

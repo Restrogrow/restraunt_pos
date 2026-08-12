@@ -1881,17 +1881,20 @@ try {
         fetch('../website/policy_pages_api.php?action=get&policy_type=' + encodeURIComponent(key))
           .then(function(r) { return r.json(); })
           .then(function(res) {
+            var hasCustom = !!(res.success && res.content && res.content.trim() !== '');
             if (textarea) {
               textarea.disabled = false;
-              textarea.value = (res.success && res.content) ? res.content : '';
+              // No custom override yet: pre-fill with the real default wording (with this
+              // restaurant's own name/contact details already filled in) so the owner can
+              // tweak just the parts they want instead of writing a page from scratch.
+              textarea.value = hasCustom ? res.content : (res.success ? (res.default_html || '') : '');
             }
-            var hasCustom = !!(res.success && res.content && res.content.trim() !== '');
             policyStatuses[key] = hasCustom;
             updatePolicyTabDots();
             if (statusLabel) {
               statusLabel.innerHTML = hasCustom
                 ? '<span class="material-symbols-rounded" style="font-size:16px;color:#10b981;vertical-align:middle;">check_circle</span> Custom content active'
-                : '<span class="material-symbols-rounded" style="font-size:16px;color:#9ca3af;vertical-align:middle;">info</span> Using default text';
+                : '<span class="material-symbols-rounded" style="font-size:16px;color:#9ca3af;vertical-align:middle;">info</span> Showing default text below — edit any part and click Save to customize it';
             }
           })
           .catch(function() {

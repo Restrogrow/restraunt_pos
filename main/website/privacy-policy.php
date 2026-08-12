@@ -48,6 +48,8 @@ $restaurant_phone = '';
 $restaurant_owner = '';
 $custom_policy_content = null;
 
+require_once __DIR__ . '/policy_defaults.php';
+
 try {
     require_once __DIR__ . '/db_config.php';
     // Get connection using getConnection() for lazy connection support
@@ -61,7 +63,7 @@ try {
             throw new Exception('Database connection not available');
         }
     }
-    
+
     if ($restaurant_id) {
         $stmt = $conn->prepare("SELECT restaurant_name, currency_symbol, email, phone, owner_name FROM users WHERE restaurant_id = ? LIMIT 1");
         $stmt->execute([$restaurant_id]);
@@ -209,85 +211,9 @@ try {
         
         <div class="policy-content">
             <?php if ($custom_policy_content !== null): ?>
-            <?php echo $custom_policy_content; ?>
+            <?php echo formatPolicyContent($custom_policy_content); ?>
             <?php else: ?>
-            <p>At <?php echo htmlspecialchars($restaurant_name); ?>, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our restaurant management and ordering platform.</p>
-
-            <h2>1. Information We Collect</h2>
-            <h3>1.1 Personal Information</h3>
-            <p>We may collect personal information that you provide to us, including:</p>
-            <ul>
-                <li>Name and contact information (email address, phone number)</li>
-                <li>Delivery address and location data</li>
-                <li>Payment information (processed securely through third-party payment processors)</li>
-                <li>Order history and preferences</li>
-                <li>Account credentials (username, password)</li>
-            </ul>
-            
-            <h3>1.2 Automatically Collected Information</h3>
-            <p>When you use our platform, we may automatically collect:</p>
-            <ul>
-                <li>Device information (IP address, browser type, operating system)</li>
-                <li>Usage data (pages visited, time spent, features used)</li>
-                <li>Cookies and similar tracking technologies</li>
-                <li>Location data (if you enable location services)</li>
-            </ul>
-            
-            <h2>2. How We Use Your Information</h2>
-            <p>We use the collected information for the following purposes:</p>
-            <ul>
-                <li>To process and fulfill your orders</li>
-                <li>To communicate with you about your orders and account</li>
-                <li>To improve our services and user experience</li>
-                <li>To send promotional offers and updates (with your consent)</li>
-                <li>To detect and prevent fraud or abuse</li>
-                <li>To comply with legal obligations</li>
-            </ul>
-            
-            <h2>3. Information Sharing and Disclosure</h2>
-            <p>We do not sell your personal information. We may share your information in the following circumstances:</p>
-            <ul>
-                <li><strong>Service Providers:</strong> With third-party service providers who assist in operating our platform (payment processors, delivery services, analytics providers)</li>
-                <li><strong>Legal Requirements:</strong> When required by law or to protect our rights and safety</li>
-                <li><strong>Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
-                <li><strong>With Your Consent:</strong> When you explicitly authorize us to share your information</li>
-            </ul>
-            
-            <h2>4. Data Security</h2>
-            <p>We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the internet is 100% secure.</p>
-            
-            <h2>5. Your Rights</h2>
-            <p>Depending on your location, you may have the following rights regarding your personal information:</p>
-            <ul>
-                <li>Right to access your personal data</li>
-                <li>Right to rectify inaccurate data</li>
-                <li>Right to erasure ("right to be forgotten")</li>
-                <li>Right to restrict processing</li>
-                <li>Right to data portability</li>
-                <li>Right to object to processing</li>
-                <li>Right to withdraw consent</li>
-            </ul>
-            
-            <h2>6. Cookies and Tracking Technologies</h2>
-            <p>We use cookies and similar technologies to enhance your experience, analyze usage, and assist with marketing efforts. For more information, please see our         <a href="<?php echo restaurantPageUrl('cookie-policy'); ?>" style="color: var(--primary-red);">Cookie Policy</a>.</p>
-            
-            <h2>7. Data Retention</h2>
-            <p>We retain your personal information for as long as necessary to fulfill the purposes outlined in this Privacy Policy, unless a longer retention period is required or permitted by law.</p>
-            
-            <h2>8. Children's Privacy</h2>
-            <p>Our platform is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe we have collected information from a child under 13, please contact us immediately.</p>
-            
-            <h2>9. Changes to This Privacy Policy</h2>
-            <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.</p>
-            
-            <h2>10. Contact Us</h2>
-            <p>If you have any questions about this Privacy Policy or our data practices, please contact us at:</p>
-            <p>
-                <strong>Owner:</strong> <?php echo htmlspecialchars($restaurant_owner ?: 'Not specified'); ?><br>
-                <strong>Email:</strong> <?php echo htmlspecialchars($restaurant_email ?: 'restrogrow@gmail.com'); ?><br>
-                <strong>Phone:</strong> <?php echo htmlspecialchars($restaurant_phone ?: '+91 6377568749'); ?><br>
-                <strong>Address:</strong> <?php echo htmlspecialchars($restaurant_name); ?>, Customer Support
-            </p>
+            <?php echo getDefaultPrivacyPolicyHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone, restaurantPageUrl('cookie-policy')); ?>
             <?php endif; ?>
         </div>
     </div>

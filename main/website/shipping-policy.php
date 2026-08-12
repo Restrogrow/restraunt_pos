@@ -43,6 +43,8 @@ $restaurant_phone = '';
 $restaurant_owner = '';
 $custom_policy_content = null;
 
+require_once __DIR__ . '/policy_defaults.php';
+
 try {
     require_once __DIR__ . '/db_config.php';
     if (function_exists('getConnection')) {
@@ -195,43 +197,9 @@ try {
         
         <div class="policy-content">
             <?php if ($custom_policy_content !== null): ?>
-            <?php echo $custom_policy_content; ?>
+            <?php echo formatPolicyContent($custom_policy_content); ?>
             <?php else: ?>
-            <p>At <?php echo htmlspecialchars($restaurant_name); ?><?php if ($restaurant_owner): ?> (Owned by <?php echo htmlspecialchars($restaurant_owner); ?>)<?php endif; ?>, we are committed to delivering your orders promptly and efficiently. This Shipping & Delivery Policy explains our delivery practices and what you can expect when you order from us.</p>
-
-            <h2>1. Delivery Areas</h2>
-            <p>We currently deliver to select areas based on pincode availability. Please enter your pincode during checkout to check if we deliver to your location. We continuously expand our delivery zones to serve more customers.</p>
-
-            <h2>2. Delivery Timeframes</h2>
-            <h3>2.1 Estimated Delivery Time</h3>
-            <p>Our estimated delivery time is displayed at checkout and depends on your location, order size, and current demand. Typical delivery times range from 30-60 minutes. Please note that these are estimates and actual delivery times may vary.</p>
-
-            <h3>2.2 Peak Hours</h3>
-            <p>During peak hours (typically lunch 12:00 PM - 2:00 PM and dinner 7:00 PM - 9:00 PM), delivery times may be longer than usual. We appreciate your patience during these busy periods.</p>
-
-            <h2>3. Delivery Charges</h2>
-            <p>Delivery charges are calculated based on your delivery location and displayed at checkout before you place your order. Some orders may qualify for free delivery based on promotional offers or order value thresholds.</p>
-
-            <h2>4. Order Tracking</h2>
-            <p>You can track your order status through your profile page on our website. We provide real-time updates on order preparation, dispatch, and estimated arrival time.</p>
-
-            <h2>5. Delivery Attempts</h2>
-            <p>Our delivery partners will make reasonable attempts to deliver your order to the address provided. If delivery is not possible due to incorrect address or unavailability, we will contact you using the phone number provided with your order.</p>
-
-            <h2>6. Self-Pickup / Takeaway</h2>
-            <p>If you prefer, you can choose the Takeaway option at checkout and pick up your order directly from <?php echo htmlspecialchars($restaurant_name); ?>. Please arrive within the specified pickup time to ensure your food is fresh.</p>
-
-            <h2>7. Delivery Restrictions</h2>
-            <p>We reserve the right to refuse or cancel delivery in certain circumstances, including but not limited to: incorrect or incomplete addresses,恶劣 weather conditions, or areas we cannot safely access with our delivery partners.</p>
-
-            <h2>8. Contact Us</h2>
-            <p>If you have any questions about our Shipping & Delivery Policy, please contact us at:</p>
-            <p>
-                <strong>Owner:</strong> <?php echo htmlspecialchars($restaurant_owner ?: 'Not specified'); ?><br>
-                <strong>Email:</strong> <?php echo htmlspecialchars($restaurant_email ?: 'restrogrow@gmail.com'); ?><br>
-                <strong>Phone:</strong> <?php echo htmlspecialchars($restaurant_phone ?: '+91 6377568749'); ?><br>
-                <strong>Address:</strong> <?php echo htmlspecialchars($restaurant_name); ?>, Delivery Support
-            </p>
+            <?php echo getDefaultShippingPolicyHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone); ?>
             <?php endif; ?>
         </div>
     </div>

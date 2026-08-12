@@ -43,6 +43,8 @@ $restaurant_phone = '';
 $restaurant_owner = '';
 $custom_policy_content = null;
 
+require_once __DIR__ . '/policy_defaults.php';
+
 try {
     require_once __DIR__ . '/db_config.php';
     if (function_exists('getConnection')) {
@@ -217,41 +219,9 @@ try {
         <p class="last-updated">Last updated: <?php echo date('F j, Y'); ?></p>
 
         <?php if ($custom_policy_content !== null): ?>
-        <?php echo $custom_policy_content; ?>
+        <?php echo formatPolicyContent($custom_policy_content); ?>
         <?php else: ?>
-        <p>At <?php echo htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8'); ?>, all orders are made to order. Please read this Refund Policy carefully before placing an order.</p>
-
-        <h2>1. No Refunds</h2>
-        <p><strong>We do not offer refunds.</strong> Once an order has been placed and payment has been completed, it is final and cannot be refunded, cancelled, or exchanged for cash, regardless of the reason.</p>
-
-        <h2>2. Order Cancellations</h2>
-        <p>If you wish to cancel an order, please contact the restaurant immediately. Cancellation may only be possible before the order has entered the preparation stage, and is at the sole discretion of the restaurant. No monetary refund will be issued even if a cancellation is accepted.</p>
-
-        <h2>3. Order Issues</h2>
-        <p>If you received an incorrect order, missing items, or have a quality concern, please contact the restaurant directly within 24 hours of receiving your order. While we do not issue refunds, the restaurant may, at its sole discretion, offer a replacement or other resolution for genuine issues.</p>
-
-        <h2>4. Non-Refundable Items</h2>
-        <p>All orders, including but not limited to the following, are non-refundable:</p>
-        <ul>
-            <li>Items consumed or partially consumed</li>
-            <li>Orders where the issue is due to customer preferences (e.g., taste, spice level)</li>
-            <li>Promotional or discounted items</li>
-            <li>Orders cancelled after preparation has begun</li>
-        </ul>
-
-        <h2>5. Chargebacks</h2>
-        <p>If you believe a charge is incorrect, please contact us before initiating a chargeback with your bank. We are committed to resolving any billing issues promptly and fairly. Unnecessary chargebacks may result in account suspension.</p>
-
-        <h2>6. Dispute Resolution</h2>
-        <p>If you are unsatisfied with the resolution provided by the restaurant, please contact our support team at the details below. We will mediate between you and the restaurant to find a fair resolution.</p>
-
-        <h2>7. Contact Us</h2>
-        <p>If you have any questions about this Refund Policy, please contact us:</p>
-        <p>
-            <strong>Owner:</strong> <?php echo htmlspecialchars($restaurant_owner ?: 'Not specified'); ?><br>
-            <strong>Email:</strong> <?php echo htmlspecialchars($restaurant_email ?: 'restrogrow@gmail.com'); ?><br>
-            <strong>Phone:</strong> <?php echo htmlspecialchars($restaurant_phone ?: '+91 6377568749'); ?>
-        </p>
+        <?php echo getDefaultRefundPolicyHtml($restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone); ?>
         <?php endif; ?>
     </div>
 </div>
