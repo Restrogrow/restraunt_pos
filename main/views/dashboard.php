@@ -1766,8 +1766,10 @@ try {
               </a>
             </div>
 
-            <textarea id="policyContentTextarea" rows="18" placeholder="Leave blank to use the default policy text for this page..." style="width:100%;font-family:'Courier New',monospace;font-size:0.85rem;padding:1rem;border:2px solid #e5e7eb;border-radius:8px;resize:vertical;line-height:1.6;box-sizing:border-box;"></textarea>
-            <p style="margin-top:8px;color:#9ca3af;font-size:0.8rem;">Basic HTML is supported, e.g. &lt;h2&gt;Heading&lt;/h2&gt;, &lt;p&gt;paragraph&lt;/p&gt;, &lt;ul&gt;&lt;li&gt;item&lt;/li&gt;&lt;/ul&gt;, &lt;strong&gt;bold&lt;/strong&gt;.</p>
+            <div id="policyEditorWrapper" style="border:2px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#fff;">
+              <div id="policyContentEditor" style="min-height:380px;"></div>
+            </div>
+            <p style="margin-top:8px;color:#9ca3af;font-size:0.8rem;">Type and format like a normal document — use the toolbar for headings, bold, lists and links. No HTML knowledge needed.</p>
 
             <div class="form-actions" style="margin-top:16px;">
               <button type="button" class="btn btn-save" id="savePolicyBtn">Save Changes</button>
@@ -1799,37 +1801,78 @@ try {
       let policyActiveTab = 'privacy';
       let policyStatuses = {};
       let policyEditorInitialized = false;
+      let policyQuill = null;
+      let policyQuillLoadPromise = null;
 
       function getPolicyByKey(key) {
         for (var i = 0; i < POLICY_TYPES.length; i++) { if (POLICY_TYPES[i].key === key) return POLICY_TYPES[i]; }
         return POLICY_TYPES[0];
       }
 
+      // Quill is loaded on demand (only when this page is opened) so restaurant
+      // owners who never touch Policy Pages don't pay for it on every dashboard load.
+      function ensurePolicyEditorLibLoaded() {
+        if (window.Quill) return Promise.resolve();
+        if (policyQuillLoadPromise) return policyQuillLoadPromise;
+        policyQuillLoadPromise = new Promise(function(resolve, reject) {
+          var link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://cdn.quilljs.com/1.3.6/quill.snow.css';
+          document.head.appendChild(link);
+
+          var script = document.createElement('script');
+          script.src = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
+          script.onload = function() { resolve(); };
+          script.onerror = function() { reject(new Error('Failed to load editor library')); };
+          document.head.appendChild(script);
+        });
+        return policyQuillLoadPromise;
+      }
+
       function initPolicyPagesEditor() {
         var tabsContainer = document.getElementById('policyTabs');
-        if (!tabsContainer) return;
+        var editorContainer = document.getElementById('policyContentEditor');
+        if (!tabsContainer || !editorContainer) return;
 
-        if (!policyEditorInitialized) {
-          policyEditorInitialized = true;
-          tabsContainer.innerHTML = POLICY_TYPES.map(function(p) {
-            return '<button type="button" class="policy-tab-btn" data-policy="' + p.key + '" style="padding:8px 16px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;color:#374151;font-weight:600;font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;">' +
-              '<span class="policy-tab-dot" data-dot="' + p.key + '" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;display:inline-block;"></span>' + p.label + '</button>';
-          }).join('');
+        ensurePolicyEditorLibLoaded().then(function() {
+          if (!policyEditorInitialized) {
+            policyEditorInitialized = true;
+            tabsContainer.innerHTML = POLICY_TYPES.map(function(p) {
+              return '<button type="button" class="policy-tab-btn" data-policy="' + p.key + '" style="padding:8px 16px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;color:#374151;font-weight:600;font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;">' +
+                '<span class="policy-tab-dot" data-dot="' + p.key + '" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;display:inline-block;"></span>' + p.label + '</button>';
+            }).join('');
 
-          tabsContainer.querySelectorAll('.policy-tab-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-              selectPolicyTab(btn.getAttribute('data-policy'));
+            tabsContainer.querySelectorAll('.policy-tab-btn').forEach(function(btn) {
+              btn.addEventListener('click', function() {
+                selectPolicyTab(btn.getAttribute('data-policy'));
+              });
             });
+
+            policyQuill = new Quill('#policyContentEditor', {
+              theme: 'snow',
+              placeholder: 'Start typing here — use the toolbar above to add headings, bold text, or lists...',
+              modules: {
+                toolbar: [
+                  [{ header: [2, 3, false] }],
+                  ['bold', 'italic', 'underline'],
+                  [{ list: 'ordered' }, { list: 'bullet' }],
+                  ['link'],
+                  ['clean']
+                ]
+              }
+            });
+
+            var saveBtn = document.getElementById('savePolicyBtn');
+            if (saveBtn) saveBtn.addEventListener('click', savePolicyContent);
+            var resetBtn = document.getElementById('resetPolicyBtn');
+            if (resetBtn) resetBtn.addEventListener('click', resetPolicyContent);
+          }
+
+          loadPolicyStatuses(function() {
+            selectPolicyTab(policyActiveTab);
           });
-
-          var saveBtn = document.getElementById('savePolicyBtn');
-          if (saveBtn) saveBtn.addEventListener('click', savePolicyContent);
-          var resetBtn = document.getElementById('resetPolicyBtn');
-          if (resetBtn) resetBtn.addEventListener('click', resetPolicyContent);
-        }
-
-        loadPolicyStatuses(function() {
-          selectPolicyTab(policyActiveTab);
+        }).catch(function() {
+          showToastFallback('Could not load the editor. Please refresh and try again.', 'error');
         });
       }
 
@@ -1874,20 +1917,22 @@ try {
         var viewLink = document.getElementById('policyViewLiveLink');
         if (viewLink) viewLink.href = POLICY_PAGE_BASE_URL + '/' + info.file;
 
-        var textarea = document.getElementById('policyContentTextarea');
         var statusLabel = document.getElementById('policyStatusLabel');
-        if (textarea) { textarea.value = 'Loading...'; textarea.disabled = true; }
+        if (policyQuill) { policyQuill.setText('Loading...'); policyQuill.disable(); }
 
         fetch('../website/policy_pages_api.php?action=get&policy_type=' + encodeURIComponent(key))
           .then(function(r) { return r.json(); })
           .then(function(res) {
             var hasCustom = !!(res.success && res.content && res.content.trim() !== '');
-            if (textarea) {
-              textarea.disabled = false;
+            if (policyQuill) {
+              policyQuill.enable();
               // No custom override yet: pre-fill with the real default wording (with this
               // restaurant's own name/contact details already filled in) so the owner can
               // tweak just the parts they want instead of writing a page from scratch.
-              textarea.value = hasCustom ? res.content : (res.success ? (res.default_html || '') : '');
+              // Use the clipboard converter (not root.innerHTML directly) so lists/headers/etc.
+              // are parsed into Quill's own format instead of being silently dropped.
+              var htmlToLoad = hasCustom ? res.content : (res.success ? (res.default_html || '') : '');
+              policyQuill.clipboard.dangerouslyPasteHTML(htmlToLoad);
             }
             policyStatuses[key] = hasCustom;
             updatePolicyTabDots();
@@ -1898,15 +1943,19 @@ try {
             }
           })
           .catch(function() {
-            if (textarea) { textarea.disabled = false; textarea.value = ''; }
+            if (policyQuill) { policyQuill.enable(); policyQuill.setText(''); }
             showToastFallback('Could not load policy content. Please try again.', 'error');
           });
       }
 
       function savePolicyContent() {
         var btn = document.getElementById('savePolicyBtn');
-        var textarea = document.getElementById('policyContentTextarea');
-        if (!btn || !textarea) return;
+        if (!btn || !policyQuill) return;
+        // Quill's "empty" state is technically "<p><br></p>", not an empty string,
+        // so check the plain text length rather than the raw HTML to decide whether
+        // to save an override or fall back to the default (deletes the row server-side).
+        var isEmpty = policyQuill.getText().trim() === '';
+        var htmlContent = isEmpty ? '' : policyQuill.root.innerHTML;
         var origHtml = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="loading-spinner"></span> Saving...';
@@ -1914,7 +1963,7 @@ try {
         fetch('../website/policy_pages_api.php?action=save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ policy_type: policyActiveTab, content: textarea.value })
+          body: JSON.stringify({ policy_type: policyActiveTab, content: htmlContent })
         })
           .then(function(r) { return r.json(); })
           .then(function(res) {
