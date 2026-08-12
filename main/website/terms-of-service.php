@@ -263,6 +263,9 @@ try {
             <h2>12. Contact Information</h2>
             <p>If you have any questions about these Terms of Service, please contact us at:</p>
             <p>
+                <?php if (in_array($host, ['sultaniarestaurant.in', 'www.sultaniarestaurant.in'], true)): ?>
+                <strong>Business Entity:</strong> GOLDEN BIRD TECH<br>
+                <?php endif; ?>
                 <strong>Owner:</strong> <?php echo htmlspecialchars($restaurant_owner ?: 'Not specified'); ?><br>
                 <strong>Email:</strong> <?php echo htmlspecialchars($restaurant_email ?: 'restrogrow@gmail.com'); ?><br>
                 <strong>Phone:</strong> <?php echo htmlspecialchars($restaurant_phone ?: '+91 6377568749'); ?><br>
