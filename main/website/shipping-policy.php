@@ -41,6 +41,7 @@ $primary_yellow = '#FFD100';
 $restaurant_email = '';
 $restaurant_phone = '';
 $restaurant_owner = '';
+$custom_policy_content = null;
 
 try {
     require_once __DIR__ . '/db_config.php';
@@ -73,6 +74,20 @@ try {
             if (!empty($themeRow['primary_red'])) $primary_red = htmlspecialchars($themeRow['primary_red'], ENT_QUOTES, 'UTF-8');
             if (!empty($themeRow['dark_red'])) $dark_red = htmlspecialchars($themeRow['dark_red'], ENT_QUOTES, 'UTF-8');
             if (!empty($themeRow['primary_yellow'])) $primary_yellow = htmlspecialchars($themeRow['primary_yellow'], ENT_QUOTES, 'UTF-8');
+        }
+
+        // Restaurant-customized policy content (Settings > Policy Pages). Falls back to
+        // the hardcoded default text below when nothing has been saved for this restaurant
+        // (or when the policy_pages table hasn't been created yet on this server).
+        try {
+            $stmt = $conn->prepare("SELECT content FROM policy_pages WHERE restaurant_id = ? AND policy_type = 'shipping' LIMIT 1");
+            $stmt->execute([$restaurant_id]);
+            $policyRow = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($policyRow && trim((string)($policyRow['content'] ?? '')) !== '') {
+                $custom_policy_content = $policyRow['content'];
+            }
+        } catch (Exception $e) {
+            // policy_pages table not created yet - use default text
         }
     }
 } catch (Exception $e) {
@@ -179,6 +194,9 @@ try {
         </div>
         
         <div class="policy-content">
+            <?php if ($custom_policy_content !== null): ?>
+            <?php echo $custom_policy_content; ?>
+            <?php else: ?>
             <p>At <?php echo htmlspecialchars($restaurant_name); ?><?php if ($restaurant_owner): ?> (Owned by <?php echo htmlspecialchars($restaurant_owner); ?>)<?php endif; ?>, we are committed to delivering your orders promptly and efficiently. This Shipping & Delivery Policy explains our delivery practices and what you can expect when you order from us.</p>
 
             <h2>1. Delivery Areas</h2>
@@ -214,9 +232,10 @@ try {
                 <strong>Phone:</strong> <?php echo htmlspecialchars($restaurant_phone ?: '+91 6377568749'); ?><br>
                 <strong>Address:</strong> <?php echo htmlspecialchars($restaurant_name); ?>, Delivery Support
             </p>
+            <?php endif; ?>
         </div>
     </div>
-    
+
     <script src="script.js?v=<?php echo filemtime(__DIR__ . '/script.js') ?: time(); ?>" defer></script>
 </body>
 </html>

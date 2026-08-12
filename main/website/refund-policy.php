@@ -41,6 +41,7 @@ $primary_yellow = '#FFD100';
 $restaurant_email = '';
 $restaurant_phone = '';
 $restaurant_owner = '';
+$custom_policy_content = null;
 
 try {
     require_once __DIR__ . '/db_config.php';
@@ -73,6 +74,20 @@ try {
             if (!empty($themeRow['primary_red'])) $primary_red = htmlspecialchars($themeRow['primary_red'], ENT_QUOTES, 'UTF-8');
             if (!empty($themeRow['dark_red'])) $dark_red = htmlspecialchars($themeRow['dark_red'], ENT_QUOTES, 'UTF-8');
             if (!empty($themeRow['primary_yellow'])) $primary_yellow = htmlspecialchars($themeRow['primary_yellow'], ENT_QUOTES, 'UTF-8');
+        }
+
+        // Restaurant-customized policy content (Settings > Policy Pages). Falls back to
+        // the hardcoded default text below when nothing has been saved for this restaurant
+        // (or when the policy_pages table hasn't been created yet on this server).
+        try {
+            $stmt = $conn->prepare("SELECT content FROM policy_pages WHERE restaurant_id = ? AND policy_type = 'refund' LIMIT 1");
+            $stmt->execute([$restaurant_id]);
+            $policyRow = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($policyRow && trim((string)($policyRow['content'] ?? '')) !== '') {
+                $custom_policy_content = $policyRow['content'];
+            }
+        } catch (Exception $e) {
+            // policy_pages table not created yet - use default text
         }
     }
 } catch (Exception $e) {
@@ -201,6 +216,9 @@ try {
         <h1>Refund Policy</h1>
         <p class="last-updated">Last updated: <?php echo date('F j, Y'); ?></p>
 
+        <?php if ($custom_policy_content !== null): ?>
+        <?php echo $custom_policy_content; ?>
+        <?php else: ?>
         <p>At <?php echo htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8'); ?>, all orders are made to order. Please read this Refund Policy carefully before placing an order.</p>
 
         <h2>1. No Refunds</h2>
@@ -234,6 +252,7 @@ try {
             <strong>Email:</strong> <?php echo htmlspecialchars($restaurant_email ?: 'restrogrow@gmail.com'); ?><br>
             <strong>Phone:</strong> <?php echo htmlspecialchars($restaurant_phone ?: '+91 6377568749'); ?>
         </p>
+        <?php endif; ?>
     </div>
 </div>
 </body>

@@ -1244,6 +1244,13 @@ try {
           <span class="nav-tooltip">Website Appearance</span>
         </li>
         <li class="nav-item">
+          <a href="#" class="nav-link" data-page="policyPagesPage" onclick="setTimeout(initPolicyPagesEditor, 50)">
+            <span class="nav-icon material-symbols-rounded">gavel</span>
+            <span class="nav-label">Policy Pages</span>
+          </a>
+          <span class="nav-tooltip">Policy Pages</span>
+        </li>
+        <li class="nav-item">
           <a href="#" class="nav-link" data-page="embedPage" onclick="setTimeout(loadEmbedSettings, 50)">
             <span class="nav-icon material-symbols-rounded">language</span>
             <span class="nav-label">Custom Domain</span>
@@ -1731,6 +1738,246 @@ try {
         </div>
       </div>
     </div>
+    <!-- Policy Pages -->
+    <div id="policyPagesPage" class="page">
+      <div class="page-header">
+        <h1>Policy Pages</h1>
+        <p>Customize the legal text shown on your public website. Leave a page blank to keep showing the default text.</p>
+      </div>
+      <div class="page-content">
+        <div class="settings-grid">
+          <div class="settings-section" style="grid-column: 1 / -1;">
+            <h2 class="settings-section-title">
+              <span class="material-symbols-rounded">gavel</span>
+              Edit Policy Content
+            </h2>
+            <p style="color:#666;font-size:0.9rem;margin-bottom:16px;line-height:1.6;">
+              Pick a page below, then edit its content. Customers will see whatever is saved here instead of the default text.
+              Leave the box empty and save (or click <strong>Reset to Default</strong>) to go back to the built-in wording.
+            </p>
+
+            <div id="policyTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;"></div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+              <span id="policyStatusLabel" style="font-size:0.85rem;font-weight:600;color:#6b7280;display:flex;align-items:center;gap:6px;"></span>
+              <a href="#" id="policyViewLiveLink" target="_blank" class="btn btn-outline" style="padding:6px 12px;font-size:0.85rem;display:flex;align-items:center;gap:4px;">
+                <span class="material-symbols-rounded" style="font-size:16px;">open_in_new</span>
+                View Live Page
+              </a>
+            </div>
+
+            <textarea id="policyContentTextarea" rows="18" placeholder="Leave blank to use the default policy text for this page..." style="width:100%;font-family:'Courier New',monospace;font-size:0.85rem;padding:1rem;border:2px solid #e5e7eb;border-radius:8px;resize:vertical;line-height:1.6;box-sizing:border-box;"></textarea>
+            <p style="margin-top:8px;color:#9ca3af;font-size:0.8rem;">Basic HTML is supported, e.g. &lt;h2&gt;Heading&lt;/h2&gt;, &lt;p&gt;paragraph&lt;/p&gt;, &lt;ul&gt;&lt;li&gt;item&lt;/li&gt;&lt;/ul&gt;, &lt;strong&gt;bold&lt;/strong&gt;.</p>
+
+            <div class="form-actions" style="margin-top:16px;">
+              <button type="button" class="btn btn-save" id="savePolicyBtn">Save Changes</button>
+              <button type="button" class="btn btn-outline" id="resetPolicyBtn" style="display:flex;align-items:center;gap:6px;">
+                <span class="material-symbols-rounded" style="font-size:18px;">restart_alt</span>
+                Reset to Default
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const POLICY_PAGE_BASE_URL = "<?php
+        $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+        $policy_restaurant_slug = strtolower($restaurant_name);
+        $policy_restaurant_slug = preg_replace('/[^a-z0-9]+/', '-', $policy_restaurant_slug);
+        $policy_restaurant_slug = trim($policy_restaurant_slug, '-');
+        echo htmlspecialchars($base_url . $basePath . '/' . urlencode($policy_restaurant_slug), ENT_QUOTES, 'UTF-8');
+      ?>";
+
+      const POLICY_TYPES = [
+        { key: 'privacy', label: 'Privacy Policy', file: 'privacy-policy' },
+        { key: 'terms', label: 'Terms of Service', file: 'terms-of-service' },
+        { key: 'refund', label: 'Refund Policy', file: 'refund-policy' },
+        { key: 'shipping', label: 'Shipping Policy', file: 'shipping-policy' },
+        { key: 'cookie', label: 'Cookie Policy', file: 'cookie-policy' }
+      ];
+      let policyActiveTab = 'privacy';
+      let policyStatuses = {};
+      let policyEditorInitialized = false;
+
+      function getPolicyByKey(key) {
+        for (var i = 0; i < POLICY_TYPES.length; i++) { if (POLICY_TYPES[i].key === key) return POLICY_TYPES[i]; }
+        return POLICY_TYPES[0];
+      }
+
+      function initPolicyPagesEditor() {
+        var tabsContainer = document.getElementById('policyTabs');
+        if (!tabsContainer) return;
+
+        if (!policyEditorInitialized) {
+          policyEditorInitialized = true;
+          tabsContainer.innerHTML = POLICY_TYPES.map(function(p) {
+            return '<button type="button" class="policy-tab-btn" data-policy="' + p.key + '" style="padding:8px 16px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;color:#374151;font-weight:600;font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;">' +
+              '<span class="policy-tab-dot" data-dot="' + p.key + '" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;display:inline-block;"></span>' + p.label + '</button>';
+          }).join('');
+
+          tabsContainer.querySelectorAll('.policy-tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              selectPolicyTab(btn.getAttribute('data-policy'));
+            });
+          });
+
+          var saveBtn = document.getElementById('savePolicyBtn');
+          if (saveBtn) saveBtn.addEventListener('click', savePolicyContent);
+          var resetBtn = document.getElementById('resetPolicyBtn');
+          if (resetBtn) resetBtn.addEventListener('click', resetPolicyContent);
+        }
+
+        loadPolicyStatuses(function() {
+          selectPolicyTab(policyActiveTab);
+        });
+      }
+
+      function loadPolicyStatuses(callback) {
+        fetch('../website/policy_pages_api.php?action=get')
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            if (res.success && res.policies) {
+              policyStatuses = {};
+              POLICY_TYPES.forEach(function(p) {
+                var entry = res.policies[p.key];
+                policyStatuses[p.key] = !!(entry && entry.content && entry.content.trim() !== '');
+              });
+              updatePolicyTabDots();
+            }
+            if (callback) callback();
+          })
+          .catch(function() { if (callback) callback(); });
+      }
+
+      function updatePolicyTabDots() {
+        POLICY_TYPES.forEach(function(p) {
+          var dot = document.querySelector('.policy-tab-dot[data-dot="' + p.key + '"]');
+          if (dot) dot.style.background = policyStatuses[p.key] ? '#10b981' : '#d1d5db';
+        });
+      }
+
+      function updatePolicyTabActiveState(key) {
+        document.querySelectorAll('.policy-tab-btn').forEach(function(btn) {
+          var isActive = btn.getAttribute('data-policy') === key;
+          btn.style.borderColor = isActive ? '#dc2626' : '#e5e7eb';
+          btn.style.background = isActive ? '#dc2626' : '#fff';
+          btn.style.color = isActive ? '#fff' : '#374151';
+        });
+      }
+
+      function selectPolicyTab(key) {
+        policyActiveTab = key;
+        updatePolicyTabActiveState(key);
+
+        var info = getPolicyByKey(key);
+        var viewLink = document.getElementById('policyViewLiveLink');
+        if (viewLink) viewLink.href = POLICY_PAGE_BASE_URL + '/' + info.file;
+
+        var textarea = document.getElementById('policyContentTextarea');
+        var statusLabel = document.getElementById('policyStatusLabel');
+        if (textarea) { textarea.value = 'Loading...'; textarea.disabled = true; }
+
+        fetch('../website/policy_pages_api.php?action=get&policy_type=' + encodeURIComponent(key))
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            if (textarea) {
+              textarea.disabled = false;
+              textarea.value = (res.success && res.content) ? res.content : '';
+            }
+            var hasCustom = !!(res.success && res.content && res.content.trim() !== '');
+            policyStatuses[key] = hasCustom;
+            updatePolicyTabDots();
+            if (statusLabel) {
+              statusLabel.innerHTML = hasCustom
+                ? '<span class="material-symbols-rounded" style="font-size:16px;color:#10b981;vertical-align:middle;">check_circle</span> Custom content active'
+                : '<span class="material-symbols-rounded" style="font-size:16px;color:#9ca3af;vertical-align:middle;">info</span> Using default text';
+            }
+          })
+          .catch(function() {
+            if (textarea) { textarea.disabled = false; textarea.value = ''; }
+            showToastFallback('Could not load policy content. Please try again.', 'error');
+          });
+      }
+
+      function savePolicyContent() {
+        var btn = document.getElementById('savePolicyBtn');
+        var textarea = document.getElementById('policyContentTextarea');
+        if (!btn || !textarea) return;
+        var origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+
+        fetch('../website/policy_pages_api.php?action=save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ policy_type: policyActiveTab, content: textarea.value })
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            if (res.success) {
+              showToastFallback('Policy page saved.', 'success');
+              selectPolicyTab(policyActiveTab);
+            } else {
+              showToastFallback(res.message || 'Could not save. Please try again.', 'error');
+            }
+          })
+          .catch(function() {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            showToastFallback('Could not save. Please check your connection.', 'error');
+          });
+      }
+
+      function resetPolicyContent() {
+        var doReset = function() {
+          var btn = document.getElementById('resetPolicyBtn');
+          var origHtml = btn.innerHTML;
+          btn.disabled = true;
+          btn.innerHTML = '<span class="loading-spinner"></span> Resetting...';
+
+          fetch('../website/policy_pages_api.php?action=reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ policy_type: policyActiveTab })
+          })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+              btn.disabled = false;
+              btn.innerHTML = origHtml;
+              if (res.success) {
+                showToastFallback('Restored default text.', 'success');
+                selectPolicyTab(policyActiveTab);
+              } else {
+                showToastFallback(res.message || 'Could not reset. Please try again.', 'error');
+              }
+            })
+            .catch(function() {
+              btn.disabled = false;
+              btn.innerHTML = origHtml;
+              showToastFallback('Could not reset. Please check your connection.', 'error');
+            });
+        };
+
+        if (window.Swal) {
+          Swal.fire({
+            title: 'Reset to default text?',
+            text: 'This will discard your custom content for this page and go back to the built-in wording.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Reset',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#dc2626'
+          }).then(function(result) {
+            if (result.isConfirmed) doReset();
+          });
+        } else if (confirm('Reset to default text? This will discard your custom content for this page.')) {
+          doReset();
+        }
+      }
+    </script>
     <!-- Custom Domain / Embed Page -->
     <div id="embedPage" class="page">
       <div class="page-header">

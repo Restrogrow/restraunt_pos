@@ -46,6 +46,7 @@ $primary_yellow = '#FFD100';
 $restaurant_email = '';
 $restaurant_phone = '';
 $restaurant_owner = '';
+$custom_policy_content = null;
 
 try {
     require_once __DIR__ . '/db_config.php';
@@ -81,6 +82,20 @@ try {
             if (!empty($themeRow['primary_red'])) $primary_red = htmlspecialchars($themeRow['primary_red'], ENT_QUOTES, 'UTF-8');
             if (!empty($themeRow['dark_red'])) $dark_red = htmlspecialchars($themeRow['dark_red'], ENT_QUOTES, 'UTF-8');
             if (!empty($themeRow['primary_yellow'])) $primary_yellow = htmlspecialchars($themeRow['primary_yellow'], ENT_QUOTES, 'UTF-8');
+        }
+
+        // Restaurant-customized policy content (Settings > Policy Pages). Falls back to
+        // the hardcoded default text below when nothing has been saved for this restaurant
+        // (or when the policy_pages table hasn't been created yet on this server).
+        try {
+            $stmt = $conn->prepare("SELECT content FROM policy_pages WHERE restaurant_id = ? AND policy_type = 'privacy' LIMIT 1");
+            $stmt->execute([$restaurant_id]);
+            $policyRow = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($policyRow && trim((string)($policyRow['content'] ?? '')) !== '') {
+                $custom_policy_content = $policyRow['content'];
+            }
+        } catch (Exception $e) {
+            // policy_pages table not created yet - use default text
         }
     }
 } catch (Exception $e) {
@@ -193,8 +208,11 @@ try {
         </div>
         
         <div class="policy-content">
+            <?php if ($custom_policy_content !== null): ?>
+            <?php echo $custom_policy_content; ?>
+            <?php else: ?>
             <p>At <?php echo htmlspecialchars($restaurant_name); ?>, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our restaurant management and ordering platform.</p>
-            
+
             <h2>1. Information We Collect</h2>
             <h3>1.1 Personal Information</h3>
             <p>We may collect personal information that you provide to us, including:</p>
@@ -270,9 +288,10 @@ try {
                 <strong>Phone:</strong> <?php echo htmlspecialchars($restaurant_phone ?: '+91 6377568749'); ?><br>
                 <strong>Address:</strong> <?php echo htmlspecialchars($restaurant_name); ?>, Customer Support
             </p>
+            <?php endif; ?>
         </div>
     </div>
-    
+
     <script src="script.js?v=<?php echo filemtime(__DIR__ . '/script.js') ?: time(); ?>" defer></script>
 </body>
 </html>
