@@ -1,5 +1,9 @@
 /* ── Growth Module: Loyalty, Segmentation, Referrals, Reports ── */
 
+function growthCur() {
+  return window.globalCurrencySymbol || '₹';
+}
+
 function growthBuildLoyaltyPageUrl() {
   var rid = document.querySelector('meta[name="restaurant-id"]')?.content || window.restaurant_id || '';
   if (window.restaurantCustomDomain && window.restaurantEmbedEnabled) {
@@ -11,6 +15,28 @@ function growthBuildLoyaltyPageUrl() {
   }
   var basePath = window.location.origin + window.location.pathname.substring(0, window.location.pathname.indexOf('/main/') + 6) + 'website/loyalty.php';
   return basePath + '?restaurant_id=' + encodeURIComponent(rid);
+}
+
+/** Renders the same stat-card component the Analytics page uses, so Growth
+ *  pages match the rest of the admin instead of inventing new styling. */
+function growthStatCard(icon, gradient, label, value, sub) {
+  return `
+    <div class="analytics-stat-card">
+      <div class="stat-icon" style="background:${gradient};"><span class="material-symbols-rounded">${icon}</span></div>
+      <div class="stat-info">
+        <div class="stat-label">${label}</div>
+        <div class="stat-value">${value}</div>
+        ${sub ? `<div class="stat-sub">${sub}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+/** A compact colored pill matching how status badges are styled elsewhere
+ *  in the admin (e.g. order status) — the `badge`/`status-badge` classes
+ *  carry no base CSS of their own, so the padding/radius must be inline. */
+function growthPill(text, bg, fg) {
+  return `<span style="display:inline-block;background:${bg};color:${fg || '#fff'};padding:4px 10px;border-radius:12px;font-weight:600;font-size:0.8rem;">${text}</span>`;
 }
 
 /* ── Loyalty Settings ── */
@@ -31,6 +57,16 @@ async function loadGrowthSettings() {
     document.getElementById('gsReferredRewardPoints').value = s.referred_reward_points ?? 20;
     document.getElementById('gsLapsedDaysThreshold').value = s.lapsed_days_threshold ?? 30;
     document.getElementById('gsHighSpenderThreshold').value = s.high_spender_threshold ?? 5000;
+
+    const overviewEl = document.getElementById('growthOverviewCards');
+    if (overviewEl) {
+      const t = data.totals || {};
+      overviewEl.innerHTML =
+        growthStatCard('toll', 'linear-gradient(135deg,#3b82f6,#1d4ed8)', 'Points Issued', t.points_issued ?? 0, 'All-time') +
+        growthStatCard('redeem', 'linear-gradient(135deg,#10b981,#059669)', 'Points Redeemed', t.points_redeemed ?? 0, 'All-time') +
+        growthStatCard('group', 'linear-gradient(135deg,#8b5cf6,#7c3aed)', 'Active Members', t.active_members ?? 0, 'Earned or redeemed at least once') +
+        growthStatCard('group_add', 'linear-gradient(135deg,#f59e0b,#d97706)', 'Referral Bonus Points', t.referral_points_issued ?? 0, 'All-time');
+    }
 
     renderTiersTable(data.tiers || []);
 
@@ -82,15 +118,16 @@ function renderTiersTable(tiers) {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">No tiers yet. Add one to reward your top spenders.</td></tr>';
     return;
   }
+  const cur = growthCur();
   tbody.innerHTML = tiers.map(t => `
     <tr>
       <td>${escapeHtml(t.tier_name)}</td>
-      <td>${Number(t.min_total_spent).toFixed(2)}</td>
-      <td>${escapeHtml(t.icon || 'star')}</td>
+      <td>${cur}${Number(t.min_total_spent).toFixed(2)}</td>
+      <td><span class="material-symbols-rounded" style="font-size:18px;vertical-align:middle;color:#d97706;">${escapeHtml(t.icon || 'star')}</span></td>
       <td>${t.sort_order ?? 0}</td>
       <td>
-        <button class="btn btn-sm" onclick='openTierModal(${JSON.stringify(t).replace(/'/g, "&#39;")})'>Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteTier(${t.id})">Delete</button>
+        <button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick='openTierModal(${JSON.stringify(t).replace(/'/g, "&#39;")})'>Edit</button>
+        <button class="btn btn-danger" style="padding:6px 14px;font-size:0.8rem;" onclick="deleteTier(${t.id})">Delete</button>
       </td>
     </tr>
   `).join('');
@@ -159,7 +196,19 @@ let growthSegmentsCache = [];
 let growthActiveSegmentFilter = '';
 
 const GROWTH_SEGMENT_LABELS = { new: 'New', repeat: 'Repeat', high_spender: 'High Spender', lapsed: 'Lapsed' };
-const GROWTH_SEGMENT_COLORS = { new: '#1565c0', repeat: '#2e7d32', high_spender: '#c62828', lapsed: '#f57f17' };
+const GROWTH_SEGMENT_ICONS = { new: 'person_add', repeat: 'autorenew', high_spender: 'paid', lapsed: 'schedule' };
+const GROWTH_SEGMENT_GRADIENTS = {
+  new: 'linear-gradient(135deg,#3b82f6,#1d4ed8)',
+  repeat: 'linear-gradient(135deg,#10b981,#059669)',
+  high_spender: 'linear-gradient(135deg,#f59e0b,#d97706)',
+  lapsed: 'linear-gradient(135deg,#ef4444,#b91c1c)',
+};
+const GROWTH_SEGMENT_PILL_COLORS = { new: '#dbeafe,#1e40af', repeat: '#d1fae5,#065f46', high_spender: '#fef3c7,#92400e', lapsed: '#fee2e2,#dc2626' };
+
+function growthSegmentPill(segment) {
+  const [bg, fg] = (GROWTH_SEGMENT_PILL_COLORS[segment] || '#e5e7eb,#374151').split(',');
+  return growthPill(GROWTH_SEGMENT_LABELS[segment] || segment, bg, fg);
+}
 
 async function loadCustomerSegments(segment) {
   growthActiveSegmentFilter = segment || '';
@@ -182,13 +231,16 @@ async function loadCustomerSegments(segment) {
 function renderSegmentSummaryCards(counts, revenue) {
   const el = document.getElementById('segmentSummaryCards');
   if (!el) return;
-  el.innerHTML = Object.keys(GROWTH_SEGMENT_LABELS).map(seg => `
-    <div style="flex:1;min-width:140px;padding:14px;border-radius:10px;background:#f9f9f9;border-left:4px solid ${GROWTH_SEGMENT_COLORS[seg]};">
-      <div style="font-size:22px;font-weight:700;">${counts[seg] ?? 0}</div>
-      <div style="font-size:12px;color:#666;">${GROWTH_SEGMENT_LABELS[seg]}</div>
-      <div style="font-size:11px;color:#999;margin-top:4px;">${(revenue[seg] ?? 0).toFixed(2)} revenue</div>
-    </div>
-  `).join('');
+  const cur = growthCur();
+  el.innerHTML = Object.keys(GROWTH_SEGMENT_LABELS).map(seg =>
+    growthStatCard(
+      GROWTH_SEGMENT_ICONS[seg],
+      GROWTH_SEGMENT_GRADIENTS[seg],
+      GROWTH_SEGMENT_LABELS[seg],
+      counts[seg] ?? 0,
+      cur + Number(revenue[seg] ?? 0).toFixed(2) + ' revenue'
+    )
+  ).join('');
 }
 
 function renderSegmentFilterTabs() {
@@ -196,7 +248,7 @@ function renderSegmentFilterTabs() {
   if (!el) return;
   const tabs = [{ key: '', label: 'All' }].concat(Object.keys(GROWTH_SEGMENT_LABELS).map(k => ({ key: k, label: GROWTH_SEGMENT_LABELS[k] })));
   el.innerHTML = tabs.map(t => `
-    <button class="btn btn-sm ${growthActiveSegmentFilter === t.key ? 'btn-primary' : ''}" onclick="loadCustomerSegments('${t.key}')">${t.label}</button>
+    <button class="btn ${growthActiveSegmentFilter === t.key ? 'btn-primary' : ''}" style="padding:6px 14px;font-size:0.8rem;" onclick="loadCustomerSegments('${t.key}')">${t.label}</button>
   `).join('');
 }
 
@@ -207,16 +259,17 @@ function renderSegmentsTable(customers) {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#999;">No customers in this segment.</td></tr>';
     return;
   }
+  const cur = growthCur();
   tbody.innerHTML = customers.map(c => `
     <tr>
       <td>${escapeHtml(c.customer_name || '-')}</td>
       <td>${escapeHtml(c.phone || '-')}</td>
-      <td><span class="badge" style="background:${GROWTH_SEGMENT_COLORS[c.segment]};color:#fff;">${GROWTH_SEGMENT_LABELS[c.segment] || c.segment}</span></td>
+      <td>${growthSegmentPill(c.segment)}</td>
       <td>${c.total_visits ?? 0}</td>
-      <td>${Number(c.total_spent || 0).toFixed(2)}</td>
-      <td>${c.last_visit_date || '-'}</td>
+      <td>${cur}${Number(c.total_spent || 0).toFixed(2)}</td>
+      <td>${c.last_visit_date && c.last_visit_date !== '0000-00-00' ? c.last_visit_date : '-'}</td>
       <td>${c.loyalty_points_balance ?? 0}</td>
-      <td><button class="btn btn-sm" onclick="openAdjustPointsModal(${c.id}, '${escapeHtml(c.customer_name || '').replace(/'/g, "\\'")}')">Adjust Points</button></td>
+      <td><button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick="openAdjustPointsModal(${c.id}, '${escapeHtml(c.customer_name || '').replace(/'/g, "\\'")}')">Adjust Points</button></td>
     </tr>
   `).join('');
 }
@@ -264,20 +317,10 @@ async function loadReferrals() {
     const summary = data.summary || {};
     const summaryEl = document.getElementById('referralSummaryCards');
     if (summaryEl) {
-      summaryEl.innerHTML = `
-        <div style="flex:1;min-width:140px;padding:14px;border-radius:10px;background:#f9f9f9;">
-          <div style="font-size:22px;font-weight:700;">${summary.total ?? 0}</div>
-          <div style="font-size:12px;color:#666;">Total Referrals</div>
-        </div>
-        <div style="flex:1;min-width:140px;padding:14px;border-radius:10px;background:#f9f9f9;">
-          <div style="font-size:22px;font-weight:700;">${summary.completed ?? 0}</div>
-          <div style="font-size:12px;color:#666;">Completed</div>
-        </div>
-        <div style="flex:1;min-width:140px;padding:14px;border-radius:10px;background:#f9f9f9;">
-          <div style="font-size:22px;font-weight:700;">${summary.conversion_rate ?? 0}%</div>
-          <div style="font-size:12px;color:#666;">Conversion Rate</div>
-        </div>
-      `;
+      summaryEl.innerHTML =
+        growthStatCard('group_add', 'linear-gradient(135deg,#3b82f6,#1d4ed8)', 'Total Referrals', summary.total ?? 0, null) +
+        growthStatCard('check_circle', 'linear-gradient(135deg,#10b981,#059669)', 'Completed', summary.completed ?? 0, null) +
+        growthStatCard('percent', 'linear-gradient(135deg,#8b5cf6,#7c3aed)', 'Conversion Rate', (summary.conversion_rate ?? 0) + '%', null);
     }
 
     const leaderboardTbody = document.getElementById('referralLeaderboardTbody');
@@ -304,7 +347,7 @@ async function loadReferrals() {
             <td>${escapeHtml(r.referrer_name || '-')} (${escapeHtml(r.referrer_phone || '-')})</td>
             <td>${escapeHtml(r.referred_name || '-')} (${escapeHtml(r.referred_phone || '-')})</td>
             <td>${escapeHtml(r.referral_code)}</td>
-            <td><span class="badge" style="background:${r.status === 'completed' ? '#2e7d32' : '#f57f17'};color:#fff;">${r.status}</span></td>
+            <td>${r.status === 'completed' ? growthPill('Completed', '#d1fae5', '#065f46') : growthPill('Pending', '#fef3c7', '#92400e')}</td>
             <td>${r.created_at ? new Date(r.created_at).toLocaleDateString() : '-'}</td>
           </tr>
         `).join('')
@@ -323,38 +366,22 @@ async function loadGrowthReports() {
     const data = await res.json();
     if (!data.success) { showSweetAlert(data.message || 'Failed to load reports', 'error'); return; }
 
+    const cur = growthCur();
     const loyalty = data.loyalty || {};
     const loyaltyEl = document.getElementById('loyaltyRoiCards');
     if (loyaltyEl) {
-      loyaltyEl.innerHTML = `
-        <div style="flex:1;min-width:160px;padding:14px;border-radius:10px;background:#f9f9f9;">
-          <div style="font-size:20px;font-weight:700;">${(loyalty.member_revenue ?? 0).toFixed(2)}</div>
-          <div style="font-size:12px;color:#666;">Revenue from Loyalty Members (${loyalty.member_count ?? 0})</div>
-        </div>
-        <div style="flex:1;min-width:160px;padding:14px;border-radius:10px;background:#f9f9f9;">
-          <div style="font-size:20px;font-weight:700;">${(loyalty.non_member_revenue ?? 0).toFixed(2)}</div>
-          <div style="font-size:12px;color:#666;">Revenue from Non-Members (${loyalty.non_member_count ?? 0})</div>
-        </div>
-        <div style="flex:1;min-width:160px;padding:14px;border-radius:10px;background:#f9f9f9;">
-          <div style="font-size:20px;font-weight:700;">${(loyalty.redemption_cost ?? 0).toFixed(2)}</div>
-          <div style="font-size:12px;color:#666;">Redemption Cost</div>
-        </div>
-      `;
+      loyaltyEl.innerHTML =
+        growthStatCard('loyalty', 'linear-gradient(135deg,#10b981,#059669)', 'Revenue from Members', cur + Number(loyalty.member_revenue ?? 0).toFixed(2), (loyalty.member_count ?? 0) + ' members') +
+        growthStatCard('person', 'linear-gradient(135deg,#3b82f6,#1d4ed8)', 'Revenue from Non-Members', cur + Number(loyalty.non_member_revenue ?? 0).toFixed(2), (loyalty.non_member_count ?? 0) + ' customers') +
+        growthStatCard('redeem', 'linear-gradient(135deg,#f59e0b,#d97706)', 'Redemption Cost', cur + Number(loyalty.redemption_cost ?? 0).toFixed(2), 'Value of points redeemed');
     }
 
     const referrals = data.referrals || {};
     const referralEl = document.getElementById('referralRevenueCards');
     if (referralEl) {
-      referralEl.innerHTML = `
-        <div style="flex:1;min-width:160px;padding:14px;border-radius:10px;background:#f9f9f9;">
-          <div style="font-size:20px;font-weight:700;">${(referrals.revenue ?? 0).toFixed(2)}</div>
-          <div style="font-size:12px;color:#666;">Revenue from Referred Customers</div>
-        </div>
-        <div style="flex:1;min-width:160px;padding:14px;border-radius:10px;background:#f9f9f9;">
-          <div style="font-size:20px;font-weight:700;">${referrals.order_count ?? 0}</div>
-          <div style="font-size:12px;color:#666;">Orders from Referred Customers</div>
-        </div>
-      `;
+      referralEl.innerHTML =
+        growthStatCard('payments', 'linear-gradient(135deg,#10b981,#059669)', 'Revenue from Referred Customers', cur + Number(referrals.revenue ?? 0).toFixed(2), null) +
+        growthStatCard('receipt_long', 'linear-gradient(135deg,#8b5cf6,#7c3aed)', 'Orders from Referred Customers', referrals.order_count ?? 0, null);
     }
 
     const segments = data.segments || { counts: {}, revenue: {} };
@@ -362,9 +389,9 @@ async function loadGrowthReports() {
     if (segTbody) {
       segTbody.innerHTML = Object.keys(GROWTH_SEGMENT_LABELS).map(seg => `
         <tr>
-          <td>${GROWTH_SEGMENT_LABELS[seg]}</td>
+          <td>${growthSegmentPill(seg)}</td>
           <td>${segments.counts[seg] ?? 0}</td>
-          <td>${(segments.revenue[seg] ?? 0).toFixed(2)}</td>
+          <td>${cur}${Number(segments.revenue[seg] ?? 0).toFixed(2)}</td>
         </tr>
       `).join('');
     }

@@ -3175,6 +3175,7 @@ function toggleGatewayMode() {
         <p>Configure points, tiers, and the referral program</p>
       </div>
       <div class="page-content">
+        <div class="analytics-stats" id="growthOverviewCards"></div>
         <div class="section-card">
           <div class="section-header">
             <div class="section-title">Loyalty Points</div>
@@ -3312,10 +3313,7 @@ function toggleGatewayMode() {
         <p>See who's new, repeat, high-spending, or lapsed</p>
       </div>
       <div class="page-content">
-        <div class="section-card">
-          <div class="section-body" id="segmentSummaryCards" style="display:flex;gap:12px;flex-wrap:wrap;">
-          </div>
-        </div>
+        <div class="analytics-stats" id="segmentSummaryCards"></div>
         <div class="section-card">
           <div class="section-header">
             <div class="section-title">Customers</div>
@@ -3365,10 +3363,7 @@ function toggleGatewayMode() {
         <p>Track referral signups and conversions</p>
       </div>
       <div class="page-content">
-        <div class="section-card">
-          <div class="section-body" id="referralSummaryCards" style="display:flex;gap:12px;flex-wrap:wrap;">
-          </div>
-        </div>
+        <div class="analytics-stats" id="referralSummaryCards"></div>
         <div class="section-card">
           <div class="section-header">
             <div class="section-title">Top Referrers</div>
@@ -3413,14 +3408,14 @@ function toggleGatewayMode() {
           <div class="section-header">
             <div class="section-title">Loyalty Program ROI</div>
           </div>
-          <div class="section-body" id="loyaltyRoiCards" style="display:flex;gap:12px;flex-wrap:wrap;">
+          <div class="analytics-stats" id="loyaltyRoiCards">
           </div>
         </div>
         <div class="section-card">
           <div class="section-header">
             <div class="section-title">Referral Revenue</div>
           </div>
-          <div class="section-body" id="referralRevenueCards" style="display:flex;gap:12px;flex-wrap:wrap;">
+          <div class="analytics-stats" id="referralRevenueCards">
           </div>
         </div>
         <div class="section-card">
