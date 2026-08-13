@@ -1532,7 +1532,30 @@ function renderCart() {
       }
       discountLabel = appliedCoupon.code + ' (' + (appliedCoupon.type === 'percent' ? appliedCoupon.discount + '%' : getCurrency() + appliedCoupon.discount) + ')';
     }
-    var finalTotal = Math.max(0, totalPrice - discountAmount);
+    var remainingAfterCoupon = Math.max(0, totalPrice - discountAmount);
+    var loyaltyMaxUsable = getLoyaltyMaxUsablePoints(remainingAfterCoupon);
+    var canUseLoyalty = loyaltyMaxUsable >= loyaltyMinRedeemPoints && loyaltyMaxUsable > 0;
+    var loyaltyDiscountAmount = (useLoyaltyPoints && canUseLoyalty) ? +(loyaltyMaxUsable * loyaltyRedeemValuePerPoint).toFixed(2) : 0;
+    var finalTotal = Math.max(0, remainingAfterCoupon - loyaltyDiscountAmount);
+
+    if (loyaltyProgramEnabled && loyaltyBalance > 0) {
+      cartHtml +=
+        '<div class="card card-pad" id="loyaltyCard">' +
+          '<div class="coupon-header">' +
+            '<div class="icon-wrap"><i class="fa fa-gift"></i></div>' +
+            '<div class="header-text">' +
+              '<strong>' + loyaltyBalance + ' Loyalty Points Available</strong>' +
+              '<span>Worth ' + getCurrency() + (loyaltyBalance * loyaltyRedeemValuePerPoint).toFixed(2) + '</span>' +
+            '</div>' +
+          '</div>' +
+          (canUseLoyalty ?
+            '<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;cursor:pointer;">' +
+              '<input type="checkbox" ' + (useLoyaltyPoints ? 'checked' : '') + ' onchange="toggleLoyaltyRedeem()"> ' +
+              'Use ' + loyaltyMaxUsable + ' points to save ' + getCurrency() + (loyaltyMaxUsable * loyaltyRedeemValuePerPoint).toFixed(2) +
+            '</label>'
+            : '<div style="font-size:12px;color:#999;margin-top:6px;">Minimum ' + loyaltyMinRedeemPoints + ' points required to redeem</div>') +
+        '</div>';
+    }
 
     cartHtml +=
     '<div class="card card-pad">' +
@@ -1549,6 +1572,10 @@ function renderCart() {
         (discountAmount > 0 ? '<div class="price-row discount">' +
           '<span>Discount (' + discountLabel + ')</span>' +
           '<span class="val">-' + getCurrency() + discountAmount.toFixed(2) + '</span>' +
+        '</div>' : '') +
+        (loyaltyDiscountAmount > 0 ? '<div class="price-row discount">' +
+          '<span>Loyalty Points (' + loyaltyMaxUsable + ' pts)</span>' +
+          '<span class="val">-' + getCurrency() + loyaltyDiscountAmount.toFixed(2) + '</span>' +
         '</div>' : '') +
         (PACKAGING_CHARGE > 0 ? '<div class="price-row">' +
           '<span>Packaging Charge</span>' +
@@ -1589,12 +1616,6 @@ function renderCart() {
   container.innerHTML = cartHtml;
   renderGlobalAddons();
   var sym = getCurrency();
-  var discAmt = 0;
-  if (appliedCoupon) {
-    if (appliedCoupon.type === 'percent') discAmt = totalPrice * appliedCoupon.discount / 100;
-    else if (appliedCoupon.type === 'flat') discAmt = appliedCoupon.discount;
-  }
-  var finalTotal = Math.max(0, totalPrice - discAmt);
   document.getElementById('checkoutLabel').textContent = sym + finalTotal.toFixed(2) + ' (' + regQty + ' Items)';
   document.getElementById('checkoutBtn').disabled = true;
 
@@ -1679,6 +1700,42 @@ function showToast(msg, type) {
 var appliedCoupon = null;
 var couponError = '';
 var availableCoupons = [];
+
+// --- Loyalty Points Redemption ---
+var loyaltyProgramEnabled = false;
+var loyaltyBalance = 0;
+var loyaltyRedeemValuePerPoint = 0;
+var loyaltyMinRedeemPoints = 0;
+var useLoyaltyPoints = false;
+
+function loadLoyaltyBalance() {
+  var cd = loadCustomer();
+  var phone = cd && cd.phone ? cd.phone : '';
+  if (!phone) return;
+  var rid = document.querySelector('meta[name=restaurant-id]')?.content || 'RES001';
+  fetch('loyalty_actions.php?action=summary&restaurant_id=' + encodeURIComponent(rid) + '&phone=' + encodeURIComponent(phone))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success || !data.enrolled || !data.loyalty_enabled) return;
+      loyaltyProgramEnabled = true;
+      loyaltyBalance = data.points_balance || 0;
+      loyaltyRedeemValuePerPoint = data.redeem_value_per_point || 0;
+      loyaltyMinRedeemPoints = data.min_redeem_points || 0;
+      renderCart();
+    })
+    .catch(function() {});
+}
+
+function getLoyaltyMaxUsablePoints(remainingAfterCoupon) {
+  if (!loyaltyProgramEnabled || loyaltyRedeemValuePerPoint <= 0) return 0;
+  var maxByOrderValue = Math.floor(remainingAfterCoupon / loyaltyRedeemValuePerPoint);
+  return Math.max(0, Math.min(loyaltyBalance, maxByOrderValue));
+}
+
+function toggleLoyaltyRedeem() {
+  useLoyaltyPoints = !useLoyaltyPoints;
+  renderCart();
+}
 
 function loadCouponsFromServer() {
   var rid = document.querySelector('meta[name=restaurant-id]')?.content || 'RES001';
@@ -1907,8 +1964,17 @@ function getCartTotal() {
     if (appliedCoupon.type === 'percent') discountAmount = totalPrice * appliedCoupon.discount / 100;
     else if (appliedCoupon.type === 'flat') discountAmount = appliedCoupon.discount;
   }
-  var finalTotal = Math.max(0, totalPrice - discountAmount);
-  return { totalQty: totalQty, totalPrice: totalPrice, keys: keys, discountAmount: discountAmount, finalTotal: finalTotal, appliedCoupon: appliedCoupon };
+  var remainingAfterCoupon = Math.max(0, totalPrice - discountAmount);
+  var loyaltyMaxUsable = getLoyaltyMaxUsablePoints(remainingAfterCoupon);
+  var loyaltyPointsRedeemed = (useLoyaltyPoints && loyaltyMaxUsable >= loyaltyMinRedeemPoints && loyaltyMaxUsable > 0) ? loyaltyMaxUsable : 0;
+  var loyaltyDiscountAmount = loyaltyPointsRedeemed > 0 ? +(loyaltyPointsRedeemed * loyaltyRedeemValuePerPoint).toFixed(2) : 0;
+  var finalTotal = Math.max(0, remainingAfterCoupon - loyaltyDiscountAmount);
+  return {
+    totalQty: totalQty, totalPrice: totalPrice, keys: keys,
+    discountAmount: discountAmount, appliedCoupon: appliedCoupon,
+    loyaltyPointsRedeemed: loyaltyPointsRedeemed, loyaltyDiscountAmount: loyaltyDiscountAmount,
+    finalTotal: finalTotal
+  };
 }
 
 function proceedCheckout() {
@@ -2620,6 +2686,7 @@ function processOrder(cartData) {
       payment_proof_base64: (payment === 'QR Payment' && window.__paymentProofBase64) ? window.__paymentProofBase64 : '',
       coupon_code: appliedCoupon ? appliedCoupon.code : '',
       discount_amount: cartData.discountAmount || 0,
+      redeem_points: cartData.loyaltyPointsRedeemed || 0,
       delivery_zone_id: deliveryZoneId,
       delivery_charge: deliveryCharge,
       packaging_charge: PACKAGING_CHARGE
@@ -3476,6 +3543,7 @@ document.addEventListener('DOMContentLoaded', function() {
   loadMenuItems();
   fetchAddons();
   loadCouponsFromServer();
+  loadLoyaltyBalance();
   checkPhonePeReturn();
   setTimeout(fitCartBrand, 100);
   setTimeout(fitCartBrand, 500);

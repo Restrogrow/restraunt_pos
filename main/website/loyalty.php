@@ -119,6 +119,10 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
             <input type="number" id="redeemPointsInput" placeholder="Points to redeem" min="1">
             <button class="btn-loyalty primary" style="flex:0 0 auto; padding:10px 16px;" onclick="redeemPoints()">Redeem</button>
           </div>
+          <div id="redeemCodeBox" style="display:none;margin-top:12px;background:#fdf0ed;border:1.5px dashed #e17055;border-radius:10px;padding:12px 14px;text-align:center;">
+            <div style="font-size:11px;color:#666;">Show this code to staff to apply your discount</div>
+            <div id="redeemCodeText" style="font-size:22px;font-weight:800;letter-spacing:3px;color:#d63031;margin-top:4px;"></div>
+          </div>
         </div>
 
         <div class="section-card fade-in">
@@ -286,8 +290,12 @@ function redeemPoints() {
     .then(function(r) { return r.json(); })
     .then(function(res) {
       if (res.success) {
-        showToast(res.message || 'Points redeemed!');
+        showToast('Points redeemed!');
         input.value = '';
+        if (res.code) {
+          document.getElementById('redeemCodeText').textContent = res.code;
+          document.getElementById('redeemCodeBox').style.display = 'block';
+        }
         loadLoyaltySummary();
       } else {
         showToast(res.message || 'Could not redeem points', 'error');

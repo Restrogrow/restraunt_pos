@@ -109,6 +109,21 @@ try {
             }
             break;
 
+        case 'lookup_redemption':
+            $code = trim($_POST['code'] ?? '');
+            if (!$code) throw new Exception('Redemption code is required');
+            $redemption = findRedemptionByCode($conn, $restaurant_id, $code);
+            if (!$redemption) throw new Exception('Redemption code not found');
+            echo json_encode(['success' => true, 'redemption' => $redemption]);
+            break;
+
+        case 'mark_redemption_used':
+            $code = trim($_POST['code'] ?? '');
+            if (!$code) throw new Exception('Redemption code is required');
+            markRedemptionUsed($conn, $restaurant_id, $code);
+            echo json_encode(['success' => true, 'message' => 'Redemption marked as used']);
+            break;
+
         default:
             throw new Exception('Invalid action');
     }

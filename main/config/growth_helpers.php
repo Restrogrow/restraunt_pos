@@ -128,6 +128,22 @@ function ensureGrowthSchema(PDO $conn): void {
         }
     }
 
+    // loyalty_points_ledger.redemption_code / redemption_status — only set
+    // for self-serve counter redemptions (order_id IS NULL), so staff have
+    // something to look up and mark used instead of just trusting the
+    // customer's word. Redemptions applied automatically at website checkout
+    // are already tied to a real order_id and need no separate code.
+    try {
+        $conn->query("SELECT redemption_code FROM loyalty_points_ledger LIMIT 1");
+    } catch (PDOException $e) {
+        try {
+            $conn->exec("ALTER TABLE loyalty_points_ledger
+                ADD COLUMN redemption_code VARCHAR(10) DEFAULT NULL,
+                ADD COLUMN redemption_status ENUM('pending','used') DEFAULT NULL,
+                ADD INDEX idx_redemption_code (redemption_code)");
+        } catch (PDOException $e2) {}
+    }
+
     // customers.loyalty_points_balance
     try {
         $conn->query("SELECT loyalty_points_balance FROM customers LIMIT 1");
@@ -270,11 +286,20 @@ function awardLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id, 
 }
 
 /**
- * Redeem points for a customer, returning the currency discount value.
- * Caller is responsible for applying that discount to whatever order/cart
- * is in progress. Throws on invalid redemption (insufficient balance, etc).
+ * Redeem points for a customer. Throws on invalid redemption (insufficient
+ * balance, below minimum, program disabled, etc).
+ *
+ * When $order_id is given (redemption applied automatically at website
+ * checkout), the order itself is the record of what happened — no
+ * verification code is needed. When $order_id is null (self-serve counter
+ * redemption from the customer's Loyalty page), staff have no other way to
+ * confirm the redemption, so a short code is generated and left 'pending'
+ * until a staff member looks it up and marks it used (see
+ * findRedemptionByCode() / markRedemptionUsed()).
+ *
+ * @return array{discount_value: float, code: ?string}
  */
-function redeemLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id, int $points, ?int $order_id = null): float {
+function redeemLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id, int $points, ?int $order_id = null): array {
     ensureGrowthSchema($conn);
 
     $settings = getGrowthSettings($conn, $restaurant_id);
@@ -301,18 +326,95 @@ function redeemLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id,
     $newBalance = (int)$customer['loyalty_points_balance'] - $points;
     $discountValue = round($points * (float)$settings['redeem_value_per_point'], 2);
 
+    $code = null;
+    $status = null;
+    if ($order_id === null) {
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $candidate = strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
+            $dupe = $conn->prepare("SELECT 1 FROM loyalty_points_ledger WHERE restaurant_id = ? AND redemption_code = ?");
+            $dupe->execute([$restaurant_id, $candidate]);
+            if (!$dupe->fetch()) {
+                $code = $candidate;
+                break;
+            }
+        }
+        if ($code === null) {
+            throw new Exception('Could not generate a redemption code, please try again');
+        }
+        $status = 'pending';
+    }
+
     $conn->prepare("UPDATE customers SET loyalty_points_balance = ? WHERE id = ?")->execute([$newBalance, $customer_id]);
     $conn->prepare(
-        "INSERT INTO loyalty_points_ledger (restaurant_id, customer_id, order_id, points_change, balance_after, type, note)
-         VALUES (?, ?, ?, ?, ?, 'redeemed', ?)"
-    )->execute([$restaurant_id, $customer_id, $order_id, -$points, $newBalance, "Redeemed for " . $discountValue]);
+        "INSERT INTO loyalty_points_ledger (restaurant_id, customer_id, order_id, points_change, balance_after, type, note, redemption_code, redemption_status)
+         VALUES (?, ?, ?, ?, ?, 'redeemed', ?, ?, ?)"
+    )->execute([
+        $restaurant_id, $customer_id, $order_id, -$points, $newBalance,
+        $order_id ? "Redeemed for order #$order_id" : ("Redeemed for " . $discountValue . ($code ? " (code: $code)" : '')),
+        $code, $status,
+    ]);
 
     if ($order_id) {
         $conn->prepare("UPDATE orders SET loyalty_points_redeemed = ?, loyalty_discount_amount = ? WHERE id = ?")
             ->execute([$points, $discountValue, $order_id]);
     }
 
-    return $discountValue;
+    return ['discount_value' => $discountValue, 'code' => $code];
+}
+
+/**
+ * Look up a pending/used self-serve redemption by its staff-facing code.
+ * Read-only — does not mark it used (see markRedemptionUsed()).
+ */
+function findRedemptionByCode(PDO $conn, string $restaurant_id, string $code): ?array {
+    ensureGrowthSchema($conn);
+
+    $stmt = $conn->prepare(
+        "SELECT l.id, l.points_change, l.balance_after, l.redemption_status, l.created_at,
+                c.customer_name, c.phone,
+                s.redeem_value_per_point
+         FROM loyalty_points_ledger l
+         JOIN customers c ON c.id = l.customer_id
+         LEFT JOIN growth_settings s ON s.restaurant_id = l.restaurant_id
+         WHERE l.restaurant_id = ? AND l.redemption_code = ?"
+    );
+    $stmt->execute([$restaurant_id, strtoupper(trim($code))]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        return null;
+    }
+
+    $points = abs((int)$row['points_change']);
+    return [
+        'ledger_id' => (int)$row['id'],
+        'customer_name' => $row['customer_name'],
+        'phone' => $row['phone'],
+        'points' => $points,
+        'discount_value' => round($points * (float)($row['redeem_value_per_point'] ?? 0), 2),
+        'status' => $row['redemption_status'],
+        'created_at' => $row['created_at'],
+    ];
+}
+
+/**
+ * Mark a self-serve redemption code as used, once staff has honored it at
+ * the counter. Throws if the code doesn't exist or was already used, so a
+ * code can't be applied twice.
+ */
+function markRedemptionUsed(PDO $conn, string $restaurant_id, string $code): void {
+    ensureGrowthSchema($conn);
+
+    $stmt = $conn->prepare("SELECT id, redemption_status FROM loyalty_points_ledger WHERE restaurant_id = ? AND redemption_code = ? FOR UPDATE");
+    $stmt->execute([$restaurant_id, strtoupper(trim($code))]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        throw new Exception('Redemption code not found');
+    }
+    if ($row['redemption_status'] === 'used') {
+        throw new Exception('This code has already been used');
+    }
+
+    $conn->prepare("UPDATE loyalty_points_ledger SET redemption_status = 'used' WHERE id = ?")->execute([$row['id']]);
 }
 
 /**

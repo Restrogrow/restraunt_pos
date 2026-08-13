@@ -3210,6 +3210,23 @@ function toggleGatewayMode() {
 
         <div class="section-card">
           <div class="section-header">
+            <div class="section-title">Verify Redemption</div>
+          </div>
+          <div class="section-body">
+            <p style="color:#666;font-size:0.85rem;margin:0 0 12px;">When a customer redeems points on their Loyalty page for an in-person order, they're given a 5-character code. Enter it here to confirm the discount and mark it used, so it can't be reused.</p>
+            <div class="row" style="display:flex;gap:12px;align-items:flex-end;">
+              <div class="form-group" style="flex:1;max-width:220px;">
+                <label>Redemption Code</label>
+                <input type="text" id="redemptionCodeInput" class="form-control" maxlength="10" style="text-transform:uppercase;" placeholder="e.g. A1B2C" onkeydown="if(event.key==='Enter')lookupRedemption()">
+              </div>
+              <button class="btn btn-primary" onclick="lookupRedemption()">Look Up</button>
+            </div>
+            <div id="redemptionResult" style="margin-top:14px;"></div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
             <div class="section-title">Referral Program</div>
           </div>
           <div class="section-body">

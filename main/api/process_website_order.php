@@ -70,6 +70,7 @@ if ($payment_proof_base64 !== '' && preg_match('/^data:(image\/(?:jpeg|jpg|png|w
 }
 $coupon_code = $input['coupon_code'] ?? '';
 $discount_amount = (float)($input['discount_amount'] ?? 0);
+$redeem_points_requested = max(0, (int)($input['redeem_points'] ?? 0));
 $delivery_zone_id = $input['delivery_zone_id'] ?? '';
 $delivery_charge = (float)($input['delivery_charge'] ?? 0);
 $packaging_charge = (float)($input['packaging_charge'] ?? 0);
@@ -498,6 +499,38 @@ $conn->beginTransaction();
     }
     // --- End server-side discount verification ---
 
+    // --- Loyalty points redemption (server-authoritative) ---
+    // Mirrors the coupon verification above: the client can only *request*
+    // a number of points to redeem, never a discount amount — the server
+    // re-validates the customer's real balance and settings, and caps the
+    // points used so the discount never exceeds what's left of the order.
+    $loyalty_points_to_redeem = 0;
+    $loyalty_discount_amount = 0;
+    $loyaltyCustomerId = null;
+    if ($redeem_points_requested > 0) {
+        require_once __DIR__ . '/../config/growth_helpers.php';
+        $growthSettings = getGrowthSettings($conn, $restaurant_id);
+        if (!empty($growthSettings['loyalty_enabled'])) {
+            $loyaltyCustLookup = $conn->prepare("SELECT id, loyalty_points_balance FROM customers WHERE restaurant_id = ? AND phone = ? FOR UPDATE");
+            $loyaltyCustLookup->execute([$restaurant_id, $customer_phone]);
+            $loyaltyCustomerRow = $loyaltyCustLookup->fetch(PDO::FETCH_ASSOC);
+            if ($loyaltyCustomerRow) {
+                $availablePoints = (int)$loyaltyCustomerRow['loyalty_points_balance'];
+                $minRedeem = (int)($growthSettings['min_redeem_points'] ?? 0);
+                $redeemValuePerPoint = (float)($growthSettings['redeem_value_per_point'] ?? 0);
+                $remainingAfterCoupon = max(0, $total - $discount_amount);
+                $maxUsefulPoints = $redeemValuePerPoint > 0 ? (int)floor($remainingAfterCoupon / $redeemValuePerPoint) : 0;
+                $candidatePoints = min($redeem_points_requested, $availablePoints, $maxUsefulPoints);
+                if ($candidatePoints > 0 && $candidatePoints >= $minRedeem) {
+                    $loyalty_points_to_redeem = $candidatePoints;
+                    $loyalty_discount_amount = round($loyalty_points_to_redeem * $redeemValuePerPoint, 2);
+                    $loyaltyCustomerId = (int)$loyaltyCustomerRow['id'];
+                }
+            }
+        }
+    }
+    // --- End loyalty points verification ---
+
     // Generate unique order number function
     if (!function_exists('generateOrderNumber')) {
         function generateOrderNumber($conn = null, $restaurant_id = null) {
@@ -548,7 +581,7 @@ $conn->beginTransaction();
     $deliveryCharge = (float)$delivery_charge;
     $subtotal = (float)$total;
     // Tax is on the discounted subtotal only — packaging is NOT taxable
-    $taxable = $subtotal - (float)$discount_amount;
+    $taxable = $subtotal - (float)$discount_amount - (float)$loyalty_discount_amount;
     if ($taxable < 0) $taxable = 0;
     $tax = $gstEnabled ? round($taxable * ($taxPercent / 100), 2) : 0;
     $grand_total = $taxable + $tax + $deliveryCharge + (float)$packaging_charge;
@@ -604,8 +637,8 @@ $conn->beginTransaction();
 
     // Create order
     try {
-        $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, landmark, address_lat, address_lng, notes, coupon_code, discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
-        $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $landmark, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+        $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, landmark, address_lat, address_lng, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
+        $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $landmark, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
     } catch (PDOException $e) {
         // landmark / address_lat / address_lng migrations may not have been
         // run on this DB yet - fall back so order placement never breaks
@@ -616,11 +649,11 @@ $conn->beginTransaction();
             throw $e;
         }
         if ($missingLandmark && !$missingLatLng) {
-            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, address_lat, address_lng, notes, coupon_code, discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
-            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, address_lat, address_lng, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
+            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
         } else {
-            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, notes, coupon_code, discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
-            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $notes, $coupon_code, $discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
+            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
         }
     }
     $order_id = $conn->lastInsertId();
@@ -731,6 +764,22 @@ $conn->beginTransaction();
         }
     }
     
+    // Apply the loyalty points redemption validated earlier, now that the
+    // order exists to tie it to. Re-validates inside redeemLoyaltyPoints()
+    // (its own row lock + balance check) as defense in depth; a failure
+    // here means the balance changed between validation and now, which
+    // should be rare given the FOR UPDATE lock held since validation.
+    if ($loyalty_points_to_redeem > 0 && $loyaltyCustomerId) {
+        try {
+            redeemLoyaltyPoints($conn, $restaurant_id, $loyaltyCustomerId, $loyalty_points_to_redeem, (int)$order_id);
+        } catch (Exception $e) {
+            $conn->rollBack();
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Could not apply loyalty points: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+    }
+
     // Record payment (skip for PhonePe — recorded via webhook/callback)
     if ($payment_method !== 'PhonePe' && $payment_method !== 'UPI / NetBanking') {
         try {

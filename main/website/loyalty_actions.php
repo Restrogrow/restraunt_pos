@@ -103,9 +103,14 @@ try {
 
             $conn->beginTransaction();
             try {
-                $discountValue = redeemLoyaltyPoints($conn, $restaurantId, (int)$customer['id'], $points);
+                $result = redeemLoyaltyPoints($conn, $restaurantId, (int)$customer['id'], $points);
                 $conn->commit();
-                echo json_encode(['success' => true, 'discount_value' => $discountValue, 'message' => 'Points redeemed — show this to our staff to apply your discount.']);
+                echo json_encode([
+                    'success' => true,
+                    'discount_value' => $result['discount_value'],
+                    'code' => $result['code'],
+                    'message' => 'Redeemed! Show code ' . $result['code'] . ' to our staff to apply your ' . number_format($result['discount_value'], 2) . ' discount.',
+                ]);
             } catch (Exception $e) {
                 $conn->rollBack();
                 throw $e;

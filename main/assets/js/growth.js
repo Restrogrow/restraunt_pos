@@ -110,6 +110,58 @@ async function saveGrowthSettings() {
   }
 }
 
+/* ── Verify Redemption ── */
+async function lookupRedemption() {
+  const input = document.getElementById('redemptionCodeInput');
+  const code = input.value.trim().toUpperCase();
+  const resultEl = document.getElementById('redemptionResult');
+  if (!code) { showSweetAlert('Enter a redemption code', 'error'); return; }
+
+  const fd = new FormData();
+  fd.append('action', 'lookup_redemption');
+  fd.append('code', code);
+
+  try {
+    const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!data.success) {
+      resultEl.innerHTML = `<div style="color:#dc2626;font-size:0.9rem;">${escapeHtml(data.message || 'Not found')}</div>`;
+      return;
+    }
+
+    const r = data.redemption;
+    const cur = growthCur();
+    const used = r.status === 'used';
+    resultEl.innerHTML = `
+      <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:600;">${escapeHtml(r.customer_name || '-')} <span style="color:#999;font-weight:400;">(${escapeHtml(r.phone || '-')})</span></div>
+          <div style="font-size:0.9rem;color:#333;margin-top:4px;">${r.points} points &middot; <strong>${cur}${Number(r.discount_value).toFixed(2)}</strong> discount</div>
+          <div style="margin-top:6px;">${used ? growthPill('Already Used', '#fee2e2', '#dc2626') : growthPill('Pending', '#fef3c7', '#92400e')}</div>
+        </div>
+        ${used ? '' : `<button class="btn btn-primary" onclick="markRedemptionUsed('${code}')">Mark as Used</button>`}
+      </div>
+    `;
+  } catch (e) {
+    resultEl.innerHTML = `<div style="color:#dc2626;font-size:0.9rem;">Failed to look up code</div>`;
+  }
+}
+
+async function markRedemptionUsed(code) {
+  const fd = new FormData();
+  fd.append('action', 'mark_redemption_used');
+  fd.append('code', code);
+
+  try {
+    const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    showSweetAlert(data.message || (data.success ? 'Marked as used' : 'Failed'), data.success ? 'success' : 'error');
+    if (data.success) lookupRedemption();
+  } catch (e) {
+    showSweetAlert('Failed to mark redemption used', 'error');
+  }
+}
+
 /* ── Loyalty Tiers ── */
 function renderTiersTable(tiers) {
   const tbody = document.getElementById('tiersTbody');
