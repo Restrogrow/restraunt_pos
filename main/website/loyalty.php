@@ -72,6 +72,39 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .toast-notification.error { background: #ef4444; color: #fff; }
 .skeleton-block { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 10px; height: 80px; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 425px;
+  background: #fff; border-top: 1px solid #e8e8e8;
+  display: flex; align-items: center; padding: 8px 12px 10px;
+  z-index: 100;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 2px; cursor: pointer; position: relative;
+  border: none; background: none; font-family: 'Poppins', sans-serif;
+}
+.nav-item img { width: 30px; height: 30px; }
+.nav-item span { font-size: 11px; color: #555; }
+.nav-item.active span { color: #2d3436; font-weight: 600; }
+.nav-icon { font-size: 24px; color: #888; display: block; margin: 0 auto; }
+.nav-item.active .nav-icon { color: #2d3436; }
+.cart-badge {
+  position: absolute; top: -5px; right: 50%;
+  transform: translateX(17px);
+  background: #ff4444; color: #fff; font-size: 10px;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600;
+}
+.login-btn {
+  background: linear-gradient(135deg, #e17055, #d63031);
+  color: #fff; border: none; border-radius: 8px;
+  padding: 6px 14px; font-size: 11px; font-family: 'Poppins', sans-serif;
+  cursor: pointer; font-weight: 500;
+}
 </style>
 </head>
 <body>
