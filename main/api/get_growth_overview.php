@@ -25,6 +25,8 @@ try {
     $stmt->execute([$restaurant_id]);
     $tiers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    $rewards = getLoyaltyRewards($conn, $restaurant_id, false);
+
     $stmt = $conn->prepare(
         "SELECT
             COALESCE(SUM(CASE WHEN type = 'earned' THEN points_change ELSE 0 END), 0) AS points_issued,
@@ -55,6 +57,7 @@ try {
         'success' => true,
         'settings' => $settings,
         'tiers' => $tiers,
+        'rewards' => $rewards,
         'totals' => [
             'points_issued' => (int)$totals['points_issued'],
             'points_redeemed' => (int)$totals['points_redeemed'],

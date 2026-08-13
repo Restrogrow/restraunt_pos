@@ -3205,6 +3205,12 @@ function toggleGatewayMode() {
                 <input type="number" id="gsMinRedeemPoints" class="form-control" min="0" step="1">
               </div>
             </div>
+            <div class="row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;">
+                <label>Points expire after (days of inactivity)</label>
+                <input type="number" id="gsPointsExpiryDays" class="form-control" min="0" step="1" placeholder="0 = never expire">
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3283,6 +3289,24 @@ function toggleGatewayMode() {
 
         <div class="section-card">
           <div class="section-header">
+            <div class="section-title">Free Item Rewards</div>
+            <button class="btn btn-primary" onclick="openRewardModal()">+ New Reward</button>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <p style="color:#666;font-size:0.85rem;margin:0 0 12px;">Let customers redeem points for a specific free menu item, in addition to the cash discount above.</p>
+            <table class="data-table" id="rewardsTable">
+              <thead>
+                <tr><th>Item</th><th>Points Cost</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="rewardsTbody">
+                <tr><td colspan="4" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
             <div class="section-title">Loyalty Card QR (for counter display)</div>
           </div>
           <div class="section-body" style="text-align:center;">
@@ -3319,6 +3343,29 @@ function toggleGatewayMode() {
             <input type="number" id="tierSortOrder" class="form-control" min="0" step="1" value="0">
           </div>
           <button class="btn btn-primary" onclick="saveTier()">Save Tier</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Free Item Reward Add Modal -->
+    <div id="rewardModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>New Free Item Reward</h2>
+          <button class="modal-close" onclick="closeModal('rewardModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Menu Item</label>
+            <select id="rewardMenuItemId" class="form-control">
+              <option value="">Loading menu items...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Points Cost</label>
+            <input type="number" id="rewardPointsCost" class="form-control" min="1" step="1">
+          </div>
+          <button class="btn btn-primary" onclick="saveReward()">Add Reward</button>
         </div>
       </div>
     </div>
@@ -3421,6 +3468,21 @@ function toggleGatewayMode() {
         <p>Revenue attributable to loyalty and referrals</p>
       </div>
       <div class="page-content">
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Last 30 Days vs Previous 30 Days</div>
+          </div>
+          <div class="section-body" style="overflow-x:auto;">
+            <table class="data-table" id="growthTrendTable">
+              <thead>
+                <tr><th>Metric</th><th>Last 30 Days</th><th>Previous 30 Days</th><th>Change</th></tr>
+              </thead>
+              <tbody id="growthTrendTbody">
+                <tr><td colspan="4" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
         <div class="section-card">
           <div class="section-header">
             <div class="section-title">Loyalty Program ROI</div>

@@ -19,7 +19,7 @@ try {
     $conn = function_exists('getConnection') ? getConnection() : ($pdo ?? null);
     if (!$conn) throw new Exception('No connection');
 
-    $stmt = $conn->prepare("SELECT o.id, o.order_status, o.order_type, o.total, o.delivery_charge, o.source
+    $stmt = $conn->prepare("SELECT o.id, o.order_status, o.order_type, o.total, o.delivery_charge, o.source, o.loyalty_points_earned
         FROM orders o WHERE o.order_number = ? AND o.customer_phone = ? AND o.source = 'website' LIMIT 1");
     $stmt->execute([$orderNumber, $customerPhone]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -49,6 +49,7 @@ try {
         'order_type' => $order['order_type'],
         'total' => $order['total'],
         'delivery_charge' => $order['delivery_charge'],
+        'loyalty_points_earned' => (int)($order['loyalty_points_earned'] ?? 0),
         'tracking' => $tracking
     ]);
 } catch (Exception $e) {

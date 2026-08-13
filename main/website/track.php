@@ -181,6 +181,10 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
             <div class="status-badge status-<?php echo strtolower($order['order_status']); ?>" id="orderStatusBadge">
                 <span id="orderStatusText"><?php echo htmlspecialchars($statusLabels[$order['order_status']] ?? $order['order_status']); ?></span>
             </div>
+            <div id="loyaltyEarnedNotice" style="display:<?php echo (($order['loyalty_points_earned'] ?? 0) > 0) ? 'block' : 'none'; ?>;margin-top:10px;background:#fdf0ed;border:1.5px dashed #e17055;border-radius:10px;padding:10px 14px;font-size:13px;color:#d63031;font-weight:600;">
+                <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">redeem</span>
+                You earned <span id="loyaltyEarnedPoints"><?php echo (int)($order['loyalty_points_earned'] ?? 0); ?></span> loyalty points on this order!
+            </div>
         </div>
 
         <?php if ($order['order_type'] === 'Delivery'): ?>
@@ -339,6 +343,14 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 if (statusEl && d.order_status) {
                     statusEl.textContent = statusLabels[d.order_status] || d.order_status;
                     badgeEl.className = 'status-badge status-' + d.order_status.toLowerCase();
+                }
+                if (typeof d.loyalty_points_earned !== 'undefined' && d.loyalty_points_earned > 0) {
+                    var loyaltyNotice = document.getElementById('loyaltyEarnedNotice');
+                    var loyaltyPointsEl = document.getElementById('loyaltyEarnedPoints');
+                    if (loyaltyNotice && loyaltyPointsEl) {
+                        loyaltyPointsEl.textContent = d.loyalty_points_earned;
+                        loyaltyNotice.style.display = 'block';
+                    }
                 }
                 // Reflects a delivery charge the restaurant sets when accepting
                 // the order (KM-based delivery pricing) — not present at page

@@ -57,11 +57,26 @@ try {
 
             $stmt = $conn->prepare("SELECT tier_name, min_total_spent, icon FROM loyalty_tiers WHERE restaurant_id = ? ORDER BY min_total_spent DESC");
             $stmt->execute([$restaurantId]);
-            $tiers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $tiersDesc = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $currentTier = null;
-            foreach ($tiers as $tier) {
+            foreach ($tiersDesc as $tier) {
                 if ((float)$customer['total_spent'] >= (float)$tier['min_total_spent']) {
                     $currentTier = $tier;
+                    break;
+                }
+            }
+
+            // Next tier up (the cheapest tier still above current spend) —
+            // ordering ascending here so the first one found is the closest.
+            $nextTier = null;
+            $tiersAsc = array_reverse($tiersDesc);
+            foreach ($tiersAsc as $tier) {
+                if ((float)$tier['min_total_spent'] > (float)$customer['total_spent']) {
+                    $nextTier = [
+                        'tier_name' => $tier['tier_name'],
+                        'min_total_spent' => (float)$tier['min_total_spent'],
+                        'amount_needed' => round((float)$tier['min_total_spent'] - (float)$customer['total_spent'], 2),
+                    ];
                     break;
                 }
             }
@@ -75,6 +90,8 @@ try {
             $stmt->execute([$restaurantId, $customer['id']]);
             $ledger = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            $rewards = getLoyaltyRewards($conn, $restaurantId, true);
+
             echo json_encode([
                 'success' => true,
                 'enrolled' => true,
@@ -84,8 +101,11 @@ try {
                 'redeem_value_per_point' => (float)$settings['redeem_value_per_point'],
                 'min_redeem_points' => (int)$settings['min_redeem_points'],
                 'tier' => $currentTier,
+                'next_tier' => $nextTier,
+                'total_spent' => (float)$customer['total_spent'],
                 'referral_code' => $referralCode,
                 'ledger' => $ledger,
+                'rewards' => $rewards,
             ], JSON_UNESCAPED_UNICODE);
             break;
 
@@ -110,6 +130,34 @@ try {
                     'discount_value' => $result['discount_value'],
                     'code' => $result['code'],
                     'message' => 'Redeemed! Show code ' . $result['code'] . ' to our staff to apply your ' . number_format($result['discount_value'], 2) . ' discount.',
+                ]);
+            } catch (Exception $e) {
+                $conn->rollBack();
+                throw $e;
+            }
+            break;
+
+        case 'redeem_item':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Exception('Invalid request method');
+            if (!$phone) throw new Exception('Phone number is required');
+
+            $rewardId = (int)($_POST['reward_id'] ?? 0);
+            if ($rewardId <= 0) throw new Exception('Invalid reward');
+
+            $stmt = $conn->prepare("SELECT id FROM customers WHERE restaurant_id = ? AND phone = ?");
+            $stmt->execute([$restaurantId, $phone]);
+            $customer = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$customer) throw new Exception('Customer not found');
+
+            $conn->beginTransaction();
+            try {
+                $result = redeemItemReward($conn, $restaurantId, (int)$customer['id'], $rewardId);
+                $conn->commit();
+                echo json_encode([
+                    'success' => true,
+                    'code' => $result['code'],
+                    'item_name' => $result['item_name'],
+                    'message' => 'Redeemed! Show code ' . $result['code'] . ' to our staff to get your free ' . $result['item_name'] . '.',
                 ]);
             } catch (Exception $e) {
                 $conn->rollBack();

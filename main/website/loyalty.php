@@ -126,6 +126,13 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
           <div class="loyalty-tier-badge" id="tierBadge" style="display:none;"><i class="fa fa-crown"></i> <span id="tierName"></span></div>
         </div>
 
+        <div class="section-card fade-in" id="tierProgressSection" style="display:none;">
+          <div class="section-title" style="margin-bottom:8px;"><i class="fa fa-arrow-trend-up"></i> <span id="tierProgressText"></span></div>
+          <div style="background:#f0f0f0;border-radius:8px;height:10px;overflow:hidden;">
+            <div id="tierProgressBar" style="background:linear-gradient(135deg,#f57f17,#e65100);height:100%;width:0%;transition:width 0.4s ease;"></div>
+          </div>
+        </div>
+
         <div class="section-card fade-in" id="referralSection" style="display:none;">
           <div class="section-header">
             <div class="section-title"><i class="fa fa-user-plus"></i> Refer & Earn</div>
@@ -140,6 +147,17 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
           </div>
           <div class="referral-qr">
             <img id="referralQr" src="" alt="Referral QR code" width="140" height="140">
+          </div>
+        </div>
+
+        <div class="section-card fade-in" id="itemRewardsSection" style="display:none;">
+          <div class="section-header">
+            <div class="section-title"><i class="fa fa-burger"></i> Redeem for Free Items</div>
+          </div>
+          <div id="itemRewardsList"></div>
+          <div id="itemRedeemCodeBox" style="display:none;margin-top:12px;background:#fdf0ed;border:1.5px dashed #e17055;border-radius:10px;padding:12px 14px;text-align:center;">
+            <div style="font-size:11px;color:#666;">Show this code to staff to collect your free item</div>
+            <div id="itemRedeemCodeText" style="font-size:22px;font-weight:800;letter-spacing:3px;color:#d63031;margin-top:4px;"></div>
           </div>
         </div>
 
@@ -195,6 +213,11 @@ window.loggedInCustomer = <?php echo $logged_in_customer ? json_encode([
 
 function goBack() {
   window.location.href = '<?php echo restaurantPageUrl('profile'); ?>';
+}
+function escapeHtmlLoyalty(str) {
+  var div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
 }
 function loadCustomerFromStorage() {
   try { var s = localStorage.getItem('customerDetails'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
@@ -258,6 +281,16 @@ function loadLoyaltySummary() {
       document.getElementById('tierName').textContent = res.tier.tier_name;
     }
 
+    if (res.next_tier) {
+      var cur = window.currencySymbol;
+      var floorSpent = res.tier ? res.tier.min_total_spent : 0;
+      var ceilSpent = res.next_tier.min_total_spent;
+      var pct = ceilSpent > floorSpent ? Math.min(100, Math.max(0, ((res.total_spent - floorSpent) / (ceilSpent - floorSpent)) * 100)) : 0;
+      document.getElementById('tierProgressSection').style.display = 'block';
+      document.getElementById('tierProgressText').textContent = 'Spend ' + cur + res.next_tier.amount_needed.toFixed(2) + ' more to unlock ' + res.next_tier.tier_name;
+      document.getElementById('tierProgressBar').style.width = pct + '%';
+    }
+
     if (res.referral_enabled && res.referral_code) {
       document.getElementById('referralSection').style.display = 'block';
       document.getElementById('referralCode').textContent = res.referral_code;
@@ -268,6 +301,19 @@ function loadLoyaltySummary() {
 
     document.getElementById('redeemSection').style.display = 'block';
     document.getElementById('redeemHint').textContent = 'Minimum ' + res.min_redeem_points + ' points · ' + window.currencySymbol + res.redeem_value_per_point + ' per point';
+
+    if (res.rewards && res.rewards.length) {
+      document.getElementById('itemRewardsSection').style.display = 'block';
+      document.getElementById('itemRewardsList').innerHTML = res.rewards.map(function(r) {
+        var canAfford = res.points_balance >= r.points_cost;
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;">' +
+          '<div><div style="font-size:13px;font-weight:600;color:#1a1b1f;">' + escapeHtmlLoyalty(r.item_name) + '</div>' +
+          '<div style="font-size:11px;color:#999;">' + r.points_cost + ' points</div></div>' +
+          '<button class="btn-loyalty primary" style="flex:0 0 auto;padding:8px 14px;font-size:11px;" ' + (canAfford ? '' : 'disabled style="opacity:0.5;"') +
+          ' onclick="redeemItemReward(' + r.id + ', \'' + escapeHtmlLoyalty(r.item_name).replace(/'/g, "\\'") + '\')">Redeem</button>' +
+        '</div>';
+      }).join('');
+    }
 
     var ledgerEl = document.getElementById('ledgerList');
     if (!res.ledger.length) {
@@ -332,6 +378,31 @@ function redeemPoints() {
         loadLoyaltySummary();
       } else {
         showToast(res.message || 'Could not redeem points', 'error');
+      }
+    })
+    .catch(function() { showToast('Something went wrong', 'error'); });
+}
+
+function redeemItemReward(rewardId, itemName) {
+  var phone = getCustomerPhone();
+  var fd = new FormData();
+  fd.append('action', 'redeem_item');
+  fd.append('restaurant_id', window.restaurantId);
+  fd.append('phone', phone);
+  fd.append('reward_id', rewardId);
+
+  fetch('loyalty_actions.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.success) {
+        showToast('Redeemed!');
+        if (res.code) {
+          document.getElementById('itemRedeemCodeText').textContent = res.code;
+          document.getElementById('itemRedeemCodeBox').style.display = 'block';
+        }
+        loadLoyaltySummary();
+      } else {
+        showToast(res.message || 'Could not redeem this item', 'error');
       }
     })
     .catch(function() { showToast('Something went wrong', 'error'); });

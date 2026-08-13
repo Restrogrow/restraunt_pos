@@ -105,6 +105,21 @@ function ensureGrowthSchema(PDO $conn): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
+    try {
+        $conn->query("SELECT id FROM loyalty_rewards LIMIT 1");
+    } catch (PDOException $e) {
+        $conn->exec("CREATE TABLE IF NOT EXISTS loyalty_rewards (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            restaurant_id VARCHAR(10) NOT NULL,
+            menu_item_id INT NOT NULL,
+            item_name VARCHAR(200) NOT NULL,
+            points_cost INT NOT NULL,
+            is_active TINYINT(1) DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_restaurant (restaurant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
     // The tables above were originally created without an explicit COLLATE,
     // which on this server's default (utf8mb4_general_ci) mismatched the
     // rest of the schema (utf8mb4_unicode_ci) and broke any query joining
@@ -117,7 +132,7 @@ function ensureGrowthSchema(PDO $conn): void {
             $stmt = $conn->query(
                 "SELECT TABLE_NAME FROM information_schema.TABLES
                  WHERE TABLE_SCHEMA = DATABASE()
-                 AND TABLE_NAME IN ('growth_settings','loyalty_points_ledger','loyalty_tiers','referral_codes','referrals')
+                 AND TABLE_NAME IN ('growth_settings','loyalty_points_ledger','loyalty_tiers','referral_codes','referrals','loyalty_rewards')
                  AND TABLE_COLLATION != 'utf8mb4_unicode_ci'"
             );
             foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $badTable) {
@@ -144,11 +159,44 @@ function ensureGrowthSchema(PDO $conn): void {
         } catch (PDOException $e2) {}
     }
 
+    // loyalty_points_ledger.redemption_item_name — set only when a
+    // redemption was for a free menu item (loyalty_rewards) rather than a
+    // cash-value discount, so the verify screen can show what to hand over.
+    try {
+        $conn->query("SELECT redemption_item_name FROM loyalty_points_ledger LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE loyalty_points_ledger ADD COLUMN redemption_item_name VARCHAR(200) DEFAULT NULL"); } catch (PDOException $e2) {}
+    }
+
+    // Expand the ledger's type ENUM to cover clawback/reversal/expiry
+    // entries — MODIFY on an ENUM is safe here since it's additive-only,
+    // every existing row's value stays a valid option.
+    try {
+        $conn->exec("ALTER TABLE loyalty_points_ledger MODIFY COLUMN type
+            ENUM('earned','redeemed','referral_bonus','manual_adjust','clawback','redeem_reversed','expired','item_redeemed') NOT NULL");
+    } catch (PDOException $e) {}
+
+    // growth_settings.points_expiry_days — 0 means points never expire.
+    try {
+        $conn->query("SELECT points_expiry_days FROM growth_settings LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE growth_settings ADD COLUMN points_expiry_days INT DEFAULT 0"); } catch (PDOException $e2) {}
+    }
+
     // customers.loyalty_points_balance
     try {
         $conn->query("SELECT loyalty_points_balance FROM customers LIMIT 1");
     } catch (PDOException $e) {
         try { $conn->exec("ALTER TABLE customers ADD COLUMN loyalty_points_balance INT NOT NULL DEFAULT 0"); } catch (PDOException $e2) {}
+    }
+
+    // customers.signup_ip — captured at signup so a referral can be blocked
+    // when the "friend" signing up shares the referrer's own signup IP
+    // (the most common self-referral farming pattern).
+    try {
+        $conn->query("SELECT signup_ip FROM customers LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE customers ADD COLUMN signup_ip VARCHAR(45) DEFAULT NULL"); } catch (PDOException $e2) {}
     }
 
     // orders.loyalty_* columns
@@ -195,7 +243,7 @@ function saveGrowthSettings(PDO $conn, string $restaurant_id, array $data): void
         'loyalty_enabled', 'earn_points_per_amount', 'earn_amount_threshold',
         'redeem_value_per_point', 'min_redeem_points', 'referral_enabled',
         'referrer_reward_points', 'referred_reward_points',
-        'lapsed_days_threshold', 'high_spender_threshold',
+        'lapsed_days_threshold', 'high_spender_threshold', 'points_expiry_days',
     ];
 
     $set = [];
@@ -286,6 +334,86 @@ function awardLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id, 
 }
 
 /**
+ * Undo whatever loyalty effect an order had, when it's cancelled or its
+ * payment is refunded:
+ *   - if the order had earned points (only possible once it reached
+ *     Completed), claw them back — capped so the balance never goes
+ *     negative, since the customer may have already spent them elsewhere.
+ *   - if the order had redeemed points (a discount applied at checkout),
+ *     give them back — the customer didn't get what they paid points for.
+ *
+ * Idempotent: checks the ledger for a prior reversal of the same kind
+ * before writing another one, so it's safe to call from both the
+ * order-status hook (Cancelled) and the payment-status hook (Refunded)
+ * without double-reversing if both ever fire for the same order.
+ *
+ * Must be called from inside a transaction that already holds a lock on
+ * the order row (see order_state_machine.php).
+ */
+function reverseLoyaltyForOrder(PDO $conn, string $restaurant_id, int $order_id, string $reason): void {
+    ensureGrowthSchema($conn);
+
+    $orderStmt = $conn->prepare("SELECT customer_phone, loyalty_points_earned, loyalty_points_redeemed FROM orders WHERE id = ? AND restaurant_id = ?");
+    $orderStmt->execute([$order_id, $restaurant_id]);
+    $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order || empty($order['customer_phone'])) {
+        return;
+    }
+
+    $pointsEarned = (int)($order['loyalty_points_earned'] ?? 0);
+    $pointsRedeemed = (int)($order['loyalty_points_redeemed'] ?? 0);
+    if ($pointsEarned <= 0 && $pointsRedeemed <= 0) {
+        return;
+    }
+
+    $customerId = findCustomerIdByPhone($conn, $restaurant_id, $order['customer_phone']);
+    if (!$customerId) {
+        return;
+    }
+
+    if ($pointsEarned > 0) {
+        $already = $conn->prepare("SELECT 1 FROM loyalty_points_ledger WHERE order_id = ? AND type = 'clawback' LIMIT 1");
+        $already->execute([$order_id]);
+        if (!$already->fetch()) {
+            $stmt = $conn->prepare("SELECT loyalty_points_balance FROM customers WHERE id = ? AND restaurant_id = ? FOR UPDATE");
+            $stmt->execute([$customerId, $restaurant_id]);
+            $customer = $stmt->fetch();
+            if ($customer) {
+                // Cap the clawback at the current balance — the customer may
+                // have already redeemed points earned from this order.
+                $clawback = min($pointsEarned, (int)$customer['loyalty_points_balance']);
+                if ($clawback > 0) {
+                    $newBalance = (int)$customer['loyalty_points_balance'] - $clawback;
+                    $conn->prepare("UPDATE customers SET loyalty_points_balance = ? WHERE id = ?")->execute([$newBalance, $customerId]);
+                    $conn->prepare(
+                        "INSERT INTO loyalty_points_ledger (restaurant_id, customer_id, order_id, points_change, balance_after, type, note)
+                         VALUES (?, ?, ?, ?, ?, 'clawback', ?)"
+                    )->execute([$restaurant_id, $customerId, $order_id, -$clawback, $newBalance, "Order #$order_id $reason — points clawed back"]);
+                }
+            }
+        }
+    }
+
+    if ($pointsRedeemed > 0) {
+        $already = $conn->prepare("SELECT 1 FROM loyalty_points_ledger WHERE order_id = ? AND type = 'redeem_reversed' LIMIT 1");
+        $already->execute([$order_id]);
+        if (!$already->fetch()) {
+            $stmt = $conn->prepare("SELECT loyalty_points_balance FROM customers WHERE id = ? AND restaurant_id = ? FOR UPDATE");
+            $stmt->execute([$customerId, $restaurant_id]);
+            $customer = $stmt->fetch();
+            if ($customer) {
+                $newBalance = (int)$customer['loyalty_points_balance'] + $pointsRedeemed;
+                $conn->prepare("UPDATE customers SET loyalty_points_balance = ? WHERE id = ?")->execute([$newBalance, $customerId]);
+                $conn->prepare(
+                    "INSERT INTO loyalty_points_ledger (restaurant_id, customer_id, order_id, points_change, balance_after, type, note)
+                     VALUES (?, ?, ?, ?, ?, 'redeem_reversed', ?)"
+                )->execute([$restaurant_id, $customerId, $order_id, $pointsRedeemed, $newBalance, "Order #$order_id $reason — redeemed points refunded"]);
+            }
+        }
+    }
+}
+
+/**
  * Redeem points for a customer. Throws on invalid redemption (insufficient
  * balance, below minimum, program disabled, etc).
  *
@@ -370,7 +498,7 @@ function findRedemptionByCode(PDO $conn, string $restaurant_id, string $code): ?
     ensureGrowthSchema($conn);
 
     $stmt = $conn->prepare(
-        "SELECT l.id, l.points_change, l.balance_after, l.redemption_status, l.created_at,
+        "SELECT l.id, l.points_change, l.balance_after, l.redemption_status, l.redemption_item_name, l.created_at,
                 c.customer_name, c.phone,
                 s.redeem_value_per_point
          FROM loyalty_points_ledger l
@@ -390,7 +518,8 @@ function findRedemptionByCode(PDO $conn, string $restaurant_id, string $code): ?
         'customer_name' => $row['customer_name'],
         'phone' => $row['phone'],
         'points' => $points,
-        'discount_value' => round($points * (float)($row['redeem_value_per_point'] ?? 0), 2),
+        'item_name' => $row['redemption_item_name'],
+        'discount_value' => $row['redemption_item_name'] ? null : round($points * (float)($row['redeem_value_per_point'] ?? 0), 2),
         'status' => $row['redemption_status'],
         'created_at' => $row['created_at'],
     ];
@@ -415,6 +544,142 @@ function markRedemptionUsed(PDO $conn, string $restaurant_id, string $code): voi
     }
 
     $conn->prepare("UPDATE loyalty_points_ledger SET redemption_status = 'used' WHERE id = ?")->execute([$row['id']]);
+}
+
+/**
+ * Zero out loyalty balances for customers who've gone inactive past their
+ * restaurant's configured expiry window (growth_settings.points_expiry_days;
+ * 0 or unset means points never expire, and that restaurant is skipped
+ * entirely). "Inactive" is measured off last_visit_date — the same column
+ * segmentation already uses for "lapsed" — rather than tracking a separate
+ * per-point expiry date, since that would need FIFO batch tracking for
+ * little practical benefit at this scale.
+ *
+ * Intended to run periodically (see the lock-file gate in
+ * db_connection.php, matching the existing trial-expiry sweep), not on
+ * every request — it scans every restaurant with expiry enabled.
+ */
+function expireInactiveLoyaltyPoints(PDO $conn): void {
+    ensureGrowthSchema($conn);
+
+    $restaurants = $conn->query(
+        "SELECT restaurant_id, points_expiry_days FROM growth_settings WHERE loyalty_enabled = 1 AND points_expiry_days > 0"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($restaurants as $r) {
+        $restaurantId = $r['restaurant_id'];
+        $days = (int)$r['points_expiry_days'];
+
+        $stmt = $conn->prepare(
+            "SELECT id, loyalty_points_balance FROM customers
+             WHERE restaurant_id = ? AND loyalty_points_balance > 0
+             AND (last_visit_date IS NULL OR last_visit_date < DATE_SUB(CURDATE(), INTERVAL ? DAY))"
+        );
+        $stmt->execute([$restaurantId, $days]);
+        $expiredCustomers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($expiredCustomers as $customer) {
+            $customerId = (int)$customer['id'];
+            $balance = (int)$customer['loyalty_points_balance'];
+            try {
+                $conn->beginTransaction();
+                $lockStmt = $conn->prepare("SELECT loyalty_points_balance FROM customers WHERE id = ? FOR UPDATE");
+                $lockStmt->execute([$customerId]);
+                $current = (int)$lockStmt->fetchColumn();
+                if ($current > 0) {
+                    $conn->prepare("UPDATE customers SET loyalty_points_balance = 0 WHERE id = ?")->execute([$customerId]);
+                    $conn->prepare(
+                        "INSERT INTO loyalty_points_ledger (restaurant_id, customer_id, order_id, points_change, balance_after, type, note)
+                         VALUES (?, ?, NULL, ?, 0, 'expired', ?)"
+                    )->execute([$restaurantId, $customerId, -$current, "Expired after {$days} days of inactivity"]);
+                }
+                $conn->commit();
+            } catch (Exception $e) {
+                if ($conn->inTransaction()) $conn->rollBack();
+                error_log("Points expiry failed for customer $customerId: " . $e->getMessage());
+            }
+        }
+    }
+}
+
+/**
+ * List a restaurant's free-item rewards (menu item redeemable for points).
+ * $activeOnly filters to is_active=1 — customers should only ever see
+ * active rewards, but the admin management screen needs to see all of them.
+ */
+function getLoyaltyRewards(PDO $conn, string $restaurant_id, bool $activeOnly = false): array {
+    ensureGrowthSchema($conn);
+    $sql = "SELECT id, menu_item_id, item_name, points_cost, is_active FROM loyalty_rewards WHERE restaurant_id = ?";
+    if ($activeOnly) {
+        $sql .= " AND is_active = 1";
+    }
+    $sql .= " ORDER BY points_cost ASC";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$restaurant_id]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
+ * Redeem points for a free menu item instead of a cash discount. Same
+ * verification-code + staff-lookup flow as a cash counter redemption
+ * (redeemLoyaltyPoints() with order_id=null) — the code just carries the
+ * item name instead of a discount amount, so findRedemptionByCode() knows
+ * what to show staff.
+ *
+ * @return array{code: string, item_name: string, points_cost: int}
+ */
+function redeemItemReward(PDO $conn, string $restaurant_id, int $customer_id, int $reward_id): array {
+    ensureGrowthSchema($conn);
+
+    $settings = getGrowthSettings($conn, $restaurant_id);
+    if (empty($settings['loyalty_enabled'])) {
+        throw new Exception('Loyalty program is not enabled');
+    }
+
+    $rewardStmt = $conn->prepare("SELECT item_name, points_cost FROM loyalty_rewards WHERE id = ? AND restaurant_id = ? AND is_active = 1");
+    $rewardStmt->execute([$reward_id, $restaurant_id]);
+    $reward = $rewardStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$reward) {
+        throw new Exception('This reward is no longer available');
+    }
+    $pointsCost = (int)$reward['points_cost'];
+
+    $stmt = $conn->prepare("SELECT loyalty_points_balance FROM customers WHERE id = ? AND restaurant_id = ? FOR UPDATE");
+    $stmt->execute([$customer_id, $restaurant_id]);
+    $customer = $stmt->fetch();
+    if (!$customer) {
+        throw new Exception('Customer not found');
+    }
+    if ((int)$customer['loyalty_points_balance'] < $pointsCost) {
+        throw new Exception('Insufficient points balance');
+    }
+
+    $newBalance = (int)$customer['loyalty_points_balance'] - $pointsCost;
+
+    $code = null;
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $candidate = strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
+        $dupe = $conn->prepare("SELECT 1 FROM loyalty_points_ledger WHERE restaurant_id = ? AND redemption_code = ?");
+        $dupe->execute([$restaurant_id, $candidate]);
+        if (!$dupe->fetch()) {
+            $code = $candidate;
+            break;
+        }
+    }
+    if ($code === null) {
+        throw new Exception('Could not generate a redemption code, please try again');
+    }
+
+    $conn->prepare("UPDATE customers SET loyalty_points_balance = ? WHERE id = ?")->execute([$newBalance, $customer_id]);
+    $conn->prepare(
+        "INSERT INTO loyalty_points_ledger (restaurant_id, customer_id, order_id, points_change, balance_after, type, note, redemption_code, redemption_status, redemption_item_name)
+         VALUES (?, ?, NULL, ?, ?, 'item_redeemed', ?, ?, 'pending', ?)"
+    )->execute([
+        $restaurant_id, $customer_id, -$pointsCost, $newBalance,
+        "Redeemed for {$reward['item_name']} (code: $code)", $code, $reward['item_name'],
+    ]);
+
+    return ['code' => $code, 'item_name' => $reward['item_name'], 'points_cost' => $pointsCost];
 }
 
 /**
@@ -498,8 +763,16 @@ function generateReferralCode(PDO $conn, string $restaurant_id, int $customer_id
  * reward comes later, via completeReferralIfPending(), when the referred
  * customer finishes their first order). No-op if the code doesn't exist
  * for this restaurant, or the customer is referring themselves.
+ *
+ * $referredIp (the new signup's IP) is checked against the referrer's own
+ * signup_ip — the most common farming pattern is one person referring
+ * themselves from a second phone number on the same device/network. This
+ * won't catch someone using a VPN or a different network, but it's a
+ * cheap block for the obvious case with no false positives for genuine
+ * referrals (different people are very unlikely to share an IP at
+ * signup time).
  */
-function recordPendingReferral(PDO $conn, string $restaurant_id, string $referralCode, int $referredCustomerId): void {
+function recordPendingReferral(PDO $conn, string $restaurant_id, string $referralCode, int $referredCustomerId, string $referredIp = ''): void {
     ensureGrowthSchema($conn);
 
     $stmt = $conn->prepare("SELECT customer_id FROM referral_codes WHERE restaurant_id = ? AND code = ?");
@@ -512,6 +785,16 @@ function recordPendingReferral(PDO $conn, string $restaurant_id, string $referra
     $referrerId = (int)$row['customer_id'];
     if ($referrerId === $referredCustomerId) {
         return;
+    }
+
+    if ($referredIp !== '') {
+        $ipStmt = $conn->prepare("SELECT signup_ip FROM customers WHERE id = ? AND restaurant_id = ?");
+        $ipStmt->execute([$referrerId, $restaurant_id]);
+        $referrerIp = $ipStmt->fetchColumn();
+        if ($referrerIp && $referrerIp === $referredIp) {
+            error_log("Referral blocked: customer $referredCustomerId shares signup IP with referrer $referrerId (restaurant $restaurant_id)");
+            return;
+        }
     }
 
     try {

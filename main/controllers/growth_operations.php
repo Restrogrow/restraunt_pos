@@ -32,6 +32,7 @@ try {
                 'earn_amount_threshold' => max(0, (float)($_POST['earn_amount_threshold'] ?? 0)),
                 'redeem_value_per_point' => max(0, (float)($_POST['redeem_value_per_point'] ?? 0)),
                 'min_redeem_points' => max(0, (int)($_POST['min_redeem_points'] ?? 0)),
+                'points_expiry_days' => max(0, (int)($_POST['points_expiry_days'] ?? 0)),
                 'referral_enabled' => isset($_POST['referral_enabled']) ? (int)!!$_POST['referral_enabled'] : 0,
                 'referrer_reward_points' => max(0, (int)($_POST['referrer_reward_points'] ?? 0)),
                 'referred_reward_points' => max(0, (int)($_POST['referred_reward_points'] ?? 0)),
@@ -122,6 +123,41 @@ try {
             if (!$code) throw new Exception('Redemption code is required');
             markRedemptionUsed($conn, $restaurant_id, $code);
             echo json_encode(['success' => true, 'message' => 'Redemption marked as used']);
+            break;
+
+        case 'add_reward':
+            $menuItemId = (int)($_POST['menu_item_id'] ?? 0);
+            $pointsCost = (int)($_POST['points_cost'] ?? 0);
+            if ($menuItemId <= 0) throw new Exception('Please select a menu item');
+            if ($pointsCost <= 0) throw new Exception('Points cost must be greater than zero');
+
+            $itemStmt = $conn->prepare("SELECT item_name_en FROM menu_items WHERE id = ? AND restaurant_id = ?");
+            $itemStmt->execute([$menuItemId, $restaurant_id]);
+            $itemName = $itemStmt->fetchColumn();
+            if (!$itemName) throw new Exception('Menu item not found');
+
+            $conn->prepare("INSERT INTO loyalty_rewards (restaurant_id, menu_item_id, item_name, points_cost) VALUES (?, ?, ?, ?)")
+                ->execute([$restaurant_id, $menuItemId, $itemName, $pointsCost]);
+            echo json_encode(['success' => true, 'message' => 'Reward added']);
+            break;
+
+        case 'update_reward':
+            $id = (int)($_POST['id'] ?? 0);
+            $pointsCost = (int)($_POST['points_cost'] ?? 0);
+            $isActive = isset($_POST['is_active']) ? (int)!!$_POST['is_active'] : 1;
+            if ($id <= 0) throw new Exception('Invalid reward id');
+            if ($pointsCost <= 0) throw new Exception('Points cost must be greater than zero');
+
+            $conn->prepare("UPDATE loyalty_rewards SET points_cost = ?, is_active = ? WHERE id = ? AND restaurant_id = ?")
+                ->execute([$pointsCost, $isActive, $id, $restaurant_id]);
+            echo json_encode(['success' => true, 'message' => 'Reward updated']);
+            break;
+
+        case 'delete_reward':
+            $id = (int)($_POST['id'] ?? 0);
+            if ($id <= 0) throw new Exception('Invalid reward id');
+            $conn->prepare("DELETE FROM loyalty_rewards WHERE id = ? AND restaurant_id = ?")->execute([$id, $restaurant_id]);
+            echo json_encode(['success' => true, 'message' => 'Reward deleted']);
             break;
 
         default:

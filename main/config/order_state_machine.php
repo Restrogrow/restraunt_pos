@@ -227,6 +227,23 @@ function validateAndUpdateOrderStatus(
         }
     }
 
+    // Growth module hook: an order cancelled before reaching Completed can
+    // still have had loyalty points redeemed against it at checkout — give
+    // those back. (Points can't have been *earned* yet on this path, since
+    // awarding only happens on Completed, and Completed is a terminal state
+    // that can't transition to Cancelled — see reverseLoyaltyForOrder().)
+    if ($newStatus === 'Cancelled') {
+        try {
+            $orderRestaurantId = $restaurantId ?? ($order['restaurant_id'] ?? null);
+            if ($orderRestaurantId) {
+                require_once __DIR__ . '/growth_helpers.php';
+                reverseLoyaltyForOrder($conn, $orderRestaurantId, $orderId, 'cancelled');
+            }
+        } catch (Exception $e) {
+            error_log('Growth module cancellation reversal failed for order ' . $orderId . ': ' . $e->getMessage());
+        }
+    }
+
     return [
         'success'       => true,
         'message'       => "Order status updated from {$currentStatus} to {$newStatus}",
@@ -294,6 +311,23 @@ function validateAndUpdatePaymentStatus(
 
     $updateStmt = $conn->prepare('UPDATE orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
     $updateStmt->execute([$newStatus, $orderId]);
+
+    // Growth module hook: a refunded order needs its loyalty effects
+    // reversed — points earned on it clawed back, points redeemed against
+    // it given back. This is the path that matters most, since an order
+    // usually reaches Completed (and earns points) before anyone refunds
+    // it; order_status can't go Completed → Cancelled to hit the other hook.
+    if ($newStatus === 'Refunded') {
+        try {
+            $orderRestaurantId = $restaurantId ?? ($order['restaurant_id'] ?? null);
+            if ($orderRestaurantId) {
+                require_once __DIR__ . '/growth_helpers.php';
+                reverseLoyaltyForOrder($conn, $orderRestaurantId, $orderId, 'refunded');
+            }
+        } catch (Exception $e) {
+            error_log('Growth module refund reversal failed for order ' . $orderId . ': ' . $e->getMessage());
+        }
+    }
 
     // 'transitioned' => true means THIS call is the one that actually moved
     // payment_status into $newStatus (as opposed to it already being there,

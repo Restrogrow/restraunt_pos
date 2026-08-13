@@ -95,8 +95,11 @@ function handleCustomerSignup($pdo) {
             ->execute([$name, $email, $hash, $existing['id']]);
         $customerId = $existing['id'];
     } else {
-        $pdo->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email, password_hash) VALUES (?, ?, ?, ?, ?)")
-            ->execute([$restaurantId, $name, $phone, $email, $hash]);
+        $signupIp = $_SERVER['REMOTE_ADDR'] ?? '';
+        require_once __DIR__ . '/../config/growth_helpers.php';
+        ensureGrowthSchema($pdo);
+        $pdo->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email, password_hash, signup_ip) VALUES (?, ?, ?, ?, ?, ?)")
+            ->execute([$restaurantId, $name, $phone, $email, $hash, $signupIp ?: null]);
         $customerId = $pdo->lastInsertId();
 
         // Referral capture: only for brand-new customers, not guests being
@@ -105,8 +108,7 @@ function handleCustomerSignup($pdo) {
         $refCode = isset($_POST['ref']) ? trim($_POST['ref']) : '';
         if ($refCode !== '') {
             try {
-                require_once __DIR__ . '/../config/growth_helpers.php';
-                recordPendingReferral($pdo, $restaurantId, $refCode, (int)$customerId);
+                recordPendingReferral($pdo, $restaurantId, $refCode, (int)$customerId, $signupIp);
             } catch (Exception $e) {
                 error_log('Referral capture failed during signup: ' . $e->getMessage());
             }

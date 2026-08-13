@@ -203,6 +203,26 @@ function createDatabaseConnection() {
                 }
             }
             
+            // Expire inactive loyalty point balances, same lock-file gating
+            // as the trial sweep above but checked once every 24 hours —
+            // expiry is a daily-granularity concern, not worth checking on
+            // every connection.
+            $pointsExpirySweepLock = __DIR__ . '/tmp/points_expiry_sweep.lock';
+            $lastPointsSweep = @filemtime($pointsExpirySweepLock);
+            if ($lastPointsSweep === false || (time() - $lastPointsSweep) > 86400) {
+                if (!is_dir(__DIR__ . '/tmp')) {
+                    @mkdir(__DIR__ . '/tmp', 0755, true);
+                }
+                if (@touch($pointsExpirySweepLock)) {
+                    try {
+                        require_once __DIR__ . '/config/growth_helpers.php';
+                        expireInactiveLoyaltyPoints($pdo);
+                    } catch (Exception $e) {
+                        error_log("Error expiring loyalty points: " . $e->getMessage());
+                    }
+                }
+            }
+
             // Clear any previous transaction state
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();

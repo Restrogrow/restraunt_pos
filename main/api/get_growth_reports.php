@@ -74,8 +74,47 @@ try {
         $segmentCounts[$segment]++;
     }
 
+    // 30-day trend: this window vs the one immediately before it, so the
+    // admin can see whether engagement is growing or shrinking rather than
+    // just a lifetime snapshot.
+    $stmt = $conn->prepare(
+        "SELECT
+            COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND type = 'earned' THEN points_change ELSE 0 END), 0) AS points_issued_current,
+            COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY) AND type = 'earned' THEN points_change ELSE 0 END), 0) AS points_issued_previous,
+            COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND type IN ('redeemed','item_redeemed') THEN -points_change ELSE 0 END), 0) AS points_redeemed_current,
+            COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY) AND type IN ('redeemed','item_redeemed') THEN -points_change ELSE 0 END), 0) AS points_redeemed_previous
+         FROM loyalty_points_ledger WHERE restaurant_id = ?"
+    );
+    $stmt->execute([$restaurant_id]);
+    $pointsTrend = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // New members = customers whose first-ever ledger entry falls in the window.
+    $stmt = $conn->prepare(
+        "SELECT
+            SUM(CASE WHEN first_activity >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS new_members_current,
+            SUM(CASE WHEN first_activity >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND first_activity < DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS new_members_previous
+         FROM (SELECT customer_id, MIN(created_at) AS first_activity FROM loyalty_points_ledger WHERE restaurant_id = ? GROUP BY customer_id) t"
+    );
+    $stmt->execute([$restaurant_id]);
+    $memberTrend = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $stmt = $conn->prepare(
+        "SELECT
+            SUM(CASE WHEN completed_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS referrals_current,
+            SUM(CASE WHEN completed_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND completed_at < DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS referrals_previous
+         FROM referrals WHERE restaurant_id = ? AND status = 'completed'"
+    );
+    $stmt->execute([$restaurant_id]);
+    $referralTrend = $stmt->fetch(PDO::FETCH_ASSOC);
+
     echo json_encode([
         'success' => true,
+        'trend' => [
+            'points_issued' => ['current' => (int)$pointsTrend['points_issued_current'], 'previous' => (int)$pointsTrend['points_issued_previous']],
+            'points_redeemed' => ['current' => (int)$pointsTrend['points_redeemed_current'], 'previous' => (int)$pointsTrend['points_redeemed_previous']],
+            'new_members' => ['current' => (int)($memberTrend['new_members_current'] ?? 0), 'previous' => (int)($memberTrend['new_members_previous'] ?? 0)],
+            'referral_conversions' => ['current' => (int)($referralTrend['referrals_current'] ?? 0), 'previous' => (int)($referralTrend['referrals_previous'] ?? 0)],
+        ],
         'loyalty' => [
             'member_count' => (int)$memberStats['member_count'],
             'member_revenue' => (float)$memberStats['member_revenue'],

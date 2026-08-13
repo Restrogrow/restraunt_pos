@@ -52,6 +52,7 @@ async function loadGrowthSettings() {
     document.getElementById('gsEarnPointsPerAmount').value = s.earn_points_per_amount ?? 1;
     document.getElementById('gsRedeemValuePerPoint').value = s.redeem_value_per_point ?? 0.5;
     document.getElementById('gsMinRedeemPoints').value = s.min_redeem_points ?? 100;
+    document.getElementById('gsPointsExpiryDays').value = s.points_expiry_days ?? 0;
     document.getElementById('gsReferralEnabled').checked = !!Number(s.referral_enabled);
     document.getElementById('gsReferrerRewardPoints').value = s.referrer_reward_points ?? 50;
     document.getElementById('gsReferredRewardPoints').value = s.referred_reward_points ?? 20;
@@ -69,6 +70,7 @@ async function loadGrowthSettings() {
     }
 
     renderTiersTable(data.tiers || []);
+    renderRewardsTable(data.rewards || []);
 
     const qrImg = document.getElementById('loyaltyQrImage');
     if (qrImg) {
@@ -93,6 +95,7 @@ async function saveGrowthSettings() {
   fd.append('earn_points_per_amount', document.getElementById('gsEarnPointsPerAmount').value);
   fd.append('redeem_value_per_point', document.getElementById('gsRedeemValuePerPoint').value);
   fd.append('min_redeem_points', document.getElementById('gsMinRedeemPoints').value);
+  fd.append('points_expiry_days', document.getElementById('gsPointsExpiryDays').value);
   fd.append('referral_enabled', document.getElementById('gsReferralEnabled').checked ? '1' : '0');
   fd.append('referrer_reward_points', document.getElementById('gsReferrerRewardPoints').value);
   fd.append('referred_reward_points', document.getElementById('gsReferredRewardPoints').value);
@@ -132,11 +135,14 @@ async function lookupRedemption() {
     const r = data.redemption;
     const cur = growthCur();
     const used = r.status === 'used';
+    const rewardLine = r.item_name
+      ? `${r.points} points &middot; free <strong>${escapeHtml(r.item_name)}</strong>`
+      : `${r.points} points &middot; <strong>${cur}${Number(r.discount_value).toFixed(2)}</strong> discount`;
     resultEl.innerHTML = `
       <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
         <div>
           <div style="font-weight:600;">${escapeHtml(r.customer_name || '-')} <span style="color:#999;font-weight:400;">(${escapeHtml(r.phone || '-')})</span></div>
-          <div style="font-size:0.9rem;color:#333;margin-top:4px;">${r.points} points &middot; <strong>${cur}${Number(r.discount_value).toFixed(2)}</strong> discount</div>
+          <div style="font-size:0.9rem;color:#333;margin-top:4px;">${rewardLine}</div>
           <div style="margin-top:6px;">${used ? growthPill('Already Used', '#fee2e2', '#dc2626') : growthPill('Pending', '#fef3c7', '#92400e')}</div>
         </div>
         ${used ? '' : `<button class="btn btn-primary" onclick="markRedemptionUsed('${code}')">Mark as Used</button>`}
@@ -240,6 +246,146 @@ async function deleteTier(id) {
     if (data.success) loadGrowthSettings();
   } catch (e) {
     showSweetAlert('Failed to delete tier', 'error');
+  }
+}
+
+/* ── Free Item Rewards ── */
+function renderRewardsTable(rewards) {
+  const tbody = document.getElementById('rewardsTbody');
+  if (!tbody) return;
+  if (!rewards.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#999;">No rewards yet. Add a menu item customers can redeem points for.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rewards.map(r => `
+    <tr>
+      <td>${escapeHtml(r.item_name)}</td>
+      <td>${r.points_cost}</td>
+      <td>${Number(r.is_active) ? growthPill('Active', '#d1fae5', '#065f46') : growthPill('Inactive', '#e5e7eb', '#374151')}</td>
+      <td>
+        <button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick="editRewardPoints(${r.id}, ${r.points_cost})">Edit Points</button>
+        <button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick="toggleRewardActive(${r.id}, ${r.points_cost}, ${Number(r.is_active)})">${Number(r.is_active) ? 'Deactivate' : 'Activate'}</button>
+        <button class="btn btn-danger" style="padding:6px 14px;font-size:0.8rem;" onclick="deleteReward(${r.id})">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function openRewardModal() {
+  const modal = document.getElementById('rewardModal');
+  if (!modal) return;
+  document.getElementById('rewardPointsCost').value = '';
+  const select = document.getElementById('rewardMenuItemId');
+  select.innerHTML = '<option value="">Loading menu items...</option>';
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const rid = document.querySelector('meta[name=restaurant-id]')?.content || document.getElementById('restaurantId')?.textContent || '';
+    const res = await fetch('../api/get_menu_items.php?restaurant_id=' + encodeURIComponent(rid));
+    const data = await res.json();
+    const items = data.data || [];
+    if (!items.length) {
+      select.innerHTML = '<option value="">No menu items found</option>';
+      return;
+    }
+    select.innerHTML = '<option value="">Select an item...</option>' +
+      items.map(i => `<option value="${i.id}">${escapeHtml(i.item_name_en)}</option>`).join('');
+  } catch (e) {
+    select.innerHTML = '<option value="">Failed to load menu items</option>';
+  }
+}
+
+async function saveReward() {
+  const menuItemId = document.getElementById('rewardMenuItemId').value;
+  const pointsCost = document.getElementById('rewardPointsCost').value;
+  if (!menuItemId) { showSweetAlert('Select a menu item', 'error'); return; }
+  if (!pointsCost || Number(pointsCost) <= 0) { showSweetAlert('Enter a valid points cost', 'error'); return; }
+
+  const fd = new FormData();
+  fd.append('action', 'add_reward');
+  fd.append('menu_item_id', menuItemId);
+  fd.append('points_cost', pointsCost);
+
+  try {
+    const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.success) {
+      closeModal('rewardModal');
+      showSweetAlert(data.message || 'Reward added', 'success');
+      loadGrowthSettings();
+    } else {
+      showSweetAlert(data.message || 'Failed to add reward', 'error');
+    }
+  } catch (e) {
+    showSweetAlert('Failed to add reward', 'error');
+  }
+}
+
+async function editRewardPoints(id, currentPoints) {
+  let newPoints = currentPoints;
+  if (window.Swal) {
+    const { value } = await Swal.fire({
+      title: 'Points Cost', input: 'number', inputValue: currentPoints,
+      inputAttributes: { min: 1, step: 1 }, showCancelButton: true, confirmButtonText: 'Save',
+    });
+    if (value === undefined || value === '') return;
+    newPoints = value;
+  } else {
+    newPoints = prompt('Points cost:', currentPoints);
+    if (newPoints === null) return;
+  }
+
+  const fd = new FormData();
+  fd.append('action', 'update_reward');
+  fd.append('id', id);
+  fd.append('points_cost', newPoints);
+  fd.append('is_active', '1');
+
+  try {
+    const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    showSweetAlert(data.message || (data.success ? 'Updated' : 'Failed to update'), data.success ? 'success' : 'error');
+    if (data.success) loadGrowthSettings();
+  } catch (e) {
+    showSweetAlert('Failed to update reward', 'error');
+  }
+}
+
+async function toggleRewardActive(id, pointsCost, currentActive) {
+  const fd = new FormData();
+  fd.append('action', 'update_reward');
+  fd.append('id', id);
+  fd.append('points_cost', pointsCost);
+  fd.append('is_active', currentActive ? '0' : '1');
+
+  try {
+    const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    showSweetAlert(data.message || (data.success ? 'Updated' : 'Failed to update'), data.success ? 'success' : 'error');
+    if (data.success) loadGrowthSettings();
+  } catch (e) {
+    showSweetAlert('Failed to update reward', 'error');
+  }
+}
+
+async function deleteReward(id) {
+  const confirmed = window.Swal
+    ? (await Swal.fire({ title: 'Delete this reward?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', confirmButtonColor: '#e74c3c' })).isConfirmed
+    : confirm('Delete this reward?');
+  if (!confirmed) return;
+
+  const fd = new FormData();
+  fd.append('action', 'delete_reward');
+  fd.append('id', id);
+
+  try {
+    const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    showSweetAlert(data.message || (data.success ? 'Reward deleted' : 'Failed to delete reward'), data.success ? 'success' : 'error');
+    if (data.success) loadGrowthSettings();
+  } catch (e) {
+    showSweetAlert('Failed to delete reward', 'error');
   }
 }
 
@@ -419,6 +565,31 @@ async function loadGrowthReports() {
     if (!data.success) { showSweetAlert(data.message || 'Failed to load reports', 'error'); return; }
 
     const cur = growthCur();
+
+    const trend = data.trend || {};
+    const trendTbody = document.getElementById('growthTrendTbody');
+    if (trendTbody) {
+      const trendRows = [
+        ['Points Issued', trend.points_issued],
+        ['Points Redeemed', trend.points_redeemed],
+        ['New Loyalty Members', trend.new_members],
+        ['Referral Conversions', trend.referral_conversions],
+      ];
+      trendTbody.innerHTML = trendRows.map(([label, t]) => {
+        t = t || { current: 0, previous: 0 };
+        const diff = t.current - t.previous;
+        const pct = t.previous > 0 ? Math.round((diff / t.previous) * 100) : (t.current > 0 ? 100 : 0);
+        const changeColor = diff > 0 ? '#059669' : (diff < 0 ? '#dc2626' : '#666');
+        const changeText = diff === 0 ? 'No change' : (diff > 0 ? '+' : '') + diff + ' (' + (pct > 0 ? '+' : '') + pct + '%)';
+        return `<tr>
+          <td>${label}</td>
+          <td>${t.current}</td>
+          <td>${t.previous}</td>
+          <td style="color:${changeColor};font-weight:600;">${changeText}</td>
+        </tr>`;
+      }).join('');
+    }
+
     const loyalty = data.loyalty || {};
     const loyaltyEl = document.getElementById('loyaltyRoiCards');
     if (loyaltyEl) {
