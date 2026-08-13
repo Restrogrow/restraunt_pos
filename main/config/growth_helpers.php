@@ -38,7 +38,7 @@ function ensureGrowthSchema(PDO $conn): void {
             lapsed_days_threshold INT DEFAULT 30,
             high_spender_threshold DECIMAL(10,2) DEFAULT 5000.00,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
     try {
@@ -57,7 +57,7 @@ function ensureGrowthSchema(PDO $conn): void {
             INDEX idx_restaurant (restaurant_id),
             INDEX idx_customer (customer_id),
             INDEX idx_order (order_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
     try {
@@ -71,7 +71,7 @@ function ensureGrowthSchema(PDO $conn): void {
             icon VARCHAR(50) DEFAULT 'star',
             sort_order INT DEFAULT 0,
             INDEX idx_restaurant (restaurant_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
     try {
@@ -85,7 +85,7 @@ function ensureGrowthSchema(PDO $conn): void {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY unique_code (restaurant_id, code),
             UNIQUE KEY unique_customer_code (restaurant_id, customer_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
     try {
@@ -102,7 +102,30 @@ function ensureGrowthSchema(PDO $conn): void {
             completed_at TIMESTAMP NULL,
             UNIQUE KEY unique_referred (restaurant_id, referred_customer_id),
             INDEX idx_referrer (referrer_customer_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
+    // The tables above were originally created without an explicit COLLATE,
+    // which on this server's default (utf8mb4_general_ci) mismatched the
+    // rest of the schema (utf8mb4_unicode_ci) and broke any query joining
+    // them to customers/orders on restaurant_id ("Illegal mix of collations").
+    // Self-heal any table still on the wrong collation, once per request.
+    static $collationChecked = false;
+    if (!$collationChecked) {
+        $collationChecked = true;
+        try {
+            $stmt = $conn->query(
+                "SELECT TABLE_NAME FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME IN ('growth_settings','loyalty_points_ledger','loyalty_tiers','referral_codes','referrals')
+                 AND TABLE_COLLATION != 'utf8mb4_unicode_ci'"
+            );
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $badTable) {
+                $conn->exec("ALTER TABLE `$badTable` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            }
+        } catch (PDOException $e) {
+            error_log('Growth module collation self-heal failed: ' . $e->getMessage());
+        }
     }
 
     // customers.loyalty_points_balance
