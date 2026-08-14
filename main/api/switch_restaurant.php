@@ -2,10 +2,12 @@
 if (ob_get_level()) ob_clean();
 ob_start();
 
+// No CORS wildcard — branch-admin restaurant switching, always called
+// same-origin from the admin dashboard. Same-origin requests never trigger
+// a CORS preflight, so this branch is only ever hit by a real cross-origin
+// caller; responding without any Access-Control-* headers means the
+// browser blocks it either way.
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
     http_response_code(200);
     ob_end_clean();
     exit();

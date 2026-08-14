@@ -25,7 +25,10 @@ try {
         throw new Exception('Invalid request method');
     }
     
-    $restaurant_id = $_POST['restaurant_id'] ?? $_SESSION['restaurant_id'] ?? '';
+    // Never trust a client-supplied restaurant_id for a write — a staff
+    // member of one restaurant could otherwise pass another restaurant's ID
+    // and delete/create its deals.
+    $restaurant_id = $_SESSION['restaurant_id'] ?? '';
     $deal_type = $_POST['deal_type'] ?? '';
     $menu_id = (int)($_POST['menu_id'] ?? 0);
     $action = $_POST['action'] ?? 'create'; // create or delete

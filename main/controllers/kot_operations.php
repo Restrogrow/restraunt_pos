@@ -76,6 +76,112 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
     exit();
 }
 
+if (!function_exists('ensureKotSchema')) {
+    /**
+     * Self-healing schema fix for `kot` — same pattern as growth_helpers.php's
+     * ensureGrowthSchema(). The kot_status ENUM only ever allowed
+     * Pending/Preparing/Ready/Completed even though the app writes
+     * 'Cancelled' to it (see handleUpdateKOTStatus() below) — every cancel
+     * attempt threw a PDOException and returned a 500. MODIFY on an ENUM is
+     * additive-only here, so existing rows' values stay valid.
+     */
+    function ensureKotSchema(PDO $conn): void {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        try {
+            $conn->exec("ALTER TABLE kot MODIFY COLUMN kot_status ENUM('Pending','Preparing','Ready','Completed','Cancelled') DEFAULT 'Pending'");
+        } catch (PDOException $e) {
+            error_log('ensureKotSchema (kot_status ENUM): ' . $e->getMessage());
+        }
+
+        // kot.order_id — there was previously no real link between a KOT and
+        // the order eventually created from it; every "does an order already
+        // exist for this KOT" check had to guess using table_id + total +
+        // a created_at time window, which could cross-match two different
+        // tables that happened to order an identical total close together,
+        // and gave order cancellation nothing reliable to cascade to (see
+        // handleUpdateKOTStatus() / handleCompleteKOT() below).
+        try {
+            $conn->query("SELECT order_id FROM kot LIMIT 1");
+        } catch (PDOException $e) {
+            try {
+                $conn->exec("ALTER TABLE kot ADD COLUMN order_id INT DEFAULT NULL, ADD INDEX idx_order_id (order_id)");
+            } catch (PDOException $e2) {
+                error_log('ensureKotSchema (order_id): ' . $e2->getMessage());
+            }
+        }
+    }
+}
+
+if (!function_exists('verifyKotCartItemPrices')) {
+    /**
+     * Verifies every cart item's price against menu_items/menu_item_variations
+     * before it's trusted for a counter/KOT order — mirrors
+     * process_website_order.php's server-side price verification and
+     * pos_operations.php's verifyPosCartItemPrices(). Without this, $item['price']
+     * from the POST body was inserted into kot_items unchecked, so a modified
+     * request (or a page CSRFing a logged-in staff session) could under-ring
+     * every item.
+     *
+     * @return string|null An error message if any item fails verification, or
+     *                      null if every item is valid.
+     */
+    function verifyKotCartItemPrices($conn, $restaurant_id, array $cartItems): ?string {
+        $menuItemIds = [];
+        foreach ($cartItems as $ci) {
+            $mid = (int)($ci['id'] ?? 0);
+            if ($mid > 0) $menuItemIds[] = $mid;
+        }
+        $menuItemIds = array_values(array_unique($menuItemIds));
+        if (empty($menuItemIds)) {
+            return 'Cart contains no valid items';
+        }
+
+        $placeholders = implode(',', array_fill(0, count($menuItemIds), '?'));
+        $menuStmt = $conn->prepare("SELECT id, base_price, is_available FROM menu_items WHERE id IN ($placeholders) AND restaurant_id = ?");
+        $menuStmt->execute(array_merge($menuItemIds, [$restaurant_id]));
+        $menuItemsById = [];
+        foreach ($menuStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $menuItemsById[(int)$row['id']] = $row;
+        }
+
+        $varStmt = $conn->prepare("SELECT menu_item_id, variation_name, price FROM menu_item_variations WHERE menu_item_id IN ($placeholders)");
+        $varStmt->execute($menuItemIds);
+        $variationsByItem = [];
+        foreach ($varStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $variationsByItem[(int)$row['menu_item_id']][$row['variation_name']] = (float)$row['price'];
+        }
+
+        foreach ($cartItems as $ci) {
+            $mid = (int)($ci['id'] ?? 0);
+            $menuRow = $menuItemsById[$mid] ?? null;
+            if (!$menuRow || !$menuRow['is_available']) {
+                return 'One or more items are no longer available';
+            }
+
+            $expectedPrice = (float)$menuRow['base_price'];
+            $variationName = $ci['variation_name'] ?? '';
+            if (!empty($variationName)) {
+                if (!isset($variationsByItem[$mid][$variationName])) {
+                    return 'Invalid item variation';
+                }
+                $expectedPrice = $variationsByItem[$mid][$variationName];
+            }
+
+            if (abs((float)($ci['price'] ?? 0) - $expectedPrice) > 0.01) {
+                error_log("KOT price mismatch for menu item $mid (restaurant $restaurant_id): client sent " . ($ci['price'] ?? 'null') . ", expected $expectedPrice");
+                return 'Item price mismatch — please refresh the menu and try again';
+            }
+        }
+
+        return null;
+    }
+}
+
 if (!function_exists('handleCreateKOT')) {
 function handleCreateKOT() {
     // Get connection using getConnection() for lazy connection support
@@ -103,7 +209,13 @@ function handleCreateKOT() {
         echo json_encode(['success' => false, 'message' => 'No items in cart'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    
+
+    $priceError = verifyKotCartItemPrices($conn, $restaurant_id, $cart_items);
+    if ($priceError !== null) {
+        echo json_encode(['success' => false, 'message' => $priceError], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
     $kot_number = generateKOTNumber($conn, $restaurant_id);
     
     // Get customer details if provided
@@ -202,10 +314,12 @@ function handleUpdateKOTStatus() {
             throw new Exception('Database connection not available');
         }
     }
+    ensureKotSchema($conn);
+
     $kot_id = intval($_POST['kotId']);
     $status = $_POST['status'];
     $restaurant_id = $_SESSION['restaurant_id'] ?? $_GET['restaurant_id'] ?? null;
-    
+
     if (!$restaurant_id) {
         // Check session for staff_id
         if (isset($_SESSION['staff_id'])) {
@@ -219,13 +333,13 @@ function handleUpdateKOTStatus() {
             }
         }
     }
-    
+
     if (!$restaurant_id) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Restaurant ID not found'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    
+
     $valid_statuses = ['Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
     if (!in_array($status, $valid_statuses)) {
         http_response_code(400);
@@ -263,60 +377,45 @@ function handleUpdateKOTStatus() {
         // Check if KOT status is already being processed (prevent duplicate processing)
         // If status is already "Ready" or "Completed", don't process again
         if ($kot['kot_status'] === 'Ready' || $kot['kot_status'] === 'Completed') {
-            // Check if order already exists for this KOT
-            // Use KOT number in notes to reliably track the relationship
-            $check_order_sql = "SELECT o.id FROM orders o 
-                                WHERE o.restaurant_id = ? 
-                                AND (o.notes LIKE ? OR (o.table_id = ? AND ABS(o.total - ?) < 0.01 AND o.created_at >= DATE_SUB(?, INTERVAL 30 MINUTE)))
-                                LIMIT 1";
-            $kot_number_pattern = '%' . $kot['kot_number'] . '%';
-            $check_stmt = $conn->prepare($check_order_sql);
-            $check_stmt->execute([
-                $restaurant_id,
-                $kot_number_pattern,
-                $kot['table_id'],
-                $kot['total'],
-                $kot['created_at']
-            ]);
-            $existing_order = $check_stmt->fetch();
-            
-            if ($existing_order) {
+            if (!empty($kot['order_id'])) {
                 // Order already exists, just update status if needed
                 $conn->commit();
                 echo json_encode([
                     'success' => true,
                     'message' => 'KOT status updated. Order already exists.',
-                    'order_id' => $existing_order['id']
+                    'order_id' => $kot['order_id']
                 ], JSON_UNESCAPED_UNICODE);
                 return;
             }
         }
-        
+
+        // KOT status transitions follow the same shape as orders (no jumping
+        // back to an earlier stage, nothing leaves a terminal state) — this
+        // used to accept any of the 5 valid strings regardless of the
+        // current status, so a request could reopen an already-Completed
+        // ticket back to Preparing.
+        $kotTransitions = [
+            'Pending'   => ['Preparing', 'Cancelled'],
+            'Preparing' => ['Ready', 'Cancelled'],
+            'Ready'     => ['Completed', 'Cancelled'],
+            'Completed' => [],
+            'Cancelled' => [],
+        ];
+        if ($kot['kot_status'] !== $status && !in_array($status, $kotTransitions[$kot['kot_status']] ?? [], true)) {
+            $conn->rollBack();
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => "Cannot change KOT from {$kot['kot_status']} to {$status}"], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
         // Update KOT status
         $sql = "UPDATE kot SET kot_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND restaurant_id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$status, $kot_id, $restaurant_id]);
-        
+
         // If status is "Ready", create order from KOT
         if ($status === 'Ready') {
-            // Check if order already exists for this KOT (double-check after lock)
-            // Use KOT number in notes to reliably track the relationship
-            $check_order_sql = "SELECT o.id FROM orders o 
-                                WHERE o.restaurant_id = ? 
-                                AND (o.notes LIKE ? OR (o.table_id = ? AND ABS(o.total - ?) < 0.01 AND o.created_at >= DATE_SUB(?, INTERVAL 30 MINUTE)))
-                                LIMIT 1";
-            $kot_number_pattern = '%' . $kot['kot_number'] . '%';
-            $check_stmt = $conn->prepare($check_order_sql);
-            $check_stmt->execute([
-                $restaurant_id,
-                $kot_number_pattern,
-                $kot['table_id'],
-                $kot['total'],
-                $kot['created_at']
-            ]);
-            $existing_order = $check_stmt->fetch();
-            
-            if (!$existing_order) {
+            if (!$kot['order_id']) {
                 $order_number = generateOrderNumber($conn, $restaurant_id);
                 
                 // Extract payment method from KOT notes if available
@@ -378,19 +477,25 @@ function handleUpdateKOTStatus() {
                     $order_stmt->execute([$restaurant_id, $kot['table_id'], $order_number, $kot['customer_name'] ?? '', $kot['order_type'], $kotPaymentMethod, $kot['subtotal'], $kot['tax'], $kot['total'], $order_notes]);
                 }
                 $order_id = $conn->lastInsertId();
-                
+
+                // Real link between this KOT and the order it produced —
+                // everything that used to guess via table_id+total+time-window
+                // (order cancellation cascade, duplicate-order checks above)
+                // can now just look this up directly.
+                $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$order_id, $kot_id]);
+
                 // Get KOT items and create order items
                 $items_sql = "SELECT * FROM kot_items WHERE kot_id = ?";
                 $items_stmt = $conn->prepare($items_sql);
                 $items_stmt->execute([$kot_id]);
                 $items = $items_stmt->fetchAll();
-                
+
                 foreach ($items as $item) {
                     $order_item_sql = "INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)";
                     $order_item_stmt = $conn->prepare($order_item_sql);
                     $order_item_stmt->execute([$order_id, $item['menu_item_id'], $item['item_name'], $item['quantity'], $item['unit_price'], $item['total_price']]);
                 }
-                
+
                 // Record payment
                 $payment_sql = "INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')";
                 $payment_stmt = $conn->prepare($payment_sql);
@@ -477,32 +582,10 @@ function handleCompleteKOT() {
             throw new Exception('KOT not found');
         }
         
-        // Check if order already exists for this KOT (order should have been created when status was set to "Ready")
-        // Use same matching logic as in handleUpdateKOTStatus
-        $check_order_sql = "SELECT o.id FROM orders o 
-                            WHERE o.restaurant_id = ? 
-                            AND o.table_id = ? 
-                            AND ABS(o.total - ?) < 0.01
-                            AND ABS(o.subtotal - ?) < 0.01
-                            AND ABS(o.tax - ?) < 0.01
-                            AND o.created_at >= DATE_SUB(?, INTERVAL 15 MINUTE)
-                            AND o.order_status IN ('Ready', 'Preparing', 'Served', 'Completed')
-                            LIMIT 1";
-        $check_stmt = $conn->prepare($check_order_sql);
-        $check_stmt->execute([
-            $restaurant_id, 
-            $kot['table_id'], 
-            $kot['total'], 
-            $kot['subtotal'], 
-            $kot['tax'],
-            $kot['created_at']
-        ]);
-        $existing_order = $check_stmt->fetch();
-        
         // If order already exists, update its status to "Ready" and mark KOT as completed
-        if ($existing_order) {
-            $order_id = $existing_order['id'];
-            
+        if (!empty($kot['order_id'])) {
+            $order_id = $kot['order_id'];
+
             // Use state machine for atomic order status update
             $stateResult = validateAndUpdateOrderStatus($conn, (int)$order_id, 'Ready');
             if (!$stateResult['success']) {
@@ -530,26 +613,13 @@ function handleCompleteKOT() {
             return;
         }
         
-        // If order doesn't exist yet, create it with status "Ready" (fallback case)
-        // This should rarely happen as order should be created when status is set to "Ready"
+        // No linked order yet — create one now (fallback case; the order
+        // should normally already exist from when status was set to "Ready"
+        // via handleUpdateKOTStatus()). Only valid when the KOT is actually
+        // Ready: completing a KOT that's still Pending/Preparing used to
+        // silently mark the ticket Completed with no order ever created —
+        // reject instead, so the caller finds out rather than losing the order.
         if ($kot['kot_status'] === 'Ready') {
-            // Check if order already exists (with lock held)
-            $check_order_sql = "SELECT o.id FROM orders o 
-                                WHERE o.restaurant_id = ? 
-                                AND (o.notes LIKE ? OR (o.table_id = ? AND ABS(o.total - ?) < 0.01 AND o.created_at >= DATE_SUB(?, INTERVAL 30 MINUTE)))
-                                LIMIT 1";
-            $kot_number_pattern = '%' . $kot['kot_number'] . '%';
-            $check_stmt = $conn->prepare($check_order_sql);
-            $check_stmt->execute([
-                $restaurant_id,
-                $kot_number_pattern,
-                $kot['table_id'],
-                $kot['total'],
-                $kot['created_at']
-            ]);
-            $existing_order = $check_stmt->fetch();
-            
-            if (!$existing_order) {
                 $order_number = generateOrderNumber($conn, $restaurant_id);
                 
                 // Extract payment method from KOT notes if available
@@ -620,26 +690,36 @@ function handleCompleteKOT() {
                     $order_stmt->execute([$restaurant_id, $kot['table_id'], $order_number, $kot['customer_name'] ?? '', $kot['order_type'], $kotPaymentMethod, $kot['subtotal'], $kot['tax'], $kot['total'], $order_notes]);
                 }
                 $order_id = $conn->lastInsertId();
-                
+
+                // Real link between this KOT and the order it produced —
+                // everything that used to guess via table_id+total+time-window
+                // (order cancellation cascade, duplicate-order checks above)
+                // can now just look this up directly.
+                $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$order_id, $kot_id]);
+
                 // Get KOT items and create order items
                 $items_sql = "SELECT * FROM kot_items WHERE kot_id = ?";
                 $items_stmt = $conn->prepare($items_sql);
                 $items_stmt->execute([$kot_id]);
                 $items = $items_stmt->fetchAll();
-                
+
                 foreach ($items as $item) {
                     $order_item_sql = "INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)";
                     $order_item_stmt = $conn->prepare($order_item_sql);
                     $order_item_stmt->execute([$order_id, $item['menu_item_id'], $item['item_name'], $item['quantity'], $item['unit_price'], $item['total_price']]);
                 }
-                
+
                 // Record payment
                 $payment_sql = "INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')";
                 $payment_stmt = $conn->prepare($payment_sql);
                 $payment_stmt->execute([$restaurant_id, $order_id, $kot['total'], $kotPaymentMethod]);
-            }
+        } else {
+            $conn->rollBack();
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => "Cannot complete KOT — it is {$kot['kot_status']}, not Ready"], JSON_UNESCAPED_UNICODE);
+            return;
         }
-        
+
         // Update KOT status to completed
         $update_kot_sql = "UPDATE kot SET kot_status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?";
         $update_kot_stmt = $conn->prepare($update_kot_sql);

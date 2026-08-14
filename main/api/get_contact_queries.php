@@ -18,11 +18,12 @@ require_once __DIR__ . '/../config/authorization_config.php';
 
 header('Content-Type: application/json');
 
-// Check if user is superadmin or admin
-$isSuperadmin = isset($_SESSION['superadmin_id']);
-$isAdmin = isset($_SESSION['user_id']) || isset($_SESSION['staff_id']) || isset($_SESSION['branch_admin_id']);
-
-if (!$isSuperadmin && !$isAdmin) {
+// contact_queries holds every "Contact Us" lead submitted platform-wide with
+// no restaurant_id/tenant scoping — it's superadmin's own sales-lead inbox,
+// not per-restaurant data. Any logged-in restaurant admin/staff previously
+// passed this check and could read (and modify, see update_query_status.php)
+// every other tenant's leads.
+if (!isset($_SESSION['superadmin_id'])) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Access denied']);
     exit();

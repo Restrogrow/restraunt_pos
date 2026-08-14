@@ -75,24 +75,43 @@ try {
     if ($order['order_type'] !== 'Delivery') {
         throw new Exception('This is not a delivery order');
     }
+    // Regenerating a QR used to be allowed regardless of order/delivery
+    // state — silently resetting delivery_status back to 'Assigned' for an
+    // order that's already Delivered/Cancelled/Rejected/Completed would let
+    // a stale QR code walk the delivery forward again.
+    if (in_array($order['order_status'], ['Cancelled', 'Rejected', 'Completed'], true)) {
+        throw new Exception('Cannot generate a delivery QR for an order that is ' . $order['order_status']);
+    }
 
     // Generate unique QR token
     $token = bin2hex(random_bytes(32));
     $expiresAt = date('Y-m-d H:i:s', strtotime('+24 hours'));
 
-    // Check if tracking record already exists
-    $checkStmt = $conn->prepare("SELECT id FROM delivery_tracking WHERE order_id = ? AND restaurant_id = ?");
-    $checkStmt->execute([$order_id, $restaurant_id]);
-    $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    $conn->beginTransaction();
+    try {
+        // Check if tracking record already exists (locked, to avoid a
+        // concurrent duplicate-request race creating two tracking rows)
+        $checkStmt = $conn->prepare("SELECT id, delivery_status FROM delivery_tracking WHERE order_id = ? AND restaurant_id = ? FOR UPDATE");
+        $checkStmt->execute([$order_id, $restaurant_id]);
+        $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($existing) {
-        // Update existing record with new token
-        $stmt = $conn->prepare("UPDATE delivery_tracking SET qr_token = ?, qr_expires_at = ?, delivery_status = 'Assigned', updated_at = NOW() WHERE id = ?");
-        $stmt->execute([$token, $expiresAt, $existing['id']]);
-    } else {
-        // Create new tracking record
-        $stmt = $conn->prepare("INSERT INTO delivery_tracking (restaurant_id, order_id, delivery_status, qr_token, qr_expires_at) VALUES (?, ?, 'Assigned', ?, ?)");
-        $stmt->execute([$restaurant_id, $order_id, $token, $expiresAt]);
+        if ($existing && $existing['delivery_status'] === 'Delivered') {
+            throw new Exception('This order has already been delivered');
+        }
+
+        if ($existing) {
+            // Update existing record with new token
+            $stmt = $conn->prepare("UPDATE delivery_tracking SET qr_token = ?, qr_expires_at = ?, delivery_status = 'Assigned', updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$token, $expiresAt, $existing['id']]);
+        } else {
+            // Create new tracking record
+            $stmt = $conn->prepare("INSERT INTO delivery_tracking (restaurant_id, order_id, delivery_status, qr_token, qr_expires_at) VALUES (?, ?, 'Assigned', ?, ?)");
+            $stmt->execute([$restaurant_id, $order_id, $token, $expiresAt]);
+        }
+        $conn->commit();
+    } catch (Exception $e) {
+        $conn->rollBack();
+        throw $e;
     }
 
     // Build QR URL (use the actual domain)

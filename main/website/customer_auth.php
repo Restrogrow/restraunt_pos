@@ -139,6 +139,21 @@ function handleCustomerLogin($pdo) {
 
     $rateId = 'cust_login_' . $restaurantId . '_' . $phone;
 
+    // trackFailedAttempt($rateId) below writes a per-account lockout file
+    // after repeated failures, but nothing was ever reading it back — the
+    // only rate limiting actually enforced was the generic per-IP one
+    // (applyAuthRateLimit('login'), keyed on IP not phone number), so an
+    // attacker rotating IPs (or just staying under that per-IP cap) could
+    // brute-force a single customer's password indefinitely. checkRateLimit()
+    // checks the same lockout file trackFailedAttempt() writes, keyed on
+    // this identifier, so calling it here actually enforces it.
+    if (function_exists('checkRateLimit')) {
+        $lockoutCheck = checkRateLimit($rateId, 1000, 900);
+        if (!$lockoutCheck['allowed']) {
+            throw new Exception($lockoutCheck['message'] ?? 'Too many failed attempts. Please try again later.');
+        }
+    }
+
     $stmt = $pdo->prepare("SELECT id, restaurant_id, customer_name, phone, email, password_hash FROM customers WHERE restaurant_id = ? AND phone = ? LIMIT 1");
     $stmt->execute([$restaurantId, $phone]);
     $customer = $stmt->fetch(PDO::FETCH_ASSOC);

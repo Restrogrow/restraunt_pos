@@ -182,6 +182,15 @@ function handleCreatePayment() {
             throw new Exception('Order not found');
         }
 
+        // order_id is a single auto-increment shared across every tenant —
+        // without checking it against the phone number the client also
+        // submits (same value the checkout form already collects), anyone
+        // who knows/enumerates an order_id could spin up a payment session
+        // for someone else's order.
+        if (empty($customerPhone) || $customerPhone !== (string)$order['customer_phone']) {
+            throw new Exception('Order not found');
+        }
+
         $config = getPhonePeConfig($order['restaurant_id']);
         if ($embedMode) {
             $config['redirect_url'] = str_replace('/website/cart.php', '/embed/embed.php', $config['redirect_url']);

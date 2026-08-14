@@ -28,8 +28,10 @@ $isSuperadmin = isset($_SESSION['superadmin_id']);
 if (!$isSuperadmin) {
     // Require login (return JSON on failure)
     requireLogin(true);
-    // Only admin / manager can view errors
-    requirePermission(PERMISSION_VIEW_DASHBOARD, true);
+    // Only admin can view errors (stack traces, internal file paths) — this
+    // used to check PERMISSION_VIEW_DASHBOARD, which every staff role
+    // (including Waiter/Chef) has, contradicting the comment's own intent.
+    requirePermission(PERMISSION_MANAGE_SETTINGS, true);
 }
 
 try {

@@ -20,6 +20,7 @@ require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true);
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/../config/growth_helpers.php';
+require_once __DIR__ . '/customer_session.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -46,6 +47,18 @@ try {
     if (!$phone) throw new Exception('Phone number is required');
 
     ensureGrowthSchema($conn);
+
+    // Ownership check shared by all three actions below — this used to
+    // trust the bare `phone` request parameter, letting anyone read or
+    // change another customer's review-prompt state just by knowing their
+    // phone number. Now it only succeeds for that customer's own logged-in
+    // account, or a guest session that just proved ownership by placing a
+    // real order through this phone (see getAuthorizedCustomer()).
+    $authorizedCustomer = getAuthorizedCustomer($conn, $restaurantId, $phone);
+    if (!$authorizedCustomer) {
+        echo json_encode(['success' => true, 'show' => false]);
+        exit;
+    }
 
     switch ($action) {
         case 'check':

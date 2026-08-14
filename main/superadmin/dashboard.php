@@ -1112,7 +1112,7 @@ require_once __DIR__ . '/../config/countries.php';
         if(d.success && d.restaurants){
           const html = d.restaurants.map(r => `
             <div style="padding:12px;border-bottom:1px solid var(--border);">
-              <div style="font-weight:600;">${r.restaurant_name}</div>
+              <div style="font-weight:600;">${saEsc(r.restaurant_name)}</div>
               <div style="color:var(--muted);font-size:0.875rem;">Created on ${r.created_at?.split(' ')[0]}</div>
             </div>
           `).join('');
@@ -1141,9 +1141,9 @@ require_once __DIR__ . '/../config/countries.php';
           return `
             <tr>
               <td>${r.id}</td>
-              <td>${r.username}</td>
+              <td>${saEsc(r.username)}</td>
               <td><span class="badge badge-info">${r.restaurant_id}</span></td>
-              <td>${r.restaurant_name}</td>
+              <td>${saEsc(r.restaurant_name)}</td>
               <td>
                 <span class="badge ${isCashOnly ? 'badge-warning' : 'badge-success'}" style="cursor:pointer;font-size:0.75rem" onclick="togglePaymentGateway(${r.id}, '${pgType}')" title="Click to toggle">
                   ${isCashOnly ? 'Cash' : 'Payment Gateway'}
@@ -1208,7 +1208,7 @@ require_once __DIR__ . '/../config/countries.php';
           tbody.innerHTML = (d.payments || []).map(p => `
             <tr>
               <td>${p.transaction_id || 'N/A'}</td>
-              <td>${p.restaurant_name || p.restaurant_id || 'N/A'}</td>
+              <td>${saEsc(p.restaurant_name) || p.restaurant_id || 'N/A'}</td>
               <td>₹${Number(p.amount).toLocaleString('en-IN')}</td>
               <td>${p.payment_method || 'N/A'}</td>
               <td>${p.payment_status === 'Success' ? '<span class="badge badge-success">Success</span>' : 
@@ -1235,10 +1235,10 @@ require_once __DIR__ . '/../config/countries.php';
           return;
         }
         tbody.innerHTML = d.admins.map(a => {
-          const links = (a.links || []).map(l => `<span class="badge badge-info" style="margin:2px;font-size:0.7rem">${l.label || l.restaurant_name || l.restaurant_id}</span>`).join('') || '<span style="color:var(--muted)">None</span>';
+          const links = (a.links || []).map(l => `<span class="badge badge-info" style="margin:2px;font-size:0.7rem">${saEsc(l.label || l.restaurant_name || l.restaurant_id)}</span>`).join('') || '<span style="color:var(--muted)">None</span>';
           return `<tr>
             <td>${a.id}</td>
-            <td>${a.username}</td>
+            <td>${saEsc(a.username)}</td>
             <td>${a.display_name || '-'}</td>
             <td>${links}</td>
             <td>${a.is_active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>'}</td>
@@ -1273,7 +1273,7 @@ require_once __DIR__ . '/../config/countries.php';
         const checked = links.some(l => l.restaurant_id === r.restaurant_id);
         return `<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:0.9rem;">
           <input type="checkbox" class="link-restaurant" value="${r.restaurant_id}" ${checked ? 'checked' : ''}>
-          ${r.restaurant_name} (${r.restaurant_id})
+          ${saEsc(r.restaurant_name)} (${r.restaurant_id})
         </label>`;
       }).join('');
 
@@ -1314,7 +1314,7 @@ require_once __DIR__ . '/../config/countries.php';
       container.innerHTML = restaurants.map(r => 
         `<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:0.9rem;">
           <input type="checkbox" class="new-link-rest" value="${r.restaurant_id}">
-          ${r.restaurant_name} (${r.restaurant_id})
+          ${saEsc(r.restaurant_name)} (${r.restaurant_id})
         </label>`
       ).join('') || '<div style="color:var(--muted)">No restaurants found</div>';
     });
@@ -1544,8 +1544,8 @@ require_once __DIR__ . '/../config/countries.php';
               return `
                 <tr>
                   <td>${t.id}</td>
-                  <td>${t.username || 'N/A'}</td>
-                  <td>${t.restaurant_name || 'N/A'}</td>
+                  <td>${saEsc(t.username) || 'N/A'}</td>
+                  <td>${saEsc(t.restaurant_name) || 'N/A'}</td>
                   <td>${t.email || 'N/A'}</td>
                   <td style="font-family:monospace;font-size:0.8rem;">${(t.token || '').substring(0,16)}...</td>
                   <td><span class="badge ${statusClass}">${status}</span></td>
@@ -1597,7 +1597,7 @@ require_once __DIR__ . '/../config/countries.php';
             const statusClass = isSuccess ? 'badge-success' : (isFailed ? 'badge-danger' : 'badge-warning');
             return `<tr>
               <td>${pl.id}</td>
-              <td><strong>${pl.restaurant_name || pl.restaurant_id}</strong></td>
+              <td><strong>${saEsc(pl.restaurant_name) || pl.restaurant_id}</strong></td>
               <td>₹${Number(pl.amount).toLocaleString('en-IN')}</td>
               <td style="font-family:monospace;font-size:0.8rem;">${pl.transaction_id || '-'}</td>
               <td><span class="badge ${statusClass}">${pl.payment_status}</span></td>
@@ -1630,14 +1630,14 @@ require_once __DIR__ . '/../config/countries.php';
           if (!select) return;
           const currentVal = select.value;
           select.innerHTML = '<option value="">All Restaurants</option>' +
-            (d.restaurants || []).map(r => `<option value="${r.restaurant_id}">${r.restaurant_name} (${r.restaurant_id})</option>`).join('');
+            (d.restaurants || []).map(r => `<option value="${r.restaurant_id}">${saEsc(r.restaurant_name)} (${r.restaurant_id})</option>`).join('');
           if (currentVal) select.value = currentVal;
 
           // Also populate create modal dropdown
           const cplmSelect = document.getElementById('cplmRestaurant');
           if (cplmSelect) {
             cplmSelect.innerHTML = '<option value="">Select restaurant...</option>' +
-              (d.restaurants || []).map(r => `<option value="${r.restaurant_id}">${r.restaurant_name} (${r.restaurant_id})</option>`).join('');
+              (d.restaurants || []).map(r => `<option value="${r.restaurant_id}">${saEsc(r.restaurant_name)} (${r.restaurant_id})</option>`).join('');
           }
         }
       } catch(e) {}
@@ -1917,7 +1917,7 @@ require_once __DIR__ . '/../config/countries.php';
         const select = document.getElementById('menuRestaurantSelect');
         if (!select) return;
         select.innerHTML = '<option value="">Select a restaurant...</option>' +
-          (d.restaurants || []).map(r => `<option value="${r.restaurant_id}">${r.restaurant_name} (${r.restaurant_id})</option>`).join('');
+          (d.restaurants || []).map(r => `<option value="${r.restaurant_id}">${saEsc(r.restaurant_name)} (${r.restaurant_id})</option>`).join('');
         document.getElementById('menuCategoriesSection').style.display = 'none';
       } catch(e) { console.error('loadMenuRestaurants:', e); }
     }
@@ -2245,13 +2245,13 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
         const statusClass = status === 'Active' ? 'badge-success' : (status === 'Expired' ? 'badge-danger' : 'badge-warning');
         const statusIcon = status === 'Active' ? '✅' : (status === 'Expired' ? '❌' : '⏳');
         return `<tr>
-          <td><strong>${r.restaurant_name}</strong><br><small style="color:#6b7280;">${r.restaurant_id}</small></td>
+          <td><strong>${saEsc(r.restaurant_name)}</strong><br><small style="color:#6b7280;">${r.restaurant_id}</small></td>
           <td><span class="badge ${statusClass}">${statusIcon} ${status}</span><br><small style="color:#6b7280;">${subStatus}</small></td>
           <td>${r.trial_end_date || '--'}</td>
           <td>${r.renewal_date || '--'}<br><small style="color:#6b7280;">${r.days_left || 0} days left</small></td>
           <td style="white-space:nowrap;">
             <button class="btn btn-sm btn-success" onclick="activateSubscription(${r.id})" title="Activate 30 days">✓ Activate</button>
-            <button class="btn btn-sm btn-primary" onclick="customDuration(${r.id}, '${r.restaurant_name}')" title="Custom duration">📅 Custom</button>
+            <button class="btn btn-sm btn-primary" onclick="customDuration(${r.id})" title="Custom duration">📅 Custom</button>
             <button class="btn btn-sm btn-danger" onclick="expireSubscription(${r.id})" title="Mark expired">✗ Expire</button>
           </td>
         </tr>`;
@@ -2318,7 +2318,14 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
       }
     }
 
-    function customDuration(id, name) {
+    function customDuration(id) {
+      // Looked up from the already-loaded list rather than passed through
+      // the onclick attribute — embedding restaurant_name directly in an
+      // HTML attribute string let a crafted restaurant name break out of
+      // the attribute and run arbitrary JS (escaping alone doesn't survive
+      // the browser's attribute-decode-then-eval step for inline handlers).
+      const found = subAllRestaurants.find(r => r.id === id);
+      const name = found ? found.restaurant_name : '';
       const input = prompt('Enter duration in months for "' + name + '":\n(Cancel to abort, or type 1-60)', '12');
       if (input === null) return; // user clicked Cancel
       if (input.trim() === '') return;
@@ -2362,7 +2369,7 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
           const statusClass = p.payment_status === 'success' ? 'badge-success' : (p.payment_status === 'failed' ? 'badge-danger' : 'badge-warning');
           return `<tr>
             <td><small>${p.transaction_id || '--'}</small></td>
-            <td>${p.restaurant_name || p.restaurant_id || '--'}</td>
+            <td>${saEsc(p.restaurant_name) || p.restaurant_id || '--'}</td>
             <td>₹${Number(p.amount || 0).toLocaleString()}</td>
             <td>${p.subscription_type || '--'}</td>
             <td><span class="badge ${statusClass}">${p.payment_status || '--'}</span></td>

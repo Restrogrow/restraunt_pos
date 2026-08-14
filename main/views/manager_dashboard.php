@@ -263,6 +263,19 @@ applyRestaurantTimezone($timezone, $conn);
             }
         }
 
+        // Customer name/phone/email originate from anonymous website
+        // checkout input with no server-side sanitization — escape before
+        // rendering into these auto-refreshed tables.
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         async function loadOrders() {
             try {
                 const response = await fetch(`get_orders.php?restaurant_id=<?php echo $restaurant_id; ?>`);
@@ -295,9 +308,9 @@ applyRestaurantTimezone($timezone, $conn);
                 if (result.success && result.customers && result.customers.length > 0) {
                     tbody.innerHTML = result.customers.map(customer => `
                         <tr>
-                            <td>${customer.customer_name || 'N/A'}</td>
-                            <td>${customer.phone || 'N/A'}</td>
-                            <td>${customer.email || 'N/A'}</td>
+                            <td>${escapeHtml(customer.customer_name) || 'N/A'}</td>
+                            <td>${escapeHtml(customer.phone) || 'N/A'}</td>
+                            <td>${escapeHtml(customer.email) || 'N/A'}</td>
                             <td>${customer.total_visits || 0}</td>
                             <td>${window.globalCurrencySymbol || '₹'}${parseFloat(customer.total_spent || 0).toFixed(2)}</td>
                             <td>${customer.last_visit_date || 'N/A'}</td>

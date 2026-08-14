@@ -207,6 +207,69 @@ try {
     exit();
 }
 
+/**
+ * Verifies every cart item's price against menu_items/menu_item_variations
+ * before it's trusted for a POS/counter order. The existing subtotal/tax/
+ * total checks in handleCreateKOT()/handleHoldOrder() only caught internal
+ * inconsistency (does subtotal+tax=total) — they never verified an item's
+ * price actually matched the menu, so a modified request (or a page CSRFing
+ * a logged-in staff session) could under-ring every item. Mirrors the
+ * verification process_website_order.php already does for website orders.
+ *
+ * @return string|null An error message if any item fails verification, or
+ *                      null if every item is valid.
+ */
+function verifyPosCartItemPrices($conn, $restaurant_id, array $cartItems): ?string {
+    $menuItemIds = [];
+    foreach ($cartItems as $ci) {
+        $mid = (int)($ci['id'] ?? 0);
+        if ($mid > 0) $menuItemIds[] = $mid;
+    }
+    $menuItemIds = array_values(array_unique($menuItemIds));
+    if (empty($menuItemIds)) {
+        return 'Cart contains no valid items';
+    }
+
+    $placeholders = implode(',', array_fill(0, count($menuItemIds), '?'));
+    $menuStmt = $conn->prepare("SELECT id, base_price, is_available FROM menu_items WHERE id IN ($placeholders) AND restaurant_id = ?");
+    $menuStmt->execute(array_merge($menuItemIds, [$restaurant_id]));
+    $menuItemsById = [];
+    foreach ($menuStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $menuItemsById[(int)$row['id']] = $row;
+    }
+
+    $varStmt = $conn->prepare("SELECT menu_item_id, variation_name, price FROM menu_item_variations WHERE menu_item_id IN ($placeholders)");
+    $varStmt->execute($menuItemIds);
+    $variationsByItem = [];
+    foreach ($varStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $variationsByItem[(int)$row['menu_item_id']][$row['variation_name']] = (float)$row['price'];
+    }
+
+    foreach ($cartItems as $ci) {
+        $mid = (int)($ci['id'] ?? 0);
+        $menuRow = $menuItemsById[$mid] ?? null;
+        if (!$menuRow || !$menuRow['is_available']) {
+            return 'One or more items are no longer available';
+        }
+
+        $expectedPrice = (float)$menuRow['base_price'];
+        $variationName = $ci['variation_name'] ?? '';
+        if (!empty($variationName)) {
+            if (!isset($variationsByItem[$mid][$variationName])) {
+                return 'Invalid item variation';
+            }
+            $expectedPrice = $variationsByItem[$mid][$variationName];
+        }
+
+        if (abs((float)($ci['price'] ?? 0) - $expectedPrice) > 0.01) {
+            error_log("POS price mismatch for menu item $mid (restaurant $restaurant_id): client sent " . ($ci['price'] ?? 'null') . ", expected $expectedPrice");
+            return 'Item price mismatch — please refresh the menu and try again';
+        }
+    }
+
+    return null;
+}
+
 function handleCreateKOT($conn, $restaurant_id) {
     $tableId = $_POST['tableId'] ?? null;
     $tableIdParam = $tableId ? $tableId : null;
@@ -238,7 +301,13 @@ function handleCreateKOT($conn, $restaurant_id) {
         echo json_encode(['success' => false, 'message' => 'Cart is empty or invalid'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    
+
+    $priceError = verifyPosCartItemPrices($conn, $restaurant_id, $cartItems);
+    if ($priceError !== null) {
+        echo json_encode(['success' => false, 'message' => $priceError], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
     // Server-side tax validation
     $expectedTotal = round($subtotal + $tax, 2);
     if (abs($total - $expectedTotal) > 0.01) {
@@ -377,7 +446,13 @@ function handleHoldOrder($conn, $restaurant_id) {
         echo json_encode(['success' => false, 'message' => 'Cart is empty'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    
+
+    $priceError = verifyPosCartItemPrices($conn, $restaurant_id, $cartItems);
+    if ($priceError !== null) {
+        echo json_encode(['success' => false, 'message' => $priceError], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
     // Server-side tax validation
     $expectedTotal = round($subtotal + $tax, 2);
     if (abs($total - $expectedTotal) > 0.01) {

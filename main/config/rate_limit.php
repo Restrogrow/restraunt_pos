@@ -196,13 +196,23 @@ function getRateLimitIdentifier() {
     
     // Fall back to IP address
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    
-    // Handle proxy headers (use X-Forwarded-For if available)
-    if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $forwarded = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-        $ip = trim($forwarded[0]);
+
+    // X-Forwarded-For is only trustworthy when the request actually came
+    // through a known reverse proxy — otherwise any client can set it to an
+    // arbitrary value on every request and get a fresh rate-limit bucket
+    // each time, defeating brute-force protection entirely. Only honor it
+    // when REMOTE_ADDR (the actual TCP peer, which can't be spoofed) is in
+    // a configured trusted-proxy allowlist; TRUSTED_PROXY_IPS is unset by
+    // default, so out of the box this always uses REMOTE_ADDR directly.
+    $trustedProxies = function_exists('env') ? env('TRUSTED_PROXY_IPS', '') : '';
+    if ($trustedProxies !== '' && isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $trustedList = array_map('trim', explode(',', $trustedProxies));
+        if (in_array($ip, $trustedList, true)) {
+            $forwarded = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+            $ip = trim($forwarded[0]);
+        }
     }
-    
+
     return 'ip_' . $ip;
 }
 

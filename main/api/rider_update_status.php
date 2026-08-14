@@ -67,6 +67,20 @@ try {
     // Begin transaction for atomic updates
     $conn->beginTransaction();
 
+    // Refuse to advance delivery_status at all if the order itself has
+    // already been cancelled/rejected — this used to only be checked
+    // further down, inside the 'Delivered' branch, so a rider could still
+    // walk a cancelled order through Picked_Up -> In_Transit -> Delivered
+    // (staff cancels after pickup, e.g. wrong address) and delivery_tracking
+    // would end up showing "Delivered" for an order that's actually Cancelled.
+    $orderStatusStmt = $conn->prepare("SELECT order_status FROM orders WHERE id = ? FOR UPDATE");
+    $orderStatusStmt->execute([$tracking['order_id']]);
+    $currentOrderStatus = $orderStatusStmt->fetchColumn();
+    if (in_array($currentOrderStatus, ['Cancelled', 'Rejected'], true)) {
+        $conn->rollBack();
+        throw new Exception('This order has been ' . strtolower($currentOrderStatus) . ' and can no longer be updated');
+    }
+
     // Update delivery_tracking status
     $updateFields = ['delivery_status = ?', 'updated_at = NOW()'];
     $updateParams = [$status];
@@ -89,10 +103,7 @@ try {
     // whether the restaurant explicitly advanced it. We chain through intermediate
     // transitions to reach 'Completed' regardless of the current state.
     if ($status === 'Delivered') {
-        // Read current order status (row is locked by the transaction)
-        $orderStmt = $conn->prepare("SELECT order_status FROM orders WHERE id = ? FOR UPDATE");
-        $orderStmt->execute([$tracking['order_id']]);
-        $currentOrderStatus = $orderStmt->fetchColumn();
+        // $currentOrderStatus was already read (and the row locked) above.
 
         // Build the chain of statuses needed to reach 'Completed' from the current state.
         $path = [];

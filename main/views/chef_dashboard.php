@@ -515,6 +515,20 @@ $restaurant_id = $_SESSION['restaurant_id'];
                 return;
             }
             
+            // Customer name/phone/email/address and item notes all originate
+            // from anonymous website checkout input with no server-side
+            // sanitization — this board auto-refreshes, so an unescaped
+            // value here would execute with no click needed at all.
+            function escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
             // Calculate time elapsed for each KOT
             function getTimeElapsed(createdAt) {
                 const now = new Date();
@@ -542,10 +556,10 @@ $restaurant_id = $_SESSION['restaurant_id'];
                                 </div>
                                 ${kot.customer_name && kot.customer_name !== 'Table Customer' && kot.customer_name !== 'Takeaway' ? `
                                 <div class="kot-customer-info" style="margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.5); border-radius: 6px; font-size: 0.85rem;">
-                                    <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">👤 ${kot.customer_name}</div>
-                                    ${kot.customer_phone ? `<div style="color: #6b7280; font-size: 0.8rem;">📞 ${kot.customer_phone}</div>` : ''}
-                                    ${kot.customer_email ? `<div style="color: #6b7280; font-size: 0.8rem;">✉️ ${kot.customer_email}</div>` : ''}
-                                    ${kot.customer_address ? `<div style="color: #6b7280; font-size: 0.8rem;">📍 ${kot.customer_address}</div>` : ''}
+                                    <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">👤 ${escapeHtml(kot.customer_name)}</div>
+                                    ${kot.customer_phone ? `<div style="color: #6b7280; font-size: 0.8rem;">📞 ${escapeHtml(kot.customer_phone)}</div>` : ''}
+                                    ${kot.customer_email ? `<div style="color: #6b7280; font-size: 0.8rem;">✉️ ${escapeHtml(kot.customer_email)}</div>` : ''}
+                                    ${kot.customer_address ? `<div style="color: #6b7280; font-size: 0.8rem;">📍 ${escapeHtml(kot.customer_address)}</div>` : ''}
                                 </div>
                                 ` : ''}
                             </div>
@@ -565,11 +579,11 @@ $restaurant_id = $_SESSION['restaurant_id'];
                             ${(kot.items || []).map(item => `
                                 <div class="kot-item">
                                     <div class="kot-item-info">
-                                        <div class="kot-item-name">${item.item_name_translated || item.item_name || item.name}</div>
+                                        <div class="kot-item-name">${escapeHtml(item.item_name_translated || item.item_name || item.name)}</div>
                                         <div class="kot-item-qty">Quantity: ${item.quantity}</div>
                                         ${(item.notes || item.special_instructions) ? `
                                             <div class="kot-item-note">
-                                                <strong>Note:</strong> ${item.notes || item.special_instructions}
+                                                <strong>Note:</strong> ${escapeHtml(item.notes || item.special_instructions)}
                                             </div>
                                         ` : ''}
                                     </div>

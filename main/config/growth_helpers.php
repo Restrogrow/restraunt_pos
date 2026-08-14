@@ -200,11 +200,17 @@ function ensureGrowthSchema(PDO $conn): void {
         try { $conn->exec("ALTER TABLE customers ADD COLUMN signup_ip VARCHAR(45) DEFAULT NULL"); } catch (PDOException $e2) {}
     }
 
-    // orders.loyalty_* columns
+    // orders.loyalty_* columns (+ coupon_use_reversed, tracked alongside
+    // them since it guards the same reverseLoyaltyForOrder() idempotency
+    // problem: an order can independently hit both the order_status
+    // Cancelled hook and the payment_status Refunded hook, and coupon
+    // current_uses has no ledger of its own the way points do to detect a
+    // repeat reversal).
     foreach ([
         'loyalty_points_earned' => 'INT DEFAULT 0',
         'loyalty_points_redeemed' => 'INT DEFAULT 0',
         'loyalty_discount_amount' => 'DECIMAL(10,2) DEFAULT 0.00',
+        'coupon_use_reversed' => 'TINYINT(1) DEFAULT 0',
     ] as $col => $def) {
         try {
             $conn->query("SELECT $col FROM orders LIMIT 1");
@@ -419,10 +425,33 @@ function awardLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id, 
 function reverseLoyaltyForOrder(PDO $conn, string $restaurant_id, int $order_id, string $reason): void {
     ensureGrowthSchema($conn);
 
-    $orderStmt = $conn->prepare("SELECT customer_phone, loyalty_points_earned, loyalty_points_redeemed FROM orders WHERE id = ? AND restaurant_id = ?");
+    $orderStmt = $conn->prepare("SELECT customer_phone, loyalty_points_earned, loyalty_points_redeemed, coupon_code, coupon_use_reversed FROM orders WHERE id = ? AND restaurant_id = ?");
     $orderStmt->execute([$order_id, $restaurant_id]);
     $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$order || empty($order['customer_phone'])) {
+    if (!$order) {
+        return;
+    }
+
+    // Coupon usage: the only writer of coupons.current_uses is the increment
+    // at order creation — nothing ever gave it back on cancel/refund, so a
+    // capped promotional coupon (e.g. "first 50 customers") got permanently
+    // exhausted by orders that were later cancelled. Independent of the
+    // points reversal below (a guest order with no loyalty activity can
+    // still have used a coupon), guarded by coupon_use_reversed since this
+    // function can be called twice for the same order (Cancelled, then
+    // later Refunded).
+    if (!empty($order['coupon_code']) && !(int)($order['coupon_use_reversed'] ?? 0)) {
+        try {
+            $conn->prepare(
+                "UPDATE coupons SET current_uses = GREATEST(current_uses - 1, 0) WHERE restaurant_id = ? AND coupon_code = ?"
+            )->execute([$restaurant_id, $order['coupon_code']]);
+            $conn->prepare("UPDATE orders SET coupon_use_reversed = 1 WHERE id = ?")->execute([$order_id]);
+        } catch (PDOException $e) {
+            error_log("Coupon use reversal failed for order $order_id: " . $e->getMessage());
+        }
+    }
+
+    if (empty($order['customer_phone'])) {
         return;
     }
 

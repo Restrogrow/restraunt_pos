@@ -22,7 +22,9 @@ startSecureSession();
 $isSuperadmin = isset($_SESSION['superadmin_id']);
 if (!$isSuperadmin) {
     requireLogin(true);
-    requirePermission(PERMISSION_VIEW_DASHBOARD, true);
+    // Admin-only — this endpoint can permanently delete a restaurant's error
+    // logs, and PERMISSION_VIEW_DASHBOARD is held by every staff role.
+    requirePermission(PERMISSION_MANAGE_SETTINGS, true);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -75,13 +77,18 @@ try {
                 echo json_encode(['success' => false, 'message' => 'ID required']);
                 exit;
             }
-            $stmt = $conn->prepare("
-                UPDATE error_logs 
-                SET is_read = 1, is_acknowledged = 1, 
-                    acknowledged_by = ?, acknowledged_at = NOW() 
-                WHERE id = ?
-            ");
-            $stmt->execute([$username, $id]);
+            // Missing the restaurant_id scoping its sibling actions
+            // (mark_read/mark_all_read/delete) already have — any logged-in
+            // staff could acknowledge another restaurant's error-log entry
+            // by guessing/incrementing id.
+            $sql = "UPDATE error_logs SET is_read = 1, is_acknowledged = 1, acknowledged_by = ?, acknowledged_at = NOW() WHERE id = ?";
+            $params = [$username, $id];
+            if ($restaurantId) {
+                $sql .= " AND (restaurant_id = ? OR restaurant_id IS NULL)";
+                $params[] = $restaurantId;
+            }
+            $stmt = $conn->prepare($sql);
+            $stmt->execute($params);
             echo json_encode(['success' => true, 'message' => 'Acknowledged']);
             break;
 

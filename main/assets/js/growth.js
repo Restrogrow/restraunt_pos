@@ -470,7 +470,7 @@ function renderSegmentsTable(customers) {
       <td>${cur}${Number(c.total_spent || 0).toFixed(2)}</td>
       <td>${c.last_visit_date && c.last_visit_date !== '0000-00-00' ? c.last_visit_date : '-'}</td>
       <td>${c.loyalty_points_balance ?? 0}</td>
-      <td><button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick="openAdjustPointsModal(${c.id}, '${escapeHtml(c.customer_name || '').replace(/'/g, "\\'")}')">Adjust Points</button></td>
+      <td><button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick="openAdjustPointsModal(${c.id}, ${JSON.stringify(c.customer_name || '').replace(/"/g, '&quot;')})">Adjust Points</button></td>
     </tr>
   `).join('');
 }

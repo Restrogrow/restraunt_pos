@@ -19,11 +19,10 @@ startSecureSession();
 // Clear any output that might have been generated
 ob_clean();
 
-// Set JSON headers
+// Set JSON headers. No CORS wildcard — this handles admin login/signup and
+// session-mutating account actions, always called same-origin from the
+// platform's own admin pages, never a restaurant's embedded/custom domain.
 header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
 
 // ── Release session file lock early ──
 // The session was started above for auth checks. We close it here so that
@@ -427,7 +426,13 @@ function handleSignup() {
     $username = isset($_POST['username']) ? trim($_POST['username']) : '';
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $password = isset($_POST['password']) ? $_POST['password'] : '';
-    $restaurantName = isset($_POST['restaurant_name']) ? trim($_POST['restaurant_name']) : '';
+    // strip_tags(): restaurant_name is rendered in the superadmin panel (and
+    // elsewhere) — a raw HTML/script payload here used to be able to run in
+    // the superadmin's session the next time they opened their dashboard.
+    // Every render site is also being escaped, but stripping markup at the
+    // source closes it in depth rather than relying on every future render
+    // site remembering to escape.
+    $restaurantName = isset($_POST['restaurant_name']) ? trim(strip_tags($_POST['restaurant_name'])) : '';
     $country = isset($_POST['country']) ? trim($_POST['country']) : '';
     $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
 
@@ -745,6 +750,11 @@ function handleUpdateRestaurantSettings() {
     
     $isBranchAdmin = isset($_SESSION['branch_admin_id']);
 
+    // Relies on staff sessions never setting $_SESSION['user_id'] (only the
+    // restaurant owner login does) and never being treated as a branch
+    // admin — there's no PERMISSION_MANAGE_SETTINGS/requirePermission()
+    // check here the way most other admin endpoints have, so if that
+    // invariant ever changes this gate needs to change with it.
     if ((!isset($_SESSION['user_id']) && !$isBranchAdmin) || !isset($_SESSION['restaurant_id'])) {
         throw new Exception('You must be logged in to update restaurant settings');
     }
@@ -767,7 +777,7 @@ function handleUpdateRestaurantSettings() {
         $userId = $_SESSION['user_id'];
     }
 
-    $restaurantName = isset($_POST['restaurant_name']) ? trim($_POST['restaurant_name']) : '';
+    $restaurantName = isset($_POST['restaurant_name']) ? trim(strip_tags($_POST['restaurant_name'])) : '';
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
     $address = isset($_POST['address']) ? trim($_POST['address']) : '';
@@ -962,6 +972,10 @@ function handleUpdatePaymentGateway() {
         }
     }
 
+    // user_id-only (no branch-admin path here, unlike handleUpdateRestaurantSettings)
+    // — relies on staff sessions never setting it. No requirePermission()
+    // check the way most other admin endpoints have; keep that invariant in
+    // mind if this function is ever touched.
     if (!isset($_SESSION['user_id']) || !isset($_SESSION['restaurant_id'])) {
         throw new Exception('You must be logged in to update payment gateway settings');
     }
@@ -1028,7 +1042,10 @@ function handleUpdateSystemSettings() {
         }
     }
     
-    // Check if user is logged in
+    // Check if user is logged in — relies on staff sessions never setting
+    // user_id (only the restaurant owner login does). No requirePermission()
+    // check the way most other admin endpoints have; keep that invariant in
+    // mind if this function is ever touched.
     if (!isset($_SESSION['user_id']) || !isset($_SESSION['restaurant_id'])) {
         throw new Exception('You must be logged in to update system settings');
     }

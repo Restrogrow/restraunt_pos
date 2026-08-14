@@ -20,6 +20,7 @@ require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true);
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/../config/growth_helpers.php';
+require_once __DIR__ . '/customer_session.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -44,6 +45,18 @@ try {
     switch ($action) {
         case 'summary':
             if (!$phone) throw new Exception('Phone number is required');
+
+            // Ownership check — this used to trust the bare `phone` request
+            // parameter, letting anyone view any customer's points balance
+            // and full ledger just by knowing their phone number. Now it
+            // only succeeds for the customer's own logged-in account, or a
+            // guest session that just proved ownership by placing a real
+            // order through this phone (see getAuthorizedCustomer()).
+            $authorized = getAuthorizedCustomer($conn, $restaurantId, $phone);
+            if (!$authorized) {
+                echo json_encode(['success' => false, 'message' => 'Please verify your phone number to view loyalty details.']);
+                break;
+            }
 
             $stmt = $conn->prepare("SELECT id, customer_name, total_spent, loyalty_points_balance FROM customers WHERE restaurant_id = ? AND phone = ?");
             $stmt->execute([$restaurantId, $phone]);
@@ -116,10 +129,8 @@ try {
             $points = (int)($_POST['points'] ?? 0);
             if ($points <= 0) throw new Exception('Enter a valid number of points');
 
-            $stmt = $conn->prepare("SELECT id FROM customers WHERE restaurant_id = ? AND phone = ?");
-            $stmt->execute([$restaurantId, $phone]);
-            $customer = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$customer) throw new Exception('Customer not found');
+            $customer = getAuthorizedCustomer($conn, $restaurantId, $phone);
+            if (!$customer) throw new Exception('Please verify your phone number before redeeming points.');
 
             $conn->beginTransaction();
             try {
@@ -144,10 +155,8 @@ try {
             $rewardId = (int)($_POST['reward_id'] ?? 0);
             if ($rewardId <= 0) throw new Exception('Invalid reward');
 
-            $stmt = $conn->prepare("SELECT id FROM customers WHERE restaurant_id = ? AND phone = ?");
-            $stmt->execute([$restaurantId, $phone]);
-            $customer = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$customer) throw new Exception('Customer not found');
+            $customer = getAuthorizedCustomer($conn, $restaurantId, $phone);
+            if (!$customer) throw new Exception('Please verify your phone number before redeeming a reward.');
 
             $conn->beginTransaction();
             try {

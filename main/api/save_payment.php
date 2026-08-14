@@ -28,8 +28,17 @@ try {
     if (!$order_id) {
         throw new Exception('Order ID is required');
     }
-    
-    $sql = "INSERT INTO payments (restaurant_id, order_id, transaction_id, amount, payment_method, payment_status, reference_number, notes) 
+
+    // Verify the order actually belongs to this restaurant before attaching
+    // a payment to it — without this, a payment could be recorded against
+    // (and inflate reporting for) another restaurant's order.
+    $ownerCheck = $conn->prepare("SELECT id FROM orders WHERE id = ? AND restaurant_id = ?");
+    $ownerCheck->execute([$order_id, $restaurant_id]);
+    if (!$ownerCheck->fetch()) {
+        throw new Exception('Order not found');
+    }
+
+    $sql = "INSERT INTO payments (restaurant_id, order_id, transaction_id, amount, payment_method, payment_status, reference_number, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     
     $stmt = $conn->prepare($sql);

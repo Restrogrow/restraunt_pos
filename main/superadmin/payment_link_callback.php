@@ -87,7 +87,7 @@ try {
     }
     // ========== END X-VERIFY VERIFICATION ==========
 
-    $stmt = $conn->prepare("SELECT id, payment_status FROM payment_links WHERE transaction_id = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, payment_status, phonepe_order_id FROM payment_links WHERE transaction_id = ? LIMIT 1");
     $stmt->execute([$merchant_transaction_id]);
     $payment = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -102,6 +102,27 @@ try {
         echo json_encode(['success' => true, 'message' => 'already processed']);
         exit();
     }
+
+    // ========== ORDER ID CROSS-CHECK (fallback when X-VERIFY is skipped) ==========
+    // PhonePe's v2 OAuth checkout doesn't send the legacy X-VERIFY header, so
+    // for real traffic the signature check above is routinely skipped —
+    // without this, any caller who could guess/enumerate a transaction_id
+    // (narrow entropy at generation time) could POST a fake
+    // {state:'COMPLETED'} here and mark someone else's invoice paid with no
+    // real payment. phonepe_order_id is PhonePe's own opaque order ID,
+    // returned to our server only at link-creation time (createPaymentLink())
+    // and never exposed publicly before a real payment attempt — requiring
+    // the callback's orderId to match it means a forged callback also has to
+    // know a value that was never handed to the client ahead of time.
+    if (!empty($payment['phonepe_order_id'])) {
+        if (empty($phonepe_order_id) || !hash_equals($payment['phonepe_order_id'], $phonepe_order_id)) {
+            error_log('PaymentLink callback: orderId mismatch for transaction ' . $merchant_transaction_id . ' — expected ' . $payment['phonepe_order_id'] . ', got ' . ($phonepe_order_id ?: '(none)'));
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Order verification failed']);
+            exit();
+        }
+    }
+    // ========== END ORDER ID CROSS-CHECK ==========
 
     if ($state === 'COMPLETED' || $state === 'PAYMENT_SUCCESS') {
         $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Success', phonepe_order_id = ? WHERE id = ?");

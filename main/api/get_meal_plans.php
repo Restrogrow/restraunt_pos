@@ -57,6 +57,20 @@ try {
         }
     }
 
+    // Unlike the write-path controllers, this read endpoint never checked
+    // whether the superadmin has actually turned the feature on for this
+    // restaurant — a customer could still read plan names/prices via a
+    // direct request even after it was disabled. Only gates the public
+    // customer-facing read; the admin plan editor can still see its own
+    // (disabled) plans to review/re-enable them.
+    if (!$isAdminRequest) {
+        require_once __DIR__ . '/../config/meal_subscription_schema.php';
+        if (!mealSubscriptionsFeatureEnabled($conn, $restaurant_id)) {
+            echo json_encode(['success' => true, 'data' => [], 'weekly_menu' => []], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+    }
+
     try {
         $checkTable = $conn->query("SHOW TABLES LIKE 'meal_plans'");
         if ($checkTable->rowCount() == 0) {

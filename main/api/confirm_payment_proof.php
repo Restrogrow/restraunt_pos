@@ -67,6 +67,20 @@ try {
         // Keep the payments log (used by the dashboard revenue widget) in sync.
         $conn->prepare("UPDATE payments SET payment_status = 'Success' WHERE order_id = ? AND payment_status = 'Pending'")
              ->execute([$orderId]);
+    } else {
+        // Rejecting used to just flip the proof's status and leave the
+        // order dangling in Pending forever — any loyalty points the
+        // customer redeemed at checkout were never credited back, since
+        // that reversal only fires on the order_status -> Cancelled
+        // transition. Cancel the order here so that hook actually runs.
+        // Best-effort: if the order has already moved past a cancellable
+        // stage (e.g. already served), the rejection itself should still
+        // go through — staff need to be able to flag a bad payment proof
+        // regardless.
+        $cancelResult = validateAndUpdateOrderStatus($conn, $orderId, 'Cancelled', [], [], $restaurant_id, '[Payment proof rejected]');
+        if (!$cancelResult['success']) {
+            error_log('confirm_payment_proof: could not auto-cancel order ' . $orderId . ' after proof rejection - ' . $cancelResult['message']);
+        }
     }
 
     $conn->commit();

@@ -242,6 +242,20 @@ function validateAndUpdateOrderStatus(
         } catch (Exception $e) {
             error_log('Growth module cancellation reversal failed for order ' . $orderId . ': ' . $e->getMessage());
         }
+
+        // Cascade to the linked KOT (kot.order_id — see kot_operations.php's
+        // ensureKotSchema()) so a cancelled order's ticket stops showing as
+        // active on the kitchen/KOT board. Without this the kitchen would
+        // keep cooking an order that's already been cancelled, since
+        // get_kot.php only filters out Completed/Cancelled tickets.
+        try {
+            $conn->prepare(
+                "UPDATE kot SET kot_status = 'Cancelled', updated_at = CURRENT_TIMESTAMP
+                 WHERE order_id = ? AND kot_status NOT IN ('Completed', 'Cancelled')"
+            )->execute([$orderId]);
+        } catch (PDOException $e) {
+            error_log('KOT cancellation cascade failed for order ' . $orderId . ': ' . $e->getMessage());
+        }
     }
 
     // Waiter "order Ready" push notification is intentionally NOT fired

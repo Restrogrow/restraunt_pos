@@ -670,7 +670,12 @@ break;
       break;
 
     case 'setPhonePeMode':
-      $mode = $_POST['mode'] ?? $_GET['mode'] ?? '';
+      // POST only — a GET fallback here would let a merely-clicked link
+      // silently switch the platform's PhonePe environment.
+      if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        throw new Exception('This action requires POST');
+      }
+      $mode = $_POST['mode'] ?? '';
       if (!in_array($mode, ['demo', 'sandbox', 'production'])) {
         throw new Exception('Invalid mode. Use: demo, sandbox, or production');
       }
@@ -774,8 +779,14 @@ break;
       $site_url = $scheme . '://' . $host . $base_path;
       $redirect_url = $site_url . '/main/superadmin/payment_link_redirect.php';
 
-      // Generate transaction ID
-      $transaction_id = 'SPL_' . strtoupper(substr($restaurant_id, 0, 6)) . '_' . time() . '_' . rand(100, 999);
+      // Generate transaction ID — random_int() over a wide range rather than
+      // rand(100,999): the old suffix only had ~900 possible values per
+      // second-window, making it practically guessable within a link's
+      // lifetime (compounded by the restaurant-id prefix and timestamp both
+      // being knowable). The orderId cross-check in payment_link_callback.php
+      // is the primary defense against a forged callback, but a
+      // hard-to-guess transaction_id is still worth having.
+      $transaction_id = 'SPL_' . strtoupper(substr($restaurant_id, 0, 6)) . '_' . time() . '_' . random_int(100000000, 999999999);
 
       // Save pending payment link record
       $stmt = $conn->prepare("INSERT INTO payment_links (restaurant_id, restaurant_name, amount, transaction_id, payment_status, notes, created_by) VALUES (?, ?, ?, ?, 'Pending', ?, ?)");
@@ -903,13 +914,13 @@ break;
         break;
       }
 
-      // Auto-confirm from redirect code (works for both sandbox and production)
-      if ($code === 'PAYMENT_SUCCESS') {
-        $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Success' WHERE id = ?");
-        $stmt->execute([$id]);
-        echo json_encode(['success' => true, 'payment_status' => 'Success', 'message' => 'Payment confirmed via redirect!']);
-        break;
-      }
+      // The old code used to trust a client-supplied code=PAYMENT_SUCCESS
+      // query param to mark the invoice paid outright — this endpoint is a
+      // plain GET with no CSRF token anywhere in this panel, and SameSite=Lax
+      // cookies still get sent on top-level navigation, so a link the
+      // superadmin merely clicked could silently mark any invoice "Success".
+      // Always fall through to the real PhonePe status check below instead;
+      // $code is intentionally unused now.
 
       if (file_exists(__DIR__ . '/../config/env_loader.php')) {
           require_once __DIR__ . '/../config/env_loader.php';
@@ -1691,6 +1702,32 @@ break;
       // Validate UPI ID format (basic check)
       if (!preg_match('/^[\w\.\-]+@[\w\.\-]+$/', $upi_id)) {
         throw new Exception('Invalid UPI ID format');
+      }
+
+      // Nothing previously stopped a double-click, a network retry, or two
+      // open tabs from both reaching this point and each firing a real bank
+      // transfer for the same intended amount — only the frontend disabling
+      // the submit button guarded against it. A MySQL named lock scoped to
+      // this exact payout serializes concurrent attempts; it releases
+      // automatically when this (non-persistent) connection closes, so nothing
+      // extra is needed at the various success/failure exit points below.
+      $settlementLockName = 'settlement_' . md5($upi_id . '|' . $amount);
+      $settlementLockStmt = $conn->prepare('SELECT GET_LOCK(?, 5)');
+      $settlementLockStmt->execute([$settlementLockName]);
+      if (!$settlementLockStmt->fetchColumn()) {
+        throw new Exception('A settlement to this UPI ID is already being processed — please wait.');
+      }
+      // Also refuse an outright duplicate of a settlement that already
+      // succeeded or is still pending for this exact UPI ID + amount in the
+      // last 2 minutes, in case the lock window itself was missed (e.g. two
+      // requests landing far enough apart that both waited out the lock).
+      $recentDupStmt = $conn->prepare(
+          "SELECT id FROM settlements WHERE upi_id = ? AND amount = ? AND status IN ('Pending', 'Success')
+           AND created_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE) LIMIT 1"
+      );
+      $recentDupStmt->execute([$upi_id, $amount]);
+      if ($recentDupStmt->fetch()) {
+        throw new Exception('A settlement to this UPI ID for this amount was just processed — please check the history before retrying.');
       }
 
       if (file_exists(__DIR__ . '/../config/env_loader.php')) {

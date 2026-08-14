@@ -6863,17 +6863,17 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="avatar-small">${initials(customer.customer_name)}</div>
           </td>
           <td>${escapeHtml(customer.customer_name)}</td>
-          <td>${customer.phone || '-'}</td>
+          <td>${escapeHtml(customer.phone || '-')}</td>
           <td>${escapeHtml(customer.email || '-')}</td>
           <td>${escapeHtml(customer.address || '-')}</td>
           <td>${customer.total_visits || 0}</td>
           <td>${totalSpent}</td>
           <td class="action-cell">
-            <button class="btn-action-small edit-btn" onclick="editCustomer(${customer.id}, '${escapeHtml(customer.customer_name)}', '${customer.phone}', '${escapeHtml(customer.email || '')}')">
+            <button class="btn-action-small edit-btn" onclick="editCustomer(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/"/g, '&quot;')}, ${JSON.stringify(customer.phone || '').replace(/"/g, '&quot;')}, ${JSON.stringify(customer.email || '').replace(/"/g, '&quot;')})">
               <span class="material-symbols-rounded">edit</span>
               <span>Update</span>
             </button>
-            <button class="btn-action-small delete-btn" onclick="deleteCustomer(${customer.id}, '${escapeHtml(customer.customer_name)}')">
+            <button class="btn-action-small delete-btn" onclick="deleteCustomer(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/"/g, '&quot;')})">
               <span class="material-symbols-rounded">delete</span>
               <span>Delete</span>
             </button>
@@ -7109,10 +7109,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div style="margin-bottom: 1.5rem;">
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Order #:</strong> <span style="color: #111827; font-weight: 600;">${order.order_number}</span></p>
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Table:</strong> <span style="color: #111827;">${order.table_name || order.table_number || 'Walk-in'}</span></p>
-                  <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Customer:</strong> <span style="color: #111827;">${order.customer_name || 'N/A'}</span></p>
+                  <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Customer:</strong> <span style="color: #111827;">${escapeHtml(order.customer_name) || 'N/A'}</span></p>
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Type:</strong> <span style="color: #111827;">${order.order_type || 'N/A'}</span></p>
-                  ${order.customer_address ? `<p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Address:</strong> <span style="color: #111827;">${order.customer_address}</span></p>` : ''}
-                  ${order.landmark ? `<p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Landmark:</strong> <span style="color: #111827;">${order.landmark}</span></p>` : ''}
+                  ${order.customer_address ? `<p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Address:</strong> <span style="color: #111827;">${escapeHtml(order.customer_address)}</span></p>` : ''}
+                  ${order.landmark ? `<p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Landmark:</strong> <span style="color: #111827;">${escapeHtml(order.landmark)}</span></p>` : ''}
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Status:</strong> <span class="status-badge ${order.order_status.toLowerCase()}">${order.order_status}</span></p>
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Payment:</strong> <span class="status-badge ${order.payment_status.toLowerCase().replace(' ', '-')}">${order.payment_status}</span></p>
                   <p style="margin: 0.5rem 0; color: #1f2937; font-size: 0.95rem;"><strong style="color: #374151;">Time:</strong> <span style="color: #111827;">${new Date(order.created_at).toLocaleString()}</span></p>
@@ -7133,8 +7133,8 @@ document.addEventListener("DOMContentLoaded", () => {
                       ${items.length ? items.map(item => `
                         <tr style="border-bottom: 1px solid #e5e7eb;">
                           <td style="padding: 0.75rem;">
-                            <div style="font-weight: 500; color: #111827; font-size: 0.95rem;">${item.item_name}</div>
-                            ${item.notes ? `<div style="font-size: 0.875rem; color: #d97706; margin-top: 4px; font-weight: 500;">Note: ${item.notes}</div>` : ''}
+                            <div style="font-weight: 500; color: #111827; font-size: 0.95rem;">${escapeHtml(item.item_name)}</div>
+                            ${item.notes ? `<div style="font-size: 0.875rem; color: #d97706; margin-top: 4px; font-weight: 500;">Note: ${escapeHtml(item.notes)}</div>` : ''}
                           </td>
                           <td style="padding: 0.75rem; text-align: center; color: #374151; font-weight: 500; font-size: 0.95rem;">${item.quantity || 1}</td>
                           <td style="padding: 0.75rem; text-align: right; font-weight: 600; color: #111827; font-size: 0.95rem;">${formatCurrency(item.total_price || 0)}</td>
@@ -7175,7 +7175,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${order.notes ? `
                   <div style="margin-top: 1rem; padding: 1rem; background: #fff7ed; border-radius: 8px; border: 1px solid #fdba74;">
                     <strong style="color: #92400e;">Notes:</strong>
-                    <p style="margin: 0.5rem 0 0 0; color: #78350f;">${order.notes}</p>
+                    <p style="margin: 0.5rem 0 0 0; color: #78350f;">${escapeHtml(order.notes)}</p>
                   </div>
                 ` : ''}
               </div>
@@ -7252,7 +7252,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div style="margin-bottom: 1.5rem;">
                   <p><strong>Order #:</strong> ${order.order_number}</p>
                   <p><strong>Table:</strong> ${order.table_name || 'Walk-in'}</p>
-                  <p><strong>Customer:</strong> ${order.customer_name || 'N/A'}</p>
+                  <p><strong>Customer:</strong> ${escapeHtml(order.customer_name) || 'N/A'}</p>
                   <p><strong>Status:</strong> <span class="status-badge ${order.order_status.toLowerCase()}">${order.order_status}</span></p>
                   <p><strong>Payment:</strong> <span class="status-badge ${order.payment_status.toLowerCase().replace(' ', '-')}">${order.payment_status}</span></p>
                 </div>
@@ -7270,7 +7270,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <tbody>
                       ${order.items.map(item => `
                         <tr style="border-bottom: 1px solid #eee;">
-                          <td style="padding: 0.75rem;">${item.item_name}</td>
+                          <td style="padding: 0.75rem;">${escapeHtml(item.item_name)}</td>
                           <td style="padding: 0.75rem; text-align: center;">${item.quantity}</td>
                           <td style="padding: 0.75rem; text-align: right;">${formatCurrency(item.total_price)}</td>
                         </tr>
@@ -9773,7 +9773,7 @@ function displayKOTOrders(kots) {
           ${kot.customer_name && kot.customer_name !== 'Table Customer' && kot.customer_name !== 'Takeaway' ? `
             <div style="margin-top: 8px; padding: 8px; background: #f3f4f6; border-radius: 6px;">
               <p style="margin: 2px 0; color: #1f2937; font-size: 0.85rem; font-weight: 600;">Customer: ${escapeHtml(kot.customer_name)}</p>
-              ${kot.customer_phone ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;">📞 ${kot.customer_phone}</p>` : ''}
+              ${kot.customer_phone ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;">📞 ${escapeHtml(kot.customer_phone)}</p>` : ''}
               ${kot.customer_email ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;">✉️ ${escapeHtml(kot.customer_email)}</p>` : ''}
               ${kot.customer_address ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;">📍 ${escapeHtml(kot.customer_address)}</p>` : ''}
             </div>
@@ -9786,10 +9786,10 @@ function displayKOTOrders(kots) {
         ${(kot.items || []).map(item => `
           <div class="kot-item" style="display: flex; justify-content: space-between; padding: 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 8px;">
             <div>
-              <strong>${item.item_name || item.name}</strong>
+              <strong>${escapeHtml(item.item_name || item.name)}</strong>
               <div style="color: #6b7280; font-size: 0.875rem;">Qty: ${item.quantity}</div>
             </div>
-            ${(item.notes || item.special_instructions) ? `<div style="color: #f59e0b; font-size: 0.875rem;">Note: ${item.notes || item.special_instructions}</div>` : ''}
+            ${(item.notes || item.special_instructions) ? `<div style="color: #f59e0b; font-size: 0.875rem;">Note: ${escapeHtml(item.notes || item.special_instructions)}</div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -10194,7 +10194,7 @@ function displayOrders(orders) {
       <div class="order-details">
         <p><strong>Type:</strong> ${order.order_type}</p>
         <p><strong>Table:</strong> ${order.table_name || 'Walk-in'}</p>
-        <p><strong>Customer:</strong> ${order.customer_name || 'N/A'}</p>
+        <p><strong>Customer:</strong> ${escapeHtml(order.customer_name) || 'N/A'}</p>
         <p><strong>Time:</strong> ${new Date(order.created_at).toLocaleString()}</p>
         <p><strong>Total:</strong> ${formatCurrency(order.total)}</p>
       </div>
@@ -10202,7 +10202,7 @@ function displayOrders(orders) {
         <h4>Items:</h4>
         ${order.items.map(item => `
           <div class="order-item">
-            <span class="item-name">${item.item_name}</span>
+            <span class="item-name">${escapeHtml(item.item_name)}</span>
             <span class="item-qty">x${item.quantity}</span>
             <span class="item-price">${formatCurrency(item.total_price)}</span>
           </div>
@@ -12906,8 +12906,8 @@ async function loadReports() {
         if (data.top_customers && data.top_customers.length > 0) {
           salesTable.innerHTML = data.top_customers.map(customer => `
             <tr style="border-bottom: 1px solid #eee;">
-              <td style="padding: 1rem; font-weight: 600;">${customer.customer_name || 'N/A'}</td>
-              <td style="padding: 1rem;">${customer.phone || '-'}</td>
+              <td style="padding: 1rem; font-weight: 600;">${escapeHtml(customer.customer_name) || 'N/A'}</td>
+              <td style="padding: 1rem;">${escapeHtml(customer.phone) || '-'}</td>
               <td style="padding: 1rem;">${customer.total_orders}</td>
               <td style="padding: 1rem;">${customer.last_order_date ? new Date(customer.last_order_date).toLocaleDateString('en-IN') : '-'}</td>
               <td style="padding: 1rem; text-align: right; font-weight: 600; color: var(--primary-red);">${formatCurrencyNoDecimals(customer.total_spent)}</td>
@@ -12982,7 +12982,7 @@ async function loadReports() {
           <tr style="border-bottom: 1px solid #eee;">
             <td style="padding: 1rem;">${new Date(order.created_at).toLocaleDateString('en-IN')}</td>
             <td style="padding: 1rem; font-weight: 600;">${order.order_number}</td>
-            <td style="padding: 1rem;">${order.customer_name}</td>
+            <td style="padding: 1rem;">${escapeHtml(order.customer_name)}</td>
             <td style="padding: 1rem;">${order.item_count}</td>
             <td style="padding: 1rem;"><span style="background: #e5f3ff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">${order.payment_method}</span></td>
             <td style="padding: 1rem; text-align: right; font-weight: 600; color: var(--primary-red);">${formatCurrencyNoDecimals(order.total)}</td>

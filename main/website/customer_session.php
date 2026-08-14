@@ -142,7 +142,7 @@ function issueCustomerRememberCookie($pdo, $customerId) {
         time() + (CUSTOMER_REMEMBER_DAYS * 86400),
         '/',
         '',
-        isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+        function_exists('isSecureRequest') ? isSecureRequest() : (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on'),
         true
     );
 }
@@ -160,6 +160,48 @@ function startCustomerSession($pdo, $customer, $remember) {
     if ($remember) {
         issueCustomerRememberCookie($pdo, $customer['id']);
     }
+}
+
+/**
+ * Resolves whether the CURRENT browser session is actually authorized to
+ * act as the customer identified by ($restaurant_id, $phone), instead of
+ * trusting a bare `phone` request parameter (which any caller can supply
+ * for any customer — the bug this closes). Two ways to qualify:
+ *
+ *   1. A real logged-in account (getLoggedInCustomer()) whose own phone
+ *      matches — a signed-up customer can only ever act as themselves.
+ *   2. A "guest" session that just proved ownership of this phone number by
+ *      completing a real order through it in this same browser session
+ *      (see process_website_order.php, which sets $_SESSION['ordering_customer_id']
+ *      right after resolving the customer row for a new order). This keeps
+ *      loyalty/review features working for guest checkout — which this app
+ *      supports and relies on — without requiring a full account, while
+ *      still requiring actual proof of ownership rather than a guessable
+ *      10-digit number.
+ *
+ * Returns the customer row (id, restaurant_id, customer_name, phone, email)
+ * if authorized, or null otherwise.
+ */
+function getAuthorizedCustomer($pdo, $restaurant_id, $phone) {
+    if (!$restaurant_id || !$phone) return null;
+
+    $logged = getLoggedInCustomer($pdo, $restaurant_id);
+    if ($logged && $logged['phone'] === $phone) {
+        return $logged;
+    }
+
+    if (!empty($_SESSION['ordering_customer_id']) && ($_SESSION['ordering_customer_restaurant_id'] ?? null) === $restaurant_id) {
+        try {
+            $stmt = $pdo->prepare("SELECT id, restaurant_id, customer_name, phone, email FROM customers WHERE id = ? AND restaurant_id = ? AND phone = ? LIMIT 1");
+            $stmt->execute([$_SESSION['ordering_customer_id'], $restaurant_id, $phone]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row) return $row;
+        } catch (PDOException $e) {
+            error_log('getAuthorizedCustomer (guest session lookup): ' . $e->getMessage());
+        }
+    }
+
+    return null;
 }
 
 function clearCustomerSession($pdo) {

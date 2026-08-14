@@ -35,15 +35,21 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 // Get JSON data
 $input = json_decode(file_get_contents('php://input'), true);
 
-$customer_name = $input['customer_name'] ?? '';
+// strip_tags(): these fields are free text from an anonymous, unauthenticated
+// checkout and get rendered on staff-facing screens (KOT board, order
+// details, customer lists) — some of which auto-refresh. Stripping markup
+// here is defense in depth alongside escaping every render site; it doesn't
+// replace that escaping, since this is the only checkpoint anything written
+// here ever passes through.
+$customer_name = trim(strip_tags($input['customer_name'] ?? ''));
 $customer_phone = $input['customer_phone'] ?? '';
 $customer_email = $input['customer_email'] ?? '';
-$customer_address = $input['customer_address'] ?? '';
-$landmark = trim($input['landmark'] ?? '');
+$customer_address = trim(strip_tags($input['customer_address'] ?? ''));
+$landmark = trim(strip_tags($input['landmark'] ?? ''));
 if ($landmark === '') $landmark = null;
 $address_lat = isset($input['address_lat']) && $input['address_lat'] !== '' ? (float)$input['address_lat'] : null;
 $address_lng = isset($input['address_lng']) && $input['address_lng'] !== '' ? (float)$input['address_lng'] : null;
-$notes = $input['notes'] ?? '';
+$notes = trim(strip_tags($input['notes'] ?? ''));
 $order_type = $input['order_type'] ?? 'Delivery';
 $table_id = $input['table_id'] ?? null;
 // Ensure table_id is null if it's an empty string (e.g. for Delivery or non-Dine-in orders)
@@ -137,19 +143,16 @@ try {
         exit();
     }
 
-    // Check minimum order value and fetch packaging charge from DB (server-authoritative)
+    // Fetch packaging charge from DB (server-authoritative)
     $minRow = $restaurantRow;
-    $minOrderValue = (float)($minRow['minimum_order_value'] ?? 0);
     // Use DB packaging_charge instead of client-provided value to prevent price manipulation
     $packaging_charge = (float)($minRow['packaging_charge'] ?? 0);
-    if ($minOrderValue > 0 && $total < $minOrderValue) {
-        ob_end_clean();
-        echo json_encode([
-            'success' => false,
-            'message' => 'Minimum order value is ' . number_format($minOrderValue, 2) . '. Please add more items.'
-        ], JSON_UNESCAPED_UNICODE);
-        exit();
-    }
+    // Minimum-order-value is checked further below, once $total has been
+    // recalculated from verified menu-item prices — checking it here against
+    // the raw client-submitted $total let a client submit an inflated total
+    // just to clear this gate while the real (smaller) cart still got
+    // through, silently defeating the restaurant's minimum-order policy.
+    $minOrderValue = (float)($minRow['minimum_order_value'] ?? 0);
 
     // Enforce COD availability server-side. The client already hides the Cash
     // option when disabled, but that alone isn't authoritative.
@@ -293,6 +296,18 @@ if ($orderType === 'delivery') {
                 // rather than trusting an unverifiable client-submitted charge.
                 $delivery_charge = 0;
             }
+        } elseif ($delivery_zone_id) {
+            // ── Pincode/zone-based delivery (the default model) ──
+            // The client-submitted delivery_charge was previously used
+            // verbatim — a modified checkout request could set it to 0 on
+            // every order. delivery_zone_id itself isn't secret (it's
+            // returned by the public check_pincode.php lookup), so re-fetch
+            // the zone's actual rate from the DB and use that instead of
+            // trusting the number that came with it.
+            $zoneStmt = $conn->prepare("SELECT delivery_charge FROM delivery_zones WHERE id = ? AND restaurant_id = ? AND is_active = 1 LIMIT 1");
+            $zoneStmt->execute([$delivery_zone_id, $restaurant_id]);
+            $zoneRow = $zoneStmt->fetch(PDO::FETCH_ASSOC);
+            $delivery_charge = $zoneRow ? (float)$zoneRow['delivery_charge'] : 0;
         }
     }
 
@@ -478,6 +493,20 @@ $conn->beginTransaction();
     $global_addons = $verifiedGlobalAddons;
     // --- End server-side global addon verification ---
 
+    // Minimum-order-value check, against the now server-verified $total —
+    // checking this earlier against the raw client-submitted total let a
+    // client submit an inflated number just to clear this gate while the
+    // real (smaller, verified) cart still went through underneath it.
+    if ($minOrderValue > 0 && $total < $minOrderValue) {
+        $conn->rollBack();
+        ob_end_clean();
+        echo json_encode([
+            'success' => false,
+            'message' => 'Minimum order value is ' . number_format($minOrderValue, 2) . '. Please add more items.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
     // --- Server-side discount verification ---
     // Recompute the discount from the coupon's actual type/value in the DB.
     // Never trust the client-submitted discount_amount - it can be set to
@@ -610,6 +639,32 @@ $conn->beginTransaction();
         $insertStmt = $conn->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email, total_visits, total_spent, last_visit_date) VALUES (?, ?, ?, ?, 1, ?, CURDATE())");
         $insertStmt->execute([$restaurant_id, $customer_name, $customer_phone, $customer_email, $grand_total]);
         $customer_id = $conn->lastInsertId();
+    }
+
+    // Marks this browser session as having just proven ownership of this
+    // phone number by placing a real order through it — lets loyalty/review
+    // features (see customer_session.php's getAuthorizedCustomer()) work for
+    // guest checkout without requiring an account, while still requiring
+    // actual proof of ownership rather than trusting a bare phone parameter.
+    $_SESSION['ordering_customer_id'] = (int)$customer_id;
+    $_SESSION['ordering_customer_restaurant_id'] = $restaurant_id;
+
+    // A plain unlocked SELECT here only catches *sequential* retries — two
+    // genuinely concurrent submissions (same customer, two tabs, or a slow
+    // first request still mid-transaction) could both pass the check before
+    // either commits. A MySQL named lock scoped to this exact customer+total
+    // combination serializes concurrent attempts against each other; it's
+    // released automatically when this (non-persistent) connection closes at
+    // the end of the request, so there's no need to release it on every one
+    // of this function's exit paths.
+    $dedupLockName = 'order_dedup_' . md5($restaurant_id . '|' . $customer_phone . '|' . $grand_total);
+    $dedupLockStmt = $conn->prepare('SELECT GET_LOCK(?, 5)');
+    $dedupLockStmt->execute([$dedupLockName]);
+    if (!$dedupLockStmt->fetchColumn()) {
+        $conn->rollBack();
+        ob_end_clean();
+        echo json_encode(['success' => false, 'message' => 'Please wait a moment and try again.'], JSON_UNESCAPED_UNICODE);
+        exit();
     }
 
     // Deduplication check: if an identical order from the same customer
