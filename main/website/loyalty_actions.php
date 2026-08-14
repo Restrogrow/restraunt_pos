@@ -55,7 +55,7 @@ try {
 
             $settings = getGrowthSettings($conn, $restaurantId);
 
-            $stmt = $conn->prepare("SELECT tier_name, min_total_spent, icon FROM loyalty_tiers WHERE restaurant_id = ? ORDER BY min_total_spent DESC");
+            $stmt = $conn->prepare("SELECT tier_name, min_total_spent, icon, points_multiplier FROM loyalty_tiers WHERE restaurant_id = ? ORDER BY min_total_spent DESC");
             $stmt->execute([$restaurantId]);
             $tiersDesc = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $currentTier = null;

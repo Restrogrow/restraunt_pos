@@ -601,8 +601,14 @@ $conn->beginTransaction();
         $updateStmt = $conn->prepare("UPDATE customers SET total_visits = total_visits + 1, last_visit_date = CURDATE(), total_spent = total_spent + ? WHERE id = ?");
         $updateStmt->execute([$grand_total, $customer_id]);
     } else {
-        $insertStmt = $conn->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email) VALUES (?, ?, ?, ?)");
-        $insertStmt->execute([$restaurant_id, $customer_name, $customer_phone, $customer_email]);
+        // Initialize total_visits/total_spent/last_visit_date on the very
+        // first order too — leaving them at column defaults (0/0.00/NULL)
+        // made a brand-new customer look like they'd never ordered until
+        // their *second* order, which threw off segmentation, CLV, and the
+        // "every Nth order" review-prompt cadence for every first-time
+        // customer. Matches the pattern already used in reservation_operations.php.
+        $insertStmt = $conn->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email, total_visits, total_spent, last_visit_date) VALUES (?, ?, ?, ?, 1, ?, CURDATE())");
+        $insertStmt->execute([$restaurant_id, $customer_name, $customer_phone, $customer_email, $grand_total]);
         $customer_id = $conn->lastInsertId();
     }
 

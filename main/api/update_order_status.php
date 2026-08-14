@@ -103,7 +103,12 @@ try {
         }
         
         $conn->commit();
-        
+
+        if ($status === 'Ready') {
+            require_once __DIR__ . '/../config/push_notification.php';
+            notifyWaitersOrderReady($conn, $restaurant_id, $orderId);
+        }
+
         echo json_encode([
             'success' => true,
             'message' => $result['message']

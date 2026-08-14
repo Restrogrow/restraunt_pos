@@ -183,6 +183,7 @@ function renderTiersTable(tiers) {
       <td>${cur}${Number(t.min_total_spent).toFixed(2)}</td>
       <td><span class="material-symbols-rounded" style="font-size:18px;vertical-align:middle;color:#d97706;">${escapeHtml(t.icon || 'star')}</span></td>
       <td>${t.sort_order ?? 0}</td>
+      <td>${Number(t.points_multiplier ?? 1).toFixed(2)}x</td>
       <td>
         <button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick='openTierModal(${JSON.stringify(t).replace(/'/g, "&#39;")})'>Edit</button>
         <button class="btn btn-danger" style="padding:6px 14px;font-size:0.8rem;" onclick="deleteTier(${t.id})">Delete</button>
@@ -199,6 +200,7 @@ function openTierModal(data) {
   document.getElementById('tierMinSpent').value = data ? (data.min_total_spent || 0) : 0;
   document.getElementById('tierIcon').value = data ? (data.icon || 'star') : 'star';
   document.getElementById('tierSortOrder').value = data ? (data.sort_order || 0) : 0;
+  document.getElementById('tierPointsMultiplier').value = data ? (data.points_multiplier || 1) : 1;
   document.getElementById('tierModalTitle').textContent = data && data.id ? 'Edit Tier' : 'New Tier';
   modal.style.display = 'block';
   document.body.style.overflow = 'hidden';
@@ -213,6 +215,7 @@ async function saveTier() {
   fd.append('min_total_spent', document.getElementById('tierMinSpent').value);
   fd.append('icon', document.getElementById('tierIcon').value.trim() || 'star');
   fd.append('sort_order', document.getElementById('tierSortOrder').value);
+  fd.append('points_multiplier', document.getElementById('tierPointsMultiplier').value || '1');
 
   try {
     const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
@@ -622,4 +625,124 @@ async function loadGrowthReports() {
     console.error('loadGrowthReports error', e);
     showSweetAlert('Failed to load growth reports', 'error');
   }
+}
+
+/* ── Customer Lifetime Value & Churn Risk ── */
+const GROWTH_RISK_LABELS = { low: 'Low Risk', medium: 'Medium Risk', high: 'High Risk' };
+const GROWTH_RISK_GRADIENTS = {
+  low: 'linear-gradient(135deg,#10b981,#059669)',
+  medium: 'linear-gradient(135deg,#f59e0b,#d97706)',
+  high: 'linear-gradient(135deg,#ef4444,#b91c1c)',
+};
+const GROWTH_RISK_PILL_COLORS = { low: '#d1fae5,#065f46', medium: '#fef3c7,#92400e', high: '#fee2e2,#dc2626' };
+
+function growthRiskPill(risk) {
+  const [bg, fg] = (GROWTH_RISK_PILL_COLORS[risk] || '#e5e7eb,#374151').split(',');
+  return growthPill(GROWTH_RISK_LABELS[risk] || risk, bg, fg);
+}
+
+let growthClvCache = [];
+let growthClvActiveFilter = '';
+
+async function loadClvReport(risk) {
+  growthClvActiveFilter = risk || '';
+  try {
+    const url = '../api/get_growth_clv.php' + (risk ? '?risk=' + encodeURIComponent(risk) : '');
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.success) { showSweetAlert(data.message || 'Failed to load CLV report', 'error'); return; }
+
+    growthClvCache = data.customers || [];
+    const cur = growthCur();
+
+    const cardsEl = document.getElementById('clvSummaryCards');
+    if (cardsEl) {
+      const counts = data.counts || {};
+      const revenueAtRisk = data.revenue_at_risk || {};
+      cardsEl.innerHTML =
+        growthStatCard('savings', 'linear-gradient(135deg,#3b82f6,#1d4ed8)', 'Total Predicted CLV', cur + Number(data.total_predicted_clv ?? 0).toFixed(2), '2-year forward estimate, all customers') +
+        Object.keys(GROWTH_RISK_LABELS).map(risk =>
+          growthStatCard(
+            risk === 'high' ? 'warning' : (risk === 'medium' ? 'schedule' : 'verified'),
+            GROWTH_RISK_GRADIENTS[risk],
+            GROWTH_RISK_LABELS[risk],
+            counts[risk] ?? 0,
+            cur + Number(revenueAtRisk[risk] ?? 0).toFixed(2) + ' predicted CLV'
+          )
+        ).join('');
+    }
+
+    const tabsEl = document.getElementById('clvFilterTabs');
+    if (tabsEl) {
+      const tabs = [{ key: '', label: 'All' }].concat(Object.keys(GROWTH_RISK_LABELS).map(k => ({ key: k, label: GROWTH_RISK_LABELS[k] })));
+      tabsEl.innerHTML = tabs.map(t => `
+        <button class="btn ${growthClvActiveFilter === t.key ? 'btn-primary' : ''}" style="padding:6px 14px;font-size:0.8rem;" onclick="loadClvReport('${t.key}')">${t.label}</button>
+      `).join('');
+    }
+
+    const tbody = document.getElementById('clvTbody');
+    if (tbody) {
+      tbody.innerHTML = growthClvCache.length ? growthClvCache.map(c => `
+        <tr>
+          <td>${escapeHtml(c.customer_name || '-')}</td>
+          <td>${escapeHtml(c.phone || '-')}</td>
+          <td>${cur}${Number(c.lifetime_value || 0).toFixed(2)}</td>
+          <td>${cur}${Number(c.avg_order_value || 0).toFixed(2)}</td>
+          <td>${cur}${Number(c.predicted_clv || 0).toFixed(2)}</td>
+          <td>${c.days_since_last_visit ?? '-'} days</td>
+          <td>${growthRiskPill(c.churn_risk)}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">No customers in this segment.</td></tr>';
+    }
+  } catch (e) {
+    console.error('loadClvReport error', e);
+    showSweetAlert('Failed to load CLV report', 'error');
+  }
+}
+
+function exportClvCsv() {
+  if (!growthClvCache.length) { showSweetAlert('Nothing to export', 'error'); return; }
+  const cur = growthCur();
+  const escapeCsv = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const rows = [['Customer', 'Phone', 'Lifetime Value', 'Avg Order Value', 'Predicted CLV (2yr)', 'Days Since Last Visit', 'Churn Risk']];
+  growthClvCache.forEach(c => rows.push([
+    c.customer_name || '-', c.phone || '-',
+    cur + Number(c.lifetime_value || 0).toFixed(2),
+    cur + Number(c.avg_order_value || 0).toFixed(2),
+    cur + Number(c.predicted_clv || 0).toFixed(2),
+    c.days_since_last_visit ?? '-',
+    GROWTH_RISK_LABELS[c.churn_risk] || c.churn_risk,
+  ]));
+  const csv = '﻿' + rows.map(r => r.map(escapeCsv).join(',')).join('\r\n');
+  downloadCSV(csv, 'clv_churn_report_' + new Date().toISOString().slice(0, 10) + '.csv');
+}
+
+function exportClvPdf() {
+  if (!growthClvCache.length) { showSweetAlert('Nothing to export', 'error'); return; }
+  if (!window.jspdf || !window.jspdf.jsPDF) { showSweetAlert('PDF export is unavailable right now', 'error'); return; }
+
+  const cur = growthCur();
+  const doc = new window.jspdf.jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text('Customer Lifetime Value & Churn Risk Report', 14, 15);
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text('Generated ' + new Date().toLocaleString(), 14, 21);
+
+  doc.autoTable({
+    startY: 27,
+    head: [['Customer', 'Phone', 'Lifetime Value', 'Avg Order Value', 'Predicted CLV (2yr)', 'Days Since Last Visit', 'Churn Risk']],
+    body: growthClvCache.map(c => [
+      c.customer_name || '-', c.phone || '-',
+      cur + Number(c.lifetime_value || 0).toFixed(2),
+      cur + Number(c.avg_order_value || 0).toFixed(2),
+      cur + Number(c.predicted_clv || 0).toFixed(2),
+      String(c.days_since_last_visit ?? '-'),
+      GROWTH_RISK_LABELS[c.churn_risk] || c.churn_risk,
+    ]),
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [59, 130, 246] },
+  });
+
+  doc.save('clv_churn_report_' + new Date().toISOString().slice(0, 10) + '.pdf');
 }

@@ -70,6 +70,7 @@ function ensureGrowthSchema(PDO $conn): void {
             min_total_spent DECIMAL(10,2) NOT NULL,
             icon VARCHAR(50) DEFAULT 'star',
             sort_order INT DEFAULT 0,
+            points_multiplier DECIMAL(3,2) NOT NULL DEFAULT 1.00,
             INDEX idx_restaurant (restaurant_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
@@ -211,6 +212,53 @@ function ensureGrowthSchema(PDO $conn): void {
             try { $conn->exec("ALTER TABLE orders ADD COLUMN $col $def"); } catch (PDOException $e2) {}
         }
     }
+
+    // loyalty_tiers.points_multiplier — restaurants whose tiers were created
+    // before this column existed already have rows; a plain ADD COLUMN above
+    // only fires for a fresh table, so back-fill it separately here too.
+    try {
+        $conn->query("SELECT points_multiplier FROM loyalty_tiers LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE loyalty_tiers ADD COLUMN points_multiplier DECIMAL(3,2) NOT NULL DEFAULT 1.00"); } catch (PDOException $e2) {}
+    }
+
+    // customers.google_review_opt_out / google_review_last_prompted_visit —
+    // durable per-customer state for the "rate us on Google" prompt: a
+    // permanent opt-out flag, plus the total_visits count at which we last
+    // asked, so the prompt can re-fire periodically without re-asking on
+    // every single order.
+    try {
+        $conn->query("SELECT google_review_opt_out FROM customers LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE customers ADD COLUMN google_review_opt_out TINYINT(1) NOT NULL DEFAULT 0"); } catch (PDOException $e2) {}
+    }
+    try {
+        $conn->query("SELECT google_review_last_prompted_visit FROM customers LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE customers ADD COLUMN google_review_last_prompted_visit INT NOT NULL DEFAULT 0"); } catch (PDOException $e2) {}
+    }
+}
+
+/**
+ * Find the highest tier a customer qualifies for given their lifetime
+ * spend, or null if they haven't reached the lowest tier's threshold yet
+ * (or no tiers are configured). Tiers are evaluated highest-threshold-first
+ * so the first match is always the best one the customer qualifies for.
+ */
+function getCustomerTier(PDO $conn, string $restaurant_id, float $totalSpent): ?array {
+    ensureGrowthSchema($conn);
+
+    $stmt = $conn->prepare(
+        "SELECT id, tier_name, min_total_spent, icon, points_multiplier
+         FROM loyalty_tiers WHERE restaurant_id = ? ORDER BY min_total_spent DESC"
+    );
+    $stmt->execute([$restaurant_id]);
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $tier) {
+        if ($totalSpent >= (float)$tier['min_total_spent']) {
+            return $tier;
+        }
+    }
+    return null;
 }
 
 /**
@@ -311,10 +359,28 @@ function awardLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id, 
         return null;
     }
 
-    $stmt = $conn->prepare("SELECT loyalty_points_balance FROM customers WHERE id = ? AND restaurant_id = ? FOR UPDATE");
+    $stmt = $conn->prepare("SELECT loyalty_points_balance, total_spent FROM customers WHERE id = ? AND restaurant_id = ? FOR UPDATE");
     $stmt->execute([$customer_id, $restaurant_id]);
     $customer = $stmt->fetch();
     if (!$customer) {
+        return null;
+    }
+
+    // Tier bonus: applied on top of the base rate, using lifetime spend as
+    // of right now. Note customers.total_spent is incremented when the order
+    // is first placed (process_website_order.php), not when it completes —
+    // so by the time this runs (on Completed), total_spent already includes
+    // *this* order. A customer whose current order pushes them past a tier
+    // threshold gets that tier's bonus on this same order, not just future
+    // ones. Intentional-enough to keep (it's a nice "you just hit Gold!"
+    // moment), but worth knowing if the multiplier ever looks off by one
+    // order's worth of spend.
+    $tier = getCustomerTier($conn, $restaurant_id, (float)($customer['total_spent'] ?? 0));
+    $multiplier = $tier ? (float)$tier['points_multiplier'] : 1.0;
+    if ($multiplier > 1.0) {
+        $points = (int)floor($points * $multiplier);
+    }
+    if ($points <= 0) {
         return null;
     }
 
@@ -324,7 +390,7 @@ function awardLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id, 
     $conn->prepare(
         "INSERT INTO loyalty_points_ledger (restaurant_id, customer_id, order_id, points_change, balance_after, type, note)
          VALUES (?, ?, ?, ?, ?, 'earned', ?)"
-    )->execute([$restaurant_id, $customer_id, $order_id, $points, $newBalance, $order_id ? "Earned from order #$order_id" : 'Earned']);
+    )->execute([$restaurant_id, $customer_id, $order_id, $points, $newBalance, $order_id ? ("Earned from order #$order_id" . ($tier && $multiplier > 1.0 ? " ({$tier['tier_name']} tier, {$multiplier}x)" : '')) : 'Earned']);
 
     if ($order_id) {
         $conn->prepare("UPDATE orders SET loyalty_points_earned = ? WHERE id = ?")->execute([$points, $order_id]);
@@ -715,6 +781,60 @@ function classifyCustomerSegment(array $customer, array $settings): string {
     }
 
     return 'repeat';
+}
+
+/**
+ * Estimate a customer's lifetime value and churn risk from the same
+ * columns segmentation already uses (total_visits, total_spent,
+ * last_visit_date, created_at) — no new tracking tables needed.
+ *
+ * - lifetime_value: realized revenue to date (total_spent).
+ * - predicted_clv: a simple 2-year-forward projection — average order
+ *   value times how often they order (annualized from visits/tenure).
+ *   This is intentionally a rough heuristic, not a statistical model: good
+ *   enough to rank/prioritize customers, not to bill against.
+ * - churn_risk: low/medium/high based on how far past the restaurant's own
+ *   "lapsed" threshold (growth_settings.lapsed_days_threshold) the customer
+ *   already is, so it stays consistent with the existing lapsed segment
+ *   instead of introducing a second, conflicting definition of "at risk".
+ */
+function computeCustomerClv(array $customer, array $settings): array {
+    $visits = max(1, (int)($customer['total_visits'] ?? 0));
+    $spent = (float)($customer['total_spent'] ?? 0);
+    $lastVisit = $customer['last_visit_date'] ?? null;
+    $createdAt = $customer['created_at'] ?? null;
+
+    $avgOrderValue = $spent / $visits;
+
+    $tenureDays = 365;
+    if ($createdAt) {
+        $createdTs = strtotime($createdAt);
+        if ($createdTs !== false) {
+            $tenureDays = max(1, (int)((strtotime('today') - $createdTs) / 86400));
+        }
+    }
+    $orderFrequencyPerYear = ($visits / $tenureDays) * 365;
+    $predictedClv = round($avgOrderValue * $orderFrequencyPerYear * 2, 2);
+
+    $lapsedDays = max(1, (int)($settings['lapsed_days_threshold'] ?? 30));
+    $lastVisitTs = $lastVisit ? strtotime($lastVisit) : false;
+    $daysSinceVisit = $lastVisitTs !== false ? (int)((strtotime('today') - $lastVisitTs) / 86400) : $lapsedDays + 1;
+
+    if ($daysSinceVisit > $lapsedDays) {
+        $churnRisk = 'high';
+    } elseif ($daysSinceVisit > $lapsedDays * 0.5) {
+        $churnRisk = 'medium';
+    } else {
+        $churnRisk = 'low';
+    }
+
+    return [
+        'avg_order_value' => round($avgOrderValue, 2),
+        'lifetime_value' => round($spent, 2),
+        'predicted_clv' => $predictedClv,
+        'days_since_last_visit' => $daysSinceVisit,
+        'churn_risk' => $churnRisk,
+    ];
 }
 
 /**

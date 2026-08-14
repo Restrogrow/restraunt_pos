@@ -2980,12 +2980,22 @@ function showSuccessModal(orderNum) {
   modal.id = 'successModal';
   modal.className = 'modal-overlay';
 
+  var trackUrl = '';
+  if (orderNum) {
+    var storedPhone = '';
+    try { var cd = JSON.parse(localStorage.getItem('customerDetails') || '{}'); storedPhone = cd.phone || ''; } catch (e) {}
+    if (storedPhone) {
+      trackUrl = 'track.php?order_number=' + encodeURIComponent(orderNum) + '&customer_phone=' + encodeURIComponent(storedPhone);
+    }
+  }
+
   modal.innerHTML = '<div class="success-box">' +
     '<div class="check-icon">&#10003;</div>' +
     '<h2>Order Placed!</h2>' +
     '<p>Your order has been placed successfully.</p>' +
     (orderNum ? '<p class="order-num">Order #' + orderNum + '</p>' : '<p class="order-num">&nbsp;</p>') +
     '<p style="font-size:12px;color:#6b7280;margin-bottom:12px;">After your order is delivered, rate your experience in your profile!</p>' +
+    (trackUrl ? '<button class="btn-profile" style="margin-bottom:8px;" onclick="window.location.href=\'' + trackUrl + '\'">Track Order</button>' : '') +
     '<button class="btn-profile" onclick="goToProfile()">View My Profile</button>' +
   '</div>';
 

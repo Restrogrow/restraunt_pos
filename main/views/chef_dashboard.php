@@ -5,6 +5,7 @@ startSecureSession();
 
 // Include authorization configuration
 require_once __DIR__ . '/../config/authorization_config.php';
+require_once __DIR__ . '/../config/env_loader.php';
 
 // Require login and permission to view dashboard (Chef role)
 requireLogin();
@@ -308,6 +309,7 @@ $restaurant_id = $_SESSION['restaurant_id'];
                 </div>
                 <div style="text-align: right;">
                     <div style="font-size: 0.9rem; opacity: 0.9;">Welcome, <?php echo htmlspecialchars($_SESSION['username'] ?? 'Chef'); ?></div>
+                    <button id="enableAlertsBtn" onclick="enableStaffPushAlerts(this)" style="color: white; font-weight: 600; margin-top: 8px; margin-right: 8px; display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔔 Enable Alerts</button>
                     <a href="../controllers/staff_logout.php" style="color: white; text-decoration: none; font-weight: 600; margin-top: 8px; display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">Logout</a>
                 </div>
             </div>
@@ -679,6 +681,79 @@ $restaurant_id = $_SESSION['restaurant_id'];
         
         // Load on page load
         loadKOTOrders();
+
+        // ── Push notifications: chef gets pushed the moment a new order
+        // comes in, instead of relying solely on the smartRefresh poll above.
+        function _pushVapidKeyToUint8Array(base64String) {
+            var padding = '='.repeat((4 - base64String.length % 4) % 4);
+            var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            var rawData = window.atob(base64);
+            var outputArray = new Uint8Array(rawData.length);
+            for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+            return outputArray;
+        }
+
+        async function enableStaffPushAlerts(btn) {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                alert('This browser does not support push notifications (Safari on iOS needs the site added to the Home Screen first).');
+                return;
+            }
+            if (btn) { btn.disabled = true; btn.textContent = 'Enabling…'; }
+            try {
+                var perm = Notification.permission;
+                if (perm !== 'granted') {
+                    perm = await Notification.requestPermission();
+                }
+                if (perm !== 'granted') {
+                    alert('Notification permission was not granted.');
+                    if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Alerts'; }
+                    return;
+                }
+
+                var reg = await navigator.serviceWorker.register('../website/sw.php?v=6', { scope: '../' });
+                reg = await navigator.serviceWorker.ready;
+                var sub = await reg.pushManager.getSubscription();
+                if (!sub) {
+                    var vapidKey = <?php echo json_encode(env('VAPID_PUBLIC_KEY', '')); ?>;
+                    if (!vapidKey) {
+                        alert('Push notifications are not configured on the server yet.');
+                        if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Alerts'; }
+                        return;
+                    }
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: _pushVapidKeyToUint8Array(vapidKey)
+                    });
+                }
+
+                var res = await fetch('../api/save_push_subscription.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sub.toJSON ? sub.toJSON() : sub)
+                });
+                var data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('staffPushEnabled', '1');
+                    if (btn) { btn.disabled = false; btn.textContent = '🔔 Alerts On'; }
+                } else {
+                    alert('Failed to save subscription: ' + (data.message || 'unknown error'));
+                    if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Alerts'; }
+                }
+            } catch (e) {
+                console.error('Push subscribe error', e);
+                alert('Could not enable push alerts: ' + e.message);
+                if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Alerts'; }
+            }
+        }
+
+        // Silently re-subscribe on later visits once permission has already
+        // been granted once — otherwise the button would show "off" on every
+        // reload even though nothing needs the user's attention again.
+        if ('Notification' in window && Notification.permission === 'granted' && localStorage.getItem('staffPushEnabled') === '1') {
+            document.addEventListener('DOMContentLoaded', function() {
+                enableStaffPushAlerts(document.getElementById('enableAlertsBtn'));
+            });
+        }
     </script>
 </body>
 </html>

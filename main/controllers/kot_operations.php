@@ -509,14 +509,19 @@ function handleCompleteKOT() {
                 // Order might already be Ready or further along — that's OK, just log
                 error_log('handleCompleteKOT: order status update skipped - ' . $stateResult['message']);
             }
-            
+
             // Update KOT status to completed
             $update_kot_sql = "UPDATE kot SET kot_status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?";
             $update_kot_stmt = $conn->prepare($update_kot_sql);
             $update_kot_stmt->execute([$kot_id]);
-            
+
             $conn->commit();
-            
+
+            if ($stateResult['success']) {
+                require_once __DIR__ . '/../config/push_notification.php';
+                notifyWaitersOrderReady($conn, $restaurant_id, (int)$order_id);
+            }
+
             echo json_encode([
                 'success' => true,
                 'message' => 'Order served and KOT completed successfully',

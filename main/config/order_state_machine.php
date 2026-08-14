@@ -244,6 +244,15 @@ function validateAndUpdateOrderStatus(
         }
     }
 
+    // Waiter "order Ready" push notification is intentionally NOT fired
+    // here. It used to be, but that meant sending a synchronous network
+    // call to the push service while still holding this row's FOR UPDATE
+    // lock inside the caller's open transaction — a slow push response
+    // could hold up other operations on the same order. It now lives in
+    // notifyWaitersOrderReady() (push_notification.php), called by callers
+    // of this function AFTER they commit — see update_order_status.php and
+    // kot_operations.php.
+
     return [
         'success'       => true,
         'message'       => "Order status updated from {$currentStatus} to {$newStatus}",

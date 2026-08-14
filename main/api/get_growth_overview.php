@@ -21,7 +21,7 @@ try {
 
     $settings = getGrowthSettings($conn, $restaurant_id);
 
-    $stmt = $conn->prepare("SELECT tier_name, min_total_spent, icon, sort_order FROM loyalty_tiers WHERE restaurant_id = ? ORDER BY min_total_spent ASC");
+    $stmt = $conn->prepare("SELECT id, tier_name, min_total_spent, icon, sort_order, points_multiplier FROM loyalty_tiers WHERE restaurant_id = ? ORDER BY min_total_spent ASC");
     $stmt->execute([$restaurant_id]);
     $tiers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

@@ -48,11 +48,13 @@ try {
             $minSpent = (float)($_POST['min_total_spent'] ?? 0);
             $icon = trim($_POST['icon'] ?? 'star');
             $sortOrder = (int)($_POST['sort_order'] ?? 0);
+            $multiplier = (float)($_POST['points_multiplier'] ?? 1.0);
             if (!$name) throw new Exception('Tier name is required');
             if ($minSpent < 0) throw new Exception('Minimum spend cannot be negative');
+            if ($multiplier < 0.1 || $multiplier > 9.99) throw new Exception('Points multiplier must be between 0.1 and 9.99');
 
-            $stmt = $conn->prepare("INSERT INTO loyalty_tiers (restaurant_id, tier_name, min_total_spent, icon, sort_order) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$restaurant_id, $name, $minSpent, $icon ?: 'star', $sortOrder]);
+            $stmt = $conn->prepare("INSERT INTO loyalty_tiers (restaurant_id, tier_name, min_total_spent, icon, sort_order, points_multiplier) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$restaurant_id, $name, $minSpent, $icon ?: 'star', $sortOrder, $multiplier]);
             echo json_encode(['success' => true, 'message' => 'Tier created']);
             break;
 
@@ -62,12 +64,14 @@ try {
             $minSpent = (float)($_POST['min_total_spent'] ?? 0);
             $icon = trim($_POST['icon'] ?? 'star');
             $sortOrder = (int)($_POST['sort_order'] ?? 0);
+            $multiplier = (float)($_POST['points_multiplier'] ?? 1.0);
             if ($id <= 0) throw new Exception('Invalid tier id');
             if (!$name) throw new Exception('Tier name is required');
             if ($minSpent < 0) throw new Exception('Minimum spend cannot be negative');
+            if ($multiplier < 0.1 || $multiplier > 9.99) throw new Exception('Points multiplier must be between 0.1 and 9.99');
 
-            $stmt = $conn->prepare("UPDATE loyalty_tiers SET tier_name=?, min_total_spent=?, icon=?, sort_order=? WHERE id=? AND restaurant_id=?");
-            $stmt->execute([$name, $minSpent, $icon ?: 'star', $sortOrder, $id, $restaurant_id]);
+            $stmt = $conn->prepare("UPDATE loyalty_tiers SET tier_name=?, min_total_spent=?, icon=?, sort_order=?, points_multiplier=? WHERE id=? AND restaurant_id=?");
+            $stmt->execute([$name, $minSpent, $icon ?: 'star', $sortOrder, $multiplier, $id, $restaurant_id]);
             echo json_encode(['success' => true, 'message' => 'Tier updated']);
             break;
 

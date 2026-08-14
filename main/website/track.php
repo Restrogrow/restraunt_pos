@@ -187,6 +187,45 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
             </div>
         </div>
 
+        <?php if ($order['order_type'] !== 'Delivery' && !in_array($order['order_status'], ['Rejected', 'Cancelled'], true)): ?>
+        <div class="card">
+            <h2>Order Progress</h2>
+            <?php
+            // Grouped rather than one step per raw status: some orders skip
+            // "Accepted" and go straight Pending -> Preparing (both valid per
+            // order_state_machine.php), and Served/Completed are functionally
+            // the same milestone from the customer's point of view.
+            $orderStepLabels = ['Order Placed', 'Preparing', 'Ready', 'Completed'];
+            $orderStepGroups = [
+                ['Pending', 'Accepted'],
+                ['Preparing'],
+                ['Ready'],
+                ['Served', 'Completed'],
+            ];
+            $currentOrderStepIdx = -1;
+            foreach ($orderStepGroups as $i => $statuses) {
+                if (in_array($order['order_status'], $statuses, true)) { $currentOrderStepIdx = $i; break; }
+            }
+            ?>
+            <?php $lastOrderStepIdx = count($orderStepLabels) - 1; ?>
+            <div class="delivery-steps" id="orderSteps">
+                <?php foreach ($orderStepLabels as $i => $label):
+                    // The terminal step (Completed) has no "next" step to be
+                    // "active" ahead of — once reached it should render as
+                    // done (checked, static), not pulsing forever.
+                    if ($i < $currentOrderStepIdx) { $cls = 'completed'; }
+                    elseif ($i === $currentOrderStepIdx) { $cls = ($i === $lastOrderStepIdx) ? 'completed' : 'active'; }
+                    else { $cls = ''; }
+                ?>
+                <div class="step <?php echo $cls; ?>">
+                    <div class="dot"></div>
+                    <span class="step-label"><?php echo htmlspecialchars($label); ?></span>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php if ($order['order_type'] === 'Delivery'): ?>
         <div class="card">
             <h2>Delivery Progress</h2>
@@ -326,6 +365,38 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
         });
     }
 
+    // Mirrors the PHP $orderStepGroups above — kept in sync manually since
+    // this timeline only exists for Dine-in/Takeaway orders and needs to
+    // update live from the same polled order_status the badge text uses.
+    var orderStepGroups = [['Pending', 'Accepted'], ['Preparing'], ['Ready'], ['Served', 'Completed']];
+    function updateOrderProgress(orderStatus) {
+        var stepsEl = document.getElementById('orderSteps');
+        if (!stepsEl) return;
+
+        // Cancelled/Rejected aren't part of the happy-path timeline — leaving
+        // it showing stale progress under a badge that now says "Cancelled"
+        // is confusing, so hide the whole card instead.
+        if (orderStatus === 'Cancelled' || orderStatus === 'Rejected') {
+            var card = stepsEl.closest('.card');
+            if (card) card.style.display = 'none';
+            return;
+        }
+
+        var idx = -1;
+        for (var i = 0; i < orderStepGroups.length; i++) {
+            if (orderStepGroups[i].indexOf(orderStatus) !== -1) { idx = i; break; }
+        }
+        var steps = stepsEl.querySelectorAll('.step');
+        var lastIdx = steps.length - 1;
+        steps.forEach(function(el, i) {
+            el.className = 'step';
+            // Terminal step (Completed) renders as done, not perpetually
+            // "active"/pulsing — mirrors the PHP render above.
+            if (i < idx) el.classList.add('completed');
+            else if (i === idx) el.classList.add(i === lastIdx ? 'completed' : 'active');
+        });
+    }
+
     var consecutivePollFailures = 0;
     function setLocationNote(text) {
         var noteEl = document.getElementById('riderLocationNote');
@@ -343,6 +414,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 if (statusEl && d.order_status) {
                     statusEl.textContent = statusLabels[d.order_status] || d.order_status;
                     badgeEl.className = 'status-badge status-' + d.order_status.toLowerCase();
+                    updateOrderProgress(d.order_status);
                 }
                 if (typeof d.loyalty_points_earned !== 'undefined' && d.loyalty_points_earned > 0) {
                     var loyaltyNotice = document.getElementById('loyaltyEarnedNotice');

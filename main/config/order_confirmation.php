@@ -47,9 +47,11 @@ if (!function_exists('fireOrderConfirmedActions')) {
             ];
         }
 
+        $kotCreated = false;
         if ($order['order_type'] === 'Dine-in' && !empty($order['table_id'])) {
             try {
                 createDineInKOT($conn, $restaurant_id, $order, $items);
+                $kotCreated = true;
             } catch (Exception $e) {
                 error_log('KOT creation error for order ' . $orderId . ': ' . $e->getMessage());
             }
@@ -70,6 +72,23 @@ if (!function_exists('fireOrderConfirmedActions')) {
                 '../views/orders.php',
                 $orderId
             );
+            // Kitchen needs to know the moment an order is confirmed, not
+            // just the owner — chef_dashboard.php otherwise only finds out
+            // via its ~10-20s polling loop. Gated on a KOT actually existing:
+            // chef_dashboard.php only ever displays KOT tickets (Dine-in
+            // orders with a table), so pushing for Takeaway/Delivery orders
+            // would send the chef to a dashboard with nothing to show for it.
+            if ($kotCreated) {
+                sendStaffPushNotification(
+                    $conn,
+                    $restaurant_id,
+                    ['Chef'],
+                    '👨‍🍳 New Order!',
+                    'Order #' . $order['order_number'] . ' - ' . $order['order_type'] . ' - start preparing',
+                    '../views/chef_dashboard.php',
+                    $orderId
+                );
+            }
         } catch (Exception $e) {
             // Don't let push notification failure break order confirmation
             error_log('Push notification error: ' . $e->getMessage());

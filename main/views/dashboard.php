@@ -337,6 +337,9 @@ try {
   <!-- Scripts - Defer non-critical -->
   <script src="../assets/js/sweetalert2.all.min.js" defer></script>
   <script src="../assets/libs/cropperjs/cropper.min.js" defer></script>
+  <!-- jsPDF for client-side PDF report export (local files, same reasoning as Cropper.js above) -->
+  <script src="../assets/libs/jspdf/jspdf.umd.min.js" defer></script>
+  <script src="../assets/libs/jspdf/jspdf.plugin.autotable.min.js" defer></script>
   <script>
     // Currency symbol loaded from server-side PHP (exactly like restaurant logo/name)
     // NO JavaScript updates needed - value is already correct in HTML from PHP
@@ -1209,7 +1212,7 @@ try {
               </a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="growthReportsPage" onclick="setTimeout(loadGrowthReports, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="growthReportsPage" onclick="setTimeout(loadGrowthReports, 50); setTimeout(function(){ loadClvReport(''); }, 50)">
                 <span class="material-symbols-rounded">insights</span>
                 <span class="nav-label">Reports</span>
               </a>
@@ -2811,6 +2814,9 @@ function toggleGatewayMode() {
             <button onclick="exportReportsToCSV()" style="padding: 0.75rem 2rem; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
               <span class="material-symbols-rounded">download</span> Export CSV
             </button>
+            <button onclick="exportReportsToPDF()" style="padding: 0.75rem 2rem; background: #dc2626; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+              <span class="material-symbols-rounded">picture_as_pdf</span> Export PDF
+            </button>
           </div>
         </div>
 
@@ -3278,10 +3284,10 @@ function toggleGatewayMode() {
           <div class="section-body" style="overflow-x:auto;">
             <table class="data-table" id="tiersTable">
               <thead>
-                <tr><th>Tier</th><th>Min. Total Spent</th><th>Icon</th><th>Order</th><th>Actions</th></tr>
+                <tr><th>Tier</th><th>Min. Total Spent</th><th>Icon</th><th>Order</th><th>Points Multiplier</th><th>Actions</th></tr>
               </thead>
               <tbody id="tiersTbody">
-                <tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+                <tr><td colspan="6" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -3341,6 +3347,10 @@ function toggleGatewayMode() {
           <div class="form-group">
             <label>Sort Order</label>
             <input type="number" id="tierSortOrder" class="form-control" min="0" step="1" value="0">
+          </div>
+          <div class="form-group">
+            <label>Points Multiplier (e.g. 1.5 = 1.5x points earned)</label>
+            <input type="number" id="tierPointsMultiplier" class="form-control" min="0.1" max="9.99" step="0.05" value="1">
           </div>
           <button class="btn btn-primary" onclick="saveTier()">Save Tier</button>
         </div>
@@ -3468,6 +3478,29 @@ function toggleGatewayMode() {
         <p>Revenue attributable to loyalty and referrals</p>
       </div>
       <div class="page-content">
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Customer Lifetime Value &amp; Churn Risk</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick="exportClvCsv()">Export CSV</button>
+              <button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick="exportClvPdf()">Export PDF</button>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="analytics-stats" id="clvSummaryCards"></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin:16px 0;" id="clvFilterTabs"></div>
+            <div style="overflow-x:auto;">
+              <table class="data-table" id="clvTable">
+                <thead>
+                  <tr><th>Customer</th><th>Phone</th><th>Lifetime Value</th><th>Avg Order Value</th><th>Predicted CLV (2yr)</th><th>Days Since Last Visit</th><th>Churn Risk</th></tr>
+                </thead>
+                <tbody id="clvTbody">
+                  <tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
         <div class="section-card">
           <div class="section-header">
             <div class="section-title">Last 30 Days vs Previous 30 Days</div>

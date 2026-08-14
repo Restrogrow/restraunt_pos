@@ -1386,8 +1386,71 @@ async function loadOrderHistory() {
     allOrders = sortOrders(Array.isArray(data) ? data : (data.orders || []));
     updateStats(allOrders);
     renderOrders(allOrders, el);
+
+    var hasCompletedOrder = allOrders.some(function(o) { return o.order_status === 'Completed'; });
+    if (hasCompletedOrder) {
+      checkGoogleReviewPrompt(rid, c.phone);
+    }
   } catch(e) {
     el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">⚠️</span><div class="empty-state-title">Could Not Load Orders</div><div class="empty-state-desc">Please check your connection and try again.</div></div>';
+  }
+}
+
+/* ── "Rate us on Google" prompt ── */
+function checkGoogleReviewPrompt(rid, phone) {
+  fetch('google_review_actions.php?action=check&restaurant_id=' + encodeURIComponent(rid) + '&phone=' + encodeURIComponent(phone))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success && data.show && data.review_link) {
+        showGoogleReviewPrompt(data.review_link, rid, phone);
+      }
+    })
+    .catch(function() {});
+}
+
+function showGoogleReviewPrompt(reviewLink, rid, phone) {
+  var existing = document.getElementById('googleReviewModal');
+  if (existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'googleReviewModal';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = '<div class="success-box" style="position:relative;">' +
+    '<button onclick="respondGoogleReview(\'later\')" aria-label="Close" style="position:absolute;top:10px;right:12px;border:none;background:none;font-size:18px;color:#9ca3af;cursor:pointer;">&times;</button>' +
+    '<div style="font-size:36px;margin-bottom:8px;">⭐</div>' +
+    '<h2>Enjoying your orders?</h2>' +
+    '<p style="margin:8px 0 16px;color:#374151;font-size:14px;">Would you like to rate our restaurant on Google?</p>' +
+    '<button class="btn-profile" style="margin-bottom:8px;" onclick="respondGoogleReview(\'rate\')">⭐ Rate Us</button>' +
+    '<button class="btn-profile" style="background:#e5e7eb;color:#374151;" onclick="respondGoogleReview(\'never\')">Don\'t ask again</button>' +
+  '</div>';
+  document.body.appendChild(modal);
+
+  window._googleReviewLink = reviewLink;
+  window._googleReviewRid = rid;
+  window._googleReviewPhone = phone;
+}
+
+function respondGoogleReview(choice) {
+  var modal = document.getElementById('googleReviewModal');
+  if (modal) modal.remove();
+
+  var rid = window._googleReviewRid;
+  var phone = window._googleReviewPhone;
+  var reviewLink = window._googleReviewLink;
+  if (!rid || !phone) return;
+
+  if (choice === 'never') {
+    fetch('google_review_actions.php?action=dismiss&restaurant_id=' + encodeURIComponent(rid) + '&phone=' + encodeURIComponent(phone), { method: 'POST' }).catch(function() {});
+    return;
+  }
+
+  // Both 'rate' and 'later' (closed via ×) count as "asked at this visit
+  // count" — only permanent opt-out ('never') is a stronger signal that
+  // suppresses future prompts entirely.
+  fetch('google_review_actions.php?action=mark_prompted&restaurant_id=' + encodeURIComponent(rid) + '&phone=' + encodeURIComponent(phone), { method: 'POST' }).catch(function() {});
+
+  if (choice === 'rate' && reviewLink) {
+    window.open(reviewLink, '_blank');
   }
 }
 
@@ -1539,7 +1602,15 @@ function renderOrderCard(o) {
   html += '</div>';
 
   // ── Action buttons ──
+  var isActiveOrder = ['Completed', 'Cancelled', 'Rejected'].indexOf(status) === -1;
   html += '<div class="order-card-actions">';
+  if (isActiveOrder) {
+    var trackCustomer = window.loggedInCustomer || loadCustomerFromStorage();
+    var trackPhone = trackCustomer ? (trackCustomer.phone || '') : '';
+    if (trackPhone) {
+      html += '<button class="action-btn reorder" onclick="window.location.href=\'track.php?order_number=' + encodeURIComponent(orderNum) + '&customer_phone=' + encodeURIComponent(trackPhone) + '\'">📍 Track Order</button>';
+    }
+  }
   if (isRatable) {
     html += '<button class="action-btn rate" onclick="openFeedback(\'' + escapeHtml(orderNum) + '\')">★ Share your feedback</button>';
     html += '<button class="action-btn reorder" onclick="reorderOrder(\'' + escapeHtml(orderNum) + '\')">🔄 Reorder</button>';

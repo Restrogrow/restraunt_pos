@@ -13195,6 +13195,111 @@ function exportReportsToCSV() {
   showNotification('Report exported successfully!', 'success');
 }
 
+// Export Reports to PDF — mirrors exportReportsToCSV()'s data handling,
+// rendered as tables via jsPDF's autotable plugin instead of a CSV string.
+function exportReportsToPDF() {
+  if (!window.currentReportData) {
+    showNotification('No data to export. Please load reports first.', 'error');
+    return;
+  }
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showNotification('PDF export is unavailable right now.', 'error');
+    return;
+  }
+
+  const data = window.currentReportData;
+  const reportType = data.report_type || 'sales';
+  const period = data.period || 'today';
+
+  let dateRange = '';
+  const periodSelect = document.getElementById('reportPeriod');
+  if (periodSelect && periodSelect.value === 'custom') {
+    const startDate = document.getElementById('reportStartDate')?.value || '';
+    const endDate = document.getElementById('reportEndDate')?.value || '';
+    if (startDate && endDate) {
+      dateRange = `${formatDateForExport(startDate)} to ${formatDateForExport(endDate)}`;
+    }
+  } else {
+    dateRange = getActualDateRange(period);
+  }
+
+  const currencySymbol = globalCurrencySymbol || window.globalCurrencySymbol || '₹';
+  const formatCurrency = (amount) => currencySymbol + parseFloat(amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+
+  const doc = new window.jspdf.jsPDF();
+  doc.setFontSize(14);
+  doc.text(getReportTypeName(reportType), 14, 15);
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text('Date Range: ' + dateRange, 14, 21);
+  doc.text('Generated on: ' + new Date().toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' }), 14, 26);
+
+  doc.autoTable({
+    startY: 32,
+    body: [
+      ['Total Sales', formatCurrency(data.summary?.total_sales || 0)],
+      ['Total Orders', String(data.summary?.total_orders || 0)],
+      ['Items Sold', String(data.summary?.total_items || 0)],
+      ['Total Customers', String(data.summary?.total_customers || 0)],
+    ],
+    theme: 'plain',
+    styles: { fontSize: 10 },
+  });
+
+  let nextY = doc.lastAutoTable.finalY + 10;
+
+  if (reportType === 'customers' && data.top_customers?.length) {
+    doc.autoTable({
+      startY: nextY, head: [['Customer Name', 'Phone', 'Total Orders', 'Last Order Date', 'Total Spent']],
+      body: data.top_customers.map(c => [
+        c.customer_name || 'N/A', c.phone || '-', String(c.total_orders),
+        c.last_order_date ? new Date(c.last_order_date).toLocaleDateString('en-IN') : '-',
+        formatCurrency(c.total_spent),
+      ]),
+      styles: { fontSize: 9 }, headStyles: { fillColor: [220, 38, 38] },
+    });
+  } else if (reportType === 'items' && data.top_items?.length) {
+    doc.autoTable({
+      startY: nextY, head: [['Item Name', 'Quantity Sold', 'Total Revenue']],
+      body: data.top_items.map(i => [i.item_name, String(i.total_quantity), formatCurrency(i.total_revenue)]),
+      styles: { fontSize: 9 }, headStyles: { fillColor: [220, 38, 38] },
+    });
+  } else if (reportType === 'payment' && data.payment_methods?.length) {
+    doc.autoTable({
+      startY: nextY, head: [['Payment Method', 'Order Count', 'Total Amount']],
+      body: data.payment_methods.map(m => [m.payment_method, String(m.count), formatCurrency(m.amount)]),
+      styles: { fontSize: 9 }, headStyles: { fillColor: [220, 38, 38] },
+    });
+  } else if (reportType === 'hourly' && data.hourly_sales?.length) {
+    doc.autoTable({
+      startY: nextY, head: [['Hour', 'Order Count', 'Total Sales']],
+      body: data.hourly_sales.map(h => [
+        h.hour < 12 ? `${h.hour}:00 AM` : h.hour === 12 ? '12:00 PM' : `${h.hour - 12}:00 PM`,
+        String(h.order_count), formatCurrency(h.total_sales),
+      ]),
+      styles: { fontSize: 9 }, headStyles: { fillColor: [220, 38, 38] },
+    });
+  } else if (reportType === 'staff' && data.staff_performance?.length) {
+    doc.autoTable({
+      startY: nextY, head: [['Staff Name', 'Total Orders', 'Total Sales']],
+      body: data.staff_performance.map(s => [s.staff_name || 'Unknown', String(s.total_orders), formatCurrency(s.total_sales)]),
+      styles: { fontSize: 9 }, headStyles: { fillColor: [220, 38, 38] },
+    });
+  } else if (data.sales_details?.length) {
+    doc.autoTable({
+      startY: nextY, head: [['Date', 'Order Number', 'Customer', 'Items', 'Payment Method', 'Amount']],
+      body: data.sales_details.map(o => [
+        new Date(o.created_at).toLocaleDateString('en-IN'), o.order_number, o.customer_name || 'N/A',
+        String(o.item_count || 0), o.payment_method || 'N/A', formatCurrency(o.total),
+      ]),
+      styles: { fontSize: 9 }, headStyles: { fillColor: [220, 38, 38] },
+    });
+  }
+
+  doc.save(`${reportType}_report_${new Date().toISOString().split('T')[0]}.pdf`);
+  showNotification('Report exported successfully!', 'success');
+}
+
 // Helper function to get report type name
 function getReportTypeName(type) {
   const names = {
