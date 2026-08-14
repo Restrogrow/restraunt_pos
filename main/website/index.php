@@ -33,6 +33,10 @@ if (isset($_GET['table']) && trim($_GET['table']) !== '') {
   --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
   --primary-yellow: <?php echo htmlspecialchars($primary_yellow, ENT_QUOTES, 'UTF-8'); ?>;
   --site-font: <?php echo $font_family_css; ?>;
+  --card-radius: <?php echo htmlspecialchars($card_radius_css, ENT_QUOTES, 'UTF-8'); ?>;
+  --btn-radius: <?php echo htmlspecialchars($btn_radius_css, ENT_QUOTES, 'UTF-8'); ?>;
+  --checkout-color: <?php echo htmlspecialchars($checkout_color, ENT_QUOTES, 'UTF-8'); ?>;
+  --checkout-color-dark: <?php echo htmlspecialchars($checkout_color_dark, ENT_QUOTES, 'UTF-8'); ?>;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -474,7 +478,7 @@ body {
 .oos-btn { width: 32px; height: 32px; border-radius: 8px; border: none; background: #ccc; color: #999; font-size: 18px; cursor: not-allowed; display: flex; align-items: center; justify-content: center; }
 
 .add-btn {
-  width: 32px; height: 32px; border-radius: 8px;
+  width: 32px; height: 32px; border-radius: var(--btn-radius, 8px);
   border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
   background: var(--primary-yellow, #FFD100);
   color: #1a1b1f; font-size: 18px;

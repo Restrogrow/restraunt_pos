@@ -13468,6 +13468,8 @@ async function initWebsiteThemeEditor() {
     const dr = document.getElementById('darkRed');
     const py = document.getElementById('primaryYellow');
     const pyHex = document.getElementById('primaryYellowHex');
+    const cc = document.getElementById('checkoutColor');
+    const ccHex = document.getElementById('checkoutColorHex');
     const fontSelect = document.getElementById('siteFontSelect');
     const bannerUpload = document.getElementById('bannerUpload');
     const uploadBannerBtn = document.getElementById('uploadBannerBtn');
@@ -13487,8 +13489,43 @@ async function initWebsiteThemeEditor() {
       layout_columns: 2,
       logo_shape: 'circle',
       logo_size: 90,
-      background_theme: ''
+      background_theme: '',
+      card_style: 'rounded',
+      checkout_color: '#F70000'
     };
+
+    // Mirrors THEME_PRESETS in main/config/website_theme_helpers.php — kept here
+    // too so picking a preset updates the form instantly, no round trip needed.
+    const THEME_PRESETS = {
+      classic: { label: 'Classic Red', primary_red: '#F70000', dark_red: '#DA020E', primary_yellow: '#FFD100', font_family: 'Poppins', card_style: 'rounded' },
+      midnight: { label: 'Midnight', primary_red: '#16213E', dark_red: '#0F1730', primary_yellow: '#00C2A8', font_family: 'Montserrat', card_style: 'sharp' },
+      sunset: { label: 'Sunset', primary_red: '#FF6B35', dark_red: '#C2410C', primary_yellow: '#FFC145', font_family: 'Nunito', card_style: 'pill' },
+      emerald: { label: 'Emerald', primary_red: '#1B5E3D', dark_red: '#0F3D28', primary_yellow: '#F4E1C1', font_family: 'Playfair Display', card_style: 'rounded' },
+      ocean: { label: 'Ocean', primary_red: '#0B6E99', dark_red: '#08526F', primary_yellow: '#FF7E5F', font_family: 'Roboto', card_style: 'rounded' }
+    };
+
+    function renderThemePresetGrid(selectedId) {
+      var grid = document.getElementById('themePresetGrid');
+      if (!grid) return;
+      grid.innerHTML = Object.keys(THEME_PRESETS).map(function(id) {
+        var t = THEME_PRESETS[id];
+        var isSelected = id === selectedId;
+        var radiusPreview = t.card_style === 'pill' ? '999px' : (t.card_style === 'sharp' ? '4px' : '10px');
+        var borderColor = isSelected ? '#7c3aed' : '#e5e7eb';
+        var boxShadow = isSelected ? '0 0 0 2px #7c3aed' : '0 2px 4px rgba(0,0,0,0.06)';
+        return "<div data-preset='" + id + "' style='cursor:pointer;border-radius:10px;overflow:hidden;border:3px solid " + borderColor + ";transition:all 0.2s;box-shadow:" + boxShadow + ";background:#fff;'>" +
+          "<div style='height:50px;background:linear-gradient(135deg," + t.primary_red + "," + t.dark_red + ");display:flex;align-items:center;justify-content:center;'>" +
+            "<span style='display:inline-block;padding:4px 10px;background:" + t.primary_yellow + ";border-radius:" + radiusPreview + ";font-size:10px;font-weight:700;color:#1a1a1a;'>Aa</span>" +
+          "</div>" +
+          "<div style='padding:6px 8px;font-size:11px;font-weight:600;color:#374151;text-align:center;'>" + t.label + "</div>" +
+        "</div>";
+      }).join('');
+      grid.onclick = function(e) {
+        var target = e.target.closest('[data-preset]');
+        if (target) window.applyThemePreset(target.getAttribute('data-preset'));
+      };
+    }
+    renderThemePresetGrid('');
 
     // Darken a #RRGGBB hex color by a percentage (used to auto-derive the gradient shade from the Primary Color)
     function shadeColor(hex, percent) {
@@ -13519,6 +13556,16 @@ async function initWebsiteThemeEditor() {
         root.style.setProperty('--primary-red', primaryVal);
         root.style.setProperty('--dark-red', darkVal);
         root.style.setProperty('--primary-yellow', accentVal);
+
+        var checkoutVal = cc ? cc.value : DEFAULT_THEME.checkout_color;
+        root.style.setProperty('--checkout-color', checkoutVal);
+        root.style.setProperty('--checkout-color-dark', shadeColor(checkoutVal, -12));
+
+        var cardStyleEl = document.getElementById('cardStyleInput');
+        var cardStyleVal = cardStyleEl ? cardStyleEl.value : 'rounded';
+        var radii = cardStyleVal === 'pill' ? { card: '20px', btn: '999px' } : (cardStyleVal === 'sharp' ? { card: '4px', btn: '4px' } : { card: '16px', btn: '12px' });
+        root.style.setProperty('--card-radius', radii.card);
+        root.style.setProperty('--btn-radius', radii.btn);
 
         var fontName = fontSelect ? fontSelect.value : DEFAULT_THEME.font_family;
         root.style.setProperty('--site-font', FONT_STACKS[fontName] || FONT_STACKS['Poppins']);
@@ -13792,11 +13839,14 @@ async function initWebsiteThemeEditor() {
         categoryButtonPreview.style.borderColor = primaryRedVal;
         categoryButtonPreview.style.color = primaryRedVal;
       }
-      // Add to Cart & Checkout both use the Accent color, matching the real customer site
+      // Add to Cart uses the Accent color; Checkout has its own independent color
       const addToCartPreview = document.getElementById('addToCartPreview');
       if (addToCartPreview) addToCartPreview.style.background = primaryYellowVal;
+      const checkoutColorVal = (cc && isValidHex(cc.value)) ? cc.value : DEFAULT_THEME.checkout_color;
+      const checkoutColorDarkVal = shadeColor(checkoutColorVal, -12);
+      if (ccHex && ccHex.value.toUpperCase() !== checkoutColorVal.toUpperCase()) ccHex.value = checkoutColorVal.toUpperCase();
       const checkoutPreview = document.getElementById('checkoutPreview');
-      if (checkoutPreview) checkoutPreview.style.background = primaryYellowVal;
+      if (checkoutPreview) checkoutPreview.style.background = `linear-gradient(135deg, ${checkoutColorVal}, ${checkoutColorDarkVal})`;
       if (fontSelect) {
         const heroName = document.getElementById('heroPreviewName');
         if (heroName) heroName.style.fontFamily = FONT_STACKS[fontSelect.value] || FONT_STACKS['Poppins'];
@@ -13806,9 +13856,32 @@ async function initWebsiteThemeEditor() {
       applyLivePreview();
     };
 
+    window.applyThemePreset = function(id) {
+      var t = THEME_PRESETS[id];
+      if (!t) return;
+      if (pr) pr.value = t.primary_red;
+      if (py) py.value = t.primary_yellow;
+      if (cc) cc.value = t.primary_red;
+      if (fontSelect) fontSelect.value = t.font_family;
+      var cardStyleInput = document.getElementById('cardStyleInput');
+      if (cardStyleInput) cardStyleInput.value = t.card_style;
+      var themePresetInput = document.getElementById('themePresetInput');
+      if (themePresetInput) themePresetInput.value = id;
+      updateColorPreviews();
+      renderThemePresetGrid(id);
+    };
+
     // Two-way sync: color swatch <-> hex text field, both trigger live updates
     if (pr) pr.addEventListener('input', updateColorPreviews);
     if (py) py.addEventListener('input', updateColorPreviews);
+    if (cc) cc.addEventListener('input', updateColorPreviews);
+    if (ccHex) {
+      ccHex.addEventListener('input', () => {
+        const v = ccHex.value.trim();
+        if (isValidHex(v) && cc) { cc.value = v; updateColorPreviews(); }
+      });
+      ccHex.addEventListener('blur', () => { ccHex.value = (cc ? cc.value : DEFAULT_THEME.checkout_color).toUpperCase(); });
+    }
     if (prHex) {
       prHex.addEventListener('input', () => {
         const v = prHex.value.trim();
@@ -13838,6 +13911,7 @@ async function initWebsiteThemeEditor() {
         if (!(await showSweetConfirm('Reset all appearance settings to default? This will not be saved until you click Save Theme.', 'Reset to Default'))) return;
         if (pr) pr.value = DEFAULT_THEME.primary_red;
         if (py) py.value = DEFAULT_THEME.primary_yellow;
+        if (cc) cc.value = DEFAULT_THEME.checkout_color;
         if (fontSelect) fontSelect.value = DEFAULT_THEME.font_family;
         const lcRadios = document.querySelectorAll('input[name="layoutColumns"]');
         lcRadios.forEach(r => { r.checked = (parseInt(r.value) === DEFAULT_THEME.layout_columns); });
@@ -13859,6 +13933,11 @@ async function initWebsiteThemeEditor() {
         const bgInput = document.getElementById('backgroundThemeInput');
         if (bgInput) bgInput.value = DEFAULT_THEME.background_theme;
         if (typeof populateBgThemeGrid === 'function') populateBgThemeGrid(DEFAULT_THEME.background_theme);
+        const cardStyleInputReset = document.getElementById('cardStyleInput');
+        if (cardStyleInputReset) cardStyleInputReset.value = DEFAULT_THEME.card_style;
+        const themePresetInputReset = document.getElementById('themePresetInput');
+        if (themePresetInputReset) themePresetInputReset.value = 'classic';
+        renderThemePresetGrid('classic');
         updateColorPreviews();
         showNotification('Defaults restored. Click "Save Theme" to make it permanent.', 'success');
       });
@@ -13967,6 +14046,7 @@ if (!window.customBgThemes) {
       // Set color picker values from saved settings (dark_red is now auto-derived, not saved separately)
       if (pr && data.settings.primary_red) pr.value = data.settings.primary_red;
       if (py && data.settings.primary_yellow) py.value = data.settings.primary_yellow;
+      if (cc) cc.value = data.settings.checkout_color || data.settings.primary_red || DEFAULT_THEME.checkout_color;
       if (fontSelect && data.settings.font_family) fontSelect.value = data.settings.font_family;
 
       // Initialize logo shape/size UI from saved settings
@@ -13980,6 +14060,13 @@ if (!window.customBgThemes) {
 
       // Update color previews
       updateColorPreviews();
+
+      // Initialize card style + theme preset selection from saved settings
+      var cardStyleInput = document.getElementById('cardStyleInput');
+      if (cardStyleInput) cardStyleInput.value = data.settings.card_style || 'rounded';
+      var themePresetInput = document.getElementById('themePresetInput');
+      if (themePresetInput) themePresetInput.value = data.settings.theme_preset || '';
+      renderThemePresetGrid(data.settings.theme_preset || '');
 
       // Set background theme URL
       const bgUrl = data.settings.background_theme || '';
@@ -14140,6 +14227,7 @@ if (!window.customBgThemes) {
           var pr = document.getElementById('primaryRed');
           var dr = document.getElementById('darkRed');
           var py = document.getElementById('primaryYellow');
+          var cc = document.getElementById('checkoutColor');
           var bgInput = document.getElementById('backgroundThemeInput');
           var lcRadios = document.querySelectorAll('input[name="layoutColumns"]');
           var lcVal = 2;
@@ -14164,6 +14252,8 @@ if (!window.customBgThemes) {
           var sq = rid ? '?action=save&restaurant_id=' + encodeURIComponent(rid) : '?action=save';
 
           var siteFontEl = document.getElementById('siteFontSelect');
+          var cardStyleEl = document.getElementById('cardStyleInput');
+          var themePresetEl = document.getElementById('themePresetInput');
           var payload = {
             primary_red: pr ? pr.value : '#F70000',
             dark_red: dr ? dr.value : '#DA020E',
@@ -14173,7 +14263,10 @@ if (!window.customBgThemes) {
             background_theme: bgInput ? bgInput.value : null,
             logo_shape: logoShape,
             logo_size: logoSize,
-            font_family: siteFontEl ? siteFontEl.value : 'Poppins'
+            font_family: siteFontEl ? siteFontEl.value : 'Poppins',
+            card_style: cardStyleEl ? cardStyleEl.value : 'rounded',
+            theme_preset: themePresetEl && themePresetEl.value ? themePresetEl.value : null,
+            checkout_color: cc ? cc.value : null
           };
 
           var res = await fetch('../website/theme_api.php' + sq, {

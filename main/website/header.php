@@ -9,6 +9,7 @@ header('Expires: 0');
 require_once __DIR__ . '/../config/env_loader.php';
 require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../config/countries.php';
+require_once __DIR__ . '/../config/website_theme_helpers.php';
 startSecureSession(true);
 
 function createRestaurantSlug($name) {
@@ -256,9 +257,11 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $dark_red = '#DA020E';
     $primary_yellow = '#FFD100';
     $font_family = 'Poppins';
+    $card_style = 'rounded';
     if ($restaurant_id) {
         try {
-            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family FROM website_settings WHERE restaurant_id = :rid');
+            ensureWebsiteThemeSchema($conn);
+            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
             $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($themeRow) {
@@ -275,10 +278,19 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 if (!empty($themeRow['dark_red'])) $dark_red = $themeRow['dark_red'];
                 if (!empty($themeRow['primary_yellow'])) $primary_yellow = $themeRow['primary_yellow'];
                 if (!empty($themeRow['font_family'])) $font_family = $themeRow['font_family'];
+                if (in_array($themeRow['card_style'] ?? '', THEME_CARD_STYLES, true)) $card_style = $themeRow['card_style'];
+                if (!empty($themeRow['checkout_color'])) $checkout_color_override = $themeRow['checkout_color'];
             }
         } catch (Exception $e) {
         }
     }
+    $cardStyleRadii = getCardStyleRadii($card_style);
+    $card_radius_css = $cardStyleRadii['card_radius'];
+    $btn_radius_css = $cardStyleRadii['btn_radius'];
+    // Checkout Color defaults to the Primary Color (matching the Checkout
+    // button's original look) unless the admin has picked a distinct one.
+    $checkout_color = $checkout_color_override ?? $primary_red;
+    $checkout_color_dark = shadeHexColor($checkout_color, -12);
     $allowedWebFonts = [
         'Poppins' => "'Poppins', sans-serif",
         'Playfair Display' => "'Playfair Display', serif",

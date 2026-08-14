@@ -25,6 +25,10 @@
   --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
   --primary-yellow: <?php echo htmlspecialchars($primary_yellow, ENT_QUOTES, 'UTF-8'); ?>;
   --site-font: <?php echo $font_family_css; ?>;
+  --card-radius: <?php echo htmlspecialchars($card_radius_css, ENT_QUOTES, 'UTF-8'); ?>;
+  --btn-radius: <?php echo htmlspecialchars($btn_radius_css, ENT_QUOTES, 'UTF-8'); ?>;
+  --checkout-color: <?php echo htmlspecialchars($checkout_color, ENT_QUOTES, 'UTF-8'); ?>;
+  --checkout-color-dark: <?php echo htmlspecialchars($checkout_color_dark, ENT_QUOTES, 'UTF-8'); ?>;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
@@ -217,7 +221,7 @@ body {
 
 .card {
   background: #fff;
-  border-radius: 14px;
+  border-radius: var(--card-radius, 14px);
   overflow: hidden;
   border: 1.5px solid #000;
   display: flex;
@@ -289,7 +293,7 @@ body {
   width: 100%;
   padding: 6px 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--btn-radius, 8px);
   background: var(--primary-yellow, #FFD100);
   color: #1a1b1f;
   font-size: 12px;
@@ -306,7 +310,7 @@ body {
   justify-content: center;
   gap: 0;
   background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
-  border-radius: 8px;
+  border-radius: var(--btn-radius, 8px);
   overflow: hidden;
 }
 .qty-inline button {
@@ -354,7 +358,7 @@ body {
 .checkout-bar {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 425px;
-  background: var(--primary-yellow, #FFD100);
+  background: linear-gradient(135deg, var(--checkout-color, #F70000), var(--checkout-color-dark, #DA020E));
   display: none; justify-content: space-between; align-items: center;
   padding: 14px 18px; z-index: 100;
   box-shadow: 0 -2px 12px rgba(0,0,0,0.15);
@@ -363,9 +367,9 @@ body {
   .checkout-bar { border-radius: 0 0 28px 28px; }
 }
 .checkout-bar.show { display: flex; }
-.checkout-bar .total-label { color: #1a1b1f; font-weight: 700; font-size: 15px; }
+.checkout-bar .total-label { color: #fff; font-weight: 700; font-size: 15px; }
 .checkout-bar .checkout-btn {
-  color: #1a1b1f; font-weight: 700; font-size: 15px;
+  color: #fff; font-weight: 700; font-size: 15px;
   background: none; border: none; cursor: pointer;
   display: flex; align-items: center; gap: 6px;
   font-family: var(--site-font);

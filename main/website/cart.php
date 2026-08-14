@@ -16,7 +16,7 @@
 <title>Cart - <?php echo htmlspecialchars($restaurant_name ?? 'Dvani Cafe & Grill', ENT_QUOTES, 'UTF-8'); ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700<?php echo $font_family_google_param ? '&family=' . $font_family_google_param . ':wght@300;400;500;600;700' : ''; ?>&display=swap" rel="stylesheet">
 <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -28,9 +28,19 @@
 <?php endif; ?>
 <!-- PhonePe SDK (loaded only when needed) -->
 <style>
+:root {
+  --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --primary-yellow: <?php echo htmlspecialchars($primary_yellow, ENT_QUOTES, 'UTF-8'); ?>;
+  --site-font: <?php echo $font_family_css; ?>;
+  --card-radius: <?php echo htmlspecialchars($card_radius_css, ENT_QUOTES, 'UTF-8'); ?>;
+  --btn-radius: <?php echo htmlspecialchars($btn_radius_css, ENT_QUOTES, 'UTF-8'); ?>;
+  --checkout-color: <?php echo htmlspecialchars($checkout_color, ENT_QUOTES, 'UTF-8'); ?>;
+  --checkout-color-dark: <?php echo htmlspecialchars($checkout_color_dark, ENT_QUOTES, 'UTF-8'); ?>;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   background: #e8ecf2;
   color: #1a1b1f;
   min-height: 100vh;
@@ -66,7 +76,7 @@ body {
 .back-btn-cmon {
   display: flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; border-radius: 8px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; border: none; cursor: pointer; font-size: 22px;
   flex-shrink: 0;
 }
@@ -86,7 +96,7 @@ body {
 .header-action-btn {
   display: flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; border-radius: 8px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; border: none; cursor: pointer; font-size: 18px;
   flex-shrink: 0;
 }
@@ -129,13 +139,13 @@ body {
 }
 .item-info { flex: 1; min-width: 0; }
 .item-name { font-weight: 600; font-size: 14px; color: #1a1b1f; }
-.item-variant { font-size: 12px; color: #e17055; font-weight: 500; margin-top: 1px; }
+.item-variant { font-size: 12px; color: var(--primary-red, #e17055); font-weight: 500; margin-top: 1px; }
 .item-price { font-weight: 600; font-size: 14px;  color: #2d3436; margin-top: 4px; }
 .item-price span { color: #888; font-weight: 400; }
 .qty-ctrl {
   display: flex; align-items: center;
   gap: 0; margin-top: 8px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   border-radius: 8px;
   overflow: hidden;
   width: fit-content;
@@ -145,7 +155,7 @@ body {
   border: none; background: transparent;
   color: #fff; font-size: 16px; font-weight: 700;
   cursor: pointer; display: grid; place-items: center;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .qty-ctrl span {
   min-width: 22px; text-align: center;
@@ -155,7 +165,7 @@ body {
   width: 36px; height: 36px; border-radius: 8px;
   border: none; cursor: pointer;
   display: grid; place-items: center;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; font-size: 16px;
   align-self: flex-start;
   margin-left: auto;
@@ -174,11 +184,11 @@ body {
   padding: 10px;
   margin-top: 10px;
   border: none;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
   font-size: 13px;
   font-weight: 600;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   cursor: pointer;
   letter-spacing: .3px;
   border-radius: 0 0 14px 14px;
@@ -213,11 +223,11 @@ body {
   padding: 10px 24px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
   font-size: 13px;
   font-weight: 600;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   cursor: pointer;
 }
 
@@ -235,7 +245,7 @@ body {
 .coupon-header .icon-wrap {
   width: 36px; height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   display: flex; align-items: center; justify-content: center;
   font-size: 17px; color: #fff; flex-shrink: 0;
 }
@@ -261,13 +271,13 @@ body {
   transition: all 0.2s;
 }
 .coupon-browse:hover {
-  border-color: #e17055;
+  border-color: var(--primary-red, #e17055);
   background: #fdf8f5;
 }
 .coupon-browse .badge {
   width: 28px; height: 28px; border-radius: 8px;
   background: #f0ebe5;
-  color: #e17055;
+  color: var(--primary-red, #e17055);
   display: grid; place-items: center;
   font-size: 14px; font-weight: 700;
 }
@@ -278,7 +288,7 @@ body {
 }
 .coupon-browse:hover .arrow {
   transform: translateX(3px);
-  color: #e17055;
+  color: var(--primary-red, #e17055);
 }
 
 /* Coupon Input - Redesigned */
@@ -289,22 +299,22 @@ body {
 .coupon-input-row input {
   flex: 1; min-width: 0; width: 0;
   padding: 10px 14px; border: 2px solid #e8e0d8;
-  border-radius: 10px; font-size: 13px; font-family: 'Poppins', sans-serif;
+  border-radius: 10px; font-size: 13px; font-family: var(--site-font);
   outline: none; transition: all 0.2s;
   box-sizing: border-box;
   background: #faf8f6;
 }
 .coupon-input-row input:focus { 
-  border-color: #e17055; 
+  border-color: var(--primary-red, #e17055); 
   background: #fff;
   box-shadow: 0 0 0 3px rgba(225,112,85,0.1);
 }
 .coupon-input-row input.error { border-color: #e74c3c; }
 .apply-coupon-btn {
   padding: 10px 18px; border: none; border-radius: 10px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; font-weight: 600; font-size: 13px;
-  cursor: pointer; font-family: 'Poppins', sans-serif;
+  cursor: pointer; font-family: var(--site-font);
   white-space: nowrap;
   flex-shrink: 0;
   transition: opacity 0.2s, transform 0.2s;
@@ -376,7 +386,7 @@ body {
 }
 .coupon-list { padding: 12px 16px 24px; display: flex; flex-direction: column; gap: 10px; }
 .coupon-item {
-  border: 1.5px solid #e8e8e8; border-radius: 12px; padding: 14px;
+  border: 1.5px solid #e8e8e8; border-radius: var(--card-radius, 12px); padding: 14px;
   display: flex; gap: 12px; align-items: flex-start;
   cursor: pointer; transition: border-color 0.2s;
 }
@@ -384,7 +394,7 @@ body {
 .coupon-item.active {  border-color: #2d3436; background: #f0f7f5; }
 .coupon-item .cpn-icon {
   width: 42px; height: 42px; border-radius: 50%;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; display: grid; place-items: center;
   font-size: 18px; flex-shrink: 0;
 }
@@ -413,9 +423,9 @@ body {
 }
 .coupon-item .cpn-select {
   padding: 6px 14px; border: none; border-radius: 6px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; font-size: 11px; font-weight: 600;
-  cursor: pointer; font-family: 'Poppins', sans-serif;
+  cursor: pointer; font-family: var(--site-font);
   flex-shrink: 0; align-self: center;
 }
 
@@ -430,7 +440,7 @@ body {
 .delivery-row .info-icon {
   margin-left: auto;
   width: 20px; height: 20px; border-radius: 50%;
-  background: #e17055; color: #fff;
+  background: var(--primary-red, #e17055); color: #fff;
   display: grid; place-items: center;
   font-size: 11px; font-weight: 700; cursor: pointer;
   position: relative;
@@ -519,7 +529,7 @@ body {
 }
 .instr-header.open .chevron { 
   transform: rotate(180deg); 
-  color: #e17055;
+  color: var(--primary-red, #e17055);
 }
 
 .instr-body-inner {
@@ -535,7 +545,7 @@ body {
   border-radius: 10px;
   padding: 12px 14px;
   font-size: 13px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   resize: vertical;
   min-height: 90px;
   color: #444;
@@ -546,7 +556,7 @@ body {
   box-sizing: border-box;
 }
 .instr-body-inner textarea:focus { 
-  border-color: #e17055;
+  border-color: var(--primary-red, #e17055);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(225,112,85,0.08);
 }
@@ -558,14 +568,14 @@ body {
   padding: 0 2px;
 }
 .save-btn {
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
   border: none;
   border-radius: 10px;
   padding: 12px;
   font-size: 13px;
   font-weight: 600;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   cursor: pointer;
   width: 100%;
   transition: opacity 0.2s, transform 0.2s;
@@ -679,7 +689,7 @@ body {
 .modal-overlay .form-group select {
   width: 100%; padding: 12px 14px;
   border: 2px solid #e0e0e0; border-radius: 10px;
-  font-size: 13px; font-family: 'Poppins', sans-serif;
+  font-size: 13px; font-family: var(--site-font);
   transition: border-color 0.2s; box-sizing: border-box;
 }
 .modal-overlay .form-group input:focus,
@@ -710,13 +720,13 @@ body {
 }
 .modal-overlay .btn-group { display: flex; gap: 10px; margin-top: 20px; }
 .modal-overlay .btn-group .btn {
-  flex: 1; padding: 12px; border-radius: 10px;
+  flex: 1; padding: 12px; border-radius: var(--btn-radius, 10px);
   font-weight: 500; cursor: pointer;
-  font-family: 'Poppins', sans-serif; font-size: 13px;
+  font-family: var(--site-font); font-size: 13px;
 }
 .modal-overlay .btn-group .btn-primary {
   border: none;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff;
 }
 .modal-overlay .btn-group .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -732,7 +742,7 @@ body {
 }
 .success-box .check-icon {
   width: 64px; height: 64px; border-radius: 50%;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; font-size: 32px; display: flex;
   align-items: center; justify-content: center;
   margin: 0 auto 16px;
@@ -742,9 +752,9 @@ body {
 .success-box .order-num { color: #999; font-size: 13px; margin: 0 0 24px; }
 .success-box .btn-profile {
   width: 100%; padding: 14px; border: none; border-radius: 12px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; font-weight: 600; cursor: pointer;
-  font-size: 15px; font-family: 'Poppins', sans-serif;
+  font-size: 15px; font-family: var(--site-font);
 }
 
 /* Alert modal */
@@ -757,9 +767,9 @@ body {
 .alert-box p { color: #666; font-size: 14px; margin: 0 0 20px; }
 .alert-box .btn-ok {
   padding: 10px 32px; border: none; border-radius: 10px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; font-weight: 500; cursor: pointer;
-  font-size: 13px; font-family: 'Poppins', sans-serif;
+  font-size: 13px; font-family: var(--site-font);
 }
 
 .checkout-bar {
@@ -768,7 +778,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 100%; max-width: 425px;
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--checkout-color, #e17055), var(--checkout-color-dark, #d63031));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -790,7 +800,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
 }
 .checkout-bar .checkout-btn:hover { opacity: .85; }
 .checkout-bar .checkout-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -844,7 +854,7 @@ body {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--site-font);
   transition: opacity 0.2s;
 }
 .closed-overlay-inner button:hover { opacity: 0.9; }
@@ -871,7 +881,7 @@ body {
 .toast-notification {
   position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
   padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 500;
-  z-index: 99999; font-family: 'Poppins', sans-serif;
+  z-index: 99999; font-family: var(--site-font);
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;
   transform: translateX(-50%) translateY(20px);
@@ -892,8 +902,8 @@ body {
 
 /* Global Add-ons */
 #cartAddonChips button:hover {
-  border-color: #e17055 !important;
-  color: #e17055 !important;
+  border-color: var(--primary-red, #e17055) !important;
+  color: var(--primary-red, #e17055) !important;
 }
 
 .bottom-nav {
@@ -907,7 +917,7 @@ body {
 .nav-item {
   flex: 1; display: flex; flex-direction: column; align-items: center;
   gap: 2px; cursor: pointer; position: relative;
-  border: none; background: none; font-family: 'Poppins', sans-serif;
+  border: none; background: none; font-family: var(--site-font);
 }
 .nav-item img { width: 30px; height: 30px; }
 .nav-item span { font-size: 11px; color: #555; }
@@ -923,9 +933,9 @@ body {
   font-weight: 600;
 }
 .login-btn {
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
   color: #fff; border: none; border-radius: 8px;
-  padding: 6px 14px; font-size: 11px; font-family: 'Poppins', sans-serif;
+  padding: 6px 14px; font-size: 11px; font-family: var(--site-font);
   cursor: pointer; font-weight: 500;
 }
 </style>
@@ -1290,7 +1300,7 @@ function renderGlobalAddons() {
       var id = a.id;
       html += '<div class="addon-row" data-addon-id="' + id + '" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;margin:2px 0;border-radius:8px;cursor:pointer;transition:background 0.15s;font-size:13px">' +
         '<span style="font-weight:500;color:#444">' + escapeHtml(aName) + '</span>' +
-        '<span style="color:#e17055;font-weight:600">+' + sym + aPrice.toFixed(2) + '</span>' +
+        '<span style="color:var(--primary-red, #e17055);font-weight:600">+' + sym + aPrice.toFixed(2) + '</span>' +
         '</div>';
     }
   }
@@ -1312,7 +1322,7 @@ function renderGlobalAddons() {
       var qty = raw.qty || 0;
       var price = raw.addonPrice || 0;
       html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px">' +
-        '<span style="font-weight:500;color:#e17055;flex:1">' + escapeHtml(raw.addonName || 'Add-on') + '</span>' +
+        '<span style="font-weight:500;color:var(--primary-red, #e17055);flex:1">' + escapeHtml(raw.addonName || 'Add-on') + '</span>' +
         '<span style="color:#999;font-size:12px">x' + qty + '</span>' +
         '<span style="font-weight:600;color:#2d3436">' + sym + (price * qty).toFixed(2) + '</span>' +
         '<button onclick="deleteItem(\'' + key + '\')" style="width:24px;height:24px;border:none;border-radius:4px;background:#fef2f2;color:#e74c3c;cursor:pointer;font-size:12px;display:grid;place-items:center;flex-shrink:0">\u2715</button>' +
@@ -2155,7 +2165,7 @@ function showCheckoutModal(cartData) {
   var hasContact = !!(cd && cd.name && cd.phone);
   html += '<div id="contactSummary" class="form-group" style="display:' + (hasContact ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#f7f7f8;border-radius:10px;">';
   html += '<div><div style="font-size:13px;font-weight:600;color:#1a1b1f;">' + esc((cd && cd.name) || '') + '</div><div style="font-size:12px;color:#777;margin-top:2px;">' + (window.restaurantDialCode || '+91') + ' ' + esc((cd && cd.phone) || '') + '</div></div>';
-  html += '<span onclick="toggleContactEdit()" style="font-size:12px;color:#e17055;font-weight:600;cursor:pointer;white-space:nowrap;">Change</span>';
+  html += '<span onclick="toggleContactEdit()" style="font-size:12px;color:var(--primary-red, #e17055);font-weight:600;cursor:pointer;white-space:nowrap;">Change</span>';
   html += '</div>';
   html += '<div id="contactFields" style="display:' + (hasContact ? 'none' : '') + '">';
   html += '<div class="form-group"><label>Full Name *</label><input type="text" id="chkName" required value="' + esc((cd && cd.name) || '') + '" placeholder="Your name"></div>';
@@ -2183,7 +2193,7 @@ function showCheckoutModal(cartData) {
   var hasSavedAddress = !!(cd && cd.address);
   html += '<div id="addressSummary" style="display:' + (hasSavedAddress ? 'flex' : 'none') + ';align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 14px;background:#f0f7f5;border-radius:10px;border:2px solid #e0e0e0;">';
   html += '<div style="font-size:13px;color:#1a1b1f;line-height:1.4;">📍 ' + esc((cd && cd.address) || '') + ((cd && cd.landmark) ? '<div style="color:#999;font-size:12px;margin-top:2px;">' + esc(cd.landmark) + '</div>' : '') + '</div>';
-  html += '<span onclick="toggleAddressEdit()" style="font-size:12px;color:#e17055;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Change</span>';
+  html += '<span onclick="toggleAddressEdit()" style="font-size:12px;color:var(--primary-red, #e17055);font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Change</span>';
   html += '</div>';
 
   html += '<div id="addressPickerFields" style="display:' + (hasSavedAddress ? 'none' : '') + '">';
@@ -2199,9 +2209,9 @@ function showCheckoutModal(cartData) {
   html += '<input type="text" id="chkPincode" class="form-control" placeholder="Or enter pincode manually" maxlength="10" style="flex:1;font-size:12px;" oninput="checkPincode(this.value)">';
   html += '<span id="pincodeStatus" style="display:none;align-items:center;padding:0 8px;"></span>';
   html += '</div>';
-  html += '<span onclick="toggleAddressAutocomplete()" style="font-size:11px;color:#e17055;cursor:pointer;margin-top:4px;display:inline-block;">Use address search instead</span>';
+  html += '<span onclick="toggleAddressAutocomplete()" style="font-size:11px;color:var(--primary-red, #e17055);cursor:pointer;margin-top:4px;display:inline-block;">Use address search instead</span>';
   html += '</div>';
-  html += '<span onclick="togglePincodeFallback()" id="togglePincodeLink" style="font-size:11px;color:#e17055;cursor:pointer;display:' + (pincodeDisplay === '' ? 'inline-block' : 'none') + ';margin-top:4px;">Enter pincode manually</span>';
+  html += '<span onclick="togglePincodeFallback()" id="togglePincodeLink" style="font-size:11px;color:var(--primary-red, #e17055);cursor:pointer;display:' + (pincodeDisplay === '' ? 'inline-block' : 'none') + ';margin-top:4px;">Enter pincode manually</span>';
   html += '<div style="margin-top:10px;">';
   html += '<label>Landmark <span style="color:#999;font-weight:400;">(optional)</span></label>';
   html += '<input type="text" id="chkLandmark" value="' + esc((cd && cd.landmark) || '') + '" placeholder="e.g. Near City Hospital, Opp. SBI Bank" style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';

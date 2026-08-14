@@ -1518,7 +1518,19 @@ try {
               <span class="material-symbols-rounded">palette</span>
               Colors
             </h2>
-            
+
+            <!-- Theme Presets -->
+            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">auto_awesome</span>
+                Quick Themes
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Pick a theme for a distinct color, font &amp; shape combo so your site doesn't look identical to every other restaurant on the platform. You can still fine-tune colors below afterward.</p>
+              <div id="themePresetGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px;"></div>
+              <input type="hidden" id="cardStyleInput" value="rounded">
+              <input type="hidden" id="themePresetInput" value="">
+            </div>
+
             <!-- Visual Preview -->
             <div id="colorPreviewContainer" style="background: white; border-radius: 8px; padding: 1rem; border: 2px solid #e5e7eb; margin-bottom: 2rem;">
               <div style="font-weight: 700; color: #111827; margin-bottom: 0.75rem;">Preview:</div>
@@ -1529,7 +1541,7 @@ try {
               <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <div id="categoryButtonPreview" style="border: 2px solid #F70000; color: #F70000; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Category Button</div>
                 <div id="addToCartPreview" style="background: #FFD100; color: #333; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Add to Cart</div>
-                <div id="checkoutPreview" style="background: #FFD100; color: #333; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Checkout</div>
+                <div id="checkoutPreview" style="background: linear-gradient(135deg, #F70000, #DA020E); color: #fff; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Checkout</div>
               </div>
             </div>
 
@@ -1540,7 +1552,7 @@ try {
                     <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">palette</span>
                     Primary Color
                   </div>
-                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">Buttons, links, header &amp; checkout</div>
+                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">Buttons, links &amp; header</div>
                 </div>
                 <input type="color" id="primaryRed" value="#F70000" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer;">
                 <input type="text" id="primaryRedHex" value="#F70000" maxlength="7" placeholder="#F70000" style="margin-top: 0.75rem; width: 100%; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px; border: 2px solid #e5e7eb; text-transform: uppercase;">
@@ -1550,12 +1562,24 @@ try {
                 <div style="text-align: center; margin-bottom: 1rem;">
                   <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                     <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #fbbf24;">star</span>
-                    Accent Color
+                    Add to Cart Color
                   </div>
-                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">"Add to Cart" &amp; highlights</div>
+                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">"Add to Cart" buttons &amp; highlights</div>
                 </div>
                 <input type="color" id="primaryYellow" value="#FFD100" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer;">
                 <input type="text" id="primaryYellowHex" value="#FFD100" maxlength="7" placeholder="#FFD100" style="margin-top: 0.75rem; width: 100%; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px; border: 2px solid #e5e7eb; text-transform: uppercase;">
+              </div>
+
+              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 16px; padding: 1.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                <div style="text-align: center; margin-bottom: 1rem;">
+                  <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">shopping_cart_checkout</span>
+                    Checkout Color
+                  </div>
+                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">The "Checkout" bar &amp; button, set independently</div>
+                </div>
+                <input type="color" id="checkoutColor" value="#F70000" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer;">
+                <input type="text" id="checkoutColorHex" value="#F70000" maxlength="7" placeholder="#F70000" style="margin-top: 0.75rem; width: 100%; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px; border: 2px solid #e5e7eb; text-transform: uppercase;">
               </div>
             </div>
             <!-- Hidden field: gradient shade auto-derived from Primary Color (no manual picker needed) -->

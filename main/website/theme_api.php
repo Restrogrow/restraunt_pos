@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../db_connection.php';
+require_once __DIR__ . '/../config/website_theme_helpers.php';
 header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? 'get';
@@ -31,14 +32,17 @@ if (function_exists('getConnection')) {
 }
 
 try {
+  ensureWebsiteThemeSchema($conn);
+
   if ($action === 'get') {
-    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family FROM website_settings WHERE restaurant_id = :rid');
+    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color FROM website_settings WHERE restaurant_id = :rid');
     $stmt->execute([':rid' => $restaurant_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
-      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins'];
+      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins','theme_preset'=>null,'card_style'=>'rounded','checkout_color'=>null];
     } else {
       if (empty($row['font_family'])) { $row['font_family'] = 'Poppins'; }
+      if (empty($row['card_style'])) { $row['card_style'] = 'rounded'; }
       // Ensure banner_image is null if empty string
       if (empty($row['banner_image']) || trim($row['banner_image']) === '') {
         $row['banner_image'] = null;
@@ -48,14 +52,14 @@ try {
         $row['background_theme'] = null;
       }
     }
-    
+
     // Get all banners from website_banners table
     $bannersStmt = $conn->prepare('SELECT id, banner_path, display_order FROM website_banners WHERE restaurant_id = :rid ORDER BY display_order ASC, id ASC');
     $bannersStmt->execute([':rid' => $restaurant_id]);
     $banners = $bannersStmt->fetchAll(PDO::FETCH_ASSOC);
     $row['banners'] = $banners ?: [];
-    
-    echo json_encode(['success'=>true,'settings'=>$row]);
+
+    echo json_encode(['success'=>true,'settings'=>$row,'presets'=>THEME_PRESETS]);
     exit;
   }
   
@@ -104,12 +108,17 @@ try {
     $bt = sanitizeImageUrl($data['background_theme'] ?? null);
     $allowedFonts = ['Poppins', 'Playfair Display', 'Roboto', 'Montserrat', 'Nunito', 'Lora'];
     $ff = in_array($data['font_family'] ?? '', $allowedFonts, true) ? $data['font_family'] : 'Poppins';
-    $stmt = $conn->prepare('INSERT INTO website_settings (restaurant_id, primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family) VALUES (:rid,:pr,:dr,:py,:bi,:lc,:bt,:ls,:lz,:ff)
-      ON DUPLICATE KEY UPDATE primary_red=VALUES(primary_red), dark_red=VALUES(dark_red), primary_yellow=VALUES(primary_yellow), banner_image=VALUES(banner_image), layout_columns=VALUES(layout_columns), background_theme=VALUES(background_theme), logo_shape=VALUES(logo_shape), logo_size=VALUES(logo_size), font_family=VALUES(font_family)');
+    $cs = in_array($data['card_style'] ?? '', THEME_CARD_STYLES, true) ? $data['card_style'] : 'rounded';
+    $tp = array_key_exists($data['theme_preset'] ?? '', THEME_PRESETS) ? $data['theme_preset'] : null;
+    // checkout_color: null/empty means "follow Primary Color" (no override)
+    $ccRaw = trim($data['checkout_color'] ?? '');
+    $cc = preg_match('/^#[0-9a-fA-F]{6}$/', $ccRaw) ? $ccRaw : null;
+    $stmt = $conn->prepare('INSERT INTO website_settings (restaurant_id, primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, card_style, theme_preset, checkout_color) VALUES (:rid,:pr,:dr,:py,:bi,:lc,:bt,:ls,:lz,:ff,:cs,:tp,:cc)
+      ON DUPLICATE KEY UPDATE primary_red=VALUES(primary_red), dark_red=VALUES(dark_red), primary_yellow=VALUES(primary_yellow), banner_image=VALUES(banner_image), layout_columns=VALUES(layout_columns), background_theme=VALUES(background_theme), logo_shape=VALUES(logo_shape), logo_size=VALUES(logo_size), font_family=VALUES(font_family), card_style=VALUES(card_style), theme_preset=VALUES(theme_preset), checkout_color=VALUES(checkout_color)');
     // Save logo settings
     $ls = $data['logo_shape'] ?? 'circle';
     $lz = isset($data['logo_size']) ? (int)$data['logo_size'] : 90;
-    $stmt->execute([':rid'=>$restaurant_id, ':pr'=>$pr, ':dr'=>$dr, ':py'=>$py, ':bi'=>$bi, ':lc'=>$lc, ':bt'=>$bt, ':ls'=>$ls, ':lz'=>$lz, ':ff'=>$ff]);
+    $stmt->execute([':rid'=>$restaurant_id, ':pr'=>$pr, ':dr'=>$dr, ':py'=>$py, ':bi'=>$bi, ':lc'=>$lc, ':bt'=>$bt, ':ls'=>$ls, ':lz'=>$lz, ':ff'=>$ff, ':cs'=>$cs, ':tp'=>$tp, ':cc'=>$cc]);
     echo json_encode(['success'=>true]);
     exit;
   }
