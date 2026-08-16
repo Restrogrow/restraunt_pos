@@ -308,9 +308,9 @@ require_once __DIR__ . '/../config/countries.php';
               </table>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
-              <button class="btn btn-outline" id="prevPage">Prev</button>
+              <button class="btn btn-outline" id="prevPage" disabled>Prev</button>
               <div id="pageInfo" style="color:var(--muted)">Page 1</div>
-              <button class="btn btn-outline" id="nextPage">Next</button>
+              <button class="btn btn-outline" id="nextPage" disabled>Next</button>
             </div>
           </div>
         </div>
@@ -1053,7 +1053,7 @@ require_once __DIR__ . '/../config/countries.php';
     });
 
     // Global variables
-    let saPage = 1, saLimit = 10, saQuery = '';
+    let saPage = 1, saLimit = 10, saQuery = '', saPages = 1;
     const saRestaurantsMap = {};
     let paymentSearchTerm = '', paymentStatus = '';
     const showSuperAlert = (message, type = 'info') => {
@@ -1127,6 +1127,16 @@ require_once __DIR__ . '/../config/countries.php';
         const qs = `action=getRestaurants&page=${saPage}&limit=${saLimit}${saQuery?`&q=${encodeURIComponent(saQuery)}`:''}`;
         const res = await fetch('api.php?'+qs);
         const data = await res.json();
+
+        // Self-correct if a rapid double-click on Next (or a stale page number)
+        // requested a page beyond what actually exists — refetch the real last
+        // page instead of leaving the table empty.
+        const requestedPages = Math.max(1, Math.ceil((data.total||0)/saLimit));
+        if (saPage > requestedPages) {
+          saPage = requestedPages;
+          return fetchRestaurants();
+        }
+
         (data.restaurants||[]).forEach(r => { saRestaurantsMap[r.id] = r; });
         const tbody = document.getElementById('restaurantsTbody');
         tbody.innerHTML = (data.restaurants||[]).map(r => {
@@ -1187,6 +1197,7 @@ require_once __DIR__ . '/../config/countries.php';
         }).join('');
         const total = data.total||0;
         const pages = Math.max(1, Math.ceil(total/saLimit));
+        saPages = pages;
         document.getElementById('pageInfo').textContent = `Page ${saPage} of ${pages}`;
         document.getElementById('prevPage').disabled = saPage<=1;
         document.getElementById('nextPage').disabled = saPage>=pages;
@@ -1498,7 +1509,7 @@ require_once __DIR__ . '/../config/countries.php';
     // Search and pagination
     document.getElementById('saSearch')?.addEventListener('input', (e)=>{ saQuery = e.target.value.trim(); saPage = 1; fetchRestaurants(); });
     document.getElementById('prevPage')?.addEventListener('click', ()=>{ if(saPage>1){ saPage--; fetchRestaurants(); }});
-        document.getElementById('nextPage')?.addEventListener('click', ()=>{ saPage++; fetchRestaurants(); });
+        document.getElementById('nextPage')?.addEventListener('click', ()=>{ if(saPage<saPages){ saPage++; fetchRestaurants(); }});
         document.getElementById('paymentSearch')?.addEventListener('input', (e)=>{ paymentSearchTerm = e.target.value.trim(); loadPayments(); });
         document.getElementById('paymentStatusFilter')?.addEventListener('change', (e)=>{ paymentStatus = e.target.value; loadPayments(); });
     document.getElementById('btnExport')?.addEventListener('click', ()=>{ 

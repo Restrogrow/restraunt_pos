@@ -1138,6 +1138,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 window._lastSeenOrderId = orderId;
                 window._currentNotifOrderId = orderId;
                 showNewOrderPopup(d.order);
+                // The popup alone doesn't touch the Dashboard's stat cards /
+                // Recent Orders list — refresh them too so a new website order
+                // shows up there immediately instead of only after a manual
+                // page reload, if the admin currently has Dashboard open.
+                var dashboardPageEl = document.getElementById('dashboardPage');
+                if (dashboardPageEl && dashboardPageEl.classList.contains('active') && typeof loadDashboardStats === 'function') {
+                  loadDashboardStats();
+                }
               }
             } else if (d.success && !d.order) {
               window._lastSeenOrderId = 0;
@@ -13543,6 +13551,48 @@ async function initWebsiteThemeEditor() {
       ocean: { label: 'Ocean', primary_red: '#0B6E99', dark_red: '#08526F', primary_yellow: '#FF7E5F', font_family: 'Roboto', card_style: 'rounded', layout_style: 'magazine', header_style: 'minimal' }
     };
 
+    // Mirrors NAV_ICON_STYLES in main/config/website_theme_helpers.php — Font
+    // Awesome icon suffixes for the bottom nav's Home/Menu/Social/Plans/Cart/Profile icons.
+    const NAV_ICON_STYLES = {
+      classic: { label: 'Classic', home: 'home', menu: 'utensils', social: 'share-alt', plans: 'calendar-check', cart: 'shopping-cart', profile: 'user' },
+      storefront: { label: 'Storefront', home: 'store', menu: 'utensils', social: 'comments', plans: 'calendar-check', cart: 'shopping-bag', profile: 'user-circle' },
+      foodie: { label: 'Foodie', home: 'home', menu: 'pizza-slice', social: 'share-alt', plans: 'calendar-check', cart: 'cart-plus', profile: 'user' },
+      minimal: { label: 'Minimal', home: 'house', menu: 'list', social: 'comment-dots', plans: 'calendar-check', cart: 'bag-shopping', profile: 'circle-user' },
+      bold: { label: 'Bold', home: 'home', menu: 'bowl-food', social: 'share-nodes', plans: 'calendar-days', cart: 'cart-shopping', profile: 'user-circle' }
+    };
+    const NAV_ICON_SLOTS = ['home', 'menu', 'social', 'cart', 'profile'];
+
+    function renderNavIconStyleGrid(selectedId) {
+      var grid = document.getElementById('navIconStyleGrid');
+      if (!grid) return;
+      grid.innerHTML = Object.keys(NAV_ICON_STYLES).map(function(id) {
+        var st = NAV_ICON_STYLES[id];
+        var isSelected = id === selectedId;
+        var borderColor = isSelected ? '#dc2626' : '#e5e7eb';
+        var boxShadow = isSelected ? '0 0 0 2px #dc2626' : '0 2px 4px rgba(0,0,0,0.06)';
+        var icons = NAV_ICON_SLOTS.map(function(slot) { return "<i class='fa fa-" + st[slot] + "' style='font-size:14px;color:#6b7280;'></i>"; }).join('');
+        return "<div data-nav-icon='" + id + "' style='cursor:pointer;text-align:center;padding:10px 6px;border-radius:10px;border:3px solid " + borderColor + ";background:#fff;box-shadow:" + boxShadow + ";transition:all 0.2s;'>" +
+          "<div style='display:flex;justify-content:center;gap:6px;margin-bottom:6px;'>" + icons + "</div>" +
+          "<div style='font-size:11px;font-weight:600;color:#374151;'>" + st.label + "</div>" +
+        "</div>";
+      }).join('');
+      grid.onclick = function(e) {
+        var target = e.target.closest('[data-nav-icon]');
+        if (target) window.selectNavIconStyle(target.getAttribute('data-nav-icon'));
+      };
+    }
+    renderNavIconStyleGrid('classic');
+
+    window.selectNavIconStyle = function(id) {
+      var input = document.getElementById('navIconStyleInput');
+      if (input) input.value = id || 'classic';
+      renderNavIconStyleGrid(id || 'classic');
+      applyLivePreview();
+    };
+
+    const siteNameInputEl = document.getElementById('siteNameInput');
+    if (siteNameInputEl) siteNameInputEl.addEventListener('input', applyLivePreview);
+
     function renderThemePresetGrid(selectedId) {
       var grid = document.getElementById('themePresetGrid');
       if (!grid) return;
@@ -13650,6 +13700,26 @@ async function initWebsiteThemeEditor() {
           logoWrap.style.width = logoSize + 'px';
           logoWrap.style.height = logoSize + 'px';
         }
+
+        // Site name
+        var siteNameEl = document.getElementById('siteNameInput');
+        var displayName = (siteNameEl && siteNameEl.value.trim()) ? siteNameEl.value.trim() : (window.restaurantName || '');
+        var nameSpan = doc.querySelector('.rest-name-text');
+        if (nameSpan && displayName) nameSpan.textContent = displayName;
+        if (displayName) doc.title = displayName;
+
+        // Bottom nav icon style
+        var navIconStyleEl = document.getElementById('navIconStyleInput');
+        var navStyleId = (navIconStyleEl && NAV_ICON_STYLES[navIconStyleEl.value]) ? navIconStyleEl.value : 'classic';
+        var navStyle = NAV_ICON_STYLES[navStyleId];
+        doc.querySelectorAll('[data-nav-slot]').forEach(function(iconEl) {
+          var slot = iconEl.getAttribute('data-nav-slot');
+          if (!navStyle[slot]) return;
+          Array.from(iconEl.classList).forEach(function(cls) {
+            if (cls.indexOf('fa-') === 0 && cls !== 'fa-' ) iconEl.classList.remove(cls);
+          });
+          iconEl.classList.add('fa-' + navStyle[slot]);
+        });
       } catch (err) {
         // Cross-origin or not-yet-loaded iframe - fail silently, preview just won't be live this tick
       }
@@ -13892,9 +13962,12 @@ async function initWebsiteThemeEditor() {
       if (ccHex && ccHex.value.toUpperCase() !== checkoutColorVal.toUpperCase()) ccHex.value = checkoutColorVal.toUpperCase();
       const checkoutPreview = document.getElementById('checkoutPreview');
       if (checkoutPreview) checkoutPreview.style.background = `linear-gradient(135deg, ${checkoutColorVal}, ${checkoutColorDarkVal})`;
-      if (fontSelect) {
-        const heroName = document.getElementById('heroPreviewName');
-        if (heroName) heroName.style.fontFamily = FONT_STACKS[fontSelect.value] || FONT_STACKS['Poppins'];
+      const heroName = document.getElementById('heroPreviewName');
+      if (heroName) {
+        if (fontSelect) heroName.style.fontFamily = FONT_STACKS[fontSelect.value] || FONT_STACKS['Poppins'];
+        const siteNameEl = document.getElementById('siteNameInput');
+        const nameVal = (siteNameEl && siteNameEl.value.trim()) ? siteNameEl.value.trim() : (window.restaurantName || 'Restaurant Name');
+        heroName.textContent = nameVal;
       }
 
       // Push the unsaved changes straight into the live preview iframe
@@ -13986,6 +14059,11 @@ async function initWebsiteThemeEditor() {
         if (themePresetInputReset) themePresetInputReset.value = 'classic';
         renderThemePresetGrid('classic');
         applyLayoutHeaderStyleUI('grid', 'hero');
+        const siteNameResetEl = document.getElementById('siteNameInput');
+        if (siteNameResetEl) siteNameResetEl.value = '';
+        const navIconStyleResetEl = document.getElementById('navIconStyleInput');
+        if (navIconStyleResetEl) navIconStyleResetEl.value = 'classic';
+        renderNavIconStyleGrid('classic');
         updateColorPreviews();
         applyLivePreview();
         showNotification('Defaults restored. Click "Save Theme" to make it permanent.', 'success');
@@ -14097,6 +14175,13 @@ if (!window.customBgThemes) {
       if (py && data.settings.primary_yellow) py.value = data.settings.primary_yellow;
       if (cc) cc.value = data.settings.checkout_color || data.settings.primary_red || DEFAULT_THEME.checkout_color;
       if (fontSelect && data.settings.font_family) fontSelect.value = data.settings.font_family;
+
+      // Website Name & Bottom Nav Icons
+      const siteNameLoadEl = document.getElementById('siteNameInput');
+      if (siteNameLoadEl) siteNameLoadEl.value = data.settings.site_name || '';
+      const navIconStyleLoadEl = document.getElementById('navIconStyleInput');
+      if (navIconStyleLoadEl) navIconStyleLoadEl.value = data.settings.nav_icon_style || 'classic';
+      renderNavIconStyleGrid(data.settings.nav_icon_style || 'classic');
 
       // Initialize logo shape/size UI from saved settings
       applyLogoShapeSizeUI(data.settings.logo_shape || 'circle', data.settings.logo_size || 90);
@@ -14304,7 +14389,11 @@ if (!window.customBgThemes) {
           var siteFontEl = document.getElementById('siteFontSelect');
           var cardStyleEl = document.getElementById('cardStyleInput');
           var themePresetEl = document.getElementById('themePresetInput');
+          var siteNameSaveEl = document.getElementById('siteNameInput');
+          var navIconStyleSaveEl = document.getElementById('navIconStyleInput');
           var payload = {
+            site_name: siteNameSaveEl ? siteNameSaveEl.value.trim() : '',
+            nav_icon_style: navIconStyleSaveEl ? navIconStyleSaveEl.value : 'classic',
             primary_red: pr ? pr.value : '#F70000',
             dark_red: dr ? dr.value : '#DA020E',
             primary_yellow: py ? py.value : '#FFD100',

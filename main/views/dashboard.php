@@ -1519,6 +1519,27 @@ try {
               Colors
             </h2>
 
+            <!-- Website Name -->
+            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">badge</span>
+                Website Display Name
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">The name shown to customers on your website. Leave blank to keep using your account name.</p>
+              <input type="text" id="siteNameInput" maxlength="191" placeholder="<?php echo htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8'); ?>" style="width: 100%; padding: 0.65rem 0.85rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; background: #fff;">
+            </div>
+
+            <!-- Bottom Nav Icons -->
+            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">apps</span>
+                Bottom Nav Icons
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Pick the icon style used for Home, Menu, Social, Cart &amp; Profile in your website's bottom navigation bar.</p>
+              <div id="navIconStyleGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px;"></div>
+              <input type="hidden" id="navIconStyleInput" value="classic">
+            </div>
+
             <!-- Theme Presets -->
             <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">

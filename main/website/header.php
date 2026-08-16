@@ -110,6 +110,7 @@ $enable_delivery = 1;
 $enable_takeaway = 1;
 $enable_dinein = 1;
 $cod_enabled = 1;
+$navIcons = NAV_ICON_STYLES['classic'];
 
 if ($has_slug_param && !$has_id_param) {
     try {
@@ -260,10 +261,12 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $card_style = 'rounded';
     $layout_style = 'grid';
     $header_style = 'hero';
+    $site_name_override = null;
+    $nav_icon_style = 'classic';
     if ($restaurant_id) {
         try {
             ensureWebsiteThemeSchema($conn);
-            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style FROM website_settings WHERE restaurant_id = :rid');
+            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
             $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($themeRow) {
@@ -284,6 +287,8 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 if (!empty($themeRow['checkout_color'])) $checkout_color_override = $themeRow['checkout_color'];
                 if (in_array($themeRow['layout_style'] ?? '', THEME_LAYOUT_STYLES, true)) $layout_style = $themeRow['layout_style'];
                 if (in_array($themeRow['header_style'] ?? '', THEME_HEADER_STYLES, true)) $header_style = $themeRow['header_style'];
+                if (!empty($themeRow['site_name'])) $site_name_override = $themeRow['site_name'];
+                if (array_key_exists($themeRow['nav_icon_style'] ?? '', NAV_ICON_STYLES)) $nav_icon_style = $themeRow['nav_icon_style'];
             }
         } catch (Exception $e) {
         }
@@ -390,6 +395,15 @@ if (!empty($custom_domain) && $embed_enabled && !$is_custom_domain) {
 if ($is_custom_domain && $restaurant_id && !$restaurant_slug && !empty($restaurant_name)) {
     $restaurant_slug = createRestaurantSlug($restaurant_name);
 }
+
+// Apply the Website Appearance display-name override (if any) for customer-facing
+// display only — after slug resolution above, so URLs still route by the account's
+// real restaurant_name and only what's shown to visitors changes.
+if (!empty($site_name_override)) {
+    $restaurant_name = $site_name_override;
+}
+// Bottom-nav icon set for the customer website (Home/Menu/Social/Plans/Cart/Profile)
+$navIcons = NAV_ICON_STYLES[$nav_icon_style] ?? NAV_ICON_STYLES['classic'];
 
 /**
  * Generate the URL for a restaurant page.

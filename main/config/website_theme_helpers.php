@@ -69,6 +69,41 @@ const THEME_LAYOUT_STYLES = ['grid', 'list', 'magazine'];
 const THEME_HEADER_STYLES = ['hero', 'minimal'];
 
 /**
+ * Bottom-nav icon sets: swaps the Font Awesome classes used for the Home /
+ * Menu / Social / Plans / Cart / Profile icons in the customer website's
+ * bottom navigation bar, so restaurants aren't all stuck with the same
+ * fa-home/fa-utensils/... icons. Icon names are Font Awesome 6 Free Solid
+ * (loaded site-wide via the "fa fa-*" classes already used in index.php).
+ */
+const NAV_ICON_STYLES = [
+    'classic' => [
+        'label' => 'Classic',
+        'home' => 'home', 'menu' => 'utensils', 'social' => 'share-alt',
+        'plans' => 'calendar-check', 'cart' => 'shopping-cart', 'profile' => 'user',
+    ],
+    'storefront' => [
+        'label' => 'Storefront',
+        'home' => 'store', 'menu' => 'utensils', 'social' => 'comments',
+        'plans' => 'calendar-check', 'cart' => 'shopping-bag', 'profile' => 'user-circle',
+    ],
+    'foodie' => [
+        'label' => 'Foodie',
+        'home' => 'home', 'menu' => 'pizza-slice', 'social' => 'share-alt',
+        'plans' => 'calendar-check', 'cart' => 'cart-plus', 'profile' => 'user',
+    ],
+    'minimal' => [
+        'label' => 'Minimal',
+        'home' => 'house', 'menu' => 'list', 'social' => 'comment-dots',
+        'plans' => 'calendar-check', 'cart' => 'bag-shopping', 'profile' => 'circle-user',
+    ],
+    'bold' => [
+        'label' => 'Bold',
+        'home' => 'home', 'menu' => 'bowl-food', 'social' => 'share-nodes',
+        'plans' => 'calendar-days', 'cart' => 'cart-shopping', 'profile' => 'user-circle',
+    ],
+];
+
+/**
  * Self-healing schema addition, matching the pattern used by
  * ensureGrowthSchema() — safe to call on every request.
  */
@@ -112,6 +147,24 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         $conn->query("SELECT header_style FROM website_settings LIMIT 1");
     } catch (PDOException $e) {
         try { $conn->exec("ALTER TABLE website_settings ADD COLUMN header_style VARCHAR(10) DEFAULT 'hero'"); } catch (PDOException $e2) {}
+    }
+
+    // site_name — optional override of the restaurant's account name for
+    // customer-facing display only (title, hero heading, footer). NULL means
+    // "use the account restaurant_name", matching the checkout_color pattern
+    // above so nothing changes until an admin explicitly sets one.
+    try {
+        $conn->query("SELECT site_name FROM website_settings LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN site_name VARCHAR(191) DEFAULT NULL"); } catch (PDOException $e2) {}
+    }
+    // nav_icon_style — id of a NAV_ICON_STYLES preset for the bottom nav's
+    // icon set. Defaults to 'classic' (today's fixed icons), so nothing
+    // changes until an admin explicitly picks another style.
+    try {
+        $conn->query("SELECT nav_icon_style FROM website_settings LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN nav_icon_style VARCHAR(20) DEFAULT 'classic'"); } catch (PDOException $e2) {}
     }
 }
 
