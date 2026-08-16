@@ -35,6 +35,7 @@ session_write_close();
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
     require_once __DIR__ . '/../config/countries.php';
+    require_once __DIR__ . '/../config/reservation_helpers.php';
 } else {
     throw new Exception('Database connection file not found');
 }
@@ -811,6 +812,9 @@ function handleUpdateRestaurantSettings() {
     $enableDelivery = isset($_POST['enable_delivery']) ? (int)$_POST['enable_delivery'] : 1;
     $enableTakeaway = isset($_POST['enable_takeaway']) ? (int)$_POST['enable_takeaway'] : 1;
     $enableDinein = isset($_POST['enable_dinein']) ? (int)$_POST['enable_dinein'] : 1;
+    // Off by default — unlike the order-type toggles above, reservations are
+    // a new customer-website feature the owner has to opt into.
+    $enableReservations = isset($_POST['enable_reservations']) ? (int)$_POST['enable_reservations'] : 0;
     $codEnabled = isset($_POST['cod_enabled']) ? (int)$_POST['cod_enabled'] : 1;
     $enableLanguage = isset($_POST['enable_language']) ? (int)$_POST['enable_language'] : 1;
     $instagramLink = isset($_POST['instagram_link']) ? trim($_POST['instagram_link']) : '';
@@ -839,8 +843,9 @@ function handleUpdateRestaurantSettings() {
     
     
     try {
-        $updateStmt = $pdo->prepare("UPDATE users SET restaurant_name = ?, email = ?, phone = ?, address = ?, description = ?, description_format = ?, opening_hours = ?, phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, minimum_order_value = ?, google_maps_link = ?, owner_name = ?, enable_gst = ?, tax_name = ?, tax_percent = ?, instagram_link = ?, facebook_link = ?, twitter_link = ?, youtube_link = ?, linkedin_link = ?, enable_delivery = ?, enable_takeaway = ?, enable_dinein = ?, cod_enabled = ?, enable_language = ?, packaging_charge = ?, delivery_radius_km = ?, enable_km_delivery = ?, delivery_rate_per_km = ?, updated_at = NOW() WHERE id = ?");
-        $result = $updateStmt->execute([$restaurantName, $email, $phone, $address, $description, $descriptionFormat, $openingHours, $phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $minimumOrderValue, $googleMapsLink, $ownerName, $enableGst, $taxName, $taxPercent, $instagramLink, $facebookLink, $twitterLink, $youtubeLink, $linkedinLink, $enableDelivery, $enableTakeaway, $enableDinein, $codEnabled, $enableLanguage, $packagingCharge, $deliveryRadius, $enableKmDelivery, $deliveryRatePerKm, $userId]);
+        ensureReservationsToggleColumn($pdo);
+        $updateStmt = $pdo->prepare("UPDATE users SET restaurant_name = ?, email = ?, phone = ?, address = ?, description = ?, description_format = ?, opening_hours = ?, phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, minimum_order_value = ?, google_maps_link = ?, owner_name = ?, enable_gst = ?, tax_name = ?, tax_percent = ?, instagram_link = ?, facebook_link = ?, twitter_link = ?, youtube_link = ?, linkedin_link = ?, enable_delivery = ?, enable_takeaway = ?, enable_dinein = ?, enable_reservations = ?, cod_enabled = ?, enable_language = ?, packaging_charge = ?, delivery_radius_km = ?, enable_km_delivery = ?, delivery_rate_per_km = ?, updated_at = NOW() WHERE id = ?");
+        $result = $updateStmt->execute([$restaurantName, $email, $phone, $address, $description, $descriptionFormat, $openingHours, $phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $minimumOrderValue, $googleMapsLink, $ownerName, $enableGst, $taxName, $taxPercent, $instagramLink, $facebookLink, $twitterLink, $youtubeLink, $linkedinLink, $enableDelivery, $enableTakeaway, $enableDinein, $enableReservations, $codEnabled, $enableLanguage, $packagingCharge, $deliveryRadius, $enableKmDelivery, $deliveryRatePerKm, $userId]);
     } catch (PDOException $e) {
         $msg = $e->getMessage();
         if (strpos($msg, 'minimum_order_value') !== false || strpos($msg, 'Unknown column') !== false) {

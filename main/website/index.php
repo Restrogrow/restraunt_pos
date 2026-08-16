@@ -1339,6 +1339,8 @@ window.socialLinks = {
   <?php
   require_once __DIR__ . '/../config/meal_subscription_schema.php';
   $indexNavShowPlans = isset($conn, $restaurant_id) && mealSubscriptionsFeatureEnabled($conn, $restaurant_id);
+  require_once __DIR__ . '/../config/reservation_helpers.php';
+  $indexNavShowReservations = isset($conn, $restaurant_id) && reservationsFeatureEnabled($conn, $restaurant_id);
   ?>
   <div class="bottom-nav">
     <div class="nav-item active" onclick="scrollToSection('homeSection', this)">
@@ -1357,6 +1359,12 @@ window.socialLinks = {
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('plans'); ?>'">
       <i class="fa fa-<?php echo htmlspecialchars($navIcons['plans'], ENT_QUOTES, 'UTF-8'); ?> nav-icon" data-nav-slot="plans"></i>
       <span>Plans</span>
+    </div>
+    <?php endif; ?>
+    <?php if ($indexNavShowReservations): ?>
+    <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('reservations'); ?>'">
+      <i class="fa fa-calendar-check nav-icon" data-nav-slot="reservations"></i>
+      <span>Reserve</span>
     </div>
     <?php endif; ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">

@@ -49,12 +49,14 @@ try {
         }
     }
 
+    require_once __DIR__ . '/../config/reservation_helpers.php';
+    ensureReservationsToggleColumn($conn);
 
     $row = [];
 
     if ($isAdmin) {
         try {
-            $stmt = $conn->prepare("SELECT id, subscription_status, trial_end_date, renewal_date, created_at, email, role, phone, address, description, description_format, opening_hours, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, minimum_order_value, payment_gateway_type, currency_symbol, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km FROM users WHERE id = :id LIMIT 1");
+            $stmt = $conn->prepare("SELECT id, subscription_status, trial_end_date, renewal_date, created_at, email, role, phone, address, description, description_format, opening_hours, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, minimum_order_value, payment_gateway_type, currency_symbol, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, enable_reservations, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km FROM users WHERE id = :id LIMIT 1");
             $stmt->execute([':id' => $_SESSION['user_id']]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (PDOException $e) {
@@ -107,7 +109,7 @@ try {
         }
     } else if ($isBranchAdmin) {
         try {
-            $stmt = $conn->prepare("SELECT id, restaurant_name, currency_symbol, email, phone, address, description, description_format, opening_hours, payment_gateway_type, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
+            $stmt = $conn->prepare("SELECT id, restaurant_name, currency_symbol, email, phone, address, description, description_format, opening_hours, payment_gateway_type, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, enable_reservations, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
             $stmt->execute([':restaurant_id' => $_SESSION['restaurant_id']]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (PDOException $e) {

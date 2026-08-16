@@ -4016,6 +4016,15 @@ function toggleGatewayMode() {
                   <p style="color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem;">All are enabled by default. At least one must remain enabled for customers to place orders.</p>
                 </div>
 
+                <!-- Table Reservations Toggle -->
+                <div class="form-group" style="padding-top: 8px;">
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 16px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 10px; transition: all 0.2s; max-width: fit-content;" onmouseover="this.style.borderColor='#d1d5db'" onmouseout="this.style.borderColor='#e5e7eb'">
+                    <input type="checkbox" id="enableReservationsToggle" style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
+                    <span style="font-weight: 600; font-size: 0.95rem;">🍽️ Table Reservations</span>
+                  </label>
+                  <p style="color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem;">Off by default. Turn on to show a "Reserve" section on your customer website where visitors can book a table for a date &amp; time — bookings land on the Reservations page for you to confirm.</p>
+                </div>
+
                 <div class="form-group">
                   <label style="display:flex;align-items:center;gap:8px;">
                     <span class="material-symbols-rounded">payments</span>
