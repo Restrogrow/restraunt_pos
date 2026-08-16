@@ -2915,21 +2915,40 @@ function checkPhonePeReturn() {
         handlePaymentSuccess(orderNumber);
       } else if (!window._ppVerifyCancelled) {
         // Fall back to regular polling
-        pollPaymentStatus(orderNumber, 24);
+        pollPaymentStatus(orderNumber, 24, 5000);
       }
     })
     .catch(function(err) {
       // Network error, fall back to polling
-      if (!window._ppVerifyCancelled) pollPaymentStatus(orderNumber, 24);
+      if (!window._ppVerifyCancelled) pollPaymentStatus(orderNumber, 24, 5000);
     });
 }
 
-function pollPaymentStatus(orderNumber, retries) {
-  
+// No webhook is configured yet, so this browser poll is the ONLY automatic
+// way a payment gets confirmed — there's nothing else watching in the
+// background. So it deliberately keeps checking for a while (~2 min fast,
+// then ~10 min slower — UPI confirmations can occasionally take that long)
+// instead of giving up quickly. This is safe to do because someone who knows
+// they didn't pay already has the "I didn't complete this payment" button on
+// the overlay to bail out immediately — extending the automatic ceiling only
+// helps the people who stay and wait for a real (if slow) confirmation.
+// Once a webhook is wired up later, it becomes a redundant safety net instead
+// of the only path, and this can be trimmed back down.
+function pollPaymentStatus(orderNumber, retries, intervalMs) {
+  intervalMs = intervalMs || 5000;
+
   if (retries <= 0) {
+    if (intervalMs < 15000) {
+      // Fast phase exhausted — switch to slower background polling rather
+      // than giving up on a payment that might still be genuinely processing.
+      var msgEl = document.querySelector('#ppVerifyLoader p');
+      if (msgEl) msgEl.textContent = "This is taking longer than usual, but we're still checking. Please keep this tab open.";
+      pollPaymentStatus(orderNumber, 40, 15000);
+      return;
+    }
     var loader = document.getElementById('ppVerifyLoader');
     if (loader) loader.remove();
-    // After exhausting retries, check the DB one more time directly
+    // Both phases exhausted (~12 minutes) — check the DB one more time directly
     fetch('../api/phonepe_order_payment.php?action=status&order_id=' + encodeURIComponent(orderNumber))
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -2966,7 +2985,7 @@ function pollPaymentStatus(orderNumber, retries) {
       if (data.success && data.payment_status === 'Success') {
         handlePaymentSuccess(orderNumber);
       } else if (data.success && data.payment_status === 'Pending') {
-        if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1); }, 5000);
+        if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1, intervalMs); }, intervalMs);
       } else {
         var loader = document.getElementById('ppVerifyLoader');
         if (loader) loader.remove();
@@ -2981,7 +3000,7 @@ function pollPaymentStatus(orderNumber, retries) {
       }
     })
     .catch(function(err) {
-      if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1); }, 5000);
+      if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1, intervalMs); }, intervalMs);
     });
 }
 
