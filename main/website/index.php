@@ -68,6 +68,51 @@ body {
   padding-bottom: 20px;
 }
 
+/* Header variant: Minimal — compact single bar (logo + name + location)
+   instead of a tall background-image hero. */
+.theme-bg.header-minimal {
+  min-height: 0;
+  padding: 14px 56px 12px 16px;
+  background: linear-gradient(135deg, var(--primary-red, #F70000), var(--dark-red, #DA020E)) !important;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.theme-bg.header-minimal .top-bar {
+  position: absolute;
+  top: 8px; right: 8px;
+  padding: 0;
+  width: auto;
+}
+.theme-bg.header-minimal .profile-section {
+  flex-direction: row;
+  order: 1;
+}
+.theme-bg.header-minimal .profile-img-wrap {
+  width: 46px !important; height: 46px !important;
+  margin-bottom: 0;
+}
+.theme-bg.header-minimal .rest-name {
+  order: 2;
+  justify-content: flex-start;
+  text-align: left;
+  font-size: 16px;
+  padding: 0 0 0 10px;
+  flex: 1;
+  min-width: 0;
+}
+.theme-bg.header-minimal .loc-container {
+  order: 3;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.15);
+}
+.theme-bg.header-minimal .location-txt {
+  text-align: left;
+  font-size: 12px;
+}
+
 .top-bar {
   display: flex;
   justify-content: flex-end;
@@ -1116,7 +1161,11 @@ window.socialLinks = {
 <body>
 <div class="phone-frame">
 
-  <div class="theme-bg" id="homeSection" style="<?php echo $background_theme ? 'background-image: url(' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . ');' : 'background: linear-gradient(135deg, #2d3436, #636e72);'; ?>">
+  <div class="theme-bg<?php echo $header_style === 'minimal' ? ' header-minimal' : ''; ?>" id="homeSection" style="<?php
+    if ($header_style !== 'minimal') {
+      echo $background_theme ? 'background-image: url(' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . ');' : 'background: linear-gradient(135deg, #2d3436, #636e72);';
+    }
+  ?>">
     <div class="top-bar">
       <div style="position:relative">
         <button class="more-btn" onclick="toggleDropdown()"><i class="fa fa-ellipsis-v"></i></button>

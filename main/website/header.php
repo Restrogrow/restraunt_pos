@@ -258,10 +258,12 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $primary_yellow = '#FFD100';
     $font_family = 'Poppins';
     $card_style = 'rounded';
+    $layout_style = 'grid';
+    $header_style = 'hero';
     if ($restaurant_id) {
         try {
             ensureWebsiteThemeSchema($conn);
-            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color FROM website_settings WHERE restaurant_id = :rid');
+            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
             $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($themeRow) {
@@ -280,6 +282,8 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 if (!empty($themeRow['font_family'])) $font_family = $themeRow['font_family'];
                 if (in_array($themeRow['card_style'] ?? '', THEME_CARD_STYLES, true)) $card_style = $themeRow['card_style'];
                 if (!empty($themeRow['checkout_color'])) $checkout_color_override = $themeRow['checkout_color'];
+                if (in_array($themeRow['layout_style'] ?? '', THEME_LAYOUT_STYLES, true)) $layout_style = $themeRow['layout_style'];
+                if (in_array($themeRow['header_style'] ?? '', THEME_HEADER_STYLES, true)) $header_style = $themeRow['header_style'];
             }
         } catch (Exception $e) {
         }

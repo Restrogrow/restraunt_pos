@@ -13471,6 +13471,45 @@ async function initWebsiteThemeEditor() {
     const cc = document.getElementById('checkoutColor');
     const ccHex = document.getElementById('checkoutColorHex');
     const fontSelect = document.getElementById('siteFontSelect');
+
+    function applyLayoutHeaderStyleUI(layoutVal, headerVal) {
+      document.querySelectorAll('.layout-style-opt').forEach(function(el) {
+        var active = el.getAttribute('data-value') === layoutVal;
+        el.style.borderColor = active ? '#7c3aed' : '#e5e7eb';
+        var icon = el.querySelector('.material-symbols-rounded');
+        if (icon) icon.style.color = active ? '#7c3aed' : '#6b7280';
+        var radio = el.querySelector('input[name="layoutStyle"]');
+        if (radio) radio.checked = active;
+      });
+      document.querySelectorAll('.header-style-opt').forEach(function(el) {
+        var active = el.getAttribute('data-value') === headerVal;
+        el.style.borderColor = active ? '#7c3aed' : '#e5e7eb';
+        var icon = el.querySelector('.material-symbols-rounded');
+        if (icon) icon.style.color = active ? '#7c3aed' : '#6b7280';
+        var radio = el.querySelector('input[name="headerStyle"]');
+        if (radio) radio.checked = active;
+      });
+    }
+    function currentLayoutStyleVal() {
+      var r = document.querySelector('input[name="layoutStyle"]:checked');
+      return r ? r.value : 'grid';
+    }
+    function currentHeaderStyleVal() {
+      var r = document.querySelector('input[name="headerStyle"]:checked');
+      return r ? r.value : 'hero';
+    }
+    document.querySelectorAll('.layout-style-opt').forEach(function(el) {
+      el.addEventListener('click', function() {
+        applyLayoutHeaderStyleUI(el.getAttribute('data-value'), currentHeaderStyleVal());
+        applyLivePreview();
+      });
+    });
+    document.querySelectorAll('.header-style-opt').forEach(function(el) {
+      el.addEventListener('click', function() {
+        applyLayoutHeaderStyleUI(currentLayoutStyleVal(), el.getAttribute('data-value'));
+        applyLivePreview();
+      });
+    });
     const bannerUpload = document.getElementById('bannerUpload');
     const uploadBannerBtn = document.getElementById('uploadBannerBtn');
 
@@ -13497,11 +13536,11 @@ async function initWebsiteThemeEditor() {
     // Mirrors THEME_PRESETS in main/config/website_theme_helpers.php — kept here
     // too so picking a preset updates the form instantly, no round trip needed.
     const THEME_PRESETS = {
-      classic: { label: 'Classic Red', primary_red: '#F70000', dark_red: '#DA020E', primary_yellow: '#FFD100', font_family: 'Poppins', card_style: 'rounded' },
-      midnight: { label: 'Midnight', primary_red: '#16213E', dark_red: '#0F1730', primary_yellow: '#00C2A8', font_family: 'Montserrat', card_style: 'sharp' },
-      sunset: { label: 'Sunset', primary_red: '#FF6B35', dark_red: '#C2410C', primary_yellow: '#FFC145', font_family: 'Nunito', card_style: 'pill' },
-      emerald: { label: 'Emerald', primary_red: '#1B5E3D', dark_red: '#0F3D28', primary_yellow: '#F4E1C1', font_family: 'Playfair Display', card_style: 'rounded' },
-      ocean: { label: 'Ocean', primary_red: '#0B6E99', dark_red: '#08526F', primary_yellow: '#FF7E5F', font_family: 'Roboto', card_style: 'rounded' }
+      classic: { label: 'Classic Red', primary_red: '#F70000', dark_red: '#DA020E', primary_yellow: '#FFD100', font_family: 'Poppins', card_style: 'rounded', layout_style: 'grid', header_style: 'hero' },
+      midnight: { label: 'Midnight', primary_red: '#16213E', dark_red: '#0F1730', primary_yellow: '#00C2A8', font_family: 'Montserrat', card_style: 'sharp', layout_style: 'list', header_style: 'minimal' },
+      sunset: { label: 'Sunset', primary_red: '#FF6B35', dark_red: '#C2410C', primary_yellow: '#FFC145', font_family: 'Nunito', card_style: 'pill', layout_style: 'magazine', header_style: 'hero' },
+      emerald: { label: 'Emerald', primary_red: '#1B5E3D', dark_red: '#0F3D28', primary_yellow: '#F4E1C1', font_family: 'Playfair Display', card_style: 'rounded', layout_style: 'list', header_style: 'hero' },
+      ocean: { label: 'Ocean', primary_red: '#0B6E99', dark_red: '#08526F', primary_yellow: '#FF7E5F', font_family: 'Roboto', card_style: 'rounded', layout_style: 'magazine', header_style: 'minimal' }
     };
 
     function renderThemePresetGrid(selectedId) {
@@ -13566,6 +13605,12 @@ async function initWebsiteThemeEditor() {
         var radii = cardStyleVal === 'pill' ? { card: '20px', btn: '999px' } : (cardStyleVal === 'sharp' ? { card: '4px', btn: '4px' } : { card: '16px', btn: '12px' });
         root.style.setProperty('--card-radius', radii.card);
         root.style.setProperty('--btn-radius', radii.btn);
+
+        // Header style: toggle the compact "minimal" layout on the preview's home section
+        var previewHomeSection = doc.getElementById('homeSection');
+        if (previewHomeSection && typeof currentHeaderStyleVal === 'function') {
+          previewHomeSection.classList.toggle('header-minimal', currentHeaderStyleVal() === 'minimal');
+        }
 
         var fontName = fontSelect ? fontSelect.value : DEFAULT_THEME.font_family;
         root.style.setProperty('--site-font', FONT_STACKS[fontName] || FONT_STACKS['Poppins']);
@@ -13867,7 +13912,9 @@ async function initWebsiteThemeEditor() {
       if (cardStyleInput) cardStyleInput.value = t.card_style;
       var themePresetInput = document.getElementById('themePresetInput');
       if (themePresetInput) themePresetInput.value = id;
+      applyLayoutHeaderStyleUI(t.layout_style, t.header_style);
       updateColorPreviews();
+      applyLivePreview();
       renderThemePresetGrid(id);
     };
 
@@ -13938,7 +13985,9 @@ async function initWebsiteThemeEditor() {
         const themePresetInputReset = document.getElementById('themePresetInput');
         if (themePresetInputReset) themePresetInputReset.value = 'classic';
         renderThemePresetGrid('classic');
+        applyLayoutHeaderStyleUI('grid', 'hero');
         updateColorPreviews();
+        applyLivePreview();
         showNotification('Defaults restored. Click "Save Theme" to make it permanent.', 'success');
       });
     }
@@ -14067,6 +14116,7 @@ if (!window.customBgThemes) {
       var themePresetInput = document.getElementById('themePresetInput');
       if (themePresetInput) themePresetInput.value = data.settings.theme_preset || '';
       renderThemePresetGrid(data.settings.theme_preset || '');
+      applyLayoutHeaderStyleUI(data.settings.layout_style || 'grid', data.settings.header_style || 'hero');
 
       // Set background theme URL
       const bgUrl = data.settings.background_theme || '';
@@ -14266,7 +14316,9 @@ if (!window.customBgThemes) {
             font_family: siteFontEl ? siteFontEl.value : 'Poppins',
             card_style: cardStyleEl ? cardStyleEl.value : 'rounded',
             theme_preset: themePresetEl && themePresetEl.value ? themePresetEl.value : null,
-            checkout_color: cc ? cc.value : null
+            checkout_color: cc ? cc.value : null,
+            layout_style: currentLayoutStyleVal(),
+            header_style: currentHeaderStyleVal()
           };
 
           var res = await fetch('../website/theme_api.php' + sq, {

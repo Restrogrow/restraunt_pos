@@ -1639,6 +1639,53 @@ try {
                 </label>
               </div>
             </div>
+
+            <!-- Card Layout: real structural variants, not just recoloring -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">view_agenda</span>
+                Card Layout
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How menu items are arranged on your Menu page &mdash; a real layout change, not just a color swap.</p>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <label class="layout-style-opt" data-value="grid" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="layoutStyle" value="grid" checked style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">grid_view</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Grid</span>
+                </label>
+                <label class="layout-style-opt" data-value="list" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="layoutStyle" value="list" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_list</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">List</span>
+                </label>
+                <label class="layout-style-opt" data-value="magazine" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="layoutStyle" value="magazine" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_agenda</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Magazine</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Header Style: hero banner vs a compact minimal bar -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">web_asset</span>
+                Header Style
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How the homepage header looks &mdash; a tall photo banner, or a compact colored bar.</p>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <label class="header-style-opt" data-value="hero" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="headerStyle" value="hero" checked style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">panorama</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Hero Banner</span>
+                </label>
+                <label class="header-style-opt" data-value="minimal" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="headerStyle" value="minimal" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">horizontal_rule</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Minimal Bar</span>
+                </label>
+              </div>
+            </div>
             <!-- Logo Shape & Size Settings -->
             <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">

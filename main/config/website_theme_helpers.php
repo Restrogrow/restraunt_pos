@@ -19,6 +19,8 @@ const THEME_PRESETS = [
         'primary_yellow' => '#FFD100',
         'font_family' => 'Poppins',
         'card_style' => 'rounded',
+        'layout_style' => 'grid',
+        'header_style' => 'hero',
     ],
     'midnight' => [
         'label' => 'Midnight',
@@ -27,6 +29,8 @@ const THEME_PRESETS = [
         'primary_yellow' => '#00C2A8',
         'font_family' => 'Montserrat',
         'card_style' => 'sharp',
+        'layout_style' => 'list',
+        'header_style' => 'minimal',
     ],
     'sunset' => [
         'label' => 'Sunset',
@@ -35,6 +39,8 @@ const THEME_PRESETS = [
         'primary_yellow' => '#FFC145',
         'font_family' => 'Nunito',
         'card_style' => 'pill',
+        'layout_style' => 'magazine',
+        'header_style' => 'hero',
     ],
     'emerald' => [
         'label' => 'Emerald',
@@ -43,6 +49,8 @@ const THEME_PRESETS = [
         'primary_yellow' => '#F4E1C1',
         'font_family' => 'Playfair Display',
         'card_style' => 'rounded',
+        'layout_style' => 'list',
+        'header_style' => 'hero',
     ],
     'ocean' => [
         'label' => 'Ocean',
@@ -51,10 +59,14 @@ const THEME_PRESETS = [
         'primary_yellow' => '#FF7E5F',
         'font_family' => 'Roboto',
         'card_style' => 'rounded',
+        'layout_style' => 'magazine',
+        'header_style' => 'minimal',
     ],
 ];
 
 const THEME_CARD_STYLES = ['rounded', 'sharp', 'pill'];
+const THEME_LAYOUT_STYLES = ['grid', 'list', 'magazine'];
+const THEME_HEADER_STYLES = ['hero', 'minimal'];
 
 /**
  * Self-healing schema addition, matching the pattern used by
@@ -86,6 +98,20 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         $conn->query("SELECT checkout_color FROM website_settings LIMIT 1");
     } catch (PDOException $e) {
         try { $conn->exec("ALTER TABLE website_settings ADD COLUMN checkout_color VARCHAR(20) DEFAULT NULL"); } catch (PDOException $e2) {}
+    }
+
+    // layout_style — how the menu page's product cards are arranged
+    // (grid/list/magazine). header_style — hero banner vs a compact minimal
+    // bar on the homepage. Both default to the site's original look.
+    try {
+        $conn->query("SELECT layout_style FROM website_settings LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN layout_style VARCHAR(10) DEFAULT 'grid'"); } catch (PDOException $e2) {}
+    }
+    try {
+        $conn->query("SELECT header_style FROM website_settings LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN header_style VARCHAR(10) DEFAULT 'hero'"); } catch (PDOException $e2) {}
     }
 }
 

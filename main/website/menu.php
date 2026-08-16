@@ -213,6 +213,53 @@ body {
   padding-top: 10px;
 }
 
+/* Layout variant: List — single-column horizontal rows (image left, details right) */
+.product-grid.layout-list {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: none;
+}
+.product-grid.layout-list .card {
+  flex-direction: row;
+  align-items: stretch;
+}
+.product-grid.layout-list .card-img-wrap {
+  width: 110px;
+  flex-shrink: 0;
+}
+.product-grid.layout-list .card-img-wrap img {
+  width: 110px;
+  height: 100%;
+  min-height: 96px;
+}
+.product-grid.layout-list .card-body {
+  padding: 10px 14px;
+  justify-content: center;
+}
+
+/* Layout variant: Magazine — single-column, large editorial-style images */
+.product-grid.layout-magazine {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: none;
+  gap: 20px;
+}
+.product-grid.layout-magazine .card {
+  flex-direction: column;
+}
+.product-grid.layout-magazine .card-img-wrap img {
+  height: 220px;
+}
+.product-grid.layout-magazine .card-body {
+  padding: 14px 16px 16px;
+}
+.product-grid.layout-magazine .card-name {
+  font-size: 17px;
+}
+.product-grid.layout-magazine .card-price {
+  font-size: 16px;
+}
+
 @media (max-width: 480px) {
   .product-grid.cols-1 {
     grid-template-columns: 1fr;
@@ -832,7 +879,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
           <h2 id="categoryTitle"><span class="skel-title-bar skeleton"></span></h2>
           <div class="subcategory-tabs" id="subcategoryTabs" style="display:none"></div>
         </div>
-        <div class="product-grid cols-2" id="productGrid">
+        <div class="product-grid cols-2 layout-<?php echo htmlspecialchars($layout_style, ENT_QUOTES, 'UTF-8'); ?>" id="productGrid">
           <div class="skel-grid">
             <div class="skel-card"><div class="skel-card-img skeleton"></div><div class="skel-card-body"><div class="skel-card-title skeleton"></div><div class="skel-card-price skeleton"></div></div></div>
             <div class="skel-card"><div class="skel-card-img skeleton"></div><div class="skel-card-body"><div class="skel-card-title skeleton"></div><div class="skel-card-price skeleton"></div></div></div>
