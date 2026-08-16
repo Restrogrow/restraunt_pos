@@ -2888,11 +2888,15 @@ function checkPhonePeReturn() {
   cleanParams.forEach(function(p) { url.searchParams.delete(p); });
   window.history.replaceState({}, '', url.toString());
 
-  // Show loading overlay
+  // Show loading overlay. Includes a "didn't complete payment" escape hatch —
+  // someone who backed out of PhonePe without paying knows immediately that
+  // nothing was charged, and shouldn't have to sit through the full polling
+  // window (previously up to 5 minutes) before getting a clear answer.
+  window._ppVerifyCancelled = false;
   var loading = document.createElement('div');
   loading.id = 'ppVerifyLoader';
   loading.className = 'modal-overlay';
-  loading.innerHTML = '<div class="alert-box" style="text-align:center"><h3>Verifying Payment...</h3><p style="margin-top:10px">Please wait while we verify your payment.</p><div style="margin-top:15px;font-size:24px">&#8987;</div></div>';
+  loading.innerHTML = '<div class="alert-box" style="text-align:center"><h3>Verifying Payment...</h3><p style="margin-top:10px">Please wait while we verify your payment.</p><div style="margin-top:15px;font-size:24px">&#8987;</div><button type="button" onclick="cancelPhonePeVerification(\'' + orderNumber.replace(/'/g, "\\'") + '\')" style="margin-top:18px;background:none;border:1px solid #ccc;border-radius:6px;padding:8px 16px;color:#666;cursor:pointer;font-size:0.9rem;">I didn\'t complete this payment</button></div>';
   document.body.appendChild(loading);
 
   // Build the status check URL (only pass code=PAYMENT_SUCCESS if PhonePe actually sent it)
@@ -2909,14 +2913,14 @@ function checkPhonePeReturn() {
     .then(function(data) {
       if (data.success && data.payment_status === 'Success') {
         handlePaymentSuccess(orderNumber);
-      } else {
+      } else if (!window._ppVerifyCancelled) {
         // Fall back to regular polling
-        pollPaymentStatus(orderNumber, 60);
+        pollPaymentStatus(orderNumber, 24);
       }
     })
     .catch(function(err) {
       // Network error, fall back to polling
-      pollPaymentStatus(orderNumber, 60);
+      if (!window._ppVerifyCancelled) pollPaymentStatus(orderNumber, 24);
     });
 }
 
@@ -2935,7 +2939,7 @@ function pollPaymentStatus(orderNumber, retries) {
           sessionStorage.removeItem('phonepe_pending');
           deleteCookie('pp_pending');
           deleteCookie('pp_order_number');
-          showModal('Payment Pending', 'Your payment is still being processed. Please check your order in your profile.');
+          showModal('Payment Not Confirmed', "We couldn't confirm this payment. If you completed it, it may take a few minutes to reflect — check Order Status in your profile. If you didn't complete it, you're free to try again.");
           var url = new URL(window.location.href);
           url.searchParams.delete('order_id');
           window.history.replaceState({}, '', url.toString());
@@ -2946,7 +2950,7 @@ function pollPaymentStatus(orderNumber, retries) {
         sessionStorage.removeItem('phonepe_pending');
         deleteCookie('pp_pending');
         deleteCookie('pp_order_number');
-        showModal('Payment Pending', 'Your payment is still being processed. Please check your order in your profile.');
+        showModal('Payment Not Confirmed', "We couldn't confirm this payment. If you completed it, it may take a few minutes to reflect — check Order Status in your profile. If you didn't complete it, you're free to try again.");
           var url = new URL(window.location.href);
           url.searchParams.delete('order_id');
           window.history.replaceState({}, '', url.toString());
@@ -2955,14 +2959,14 @@ function pollPaymentStatus(orderNumber, retries) {
   }
 
   fetch('../api/phonepe_order_payment.php?action=status&order_id=' + encodeURIComponent(orderNumber))
-    .then(function(r) { 
-      return r.json(); 
+    .then(function(r) {
+      return r.json();
     })
     .then(function(data) {
       if (data.success && data.payment_status === 'Success') {
         handlePaymentSuccess(orderNumber);
       } else if (data.success && data.payment_status === 'Pending') {
-        setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1); }, 5000);
+        if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1); }, 5000);
       } else {
         var loader = document.getElementById('ppVerifyLoader');
         if (loader) loader.remove();
@@ -2977,8 +2981,28 @@ function pollPaymentStatus(orderNumber, retries) {
       }
     })
     .catch(function(err) {
-      setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1); }, 5000);
+      if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1); }, 5000);
     });
+}
+
+// Lets someone who backed out of PhonePe without paying dismiss the
+// "Verifying Payment..." overlay immediately instead of waiting through the
+// full polling window — stops further polling and clears the pending order
+// markers so a retry starts clean. If the payment actually does succeed via
+// an in-flight request that resolves after this, handlePaymentSuccess() below
+// still overrides this and shows the real outcome.
+function cancelPhonePeVerification(orderNumber) {
+  window._ppVerifyCancelled = true;
+  var loader = document.getElementById('ppVerifyLoader');
+  if (loader) loader.remove();
+  sessionStorage.removeItem('phonepe_order_number');
+  sessionStorage.removeItem('phonepe_pending');
+  deleteCookie('pp_pending');
+  deleteCookie('pp_order_number');
+  var url = new URL(window.location.href);
+  url.searchParams.delete('order_id');
+  window.history.replaceState({}, '', url.toString());
+  showModal('Payment Cancelled', "No problem — your order is saved as Pending payment. You can try paying again from your order details, or place a new order.");
 }
 
 

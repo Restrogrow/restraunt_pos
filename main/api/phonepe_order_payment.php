@@ -391,7 +391,7 @@ function handleStatusCheck() {
                                         error_log('Order confirmation actions error (status poll): ' . $e->getMessage());
                                     }
                                 }
-                            } elseif (in_array($state, ['FAILED', 'REJECTED', 'CANCELLED'])) {
+                            } elseif (in_array($state, ['FAILED', 'REJECTED', 'CANCELLED', 'EXPIRED'])) {
                                 $updatePay = $conn->prepare("UPDATE payments SET payment_status = 'Failed' WHERE id = ?");
                                 $updatePay->execute([$payment['payment_id']]);
                                 $payment['payment_status'] = 'Failed';
