@@ -115,7 +115,7 @@ try {
     // Only update terminal states; skip PENDING
     if ($state === 'COMPLETED') {
         $payment_status = 'Success';
-    } elseif ($state === 'FAILED' || $state === 'REJECTED' || $state === 'CANCELLED') {
+    } elseif ($state === 'FAILED' || $state === 'REJECTED' || $state === 'CANCELLED' || $state === 'EXPIRED') {
         $payment_status = 'Failed';
     } else {
         // PENDING or unknown — leave as Pending
