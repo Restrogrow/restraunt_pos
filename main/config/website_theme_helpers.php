@@ -218,6 +218,32 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
     } catch (PDOException $e) {
         try { $conn->exec("ALTER TABLE website_settings ADD COLUMN favicon_url VARCHAR(500) DEFAULT NULL"); } catch (PDOException $e2) {}
     }
+    // nav_icons_custom — JSON map of per-slot uploaded icon images (data URLs)
+    // for the bottom nav, e.g. {"menu":"data:image/png;base64,..."}. A slot
+    // with no entry here just uses the picked NAV_ICON_STYLES icon as before;
+    // this is a per-slot override on top of that, not a replacement for it.
+    try {
+        $conn->query("SELECT nav_icons_custom FROM website_settings LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN nav_icons_custom LONGTEXT DEFAULT NULL"); } catch (PDOException $e2) {}
+    }
+}
+
+/**
+ * Decode a stored nav_icons_custom JSON string (may be null/invalid) into an
+ * associative array of slot => image URL, filtered to known nav slots only.
+ */
+function getNavIconOverrides(?string $json): array {
+    if (!$json) return [];
+    $decoded = json_decode($json, true);
+    if (!is_array($decoded)) return [];
+    $out = [];
+    foreach (DEFAULT_NAV_LABELS as $slot => $default) {
+        if (!empty($decoded[$slot]) && is_string($decoded[$slot])) {
+            $out[$slot] = $decoded[$slot];
+        }
+    }
+    return $out;
 }
 
 /**
@@ -236,6 +262,25 @@ function sanitizeFaviconUrl(?string $url): ?string {
         return mb_substr($url, 0, 500);
     }
     return null;
+}
+
+/**
+ * Render one bottom-nav icon: an uploaded custom image if the restaurant set
+ * one for this slot (via nav_icons_custom), otherwise the Font Awesome icon
+ * from the picked NAV_ICON_STYLES set. Both cases carry the same
+ * data-nav-slot attribute so applyLivePreview()'s live-preview swap and any
+ * CSS targeting [data-nav-slot] keep working regardless of which is shown.
+ */
+function renderNavIconTag(string $slot, array $navIcons, array $navIconOverrides, bool $navItemLayout = true): string {
+    $imgSize = $navItemLayout ? 24 : 16;
+    $imgLayoutStyle = $navItemLayout ? 'display:block;margin:0 auto;' : 'display:inline-block;vertical-align:middle;';
+    if (!empty($navIconOverrides[$slot])) {
+        $src = htmlspecialchars($navIconOverrides[$slot], ENT_QUOTES, 'UTF-8');
+        return '<img src="' . $src . '" class="' . ($navItemLayout ? 'nav-icon' : '') . '" data-nav-slot="' . $slot . '" alt="" style="width:' . $imgSize . 'px;height:' . $imgSize . 'px;object-fit:contain;' . $imgLayoutStyle . '">';
+    }
+    $iconName = htmlspecialchars($navIcons[$slot] ?? '', ENT_QUOTES, 'UTF-8');
+    $iconClass = 'fa fa-' . $iconName . ($navItemLayout ? ' nav-icon' : '');
+    return '<i class="' . $iconClass . '" data-nav-slot="' . $slot . '"></i>';
 }
 
 /**

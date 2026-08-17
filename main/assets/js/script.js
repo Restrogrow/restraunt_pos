@@ -13635,6 +13635,99 @@ async function initWebsiteThemeEditor() {
       applyLivePreview();
     };
 
+    // Per-slot custom nav icon uploads — overrides the picked icon style above
+    // for just that one slot. navIconOverridesCache mirrors what's saved server-side
+    // (nav_icons_custom), populated on load and kept in sync after each upload/remove.
+    var navIconOverridesCache = {};
+
+    function currentRestaurantId() {
+      var meta = document.querySelector('meta[name=restaurant-id]');
+      return meta ? meta.content : (document.getElementById('restaurantId') ? document.getElementById('restaurantId').textContent.trim() : '');
+    }
+
+    function renderNavIconUploadGrid() {
+      var grid = document.getElementById('navIconUploadGrid');
+      if (!grid) return;
+      grid.innerHTML = NAV_LABEL_SLOTS.map(function(slot) {
+        var label = slot.charAt(0).toUpperCase() + slot.slice(1);
+        var url = navIconOverridesCache[slot];
+        var thumbHtml = url
+          ? "<img src='" + url + "' style='width:32px;height:32px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;background:#fff;'>"
+          : "<div style='width:32px;height:32px;border-radius:6px;border:1px dashed #d1d5db;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:14px;'>&mdash;</div>";
+        return "<div style='text-align:center;padding:10px 6px;border-radius:10px;border:2px solid #e5e7eb;background:#fff;'>" +
+          "<div style='display:flex;justify-content:center;margin-bottom:6px;'>" + thumbHtml + "</div>" +
+          "<div style='font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;'>" + label + "</div>" +
+          "<input type='file' accept='image/png,image/jpeg,image/gif,image/webp,image/svg+xml' data-nav-icon-upload-slot='" + slot + "' style='display:none;'>" +
+          "<div style='display:flex;gap:4px;justify-content:center;'>" +
+          "<button type='button' data-nav-icon-upload-trigger='" + slot + "' style='font-size:10px;padding:4px 8px;border-radius:6px;border:1px solid #d1d5db;background:#fff;cursor:pointer;'>Upload</button>" +
+          (url ? "<button type='button' data-nav-icon-remove='" + slot + "' style='font-size:10px;padding:4px 8px;border-radius:6px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;cursor:pointer;'>Remove</button>" : '') +
+          "</div></div>";
+      }).join('');
+
+      Array.from(grid.querySelectorAll('[data-nav-icon-upload-trigger]')).forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var slot = btn.getAttribute('data-nav-icon-upload-trigger');
+          var input = grid.querySelector('input[data-nav-icon-upload-slot="' + slot + '"]');
+          if (input) input.click();
+        });
+      });
+      Array.from(grid.querySelectorAll('input[data-nav-icon-upload-slot]')).forEach(function(input) {
+        input.addEventListener('change', function() {
+          if (input.files && input.files[0]) uploadNavIcon(input.getAttribute('data-nav-icon-upload-slot'), input.files[0]);
+        });
+      });
+      Array.from(grid.querySelectorAll('[data-nav-icon-remove]')).forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          removeNavIcon(btn.getAttribute('data-nav-icon-remove'));
+        });
+      });
+    }
+
+    async function uploadNavIcon(slot, file) {
+      if (file.size > 1 * 1024 * 1024) {
+        showToastFallback('Icon file too large (max 1MB).', 'error');
+        return;
+      }
+      var formData = new FormData();
+      formData.append('icon_image', file);
+      formData.append('slot', slot);
+      var sq = '?action=upload_nav_icon&restaurant_id=' + encodeURIComponent(currentRestaurantId() || 'RES001');
+      try {
+        var res = await fetch('../website/theme_api.php' + sq, { method: 'POST', body: formData });
+        var data = await res.json();
+        if (data.success) {
+          navIconOverridesCache[slot] = data.icon_url;
+          renderNavIconUploadGrid();
+          applyLivePreview();
+          showToastFallback('Icon uploaded & saved!', 'success');
+        } else {
+          showToastFallback('Upload failed: ' + (data.message || 'Unknown error'), 'error');
+        }
+      } catch (e) {
+        showToastFallback('Upload error: ' + e.message, 'error');
+      }
+    }
+
+    async function removeNavIcon(slot) {
+      var sq = '?action=remove_nav_icon&restaurant_id=' + encodeURIComponent(currentRestaurantId() || 'RES001');
+      try {
+        var res = await fetch('../website/theme_api.php' + sq, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: slot }) });
+        var data = await res.json();
+        if (data.success) {
+          delete navIconOverridesCache[slot];
+          renderNavIconUploadGrid();
+          applyLivePreview();
+          showToastFallback('Custom icon removed.', 'success');
+        } else {
+          showToastFallback('Failed to remove icon: ' + (data.message || 'Unknown error'), 'error');
+        }
+      } catch (e) {
+        showToastFallback('Error: ' + e.message, 'error');
+      }
+    }
+
+    renderNavIconUploadGrid();
+
     const siteNameInputEl = document.getElementById('siteNameInput');
     if (siteNameInputEl) siteNameInputEl.addEventListener('input', applyLivePreview);
 
@@ -13773,17 +13866,42 @@ async function initWebsiteThemeEditor() {
         if (nameSpan && displayName) nameSpan.textContent = displayName;
         if (displayName) doc.title = displayName;
 
-        // Bottom nav icon style
+        // Bottom nav icon style (+ per-slot custom icon upload overrides)
         var navIconStyleEl = document.getElementById('navIconStyleInput');
         var navStyleId = (navIconStyleEl && NAV_ICON_STYLES[navIconStyleEl.value]) ? navIconStyleEl.value : 'classic';
         var navStyle = NAV_ICON_STYLES[navStyleId];
-        doc.querySelectorAll('[data-nav-slot]').forEach(function(iconEl) {
-          var slot = iconEl.getAttribute('data-nav-slot');
-          if (!navStyle[slot]) return;
-          Array.from(iconEl.classList).forEach(function(cls) {
-            if (cls.indexOf('fa-') === 0 && cls !== 'fa-' ) iconEl.classList.remove(cls);
-          });
-          iconEl.classList.add('fa-' + navStyle[slot]);
+        doc.querySelectorAll('[data-nav-slot]').forEach(function(el) {
+          var slot = el.getAttribute('data-nav-slot');
+          var overrideUrl = (typeof navIconOverridesCache !== 'undefined') ? navIconOverridesCache[slot] : null;
+          var navItemLayout = slot !== 'profile';
+          var size = navItemLayout ? 24 : 16;
+          if (overrideUrl) {
+            if (el.tagName === 'IMG') {
+              if (el.src !== overrideUrl) el.src = overrideUrl;
+            } else {
+              var img = doc.createElement('img');
+              img.src = overrideUrl;
+              img.alt = '';
+              img.setAttribute('data-nav-slot', slot);
+              if (navItemLayout) img.className = 'nav-icon';
+              img.style.cssText = 'width:' + size + 'px;height:' + size + 'px;object-fit:contain;' + (navItemLayout ? 'display:block;margin:0 auto;' : 'display:inline-block;vertical-align:middle;');
+              el.parentNode.replaceChild(img, el);
+            }
+          } else {
+            var iconName = navStyle[slot] || (slot === 'reservations' ? 'calendar-check' : null);
+            if (!iconName) return;
+            if (el.tagName === 'IMG') {
+              var icon = doc.createElement('i');
+              icon.className = 'fa fa-' + iconName + (navItemLayout ? ' nav-icon' : '');
+              icon.setAttribute('data-nav-slot', slot);
+              el.parentNode.replaceChild(icon, el);
+            } else {
+              Array.from(el.classList).forEach(function(cls) {
+                if (cls.indexOf('fa-') === 0 && cls !== 'fa-') el.classList.remove(cls);
+              });
+              el.classList.add('fa-' + iconName);
+            }
+          }
         });
 
         // Bottom nav text labels
@@ -14274,6 +14392,9 @@ if (!window.customBgThemes) {
       const faviconUrlLoadEl = document.getElementById('faviconUrlInput');
       if (faviconUrlLoadEl) faviconUrlLoadEl.value = data.settings.favicon_url || '';
       updateFaviconPreview();
+
+      navIconOverridesCache = data.settings.nav_icons_custom || {};
+      renderNavIconUploadGrid();
 
       // Initialize logo shape/size UI from saved settings
       applyLogoShapeSizeUI(data.settings.logo_shape || 'circle', data.settings.logo_size || 90);

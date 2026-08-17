@@ -35,13 +35,14 @@ try {
   ensureWebsiteThemeSchema($conn);
 
   if ($action === 'get') {
-    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url FROM website_settings WHERE restaurant_id = :rid');
+    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom FROM website_settings WHERE restaurant_id = :rid');
     $stmt->execute([':rid' => $restaurant_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
-      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins','theme_preset'=>null,'card_style'=>'rounded','checkout_color'=>null,'layout_style'=>'grid','header_style'=>'hero','site_name'=>null,'nav_icon_style'=>'classic','nav_labels'=>DEFAULT_NAV_LABELS,'favicon_url'=>null];
+      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins','theme_preset'=>null,'card_style'=>'rounded','checkout_color'=>null,'layout_style'=>'grid','header_style'=>'hero','site_name'=>null,'nav_icon_style'=>'classic','nav_labels'=>DEFAULT_NAV_LABELS,'favicon_url'=>null,'nav_icons_custom'=>[]];
     } else {
       $row['nav_labels'] = getNavLabels($row['nav_labels'] ?? null);
+      $row['nav_icons_custom'] = getNavIconOverrides($row['nav_icons_custom'] ?? null);
       if (empty($row['nav_icon_style'])) { $row['nav_icon_style'] = 'classic'; }
       if (empty($row['font_family'])) { $row['font_family'] = 'Poppins'; }
       if (empty($row['card_style'])) { $row['card_style'] = 'rounded'; }
@@ -205,6 +206,88 @@ try {
     $stmt->execute([':rid' => $restaurant_id, ':bt' => $dataUrl]);
     
     echo json_encode(['success' => true, 'background_url' => $dataUrl, 'message' => 'Background image saved as base64!']);
+    exit;
+  }
+
+  if ($action === 'upload_nav_icon' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Upload a custom icon image for one bottom-nav slot (Home/Menu/Social/
+    // Plans/Reserve/Cart/Profile), stored as a base64 data URL merged into
+    // the nav_icons_custom JSON column. Overrides that slot's icon from the
+    // picked NAV_ICON_STYLES set without affecting the other slots.
+    $slot = $_POST['slot'] ?? '';
+    if (!array_key_exists($slot, DEFAULT_NAV_LABELS)) {
+      throw new Exception('Invalid nav icon slot');
+    }
+    if (!isset($_FILES['icon_image']) || $_FILES['icon_image']['error'] !== UPLOAD_ERR_OK) {
+      $errorCode = $_FILES['icon_image']['error'] ?? -1;
+      $errorMsg = 'Upload failed';
+      if ($errorCode === UPLOAD_ERR_INI_SIZE || $errorCode === UPLOAD_ERR_FORM_SIZE) $errorMsg = 'File too large (max 1MB)';
+      elseif ($errorCode === UPLOAD_ERR_NO_FILE) $errorMsg = 'No file selected';
+      elseif ($errorCode === UPLOAD_ERR_PARTIAL) $errorMsg = 'File partially uploaded';
+      throw new Exception($errorMsg);
+    }
+
+    $file = $_FILES['icon_image'];
+    $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!function_exists('finfo_open')) {
+      $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+      $extMap = ['jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png','gif'=>'image/gif','webp'=>'image/webp','svg'=>'image/svg+xml'];
+      $mime = $extMap[$ext] ?? 'application/octet-stream';
+    } else {
+      $finfo = finfo_open(FILEINFO_MIME_TYPE);
+      $mime = finfo_file($finfo, $file['tmp_name']);
+      finfo_close($finfo);
+    }
+    if (!in_array($mime, $allowedTypes)) {
+      throw new Exception('Invalid file type. Allowed: JPEG, PNG, GIF, WebP, SVG');
+    }
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+    if (!in_array($ext, $allowedExts)) {
+      throw new Exception('Invalid file extension. Allowed: jpg, jpeg, png, gif, webp, svg');
+    }
+    // Icons are small UI elements, not banners - keep the cap tight
+    if ($file['size'] > 1 * 1024 * 1024) {
+      throw new Exception('File too large (max 1MB)');
+    }
+
+    $imageData = file_get_contents($file['tmp_name']);
+    if ($imageData === false) {
+      throw new Exception('Failed to read uploaded file');
+    }
+    $dataUrl = 'data:' . $mime . ';base64,' . base64_encode($imageData);
+
+    // Merge into the existing nav_icons_custom map rather than overwriting it
+    $existingStmt = $conn->prepare('SELECT nav_icons_custom FROM website_settings WHERE restaurant_id = :rid');
+    $existingStmt->execute([':rid' => $restaurant_id]);
+    $existingRow = $existingStmt->fetch(PDO::FETCH_ASSOC);
+    $overrides = getNavIconOverrides($existingRow['nav_icons_custom'] ?? null);
+    $overrides[$slot] = $dataUrl;
+
+    $stmt = $conn->prepare('INSERT INTO website_settings (restaurant_id, nav_icons_custom) VALUES (:rid, :nic) ON DUPLICATE KEY UPDATE nav_icons_custom = VALUES(nav_icons_custom)');
+    $stmt->execute([':rid' => $restaurant_id, ':nic' => json_encode($overrides)]);
+
+    echo json_encode(['success' => true, 'icon_url' => $dataUrl, 'slot' => $slot]);
+    exit;
+  }
+
+  if ($action === 'remove_nav_icon' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Clear one slot's custom icon so it falls back to the picked icon style
+    $data = json_decode(file_get_contents('php://input'), true) ?? [];
+    $slot = $data['slot'] ?? ($_POST['slot'] ?? '');
+    if (!array_key_exists($slot, DEFAULT_NAV_LABELS)) {
+      throw new Exception('Invalid nav icon slot');
+    }
+    $existingStmt = $conn->prepare('SELECT nav_icons_custom FROM website_settings WHERE restaurant_id = :rid');
+    $existingStmt->execute([':rid' => $restaurant_id]);
+    $existingRow = $existingStmt->fetch(PDO::FETCH_ASSOC);
+    $overrides = getNavIconOverrides($existingRow['nav_icons_custom'] ?? null);
+    unset($overrides[$slot]);
+
+    $stmt = $conn->prepare('INSERT INTO website_settings (restaurant_id, nav_icons_custom) VALUES (:rid, :nic) ON DUPLICATE KEY UPDATE nav_icons_custom = VALUES(nav_icons_custom)');
+    $stmt->execute([':rid' => $restaurant_id, ':nic' => !empty($overrides) ? json_encode($overrides) : null]);
+
+    echo json_encode(['success' => true]);
     exit;
   }
 

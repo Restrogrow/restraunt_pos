@@ -1553,6 +1553,16 @@ try {
               <input type="hidden" id="navIconStyleInput" value="classic">
             </div>
 
+            <!-- Custom Nav Icon Uploads -->
+            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">upload</span>
+                Custom Nav Icons
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Upload your own icon image for any bottom-nav item &mdash; it replaces the icon style above just for that item. PNG/JPG/SVG/WebP/GIF, max 1MB.</p>
+              <div id="navIconUploadGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;"></div>
+            </div>
+
             <!-- Bottom Nav Labels -->
             <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
