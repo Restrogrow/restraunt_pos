@@ -54,8 +54,17 @@ try {
         $params[] = !empty($input['embed_enabled']) ? 1 : 0;
     }
     if (array_key_exists('custom_domain', $input)) {
+        // Normalize: strip an accidentally-pasted protocol/path/trailing slash
+        // and lowercase, so "https://Foo.com/" and "foo.com" save identically
+        // instead of silently being treated as two different domain strings.
+        $domainRaw = trim((string)($input['custom_domain'] ?? ''));
+        $domainRaw = preg_replace('#^https?://#i', '', $domainRaw);
+        $domainRaw = strtolower(rtrim(explode('/', $domainRaw)[0], '/'));
         $setClauses[] = 'custom_domain = ?';
-        $params[] = trim($input['custom_domain'] ?? '');
+        // custom_domain has a UNIQUE constraint but an empty string still
+        // counts as a duplicate value (unlike NULL) — store NULL when clearing
+        // it so more than one restaurant can have "no custom domain" set.
+        $params[] = ($domainRaw !== '') ? $domainRaw : null;
     }
 
     if (empty($setClauses)) {
@@ -67,6 +76,18 @@ try {
     $stmt->execute($params);
 
     echo json_encode(['success' => true, 'message' => 'Embed settings saved']);
+} catch (PDOException $e) {
+    // Duplicate-entry on the custom_domain UNIQUE key is the one failure a
+    // restaurant owner can actually act on (pick a different domain) — surface
+    // that specifically instead of the generic message.
+    if ((int)$e->getCode() === 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'message' => 'That domain is already connected to another account. Please use a different domain.']);
+        exit;
+    }
+    http_response_code(500);
+    error_log("Error in save_embed_settings.php: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);
 } catch (Exception $e) {
     http_response_code(500);
     error_log("Error in save_embed_settings.php: " . $e->getMessage());
