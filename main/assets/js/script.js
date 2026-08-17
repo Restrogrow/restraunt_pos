@@ -299,12 +299,15 @@ window.showPaymentMethodSelector = async function showPaymentMethodSelector() {
   return methods[method] || 'Cash';
 }
 
-// Split-payment "Choose Pay Method" modal — one amount input per active
-// payment method (built-ins Cash/Card/UPI plus any custom extras the admin
-// has added), return/due, Save & Print / Save & eBill. The list of methods
-// is loaded from paymentMethodsCache (see loadPaymentMethods()) rather than
-// hardcoded, so adding a payment method in Settings makes it usable at POS
-// immediately without a code change.
+// Split-payment "Choose Pay Method" modal. Payment methods (built-ins
+// Cash/Card/UPI plus any custom extras the admin has added) are tap-to-select
+// buttons rather than always-visible amount fields: tapping exactly one
+// method auto-fills the full bill amount into it (single-tap checkout — no
+// typing needed for the common case), while selecting 2-3 methods reveals a
+// blank amount input for each so the cashier can manually split the total.
+// The list of methods is loaded from paymentMethodsCache (see
+// loadPaymentMethods()) rather than hardcoded, so adding a payment method in
+// Settings makes it usable at POS immediately without a code change.
 window.showSplitPaymentModal = async function(total) {
   if (!paymentMethodsCache.length) {
     await loadPaymentMethods();
@@ -320,6 +323,8 @@ window.showSplitPaymentModal = async function(total) {
     const currency = window.globalCurrencySymbol || '₹';
     const grandTotal = parseFloat(total) || 0;
     let resolved = false;
+    let selectedIdxs = [];
+    const amountsByIdx = methods.map(() => 0);
 
     const existing = document.getElementById('splitPaymentOverlay');
     if (existing) existing.remove();
@@ -331,14 +336,8 @@ window.showSplitPaymentModal = async function(total) {
     const modal = document.createElement('div');
     modal.style.cssText = 'background:#fff;border-radius:16px;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;box-shadow:0 25px 80px rgba(0,0,0,0.35);padding:24px;';
 
-    const inputsHtml = methods.map((m, i) => `
-      <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px;">Enter ${escapeHtml((m.emoji ? m.emoji + ' ' : '') + m.method_name.toUpperCase())} Amount</label>
-        <input type="number" class="splitPayInput" data-method-idx="${i}" min="0" step="0.01" value="0" style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:1rem;box-sizing:border-box;">
-      </div>`).join('');
-
-    const chipsHtml = methods.map((m, i) => `<div class="splitPayChip" data-chip-idx="${i}" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>`).join('')
-      + `<div id="splitChipDue" style="flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>`;
+    const buttonsHtml = methods.map((m, i) => `
+      <button type="button" class="splitPayMethodBtn" data-method-idx="${i}" style="flex:1;min-width:90px;padding:14px 8px;border-radius:10px;font-weight:700;font-size:0.85rem;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml((m.emoji ? m.emoji + ' ' : '') + m.method_name)}</button>`).join('');
 
     modal.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
@@ -346,14 +345,15 @@ window.showSplitPaymentModal = async function(total) {
         <button id="splitPayCloseBtn" style="width:34px;height:34px;flex-shrink:0;border:none;border-radius:50%;background:#10b981;color:#fff;font-size:18px;cursor:pointer;display:grid;place-items:center;">&times;</button>
       </div>
 
-      ${inputsHtml}
+      <p style="margin:0 0 10px;font-size:0.8rem;color:#6b7280;">Tap a method to pay the full amount instantly. Tap 2 or more to split the bill.</p>
+      <div id="splitPayMethodBtns" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+        ${buttonsHtml}
+      </div>
+
+      <div id="splitPayInputsContainer"></div>
 
       <div id="splitPayBalanceText" style="text-align:center;font-weight:700;font-size:1.05rem;margin-bottom:12px;"></div>
       <div id="splitPayConfirmBanner" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:10px;font-weight:600;margin-bottom:16px;"></div>
-
-      <div style="display:flex;flex-wrap:wrap;border-radius:10px;overflow:hidden;margin-bottom:20px;border:1px solid #e5e7eb;">
-        ${chipsHtml}
-      </div>
 
       <div style="display:flex;gap:10px;">
         <button id="splitPaySaveBillBtn" style="flex:1;padding:13px;border:none;border-radius:10px;background:#10b981;color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;">Save & eBill</button>
@@ -364,35 +364,76 @@ window.showSplitPaymentModal = async function(total) {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    const methodInputs = Array.from(modal.querySelectorAll('.splitPayInput'));
+    const methodBtns = Array.from(modal.querySelectorAll('.splitPayMethodBtn'));
+    const inputsContainer = modal.querySelector('#splitPayInputsContainer');
     const balanceText = modal.querySelector('#splitPayBalanceText');
     const confirmBanner = modal.querySelector('#splitPayConfirmBanner');
-    const methodChips = Array.from(modal.querySelectorAll('.splitPayChip'));
-    const chipDue = modal.querySelector('#splitChipDue');
 
-    const chipBaseStyle = 'flex:1;min-width:0;text-align:center;padding:10px 2px;font-size:0.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-    const activeChipStyle = 'background:#0f4c5c;color:#fff;';
-    const inactiveChipStyle = 'background:#fff;color:#111827;';
+    const btnBaseStyle = 'flex:1;min-width:90px;padding:14px 8px;border-radius:10px;font-weight:700;font-size:0.85rem;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    const activeBtnStyle = 'background:#0f4c5c;color:#fff;border:2px solid #0f4c5c;';
+    const inactiveBtnStyle = 'background:#fff;color:#111827;border:2px solid #e5e7eb;';
 
-    function setChip(el, label, active) {
-      el.style.cssText = chipBaseStyle + (active ? activeChipStyle : inactiveChipStyle);
-      el.title = (active ? '✓ ' : '') + label;
-      el.textContent = (active ? '✓' : '') + label;
+    function updateButtonStyles() {
+      methodBtns.forEach((btn, i) => {
+        const active = selectedIdxs.includes(i);
+        btn.style.cssText = btnBaseStyle + (active ? activeBtnStyle : inactiveBtnStyle);
+      });
     }
+
+    function renderInputs() {
+      inputsContainer.innerHTML = selectedIdxs.map((i) => {
+        const m = methods[i];
+        return `<div style="margin-bottom:16px;">
+          <label style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px;">Enter ${escapeHtml((m.emoji ? m.emoji + ' ' : '') + m.method_name.toUpperCase())} Amount</label>
+          <input type="number" class="splitPayInput" data-method-idx="${i}" min="0" step="0.01" value="${amountsByIdx[i]}" style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:1rem;box-sizing:border-box;">
+        </div>`;
+      }).join('');
+      Array.from(inputsContainer.querySelectorAll('.splitPayInput')).forEach((inp) => {
+        inp.addEventListener('input', () => {
+          amountsByIdx[parseInt(inp.getAttribute('data-method-idx'))] = Math.max(parseFloat(inp.value) || 0, 0);
+          recalc();
+        });
+        inp.addEventListener('focus', () => { if (parseFloat(inp.value) === 0) inp.value = ''; });
+      });
+    }
+
+    function selectMethod(idx) {
+      const pos = selectedIdxs.indexOf(idx);
+      if (pos !== -1) {
+        selectedIdxs.splice(pos, 1);
+        amountsByIdx[idx] = 0;
+      } else {
+        selectedIdxs.push(idx);
+      }
+      // Single method selected: auto-fill the full bill amount (no typing
+      // needed). Two or more selected: leave blank for manual splitting.
+      if (selectedIdxs.length === 1) {
+        amountsByIdx[selectedIdxs[0]] = grandTotal;
+      } else if (selectedIdxs.length >= 2) {
+        selectedIdxs.forEach((i) => { amountsByIdx[i] = 0; });
+      }
+      updateButtonStyles();
+      renderInputs();
+      recalc();
+    }
+
+    methodBtns.forEach((btn, i) => {
+      btn.addEventListener('click', () => selectMethod(i));
+    });
 
     function getAmounts() {
       const amounts = {};
       let entered = 0;
-      methodInputs.forEach((inp, i) => {
-        const amt = Math.max(parseFloat(inp.value) || 0, 0);
-        amounts[methods[i].method_name] = amt;
+      methods.forEach((m, i) => {
+        const amt = selectedIdxs.includes(i) ? Math.max(amountsByIdx[i] || 0, 0) : 0;
+        amounts[m.method_name] = amt;
         entered += amt;
       });
       return { amounts, entered };
     }
 
     function recalc() {
-      const { amounts, entered } = getAmounts();
+      const { entered } = getAmounts();
       const returnAmt = Math.max(entered - grandTotal, 0);
       const dueAmt = Math.max(grandTotal - entered, 0);
 
@@ -417,19 +458,12 @@ window.showSplitPaymentModal = async function(total) {
       } else {
         confirmBanner.style.background = '#f3f4f6';
         confirmBanner.style.color = '#6b7280';
-        confirmBanner.innerHTML = 'Enter amount to proceed, or mark as Due';
+        confirmBanner.innerHTML = 'Tap a payment method above, or leave blank to mark as Due';
       }
-
-      methodChips.forEach((chip, i) => {
-        setChip(chip, methods[i].method_name.toUpperCase(), amounts[methods[i].method_name] > 0);
-      });
-      setChip(chipDue, 'DUE', dueAmt > 0);
     }
 
-    methodInputs.forEach((inp) => {
-      inp.addEventListener('input', recalc);
-      inp.addEventListener('focus', () => { if (inp.value === '0') inp.value = ''; });
-    });
+    updateButtonStyles();
+    renderInputs();
     recalc();
 
     function finish(action) {
