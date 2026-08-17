@@ -1529,6 +1529,19 @@ try {
               <input type="text" id="siteNameInput" maxlength="191" placeholder="<?php echo htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8'); ?>" style="width: 100%; padding: 0.65rem 0.85rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; background: #fff;">
             </div>
 
+            <!-- Favicon -->
+            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">tab</span>
+                Browser Tab Icon (Favicon)
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Paste a direct image URL to use as your website's browser-tab icon. Leave blank to use your uploaded logo.</p>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <img id="faviconPreviewImg" src="" alt="" style="width:36px;height:36px;border-radius:6px;border:2px solid #e5e7eb;object-fit:cover;display:none;background:#fff;">
+                <input type="text" id="faviconUrlInput" maxlength="500" placeholder="https://example.com/favicon.png" style="flex:1; padding: 0.65rem 0.85rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; background: #fff;">
+              </div>
+            </div>
+
             <!-- Bottom Nav Icons -->
             <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">

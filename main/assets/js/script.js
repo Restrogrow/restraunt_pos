@@ -13609,6 +13609,21 @@ async function initWebsiteThemeEditor() {
       if (el) el.addEventListener('input', applyLivePreview);
     });
 
+    function updateFaviconPreview() {
+      var input = document.getElementById('faviconUrlInput');
+      var img = document.getElementById('faviconPreviewImg');
+      if (!input || !img) return;
+      var url = input.value.trim();
+      if (url) {
+        img.src = url;
+        img.style.display = 'inline-block';
+      } else {
+        img.style.display = 'none';
+      }
+    }
+    const faviconUrlInputEl = document.getElementById('faviconUrlInput');
+    if (faviconUrlInputEl) faviconUrlInputEl.addEventListener('input', updateFaviconPreview);
+
     function renderThemePresetGrid(selectedId) {
       var grid = document.getElementById('themePresetGrid');
       if (!grid) return;
@@ -14094,6 +14109,9 @@ async function initWebsiteThemeEditor() {
           var el = navLabelInputEl(slot);
           if (el) el.value = '';
         });
+        const faviconUrlResetEl = document.getElementById('faviconUrlInput');
+        if (faviconUrlResetEl) faviconUrlResetEl.value = '';
+        updateFaviconPreview();
         updateColorPreviews();
         applyLivePreview();
         showNotification('Defaults restored. Click "Save Theme" to make it permanent.', 'success');
@@ -14218,6 +14236,10 @@ if (!window.customBgThemes) {
         var el = navLabelInputEl(slot);
         if (el) el.value = (savedNavLabels[slot] && savedNavLabels[slot] !== DEFAULT_NAV_LABELS[slot]) ? savedNavLabels[slot] : '';
       });
+
+      const faviconUrlLoadEl = document.getElementById('faviconUrlInput');
+      if (faviconUrlLoadEl) faviconUrlLoadEl.value = data.settings.favicon_url || '';
+      updateFaviconPreview();
 
       // Initialize logo shape/size UI from saved settings
       applyLogoShapeSizeUI(data.settings.logo_shape || 'circle', data.settings.logo_size || 90);
@@ -14432,10 +14454,12 @@ if (!window.customBgThemes) {
             var el = navLabelInputEl(slot);
             if (el && el.value.trim()) navLabelsPayload[slot] = el.value.trim();
           });
+          var faviconUrlSaveEl = document.getElementById('faviconUrlInput');
           var payload = {
             site_name: siteNameSaveEl ? siteNameSaveEl.value.trim() : '',
             nav_icon_style: navIconStyleSaveEl ? navIconStyleSaveEl.value : 'classic',
             nav_labels: navLabelsPayload,
+            favicon_url: faviconUrlSaveEl ? faviconUrlSaveEl.value.trim() : '',
             primary_red: pr ? pr.value : '#F70000',
             dark_red: dr ? dr.value : '#DA020E',
             primary_yellow: py ? py.value : '#FFD100',

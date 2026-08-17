@@ -210,6 +210,32 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
     } catch (PDOException $e) {
         try { $conn->exec("ALTER TABLE website_settings ADD COLUMN nav_labels TEXT DEFAULT NULL"); } catch (PDOException $e2) {}
     }
+    // favicon_url — optional override of the browser-tab icon (and PWA/
+    // apple-touch icon) shown for the customer website. NULL means "use the
+    // uploaded restaurant logo, or the built-in placeholder if none".
+    try {
+        $conn->query("SELECT favicon_url FROM website_settings LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN favicon_url VARCHAR(500) DEFAULT NULL"); } catch (PDOException $e2) {}
+    }
+}
+
+/**
+ * Sanitize a favicon/image URL: only allow http(s):// or data:image/* URLs,
+ * strip control characters, and cap length. Returns null for anything else
+ * (including blank input), which callers treat as "no override".
+ * Mirrors theme_api.php's sanitizeImageUrl() but kept here so header.php
+ * (which doesn't load theme_api.php) can reuse the same validation.
+ */
+function sanitizeFaviconUrl(?string $url): ?string {
+    if ($url === null) return null;
+    $url = trim($url);
+    if ($url === '') return null;
+    $url = str_replace(["\0", "\r", "\n", "\t"], '', $url);
+    if (strpos($url, 'http://') === 0 || strpos($url, 'https://') === 0 || strpos($url, 'data:image/') === 0) {
+        return mb_substr($url, 0, 500);
+    }
+    return null;
 }
 
 /**

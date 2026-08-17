@@ -112,6 +112,7 @@ $enable_dinein = 1;
 $cod_enabled = 1;
 $navIcons = NAV_ICON_STYLES['classic'];
 $navLabels = DEFAULT_NAV_LABELS;
+$favicon_url_override = null;
 
 if ($has_slug_param && !$has_id_param) {
     try {
@@ -265,10 +266,11 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $site_name_override = null;
     $nav_icon_style = 'classic';
     $nav_labels_json = null;
+    $favicon_url_override = null;
     if ($restaurant_id) {
         try {
             ensureWebsiteThemeSchema($conn);
-            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels FROM website_settings WHERE restaurant_id = :rid');
+            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
             $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($themeRow) {
@@ -292,6 +294,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 if (!empty($themeRow['site_name'])) $site_name_override = $themeRow['site_name'];
                 if (array_key_exists($themeRow['nav_icon_style'] ?? '', NAV_ICON_STYLES)) $nav_icon_style = $themeRow['nav_icon_style'];
                 if (!empty($themeRow['nav_labels'])) $nav_labels_json = $themeRow['nav_labels'];
+                if (!empty($themeRow['favicon_url'])) $favicon_url_override = sanitizeFaviconUrl($themeRow['favicon_url']);
             }
         } catch (Exception $e) {
         }
@@ -446,8 +449,9 @@ function restaurantPageUrl($page = '') {
     return $page ? $page . '.php' : 'index.php';
 }
 
-// Favicon — use local SVG to avoid 404 errors
-$favicon_href = $local_favicon_svg;
+// Favicon — admin-set favicon_url override, else the uploaded restaurant logo,
+// else a local SVG placeholder (avoids external 404s if neither is set).
+$favicon_href = $favicon_url_override ?? $restaurant_logo ?? $local_favicon_svg;
 
 $website_base_href = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
 $site_root = rtrim(dirname(dirname(dirname($_SERVER['SCRIPT_NAME']))), '/') . '/';
