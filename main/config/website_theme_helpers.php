@@ -104,6 +104,42 @@ const NAV_ICON_STYLES = [
 ];
 
 /**
+ * Default bottom-nav text labels (Home / Menu / Social / Plans / Reserve /
+ * Cart / Profile). Restaurants can override any of these in Website
+ * Appearance (e.g. rename "Menu" to "Items") — stored as JSON in the
+ * nav_labels column, merged over these defaults so missing/blank keys fall
+ * back to the original wording.
+ */
+const DEFAULT_NAV_LABELS = [
+    'home' => 'Home',
+    'menu' => 'Menu',
+    'social' => 'Social',
+    'plans' => 'Plans',
+    'reservations' => 'Reserve',
+    'cart' => 'Cart',
+    'profile' => 'Profile',
+];
+
+/**
+ * Merge a stored nav_labels JSON string (may be null/invalid) over
+ * DEFAULT_NAV_LABELS, so every slot always has a usable label.
+ */
+function getNavLabels(?string $json): array {
+    $labels = DEFAULT_NAV_LABELS;
+    if ($json) {
+        $decoded = json_decode($json, true);
+        if (is_array($decoded)) {
+            foreach (DEFAULT_NAV_LABELS as $slot => $default) {
+                if (!empty($decoded[$slot]) && is_string($decoded[$slot])) {
+                    $labels[$slot] = $decoded[$slot];
+                }
+            }
+        }
+    }
+    return $labels;
+}
+
+/**
  * Self-healing schema addition, matching the pattern used by
  * ensureGrowthSchema() — safe to call on every request.
  */
@@ -165,6 +201,14 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         $conn->query("SELECT nav_icon_style FROM website_settings LIMIT 1");
     } catch (PDOException $e) {
         try { $conn->exec("ALTER TABLE website_settings ADD COLUMN nav_icon_style VARCHAR(20) DEFAULT 'classic'"); } catch (PDOException $e2) {}
+    }
+    // nav_labels — JSON override of the bottom nav's text labels (Home/Menu/
+    // Social/Plans/Reserve/Cart/Profile). NULL means "use the defaults",
+    // matching the nav_icon_style pattern above.
+    try {
+        $conn->query("SELECT nav_labels FROM website_settings LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN nav_labels TEXT DEFAULT NULL"); } catch (PDOException $e2) {}
     }
 }
 

@@ -1345,34 +1345,34 @@ window.socialLinks = {
   <div class="bottom-nav">
     <div class="nav-item active" onclick="scrollToSection('homeSection', this)">
       <i class="fa fa-<?php echo htmlspecialchars($navIcons['home'], ENT_QUOTES, 'UTF-8'); ?> nav-icon" data-nav-slot="home"></i>
-      <span>Home</span>
+      <span data-nav-label="home"><?php echo htmlspecialchars($navLabels['home'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'">
       <i class="fa fa-<?php echo htmlspecialchars($navIcons['menu'], ENT_QUOTES, 'UTF-8'); ?> nav-icon" data-nav-slot="menu"></i>
-      <span>Menu</span>
+      <span data-nav-label="menu"><?php echo htmlspecialchars($navLabels['menu'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
     <div class="nav-item" onclick="scrollToSection('socialSection', this)">
       <i class="fa fa-<?php echo htmlspecialchars($navIcons['social'], ENT_QUOTES, 'UTF-8'); ?> nav-icon" data-nav-slot="social"></i>
-      <span>Social</span>
+      <span data-nav-label="social"><?php echo htmlspecialchars($navLabels['social'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
     <?php if ($indexNavShowPlans): ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('plans'); ?>'">
       <i class="fa fa-<?php echo htmlspecialchars($navIcons['plans'], ENT_QUOTES, 'UTF-8'); ?> nav-icon" data-nav-slot="plans"></i>
-      <span>Plans</span>
+      <span data-nav-label="plans"><?php echo htmlspecialchars($navLabels['plans'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
     <?php endif; ?>
     <?php if ($indexNavShowReservations): ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('reservations'); ?>'">
       <i class="fa fa-calendar-check nav-icon" data-nav-slot="reservations"></i>
-      <span>Reserve</span>
+      <span data-nav-label="reservations"><?php echo htmlspecialchars($navLabels['reservations'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
     <?php endif; ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
       <i class="fa fa-<?php echo htmlspecialchars($navIcons['cart'], ENT_QUOTES, 'UTF-8'); ?> nav-icon" data-nav-slot="cart"></i>
-      <span>Cart</span>
+      <span data-nav-label="cart"><?php echo htmlspecialchars($navLabels['cart'], ENT_QUOTES, 'UTF-8'); ?></span>
       <div class="cart-badge">0</div>
     </div>
-    <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="Profile" style="font-size:16px;padding:6px 10px;"><i class="fa fa-<?php echo htmlspecialchars($navIcons['profile'], ENT_QUOTES, 'UTF-8'); ?>" data-nav-slot="profile"></i></button>
+    <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="<?php echo htmlspecialchars($navLabels['profile'], ENT_QUOTES, 'UTF-8'); ?>" style="font-size:16px;padding:6px 10px;"><i class="fa fa-<?php echo htmlspecialchars($navIcons['profile'], ENT_QUOTES, 'UTF-8'); ?>" data-nav-slot="profile"></i></button>
   </div>
 </div>
 

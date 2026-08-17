@@ -111,6 +111,7 @@ $enable_takeaway = 1;
 $enable_dinein = 1;
 $cod_enabled = 1;
 $navIcons = NAV_ICON_STYLES['classic'];
+$navLabels = DEFAULT_NAV_LABELS;
 
 if ($has_slug_param && !$has_id_param) {
     try {
@@ -263,10 +264,11 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $header_style = 'hero';
     $site_name_override = null;
     $nav_icon_style = 'classic';
+    $nav_labels_json = null;
     if ($restaurant_id) {
         try {
             ensureWebsiteThemeSchema($conn);
-            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style FROM website_settings WHERE restaurant_id = :rid');
+            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
             $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($themeRow) {
@@ -289,6 +291,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 if (in_array($themeRow['header_style'] ?? '', THEME_HEADER_STYLES, true)) $header_style = $themeRow['header_style'];
                 if (!empty($themeRow['site_name'])) $site_name_override = $themeRow['site_name'];
                 if (array_key_exists($themeRow['nav_icon_style'] ?? '', NAV_ICON_STYLES)) $nav_icon_style = $themeRow['nav_icon_style'];
+                if (!empty($themeRow['nav_labels'])) $nav_labels_json = $themeRow['nav_labels'];
             }
         } catch (Exception $e) {
         }
@@ -404,6 +407,8 @@ if (!empty($site_name_override)) {
 }
 // Bottom-nav icon set for the customer website (Home/Menu/Social/Plans/Cart/Profile)
 $navIcons = NAV_ICON_STYLES[$nav_icon_style] ?? NAV_ICON_STYLES['classic'];
+// Bottom-nav text labels — restaurant-specific overrides merged over the defaults
+$navLabels = getNavLabels($nav_labels_json ?? null);
 
 /**
  * Generate the URL for a restaurant page.

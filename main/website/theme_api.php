@@ -35,12 +35,13 @@ try {
   ensureWebsiteThemeSchema($conn);
 
   if ($action === 'get') {
-    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style FROM website_settings WHERE restaurant_id = :rid');
+    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels FROM website_settings WHERE restaurant_id = :rid');
     $stmt->execute([':rid' => $restaurant_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
-      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins','theme_preset'=>null,'card_style'=>'rounded','checkout_color'=>null,'layout_style'=>'grid','header_style'=>'hero','site_name'=>null,'nav_icon_style'=>'classic'];
+      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins','theme_preset'=>null,'card_style'=>'rounded','checkout_color'=>null,'layout_style'=>'grid','header_style'=>'hero','site_name'=>null,'nav_icon_style'=>'classic','nav_labels'=>DEFAULT_NAV_LABELS];
     } else {
+      $row['nav_labels'] = getNavLabels($row['nav_labels'] ?? null);
       if (empty($row['nav_icon_style'])) { $row['nav_icon_style'] = 'classic'; }
       if (empty($row['font_family'])) { $row['font_family'] = 'Poppins'; }
       if (empty($row['card_style'])) { $row['card_style'] = 'rounded'; }
@@ -124,12 +125,25 @@ try {
     $sn = ($snRaw !== '') ? mb_substr($snRaw, 0, 191) : null;
     // nav_icon_style: must be one of the preset ids, else fall back to 'classic'
     $nis = array_key_exists($data['nav_icon_style'] ?? '', NAV_ICON_STYLES) ? $data['nav_icon_style'] : 'classic';
-    $stmt = $conn->prepare('INSERT INTO website_settings (restaurant_id, primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, card_style, theme_preset, checkout_color, layout_style, header_style, site_name, nav_icon_style) VALUES (:rid,:pr,:dr,:py,:bi,:lc,:bt,:ls,:lz,:ff,:cs,:tp,:cc,:lyt,:hdr,:sn,:nis)
-      ON DUPLICATE KEY UPDATE primary_red=VALUES(primary_red), dark_red=VALUES(dark_red), primary_yellow=VALUES(primary_yellow), banner_image=VALUES(banner_image), layout_columns=VALUES(layout_columns), background_theme=VALUES(background_theme), logo_shape=VALUES(logo_shape), logo_size=VALUES(logo_size), font_family=VALUES(font_family), card_style=VALUES(card_style), theme_preset=VALUES(theme_preset), checkout_color=VALUES(checkout_color), layout_style=VALUES(layout_style), header_style=VALUES(header_style), site_name=VALUES(site_name), nav_icon_style=VALUES(nav_icon_style)');
+    // nav_labels: free-text overrides for the bottom nav's Home/Menu/Social/Plans/
+    // Reserve/Cart/Profile labels. Each value trimmed/control-char-stripped/length-capped;
+    // blank/missing keys are simply omitted so getNavLabels() falls back to the default.
+    $nlIn = is_array($data['nav_labels'] ?? null) ? $data['nav_labels'] : [];
+    $nlOut = [];
+    foreach (DEFAULT_NAV_LABELS as $slot => $default) {
+      $raw = trim((string)($nlIn[$slot] ?? ''));
+      $raw = str_replace(["\0", "\r", "\n", "\t"], '', $raw);
+      if ($raw !== '') {
+        $nlOut[$slot] = mb_substr($raw, 0, 20);
+      }
+    }
+    $nl = !empty($nlOut) ? json_encode($nlOut) : null;
+    $stmt = $conn->prepare('INSERT INTO website_settings (restaurant_id, primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, card_style, theme_preset, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels) VALUES (:rid,:pr,:dr,:py,:bi,:lc,:bt,:ls,:lz,:ff,:cs,:tp,:cc,:lyt,:hdr,:sn,:nis,:nl)
+      ON DUPLICATE KEY UPDATE primary_red=VALUES(primary_red), dark_red=VALUES(dark_red), primary_yellow=VALUES(primary_yellow), banner_image=VALUES(banner_image), layout_columns=VALUES(layout_columns), background_theme=VALUES(background_theme), logo_shape=VALUES(logo_shape), logo_size=VALUES(logo_size), font_family=VALUES(font_family), card_style=VALUES(card_style), theme_preset=VALUES(theme_preset), checkout_color=VALUES(checkout_color), layout_style=VALUES(layout_style), header_style=VALUES(header_style), site_name=VALUES(site_name), nav_icon_style=VALUES(nav_icon_style), nav_labels=VALUES(nav_labels)');
     // Save logo settings
     $ls = $data['logo_shape'] ?? 'circle';
     $lz = isset($data['logo_size']) ? (int)$data['logo_size'] : 90;
-    $stmt->execute([':rid'=>$restaurant_id, ':pr'=>$pr, ':dr'=>$dr, ':py'=>$py, ':bi'=>$bi, ':lc'=>$lc, ':bt'=>$bt, ':ls'=>$ls, ':lz'=>$lz, ':ff'=>$ff, ':cs'=>$cs, ':tp'=>$tp, ':cc'=>$cc, ':lyt'=>$lyt, ':hdr'=>$hdr, ':sn'=>$sn, ':nis'=>$nis]);
+    $stmt->execute([':rid'=>$restaurant_id, ':pr'=>$pr, ':dr'=>$dr, ':py'=>$py, ':bi'=>$bi, ':lc'=>$lc, ':bt'=>$bt, ':ls'=>$ls, ':lz'=>$lz, ':ff'=>$ff, ':cs'=>$cs, ':tp'=>$tp, ':cc'=>$cc, ':lyt'=>$lyt, ':hdr'=>$hdr, ':sn'=>$sn, ':nis'=>$nis, ':nl'=>$nl]);
     echo json_encode(['success'=>true]);
     exit;
   }

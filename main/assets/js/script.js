@@ -13566,6 +13566,13 @@ async function initWebsiteThemeEditor() {
     };
     const NAV_ICON_SLOTS = ['home', 'menu', 'social', 'cart', 'profile'];
 
+    // Mirrors DEFAULT_NAV_LABELS in main/config/website_theme_helpers.php
+    const DEFAULT_NAV_LABELS = { home: 'Home', menu: 'Menu', social: 'Social', plans: 'Plans', reservations: 'Reserve', cart: 'Cart', profile: 'Profile' };
+    const NAV_LABEL_SLOTS = ['home', 'menu', 'social', 'plans', 'reservations', 'cart', 'profile'];
+    function navLabelInputEl(slot) {
+      return document.getElementById('navLabel' + slot.charAt(0).toUpperCase() + slot.slice(1) + 'Input');
+    }
+
     function renderNavIconStyleGrid(selectedId) {
       var grid = document.getElementById('navIconStyleGrid');
       if (!grid) return;
@@ -13596,6 +13603,11 @@ async function initWebsiteThemeEditor() {
 
     const siteNameInputEl = document.getElementById('siteNameInput');
     if (siteNameInputEl) siteNameInputEl.addEventListener('input', applyLivePreview);
+
+    NAV_LABEL_SLOTS.forEach(function(slot) {
+      var el = navLabelInputEl(slot);
+      if (el) el.addEventListener('input', applyLivePreview);
+    });
 
     function renderThemePresetGrid(selectedId) {
       var grid = document.getElementById('themePresetGrid');
@@ -13723,6 +13735,16 @@ async function initWebsiteThemeEditor() {
             if (cls.indexOf('fa-') === 0 && cls !== 'fa-' ) iconEl.classList.remove(cls);
           });
           iconEl.classList.add('fa-' + navStyle[slot]);
+        });
+
+        // Bottom nav text labels
+        NAV_LABEL_SLOTS.forEach(function(slot) {
+          var inputEl = navLabelInputEl(slot);
+          var labelVal = (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : DEFAULT_NAV_LABELS[slot];
+          var labelSpan = doc.querySelector('[data-nav-label="' + slot + '"]');
+          if (labelSpan) labelSpan.textContent = labelVal;
+          var profileBtn = doc.querySelector('[data-nav-slot="profile"]');
+          if (slot === 'profile' && profileBtn && profileBtn.parentElement) profileBtn.parentElement.title = labelVal;
         });
       } catch (err) {
         // Cross-origin or not-yet-loaded iframe - fail silently, preview just won't be live this tick
@@ -14068,6 +14090,10 @@ async function initWebsiteThemeEditor() {
         const navIconStyleResetEl = document.getElementById('navIconStyleInput');
         if (navIconStyleResetEl) navIconStyleResetEl.value = 'classic';
         renderNavIconStyleGrid('classic');
+        NAV_LABEL_SLOTS.forEach(function(slot) {
+          var el = navLabelInputEl(slot);
+          if (el) el.value = '';
+        });
         updateColorPreviews();
         applyLivePreview();
         showNotification('Defaults restored. Click "Save Theme" to make it permanent.', 'success');
@@ -14186,6 +14212,12 @@ if (!window.customBgThemes) {
       const navIconStyleLoadEl = document.getElementById('navIconStyleInput');
       if (navIconStyleLoadEl) navIconStyleLoadEl.value = data.settings.nav_icon_style || 'classic';
       renderNavIconStyleGrid(data.settings.nav_icon_style || 'classic');
+
+      const savedNavLabels = data.settings.nav_labels || {};
+      NAV_LABEL_SLOTS.forEach(function(slot) {
+        var el = navLabelInputEl(slot);
+        if (el) el.value = (savedNavLabels[slot] && savedNavLabels[slot] !== DEFAULT_NAV_LABELS[slot]) ? savedNavLabels[slot] : '';
+      });
 
       // Initialize logo shape/size UI from saved settings
       applyLogoShapeSizeUI(data.settings.logo_shape || 'circle', data.settings.logo_size || 90);
@@ -14395,9 +14427,15 @@ if (!window.customBgThemes) {
           var themePresetEl = document.getElementById('themePresetInput');
           var siteNameSaveEl = document.getElementById('siteNameInput');
           var navIconStyleSaveEl = document.getElementById('navIconStyleInput');
+          var navLabelsPayload = {};
+          NAV_LABEL_SLOTS.forEach(function(slot) {
+            var el = navLabelInputEl(slot);
+            if (el && el.value.trim()) navLabelsPayload[slot] = el.value.trim();
+          });
           var payload = {
             site_name: siteNameSaveEl ? siteNameSaveEl.value.trim() : '',
             nav_icon_style: navIconStyleSaveEl ? navIconStyleSaveEl.value : 'classic',
+            nav_labels: navLabelsPayload,
             primary_red: pr ? pr.value : '#F70000',
             dark_red: dr ? dr.value : '#DA020E',
             primary_yellow: py ? py.value : '#FFD100',

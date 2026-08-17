@@ -1540,6 +1540,45 @@ try {
               <input type="hidden" id="navIconStyleInput" value="classic">
             </div>
 
+            <!-- Bottom Nav Labels -->
+            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">edit</span>
+                Bottom Nav Labels
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Rename any label in your website's bottom navigation bar &mdash; for example, change "Menu" to "Items". Leave a field blank to keep the default.</p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px;">
+                <div>
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Home</label>
+                  <input type="text" id="navLabelHomeInput" maxlength="20" placeholder="Home" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                </div>
+                <div>
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Menu</label>
+                  <input type="text" id="navLabelMenuInput" maxlength="20" placeholder="Menu" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                </div>
+                <div>
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Social</label>
+                  <input type="text" id="navLabelSocialInput" maxlength="20" placeholder="Social" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                </div>
+                <div>
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Plans</label>
+                  <input type="text" id="navLabelPlansInput" maxlength="20" placeholder="Plans" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                </div>
+                <div>
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Reserve</label>
+                  <input type="text" id="navLabelReservationsInput" maxlength="20" placeholder="Reserve" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                </div>
+                <div>
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Cart</label>
+                  <input type="text" id="navLabelCartInput" maxlength="20" placeholder="Cart" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                </div>
+                <div>
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Profile</label>
+                  <input type="text" id="navLabelProfileInput" maxlength="20" placeholder="Profile" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                </div>
+              </div>
+            </div>
+
             <!-- Theme Presets -->
             <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
