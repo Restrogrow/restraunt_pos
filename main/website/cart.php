@@ -57,6 +57,13 @@ body {
 }
 @media (min-width: 768px) {
   .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; }
+<?php if ($host === 'triposhsymmetry.in'): ?>
+  /* TEMPORARY (added 2026-08-18, for PhonePe merchant approval — remove
+     this block in ~2 days): wider desktop card for this restaurant only,
+     so the checkout/payment screen doesn't look like a narrow phone card
+     on a PC. Mobile view (no media query) is untouched. */
+  .phone-frame { max-width: 720px; }
+<?php endif; ?>
 }
 
 .bg-wrapper {
@@ -789,6 +796,11 @@ body {
 }
 @media (min-width: 768px) {
   .checkout-bar { border-radius: 0 0 28px 28px; }
+<?php if ($host === 'triposhsymmetry.in'): ?>
+  /* TEMPORARY (see .phone-frame note above, remove together): keep the
+     sticky checkout bar the same width as the widened desktop card. */
+  .checkout-bar { max-width: 720px; }
+<?php endif; ?>
 }
 .checkout-bar .total-label { color: #fff; font-weight: 700; font-size: 15px; }
 .checkout-bar .checkout-btn {
