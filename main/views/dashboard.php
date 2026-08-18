@@ -2803,16 +2803,16 @@ try {
                 <div class="form-group">
                   <label for="phonepeMerchantId">
                     <span class="material-symbols-rounded">key</span>
-                    Merchant ID
+                    Client ID
                   </label>
-                  <input type="text" id="phonepeMerchantId" name="phonepe_merchant_id" placeholder="Enter PhonePe Merchant ID" value="<?php echo htmlspecialchars($phonepe_merchant_id ?? ''); ?>">
+                  <input type="text" id="phonepeMerchantId" name="phonepe_merchant_id" placeholder="Enter PhonePe Client ID" value="<?php echo htmlspecialchars($phonepe_merchant_id ?? ''); ?>">
                 </div>
                 <div class="form-group">
                   <label for="phonepeSaltKey">
                     <span class="material-symbols-rounded">lock</span>
-                    Salt Key
+                    Client Secret
                   </label>
-                  <input type="password" id="phonepeSaltKey" name="phonepe_salt_key" placeholder="Enter PhonePe Salt Key" value="<?php echo htmlspecialchars($phonepe_salt_key ?? ''); ?>">
+                  <input type="password" id="phonepeSaltKey" name="phonepe_salt_key" placeholder="Enter PhonePe Client Secret" value="<?php echo htmlspecialchars($phonepe_salt_key ?? ''); ?>">
                 </div>
               </div>
               <div class="form-group">
