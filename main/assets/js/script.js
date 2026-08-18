@@ -319,6 +319,15 @@ window.showSplitPaymentModal = async function(total) {
     methods = [{ id: 'cash', method_name: 'Cash', emoji: '💵' }, { id: 'card', method_name: 'Card', emoji: '💳' }, { id: 'upi', method_name: 'UPI', emoji: '📱' }];
   }
 
+  // TEMPORARY (added 2026-08-18, requested for ~2 days — safe to delete this
+  // block and revert the two spots below once no longer needed): restaurant
+  // triposhsymmetry.in asked for a wider, desktop-style version of this modal
+  // on desktop/laptop screens instead of the phone-style compact card.
+  // Scoped to that one restaurant's custom domain + wide viewports only, so
+  // every other restaurant (and this one on a phone) is unaffected.
+  const _paymentDomain = (window.restaurantCustomDomain || '').replace(/^www\./i, '');
+  const useDesktopPaymentLayout = _paymentDomain === 'triposhsymmetry.in' && window.innerWidth >= 900;
+
   return new Promise((resolve) => {
     const currency = window.globalCurrencySymbol || '₹';
     const grandTotal = parseFloat(total) || 0;
@@ -334,10 +343,16 @@ window.showSplitPaymentModal = async function(total) {
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
 
     const modal = document.createElement('div');
-    modal.style.cssText = 'background:#fff;border-radius:16px;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;box-shadow:0 25px 80px rgba(0,0,0,0.35);padding:24px;';
+    // TEMPORARY: wider card for the triposhsymmetry.in desktop layout (see note above).
+    modal.style.cssText = 'background:#fff;border-radius:16px;width:100%;' + (useDesktopPaymentLayout ? 'max-width:760px;' : 'max-width:420px;') + 'max-height:92vh;overflow-y:auto;box-shadow:0 25px 80px rgba(0,0,0,0.35);padding:24px;';
+
+    // TEMPORARY: bigger method buttons on the triposhsymmetry.in desktop layout.
+    const btnBaseStyle = useDesktopPaymentLayout
+      ? 'flex:1;min-width:140px;padding:18px 14px;border-radius:10px;font-weight:700;font-size:1rem;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+      : 'flex:1;min-width:90px;padding:14px 8px;border-radius:10px;font-weight:700;font-size:0.85rem;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
 
     const buttonsHtml = methods.map((m, i) => `
-      <button type="button" class="splitPayMethodBtn" data-method-idx="${i}" style="flex:1;min-width:90px;padding:14px 8px;border-radius:10px;font-weight:700;font-size:0.85rem;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml((m.emoji ? m.emoji + ' ' : '') + m.method_name)}</button>`).join('');
+      <button type="button" class="splitPayMethodBtn" data-method-idx="${i}" style="${btnBaseStyle}">${escapeHtml((m.emoji ? m.emoji + ' ' : '') + m.method_name)}</button>`).join('');
 
     modal.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
@@ -369,7 +384,6 @@ window.showSplitPaymentModal = async function(total) {
     const balanceText = modal.querySelector('#splitPayBalanceText');
     const confirmBanner = modal.querySelector('#splitPayConfirmBanner');
 
-    const btnBaseStyle = 'flex:1;min-width:90px;padding:14px 8px;border-radius:10px;font-weight:700;font-size:0.85rem;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
     const activeBtnStyle = 'background:#0f4c5c;color:#fff;border:2px solid #0f4c5c;';
     const inactiveBtnStyle = 'background:#fff;color:#111827;border:2px solid #e5e7eb;';
 
