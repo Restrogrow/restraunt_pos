@@ -18,7 +18,7 @@ require_once __DIR__ . '/header.php';
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; min-height: 100vh; overflow-x: hidden; }
 .phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; background: #fff; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.08); }
-@media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; } <?php if ($host === 'triposhsymmetry.in'): ?>.phone-frame { max-width: 720px; }<?php endif; ?> }
+@media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; } <?php if ($host === 'triposhsymmetry.in'): ?>.phone-frame { max-width: 100%; margin: 0; border-radius: 0; }<?php endif; ?> }
 .bg-wrapper { background: #fff; display: flex; flex-direction: column; min-height: 100vh; }
 .pr-share-header { display: flex; align-items: center; gap: 12px; padding: 16px 12px 12px; border-bottom: 1.5px solid #ccc; }
 .pr-share-header h1 { font-size: 18px; font-weight: 700; color: #1a1b1f; flex: 1; }
@@ -76,7 +76,7 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 
 .bottom-nav {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: <?php echo ($host === 'triposhsymmetry.in') ? '720px' : '425px'; ?>;
+  width: 100%; max-width: <?php echo ($host === 'triposhsymmetry.in') ? '100%' : '425px'; ?>;
   background: #fff; border-top: 1px solid #e8e8e8;
   display: flex; align-items: center; padding: 8px 12px 10px;
   z-index: 100;
