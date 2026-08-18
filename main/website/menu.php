@@ -51,6 +51,10 @@ body {
 }
 @media (min-width: 768px) {
   .phone-frame { margin: 20px auto; height: calc(100dvh - 40px); border-radius: 28px; }
+<?php if ($host === 'triposhsymmetry.in'): ?>
+  /* TEMPORARY (PhonePe approval, added 2026-08-18 — remove in ~2 days) */
+  .phone-frame { max-width: 720px; }
+<?php endif; ?>
 }
 
 .bg-wrapper {
@@ -405,7 +409,7 @@ body {
 
 .checkout-bar {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 425px;
+  width: 100%; max-width: <?php echo ($host === 'triposhsymmetry.in') ? '720px' : '425px'; ?>;
   background: linear-gradient(135deg, var(--checkout-color, #F70000), var(--checkout-color-dark, #DA020E));
   display: none; justify-content: space-between; align-items: center;
   padding: 14px 18px; z-index: 100;
