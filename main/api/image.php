@@ -24,6 +24,22 @@ function sendPlaceholderSvg($text = 'Image', $width = 200, $height = 200) {
     exit();
 }
 
+// Some restaurants have BLOB image columns holding corrupted data from a
+// historical incident predating this DB (spot-checked: logo_data,
+// menu_items.image_data, website_banners.banner_data, and
+// business_qr_code_data all have rows whose bytes were mangled — e.g. valid
+// PNG/JPEG signature bytes replaced by the UTF-8 replacement character,
+// EF BF BD). That data can't be recovered here (the original bytes are
+// gone); serving it as-is just returns a 200 with a Content-Type that
+// claims "image" over bytes no decoder can read, which is exactly the
+// "isn't a valid image" console error this guards against. getimagesizefromstring()
+// is a real decode attempt (not just a magic-byte peek), so anything that
+// fails it is safe to treat as unusable and fall back to the placeholder.
+function isValidImageBytes($data) {
+    if (empty($data)) return false;
+    return @getimagesizefromstring($data) !== false;
+}
+
 // Include database connection
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
@@ -96,7 +112,7 @@ if (!empty($imagePath) && strpos($imagePath, 'http') !== 0 && empty($imageType))
         $stmt->execute([$imagePath]);
         $item = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($item && !empty($item['image_data'])) {
+        if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
             ob_end_clean();
             header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
             header('Content-Length: ' . strlen($item['image_data']));
@@ -113,7 +129,7 @@ if (!empty($imagePath) && strpos($imagePath, 'http') !== 0 && empty($imageType))
             $stmt2->execute([$imagePath]); // Try full path again
             $item = $stmt2->fetch(PDO::FETCH_ASSOC);
             
-            if ($item && !empty($item['image_data'])) {
+            if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
                 ob_end_clean();
                 header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
                 header('Content-Length: ' . strlen($item['image_data']));
@@ -146,7 +162,7 @@ if (!empty($imagePath) && strpos($imagePath, 'http') !== 0 && empty($imageType))
             }
         }
         
-        if ($item && !empty($item['image_data'])) {
+        if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
             ob_end_clean();
             header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
             header('Content-Length: ' . strlen($item['image_data']));
@@ -187,7 +203,7 @@ if (empty($imagePath) && empty($imageType) && !empty($imageId)) {
         $stmt = $conn->prepare("SELECT image_data, image_mime_type FROM menu_items WHERE item_image = ? AND image_data IS NOT NULL LIMIT 1");
         $stmt->execute(['db:' . $imageId]);
         $item = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($item && !empty($item['image_data'])) {
+        if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
             ob_end_clean();
             header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
             header('Content-Length: ' . strlen($item['image_data']));
@@ -211,8 +227,8 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                 $stmt = $conn->prepare("SELECT logo_data, logo_mime_type, restaurant_logo FROM users WHERE id = ? LIMIT 1");
                 $stmt->execute([$imageId]);
                 $logo = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($logo && !empty($logo['logo_data'])) {
+
+                if ($logo && !empty($logo['logo_data']) && isValidImageBytes($logo['logo_data'])) {
                     ob_end_clean();
                     header('Content-Type: ' . ($logo['logo_mime_type'] ?? 'image/jpeg'));
                     header('Content-Length: ' . strlen($logo['logo_data']));
@@ -263,9 +279,9 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                         // Ensure we have valid binary data
                         $imageData = $menu['menu_image_data'];
                         $dataLength = strlen($imageData);
-                        
-                        // Only proceed if we have actual data (not just empty string)
-                        if ($dataLength > 0) {
+
+                        // Only proceed if we have actual, decodable image data
+                        if ($dataLength > 0 && isValidImageBytes($imageData)) {
                             ob_end_clean();
                             $mimeType = !empty($menu['menu_image_mime_type']) ? $menu['menu_image_mime_type'] : 'image/jpeg';
                             header('Content-Type: ' . $mimeType);
@@ -350,8 +366,8 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                 $stmt = $conn->prepare("SELECT banner_data, banner_mime_type FROM website_banners WHERE id = ? LIMIT 1");
                 $stmt->execute([$imageId]);
                 $banner = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($banner && !empty($banner['banner_data'])) {
+
+                if ($banner && !empty($banner['banner_data']) && isValidImageBytes($banner['banner_data'])) {
                     header('Content-Type: ' . ($banner['banner_mime_type'] ?? 'image/jpeg'));
                     header('Content-Length: ' . strlen($banner['banner_data']));
                     header('Cache-Control: public, max-age=31536000'); // Cache for 1 year
@@ -397,8 +413,8 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                 $stmt = $conn->prepare("SELECT business_qr_code_data, business_qr_code_mime_type FROM users WHERE id = ? LIMIT 1");
                 $stmt->execute([$imageId]);
                 $qr = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($qr && !empty($qr['business_qr_code_data'])) {
+
+                if ($qr && !empty($qr['business_qr_code_data']) && isValidImageBytes($qr['business_qr_code_data'])) {
                     header('Content-Type: ' . ($qr['business_qr_code_mime_type'] ?? 'image/jpeg'));
                     header('Content-Length: ' . strlen($qr['business_qr_code_data']));
                     header('Cache-Control: public, max-age=31536000'); // Cache for 1 year
@@ -456,7 +472,7 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
             $stmt->execute([$imagePath]);
             $item = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($item && !empty($item['image_data'])) {
+            if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
                 ob_end_clean();
                 header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
                 header('Content-Length: ' . strlen($item['image_data']));
@@ -472,7 +488,7 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                 $stmt->execute([$imagePath]);
                 $item = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                if ($item && !empty($item['image_data'])) {
+                if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
                     ob_end_clean();
                     header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
                     header('Content-Length: ' . strlen($item['image_data']));
@@ -642,7 +658,7 @@ if (!$fullPath || !file_exists($fullPath)) {
                 }
             }
             
-            if ($finalItem && !empty($finalItem['image_data'])) {
+            if ($finalItem && !empty($finalItem['image_data']) && isValidImageBytes($finalItem['image_data'])) {
                 ob_end_clean();
                 header('Content-Type: ' . ($finalItem['image_mime_type'] ?? 'image/jpeg'));
                 header('Content-Length: ' . strlen($finalItem['image_data']));
