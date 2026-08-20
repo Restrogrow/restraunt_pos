@@ -486,6 +486,72 @@ if ($restaurant_id) {
     echo '<script>(function(){var x=new XMLHttpRequest();x.open("GET","' . $website_base_href . 'track_visit.php?rid=' . urlencode($restaurant_id) . '&page=' . urlencode(substr($track_page, 0, 255)) . '&name=' . urlencode($track_name) . '&ip=' . urlencode($track_ip) . '&ref=' . urlencode($track_ref) . '&ua=' . urlencode(substr($track_ua, 0, 200)) . '",true);x.timeout=3000;x.send();})();</script>' . "\n";
 }
 
+// ── PWA "Install App" support (shared across every page) ──
+// Registers the service worker + beforeinstallprompt/appinstalled listeners
+// and exposes a global promptInstall() so the bottom-nav "Install App"
+// button (bottom_nav.php / index.php, shown only when $show_install_app is
+// true) works everywhere, including about/contact/loyalty pages that have
+// no install JS of their own. Wrapped in an IIFE so its own `deferredPrompt`
+// never collides with the richer per-page copy index.php/menu.php/cart.php/
+// profile.php already declare later in their own <script> blocks — a plain
+// `function promptInstall(){}` declared there simply overwrites this one
+// (function redeclaration doesn't throw, unlike `let`/`const`), so this
+// fallback only actually matters on pages without their own copy.
+if ($show_install_app) {
+?>
+<script>
+(function(){
+  var deferredPrompt = null;
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      try {
+        navigator.serviceWorker.register('<?php echo $website_base_href; ?>sw.php', { scope: '<?php echo $site_root; ?>' }).catch(function(){});
+      } catch (e) {}
+    });
+  }
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+  });
+  window.addEventListener('appinstalled', function() {
+    deferredPrompt = null;
+    var el = document.getElementById('installNavBtn');
+    if (el) el.style.display = 'none';
+  });
+  function showGuide() {
+    if (document.getElementById('installGuideOverlay')) return;
+    var o = document.createElement('div');
+    o.id = 'installGuideOverlay';
+    o.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    o.onclick = function(e) { if (e.target === o) o.remove(); };
+    o.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:360px;width:100%;padding:32px 24px;text-align:center;">' +
+      '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
+      '<h3 style="font-size:18px;font-weight:600;color:#1a1b1f;margin:0 0 6px">Install This App</h3>' +
+      '<p style="font-size:13px;color:#666;margin:0 0 16px">Open your browser menu and choose &quot;Add to Home Screen&quot; or &quot;Install App&quot;.</p>' +
+      '<button id="installGuideCloseBtn" style="padding:10px 24px;border:none;border-radius:10px;background:#1a3934;color:#fff;font-weight:600;cursor:pointer;">Got it</button></div>';
+    document.body.appendChild(o);
+    document.getElementById('installGuideCloseBtn').addEventListener('click', function() { o.remove(); });
+  }
+  window.promptInstall = function() {
+    if (!deferredPrompt) { showGuide(); return; }
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function() { deferredPrompt = null; });
+  };
+  // Already installed / running standalone — no point offering to install again.
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+      var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+      if (standalone || window.navigator.standalone === true) {
+        var el = document.getElementById('installNavBtn');
+        if (el) el.style.display = 'none';
+      }
+    } catch (e) {}
+  });
+})();
+</script>
+<?php
+}
+
 // ── Customer account session ──
 // Resolves a logged-in customer for the restaurant being browsed (customers
 // are scoped per-restaurant, same as the `customers` CRM table), reviving

@@ -1360,6 +1360,12 @@ window.socialLinks = {
       <?php echo renderNavIconTag('social', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="social"><?php echo htmlspecialchars($navLabels['social'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
+    <?php if (!empty($show_install_app)): ?>
+    <div class="nav-item" id="installNavBtn" onclick="promptInstall()">
+      <?php echo renderNavIconTag('install', $navIcons, $navIconOverrides); ?>
+      <span data-nav-label="install"><?php echo htmlspecialchars($navLabels['install'], ENT_QUOTES, 'UTF-8'); ?></span>
+    </div>
+    <?php endif; ?>
     <?php if ($indexNavShowPlans): ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('plans'); ?>'">
       <?php echo renderNavIconTag('plans', $navIcons, $navIconOverrides); ?>

@@ -80,26 +80,31 @@ const NAV_ICON_STYLES = [
         'label' => 'Classic',
         'home' => 'home', 'menu' => 'utensils', 'social' => 'share-alt',
         'plans' => 'calendar-check', 'cart' => 'shopping-cart', 'profile' => 'user',
+        'install' => 'download',
     ],
     'storefront' => [
         'label' => 'Storefront',
         'home' => 'store', 'menu' => 'utensils', 'social' => 'comments',
         'plans' => 'calendar-check', 'cart' => 'shopping-bag', 'profile' => 'user-circle',
+        'install' => 'download',
     ],
     'foodie' => [
         'label' => 'Foodie',
         'home' => 'home', 'menu' => 'pizza-slice', 'social' => 'share-alt',
         'plans' => 'calendar-check', 'cart' => 'cart-plus', 'profile' => 'user',
+        'install' => 'download',
     ],
     'minimal' => [
         'label' => 'Minimal',
         'home' => 'house', 'menu' => 'list', 'social' => 'comment-dots',
         'plans' => 'calendar-check', 'cart' => 'bag-shopping', 'profile' => 'circle-user',
+        'install' => 'arrow-down-to-line',
     ],
     'bold' => [
         'label' => 'Bold',
         'home' => 'home', 'menu' => 'bowl-food', 'social' => 'share-nodes',
         'plans' => 'calendar-days', 'cart' => 'cart-shopping', 'profile' => 'user-circle',
+        'install' => 'download',
     ],
 ];
 
@@ -118,6 +123,7 @@ const DEFAULT_NAV_LABELS = [
     'reservations' => 'Reserve',
     'cart' => 'Cart',
     'profile' => 'Profile',
+    'install' => 'Install',
 ];
 
 /**
