@@ -1356,11 +1356,12 @@ window.socialLinks = {
       <?php echo renderNavIconTag('menu', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="menu"><?php echo htmlspecialchars($navLabels['menu'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
+    <?php if (empty($show_install_app)): ?>
     <div class="nav-item" onclick="scrollToSection('socialSection', this)">
       <?php echo renderNavIconTag('social', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="social"><?php echo htmlspecialchars($navLabels['social'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
-    <?php if (!empty($show_install_app)): ?>
+    <?php else: ?>
     <div class="nav-item" id="installNavBtn" onclick="promptInstall()">
       <?php echo renderNavIconTag('install', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="install"><?php echo htmlspecialchars($navLabels['install'], ENT_QUOTES, 'UTF-8'); ?></span>
