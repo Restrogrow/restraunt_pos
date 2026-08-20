@@ -686,6 +686,7 @@ body {
   color: #fff; border: none; border-radius: 8px;
   padding: 6px 14px; font-size: 11px; font-family: var(--site-font);
   cursor: pointer; font-weight: 500;
+  flex: 1; display: flex; align-items: center; justify-content: center;
 }
 
 /* Order History styles */

@@ -105,6 +105,7 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
   color: #fff; border: none; border-radius: 8px;
   padding: 6px 14px; font-size: 11px; font-family: 'Poppins', sans-serif;
   cursor: pointer; font-weight: 500;
+  flex: 1; display: flex; align-items: center; justify-content: center;
 }
 </style>
 </head>
