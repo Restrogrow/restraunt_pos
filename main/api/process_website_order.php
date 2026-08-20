@@ -107,7 +107,9 @@ if (empty($items)) {
 
 try {
     $conn = getConnection();
-    
+    require_once __DIR__ . '/../config/scheduled_order_helpers.php';
+    ensureOrdersScheduleColumns($conn);
+
     // Resolve restaurant ID: session > query param > default
     $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? 'RES001');
 
@@ -173,43 +175,80 @@ try {
         exit();
     }
 
-    // Check if restaurant is open, using the restaurant's own configured
-    // timezone — not hardcoded IST. Opening/closing times are wall-clock
+    // Restaurant's own configured timezone — not hardcoded IST. Opening/
+    // closing times, and any scheduled_at a customer submits, are wall-clock
     // values meant in the restaurant's local time (e.g. Nepal restaurants
     // set them in NPT, UTC+5:45), so comparing them against IST would be off
     // by 15 minutes and could wrongly accept/reject orders near open/close.
     $hoursRow = $restaurantRow;
+    $restaurantTzName = (!empty($hoursRow['timezone']) && in_array($hoursRow['timezone'], timezone_identifiers_list(), true))
+        ? $hoursRow['timezone'] : 'Asia/Kolkata';
+    $restaurantTz = new DateTimeZone($restaurantTzName);
+
+    // "Schedule for later": customer wants the order prepared at a future
+    // time instead of right now. Validated here (needs the restaurant's
+    // timezone, already resolved above) — a valid request skips the
+    // "currently closed" rejection below, since the whole point is placing
+    // an order for a future slot while the kitchen may be closed right now.
+    $is_scheduled_order = false;
+    $scheduled_at_db = null;
+    $scheduledDT = null;
+    $scheduled_at_input = trim((string)($input['scheduled_at'] ?? ''));
+    if ($scheduled_at_input !== '') {
+        try {
+            $scheduledDT = new DateTime($scheduled_at_input, $restaurantTz);
+        } catch (Exception $e) {
+            $scheduledDT = null;
+        }
+        if (!$scheduledDT) {
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Invalid scheduled time.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        $nowInTz = new DateTime('now', $restaurantTz);
+        $minLead = (clone $nowInTz)->modify('+15 minutes');
+        $maxLead = (clone $nowInTz)->modify('+7 days');
+        if ($scheduledDT < $minLead || $scheduledDT > $maxLead) {
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Please choose a time at least 15 minutes from now and within the next 7 days.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        $is_scheduled_order = true;
+        $scheduled_at_db = $scheduledDT->format('Y-m-d H:i:s');
+    }
+
+    // Check opening hours — for a normal order this is "right now"; for a
+    // scheduled order it's the requested slot itself, so a customer can't
+    // schedule for a time the kitchen will be closed.
     if ($hoursRow && !empty($hoursRow['opening_hours'])) {
         $hours = json_decode($hoursRow['opening_hours'], true);
         if ($hours) {
-            $restaurantTzName = !empty($hoursRow['timezone']) ? $hoursRow['timezone'] : 'Asia/Kolkata';
-            if (!in_array($restaurantTzName, timezone_identifiers_list(), true)) {
-                $restaurantTzName = 'Asia/Kolkata';
-            }
-            $india_tz = new DateTimeZone($restaurantTzName);
-            $now = new DateTime('now', $india_tz);
-            $day = strtolower($now->format('l'));
-            $currentTime = $now->getTimestamp();
+            $checkDT = $is_scheduled_order ? $scheduledDT : new DateTime('now', $restaurantTz);
+            $day = strtolower($checkDT->format('l'));
+            $checkTime = $checkDT->getTimestamp();
+            $closedMessage = $is_scheduled_order
+                ? 'The restaurant is closed at that time. Please pick a different slot.'
+                : 'Our restaurant is currently closed. Please come back during our opening hours!';
             if (!isset($hours[$day]) || empty($hours[$day]['open'])) {
                 ob_end_clean();
-                echo json_encode(['success' => false, 'message' => 'Our restaurant is currently closed. Please come back during our opening hours!'], JSON_UNESCAPED_UNICODE);
+                echo json_encode(['success' => false, 'message' => $closedMessage], JSON_UNESCAPED_UNICODE);
                 exit();
             }
             $opening = $hours[$day]['opening'] ?? '09:00 AM';
             $closing = $hours[$day]['closing'] ?? '10:00 PM';
-            $openDT = new DateTime($now->format('Y-m-d') . ' ' . $opening, $india_tz);
-            $closeDT = new DateTime($now->format('Y-m-d') . ' ' . $closing, $india_tz);
+            $openDT = new DateTime($checkDT->format('Y-m-d') . ' ' . $opening, $restaurantTz);
+            $closeDT = new DateTime($checkDT->format('Y-m-d') . ' ' . $closing, $restaurantTz);
             if ($closeDT <= $openDT) {
                 $closeDT->modify('+1 day');
             }
-            if ($currentTime < $openDT->getTimestamp() || $currentTime >= $closeDT->getTimestamp()) {
+            if ($checkTime < $openDT->getTimestamp() || $checkTime >= $closeDT->getTimestamp()) {
                 ob_end_clean();
-                echo json_encode(['success' => false, 'message' => 'Our restaurant is currently closed. Please come back during our opening hours!'], JSON_UNESCAPED_UNICODE);
+                echo json_encode(['success' => false, 'message' => $closedMessage], JSON_UNESCAPED_UNICODE);
                 exit();
             }
         }
     }
-    
+
     // BEGIN TRANSACTION for all writes
     // ── Delivery Radius Server-Side Check ──
     // TEMPORARILY DISABLED: re-enable once Google Maps based radius checking
@@ -697,9 +736,10 @@ $conn->beginTransaction();
     }
 
     // Create order
+    $orderStatusForInsert = $is_scheduled_order ? 'Scheduled' : 'Pending';
     try {
-        $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, landmark, address_lat, address_lng, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
-        $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $landmark, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+        $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, landmark, address_lat, address_lng, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source, scheduled_at, is_scheduled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'website', ?, ?)");
+        $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $landmark, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $orderStatusForInsert, $subtotal, $tax, $grand_total, $scheduled_at_db, $is_scheduled_order ? 1 : 0]);
     } catch (PDOException $e) {
         // landmark / address_lat / address_lng migrations may not have been
         // run on this DB yet - fall back so order placement never breaks
@@ -710,11 +750,11 @@ $conn->beginTransaction();
             throw $e;
         }
         if ($missingLandmark && !$missingLatLng) {
-            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, address_lat, address_lng, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
-            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, address_lat, address_lng, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source, scheduled_at, is_scheduled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'website', ?, ?)");
+            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $address_lat, $address_lng, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $orderStatusForInsert, $subtotal, $tax, $grand_total, $scheduled_at_db, $is_scheduled_order ? 1 : 0]);
         } else {
-            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, 'website')");
-            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $subtotal, $tax, $grand_total]);
+            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, notes, coupon_code, discount_amount, loyalty_points_redeemed, loyalty_discount_amount, order_type, delivery_zone_id, delivery_charge, payment_method, payment_status, order_status, subtotal, tax, total, source, scheduled_at, is_scheduled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'website', ?, ?)");
+            $orderStmt->execute([$restaurant_id, $table_id, $order_number, $customer_name, $customer_phone, $customer_email, $customer_address, $notes, $coupon_code, $discount_amount, $loyalty_points_to_redeem, $loyalty_discount_amount, $order_type, $delivery_zone_id, $deliveryCharge, $payment_method, $paymentStatus, $orderStatusForInsert, $subtotal, $tax, $grand_total, $scheduled_at_db, $is_scheduled_order ? 1 : 0]);
         }
     }
     $order_id = $conn->lastInsertId();
@@ -860,7 +900,9 @@ $conn->beginTransaction();
 
     // Create KOT for Dine-in orders so table map shows as occupied.
     // Skipped here for PhonePe orders — fired later once payment is verified.
-    if (!$usePhonePe && $order_type === 'Dine-in' && !empty($table_id)) {
+    // Also skipped for a scheduled order — the kitchen shouldn't see this
+    // ticket until activateDueScheduledOrders() fires it at scheduled_at.
+    if (!$usePhonePe && !$is_scheduled_order && $order_type === 'Dine-in' && !empty($table_id)) {
         $kotNumber = null;
         $maxAttempts = 100;
         $attempt = 0;
@@ -952,7 +994,9 @@ $conn->beginTransaction();
         'phonepe_required' => $usePhonePe,
         'whatsapp_enabled' => $whatsappEnabled,
         'whatsapp_phone' => $whatsappPhone,
-        'message' => $usePhonePe ? 'Redirecting to payment...' : 'Order placed successfully'
+        'is_scheduled' => $is_scheduled_order,
+        'scheduled_at' => $scheduled_at_db,
+        'message' => $usePhonePe ? 'Redirecting to payment...' : ($is_scheduled_order ? 'Order scheduled successfully' : 'Order placed successfully')
     ], JSON_UNESCAPED_UNICODE);
 
     if (function_exists('fastcgi_finish_request')) {
@@ -992,7 +1036,9 @@ $conn->beginTransaction();
     // emails right away. PhonePe orders wait until payment is independently
     // verified — fireOrderConfirmedActions() is called from
     // phonepe_order_callback.php / phonepe_order_payment.php instead.
-    if (!$usePhonePe) {
+    // A scheduled order also skips this for now — it fires later from
+    // activateDueScheduledOrders() once scheduled_at actually arrives.
+    if (!$usePhonePe && !$is_scheduled_order) {
         require_once __DIR__ . '/../config/order_confirmation.php';
         try {
             fireOrderConfirmedActions($conn, $order_id);

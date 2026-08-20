@@ -2329,6 +2329,19 @@ function showCheckoutModal(cartData) {
   html += '</div>';  // close dineinTableSection
   html += '</div>';  // close form-group
 
+  // Order Now vs Schedule for Later
+  html += '<div class="form-group">';
+  html += '<label>When?</label>';
+  html += '<div style="display:flex;gap:10px;margin-top:4px;">';
+  html += '<label class="schedule-option" data-sched="now" style="flex:1;padding:10px;border:2px solid #1a3934;border-radius:10px;text-align:center;cursor:pointer;background:#f0f7f5;font-size:13px;">';
+  html += '<input type="radio" name="scheduleType" value="now" checked style="display:none"> Order Now</label>';
+  html += '<label class="schedule-option" data-sched="later" style="flex:1;padding:10px;border:2px solid #e0e0e0;border-radius:10px;text-align:center;cursor:pointer;background:#fff;font-size:13px;">';
+  html += '<input type="radio" name="scheduleType" value="later" style="display:none"> \u{1F4C5} Schedule for Later</label>';
+  html += '</div>';
+  html += '<input type="datetime-local" id="chkScheduledAt" style="display:none;margin-top:10px;width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
+  html += '<div id="scheduleHint" style="display:none;margin-top:6px;font-size:11px;color:#999;">Pick a time at least 15 minutes from now, within the next 7 days, during our opening hours.</div>';
+  html += '</div>';
+
   // Payment method label depends on order type
   var isCounterOrder = (savedOrderType === 'takeaway' || savedOrderType === 'dinein');
   var cashLabel = isCounterOrder ? 'Pay at Counter' : 'Cash on Delivery';
@@ -2489,6 +2502,40 @@ function showCheckoutModal(cartData) {
     });
   }
 
+  // Schedule for Later toggle
+  var scheduledAtInput = document.getElementById('chkScheduledAt');
+  var scheduleHint = document.getElementById('scheduleHint');
+  if (scheduledAtInput) {
+    // Earliest selectable slot: 15 minutes from now (matches server-side
+    // minimum in process_website_order.php), rounded up to the next 5 min.
+    var minDt = new Date(Date.now() + 15 * 60000);
+    minDt.setMinutes(minDt.getMinutes() + (5 - (minDt.getMinutes() % 5 || 5)));
+    var maxDt = new Date(Date.now() + 7 * 24 * 60 * 60000);
+    var toLocalInputValue = function(d) {
+      var pad = function(n) { return String(n).padStart(2, '0'); };
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    };
+    scheduledAtInput.min = toLocalInputValue(minDt);
+    scheduledAtInput.max = toLocalInputValue(maxDt);
+  }
+  var schedLabels = modal.querySelectorAll('.schedule-option');
+  for (var si = 0; si < schedLabels.length; si++) {
+    schedLabels[si].addEventListener('click', function() {
+      var all = modal.querySelectorAll('.schedule-option');
+      for (var j = 0; j < all.length; j++) {
+        all[j].style.borderColor = '#e0e0e0';
+        all[j].style.background = '#fff';
+      }
+      this.style.borderColor = '#1a3934';
+      this.style.background = '#f0f7f5';
+      var radio = this.querySelector('input[name="scheduleType"]');
+      if (radio) radio.checked = true;
+      var later = this.getAttribute('data-sched') === 'later';
+      if (scheduledAtInput) scheduledAtInput.style.display = later ? '' : 'none';
+      if (scheduleHint) scheduleHint.style.display = later ? '' : 'none';
+    });
+  }
+
   // Set initial pincode and address section visibility
   var savedOt = savedOrderType || 'delivery';
   var initAddrSec = document.getElementById('addressSection');
@@ -2623,6 +2670,19 @@ function processOrder(cartData) {
     return;
   }
 
+  var scheduleTypeRadio = document.querySelector('input[name="scheduleType"]:checked');
+  var scheduledAtValue = '';
+  if (scheduleTypeRadio && scheduleTypeRadio.value === 'later') {
+    var scheduledAtRaw = document.getElementById('chkScheduledAt')?.value || '';
+    if (!scheduledAtRaw) {
+      showModal('Error', 'Please choose a date and time to schedule your order for.');
+      return;
+    }
+    // datetime-local gives "YYYY-MM-DDTHH:MM" in the browser's local time —
+    // the server re-validates this against the restaurant's own timezone.
+    scheduledAtValue = scheduledAtRaw.replace('T', ' ') + ':00';
+  }
+
   // Save to localStorage - including lat/lng + landmark, not just the display
   // text, so next checkout can skip straight to the address summary instead
   // of asking again.
@@ -2712,7 +2772,8 @@ function processOrder(cartData) {
       redeem_points: cartData.loyaltyPointsRedeemed || 0,
       delivery_zone_id: deliveryZoneId,
       delivery_charge: deliveryCharge,
-      packaging_charge: PACKAGING_CHARGE
+      packaging_charge: PACKAGING_CHARGE,
+      scheduled_at: scheduledAtValue
     })
   })
   .then(function(data) {
@@ -2743,7 +2804,7 @@ function processOrder(cartData) {
       saveCart();
       var modal = document.getElementById('checkoutModal');
       if (modal) modal.remove();
-      showSuccessModal(data.order_number || '');
+      showSuccessModal(data.order_number || '', data.is_scheduled ? data.scheduled_at : null);
       // WhatsApp redirect after cash order success
       if (waInfo) {
         setTimeout(function() { redirectToWhatsApp(waInfo); }, 500);
@@ -3038,7 +3099,7 @@ function cancelPhonePeVerification(orderNumber) {
 }
 
 
-function showSuccessModal(orderNum) {
+function showSuccessModal(orderNum, scheduledAt) {
   var existing = document.getElementById('successModal');
   if (existing) existing.remove();
 
@@ -3055,11 +3116,18 @@ function showSuccessModal(orderNum) {
     }
   }
 
+  var scheduledText = '';
+  if (scheduledAt) {
+    var sd = new Date(String(scheduledAt).replace(' ', 'T'));
+    scheduledText = '<p style="font-size:13px;color:#5b21b6;background:#ede9fe;padding:8px 12px;border-radius:8px;margin-bottom:10px;">\u{1F4C5} Scheduled for ' + sd.toLocaleString() + '</p>';
+  }
+
   modal.innerHTML = '<div class="success-box">' +
     '<div class="check-icon">&#10003;</div>' +
-    '<h2>Order Placed!</h2>' +
-    '<p>Your order has been placed successfully.</p>' +
+    '<h2>' + (scheduledAt ? 'Order Scheduled!' : 'Order Placed!') + '</h2>' +
+    '<p>' + (scheduledAt ? 'Your order has been scheduled and will be sent to the kitchen at the chosen time.' : 'Your order has been placed successfully.') + '</p>' +
     (orderNum ? '<p class="order-num">Order #' + orderNum + '</p>' : '<p class="order-num">&nbsp;</p>') +
+    scheduledText +
     '<p style="font-size:12px;color:#6b7280;margin-bottom:12px;">After your order is delivered, rate your experience in your profile!</p>' +
     (trackUrl ? '<button class="btn-profile" style="margin-bottom:8px;" onclick="window.location.href=\'' + trackUrl + '\'">Track Order</button>' : '') +
     '<button class="btn-profile" onclick="goToProfile()">View My Profile</button>' +

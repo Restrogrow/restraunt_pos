@@ -27,6 +27,15 @@ if (!function_exists('fireOrderConfirmedActions')) {
             return;
         }
 
+        // A scheduled order (see scheduled_order_helpers.php) can have its
+        // PhonePe payment confirmed well before its scheduled_at arrives —
+        // that must NOT alert the kitchen/staff/customer early. Skip here;
+        // activateDueScheduledOrders() calls this function again once it
+        // flips the order to 'Pending' at the right time.
+        if (($order['order_status'] ?? null) === 'Scheduled') {
+            return;
+        }
+
         $restaurant_id = $order['restaurant_id'];
 
         $itemsStmt = $conn->prepare("SELECT menu_item_id AS id, item_name AS name, variation_name, quantity, unit_price AS price, addons FROM order_items WHERE order_id = ?");

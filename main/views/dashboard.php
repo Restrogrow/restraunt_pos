@@ -5345,6 +5345,7 @@ function toggleGatewayMode() {
           </div>
           <select id="ordersStatusFilter" class="filter-select">
             <option value="">All Status</option>
+            <option value="Scheduled">Scheduled</option>
             <option value="Pending">Pending</option>
             <option value="Preparing">Preparing</option>
             <option value="Ready">Ready</option>

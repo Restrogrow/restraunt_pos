@@ -44,24 +44,38 @@ try {
     // Always scope to the authenticated session's own tenant — never trust a
     // client-supplied restaurant_id, or one restaurant's staff could read another's orders.
     $restaurant_id = $_SESSION['restaurant_id'] ?? null;
-    
+
     if (!$restaurant_id) {
         throw new Exception('Restaurant ID is required');
     }
-    
+
+    // Every admin poll of this endpoint doubles as the trigger that "goes
+    // live" any scheduled order whose time has arrived — see
+    // scheduled_order_helpers.php. This means the feature works with zero
+    // cron setup as long as someone has an admin/kitchen screen open (which,
+    // for an active restaurant, is the normal case); main/cron/
+    // activate_scheduled_orders.php exists as a backstop for when nobody does.
+    require_once __DIR__ . '/../config/scheduled_order_helpers.php';
+    activateDueScheduledOrders($conn, $restaurant_id);
+
     // Get filter parameters
     $statusFilter = $_GET['status'] ?? '';
     $paymentFilter = $_GET['payment_status'] ?? '';
     $typeFilter = $_GET['order_type'] ?? '';
     $searchTerm = $_GET['search'] ?? '';
     $dateFilter = $_GET['date'] ?? '';
-    
+
     // Build WHERE clause with filters
     $whereConditions = ['o.restaurant_id = ?'];
     $params = [$restaurant_id];
-    
-    // Date filter - default to today if not specified
-    if ($dateFilter) {
+
+    // Date filter - default to today if not specified. Scheduled orders are
+    // exempt: they're filtered/sorted by scheduled_at instead (see below), so
+    // a "today" created_at filter would hide an order placed yesterday for a
+    // slot three days from now.
+    if ($statusFilter === 'Scheduled') {
+        // no date constraint — show every still-scheduled order
+    } elseif ($dateFilter) {
         // Filter by specific date
         $whereConditions[] = 'DATE(o.created_at) = ?';
         $params[] = $dateFilter;
@@ -71,7 +85,7 @@ try {
         $whereConditions[] = 'DATE(o.created_at) = ?';
         $params[] = $today;
     }
-    
+
     if ($statusFilter) {
         $whereConditions[] = 'o.order_status = ?';
         $params[] = $statusFilter;
@@ -126,6 +140,8 @@ try {
                 o.customer_email,
                 o.customer_address,
                 o.created_at,
+                o.scheduled_at,
+                o.is_scheduled,
                 o.subtotal,
                 o.tax,
                 o.total,
@@ -137,7 +153,7 @@ try {
             LEFT JOIN tables t ON o.table_id = t.id
             LEFT JOIN areas a ON t.area_id = a.id
             WHERE " . $whereClause . "
-            ORDER BY o.created_at DESC
+            ORDER BY " . ($statusFilter === 'Scheduled' ? 'o.scheduled_at ASC' : 'o.created_at DESC') . "
             LIMIT ? OFFSET ?";
     
     $stmt = $conn->prepare($sql);

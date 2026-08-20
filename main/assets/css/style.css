@@ -3571,6 +3571,21 @@ select:focus {
   color: #991b1b;
 }
 
+.status-badge.scheduled {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.scheduled-time-banner {
+  margin: 0.5rem 0;
+  padding: 8px 12px;
+  background: #ede9fe;
+  color: #5b21b6;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .payment-badge.pending {
   background: #fef3c7;
   color: #92400e;

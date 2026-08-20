@@ -10233,6 +10233,11 @@ function displayOrders(orders) {
           <span class="payment-badge ${order.payment_status.toLowerCase().replace(' ', '-')}">${order.payment_status}</span>
         </div>
       </div>
+      ${(order.is_scheduled == 1 && order.scheduled_at) ? `
+      <div class="scheduled-time-banner">
+        <span class="material-symbols-rounded" style="font-size:1rem;vertical-align:middle;">schedule</span>
+        ${order.order_status === 'Scheduled' ? 'Will be sent to the kitchen at' : 'Scheduled for'} ${new Date(order.scheduled_at.replace(' ', 'T')).toLocaleString()}
+      </div>` : ''}
       <div class="order-details">
         <p><strong>Type:</strong> ${order.order_type}</p>
         <p><strong>Table:</strong> ${order.table_name || 'Walk-in'}</p>

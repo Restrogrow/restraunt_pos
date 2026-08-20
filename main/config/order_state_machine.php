@@ -16,9 +16,10 @@
  */
 
 // ─── Order Status (order_status) ─────────────────────────────────────────────
-// DB ENUM: ('Pending', 'Accepted', 'Preparing', 'Ready', 'Served', 'Completed', 'Cancelled', 'Rejected')
+// DB ENUM: ('Scheduled', 'Pending', 'Accepted', 'Preparing', 'Ready', 'Served', 'Completed', 'Cancelled', 'Rejected')
 //
 // Valid forward transitions:
+//   Scheduled → Pending, Cancelled
 //   Pending   → Preparing, Cancelled, Accepted, Rejected
 //   Accepted  → Preparing, Cancelled
 //   Preparing → Ready, Cancelled
@@ -27,9 +28,15 @@
 //   Completed → ∅  (terminal)
 //   Cancelled → ∅  (terminal)
 //   Rejected  → ∅  (terminal)
+//
+// 'Scheduled' is a "not yet placed with the kitchen" holding state for
+// customer order-ahead requests — see scheduled_order_helpers.php. It's
+// invisible to the KOT/kitchen board until activateDueScheduledOrders()
+// moves it to Pending at (or after) its scheduled_at time.
 
 if (!defined('ORDER_STATUS_TRANSITIONS')) {
     define('ORDER_STATUS_TRANSITIONS', serialize([
+        'Scheduled' => ['Pending', 'Cancelled'],
         'Pending'   => ['Preparing', 'Cancelled', 'Accepted', 'Rejected'],
         'Accepted'  => ['Preparing', 'Cancelled'],
         'Preparing' => ['Ready', 'Cancelled'],
@@ -95,6 +102,7 @@ function orderStatusLockPriority(string $status): int {
         'Preparing' => 4,
         'Accepted'  => 3,
         'Pending'   => 2,
+        'Scheduled' => 1,
     ];
     return $p[$status] ?? 0;
 }
