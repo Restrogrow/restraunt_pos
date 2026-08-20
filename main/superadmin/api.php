@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/countries.php';
 require_once __DIR__ . '/auth.php';
-require_superadmin();
+require_superadmin_api();
 
 // Get connection using getConnection() for lazy connection support
 if (function_exists('getConnection')) {

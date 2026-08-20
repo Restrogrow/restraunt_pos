@@ -1128,6 +1128,12 @@ require_once __DIR__ . '/../config/countries.php';
         const res = await fetch('api.php?'+qs);
         const data = await res.json();
 
+        if (data.session_expired) {
+          showSuperAlert('Your session expired. Please log in again.', 'warning');
+          window.location.href = 'login.php';
+          return;
+        }
+
         // Self-correct if a rapid double-click on Next (or a stale page number)
         // requested a page beyond what actually exists — refetch the real last
         // page instead of leaving the table empty.
@@ -1201,7 +1207,17 @@ require_once __DIR__ . '/../config/countries.php';
         document.getElementById('pageInfo').textContent = `Page ${saPage} of ${pages}`;
         document.getElementById('prevPage').disabled = saPage<=1;
         document.getElementById('nextPage').disabled = saPage>=pages;
-      } catch(e) { console.error('Error:', e); }
+      } catch(e) {
+        console.error('Error:', e);
+        // Buttons are born `disabled` in the HTML and only get re-enabled
+        // on the success path above — without this, any failed fetch here
+        // (network hiccup, non-JSON response, etc.) left them permanently
+        // stuck disabled for the rest of the session. Restore them to match
+        // the last known-good page/pages instead of leaving Prev/Next dead.
+        document.getElementById('prevPage').disabled = saPage<=1;
+        document.getElementById('nextPage').disabled = saPage>=saPages;
+        showSuperAlert('Could not load restaurants. Please try again.', 'error');
+      }
     }
 
 
