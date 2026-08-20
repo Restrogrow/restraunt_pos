@@ -228,12 +228,12 @@ body {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: <?php echo ($host === 'triposhsymmetry.in') ? '100%' : '425px'; ?>;
   background: #fff; border-top: 1px solid #e8e8e8;
-  display: flex; align-items: center; padding: 8px 12px 10px;
+  display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 10px;
   z-index: 100;
   box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
 }
 .nav-item {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
+  display: flex; flex-direction: column; align-items: center;
   gap: 2px; cursor: pointer; position: relative;
   border: none; background: none; font-family: 'Poppins', sans-serif;
 }
