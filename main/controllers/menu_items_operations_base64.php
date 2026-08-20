@@ -92,8 +92,8 @@ try {
         }
     }
     
-    // Validate menu item ID for update and delete actions
-    if (in_array($action, ['update', 'delete']) && $menuItemId <= 0) {
+    // Validate menu item ID for update, delete, and toggle_hidden actions
+    if (in_array($action, ['update', 'delete', 'toggle_hidden']) && $menuItemId <= 0) {
         throw new Exception('Invalid menu item ID');
     }
     
@@ -138,7 +138,11 @@ try {
                 'data' => ['updated' => $updated]
             ], JSON_UNESCAPED_UNICODE);
             break;
-            
+
+        case 'toggle_hidden':
+            handleToggleMenuItemHidden($conn, $restaurant_id, $menuItemId);
+            break;
+
         default:
             throw new Exception('Invalid action');
     }
@@ -159,6 +163,47 @@ try {
         'message' => 'An error occurred. Please try again.'
     ], JSON_UNESCAPED_UNICODE);
     exit();
+}
+
+/**
+ * Hide/unhide a menu item: hidden items stay visible in this admin Menu
+ * Items list (so staff can find and unhide them) but are excluded from POS,
+ * the waiter's order screen, and the customer website — see the is_hidden
+ * filtering in get_menu_items.php (admin/POS/waiter, opt-out via
+ * include_hidden) and main/website/api.php (customer site, always
+ * excluded). Deliberately separate from is_available ("in stock"), which
+ * still shows an item everywhere just marked unorderable.
+ */
+function handleToggleMenuItemHidden($conn, $restaurant_id, $menuItemId) {
+    if ($menuItemId <= 0) {
+        throw new Exception('Invalid menu item ID');
+    }
+
+    try {
+        $col = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'is_hidden'");
+        if ($col->rowCount() === 0) {
+            $conn->exec("ALTER TABLE menu_items ADD COLUMN is_hidden TINYINT(1) NOT NULL DEFAULT 0");
+        }
+    } catch (PDOException $e) {
+        error_log('handleToggleMenuItemHidden: ensure column failed: ' . $e->getMessage());
+    }
+
+    $stmt = $conn->prepare("UPDATE menu_items SET is_hidden = CASE WHEN is_hidden = 1 THEN 0 ELSE 1 END WHERE id = ? AND restaurant_id = ?");
+    $stmt->execute([$menuItemId, $restaurant_id]);
+
+    if ($stmt->rowCount() > 0) {
+        $fetchStmt = $conn->prepare("SELECT is_hidden FROM menu_items WHERE id = ?");
+        $fetchStmt->execute([$menuItemId]);
+        $row = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success' => true,
+            'message' => $row && (int)$row['is_hidden'] === 1 ? 'Item hidden from POS and website' : 'Item unhidden',
+            'is_hidden' => $row ? (int)$row['is_hidden'] : 0
+        ], JSON_UNESCAPED_UNICODE);
+    } else {
+        throw new Exception('Menu item not found');
+    }
 }
 
 function handleAddMenuItemBase64($conn, $restaurant_id, $menuId, $itemNameEn, $itemDescriptionEn, $itemCategory, $subcategoryId, $itemType, $preparationTime, $calories, $isAvailable, $basePrice, $hasVariations, $descriptionFormat = 'paragraph') {

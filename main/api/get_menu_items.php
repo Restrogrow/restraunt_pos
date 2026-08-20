@@ -41,6 +41,12 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 // 2. Logged in as staff (waiter/chef) with same restaurant_id
 // 3. Not logged in but restaurant_id is provided in query
 $hasPermission = false;
+// Distinct from $hasPermission: staff (waiter/chef) below are allowed to
+// fetch the menu to build orders, but that's not menu-MANAGEMENT rights.
+// Only a true $canManageMenu session may request hidden items back (see
+// include_hidden below) — POS/waiter/website must never be able to opt
+// into seeing them, even by guessing the query param.
+$canManageMenu = false;
 $requested_restaurant_id = $_GET['restaurant_id'] ?? null;
 
 if (isLoggedIn()) {
@@ -48,6 +54,7 @@ if (isLoggedIn()) {
     try {
         if (hasPermission(PERMISSION_MANAGE_MENU)) {
             $hasPermission = true;
+            $canManageMenu = true;
         }
     } catch (Exception $e) {
         // Permission check failed, continue to staff check
@@ -152,28 +159,48 @@ try {
     } catch (PDOException $e) {
         // Column doesn't exist
     }
-    
+
+    // Check if is_hidden column exists. Hidden items are excluded for
+    // everyone by default (POS, waiter screen, growth/upsell widgets, and —
+    // via main/website/api.php's own separate check — the customer
+    // website) and only included when a genuine menu-manager session
+    // explicitly asks for them (Menu Items admin list, so hidden items
+    // stay manageable/un-hideable there). $canManageMenu (not the broader
+    // $hasPermission, which also covers plain staff/POS access) gates this.
+    $hasIsHiddenColumn = false;
+    try {
+        $checkHiddenCol = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'is_hidden'");
+        $hasIsHiddenColumn = $checkHiddenCol->rowCount() > 0;
+    } catch (PDOException $e) {
+        // Column doesn't exist
+    }
+    $includeHidden = $canManageMenu && isset($_GET['include_hidden']) && $_GET['include_hidden'] == '1';
+
     // Build the query - explicitly select columns (exclude binary image_data to avoid JSON issues)
     $translationsCol = $hasItemTranslations ? ", mi.translations" : "";
+    $isHiddenCol = $hasIsHiddenColumn ? ", mi.is_hidden" : "";
             $sql = "SELECT mi.id, mi.restaurant_id, mi.menu_id, mi.item_name_en, mi.item_description_en, mi.description_format,
-                           mi.item_category, mi.item_type, mi.preparation_time, mi.calories, mi.is_available, 
-                           mi.base_price, mi.has_variations, mi.item_image, 
-                           mi.sort_order, mi.created_at, mi.updated_at, m.menu_name" . $translationsCol;
-    
+                           mi.item_category, mi.item_type, mi.preparation_time, mi.calories, mi.is_available,
+                           mi.base_price, mi.has_variations, mi.item_image,
+                           mi.sort_order, mi.created_at, mi.updated_at, m.menu_name" . $translationsCol . $isHiddenCol;
+
     // Include subcategory info if column exists
     if ($hasSubcategoryColumn && $hasSubcategoriesTable) {
         $sql .= ", mi.subcategory_id, sc.subcategory_name";
     }
-    
-    $sql .= " FROM menu_items mi 
+
+    $sql .= " FROM menu_items mi
               JOIN menu m ON mi.menu_id = m.id ";
-    
+
     if ($hasSubcategoryColumn && $hasSubcategoriesTable) {
         $sql .= "LEFT JOIN subcategories sc ON mi.subcategory_id = sc.id ";
     }
-    
+
     $sql .= "WHERE mi.restaurant_id = ?";
-    
+    if ($hasIsHiddenColumn && !$includeHidden) {
+        $sql .= " AND mi.is_hidden = 0";
+    }
+
     // Check if variations table exists
     $hasVariationsTable = false;
     try {
@@ -215,6 +242,7 @@ try {
     // Get total count first
     $countSql = "SELECT COUNT(*) FROM menu_items mi WHERE mi.restaurant_id = ?";
     $countParams = [$restaurant_id];
+    if ($hasIsHiddenColumn && !$includeHidden) { $countSql .= " AND mi.is_hidden = 0"; }
     if ($menuFilter > 0) { $countSql .= " AND mi.menu_id = ?"; $countParams[] = $menuFilter; }
     if (!empty($categoryFilter)) { $countSql .= " AND mi.item_category = ?"; $countParams[] = $categoryFilter; }
     if ($subcategoryFilter > 0 && $hasSubcategoryColumn) { $countSql .= " AND mi.subcategory_id = ?"; $countParams[] = $subcategoryFilter; }
@@ -238,23 +266,26 @@ try {
         // If columns don't exist, try with basic columns only
         if (strpos($e->getMessage(), 'image_data') !== false || strpos($e->getMessage(), 'Unknown column') !== false) {
             $sql = "SELECT mi.id, mi.restaurant_id, mi.menu_id, mi.item_name_en, mi.item_description_en, mi.description_format,
-                   mi.item_category, mi.item_type, mi.preparation_time, mi.calories, mi.is_available, 
-                   mi.base_price, mi.has_variations, mi.item_image, 
-                   mi.sort_order, mi.created_at, mi.updated_at, m.menu_name" . $translationsCol;
-            
+                   mi.item_category, mi.item_type, mi.preparation_time, mi.calories, mi.is_available,
+                   mi.base_price, mi.has_variations, mi.item_image,
+                   mi.sort_order, mi.created_at, mi.updated_at, m.menu_name" . $translationsCol . $isHiddenCol;
+
             if ($hasSubcategoryColumn && $hasSubcategoriesTable) {
                 $sql .= ", mi.subcategory_id, sc.subcategory_name";
             }
-            
-            $sql .= " FROM menu_items mi 
+
+            $sql .= " FROM menu_items mi
                       JOIN menu m ON mi.menu_id = m.id ";
-            
+
             if ($hasSubcategoryColumn && $hasSubcategoriesTable) {
                 $sql .= "LEFT JOIN subcategories sc ON mi.subcategory_id = sc.id ";
             }
-            
+
             $sql .= "WHERE mi.restaurant_id = ?";
-            
+            if ($hasIsHiddenColumn && !$includeHidden) {
+                $sql .= " AND mi.is_hidden = 0";
+            }
+
             if ($menuFilter > 0) {
                 $sql .= " AND mi.menu_id = ?";
             }

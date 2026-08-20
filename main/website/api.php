@@ -263,7 +263,13 @@ try {
             
             $hasItemTrans = false;
             try { $hasItemTrans = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'translations'")->rowCount() > 0; } catch (Exception $e) {}
-            
+
+            // Items an admin has hidden (see menu_items_operations_base64.php's
+            // toggle_hidden) must never reach the customer website — unlike
+            // get_menu_items.php (admin/POS), there is no opt-in here at all.
+            $hasIsHiddenColumn = false;
+            try { $hasIsHiddenColumn = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'is_hidden'")->rowCount() > 0; } catch (Exception $e) {}
+
             // Check if subcategory_id column exists
             $hasSubcategoryColumn = false;
             try {
@@ -307,24 +313,27 @@ try {
             }
             
             $query .= " WHERE mi.restaurant_id = :rid";
-            
+            if ($hasIsHiddenColumn) {
+                $query .= " AND mi.is_hidden = 0";
+            }
+
             $params = [':rid' => $restaurantId];
-            
+
             if ($menuId) {
                 $query .= " AND mi.menu_id = :menu_id";
                 $params[':menu_id'] = $menuId;
             }
-            
+
             if ($category) {
                 $query .= " AND mi.item_category = :category";
                 $params[':category'] = $category;
             }
-            
+
             if ($type) {
                 $query .= " AND mi.item_type = :type";
                 $params[':type'] = $type;
             }
-            
+
             $query .= " ORDER BY mi.sort_order, mi.item_name_en";
             
             try {

@@ -3797,11 +3797,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (menuFilter && menuFilter !== '') params.append('menu', menuFilter);
       if (categoryFilter && categoryFilter !== '') params.append('category', categoryFilter);
       if (typeFilter && typeFilter !== '') params.append('type', typeFilter);
-      
+
       // Add subcategory filter
       const subcategoryFilter = document.getElementById("subcategoryFilter")?.value || '';
       if (subcategoryFilter && subcategoryFilter !== '') params.append('subcategory', subcategoryFilter);
-      
+
+      // This management list should still show hidden items (so staff can
+      // find and unhide them) even though POS/website exclude them by default.
+      params.append('include_hidden', '1');
+
       const response = await fetch(`../api/get_menu_items.php?${params}`);
       const result = await response.json();
 
@@ -3873,8 +3877,9 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>`;
       }
 
+      const isHidden = Number(item.is_hidden) === 1;
       return `
-      <div class="menu-item-card" data-item-id="${item.id}">
+      <div class="menu-item-card${isHidden ? ' item-hidden' : ''}" data-item-id="${item.id}">
         <div class="item-image">
           ${item.item_image ? `<img src="../api/image.php?path=${encodeURIComponent(item.item_image)}" alt="${escapeHtml(item.item_name_translated || item.item_name_en)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="no-image" style="display:none;"><span class="material-symbols-rounded">image</span></div>` : '<div class="no-image"><span class="material-symbols-rounded">image</span></div>'}
@@ -3891,12 +3896,17 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="menu-name">${escapeHtml(item.menu_name)}</span>
             <span class="prep-time">${item.preparation_time} min</span>
             <span class="availability ${item.is_available ? 'available' : 'unavailable'}">${item.is_available ? 'In Stock' : 'Out of Stock'}</span>
+            ${isHidden ? '<span class="availability unavailable">Hidden from POS/Website</span>' : ''}
           </div>
         </div>
         <div class="item-actions">
           <button class="btn-edit" onclick="editMenuItem(${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
             <span class="material-symbols-rounded">edit</span>
             Edit
+          </button>
+          <button class="btn-edit" onclick="toggleMenuItemHidden(${item.id}, ${isHidden})">
+            <span class="material-symbols-rounded">${isHidden ? 'visibility' : 'visibility_off'}</span>
+            ${isHidden ? 'Unhide' : 'Hide'}
           </button>
           <button class="btn-delete" onclick="deleteMenuItem(${item.id}, '${escapeHtml(item.item_name_translated || item.item_name_en)}')">
             <span class="material-symbols-rounded">delete</span>
@@ -3907,6 +3917,31 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
     }).join('');
   }
+
+  // Hide/unhide a menu item: hidden items stay in this admin list (so staff
+  // can find and unhide them) but drop out of POS, the waiter screen, and
+  // the customer website — see toggle_hidden in menu_items_operations_base64.php.
+  window.toggleMenuItemHidden = async function(itemId, currentlyHidden) {
+    try {
+      const formData = new FormData();
+      formData.append('action', 'toggle_hidden');
+      formData.append('menuItemId', itemId);
+      const response = await fetch('../controllers/menu_items_operations_base64.php', {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      if (result.success) {
+        showNotification(currentlyHidden ? 'Item unhidden' : 'Item hidden from POS and website', 'success');
+        loadMenuItems();
+      } else {
+        showNotification(result.message || 'Failed to update item visibility', 'error');
+      }
+    } catch (error) {
+      console.error('Error toggling menu item visibility:', error);
+      showNotification('Error updating item visibility', 'error');
+    }
+  };
 
   window.moveMenuItemUp = function(idx) {
     if (idx <= 0) return;
