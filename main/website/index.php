@@ -1347,43 +1347,76 @@ window.socialLinks = {
   require_once __DIR__ . '/../config/reservation_helpers.php';
   $indexNavShowReservations = isset($conn, $restaurant_id) && reservationsFeatureEnabled($conn, $restaurant_id);
   ?>
-  <div class="bottom-nav">
+  <?php
+  // Same approach as bottom_nav.php: capture each item as a string so
+  // "Install App" (when on) can be spliced into the middle of the row
+  // instead of always sitting right after Menu.
+  ob_start(); ?>
     <div class="nav-item active" onclick="scrollToSection('homeSection', this)">
       <?php echo renderNavIconTag('home', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="home"><?php echo htmlspecialchars($navLabels['home'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
+  <?php $indexNavHomeHtml = ob_get_clean();
+
+  ob_start(); ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'">
       <?php echo renderNavIconTag('menu', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="menu"><?php echo htmlspecialchars($navLabels['menu'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
-    <?php if (empty($show_install_app)): ?>
+  <?php $indexNavMenuHtml = ob_get_clean();
+
+  ob_start(); ?>
     <div class="nav-item" onclick="scrollToSection('socialSection', this)">
       <?php echo renderNavIconTag('social', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="social"><?php echo htmlspecialchars($navLabels['social'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
-    <?php else: ?>
+  <?php $indexNavSocialHtml = ob_get_clean();
+
+  ob_start(); ?>
     <div class="nav-item" id="installNavBtn" onclick="promptInstall()">
       <?php echo renderNavIconTag('install', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="install"><?php echo htmlspecialchars($navLabels['install'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
-    <?php endif; ?>
-    <?php if ($indexNavShowPlans): ?>
+  <?php $indexNavInstallHtml = ob_get_clean();
+
+  ob_start(); ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('plans'); ?>'">
       <?php echo renderNavIconTag('plans', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="plans"><?php echo htmlspecialchars($navLabels['plans'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
-    <?php endif; ?>
-    <?php if ($indexNavShowReservations): ?>
+  <?php $indexNavPlansHtml = ob_get_clean();
+
+  ob_start(); ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('reservations'); ?>'">
       <?php echo renderNavIconTag('reservations', array_merge($navIcons, ['reservations' => 'calendar-check']), $navIconOverrides); ?>
       <span data-nav-label="reservations"><?php echo htmlspecialchars($navLabels['reservations'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
-    <?php endif; ?>
+  <?php $indexNavReservationsHtml = ob_get_clean();
+
+  ob_start(); ?>
     <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
       <?php echo renderNavIconTag('cart', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="cart"><?php echo htmlspecialchars($navLabels['cart'], ENT_QUOTES, 'UTF-8'); ?></span>
       <div class="cart-badge">0</div>
     </div>
+  <?php $indexNavCartHtml = ob_get_clean();
+
+  if (!empty($show_install_app)) {
+      $indexOtherItems = [$indexNavHomeHtml, $indexNavMenuHtml];
+      if ($indexNavShowPlans) $indexOtherItems[] = $indexNavPlansHtml;
+      if ($indexNavShowReservations) $indexOtherItems[] = $indexNavReservationsHtml;
+      $indexOtherItems[] = $indexNavCartHtml;
+      array_splice($indexOtherItems, (int) ceil(count($indexOtherItems) / 2), 0, [$indexNavInstallHtml]);
+      $indexNavItemsHtml = implode('', $indexOtherItems);
+  } else {
+      $indexNavItemsHtml = $indexNavHomeHtml . $indexNavMenuHtml . $indexNavSocialHtml
+          . ($indexNavShowPlans ? $indexNavPlansHtml : '')
+          . ($indexNavShowReservations ? $indexNavReservationsHtml : '')
+          . $indexNavCartHtml;
+  }
+  ?>
+  <div class="bottom-nav">
+    <?php echo $indexNavItemsHtml; ?>
     <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="<?php echo htmlspecialchars($navLabels['profile'], ENT_QUOTES, 'UTF-8'); ?>" style="font-size:16px;padding:6px 10px;"><?php echo renderNavIconTag('profile', $navIcons, $navIconOverrides, false); ?></button>
   </div>
 </div>
