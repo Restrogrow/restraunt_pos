@@ -1387,6 +1387,17 @@ window.socialLinks = {
     <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="<?php echo htmlspecialchars($navLabels['profile'], ENT_QUOTES, 'UTF-8'); ?>" style="font-size:16px;padding:6px 10px;"><?php echo renderNavIconTag('profile', $navIcons, $navIconOverrides, false); ?></button>
   </div>
 </div>
+<style>
+/* Draws the eye to "Install App" without using color — bigger icon, bolder
+   label, and a slow, gentle scale pulse. */
+#installNavBtn .nav-icon { font-size: 30px; }
+#installNavBtn span { font-weight: 700; font-size: 12px; }
+#installNavBtn { animation: installNavPulse 2.2s ease-in-out infinite; }
+@keyframes installNavPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+</style>
 
 <!-- Order Type Switch Modal -->
 <div class="order-type-modal" id="orderTypeModal">
