@@ -47,8 +47,8 @@ try {
             $value = (float)($_POST['discount_value'] ?? 0);
             $minOrder = (float)($_POST['minimum_order_amount'] ?? 0);
             $maxUses = (int)($_POST['max_uses'] ?? 0);
-            $validFrom = $_POST['valid_from'] ?: null;
-            $validUntil = $_POST['valid_until'] ?: null;
+            $validFrom = !empty($_POST['valid_from']) ? $_POST['valid_from'] : null;
+            $validUntil = !empty($_POST['valid_until']) ? $_POST['valid_until'] : null;
             $desc = trim($_POST['description'] ?? '');
 
             // Validate inputs — guard against negative values and invalid dates
@@ -78,8 +78,8 @@ try {
             $value = (float)($_POST['discount_value'] ?? 0);
             $minOrder = (float)($_POST['minimum_order_amount'] ?? 0);
             $maxUses = (int)($_POST['max_uses'] ?? 0);
-            $validFrom = $_POST['valid_from'] ?: null;
-            $validUntil = $_POST['valid_until'] ?: null;
+            $validFrom = !empty($_POST['valid_from']) ? $_POST['valid_from'] : null;
+            $validUntil = !empty($_POST['valid_until']) ? $_POST['valid_until'] : null;
             $desc = trim($_POST['description'] ?? '');
 
             // Validate inputs — guard against negative values and invalid dates

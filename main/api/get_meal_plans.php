@@ -82,7 +82,8 @@ try {
         exit();
     }
 
-    $sql = "SELECT id, plan_name, description, meal_scope, total_meal_credits, price, bonus_credits, is_active, sort_order
+    $sql = "SELECT id, plan_name, description, meal_scope, total_meal_credits, price, bonus_credits, is_active, sort_order,
+                   (image_data IS NOT NULL) AS has_image
             FROM meal_plans WHERE restaurant_id = ?";
     $params = [$restaurant_id];
     if ($activeOnly) {
@@ -90,9 +91,24 @@ try {
     }
     $sql .= " ORDER BY sort_order ASC, price ASC";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
-    $plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    try {
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // image_data column may not exist yet on this DB - retry without it
+        if (strpos($e->getMessage(), 'Unknown column') === false) throw $e;
+        $sql = str_replace(",\n                   (image_data IS NOT NULL) AS has_image", '', $sql);
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    foreach ($plans as &$plan) {
+        $plan['image_url'] = !empty($plan['has_image']) ? '../api/image.php?type=meal_plan&id=' . urlencode($plan['id']) : null;
+        unset($plan['has_image']);
+    }
+    unset($plan);
 
     $response = ['success' => true, 'data' => $plans, 'count' => count($plans)];
 
@@ -103,6 +119,20 @@ try {
             $response['weekly_menu'] = $menuStmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             $response['weekly_menu'] = [];
+        }
+
+        try {
+            $itemsStmt = $conn->prepare("SELECT id, day_of_week, meal_time, item_name, (image_data IS NOT NULL) AS has_image FROM meal_plan_weekly_menu_items WHERE restaurant_id = ? AND is_active = 1 ORDER BY day_of_week ASC, meal_time ASC, sort_order ASC");
+            $itemsStmt->execute([$restaurant_id]);
+            $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($items as &$item) {
+                $item['image_url'] = !empty($item['has_image']) ? '../api/image.php?type=weekly_menu_item&id=' . urlencode($item['id']) : null;
+                unset($item['has_image']);
+            }
+            unset($item);
+            $response['weekly_menu_items'] = $items;
+        } catch (PDOException $e) {
+            $response['weekly_menu_items'] = [];
         }
     }
 

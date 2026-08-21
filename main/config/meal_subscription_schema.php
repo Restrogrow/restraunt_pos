@@ -53,6 +53,20 @@ if (!function_exists('ensureMealPlanTables')) {
             INDEX idx_mp_active (restaurant_id, is_active)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        // Self-heal onto meal_plans tables created before the plan photo
+        // feature existed - same convention as customer_meal_subscriptions'
+        // delivery_lat/lng self-heal below.
+        try {
+            $col = $conn->query("SHOW COLUMNS FROM meal_plans LIKE 'image_data'");
+            if ($col->rowCount() === 0) {
+                $conn->exec("ALTER TABLE meal_plans
+                    ADD COLUMN image_data LONGBLOB DEFAULT NULL,
+                    ADD COLUMN image_mime_type VARCHAR(50) DEFAULT NULL");
+            }
+        } catch (PDOException $e) {
+            error_log('ensureMealPlanTables (meal_plans image): ' . $e->getMessage());
+        }
+
         $conn->exec("CREATE TABLE IF NOT EXISTS meal_plan_weekly_menu (
             id INT AUTO_INCREMENT PRIMARY KEY,
             restaurant_id VARCHAR(50) NOT NULL,
@@ -64,6 +78,26 @@ if (!function_exists('ensureMealPlanTables')) {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY uq_mpwm_cell (restaurant_id, day_of_week, meal_time),
             INDEX idx_mpwm_restaurant (restaurant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // Structured weekly-menu items (replaces the old free-text-only cell
+        // with a per-day/meal-time list of named dishes, each with its own
+        // optional photo) - menu_text above is kept as an optional freeform
+        // note alongside the item list, not removed.
+        $conn->exec("CREATE TABLE IF NOT EXISTS meal_plan_weekly_menu_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            restaurant_id VARCHAR(50) NOT NULL,
+            day_of_week TINYINT NOT NULL,
+            meal_time ENUM('lunch','dinner') NOT NULL,
+            item_name VARCHAR(150) NOT NULL,
+            image_data LONGBLOB DEFAULT NULL,
+            image_mime_type VARCHAR(50) DEFAULT NULL,
+            sort_order INT NOT NULL DEFAULT 0,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_mpwmi_cell (restaurant_id, day_of_week, meal_time),
+            INDEX idx_mpwmi_restaurant (restaurant_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 }

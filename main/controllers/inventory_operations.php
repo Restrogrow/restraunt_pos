@@ -86,7 +86,7 @@ try {
             $quantity = (float)($_POST['quantity'] ?? 0);
             $costPerUnit = $_POST['cost_per_unit'] !== '' ? (float)($_POST['cost_per_unit'] ?? 0) : null;
             $notes = trim($_POST['notes'] ?? '');
-            $expenseDate = $_POST['expense_date'] ?: date('Y-m-d');
+            $expenseDate = !empty($_POST['expense_date']) ? $_POST['expense_date'] : date('Y-m-d');
 
             if ($id <= 0) throw new Exception('Invalid item id');
             if ($quantity <= 0) throw new Exception('Restock quantity must be greater than zero');
@@ -132,7 +132,7 @@ try {
             $type = $_POST['adjust_type'] ?? 'adjustment'; // 'adjustment' or 'wastage'
             $quantity = (float)($_POST['quantity'] ?? 0); // positive number; direction implied by type
             $notes = trim($_POST['notes'] ?? '');
-            $expenseDate = $_POST['expense_date'] ?: date('Y-m-d');
+            $expenseDate = !empty($_POST['expense_date']) ? $_POST['expense_date'] : date('Y-m-d');
 
             if ($id <= 0) throw new Exception('Invalid item id');
             if ($quantity == 0) throw new Exception('Quantity must not be zero');

@@ -54,14 +54,28 @@ body { font-family: var(--site-font); background: #e8ecf2; color: #1a1b1f; min-h
 .subscribe-btn { width: 100%; margin-top: 8px; padding: 12px; border: none; border-radius: 10px; background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); color: #fff; font-weight: 700; font-size: 14px; font-family: var(--site-font); cursor: pointer; }
 .subscribe-btn:hover { opacity: 0.92; }
 
+.plan-card .plan-photo { width: 100%; height: 140px; object-fit: cover; border-radius: 12px; margin-bottom: 12px; }
+
 .menu-section { margin-top: 24px; }
 .menu-section h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
-.week-row { display: grid; grid-template-columns: 78px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-.week-row:last-child { border-bottom: none; }
-.week-row .day { font-weight: 700; font-size: 12.5px; color: #1a1b1f; }
-.week-row .meals { font-size: 12px; color: #666; line-height: 1.6; }
-.week-row .meals .mt-label { font-weight: 600; color: var(--primary-red, #e17055); }
-.week-row .meals div { margin-bottom: 2px; }
+
+.week-day { border: 1.5px solid #eee; border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
+.week-day-header { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: none; background: #faf8f6; font-family: var(--site-font); font-size: 13.5px; font-weight: 700; color: #1a1b1f; cursor: pointer; }
+.week-day-header i { color: #999; font-size: 12px; }
+.week-day.open .week-day-header { background: #f0ebe5; }
+.week-day-body { padding: 12px 14px 14px; }
+
+.meal-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.meal-tab { flex: 1; padding: 8px 10px; border: 1.5px solid #e8e0d8; border-radius: 8px; background: #fff; font-family: var(--site-font); font-size: 12.5px; font-weight: 600; color: #666; cursor: pointer; }
+.meal-tab.active { background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); border-color: transparent; color: #fff; }
+
+.meal-items { display: flex; flex-direction: column; gap: 8px; }
+.meal-item-row { display: flex; align-items: center; gap: 10px; }
+.meal-item-row img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+.meal-item-noimg { width: 40px; height: 40px; border-radius: 8px; background: #f0ebe5; color: #c8b8a8; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.meal-item-row span { font-size: 13px; color: #1a1b1f; font-weight: 500; }
+.meal-notes { font-size: 12px; color: #888; margin-top: 6px; line-height: 1.5; }
+.meal-empty { font-size: 12px; color: #aaa; font-style: italic; padding: 4px 0; }
 </style>
 </head>
 <body>
@@ -124,6 +138,7 @@ function renderPlans(plans) {
   for (var i = 0; i < plans.length; i++) {
     var p = plans[i];
     html += '<div class="plan-card">';
+    if (p.image_url) html += '<img class="plan-photo" src="' + escapeHtml(p.image_url) + '" alt="">';
     html += '<div class="plan-name">' + escapeHtml(p.plan_name) + '</div>';
     if (p.description) html += '<div class="plan-desc">' + escapeHtml(p.description) + '</div>';
     html += '<div class="plan-price">' + CURRENCY + parseFloat(p.price).toFixed(2) + '</div>';
@@ -138,33 +153,95 @@ function renderPlans(plans) {
   el.innerHTML = html;
 }
 
-function renderWeekMenu(weeklyMenu) {
-  var el = document.getElementById('weekMenu');
-  if (!weeklyMenu || !weeklyMenu.length) {
-    el.innerHTML = '<div class="empty-state" style="padding:20px;"><p>Weekly menu coming soon</p></div>';
-    return;
-  }
+/* Weekly menu is a two-level accordion: tap a day to expand it, then tap
+   Lunch/Dinner to switch which meal's dishes are shown - instead of the old
+   flat "Lunch: text / Dinner: text" list for every day at once. */
+var expandedDay = null;
+var activeMealTimeByDay = {};
+var lastWeeklyMenu = [];
+var lastWeeklyMenuItems = [];
+
+function buildWeeklyMenuByDay(weeklyMenu, weeklyMenuItems) {
   var byDay = {};
-  weeklyMenu.forEach(function(row) {
-    byDay[row.day_of_week] = byDay[row.day_of_week] || {};
-    byDay[row.day_of_week][row.meal_time] = row.menu_text;
-  });
-  var html = '';
   for (var d = 0; d < 7; d++) {
-    if (!byDay[d]) continue;
-    html += '<div class="week-row"><div class="day">' + DAY_NAMES[d] + '</div><div class="meals">';
-    if (byDay[d].lunch) html += '<div><span class="mt-label">Lunch:</span> ' + escapeHtml(byDay[d].lunch) + '</div>';
-    if (byDay[d].dinner) html += '<div><span class="mt-label">Dinner:</span> ' + escapeHtml(byDay[d].dinner) + '</div>';
-    html += '</div></div>';
+    byDay[d] = { lunch: { items: [], notes: '' }, dinner: { items: [], notes: '' } };
   }
-  el.innerHTML = html || '<div class="empty-state" style="padding:20px;"><p>Weekly menu coming soon</p></div>';
+  (weeklyMenu || []).forEach(function(row) {
+    if (byDay[row.day_of_week]) byDay[row.day_of_week][row.meal_time].notes = row.menu_text || '';
+  });
+  (weeklyMenuItems || []).forEach(function(item) {
+    if (byDay[item.day_of_week]) byDay[item.day_of_week][item.meal_time].items.push(item);
+  });
+  return byDay;
+}
+
+function dayHasContent(dayData) {
+  return dayData.lunch.items.length > 0 || dayData.dinner.items.length > 0 || !!dayData.lunch.notes || !!dayData.dinner.notes;
+}
+
+function renderWeekMenu(weeklyMenu, weeklyMenuItems) {
+  lastWeeklyMenu = weeklyMenu || [];
+  lastWeeklyMenuItems = weeklyMenuItems || [];
+  var el = document.getElementById('weekMenu');
+  var byDay = buildWeeklyMenuByDay(lastWeeklyMenu, lastWeeklyMenuItems);
+
+  var html = '';
+  var anyContent = false;
+  for (var d = 0; d < 7; d++) {
+    var dayData = byDay[d];
+    if (!dayHasContent(dayData)) continue;
+    anyContent = true;
+    var isOpen = expandedDay === d;
+    html += '<div class="week-day' + (isOpen ? ' open' : '') + '">';
+    html += '<button type="button" class="week-day-header" onclick="toggleWeekDay(' + d + ')">' +
+      '<span>' + DAY_NAMES[d] + '</span><i class="fa fa-chevron-' + (isOpen ? 'up' : 'down') + '"></i></button>';
+    if (isOpen) {
+      html += '<div class="week-day-body">' + renderDayBody(d, dayData) + '</div>';
+    }
+    html += '</div>';
+  }
+  el.innerHTML = anyContent ? html : '<div class="empty-state" style="padding:20px;"><p>Weekly menu coming soon</p></div>';
+}
+
+function renderDayBody(d, dayData) {
+  var hasLunch = dayData.lunch.items.length > 0 || !!dayData.lunch.notes;
+  var hasDinner = dayData.dinner.items.length > 0 || !!dayData.dinner.notes;
+  var activeMt = activeMealTimeByDay[d] || (hasLunch ? 'lunch' : 'dinner');
+  activeMealTimeByDay[d] = activeMt;
+
+  var html = '<div class="meal-tabs">';
+  if (hasLunch) html += '<button type="button" class="meal-tab' + (activeMt === 'lunch' ? ' active' : '') + '" onclick="switchMealTime(' + d + ',\'lunch\')">☀️ Lunch</button>';
+  if (hasDinner) html += '<button type="button" class="meal-tab' + (activeMt === 'dinner' ? ' active' : '') + '" onclick="switchMealTime(' + d + ',\'dinner\')">🌙 Dinner</button>';
+  html += '</div>';
+
+  var mealData = dayData[activeMt];
+  html += '<div class="meal-items">';
+  mealData.items.forEach(function(item) {
+    html += '<div class="meal-item-row">' +
+      (item.image_url ? '<img src="' + escapeHtml(item.image_url) + '" alt="">' : '<div class="meal-item-noimg"><i class="fa fa-utensils"></i></div>') +
+      '<span>' + escapeHtml(item.item_name) + '</span></div>';
+  });
+  if (mealData.notes) html += '<div class="meal-notes">' + escapeHtml(mealData.notes) + '</div>';
+  if (!mealData.items.length && !mealData.notes) html += '<div class="meal-empty">Nothing set for this meal yet</div>';
+  html += '</div>';
+  return html;
+}
+
+function toggleWeekDay(d) {
+  expandedDay = (expandedDay === d) ? null : d;
+  renderWeekMenu(lastWeeklyMenu, lastWeeklyMenuItems);
+}
+
+function switchMealTime(d, mt) {
+  activeMealTimeByDay[d] = mt;
+  renderWeekMenu(lastWeeklyMenu, lastWeeklyMenuItems);
 }
 
 fetch('../api/get_meal_plans.php?restaurant_id=' + encodeURIComponent(window.restaurantId) + '&include_menu=1')
   .then(function(r) { return r.json(); })
   .then(function(data) {
     renderPlans(data.success ? (data.data || []) : []);
-    renderWeekMenu(data.success ? (data.weekly_menu || []) : []);
+    renderWeekMenu(data.success ? (data.weekly_menu || []) : [], data.success ? (data.weekly_menu_items || []) : []);
   })
   .catch(function() {
     document.getElementById('plansList').innerHTML = '<div class="empty-state"><i class="fa fa-exclamation-circle"></i><h3>Failed to load plans</h3></div>';

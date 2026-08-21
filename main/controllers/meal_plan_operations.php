@@ -53,6 +53,17 @@ function ensureMealPlanTables($conn) {
         INDEX idx_mp_active (restaurant_id, is_active)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+    try {
+        $col = $conn->query("SHOW COLUMNS FROM meal_plans LIKE 'image_data'");
+        if ($col->rowCount() === 0) {
+            $conn->exec("ALTER TABLE meal_plans
+                ADD COLUMN image_data LONGBLOB DEFAULT NULL,
+                ADD COLUMN image_mime_type VARCHAR(50) DEFAULT NULL");
+        }
+    } catch (PDOException $e) {
+        error_log('ensureMealPlanTables (meal_plans image): ' . $e->getMessage());
+    }
+
     $conn->exec("CREATE TABLE IF NOT EXISTS meal_plan_weekly_menu (
         id INT AUTO_INCREMENT PRIMARY KEY,
         restaurant_id VARCHAR(50) NOT NULL,
@@ -64,6 +75,22 @@ function ensureMealPlanTables($conn) {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY uq_mpwm_cell (restaurant_id, day_of_week, meal_time),
         INDEX idx_mpwm_restaurant (restaurant_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $conn->exec("CREATE TABLE IF NOT EXISTS meal_plan_weekly_menu_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id VARCHAR(50) NOT NULL,
+        day_of_week TINYINT NOT NULL,
+        meal_time ENUM('lunch','dinner') NOT NULL,
+        item_name VARCHAR(150) NOT NULL,
+        image_data LONGBLOB DEFAULT NULL,
+        image_mime_type VARCHAR(50) DEFAULT NULL,
+        sort_order INT NOT NULL DEFAULT 0,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_mpwmi_cell (restaurant_id, day_of_week, meal_time),
+        INDEX idx_mpwmi_restaurant (restaurant_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
@@ -84,6 +111,8 @@ try {
     try {
         $conn->query("SELECT 1 FROM meal_plans LIMIT 1");
         $conn->query("SELECT 1 FROM meal_plan_weekly_menu LIMIT 1");
+        $conn->query("SELECT image_data FROM meal_plans LIMIT 1");
+        $conn->query("SELECT 1 FROM meal_plan_weekly_menu_items LIMIT 1");
     } catch (PDOException $e) {
         ensureMealPlanTables($conn);
     }
@@ -119,6 +148,12 @@ try {
         case 'clear_weekly_menu_cell':
             handleClearWeeklyMenuCell($conn, $restaurant_id);
             break;
+        case 'add_weekly_menu_item':
+            handleAddWeeklyMenuItem($conn, $restaurant_id);
+            break;
+        case 'delete_weekly_menu_item':
+            handleDeleteWeeklyMenuItem($conn, (int)($_POST['itemId'] ?? 0), $restaurant_id);
+            break;
         default:
             throw new Exception('Invalid action');
     }
@@ -133,6 +168,23 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
     exit();
+}
+
+/**
+ * Decodes a data: URI base64 image upload (same convention as
+ * addon_operations.php's addonImageBase64). Returns [bytes, mimeType] or
+ * [null, null] if absent/invalid.
+ */
+function decodeBase64Image($base64Data) {
+    if (empty($base64Data) || !preg_match('/^data:image\/(\w+);base64,(.+)$/', $base64Data, $matches)) {
+        return [null, null];
+    }
+    $decoded = base64_decode($matches[2], true);
+    if ($decoded === false || strlen($decoded) === 0 || strlen($decoded) > 5 * 1024 * 1024) {
+        return [null, null];
+    }
+    $mime = strtolower($matches[1]) === 'jpg' ? 'image/jpeg' : 'image/' . strtolower($matches[1]);
+    return [$decoded, $mime];
 }
 
 function validatePlanFields($planName, $mealScope, $totalCredits, $price) {
@@ -164,8 +216,10 @@ function handleAddPlan($conn, $restaurant_id) {
         throw new Exception('Bonus credits cannot be negative');
     }
 
-    $stmt = $conn->prepare("INSERT INTO meal_plans (restaurant_id, plan_name, description, meal_scope, total_meal_credits, price, bonus_credits, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$restaurant_id, $planName, $description ?: null, $mealScope, $totalCredits, $price, $bonusCredits, $isActive]);
+    list($imageData, $imageMime) = decodeBase64Image($_POST['planImageBase64'] ?? '');
+
+    $stmt = $conn->prepare("INSERT INTO meal_plans (restaurant_id, plan_name, description, meal_scope, total_meal_credits, price, bonus_credits, is_active, image_data, image_mime_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$restaurant_id, $planName, $description ?: null, $mealScope, $totalCredits, $price, $bonusCredits, $isActive, $imageData, $imageMime]);
 
     echo json_encode([
         'success' => true,
@@ -198,8 +252,17 @@ function handleUpdatePlan($conn, $planId, $restaurant_id) {
         throw new Exception('Bonus credits cannot be negative');
     }
 
-    $stmt = $conn->prepare("UPDATE meal_plans SET plan_name = ?, description = ?, meal_scope = ?, total_meal_credits = ?, price = ?, bonus_credits = ?, is_active = ? WHERE id = ? AND restaurant_id = ?");
-    $stmt->execute([$planName, $description ?: null, $mealScope, $totalCredits, $price, $bonusCredits, $isActive, $planId, $restaurant_id]);
+    // Mass assignment protection: only overwrite the photo if a new one was
+    // uploaded this request, same convention auth.php's payment-credential
+    // save uses - otherwise saving unrelated fields would wipe it.
+    list($imageData, $imageMime) = decodeBase64Image($_POST['planImageBase64'] ?? '');
+    if ($imageData !== null) {
+        $stmt = $conn->prepare("UPDATE meal_plans SET plan_name = ?, description = ?, meal_scope = ?, total_meal_credits = ?, price = ?, bonus_credits = ?, is_active = ?, image_data = ?, image_mime_type = ? WHERE id = ? AND restaurant_id = ?");
+        $stmt->execute([$planName, $description ?: null, $mealScope, $totalCredits, $price, $bonusCredits, $isActive, $imageData, $imageMime, $planId, $restaurant_id]);
+    } else {
+        $stmt = $conn->prepare("UPDATE meal_plans SET plan_name = ?, description = ?, meal_scope = ?, total_meal_credits = ?, price = ?, bonus_credits = ?, is_active = ? WHERE id = ? AND restaurant_id = ?");
+        $stmt->execute([$planName, $description ?: null, $mealScope, $totalCredits, $price, $bonusCredits, $isActive, $planId, $restaurant_id]);
+    }
 
     echo json_encode([
         'success' => true,
@@ -297,4 +360,50 @@ function handleClearWeeklyMenuCell($conn, $restaurant_id) {
     $stmt->execute([$restaurant_id, $dayOfWeek, $mealTime]);
 
     echo json_encode(['success' => true, 'message' => 'Cell cleared'], JSON_UNESCAPED_UNICODE);
+}
+
+function handleAddWeeklyMenuItem($conn, $restaurant_id) {
+    $dayOfWeek = (int)($_POST['dayOfWeek'] ?? -1);
+    $mealTime = trim($_POST['mealTime'] ?? '');
+    $itemName = trim($_POST['itemName'] ?? '');
+
+    if ($dayOfWeek < 0 || $dayOfWeek > 6) {
+        throw new Exception('Invalid day of week');
+    }
+    if (!in_array($mealTime, ['lunch', 'dinner'], true)) {
+        throw new Exception('Invalid meal time');
+    }
+    if ($itemName === '') {
+        throw new Exception('Item name is required');
+    }
+
+    list($imageData, $imageMime) = decodeBase64Image($_POST['itemImageBase64'] ?? '');
+
+    $sortStmt = $conn->prepare("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM meal_plan_weekly_menu_items WHERE restaurant_id = ? AND day_of_week = ? AND meal_time = ?");
+    $sortStmt->execute([$restaurant_id, $dayOfWeek, $mealTime]);
+    $sortOrder = (int)$sortStmt->fetchColumn();
+
+    $stmt = $conn->prepare("INSERT INTO meal_plan_weekly_menu_items (restaurant_id, day_of_week, meal_time, item_name, image_data, image_mime_type, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$restaurant_id, $dayOfWeek, $mealTime, $itemName, $imageData, $imageMime, $sortOrder]);
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Item added',
+        'data' => ['id' => $conn->lastInsertId(), 'item_name' => $itemName, 'has_image' => $imageData !== null]
+    ], JSON_UNESCAPED_UNICODE);
+}
+
+function handleDeleteWeeklyMenuItem($conn, $itemId, $restaurant_id) {
+    if ($itemId <= 0) {
+        throw new Exception('Invalid item ID');
+    }
+
+    $stmt = $conn->prepare("DELETE FROM meal_plan_weekly_menu_items WHERE id = ? AND restaurant_id = ?");
+    $stmt->execute([$itemId, $restaurant_id]);
+
+    if ($stmt->rowCount() > 0) {
+        echo json_encode(['success' => true, 'message' => 'Item removed'], JSON_UNESCAPED_UNICODE);
+    } else {
+        throw new Exception('Item not found');
+    }
 }

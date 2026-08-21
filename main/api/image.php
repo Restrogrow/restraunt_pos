@@ -431,6 +431,43 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                     throw $e;
                 }
             }
+        } elseif ($imageType === 'meal_plan' && !empty($imageId)) {
+            // Meal-plan photo shown on the public subscribe page - intentionally
+            // public, no auth, same as business_qr above.
+            try {
+                $stmt = $conn->prepare("SELECT image_data, image_mime_type FROM meal_plans WHERE id = ? LIMIT 1");
+                $stmt->execute([$imageId]);
+                $img = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($img && isValidImageBytes($img['image_data'] ?? null)) {
+                    header('Content-Type: ' . ($img['image_mime_type'] ?? 'image/jpeg'));
+                    header('Content-Length: ' . strlen($img['image_data']));
+                    header('Cache-Control: public, max-age=31536000');
+                    echo $img['image_data'];
+                    exit();
+                }
+                sendPlaceholderSvg('Plan Photo');
+            } catch (PDOException $e) {
+                sendPlaceholderSvg('Plan Photo');
+            }
+        } elseif ($imageType === 'weekly_menu_item' && !empty($imageId)) {
+            // Weekly-menu item photo - also public, shown on the same page.
+            try {
+                $stmt = $conn->prepare("SELECT image_data, image_mime_type FROM meal_plan_weekly_menu_items WHERE id = ? LIMIT 1");
+                $stmt->execute([$imageId]);
+                $img = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($img && isValidImageBytes($img['image_data'] ?? null)) {
+                    header('Content-Type: ' . ($img['image_mime_type'] ?? 'image/jpeg'));
+                    header('Content-Length: ' . strlen($img['image_data']));
+                    header('Cache-Control: public, max-age=31536000');
+                    echo $img['image_data'];
+                    exit();
+                }
+                sendPlaceholderSvg('Dish Photo');
+            } catch (PDOException $e) {
+                sendPlaceholderSvg('Dish Photo');
+            }
         } elseif ($imageType === 'payment_proof' && !empty($imageId)) {
             // Customer payment screenshots are private — require an authenticated
             // admin/staff session for the restaurant that owns the order, unlike

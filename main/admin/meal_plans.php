@@ -167,10 +167,28 @@ try {
         .week-grid .head-cell { font-weight: 700; font-size: 13px; color: #666; padding: 8px 4px; }
         .week-grid .day-label { font-weight: 700; font-size: 13px; color: #1a1b1f; display: flex; align-items: center; padding: 6px 4px; }
         .week-cell { background: #faf8f6; border: 2px solid #e8e0d8; border-radius: 10px; padding: 8px; }
-        .week-cell textarea { width: 100%; min-height: 70px; border: none; background: transparent; font-family: 'Poppins', sans-serif; font-size: 12.5px; resize: vertical; outline: none; }
+        .week-cell textarea { width: 100%; min-height: 44px; border: 1.5px solid #e0e0e0; border-radius: 6px; padding: 6px 8px; background: #fff; font-family: 'Poppins', sans-serif; font-size: 12px; resize: vertical; outline: none; }
         .week-cell .cell-save { margin-top: 6px; width: 100%; }
         .week-cell.dirty { border-color: #e17055; }
         .week-cell .cell-status { font-size: 10px; color: #10b981; margin-top: 4px; display: none; }
+
+        .menu-items-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+        .no-items { font-size: 11.5px; color: #aaa; font-style: italic; padding: 4px 0; }
+        .menu-item-chip { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px 6px; }
+        .menu-item-chip img { width: 30px; height: 30px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+        .item-chip-noimg { width: 30px; height: 30px; border-radius: 6px; background: #f0ebe5; color: #c8b8a8; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+        .menu-item-chip span { flex: 1; font-size: 12px; font-weight: 500; color: #1a1b1f; word-break: break-word; }
+        .item-chip-remove { border: none; background: none; color: #ef4444; cursor: pointer; font-size: 12px; padding: 4px; flex-shrink: 0; }
+
+        .add-item-row { display: flex; gap: 6px; align-items: center; }
+        .add-item-row input[type=text] { flex: 1; padding: 6px 8px; border: 1.5px solid #ddd; border-radius: 6px; font-size: 12px; font-family: 'Poppins', sans-serif; outline: none; }
+        .add-item-photo-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1.5px solid #ddd; border-radius: 6px; background: #fff; color: #666; cursor: pointer; flex-shrink: 0; }
+        .add-item-row .btn-sm { flex-shrink: 0; padding: 6px 10px; }
+        .new-item-preview { margin-top: 4px; }
+
+        .cell-notes-details { margin-top: 8px; }
+        .cell-notes-details summary { font-size: 11px; color: #999; cursor: pointer; }
+        .cell-notes-details textarea { margin-top: 6px; }
     </style>
 </head>
 <body>
@@ -202,7 +220,7 @@ try {
 
         <div class="tab-panel" id="menuPanel">
             <div class="card">
-                <p style="color:#666;font-size:13px;margin-bottom:10px;">One weekly menu is shared by all your plans - write what a customer gets each day. Leave a cell blank and save to clear it.</p>
+                <p style="color:#666;font-size:13px;margin-bottom:10px;">One weekly menu is shared by all your plans - add the dishes (with an optional photo each) a customer gets for lunch and dinner on each day.</p>
                 <div class="week-grid" id="weekGrid">
                     <div class="loading"><i class="fa fa-spinner fa-spin"></i> Loading weekly menu...</div>
                 </div>
@@ -229,6 +247,13 @@ try {
                     <div class="form-group">
                         <label>Description (optional)</label>
                         <textarea id="planDescription" rows="2" placeholder="Shown to customers when browsing plans"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Plan Photo (optional)</label>
+                        <img id="planImagePreview" src="" alt="" style="display:none;width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:8px;border:2px solid #e5e7eb;">
+                        <input type="file" id="planImageInput" accept="image/*">
+                        <div style="font-size:11px;color:#999;margin-top:4px;">Shown on the plan card customers see when browsing plans</div>
                     </div>
 
                     <div class="form-row">
@@ -303,6 +328,22 @@ try {
         var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         var currentDeleteId = null;
         var weeklyMenuData = {}; // key "day_mealtime" -> text
+        var weeklyMenuItems = {}; // key "day_mealtime" -> array of {id, item_name, image_url}
+        var __planImageBase64 = '';
+
+        document.getElementById('planImageInput').addEventListener('change', function() {
+            __planImageBase64 = '';
+            var file = this.files && this.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                __planImageBase64 = e.target.result;
+                var preview = document.getElementById('planImagePreview');
+                preview.src = __planImageBase64;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
 
         function showToast(msg, type) {
             var t = document.getElementById('toast');
@@ -358,6 +399,7 @@ try {
                 var p = plans[i];
                 var active = p.is_active == 1;
                 html += '<div class="plan-card' + (!active ? ' inactive' : '') + '" id="plan-' + p.id + '">';
+                if (p.image_url) html += '<img src="' + escapeHtml(p.image_url) + '" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:10px;">';
                 html += '<div class="plan-name">' + escapeHtml(p.plan_name) + '</div>';
                 html += '<div class="plan-desc">' + escapeHtml(p.description || '') + '</div>';
                 html += '<div class="plan-price">' + CURRENCY + parseFloat(p.price).toFixed(2) + '</div>';
@@ -384,6 +426,10 @@ try {
             document.getElementById('planActive').checked = true;
             document.getElementById('planStatusLabel').textContent = 'Available for purchase';
             document.getElementById('savePlanBtn').innerHTML = '<i class="fa fa-save"></i> Save Plan';
+            __planImageBase64 = '';
+            var preview = document.getElementById('planImagePreview');
+            preview.src = '';
+            preview.style.display = 'none';
             document.getElementById('planModal').classList.add('active');
         }
 
@@ -403,6 +449,15 @@ try {
             document.getElementById('planActive').checked = p.is_active == 1;
             document.getElementById('planStatusLabel').textContent = p.is_active == 1 ? 'Available for purchase' : 'Hidden from customers';
             document.getElementById('savePlanBtn').innerHTML = '<i class="fa fa-save"></i> Update Plan';
+            __planImageBase64 = '';
+            var preview = document.getElementById('planImagePreview');
+            if (p.image_url) {
+                preview.src = p.image_url;
+                preview.style.display = 'block';
+            } else {
+                preview.src = '';
+                preview.style.display = 'none';
+            }
             document.getElementById('planModal').classList.add('active');
         }
 
@@ -436,6 +491,7 @@ try {
             formData.append('price', price);
             formData.append('bonusCredits', document.getElementById('planBonusCredits').value || 0);
             formData.append('isActive', document.getElementById('planActive').checked ? 1 : 0);
+            if (__planImageBase64) formData.append('planImageBase64', __planImageBase64);
             if (isEdit) formData.append('planId', id);
 
             fetch(API_URL, { method: 'POST', body: formData })
@@ -517,6 +573,8 @@ try {
         }
 
         /* ---------- Weekly Menu ---------- */
+        var __newItemImageBase64 = {}; // key "day_mealtime" -> data URL
+
         function loadWeeklyMenu() {
             var grid = document.getElementById('weekGrid');
             grid.innerHTML = '<div class="loading"><i class="fa fa-spinner fa-spin"></i> Loading weekly menu...</div>';
@@ -525,9 +583,15 @@ try {
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     weeklyMenuData = {};
-                    if (data.success && data.weekly_menu) {
-                        data.weekly_menu.forEach(function(row) {
+                    weeklyMenuItems = {};
+                    if (data.success) {
+                        (data.weekly_menu || []).forEach(function(row) {
                             weeklyMenuData[row.day_of_week + '_' + row.meal_time] = row.menu_text;
+                        });
+                        (data.weekly_menu_items || []).forEach(function(item) {
+                            var key = item.day_of_week + '_' + item.meal_time;
+                            if (!weeklyMenuItems[key]) weeklyMenuItems[key] = [];
+                            weeklyMenuItems[key].push(item);
                         });
                     }
                     renderWeekGrid();
@@ -545,14 +609,96 @@ try {
                 ['lunch', 'dinner'].forEach(function(mt) {
                     var key = d + '_' + mt;
                     var text = weeklyMenuData[key] || '';
+                    var items = weeklyMenuItems[key] || [];
+
+                    var itemsHtml = items.map(function(it) {
+                        var thumb = it.image_url
+                            ? '<img src="' + escapeHtml(it.image_url) + '" alt="">'
+                            : '<div class="item-chip-noimg"><i class="fa fa-utensils"></i></div>';
+                        return '<div class="menu-item-chip">' + thumb +
+                            '<span>' + escapeHtml(it.item_name) + '</span>' +
+                            '<button type="button" class="item-chip-remove" onclick="deleteWeeklyMenuItem(' + it.id + ')" title="Remove"><i class="fa fa-times"></i></button>' +
+                        '</div>';
+                    }).join('');
+
                     html += '<div class="week-cell" id="cell-' + key + '">' +
-                        '<textarea id="ta-' + key + '" oninput="markDirty(' + d + ',\'' + mt + '\')" placeholder="e.g. Dal, Roti, Rice, Sabzi, Pickle, Salad">' + escapeHtml(text) + '</textarea>' +
-                        '<button type="button" class="btn btn-primary btn-sm cell-save" onclick="saveCell(' + d + ',\'' + mt + '\')"><i class="fa fa-save"></i> Save</button>' +
-                        '<div class="cell-status" id="status-' + key + '">Saved</div>' +
+                        '<div class="menu-items-list" id="items-' + key + '">' + (itemsHtml || '<div class="no-items">No items yet</div>') + '</div>' +
+                        '<div class="add-item-row">' +
+                            '<input type="text" id="newItemName-' + key + '" placeholder="Item name, e.g. Dal Tadka">' +
+                            '<label class="add-item-photo-btn" title="Add a photo"><i class="fa fa-camera"></i>' +
+                                '<input type="file" accept="image/*" id="newItemImage-' + key + '" style="display:none" onchange="previewNewItemImage(\'' + key + '\')">' +
+                            '</label>' +
+                            '<button type="button" class="btn btn-primary btn-sm" onclick="addWeeklyMenuItem(' + d + ',\'' + mt + '\')"><i class="fa fa-plus"></i></button>' +
+                        '</div>' +
+                        '<div class="new-item-preview" id="newItemPreview-' + key + '" style="display:none;"></div>' +
+                        '<details class="cell-notes-details">' +
+                            '<summary>Notes (optional)</summary>' +
+                            '<textarea id="ta-' + key + '" oninput="markDirty(' + d + ',\'' + mt + '\')" placeholder="Any extra note for this day">' + escapeHtml(text) + '</textarea>' +
+                            '<button type="button" class="btn btn-primary btn-sm cell-save" onclick="saveCell(' + d + ',\'' + mt + '\')"><i class="fa fa-save"></i> Save Note</button>' +
+                            '<div class="cell-status" id="status-' + key + '">Saved</div>' +
+                        '</details>' +
                         '</div>';
                 });
             }
             grid.innerHTML = html;
+        }
+
+        function previewNewItemImage(key) {
+            var input = document.getElementById('newItemImage-' + key);
+            var file = input.files && input.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                __newItemImageBase64[key] = e.target.result;
+                var preview = document.getElementById('newItemPreview-' + key);
+                preview.innerHTML = '<img src="' + e.target.result + '" style="width:32px;height:32px;object-fit:cover;border-radius:6px;">';
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function addWeeklyMenuItem(day, mealTime) {
+            var key = day + '_' + mealTime;
+            var nameInput = document.getElementById('newItemName-' + key);
+            var name = nameInput.value.trim();
+            if (!name) { showToast('Please enter an item name', 'error'); return; }
+
+            var formData = new FormData();
+            formData.append('action', 'add_weekly_menu_item');
+            formData.append('dayOfWeek', day);
+            formData.append('mealTime', mealTime);
+            formData.append('itemName', name);
+            if (__newItemImageBase64[key]) formData.append('itemImageBase64', __newItemImageBase64[key]);
+
+            fetch(API_URL, { method: 'POST', body: formData })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        delete __newItemImageBase64[key];
+                        showToast('Item added', 'success');
+                        loadWeeklyMenu();
+                    } else {
+                        showToast(data.message || 'Failed to add item', 'error');
+                    }
+                })
+                .catch(function() { showToast('Network error. Please try again.', 'error'); });
+        }
+
+        function deleteWeeklyMenuItem(itemId) {
+            var formData = new FormData();
+            formData.append('action', 'delete_weekly_menu_item');
+            formData.append('itemId', itemId);
+
+            fetch(API_URL, { method: 'POST', body: formData })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        loadWeeklyMenu();
+                    } else {
+                        showToast(data.message || 'Failed to remove item', 'error');
+                    }
+                })
+                .catch(function() { showToast('Network error. Please try again.', 'error'); });
         }
 
         function markDirty(day, mealTime) {

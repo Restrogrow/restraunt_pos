@@ -253,8 +253,14 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
         }
     } catch (Exception $e) {
     }
+    }
     // Load website appearance settings (background, logo, brand colors, font) in one query
     // so they can be rendered server-side and applied before first paint (no flash of default colors).
+    // Unconditional (even if $restaurant_id never resolved) - every website
+    // page references these in its <style> block, so leaving them undefined
+    // when no restaurant matches breaks CSS output (empty --primary-red: ;
+    // etc.) and floods error_logs with "Undefined variable" warnings across
+    // the whole customer site, not just this page.
     $logo_shape = 'circle';
     $logo_size = 90;
     $primary_red = '#F70000';
@@ -322,7 +328,6 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $font_family_css = $allowedWebFonts[$font_family];
     // Only request a second Google Font family when it differs from the Poppins link already in <head>
     $font_family_google_param = ($font_family !== 'Poppins') ? str_replace(' ', '+', $font_family) : '';
-}
 
 // Derive phone dial code / expected local number length from the restaurant's country
 // (falls back to India's 10-digit format if the country isn't in the reference list)
