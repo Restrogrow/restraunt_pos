@@ -125,8 +125,13 @@ try {
       $where = '';
       $params = [];
       if ($q !== '') {
-        $where = "WHERE username LIKE :q OR restaurant_name LIKE :q OR restaurant_id LIKE :q";
-        $params[':q'] = "%$q%";
+        // Native prepared statements (PDO::ATTR_EMULATE_PREPARES is false)
+        // don't allow the same named placeholder to repeat, so each LIKE
+        // needs its own :qN bound to the same value.
+        $where = "WHERE username LIKE :q1 OR restaurant_name LIKE :q2 OR restaurant_id LIKE :q3";
+        $params[':q1'] = "%$q%";
+        $params[':q2'] = "%$q%";
+        $params[':q3'] = "%$q%";
       }
 
 
