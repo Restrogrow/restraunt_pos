@@ -20,14 +20,19 @@ if (!mealSubscriptionsFeatureEnabled($conn, $restaurant_id)) {
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
+:root {
+  --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --site-font: <?php echo $font_family_css; ?>;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; min-height: 100vh; overflow-x: hidden; }
+body { font-family: var(--site-font); background: #e8ecf2; color: #1a1b1f; min-height: 100vh; overflow-x: hidden; }
 .phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; background: #fff; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.08); }
 @media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; } <?php if ($host === 'triposhsymmetry.in'): ?>.phone-frame { max-width: 100%; margin: 0; border-radius: 0; }<?php endif; ?> }
 
 .pr-share-header { display: flex; align-items: center; gap: 12px; padding: 16px 12px 12px; border-bottom: 1.5px solid #eee; }
 .pr-share-header h1 { font-size: 18px; font-weight: 700; flex: 1; }
-.back-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #e17055, #d63031); color: #fff; border: none; cursor: pointer; font-size: 20px; flex-shrink: 0; }
+.back-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); color: #fff; border: none; cursor: pointer; font-size: 20px; flex-shrink: 0; }
 
 .content { padding: 14px; }
 .hero { text-align: center; margin-bottom: 18px; }
@@ -41,12 +46,12 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .plan-card { border: 2px solid #e8e0d8; border-radius: 16px; padding: 18px; margin-bottom: 16px; background: linear-gradient(135deg, #fff, #faf8f6); position: relative; overflow: hidden; }
 .plan-card .plan-name { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
 .plan-card .plan-desc { font-size: 12.5px; color: #888; margin-bottom: 10px; }
-.plan-card .plan-price { font-size: 26px; font-weight: 800; color: #d63031; }
+.plan-card .plan-price { font-size: 26px; font-weight: 800; color: var(--dark-red, #d63031); }
 .plan-card .plan-price small { font-size: 13px; font-weight: 500; color: #999; }
 .plan-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 .plan-tag { background: #f0ebe5; color: #8a4a2f; padding: 4px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
 .plan-tag.bonus { background: #fef3c7; color: #92400e; }
-.subscribe-btn { width: 100%; margin-top: 8px; padding: 12px; border: none; border-radius: 10px; background: linear-gradient(135deg, #e17055, #d63031); color: #fff; font-weight: 700; font-size: 14px; font-family: 'Poppins', sans-serif; cursor: pointer; }
+.subscribe-btn { width: 100%; margin-top: 8px; padding: 12px; border: none; border-radius: 10px; background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); color: #fff; font-weight: 700; font-size: 14px; font-family: var(--site-font); cursor: pointer; }
 .subscribe-btn:hover { opacity: 0.92; }
 
 .menu-section { margin-top: 24px; }
@@ -55,7 +60,7 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .week-row:last-child { border-bottom: none; }
 .week-row .day { font-weight: 700; font-size: 12.5px; color: #1a1b1f; }
 .week-row .meals { font-size: 12px; color: #666; line-height: 1.6; }
-.week-row .meals .mt-label { font-weight: 600; color: #e17055; }
+.week-row .meals .mt-label { font-weight: 600; color: var(--primary-red, #e17055); }
 .week-row .meals div { margin-bottom: 2px; }
 </style>
 </head>

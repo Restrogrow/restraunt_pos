@@ -22,21 +22,27 @@ if (!$logged_in_customer) {
 
 $plan_id = isset($_GET['plan_id']) ? (int)$_GET['plan_id'] : 0;
 
-// Payment methods available - same gateway lookup cart.php uses, trimmed to
-// what a subscription purchase needs (Cash + Business QR proof always;
-// PhonePe only once main/api/phonepe_subscription_payment.php - a later
-// piece of this same feature - is wired up).
+// Payment methods available - same gateway lookup cart.php uses (Cash,
+// Business QR proof, and online PhonePe gated on the restaurant's own/platform
+// gateway config, exactly like checkout's $phonepe_configured).
 $business_qr_available = false;
 $business_qr_image_url = '';
+$phonepe_configured = false;
 if (!empty($restaurant_id) && function_exists('getConnection')) {
     try {
         $gwConn = getConnection();
-        $gwStmt = $gwConn->prepare("SELECT id, (business_qr_code_data IS NOT NULL) AS has_business_qr FROM users WHERE restaurant_id = ? LIMIT 1");
+        $gwStmt = $gwConn->prepare("SELECT id, payment_gateway_mode, phonepe_merchant_id, (business_qr_code_data IS NOT NULL) AS has_business_qr FROM users WHERE restaurant_id = ? LIMIT 1");
         $gwStmt->execute([$restaurant_id]);
         $gwRow = $gwStmt->fetch(PDO::FETCH_ASSOC);
         if ($gwRow && (int)$gwRow['has_business_qr'] === 1) {
             $business_qr_available = true;
             $business_qr_image_url = '../api/image.php?type=business_qr&id=' . urlencode($gwRow['id']);
+        }
+        if ($gwRow) {
+            $gwMode = $gwRow['payment_gateway_mode'] ?? 'own';
+            if ($gwMode === 'platform' || ($gwMode === 'own' && !empty($gwRow['phonepe_merchant_id']))) {
+                $phonepe_configured = true;
+            }
         }
     } catch (Exception $e) {
     }
@@ -60,19 +66,24 @@ if (!empty($restaurant_id) && function_exists('getConnection')) {
 <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo urlencode($googleMapsApiKey); ?>&libraries=places&loading=async" async defer></script>
 <?php endif; ?>
 <style>
+:root {
+  --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --site-font: <?php echo $font_family_css; ?>;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; min-height: 100vh; }
+body { font-family: var(--site-font); background: #e8ecf2; color: #1a1b1f; min-height: 100vh; }
 .phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; background: #fff; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.08); }
 @media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; } <?php if ($host === 'triposhsymmetry.in'): ?>.phone-frame { max-width: 100%; margin: 0; border-radius: 0; }<?php endif; ?> }
 
 .pr-share-header { display: flex; align-items: center; gap: 12px; padding: 16px 12px 12px; border-bottom: 1.5px solid #eee; }
 .pr-share-header h1 { font-size: 18px; font-weight: 700; flex: 1; }
-.back-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #e17055, #d63031); color: #fff; border: none; cursor: pointer; font-size: 20px; flex-shrink: 0; }
+.back-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); color: #fff; border: none; cursor: pointer; font-size: 20px; flex-shrink: 0; }
 
 .content { padding: 16px 18px 40px; }
 .plan-summary { border: 2px solid #e8e0d8; border-radius: 14px; padding: 16px; margin-bottom: 20px; background: #faf8f6; }
 .plan-summary .plan-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-.plan-summary .plan-price { font-size: 22px; font-weight: 800; color: #d63031; margin: 6px 0; }
+.plan-summary .plan-price { font-size: 22px; font-weight: 800; color: var(--dark-red, #d63031); margin: 6px 0; }
 .plan-summary .plan-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .plan-tag { background: #f0ebe5; color: #8a4a2f; padding: 4px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
 
@@ -80,9 +91,9 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #555; font-size: 12px; }
 .form-group input, .form-group textarea, .form-group select {
   width: 100%; padding: 11px 12px; border: 1.5px solid #ddd; border-radius: 8px;
-  font-size: 13px; font-family: 'Poppins', sans-serif; outline: none; box-sizing: border-box;
+  font-size: 13px; font-family: var(--site-font); outline: none; box-sizing: border-box;
 }
-.form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #e17055; }
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--primary-red, #e17055); }
 .phone-input-row { display: flex; align-items: center; gap: 6px; }
 .phone-input-row span { color: #666; font-size: 14px; white-space: nowrap; }
 .phone-input-row input { flex: 1; }
@@ -91,9 +102,9 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .qr-block img { width: 160px; height: 160px; object-fit: contain; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
 .qr-block input[type=file] { margin-top: 10px; width: 100%; font-size: 12px; }
 
-.loc-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 14px; border: none; border-radius: 10px; background: #1a3934; color: #fff; font-size: 14px; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; }
+.loc-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 14px; border: none; border-radius: 10px; background: #1a3934; color: #fff; font-size: 14px; font-weight: 600; font-family: var(--site-font); cursor: pointer; }
 .loc-or { text-align: center; margin: 8px 0; font-size: 11px; color: #999; }
-.loc-map-btn { margin-top: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 14px; border: 2px solid #1a3934; border-radius: 10px; background: #fff; color: #1a3934; font-size: 13px; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; }
+.loc-map-btn { margin-top: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 14px; border: 2px solid #1a3934; border-radius: 10px; background: #fff; color: #1a3934; font-size: 13px; font-weight: 600; font-family: var(--site-font); cursor: pointer; }
 .loc-map-preview { display: none; margin-top: 10px; width: 100%; height: 160px; border-radius: 10px; overflow: hidden; border: 2px solid #e0e0e0; }
 .loc-info { display: none; margin-top: 8px; padding: 10px; background: #f0f7f5; border-radius: 8px; font-size: 13px; }
 .loc-info a { color: #1a3934; font-weight: 600; text-decoration: none; }
@@ -106,13 +117,13 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .modal-close { width: 30px; height: 30px; border-radius: 8px; border: none; background: #f5f5f5; cursor: pointer; font-size: 18px; color: #666; }
 .modal-body { padding: 18px 20px; }
 .btn-group { display: flex; gap: 10px; }
-.btn-secondary { flex: 1; padding: 11px; border: 1.5px solid #ddd; border-radius: 8px; background: #fff; color: #333; font-weight: 600; font-size: 13px; font-family: 'Poppins', sans-serif; cursor: pointer; }
-.btn-primary { flex: 1; padding: 11px; border: none; border-radius: 8px; background: linear-gradient(135deg, #e17055, #d63031); color: #fff; font-weight: 600; font-size: 13px; font-family: 'Poppins', sans-serif; cursor: pointer; }
+.btn-secondary { flex: 1; padding: 11px; border: 1.5px solid #ddd; border-radius: 8px; background: #fff; color: #333; font-weight: 600; font-size: 13px; font-family: var(--site-font); cursor: pointer; }
+.btn-primary { flex: 1; padding: 11px; border: none; border-radius: 8px; background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); color: #fff; font-weight: 600; font-size: 13px; font-family: var(--site-font); cursor: pointer; }
 
 .btn-submit {
   width: 100%; padding: 13px; border: none; border-radius: 8px;
-  background: linear-gradient(135deg, #e17055, #d63031); color: #fff;
-  font-weight: 600; font-size: 14px; font-family: 'Poppins', sans-serif; cursor: pointer;
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); color: #fff;
+  font-weight: 600; font-size: 14px; font-family: var(--site-font); cursor: pointer;
 }
 .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 .form-error { color: #ef4444; font-size: 12px; margin-bottom: 12px; display: none; background: #fef2f2; padding: 10px 12px; border-radius: 8px; }
@@ -162,6 +173,7 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
         <label>Payment Method</label>
         <select id="paymentMethod" onchange="onPaymentMethodChange()">
           <option value="Cash">Cash</option>
+          <?php if ($phonepe_configured): ?><option value="UPI / NetBanking">Pay Online (UPI/Cards/NetBanking)</option><?php endif; ?>
           <?php if ($business_qr_available): ?><option value="QR Payment">Pay Online (Scan QR)</option><?php endif; ?>
         </select>
       </div>

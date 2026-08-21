@@ -27,20 +27,25 @@ if (!$logged_in_customer) {
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
+:root {
+  --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --site-font: <?php echo $font_family_css; ?>;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; min-height: 100vh; }
+body { font-family: var(--site-font); background: #e8ecf2; color: #1a1b1f; min-height: 100vh; }
 .phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; background: #fff; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.08); }
 @media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; } <?php if ($host === 'triposhsymmetry.in'): ?>.phone-frame { max-width: 100%; margin: 0; border-radius: 0; }<?php endif; ?> }
 
 .pr-share-header { display: flex; align-items: center; gap: 12px; padding: 16px 12px 12px; border-bottom: 1.5px solid #eee; }
 .pr-share-header h1 { font-size: 18px; font-weight: 700; flex: 1; }
-.back-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #e17055, #d63031); color: #fff; border: none; cursor: pointer; font-size: 20px; flex-shrink: 0; }
+.back-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); color: #fff; border: none; cursor: pointer; font-size: 20px; flex-shrink: 0; }
 
 .content { padding: 14px; }
 .loading { text-align: center; padding: 40px; color: #999; }
 .empty-state { text-align: center; padding: 50px 20px; color: #999; }
 .empty-state i { font-size: 44px; margin-bottom: 14px; opacity: 0.4; }
-.empty-state .browse-btn { margin-top: 14px; display: inline-block; padding: 12px 22px; border-radius: 10px; background: linear-gradient(135deg, #e17055, #d63031); color: #fff; text-decoration: none; font-weight: 600; font-size: 13px; }
+.empty-state .browse-btn { margin-top: 14px; display: inline-block; padding: 12px 22px; border-radius: 10px; background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); color: #fff; text-decoration: none; font-weight: 600; font-size: 13px; }
 
 .sub-card { border: 2px solid #e8e0d8; border-radius: 16px; padding: 18px; margin-bottom: 18px; background: #fff; }
 .sub-card .sub-name { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
@@ -52,12 +57,12 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .sub-status.cancelled { background: #fee2e2; color: #991b1b; }
 
 .credit-bar-wrap { background: #f3f4f6; border-radius: 10px; height: 10px; overflow: hidden; margin: 8px 0 6px; }
-.credit-bar { height: 100%; background: linear-gradient(135deg, #e17055, #d63031); }
+.credit-bar { height: 100%; background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031)); }
 .credit-label { font-size: 12.5px; color: #666; margin-bottom: 14px; }
 .credit-label b { color: #1a1b1f; }
 
 .sub-actions { display: flex; gap: 10px; margin-bottom: 14px; }
-.sub-actions button { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: 600; font-size: 13px; font-family: 'Poppins', sans-serif; cursor: pointer; }
+.sub-actions button { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: 600; font-size: 13px; font-family: var(--site-font); cursor: pointer; }
 .btn-pause { background: #fef3c7; color: #92400e; }
 .btn-resume { background: #d1fae5; color: #065f46; }
 .sub-actions button:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -65,7 +70,7 @@ body { font-family: 'Poppins', sans-serif; background: #e8ecf2; color: #1a1b1f; 
 .skip-section { border-top: 1px solid #f0f0f0; padding-top: 12px; margin-top: 6px; }
 .skip-section .skip-title { font-size: 12.5px; font-weight: 600; color: #555; margin-bottom: 8px; }
 .skip-add-row { display: flex; gap: 8px; margin-bottom: 10px; }
-.skip-add-row input { flex: 1; padding: 9px 10px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 12.5px; font-family: 'Poppins', sans-serif; }
+.skip-add-row input { flex: 1; padding: 9px 10px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 12.5px; font-family: var(--site-font); }
 .skip-add-row button { padding: 9px 14px; border: none; border-radius: 8px; background: #1a3934; color: #fff; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .skip-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .skip-chip { background: #f3f4f6; color: #374151; padding: 5px 10px; border-radius: 16px; font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
@@ -232,6 +237,64 @@ function removeSkip(id, date) {
 }
 
 loadSubscriptions();
+
+/* ── PhonePe return handling: subscribe.php redirects here after payment,
+   either straight back from PhonePe's checkout or (demo mode) with
+   phonepe_demo=1. Poll action=status until it resolves, same pattern
+   cart.php uses for order payments, then refresh the list. ── */
+function checkPhonePeSubscriptionReturn() {
+  var params = new URLSearchParams(window.location.search);
+  var subscriptionId = params.get('subscription_id');
+  var paymentError = params.get('payment_error');
+  var isDemo = params.get('phonepe_demo');
+
+  if (paymentError) {
+    showToast('Payment could not be started. Please try again.', 'error');
+    cleanUrl();
+    return;
+  }
+  if (!subscriptionId) return;
+
+  cleanUrl();
+  showToast(isDemo ? 'Confirming demo payment...' : 'Confirming your payment...', 'success');
+  pollSubscriptionPaymentStatus(subscriptionId, 24, 5000);
+}
+
+function cleanUrl() {
+  var url = new URL(window.location.href);
+  ['subscription_id', 'phonepe_demo', 'transaction_id', 'payment_error', 'code'].forEach(function(k) { url.searchParams.delete(k); });
+  window.history.replaceState({}, document.title, url.pathname + url.search);
+}
+
+function pollSubscriptionPaymentStatus(subscriptionId, retries, intervalMs) {
+  if (retries <= 0) {
+    showToast('Still confirming your payment - check back shortly.', 'error');
+    loadSubscriptions();
+    return;
+  }
+  fetch('phonepe_subscription_payment.php?action=status&restaurant_id=' + encodeURIComponent(window.restaurantId) + '&subscription_id=' + encodeURIComponent(subscriptionId))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success) {
+        setTimeout(function() { pollSubscriptionPaymentStatus(subscriptionId, retries - 1, intervalMs); }, intervalMs);
+        return;
+      }
+      if (data.payment_status === 'Success') {
+        showToast('Payment confirmed! Your subscription is now active.', 'success');
+        loadSubscriptions();
+      } else if (data.payment_status === 'Failed') {
+        showToast('Payment failed. Please try subscribing again.', 'error');
+        loadSubscriptions();
+      } else {
+        setTimeout(function() { pollSubscriptionPaymentStatus(subscriptionId, retries - 1, intervalMs); }, intervalMs);
+      }
+    })
+    .catch(function() {
+      setTimeout(function() { pollSubscriptionPaymentStatus(subscriptionId, retries - 1, intervalMs); }, intervalMs);
+    });
+}
+
+checkPhonePeSubscriptionReturn();
 </script>
 </body>
 </html>
