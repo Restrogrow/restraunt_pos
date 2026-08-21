@@ -1089,6 +1089,27 @@ require_once __DIR__ . '/../config/countries.php';
       }
       return window.prompt(message, defaultValue);
     };
+    // Plain yes/no confirm - unlike showSuperPrompt (a text-input dialog
+    // meant for things like Reset Password), this never asks the admin to
+    // type anything. The toggle handlers below were previously misusing
+    // showSuperPrompt for this, which showed a text box with a mandatory
+    // "Please enter a value" validator on a simple on/off confirmation.
+    const showSuperConfirm = async (message, title = 'Confirm') => {
+      if (window.Swal) {
+        const { isConfirmed } = await Swal.fire({
+          title: title,
+          text: message,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#111827',
+          cancelButtonColor: '#6b7280',
+          confirmButtonText: 'OK',
+          cancelButtonText: 'Cancel'
+        });
+        return isConfirmed;
+      }
+      return window.confirm(message);
+    };
 
     // Dashboard Stats
     async function loadStats(){
@@ -1404,7 +1425,7 @@ require_once __DIR__ . '/../config/countries.php';
     window.togglePaymentGateway = async function(id, currentType){
       const newType = currentType === 'cash_only' ? 'cash_and_gateway' : 'cash_only';
       const label = newType === 'cash_only' ? 'Cash' : 'Payment Gateway';
-      const ok = await showSuperPrompt(`Switch to "${label}" mode for this restaurant?`, 'Confirm');
+      const ok = await showSuperConfirm(`Switch to "${label}" mode for this restaurant?`, 'Confirm');
       if(!ok) return;
       const res = await fetch('api.php?action=updatePaymentGateway', { method:'POST', body: JSON.stringify({id, type: newType}), headers: {'Content-Type': 'application/json'} });
       const data = await res.json();
@@ -1415,7 +1436,7 @@ require_once __DIR__ . '/../config/countries.php';
     window.toggleInstallApp = async function(id, current){
       const newVal = current ? 0 : 1;
       const label = newVal ? 'Show' : 'Hide';
-      const ok = await showSuperPrompt(`Set Install App to "${label}" for this restaurant?`, 'Confirm');
+      const ok = await showSuperConfirm(`Set Install App to "${label}" for this restaurant?`, 'Confirm');
       if(!ok) return;
       const res = await fetch('api.php?action=updateInstallApp', { method:'POST', body: JSON.stringify({id, show_install_app: newVal}), headers: {'Content-Type': 'application/json'} });
       const data = await res.json();
@@ -1426,7 +1447,7 @@ require_once __DIR__ . '/../config/countries.php';
     window.toggleWhatsappOrders = async function(id, current){
       const newVal = current ? 0 : 1;
       const label = newVal ? 'On' : 'Off';
-      const ok = await showSuperPrompt(`Set WhatsApp Orders to "${label}" for this restaurant?`, 'Confirm');
+      const ok = await showSuperConfirm(`Set WhatsApp Orders to "${label}" for this restaurant?`, 'Confirm');
       if(!ok) return;
       const res = await fetch('api.php?action=updateWhatsappOrders', { method:'POST', body: JSON.stringify({id, whatsapp_orders: newVal}), headers: {'Content-Type': 'application/json'} });
       const data = await res.json();
@@ -1437,7 +1458,7 @@ require_once __DIR__ . '/../config/countries.php';
     window.toggleGalleryEnabled = async function(id, current){
       const newVal = current ? 0 : 1;
       const label = newVal ? 'Allowed' : 'Blocked';
-      const ok = await showSuperPrompt(`Set Photo Gallery to "${label}" for this restaurant?`, 'Confirm');
+      const ok = await showSuperConfirm(`Set Photo Gallery to "${label}" for this restaurant?`, 'Confirm');
       if(!ok) return;
       const res = await fetch('api.php?action=updatePhotoGalleryEnabled', { method:'POST', body: JSON.stringify({id, photo_gallery_enabled: newVal}), headers: {'Content-Type': 'application/json'} });
       const data = await res.json();
@@ -1448,7 +1469,7 @@ require_once __DIR__ . '/../config/countries.php';
     window.toggleMealSubscriptionsEnabled = async function(id, current){
       const newVal = current ? 0 : 1;
       const label = newVal ? 'Allowed' : 'Blocked';
-      const ok = await showSuperPrompt(`Set Meal Subscriptions to "${label}" for this restaurant?`, 'Confirm');
+      const ok = await showSuperConfirm(`Set Meal Subscriptions to "${label}" for this restaurant?`, 'Confirm');
       if(!ok) return;
       const res = await fetch('api.php?action=updateMealSubscriptionsEnabled', { method:'POST', body: JSON.stringify({id, meal_subscriptions_enabled: newVal}), headers: {'Content-Type': 'application/json'} });
       const data = await res.json();
@@ -1829,7 +1850,7 @@ require_once __DIR__ . '/../config/countries.php';
     // Manually mark payment link as paid/failed
     window.markPaymentLink = async function(id, status) {
       const label = status === 'Success' ? 'paid' : 'failed';
-      const ok = await showSuperPrompt(`Mark this payment link as "${label}"?`, 'Confirm');
+      const ok = await showSuperConfirm(`Mark this payment link as "${label}"?`, 'Confirm');
       if (!ok) return;
 
       try {
