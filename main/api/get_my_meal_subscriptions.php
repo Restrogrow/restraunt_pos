@@ -63,7 +63,7 @@ try {
     }
 
     $stmt = $conn->prepare("SELECT id, meal_plan_id, plan_name_snapshot, meal_scope_snapshot, credits_total, credits_used,
-            amount_paid, delivery_address, delivery_phone, status, paused_at, created_at
+            amount_paid, delivery_address, delivery_phone, status, paused_at, start_date, created_at
         FROM customer_meal_subscriptions
         WHERE restaurant_id = ? AND customer_id = ?
         ORDER BY created_at DESC");

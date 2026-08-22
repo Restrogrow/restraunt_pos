@@ -170,6 +170,11 @@ body { font-family: var(--site-font); background: #e8ecf2; color: #1a1b1f; min-h
       </div>
 
       <div class="form-group">
+        <label>Start Date *</label>
+        <input type="date" id="startDate" required>
+      </div>
+
+      <div class="form-group">
         <label>Payment Method</label>
         <select id="paymentMethod" onchange="onPaymentMethodChange()">
           <option value="Cash">Cash</option>
@@ -212,6 +217,18 @@ function showFormError(msg) {
 function hideFormError() {
   document.getElementById('formError').style.display = 'none';
 }
+
+function tomorrowStr() {
+  var d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+(function() {
+  var startInput = document.getElementById('startDate');
+  var tomorrow = tomorrowStr();
+  startInput.min = tomorrow;
+  startInput.value = tomorrow;
+})();
 
 function onPaymentMethodChange() {
   var qrBlock = document.getElementById('qrBlock');
@@ -437,9 +454,12 @@ document.getElementById('subscribeForm').addEventListener('submit', function(e) 
   var addressLat = document.getElementById('deliveryAddressLat').value;
   var addressLng = document.getElementById('deliveryAddressLng').value;
   var paymentMethod = document.getElementById('paymentMethod').value;
+  var startDate = document.getElementById('startDate').value;
 
   if (!phone) { showFormError('Please enter a delivery phone number'); return; }
   if (!address) { showFormError('Please enter your delivery address (search it, use current location, or pick it on the map)'); return; }
+  if (!startDate) { showFormError('Please choose a start date'); return; }
+  if (startDate < document.getElementById('startDate').min) { showFormError('Start date cannot be earlier than tomorrow'); return; }
   if (paymentMethod === 'QR Payment' && !__paymentProofBase64) { showFormError('Please upload a screenshot of your payment'); return; }
 
   var btn = document.getElementById('submitBtn');
@@ -454,6 +474,7 @@ document.getElementById('subscribeForm').addEventListener('submit', function(e) 
   fd.append('deliveryLat', addressLat);
   fd.append('deliveryLng', addressLng);
   fd.append('paymentMethod', paymentMethod);
+  fd.append('startDate', startDate);
   if (__paymentProofBase64) fd.append('paymentProofBase64', __paymentProofBase64);
 
   fetch('../controllers/meal_subscription_operations.php', { method: 'POST', body: fd })

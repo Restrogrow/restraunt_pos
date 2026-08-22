@@ -127,6 +127,17 @@ function handleCreateSubscription($conn, $restaurant_id, $customer_id) {
         throw new Exception('Invalid payment method');
     }
 
+    // Customer-chosen delivery start date - defaults to tomorrow (matching
+    // subscribe.php's pre-filled date input) when missing/invalid, and can
+    // never be earlier than tomorrow so kitchen isn't asked to start same-day.
+    $tomorrow = new DateTime('tomorrow');
+    $startDateInput = trim($_POST['startDate'] ?? '');
+    $startDateObj = DateTime::createFromFormat('Y-m-d', $startDateInput);
+    if (!$startDateObj || $startDateObj->format('Y-m-d') !== $startDateInput || $startDateObj < $tomorrow) {
+        $startDateObj = $tomorrow;
+    }
+    $startDate = $startDateObj->format('Y-m-d');
+
     $planStmt = $conn->prepare("SELECT * FROM meal_plans WHERE id = ? AND restaurant_id = ? AND is_active = 1 LIMIT 1");
     $planStmt->execute([$mealPlanId, $restaurant_id]);
     $plan = $planStmt->fetch(PDO::FETCH_ASSOC);
@@ -155,9 +166,9 @@ function handleCreateSubscription($conn, $restaurant_id, $customer_id) {
     $conn->beginTransaction();
     try {
         $stmt = $conn->prepare("INSERT INTO customer_meal_subscriptions
-            (restaurant_id, customer_id, meal_plan_id, plan_name_snapshot, meal_scope_snapshot, credits_total, credits_used, amount_paid, delivery_address, delivery_phone, delivery_lat, delivery_lng, status)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$restaurant_id, $customer_id, $mealPlanId, $plan['plan_name'], $plan['meal_scope'], $totalCredits, $amountPaid, $deliveryAddress, $deliveryPhone, $deliveryLat, $deliveryLng, $status]);
+            (restaurant_id, customer_id, meal_plan_id, plan_name_snapshot, meal_scope_snapshot, credits_total, credits_used, amount_paid, delivery_address, delivery_phone, delivery_lat, delivery_lng, status, start_date)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$restaurant_id, $customer_id, $mealPlanId, $plan['plan_name'], $plan['meal_scope'], $totalCredits, $amountPaid, $deliveryAddress, $deliveryPhone, $deliveryLat, $deliveryLng, $status, $startDate]);
         $subscriptionId = (int)$conn->lastInsertId();
 
         // Optional Business-QR payment screenshot, same base64 convention as

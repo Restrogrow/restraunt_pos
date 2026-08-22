@@ -122,6 +122,7 @@ if (!function_exists('ensureMealSubscriptionTables')) {
             delivery_lng DECIMAL(10, 7) DEFAULT NULL,
             status ENUM('pending_payment','active','paused','completed','cancelled') NOT NULL DEFAULT 'pending_payment',
             paused_at DATETIME DEFAULT NULL,
+            start_date DATE DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_cms_restaurant (restaurant_id),
@@ -140,6 +141,20 @@ if (!function_exists('ensureMealSubscriptionTables')) {
             }
         } catch (PDOException $e) {
             error_log('ensureMealSubscriptionTables (delivery_lat/lng): ' . $e->getMessage());
+        }
+
+        // Self-heal onto tables created before the customer-chosen start
+        // date existed. NULL means "no start restriction" - deliveries
+        // generate from day one, matching every subscription created before
+        // this feature (and staff-created ones, which still don't collect it).
+        try {
+            $col = $conn->query("SHOW COLUMNS FROM customer_meal_subscriptions LIKE 'start_date'");
+            if ($col->rowCount() === 0) {
+                $conn->exec("ALTER TABLE customer_meal_subscriptions
+                    ADD COLUMN start_date DATE DEFAULT NULL");
+            }
+        } catch (PDOException $e) {
+            error_log('ensureMealSubscriptionTables (start_date): ' . $e->getMessage());
         }
 
         $conn->exec("CREATE TABLE IF NOT EXISTS meal_subscription_skip_dates (

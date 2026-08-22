@@ -147,6 +147,9 @@ function renderSubscriptions(subs) {
     html += '<span class="sub-status ' + s.status + '">' + (statusLabels[s.status] || s.status) + '</span>';
     html += '<div class="credit-bar-wrap"><div class="credit-bar" style="width:' + pct + '%"></div></div>';
     html += '<div class="credit-label"><b>' + s.credits_remaining + '</b> of ' + s.credits_total + ' meals remaining &middot; ' + (scopeLabels[s.meal_scope_snapshot] || s.meal_scope_snapshot) + '</div>';
+    if (s.start_date && s.start_date > todayStr()) {
+      html += '<div class="credit-label" style="margin-top:2px;"><i class="fa fa-calendar"></i> Starts ' + escapeHtml(s.start_date) + '</div>';
+    }
 
     if (s.status === 'active' || s.status === 'paused') {
       html += '<div class="sub-actions">';

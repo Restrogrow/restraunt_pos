@@ -108,6 +108,15 @@ if (!function_exists('generateSubscriptionDeliveriesForDate')) {
 
         foreach ($subscriptions as $sub) {
             try {
+                // Customer picked a future start date at subscribe time -
+                // don't generate deliveries before it (NULL/blank means no
+                // restriction, e.g. subscriptions created before this field
+                // existed or by staff via the admin panel).
+                if (!empty($sub['start_date']) && $dateStr < $sub['start_date']) {
+                    $summary['skipped_date']++;
+                    continue;
+                }
+
                 $skipStmt = $conn->prepare("SELECT 1 FROM meal_subscription_skip_dates WHERE subscription_id = ? AND skip_date = ? LIMIT 1");
                 $skipStmt->execute([$sub['id'], $dateStr]);
                 if ($skipStmt->fetch()) {
