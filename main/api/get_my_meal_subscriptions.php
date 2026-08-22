@@ -62,6 +62,11 @@ try {
         exit();
     }
 
+    // Self-heal columns (e.g. start_date) the same way the subscribe/admin
+    // controllers do - this page can be the first hit on a fresh deploy,
+    // before any of those other entry points has had a chance to run.
+    ensureMealSubscriptionTables($conn);
+
     $stmt = $conn->prepare("SELECT id, meal_plan_id, plan_name_snapshot, meal_scope_snapshot, credits_total, credits_used,
             amount_paid, delivery_address, delivery_phone, status, paused_at, start_date, created_at
         FROM customer_meal_subscriptions
