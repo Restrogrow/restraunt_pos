@@ -65,6 +65,8 @@ $enable_dinein = 1;
 $cod_enabled = 1;
 $photo_gallery_enabled = 0;
 $meal_subscriptions_enabled = 0;
+$show_pan_no = 0;
+$pan_no = '';
 $restaurant_custom_domain = '';
 $restaurant_embed_enabled = false;
  
@@ -112,7 +114,9 @@ try {
         
         require_once __DIR__ . '/../config/translate_utils.php';
         ensureLanguageColumns($conn, $restaurant_id);
-        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, photo_gallery_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled FROM users WHERE id = ? LIMIT 1");
+        require_once __DIR__ . '/../config/pan_helpers.php';
+        ensurePanColumns($conn);
+        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, photo_gallery_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled, show_pan_no, pan_no FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $userRow = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($userRow) {
@@ -186,6 +190,8 @@ try {
             $cod_enabled = isset($userRow['cod_enabled']) ? (int)$userRow['cod_enabled'] : 1;
             $photo_gallery_enabled = isset($userRow['photo_gallery_enabled']) ? (int)$userRow['photo_gallery_enabled'] : 0;
             $enable_language = isset($userRow['enable_language']) ? (int)$userRow['enable_language'] : 1;
+            $show_pan_no = isset($userRow['show_pan_no']) ? (int)$userRow['show_pan_no'] : 0;
+            $pan_no = $userRow['pan_no'] ?? '';
             // Force English when language support is disabled
             if (!$enable_language) {
                 $language = 'en';
@@ -369,6 +375,8 @@ try {
     window.enableTakeaway = <?php echo json_encode((int)$enable_takeaway, JSON_HEX_TAG); ?>;
     window.enableDinein = <?php echo json_encode((int)$enable_dinein, JSON_HEX_TAG); ?>;
     window.codEnabled = <?php echo json_encode((int)$cod_enabled, JSON_HEX_TAG); ?>;
+    window.showPanNo = <?php echo json_encode((bool)$show_pan_no, JSON_HEX_TAG); ?>;
+    window.panNo = <?php echo json_encode($pan_no, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     localStorage.setItem('system_currency', window.globalCurrencySymbol);
     window.userTimezone = <?php echo json_encode($timezone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     window.userLanguage = <?php echo json_encode($language, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
@@ -4221,6 +4229,24 @@ function toggleGatewayMode() {
                     <div class="form-group" style="flex:1;margin-bottom:0;">
                       <label for="taxPercentInput" style="font-size:12px;color:#6b7280;">Tax Percent (%)</label>
                       <input type="number" id="taxPercentInput" class="form-control" step="0.01" min="0" max="100" placeholder="e.g. 5" value="<?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$tax_percent, 2), '0'), '.')); ?>">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:8px;">
+                    <span class="material-symbols-rounded">badge</span>
+                    Show PAN No on Bill
+                    <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
+                      <input type="checkbox" id="showPanNoToggle" <?php echo $show_pan_no ? "checked" : ""; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
+                      <span style="font-size:13px;font-weight:500;color:#374151;" id="showPanNoLabel"><?php echo $show_pan_no ? 'Enabled' : 'Disabled'; ?></span>
+                    </label>
+                  </label>
+                  <p style="font-size:12px;color:#6b7280;margin-top:4px;">Turn on to print your PAN number on the customer bill.</p>
+                  <div class="row" style="display:flex;gap:12px;margin-top:10px;">
+                    <div class="form-group" style="flex:1;margin-bottom:0;">
+                      <label for="panNoInput" style="font-size:12px;color:#6b7280;">PAN No</label>
+                      <input type="text" id="panNoInput" class="form-control" maxlength="20" placeholder="e.g. ABCDE1234F" value="<?php echo htmlspecialchars($pan_no); ?>">
                     </div>
                   </div>
                 </div>

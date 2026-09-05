@@ -5490,9 +5490,11 @@ window.printOrder = async function(orderId) {
       address: '',
       phone: '',
       email: '',
-      business_qr_code_path: ''
+      business_qr_code_path: '',
+      showPanNo: false,
+      panNo: ''
     };
-    
+
     try {
       const infoRes = await fetch('admin/get_session.php');
       const infoData = await infoRes.json();
@@ -5504,6 +5506,8 @@ window.printOrder = async function(orderId) {
         restaurantInfo.phone = infoData.data.phone || '';
         restaurantInfo.email = infoData.data.email || '';
         restaurantInfo.business_qr_code_path = infoData.data.business_qr_code_path || '';
+        restaurantInfo.showPanNo = infoData.data.show_pan_no == 1 || infoData.data.show_pan_no === '1';
+        restaurantInfo.panNo = infoData.data.pan_no || '';
       }
     } catch (e) {
       console.warn('Could not load restaurant info:', e);
@@ -5612,6 +5616,7 @@ window.printOrder = async function(orderId) {
         <div class="restaurant-name">${escapeHtml(restaurantInfo.name)}</div>
         ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
         ${restaurantInfo.phone ? `<div class="restaurant-details">Mob: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
+        ${restaurantInfo.showPanNo && restaurantInfo.panNo ? `<div class="restaurant-details">PAN: ${escapeHtml(restaurantInfo.panNo)}</div>` : ''}
       </div>
 
       <div class="bill-meta">
