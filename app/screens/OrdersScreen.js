@@ -37,7 +37,7 @@ function formatDisplayDate(date, isToday, isYesterday) {
   return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
-export default function OrdersScreen() {
+export default function OrdersScreen({ navigation }) {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const currency = user?.currency_symbol || '₹';
@@ -174,7 +174,10 @@ export default function OrdersScreen() {
           renderItem={({ item }) => {
             const next = isToday ? NEXT_STATUS[item.order_status] : null;
             return (
-              <View style={[styles.card, shadow.sm]}>
+              <Pressable
+                style={({ pressed }) => [styles.card, shadow.sm, pressed && { opacity: 0.96 }]}
+                onPress={() => navigation.navigate('OrderDetail', { order: item })}
+              >
                 <View style={styles.cardTop}>
                   <View>
                     <Text style={styles.orderNumber}>{item.order_number || `#${item.id}`}</Text>
@@ -211,7 +214,7 @@ export default function OrdersScreen() {
                     </View>
                   )}
                 </View>
-              </View>
+              </Pressable>
             );
           }}
         />

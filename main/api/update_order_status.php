@@ -122,6 +122,7 @@ try {
     }
     
 } catch (Exception $e) {
+    error_log('update_order_status.php: ' . $e->getMessage() . ' | orderId=' . ($orderId ?? '?') . ' status=' . ($status ?? '?'));
     http_response_code(500);
     echo json_encode([
         'success' => false,

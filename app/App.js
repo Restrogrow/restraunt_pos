@@ -1,5 +1,6 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -19,6 +20,7 @@ import { colors } from './theme';
 import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import OrdersScreen from './screens/OrdersScreen';
+import OrderDetailScreen from './screens/OrderDetailScreen';
 import MenuScreen from './screens/MenuScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -26,6 +28,19 @@ import SettingsScreen from './screens/SettingsScreen';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const Tab = createBottomTabNavigator();
+const OrdersStackNav = createNativeStackNavigator();
+
+// Orders tab is its own stack so tapping an order card can push a detail
+// screen (with a real back button/gesture) instead of the tab just
+// re-rendering in place.
+function OrdersStack() {
+  return (
+    <OrdersStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <OrdersStackNav.Screen name="OrdersList" component={OrdersScreen} />
+      <OrdersStackNav.Screen name="OrderDetail" component={OrderDetailScreen} />
+    </OrdersStackNav.Navigator>
+  );
+}
 
 function RootNavigator() {
   const { user, checkingSession } = useAuth();
@@ -51,7 +66,7 @@ function RootNavigator() {
       }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Orders" component={OrdersScreen} />
+      <Tab.Screen name="Orders" component={OrdersStack} />
       <Tab.Screen name="Menu" component={MenuScreen} />
       <Tab.Screen name="Reports" component={ReportsScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
