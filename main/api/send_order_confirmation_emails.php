@@ -19,8 +19,9 @@
  * so email latency is fully decoupled from the customer-facing request
  * regardless of what the hosting/proxy layer does with response flushing.
  *
- * Restricted to loopback requests only — this isn't meant to be a public
- * endpoint, just an internal dispatch target.
+ * Access is gated by a shared token (internalDispatchToken() in
+ * order_confirmation.php), not by source IP — see that function's comment
+ * for why an IP/loopback check doesn't hold up behind a CDN.
  */
 
 // The caller deliberately disconnects almost immediately (that's the whole
@@ -31,20 +32,14 @@ ignore_user_abort(true);
 
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true);
-
-$remote = $_SERVER['REMOTE_ADDR'] ?? '';
-if (!in_array($remote, ['127.0.0.1', '::1'], true)) {
-    http_response_code(403);
-    exit();
-}
-
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/order_confirmation.php';
 require_once __DIR__ . '/../config/email_config.php';
 
 $orderId = (int)($_POST['order_id'] ?? 0);
-if (!$orderId) {
-    http_response_code(400);
+$token = $_POST['token'] ?? '';
+if (!$orderId || !$token || !hash_equals(internalDispatchToken($orderId), $token)) {
+    http_response_code(403);
     exit();
 }
 

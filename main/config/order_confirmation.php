@@ -114,6 +114,30 @@ if (!function_exists('fireOrderConfirmedActions')) {
     }
 }
 
+if (!function_exists('internalDispatchToken')) {
+    /**
+     * Shared secret for send_order_confirmation_emails.php, verifying the
+     * request genuinely came from dispatchOrderConfirmationEmails() below
+     * and not just anyone hitting the URL to spam emails.
+     *
+     * Deliberately NOT an IP/loopback check — production sits behind a CDN,
+     * so a self-call to the public domain doesn't necessarily arrive at the
+     * origin with REMOTE_ADDR still showing 127.0.0.1, and forcing the
+     * connection to 127.0.0.1 directly risks breaking on TLS/SNI or
+     * HTTP->HTTPS redirects depending on the host's exact setup — both
+     * unverifiable without live access to it. A token check works
+     * regardless of how many proxies sit in between.
+     *
+     * Derived from SMTP_PASSWORD (already required to exist — see
+     * config/email_config.php) rather than a new .env var, so there's
+     * nothing extra to configure on deploy.
+     */
+    function internalDispatchToken($orderId) {
+        require_once __DIR__ . '/env_loader.php';
+        return hash('sha256', 'order-email-dispatch|' . $orderId . '|' . env('SMTP_PASSWORD', ''));
+    }
+}
+
 if (!function_exists('dispatchOrderConfirmationEmails')) {
     /**
      * Fire-and-forget: hands off to send_order_confirmation_emails.php over
@@ -149,7 +173,10 @@ if (!function_exists('dispatchOrderConfirmationEmails')) {
 
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(['order_id' => $orderId]));
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+                'order_id' => $orderId,
+                'token' => internalDispatchToken($orderId),
+            ]));
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT_MS, 300);
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 300);
