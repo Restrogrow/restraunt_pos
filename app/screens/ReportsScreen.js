@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
 import StatCard from '../components/StatCard';
@@ -9,10 +9,21 @@ import { useAuth } from '../context/AuthContext';
 import { useApiData } from '../hooks/useApiData';
 import { colors, font, radius, shadow, spacing } from '../theme';
 
+const PERIODS = [
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: '7 Days' },
+  { key: 'month', label: '30 Days' },
+  { key: 'year', label: '12 Months' },
+];
+
 export default function ReportsScreen() {
   const { user } = useAuth();
-  const fetcher = useCallback(() => apiGet('/api/get_sales_report.php?period=today'), []);
-  const { data, loading, refreshing, error, refresh } = useApiData(fetcher, { pollInterval: 30000 });
+  const [period, setPeriod] = useState('today');
+  const fetcher = useCallback(() => apiGet('/api/get_sales_report.php?period=' + period), [period]);
+  // Only poll while looking at "Today" — older periods aren't changing live.
+  const { data, loading, refreshing, error, refresh } = useApiData(fetcher, {
+    pollInterval: period === 'today' ? 30000 : 0,
+  });
   const currency = user?.currency_symbol || '₹';
 
   const summary = data?.summary || {};
@@ -20,7 +31,22 @@ export default function ReportsScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader eyebrow="Performance" title="Today's Report" />
+      <ScreenHeader eyebrow="Performance" title="Report" />
+
+      <View style={styles.periodRow}>
+        {PERIODS.map((p) => {
+          const active = p.key === period;
+          return (
+            <Pressable
+              key={p.key}
+              style={[styles.periodChip, active && styles.periodChipActive]}
+              onPress={() => setPeriod(p.key)}
+            >
+              <Text style={[styles.periodChipText, active && styles.periodChipTextActive]}>{p.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       {loading ? (
         <LoadingState />
@@ -73,11 +99,11 @@ export default function ReportsScreen() {
           ) : (
             <View style={styles.list}>
               {topItems.map((item, i) => (
-                <View key={item.id ?? i} style={[styles.itemRow, shadow.sm]}>
+                <View key={item.item_name ?? i} style={[styles.itemRow, shadow.sm]}>
                   <View style={styles.rankWrap}>
                     <Text style={styles.rank}>{i + 1}</Text>
                   </View>
-                  <Text style={styles.itemName} numberOfLines={1}>{item.item_name_en || item.name}</Text>
+                  <Text style={styles.itemName} numberOfLines={1}>{item.item_name || 'Unnamed item'}</Text>
                   <View style={styles.soldChip}>
                     <Ionicons name="flame" size={12} color={colors.primary} />
                     <Text style={styles.soldText}>{item.total_quantity ?? item.quantity_sold ?? 0} sold</Text>
@@ -94,15 +120,41 @@ export default function ReportsScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg },
+  periodRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    marginTop: -spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  periodChip: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    paddingVertical: 10,
+    ...shadow.sm,
+  },
+  periodChipActive: {
+    backgroundColor: colors.primary,
+  },
+  periodChipText: {
+    fontFamily: font.semiBold,
+    fontSize: 12.5,
+    color: colors.inkSoft,
+  },
+  periodChipTextActive: {
+    color: '#fff',
+  },
   content: {
     padding: spacing.xl,
+    paddingTop: spacing.sm,
     paddingBottom: 120,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
-    marginTop: -spacing.xl,
     marginBottom: spacing.lg,
   },
   sectionHead: {

@@ -1,6 +1,5 @@
+<?php require_once __DIR__ . '/header.php'; ?>
 <?php
-require_once __DIR__ . '/../config/session_config.php';
-startSecureSession(true);
 require_once __DIR__ . '/../db_connection.php';
 
 $orderNumber = $_POST['order_number'] ?? $_GET['order_number'] ?? '';
@@ -49,23 +48,84 @@ $statusLabels = [
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<base href="<?php echo $website_base_href; ?>">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Track Your Order</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta name="restaurant-id" content="<?php echo htmlspecialchars($restaurant_id ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+<title>Track Order - <?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></title>
+<link rel="icon" href="<?php echo htmlspecialchars($favicon_href ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800<?php echo $font_family_google_param ? '&family=' . $font_family_google_param . ':wght@300;400;500;600;700' : ''; ?>&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0">
 <style>
+:root {
+  --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --primary-yellow: <?php echo htmlspecialchars($primary_yellow, ENT_QUOTES, 'UTF-8'); ?>;
+  --site-font: <?php echo $font_family_css; ?>;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-    font-family: 'Inter', sans-serif;
-    background: #f8fafc;
-    color: #1a1b1f;
-    min-height: 100vh;
-    padding: 16px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 48px;
+  font-family: var(--site-font), 'Inter', sans-serif;
+  background: #e8ecf2;
+  color: #1a1b1f;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.phone-frame {
+  max-width: 425px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  box-shadow: 0 0 40px rgba(0,0,0,0.08);
+}
+@media (min-width: 768px) {
+  .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; }
+}
+.bg-wrapper {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.pr-share-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px 12px;
+  border-bottom: 1.5px solid #ccc;
+}
+.back-btn-cmon {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
+  color: #fff; border: none; cursor: pointer; font-size: 22px;
+  flex-shrink: 0;
+}
+.header-brand {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1b1f;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.header-actions {
+  display: flex; align-items: center; gap: 8px;
+}
+.header-action-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
+  color: #fff; border: none; cursor: pointer; font-size: 18px;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.content {
+  flex: 1;
+  padding: 12px;
+  padding-bottom: 40px;
 }
 .container { max-width: 440px; width: 100%; }
 .card {
@@ -148,7 +208,18 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
 </style>
 </head>
 <body>
-<div class="container">
+<div class="phone-frame">
+  <div class="bg-wrapper">
+    <div class="pr-share-header">
+      <button class="back-btn-cmon" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">arrow_back</span></button>
+      <span class="header-brand"><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></span>
+      <div class="header-actions">
+        <button class="header-action-btn" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'"><span class="material-symbols-rounded">restaurant_menu</span></button>
+        <button class="header-action-btn" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">home</span></button>
+      </div>
+    </div>
+    <div class="content">
+    <div class="container">
     <?php if (!$order): ?>
         <div class="card" style="text-align:center;padding-top:40px;">
             <span class="material-symbols-rounded" style="font-size:48px;color:#1a3934;">search</span>
@@ -293,6 +364,9 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
 
         <p style="text-align:center;font-size:11px;color:#9ca3af;margin-bottom:24px;">Updates automatically every 20 seconds</p>
     <?php endif; ?>
+    </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -484,6 +558,28 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 }
             });
     }, 20000);
+})();
+
+// Keep the embedding iframe sized to this page's actual content — same
+// pattern cart.php/menu.php use, so this page fits the frame like every
+// other page instead of getting clipped or leaving dead space.
+(function() {
+  function getContentHeight() {
+    return document.body.scrollHeight;
+  }
+  function sendHeight() {
+    var h = getContentHeight();
+    try { window.parent.postMessage({ type: 'rg-embed-resize', height: h }, '*'); } catch(e) {}
+  }
+  sendHeight();
+  setTimeout(sendHeight, 300);
+  setTimeout(sendHeight, 1000);
+  if (typeof ResizeObserver !== 'undefined') {
+    try {
+      var ro = new ResizeObserver(function(){ sendHeight(); });
+      ro.observe(document.body);
+    } catch(e){}
+  }
 })();
 </script>
 </body>
