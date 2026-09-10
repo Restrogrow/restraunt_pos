@@ -7370,16 +7370,24 @@ async function initiateSubscriptionPayment() {
   }
 }
 
-function pollPaymentStatus(transactionId) {
-  let attempts = 0;
-  const maxAttempts = 30; // Poll for ~2.5 minutes
-  const interval = setInterval(async () => {
+// Self-driving: no "still pending" dead end that waits on the user to click
+// something. Fast checks for ~2.5 min, then automatically drops to a slower
+// background check for another ~10 min (same two-phase idea cart.php uses
+// for order payments) — it keeps resolving itself for as long as PhonePe
+// could plausibly still be confirming a UPI payment. Success/failure end
+// the poll immediately either way.
+function pollPaymentStatus(transactionId, attempts, intervalMs) {
+  attempts = attempts || 0;
+  intervalMs = intervalMs || 5000;
+  const fastPhaseLimit = 30; // ~2.5 min at 5s
+  const slowPhaseLimit = 70; // + ~10 min at 15s
+
+  setTimeout(async () => {
     attempts++;
     try {
       const resp = await fetch('../api/subscription_payment.php?action=checkPaymentStatus&transaction_id=' + encodeURIComponent(transactionId));
       const data = await resp.json();
       if (data.success && data.payment_status === 'success') {
-        clearInterval(interval);
         showPaymentStatus(
           '<div style="text-align:center;">'
           + '<div style="font-size:3rem;margin-bottom:0.5rem;">✅</div>'
@@ -7389,42 +7397,56 @@ function pollPaymentStatus(transactionId) {
           false
         );
         setTimeout(() => location.reload(), 2000);
-      } else if (data.success && data.payment_status === 'failed') {
-        clearInterval(interval);
+        return;
+      }
+      if (data.success && data.payment_status === 'failed') {
         showPaymentStatus(
           '<div style="text-align:center;">'
           + '<div style="font-size:3rem;margin-bottom:0.5rem;">❌</div>'
           + '<h3 style="margin:0 0 0.5rem;color:#1e293b;">Payment Failed</h3>'
           + '<p style="color:#6b7280;font-size:0.9rem;">Please try again.</p>'
-          + '<button onclick="location.reload()" style="padding:10px 24px;background:#e17055;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;margin-top:8px;">Try Again</button>'
           + '</div>',
           true
         );
+        const btn = document.getElementById('payNowBtn');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:20px;">lock</span> Pay ₹<span id="payNowAmount">' + selectedAmount.toLocaleString() + '</span>';
+        }
+        return;
       }
     } catch (e) {}
-    if (attempts >= maxAttempts) {
-      clearInterval(interval);
-      // Still pending after ~2.5 minutes: previously this just stopped
-      // polling silently, leaving the "Redirecting to PhonePe... please
-      // complete the payment" message (and the disabled Pay button) frozen
-      // on screen forever with no way forward. Show a real end state and
-      // give the button back so the page isn't stuck.
+
+    if (attempts >= slowPhaseLimit) {
+      // Both phases exhausted (~12.5 min) with no confirmation either way.
+      // Rather than freezing or requiring a click, reload automatically —
+      // checkSubscriptionOnLoad() re-evaluates the true state on the
+      // refreshed page, and if PhonePe confirms later the next load picks
+      // it up with zero action needed from the user.
       showPaymentStatus(
         '<div style="text-align:center;">'
         + '<div style="font-size:3rem;margin-bottom:0.5rem;">⏳</div>'
         + '<h3 style="margin:0 0 0.5rem;color:#1e293b;">Still confirming your payment</h3>'
-        + '<p style="color:#6b7280;font-size:0.9rem;">This is taking longer than usual. If you completed the payment, it should reflect shortly — reload to check. If you didn\'t, you can try again.</p>'
-        + '<button onclick="location.reload()" style="padding:10px 24px;background:#111827;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;margin-top:8px;">Reload</button>'
+        + '<p style="color:#6b7280;font-size:0.9rem;">This is taking longer than usual. Refreshing to check the latest status...</p>'
         + '</div>',
-        true
+        false
       );
-      const btn = document.getElementById('payNowBtn');
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:20px;">lock</span> Pay ₹<span id="payNowAmount">' + selectedAmount.toLocaleString() + '</span>';
-      }
+      setTimeout(() => location.reload(), 3000);
+      return;
     }
-  }, 5000);
+
+    if (attempts === fastPhaseLimit) {
+      const msgEl = document.getElementById('subscriptionPaymentStatus');
+      if (msgEl) {
+        const p = msgEl.querySelector('p');
+        if (p) p.textContent = "This is taking longer than usual, but we're still checking automatically.";
+      }
+      pollPaymentStatus(transactionId, attempts, 15000);
+      return;
+    }
+
+    pollPaymentStatus(transactionId, attempts, intervalMs);
+  }, intervalMs);
 }
 
 async function simulatePaymentSuccess(transactionId) {
