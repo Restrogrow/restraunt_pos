@@ -1483,7 +1483,11 @@ require_once __DIR__ . '/../config/countries.php';
       const res = await fetch('api.php?action=resetPassword', { method:'POST', body: JSON.stringify({id, password: p}), headers: {'Content-Type': 'application/json'} });
       const data = await res.json();
       if (data.success) {
-        showSuperAlert('Password reset successfully','success');
+        // The prompt dialog is easy to lose track of once it closes — show
+        // the password back so it isn't only ever visible for a moment in
+        // an input box, which was locking restaurant owners out with no
+        // record of what was set.
+        showSuperAlert('Password reset successfully. New password: ' + p, 'success');
       } else {
         showSuperAlert(data.message||'Error','error');
       }
