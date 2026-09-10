@@ -1,124 +1,145 @@
 <?php
-// Include secure session configuration (callback may not need auth, but session config is safe)
+// PhonePe webhook for platform subscription payments (subscription_payments
+// table / users.subscription_status) — the restaurant owner paying
+// Restrogrow itself, not a customer paying a restaurant.
+//
+// This used to speak PhonePe's old v1 callback format (base64 "response"
+// field + X-VERIFY salt-key signature), but subscription_payment.php now
+// creates payments via the v2 Checkout API. PhonePe only ever sends v2-shaped
+// webhook bodies for those orders, so the v1 parser rejected every real
+// callback with a 400 before it could update anything — the only thing that
+// ever confirmed a subscription payment was the client-side poll in
+// dashboard.php independently re-checking PhonePe's status API, which is why
+// it could take minutes even for a payment that actually succeeded instantly.
+// This mirrors phonepe_order_callback.php's v2 handling instead.
 require_once __DIR__ . '/../config/session_config.php';
+require_once __DIR__ . '/../config/env_loader.php';
+require_once __DIR__ . '/../config/phonepe_verify.php';
 startSecureSession();
-
-// Load environment variables
-if (file_exists(__DIR__ . '/../config/env_loader.php')) {
-    require_once __DIR__ . '/../config/env_loader.php';
-}
 
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
 }
 
-// PhonePe API Configuration - Load from .env
-if (!defined('PHONEPE_SALT_KEY')) {
-    define('PHONEPE_SALT_KEY', env('PHONEPE_SALT_KEY', '099eb0cd-02cf-4e2a-8aca-3e6c6aff8719'));
-}
-if (!defined('PHONEPE_SALT_INDEX')) {
-    define('PHONEPE_SALT_INDEX', env('PHONEPE_SALT_INDEX', '1'));
-}
+header('Content-Type: application/json; charset=UTF-8');
 
 try {
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN';
+
+    // Return OK for GET requests (health checks / direct browser visits)
+    if ($method !== 'POST') {
+        http_response_code(200);
+        echo json_encode(['success' => true, 'message' => 'webhook active']);
+        exit();
+    }
+
     $conn = getConnection();
-    
-    // Get callback data
+
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? 'none';
     $callback_data = file_get_contents('php://input');
     $decoded_data = json_decode($callback_data, true);
-    
-    if (!$decoded_data || !isset($decoded_data['response'])) {
-        error_log('Invalid callback data: ' . $callback_data);
-        http_response_code(400);
-        exit();
+
+    error_log('PhonePe subscription webhook: method=' . $method . ' content-type=' . $contentType . ' body=' . substr($callback_data, 0, 2000));
+
+    // Try form-encoded POST fallback if JSON body is empty
+    if (!$decoded_data && !empty($_POST)) {
+        $decoded_data = $_POST;
     }
-    
-    $response = base64_decode($decoded_data['response']);
-    $response_data = json_decode($response, true);
-    
-    if (!$response_data) {
-        error_log('Invalid response data');
-        http_response_code(400);
-        exit();
-    }
-    
-    $merchant_transaction_id = $response_data['merchantTransactionId'] ?? null;
-    $transaction_id = $response_data['transactionId'] ?? null;
-    $code = $response_data['code'] ?? null;
-    $state = $response_data['state'] ?? null;
-    
-    if (!$merchant_transaction_id) {
-        error_log('Missing merchant transaction ID');
-        http_response_code(400);
-        exit();
-    }
-    
-    // ========== X-VERIFY SIGNATURE VERIFICATION ==========
-    // PhonePe sends X-VERIFY header: SHA256(base64(payload) + "/pg/v1/status/" + merchantId + "." + merchantTransactionId + salt_key) + "###" + salt_index
-    $xVerify = $_SERVER['HTTP_X_VERIFY'] ?? '';
-    $merchantId = env('PHONEPE_CLIENT_ID', env('PHONEPE_MERCHANT_ID', ''));
-    $saltKey = env('PHONEPE_CLIENT_SECRET', env('PHONEPE_SALT_KEY', ''));
-    $saltIndex = env('PHONEPE_SALT_INDEX', '1');
-    
-    if (!empty($xVerify) && !empty($merchantId) && !empty($saltKey)) {
-        $rawPayload = $decoded_data['response'] ?? $_POST['response'] ?? $callback_data;
-        if ($rawPayload) {
-            $expectedHash = hash('sha256', $rawPayload . '/pg/v1/status/' . $merchantId . '.' . $merchant_transaction_id . $saltKey);
-            $expectedSignature = $expectedHash . '###' . $saltIndex;
-            
-            if ($xVerify !== $expectedSignature) {
-                error_log('PhonePe callback: X-VERIFY mismatch!');
-                http_response_code(403);
-                echo json_encode(['success' => false, 'message' => 'Invalid signature']);
-                exit();
-            }
-            error_log('PhonePe callback: X-VERIFY verified');
+
+    // Try base64 decode if 'response' field is present (legacy v1 format,
+    // kept only in case an old subscription/gateway is still configured
+    // to send it)
+    if (!$decoded_data && !empty($_POST['response'])) {
+        $inner = json_decode(base64_decode($_POST['response']), true);
+        if ($inner) {
+            $decoded_data = $inner;
         }
-    } else {
-        error_log('PhonePe callback: X-VERIFY skipped (no credentials)');
     }
-    // ========== END X-VERIFY VERIFICATION ==========
-    
-    // Update payment record
-    $stmt = $conn->prepare("SELECT id, user_id, restaurant_id, amount, subscription_type FROM subscription_payments WHERE transaction_id = ? LIMIT 1");
-    $stmt->execute([$merchant_transaction_id]);
-    $payment = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$payment) {
-        error_log('Payment record not found: ' . $merchant_transaction_id);
-        http_response_code(404);
+
+    if (!$decoded_data) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid JSON. method=' . $method . ' ct=' . $contentType]);
         exit();
     }
-    
-    // Update payment status
-    $payment_status = ($code === 'PAYMENT_SUCCESS' && $state === 'COMPLETED') ? 'success' : 'failed';
-    $phonepe_transaction_id = $transaction_id;
-    
-    $update_stmt = $conn->prepare("UPDATE subscription_payments SET phonepe_transaction_id = ?, payment_status = ?, updated_at = NOW() WHERE id = ?");
-    $update_stmt->execute([$phonepe_transaction_id, $payment_status, $payment['id']]);
-    
-    // If payment successful, activate subscription
-    if ($payment_status === 'success') {
-        // Read duration_months from payment record; fallback to 1 if not set
-        $durationStmt = $conn->prepare("SELECT duration_months FROM subscription_payments WHERE id = ?");
-        $durationStmt->execute([$payment['id']]);
-        $durationMonths = (int)($durationStmt->fetchColumn() ?: 1);
-        
-        $renewal_date = date('Y-m-d', strtotime("+{$durationMonths} months"));
-        $user_update_stmt = $conn->prepare("UPDATE users SET subscription_status = 'active', renewal_date = ?, is_active = 1 WHERE id = ?");
-        $user_update_stmt->execute([$renewal_date, $payment['user_id']]);
-        
-        error_log('Subscription activated for user: ' . $payment['user_id'] . ' for ' . $durationMonths . ' month(s), renews ' . $renewal_date);
+
+    // Unwrap event+payload format (e.g. pg.order.completed) and nested data
+    if (!empty($decoded_data['payload']) && is_array($decoded_data['payload'])) {
+        $decoded_data = $decoded_data['payload'];
     }
-    
-    // Return success response to PhonePe
+    if (!empty($decoded_data['data']) && is_array($decoded_data['data'])) {
+        $decoded_data = $decoded_data['data'];
+    }
+
+    // Accept multiple field name formats (v2 uses merchantOrderId; some
+    // legacy/alternate shapes use merchantTransactionId or transactionId)
+    $merchant_transaction_id = $decoded_data['merchantOrderId'] ?? $decoded_data['merchantTransactionId'] ?? $decoded_data['transactionId'] ?? '';
+
+    if (!$merchant_transaction_id) {
+        $keys = array_keys($decoded_data);
+        error_log('PhonePe subscription webhook unknown format. Keys: ' . implode(', ', $keys) . ' | Raw: ' . substr($callback_data, 0, 500));
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Missing transaction ID. Keys: ' . implode(', ', $keys)]);
+        exit();
+    }
+
+    $payStmt = $conn->prepare("SELECT id, user_id, restaurant_id, payment_status, duration_months FROM subscription_payments WHERE transaction_id = ? LIMIT 1");
+    $payStmt->execute([$merchant_transaction_id]);
+    $payment = $payStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$payment) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Payment not found for txn: ' . $merchant_transaction_id]);
+        exit();
+    }
+
+    // Skip if already processed as success (don't overwrite / re-activate)
+    if ($payment['payment_status'] === 'success') {
+        http_response_code(200);
+        echo json_encode(['success' => true, 'message' => 'already processed']);
+        exit();
+    }
+
+    // ========== SERVER-TO-SERVER STATUS VERIFICATION ==========
+    // The webhook body itself is unauthenticated here, so — same as the
+    // order-payment webhook — never trust it directly; re-confirm the real
+    // status by calling PhonePe's order-status API server-to-server with
+    // our own OAuth credentials.
+    $verifiedState = phonepeVerifyOrderState($conn, $payment['restaurant_id'], $merchant_transaction_id);
+    if ($verifiedState === null) {
+        error_log('PhonePe subscription webhook: txn=' . $merchant_transaction_id . ' could not be independently verified, ignoring webhook body');
+        http_response_code(200);
+        echo json_encode(['success' => true, 'message' => 'verification pending']);
+        exit();
+    }
+
+    if ($verifiedState === 'COMPLETED' || $verifiedState === 'SUCCESS') {
+        $payment_status = 'success';
+    } elseif (in_array($verifiedState, ['FAILED', 'REJECTED', 'CANCELLED', 'EXPIRED'])) {
+        $payment_status = 'failed';
+    } else {
+        // PENDING or unknown — leave as pending, the client poll or a later
+        // webhook retry will pick up the terminal state.
+        http_response_code(200);
+        echo json_encode(['success' => true, 'message' => 'non-terminal state: ' . $verifiedState]);
+        exit();
+    }
+
+    $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = ?, updated_at = NOW() WHERE id = ?");
+    $updateStmt->execute([$payment_status, $payment['id']]);
+
+    if ($payment_status === 'success') {
+        $durationMonths = (int)($payment['duration_months'] ?: 1);
+        $renewal_date = date('Y-m-d', strtotime("+{$durationMonths} months"));
+        $userUpdate = $conn->prepare("UPDATE users SET subscription_status = 'active', renewal_date = ?, is_active = 1 WHERE id = ?");
+        $userUpdate->execute([$renewal_date, $payment['user_id']]);
+        error_log('PhonePe subscription webhook: activated user=' . $payment['user_id'] . ' for ' . $durationMonths . ' month(s), renews ' . $renewal_date);
+    }
+
     http_response_code(200);
     echo json_encode(['success' => true]);
-    
+
 } catch (Exception $e) {
-    error_log('PhonePe callback error: ' . $e->getMessage());
+    error_log('PhonePe subscription webhook error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred processing the payment callback']);
 }
-?>
-

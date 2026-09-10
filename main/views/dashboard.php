@@ -7382,7 +7382,7 @@ function pollPaymentStatus(transactionId, attempts, intervalMs) {
   const fastPhaseLimit = 30; // ~2.5 min at 5s
   const slowPhaseLimit = 70; // + ~10 min at 15s
 
-  setTimeout(async () => {
+  const runCheck = async () => {
     attempts++;
     try {
       const resp = await fetch('../api/subscription_payment.php?action=checkPaymentStatus&transaction_id=' + encodeURIComponent(transactionId));
@@ -7446,7 +7446,18 @@ function pollPaymentStatus(transactionId, attempts, intervalMs) {
     }
 
     pollPaymentStatus(transactionId, attempts, intervalMs);
-  }, intervalMs);
+  };
+
+  // The very first check runs immediately instead of waiting out a full
+  // interval first — the payment may well have already completed (webhook
+  // included) by the time the user is even looking at this tab again, so
+  // there's no reason to make them stare at "Redirecting to PhonePe..." for
+  // a needless 5 seconds before the first real check happens.
+  if (attempts === 0) {
+    runCheck();
+  } else {
+    setTimeout(runCheck, intervalMs);
+  }
 }
 
 async function simulatePaymentSuccess(transactionId) {
