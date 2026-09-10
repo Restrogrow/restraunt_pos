@@ -7404,6 +7404,25 @@ function pollPaymentStatus(transactionId) {
     } catch (e) {}
     if (attempts >= maxAttempts) {
       clearInterval(interval);
+      // Still pending after ~2.5 minutes: previously this just stopped
+      // polling silently, leaving the "Redirecting to PhonePe... please
+      // complete the payment" message (and the disabled Pay button) frozen
+      // on screen forever with no way forward. Show a real end state and
+      // give the button back so the page isn't stuck.
+      showPaymentStatus(
+        '<div style="text-align:center;">'
+        + '<div style="font-size:3rem;margin-bottom:0.5rem;">⏳</div>'
+        + '<h3 style="margin:0 0 0.5rem;color:#1e293b;">Still confirming your payment</h3>'
+        + '<p style="color:#6b7280;font-size:0.9rem;">This is taking longer than usual. If you completed the payment, it should reflect shortly — reload to check. If you didn\'t, you can try again.</p>'
+        + '<button onclick="location.reload()" style="padding:10px 24px;background:#111827;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;margin-top:8px;">Reload</button>'
+        + '</div>',
+        true
+      );
+      const btn = document.getElementById('payNowBtn');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:20px;">lock</span> Pay ₹<span id="payNowAmount">' + selectedAmount.toLocaleString() + '</span>';
+      }
     }
   }, 5000);
 }
