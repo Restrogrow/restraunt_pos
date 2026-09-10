@@ -17,7 +17,8 @@ if (ob_get_level()) {
 }
 
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin();
 
 // Require permission to view reports
 requirePermission(PERMISSION_VIEW_REPORTS);

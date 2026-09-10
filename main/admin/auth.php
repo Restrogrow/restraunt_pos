@@ -22,7 +22,11 @@ ob_clean();
 // Set JSON headers. No CORS wildcard — this handles admin login/signup and
 // session-mutating account actions, always called same-origin from the
 // platform's own admin pages, never a restaurant's embedded/custom domain.
+// The companion app (app/) is an exception: it's our own client, so its
+// known dev origins are explicitly allow-listed (never reflected blindly).
 header('Content-Type: application/json; charset=UTF-8');
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin();
 
 // ── Release session file lock early ──
 // The session was started above for auth checks. We close it here so that

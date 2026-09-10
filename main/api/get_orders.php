@@ -17,6 +17,8 @@ startSecureSession();
 require_once __DIR__ . '/../config/authorization_config.php';
 
 header('Content-Type: application/json; charset=UTF-8');
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin();
 
 // Require permission to manage orders
 requirePermission(PERMISSION_MANAGE_ORDERS);

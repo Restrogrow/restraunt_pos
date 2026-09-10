@@ -17,6 +17,8 @@ if (ob_get_level()) {
 }
 
 header('Content-Type: application/json');
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin();
 
 // Require login and permission to view dashboard
 requirePermission(PERMISSION_VIEW_DASHBOARD);
