@@ -1375,7 +1375,7 @@ function sortOrders(orders) {
   });
 }
 
-async function loadOrderHistory() {
+async function loadOrderHistory(silent) {
   var el = document.getElementById('orderHistory');
   if (!el) return;
   var c = window.loggedInCustomer || loadCustomerFromStorage();
@@ -1383,7 +1383,10 @@ async function loadOrderHistory() {
     el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">📋</span><div class="empty-state-title">No Orders Yet</div><div class="empty-state-desc">Save your phone number in your profile to see your order history here.</div></div>';
     return;
   }
-  showSkeletons(el, 3);
+  // Background refresh (see the polling loop below) — don't blank the list
+  // out to skeletons every 15s just to redraw it with the same data a
+  // moment later.
+  if (!silent) showSkeletons(el, 3);
   try {
     var rid = getRestaurantId();
     var r = await fetch('api.php?action=getCustomerOrders&restaurant_id=' + encodeURIComponent(rid) + '&phone=' + encodeURIComponent(c.phone));
@@ -1397,7 +1400,12 @@ async function loadOrderHistory() {
       checkGoogleReviewPrompt(rid, c.phone);
     }
   } catch(e) {
-    el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">⚠️</span><div class="empty-state-title">Could Not Load Orders</div><div class="empty-state-desc">Please check your connection and try again.</div></div>';
+    // A blip on a silent background refresh shouldn't blank out a list
+    // that was already showing fine — only show the error on the real
+    // initial load.
+    if (!silent) {
+      el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">⚠️</span><div class="empty-state-title">Could Not Load Orders</div><div class="empty-state-desc">Please check your connection and try again.</div></div>';
+    }
   }
 }
 
@@ -1821,6 +1829,14 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   loadProfileData();
   loadOrderHistory();
+  // Keep order statuses current without the customer having to manually
+  // reload — same live-polling pattern track.php already uses for a single
+  // order's status. Paused while the tab isn't visible so it's not burning
+  // requests on a background tab nobody's looking at.
+  setInterval(function() {
+    if (document.hidden) return;
+    loadOrderHistory(true);
+  }, 15000);
   setupProfileForm();
   var editBtn = document.getElementById('editProfileBtn');
   if (editBtn) editBtn.addEventListener('click', toggleProfileEdit);

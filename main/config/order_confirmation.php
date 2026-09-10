@@ -103,31 +103,129 @@ if (!function_exists('fireOrderConfirmedActions')) {
             error_log('Push notification error: ' . $e->getMessage());
         }
 
-        if (file_exists(__DIR__ . '/email_config.php')) {
-            try {
-                require_once __DIR__ . '/email_config.php';
-                $restaurantEmail = $waSettings ? trim($waSettings['email'] ?? '') : '';
+        // Dispatched, not sent inline — sendOrderConfirmationEmailsForOrder()
+        // opens a raw hand-rolled SMTP connection (no pooling) to Gmail
+        // twice per order (customer + restaurant), which realistically costs
+        // 1-4+ seconds combined. That used to happen right here, in the same
+        // request the customer's browser is waiting on. See
+        // dispatchOrderConfirmationEmails() below for why this is safe to
+        // detach from the response.
+        dispatchOrderConfirmationEmails($conn, $orderId);
+    }
+}
 
-                $taxName = 'GST';
-                $taxPercent = 5.00;
-                $packagingCharge = 0.0;
-                try {
-                    $taxStmt = $conn->prepare("SELECT tax_name, tax_percent, packaging_charge FROM users WHERE restaurant_id = ? LIMIT 1");
-                    $taxStmt->execute([$restaurant_id]);
-                    $taxRow = $taxStmt->fetch(PDO::FETCH_ASSOC);
-                    if ($taxRow) {
-                        if (!empty($taxRow['tax_name'])) $taxName = $taxRow['tax_name'];
-                        if (isset($taxRow['tax_percent']) && $taxRow['tax_percent'] !== null) $taxPercent = (float)$taxRow['tax_percent'];
-                        $packagingCharge = (float)($taxRow['packaging_charge'] ?? 0);
-                    }
-                } catch (Exception $e) {
-                    // Columns may not exist on older DBs — fall back to defaults above
-                }
+if (!function_exists('dispatchOrderConfirmationEmails')) {
+    /**
+     * Fire-and-forget: hands off to send_order_confirmation_emails.php over
+     * HTTP with a near-zero timeout, so this call returns almost instantly
+     * regardless of how long the actual SMTP sends take. The target script
+     * sets ignore_user_abort(true) so it keeps running to completion after
+     * we disconnect.
+     *
+     * Deliberately does NOT rely on process_website_order.php's
+     * respond-early trick (fastcgi_finish_request / Content-Length) — that
+     * only works if the hosting stack actually honors it, which isn't
+     * guaranteed behind a CDN/reverse proxy. This works regardless, because
+     * it's an outbound connection we control, not a hope about how the
+     * inbound one gets flushed.
+     */
+    function dispatchOrderConfirmationEmails($conn, $orderId) {
+        // No live HTTP request to protect the latency of (cron/CLI tools
+        // like tools/reconcile_pending_payments.php) — just send directly.
+        if (empty($_SERVER['HTTP_HOST'])) {
+            sendOrderConfirmationEmailsForOrder($conn, $orderId);
+            return;
+        }
 
-                sendOrderConfirmationEmails($order, $items, $order['customer_email'] ?? '', $restaurantEmail, $currencySymbol, $taxName, $taxPercent, $packagingCharge);
-            } catch (Exception $e) {
-                error_log('Email notification error: ' . $e->getMessage());
+        try {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'];
+            // Every current caller lives directly under main/ (main/api/*.php,
+            // main/config/*.php) — two levels up from SCRIPT_NAME lands on
+            // main/'s own URL path regardless of which one triggered this.
+            $mainPath = dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
+            if ($mainPath === '/' || $mainPath === '\\') $mainPath = '';
+            $url = $scheme . '://' . $host . $mainPath . '/api/send_order_confirmation_emails.php';
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(['order_id' => $orderId]));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 300);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 300);
+            // We only need the request to have been *sent* before giving up
+            // waiting — the target keeps running via ignore_user_abort(true)
+            // even if this times out before a response comes back, which it
+            // usually will.
+            curl_exec($ch);
+            curl_close($ch);
+        } catch (Exception $e) {
+            error_log('dispatchOrderConfirmationEmails: dispatch failed, sending inline instead - ' . $e->getMessage());
+            sendOrderConfirmationEmailsForOrder($conn, $orderId);
+        }
+    }
+}
+
+if (!function_exists('sendOrderConfirmationEmailsForOrder')) {
+    /**
+     * Re-fetches everything sendOrderConfirmationEmails() needs from just an
+     * order ID — used both by the fire-and-forget dispatch target
+     * (send_order_confirmation_emails.php, a separate request with none of
+     * fireOrderConfirmedActions()'s local variables in scope) and as the
+     * direct-call fallback when dispatch isn't applicable/fails.
+     */
+    function sendOrderConfirmationEmailsForOrder(PDO $conn, int $orderId) {
+        $orderStmt = $conn->prepare("SELECT * FROM orders WHERE id = ? LIMIT 1");
+        $orderStmt->execute([$orderId]);
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$order) {
+            error_log('sendOrderConfirmationEmailsForOrder: order ' . $orderId . ' not found');
+            return;
+        }
+
+        $itemsStmt = $conn->prepare("SELECT menu_item_id AS id, item_name AS name, variation_name, quantity, unit_price AS price, addons FROM order_items WHERE order_id = ?");
+        $itemsStmt->execute([$orderId]);
+        $rawItems = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+        $items = [];
+        foreach ($rawItems as $ri) {
+            $items[] = [
+                'id' => $ri['id'],
+                'name' => $ri['name'],
+                'variation_name' => $ri['variation_name'],
+                'quantity' => (int)$ri['quantity'],
+                'price' => (float)$ri['price'],
+                'addons' => $ri['addons'] ? json_decode($ri['addons'], true) : [],
+            ];
+        }
+
+        $restaurant_id = $order['restaurant_id'];
+        $waStmt = $conn->prepare("SELECT email, currency_symbol FROM users WHERE restaurant_id = ? LIMIT 1");
+        $waStmt->execute([$restaurant_id]);
+        $waSettings = $waStmt->fetch(PDO::FETCH_ASSOC);
+        $currencySymbol = $waSettings ? trim($waSettings['currency_symbol'] ?? '₹') : '₹';
+        $restaurantEmail = $waSettings ? trim($waSettings['email'] ?? '') : '';
+
+        $taxName = 'GST';
+        $taxPercent = 5.00;
+        $packagingCharge = 0.0;
+        try {
+            $taxStmt = $conn->prepare("SELECT tax_name, tax_percent, packaging_charge FROM users WHERE restaurant_id = ? LIMIT 1");
+            $taxStmt->execute([$restaurant_id]);
+            $taxRow = $taxStmt->fetch(PDO::FETCH_ASSOC);
+            if ($taxRow) {
+                if (!empty($taxRow['tax_name'])) $taxName = $taxRow['tax_name'];
+                if (isset($taxRow['tax_percent']) && $taxRow['tax_percent'] !== null) $taxPercent = (float)$taxRow['tax_percent'];
+                $packagingCharge = (float)($taxRow['packaging_charge'] ?? 0);
             }
+        } catch (Exception $e) {
+            // Columns may not exist on older DBs — fall back to defaults above
+        }
+
+        try {
+            require_once __DIR__ . '/email_config.php';
+            sendOrderConfirmationEmails($order, $items, $order['customer_email'] ?? '', $restaurantEmail, $currencySymbol, $taxName, $taxPercent, $packagingCharge);
+        } catch (Exception $e) {
+            error_log('Email notification error: ' . $e->getMessage());
         }
     }
 }
