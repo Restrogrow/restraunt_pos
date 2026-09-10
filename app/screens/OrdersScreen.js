@@ -85,7 +85,7 @@ export default function OrdersScreen() {
                 <View style={styles.divider} />
 
                 <View style={styles.cardBottom}>
-                  <Text style={styles.total}>{currency}{item.total}</Text>
+                  <Text style={styles.total}>{currency}{item.total ?? 0}</Text>
                   {next ? (
                     <Pressable
                       style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.9 }]}

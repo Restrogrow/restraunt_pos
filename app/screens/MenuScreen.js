@@ -63,7 +63,7 @@ export default function MenuScreen() {
                   ) : null}
                 </View>
                 <View style={styles.trailing}>
-                  <Text style={styles.price}>{currency}{item.base_price}</Text>
+                  <Text style={styles.price}>{currency}{item.base_price ?? 0}</Text>
                   <View style={styles.availabilityRow}>
                     <View
                       style={[
