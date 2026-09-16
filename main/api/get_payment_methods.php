@@ -15,6 +15,8 @@ startSecureSession();
 require_once __DIR__ . '/../config/authorization_config.php';
 
 header('Content-Type: application/json');
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin();
 
 if (!isLoggedIn()) {
     http_response_code(401);

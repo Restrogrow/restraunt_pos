@@ -48,12 +48,20 @@ if (!defined('ORDER_STATUS_TRANSITIONS')) {
     ]));
 }
 
+// 'Failed' is intentionally absent — orders.payment_status is
+// enum('Pending','Paid','Partially Paid','Refunded'), so validating a
+// transition TO 'Failed' would pass here and then throw a raw PDOException
+// at the UPDATE below (STRICT_TRANS_TABLES rejects the out-of-enum value).
+// No caller has ever passed 'Failed' to validateAndUpdatePaymentStatus()
+// (checked: confirm_payment_proof.php, phonepe_order_callback.php,
+// phonepe_order_payment.php, reconcile_pending_payments.php all only ever
+// pass 'Paid') — a failed gateway attempt is handled by simply not calling
+// this function, leaving payment_status at 'Pending' for retry.
 if (!defined('PAYMENT_STATUS_TRANSITIONS')) {
     define('PAYMENT_STATUS_TRANSITIONS', serialize([
-        'Pending'        => ['Paid', 'Failed', 'Partially Paid', 'Refunded'],
+        'Pending'        => ['Paid', 'Partially Paid', 'Refunded'],
         'Paid'           => ['Refunded', 'Partially Paid'],
         'Partially Paid' => ['Paid', 'Refunded'],
-        'Failed'         => ['Pending'],   // allow retry
         'Refunded'       => [],
     ]));
 }

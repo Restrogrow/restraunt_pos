@@ -32,7 +32,8 @@ try {
     require_once __DIR__ . '/../config/authorization_config.php';
 
     header('Content-Type: application/json');
-    header('Access-Control-Allow-Origin: *');
+    require_once __DIR__ . '/../config/cors_helper.php';
+    allowAppOrigin(true);
     header('Access-Control-Allow-Methods: GET');
     header('Access-Control-Allow-Headers: Content-Type');
 } catch (Exception $e) {

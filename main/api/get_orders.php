@@ -147,6 +147,8 @@ try {
                 o.subtotal,
                 o.tax,
                 o.total,
+                o.discount_amount,
+                o.coupon_code,
                 o.notes,
                 t.table_number,
                 a.area_name,
@@ -167,13 +169,16 @@ try {
     $orders = [];
     foreach ($result as $row) {
         // Get order items
-        $items_sql = "SELECT 
+        $items_sql = "SELECT
                         oi.item_name,
+                        oi.variation_name,
                         oi.quantity,
                         oi.unit_price,
                         oi.total_price,
-                        oi.notes
+                        oi.notes,
+                        mi.item_type
                       FROM order_items oi
+                      LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
                       WHERE oi.order_id = ?
                       ORDER BY oi.id";
         

@@ -1185,65 +1185,71 @@ function handleUploadRestaurantLogo() {
         throw new Exception('You must be logged in to upload restaurant logo');
     }
     
-    // Check if file was uploaded
-    if (!isset($_FILES['logo']) || $_FILES['logo']['error'] !== UPLOAD_ERR_OK) {
+    // The mobile app has no multipart upload path — it sends the picked
+    // photo as a base64 data URL instead (same convention as menu item
+    // images in menu_items_operations_base64.php). Accept either.
+    if (isset($_POST['logoBase64']) && !empty($_POST['logoBase64'])) {
+        $base64String = $_POST['logoBase64'];
+        if (strpos($base64String, 'data:image/') === 0) {
+            $base64String = substr($base64String, strpos($base64String, ',') + 1);
+        }
+        $logoData = base64_decode($base64String, true);
+        if ($logoData === false) {
+            throw new Exception('Invalid image data');
+        }
+        if (strlen($logoData) > 2 * 1024 * 1024) {
+            throw new Exception('File size too large. Maximum size is 2MB.');
+        }
+        $imageInfo = getimagesizefromstring($logoData);
+        if ($imageInfo === false) {
+            throw new Exception('Invalid image format');
+        }
+        $allowedImageTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+        if (!in_array($imageInfo[2], $allowedImageTypes)) {
+            throw new Exception('Invalid image type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+        }
+        $mimeTypeMap = [
+            IMAGETYPE_JPEG => 'image/jpeg',
+            IMAGETYPE_PNG => 'image/png',
+            IMAGETYPE_GIF => 'image/gif',
+            IMAGETYPE_WEBP => 'image/webp',
+        ];
+        $mimeType = $mimeTypeMap[$imageInfo[2]];
+    } elseif (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['logo'];
+
+        // Validate file extension
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($extension, $allowedExtensions)) {
+            throw new Exception('Invalid file extension. Only JPG, JPEG, PNG, GIF, and WebP files are allowed.');
+        }
+
+        // Validate file type via content inspection
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mimeType, $allowedTypes)) {
+            throw new Exception('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+        }
+
+        // Validate file size (2MB max)
+        $maxSize = 2 * 1024 * 1024; // 2MB
+        if ($file['size'] > $maxSize) {
+            throw new Exception('File size too large. Maximum size is 2MB.');
+        }
+
+        // Read image data for database storage
+        $logoData = file_get_contents($file['tmp_name']);
+        if ($logoData === false) {
+            throw new Exception('Failed to read image file');
+        }
+    } else {
         throw new Exception('No file uploaded or upload error occurred');
     }
-    
-    $file = $_FILES['logo'];
-    
-    // Validate file extension
-    $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    if (!in_array($extension, $allowedExtensions)) {
-        throw new Exception('Invalid file extension. Only JPG, JPEG, PNG, GIF, and WebP files are allowed.');
-    }
-    
-    // Validate file type via content inspection
-    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mimeType = finfo_file($finfo, $file['tmp_name']);
-    finfo_close($finfo);
-    
-    if (!in_array($mimeType, $allowedTypes)) {
-        throw new Exception('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
-    }
-    
-    // Validate file size (2MB max)
-    $maxSize = 2 * 1024 * 1024; // 2MB
-    if ($file['size'] > $maxSize) {
-        throw new Exception('File size too large. Maximum size is 2MB.');
-    }
-    
-    // Create uploads directory if it doesn't exist
-    $uploadDir = __DIR__ . '/../uploads/';
-    if (!file_exists($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
-    }
-    
-    // Generate unique filename
-    $extension = '';
-    switch ($mimeType) {
-        case 'image/jpeg':
-            $extension = '.jpg';
-            break;
-        case 'image/png':
-            $extension = '.png';
-            break;
-        case 'image/gif':
-            $extension = '.gif';
-            break;
-        case 'image/webp':
-            $extension = '.webp';
-            break;
-    }
-    
-    // Read image data for database storage
-    $logoData = file_get_contents($file['tmp_name']);
-    if ($logoData === false) {
-        throw new Exception('Failed to read image file');
-    }
-    
+
     $logoPath = 'db:' . uniqid(); // Reference ID for database storage
     $userId = $_SESSION['user_id'];
     

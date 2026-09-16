@@ -45,6 +45,10 @@ try {
     ob_clean();
 
     header('Content-Type: application/json; charset=UTF-8');
+    if (file_exists(__DIR__ . '/../config/cors_helper.php')) {
+        require_once __DIR__ . '/../config/cors_helper.php';
+        allowAppOrigin();
+    }
 
     // Include authorization configuration
     if (!file_exists(__DIR__ . '/../config/authorization_config.php')) {
@@ -295,7 +299,8 @@ function handleCreateKOT($conn, $restaurant_id) {
     $total = floatval($_POST['total'] ?? 0);
     $notes = trim($_POST['notes'] ?? '');
     $paymentMethod = $_POST['paymentMethod'] ?? 'Cash';
-    
+    $couponCode = strtoupper(trim($_POST['couponCode'] ?? ''));
+
     // Validation
     if (empty($cartItems) || !is_array($cartItems)) {
         echo json_encode(['success' => false, 'message' => 'Cart is empty or invalid'], JSON_UNESCAPED_UNICODE);
@@ -308,8 +313,33 @@ function handleCreateKOT($conn, $restaurant_id) {
         return;
     }
 
+    // Coupon discount — recomputed from the coupon's actual type/value in the
+    // DB, never trusted from the client, same as the website's checkout
+    // (main/api/process_website_order.php). Discount comes off the raw item
+    // subtotal before tax.
+    $discountAmount = 0;
+    $coupon = null;
+    if (!empty($couponCode)) {
+        $couponStmt = $conn->prepare("SELECT * FROM coupons WHERE restaurant_id = ? AND coupon_code = ? AND is_active = 1 AND (valid_from IS NULL OR valid_from <= CURDATE()) AND (valid_until IS NULL OR valid_until >= CURDATE()) AND (max_uses = 0 OR current_uses < max_uses) LIMIT 1");
+        $couponStmt->execute([$restaurant_id, $couponCode]);
+        $coupon = $couponStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$coupon) {
+            echo json_encode(['success' => false, 'message' => 'Invalid or expired coupon code'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        if ((float)$coupon['minimum_order_amount'] > 0 && $subtotal < (float)$coupon['minimum_order_amount']) {
+            echo json_encode(['success' => false, 'message' => 'Minimum order of ' . number_format((float)$coupon['minimum_order_amount'], 2) . ' required for this coupon'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $discountAmount = $coupon['discount_type'] === 'percent'
+            ? round($subtotal * (float)$coupon['discount_value'] / 100, 2)
+            : (float)$coupon['discount_value'];
+        if ($discountAmount > $subtotal) $discountAmount = $subtotal;
+    }
+    $taxableAmount = max(0, round($subtotal - $discountAmount, 2));
+
     // Server-side tax validation
-    $expectedTotal = round($subtotal + $tax, 2);
+    $expectedTotal = round($taxableAmount + $tax, 2);
     if (abs($total - $expectedTotal) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'Total mismatch: total does not match subtotal + tax'], JSON_UNESCAPED_UNICODE);
         return;
@@ -320,7 +350,7 @@ function handleCreateKOT($conn, $restaurant_id) {
     $gstRow = $gstCheck->fetch(PDO::FETCH_ASSOC);
     $gstEnabled = $gstRow ? (bool)$gstRow['enable_gst'] : true;
     $taxPercent = ($gstRow && isset($gstRow['tax_percent']) && $gstRow['tax_percent'] !== null) ? (float)$gstRow['tax_percent'] : 5.00;
-    $expectedTax = $gstEnabled ? round($subtotal * ($taxPercent / 100), 2) : 0;
+    $expectedTax = $gstEnabled ? round($taxableAmount * ($taxPercent / 100), 2) : 0;
     if (abs($tax - $expectedTax) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'Tax mismatch: calculated tax does not match expected value'], JSON_UNESCAPED_UNICODE);
         return;
@@ -345,6 +375,14 @@ function handleCreateKOT($conn, $restaurant_id) {
             } else {
                 $kotNotes = "[Payment: " . $paymentMethod . "]";
             }
+        }
+        // The kot table has no dedicated coupon/discount columns, so the
+        // applied coupon is recorded as a readable note instead (same place
+        // the payment-method breakdown above already lives) rather than
+        // adding a migration for this.
+        if ($discountAmount > 0) {
+            $couponNote = "[Coupon: " . $couponCode . " -" . number_format($discountAmount, 2) . "]";
+            $kotNotes = !empty($kotNotes) ? ($kotNotes . "\n" . $couponNote) : $couponNote;
         }
         
         // Check if customer columns exist in kot table
@@ -414,12 +452,23 @@ function handleCreateKOT($conn, $restaurant_id) {
         
         // Commit transaction
         $conn->commit();
-        
+
+        // Redeem the coupon only after the KOT is safely committed — mirrors
+        // process_website_order.php's redemption-after-persist ordering.
+        if ($coupon && $discountAmount > 0) {
+            try {
+                $conn->prepare("UPDATE coupons SET current_uses = current_uses + 1 WHERE id = ?")->execute([$coupon['id']]);
+            } catch (Exception $e) {
+                error_log("Could not increment coupon usage for coupon id " . $coupon['id'] . ": " . $e->getMessage());
+            }
+        }
+
         $resp = [
             'success' => true,
             'message' => 'KOT created successfully. Order will be created when KOT is marked as Ready.',
             'kot_number' => $kotNumber,
-            'kot_id' => $kotId
+            'kot_id' => $kotId,
+            'discount_amount' => $discountAmount,
         ];
         echo json_encode($resp, JSON_UNESCAPED_UNICODE);
     } catch (Exception $e) {
