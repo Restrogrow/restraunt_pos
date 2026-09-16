@@ -36,10 +36,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   eyebrow: {
-    fontFamily: font.medium,
-    fontSize: 13,
+    fontFamily: font.semiBold,
+    fontSize: 11.5,
     color: 'rgba(255,255,255,0.8)',
-    marginBottom: 2,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   title: {
     fontFamily: font.bold,

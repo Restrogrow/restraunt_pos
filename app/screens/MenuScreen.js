@@ -1,24 +1,74 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect } from 'react';
+import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
-import { apiGet } from '../config/api';
+import { apiGet, imageUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { useApiData } from '../hooks/useApiData';
 import { colors, font, radius, shadow, spacing } from '../theme';
+import { setMenuChangeListener } from '../utils/menuChangeBus';
 
-export default function MenuScreen() {
+export default function MenuScreen({ navigation }) {
   const { user } = useAuth();
   const fetcher = useCallback(() => apiGet('/api/get_menu_items.php?limit=200'), []);
-  const { data, loading, refreshing, error, refresh } = useApiData(fetcher, { pollInterval: 30000 });
+  const { data, loading, refreshing, error, refresh, reload, setData } = useApiData(fetcher, { pollInterval: 30000 });
   const currency = user?.currency_symbol || '₹';
 
   const items = data?.data || [];
 
+  // Reconciles with the server after the detail screen adds/edits/deletes
+  // an item — silent ('background' mode touches neither the refresh spinner
+  // nor the error state), so returning to this tab never flashes a manual
+  // pull-to-refresh indicator. The detail screen also splices its change
+  // into `data` immediately via onChange below, so the list is already
+  // correct the instant you come back; this just quietly confirms it.
+  useFocusEffect(
+    useCallback(() => {
+      reload('background');
+    }, [reload])
+  );
+
+  // Optimistic local update so Save/Delete reflect in the list instantly,
+  // with no visible network round-trip.
+  const applyChange = useCallback((type, payload) => {
+    setData((prev) => {
+      const list = prev?.data || [];
+      let nextList;
+      if (type === 'delete') {
+        nextList = list.filter((it) => String(it.id) !== String(payload.id));
+      } else if (type === 'update') {
+        nextList = list.map((it) => (String(it.id) === String(payload.id) ? { ...it, ...payload } : it));
+      } else if (type === 'create') {
+        nextList = [payload, ...list];
+      } else {
+        nextList = list;
+      }
+      return { ...(prev || {}), data: nextList };
+    });
+  }, [setData]);
+
+  useEffect(() => {
+    setMenuChangeListener(applyChange);
+    return () => setMenuChangeListener(null);
+  }, [applyChange]);
+
   return (
     <View style={styles.fill}>
-      <ScreenHeader eyebrow="Your catalogue" title="Menu" />
+      <ScreenHeader
+        eyebrow="Your catalogue"
+        title="Menu"
+        right={
+          <Pressable
+            style={({ pressed }) => [styles.addButton, pressed && { opacity: 0.85 }]}
+            onPress={() => navigation.navigate('MenuItem', {})}
+            hitSlop={8}
+          >
+            <Ionicons name="add" size={22} color={colors.primary} />
+          </Pressable>
+        }
+      />
 
       {loading ? (
         <LoadingState />
@@ -39,7 +89,7 @@ export default function MenuScreen() {
             <EmptyState
               icon="restaurant-outline"
               title="No menu items yet"
-              subtitle="Items you add will appear here"
+              subtitle="Tap + to add your first item"
             />
           }
           contentContainerStyle={[
@@ -49,10 +99,18 @@ export default function MenuScreen() {
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const available = item.is_available == 1;
+            const thumb = imageUrl(item.item_image);
             return (
-              <View style={[styles.card, shadow.sm]}>
+              <Pressable
+                style={({ pressed }) => [styles.card, shadow.sm, pressed && { opacity: 0.85 }]}
+                onPress={() => navigation.navigate('MenuItem', { item })}
+              >
                 <View style={styles.thumb}>
-                  <Ionicons name="fast-food-outline" size={20} color={colors.primary} />
+                  {thumb ? (
+                    <Image source={{ uri: thumb }} style={styles.thumbImage} />
+                  ) : (
+                    <Ionicons name="fast-food-outline" size={20} color={colors.primary} />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name} numberOfLines={1}>{item.item_name_en}</Text>
@@ -81,7 +139,8 @@ export default function MenuScreen() {
                     </Text>
                   </View>
                 </View>
-              </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </Pressable>
             );
           }}
         />
@@ -92,6 +151,14 @@ export default function MenuScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg },
+  addButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   content: {
     padding: spacing.xl,
     paddingBottom: 120,
@@ -122,6 +189,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  thumbImage: {
+    width: '100%',
+    height: '100%',
   },
   name: {
     fontFamily: font.semiBold,

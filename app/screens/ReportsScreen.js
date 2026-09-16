@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
+import SelectField from '../components/SelectField';
 import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
 import StatCard from '../components/StatCard';
 import { apiGet } from '../config/api';
@@ -16,10 +16,117 @@ const PERIODS = [
   { key: 'year', label: '12 Months' },
 ];
 
+// Mirrors the website's Reports > Report Type dropdown — the API already
+// returns every dataset in one response, so switching type here just picks
+// which section of the same payload to display.
+const REPORT_TYPES = [
+  { value: 'sales', label: 'Sales Report' },
+  { value: 'customers', label: 'Customer Report' },
+  { value: 'items', label: 'Top Items Report' },
+  { value: 'payment', label: 'Payment Methods Report' },
+  { value: 'hourly', label: 'Hourly Sales Report' },
+  { value: 'staff', label: 'Staff Performance Report' },
+];
+
+function formatDate(value) {
+  if (!value) return '-';
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('en-IN');
+}
+
+function hourLabel(hour) {
+  const h = Number(hour);
+  if (h === 0) return '12:00 AM';
+  if (h < 12) return `${h}:00 AM`;
+  if (h === 12) return '12:00 PM';
+  return `${h - 12}:00 PM`;
+}
+
+// Each report type's own dataset from the same API response, normalized to
+// {id, title, subtitle, value, meta} rows so a single list UI can render any
+// of them — same idea as the website swapping its one report table's columns.
+function getReportRows(reportType, data, currency) {
+  switch (reportType) {
+    case 'customers':
+      return {
+        emptyTitle: 'No customers yet',
+        emptySubtitle: 'Customer spending will show up here',
+        rows: (data?.top_customers || []).map((c, i) => ({
+          id: `${c.customer_name}_${c.phone}_${i}`,
+          title: c.customer_name || 'N/A',
+          subtitle: `${c.phone || 'No phone'} · ${c.total_orders} orders`,
+          value: `${currency}${c.total_spent}`,
+          meta: `Last: ${formatDate(c.last_order_date)}`,
+        })),
+      };
+    case 'items':
+      return {
+        emptyTitle: 'No items sold yet',
+        emptySubtitle: 'Best sellers will show up here',
+        rows: (data?.top_items || []).map((it, i) => ({
+          id: `${it.item_name}_${i}`,
+          title: it.item_name || 'Unnamed item',
+          subtitle: `Qty sold: ${it.total_quantity}`,
+          value: `${currency}${it.total_revenue}`,
+        })),
+      };
+    case 'payment':
+      return {
+        emptyTitle: 'No payments yet',
+        emptySubtitle: 'Payment method totals will show up here',
+        rows: (data?.payment_methods || []).map((m, i) => ({
+          id: `${m.payment_method}_${i}`,
+          title: m.payment_method || 'Unknown',
+          subtitle: `${m.count} orders`,
+          value: `${currency}${m.amount}`,
+        })),
+      };
+    case 'hourly':
+      return {
+        emptyTitle: 'No hourly data',
+        emptySubtitle: 'Hourly sales only apply to the "Today" period',
+        rows: (data?.hourly_sales || []).map((h, i) => ({
+          id: `${h.hour}_${i}`,
+          title: hourLabel(h.hour),
+          subtitle: `${h.order_count} orders`,
+          value: `${currency}${h.total_sales}`,
+        })),
+      };
+    case 'staff':
+      return {
+        emptyTitle: 'No staff performance yet',
+        emptySubtitle: 'Sales per staff member will show up here',
+        rows: (data?.staff_performance || []).map((s, i) => ({
+          id: `${s.staff_name}_${i}`,
+          title: s.staff_name || 'Unknown',
+          subtitle: `${s.total_orders} orders`,
+          value: `${currency}${s.total_sales}`,
+        })),
+      };
+    case 'sales':
+    default:
+      return {
+        emptyTitle: 'No sales yet',
+        emptySubtitle: 'Order details will show up here',
+        rows: (data?.sales_details || []).map((o) => ({
+          id: o.id,
+          title: o.order_number,
+          subtitle: `${o.customer_name || 'Guest'} · ${o.payment_method}`,
+          value: `${currency}${o.total}`,
+          meta: formatDate(o.created_at),
+        })),
+      };
+  }
+}
+
 export default function ReportsScreen() {
   const { user } = useAuth();
   const [period, setPeriod] = useState('today');
-  const fetcher = useCallback(() => apiGet('/api/get_sales_report.php?period=' + period), [period]);
+  const [reportType, setReportType] = useState('sales');
+  const fetcher = useCallback(
+    () => apiGet(`/api/get_sales_report.php?period=${period}&type=${reportType}`),
+    [period, reportType]
+  );
   // Only poll while looking at "Today" — older periods aren't changing live.
   const { data, loading, refreshing, error, refresh } = useApiData(fetcher, {
     pollInterval: period === 'today' ? 30000 : 0,
@@ -27,7 +134,11 @@ export default function ReportsScreen() {
   const currency = user?.currency_symbol || '₹';
 
   const summary = data?.summary || {};
-  const topItems = data?.top_items || [];
+  const { rows, emptyTitle, emptySubtitle } = useMemo(
+    () => getReportRows(reportType, data, currency),
+    [reportType, data, currency]
+  );
+  const reportTitle = REPORT_TYPES.find((t) => t.value === reportType)?.label || 'Report';
 
   return (
     <View style={styles.fill}>
@@ -46,6 +157,10 @@ export default function ReportsScreen() {
             </Pressable>
           );
         })}
+      </View>
+
+      <View style={styles.reportTypeWrap}>
+        <SelectField value={reportType} onChange={setReportType} options={REPORT_TYPES} placeholder="Report Type" />
       </View>
 
       {loading ? (
@@ -75,11 +190,11 @@ export default function ReportsScreen() {
               tintBg={colors.infoBg}
             />
             <StatCard
-              label="Net Profit"
-              value={`${currency}${summary.net_profit ?? 0}`}
-              icon="wallet-outline"
-              tint={colors.teal}
-              tintBg={colors.tealBg}
+              label="Items Sold"
+              value={summary.total_items ?? 0}
+              icon="fast-food-outline"
+              tint={colors.warning}
+              tintBg={colors.warningBg}
             />
             <StatCard
               label="Customers"
@@ -88,25 +203,42 @@ export default function ReportsScreen() {
               tint={colors.purple}
               tintBg={colors.purpleBg}
             />
+            <StatCard
+              label="Total Expenses"
+              value={`${currency}${summary.total_expenses ?? 0}`}
+              icon="trending-down-outline"
+              tint={colors.danger}
+              tintBg={colors.dangerBg}
+            />
+            <StatCard
+              label="Net Profit"
+              value={`${currency}${summary.net_profit ?? 0}`}
+              icon="wallet-outline"
+              tint={colors.teal}
+              tintBg={colors.tealBg}
+            />
           </View>
 
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Top Items</Text>
+            <Text style={styles.sectionTitle}>{reportTitle}</Text>
           </View>
 
-          {topItems.length === 0 ? (
-            <EmptyState icon="podium-outline" title="No sales yet" subtitle="Best sellers will show up here" />
+          {rows.length === 0 ? (
+            <EmptyState icon="podium-outline" title={emptyTitle} subtitle={emptySubtitle} />
           ) : (
             <View style={styles.list}>
-              {topItems.map((item, i) => (
-                <View key={item.item_name ?? i} style={[styles.itemRow, shadow.sm]}>
+              {rows.map((row, i) => (
+                <View key={row.id ?? i} style={[styles.itemRow, shadow.sm]}>
                   <View style={styles.rankWrap}>
                     <Text style={styles.rank}>{i + 1}</Text>
                   </View>
-                  <Text style={styles.itemName} numberOfLines={1}>{item.item_name || 'Unnamed item'}</Text>
-                  <View style={styles.soldChip}>
-                    <Ionicons name="flame" size={12} color={colors.primary} />
-                    <Text style={styles.soldText}>{item.total_quantity ?? item.quantity_sold ?? 0} sold</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.itemName} numberOfLines={1}>{row.title}</Text>
+                    {row.subtitle ? <Text style={styles.itemSubtitle} numberOfLines={1}>{row.subtitle}</Text> : null}
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.rowValue}>{row.value}</Text>
+                    {row.meta ? <Text style={styles.rowMeta}>{row.meta}</Text> : null}
                   </View>
                 </View>
               ))}
@@ -145,6 +277,10 @@ const styles = StyleSheet.create({
   },
   periodChipTextActive: {
     color: '#fff',
+  },
+  reportTypeWrap: {
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.md,
   },
   content: {
     padding: spacing.xl,
@@ -191,23 +327,25 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   itemName: {
-    flex: 1,
     fontFamily: font.semiBold,
     fontSize: 14,
     color: colors.ink,
   },
-  soldChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.bg,
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  itemSubtitle: {
+    fontFamily: font.regular,
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 2,
   },
-  soldText: {
-    fontFamily: font.medium,
+  rowValue: {
+    fontFamily: font.bold,
+    fontSize: 14,
+    color: colors.primary,
+  },
+  rowMeta: {
+    fontFamily: font.regular,
     fontSize: 11,
-    color: colors.inkSoft,
+    color: colors.muted,
+    marginTop: 2,
   },
 });

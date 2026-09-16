@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BottomTabBarHeightCallbackContext } from '@react-navigation/bottom-tabs';
+import { useContext } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, font, radius, shadow, spacing } from '../theme';
 
 const ICONS = {
-  Dashboard: 'grid',
   Orders: 'receipt',
+  POS: 'cash-outline',
   Menu: 'restaurant',
   Reports: 'bar-chart',
   Settings: 'settings',
@@ -13,9 +15,22 @@ const ICONS = {
 
 export default function TabBar({ state, descriptors, navigation }) {
   const insets = useSafeAreaInsets();
+  // Reports this bar's real rendered height back to react-navigation, so
+  // screens using useBottomTabBarHeight() (to keep their own floating
+  // buttons from sitting underneath this floating pill) get an accurate
+  // number instead of the library's generic default-tab-bar estimate.
+  const setTabBarHeight = useContext(BottomTabBarHeightCallbackContext);
+
+  const focusedOptions = descriptors[state.routes[state.index].key].options;
+  if (focusedOptions.tabBarStyle?.display === 'none') {
+    return null;
+  }
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+    <View
+      style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}
+      onLayout={(e) => setTabBarHeight?.(e.nativeEvent.layout.height)}
+    >
       <View style={[styles.bar, shadow.lg]}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;

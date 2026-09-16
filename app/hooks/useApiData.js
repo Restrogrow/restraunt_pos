@@ -58,5 +58,5 @@ export function useApiData(fetcher, { pollInterval = 0 } = {}) {
 
   const refresh = useCallback(() => load('manual'), [load]);
 
-  return { data, loading, refreshing, error, refresh, reload: load };
+  return { data, loading, refreshing, error, refresh, reload: load, setData };
 }

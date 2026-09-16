@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
-import { font, radius, shadow, spacing } from '../theme';
+import { colors, font, radius, shadow, spacing } from '../theme';
 
 export default function StatCard({ label, value, icon, tint, tintBg }) {
   return (
@@ -33,12 +33,14 @@ const styles = StyleSheet.create({
   value: {
     fontFamily: font.bold,
     fontSize: 22,
-    color: '#1D1B26',
+    color: colors.ink,
   },
   label: {
-    fontFamily: font.regular,
-    fontSize: 12.5,
-    color: '#9997A6',
-    marginTop: 3,
+    fontFamily: font.medium,
+    fontSize: 11,
+    color: colors.muted,
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
 });
