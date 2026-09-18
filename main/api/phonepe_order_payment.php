@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if (ob_get_level()) ob_clean();
 ob_start();
 

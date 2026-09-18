@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Add-on Operations Controller
  * Handles CRUD operations for meal add-ons in the admin dashboard

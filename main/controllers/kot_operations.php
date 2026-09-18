@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Suppress error display, log errors instead
 error_reporting(E_ALL);
 ini_set('display_errors', 0);

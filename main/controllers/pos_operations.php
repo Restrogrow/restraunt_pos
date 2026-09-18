@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Register error handler to catch all errors
 register_shutdown_function(function() {
     $error = error_get_last();

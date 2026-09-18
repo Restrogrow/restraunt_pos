@@ -4,7 +4,7 @@ import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 // loaded by the time the first order alert fires, and so replaying it just
 // means seeking back to 0 instead of decoding the file again every time —
 // mirrors the website's single reused Audio() instance.
-const player = createAudioPlayer(require('../assets/sounds/new-order.mp3'));
+const player = createAudioPlayer(require('../assets/sounds/telephone-ring.mp3'));
 player.volume = 0.8;
 
 // Separate, short tap-feedback sound for POS item taps — needs its own
@@ -26,7 +26,7 @@ async function ensureAudioMode() {
   }
 }
 
-const RING_TIMEOUT_MS = 45000; // safety-net auto-stop if nobody's there to mute it
+const RING_TIMEOUT_MS = 2 * 60 * 1000; // matches the website's new-order ring — safety-net auto-stop if nobody's there to mute it
 let ringTimeoutId = null;
 
 // Rings on loop (like an incoming-call alert) until muted, until the order

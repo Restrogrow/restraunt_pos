@@ -28,9 +28,16 @@ try {
         $conn = $pdo;
     }
 
-    // Auto-create delivery_tracking table if missing
+    // Auto-create delivery_tracking table if missing. Explicitly ENGINE=InnoDB
+    // (not relying on the server's default storage engine) since the FOREIGN
+    // KEY below silently fails to create on a server whose default engine
+    // isn't InnoDB — that left this whole feature throwing a generic "An
+    // error occurred" on first use on any such deployment. If it still fails
+    // for some other reason, fall back to the same table without the FK
+    // rather than leaving the feature broken — referential integrity here is
+    // a nice-to-have, not something worth losing rider QR generation over.
     try { $conn->query("SELECT id FROM delivery_tracking LIMIT 1"); } catch (PDOException $e) {
-        $conn->exec("CREATE TABLE IF NOT EXISTS delivery_tracking (
+        $deliveryTrackingColumns = "
             id INT AUTO_INCREMENT PRIMARY KEY,
             restaurant_id VARCHAR(10) NOT NULL,
             order_id INT NOT NULL,
@@ -51,12 +58,19 @@ try {
             delivered_at DATETIME NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
             INDEX idx_restaurant_id (restaurant_id),
             INDEX idx_order_id (order_id),
             INDEX idx_delivery_status (delivery_status),
             INDEX idx_qr_token (qr_token)
-        )");
+        ";
+        try {
+            $conn->exec("CREATE TABLE IF NOT EXISTS delivery_tracking ($deliveryTrackingColumns,
+                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        } catch (PDOException $e2) {
+            $conn->exec("CREATE TABLE IF NOT EXISTS delivery_tracking ($deliveryTrackingColumns
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        }
     }
 
     $restaurant_id = $_SESSION['restaurant_id'] ?? '';

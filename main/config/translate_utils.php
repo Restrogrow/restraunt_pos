@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 function ensureLanguageColumns($conn, $restaurant_id = null) {
     return false;
