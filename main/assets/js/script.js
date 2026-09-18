@@ -1518,6 +1518,40 @@ document.addEventListener("DOMContentLoaded", () => {
       // Load settings data if it's the settings page
       if (pageId === "settingsPage") {
         loadSettingsData();
+
+        // Keep the order-type toggles live while this page stays open — the
+        // owner might flip Delivery/Dine-in from the POS app (or another
+        // browser tab) while this one is sitting open on Settings. Only
+        // touches these 3 checkboxes, not loadSettingsData()'s full
+        // re-population, so it can't stomp text fields mid-edit.
+        if (window.orderTypeTogglePoll) {
+          clearInterval(window.orderTypeTogglePoll);
+        }
+        window.orderTypeTogglePoll = setInterval(async () => {
+          const page = document.getElementById('settingsPage');
+          if (!page?.classList.contains('active') || document.hidden) return;
+          try {
+            const res = await fetch('../admin/get_session.php');
+            const data = await res.json();
+            if (!data.success) return;
+            const user = data.data;
+            const deliveryCb = document.getElementById('enableDeliveryToggle');
+            const takeawayCb = document.getElementById('enableTakeawayToggle');
+            const dineinCb = document.getElementById('enableDineinToggle');
+            if (deliveryCb && document.activeElement !== deliveryCb && user.enable_delivery !== undefined) {
+              deliveryCb.checked = user.enable_delivery == 1;
+            }
+            if (takeawayCb && document.activeElement !== takeawayCb && user.enable_takeaway !== undefined) {
+              takeawayCb.checked = user.enable_takeaway == 1;
+            }
+            if (dineinCb && document.activeElement !== dineinCb && user.enable_dinein !== undefined) {
+              dineinCb.checked = user.enable_dinein == 1;
+            }
+          } catch (e) {}
+        }, 15000);
+      } else if (window.orderTypeTogglePoll) {
+        clearInterval(window.orderTypeTogglePoll);
+        window.orderTypeTogglePoll = null;
       }
       
       // Setup reports auto-reload if it's the reports page

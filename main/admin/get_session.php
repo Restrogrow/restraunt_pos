@@ -98,7 +98,7 @@ try {
             $staffRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
             if (!empty($staffRow['restaurant_id'])) {
-                $restStmt = $conn->prepare("SELECT restaurant_name, currency_symbol, restaurant_logo, business_qr_code_path, show_pan_no, pan_no FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
+                $restStmt = $conn->prepare("SELECT restaurant_name, currency_symbol, restaurant_logo, business_qr_code_path, show_pan_no, pan_no, enable_delivery, enable_takeaway, enable_dinein, cod_enabled FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
                 $restStmt->execute([':restaurant_id' => $staffRow['restaurant_id']]);
                 $restRow = $restStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 

@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BillPreviewModal from '../components/BillPreviewModal';
+import OrderTypeToggles from '../components/OrderTypeToggles';
 import ScreenHeader from '../components/ScreenHeader';
 import { ErrorState, LoadingState } from '../components/ScreenState';
 import SelectField from '../components/SelectField';
@@ -372,7 +373,7 @@ export default function POSScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader eyebrow="Counter orders" title="POS" />
+      <ScreenHeader eyebrow="Counter orders" title="POS" right={<OrderTypeToggles />} />
 
       {loading ? (
         <LoadingState />

@@ -104,7 +104,11 @@ try {
         case 'updateRestaurantSettings':
             handleUpdateRestaurantSettings();
             break;
-            
+
+        case 'toggleOrderType':
+            handleToggleOrderType();
+            break;
+
         case 'updateSystemSettings':
             handleUpdateSystemSettings();
             break;
@@ -977,6 +981,96 @@ function handleUpdateRestaurantSettings() {
     } else {
         throw new Exception('Failed to update restaurant settings');
     }
+}
+
+// Quick on/off toggle for a single order type (dine-in/delivery/takeaway) —
+// separate from handleUpdateRestaurantSettings() on purpose: that handler
+// rewrites the entire settings form from $_POST, so calling it with just one
+// field would blank out everything else (name, phone, tax, links, ...). This
+// touches exactly one column, so it's safe to call from a one-tap header
+// toggle in the POS app or website without round-tripping the full form.
+function handleToggleOrderType() {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    if (function_exists('getConnection')) {
+        $pdo = getConnection();
+    } else {
+        global $pdo;
+        if (!isset($pdo) || !($pdo instanceof PDO)) {
+            throw new Exception('Database connection not available');
+        }
+    }
+
+    $isBranchAdmin = isset($_SESSION['branch_admin_id']);
+
+    // Same admin-only gate as handleUpdateRestaurantSettings() — staff
+    // sessions never set user_id/branch_admin_id, so they can't reach this.
+    if ((!isset($_SESSION['user_id']) && !$isBranchAdmin) || !isset($_SESSION['restaurant_id'])) {
+        throw new Exception('You must be logged in to change order type settings');
+    }
+
+    if ($isBranchAdmin) {
+        $linkedRestaurantIds = array_column($_SESSION['linked_restaurants'] ?? [], 'restaurant_id');
+        if (!in_array($_SESSION['restaurant_id'], $linkedRestaurantIds, true)) {
+            throw new Exception('You are not authorized to update this restaurant');
+        }
+        $ownerLookupStmt = $pdo->prepare("SELECT id FROM users WHERE restaurant_id = ? LIMIT 1");
+        $ownerLookupStmt->execute([$_SESSION['restaurant_id']]);
+        $userId = $ownerLookupStmt->fetchColumn();
+        if (!$userId) {
+            throw new Exception('Restaurant not found');
+        }
+    } else {
+        $userId = $_SESSION['user_id'];
+    }
+
+    // Whitelist — $column is only ever one of these three literals, so it's
+    // safe to interpolate into the UPDATE below.
+    $columnMap = [
+        'dinein' => 'enable_dinein',
+        'delivery' => 'enable_delivery',
+        'takeaway' => 'enable_takeaway',
+    ];
+    $type = $_POST['type'] ?? '';
+    if (!isset($columnMap[$type])) {
+        throw new Exception('Invalid order type');
+    }
+    $column = $columnMap[$type];
+    $enabled = isset($_POST['enabled']) ? ((int)$_POST['enabled'] ? 1 : 0) : null;
+    if ($enabled === null) {
+        throw new Exception('Missing enabled value');
+    }
+
+    $currentStmt = $pdo->prepare("SELECT enable_dinein, enable_takeaway, enable_delivery FROM users WHERE id = ?");
+    $currentStmt->execute([$userId]);
+    $current = $currentStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$current) {
+        throw new Exception('Restaurant not found');
+    }
+
+    if ($enabled === 0) {
+        $projected = $current;
+        $projected[$column] = 0;
+        $anyLeft = ((int)$projected['enable_dinein']) || ((int)$projected['enable_takeaway']) || ((int)$projected['enable_delivery']);
+        if (!$anyLeft) {
+            throw new Exception('At least one order type must stay enabled');
+        }
+    }
+
+    $updateStmt = $pdo->prepare("UPDATE users SET {$column} = ?, updated_at = NOW() WHERE id = ?");
+    $updateStmt->execute([$enabled, $userId]);
+
+    echo json_encode([
+        'success' => true,
+        'message' => ucfirst($type) . ' orders ' . ($enabled ? 'enabled' : 'disabled'),
+        'data' => [
+            'enable_dinein' => $column === 'enable_dinein' ? $enabled : (int)$current['enable_dinein'],
+            'enable_takeaway' => $column === 'enable_takeaway' ? $enabled : (int)$current['enable_takeaway'],
+            'enable_delivery' => $column === 'enable_delivery' ? $enabled : (int)$current['enable_delivery'],
+        ]
+    ]);
 }
 
 function handleUpdatePaymentGateway() {

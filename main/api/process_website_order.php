@@ -122,11 +122,11 @@ try {
     // validated. Falls back to a reduced column set if a newer migration
     // (km-delivery, cod_enabled, etc.) hasn't been run on this DB yet.
     try {
-        $userStmt = $conn->prepare("SELECT subscription_status, minimum_order_value, packaging_charge, cod_enabled, payment_gateway_mode, phonepe_merchant_id, (business_qr_code_data IS NOT NULL) AS has_business_qr, opening_hours, timezone, enable_km_delivery, delivery_rate_per_km, delivery_radius_km, restaurant_lat, restaurant_lng, enable_gst, tax_name, tax_percent, whatsapp_orders, phone FROM users WHERE restaurant_id = ? LIMIT 1");
+        $userStmt = $conn->prepare("SELECT subscription_status, minimum_order_value, packaging_charge, cod_enabled, payment_gateway_mode, phonepe_merchant_id, (business_qr_code_data IS NOT NULL) AS has_business_qr, opening_hours, timezone, enable_km_delivery, delivery_rate_per_km, delivery_radius_km, restaurant_lat, restaurant_lng, enable_gst, tax_name, tax_percent, whatsapp_orders, phone, enable_dinein, enable_takeaway, enable_delivery FROM users WHERE restaurant_id = ? LIMIT 1");
         $userStmt->execute([$restaurant_id]);
         $restaurantRow = $userStmt->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        $userStmt = $conn->prepare("SELECT subscription_status, minimum_order_value, packaging_charge, opening_hours, timezone, enable_gst, tax_name, tax_percent, whatsapp_orders, phone FROM users WHERE restaurant_id = ? LIMIT 1");
+        $userStmt = $conn->prepare("SELECT subscription_status, minimum_order_value, packaging_charge, opening_hours, timezone, enable_gst, tax_name, tax_percent, whatsapp_orders, phone, enable_dinein, enable_takeaway, enable_delivery FROM users WHERE restaurant_id = ? LIMIT 1");
         $userStmt->execute([$restaurant_id]);
         $restaurantRow = $userStmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -141,6 +141,22 @@ try {
         echo json_encode([
             'success' => false,
             'message' => 'This restaurant is not currently accepting online orders.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    // Enforce order-type availability server-side. index.php/header.php hide
+    // a disabled type's tab and cart.php filters it out of the checkout
+    // options, but neither of those is authoritative — a direct call to this
+    // API could still submit a type the owner has turned off.
+    $orderTypeColumnMap = ['Dine-in' => 'enable_dinein', 'Takeaway' => 'enable_takeaway', 'Delivery' => 'enable_delivery'];
+    $orderTypeColumn = $orderTypeColumnMap[$order_type] ?? null;
+    if ($orderTypeColumn && isset($restaurantRow[$orderTypeColumn]) && (int)$restaurantRow[$orderTypeColumn] === 0) {
+        ob_end_clean();
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'message' => $order_type . ' orders are not available for this restaurant right now.'
         ], JSON_UNESCAPED_UNICODE);
         exit();
     }
