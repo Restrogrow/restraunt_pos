@@ -13,6 +13,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -36,8 +37,6 @@ function cartKeyFor(id, variationName) {
   return `${id}_${variationName || ''}`;
 }
 
-const ITEM_TYPES = ['All', 'Veg', 'Non Veg', 'Egg', 'Drink', 'Dessert', 'Other'];
-
 export default function POSScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
@@ -54,8 +53,7 @@ export default function POSScreen() {
 
   const [search, setSearch] = useState('');
   const [menuFilter, setMenuFilter] = useState('All');
-  const [category, setCategory] = useState('All');
-  const [itemType, setItemType] = useState('All');
+  const [vegOnly, setVegOnly] = useState(false);
   const listRef = useRef(null);
   const searchRef = useRef(null);
   const [cart, setCart] = useState([]); // [{key, id, name, price, quantity, variationName}]
@@ -109,28 +107,12 @@ export default function POSScreen() {
     return [{ label: 'All Menus', value: 'All' }, ...Array.from(set).map((m) => ({ label: m, value: m }))];
   }, [menuItems]);
 
-  const categoryOptions = useMemo(() => {
-    const set = new Set(
-      menuItems
-        .filter((it) => menuFilter === 'All' || it.menu_name === menuFilter)
-        .map((it) => it.item_category)
-        .filter(Boolean)
-    );
-    return [{ label: 'All Categories', value: 'All' }, ...Array.from(set).map((c) => ({ label: c, value: c }))];
-  }, [menuItems, menuFilter]);
-
-  const typeOptions = useMemo(
-    () => ITEM_TYPES.map((t) => ({ label: t === 'All' ? 'All Types' : t, value: t })),
-    []
-  );
-
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     return menuItems.filter((it) => {
       if (it.is_available != 1) return false;
       if (menuFilter !== 'All' && it.menu_name !== menuFilter) return false;
-      if (category !== 'All' && it.item_category !== category) return false;
-      if (itemType !== 'All' && it.item_type !== itemType) return false;
+      if (vegOnly && it.item_type !== 'Veg') return false;
       if (q) {
         const name = (it.item_name_en || '').toLowerCase();
         const cat = (it.item_category || '').toLowerCase();
@@ -138,7 +120,7 @@ export default function POSScreen() {
       }
       return true;
     });
-  }, [menuItems, menuFilter, category, itemType, search]);
+  }, [menuItems, menuFilter, vegOnly, search]);
 
   // Item card price: a min–max range across variations (matches the
   // website's POS card), or the plain base price for simple items.
@@ -387,17 +369,23 @@ export default function POSScreen() {
                 onChangeText={setSearch}
               />
             </View>
+          </View>
+          <View style={[styles.filterRow, styles.filterRowSecond]}>
             <View style={styles.filterHalf}>
               <SelectField placeholder="All Menus" value={menuFilter} onChange={setMenuFilter} options={menuOptions} />
             </View>
           </View>
-          <View style={[styles.filterRow, styles.filterRowSecond]}>
-            <View style={styles.filterHalf}>
-              <SelectField placeholder="All Categories" value={category} onChange={setCategory} options={categoryOptions} />
+          <View style={[styles.filterRow, styles.filterRowSecond, styles.vegRow]}>
+            <View style={styles.vegDotOutline}>
+              <View style={styles.vegDotInner} />
             </View>
-            <View style={styles.filterHalf}>
-              <SelectField placeholder="All Types" value={itemType} onChange={setItemType} options={typeOptions} />
-            </View>
+            <Text style={styles.vegLabel}>Veg Only</Text>
+            <Switch
+              value={vegOnly}
+              onValueChange={setVegOnly}
+              trackColor={{ false: colors.border, true: colors.primaryLight }}
+              thumbColor={vegOnly ? colors.primary : '#fff'}
+            />
           </View>
 
           <FlatList
@@ -701,6 +689,36 @@ const styles = StyleSheet.create({
   },
   filterHalf: {
     flex: 1,
+  },
+  vegRow: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  vegDotOutline: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    borderColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vegDotInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success,
+  },
+  vegLabel: {
+    flex: 1,
+    fontFamily: font.semiBold,
+    fontSize: 13.5,
+    color: colors.ink,
   },
   searchWrap: {
     flexDirection: 'row',
