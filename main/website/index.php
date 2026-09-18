@@ -1504,6 +1504,21 @@ function getImageUrl(img) {
   return 'image.php?id=' + encodeURIComponent(img) + '&_=' + ts;
 }
 
+// Item/category/menu names and descriptions are admin-entered free text
+// rendered straight into the page for every customer who loads this menu —
+// escape before inserting, whether as element text or inside a quoted
+// attribute (e.g. alt="..."), so a name/description can't break out and
+// inject markup or script that runs in every visitor's browser.
+function escHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function getCurrencySymbol() {
   return window.globalCurrencySymbol || '₹';
 }
@@ -1656,7 +1671,7 @@ function renderMenu() {
       catImg = cat.items[0].item_image || cat.items[0].image;
     }
     html += '<div class="category-header" style="cursor:pointer">' +
-      '<h3>' + (catImg ? '<img src="' + getImageUrl(catImg) + '" alt="' + cat.name + '" style="width:24px;height:24px;border-radius:4px;object-fit:cover"> ' : '') + cat.name + ' <span class="count-badge">' + items.length + '</span></h3>' +
+      '<h3>' + (catImg ? '<img src="' + getImageUrl(catImg) + '" alt="' + escHtml(cat.name) + '" style="width:24px;height:24px;border-radius:4px;object-fit:cover"> ' : '') + escHtml(cat.name) + ' <span class="count-badge">' + items.length + '</span></h3>' +
       '<span class="collapse-icon" onclick="event.stopPropagation();toggleCategory(' + ci + ')">' +
         '<i class="fa ' + (cat.collapsed ? 'fa-chevron-right' : 'fa-chevron-down') + '"></i>' +
       '</span>' +
@@ -1670,12 +1685,12 @@ function renderMenu() {
       var oos = item.is_available == 0;
       html += '<div class="menu-item' + (oos ? ' oos' : '') + '" onclick="if(!' + oos + ')showItemDetail(' + ci + ',' + ii + ')">' +
         '<div class="menu-item-img">' +
-          '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + (item.item_name_translated || item.item_name_en || item.name) + '" loading="lazy">' +
+          '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + escHtml(item.item_name_translated || item.item_name_en || item.name) + '" loading="lazy">' +
           (item.item_type && (item.item_type === 'Veg' || item.item_type === 'Non Veg' || item.item_type === 'Egg') ? '<div class="veg-icon"><svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" fill="#fff" stroke="' + (item.item_type === 'Veg' ? '#2ecc40' : item.item_type === 'Non Veg' ? '#e53935' : '#ff9800') + '" stroke-width="1.5" rx="2"/><circle cx="7" cy="7" r="3" fill="' + (item.item_type === 'Veg' ? '#2ecc40' : item.item_type === 'Non Veg' ? '#e53935' : '#ff9800') + '"/></svg></div>' : '') +
         '</div>' +
         '<div class="menu-item-content">' +
-          '<div class="menu-item-name">' + (item.item_name_translated || item.item_name_en || item.name) + '</div>' +
-          '<div class="menu-item-desc">' + ((item.item_description_en || item.desc || '').replace(/\n/g, item.description_format === 'br' ? '<br>' : ' ')) + '</div>' +
+          '<div class="menu-item-name">' + escHtml(item.item_name_translated || item.item_name_en || item.name) + '</div>' +
+          '<div class="menu-item-desc">' + (escHtml(item.item_description_en || item.desc || '').replace(/\n/g, item.description_format === 'br' ? '<br>' : ' ')) + '</div>' +
           '<div class="menu-item-footer">' +
             '<div class="menu-item-price">' + displayPrice + '</div>' +
             '<div style="display:flex;align-items:center;gap:6px">' +
@@ -1957,8 +1972,8 @@ function showItemDetail(ci, ii) {
   selectedVariant = null;
 
   var imgUrl = getImageUrl(item.item_image || item.image);
-  var itemName = item.item_name_translated || item.item_name_en || item.name;
-  var itemDesc = item.item_description_en || item.desc || '';
+  var itemName = escHtml(item.item_name_translated || item.item_name_en || item.name);
+  var itemDesc = escHtml(item.item_description_en || item.desc || '');
   var descFmt = item.description_format || 'paragraph';
   var itemPrice = parseFloat(item.base_price || item.price || 0);
   var hasVariants = item.has_variations && item.variations && item.variations.length > 0;
@@ -1968,7 +1983,7 @@ function showItemDetail(ci, ii) {
   var prepTime = item.preparation_time || '';
   var itemCalories = item.calories || 0;
   var itemCategory = item.item_category || '';
-  var menuName = item.menu_name_translated || item.menu_name || '';
+  var menuName = escHtml(item.menu_name_translated || item.menu_name || '');
 
   var html = '';
 

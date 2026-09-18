@@ -1,0 +1,5 @@
+# Session files here contain PHP's serialized session data — including
+# whichever restaurant/staff account is currently logged in. This folder
+# must never be reachable over HTTP under any circumstance, independent of
+# whatever rules exist in the parent main/.htaccess.
+Require all denied

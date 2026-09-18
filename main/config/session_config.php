@@ -43,7 +43,10 @@ ini_set('session.gc_divisor', 100);
 
 $sessionPath = __DIR__ . '/../sessions';
 if (!is_dir($sessionPath)) {
-    @mkdir($sessionPath, 0777, true);
+    // 0700 (owner-only), not 0777 — this folder holds active session data
+    // (who's logged in as whom); the web server user is the only one that
+    // ever needs to read/write it.
+    @mkdir($sessionPath, 0700, true);
 }
 if (is_dir($sessionPath) && is_writable($sessionPath)) {
     session_save_path($sessionPath);

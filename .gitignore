@@ -57,8 +57,11 @@ package-lock.json
 /blob-report/
 /playwright/.cache/
 
-# Session files
-main/sessions/
+# Session files — .htaccess is tracked deliberately (it's what blocks this
+# folder from being served over HTTP at all); everything else in it is
+# live session data and must never be committed.
+main/sessions/*
+!main/sessions/.htaccess
 
 # Test files
 test_*.php
