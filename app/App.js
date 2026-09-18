@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -32,6 +33,17 @@ import ReportsScreen from './screens/ReportsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+const APP_NAME = 'Restrogrow Partner';
+
+// Android can kill the app process entirely when it's backgrounded under
+// memory pressure — common on the budget tablets this runs on at the
+// counter. Without this, reopening the app after that always restarts on
+// the first tab instead of wherever the staff member actually was (e.g.
+// Reports). Persisting react-navigation's own state and restoring it on
+// the next cold start fixes that. Skipped on web — the dev preview reloads
+// constantly during development and this would just be confusing there.
+const NAV_STATE_KEY = 'navigationState_v1';
 
 // This is a phone-shaped app — on native it always gets the full device
 // width anyway, but on web (a desktop browser window) that same layout was
@@ -286,13 +298,38 @@ export default function App() {
     Poppins_700Bold,
   });
 
+  // initialState must be known before NavigationContainer's first render —
+  // setting it later has no effect — so app startup waits on this the same
+  // way it already waits on fonts.
+  const [navStateReady, setNavStateReady] = useState(Platform.OS === 'web');
+  const [initialNavState, setInitialNavState] = useState();
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem(NAV_STATE_KEY);
+        if (saved) setInitialNavState(JSON.parse(saved));
+      } catch (e) {
+        // corrupt/missing — just start fresh
+      } finally {
+        setNavStateReady(true);
+      }
+    })();
+  }, []);
+
+  const persistNavState = useCallback((state) => {
+    if (Platform.OS === 'web') return;
+    AsyncStorage.setItem(NAV_STATE_KEY, JSON.stringify(state)).catch(() => {});
+  }, []);
+
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
       await SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !navStateReady) {
     return (
       <WebFrame>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
@@ -306,7 +343,15 @@ export default function App() {
     <WebFrame>
       <SafeAreaProvider>
         <AuthProvider>
-          <NavigationContainer ref={navigationRef} onReady={onLayoutRootView}>
+          <NavigationContainer
+            ref={navigationRef}
+            initialState={initialNavState}
+            onStateChange={persistNavState}
+            onReady={onLayoutRootView}
+            documentTitle={{
+              formatter: (options, route) => options?.title ?? route?.name ?? APP_NAME,
+            }}
+          >
             <StatusBar style="light" />
             <RootNavigator />
           </NavigationContainer>
