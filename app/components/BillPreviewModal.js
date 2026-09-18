@@ -192,6 +192,7 @@ export default function BillPreviewModal({ visible, onClose, data }) {
             </Pressable>
           </View>
 
+          <ScrollView style={styles.receiptScroll} showsVerticalScrollIndicator={false}>
           <View style={styles.printerBar}>
             {!setupOpen ? (
               <>
@@ -320,7 +321,6 @@ export default function BillPreviewModal({ visible, onClose, data }) {
             )}
           </View>
 
-          <ScrollView style={styles.receiptScroll} showsVerticalScrollIndicator={false}>
             <View style={styles.receipt}>
               <Text style={styles.restaurantName}>{restaurantName}</Text>
               <Text style={styles.metaLine}>{new Date().toLocaleString()}</Text>

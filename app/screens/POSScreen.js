@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -70,8 +70,11 @@ export default function POSScreen() {
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [billPreview, setBillPreview] = useState(null);
 
-  const load = useCallback(() => {
-    setLoading(true);
+  // silent=true skips the full-screen spinner — used when refreshing on tab
+  // focus (see useFocusEffect below), where the screen is already showing
+  // good data and a flash-to-spinner on every tab switch would be jarring.
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
     setError('');
     Promise.all([
       apiGet('/api/get_menu_items.php?limit=200'),
@@ -85,13 +88,29 @@ export default function POSScreen() {
         setPaymentMethods(pmRes?.success ? (pmRes.data || []).filter((m) => m.is_active) : []);
         setCoupons(cpRes?.success ? cpRes.coupons || [] : []);
       })
-      .catch((e) => setError(e.message || 'Could not load POS'))
+      .catch((e) => {
+        if (!silent) setError(e.message || 'Could not load POS');
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // The menu item list (add/edit/delete, availability toggle) is managed
+  // from the Menu tab — reload here every time POS regains focus so a new
+  // item shows up without the staff member having to restart the app,
+  // which was the only way it used to show up before. The very first focus
+  // coincides with mount, where we want the real (non-silent) load with its
+  // spinner — skip that one here so it isn't fetched twice back to back.
+  const mountedRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!mountedRef.current) {
+        mountedRef.current = true;
+        load();
+      } else {
+        load(true);
+      }
+    }, [load])
+  );
 
   // The floating pill tab bar is an absolutely-positioned overlay that sits
   // on top of whatever's at the bottom of the tab's content — including the

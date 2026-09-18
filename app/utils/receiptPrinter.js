@@ -15,8 +15,6 @@ const CMD = {
   ALIGN_CENTER: [ESC, 0x61, 0x01],
   BOLD_ON: [ESC, 0x45, 0x01],
   BOLD_OFF: [ESC, 0x45, 0x00],
-  DOUBLE_ON: [GS, 0x21, 0x11],
-  DOUBLE_OFF: [GS, 0x21, 0x00],
   CUT: [GS, 0x56, 0x00],
 };
 
@@ -29,6 +27,17 @@ function textToBytes(str) {
     bytes.push(str.charCodeAt(i) & 0xff);
   }
   return bytes;
+}
+
+// Thermal printers use a single-byte codepage and can't render most Unicode
+// currency symbols — naively truncating one to its low byte (textToBytes
+// above) prints a garbled/wrong glyph, not the intended symbol. Map the
+// common non-ASCII ones to a safe ASCII stand-in; anything already ASCII
+// (like '$') passes straight through.
+function printSafeCurrency(currency) {
+  const map = { '₹': 'Rs.', '€': 'EUR ', '£': 'GBP ', '¥': 'JPY ', '₩': 'KRW ', '₨': 'Rs.' };
+  if (map[currency]) return map[currency];
+  return /^[\x00-\x7F]*$/.test(currency || '') ? currency : 'Rs.';
 }
 
 function line(str = '') {
@@ -73,9 +82,17 @@ export function buildReceiptEscPos({
   currency = 'Rs.',
   width = 32,
 }) {
-  const bytes = [...CMD.INIT, ...CMD.ALIGN_CENTER, ...CMD.BOLD_ON, ...CMD.DOUBLE_ON];
+  currency = printSafeCurrency(currency);
+  // Double-width/height mode (GS ! n) used to wrap the restaurant name here.
+  // It's inconsistently supported on cheap ESC/POS clone printers — on at
+  // least one real printer it corrupted part of the name itself (the first
+  // several characters printed as garbage before the rest recovered), most
+  // likely the printer's font table hadn't finished switching by the time
+  // the text bytes arrived. Bold is universally supported and doesn't have
+  // this failure mode, so that's all the header uses now.
+  const bytes = [...CMD.INIT, ...CMD.ALIGN_CENTER, ...CMD.BOLD_ON];
   bytes.push(...line(restaurantName || 'Receipt'));
-  bytes.push(...CMD.DOUBLE_OFF, ...CMD.BOLD_OFF);
+  bytes.push(...CMD.BOLD_OFF);
   if (kotNumber) bytes.push(...line(kotNumber));
   bytes.push(...line(new Date().toLocaleString()));
   bytes.push(...CMD.ALIGN_LEFT);
