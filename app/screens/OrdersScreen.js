@@ -3,6 +3,7 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import DatePickerModal from '../components/DatePickerModal';
+import OrderTypeToggles from '../components/OrderTypeToggles';
 import ScreenHeader from '../components/ScreenHeader';
 import { ErrorState, LoadingState } from '../components/ScreenState';
 import { apiGet, apiPostForm } from '../config/api';
@@ -161,7 +162,7 @@ export default function OrdersScreen({ navigation }) {
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader eyebrow="Live" title="Orders" />
+      <ScreenHeader eyebrow="Live" title="Orders" right={<OrderTypeToggles />} />
 
       <View style={styles.dateNav}>
         <Pressable style={styles.dateNavButton} onPress={goToPreviousDay} hitSlop={8}>

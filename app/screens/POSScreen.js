@@ -19,7 +19,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BillPreviewModal from '../components/BillPreviewModal';
-import OrderTypeToggles from '../components/OrderTypeToggles';
 import ScreenHeader from '../components/ScreenHeader';
 import { ErrorState, LoadingState } from '../components/ScreenState';
 import SelectField from '../components/SelectField';
@@ -153,14 +152,6 @@ export default function POSScreen() {
       }
     }
     return `${currency}${item.base_price ?? 0}`;
-  };
-
-  // "+ Add Item" — mirrors the website's floating quick-add shortcut;
-  // here the grid is always visible, so it just jumps back to the top and
-  // focuses search instead of opening a separate picker.
-  const jumpToAddItem = () => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    searchRef.current?.focus();
   };
 
   const addToCart = (item, variation) => {
@@ -373,7 +364,7 @@ export default function POSScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader eyebrow="Counter orders" title="POS" right={<OrderTypeToggles />} />
+      <ScreenHeader eyebrow="Counter orders" title="POS" />
 
       {loading ? (
         <LoadingState />
@@ -449,66 +440,22 @@ export default function POSScreen() {
             }}
           />
 
-          {/* Mirrors the website's mobile POS — a persistent bill-summary
-              card plus Pay/Hold/KOT buttons fixed above the tab bar, so
-              checkout is one tap away without opening the cart first. */}
+          {/* A single "View Cart" trigger instead of a persistent bar of
+              Pay/Hold/KOT/Add Item — those all still live inside the cart
+              sheet below, one tap away, instead of cluttering the main
+              screen at all times. */}
           {itemCount > 0 ? (
-            <View style={[styles.posBottomBar, { bottom: tabBarHeight + spacing.sm }]}>
-              <View style={styles.summaryAndAddRow}>
-                <Pressable style={[styles.billSummaryCard, shadow.md]} onPress={() => setCartOpen(true)}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.billSummaryEyebrow}>Bill Summary · {itemCount} item{itemCount !== 1 ? 's' : ''}</Text>
-                    <Text style={styles.billSummaryTotal}>{currency}{total.toFixed(2)}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [styles.addItemButton, shadow.md, pressed && { opacity: 0.9 }]}
-                  onPress={jumpToAddItem}
-                >
-                  <Ionicons name="add" size={16} color="#fff" />
-                  <Text style={styles.addItemButtonText}>Add Item</Text>
-                </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.viewCartBar, shadow.md, { bottom: tabBarHeight + spacing.sm }, pressed && { opacity: 0.92 }]}
+              onPress={() => setCartOpen(true)}
+            >
+              <View style={styles.viewCartBadge}>
+                <Text style={styles.viewCartBadgeText}>{itemCount}</Text>
               </View>
-              <View style={styles.posActionsRow}>
-                <Pressable
-                  style={({ pressed }) => [styles.payButton, pressed && { opacity: 0.9 }]}
-                  onPress={payNow}
-                  disabled={holding || sendingKot || paying || cart.length === 0}
-                >
-                  <Ionicons name="card" size={15} color="#fff" />
-                  <Text style={styles.payButtonText}>Pay</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [styles.holdButton, pressed && { opacity: 0.9 }]}
-                  onPress={holdOrder}
-                  disabled={holding || sendingKot || paying || cart.length === 0}
-                >
-                  {holding ? (
-                    <ActivityIndicator color={colors.info} size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="pause" size={15} color={colors.info} />
-                      <Text style={styles.holdButtonText}>Hold</Text>
-                    </>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [styles.kotButton, pressed && { opacity: 0.9 }]}
-                  onPress={sendKOT}
-                  disabled={holding || sendingKot || paying || cart.length === 0}
-                >
-                  {sendingKot ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="restaurant" size={15} color="#fff" />
-                      <Text style={styles.kotButtonText}>KOT</Text>
-                    </>
-                  )}
-                </Pressable>
-              </View>
-            </View>
+              <Text style={styles.viewCartText}>View Cart</Text>
+              <Text style={styles.viewCartTotal}>{currency}{total.toFixed(2)}</Text>
+              <Ionicons name="chevron-forward" size={18} color="#fff" />
+            </Pressable>
           ) : null}
         </>
       )}
@@ -850,59 +797,44 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 3,
   },
-  posBottomBar: {
+  viewCartBar: {
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
-    gap: spacing.sm,
-    zIndex: 20,
-    elevation: 20,
-  },
-  summaryAndAddRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: spacing.sm,
-  },
-  billSummaryCard: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  billSummaryEyebrow: {
-    fontFamily: font.medium,
-    fontSize: 11.5,
-    color: colors.muted,
-    marginBottom: 2,
-  },
-  billSummaryTotal: {
-    fontFamily: font.bold,
-    fontSize: 17,
-    color: colors.ink,
-  },
-  addItemButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    minWidth: 108,
+    gap: spacing.sm,
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    zIndex: 20,
+    elevation: 20,
   },
-  addItemButtonText: {
-    fontFamily: font.semiBold,
-    fontSize: 13,
+  viewCartBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  viewCartBadgeText: {
+    fontFamily: font.bold,
+    fontSize: 12,
     color: '#fff',
   },
-  posActionsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  viewCartText: {
+    flex: 1,
+    fontFamily: font.semiBold,
+    fontSize: 14.5,
+    color: '#fff',
+  },
+  viewCartTotal: {
+    fontFamily: font.bold,
+    fontSize: 14.5,
+    color: '#fff',
   },
   backdrop: {
     flex: 1,

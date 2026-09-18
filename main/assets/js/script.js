@@ -1213,7 +1213,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         window._currentNotifOrder = order;
 
-        try { playNotificationSound(); } catch(e) {}
+        startNewOrderRing();
 
         var e = document.getElementById('notifOrderNumber');
         if (e) e.textContent = 'Order #' + (order.order_number || order.id);
@@ -1316,7 +1316,7 @@ document.addEventListener("DOMContentLoaded", () => {
           document.body.style.overflow = '';
         }
         window._currentNotifOrderId = null;
-        stopNotificationSound();
+        stopNewOrderRing();
       };
 
       window.acceptNewOrder = async function() {
@@ -9323,6 +9323,43 @@ window.logout = logout;
     } catch(e) {}
   }
   window.stopNotificationSound = stopNotificationSound;
+
+  // Rings like an incoming call for a brand-new order — loops continuously
+  // instead of the single short beep above, since a new order is easy to
+  // miss with one chime if the admin's away from the screen. Capped at 2
+  // minutes so it can't ring forever if the tab is left unattended; stops
+  // immediately once the owner opens/accepts/rejects it via closeNewOrderOverlay().
+  const NEW_ORDER_RING_MAX_MS = 2 * 60 * 1000;
+
+  function startNewOrderRing() {
+    try {
+      if (!window._newOrderRingAudio) {
+        window._newOrderRingAudio = new Audio('../../assets/sounds/telephone-ring.mp3');
+        window._newOrderRingAudio.loop = true;
+        window._newOrderRingAudio.volume = 0.7;
+      }
+      const audio = window._newOrderRingAudio;
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+
+      if (window._newOrderRingTimeout) clearTimeout(window._newOrderRingTimeout);
+      window._newOrderRingTimeout = setTimeout(stopNewOrderRing, NEW_ORDER_RING_MAX_MS);
+    } catch(e) {}
+  }
+
+  function stopNewOrderRing() {
+    try {
+      if (window._newOrderRingAudio) {
+        window._newOrderRingAudio.pause();
+        window._newOrderRingAudio.currentTime = 0;
+      }
+      if (window._newOrderRingTimeout) {
+        clearTimeout(window._newOrderRingTimeout);
+        window._newOrderRingTimeout = null;
+      }
+    } catch(e) {}
+  }
+  window.stopNewOrderRing = stopNewOrderRing;
 
   function playClickSound() {
     try {

@@ -1,13 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
 import { apiPostForm } from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { colors, font, radius } from '../theme';
+import { colors, font } from '../theme';
 
 const TYPES = [
-  { key: 'dinein', field: 'enable_dinein', label: 'Dine-in', icon: 'restaurant-outline' },
-  { key: 'delivery', field: 'enable_delivery', label: 'Delivery', icon: 'bicycle-outline' },
+  { key: 'dinein', field: 'enable_dinein', label: 'Dine-in' },
+  { key: 'delivery', field: 'enable_delivery', label: 'Delivery' },
 ];
 
 // Quick on/off switches for the two order types the owner most often needs
@@ -15,6 +14,9 @@ const TYPES = [
 // owner account can see or use these — staff sessions never get
 // user_type 'admin'/'branch_admin' — mirroring who's allowed to touch this
 // setting on the website (PERMISSION_MANAGE_SETTINGS is admin-only there too).
+//
+// A real Switch control (same one used elsewhere in Settings), not a
+// text-labelled button.
 //
 // Toggling is a single direct tap with no confirmation step — React
 // Native's Alert.alert() is a no-op on the web build (react-native-web
@@ -55,20 +57,18 @@ export default function OrderTypeToggles() {
         const isOn = user[type.field] == 1;
         const busy = busyKey === type.key;
         return (
-          <View key={type.key} style={styles.pillCol}>
-            <Pressable
-              style={({ pressed }) => [styles.pill, isOn ? styles.pillOn : styles.pillOff, pressed && { opacity: 0.85 }]}
-              onPress={() => onToggle(type)}
-              disabled={busy}
-            >
-              {busy ? (
-                <ActivityIndicator size="small" color={isOn ? colors.primary : '#fff'} />
-              ) : (
-                <Ionicons name={type.icon} size={13} color={isOn ? colors.primary : 'rgba(255,255,255,0.8)'} />
-              )}
-              <Text style={[styles.label, isOn ? styles.labelOn : styles.labelOff]}>{type.label}</Text>
-              <View style={[styles.dot, isOn ? styles.dotOn : styles.dotOff]} />
-            </Pressable>
+          <View key={type.key} style={styles.row}>
+            <Text style={styles.rowLabel}>{type.label}</Text>
+            {busy ? (
+              <ActivityIndicator size="small" color="#fff" style={styles.spinner} />
+            ) : (
+              <Switch
+                value={isOn}
+                onValueChange={() => onToggle(type)}
+                trackColor={{ false: 'rgba(255,255,255,0.3)', true: colors.success }}
+                thumbColor="#fff"
+              />
+            )}
             {errorKey === type.key ? <Text style={styles.errorText}>Couldn't update</Text> : null}
           </View>
         );
@@ -80,48 +80,20 @@ export default function OrderTypeToggles() {
 const styles = StyleSheet.create({
   wrap: {
     gap: 6,
-  },
-  pillCol: {
     alignItems: 'flex-end',
   },
-  pill: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: radius.pill,
-    minWidth: 100,
+    gap: 8,
   },
-  pillOn: {
-    backgroundColor: '#fff',
-  },
-  pillOff: {
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  label: {
+  rowLabel: {
     fontFamily: font.semiBold,
-    fontSize: 11.5,
-    flex: 1,
+    fontSize: 12,
+    color: '#fff',
   },
-  labelOn: {
-    color: colors.ink,
-  },
-  labelOff: {
-    color: 'rgba(255,255,255,0.85)',
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotOn: {
-    backgroundColor: colors.success,
-  },
-  dotOff: {
-    backgroundColor: 'rgba(255,255,255,0.5)',
+  spinner: {
+    width: 51,
   },
   errorText: {
     fontFamily: font.medium,
