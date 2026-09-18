@@ -50,9 +50,17 @@ export function AuthProvider({ children }) {
     if (!res.success) {
       throw new Error(res.message || 'Incorrect username or password');
     }
-    setUser(res.data);
+    // The login response's `data` is a minimal shape (username, role, ...) —
+    // not the full restaurant-settings object get_session.php returns. Every
+    // field this app reads from `user` elsewhere (enable_delivery,
+    // enable_gst, currency_symbol, tax_percent, ...) would otherwise sit at
+    // undefined for up to SESSION_POLL_MS after every single login, e.g.
+    // showing all order-type toggles as off or silently skipping GST on the
+    // first order rung up right after logging in. Fetch the real session
+    // immediately instead of trusting the login response's own data.
+    await checkSession();
     return res.data;
-  }, []);
+  }, [checkSession]);
 
   const logout = useCallback(async () => {
     try {
