@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Badge from '../components/Badge';
 import BillPreviewModal from '../components/BillPreviewModal';
@@ -70,6 +70,14 @@ const PAYMENT_STATUS_TRANSITIONS = {
 
 const VEG_DOT_COLOR = { Veg: colors.success, 'Non Veg': colors.danger };
 
+// Stepper bounds for the inline "Set Preparation Time" card shown on a
+// still-Pending order — matches the common delivery-platform partner app
+// pattern of a -/value/+ control rather than a separate confirm step.
+const PREP_STEP = 5;
+const PREP_MIN = 5;
+const PREP_MAX = 180;
+const DEFAULT_PREP_MINUTES = 15;
+
 function formatOrderDateTime(value) {
   if (!value) return '';
   const d = new Date(value.replace(' ', 'T'));
@@ -77,6 +85,13 @@ function formatOrderDateTime(value) {
   const datePart = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   const timePart = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   return `${datePart} | ${timePart}`;
+}
+
+function formatReadyByTime(value) {
+  if (!value) return '';
+  const d = new Date(value.replace(' ', 'T'));
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
 function VegDot({ itemType }) {
@@ -103,8 +118,13 @@ export default function OrderDetailScreen({ route, navigation }) {
   const [order, setOrder] = useState(initialOrder);
   const [updatingTo, setUpdatingTo] = useState(null);
   const [paymentPickerOpen, setPaymentPickerOpen] = useState(false);
+  const [prepMinutes, setPrepMinutes] = useState(DEFAULT_PREP_MINUTES);
+  const [customTimeOpen, setCustomTimeOpen] = useState(false);
+  const [customTimeInput, setCustomTimeInput] = useState('');
   const [updatingPayment, setUpdatingPayment] = useState(false);
   const [billPreview, setBillPreview] = useState(null);
+  const [riderQr, setRiderQr] = useState(null); // { url, expiresAt }
+  const [generatingQr, setGeneratingQr] = useState(false);
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const currency = user?.currency_symbol || '₹';
@@ -148,15 +168,46 @@ export default function OrderDetailScreen({ route, navigation }) {
     Linking.openURL(`tel:${order.customer_phone}`).catch(() => {});
   };
 
-  const updateStatus = async (to) => {
+  // Mirrors the website's "Generate QR for Rider" button on a delivery
+  // order — same session-authenticated endpoint, same rider-page.php link,
+  // just rendered here instead of in the admin dashboard. The rider scans
+  // this (or gets the link shared to them) to open a page that lets them
+  // update their live location/delivery status without a login of their own.
+  const generateRiderQr = async () => {
+    setGeneratingQr(true);
+    try {
+      const res = await apiPostForm('/api/generate_delivery_qr.php', { order_id: order.id });
+      if (!res.success) throw new Error(res.message || 'Could not generate QR');
+      setRiderQr({ url: res.qr_url, expiresAt: res.expires_at });
+    } catch (e) {
+      Alert.alert('Could not generate QR', e.message);
+    } finally {
+      setGeneratingQr(false);
+    }
+  };
+
+  const shareRiderLink = () => {
+    if (!riderQr) return;
+    Share.share({ message: riderQr.url }).catch(() => {});
+  };
+
+  const updateStatus = async (to, extraFields = {}) => {
     setUpdatingTo(to);
     try {
       const res = await apiPostForm('/api/update_order_status.php', {
         orderId: order.id,
         status: to,
+        ...extraFields,
       });
       if (!res.success) throw new Error(res.message || 'Update failed');
       const next = { ...order, order_status: to };
+      if (extraFields.prep_minutes) {
+        next.prep_minutes = extraFields.prep_minutes;
+        next.estimated_ready_at = new Date(Date.now() + extraFields.prep_minutes * 60000)
+          .toISOString()
+          .replace('T', ' ')
+          .slice(0, 19);
+      }
       setOrder(next);
       navigation.setParams({ order: next });
     } catch (e) {
@@ -164,6 +215,18 @@ export default function OrderDetailScreen({ route, navigation }) {
     } finally {
       setUpdatingTo(null);
     }
+  };
+
+  const decreasePrepMinutes = () => setPrepMinutes((m) => Math.max(PREP_MIN, m - PREP_STEP));
+  const increasePrepMinutes = () => setPrepMinutes((m) => Math.min(PREP_MAX, m + PREP_STEP));
+
+  const applyCustomPrepTime = () => {
+    const n = parseInt(customTimeInput, 10);
+    if (Number.isFinite(n) && n > 0) {
+      setPrepMinutes(Math.min(PREP_MAX, Math.max(PREP_MIN, n)));
+    }
+    setCustomTimeOpen(false);
+    setCustomTimeInput('');
   };
 
   const updatePayment = async (to) => {
@@ -237,6 +300,15 @@ export default function OrderDetailScreen({ route, navigation }) {
             <Badge label={order.order_status} />
           </View>
           {dateTime ? <Text style={styles.orderDate}>{dateTime}</Text> : null}
+          {order.prep_minutes ? (
+            <View style={styles.prepTimeRow}>
+              <Ionicons name="time-outline" size={14} color={colors.primary} />
+              <Text style={styles.prepTimeText}>
+                {order.prep_minutes} min prep
+                {order.estimated_ready_at ? ` · Ready by ${formatReadyByTime(order.estimated_ready_at)}` : ''}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={[styles.card, shadow.sm]}>
@@ -266,6 +338,31 @@ export default function OrderDetailScreen({ route, navigation }) {
               <Ionicons name="navigate-outline" size={15} color={colors.primary} />
               <Text style={styles.mapsButtonText}>Open in Google Maps</Text>
             </Pressable>
+          ) : null}
+          {isDelivery ? (
+            <>
+              <Pressable style={styles.mapsButton} onPress={generateRiderQr} disabled={generatingQr}>
+                {generatingQr ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons name="qr-code-outline" size={15} color={colors.primary} />
+                )}
+                <Text style={styles.mapsButtonText}>{riderQr ? 'Regenerate QR for Rider' : 'Generate QR for Rider'}</Text>
+              </Pressable>
+              {riderQr ? (
+                <View style={styles.riderQrBox}>
+                  <Image
+                    source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(riderQr.url)}` }}
+                    style={styles.riderQrImage}
+                  />
+                  <Text style={styles.riderQrLink} numberOfLines={2}>{riderQr.url}</Text>
+                  <Pressable style={styles.riderQrShareButton} onPress={shareRiderLink}>
+                    <Ionicons name="share-outline" size={14} color={colors.primary} />
+                    <Text style={styles.riderQrShareText}>Share Link</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </>
           ) : null}
           {order.notes ? <Row label="Notes" value={order.notes} /> : null}
         </View>
@@ -318,6 +415,45 @@ export default function OrderDetailScreen({ route, navigation }) {
             <Text style={styles.totalValue}>{currency}{order.total ?? 0}</Text>
           </View>
         </View>
+
+        {isPending ? (
+          <View style={[styles.card, shadow.sm]}>
+            <Text style={styles.itemsTitle}>Set Preparation Time</Text>
+            <View style={styles.prepStepperRow}>
+              <Pressable style={[styles.prepStepButton, { backgroundColor: colors.successBg }]} onPress={decreasePrepMinutes} hitSlop={8}>
+                <Ionicons name="remove" size={20} color={colors.success} />
+              </Pressable>
+              <View style={styles.prepValueBox}>
+                <Text style={styles.prepValueText}>{prepMinutes}m</Text>
+              </View>
+              <Pressable style={[styles.prepStepButton, { backgroundColor: colors.dangerBg }]} onPress={increasePrepMinutes} hitSlop={8}>
+                <Ionicons name="add" size={20} color={colors.danger} />
+              </Pressable>
+            </View>
+
+            {customTimeOpen ? (
+              <View style={styles.customTimeRow}>
+                <TextInput
+                  style={styles.customTimeInput}
+                  value={customTimeInput}
+                  onChangeText={setCustomTimeInput}
+                  placeholder="Minutes"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="number-pad"
+                  autoFocus
+                  onSubmitEditing={applyCustomPrepTime}
+                />
+                <Pressable style={styles.customTimeApply} onPress={applyCustomPrepTime}>
+                  <Text style={styles.customTimeApplyText}>Set</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable onPress={() => setCustomTimeOpen(true)} hitSlop={6}>
+                <Text style={styles.additionalTimeLink}>+ Additional Time Settings</Text>
+              </Pressable>
+            )}
+          </View>
+        ) : null}
       </ScrollView>
 
       {(actions.primary?.length || actions.secondary?.length) ? (
@@ -345,7 +481,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                   a.full && { flex: 1 },
                   { backgroundColor: a.tone === 'danger' ? colors.danger : colors.success },
                 ]}
-                onPress={() => updateStatus(a.to)}
+                onPress={() => updateStatus(a.to, a.to === 'Accepted' ? { prep_minutes: prepMinutes } : {})}
                 disabled={!!updatingTo}
               >
                 {updatingTo === a.to ? (
@@ -453,6 +589,17 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 6,
   },
+  prepTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+  },
+  prepTimeText: {
+    fontFamily: font.medium,
+    fontSize: 12.5,
+    color: colors.primary,
+  },
   customerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -502,6 +649,40 @@ const styles = StyleSheet.create({
   mapsButtonText: {
     fontFamily: font.semiBold,
     fontSize: 13,
+    color: colors.primary,
+  },
+  riderQrBox: {
+    alignItems: 'center',
+    backgroundColor: colors.bg,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+  },
+  riderQrImage: {
+    width: 160,
+    height: 160,
+    borderRadius: radius.sm,
+  },
+  riderQrLink: {
+    fontFamily: font.regular,
+    fontSize: 11,
+    color: colors.muted,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  riderQrShareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryLight,
+  },
+  riderQrShareText: {
+    fontFamily: font.semiBold,
+    fontSize: 12,
     color: colors.primary,
   },
   infoRow: {
@@ -708,5 +889,69 @@ const styles = StyleSheet.create({
     fontFamily: font.medium,
     fontSize: 14.5,
     color: colors.ink,
+  },
+  prepStepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  prepStepButton: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  prepValueBox: {
+    flex: 1,
+    height: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  prepValueText: {
+    fontFamily: font.bold,
+    fontSize: 17,
+    color: colors.ink,
+  },
+  additionalTimeLink: {
+    fontFamily: font.medium,
+    fontSize: 12.5,
+    color: colors.primary,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  customTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  customTimeInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    fontFamily: font.medium,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  customTimeApply: {
+    height: 44,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customTimeApplyText: {
+    fontFamily: font.semiBold,
+    fontSize: 13.5,
+    color: '#fff',
   },
 });
