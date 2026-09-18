@@ -283,16 +283,20 @@ export default function BillPreviewModal({ visible, onClose, data }) {
                         </>
                       )}
                     </Pressable>
-                    {pairedDevices.map((d) => (
-                      <Pressable
-                        key={d.address}
-                        style={styles.deviceRow}
-                        onPress={() => { setBtAddress(d.address); setBtName(d.name); setStatus('idle'); }}
-                      >
-                        <Ionicons name="print-outline" size={14} color={colors.inkSoft} />
-                        <Text style={styles.deviceRowText} numberOfLines={1}>{d.name}</Text>
-                      </Pressable>
-                    ))}
+                    {pairedDevices.length > 0 ? (
+                      <ScrollView style={styles.deviceListScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                        {pairedDevices.map((d) => (
+                          <Pressable
+                            key={d.address}
+                            style={styles.deviceRow}
+                            onPress={() => { setBtAddress(d.address); setBtName(d.name); setStatus('idle'); }}
+                          >
+                            <Ionicons name="print-outline" size={14} color={colors.inkSoft} />
+                            <Text style={styles.deviceRowText} numberOfLines={1}>{d.name}</Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    ) : null}
                   </>
                 )}
 
@@ -529,6 +533,13 @@ const styles = StyleSheet.create({
     fontFamily: font.semiBold,
     fontSize: 12,
     color: colors.primary,
+  },
+  // Capped so a phone with many paired Bluetooth devices scrolls its own
+  // short list instead of pushing "Connect Printer" and the rest of the
+  // sheet off the bottom, past this modal's own maxHeight.
+  deviceListScroll: {
+    maxHeight: 140,
+    marginBottom: spacing.xs,
   },
   deviceRow: {
     flexDirection: 'row',

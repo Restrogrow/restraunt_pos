@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -33,6 +33,91 @@ import ReportsScreen from './screens/ReportsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// A render error anywhere below this (a bad API response shaped
+// unexpectedly, a null field the UI didn't guard for, ...) used to take the
+// whole app down to a blank/crashed screen with no way back short of force-
+// closing and reopening. Error boundaries only catch render-time errors —
+// not the try/catch'd async ones already handled per-screen — so this is
+// specifically the "something I didn't anticipate" safety net.
+class ErrorBoundary extends Component {
+  state = { error: null };
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={crashStyles.wrap}>
+          <View style={crashStyles.iconWrap}>
+            <Ionicons name="alert-circle-outline" size={34} color={colors.danger} />
+          </View>
+          <Text style={crashStyles.title}>Something went wrong</Text>
+          <Text style={crashStyles.subtitle}>
+            The app hit an unexpected problem. Tap below to try again — if it keeps happening, let support know.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [crashStyles.button, pressed && { opacity: 0.9 }]}
+            onPress={() => this.setState({ error: null })}
+          >
+            <Ionicons name="refresh" size={16} color="#fff" />
+            <Text style={crashStyles.buttonText}>Try Again</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const crashStyles = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bg,
+    paddingHorizontal: 40,
+  },
+  iconWrap: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: colors.dangerBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontFamily: font.semiBold,
+    fontSize: 17,
+    color: colors.ink,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontFamily: font.regular,
+    fontSize: 13,
+    color: colors.inkSoft,
+    textAlign: 'center',
+    marginBottom: 26,
+    lineHeight: 19,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+  },
+  buttonText: {
+    color: '#fff',
+    fontFamily: font.semiBold,
+    fontSize: 14,
+  },
+});
 
 const APP_NAME = 'Restrogrow Partner';
 
@@ -353,7 +438,9 @@ export default function App() {
             }}
           >
             <StatusBar style="light" />
-            <RootNavigator />
+            <ErrorBoundary>
+              <RootNavigator />
+            </ErrorBoundary>
           </NavigationContainer>
         </AuthProvider>
       </SafeAreaProvider>

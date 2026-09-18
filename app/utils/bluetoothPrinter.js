@@ -35,6 +35,30 @@ async function ensureBluetoothPermissions() {
   return granted === PermissionsAndroid.RESULTS.GRANTED;
 }
 
+// react-native-bluetooth-classic surfaces native Android failures as their
+// raw Java exception class + message (e.g. "java.io.IOException: read
+// failed, socket might closed, read ret: -1"), which just showed up
+// verbatim in the app's error text — meaningless, and looks like a crash
+// report, to a restaurant staff member. Translate the common cases into
+// plain language and fall back to a generic "check the printer" message
+// for anything else, instead of showing a raw stack-trace-looking string.
+function friendlyBluetoothError(e) {
+  const raw = (e && e.message) || String(e);
+  if (/read failed|socket might closed|broken pipe|connection reset/i.test(raw)) {
+    return "Lost connection to the printer. Make sure it's still on and in range, then try again.";
+  }
+  if (/security|permission/i.test(raw)) {
+    return 'Bluetooth permission denied — enable it in phone Settings > Apps > Restrogrow Partner > Permissions.';
+  }
+  if (/not connect|connection failed|refused|timed? ?out/i.test(raw)) {
+    return "Could not connect to the printer. Make sure it's turned on, paired, and in range.";
+  }
+  if (/^java\.|Exception/.test(raw)) {
+    return 'Something went wrong talking to the printer. Try turning it off and on again.';
+  }
+  return raw;
+}
+
 export async function isBluetoothSupported() {
   try {
     await ensureBluetoothPermissions();
@@ -52,8 +76,12 @@ export async function listPairedPrinters() {
   if (!ok) {
     throw new Error('Bluetooth permission denied — enable it in phone Settings > Apps > Restrogrow Partner > Permissions.');
   }
-  const devices = await RNBluetoothClassic.getBondedDevices();
-  return (devices || []).map((d) => ({ address: d.address, name: d.name || d.address }));
+  try {
+    const devices = await RNBluetoothClassic.getBondedDevices();
+    return (devices || []).map((d) => ({ address: d.address, name: d.name || d.address }));
+  } catch (e) {
+    throw new Error(friendlyBluetoothError(e));
+  }
 }
 
 export async function isPrinterConnected(address) {
@@ -75,7 +103,11 @@ export async function connectToPrinter(address) {
   }
   const alreadyConnected = await isPrinterConnected(address);
   if (alreadyConnected) return true;
-  await RNBluetoothClassic.connectToDevice(address);
+  try {
+    await RNBluetoothClassic.connectToDevice(address);
+  } catch (e) {
+    throw new Error(friendlyBluetoothError(e));
+  }
   // Cheap thermal printers' SPP sockets commonly aren't ready for data the
   // instant connectToDevice() resolves — writing immediately after a fresh
   // connect is a well-known source of dropped/garbled first prints. A short
@@ -94,7 +126,11 @@ export async function disconnectPrinter(address) {
 // disconnect afterwards, so the same connection can be reused.
 export async function writeToPrinter(address, bytes) {
   if (!address) throw new Error('No Bluetooth printer selected — pick one first');
-  await RNBluetoothClassic.writeToDevice(address, Buffer.from(bytes));
+  try {
+    await RNBluetoothClassic.writeToDevice(address, Buffer.from(bytes));
+  } catch (e) {
+    throw new Error(friendlyBluetoothError(e));
+  }
 }
 
 export async function printToBluetoothPrinter({ address, bytes }) {

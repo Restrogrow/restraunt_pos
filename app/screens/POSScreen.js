@@ -102,16 +102,27 @@ export default function POSScreen() {
     return () => navigation.setOptions({ tabBarStyle: undefined });
   }, [navigation, cartOpen]);
 
+  // Filter by a normalized (trimmed, lower-cased) key rather than the raw
+  // menu_name — stray whitespace or inconsistent casing from data entry
+  // ("Delivery " vs "Delivery") would otherwise make that one menu's chip
+  // render fine but never actually match any item, looking "broken" only
+  // for that specific menu while every other one works.
   const menuOptions = useMemo(() => {
-    const set = new Set(menuItems.map((it) => it.menu_name).filter(Boolean));
-    return [{ label: 'All Menus', value: 'All' }, ...Array.from(set).map((m) => ({ label: m, value: m }))];
+    const map = new Map(); // normalized key -> display label (first-seen casing)
+    menuItems.forEach((it) => {
+      const label = (it.menu_name || '').trim();
+      if (!label) return;
+      const key = label.toLowerCase();
+      if (!map.has(key)) map.set(key, label);
+    });
+    return [{ label: 'All', value: 'All' }, ...Array.from(map, ([value, label]) => ({ label, value }))];
   }, [menuItems]);
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     return menuItems.filter((it) => {
       if (it.is_available != 1) return false;
-      if (menuFilter !== 'All' && it.menu_name !== menuFilter) return false;
+      if (menuFilter !== 'All' && (it.menu_name || '').trim().toLowerCase() !== menuFilter) return false;
       if (vegOnly && it.item_type !== 'Veg') return false;
       if (q) {
         const name = (it.item_name_en || '').toLowerCase();
@@ -370,11 +381,31 @@ export default function POSScreen() {
               />
             </View>
           </View>
-          <View style={[styles.filterRow, styles.filterRowSecond]}>
-            <View style={styles.filterHalf}>
-              <SelectField placeholder="All Menus" value={menuFilter} onChange={setMenuFilter} options={menuOptions} />
-            </View>
-          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.menuChipScroll}
+            contentContainerStyle={styles.menuChipRow}
+          >
+            {menuOptions.map((opt) => {
+              const active = menuFilter === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  style={[styles.menuChip, shadow.sm, active && styles.menuChipActive]}
+                  onPress={() => setMenuFilter(opt.value)}
+                >
+                  <Text
+                    style={[styles.menuChipText, active && styles.menuChipTextActive]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
           <View style={[styles.filterRow, styles.filterRowSecond, styles.vegRow]}>
             <View style={styles.vegDotOutline}>
               <View style={styles.vegDotInner} />
@@ -689,6 +720,42 @@ const styles = StyleSheet.create({
   },
   filterHalf: {
     flex: 1,
+  },
+  // Same look as the Reports screen's Today/7 Days/30 Days period chips,
+  // but sized to their own content in a horizontally scrolling row instead
+  // of flex:1 — menu names aren't a fixed short set like "Today"/"7 Days",
+  // so equal-width chips either stretched huge for a long name or squeezed
+  // everything else. A max width + single-line ellipsis keeps even a very
+  // long name from blowing out the row.
+  menuChipScroll: {
+    flexGrow: 0,
+    height: 38,
+    marginBottom: spacing.md,
+  },
+  menuChipRow: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+  },
+  menuChip: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 38,
+    maxWidth: 160,
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+  },
+  menuChipActive: {
+    backgroundColor: colors.primary,
+  },
+  menuChipText: {
+    fontFamily: font.semiBold,
+    fontSize: 12.5,
+    color: colors.inkSoft,
+  },
+  menuChipTextActive: {
+    color: '#fff',
   },
   vegRow: {
     alignItems: 'center',

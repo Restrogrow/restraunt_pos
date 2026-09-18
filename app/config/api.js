@@ -3,26 +3,46 @@
 // Production/native builds keep hitting the live site.
 export const BASE_URL = __DEV__ ? 'http://localhost/menuwebsite/main' : 'https://restrogrow.com/main';
 
+// Maps a bad HTTP status to something a restaurant staff member can
+// actually act on — "Request failed (500)" doesn't tell them anything.
+function friendlyStatusMessage(status) {
+  if (status === 401) return 'Your session has expired — please log in again.';
+  if (status === 403) return "You don't have permission to do that.";
+  if (status === 404) return "That couldn't be found — it may have been removed.";
+  if (status >= 500) return 'Something went wrong on the server. Please try again in a moment.';
+  return `Something went wrong (error ${status}). Please try again.`;
+}
+
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    credentials: 'include',
-    ...options,
-    headers: {
-      Accept: 'application/json',
-      ...options.headers,
-    },
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      credentials: 'include',
+      ...options,
+      headers: {
+        Accept: 'application/json',
+        ...options.headers,
+      },
+    });
+  } catch (e) {
+    // fetch() only throws for network-level failures (no connection, DNS
+    // failure, request timeout) — a bad HTTP status is handled below
+    // instead. Left unwrapped, this surfaces as a raw "Network request
+    // failed" or "Failed to fetch", which means nothing to someone on
+    // shaky wifi mid-shift.
+    throw new Error("Can't reach the server — check your internet connection and try again.");
+  }
 
   const text = await res.text();
   let data;
   try {
     data = JSON.parse(text);
   } catch (e) {
-    throw new Error('Server returned an unexpected response');
+    throw new Error('The server sent back something unexpected. Please try again in a moment.');
   }
 
   if (!res.ok && !('success' in data)) {
-    throw new Error(data.message || `Request failed (${res.status})`);
+    throw new Error(data.message || friendlyStatusMessage(res.status));
   }
 
   return data;
