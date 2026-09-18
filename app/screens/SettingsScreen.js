@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import Avatar from '../components/Avatar';
 import CouponsModal from '../components/CouponsModal';
 import ScreenHeader from '../components/ScreenHeader';
@@ -591,6 +592,33 @@ export default function SettingsScreen() {
         <View style={{ height: spacing.md }} />
         <ChangePasswordCard />
 
+        <Text style={styles.sectionTitle}>Legal</Text>
+        <Pressable
+          style={({ pressed }) => [styles.card, shadow.sm, styles.row, pressed && { opacity: 0.9 }]}
+          onPress={() => Linking.openURL('https://restrogrow.com/privacy-policy/')}
+        >
+          <View style={styles.rowIconWrap}>
+            <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Privacy Policy</Text>
+          </View>
+          <Ionicons name="open-outline" size={16} color={colors.muted} />
+        </Pressable>
+        <View style={{ height: spacing.sm }} />
+        <Pressable
+          style={({ pressed }) => [styles.card, shadow.sm, styles.row, pressed && { opacity: 0.9 }]}
+          onPress={() => Linking.openURL('https://restrogrow.com/terms-of-service/')}
+        >
+          <View style={styles.rowIconWrap}>
+            <Ionicons name="document-text-outline" size={16} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Terms of Service</Text>
+          </View>
+          <Ionicons name="open-outline" size={16} color={colors.muted} />
+        </Pressable>
+
         <Pressable
           style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.9 }]}
           onPress={logout}
@@ -598,6 +626,10 @@ export default function SettingsScreen() {
           <Ionicons name="log-out-outline" size={18} color={colors.danger} />
           <Text style={styles.logoutText}>Log Out</Text>
         </Pressable>
+
+        <Text style={styles.versionText}>
+          {Constants.expoConfig?.name || 'Restrogrow Partner'} v{Constants.expoConfig?.version || '1.0.0'}
+        </Text>
       </ScrollView>
       </KeyboardAvoidingView>
 
@@ -917,5 +949,12 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontFamily: font.semiBold,
     fontSize: 15,
+  },
+  versionText: {
+    fontFamily: font.regular,
+    fontSize: 11.5,
+    color: colors.muted,
+    textAlign: 'center',
+    marginTop: spacing.lg,
   },
 });

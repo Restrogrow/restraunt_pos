@@ -34,8 +34,16 @@
     "plugins": [
       "expo-font",
       "expo-splash-screen",
-      "expo-audio",
-      "expo-notifications"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-notifications",
+      "./plugins/withRemovePermissions.js"
     ]
   }
 }
