@@ -56,12 +56,14 @@ try {
     ensurePanColumns($conn);
     require_once __DIR__ . '/../config/gstin_helpers.php';
     ensureGstinColumns($conn);
+    require_once __DIR__ . '/../config/business_id_helpers.php';
+    ensureBusinessIdColumns($conn);
 
     $row = [];
 
     if ($isAdmin) {
         try {
-            $stmt = $conn->prepare("SELECT id, subscription_status, trial_end_date, renewal_date, created_at, email, role, phone, address, description, description_format, opening_hours, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, minimum_order_value, payment_gateway_type, currency_symbol, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, enable_reservations, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, show_pan_no, pan_no, show_gstin, gstin_no FROM users WHERE id = :id LIMIT 1");
+            $stmt = $conn->prepare("SELECT id, subscription_status, trial_end_date, renewal_date, created_at, email, role, phone, address, description, description_format, opening_hours, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, minimum_order_value, payment_gateway_type, currency_symbol, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, enable_reservations, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, show_business_id, business_id_label, business_id_no FROM users WHERE id = :id LIMIT 1");
             $stmt->execute([':id' => $_SESSION['user_id']]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (PDOException $e) {
@@ -100,7 +102,7 @@ try {
             $staffRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
             if (!empty($staffRow['restaurant_id'])) {
-                $restStmt = $conn->prepare("SELECT restaurant_name, currency_symbol, restaurant_logo, business_qr_code_path, address, show_pan_no, pan_no, show_gstin, gstin_no, enable_delivery, enable_takeaway, enable_dinein, cod_enabled FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
+                $restStmt = $conn->prepare("SELECT restaurant_name, currency_symbol, restaurant_logo, business_qr_code_path, address, country, show_business_id, business_id_label, business_id_no, enable_delivery, enable_takeaway, enable_dinein, cod_enabled FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
                 $restStmt->execute([':restaurant_id' => $staffRow['restaurant_id']]);
                 $restRow = $restStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
@@ -114,7 +116,7 @@ try {
         }
     } else if ($isBranchAdmin) {
         try {
-            $stmt = $conn->prepare("SELECT id, restaurant_name, currency_symbol, email, phone, address, description, description_format, opening_hours, payment_gateway_type, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, enable_reservations, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, show_pan_no, pan_no, show_gstin, gstin_no FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
+            $stmt = $conn->prepare("SELECT id, restaurant_name, currency_symbol, email, phone, address, description, description_format, opening_hours, payment_gateway_type, country, timezone, restaurant_logo, business_qr_code_path, google_maps_link, owner_name, enable_gst, tax_name, tax_percent, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, enable_reservations, cod_enabled, packaging_charge, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, show_business_id, business_id_label, business_id_no FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
             $stmt->execute([':restaurant_id' => $_SESSION['restaurant_id']]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (PDOException $e) {
@@ -177,10 +179,15 @@ try {
         'enable_takeaway' => $row['enable_takeaway'] ?? 1,
         'enable_dinein' => $row['enable_dinein'] ?? 1,
         'cod_enabled' => $row['cod_enabled'] ?? 1,
-        'show_pan_no' => $row['show_pan_no'] ?? 0,
-        'pan_no' => $row['pan_no'] ?? null,
-        'show_gstin' => $row['show_gstin'] ?? 0,
-        'gstin_no' => $row['gstin_no'] ?? null,
+        'show_business_id' => $row['show_business_id'] ?? 0,
+        // Falls back to a country-based default (GSTIN in India, PAN No in
+        // Nepal, PAN elsewhere) whenever the restaurant hasn't customized
+        // it yet, so the settings form and the bill always show something
+        // sensible even before the owner has touched this field.
+        'business_id_label' => (isset($row['business_id_label']) && $row['business_id_label'] !== '')
+            ? $row['business_id_label']
+            : defaultBusinessIdLabel($row['country'] ?? null),
+        'business_id_no' => $row['business_id_no'] ?? null,
         'minimum_order_value' => $row['minimum_order_value'] ?? 0,
         'packaging_charge' => $row['packaging_charge'] ?? 0,
         'delivery_radius_km' => $row['delivery_radius_km'] ?? 0,

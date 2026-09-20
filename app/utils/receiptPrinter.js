@@ -59,7 +59,7 @@ function centerText(str, width) {
 // Returns an array of { text, bold, size } lines — real Unicode, no ASCII
 // substitution, since this is rendered as text/an image, never raw
 // single-byte printer bytes. size is 'title' (restaurant name), 'small'
-// (address/GSTIN), or 'normal' (everything else) — the caller (BillPreview
+// (address/business ID), or 'normal' (everything else) — the caller (BillPreview
 // Modal/SettingsScreen) maps these to actual font sizes, and separately
 // appends the "Powered by RestroGrow" + logo footer, since that needs a
 // real <Image>, which a plain text line can't be.
@@ -67,7 +67,8 @@ export function buildReceiptLines({
   type = 'bill',
   restaurantName,
   restaurantAddress,
-  gstin,
+  businessIdLabel,
+  businessIdNo,
   kotNumber,
   orderType,
   tableName,
@@ -89,15 +90,17 @@ export function buildReceiptLines({
   // sensible line length for the bigger font.
   const titleWidth = Math.max(12, Math.round(width * 0.6));
   wrapText(restaurantName || 'Receipt', titleWidth).forEach((l) => push(centerText(l, titleWidth), { bold: true, size: 'title' }));
-  // Address, then GSTIN right below it (only when actually configured) —
-  // the divider always lands directly below whichever of these is last, not
-  // fixed right after the address. Bill only, same as the website's own
-  // print templates — a kitchen ticket has no use for legal/tax details.
+  // Address, then the business registration number right below it (only
+  // when actually configured) — the divider always lands directly below
+  // whichever of these is last, not fixed right after the address. Bill
+  // only, same as the website's own print templates — a kitchen ticket has
+  // no use for legal/tax details. Label varies by country (GSTIN in India,
+  // PAN No in Nepal, ...) and is freely editable — see business_id_helpers.php.
   if (type !== 'kot' && restaurantAddress) {
     wrapText(restaurantAddress, width).forEach((l) => push(centerText(l, width), { size: 'small' }));
   }
-  if (type !== 'kot' && gstin) {
-    push(centerText(`GSTIN: ${gstin}`, width), { size: 'small' });
+  if (type !== 'kot' && businessIdNo) {
+    push(centerText(`${businessIdLabel || 'PAN'}: ${businessIdNo}`, width), { size: 'small' });
   }
   push('-'.repeat(width));
   if (type === 'kot') push(centerText('KOT', width));
