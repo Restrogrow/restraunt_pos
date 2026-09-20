@@ -19,6 +19,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import TabBar from './components/TabBar';
 import OrderAlertWatcher from './components/OrderAlertWatcher';
+import WebAudioUnlockBanner from './components/WebAudioUnlockBanner';
 import { getBiometricLockEnabled } from './config/biometricSettings';
 import { navigationRef } from './navigationRef';
 import { colors, font } from './theme';
@@ -333,6 +334,7 @@ function RootNavigator() {
   return (
     <>
       <OrderAlertWatcher />
+      <WebAudioUnlockBanner />
       {checkingLock ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
           <ActivityIndicator size="large" color={colors.primary} />

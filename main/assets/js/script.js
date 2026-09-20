@@ -9326,10 +9326,10 @@ window.logout = logout;
 
   // Rings like an incoming call for a brand-new order — loops continuously
   // instead of the single short beep above, since a new order is easy to
-  // miss with one chime if the admin's away from the screen. Capped at 2
+  // miss with one chime if the admin's away from the screen. Capped at 10
   // minutes so it can't ring forever if the tab is left unattended; stops
   // immediately once the owner opens/accepts/rejects it via closeNewOrderOverlay().
-  const NEW_ORDER_RING_MAX_MS = 2 * 60 * 1000;
+  const NEW_ORDER_RING_MAX_MS = 10 * 60 * 1000;
 
   function startNewOrderRing() {
     try {
@@ -9360,6 +9360,37 @@ window.logout = logout;
     } catch(e) {}
   }
   window.stopNewOrderRing = stopNewOrderRing;
+
+  // Browsers refuse to autoplay audio until the page has seen a real user
+  // gesture. playClickSound() always fires from an actual click so it's
+  // fine, but the ring and notification chime fire from background polling
+  // (no click in the call stack) — on a dashboard left open and untouched
+  // while waiting for orders, that first play() would silently get blocked
+  // and swallowed by the .catch(()=>{}) below, so the ring would never be
+  // heard. Priming both Audio elements on the very first click/keydown/tap
+  // anywhere unlocks them for the rest of the tab's life.
+  function primeAlertAudio() {
+    try {
+      if (!window._newOrderRingAudio) {
+        window._newOrderRingAudio = new Audio('../../assets/sounds/telephone-ring.mp3');
+        window._newOrderRingAudio.loop = true;
+        window._newOrderRingAudio.volume = 0.7;
+      }
+      if (!window._notificationAudio) {
+        window._notificationAudio = new Audio('../../assets/sounds/notification.wav');
+        window._notificationAudio.volume = 0.5;
+      }
+      [window._newOrderRingAudio, window._notificationAudio].forEach(function(a) {
+        var p = a.play();
+        if (p && typeof p.catch === 'function') p.catch(function(){});
+        a.pause();
+        a.currentTime = 0;
+      });
+    } catch(e) {}
+  }
+  ['click', 'keydown', 'touchstart'].forEach(function(evt) {
+    document.addEventListener(evt, primeAlertAudio, { once: true, capture: true });
+  });
 
   function playClickSound() {
     try {

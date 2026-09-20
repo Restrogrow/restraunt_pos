@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 // Created once at module scope (not per-call) so the sound is already
@@ -10,7 +11,7 @@ player.volume = 0.8;
 // Separate, short tap-feedback sound for POS item taps — needs its own
 // player instance since it can fire rapidly (tapping several items back to
 // back) independently of the new-order alert above.
-const clickPlayer = createAudioPlayer(require('../assets/sounds/click.mp3'));
+const clickPlayer = createAudioPlayer(require('../assets/sounds/click.wav'));
 clickPlayer.volume = 0.5;
 
 let audioModeReady = false;
@@ -26,7 +27,7 @@ async function ensureAudioMode() {
   }
 }
 
-const RING_TIMEOUT_MS = 2 * 60 * 1000; // matches the website's new-order ring — safety-net auto-stop if nobody's there to mute it
+const RING_TIMEOUT_MS = 10 * 60 * 1000; // matches the website's new-order ring — safety-net auto-stop if nobody's there to mute it
 let ringTimeoutId = null;
 
 // Rings on loop (like an incoming-call alert) until muted, until the order
@@ -67,4 +68,49 @@ export async function playClickSound() {
   } catch (e) {
     // non-fatal — never block adding an item to cart over a beep failing
   }
+}
+
+// Web only: browsers refuse to autoplay media until the page has seen a
+// real user gesture. playClickSound() always fires from an actual tap so
+// it's fine, but playNewOrderSound() fires from OrderAlertWatcher's polling
+// interval (no tap in the call stack) — on a POS screen sitting untouched
+// waiting for orders, that play() call gets silently blocked (see the
+// unhandled NotAllowedError in AudioPlayerWeb.play()), so the ring is never
+// heard. isWebAudioPrimed()/subscribeWebAudioPrimed() let a visible banner
+// (WebAudioUnlockBanner) guarantee this happens via an explicit tap, rather
+// than hoping the staff happens to click something else first.
+let webAudioPrimed = Platform.OS !== 'web';
+const primeSubscribers = new Set();
+
+export function isWebAudioPrimed() {
+  return webAudioPrimed;
+}
+
+export function subscribeWebAudioPrimed(fn) {
+  if (webAudioPrimed) {
+    fn();
+    return () => {};
+  }
+  primeSubscribers.add(fn);
+  return () => primeSubscribers.delete(fn);
+}
+
+export function primeWebAudioNow() {
+  if (webAudioPrimed) return;
+  webAudioPrimed = true;
+  [player, clickPlayer].forEach((p) => {
+    try {
+      p.play();
+      p.pause();
+      p.seekTo(0);
+    } catch (e) {}
+  });
+  primeSubscribers.forEach((fn) => fn());
+  primeSubscribers.clear();
+}
+
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  ['click', 'keydown', 'touchstart'].forEach((evt) => {
+    document.addEventListener(evt, primeWebAudioNow, { once: true, capture: true });
+  });
 }
