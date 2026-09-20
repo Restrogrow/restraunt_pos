@@ -48,7 +48,11 @@ try {
     // delivery system — the admin confirms/edits the auto-calculated charge
     // at accept time, since it's only an estimate until then.
     $deliveryCharge = (isset($_POST['delivery_charge']) && $_POST['delivery_charge'] !== '') ? (float)$_POST['delivery_charge'] : null;
-    
+    // Optional: set when accepting an order — how many minutes the kitchen
+    // expects it to take, used to compute estimated_ready_at for the
+    // customer-facing order tracking page.
+    $prepMinutes = (isset($_POST['prep_minutes']) && $_POST['prep_minutes'] !== '') ? (int)$_POST['prep_minutes'] : null;
+
     if (!$orderId || !$status) {
         echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
         exit();
@@ -81,6 +85,13 @@ try {
         if ($status === 'Accepted' && $deliveryCharge !== null && $deliveryCharge >= 0) {
             $extraSet = ['total = total - delivery_charge + ?', 'delivery_charge = ?'];
             $extraParams = [$deliveryCharge, $deliveryCharge];
+        }
+
+        if ($status === 'Accepted' && $prepMinutes !== null && $prepMinutes > 0) {
+            $extraSet[] = 'prep_minutes = ?';
+            $extraParams[] = $prepMinutes;
+            $extraSet[] = 'estimated_ready_at = DATE_ADD(NOW(), INTERVAL ? MINUTE)';
+            $extraParams[] = $prepMinutes;
         }
 
         // Perform validated atomic update with row-level locking

@@ -134,6 +134,8 @@ try {
                 o.order_number,
                 o.table_id,
                 o.order_status,
+                o.prep_minutes,
+                o.estimated_ready_at,
                 o.payment_status,
                 o.order_type,
                 o.payment_method,
