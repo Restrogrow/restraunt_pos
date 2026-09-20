@@ -456,6 +456,93 @@ function OrderAlertsCard() {
   );
 }
 
+// Lets the owner turn on/edit the business registration number printed on
+// the bill (GSTIN in India, PAN No in Nepal, ... — label is always freely
+// editable) right from the app, instead of only from the website admin
+// dashboard. Saves through its own small endpoint (update_business_id.php)
+// rather than the website's whole-form updateRestaurantSettings action,
+// which would blank out every other restaurant setting not sent with it.
+function BusinessIdCard() {
+  const { user, refresh } = useAuth();
+  const [enabled, setEnabled] = useState(false);
+  const [label, setLabel] = useState('PAN');
+  const [idNo, setIdNo] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null); // { text, isError }
+
+  useEffect(() => {
+    setEnabled(user?.show_business_id == 1 || user?.show_business_id === true);
+    setLabel(user?.business_id_label || 'PAN');
+    setIdNo(user?.business_id_no || '');
+  }, [user?.show_business_id, user?.business_id_label, user?.business_id_no]);
+
+  const onSave = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await apiPostForm('/api/update_business_id.php', {
+        show_business_id: enabled ? '1' : '0',
+        business_id_label: label,
+        business_id_no: idNo,
+      });
+      if (!res.success) throw new Error(res.message || 'Could not save');
+      await refresh();
+      setMessage({ text: 'Saved', isError: false });
+    } catch (e) {
+      setMessage({ text: e.message, isError: true });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={[styles.card, shadow.sm, styles.section]}>
+      <View style={styles.bioRow}>
+        <View style={styles.rowIconWrap}>
+          <Ionicons name="id-card-outline" size={18} color={colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.bioTitle}>Business ID on Bill</Text>
+          <Text style={styles.bioHint}>e.g. GSTIN in India, PAN No in Nepal — rename the label to whatever your country calls it.</Text>
+        </View>
+        <Switch
+          value={enabled}
+          onValueChange={setEnabled}
+          trackColor={{ false: colors.border, true: colors.primaryLight }}
+          thumbColor={enabled ? colors.primary : '#fff'}
+        />
+      </View>
+      <TextInput
+        style={[styles.input, { marginTop: spacing.md }]}
+        placeholder="Label, e.g. GSTIN"
+        placeholderTextColor={colors.muted}
+        value={label}
+        onChangeText={setLabel}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Number"
+        placeholderTextColor={colors.muted}
+        autoCapitalize="characters"
+        value={idNo}
+        onChangeText={setIdNo}
+      />
+      {message ? (
+        <Text style={[styles.formMessage, { color: message.isError ? colors.danger : colors.success }]}>
+          {message.text}
+        </Text>
+      ) : null}
+      <Pressable
+        style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.9 }]}
+        onPress={onSave}
+        disabled={saving}
+      >
+        {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveButtonText}>Save</Text>}
+      </Pressable>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const { user, logout, refresh } = useAuth();
   const [couponsOpen, setCouponsOpen] = useState(false);
@@ -597,6 +684,9 @@ export default function SettingsScreen() {
         <View style={[styles.card, shadow.sm]}>
           <Row icon="pricetag-outline" label={user?.tax_name || 'GST'} value={user?.enable_gst == 1 ? `${user?.tax_percent ?? 0}%` : 'Disabled'} />
         </View>
+
+        <Text style={styles.sectionTitle}>Business ID</Text>
+        <BusinessIdCard />
 
         <Text style={styles.sectionTitle}>Marketing</Text>
         <Pressable style={({ pressed }) => [styles.card, shadow.sm, styles.row, pressed && { opacity: 0.9 }]} onPress={() => setCouponsOpen(true)}>
