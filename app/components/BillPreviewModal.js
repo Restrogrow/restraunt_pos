@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { getPrinterSettings, savePrinterSettings } from '../config/printerSettings';
@@ -10,7 +10,7 @@ import {
   listPairedPrinters,
   writeToPrinter,
 } from '../utils/bluetoothPrinter';
-import { buildReceiptEscPos, printToNetworkPrinter, testNetworkPrinter } from '../utils/receiptPrinter';
+import { buildReceiptEscPos, printToNetworkPrinter, receiptToPlainText, testNetworkPrinter } from '../utils/receiptPrinter';
 
 const STATUS_META = {
   idle: { label: 'Not connected', color: colors.muted },
@@ -65,23 +65,14 @@ export default function BillPreviewModal({ visible, onClose, data }) {
     });
   }, [visible]);
 
+  // Rendered straight from the same bytes that get sent to the printer
+  // (decoded back to plain text) rather than a hand-styled parallel layout —
+  // so this preview can never drift from what actually comes out on paper:
+  // same line wrapping, same width, same KOT-vs-bill content.
+  const receiptText = useMemo(() => (data ? receiptToPlainText(buildReceiptEscPos(data)) : ''), [data]);
+
   if (!data) return null;
-  const {
-    title,
-    restaurantName,
-    kotNumber,
-    orderType,
-    tableName,
-    items = [],
-    subtotal = 0,
-    discount = 0,
-    couponCode,
-    tax = 0,
-    taxPercent,
-    total = 0,
-    paymentMethod,
-    currency = '₹',
-  } = data;
+  const { title } = data;
 
   const currentPrinter = () => ({
     type,
@@ -322,52 +313,7 @@ export default function BillPreviewModal({ visible, onClose, data }) {
           </View>
 
             <View style={styles.receipt}>
-              <Text style={styles.restaurantName}>{restaurantName}</Text>
-              <Text style={styles.metaLine}>{new Date().toLocaleString()}</Text>
-              {kotNumber ? <Text style={styles.metaLine}>KOT {kotNumber}</Text> : null}
-              <Text style={styles.metaLine}>{orderType}{tableName ? ` · ${tableName}` : ''}</Text>
-
-              <View style={styles.dashedDivider} />
-
-              {items.map((it, i) => (
-                <View key={i} style={styles.itemRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.itemName}>{it.name}{it.variationName ? ` (${it.variationName})` : ''}</Text>
-                    <Text style={styles.itemQtyPrice}>{it.quantity} x {currency}{Number(it.price).toFixed(2)}</Text>
-                  </View>
-                  <Text style={styles.itemTotal}>{currency}{(Number(it.price) * Number(it.quantity)).toFixed(2)}</Text>
-                </View>
-              ))}
-
-              <View style={styles.dashedDivider} />
-
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>{currency}{Number(subtotal).toFixed(2)}</Text>
-              </View>
-              {discount > 0 ? (
-                <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: colors.success }]}>
-                    {couponCode ? `Coupon (${couponCode})` : 'Discount'}
-                  </Text>
-                  <Text style={[styles.summaryValue, { color: colors.success }]}>-{currency}{Number(discount).toFixed(2)}</Text>
-                </View>
-              ) : null}
-              {tax > 0 ? (
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Tax{taxPercent ? ` (${taxPercent}%)` : ''}</Text>
-                  <Text style={styles.summaryValue}>{currency}{Number(tax).toFixed(2)}</Text>
-                </View>
-              ) : null}
-              <View style={[styles.summaryRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalValue}>{currency}{Number(total).toFixed(2)}</Text>
-              </View>
-              {paymentMethod ? (
-                <Text style={styles.paymentLine}>Payment: {paymentMethod}</Text>
-              ) : null}
-
-              <Text style={styles.thankYou}>Thank you!</Text>
+              <Text style={styles.receiptMono} selectable={false}>{receiptText}</Text>
             </View>
           </ScrollView>
 
@@ -581,91 +527,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.lg,
   },
-  restaurantName: {
-    fontFamily: font.bold,
-    fontSize: 16,
-    color: colors.ink,
-    textAlign: 'center',
-  },
-  metaLine: {
-    fontFamily: font.regular,
-    fontSize: 11.5,
-    color: colors.muted,
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  dashedDivider: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    borderStyle: 'dashed',
-    marginVertical: spacing.sm,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    paddingVertical: 4,
-  },
-  itemName: {
-    fontFamily: font.medium,
-    fontSize: 13,
-    color: colors.ink,
-  },
-  itemQtyPrice: {
-    fontFamily: font.regular,
-    fontSize: 11.5,
-    color: colors.muted,
-    marginTop: 1,
-  },
-  itemTotal: {
-    fontFamily: font.semiBold,
-    fontSize: 13,
-    color: colors.ink,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 3,
-  },
-  summaryLabel: {
-    fontFamily: font.regular,
-    fontSize: 12.5,
-    color: colors.inkSoft,
-  },
-  summaryValue: {
-    fontFamily: font.medium,
-    fontSize: 12.5,
-    color: colors.ink,
-  },
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    marginTop: spacing.xs,
-    paddingTop: spacing.sm,
-  },
-  totalLabel: {
-    fontFamily: font.bold,
-    fontSize: 14.5,
-    color: colors.ink,
-  },
-  totalValue: {
-    fontFamily: font.bold,
-    fontSize: 15,
-    color: colors.ink,
-  },
-  paymentLine: {
-    fontFamily: font.medium,
+  // Monospace so character-grid alignment (padLine's spacing, dashed
+  // dividers, wrapped names) lines up on screen exactly as it would on
+  // fixed-pitch thermal paper — this text is the decoded print bytes
+  // themselves, not a re-styled approximation of them.
+  receiptMono: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontSize: 12,
-    color: colors.inkSoft,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
-  thankYou: {
-    fontFamily: font.medium,
-    fontSize: 12,
-    color: colors.muted,
-    textAlign: 'center',
-    marginTop: spacing.md,
+    lineHeight: 16,
+    color: colors.ink,
   },
   actions: {
     flexDirection: 'row',

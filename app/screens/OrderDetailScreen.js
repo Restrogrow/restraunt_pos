@@ -250,6 +250,7 @@ export default function OrderDetailScreen({ route, navigation }) {
 
   const openKotPrint = () => {
     setBillPreview({
+      type: 'kot',
       title: 'KOT Print',
       restaurantName: user?.restaurant_name || 'Receipt',
       kotNumber: order.order_number,

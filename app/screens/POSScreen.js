@@ -262,9 +262,10 @@ export default function POSScreen() {
   // "created" alert. The whole bill is snapshotted here (not read live from
   // state) since resetCart() runs right after this and would otherwise zero
   // out subtotal/discount/tax/total before the preview ever renders.
-  const offerPrint = (title, kotNumber, paymentMethod, cartSnapshot, tableIdSnapshot) => {
+  const offerPrint = (title, kotNumber, paymentMethod, cartSnapshot, tableIdSnapshot, type) => {
     const tableName = tables.find((t) => String(t.id) === String(tableIdSnapshot))?.table_number;
     setBillPreview({
+      type,
       title,
       restaurantName: user?.restaurant_name || 'Receipt',
       kotNumber,
@@ -332,7 +333,7 @@ export default function POSScreen() {
       });
       if (!res.success) throw new Error(res.message || 'Could not send to kitchen');
       resetCart();
-      offerPrint('Sent to kitchen', res.kot_number, null, cartSnapshot, tableIdSnapshot);
+      offerPrint('Sent to kitchen', res.kot_number, null, cartSnapshot, tableIdSnapshot, 'kot');
     } catch (e) {
       Alert.alert('Could not send to kitchen', e.message);
     } finally {
@@ -361,7 +362,7 @@ export default function POSScreen() {
       if (!res.success) throw new Error(res.message || 'Could not process payment');
       setPayModalOpen(false);
       resetCart();
-      offerPrint('Payment collected', res.kot_number, paymentMethod, cartSnapshot, tableIdSnapshot);
+      offerPrint('Payment collected', res.kot_number, paymentMethod, cartSnapshot, tableIdSnapshot, 'bill');
     } catch (e) {
       Alert.alert('Could not process payment', e.message);
     } finally {

@@ -18,26 +18,31 @@ const CMD = {
   CUT: [GS, 0x56, 0x00],
 };
 
-function textToBytes(str) {
-  // ASCII-safe conversion — thermal printers default to a single-byte
-  // codepage, and item names here are the English (item_name_en) fields, so
-  // this covers the common case without pulling in a full codepage table.
-  const bytes = [];
-  for (let i = 0; i < str.length; i++) {
-    bytes.push(str.charCodeAt(i) & 0xff);
-  }
-  return bytes;
+// Thermal printers use a single-byte codepage and can't render most Unicode
+// characters — naively truncating one to its low byte prints a garbled/wrong
+// glyph (mojibake), not the intended character. Swap the common non-ASCII
+// currency symbols for a safe ASCII stand-in first, then fall back to '?'
+// for anything else non-ASCII (restaurant names, item names, etc. can
+// contain accents or other scripts) — mirrors the website's escpos.js,
+// which does the same replace(/[^\x00-\x7E]/g, '?') as its safety net.
+const CURRENCY_MAP = { '₹': 'Rs.', '€': 'EUR ', '£': 'GBP ', '¥': 'JPY ', '₩': 'KRW ', '₨': 'Rs.' };
+
+function printSafeCurrency(currency) {
+  if (CURRENCY_MAP[currency]) return CURRENCY_MAP[currency];
+  return /^[\x00-\x7F]*$/.test(currency || '') ? currency : 'Rs.';
 }
 
-// Thermal printers use a single-byte codepage and can't render most Unicode
-// currency symbols — naively truncating one to its low byte (textToBytes
-// above) prints a garbled/wrong glyph, not the intended symbol. Map the
-// common non-ASCII ones to a safe ASCII stand-in; anything already ASCII
-// (like '$') passes straight through.
-function printSafeCurrency(currency) {
-  const map = { '₹': 'Rs.', '€': 'EUR ', '£': 'GBP ', '¥': 'JPY ', '₩': 'KRW ', '₨': 'Rs.' };
-  if (map[currency]) return map[currency];
-  return /^[\x00-\x7F]*$/.test(currency || '') ? currency : 'Rs.';
+function asciiSafe(str) {
+  return String(str == null ? '' : str).replace(/[^\x00-\x7E]/g, '?');
+}
+
+function textToBytes(str) {
+  const clean = asciiSafe(str);
+  const bytes = [];
+  for (let i = 0; i < clean.length; i++) {
+    bytes.push(clean.charCodeAt(i) & 0xff);
+  }
+  return bytes;
 }
 
 function line(str = '') {
@@ -50,11 +55,20 @@ function padLine(left, right, width) {
 }
 
 function wrapText(str, width) {
-  if (str.length <= width) return [str];
-  const words = str.split(' ');
+  const clean = asciiSafe(str);
+  if (clean.length <= width) return [clean];
+  const words = clean.split(' ');
   const lines = [];
   let cur = '';
-  for (const w of words) {
+  for (let w of words) {
+    // A single word longer than the whole width (long compound item/
+    // restaurant names) would otherwise never break and just overflow —
+    // hard-split it at the width first.
+    while (w.length > width) {
+      if (cur) { lines.push(cur); cur = ''; }
+      lines.push(w.slice(0, width));
+      w = w.slice(width);
+    }
     if ((cur + ' ' + w).trim().length > width) {
       if (cur) lines.push(cur);
       cur = w;
@@ -66,8 +80,19 @@ function wrapText(str, width) {
   return lines;
 }
 
+function centerText(str, width) {
+  if (str.length >= width) return str;
+  const space = Math.floor((width - str.length) / 2);
+  return ' '.repeat(space) + str;
+}
+
 // items: [{ name, quantity, price, variationName? }]
+// type: 'bill' (default) prints the full priced receipt a customer gets;
+// 'kot' prints a kitchen ticket — item names/quantities only, no prices —
+// mirroring the website's KOT template, which never shows the kitchen a
+// subtotal/tax/total/payment method that has nothing to do with cooking.
 export function buildReceiptEscPos({
+  type = 'bill',
   restaurantName,
   kotNumber,
   orderType,
@@ -91,8 +116,13 @@ export function buildReceiptEscPos({
   // the text bytes arrived. Bold is universally supported and doesn't have
   // this failure mode, so that's all the header uses now.
   const bytes = [...CMD.INIT, ...CMD.ALIGN_CENTER, ...CMD.BOLD_ON];
-  bytes.push(...line(restaurantName || 'Receipt'));
+  // A long restaurant name in single-width mode would otherwise run past
+  // the paper width and either get cut off or wrapped mid-word by the
+  // printer's own firmware — wrap and center it ourselves, same as any
+  // other line, instead of leaving it unbounded.
+  wrapText(restaurantName || 'Receipt', width).forEach((l) => bytes.push(...line(centerText(l, width))));
   bytes.push(...CMD.BOLD_OFF);
+  if (type === 'kot') bytes.push(...line('KOT'));
   if (kotNumber) bytes.push(...line(kotNumber));
   bytes.push(...line(new Date().toLocaleString()));
   bytes.push(...CMD.ALIGN_LEFT);
@@ -100,29 +130,43 @@ export function buildReceiptEscPos({
   bytes.push(...line(`${orderType}${tableName ? ' - ' + tableName : ''}`));
   bytes.push(...line('-'.repeat(width)));
 
+  let itemCount = 0;
   (items || []).forEach((it) => {
+    itemCount += Number(it.quantity) || 0;
     const label = it.variationName ? `${it.name} (${it.variationName})` : it.name;
-    wrapText(label, width).forEach((l) => bytes.push(...line(l)));
-    const qtyPrice = `${it.quantity} x ${currency}${Number(it.price).toFixed(2)}`;
-    const lineTotal = `${currency}${(Number(it.price) * Number(it.quantity)).toFixed(2)}`;
-    bytes.push(...line(padLine(qtyPrice, lineTotal, width)));
+    if (type === 'kot') {
+      wrapText(`${it.quantity} x ${label}`, width).forEach((l) => bytes.push(...line(l)));
+    } else {
+      wrapText(label, width).forEach((l) => bytes.push(...line(l)));
+      const qtyPrice = `${it.quantity} x ${currency}${Number(it.price).toFixed(2)}`;
+      const lineTotal = `${currency}${(Number(it.price) * Number(it.quantity)).toFixed(2)}`;
+      bytes.push(...line(padLine(qtyPrice, lineTotal, width)));
+    }
   });
 
   bytes.push(...line('-'.repeat(width)));
-  bytes.push(...line(padLine('Subtotal', `${currency}${Number(subtotal).toFixed(2)}`, width)));
-  if (Number(discount) > 0) {
-    const label = couponCode ? `Coupon (${couponCode})` : 'Discount';
-    bytes.push(...line(padLine(label, `-${currency}${Number(discount).toFixed(2)}`, width)));
+
+  if (type === 'kot') {
+    bytes.push(...CMD.BOLD_ON);
+    bytes.push(...line(padLine('Total Items', String(itemCount), width)));
+    bytes.push(...CMD.BOLD_OFF);
+  } else {
+    bytes.push(...line(padLine('Subtotal', `${currency}${Number(subtotal).toFixed(2)}`, width)));
+    if (Number(discount) > 0) {
+      const label = couponCode ? `Coupon (${couponCode})` : 'Discount';
+      bytes.push(...line(padLine(label, `-${currency}${Number(discount).toFixed(2)}`, width)));
+    }
+    if (Number(tax) > 0) {
+      bytes.push(...line(padLine('Tax', `${currency}${Number(tax).toFixed(2)}`, width)));
+    }
+    bytes.push(...CMD.BOLD_ON);
+    bytes.push(...line(padLine('TOTAL', `${currency}${Number(total).toFixed(2)}`, width)));
+    bytes.push(...CMD.BOLD_OFF);
+    if (paymentMethod) {
+      bytes.push(...line(`Payment: ${paymentMethod}`));
+    }
   }
-  if (Number(tax) > 0) {
-    bytes.push(...line(padLine('Tax', `${currency}${Number(tax).toFixed(2)}`, width)));
-  }
-  bytes.push(...CMD.BOLD_ON);
-  bytes.push(...line(padLine('TOTAL', `${currency}${Number(total).toFixed(2)}`, width)));
-  bytes.push(...CMD.BOLD_OFF);
-  if (paymentMethod) {
-    bytes.push(...line(`Payment: ${paymentMethod}`));
-  }
+
   bytes.push(...line('-'.repeat(width)));
   bytes.push(...CMD.ALIGN_CENTER);
   bytes.push(...line('Thank you!'));
@@ -131,6 +175,28 @@ export function buildReceiptEscPos({
   bytes.push(...CMD.CUT);
 
   return new Uint8Array(bytes);
+}
+
+// Strips ESC/GS control sequences back out, leaving the exact characters
+// that would land on paper — mirrors the website's escpos.js decodePlainText.
+// Used to drive the on-screen preview off the *actual* print bytes instead
+// of a hand-maintained parallel layout, so the preview can never drift from
+// what the printer really produces.
+export function receiptToPlainText(bytes) {
+  let out = '';
+  for (let i = 0; i < bytes.length; i++) {
+    const b = bytes[i];
+    if (b === ESC || b === GS) {
+      const next = bytes[i + 1];
+      if (b === ESC && next === 0x40) { i += 1; continue; } // ESC @
+      if (b === ESC && next === 0x61) { i += 2; continue; } // ESC a n
+      if (b === ESC && next === 0x45) { i += 2; continue; } // ESC E n
+      if (b === GS && next === 0x56) { i += 2; continue; } // GS V n
+      continue;
+    }
+    out += String.fromCharCode(b);
+  }
+  return out;
 }
 
 const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
