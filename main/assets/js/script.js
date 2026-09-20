@@ -8639,7 +8639,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Builds the customer-facing bill receipt HTML from cart + payment breakdown
   async function buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, kotNumber) {
-    let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', user_id: '', showPanNo: false, panNo: '' };
+    let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', user_id: '', showPanNo: false, panNo: '', showGstin: false, gstinNo: '' };
     try {
       const infoRes = await fetch('../admin/get_session.php');
       const infoData = await infoRes.json();
@@ -8651,6 +8651,8 @@ document.addEventListener("DOMContentLoaded", () => {
         restaurantInfo.phone = infoData.data.phone || '';
         restaurantInfo.showPanNo = infoData.data.show_pan_no == 1 || infoData.data.show_pan_no === '1';
         restaurantInfo.panNo = infoData.data.pan_no || '';
+        restaurantInfo.showGstin = infoData.data.show_gstin == 1 || infoData.data.show_gstin === '1';
+        restaurantInfo.gstinNo = infoData.data.gstin_no || '';
       }
     } catch (e) {
       console.warn('Could not load restaurant info:', e);
@@ -8720,6 +8722,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
         ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
         ${restaurantInfo.showPanNo && restaurantInfo.panNo ? `<div class="restaurant-details">PAN: ${escapeHtml(restaurantInfo.panNo)}</div>` : ''}
+        ${restaurantInfo.showGstin && restaurantInfo.gstinNo ? `<div class="restaurant-details">GSTIN: ${escapeHtml(restaurantInfo.gstinNo)}</div>` : ''}
         <div class="bill-tag">BILL #${escapeHtml(String(kotNumber))}</div>
         <div style="font-size:11px;color:#6b7280;margin-top:4px;">${dateStr} | ${timeStr}</div>
       </div>
@@ -8769,7 +8772,8 @@ document.addEventListener("DOMContentLoaded", () => {
         metaLines: [
           ['Table', tableLabel],
           ['Status', payResult.paymentStatus],
-          ...(restaurantInfo.showPanNo && restaurantInfo.panNo ? [['PAN', restaurantInfo.panNo]] : [])
+          ...(restaurantInfo.showPanNo && restaurantInfo.panNo ? [['PAN', restaurantInfo.panNo]] : []),
+          ...(restaurantInfo.showGstin && restaurantInfo.gstinNo ? [['GSTIN', restaurantInfo.gstinNo]] : [])
         ],
         items: cartSnapshot.map(it => ({
           name: it.name + (it.variationName ? ' (' + it.variationName + ')' : ''),
@@ -12148,6 +12152,25 @@ async function loadSettingsData() {
         window.panNo = user.pan_no || '';
       }
 
+      // Set Show GSTIN toggle from saved database settings
+      if (user.show_gstin !== undefined) {
+        var showGstinCheckbox = document.getElementById('showGstinToggle');
+        var showGstinLabelEl = document.getElementById('showGstinLabel');
+        if (showGstinCheckbox) {
+          var gstinShown = user.show_gstin == 1 || user.show_gstin === '1';
+          showGstinCheckbox.checked = gstinShown;
+          if (showGstinLabelEl) {
+            showGstinLabelEl.textContent = gstinShown ? 'Enabled' : 'Disabled';
+          }
+          window.showGstin = gstinShown;
+        }
+      }
+      if (user.gstin_no !== undefined) {
+        var gstinNoInput = document.getElementById('gstinNoInput');
+        if (gstinNoInput && user.gstin_no) gstinNoInput.value = user.gstin_no;
+        window.gstinNo = user.gstin_no || '';
+      }
+
       // Set Language Support toggle from saved database settings
       if (user.enable_language !== undefined) {
         var enableLangCheckbox = document.getElementById('enableLanguageToggle');
@@ -12288,7 +12311,7 @@ function setupSettingsForms() {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&enable_km_delivery=${encodeURIComponent(document.getElementById('enableKmDeliveryToggle')?.checked ? '1' : '0')}&delivery_rate_per_km=${encodeURIComponent(document.getElementById('deliveryRatePerKm')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&tax_name=${encodeURIComponent(document.getElementById('taxName')?.value || 'GST')}&tax_percent=${encodeURIComponent(document.getElementById('taxPercentInput')?.value || '5')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&enable_reservations=${encodeURIComponent(document.getElementById('enableReservationsToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}&show_pan_no=${encodeURIComponent(document.getElementById('showPanNoToggle')?.checked ? '1' : '0')}&pan_no=${encodeURIComponent(document.getElementById('panNoInput')?.value || '')}`
+          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&enable_km_delivery=${encodeURIComponent(document.getElementById('enableKmDeliveryToggle')?.checked ? '1' : '0')}&delivery_rate_per_km=${encodeURIComponent(document.getElementById('deliveryRatePerKm')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&tax_name=${encodeURIComponent(document.getElementById('taxName')?.value || 'GST')}&tax_percent=${encodeURIComponent(document.getElementById('taxPercentInput')?.value || '5')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&enable_reservations=${encodeURIComponent(document.getElementById('enableReservationsToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}&show_pan_no=${encodeURIComponent(document.getElementById('showPanNoToggle')?.checked ? '1' : '0')}&pan_no=${encodeURIComponent(document.getElementById('panNoInput')?.value || '')}&show_gstin=${encodeURIComponent(document.getElementById('showGstinToggle')?.checked ? '1' : '0')}&gstin_no=${encodeURIComponent(document.getElementById('gstinNoInput')?.value || '')}`
         });
         
         const result = await response.json();

@@ -56,12 +56,18 @@ function centerText(str, width) {
 // 'kot' prints a kitchen ticket — item names/quantities only, no prices —
 // mirroring the website's KOT template, which never shows the kitchen a
 // subtotal/tax/total/payment method that has nothing to do with cooking.
-// Returns an array of { text, bold } lines — real Unicode, no ASCII
+// Returns an array of { text, bold, size } lines — real Unicode, no ASCII
 // substitution, since this is rendered as text/an image, never raw
-// single-byte printer bytes.
+// single-byte printer bytes. size is 'title' (restaurant name), 'small'
+// (address/GSTIN), or 'normal' (everything else) — the caller (BillPreview
+// Modal/SettingsScreen) maps these to actual font sizes, and separately
+// appends the "Powered by RestroGrow" + logo footer, since that needs a
+// real <Image>, which a plain text line can't be.
 export function buildReceiptLines({
   type = 'bill',
   restaurantName,
+  restaurantAddress,
+  gstin,
   kotNumber,
   orderType,
   tableName,
@@ -76,9 +82,24 @@ export function buildReceiptLines({
   width = 32,
 }) {
   const lines = [];
-  const push = (text, bold = false) => lines.push({ text, bold });
+  const push = (text, opts = {}) => lines.push({ text, bold: !!opts.bold, size: opts.size || 'normal' });
 
-  wrapText(restaurantName || 'Receipt', width).forEach((l) => push(centerText(l, width), true));
+  // Wrapped narrower than the body — at title size, 32 characters would run
+  // far wider than the receipt itself; long names still wrap, just at a
+  // sensible line length for the bigger font.
+  const titleWidth = Math.max(12, Math.round(width * 0.6));
+  wrapText(restaurantName || 'Receipt', titleWidth).forEach((l) => push(centerText(l, titleWidth), { bold: true, size: 'title' }));
+  // Address, then GSTIN right below it (only when actually configured) —
+  // the divider always lands directly below whichever of these is last, not
+  // fixed right after the address. Bill only, same as the website's own
+  // print templates — a kitchen ticket has no use for legal/tax details.
+  if (type !== 'kot' && restaurantAddress) {
+    wrapText(restaurantAddress, width).forEach((l) => push(centerText(l, width), { size: 'small' }));
+  }
+  if (type !== 'kot' && gstin) {
+    push(centerText(`GSTIN: ${gstin}`, width), { size: 'small' });
+  }
+  push('-'.repeat(width));
   if (type === 'kot') push(centerText('KOT', width));
   if (kotNumber) push(centerText(kotNumber, width));
   push(centerText(new Date().toLocaleString(), width));
@@ -103,7 +124,7 @@ export function buildReceiptLines({
   push('-'.repeat(width));
 
   if (type === 'kot') {
-    push(padLine('Total Items', String(itemCount), width), true);
+    push(padLine('Total Items', String(itemCount), width), { bold: true });
   } else {
     push(padLine('Subtotal', `${currency}${Number(subtotal).toFixed(2)}`, width));
     if (Number(discount) > 0) {
@@ -113,7 +134,7 @@ export function buildReceiptLines({
     if (Number(tax) > 0) {
       push(padLine('Tax', `${currency}${Number(tax).toFixed(2)}`, width));
     }
-    push(padLine('TOTAL', `${currency}${Number(total).toFixed(2)}`, width), true);
+    push(padLine('TOTAL', `${currency}${Number(total).toFixed(2)}`, width), { bold: true });
     if (paymentMethod) push(`Payment: ${paymentMethod}`);
   }
 

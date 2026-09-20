@@ -268,6 +268,8 @@ export default function POSScreen() {
       type,
       title,
       restaurantName: user?.restaurant_name || 'Receipt',
+      restaurantAddress: user?.address,
+      gstin: user?.show_gstin ? user?.gstin_no : null,
       kotNumber,
       orderType: tableIdSnapshot ? 'Dine-in' : 'Takeaway',
       tableName,

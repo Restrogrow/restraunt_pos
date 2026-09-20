@@ -253,6 +253,8 @@ export default function OrderDetailScreen({ route, navigation }) {
       type: 'kot',
       title: 'KOT Print',
       restaurantName: user?.restaurant_name || 'Receipt',
+      restaurantAddress: user?.address,
+      gstin: user?.show_gstin ? user?.gstin_no : null,
       kotNumber: order.order_number,
       orderType: order.order_type,
       tableName: order.table_name,

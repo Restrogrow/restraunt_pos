@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { getPrinterSettings, savePrinterSettings } from '../config/printerSettings';
@@ -326,10 +326,23 @@ export default function BillPreviewModal({ visible, onClose, data }) {
                   make react-native-view-shot capture a blank/wrong view. */}
               <View ref={receiptRef} collapsable={false} style={styles.receiptCapture}>
                 {receiptLines.map((l, i) => (
-                  <Text key={i} style={[styles.receiptMono, l.bold && styles.receiptMonoBold]} selectable={false}>
+                  <Text
+                    key={i}
+                    style={[
+                      styles.receiptMono,
+                      l.size === 'title' && styles.receiptMonoTitle,
+                      l.size === 'small' && styles.receiptMonoSmall,
+                      l.bold && styles.receiptMonoBold,
+                    ]}
+                    selectable={false}
+                  >
                     {l.text}
                   </Text>
                 ))}
+                <View style={styles.receiptBrandFooter}>
+                  <Image source={require('../assets/restrogrow-logo.png')} style={styles.receiptBrandLogo} />
+                  <Text style={styles.receiptBrandText}>Powered by RestroGrow</Text>
+                </View>
               </View>
             </View>
           </ScrollView>
@@ -567,6 +580,34 @@ const styles = StyleSheet.create({
   receiptMonoBold: {
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontWeight: 'bold',
+  },
+  receiptMonoTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  receiptMonoSmall: {
+    fontSize: 10.5,
+    lineHeight: 14,
+    color: '#333',
+  },
+  // Brand footer — always last, after "Thank you!" — a bit bigger than the
+  // body text but not as big as the restaurant name, plus a small logo.
+  receiptBrandFooter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    gap: 4,
+  },
+  receiptBrandLogo: {
+    width: 32,
+    height: 32,
+    resizeMode: 'contain',
+  },
+  receiptBrandText: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#000',
   },
   actions: {
     flexDirection: 'row',

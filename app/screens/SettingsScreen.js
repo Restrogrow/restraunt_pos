@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import Avatar from '../components/Avatar';
 import CouponsModal from '../components/CouponsModal';
@@ -234,10 +234,22 @@ function PrinterSettingsCard() {
           tax: 0,
           total: 0,
         }).map((l, i) => (
-          <Text key={i} style={[styles.hiddenTestReceiptText, l.bold && { fontWeight: 'bold' }]}>
+          <Text
+            key={i}
+            style={[
+              styles.hiddenTestReceiptText,
+              l.size === 'title' && styles.hiddenTestReceiptTitle,
+              l.size === 'small' && styles.hiddenTestReceiptSmall,
+              l.bold && { fontWeight: 'bold' },
+            ]}
+          >
             {l.text}
           </Text>
         ))}
+        <View style={styles.hiddenTestReceiptBrandFooter}>
+          <Image source={require('../assets/restrogrow-logo.png')} style={styles.hiddenTestReceiptBrandLogo} />
+          <Text style={styles.hiddenTestReceiptBrandText}>Powered by RestroGrow</Text>
+        </View>
       </View>
 
       <View style={styles.printerTypeRow}>
@@ -668,6 +680,32 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontSize: 12,
     lineHeight: 16,
+    color: '#000',
+  },
+  hiddenTestReceiptTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  hiddenTestReceiptSmall: {
+    fontSize: 10.5,
+    lineHeight: 14,
+    color: '#333',
+  },
+  hiddenTestReceiptBrandFooter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    gap: 4,
+  },
+  hiddenTestReceiptBrandLogo: {
+    width: 32,
+    height: 32,
+    resizeMode: 'contain',
+  },
+  hiddenTestReceiptBrandText: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontWeight: 'bold',
+    fontSize: 14,
     color: '#000',
   },
   content: {

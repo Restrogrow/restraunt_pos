@@ -67,6 +67,8 @@ $photo_gallery_enabled = 0;
 $meal_subscriptions_enabled = 0;
 $show_pan_no = 0;
 $pan_no = '';
+$show_gstin = 0;
+$gstin_no = '';
 $restaurant_custom_domain = '';
 $restaurant_embed_enabled = false;
  
@@ -116,7 +118,9 @@ try {
         ensureLanguageColumns($conn, $restaurant_id);
         require_once __DIR__ . '/../config/pan_helpers.php';
         ensurePanColumns($conn);
-        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, photo_gallery_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled, show_pan_no, pan_no FROM users WHERE id = ? LIMIT 1");
+        require_once __DIR__ . '/../config/gstin_helpers.php';
+        ensureGstinColumns($conn);
+        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, photo_gallery_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled, show_pan_no, pan_no, show_gstin, gstin_no FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $userRow = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($userRow) {
@@ -192,6 +196,8 @@ try {
             $enable_language = isset($userRow['enable_language']) ? (int)$userRow['enable_language'] : 1;
             $show_pan_no = isset($userRow['show_pan_no']) ? (int)$userRow['show_pan_no'] : 0;
             $pan_no = $userRow['pan_no'] ?? '';
+            $show_gstin = isset($userRow['show_gstin']) ? (int)$userRow['show_gstin'] : 0;
+            $gstin_no = $userRow['gstin_no'] ?? '';
             // Force English when language support is disabled
             if (!$enable_language) {
                 $language = 'en';
@@ -377,6 +383,8 @@ try {
     window.codEnabled = <?php echo json_encode((int)$cod_enabled, JSON_HEX_TAG); ?>;
     window.showPanNo = <?php echo json_encode((bool)$show_pan_no, JSON_HEX_TAG); ?>;
     window.panNo = <?php echo json_encode($pan_no, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    window.showGstin = <?php echo json_encode((bool)$show_gstin, JSON_HEX_TAG); ?>;
+    window.gstinNo = <?php echo json_encode($gstin_no, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     localStorage.setItem('system_currency', window.globalCurrencySymbol);
     window.userTimezone = <?php echo json_encode($timezone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     window.userLanguage = <?php echo json_encode($language, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
@@ -4247,6 +4255,24 @@ function toggleGatewayMode() {
                     <div class="form-group" style="flex:1;margin-bottom:0;">
                       <label for="panNoInput" style="font-size:12px;color:#6b7280;">PAN No</label>
                       <input type="text" id="panNoInput" class="form-control" maxlength="20" placeholder="e.g. ABCDE1234F" value="<?php echo htmlspecialchars($pan_no); ?>">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:8px;">
+                    <span class="material-symbols-rounded">receipt_long</span>
+                    Show GSTIN on Bill
+                    <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
+                      <input type="checkbox" id="showGstinToggle" <?php echo $show_gstin ? "checked" : ""; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
+                      <span style="font-size:13px;font-weight:500;color:#374151;" id="showGstinLabel"><?php echo $show_gstin ? 'Enabled' : 'Disabled'; ?></span>
+                    </label>
+                  </label>
+                  <p style="font-size:12px;color:#6b7280;margin-top:4px;">Turn on to print your GSTIN on the customer bill/KOT. Separate from PAN above — show either, both, or neither.</p>
+                  <div class="row" style="display:flex;gap:12px;margin-top:10px;">
+                    <div class="form-group" style="flex:1;margin-bottom:0;">
+                      <label for="gstinNoInput" style="font-size:12px;color:#6b7280;">GSTIN</label>
+                      <input type="text" id="gstinNoInput" class="form-control" maxlength="20" placeholder="e.g. 22AAAAA0000A1Z5" value="<?php echo htmlspecialchars($gstin_no); ?>">
                     </div>
                   </div>
                 </div>
