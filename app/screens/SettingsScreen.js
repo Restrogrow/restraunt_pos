@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
 import Avatar from '../components/Avatar';
 import CouponsModal from '../components/CouponsModal';
 import ScreenHeader from '../components/ScreenHeader';
@@ -14,7 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { isBiometricSupported, authenticate } from '../utils/biometricAuth';
 import { listPairedPrinters, printToBluetoothPrinter } from '../utils/bluetoothPrinter';
-import { buildReceiptEscPos, printToNetworkPrinter } from '../utils/receiptPrinter';
+import { buildReceiptLines, convertReceiptImageToEscPos, printToNetworkPrinter } from '../utils/receiptPrinter';
 
 function Row({ icon, label, value }) {
   return (
@@ -137,6 +138,7 @@ function PrinterSettingsCard() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState(null); // { text, isError }
+  const testReceiptRef = useRef(null);
 
   useEffect(() => {
     getPrinterSettings().then((s) => {
@@ -198,14 +200,11 @@ function PrinterSettingsCard() {
     setMessage(null);
     try {
       await savePrinterSettings(currentSettings());
-      const bytes = buildReceiptEscPos({
-        restaurantName: 'Test Print',
-        orderType: 'Test',
-        items: [{ name: 'Sample Item', quantity: 1, price: 0 }],
-        subtotal: 0,
-        tax: 0,
-        total: 0,
-      });
+      // Same image-based pipeline as the real bill/KOT print — captures the
+      // hidden test-receipt view below rather than encoding text into
+      // printer bytes, so this also proves the actual print path works.
+      const base64Png = await captureRef(testReceiptRef, { format: 'png', quality: 1, result: 'base64' });
+      const bytes = await convertReceiptImageToEscPos({ base64Png });
       if (type === 'bluetooth') {
         await printToBluetoothPrinter({ address: btAddress, bytes });
       } else {
@@ -222,6 +221,24 @@ function PrinterSettingsCard() {
   return (
     <View style={[styles.card, shadow.sm, styles.section]}>
       <Text style={styles.cardTitle}>Receipt Printer</Text>
+
+      {/* Off-screen but still laid out (not display:none) so
+          react-native-view-shot has a real rendered view to capture —
+          same image-based print pipeline "Test Print" is meant to verify. */}
+      <View ref={testReceiptRef} collapsable={false} style={styles.hiddenTestReceipt}>
+        {buildReceiptLines({
+          restaurantName: 'Test Print',
+          orderType: 'Test',
+          items: [{ name: 'Sample Item', quantity: 1, price: 0 }],
+          subtotal: 0,
+          tax: 0,
+          total: 0,
+        }).map((l, i) => (
+          <Text key={i} style={[styles.hiddenTestReceiptText, l.bold && { fontWeight: 'bold' }]}>
+            {l.text}
+          </Text>
+        ))}
+      </View>
 
       <View style={styles.printerTypeRow}>
         <Pressable
@@ -640,6 +657,19 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg },
+  hiddenTestReceipt: {
+    position: 'absolute',
+    top: -9999,
+    left: -9999,
+    backgroundColor: '#fff',
+    padding: spacing.sm,
+  },
+  hiddenTestReceiptText: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#000',
+  },
   content: {
     padding: spacing.xl,
     paddingBottom: 120,

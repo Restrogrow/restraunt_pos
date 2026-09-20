@@ -1,61 +1,26 @@
-// Minimal ESC/POS receipt builder + network relay client for the app's POS
-// screen. The website supports two print modes — browser print (not
-// meaningful in a native/RN context) and raw ESC/POS over a TCP socket via
-// main/api/print_network.php, which is a plain authenticated HTTP relay (the
-// PHP server opens the actual TCP connection to the LAN printer). This file
-// only implements that second, portable path.
+// Receipt/KOT builder + printer clients for the app's POS screen.
+//
+// Printing used to send raw ESC/POS text bytes, but thermal printers' text
+// mode only speaks a single-byte Latin codepage — there's no byte sequence
+// that makes one print Hindi (or any other non-Latin script) as anything
+// but garbage/'?'. The fix is to print a *picture* of the receipt instead:
+// buildReceiptLines() below renders as real Unicode text on screen (via
+// BillPreviewModal, which also owns the actual bitmap capture since that
+// needs a live view ref), and convertReceiptImageToEscPos() turns that
+// captured bitmap into an ESC/POS raster image, which prints correctly
+// regardless of script/language because it was never text to the printer
+// in the first place.
 import { apiPostJson } from '../config/api';
 
-const ESC = 0x1b;
-const GS = 0x1d;
-
-const CMD = {
-  INIT: [ESC, 0x40],
-  ALIGN_LEFT: [ESC, 0x61, 0x00],
-  ALIGN_CENTER: [ESC, 0x61, 0x01],
-  BOLD_ON: [ESC, 0x45, 0x01],
-  BOLD_OFF: [ESC, 0x45, 0x00],
-  CUT: [GS, 0x56, 0x00],
-};
-
-// Thermal printers use a single-byte codepage and can't render most Unicode
-// characters — naively truncating one to its low byte prints a garbled/wrong
-// glyph (mojibake), not the intended character. Swap the common non-ASCII
-// currency symbols for a safe ASCII stand-in first, then fall back to '?'
-// for anything else non-ASCII (restaurant names, item names, etc. can
-// contain accents or other scripts) — mirrors the website's escpos.js,
-// which does the same replace(/[^\x00-\x7E]/g, '?') as its safety net.
-const CURRENCY_MAP = { '₹': 'Rs.', '€': 'EUR ', '£': 'GBP ', '¥': 'JPY ', '₩': 'KRW ', '₨': 'Rs.' };
-
-function printSafeCurrency(currency) {
-  if (CURRENCY_MAP[currency]) return CURRENCY_MAP[currency];
-  return /^[\x00-\x7F]*$/.test(currency || '') ? currency : 'Rs.';
-}
-
-function asciiSafe(str) {
-  return String(str == null ? '' : str).replace(/[^\x00-\x7E]/g, '?');
-}
-
-function textToBytes(str) {
-  const clean = asciiSafe(str);
-  const bytes = [];
-  for (let i = 0; i < clean.length; i++) {
-    bytes.push(clean.charCodeAt(i) & 0xff);
-  }
-  return bytes;
-}
-
-function line(str = '') {
-  return [...textToBytes(str), 0x0a];
-}
-
 function padLine(left, right, width) {
+  left = String(left == null ? '' : left);
+  right = String(right == null ? '' : right);
   const space = Math.max(1, width - left.length - right.length);
   return left + ' '.repeat(space) + right;
 }
 
 function wrapText(str, width) {
-  const clean = asciiSafe(str);
+  const clean = String(str == null ? '' : str);
   if (clean.length <= width) return [clean];
   const words = clean.split(' ');
   const lines = [];
@@ -91,7 +56,10 @@ function centerText(str, width) {
 // 'kot' prints a kitchen ticket — item names/quantities only, no prices —
 // mirroring the website's KOT template, which never shows the kitchen a
 // subtotal/tax/total/payment method that has nothing to do with cooking.
-export function buildReceiptEscPos({
+// Returns an array of { text, bold } lines — real Unicode, no ASCII
+// substitution, since this is rendered as text/an image, never raw
+// single-byte printer bytes.
+export function buildReceiptLines({
   type = 'bill',
   restaurantName,
   kotNumber,
@@ -104,105 +72,61 @@ export function buildReceiptEscPos({
   tax,
   total,
   paymentMethod,
-  currency = 'Rs.',
+  currency = '₹',
   width = 32,
 }) {
-  currency = printSafeCurrency(currency);
-  // Double-width/height mode (GS ! n) used to wrap the restaurant name here.
-  // It's inconsistently supported on cheap ESC/POS clone printers — on at
-  // least one real printer it corrupted part of the name itself (the first
-  // several characters printed as garbage before the rest recovered), most
-  // likely the printer's font table hadn't finished switching by the time
-  // the text bytes arrived. Bold is universally supported and doesn't have
-  // this failure mode, so that's all the header uses now.
-  const bytes = [...CMD.INIT, ...CMD.ALIGN_CENTER, ...CMD.BOLD_ON];
-  // A long restaurant name in single-width mode would otherwise run past
-  // the paper width and either get cut off or wrapped mid-word by the
-  // printer's own firmware — wrap and center it ourselves, same as any
-  // other line, instead of leaving it unbounded.
-  wrapText(restaurantName || 'Receipt', width).forEach((l) => bytes.push(...line(centerText(l, width))));
-  bytes.push(...CMD.BOLD_OFF);
-  if (type === 'kot') bytes.push(...line('KOT'));
-  if (kotNumber) bytes.push(...line(kotNumber));
-  bytes.push(...line(new Date().toLocaleString()));
-  bytes.push(...CMD.ALIGN_LEFT);
-  bytes.push(...line('-'.repeat(width)));
-  bytes.push(...line(`${orderType}${tableName ? ' - ' + tableName : ''}`));
-  bytes.push(...line('-'.repeat(width)));
+  const lines = [];
+  const push = (text, bold = false) => lines.push({ text, bold });
+
+  wrapText(restaurantName || 'Receipt', width).forEach((l) => push(centerText(l, width), true));
+  if (type === 'kot') push(centerText('KOT', width));
+  if (kotNumber) push(centerText(kotNumber, width));
+  push(centerText(new Date().toLocaleString(), width));
+  push('-'.repeat(width));
+  push(`${orderType}${tableName ? ' - ' + tableName : ''}`);
+  push('-'.repeat(width));
 
   let itemCount = 0;
   (items || []).forEach((it) => {
     itemCount += Number(it.quantity) || 0;
     const label = it.variationName ? `${it.name} (${it.variationName})` : it.name;
     if (type === 'kot') {
-      wrapText(`${it.quantity} x ${label}`, width).forEach((l) => bytes.push(...line(l)));
+      wrapText(`${it.quantity} x ${label}`, width).forEach((l) => push(l));
     } else {
-      wrapText(label, width).forEach((l) => bytes.push(...line(l)));
+      wrapText(label, width).forEach((l) => push(l));
       const qtyPrice = `${it.quantity} x ${currency}${Number(it.price).toFixed(2)}`;
       const lineTotal = `${currency}${(Number(it.price) * Number(it.quantity)).toFixed(2)}`;
-      bytes.push(...line(padLine(qtyPrice, lineTotal, width)));
+      push(padLine(qtyPrice, lineTotal, width));
     }
   });
 
-  bytes.push(...line('-'.repeat(width)));
+  push('-'.repeat(width));
 
   if (type === 'kot') {
-    bytes.push(...CMD.BOLD_ON);
-    bytes.push(...line(padLine('Total Items', String(itemCount), width)));
-    bytes.push(...CMD.BOLD_OFF);
+    push(padLine('Total Items', String(itemCount), width), true);
   } else {
-    bytes.push(...line(padLine('Subtotal', `${currency}${Number(subtotal).toFixed(2)}`, width)));
+    push(padLine('Subtotal', `${currency}${Number(subtotal).toFixed(2)}`, width));
     if (Number(discount) > 0) {
       const label = couponCode ? `Coupon (${couponCode})` : 'Discount';
-      bytes.push(...line(padLine(label, `-${currency}${Number(discount).toFixed(2)}`, width)));
+      push(padLine(label, `-${currency}${Number(discount).toFixed(2)}`, width));
     }
     if (Number(tax) > 0) {
-      bytes.push(...line(padLine('Tax', `${currency}${Number(tax).toFixed(2)}`, width)));
+      push(padLine('Tax', `${currency}${Number(tax).toFixed(2)}`, width));
     }
-    bytes.push(...CMD.BOLD_ON);
-    bytes.push(...line(padLine('TOTAL', `${currency}${Number(total).toFixed(2)}`, width)));
-    bytes.push(...CMD.BOLD_OFF);
-    if (paymentMethod) {
-      bytes.push(...line(`Payment: ${paymentMethod}`));
-    }
+    push(padLine('TOTAL', `${currency}${Number(total).toFixed(2)}`, width), true);
+    if (paymentMethod) push(`Payment: ${paymentMethod}`);
   }
 
-  bytes.push(...line('-'.repeat(width)));
-  bytes.push(...CMD.ALIGN_CENTER);
-  bytes.push(...line('Thank you!'));
-  bytes.push(...line(''));
-  bytes.push(...line(''));
-  bytes.push(...CMD.CUT);
+  push('-'.repeat(width));
+  push(centerText('Thank you!', width));
 
-  return new Uint8Array(bytes);
-}
-
-// Strips ESC/GS control sequences back out, leaving the exact characters
-// that would land on paper — mirrors the website's escpos.js decodePlainText.
-// Used to drive the on-screen preview off the *actual* print bytes instead
-// of a hand-maintained parallel layout, so the preview can never drift from
-// what the printer really produces.
-export function receiptToPlainText(bytes) {
-  let out = '';
-  for (let i = 0; i < bytes.length; i++) {
-    const b = bytes[i];
-    if (b === ESC || b === GS) {
-      const next = bytes[i + 1];
-      if (b === ESC && next === 0x40) { i += 1; continue; } // ESC @
-      if (b === ESC && next === 0x61) { i += 2; continue; } // ESC a n
-      if (b === ESC && next === 0x45) { i += 2; continue; } // ESC E n
-      if (b === GS && next === 0x56) { i += 2; continue; } // GS V n
-      continue;
-    }
-    out += String.fromCharCode(b);
-  }
-  return out;
+  return lines;
 }
 
 const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 // RN's JS engine doesn't reliably expose btoa/Buffer for binary data, so this
-// is a small dependency-free base64 encoder for the raw ESC/POS byte array.
+// is a small dependency-free base64 encoder for raw byte arrays.
 export function bytesToBase64(bytes) {
   let result = '';
   for (let i = 0; i < bytes.length; i += 3) {
@@ -216,6 +140,39 @@ export function bytesToBase64(bytes) {
     result += b3 === undefined ? '=' : BASE64_CHARS[b3 & 0x3f];
   }
   return result;
+}
+
+// The counterpart decoder — used to turn the ESC/POS raster bytes the
+// server computes (see convertReceiptImageToEscPos) back into a Uint8Array
+// the Bluetooth/network print clients below can send as-is.
+export function base64ToBytes(b64) {
+  const clean = String(b64 || '').replace(/[^A-Za-z0-9+/=]/g, '');
+  const bytes = [];
+  for (let i = 0; i < clean.length; i += 4) {
+    const e1 = BASE64_CHARS.indexOf(clean[i]);
+    const e2 = BASE64_CHARS.indexOf(clean[i + 1]);
+    const e3 = BASE64_CHARS.indexOf(clean[i + 2]);
+    const e4 = BASE64_CHARS.indexOf(clean[i + 3]);
+    if (e1 < 0 || e2 < 0) break;
+    bytes.push((e1 << 2) | (e2 >> 4));
+    if (e3 >= 0) bytes.push(((e2 & 15) << 4) | (e3 >> 2));
+    if (e4 >= 0) bytes.push(((e3 & 3) << 6) | e4);
+  }
+  return new Uint8Array(bytes);
+}
+
+// Sends a captured receipt PNG (base64, no data: URI prefix needed) to the
+// server, which resizes/thresholds it to a 1-bit bitmap and packs it into an
+// ESC/POS raster image (GS v 0) — ready to write straight to a Bluetooth or
+// network printer. dotWidth matches the printer's dot width, not the app's
+// old 32-char text width — 384 is the standard for 58mm/203dpi printers.
+export async function convertReceiptImageToEscPos({ base64Png, dotWidth = 384 }) {
+  const res = await apiPostJson('/api/convert_receipt_image.php', {
+    image: base64Png,
+    dot_width: dotWidth,
+  });
+  if (!res.success) throw new Error(res.message || 'Could not process receipt image');
+  return base64ToBytes(res.data);
 }
 
 export async function printToNetworkPrinter({ ip, port, bytes }) {

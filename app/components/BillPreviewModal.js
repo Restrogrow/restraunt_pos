@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { getPrinterSettings, savePrinterSettings } from '../config/printerSettings';
 import {
@@ -10,7 +11,7 @@ import {
   listPairedPrinters,
   writeToPrinter,
 } from '../utils/bluetoothPrinter';
-import { buildReceiptEscPos, printToNetworkPrinter, receiptToPlainText, testNetworkPrinter } from '../utils/receiptPrinter';
+import { buildReceiptLines, convertReceiptImageToEscPos, printToNetworkPrinter, testNetworkPrinter } from '../utils/receiptPrinter';
 
 const STATUS_META = {
   idle: { label: 'Not connected', color: colors.muted },
@@ -65,11 +66,13 @@ export default function BillPreviewModal({ visible, onClose, data }) {
     });
   }, [visible]);
 
-  // Rendered straight from the same bytes that get sent to the printer
-  // (decoded back to plain text) rather than a hand-styled parallel layout —
-  // so this preview can never drift from what actually comes out on paper:
-  // same line wrapping, same width, same KOT-vs-bill content.
-  const receiptText = useMemo(() => (data ? receiptToPlainText(buildReceiptEscPos(data)) : ''), [data]);
+  // Real Unicode text — no ASCII substitution — since printing now works by
+  // capturing this exact rendered view as a bitmap (see handlePrint), not by
+  // encoding it into single-byte printer text. What's on screen is pixel-for-
+  // pixel what goes to the printer, so it can never drift, and it prints
+  // correctly in Hindi or any other script.
+  const receiptLines = useMemo(() => (data ? buildReceiptLines(data) : []), [data]);
+  const receiptRef = useRef(null);
 
   if (!data) return null;
   const { title } = data;
@@ -136,7 +139,12 @@ export default function BillPreviewModal({ visible, onClose, data }) {
     try {
       const cfg = await ensureConnected();
       setStatus('printing');
-      const bytes = buildReceiptEscPos(data);
+      // Capture the exact receipt view on screen — real Unicode text and
+      // all — and have the server turn it into an ESC/POS raster image
+      // instead of encoding it as printer text, which is what makes any
+      // script/language print correctly.
+      const base64Png = await captureRef(receiptRef, { format: 'png', quality: 1, result: 'base64' });
+      const bytes = await convertReceiptImageToEscPos({ base64Png });
       if (cfg.type === 'bluetooth') {
         await writeToPrinter(cfg.btAddress, bytes);
       } else {
@@ -313,7 +321,16 @@ export default function BillPreviewModal({ visible, onClose, data }) {
           </View>
 
             <View style={styles.receipt}>
-              <Text style={styles.receiptMono} selectable={false}>{receiptText}</Text>
+              {/* collapsable={false} keeps Android's native view-flattening
+                  optimization from dropping this node, which would otherwise
+                  make react-native-view-shot capture a blank/wrong view. */}
+              <View ref={receiptRef} collapsable={false} style={styles.receiptCapture}>
+                {receiptLines.map((l, i) => (
+                  <Text key={i} style={[styles.receiptMono, l.bold && styles.receiptMonoBold]} selectable={false}>
+                    {l.text}
+                  </Text>
+                ))}
+              </View>
             </View>
           </ScrollView>
 
@@ -527,15 +544,29 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.lg,
   },
+  // This exact view is what gets captured as a bitmap and printed (see
+  // handlePrint) — pure white/black rather than the app's soft theme
+  // colors, so the server's black/white threshold has clean contrast to
+  // work with regardless of app theme.
+  receiptCapture: {
+    backgroundColor: '#fff',
+    padding: spacing.sm,
+  },
   // Monospace so character-grid alignment (padLine's spacing, dashed
-  // dividers, wrapped names) lines up on screen exactly as it would on
-  // fixed-pitch thermal paper — this text is the decoded print bytes
-  // themselves, not a re-styled approximation of them.
+  // dividers, wrapped names) lines up close to how it'll print — exact
+  // alignment isn't guaranteed for scripts like Hindi where a "monospace"
+  // font can't make every glyph the same width, but the text itself always
+  // renders correctly since this is captured as a picture, not encoded into
+  // single-byte printer text.
   receiptMono: {
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontSize: 12,
     lineHeight: 16,
-    color: colors.ink,
+    color: '#000',
+  },
+  receiptMonoBold: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontWeight: 'bold',
   },
   actions: {
     flexDirection: 'row',
