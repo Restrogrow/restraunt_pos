@@ -39,6 +39,10 @@ try {
 
     $order_number = trim($_POST['order_number'] ?? '');
     $customer_phone = trim($_POST['customer_phone'] ?? '');
+    // Normalize to match the stored 10-digit phone format (order_abuse_guard.php).
+    require_once __DIR__ . '/../config/order_abuse_guard.php';
+    $customer_phone_norm = orderAbuseNormalizePhone($customer_phone);
+    if ($customer_phone_norm !== null) $customer_phone = $customer_phone_norm;
     $rating = (int)($_POST['rating'] ?? 0);
     $review = trim($_POST['review'] ?? '');
     $customer_name = trim($_POST['customer_name'] ?? '');

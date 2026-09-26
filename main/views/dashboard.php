@@ -409,6 +409,16 @@ try {
       }
     }
 
+    // Load Blocked Customers (order abuse blocklist) page via iframe.
+    // Re-set src on every visit so unblocks/blocks made elsewhere show fresh.
+    function loadAdminBlocklist() {
+      var container = document.getElementById('blocklistContainer');
+      if (!container) return;
+      var frame = container.querySelector('iframe');
+      if (frame) { frame.src = '../admin/blocklist.php'; return; }
+      container.innerHTML = '<iframe src="../admin/blocklist.php" style="width:100%;height:700px;border:none;border-radius:8px;overflow:auto;"></iframe>';
+    }
+
     // Load Meal Plans (tiffin subscription) management page via iframe
     function loadAdminMealPlans() {
       var container = document.getElementById('mealPlansList');
@@ -1072,6 +1082,13 @@ try {
                 <span class="nav-label">Orders</span>
               </a>
               <span class="nav-tooltip">Orders</span>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="blocklistPage" onclick="setTimeout(loadAdminBlocklist, 50)">
+                <span class="nav-icon material-symbols-rounded">block</span>
+                <span class="nav-label">Blocked Customers</span>
+              </a>
+              <span class="nav-tooltip">Block fake-order numbers/IPs</span>
             </li>
           </ul>
         </li>
@@ -2446,6 +2463,19 @@ try {
       <div class="page-content">
         <div id="addonsList" style="min-height:400px;">
           <div class="loading">Loading add-ons management...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Blocked Customers (order abuse blocklist) Page -->
+    <div id="blocklistPage" class="page">
+      <div class="page-header">
+        <h1>Blocked Customers</h1>
+        <p>Phones/IPs blocked from placing website orders — auto-blocked after 3 fake-order strikes, or blocked manually</p>
+      </div>
+      <div class="page-content">
+        <div id="blocklistContainer" style="min-height:400px;">
+          <div class="loading">Loading blocked customers...</div>
         </div>
       </div>
     </div>

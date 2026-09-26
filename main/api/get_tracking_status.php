@@ -7,9 +7,12 @@ if (!file_exists(__DIR__ . '/../db_connection.php')) {
     echo json_encode(['success' => false]); exit();
 }
 require_once __DIR__ . '/../db_connection.php';
+require_once __DIR__ . '/../config/order_abuse_guard.php';
 
 $orderNumber = $_GET['order_number'] ?? '';
 $customerPhone = $_GET['customer_phone'] ?? '';
+// Normalize to match the stored 10-digit phone format (order_abuse_guard.php).
+$customerPhone = orderAbuseNormalizePhone($customerPhone) ?? $customerPhone;
 
 if (!$orderNumber || !$customerPhone) {
     echo json_encode(['success' => false]); exit();

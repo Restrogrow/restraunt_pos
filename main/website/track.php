@@ -1,9 +1,14 @@
 <?php require_once __DIR__ . '/header.php'; ?>
 <?php
 require_once __DIR__ . '/../db_connection.php';
+require_once __DIR__ . '/../config/order_abuse_guard.php';
 
 $orderNumber = $_POST['order_number'] ?? $_GET['order_number'] ?? '';
 $customerPhone = $_POST['customer_phone'] ?? $_GET['customer_phone'] ?? '';
+// Orders are stored with a normalized 10-digit phone (see
+// order_abuse_guard.php / process_website_order.php) — normalize the lookup
+// the same way so "+91 98XXX" vs "98XXX" both find the order.
+$customerPhone = orderAbuseNormalizePhone($customerPhone) ?? $customerPhone;
 $error = '';
 $order = null;
 $tracking = null;

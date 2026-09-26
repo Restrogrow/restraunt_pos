@@ -38,6 +38,12 @@ if (empty($phone)) {
     exit();
 }
 
+// Normalize to match the stored 10-digit phone format (order_abuse_guard.php).
+// Website orders now store normalized digits; staff may type +91/0 prefixes.
+require_once __DIR__ . '/../config/order_abuse_guard.php';
+$phone_norm = orderAbuseNormalizePhone($phone);
+if ($phone_norm !== null) $phone = $phone_norm;
+
 try {
     // Get connection using getConnection() for lazy connection support
     if (function_exists('getConnection')) {

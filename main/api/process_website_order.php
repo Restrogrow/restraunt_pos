@@ -105,6 +105,24 @@ if (empty($items)) {
     exit();
 }
 
+// ── Abuse protection ────────────────────────────────────────────────────────
+// The phone is a guest checkout's only identity — reject implausible ones.
+require_once __DIR__ . '/../config/order_abuse_guard.php';
+$phoneCheck = orderAbuseValidatePhone($customer_phone);
+if (!$phoneCheck['valid']) {
+    ob_end_clean();
+    echo json_encode(['success' => false, 'message' => $phoneCheck['message']], JSON_UNESCAPED_UNICODE);
+    exit();
+}
+$customer_phone = $phoneCheck['value']; // store normalized 10-digit form
+
+$abuse_ip = orderAbuseGetClientIp();
+// INET6_ATON returns NULL on a malformed IP, which would silently NULL the
+// customer_ip column (or trip strict mode) — only accept sane values.
+if (!filter_var($abuse_ip, FILTER_VALIDATE_IP)) {
+    $abuse_ip = null;
+}
+
 try {
     $conn = getConnection();
     require_once __DIR__ . '/../config/scheduled_order_helpers.php';
@@ -112,6 +130,46 @@ try {
 
     // Resolve restaurant ID: session > query param > default
     $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? 'RES001');
+
+    // ── Abuse protection (needs DB + restaurant) ───────────────────────────
+    // IP flood cap: 5 website orders per IP per 30 minutes. A real customer
+    // places one or two; a script hammering the endpoint hits this first.
+    $orderFlood = orderAbuseCountRecentOrdersByIp($conn, $restaurant_id, $abuse_ip, 30);
+    if ($orderFlood >= 5) {
+        ob_end_clean();
+        http_response_code(429);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Too many orders have been placed from your network recently. Please try again later or order by calling the restaurant.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    // Per-phone daily cap: 8 website orders per number per 24h. Genuine
+    // reorders are rare; this stops one number from spamming all day.
+    $phoneFlood = orderAbuseCountRecentOrdersByPhone($conn, $restaurant_id, $customer_phone, 24);
+    if ($phoneFlood >= 8) {
+        ob_end_clean();
+        http_response_code(429);
+        echo json_encode([
+            'success' => false,
+            'message' => 'This mobile number has placed several orders today. Please call the restaurant to place more orders.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    // Blocklist: reject phones/IPs the restaurant blocked manually, or that
+    // were auto-blocked after 3 fake-order strikes.
+    $abuseBlock = orderAbuseIsBlocked($conn, $restaurant_id, $customer_phone, $abuse_ip);
+    if ($abuseBlock) {
+        ob_end_clean();
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'message' => 'You are unable to place orders at this restaurant. Please contact the restaurant directly if you believe this is a mistake.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
 
     // Fetch every restaurant setting this endpoint needs in ONE round trip.
     // Previously this was 7 separate `SELECT ... FROM users WHERE
@@ -774,6 +832,19 @@ $conn->beginTransaction();
         }
     }
     $order_id = $conn->lastInsertId();
+
+    // Record the submitter IP for abuse blocking. Kept out of the INSERT so
+    // order placement never breaks before the customer_ip migration
+    // (add_order_abuse_protection.sql) is run — this UPDATE simply no-ops
+    // (logged) until then, and the IP flood cap fails open meanwhile.
+    if ($abuse_ip !== null) {
+        try {
+            $conn->prepare("UPDATE orders SET customer_ip = INET6_ATON(?) WHERE id = ?")
+                 ->execute([$abuse_ip, $order_id]);
+        } catch (Exception $e) {
+            error_log('process_website_order: could not record customer_ip (run add_order_abuse_protection.sql): ' . $e->getMessage());
+        }
+    }
 
     if ($paymentProofBytes !== null) {
         try {

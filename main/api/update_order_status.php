@@ -117,9 +117,49 @@ try {
         
         $conn->commit();
 
+        // Post-commit side effects live OUTSIDE the transaction try/catch —
+        // a push-notification failure here must never turn a committed
+        // status change into an error response. (Previously the catch below
+        // tried to rollBack() an already-committed transaction, which threw
+        // its own "There is no active transaction" PDOException — the app
+        // showed "Error updating order status" even though the update had
+        // actually succeeded.)
+
+        // ── Fake-order auto-block ──
+        // When a website order is Rejected or Cancelled while unpaid, record
+        // a strike against that customer phone. 3 strikes within the window
+        // tracked on the blocklist row auto-blocks the number. Deliberately
+        // only for source='website' orders (POS/staff-created orders have a
+        // known, logged-in author) and only while payment is still Pending —
+        // a paid order being cancelled is a refund situation, not abuse.
+        if (($status === 'Rejected' || $status === 'Cancelled') && $result['success']) {
+            try {
+                $srcStmt = $conn->prepare("SELECT source, payment_status, customer_phone, customer_name FROM orders WHERE id = ? AND restaurant_id = ?");
+                $srcStmt->execute([$orderId, $restaurant_id]);
+                $orderMeta = $srcStmt->fetch(PDO::FETCH_ASSOC);
+                if ($orderMeta && ($orderMeta['source'] ?? '') === 'website'
+                    && ($orderMeta['payment_status'] ?? '') === 'Pending'
+                    && !empty($orderMeta['customer_phone'])) {
+                    require_once __DIR__ . '/../config/order_abuse_guard.php';
+                    orderAbuseAddStrike(
+                        $conn,
+                        $restaurant_id,
+                        $orderMeta['customer_phone'],
+                        $status . ($reason !== '' ? ': ' . $reason : ''),
+                        $orderMeta['customer_name'] ?? ''
+                    );
+                }
+            } catch (Exception $e) {
+                error_log('update_order_status.php: abuse strike failed (non-fatal): ' . $e->getMessage());
+            }
+        }
         if ($status === 'Ready') {
-            require_once __DIR__ . '/../config/push_notification.php';
-            notifyWaitersOrderReady($conn, $restaurant_id, $orderId);
+            try {
+                require_once __DIR__ . '/../config/push_notification.php';
+                notifyWaitersOrderReady($conn, $restaurant_id, $orderId);
+            } catch (Exception $e) {
+                error_log('update_order_status.php: waiter notification failed (non-fatal): ' . $e->getMessage());
+            }
         }
 
         echo json_encode([
@@ -128,7 +168,11 @@ try {
         ]);
         
     } catch (Exception $e) {
-        $conn->rollBack();
+        // Guarded rollback: only roll back if the transaction is actually
+        // still active — after a successful commit (or an engine-level        // implicit rollback) there is none, and an unguarded rollBack()        // would throw its own PDOException masking the real error.
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
         throw $e;
     }
     
@@ -137,7 +181,7 @@ try {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error updating order status: ' . $e->getMessage()
+        'message' => 'Error updating order status. Please try again.'
     ]);
 }
 ?>

@@ -240,6 +240,7 @@ CREATE TABLE IF NOT EXISTS orders (
     table_id INT,
     order_number VARCHAR(50) NOT NULL,
     customer_name VARCHAR(100),
+    customer_ip VARBINARY(16) DEFAULT NULL COMMENT 'Submitter IP (INET6_ATON) for abuse blocking',
     order_type ENUM('Dine-in', 'Takeaway', 'Delivery') DEFAULT 'Dine-in',
     payment_method VARCHAR(100) DEFAULT 'Cash',
     payment_status ENUM('Pending', 'Paid', 'Partially Paid', 'Refunded') DEFAULT 'Pending',
@@ -261,6 +262,25 @@ CREATE TABLE IF NOT EXISTS orders (
     -- Critical performance indexes
     INDEX idx_restaurant_date (restaurant_id, created_at),
     INDEX idx_status_date (order_status, created_at)
+);
+
+-- Blocked customers: phones/IPs barred from placing website orders.
+-- Populated by the auto-block system (fake-order strikes via order_abuse_guard.php)
+-- and the admin Blocked Customers page (main/admin/blocklist.php).
+CREATE TABLE IF NOT EXISTS order_blocklist (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    restaurant_id VARCHAR(10) NOT NULL,
+    type ENUM('phone', 'ip') NOT NULL,
+    value VARCHAR(64) NOT NULL,
+    reason VARCHAR(255) NULL,
+    source ENUM('auto', 'manual') NOT NULL DEFAULT 'manual',
+    strikes INT NOT NULL DEFAULT 0,
+    last_strike_at DATETIME NULL,
+    blocked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NULL,
+    blocked_by VARCHAR(50) NULL,
+    UNIQUE KEY uq_block (restaurant_id, type, value),
+    INDEX idx_block_lookup (restaurant_id, type, value, expires_at)
 );
 
 -- Create kot table for kitchen orders
