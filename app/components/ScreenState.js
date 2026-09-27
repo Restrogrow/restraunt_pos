@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { colors, font, spacing } from '../theme';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors, font, radius, spacing } from '../theme';
 
 export function LoadingState() {
   return (
@@ -10,7 +10,7 @@ export function LoadingState() {
   );
 }
 
-export function ErrorState({ message }) {
+export function ErrorState({ message, onRetry }) {
   return (
     <View style={styles.center}>
       <View style={styles.errorIconWrap}>
@@ -18,6 +18,16 @@ export function ErrorState({ message }) {
       </View>
       <Text style={styles.errorTitle}>Couldn't load this</Text>
       <Text style={styles.errorMessage}>{message}</Text>
+      {onRetry ? (
+        <Pressable
+          onPress={onRetry}
+          style={({ pressed }) => [styles.retryButton, pressed && styles.retryPressed]}
+          hitSlop={8}
+        >
+          <Ionicons name="refresh" size={15} color={colors.onPrimary} />
+          <Text style={styles.retryText}>Retry</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -62,6 +72,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.muted,
     textAlign: 'center',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.md,
+    paddingVertical: 9,
+    paddingHorizontal: 22,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+  },
+  retryPressed: {
+    opacity: 0.75,
+  },
+  retryText: {
+    fontFamily: font.semiBold,
+    fontSize: 14,
+    color: colors.onPrimary,
   },
   emptyIconWrap: {
     width: 52,

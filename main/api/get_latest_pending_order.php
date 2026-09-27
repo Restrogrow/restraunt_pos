@@ -66,6 +66,13 @@ try {
         // Columns not migrated yet on this database — leave defaults above
     }
 
+    // Soft-deleted orders must never trigger the new-order alert — an admin
+    // deleting a spam/mistaken order would otherwise keep hearing the ring.
+    // ensureOrderSoftDeleteColumns() guarantees the column exists before the
+    // (pre-migration-safe) fallback below runs.
+    require_once __DIR__ . '/../config/soft_delete_helpers.php';
+    ensureOrderSoftDeleteColumns($conn);
+
     // Get the most recent pending online order (must have at least 1 item)
     $sql = "SELECT o.id, o.order_number, o.order_status, o.payment_status, o.payment_method,
                    o.order_type, o.customer_name, o.customer_phone, o.customer_email,
@@ -75,6 +82,7 @@ try {
             FROM orders o
             LEFT JOIN payment_proofs pp ON pp.order_id = o.id
             WHERE o.restaurant_id = ? AND o.source = 'website' AND o.order_status = 'Pending'
+              AND o.deleted_at IS NULL
               AND (o.payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR o.payment_status = 'Paid')
               AND (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) > 0
             ORDER BY o.created_at DESC
@@ -93,6 +101,7 @@ try {
                        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
                 FROM orders o
                 WHERE o.restaurant_id = ? AND o.source = 'website' AND o.order_status = 'Pending'
+                  AND o.deleted_at IS NULL
                   AND (o.payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR o.payment_status = 'Paid')
                   AND (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) > 0
                 ORDER BY o.created_at DESC

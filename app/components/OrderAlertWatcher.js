@@ -55,7 +55,11 @@ export default function OrderAlertWatcher() {
         // needs interrupting for — like an incoming call, not just a toast.
         // Anything that shows up already past Pending (e.g. created
         // straight from the counter) just gets the quiet notification above.
-        const freshPending = freshOrders.filter((o) => o.order_status === 'Pending');
+        // POS-confirmed orders arrive as Ready+Paid by design — they're not
+        // new work, so they never trigger the alarm-ring/auto-open path.
+        const freshPending = freshOrders.filter(
+          (o) => o.order_status === 'Pending' && o.source !== 'pos'
+        );
         if (freshPending.length === 0) return;
 
         const soundOn = await getOrderSoundEnabled();

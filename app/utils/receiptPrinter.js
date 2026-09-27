@@ -51,6 +51,50 @@ function centerText(str, width) {
   return ' '.repeat(space) + str;
 }
 
+// Bill items render as an aligned ITEM | QTY | RATE | TOTAL table, so every
+// row shows the unit rate, the quantity, and that item's own total — the old
+// "2 x ₹50.00 …  ₹100.00" layout buried the per-item rate and made whoever
+// read the bill do the multiplication in their head. Long names wrap within
+// their column with the amount columns repeated on the first line only.
+function buildItemTableLines({ items, currency, width }) {
+  const rows = (items || []).map((it) => ({
+    label: it.variationName ? `${it.name} (${it.variationName})` : it.name,
+    quantity: Number(it.quantity) || 0,
+    rate: Number(it.price) || 0,
+  }));
+  if (rows.length === 0) return [];
+
+  const money = (n) => `${currency}${n.toFixed(2)}`;
+  // Amount columns size themselves to the widest value on the bill (floored
+  // so the QTY/RATE/TOTAL headers always fit); the item name gets whatever's
+  // left over. The name floor means a bill full of ₹10000.00+ catering items
+  // overruns `width` slightly rather than crushing every name to nothing.
+  const qtyWidth = 3;
+  const rateWidth = Math.max(4, ...rows.map((r) => money(r.rate).length));
+  const totalWidth = Math.max(5, ...rows.map((r) => money(r.rate * r.quantity).length));
+  // -3 = the single space between the four columns.
+  const nameWidth = Math.max(8, width - qtyWidth - rateWidth - totalWidth - 3);
+
+  const cell = (v, w) => String(v).padStart(w);
+  const lines = [];
+  lines.push(
+    ['ITEM'.padEnd(nameWidth), cell('QTY', qtyWidth), cell('RATE', rateWidth), cell('TOTAL', totalWidth)].join(' ')
+  );
+  rows.forEach((r) => {
+    const nameLines = wrapText(r.label, nameWidth);
+    nameLines.forEach((nl, i) => {
+      // Amounts only on the first line — continuation lines carry just the
+      // rest of the name so a wrapped item doesn't read as a second row.
+      lines.push(
+        i === 0
+          ? `${nl.padEnd(nameWidth)} ${cell(r.quantity, qtyWidth)} ${cell(money(r.rate), rateWidth)} ${cell(money(r.rate * r.quantity), totalWidth)}`
+          : nl
+      );
+    });
+  });
+  return lines;
+}
+
 // items: [{ name, quantity, price, variationName? }]
 // type: 'bill' (default) prints the full priced receipt a customer gets;
 // 'kot' prints a kitchen ticket — item names/quantities only, no prices —
@@ -110,19 +154,18 @@ export function buildReceiptLines({
   push(`${orderType}${tableName ? ' - ' + tableName : ''}`);
   push('-'.repeat(width));
 
+  // Item count only matters for KOT's "Total Items" row further down, but
+  // it's declared here so both kot branches below can see it.
   let itemCount = 0;
-  (items || []).forEach((it) => {
-    itemCount += Number(it.quantity) || 0;
-    const label = it.variationName ? `${it.name} (${it.variationName})` : it.name;
-    if (type === 'kot') {
+  if (type === 'kot') {
+    (items || []).forEach((it) => {
+      itemCount += Number(it.quantity) || 0;
+      const label = it.variationName ? `${it.name} (${it.variationName})` : it.name;
       wrapText(`${it.quantity} x ${label}`, width).forEach((l) => push(l));
-    } else {
-      wrapText(label, width).forEach((l) => push(l));
-      const qtyPrice = `${it.quantity} x ${currency}${Number(it.price).toFixed(2)}`;
-      const lineTotal = `${currency}${(Number(it.price) * Number(it.quantity)).toFixed(2)}`;
-      push(padLine(qtyPrice, lineTotal, width));
-    }
-  });
+    });
+  } else {
+    buildItemTableLines({ items, currency, width }).forEach((text) => push(text));
+  }
 
   push('-'.repeat(width));
 

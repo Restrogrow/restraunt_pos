@@ -53,6 +53,11 @@ try {
     $tzRow = $tzStmt->fetch(PDO::FETCH_ASSOC);
     applyRestaurantTimezone($tzRow['timezone'] ?? 'Asia/Kolkata', $conn);
 
+    // Soft-deleted orders never happened — exclude them from every count and
+    // revenue figure below (same rule the Cancelled/Rejected filter uses).
+    require_once __DIR__ . '/../config/soft_delete_helpers.php';
+    ensureOrderSoftDeleteColumns($conn);
+
     // Get today's date
     $today = date('Y-m-d');
     
@@ -70,17 +75,22 @@ try {
                                 FROM orders 
                                 WHERE restaurant_id = ? 
                                 AND payment_status = 'Paid'
-                                AND DATE(created_at) = ?");
+                                AND DATE(created_at) = ?
+                                AND deleted_at IS NULL");
         $stmt->execute([$restaurant_id, $today]);
         $fallback = $stmt->fetch();
         $todayRevenue = $fallback['revenue'] ?? 0;
     }
     
-    // Total Orders (Today)
+    // Total Orders (Today) — cancelled/rejected orders never happened, so
+    // they don't count (same rule as get_sales_report.php). Soft-deleted
+    // orders are likewise invisible to every stat below.
     $stmt = $conn->prepare("SELECT COUNT(*) as count 
                            FROM orders 
                            WHERE restaurant_id = ? 
-                           AND DATE(created_at) = ?");
+                           AND DATE(created_at) = ?
+                           AND order_status NOT IN ('Cancelled', 'Rejected')
+                           AND deleted_at IS NULL");
     $stmt->execute([$restaurant_id, $today]);
     $ordersData = $stmt->fetch();
     $todayOrders = $ordersData['count'] ?? 0;
@@ -102,7 +112,8 @@ try {
                            AND customer_name IS NOT NULL 
                            AND customer_name != '' 
                            AND customer_name != 'Table Customer'
-                           AND customer_name != 'Takeaway'");
+                           AND customer_name != 'Takeaway'
+                           AND deleted_at IS NULL");
     $stmt->execute([$restaurant_id]);
     $customersData = $stmt->fetch();
     $totalCustomers = $customersData['count'] ?? 0;
@@ -134,13 +145,14 @@ try {
     $totalTablesData = $stmt->fetch();
     $totalTables = $totalTablesData['count'] ?? 0;
     
-    // Recent Orders (Today, latest 5)
+    // Recent Orders (Today, latest 5) — soft-deleted ones excluded.
     $stmt = $conn->prepare("SELECT o.*, t.table_number, a.area_name 
                            FROM orders o
                            LEFT JOIN tables t ON o.table_id = t.id
                            LEFT JOIN areas a ON t.area_id = a.id
                            WHERE o.restaurant_id = ?
                            AND DATE(o.created_at) = ?
+                           AND o.deleted_at IS NULL
                            ORDER BY o.created_at DESC
                            LIMIT 5");
     $stmt->execute([$restaurant_id, $today]);
@@ -152,6 +164,7 @@ try {
                            JOIN orders o ON oi.order_id = o.id
                            WHERE o.restaurant_id = ?
                            AND DATE(o.created_at) = ?
+                           AND o.deleted_at IS NULL
                            GROUP BY oi.item_name
                            ORDER BY total_qty DESC
                            LIMIT 5");
@@ -162,7 +175,8 @@ try {
     $stmt = $conn->prepare("SELECT COUNT(*) as count 
                            FROM orders 
                            WHERE restaurant_id = ? 
-                           AND order_status IN ('Pending', 'Preparing', 'Ready')");
+                           AND order_status IN ('Pending', 'Preparing', 'Ready')
+                           AND deleted_at IS NULL");
     $stmt->execute([$restaurant_id]);
     $pendingData = $stmt->fetch();
     $pendingOrders = $pendingData['count'] ?? 0;

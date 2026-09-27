@@ -450,6 +450,50 @@ function handleCreateKOT($conn, $restaurant_id) {
             }
         }
         
+        // Paid-up-front tickets (the POS "Pay" button — any method other than
+        // Cash means money was already collected, incl. split payments whose
+        // breakdown lives in the notes) must land in `orders` IMMEDIATELY.
+        // `orders` is what every sales report sums (get_sales_report.php), so
+        // deferring the order row until the kitchen marks the KOT Ready made
+        // paid counter sales invisible in Reports — sometimes for hours, and
+        // forever whenever the ticket was never advanced. Same shape as
+        // kot_operations.php's Ready handler: order 'Paid' + 'Ready', linked
+        // back to the ticket via kot.order_id, payment row recorded.
+        $isPaidUpFront = !empty($paymentMethod) && $paymentMethod !== 'Cash';
+        if ($isPaidUpFront) {
+            $orderNumber = generateOrderNumber($conn, $restaurant_id);
+            $orderNotes = trim($kotNotes . (!empty($kotNotes) ? "\n" : '') . "[KOT: " . $kotNumber . "]");
+
+            $checkOrderCols = $conn->query("SHOW COLUMNS FROM orders LIKE 'customer_phone'");
+            $hasOrderCustomerCols = $checkOrderCols && $checkOrderCols->rowCount() > 0;
+
+            if ($hasOrderCustomerCols) {
+                $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Ready', ?, ?, ?, ?)");
+                $orderStmt->execute([$restaurant_id, $tableIdParam, $orderNumber, $customerName, $customerPhone, $customerEmail, $customerAddress, $orderType, $paymentMethod, $subtotal, $tax, $total, $orderNotes]);
+            } else {
+                $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, 'Paid', 'Ready', ?, ?, ?, ?)");
+                $orderStmt->execute([$restaurant_id, $tableIdParam, $orderNumber, $customerName, $orderType, $paymentMethod, $subtotal, $tax, $total, $orderNotes]);
+            }
+            $orderId = (int)$conn->lastInsertId();
+
+            foreach ($cartItems as $item) {
+                $oiStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
+                $oiStmt->execute([$orderId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'], (float)$item['price'], (float)($item['price'] * $item['quantity'])]);
+            }
+
+            $payStmt = $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')");
+            $payStmt->execute([$restaurant_id, $orderId, $total, $paymentMethod]);
+
+            // Link the ticket to the order it produced, so the kitchen's later
+            // Ready→order-creation step sees an order already exists and skips
+            // creating a duplicate.
+            try {
+                $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$orderId, $kotId]);
+            } catch (Exception $e) {
+                error_log("Could not link KOT " . $kotId . " to its paid order " . $orderId . ": " . $e->getMessage());
+            }
+        }
+
         // Commit transaction
         $conn->commit();
 
@@ -465,11 +509,17 @@ function handleCreateKOT($conn, $restaurant_id) {
 
         $resp = [
             'success' => true,
-            'message' => 'KOT created successfully. Order will be created when KOT is marked as Ready.',
+            'message' => $isPaidUpFront
+                ? 'KOT sent to kitchen. Payment recorded — order is in sales now.'
+                : 'KOT created successfully. Order will be created when KOT is marked as Ready.',
             'kot_number' => $kotNumber,
             'kot_id' => $kotId,
             'discount_amount' => $discountAmount,
         ];
+        if ($isPaidUpFront) {
+            $resp['order_id'] = $orderId;
+            $resp['order_number'] = $orderNumber;
+        }
         echo json_encode($resp, JSON_UNESCAPED_UNICODE);
     } catch (Exception $e) {
         // Rollback transaction on error

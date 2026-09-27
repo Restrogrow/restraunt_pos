@@ -1,0 +1,7 @@
+{
+  "name": "order-watch",
+  "version": "1.0.0",
+  "main": "index.js",
+  "private": true,
+  "description": "Local Expo module: Android foreground service that watches for new orders while the app is closed/killed, rings, and posts tappable notifications."
+}

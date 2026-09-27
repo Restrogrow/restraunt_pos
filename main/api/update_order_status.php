@@ -94,6 +94,24 @@ try {
             $extraParams[] = $prepMinutes;
         }
 
+        // A soft-deleted order is a closed book — nobody (not even an
+        // accidental waiter tap) may advance its status afterwards.
+        // validateAndUpdateOrderStatus would happily update one, so guard
+        // here, tenant-scoped, before the state machine runs.
+        $deletedStmt = $conn->prepare("SELECT deleted_at FROM orders WHERE id = ? AND restaurant_id = ? FOR UPDATE");
+        $deletedStmt->execute([$orderId, $restaurant_id]);
+        $deletedCheck = $deletedStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$deletedCheck) {
+            $conn->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Order not found']);
+            exit();
+        }
+        if (!empty($deletedCheck['deleted_at'])) {
+            $conn->rollBack();
+            echo json_encode(['success' => false, 'message' => 'This order is deleted and can no longer be updated']);
+            exit();
+        }
+
         // Perform validated atomic update with row-level locking
         // The $appendNotes parameter handles notes appending inside the lock
         $result = validateAndUpdateOrderStatus(

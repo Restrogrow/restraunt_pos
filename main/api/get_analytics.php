@@ -59,11 +59,16 @@ try {
     }
 
     // ── Orders & Revenue ──
-    $stmt = $conn->prepare("SELECT COUNT(*) as total_orders, COALESCE(SUM(total), 0) as total_revenue FROM orders WHERE restaurant_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
+    // Cancelled/Rejected orders never happened — excluded from revenue and
+    // the daily trend (same rule as get_sales_report.php). Soft-deleted
+    // orders likewise stay out of every figure here.
+    require_once __DIR__ . '/../config/soft_delete_helpers.php';
+    ensureOrderSoftDeleteColumns($conn);
+    $stmt = $conn->prepare("SELECT COUNT(*) as total_orders, COALESCE(SUM(total), 0) as total_revenue FROM orders WHERE restaurant_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND order_status NOT IN ('Cancelled', 'Rejected') AND deleted_at IS NULL");
     $stmt->execute([$restaurant_id, $days]);
     $orderStats = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $stmt = $conn->prepare("SELECT DATE(created_at) as date, COUNT(*) as orders, COALESCE(SUM(total), 0) as revenue FROM orders WHERE restaurant_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY DATE(created_at) ORDER BY date ASC");
+    $stmt = $conn->prepare("SELECT DATE(created_at) as date, COUNT(*) as orders, COALESCE(SUM(total), 0) as revenue FROM orders WHERE restaurant_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND order_status NOT IN ('Cancelled', 'Rejected') AND deleted_at IS NULL GROUP BY DATE(created_at) ORDER BY date ASC");
     $stmt->execute([$restaurant_id, $days]);
     $ordersByDay = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -76,7 +81,7 @@ try {
     $orderStatuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // ── Popular Items ──
-    $stmt = $conn->prepare("SELECT oi.item_name, SUM(oi.quantity) as total_qty, SUM(oi.total_price) as total_rev FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE o.restaurant_id = ? AND o.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY oi.item_name ORDER BY total_qty DESC LIMIT 10");
+    $stmt = $conn->prepare("SELECT oi.item_name, SUM(oi.quantity) as total_qty, SUM(oi.total_price) as total_rev FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE o.restaurant_id = ? AND o.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND o.order_status NOT IN ('Cancelled', 'Rejected') AND o.deleted_at IS NULL GROUP BY oi.item_name ORDER BY total_qty DESC LIMIT 10");
     $stmt->execute([$restaurant_id, $days]);
     $popularItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

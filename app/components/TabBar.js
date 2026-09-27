@@ -10,6 +10,7 @@ const ICONS = {
   POS: 'cash-outline',
   Menu: 'restaurant',
   Reports: 'bar-chart',
+  Logs: 'shield-checkmark',
   Settings: 'settings',
 };
 

@@ -43,8 +43,31 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../config/pan_helpers.php';
     require_once __DIR__ . '/../config/gstin_helpers.php';
     require_once __DIR__ . '/../config/business_id_helpers.php';
+    require_once __DIR__ . '/../config/login_log_helpers.php';
 } else {
     throw new Exception('Database connection file not found');
+}
+
+// ── IP blocklist gate ──
+// Checked before anything else (even before rate limiting) so a blocked IP
+// gets nothing — not a password probe, not a lockout countdown, nothing.
+// Intentionally global (not per-restaurant): a brute-forcing IP is an
+// attack on the platform, not on one restaurant.
+try {
+    $isLoginAttempt = ($_POST['action'] ?? '') === 'login';
+    if ($isLoginAttempt && function_exists('getConnection')) {
+        $conn = getConnection();
+        $blockRow = loginLogIsBlocked($conn, loginLogClientIp());
+        if ($blockRow) {
+            loginLogWrite($conn, ['outcome' => 'blocked_ip', 'username' => $_POST['username'] ?? null]);
+            ob_clean();
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Access denied. Your network has been blocked. Contact support if you believe this is a mistake.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+    }
+} catch (Exception $blockErr) {
+    error_log('auth.php: blocklist gate skipped (fail-open): ' . $blockErr->getMessage());
 }
 
 try {
@@ -255,6 +278,24 @@ function handleLogin() {
             clearFailedAttempts(getRateLimitIdentifier());
         }
         
+        // ── Audit: successful admin login + new-device detection ──
+        try {
+            $isNewDevice = loginLogIsNewDevice($pdo, $user['restaurant_id']);
+            loginLogWrite($pdo, [
+                'restaurant_id' => $user['restaurant_id'],
+                'username' => $user['username'],
+                'user_type' => 'admin',
+                'actor_name' => $user['username'],
+                'outcome' => 'success',
+                'is_new_device' => $isNewDevice,
+            ]);
+            if ($isNewDevice) {
+                error_log(sprintf('NEW DEVICE: admin %s (restaurant %s) logged in from a never-seen-before device/IP %s', $user['username'], $user['restaurant_id'], loginLogClientIp()));
+            }
+        } catch (Exception $logErr) {
+            error_log('auth.php: login log (admin success) failed: ' . $logErr->getMessage());
+        }
+        
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['restaurant_id'] = $user['restaurant_id'];
@@ -295,6 +336,25 @@ function handleLogin() {
         if (function_exists('clearFailedAttempts')) {
             clearFailedAttempts(getRateLimitIdentifier());
         }
+        
+        // ── Audit: successful staff login + new-device detection ──
+        try {
+            $isNewDevice = loginLogIsNewDevice($pdo, $staff['restaurant_id']);
+            loginLogWrite($pdo, [
+                'restaurant_id' => $staff['restaurant_id'],
+                'username' => $staff['member_name'],
+                'user_type' => 'staff',
+                'actor_name' => $staff['member_name'],
+                'outcome' => 'success',
+                'is_new_device' => $isNewDevice,
+            ]);
+            if ($isNewDevice) {
+                error_log(sprintf('NEW DEVICE: staff %s (restaurant %s) logged in from a never-seen-before device/IP %s', $staff['member_name'], $staff['restaurant_id'], loginLogClientIp()));
+            }
+        } catch (Exception $logErr) {
+            error_log('auth.php: login log (staff success) failed: ' . $logErr->getMessage());
+        }
+        
         $_SESSION['staff_id'] = $staff['id'];
         $_SESSION['username'] = $staff['member_name'];
         $_SESSION['email'] = $staff['email'];
@@ -372,6 +432,24 @@ function handleLogin() {
         if (function_exists('clearFailedAttempts')) {
             clearFailedAttempts(getRateLimitIdentifier());
         }
+        
+        // ── Audit: successful branch-admin login + new-device detection ──
+        try {
+            $firstLinked = $linked[0]['restaurant_id'] ?? null;
+            if ($firstLinked) {
+                $isNewDevice = loginLogIsNewDevice($pdo, $firstLinked);
+                loginLogWrite($pdo, [
+                    'restaurant_id' => $firstLinked,
+                    'username' => $branchAdmin['username'],
+                    'user_type' => 'branch_admin',
+                    'actor_name' => $branchAdmin['username'],
+                    'outcome' => 'success',
+                    'is_new_device' => $isNewDevice,
+                ]);
+            }
+        } catch (Exception $logErr) {
+            error_log('auth.php: login log (branch admin success) failed: ' . $logErr->getMessage());
+        }
         // Get linked restaurants
         $linkStmt = $pdo->prepare("
             SELECT brl.restaurant_id, brl.label, u.restaurant_name 
@@ -417,6 +495,44 @@ function handleLogin() {
     // Track failed login attempt for progressive lockout
     if (function_exists('trackFailedAttempt') && function_exists('getRateLimitIdentifier')) {
         trackFailedAttempt(getRateLimitIdentifier());
+    }
+    
+    // ── Audit: failed login attempt ──
+    // logged AFTER trackFailedAttempt so the log row can reflect whether
+    // this attempt triggered a lockout (>= 3 strikes in the window).
+    try {
+        $conn2 = function_exists('getConnection') ? getConnection() : $pdo;
+        $failedStmt = $conn2->prepare("SELECT restaurant_id FROM users WHERE username = ? OR email = ? LIMIT 1");
+        $failedStmt->execute([$username, $username]);
+        $failedRow = $failedStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        $failedRestId = $failedRow['restaurant_id'] ?? null;
+        $failedStaffRow = null;
+        if (!$failedRestId) {
+            $failedStaffStmt = $conn2->prepare("SELECT restaurant_id FROM staff WHERE email = ? OR phone = ? LIMIT 1");
+            $failedStaffStmt->execute([$username, $username]);
+            $failedStaffRow = $failedStaffStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            $failedRestId = $failedStaffRow['restaurant_id'] ?? null;
+        }
+        
+        // Was the lockout just triggered by THIS attempt? (read what
+        // trackFailedAttempt wrote to disk)
+        $justLocked = false;
+        $rateLimitDir = __DIR__ . '/../tmp/rate_limits';
+        $safeId = preg_replace('/[^a-zA-Z0-9_-]/', '_', getRateLimitIdentifier());
+        $lockFile = $rateLimitDir . '/' . $safeId . '_lockout.json';
+        if (file_exists($lockFile) && (time() - filemtime($lockFile)) < 5) {
+            $justLocked = true;
+        }
+        
+        loginLogWrite($conn2, [
+            'restaurant_id' => $failedRestId,
+            'username' => $username,
+            'user_type' => $failedRow ? 'admin' : ($failedStaffRow ? 'staff' : 'unknown'),
+            'actor_name' => null,
+            'outcome' => $justLocked ? 'locked_out' : 'failed',
+        ]);
+    } catch (Exception $logErr) {
+        error_log('auth.php: login log (failure) failed: ' . $logErr->getMessage());
     }
     
     // If neither found, throw error
@@ -538,6 +654,25 @@ function handleLogout() {
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
     }
+    
+    // ── Audit: logout (best-effort, before session data is gone) ──
+    try {
+        if (isset($_SESSION['restaurant_id'])) {
+            $logoutConn = function_exists('getConnection') ? getConnection() : ($pdo ?? null);
+            if ($logoutConn) {
+                loginLogWrite($logoutConn, [
+                    'restaurant_id' => $_SESSION['restaurant_id'],
+                    'username' => $_SESSION['username'] ?? null,
+                    'user_type' => $_SESSION['user_type'] ?? 'unknown',
+                    'actor_name' => $_SESSION['username'] ?? null,
+                    'outcome' => 'logout',
+                ]);
+            }
+        }
+    } catch (Exception $logErr) {
+        error_log('auth.php: logout log failed: ' . $logErr->getMessage());
+    }
+    
     // Use secure session destruction
     destroySession();
     

@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, BackHandler, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Badge from '../components/Badge';
 import BillPreviewModal from '../components/BillPreviewModal';
-import { apiPostForm } from '../config/api';
+import { apiGet, apiPostForm } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
-import { stopNewOrderSound } from '../utils/orderAlerts';
+import { isRingActive, playNewOrderSound, stopNewOrderSound, subscribeRingState } from '../utils/orderAlerts';
+import { markOrderHandled } from 'order-watch';
 
 // Mirrors main/config/order_state_machine.php's ORDER_STATUS_TRANSITIONS —
 // every legal next status gets its own button here, not just a single
@@ -78,6 +79,21 @@ const PREP_MIN = 5;
 const PREP_MAX = 180;
 const DEFAULT_PREP_MINUTES = 15;
 
+// Raw DB enum values shown to staff as plain language — "Partially Paid"
+// on a tiny badge was the #1 confusion; these read like sentences.
+const PAYMENT_LABELS = {
+  Pending: 'Not Paid',
+  Paid: 'Paid',
+  'Partially Paid': 'Partly Paid',
+  Refunded: 'Refunded',
+};
+const paymentLabel = (s) => PAYMENT_LABELS[s] || s || 'Not Paid';
+
+// Statuses where nothing is left to do — the footer must render NO action
+// buttons at all (tapping one just got "already marked as completed" /
+// "cannot change from Rejected to Accepted" errors from the API).
+const TERMINAL_STATUSES = ['Completed', 'Cancelled', 'Rejected'];
+
 function formatOrderDateTime(value) {
   if (!value) return '';
   const d = new Date(value.replace(' ', 'T'));
@@ -125,14 +141,22 @@ export default function OrderDetailScreen({ route, navigation }) {
   const [billPreview, setBillPreview] = useState(null);
   const [riderQr, setRiderQr] = useState(null); // { url, expiresAt }
   const [generatingQr, setGeneratingQr] = useState(false);
+  // True when the new-order ring is NOT sounding — the header button reads
+  // this to flip between Mute (ring on) and Unmute (ring off) with matching
+  // icons, instead of the old always-useless one-way Mute.
+  const [muted, setMuted] = useState(true);
+  // Set while a background re-fetch of this order is in flight (focus
+  // refresh + 15s poll) so the header can show a subtle "updating" state.
+  const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const currency = user?.currency_symbol || '₹';
 
   const items = order.items || [];
   const isDelivery = order.order_type === 'Delivery';
-  const actions = STATUS_ACTIONS[order.order_status] || {};
-  const paymentOptions = PAYMENT_STATUS_TRANSITIONS[order.payment_status] || [];
+  const isTerminal = TERMINAL_STATUSES.includes(order.order_status);
+  const actions = isTerminal ? {} : STATUS_ACTIONS[order.order_status] || {};
+  const paymentOptions = isTerminal ? [] : PAYMENT_STATUS_TRANSITIONS[order.payment_status] || [];
   const isPending = order.order_status === 'Pending';
 
   // This screen's Accept/Reject/Cancel footer sits at the very bottom, and
@@ -147,12 +171,85 @@ export default function OrderDetailScreen({ route, navigation }) {
     return () => parent?.setOptions({ tabBarStyle: undefined });
   }, [navigation]);
 
-  // Reaching this screen — whether auto-opened for an incoming order or
-  // tapped into normally — means the alert already did its job; no need to
-  // keep ringing while the person is looking straight at it.
+  // Reaching this screen while the new-order ring is sounding no longer
+  // kills the ring — someone walking past a ringing tablet shouldn't have
+  // to open an order to silence it, the Mute/Unmute button is the explicit
+  // control. The ring keeps looping while the screen is open; it stops via
+  // the Mute button, accept/reject/cancel, leaving the screen, or the
+  // 10-minute safety net.
   useEffect(() => {
-    stopNewOrderSound();
+    setMuted(!isRingActive());
+    const unsub = subscribeRingState((active) => setMuted(!active));
+    return () => {
+      unsub();
+    };
   }, []);
+
+  // Leaving the screen (back button, tab switch away from the Orders
+  // stack, or the auto-open flow navigating elsewhere) always silences the
+  // alert — same as the website closing its overlay. Accept/reject handle
+  // their own stop inside updateStatus().
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', () => {
+      stopNewOrderSound();
+    });
+    return unsub;
+  }, [navigation]);
+
+  // --- Live refresh -------------------------------------------------------
+  // The order row on screen used to go stale: another staff member (or the
+  // customer's own payment callback) could complete the order while this
+  // screen sat open — the footer then offered actions the backend had
+  // already rejected ("already marked as completed"). Re-fetch the order
+  // when the screen regains focus and on a slow interval while open.
+  const refreshOrder = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      const res = await apiGet(`/api/get_order_details_by_id.php?id=${order.id}`);
+      if (res?.success && res.order) {
+        setOrder((prev) => ({ ...prev, ...res.order }));
+      }
+    } catch (e) {
+      // silent — refresh is best-effort; the current snapshot stays usable
+    } finally {
+      setRefreshing(false);
+    }
+  }, [order.id]);
+
+  useEffect(() => {
+    const unsub = navigation.addListener('focus', refreshOrder);
+    return unsub;
+  }, [navigation, refreshOrder]);
+
+  useEffect(() => {
+    const id = setInterval(refreshOrder, 15000);
+    return () => clearInterval(id);
+  }, [refreshOrder]);
+
+  // Hardware/system back (gesture, button) — react-navigation's native-stack
+  // normally handles this, but this screen sits in a custom-tab-bar setup
+  // where the parent's tabBarStyle juggling raced the removal listener and
+  // on some devices the back press did nothing at all. Handling it
+  // explicitly guarantees one tap = leave the screen (which also silences
+  // the ring via beforeRemove).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.goBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [navigation]);
+
+  const toggleMute = useCallback(() => {
+    // Unmute restarts the ring from the top so a short clip doesn't resume
+    // mid-tail — it replays like a fresh incoming-call alert. Mute keeps
+    // the ring silenced until the order is acted on or the screen closes.
+    if (muted) {
+      playNewOrderSound();
+    } else {
+      stopNewOrderSound();
+    }
+  }, [muted]);
 
   const openInMaps = () => {
     const address = order.customer_address;
@@ -199,7 +296,22 @@ export default function OrderDetailScreen({ route, navigation }) {
         status: to,
         ...extraFields,
       });
-      if (!res.success) throw new Error(res.message || 'Update failed');
+      if (!res.success) {
+        // "Already marked as completed" / "cannot change from Rejected" mean
+        // this screen's snapshot went stale (someone else acted first).
+        // Pull the real current state instead of just showing an error.
+        if (/already|cannot change|invalid transition/i.test(res.message || '')) {
+          await refreshOrder();
+        }
+        throw new Error(res.message || 'Update failed');
+      }
+      // The order has been acted on — Accept/Reject/Cancel/etc. — so kill the
+      // new-order ring right here rather than waiting for the unmount effect.
+      // Otherwise the telephone ring keeps looping while the user stays on
+      // this screen checking payment status or printing the KOT. Also tells
+      // the native background watcher to stop ringing/notifying for it.
+      stopNewOrderSound();
+      markOrderHandled(order.id);
       const next = { ...order, order_status: to };
       if (extraFields.prep_minutes) {
         next.prep_minutes = extraFields.prep_minutes;
@@ -211,7 +323,15 @@ export default function OrderDetailScreen({ route, navigation }) {
       setOrder(next);
       navigation.setParams({ order: next });
     } catch (e) {
-      Alert.alert('Could not update order', e.message);
+      // Network-level failures come through as generic fetch errors — give
+      // them a message a busy counter worker can act on. Server-sent
+      // messages (e.g. "Order is already Completed") pass through as-is.
+      Alert.alert(
+        'Could not update order',
+        /fetch|network|reach the server/i.test(e.message)
+          ? "Couldn't reach the server — check the connection and try again. The order is safe."
+          : e.message
+      );
     } finally {
       setUpdatingTo(null);
     }
@@ -242,7 +362,12 @@ export default function OrderDetailScreen({ route, navigation }) {
       navigation.setParams({ order: next });
       setPaymentPickerOpen(false);
     } catch (e) {
-      Alert.alert('Could not update payment', e.message);
+      Alert.alert(
+        'Could not update payment',
+        /fetch|network|reach the server/i.test(e.message)
+          ? "Couldn't reach the server — check the connection and try again."
+          : e.message
+      );
     } finally {
       setUpdatingPayment(false);
     }
@@ -277,7 +402,6 @@ export default function OrderDetailScreen({ route, navigation }) {
 
   const dateTime = useMemo(() => formatOrderDateTime(order.created_at), [order.created_at]);
   const paid = order.payment_status === 'Paid';
-
   return (
     <View style={styles.fill}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
@@ -291,9 +415,18 @@ export default function OrderDetailScreen({ route, navigation }) {
           <Ionicons name="print-outline" size={20} color={colors.inkSoft} />
           <Text style={styles.headerActionText}>KOT Print</Text>
         </Pressable>
-        <Pressable style={styles.headerAction} onPress={stopNewOrderSound} hitSlop={6}>
-          <Ionicons name="notifications-off-outline" size={20} color={colors.warning} />
-          <Text style={styles.headerActionText}>Mute</Text>
+        <Pressable style={styles.headerAction} onPress={toggleMute} hitSlop={6}>
+          {muted ? (
+            <>
+              <Ionicons name="notifications-off-outline" size={20} color={colors.warning} />
+              <Text style={styles.headerActionText}>Unmute</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="notifications-outline" size={20} color={colors.warning} />
+              <Text style={styles.headerActionText}>Mute</Text>
+            </>
+          )}
         </Pressable>
       </View>
 
@@ -410,7 +543,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               disabled={paymentOptions.length === 0}
             >
               <Text style={[styles.paymentBadgeText, { color: paid ? colors.success : colors.warning }]}>
-                {order.payment_status}
+                {paymentLabel(order.payment_status)}
               </Text>
               {paymentOptions.length > 0 ? (
                 <Ionicons name="chevron-down" size={12} color={paid ? colors.success : colors.warning} />
@@ -461,7 +594,7 @@ export default function OrderDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {(actions.primary?.length || actions.secondary?.length) ? (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + spacing.xs, spacing.lg) }]}>
           {actions.secondary?.length ? (
             <View style={styles.secondaryRow}>
               {actions.secondary.map((a) => (
@@ -510,7 +643,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                 onPress={() => updatePayment(status)}
                 disabled={updatingPayment}
               >
-                <Text style={styles.pickerOptionText}>{status}</Text>
+                <Text style={styles.pickerOptionText}>{paymentLabel(status)}</Text>
                 {updatingPayment ? <ActivityIndicator size="small" color={colors.primary} /> : (
                   <Ionicons name="chevron-forward" size={16} color={colors.muted} />
                 )}
@@ -825,6 +958,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,
     gap: spacing.sm,
+    // Extra bottom padding so Accept/Reject sit clearly above Android's
+    // gesture nav bar — with insets alone the buttons hugged the bar and
+    // taps near the bottom edge hit the system navigation instead.
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: -2 },
   },
   secondaryRow: {
     flexDirection: 'row',

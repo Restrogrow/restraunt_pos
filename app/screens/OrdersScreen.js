@@ -44,7 +44,29 @@ const TABS = [
     emptyTitle: 'No completed orders',
     emptySubtitle: 'Finished, cancelled or rejected orders will be shown here',
   },
+  {
+    // Audit view, not a workflow step — shows soft-deleted orders only
+    // (deleted_at IS NOT NULL from the API). Fetch ignores the selected
+    // date so the badge count (total deleted) matches the list.
+    key: 'deleted',
+    label: 'Deleted',
+    deletedOnly: true,
+    emptyIcon: 'trash-outline',
+    emptyTitle: 'No deleted orders',
+    emptySubtitle: 'Orders deleted by Admin or Manager will be shown here for record',
+  },
 ];
+
+// Who sees the trash action on a live order card. Must stay in sync with
+// delete_order.php's canDeleteOrders() — the server is the real gatekeeper,
+// this only avoids showing a button that would 403. Case-insensitive
+// because the role string comes from either the users row or the session
+// ('Administrator' vs 'Admin' vs 'Branch Admin').
+const CAN_DELETE_ROLES = ['admin', 'administrator', 'manager', 'branch admin'];
+const CAN_DELETE = (role) => CAN_DELETE_ROLES.includes(String(role || '').toLowerCase());
+
+// Labels shown on the "deleted by" line of a deleted card.
+const DELETED_REASON_LABEL = 'Reason';
 
 function toDateKey(date) {
   const y = date.getFullYear();
@@ -69,6 +91,7 @@ export default function OrdersScreen({ navigation }) {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [activeTab, setActiveTab] = useState('preparing');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const currency = user?.currency_symbol || '₹';
   // The floating tab bar overlays screen content instead of react-navigation
   // reserving docked space for it, so list items would otherwise render (and
@@ -83,13 +106,24 @@ export default function OrdersScreen({ navigation }) {
   const isYesterday = dateKey === toDateKey(addDays(new Date(), -1));
   const isFutureBlocked = dateKey > todayKey;
 
+  const currentTab = TABS.find((t) => t.key === activeTab) || TABS[0];
+
   const fetcher = useCallback(
-    () => apiGet('/api/get_orders.php?limit=50&date=' + encodeURIComponent(dateKey)),
-    [dateKey]
+    () =>
+      apiGet(
+        '/api/get_orders.php?limit=50' +
+          // The Deleted tab is a full audit view: it ignores the selected
+          // date (so its total-count badge matches the list) and fetches
+          // deleted orders ONLY. Every other tab must never mix deleted
+          // orders into the live list.
+          (currentTab.deletedOnly ? '&include_deleted=1' : '&date=' + encodeURIComponent(dateKey))
+      ),
+    [dateKey, currentTab.deletedOnly]
   );
-  // Only poll when looking at today — a past day's orders won't change.
+  // Only poll when looking at today (or on the Deleted tab, where new
+  // deletions by Admin/Manager should surface without a manual refresh).
   const { data, loading, refreshing, error, refresh, reload, setData } = useApiData(fetcher, {
-    pollInterval: isToday ? 10000 : 0,
+    pollInterval: isToday || currentTab.deletedOnly ? 10000 : 0,
   });
   const [updatingId, setUpdatingId] = useState(null);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -114,6 +148,36 @@ export default function OrdersScreen({ navigation }) {
   const selectPickerDay = (day) => {
     setSelectedDate(day);
     setPickerVisible(false);
+  };
+
+  // Two-step inline confirm on the card itself — Alert.alert() is a no-op
+  // on react-native-web (OrderTypeToggles learned this the hard way), so a
+  // native confirm dialog would silently swallow every delete on web. First
+  // tap arms the card, second tap (within the arm) deletes; tapping anything
+  // else or waiting resets it.
+  const requestDelete = (order) => {
+    if (confirmDeleteId === order.id) {
+      setConfirmDeleteId(null);
+      deleteOrder(order);
+    } else {
+      setConfirmDeleteId(order.id);
+    }
+  };
+
+  const deleteOrder = async (order) => {
+    setUpdatingId(order.id);
+    try {
+      const res = await apiPostForm('/api/delete_order.php', { orderId: order.id });
+      if (!res.success) throw new Error(res.message || 'Delete failed');
+      // Drop the card from the current view immediately, then reconcile
+      // with the server silently — mirrors advanceOrder's optimistic flow.
+      setData((prev) => (prev ? { ...prev, orders: (prev.orders || []).filter((o) => o.id !== order.id) } : prev));
+      reload('background');
+    } catch (e) {
+      Alert.alert('Could not delete order', e.message);
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   const advanceOrder = async (order) => {
@@ -146,12 +210,15 @@ export default function OrdersScreen({ navigation }) {
       const tab = TABS.find((t) => t.statuses.includes(o.order_status));
       if (tab) counts[tab.key] += 1;
     });
+    // The Deleted tab badge always shows the restaurant's TOTAL deleted
+    // count from the server, not just the selected date's — deleted orders
+    // are an audit record, the count is the point.
+    counts.deleted = data?.deleted_count ?? counts.deleted;
     return counts;
-  }, [orders]);
+  }, [orders, data]);
 
-  const currentTab = TABS.find((t) => t.key === activeTab) || TABS[0];
   const visibleOrders = useMemo(
-    () => orders.filter((o) => currentTab.statuses.includes(o.order_status)),
+    () => (currentTab.deletedOnly ? orders : orders.filter((o) => currentTab.statuses.includes(o.order_status))),
     [orders, currentTab]
   );
 
@@ -207,7 +274,16 @@ export default function OrdersScreen({ navigation }) {
           return (
             <Pressable key={tab.key} style={styles.tab} onPress={() => setActiveTab(tab.key)}>
               <View style={styles.tabLabelRow}>
-                <Text style={[styles.tabText, selected && styles.tabTextActive]}>{tab.label}</Text>
+                {/* adjustsFontSizeToFit keeps 4 labels + badges on one line
+                    on narrow phones instead of clipping. */}
+                <Text
+                  style={[styles.tabText, selected && styles.tabTextActive]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  {tab.label}
+                </Text>
                 {tabCounts[tab.key] > 0 ? (
                   <View style={[styles.tabBadge, selected && styles.tabBadgeActive]}>
                     <Text style={[styles.tabBadgeText, selected && styles.tabBadgeTextActive]}>{tabCounts[tab.key]}</Text>
@@ -223,14 +299,14 @@ export default function OrdersScreen({ navigation }) {
       {loading ? (
         <LoadingState />
       ) : error ? (
-        <ErrorState message={error} />
+        <ErrorState message={error} onRetry={refresh} />
       ) : visibleOrders.length === 0 ? (
         <ScrollView
           contentContainerStyle={[styles.emptyScroll, { paddingBottom: tabBarHeight + spacing.xxl }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
         >
           <View style={styles.emptyIllustration}>
-            <Ionicons name="restaurant-outline" size={48} color={colors.muted} />
+            <Ionicons name={currentTab.emptyIcon || 'restaurant-outline'} size={48} color={colors.muted} />
           </View>
           <Text style={styles.emptyTitle}>{currentTab.emptyTitle}</Text>
           <Text style={styles.emptySubtitle}>{currentTab.emptySubtitle}</Text>
@@ -244,50 +320,114 @@ export default function OrdersScreen({ navigation }) {
           {visibleOrders.map((item) => {
             const next = isToday ? NEXT_STATUS[item.order_status] : null;
             const statusStyle = statusStyles[item.order_status] || {};
+            const isDeleted = currentTab.deletedOnly;
+            const canDelete = !isDeleted && !next && CAN_DELETE(user?.role) && item.payment_status !== 'Paid' && item.order_status !== 'Completed';
+            const armed = confirmDeleteId === item.id;
             return (
               <Pressable
                 key={item.id}
-                style={({ pressed }) => [styles.card, shadow.sm, pressed && { opacity: 0.97 }]}
+                style={({ pressed }) => [styles.card, shadow.sm, isDeleted && styles.cardDeleted, pressed && { opacity: 0.97 }]}
                 onPress={() => navigation.navigate('OrderDetail', { order: item })}
               >
                 <View style={styles.cardTop}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.orderNumber} numberOfLines={1}>{item.order_number || `#${item.id}`}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[styles.orderNumber, isDeleted && styles.orderNumberDeleted]} numberOfLines={1}>{item.order_number || `#${item.id}`}</Text>
+                      {item.source === 'pos' ? (
+                        <View style={styles.posChip}>
+                          <Text style={styles.posChipText}>POS</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <Text style={styles.meta} numberOfLines={1}>
                       {item.customer_name || 'Walk-in'} · {item.order_type}
                     </Text>
                   </View>
-                  <View style={[styles.statusChip, { backgroundColor: statusStyle.bg || colors.border }]}>
-                    <Text style={[styles.statusChipText, { color: statusStyle.fg || colors.inkSoft }]}>
-                      {item.order_status}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.cardBottom}>
-                  <Text style={styles.total}>{currency}{item.total ?? 0}</Text>
-                  {next ? (
-                    <Pressable
-                      style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.9 }]}
-                      disabled={updatingId === item.id}
-                      onPress={() => advanceOrder(item)}
-                    >
-                      {updatingId === item.id ? (
-                        <ActivityIndicator color="#fff" size="small" />
-                      ) : (
-                        <>
-                          <Text style={styles.actionButtonText}>Mark {next}</Text>
-                          <Ionicons name="arrow-forward" size={13} color="#fff" />
-                        </>
-                      )}
-                    </Pressable>
+                  {isDeleted ? (
+                    <View style={[styles.statusChip, styles.statusChipDeleted]}>
+                      <Ionicons name="trash-outline" size={11} color={colors.danger} />
+                      <Text style={[styles.statusChipText, styles.statusChipTextDeleted]}>Deleted</Text>
+                    </View>
                   ) : (
-                    <View style={styles.doneChip}>
-                      <Ionicons name="checkmark-circle" size={13} color={colors.success} />
-                      <Text style={styles.doneText}>{isToday ? 'Done' : item.order_status}</Text>
+                    <View style={[styles.statusChip, { backgroundColor: statusStyle.bg || colors.border }]}>
+                      <Text style={[styles.statusChipText, { color: statusStyle.fg || colors.inkSoft }]}>
+                        {item.order_status}
+                      </Text>
                     </View>
                   )}
                 </View>
+
+                {isDeleted ? (
+                  <>
+                    {item.delete_reason ? (
+                      <Text style={styles.deletedLine} numberOfLines={2}>
+                        {DELETED_REASON_LABEL}: {item.delete_reason}
+                      </Text>
+                    ) : null}
+                    {item.deleted_by || item.deleted_at ? (
+                      <Text style={styles.deletedLine} numberOfLines={1}>
+                        Deleted by {item.deleted_by || '—'}
+                        {item.deleted_at ? ` · ${new Date(item.deleted_at.replace(' ', 'T')).toLocaleString()}` : ''}
+                      </Text>
+                    ) : null}
+                    <View style={[styles.cardBottom, styles.cardBottomDeleted]}>
+                      <Text style={[styles.total, styles.totalDeleted]}>{currency}{item.total ?? 0}</Text>
+                      <View style={styles.doneChip}>
+                        <Ionicons name="archive-outline" size={13} color={colors.muted} />
+                        <Text style={styles.doneTextMuted}>On record</Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.cardBottom}>
+                    <Text style={styles.total}>{currency}{item.total ?? 0}</Text>
+                    {next ? (
+                      <Pressable
+                        style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.9 }]}
+                        disabled={updatingId === item.id}
+                        onPress={() => advanceOrder(item)}
+                      >
+                        {updatingId === item.id ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <>
+                            <Text style={styles.actionButtonText}>Mark {next}</Text>
+                            <Ionicons name="arrow-forward" size={13} color="#fff" />
+                          </>
+                        )}
+                      </Pressable>
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                        {canDelete ? (
+                          armed ? (
+                            <Pressable
+                              style={({ pressed }) => [styles.deleteConfirmButton, pressed && { opacity: 0.9 }]}
+                              disabled={updatingId === item.id}
+                              onPress={() => requestDelete(item)}
+                            >
+                              {updatingId === item.id ? (
+                                <ActivityIndicator color="#fff" size="small" />
+                              ) : (
+                                <>
+                                  <Ionicons name="trash-outline" size={13} color="#fff" />
+                                  <Text style={styles.actionButtonText}>Tap to delete</Text>
+                                </>
+                              )}
+                            </Pressable>
+                          ) : (
+                            <Pressable style={styles.deleteIcon} onPress={() => requestDelete(item)} hitSlop={8}>
+                              <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                            </Pressable>
+                          )
+                        ) : null}
+                        <View style={styles.doneChip}>
+                          <Ionicons name="checkmark-circle" size={13} color={colors.success} />
+                          <Text style={styles.doneText}>{isToday ? 'Done' : item.order_status}</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
               </Pressable>
             );
           })}
@@ -445,6 +585,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.sm,
   },
+  posChip: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  posChipText: {
+    fontFamily: font.bold,
+    fontSize: 9,
+    color: colors.primary,
+    letterSpacing: 0.5,
+  },
   orderNumber: {
     fontFamily: font.semiBold,
     fontSize: 14.5,
@@ -502,5 +654,59 @@ const styles = StyleSheet.create({
     fontFamily: font.medium,
     fontSize: 12,
     color: colors.success,
+  },
+  // ── Delete action + Deleted tab ──
+  deleteIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.dangerBg,
+  },
+  deleteConfirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.danger,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  cardDeleted: {
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  orderNumberDeleted: {
+    color: colors.muted,
+    textDecorationLine: 'line-through',
+  },
+  statusChipDeleted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.dangerBg,
+  },
+  statusChipTextDeleted: {
+    color: colors.danger,
+  },
+  deletedLine: {
+    fontFamily: font.regular,
+    fontSize: 12,
+    color: colors.muted,
+    lineHeight: 17,
+  },
+  cardBottomDeleted: {
+    borderTopColor: colors.border,
+  },
+  totalDeleted: {
+    color: colors.muted,
+  },
+  doneTextMuted: {
+    fontFamily: font.medium,
+    fontSize: 12,
+    color: colors.muted,
   },
 });

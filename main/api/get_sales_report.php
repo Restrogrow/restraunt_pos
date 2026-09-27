@@ -110,6 +110,23 @@ try {
     $dateCondition .= " AND NOT (o.payment_method = 'QR Payment' AND o.payment_status != 'Paid')";
     $dateConditionNoAlias .= " AND NOT (payment_method = 'QR Payment' AND payment_status != 'Paid')";
 
+    // Cancelled and Rejected orders never happened — no food served, no money
+    // exchanged — so they must not count toward sales, order counts, items
+    // sold, customers, or the payment-method breakdown. Without this filter a
+    // wave of rejected spam orders would show up as revenue.
+    $dateCondition .= " AND o.order_status NOT IN ('Cancelled', 'Rejected')";
+    $dateConditionNoAlias .= " AND order_status NOT IN ('Cancelled', 'Rejected')";
+
+    // Soft-deleted orders are hidden from every sales figure — deleting an
+    // order is how an owner removes a mistaken entry from the books. They
+    // stay in the DB (visible in the app's Deleted tab) but are invisible
+    // to revenue, counts, items sold, customers, payment breakdown and top
+    // customers, exactly like Cancelled/Rejected.
+    require_once __DIR__ . '/../config/soft_delete_helpers.php';
+    ensureOrderSoftDeleteColumns($conn);
+    $dateCondition .= " AND o.deleted_at IS NULL";
+    $dateConditionNoAlias .= " AND deleted_at IS NULL";
+
     // Same period, but against expenses.expense_date (a DATE column, not a
     // timestamp) for the money-out side of the report.
     $expenseDateParams = [];

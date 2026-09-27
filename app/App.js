@@ -19,6 +19,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import TabBar from './components/TabBar';
 import OrderAlertWatcher from './components/OrderAlertWatcher';
+import OrderWatchBridge from './components/OrderWatchBridge';
 import WebAudioUnlockBanner from './components/WebAudioUnlockBanner';
 import { getBiometricLockEnabled } from './config/biometricSettings';
 import { navigationRef } from './navigationRef';
@@ -32,6 +33,7 @@ import MenuScreen from './screens/MenuScreen';
 import MenuItemScreen from './screens/MenuItemScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import LogsScreen from './screens/LogsScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -122,14 +124,12 @@ const crashStyles = StyleSheet.create({
 
 const APP_NAME = 'Restrogrow Partner';
 
-// Android can kill the app process entirely when it's backgrounded under
-// memory pressure — common on the budget tablets this runs on at the
-// counter. Without this, reopening the app after that always restarts on
-// the first tab instead of wherever the staff member actually was (e.g.
-// Reports). Persisting react-navigation's own state and restoring it on
-// the next cold start fixes that. Skipped on web — the dev preview reloads
-// constantly during development and this would just be confusing there.
-const NAV_STATE_KEY = 'navigationState_v1';
+// Deliberately NOT persisting react-navigation's state anymore. Saving the
+// stack meant an auto-opened OrderDetail (new-order alert) got saved as the
+// active route — so every subsequent app launch reopened that same order
+// detail screen before anything else, even long after it was handled.
+// Cold start now always lands on the Orders tab, which is what counter
+// staff expect.
 
 // This is a phone-shaped app — on native it always gets the full device
 // width anyway, but on web (a desktop browser window) that same layout was
@@ -316,6 +316,12 @@ function RootNavigator() {
   const { user, checkingSession } = useAuth();
   const { locked, checking: checkingLock, retry, retrying } = useAppLock(!checkingSession && !!user);
 
+  // Security Logs tab is for eyes that need it — owner/admin and manager.
+  // Staff (waiter/chef) sessions never see it.
+  const canViewLogs = ['admin', 'administrator', 'manager', 'branch admin'].includes(
+    String(user?.role || '').toLowerCase()
+  ) || ['admin', 'branch_admin'].includes(String(user?.user_type || ''));
+
   if (checkingSession) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
@@ -334,6 +340,7 @@ function RootNavigator() {
   return (
     <>
       <OrderAlertWatcher />
+      <OrderWatchBridge />
       <WebAudioUnlockBanner />
       {checkingLock ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
@@ -353,6 +360,7 @@ function RootNavigator() {
           <Tab.Screen name="POS" component={POSScreen} />
           <Tab.Screen name="Menu" component={MenuStack} />
           <Tab.Screen name="Reports" component={ReportsScreen} />
+          {canViewLogs ? <Tab.Screen name="Logs" component={LogsScreen} /> : null}
           <Tab.Screen name="Settings" component={SettingsScreen} />
         </Tab.Navigator>
       )}
@@ -385,29 +393,11 @@ export default function App() {
     Poppins_700Bold,
   });
 
-  // initialState must be known before NavigationContainer's first render —
-  // setting it later has no effect — so app startup waits on this the same
-  // way it already waits on fonts.
-  const [navStateReady, setNavStateReady] = useState(Platform.OS === 'web');
-  const [initialNavState, setInitialNavState] = useState();
-
+  // One-time cleanup of the stale nav-state blob saved by versions that
+  // persisted the navigation stack (see comment above APP_NAME). Without
+  // this the old JSON just rots in AsyncStorage forever.
   useEffect(() => {
-    if (Platform.OS === 'web') return;
-    (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(NAV_STATE_KEY);
-        if (saved) setInitialNavState(JSON.parse(saved));
-      } catch (e) {
-        // corrupt/missing — just start fresh
-      } finally {
-        setNavStateReady(true);
-      }
-    })();
-  }, []);
-
-  const persistNavState = useCallback((state) => {
-    if (Platform.OS === 'web') return;
-    AsyncStorage.setItem(NAV_STATE_KEY, JSON.stringify(state)).catch(() => {});
+    AsyncStorage.removeItem('navigationState_v1').catch(() => {});
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
@@ -416,7 +406,7 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded || !navStateReady) {
+  if (!fontsLoaded) {
     return (
       <WebFrame>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
@@ -432,8 +422,6 @@ export default function App() {
         <AuthProvider>
           <NavigationContainer
             ref={navigationRef}
-            initialState={initialNavState}
-            onStateChange={persistNavState}
             onReady={onLayoutRootView}
             documentTitle={{
               formatter: (options, route) => options?.title ?? route?.name ?? APP_NAME,

@@ -73,7 +73,7 @@ export default function MenuScreen({ navigation }) {
       {loading ? (
         <LoadingState />
       ) : error ? (
-        <ErrorState message={error} />
+        <ErrorState message={error} onRetry={refresh} />
       ) : (
         <FlatList
           style={styles.fill}

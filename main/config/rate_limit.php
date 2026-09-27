@@ -108,7 +108,11 @@ function checkRateLimit($identifier, $maxRequests = 60, $timeWindow = 60) {
 
 /**
  * Track a failed auth attempt and apply progressive lockout
- * After 10 failed attempts within 15 min, lock for 30 min
+ * After 3 failed attempts within 15 min, lock for 30 min.
+ * (Tightened from 10 — the owner asked for a hard stop against anyone
+ * guessing passwords; 3 wrong tries means it's not a typo.
+ * Every attempt is also mirrored into the login_logs audit table by
+ * auth.php, so the Logs screen shows the full strike pattern.)
  */
 function trackFailedAttempt($identifier) {
     $rateLimitDir = __DIR__ . '/../tmp/rate_limits';
@@ -137,8 +141,8 @@ function trackFailedAttempt($identifier) {
     $data['attempts'][] = $now;
     $data['count'] = count($data['attempts']);
     
-    // If 10+ failed attempts in 15 minutes, lock for 30 minutes
-    if ($data['count'] >= 10) {
+    // If 3+ failed attempts in 15 minutes, lock for 30 minutes
+    if ($data['count'] >= 3) {
         $lockoutFile = $rateLimitDir . '/' . $safeIdentifier . '_lockout.json';
         file_put_contents($lockoutFile, json_encode([
             'locked_until' => $now + 1800, // 30 minutes
@@ -252,7 +256,7 @@ function applyRateLimit($maxRequests = 120, $timeWindow = 60) {
  *   'signup'       -> 3 attempts per 3600 seconds (1 hour)
  *   'forgotPwd'    -> 3 attempts per 300 seconds (5 minutes)
  *   'resetPwd'     -> 5 attempts per 900 seconds (15 minutes)
- * After 10 consecutive failed attempts within 15 min, a 30-min lockout is applied.
+ * After 3 consecutive failed attempts within 15 min, a 30-min lockout is applied.s within 15 min, a 30-min lockout is applied.
  */
 function applyAuthRateLimit($type = 'login') {
     $limits = [

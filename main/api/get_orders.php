@@ -60,16 +60,26 @@ try {
     require_once __DIR__ . '/../config/scheduled_order_helpers.php';
     activateDueScheduledOrders($conn, $restaurant_id);
 
+    require_once __DIR__ . '/../config/soft_delete_helpers.php';
+    ensureOrderSoftDeleteColumns($conn);
+
     // Get filter parameters
     $statusFilter = $_GET['status'] ?? '';
     $paymentFilter = $_GET['payment_status'] ?? '';
     $typeFilter = $_GET['order_type'] ?? '';
     $searchTerm = $_GET['search'] ?? '';
     $dateFilter = $_GET['date'] ?? '';
+    // Soft-deleted orders: include_deleted=1 flips the list into the
+    // "Deleted" view (deleted orders ONLY) — the live list never mixes them
+    // in, they're a separate audit view.
+    $includeDeleted = $_GET['include_deleted'] === '1';
 
     // Build WHERE clause with filters
     $whereConditions = ['o.restaurant_id = ?'];
     $params = [$restaurant_id];
+
+    // Deleted filter — first so the deleted-only branch below stays readable.
+    $whereConditions[] = $includeDeleted ? 'o.deleted_at IS NOT NULL' : 'o.deleted_at IS NULL';
 
     // Date filter - default to today if not specified. Scheduled orders are
     // exempt: they're filtered/sorted by scheduled_at instead (see below), so
@@ -123,6 +133,12 @@ try {
                  LEFT JOIN tables t ON o.table_id = t.id
                  LEFT JOIN areas a ON t.area_id = a.id
                  WHERE " . $whereClause;
+
+    // How many orders the restaurant has soft-deleted in total — the app
+    // shows this as the badge count on the Deleted tab.
+    $deletedCountStmt = $conn->prepare("SELECT COUNT(*) FROM orders WHERE restaurant_id = ? AND deleted_at IS NOT NULL");
+    $deletedCountStmt->execute([$restaurant_id]);
+    $deletedCount = (int)$deletedCountStmt->fetchColumn();
     $countStmt = $conn->prepare($countSql);
     $countStmt->execute($params);
     $totalCount = (int)$countStmt->fetchColumn();
@@ -151,7 +167,11 @@ try {
                 o.total,
                 o.discount_amount,
                 o.coupon_code,
+                o.source,
                 o.notes,
+                o.deleted_at,
+                o.deleted_by,
+                o.delete_reason,
                 t.table_number,
                 a.area_name,
                 (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
@@ -207,8 +227,10 @@ try {
             'status' => $statusFilter,
             'payment_status' => $paymentFilter,
             'order_type' => $typeFilter,
-            'date' => $dateFilter ?: date('Y-m-d')
-        ]
+            'date' => $dateFilter ?: date('Y-m-d'),
+            'include_deleted' => $includeDeleted
+        ],
+        'deleted_count' => $deletedCount
     ], JSON_UNESCAPED_UNICODE);
     
 } catch (PDOException $e) {

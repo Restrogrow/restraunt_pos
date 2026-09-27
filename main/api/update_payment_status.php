@@ -72,7 +72,13 @@ try {
             'message' => $result['message'],
         ]);
     } catch (Exception $e) {
-        $conn->rollBack();
+        // Guarded rollback — after a successful commit (or an engine-level
+        // implicit rollback) there is no active transaction left, and an
+        // unguarded rollBack() would throw its own PDOException that masks
+        // the real error.
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
         throw $e;
     }
 } catch (Exception $e) {
@@ -80,6 +86,6 @@ try {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error updating payment status: ' . $e->getMessage(),
+        'message' => 'Error updating payment status. Please try again.',
     ]);
 }

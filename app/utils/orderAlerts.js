@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 // Created once at module scope (not per-call) so the sound is already
@@ -30,12 +30,131 @@ async function ensureAudioMode() {
 const RING_TIMEOUT_MS = 10 * 60 * 1000; // matches the website's new-order ring — safety-net auto-stop if nobody's there to mute it
 let ringTimeoutId = null;
 
+// Mirrors the website's closeNewOrderOverlay(): the overlay (and with it
+// the ring) only goes away once the order is acted on. Here the ring
+// deliberately keeps looping after OrderDetailScreen opens — someone
+// walking past a ringing tablet shouldn't have to open an order just to
+// silence it, the Mute/Unmute button exists for that. Ring therefore stops
+// only via: this toggle, accept/reject/cancel on the order, the screen's
+// back button, or the 10-minute safety net.
+let ringActive = false;
+const ringListeners = new Set();
+
+export function isRingActive() {
+  return ringActive;
+}
+
+// Lets UI (OrderDetailScreen's Mute/Unmute button) subscribe to ring state
+// flips and re-render its label. Returns an unsubscribe function.
+export function subscribeRingState(fn) {
+  ringListeners.add(fn);
+  return () => ringListeners.delete(fn);
+}
+
+function setRingActive(next) {
+  if (ringActive === next) return;
+  ringActive = next;
+  ringListeners.forEach((fn) => {
+    try {
+      fn(next);
+    } catch (e) {}
+  });
+}
+
+// Belt-and-braces looping. player.loop is the primary mechanism, but on
+// some native devices the flag doesn't survive the trip — set before the
+// source finished loading, or silently dropped when the clip ends — so the
+// ring played once and went quiet instead of ringing like an incoming call.
+// This re-asserts the loop flag on every status tick and, if the clip still
+// managed to stop (didJustFinish / player paused mid-ring), restarts it from
+// the top. On web the <audio> element loops natively, so this is a no-op.
+player.addListener('playbackStatusUpdate', (status) => {
+  if (!ringActive) return;
+  if (AppState.currentState !== 'active') return;
+  // Re-assert the loop flag whenever a status tick reports it dropped —
+  // cheap, and covers the load-order quirk on some native devices.
+  if (status?.isLoaded && status.loop === false) {
+    try {
+      player.loop = true;
+    } catch (e) {}
+    return;
+  }
+  // Clip reached its end without looping (or got paused mid-ring) —
+  // restart it from the top.
+  if (status?.didJustFinish || status?.timeControlStatus === 'paused') {
+    try {
+      player.seekTo(0).catch(() => {});
+      player.play();
+    } catch (e) {}
+  }
+});
+
+// Native players are paused when the app is backgrounded (see
+// shouldPlayInBackground: false in ensureAudioMode) and paused players emit
+// no further status events — so without this, an order that came in while
+// the device was pocketed would stay silent forever after returning to the
+// app, even though the ring was never muted and the 10-minute cap hasn't
+// fired. Resume from the top on foreground, same as an incoming call that
+// keeps ringing when you unlock the phone.
+let ringAppStateSub = null;
+function ensureRingAppStateListener() {
+  if (ringAppStateSub) return;
+  ringAppStateSub = AppState.addEventListener('change', (state) => {
+    // Backgrounded/inactive → silence the alert. A ringing phone nobody can
+    // see is worse than a stopped one: the order is still on the Orders list
+    // (and now live-refreshed), and staff reopen the app to check anyway.
+    // The keepalive and watchdog are gated on AppState 'active', so without
+    // this the ring would just silently pause and then RESUME — full volume
+    // out of a pocket — when the app came back to the foreground.
+    if (state !== 'active' && ringActive) {
+      stopNewOrderSound();
+      return;
+    }
+    if (state === 'active' && ringActive) {
+      // Defensive: if the ring was re-armed while backgrounded, start
+      // sounding from the top on return to the foreground.
+      try {
+        player.seekTo(0).catch(() => {});
+        player.play();
+      } catch (e) {
+        // non-fatal
+      }
+    }
+  });
+}
+
+// Keepalive safety net: if the watchdog's status ticks stop arriving
+// (native event quirk, web tab throttling a paused media element) the ring
+// would silently die mid-alert. Every 5s, quietly verify the player is
+// still sounding and nudge it back to life if not. The seekTo promises get
+// .catch on their own lines so a rejection never becomes an unhandled one.
+let ringKeepaliveId = null;
+function ensureRingKeepalive() {
+  if (ringKeepaliveId) return;
+  ringKeepaliveId = setInterval(() => {
+    if (!ringActive || AppState.currentState !== 'active') return; // backgrounded = stay silent
+    try {
+      // player.playing works on all platforms; player.paused is iOS/Android
+      // only (web's getter throws), so never touch it here.
+      if (!player.playing) {
+        player.seekTo(0).catch(() => {});
+        player.play();
+      }
+    } catch (e) {
+      // non-fatal
+    }
+  }, 5000);
+}
+
 // Rings on loop (like an incoming-call alert) until muted, until the order
 // is actually acted on, or until the safety-net timeout fires — a single
 // short beep is easy to miss on a busy counter.
 export async function playNewOrderSound() {
   try {
     await ensureAudioMode();
+    ensureRingAppStateListener();
+    ensureRingKeepalive();
+    setRingActive(true);
     player.loop = true;
     await player.seekTo(0);
     player.play();
@@ -47,10 +166,13 @@ export async function playNewOrderSound() {
 }
 
 // Backs the "Tap to Mute" control and the accept/reject actions on the
-// order detail screen — stops the alert without disabling the setting.
+// order detail screen — stops the alert without disabling the setting. The
+// flag flip must happen before pause() so the watchdog listener can't
+// mistake the intentional stop for a dropped ring and start it again.
 export function stopNewOrderSound() {
   try {
     clearTimeout(ringTimeoutId);
+    setRingActive(false);
     player.loop = false;
     player.pause();
   } catch (e) {

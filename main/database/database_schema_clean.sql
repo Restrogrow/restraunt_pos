@@ -249,6 +249,9 @@ CREATE TABLE IF NOT EXISTS orders (
     tax DECIMAL(10,2) DEFAULT 0.00,
     total DECIMAL(10,2) DEFAULT 0.00,
     notes TEXT,
+    deleted_at DATETIME DEFAULT NULL,
+    deleted_by VARCHAR(100) DEFAULT NULL,
+    delete_reason VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
@@ -258,7 +261,9 @@ CREATE TABLE IF NOT EXISTS orders (
     INDEX idx_order_number (order_number),
     INDEX idx_order_status (order_status),
     INDEX idx_payment_status (payment_status),
+
     INDEX idx_created_at (created_at),
+    INDEX idx_orders_deleted_at (deleted_at),
     -- Critical performance indexes
     INDEX idx_restaurant_date (restaurant_id, created_at),
     INDEX idx_status_date (order_status, created_at)

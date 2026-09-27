@@ -145,7 +145,9 @@ try {
         }
         $conn->commit();
     } catch (Exception $e) {
-        $conn->rollBack();
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
         throw $e;
     }
 

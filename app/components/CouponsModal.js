@@ -177,7 +177,7 @@ export default function CouponsModal({ visible, onClose }) {
           {loading ? (
             <LoadingState />
           ) : error ? (
-            <ErrorState message={error} />
+            <ErrorState message={error} onRetry={load} />
           ) : coupons.length === 0 ? (
             <EmptyState icon="pricetag-outline" title="No coupons yet" subtitle="Tap + to create your first coupon" />
           ) : (

@@ -11,6 +11,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
@@ -69,6 +70,7 @@ export default function POSScreen() {
   const [paying, setPaying] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [billPreview, setBillPreview] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // silent=true skips the full-screen spinner — used when refreshing on tab
   // focus (see useFocusEffect below), where the screen is already showing
@@ -91,8 +93,18 @@ export default function POSScreen() {
       .catch((e) => {
         if (!silent) setError(e.message || 'Could not load POS');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
   }, []);
+
+  // Pull-to-refresh on the item grid — silent reload (no spinner flash) so
+  // the menu/tables/coupons shown stay on screen while they refresh.
+  const refresh = useCallback(() => {
+    setRefreshing(true);
+    load(true);
+  }, [load]);
 
   // The menu item list (add/edit/delete, availability toggle) is managed
   // from the Menu tab — reload here every time POS regains focus so a new
@@ -259,10 +271,19 @@ export default function POSScreen() {
 
   // Shows what's about to be printed before it hits the printer — mirrors
   // the website's KOT/bill preview, instead of printing blind off a plain
-  // "created" alert. The whole bill is snapshotted here (not read live from
-  // state) since resetCart() runs right after this and would otherwise zero
-  // out subtotal/discount/tax/total before the preview ever renders.
-  const offerPrint = (title, kotNumber, paymentMethod, cartSnapshot, tableIdSnapshot, type) => {
+  // "created" alert. Everything is snapshotted at call time (cart, table,
+  // coupon, tax, totals) so a resetCart() right after — or an item added
+  // while the preview is open — can never change what's on the receipt.
+  // opts.afterClose chains a second preview (Pay flow: KOT first, then the
+  // bill) once this one is dismissed or printed.
+  const offerPrint = (title, kotNumber, paymentMethod, type, opts = {}) => {
+    const cartSnapshot = [...cart];
+    const tableIdSnapshot = tableId;
+    const subtotalSnapshot = subtotal;
+    const discountSnapshot = discount;
+    const taxSnapshot = tax;
+    const totalSnapshot = total;
+    const couponSnapshot = appliedCoupon?.coupon_code;
     const tableName = tables.find((t) => String(t.id) === String(tableIdSnapshot))?.table_number;
     setBillPreview({
       type,
@@ -275,14 +296,15 @@ export default function POSScreen() {
       orderType: tableIdSnapshot ? 'Dine-in' : 'Takeaway',
       tableName,
       items: cartSnapshot.map((c) => ({ name: c.name, quantity: c.quantity, price: c.price, variationName: c.variationName })),
-      subtotal: round2(cartSnapshot.reduce((s, c) => s + c.price * c.quantity, 0)),
-      discount,
-      couponCode: appliedCoupon?.coupon_code,
-      tax,
+      subtotal: round2(subtotalSnapshot),
+      discount: discountSnapshot,
+      couponCode: couponSnapshot,
+      tax: taxSnapshot,
       taxPercent: gstEnabled ? taxPercent : null,
-      total,
+      total: totalSnapshot,
       paymentMethod,
       currency,
+      afterClose: opts.afterClose,
     });
   };
 
@@ -318,25 +340,29 @@ export default function POSScreen() {
     } finally {
       setHolding(false);
     }
-  };
-
-  // "Send KOT" — ticket goes to the kitchen with no payment collected yet
-  // (mirrors the website's separate KOT button; payment is settled later,
-  // either now via "Pay" or after the food is served).
+  };  // "Send KOT" — ticket goes to the kitchen with no payment collected yet.
+  // The cart is deliberately KEPT (not cleared): the order isn't confirmed
+  // until payment — "Pay" — so the counter staff can still collect it, or
+  // add items and fire another KOT for the same table. Only Pay (or Clear
+  // Cart) empties the cart.
   const sendKOT = async () => {
     if (cart.length === 0) return;
     setSendingKot(true);
     try {
-      const cartSnapshot = cart;
-      const tableIdSnapshot = tableId;
       const res = await apiPostForm('/controllers/pos_operations.php', {
         action: 'create_kot',
         ...buildCartPayload(),
         paymentMethod: 'Cash',
       });
       if (!res.success) throw new Error(res.message || 'Could not send to kitchen');
-      resetCart();
-      offerPrint('Sent to kitchen', res.kot_number, null, cartSnapshot, tableIdSnapshot, 'kot');
+      Alert.alert(
+        'Sent to kitchen',
+        `Ticket ${res.kot_number} is with the kitchen. Cart kept — tap Pay to confirm the order.`,
+        [
+          { text: 'Print KOT', onPress: () => offerPrint('KOT sent to kitchen', res.kot_number, null, 'kot') },
+          { text: 'OK' },
+        ]
+      );
     } catch (e) {
       Alert.alert('Could not send to kitchen', e.message);
     } finally {
@@ -344,9 +370,10 @@ export default function POSScreen() {
     }
   };
 
-  // "Pay" — same create_kot ticket, but payment is collected up front via
-  // the split-payment modal (mirrors the website's separate Pay button,
-  // which supports splitting the total across multiple methods).
+  // "Pay" — confirms the order: first a KOT ticket is fired to the kitchen,
+  // then the paid bill (with the payment method on it) is offered for
+  // printing. Only now does the server create the order (Ready + Paid,
+  // counted in sales immediately) and the cart is cleared.
   const payNow = () => {
     if (cart.length === 0) return;
     setPayModalOpen(true);
@@ -355,8 +382,6 @@ export default function POSScreen() {
   const confirmPayment = async ({ paymentMethod, breakdown }) => {
     setPaying(true);
     try {
-      const cartSnapshot = cart;
-      const tableIdSnapshot = tableId;
       const res = await apiPostForm('/controllers/pos_operations.php', {
         action: 'create_kot',
         ...buildCartPayload(breakdown ? `Payment split: ${breakdown}` : null),
@@ -364,8 +389,30 @@ export default function POSScreen() {
       });
       if (!res.success) throw new Error(res.message || 'Could not process payment');
       setPayModalOpen(false);
+      // Snapshot BEFORE resetCart — offerPrint reads live discount/tax/total
+      // state, which resetCart would zero out.
+      const billSnapshot = { kotNumber: res.kot_number, paymentMethod };
       resetCart();
-      offerPrint('Payment collected', res.kot_number, paymentMethod, cartSnapshot, tableIdSnapshot, 'bill');
+      // Order confirmed: KOT first, then the bill — each printable, and the
+      // bill offer appears once the KOT dialog is dismissed.
+      Alert.alert(
+        'Order confirmed',
+        res.order_number
+          ? `${res.order_number} is in the Orders tab (marked POS) and counted in sales.`
+          : 'Sent to kitchen.',
+        [
+          {
+            text: 'Print KOT + Bill',
+            onPress: () => {
+              offerPrint('KOT', res.kot_number, null, 'kot', {
+                afterClose: () => offerPrint('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill'),
+              });
+            },
+          },
+          { text: 'Print Bill', onPress: () => offerPrint('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill') },
+          { text: 'Done' },
+        ]
+      );
     } catch (e) {
       Alert.alert('Could not process payment', e.message);
     } finally {
@@ -385,7 +432,7 @@ export default function POSScreen() {
       {loading ? (
         <LoadingState />
       ) : error ? (
-        <ErrorState message={error} />
+        <ErrorState message={error} onRetry={() => load()} />
       ) : (
         <>
           {/* Filter grid — mirrors the website's mobile POS: search + Menu
@@ -451,6 +498,9 @@ export default function POSScreen() {
             columnWrapperStyle={{ gap: spacing.md }}
             contentContainerStyle={[styles.grid, { paddingBottom: 160 + tabBarHeight }]}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />
+            }
             renderItem={({ item }) => {
               const qtyInCart = cart.filter((c) => c.id === item.id).reduce((s, c) => s + c.quantity, 0);
               const thumb = imageUrl(item.item_image);
@@ -701,7 +751,11 @@ export default function POSScreen() {
       <BillPreviewModal
         visible={!!billPreview}
         data={billPreview}
-        onClose={() => setBillPreview(null)}
+        onClose={() => {
+          const chain = billPreview?.afterClose;
+          setBillPreview(null);
+          if (typeof chain === 'function') chain();
+        }}
       />
     </View>
   );

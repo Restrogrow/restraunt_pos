@@ -166,7 +166,7 @@ export default function ReportsScreen() {
       {loading ? (
         <LoadingState />
       ) : error ? (
-        <ErrorState message={error} />
+        <ErrorState message={error} onRetry={refresh} />
       ) : (
         <ScrollView
           style={styles.fill}
