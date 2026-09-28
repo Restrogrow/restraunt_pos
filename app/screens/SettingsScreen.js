@@ -133,6 +133,7 @@ function PrinterSettingsCard() {
   const [port, setPort] = useState('9100');
   const [btAddress, setBtAddress] = useState('');
   const [btName, setBtName] = useState('');
+  const [paperWidth, setPaperWidth] = useState('58');
   const [pairedDevices, setPairedDevices] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -147,6 +148,7 @@ function PrinterSettingsCard() {
       setPort(s.port || '9100');
       setBtAddress(s.btAddress || '');
       setBtName(s.btName || '');
+      setPaperWidth(s.paperWidth || '58');
     });
   }, []);
 
@@ -156,6 +158,7 @@ function PrinterSettingsCard() {
     port: port.trim() || '9100',
     btAddress,
     btName,
+    paperWidth,
   });
 
   const onSave = async () => {
@@ -264,6 +267,26 @@ function PrinterSettingsCard() {
           onPress={() => setType('bluetooth')}
         >
           <Text style={[styles.printerTypeChipText, type === 'bluetooth' && styles.printerTypeChipTextActive]}>Bluetooth</Text>
+        </Pressable>
+      </View>
+
+      {/* Paper width — controls how wide the receipt image is rendered for
+          this printer: 58mm rolls take a 384-dot raster, 80mm rolls 576.
+          Wrong setting = small centered print with wide margins, or edges
+          cropped off. */}
+      <View style={styles.printerTypeRow}>
+        <Text style={styles.paperLabel}>Paper width:</Text>
+        <Pressable
+          style={[styles.printerTypeChip, paperWidth === '58' && styles.printerTypeChipActive]}
+          onPress={() => setPaperWidth('58')}
+        >
+          <Text style={[styles.printerTypeChipText, paperWidth === '58' && styles.printerTypeChipTextActive]}>58mm</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.printerTypeChip, paperWidth === '80' && styles.printerTypeChipActive]}
+          onPress={() => setPaperWidth('80')}
+        >
+          <Text style={[styles.printerTypeChipText, paperWidth === '80' && styles.printerTypeChipTextActive]}>80mm</Text>
         </Pressable>
       </View>
 
@@ -1006,6 +1029,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
+    alignItems: 'center',
+  },
+  paperLabel: {
+    fontFamily: font.medium,
+    fontSize: 13,
+    color: colors.inkSoft,
   },
   printerTypeChip: {
     flex: 1,

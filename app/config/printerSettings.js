@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = 'printerSettings';
 
-const DEFAULTS = { type: 'network', ip: '', port: '9100', btAddress: '', btName: '' };
+const DEFAULTS = { type: 'network', ip: '', port: '9100', btAddress: '', btName: '', paperWidth: '58' };
 
 export async function getPrinterSettings() {
   try {

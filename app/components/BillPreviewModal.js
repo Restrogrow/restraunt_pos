@@ -37,6 +37,11 @@ export default function BillPreviewModal({ visible, onClose, data }) {
   const [port, setPort] = useState('9100');
   const [btAddress, setBtAddress] = useState('');
   const [btName, setBtName] = useState('');
+  // Paper width drives how wide the printed receipt image is rendered:
+  // 58mm printers take a 384-dot raster, 80mm ones take 576. Wrong setting
+  // = receipt printed small/centered with big margins (58 setting on an
+  // 80mm printer) or cropped at the edges (80 setting on a 58mm printer).
+  const [paperWidth, setPaperWidth] = useState('58');
   const [pairedDevices, setPairedDevices] = useState([]);
   const [scanning, setScanning] = useState(false);
 
@@ -50,6 +55,7 @@ export default function BillPreviewModal({ visible, onClose, data }) {
       setPort(s.port || '9100');
       setBtAddress(s.btAddress || '');
       setBtName(s.btName || '');
+      setPaperWidth(s.paperWidth || '58');
       const configured = s.type === 'bluetooth' ? !!s.btAddress : !!s.ip;
       if (!configured) {
         setSetupOpen(true);
@@ -83,6 +89,7 @@ export default function BillPreviewModal({ visible, onClose, data }) {
     port: port.trim() || '9100',
     btAddress,
     btName,
+    paperWidth,
   });
 
   // Real connect step — saves the config and actually opens a connection
@@ -144,7 +151,10 @@ export default function BillPreviewModal({ visible, onClose, data }) {
       // instead of encoding it as printer text, which is what makes any
       // script/language print correctly.
       const base64Png = await captureRef(receiptRef, { format: 'png', quality: 1, result: 'base64' });
-      const bytes = await convertReceiptImageToEscPos({ base64Png });
+      // 58mm/203dpi = 384 printable dots; 80mm/203dpi = 576. The server
+      // scales the captured bitmap to exactly this many dots across.
+      const dotWidth = paperWidth === '80' ? 576 : 384;
+      const bytes = await convertReceiptImageToEscPos({ base64Png, dotWidth });
       if (cfg.type === 'bluetooth') {
         await writeToPrinter(cfg.btAddress, bytes);
       } else {
@@ -236,6 +246,25 @@ export default function BillPreviewModal({ visible, onClose, data }) {
                       <Ionicons name="close" size={16} color={colors.muted} />
                     </Pressable>
                   ) : null}
+                </View>
+
+                {/* Paper width selector — shared by both printer types.
+                    Getting this wrong prints the receipt small/centered
+                    (58 setting on 80mm paper) or cropped (80 on 58mm). */}
+                <View style={styles.paperRow}>
+                  <Text style={styles.paperLabel}>Paper width</Text>
+                  <Pressable
+                    style={[styles.paperChip, paperWidth === '58' && styles.paperChipActive]}
+                    onPress={() => { setPaperWidth('58'); setStatus('idle'); }}
+                  >
+                    <Text style={[styles.paperChipText, paperWidth === '58' && styles.paperChipTextActive]}>58mm</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.paperChip, paperWidth === '80' && styles.paperChipActive]}
+                    onPress={() => { setPaperWidth('80'); setStatus('idle'); }}
+                  >
+                    <Text style={[styles.paperChipText, paperWidth === '80' && styles.paperChipTextActive]}>80mm</Text>
+                  </Pressable>
                 </View>
 
                 {type === 'network' ? (
@@ -439,6 +468,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     marginBottom: spacing.sm,
+  },
+  paperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  paperLabel: {
+    fontFamily: font.medium,
+    fontSize: 12,
+    color: colors.inkSoft,
+    marginRight: 2,
+  },
+  paperChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  paperChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  paperChipText: {
+    fontFamily: font.semiBold,
+    fontSize: 11.5,
+    color: colors.inkSoft,
+  },
+  paperChipTextActive: {
+    color: '#fff',
   },
   typeChip: {
     paddingHorizontal: spacing.md,
