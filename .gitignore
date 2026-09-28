@@ -13,6 +13,7 @@ tmp/
 *.sql
 !database/*.sql
 !full_database_dump.sql
+backups_fake_orders_*/
 
 # IDE
 .vscode/

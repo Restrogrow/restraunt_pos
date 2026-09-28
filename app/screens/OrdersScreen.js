@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import DatePickerModal from '../components/DatePickerModal';
 import OrderTypeToggles from '../components/OrderTypeToggles';
@@ -92,6 +92,14 @@ export default function OrdersScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [activeTab, setActiveTab] = useState('preparing');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  // Bulk selection mode: Admin/Manager can tick multiple live orders and
+  // delete them in one go (the fake-order-flood case). Scoped to the
+  // current tab + date; resets when either changes.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkArmed, setBulkArmed] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
   const currency = user?.currency_symbol || '₹';
   // The floating tab bar overlays screen content instead of react-navigation
   // reserving docked space for it, so list items would otherwise render (and
@@ -222,6 +230,93 @@ export default function OrdersScreen({ navigation }) {
     [orders, currentTab]
   );
 
+  // ── Bulk selection / delete ──
+  // Same eligibility rules as the per-card delete (and as delete_order.php,
+  // which stays the real gatekeeper): live orders only, not Paid, not
+  // Completed. Paid/completed orders inside a selection are skipped by the
+  // server and reported in the summary.
+  const deletableVisible = useMemo(
+    () => visibleOrders.filter((o) => CAN_DELETE(user?.role) && o.payment_status !== 'Paid' && o.order_status !== 'Completed'),
+    [visibleOrders, user?.role]
+  );
+  const allSelected = deletableVisible.length > 0 && deletableVisible.every((o) => selectedIds.has(o.id));
+
+  const enterSelection = () => {
+    setSelectionMode(true);
+    setSelectedIds(new Set());
+    setBulkArmed(false);
+  };
+  const exitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkArmed(false);
+  };
+  const toggleSelect = (id) => {
+    setBulkArmed(false);
+    setSelectedIds((prev) => {
+      const nextSet = new Set(prev);
+      if (nextSet.has(id)) {
+        nextSet.delete(id);
+      } else {
+        nextSet.add(id);
+      }
+      return nextSet;
+    });
+  };
+  const toggleSelectAll = () => {
+    setBulkArmed(false);
+    setSelectedIds(allSelected ? new Set() : new Set(deletableVisible.map((o) => o.id)));
+  };
+
+  // Leaving the tab or changing the date clears selection so stale ids
+  // can't ride along into a different day's list.
+  useEffect(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkArmed(false);
+  }, [activeTab, dateKey]);
+
+  const bulkDeleteSelected = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    setBulkProgress({ done: 0, total: ids.length });
+    let ok = 0;
+    let failed = 0;
+    // Small concurrent batches keep this usable for a few dozen junk
+    // orders without firing hundreds of parallel requests.
+    const BATCH = 5;
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const slice = ids.slice(i, i + BATCH);
+      const results = await Promise.allSettled(
+        slice.map((id) => apiPostForm('/api/delete_order.php', { orderId: id, reason: 'Bulk delete via app' }))
+      );
+      results.forEach((r) => {
+        if (r.status === 'fulfilled' && r.value?.success) ok += 1;
+        else failed += 1;
+      });
+      setBulkProgress({ done: Math.min(i + BATCH, ids.length), total: ids.length });
+    }
+    setBulkDeleting(false);
+    setBulkArmed(false);
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    if (failed > 0) {
+      Alert.alert('Bulk delete finished', `${ok} deleted, ${failed} skipped (paid or completed orders are protected).`);
+    }
+    reload('background');
+  };
+
+  // Same two-tap inline confirm as the per-card delete — Alert.alert() is
+  // a no-op on react-native-web, so arming replaces a native dialog.
+  const requestBulkDelete = () => {
+    if (bulkArmed) {
+      bulkDeleteSelected();
+    } else {
+      setBulkArmed(true);
+    }
+  };
+
   const dateLabel = useMemo(
     () => formatDisplayDate(selectedDate, isToday, isYesterday),
     [selectedDate, isToday, isYesterday]
@@ -296,6 +391,75 @@ export default function OrdersScreen({ navigation }) {
         })}
       </View>
 
+      {/* Entry point for bulk selection — only where it can do something
+          (live tabs, Admin/Manager, at least one deletable order on screen). */}
+      {!currentTab.deletedOnly && CAN_DELETE(user?.role) && !selectionMode && !loading && !error && deletableVisible.length > 0 ? (
+        <Pressable style={styles.selectModeEntry} onPress={enterSelection} hitSlop={8}>
+          <Ionicons name="checkmark-circle-outline" size={14} color={colors.primary} />
+          <Text style={styles.selectModeEntryText}>Select</Text>
+        </Pressable>
+      ) : null}
+
+      {/* Selection toolbar — shown only in selection mode. "Select all"
+          ticks every deletable card in the current tab (the eligible-set,
+          not the raw list). */}
+      {selectionMode ? (
+        <View style={styles.selectionBar}>
+          <Pressable
+            style={[styles.selectionBarButton, !deletableVisible.length && styles.selectionBarButtonDisabled]}
+            onPress={toggleSelectAll}
+            disabled={deletableVisible.length === 0 || bulkDeleting}
+          >
+            <Ionicons
+              name={allSelected ? 'checkbox' : 'square-outline'}
+              size={16}
+              color={allSelected ? colors.primary : colors.muted}
+            />
+            <Text style={styles.selectionBarButtonText}>
+              {allSelected ? 'Deselect all' : 'Select all'}
+            </Text>
+          </Pressable>
+
+          {bulkDeleting ? (
+            <View style={styles.bulkProgressWrap}>
+              <ActivityIndicator size="small" color={colors.danger} />
+              <Text style={styles.bulkProgressText}>
+                Deleting {bulkProgress.done}/{bulkProgress.total}…
+              </Text>
+            </View>
+          ) : selectedIds.size > 0 ? (
+            bulkArmed ? (
+              <Pressable
+                style={({ pressed }) => [styles.bulkDeleteButton, pressed && { opacity: 0.9 }]}
+                onPress={requestBulkDelete}
+              >
+                <Ionicons name="trash-outline" size={14} color="#fff" />
+                <Text style={styles.bulkDeleteButtonText}>Tap to delete {selectedIds.size}</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [styles.bulkDeleteButton, styles.bulkDeleteButtonArmed, pressed && { opacity: 0.9 }]}
+                onPress={requestBulkDelete}
+              >
+                <Ionicons name="trash-outline" size={14} color="#fff" />
+                <Text style={styles.bulkDeleteButtonText}>Delete {selectedIds.size}</Text>
+              </Pressable>
+            )
+          ) : (
+            <Text style={styles.selectionHint}>Tap orders to select</Text>
+          )}
+
+          <Pressable
+            style={styles.selectionBarButton}
+            onPress={exitSelection}
+            disabled={bulkDeleting}
+          >
+            <Ionicons name="close-circle-outline" size={16} color={colors.muted} />
+            <Text style={styles.selectionBarButtonText}>Cancel</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {loading ? (
         <LoadingState />
       ) : error ? (
@@ -321,15 +485,33 @@ export default function OrdersScreen({ navigation }) {
             const next = isToday ? NEXT_STATUS[item.order_status] : null;
             const statusStyle = statusStyles[item.order_status] || {};
             const isDeleted = currentTab.deletedOnly;
-            const canDelete = !isDeleted && !next && CAN_DELETE(user?.role) && item.payment_status !== 'Paid' && item.order_status !== 'Completed';
+            // Delete shows whenever the role/server would allow it — including
+            // today, next to "Mark {next}" (a spam order is exactly what you
+            // want gone on the day it arrives).
+            const canDelete = !isDeleted && CAN_DELETE(user?.role) && item.payment_status !== 'Paid' && item.order_status !== 'Completed';
+            const selectable = selectionMode && canDelete;
+            const checked = selectedIds.has(item.id);
             const armed = confirmDeleteId === item.id;
             return (
               <Pressable
                 key={item.id}
-                style={({ pressed }) => [styles.card, shadow.sm, isDeleted && styles.cardDeleted, pressed && { opacity: 0.97 }]}
-                onPress={() => navigation.navigate('OrderDetail', { order: item })}
+                style={({ pressed }) => [styles.card, shadow.sm, isDeleted && styles.cardDeleted, checked && styles.cardSelected, pressed && { opacity: 0.97 }]}
+                onPress={() => (selectable ? toggleSelect(item.id) : navigation.navigate('OrderDetail', { order: item }))}
               >
                 <View style={styles.cardTop}>
+                  {selectionMode ? (
+                    <View style={styles.checkboxWrap}>
+                      {canDelete ? (
+                        <Ionicons
+                          name={checked ? 'checkbox' : 'square-outline'}
+                          size={20}
+                          color={checked ? colors.primary : colors.muted}
+                        />
+                      ) : (
+                        <Ionicons name="remove-circle-outline" size={20} color={colors.border} />
+                      )}
+                    </View>
+                  ) : null}
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={[styles.orderNumber, isDeleted && styles.orderNumberDeleted]} numberOfLines={1}>{item.order_number || `#${item.id}`}</Text>
@@ -381,23 +563,33 @@ export default function OrdersScreen({ navigation }) {
                 ) : (
                   <View style={styles.cardBottom}>
                     <Text style={styles.total}>{currency}{item.total ?? 0}</Text>
-                    {next ? (
-                      <Pressable
-                        style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.9 }]}
-                        disabled={updatingId === item.id}
-                        onPress={() => advanceOrder(item)}
-                      >
-                        {updatingId === item.id ? (
-                          <ActivityIndicator color="#fff" size="small" />
-                        ) : (
-                          <>
-                            <Text style={styles.actionButtonText}>Mark {next}</Text>
-                            <Ionicons name="arrow-forward" size={13} color="#fff" />
-                          </>
-                        )}
-                      </Pressable>
+                    {selectionMode ? (
+                      <Text style={styles.selectionHint}>
+                        {canDelete ? (checked ? 'Selected' : 'Tap card to select') : 'Not deletable'}
+                      </Text>
                     ) : (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                        {next ? (
+                          <Pressable
+                            style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.9 }]}
+                            disabled={updatingId === item.id}
+                            onPress={() => advanceOrder(item)}
+                          >
+                            {updatingId === item.id ? (
+                              <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                              <>
+                                <Text style={styles.actionButtonText}>Mark {next}</Text>
+                                <Ionicons name="arrow-forward" size={13} color="#fff" />
+                              </>
+                            )}
+                          </Pressable>
+                        ) : (
+                          <View style={styles.doneChip}>
+                            <Ionicons name="checkmark-circle" size={13} color={colors.success} />
+                            <Text style={styles.doneText}>{isToday ? 'Done' : item.order_status}</Text>
+                          </View>
+                        )}
                         {canDelete ? (
                           armed ? (
                             <Pressable
@@ -420,10 +612,6 @@ export default function OrdersScreen({ navigation }) {
                             </Pressable>
                           )
                         ) : null}
-                        <View style={styles.doneChip}>
-                          <Ionicons name="checkmark-circle" size={13} color={colors.success} />
-                          <Text style={styles.doneText}>{isToday ? 'Done' : item.order_status}</Text>
-                        </View>
                       </View>
                     )}
                   </View>
@@ -663,8 +851,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.dangerBg,
-  },
-  deleteConfirmButton: {
+  },  deleteConfirmButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -708,5 +895,90 @@ const styles = StyleSheet.create({
     fontFamily: font.medium,
     fontSize: 12,
     color: colors.muted,
+  },
+  // ── Bulk selection mode ──
+  selectModeEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  selectModeEntryText: {
+    fontFamily: font.semiBold,
+    fontSize: 12,
+    color: colors.primary,
+  },
+  selectionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    ...shadow.sm,
+  },
+  selectionBarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  selectionBarButtonDisabled: {
+    opacity: 0.4,
+  },
+  selectionBarButtonText: {
+    fontFamily: font.semiBold,
+    fontSize: 12,
+    color: colors.ink,
+  },
+  selectionHint: {
+    fontFamily: font.regular,
+    fontSize: 11.5,
+    color: colors.muted,
+  },
+  bulkProgressWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  bulkProgressText: {
+    fontFamily: font.semiBold,
+    fontSize: 12,
+    color: colors.danger,
+  },
+  bulkDeleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.danger,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  bulkDeleteButtonArmed: {
+    opacity: 0.75,
+  },
+  bulkDeleteButtonText: {
+    color: '#fff',
+    fontFamily: font.semiBold,
+    fontSize: 12,
+  },
+  checkboxWrap: {
+    justifyContent: 'center',
+    paddingTop: 2,
+  },
+  cardSelected: {
+    borderWidth: 1.5,
+    borderColor: colors.primary,
   },
 });
