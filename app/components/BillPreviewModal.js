@@ -573,18 +573,21 @@ const styles = StyleSheet.create({
   // single-byte printer text.
   receiptMono: {
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 12.5,
+    lineHeight: 17,
     color: '#000',
   },
   receiptMonoBold: {
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontWeight: 'bold',
   },
+  // Restaurant name — prominent, centered, like the reference bill's logo
+  // position. Extra line-height keeps it from crowding the address below.
   receiptMonoTitle: {
-    fontSize: 20,
-    lineHeight: 24,
+    fontSize: 22,
+    lineHeight: 28,
   },
+  // Address / phone / email block — slightly smaller, muted.
   receiptMonoSmall: {
     fontSize: 10.5,
     lineHeight: 14,

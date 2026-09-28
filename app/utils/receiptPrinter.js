@@ -51,12 +51,36 @@ function centerText(str, width) {
   return ' '.repeat(space) + str;
 }
 
+// Amounts render as plain numbers ("149", "318.50") — no currency symbol —
+// inside the item table and on totals, matching the reference bills this
+// layout follows. Whole amounts drop the decimals so a ₹149 item reads
+// "149", not "149.00".
+function fmtAmount(n) {
+  const num = Number(n) || 0;
+  return Number.isInteger(num) ? String(num) : num.toFixed(2);
+}
+
+// dd/mm/yy hh:mm AM/PM — the compact bill-date format on the reference
+// receipts ("28/09/26 07:08 PM").
+function fmtBillDateTime(value) {
+  const d = value ? new Date(String(value).replace(' ', 'T')) : new Date();
+  if (Number.isNaN(d.getTime())) return String(value || '');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = String(d.getFullYear()).slice(-2);
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${dd}/${mm}/${yy} ${h}:${mi} ${ampm}`;
+}
+
 // Bill items render as an aligned ITEM | QTY | RATE | TOTAL table, so every
 // row shows the unit rate, the quantity, and that item's own total — the old
 // "2 x ₹50.00 …  ₹100.00" layout buried the per-item rate and made whoever
 // read the bill do the multiplication in their head. Long names wrap within
 // their column with the amount columns repeated on the first line only.
-function buildItemTableLines({ items, currency, width }) {
+function buildItemTableLines({ items, width }) {
   const rows = (items || []).map((it) => ({
     label: it.variationName ? `${it.name} (${it.variationName})` : it.name,
     quantity: Number(it.quantity) || 0,
@@ -64,21 +88,20 @@ function buildItemTableLines({ items, currency, width }) {
   }));
   if (rows.length === 0) return [];
 
-  const money = (n) => `${currency}${n.toFixed(2)}`;
-  // Amount columns size themselves to the widest value on the bill (floored
-  // so the QTY/RATE/TOTAL headers always fit); the item name gets whatever's
-  // left over. The name floor means a bill full of ₹10000.00+ catering items
-  // overruns `width` slightly rather than crushing every name to nothing.
+  // Amount columns size themselves to the widest value on the bill; the item
+  // name gets whatever's left over. The name floor means a bill full of
+  // 10000+ catering items overruns `width` slightly rather than crushing
+  // every name to nothing.
   const qtyWidth = 3;
-  const rateWidth = Math.max(4, ...rows.map((r) => money(r.rate).length));
-  const totalWidth = Math.max(5, ...rows.map((r) => money(r.rate * r.quantity).length));
+  const rateWidth = Math.max(4, ...rows.map((r) => fmtAmount(r.rate).length));
+  const totalWidth = Math.max(5, ...rows.map((r) => fmtAmount(r.rate * r.quantity).length));
   // -3 = the single space between the four columns.
   const nameWidth = Math.max(8, width - qtyWidth - rateWidth - totalWidth - 3);
 
   const cell = (v, w) => String(v).padStart(w);
   const lines = [];
   lines.push(
-    ['ITEM'.padEnd(nameWidth), cell('QTY', qtyWidth), cell('RATE', rateWidth), cell('TOTAL', totalWidth)].join(' ')
+    ['ITEM NAME'.padEnd(nameWidth), cell('QTY', qtyWidth), cell('RATE', rateWidth), cell('TOTAL', totalWidth)].join(' ')
   );
   rows.forEach((r) => {
     const nameLines = wrapText(r.label, nameWidth);
@@ -87,7 +110,7 @@ function buildItemTableLines({ items, currency, width }) {
       // rest of the name so a wrapped item doesn't read as a second row.
       lines.push(
         i === 0
-          ? `${nl.padEnd(nameWidth)} ${cell(r.quantity, qtyWidth)} ${cell(money(r.rate), rateWidth)} ${cell(money(r.rate * r.quantity), totalWidth)}`
+          ? `${nl.padEnd(nameWidth)} ${cell(r.quantity, qtyWidth)} ${cell(fmtAmount(r.rate), rateWidth)} ${cell(fmtAmount(r.rate * r.quantity), totalWidth)}`
           : nl
       );
     });
@@ -111,11 +134,16 @@ export function buildReceiptLines({
   type = 'bill',
   restaurantName,
   restaurantAddress,
+  restaurantPhone,
+  restaurantEmail,
+  restaurantWebsite,
   businessIdLabel,
   businessIdNo,
+  orderNumber,
   kotNumber,
   orderType,
   tableName,
+  customerName,
   items,
   subtotal,
   discount = 0,
@@ -124,6 +152,7 @@ export function buildReceiptLines({
   total,
   paymentMethod,
   currency = '₹',
+  createdAt,
   width = 32,
 }) {
   const lines = [];
@@ -132,60 +161,81 @@ export function buildReceiptLines({
   // Wrapped narrower than the body — at title size, 32 characters would run
   // far wider than the receipt itself; long names still wrap, just at a
   // sensible line length for the bigger font.
-  const titleWidth = Math.max(12, Math.round(width * 0.6));
-  wrapText(restaurantName || 'Receipt', titleWidth).forEach((l) => push(centerText(l, titleWidth), { bold: true, size: 'title' }));
-  // Address, then the business registration number right below it (only
-  // when actually configured) — the divider always lands directly below
-  // whichever of these is last, not fixed right after the address. Bill
-  // only, same as the website's own print templates — a kitchen ticket has
-  // no use for legal/tax details. Label varies by country (GSTIN in India,
-  // PAN No in Nepal, ...) and is freely editable — see business_id_helpers.php.
-  if (type !== 'kot' && restaurantAddress) {
-    wrapText(restaurantAddress, width).forEach((l) => push(centerText(l, width), { size: 'small' }));
-  }
-  if (type !== 'kot' && businessIdNo) {
-    push(centerText(`${businessIdLabel || 'PAN'}: ${businessIdNo}`, width), { size: 'small' });
-  }
-  push('-'.repeat(width));
-  if (type === 'kot') push(centerText('KOT', width));
-  if (kotNumber) push(centerText(kotNumber, width));
-  push(centerText(new Date().toLocaleString(), width));
-  push('-'.repeat(width));
-  push(`${orderType}${tableName ? ' - ' + tableName : ''}`);
-  push('-'.repeat(width));
+  const titleWidth = Math.max(12, Math.round(width * 0.7));
 
-  // Item count only matters for KOT's "Total Items" row further down, but
-  // it's declared here so both kot branches below can see it.
-  let itemCount = 0;
   if (type === 'kot') {
+    // ── KOT: kitchen ticket, no prices/legal details ──
+    // Header block like the reference KOT: "KOT No: 1", "Date: ...",
+    // "Bill No: ...", "Table: ..." as compact left-aligned key rows.
+    if (kotNumber) push(`KOT No: ${kotNumber}`);
+    push(`Date: ${fmtBillDateTime(createdAt)}`);
+    if (orderNumber) push(`Bill No: ${orderNumber}`);
+    push(`Table: ${tableName || orderType || 'Sale'}`);
+    push('-'.repeat(width));
+    let itemCount = 0;
     (items || []).forEach((it) => {
       itemCount += Number(it.quantity) || 0;
+      // Quantity rides with the LAST wrapped line ("Chole Bhature 2 Pcs (Pure Veg)\n(1)" in the
+      // reference) — actually keep it simple and read like the reference: name on its
+      // own wrapped lines, quantity in parens on the following line when the name wraps.
       const label = it.variationName ? `${it.name} (${it.variationName})` : it.name;
-      wrapText(`${it.quantity} x ${label}`, width).forEach((l) => push(l));
+      const nameLines = wrapText(label, width - 4);
+      nameLines.forEach((nl) => push(nl));
+      push(`(${itemCount ? '' : ''}${Number(it.quantity) || 0})`);
     });
-  } else {
-    buildItemTableLines({ items, currency, width }).forEach((text) => push(text));
+    push('-'.repeat(width));
+    push(`Total Items: ${itemCount}`, { bold: true });
+    push('-'.repeat(width));
+    push(centerText('Thank you!', width));
+    return lines;
   }
+
+  // ── Bill (customer receipt) — mirrors the reference layout ──
+  // Restaurant name, tagline-free, centered; address/phone/email/site lines
+  // centered beneath; then the Bill No / Created On / Bill To block.
+  wrapText(restaurantName || 'Receipt', titleWidth).forEach((l) => push(centerText(l, titleWidth), { bold: true, size: 'title' }));
+  wrapText(restaurantAddress || '', width).forEach((l) => push(centerText(l, width), { size: 'small' }));
+  if (restaurantPhone) push(centerText(`Phone: ${restaurantPhone}`, width), { size: 'small' });
+  if (restaurantEmail) push(centerText(`Email: ${restaurantEmail}`, width), { size: 'small' });
+  if (restaurantWebsite) push(centerText(`Website Menu: ${restaurantWebsite}`, width), { size: 'small' });
+  if (businessIdNo) {
+    push(centerText(`${businessIdLabel || 'PAN'}: ${businessIdNo}`, width), { size: 'small' });
+  }
+
+  // Bill metadata block — left-aligned key rows, no divider between them so
+  // it reads as one block like the reference.
+  push('-'.repeat(width));
+  if (orderNumber) push(`Bill No: ${orderNumber}`, { bold: true });
+  push(`Created On: ${fmtBillDateTime(createdAt)}`);
+  push(`Bill To: ${customerName || (paymentMethod === 'Cash' ? 'Cash Sale' : orderType || 'Customer')}`);
+  push('-'.repeat(width));
+
+  // Items — plain-number columns (no ₹ in the grid), aligned header.
+  buildItemTableLines({ items, width }).forEach((text) => push(text));
 
   push('-'.repeat(width));
 
-  if (type === 'kot') {
-    push(padLine('Total Items', String(itemCount), width), { bold: true });
-  } else {
-    push(padLine('Subtotal', `${currency}${Number(subtotal).toFixed(2)}`, width));
-    if (Number(discount) > 0) {
-      const label = couponCode ? `Coupon (${couponCode})` : 'Discount';
-      push(padLine(label, `-${currency}${Number(discount).toFixed(2)}`, width));
-    }
-    if (Number(tax) > 0) {
-      push(padLine('Tax', `${currency}${Number(tax).toFixed(2)}`, width));
-    }
-    push(padLine('TOTAL', `${currency}${Number(total).toFixed(2)}`, width), { bold: true });
-    if (paymentMethod) push(`Payment: ${paymentMethod}`);
+  const totalQty = (items || []).reduce((s, it) => s + (Number(it.quantity) || 0), 0);
+  push(`Total Items: ${(items || []).length}`);
+  push(`Total Quantity: ${totalQty}`);
+  // Sub Total / Total — amount column right-aligned like the item table, so
+  // the money reads down one edge instead of drifting after the label.
+  push(padLine('  Sub Total', fmtAmount(subtotal), width), { bold: true });
+  if (Number(discount) > 0) {
+    const label = couponCode ? `  Coupon (${couponCode})` : '  Discount';
+    push(padLine(label, `-${fmtAmount(discount)}`, width));
+  }
+  if (Number(tax) > 0) {
+    push(padLine('  Tax', fmtAmount(tax), width));
+  }
+  push(padLine(`  Total`, fmtAmount(total), width), { bold: true });
+  if (paymentMethod) {
+    push('-'.repeat(width));
+    push(padLine('Mode of Payment', paymentMethod, width));
   }
 
   push('-'.repeat(width));
-  push(centerText('Thank you!', width));
+  push(centerText('Thank You! Visit Again! ', width));
 
   return lines;
 }

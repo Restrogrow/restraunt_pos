@@ -290,11 +290,17 @@ export default function POSScreen() {
       title,
       restaurantName: user?.restaurant_name || 'Receipt',
       restaurantAddress: user?.address,
+      restaurantPhone: user?.phone,
+      restaurantEmail: user?.email,
+      restaurantWebsite: user?.username ? `www.restrogrow.com/${user.username}` : null,
       businessIdLabel: user?.business_id_label,
       businessIdNo: user?.show_business_id ? user?.business_id_no : null,
+      orderNumber: opts.orderNumber || null,
       kotNumber,
       orderType: tableIdSnapshot ? 'Dine-in' : 'Takeaway',
       tableName,
+      customerName: null,
+      createdAt: new Date().toISOString(),
       items: cartSnapshot.map((c) => ({ name: c.name, quantity: c.quantity, price: c.price, variationName: c.variationName })),
       subtotal: round2(subtotalSnapshot),
       discount: discountSnapshot,
@@ -391,7 +397,7 @@ export default function POSScreen() {
       setPayModalOpen(false);
       // Snapshot BEFORE resetCart — offerPrint reads live discount/tax/total
       // state, which resetCart would zero out.
-      const billSnapshot = { kotNumber: res.kot_number, paymentMethod };
+      const billSnapshot = { kotNumber: res.kot_number, paymentMethod, orderNumber: res.order_number || null };
       resetCart();
       // Order confirmed: KOT first, then the bill — each printable, and the
       // bill offer appears once the KOT dialog is dismissed.
@@ -404,12 +410,10 @@ export default function POSScreen() {
           {
             text: 'Print KOT + Bill',
             onPress: () => {
-              offerPrint('KOT', res.kot_number, null, 'kot', {
-                afterClose: () => offerPrint('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill'),
-              });
+              offerPrint('KOT', res.kot_number, null, 'kot', { orderNumber: billSnapshot.orderNumber, afterClose: () => offerPrint('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill', { orderNumber: billSnapshot.orderNumber }) });
             },
           },
-          { text: 'Print Bill', onPress: () => offerPrint('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill') },
+          { text: 'Print Bill', onPress: () => offerPrint('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill', { orderNumber: billSnapshot.orderNumber }) },
           { text: 'Done' },
         ]
       );
