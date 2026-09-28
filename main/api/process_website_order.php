@@ -132,10 +132,43 @@ try {
     $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? 'RES001');
 
     // ── Abuse protection (needs DB + restaurant) ───────────────────────────
+    // Restaurant-wide velocity cap: total website orders (any customer, any
+    // IP) in the last 10 minutes. Checked first because it's the only cap
+    // that can't be evaded by rotating phones or IPs — the Sept 2026 flood
+    // used 7,670 sequential phones across rotating IPv6 addresses, so every
+    // per-identity cap stayed under its threshold while 14.6k junk orders
+    // piled up. 40/10min is far past a small restaurant's real throughput.
+    $globalFlood = orderAbuseCountRecentOrdersGlobal($conn, $restaurant_id, 10);
+    if ($globalFlood >= 40) {
+        ob_end_clean();
+        http_response_code(429);
+        error_log(sprintf('order-abuse: GLOBAL velocity cap hit — restaurant %s has %d website orders in 10min', $restaurant_id, $globalFlood));
+        echo json_encode([
+            'success' => false,
+            'message' => 'The restaurant is receiving an unusually high number of orders right now. Please try again in a few minutes or order by calling the restaurant.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
     // IP flood cap: 5 website orders per IP per 30 minutes. A real customer
     // places one or two; a script hammering the endpoint hits this first.
     $orderFlood = orderAbuseCountRecentOrdersByIp($conn, $restaurant_id, $abuse_ip, 30);
     if ($orderFlood >= 5) {
+        ob_end_clean();
+        http_response_code(429);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Too many orders have been placed from your network recently. Please try again later or order by calling the restaurant.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    // IP-prefix flood cap: 12 orders per IPv4 /24 (or IPv6 /64) per 30 min.
+    // The flood bot rotated many IPv6 addresses inside the same /64 — exact-IP
+    // caps each saw one order, the /64 bucket sees them all. 12 leaves headroom
+    // for offices/campuses where many customers share one egress prefix.
+    $ipPrefixFlood = orderAbuseCountRecentOrdersByIpPrefix($conn, $restaurant_id, $abuse_ip, 30);
+    if ($ipPrefixFlood >= 12) {
         ob_end_clean();
         http_response_code(429);
         echo json_encode([
@@ -154,6 +187,24 @@ try {
         echo json_encode([
             'success' => false,
             'message' => 'This mobile number has placed several orders today. Please call the restaurant to place more orders.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    // Phone-prefix cap: 15 orders sharing the first 6 digits in 24h. Catches
+    // sequential-number rotation (the flood's numbers all shared '91111122').
+    // 15 is above any plausible real cluster — a family sharing a carrier
+    // prefix doesn't place 15 website orders at one restaurant in a day.
+    $phonePrefixFlood = orderAbuseCountRecentOrdersByPhonePrefix(
+        $conn, $restaurant_id, orderAbusePhonePrefix($customer_phone, 6), 24
+    );
+    if ($phonePrefixFlood >= 15) {
+        ob_end_clean();
+        http_response_code(429);
+        error_log(sprintf('order-abuse: phone-prefix cap hit — restaurant %s phone %s (prefix %s)', $restaurant_id, $customer_phone, orderAbusePhonePrefix($customer_phone, 6)));
+        echo json_encode([
+            'success' => false,
+            'message' => 'This number appears to be placing automated orders. Please call the restaurant to place your order.'
         ], JSON_UNESCAPED_UNICODE);
         exit();
     }

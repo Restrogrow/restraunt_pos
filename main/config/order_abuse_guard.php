@@ -151,6 +151,101 @@ if (!function_exists('orderAbuseNormalizePhone')) {
     }
 
     /**
+     * Phone-prefix key: the first $n digits of a normalized Indian mobile.
+     * The Sept 2026 flood rotated 7,670 sequential numbers that ALL shared
+     * the 8-digit prefix '91111122', so per-phone caps never tripped. A cap
+     * on shared prefixes catches identity rotation (each extra digit of the
+     * prefix trades false-positive risk for coverage; 6 digits is deep enough
+     * that a genuine restaurant rarely sees 12 different 6-digit prefixes'
+     * worth of strangers in one day).
+     */
+    function orderAbusePhonePrefix($phoneDigits, $n = 6) {
+        if ($phoneDigits === null) return null;
+        return strlen($phoneDigits) >= $n ? substr($phoneDigits, 0, $n) : null;
+    }
+
+    /**
+     * Count recent website orders whose customer phone shares this prefix.
+     */
+    function orderAbuseCountRecentOrdersByPhonePrefix($conn, $restaurant_id, $prefix, $windowHours = 24) {
+        if ($prefix === null) return 0;
+        try {
+            $stmt = $conn->prepare(
+                "SELECT COUNT(*) FROM orders
+                 WHERE restaurant_id = ? AND source = 'website' AND customer_phone LIKE ?
+                 AND created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)"
+            );
+            $stmt->execute([$restaurant_id, $prefix . '%', $windowHours]);
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * IP-prefix key for the flood rotation case: the bot cycled IPv6
+     * addresses that mostly shared a /64 (first 4 hextets) or sat in a
+     * handful of neighbouring /64s. Per-exact-IP caps each saw one order.
+     * Map to a network-ish bucket: IPv4 → first 3 octets (/24), IPv6 →
+     * first 4 hextets (/64). Unparseable IPs return null (no cap).
+     */
+    function orderAbuseIpPrefix($ip) {
+        if ($ip === null || !filter_var($ip, FILTER_VALIDATE_IP)) return null;
+        $bits = inet_pton($ip);
+        if ($bits === false) return null;
+        return strlen($bits) === 4 ? substr($bits, 0, 3)   // IPv4 /24
+                                   : substr($bits, 0, 8);  // IPv6 /64
+    }
+
+    /**
+     * Count recent website orders from any IP inside the same prefix.
+     * customer_ip is VARBINARY(16) (INET6_ATON), so prefix matching works on
+     * the binary: 4 bytes = IPv4 (compare 3), 16 bytes = IPv6 (compare 8).
+     */
+    function orderAbuseCountRecentOrdersByIpPrefix($conn, $restaurant_id, $ip, $windowMinutes = 30) {
+        $prefix = orderAbuseIpPrefix($ip);
+        if ($prefix === null) return 0;
+        $isV4 = strlen($prefix) === 3;
+        $ipLen = $isV4 ? 4 : 16;
+        $take = $isV4 ? 3 : 8;
+        try {
+            $stmt = $conn->prepare(
+                "SELECT COUNT(*) FROM orders
+                 WHERE restaurant_id = ? AND source = 'website'
+                   AND customer_ip IS NOT NULL AND LENGTH(customer_ip) = ?
+                   AND LEFT(customer_ip, ?) = LEFT(?, ?)
+                   AND created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+            );
+            $stmt->execute([$restaurant_id, $ipLen, $take, $prefix, $take, $windowMinutes]);
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Restaurant-wide velocity: total website orders (any customer) in the
+     * last window. The last line of defense — every per-identity cap above
+     * can be evaded by rotating phones AND IPs, but a flood still shows up
+     * here. Threshold is high enough that a real lunch rush never trips it:
+     * 40 orders/10min sustained means 240/hour, far past a small restaurant's
+     * kitchen, and exactly what a scripted flood looks like.
+     */
+    function orderAbuseCountRecentOrdersGlobal($conn, $restaurant_id, $windowMinutes = 10) {
+        try {
+            $stmt = $conn->prepare(
+                "SELECT COUNT(*) FROM orders
+                 WHERE restaurant_id = ? AND source = 'website'
+                 AND created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+            );
+            $stmt->execute([$restaurant_id, $windowMinutes]);
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
      * Fake-order strike: call when the restaurant REJECTS or CANCELS a
      * website order. 3 strikes within 30 days → permanent auto-block; the
      * counter resets if the last strike is older than 30 days so a customer
