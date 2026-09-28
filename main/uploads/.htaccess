@@ -8,8 +8,10 @@
     </FilesMatch>
 </IfModule>
 
-# Enable directory listing for images (optional, for testing)
-Options +Indexes
+# Directory listing must stay OFF — this folder holds user-uploaded menu
+# photos and payment proofs. +Indexes (the old setting) let anyone browse
+# every uploaded filename.
+Options -Indexes
 
 # Prevent execution of PHP files in uploads directory (security - Apache 2.4+ compatible)
 <FilesMatch "\.php$">

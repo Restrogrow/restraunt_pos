@@ -71,6 +71,21 @@ try {
             throw new Exception('Database connection not available');
         }
     }
+
+    // Rate limit: 5 contact submissions per IP per 10 minutes. The contact
+    // form is anonymous by design, which makes it a free DB-write surface —
+    // without this, a script can stuff contact_queries (and any notification
+    // mail that follows) all day.
+    if (file_exists(__DIR__ . '/../config/rate_limit.php')) {
+        require_once __DIR__ . '/../config/rate_limit.php';
+        $contactRl = checkRateLimit('contact_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 5, 600);
+        if (!$contactRl['allowed']) {
+            http_response_code(429);
+            header('Retry-After: ' . (int)$contactRl['retry_after']);
+            echo json_encode(['success' => false, 'message' => 'Too many messages sent recently. Please try again later.']);
+            exit();
+        }
+    }
     
     // Get form data
     $name = trim($_POST['name'] ?? '');

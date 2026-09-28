@@ -40,6 +40,13 @@ logs/*
 # CLI migration scripts (may contain credentials)
 migrate_*_cli.php
 
+# Dev-session artifacts (debug dumps, scratch automation scripts)
+_debug_*
+_fix_*
+_apply_*
+_verify_*
+main/nul
+
 # Temporary files
 tmp/*
 !tmp/.gitkeep

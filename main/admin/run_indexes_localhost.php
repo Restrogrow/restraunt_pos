@@ -1,4 +1,10 @@
 <?php
+// One-time DB maintenance script — CLI or logged-in admin only. Anonymous
+// visitors used to be able to run DDL against the live DB by just opening
+// this URL.
+require_once __DIR__ . '/../config/maintenance_guard.php';
+enforceMaintenanceAccess();
+
 /**
  * Run Critical Indexes on Localhost Database
  * This script will automatically add critical indexes to localhost database

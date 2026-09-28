@@ -1,4 +1,10 @@
 <?php
+// One-time DB maintenance script — CLI or logged-in admin only. Anonymous
+// visitors used to be able to run DDL against the live DB by just opening
+// this URL.
+require_once __DIR__ . '/../config/maintenance_guard.php';
+enforceMaintenanceAccess();
+
 // order_items.menu_item_id was NOT NULL, but process_website_order.php
 // legitimately inserts NULL there for cart-wide "global add-ons" that
 // aren't tied to any specific menu item - which made every order

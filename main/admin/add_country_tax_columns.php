@@ -1,4 +1,10 @@
 <?php
+// One-time DB maintenance script — CLI or logged-in admin only. Anonymous
+// visitors used to be able to run DDL against the live DB by just opening
+// this URL.
+require_once __DIR__ . '/../config/maintenance_guard.php';
+enforceMaintenanceAccess();
+
 // One-time migration: adds the country/tax_name/tax_percent columns that
 // signup, restaurant settings, and the dashboard all already assume exist.
 // Run once against a database that predates the international/GST-naming

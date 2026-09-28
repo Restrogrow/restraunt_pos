@@ -40,7 +40,21 @@ require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/error_monitor.php';
 
-// Don't validate session — we want errors even from anonymous users
+// Don't validate session — we want errors even from anonymous users.
+
+// Rate limit: 30 error reports per IP per 10 minutes. This endpoint is
+// anonymous by design (client-side error ingestion), which makes error_logs
+// a free DB-write surface for anyone with the URL — a script can otherwise
+// stuff the table (and every admin's log view) indefinitely.
+if (file_exists(__DIR__ . '/../config/rate_limit.php')) {
+    require_once __DIR__ . '/../config/rate_limit.php';
+    $errRl = checkRateLimit('errreport_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 30, 600);
+    if (!$errRl['allowed']) {
+        http_response_code(429);
+        echo json_encode(['success' => false, 'message' => 'Too many error reports']);
+        exit;
+    }
+}
 
 $input = $_POST;
 

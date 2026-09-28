@@ -16,6 +16,14 @@ Options -Indexes
     Require all denied
 </FilesMatch>
 
+# Defense in depth: one-time migration/DB-fix scripts must never run from an
+# anonymous web request. Each script also self-guards via
+# config/maintenance_guard.php (CLI or logged-in admin session), but blocking
+# them here means the request never even reaches PHP.
+<FilesMatch "^(add_[a-z_]+_column|add_country_tax_columns|add_critical_indexes|add_subcategories|check_variations_table|fix_[a-z_]+|run_[a-z_]+)\.php$">
+    Require all denied
+</FilesMatch>
+
 # PHP Settings
 <IfModule mod_php7.c>
     php_value upload_max_filesize 10M
