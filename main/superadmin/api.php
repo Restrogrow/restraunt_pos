@@ -268,6 +268,29 @@ try {
       echo json_encode(['success' => true, 'message' => 'Password reset']);
       break;
 
+    // Clears the WhatsApp-OTP account lockout (device-login and
+    // password-reset) and forgets every device this restaurant owner's
+    // account has ever trusted, so the next login/reset starts that flow
+    // fresh. Meant for QA — resending test codes repeatedly trips the
+    // 5-wrong-attempts/30-minute lock (device_trust_helpers.php), and once
+    // a device is trusted it stops asking for a code at all.
+    case 'unlockOtp':
+      require_once __DIR__ . '/../config/repeatgrow_whatsapp.php';
+      require_once __DIR__ . '/../config/device_trust_helpers.php';
+      $data = json_decode(file_get_contents('php://input'), true) ?? [];
+      $id = (int)($data['id'] ?? 0);
+      if ($id <= 0) throw new Exception('Invalid id');
+
+      clearOtpAccountFailures("device_otp_admin_{$id}");
+      clearOtpAccountFailures("pwreset_otp_admin_{$id}");
+
+      ensureTrustedDevicesSchema($conn);
+      $stmt = $conn->prepare("DELETE FROM trusted_devices WHERE user_type = 'admin' AND user_id = ?");
+      $stmt->execute([$id]);
+
+      echo json_encode(['success' => true, 'message' => 'OTP lockouts cleared and trusted devices forgotten for this account.']);
+      break;
+
     case 'generateAutoLogin':
       $data = json_decode(file_get_contents('php://input'), true) ?? [];
       $id = (int)($data['id'] ?? 0);

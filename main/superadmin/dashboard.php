@@ -1217,6 +1217,7 @@ require_once __DIR__ . '/../config/countries.php';
                 <button class="btn btn-outline" onclick="toggleRestaurant(${r.id}, 1)" ${isActive ? 'disabled' : ''}>Enable</button>
                 <button class="btn btn-outline" onclick="toggleRestaurant(${r.id}, 0)" ${isActive ? '' : 'disabled'}>Disable</button>
                 <button class="btn btn-outline" onclick="resetPassword(${r.id})">Reset PW</button>
+                <button class="btn btn-outline" onclick="unlockOtp(${r.id})" title="Clear OTP lockout and forget trusted devices (for testing)">Unlock OTP</button>
                 <button class="btn btn-outline" onclick="sendWhatsappWelcome(${r.id})" title="Send login details on WhatsApp">WhatsApp</button>
               </td>
             </tr>
@@ -1490,6 +1491,22 @@ require_once __DIR__ . '/../config/countries.php';
         showSuperAlert('Password reset successfully. New password: ' + p, 'success');
       } else {
         showSuperAlert(data.message||'Error','error');
+      }
+    }
+
+    window.unlockOtp = async function(id){
+      const ok = await showSuperConfirm('Clear OTP lockouts and forget trusted devices for this account? Use this while testing the WhatsApp OTP login/reset flow.', 'Unlock OTP');
+      if (!ok) return;
+      try {
+        const res = await fetch('api.php?action=unlockOtp', { method:'POST', body: JSON.stringify({id}), headers: {'Content-Type': 'application/json'} });
+        const data = await res.json();
+        if (data.success) {
+          showSuperAlert(data.message || 'OTP lockouts cleared.', 'success');
+        } else {
+          showSuperAlert(data.message || 'Error', 'error');
+        }
+      } catch(e) {
+        showSuperAlert('Error: ' + e.message, 'error');
       }
     }
 
