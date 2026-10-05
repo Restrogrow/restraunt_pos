@@ -783,11 +783,24 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                                 </button>
                             </div>
                         </div>
+                        <div class="form-group" id="loginOtpGroup" style="display:none;">
+                            <label for="loginOtpCode">VERIFICATION CODE</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <input type="text" id="loginOtpCode" name="otp_code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from WhatsApp">
+                            </div>
+                            <small id="loginOtpHint" style="color:#9ca3af;display:block;margin-top:6px;">
+                                New device detected. We sent a code via WhatsApp.
+                                <a href="#" id="loginOtpResend" onclick="event.preventDefault();">Resend code</a>
+                            </small>
+                        </div>
                         <div class="form-actions">
                             <a href="#" id="forgotPasswordLink" class="forgot-password-link">FORGOT</a>
                         </div>
                         <button type="submit" class="btn btn-primary" id="loginBtn">
-                            LOGIN
+                            <span id="loginBtnText">LOGIN</span>
                             <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                             </svg>
@@ -1079,84 +1092,158 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             if (tab === 'login' && typeof resetSignupOtpState === 'function') {
                 resetSignupOtpState();
             }
+            if (tab === 'signup' && typeof resetLoginOtpState === 'function') {
+                resetLoginOtpState();
+            }
         }
         
+        // A random id generated once per browser and kept in localStorage —
+        // this is what the server's new-device WhatsApp OTP gate
+        // (device_trust_helpers.php) keys trust to. Clearing site data or
+        // logging in from a different browser/device means a new id, so the
+        // OTP step runs again exactly once there.
+        function getAdminDeviceId() {
+            var KEY = 'rg_admin_device_id';
+            try {
+                var id = localStorage.getItem(KEY);
+                if (!id) {
+                    id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+                    localStorage.setItem(KEY, id);
+                }
+                return id;
+            } catch (e) {
+                return 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+            }
+        }
+
+        // Login is normally one step. If this device hasn't logged into
+        // this account before, auth.php instead responds with
+        // requires_otp=true (and sends a WhatsApp code) — the form then
+        // locks username/password and asks for that code, resubmitting the
+        // same credentials plus otp_code. Once verified, this device is
+        // trusted forever for that account.
+        let loginOtpSent = false;
+        let loginResendTimer = null;
+
+        function resetLoginOtpState() {
+            loginOtpSent = false;
+            document.getElementById('loginOtpGroup').style.display = 'none';
+            document.getElementById('loginOtpCode').value = '';
+            document.getElementById('loginUsername').disabled = false;
+            document.getElementById('loginPassword').disabled = false;
+            document.getElementById('loginBtnText').textContent = 'LOGIN';
+            if (loginResendTimer) { clearInterval(loginResendTimer); loginResendTimer = null; }
+            const resend = document.getElementById('loginOtpResend');
+            resend.style.pointerEvents = 'auto';
+            resend.textContent = 'Resend code';
+        }
+
+        function startLoginResendCooldown(seconds) {
+            const resend = document.getElementById('loginOtpResend');
+            let remaining = seconds;
+            resend.style.pointerEvents = 'none';
+            resend.textContent = `Resend code (${remaining}s)`;
+            if (loginResendTimer) clearInterval(loginResendTimer);
+            loginResendTimer = setInterval(() => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    clearInterval(loginResendTimer);
+                    loginResendTimer = null;
+                    resend.style.pointerEvents = 'auto';
+                    resend.textContent = 'Resend code';
+                } else {
+                    resend.textContent = `Resend code (${remaining}s)`;
+                }
+            }, 1000);
+        }
+
+        async function submitLogin(username, password, otpCode) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            let body = `action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&device_id=${encodeURIComponent(getAdminDeviceId())}`;
+            if (otpCode) body += `&otp_code=${encodeURIComponent(otpCode)}`;
+
+            const response = await fetch('auth.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            const responseText = await response.text();
+            if (!responseText || responseText.trim() === '') {
+                throw new Error('Incorrect username or password');
+            }
+            if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+                console.error('Server returned HTML instead of JSON:', responseText.substring(0, 500));
+                throw new Error('Incorrect username or password');
+            }
+            try {
+                return JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('JSON Parse Error:', parseError, responseText.substring(0, 500));
+                throw new Error('Incorrect username or password');
+            }
+        }
+
+        document.getElementById('loginOtpResend').addEventListener('click', async () => {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            try {
+                const result = await submitLogin(username, password, '');
+                if (result.requires_otp) {
+                    showMessage(result.message || 'A new code has been sent via WhatsApp.', 'success');
+                    startLoginResendCooldown(60);
+                } else if (!result.success) {
+                    showMessage(result.message || 'Could not resend the code.', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Network error. Please try again.', 'error');
+            }
+        });
+
         // Login form submission
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
             const loginBtn = document.getElementById('loginBtn');
-            
+            const loginBtnText = document.getElementById('loginBtnText');
+
             if (!username || !password) {
                 showMessage('Please fill in all fields.', 'error');
                 return;
             }
-            
+
+            if (loginOtpSent && !document.getElementById('loginOtpCode').value.trim()) {
+                showMessage('Enter the code sent to your WhatsApp.', 'error');
+                return;
+            }
+
             loginBtn.disabled = true;
-            loginBtn.textContent = 'Logging in...';
-            
+            loginBtnText.textContent = loginOtpSent ? 'VERIFYING...' : 'LOGGING IN...';
+
             try {
-                // Create AbortController for timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-                
-                const response = await fetch('auth.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-                
-                // Get response text first to check if it's valid JSON
-                const responseText = await response.text();
-                
-                // Log full response to console for debugging
-                console.log('Login response status:', response.status);
-                if (!response.ok) {
-                    console.error('Server error response:', responseText);
-                }
-                
-                if (!responseText || responseText.trim() === '') {
-                    console.error('Server returned empty response');
-                    showMessage('Incorrect username or password', 'error');
+                const otpCode = loginOtpSent ? document.getElementById('loginOtpCode').value.trim() : '';
+                const result = await submitLogin(username, password, otpCode);
+
+                if (result.requires_otp) {
+                    loginOtpSent = true;
+                    document.getElementById('loginOtpGroup').style.display = 'block';
+                    document.getElementById('loginUsername').disabled = true;
+                    document.getElementById('loginPassword').disabled = true;
+                    loginBtnText.textContent = 'VERIFY & LOG IN';
+                    showMessage(result.message || 'A verification code has been sent via WhatsApp.', 'success');
+                    startLoginResendCooldown(60);
+                    document.getElementById('loginOtpCode').focus();
                     return;
                 }
-                
-                // Check if response is HTML (likely a PHP error page)
-                if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-                    console.error('Server returned HTML instead of JSON:', responseText.substring(0, 500));
-                    showMessage('Incorrect username or password', 'error');
-                    return;
-                }
-                
-                let result;
-                try {
-                    result = JSON.parse(responseText);
-                } catch (parseError) {
-                    console.error('JSON Parse Error:', parseError);
-                    console.error('Response Text:', responseText.substring(0, 500));
-                    showMessage('Incorrect username or password', 'error');
-                    return;
-                }
-                
-                // Check if response is ok
-                if (!response.ok) {
-                    // Log error details to console
-                    console.error('Server error:', result);
-                    // Show user-friendly message
-                    showMessage(result.message || 'Incorrect username or password', 'error');
-                    return;
-                }
-                
+
                 if (result.success) {
                     showMessage('Login successful!', 'success');
-                    // Store redirect info
                     var redirectUrl = result.redirect || '../views/dashboard.php';
                     try {
                         sessionStorage.setItem('forceDashboard', '1');
@@ -1164,35 +1251,24 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     } catch (storageErr) {
                         console.warn('Unable to set dashboard preference', storageErr);
                     }
+                    resetLoginOtpState();
                     // Show notification prompt instead of subscribing silently
                     showNotificationPrompt(redirectUrl);
                 } else {
-                    // Show user-friendly message (backend should already return friendly message)
                     showMessage(result.message || 'Incorrect username or password', 'error');
                 }
             } catch (error) {
-                // Log full error to console for debugging
                 console.error('Login Error:', error);
-                console.error('Error details:', {
-                    name: error.name,
-                    message: error.message,
-                    stack: error.stack
-                });
-                
-                // Show only user-friendly message
-                let errorMessage = 'Incorrect username or password';
-                
-                // Only show network errors if it's clearly a network issue
+                let errorMessage = error.message || 'Incorrect username or password';
                 if (error.name === 'AbortError') {
                     errorMessage = 'Request timeout. Please try again.';
                 } else if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
                     errorMessage = 'Network error. Please check your internet connection and try again.';
                 }
-                
                 showMessage(errorMessage, 'error');
             } finally {
                 loginBtn.disabled = false;
-                loginBtn.textContent = 'Login';
+                loginBtnText.textContent = loginOtpSent ? 'VERIFY & LOG IN' : 'LOGIN';
             }
         });
         

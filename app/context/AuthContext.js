@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { apiGet, apiPostForm } from '../config/api';
+import { getDeviceId } from '../config/deviceId';
 
 const AuthContext = createContext(null);
 
@@ -45,8 +46,25 @@ export function AuthProvider({ children }) {
     return () => clearInterval(id);
   }, [checkSession]);
 
-  const login = useCallback(async (username, password) => {
-    const res = await apiPostForm('/admin/auth.php', { action: 'login', username, password });
+  // otpCode is omitted on the first attempt. If the account is logging in
+  // from a device the server hasn't seen before, it responds with
+  // requires_otp instead of success and sends a WhatsApp code — the caller
+  // (LoginScreen) re-calls login() with the same credentials plus the code
+  // once the owner/staff member enters it. Approved devices skip this
+  // entirely on every later login.
+  const login = useCallback(async (username, password, otpCode) => {
+    const deviceId = await getDeviceId();
+    const fields = { action: 'login', username, password, platform: 'app', device_id: deviceId };
+    if (otpCode) fields.otp_code = otpCode;
+
+    const res = await apiPostForm('/admin/auth.php', fields);
+
+    if (res.requires_otp) {
+      const err = new Error(res.message || 'Please enter the verification code.');
+      err.requiresOtp = true;
+      err.maskedPhone = res.masked_phone || '';
+      throw err;
+    }
     if (!res.success) {
       throw new Error(res.message || 'Incorrect username or password');
     }

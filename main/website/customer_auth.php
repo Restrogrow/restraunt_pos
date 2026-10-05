@@ -19,6 +19,7 @@ session_write_close();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/customer_session.php';
 require_once __DIR__ . '/../config/repeatgrow_whatsapp.php';
+require_once __DIR__ . '/../config/device_trust_helpers.php';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -173,6 +174,17 @@ function handleCustomerLogin($pdo) {
     }
 
     if (function_exists('clearFailedAttempts')) clearFailedAttempts($rateId);
+
+    // ── New-device WhatsApp OTP gate ──
+    // Customers already verify their phone via WhatsApp OTP at signup, so
+    // the number on file is trustworthy to re-use here. First login from a
+    // device needs the code; that device is then trusted for this customer
+    // forever (see device_trust_helpers.php).
+    $deviceGate = enforceDeviceTrust($pdo, 'customer', (int)$customer['id'], $customer['phone'] ?? '', $restaurantId);
+    if ($deviceGate !== null) {
+        echo json_encode($deviceGate, JSON_UNESCAPED_UNICODE);
+        return;
+    }
 
     startSecureSession();
     startCustomerSession($pdo, $customer, $remember);

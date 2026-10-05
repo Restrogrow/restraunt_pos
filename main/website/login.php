@@ -229,7 +229,15 @@ body {
         <label><input type="checkbox" id="loginRemember" checked> Remember me</label>
         <a href="#" onclick="openForgotModal();return false;">Forgot password?</a>
       </div>
-      <button type="submit" class="btn-auth-submit" id="loginSubmitBtn"><i class="fa fa-right-to-bracket"></i> Login</button>
+      <div class="form-group hidden" id="loginOtpGroup">
+        <label>Verification Code</label>
+        <input type="text" id="loginOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from WhatsApp">
+        <div class="remember-row" style="margin-top:8px;margin-bottom:0;">
+          <span style="color:#999;">Sent via WhatsApp</span>
+          <a href="#" id="loginOtpResend" onclick="event.preventDefault();">Resend code</a>
+        </div>
+      </div>
+      <button type="submit" class="btn-auth-submit" id="loginSubmitBtn"><i class="fa fa-right-to-bracket"></i> <span id="loginSubmitBtnText">Login</span></button>
     </form>
 
     <!-- Signup Form -->
@@ -312,6 +320,9 @@ function switchAuthTab(tab) {
   if (tab === 'login' && typeof resetSignupOtpState === 'function') {
     resetSignupOtpState();
   }
+  if (tab === 'signup' && typeof resetLoginOtpState === 'function') {
+    resetLoginOtpState();
+  }
 }
 
 function showAuthError(msg) {
@@ -342,6 +353,93 @@ function continueAsGuest() {
   window.location.href = window.redirectUrl;
 }
 
+// A random id generated once per browser and kept in localStorage — this is
+// what the server's new-device WhatsApp OTP gate (device_trust_helpers.php)
+// keys trust to. Clearing site data or logging in from a different
+// browser/device means a new id, so the OTP step runs again exactly once
+// there.
+function getCustomerDeviceId() {
+  var KEY = 'rg_customer_device_id';
+  try {
+    var id = localStorage.getItem(KEY);
+    if (!id) {
+      id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch (e) {
+    return 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  }
+}
+
+// Login is normally one step. If this device hasn't logged into this
+// account before, customer_auth.php instead responds with
+// requires_otp=true (and sends a WhatsApp code) — the form then locks
+// phone/password and asks for that code, resubmitting the same credentials
+// plus otp_code. Once verified, this device is trusted forever for that
+// customer.
+var loginOtpSent = false;
+var loginResendTimer = null;
+var loginFieldIds = ['loginPhone', 'loginPassword'];
+
+function resetLoginOtpState() {
+  loginOtpSent = false;
+  document.getElementById('loginOtpGroup').classList.add('hidden');
+  document.getElementById('loginOtpCode').value = '';
+  loginFieldIds.forEach(function(id) { document.getElementById(id).disabled = false; });
+  document.getElementById('loginSubmitBtnText').textContent = 'Login';
+  if (loginResendTimer) { clearInterval(loginResendTimer); loginResendTimer = null; }
+  var resend = document.getElementById('loginOtpResend');
+  resend.style.pointerEvents = 'auto';
+  resend.textContent = 'Resend code';
+}
+
+function startLoginResendCooldown(seconds) {
+  var resend = document.getElementById('loginOtpResend');
+  var remaining = seconds;
+  resend.style.pointerEvents = 'none';
+  resend.textContent = 'Resend code (' + remaining + 's)';
+  if (loginResendTimer) clearInterval(loginResendTimer);
+  loginResendTimer = setInterval(function() {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(loginResendTimer);
+      loginResendTimer = null;
+      resend.style.pointerEvents = 'auto';
+      resend.textContent = 'Resend code';
+    } else {
+      resend.textContent = 'Resend code (' + remaining + 's)';
+    }
+  }, 1000);
+}
+
+function submitCustomerLogin(phone, password, otpCode) {
+  var fd = new FormData();
+  fd.append('action', 'login');
+  fd.append('restaurant_id', window.restaurantId);
+  fd.append('phone', phone);
+  fd.append('password', password);
+  fd.append('remember', document.getElementById('loginRemember').checked ? '1' : '');
+  fd.append('device_id', getCustomerDeviceId());
+  if (otpCode) fd.append('otp_code', otpCode);
+  return fetch('customer_auth.php', { method: 'POST', body: fd }).then(function(r) { return r.json(); });
+}
+
+document.getElementById('loginOtpResend').addEventListener('click', function() {
+  var phone = document.getElementById('loginPhone').value.trim();
+  var password = document.getElementById('loginPassword').value;
+  submitCustomerLogin(phone, password, '').then(function(res) {
+    if (res.requires_otp) {
+      showToast(res.message || 'A new code has been sent via WhatsApp.', 'success');
+      startLoginResendCooldown(60);
+    } else if (!res.success) {
+      showAuthError(res.message || 'Could not resend the code.');
+    }
+  }).catch(function() {
+    showAuthError('Network error. Please try again.');
+  });
+});
+
 document.getElementById('loginForm').addEventListener('submit', function(e) {
   e.preventDefault();
   hideAuthError();
@@ -349,34 +447,47 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
   var password = document.getElementById('loginPassword').value;
   if (!phone || !password) { showAuthError('Please enter your phone number and password'); return; }
 
+  if (loginOtpSent && !document.getElementById('loginOtpCode').value.trim()) {
+    showAuthError('Please enter the verification code.');
+    return;
+  }
+
   var btn = document.getElementById('loginSubmitBtn');
+  var btnText = document.getElementById('loginSubmitBtnText');
   btn.disabled = true;
-  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Logging in...';
+  btnText.textContent = loginOtpSent ? 'Verifying...' : 'Logging in...';
 
-  var fd = new FormData();
-  fd.append('action', 'login');
-  fd.append('restaurant_id', window.restaurantId);
-  fd.append('phone', phone);
-  fd.append('password', password);
-  fd.append('remember', document.getElementById('loginRemember').checked ? '1' : '');
+  var otpCode = loginOtpSent ? document.getElementById('loginOtpCode').value.trim() : '';
 
-  fetch('customer_auth.php', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
+  submitCustomerLogin(phone, password, otpCode)
     .then(function(res) {
+      if (res.requires_otp) {
+        loginOtpSent = true;
+        document.getElementById('loginOtpGroup').classList.remove('hidden');
+        loginFieldIds.forEach(function(id) { document.getElementById(id).disabled = true; });
+        btn.disabled = false;
+        btnText.textContent = 'Verify & Login';
+        showToast(res.message || 'A verification code has been sent via WhatsApp.', 'success');
+        startLoginResendCooldown(60);
+        document.getElementById('loginOtpCode').focus();
+        return;
+      }
+
       if (res.success) {
         try { localStorage.setItem('customerDetails', JSON.stringify(res.customer)); } catch(e) {}
         showToast(res.message, 'success');
+        resetLoginOtpState();
         setTimeout(function() { window.location.href = window.redirectUrl; }, 500);
       } else {
         showAuthError(res.message || 'Login failed');
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa fa-right-to-bracket"></i> Login';
+        btnText.textContent = loginOtpSent ? 'Verify & Login' : 'Login';
       }
     })
     .catch(function() {
       showAuthError('Network error. Please try again.');
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa fa-right-to-bracket"></i> Login';
+      btnText.textContent = loginOtpSent ? 'Verify & Login' : 'Login';
     });
 });
 

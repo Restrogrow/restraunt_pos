@@ -45,6 +45,7 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../config/business_id_helpers.php';
     require_once __DIR__ . '/../config/login_log_helpers.php';
     require_once __DIR__ . '/../config/repeatgrow_whatsapp.php';
+    require_once __DIR__ . '/../config/device_trust_helpers.php';
 } else {
     throw new Exception('Database connection file not found');
 }
@@ -296,7 +297,15 @@ function handleLogin() {
         } catch (Exception $logErr) {
             error_log('auth.php: login log (admin success) failed: ' . $logErr->getMessage());
         }
-        
+
+        // ── New-device WhatsApp OTP gate (app + web) ──
+        $deviceGate = enforceDeviceTrust($pdo, 'admin', (int)$user['id'], $user['phone'] ?? '', $user['restaurant_id']);
+        if ($deviceGate !== null) {
+            ob_clean();
+            echo json_encode($deviceGate, JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['restaurant_id'] = $user['restaurant_id'];
@@ -355,7 +364,15 @@ function handleLogin() {
         } catch (Exception $logErr) {
             error_log('auth.php: login log (staff success) failed: ' . $logErr->getMessage());
         }
-        
+
+        // ── New-device WhatsApp OTP gate (app + web) ──
+        $deviceGate = enforceDeviceTrust($pdo, 'staff', (int)$staff['id'], $staff['phone'] ?? '', $staff['restaurant_id']);
+        if ($deviceGate !== null) {
+            ob_clean();
+            echo json_encode($deviceGate, JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+
         $_SESSION['staff_id'] = $staff['id'];
         $_SESSION['username'] = $staff['member_name'];
         $_SESSION['email'] = $staff['email'];

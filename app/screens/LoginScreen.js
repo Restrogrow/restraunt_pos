@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,28 +15,100 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
 
+const RESEND_COOLDOWN_SECONDS = 60;
+
 export default function LoginScreen() {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const onSubmit = async () => {
-    if (!username || !password) {
-      setError('Enter your username and password');
-      return;
+  // Device-verification step — only appears the first time this install
+  // logs in to a given account. Once the server marks the device trusted,
+  // every later login skips straight through.
+  const [otpRequired, setOtpRequired] = useState(false);
+  const [maskedPhone, setMaskedPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownTimer = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+    };
+  }, []);
+
+  const startResendCooldown = () => {
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+    cooldownTimer.current = setInterval(() => {
+      setResendCooldown((s) => {
+        if (s <= 1) {
+          clearInterval(cooldownTimer.current);
+          cooldownTimer.current = null;
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  };
+
+  const resetOtpState = () => {
+    setOtpRequired(false);
+    setOtpCode('');
+    setMaskedPhone('');
+    setInfo('');
+    setResendCooldown(0);
+    if (cooldownTimer.current) {
+      clearInterval(cooldownTimer.current);
+      cooldownTimer.current = null;
     }
+  };
+
+  const attemptLogin = async (codeToSend) => {
     setError('');
     setSubmitting(true);
     try {
-      await login(username, password);
+      await login(username, password, codeToSend);
+      // Success — AuthContext flips the app over to the dashboard.
     } catch (e) {
-      setError(e.message || 'Login failed');
+      if (e.requiresOtp) {
+        setOtpRequired(true);
+        setMaskedPhone(e.maskedPhone);
+        setInfo(e.message || 'A verification code was sent via WhatsApp.');
+        startResendCooldown();
+      } else {
+        setError(e.message || 'Login failed');
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const onSubmit = () => {
+    if (!otpRequired) {
+      if (!username || !password) {
+        setError('Enter your username and password');
+        return;
+      }
+      attemptLogin(undefined);
+      return;
+    }
+
+    if (!otpCode.trim()) {
+      setError('Enter the code sent to your WhatsApp');
+      return;
+    }
+    attemptLogin(otpCode.trim());
+  };
+
+  const onResend = () => {
+    if (resendCooldown > 0 || submitting) return;
+    setOtpCode('');
+    attemptLogin(undefined);
   };
 
   return (
@@ -59,40 +131,85 @@ export default function LoginScreen() {
           </View>
 
           <View style={[styles.card, shadow.lg]}>
-            <Text style={styles.welcome}>Welcome back</Text>
-            <Text style={styles.subtitle}>Log in to manage today's orders</Text>
+            {!otpRequired ? (
+              <>
+                <Text style={styles.welcome}>Welcome back</Text>
+                <Text style={styles.subtitle}>Log in to manage today's orders</Text>
 
-            <View style={styles.field}>
-              <Ionicons name="person-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Username or email"
-                placeholderTextColor={colors.muted}
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={username}
-                onChangeText={setUsername}
-              />
-            </View>
+                <View style={styles.field}>
+                  <Ionicons name="person-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Username or email"
+                    placeholderTextColor={colors.muted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={username}
+                    onChangeText={setUsername}
+                  />
+                </View>
 
-            <View style={styles.field}>
-              <Ionicons name="lock-closed-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={colors.muted}
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-              />
-              <Pressable onPress={() => setShowPassword((s) => !s)} hitSlop={10}>
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={18}
-                  color={colors.muted}
-                />
-              </Pressable>
-            </View>
+                <View style={styles.field}>
+                  <Ionicons name="lock-closed-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    placeholderTextColor={colors.muted}
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                  <Pressable onPress={() => setShowPassword((s) => !s)} hitSlop={10}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={colors.muted}
+                    />
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.welcome}>Verify this device</Text>
+                <Text style={styles.subtitle}>
+                  {maskedPhone
+                    ? `Enter the 6-digit code sent via WhatsApp to ${maskedPhone}.`
+                    : 'Enter the 6-digit code sent via WhatsApp.'}
+                </Text>
+
+                <View style={styles.field}>
+                  <Ionicons name="shield-checkmark-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
+                  <TextInput
+                    style={[styles.input, styles.otpInput]}
+                    placeholder="6-digit code"
+                    placeholderTextColor={colors.muted}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoFocus
+                    value={otpCode}
+                    onChangeText={(v) => setOtpCode(v.replace(/\D/g, ''))}
+                  />
+                </View>
+
+                {info ? (
+                  <View style={styles.infoBox}>
+                    <Ionicons name="information-circle" size={15} color={colors.info} />
+                    <Text style={styles.infoText}>{info}</Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.otpActions}>
+                  <Pressable onPress={resetOtpState} hitSlop={10}>
+                    <Text style={styles.linkText}>Use a different account</Text>
+                  </Pressable>
+                  <Pressable onPress={onResend} disabled={resendCooldown > 0} hitSlop={10}>
+                    <Text style={[styles.linkText, resendCooldown > 0 && styles.linkTextDisabled]}>
+                      {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
+                    </Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
 
             {error ? (
               <View style={styles.errorBox}>
@@ -110,7 +227,7 @@ export default function LoginScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Text style={styles.buttonText}>Log In</Text>
+                  <Text style={styles.buttonText}>{otpRequired ? 'Verify & Log In' : 'Log In'}</Text>
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </>
               )}
@@ -193,6 +310,34 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.ink,
     paddingVertical: 14,
+  },
+  otpInput: {
+    letterSpacing: 4,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: spacing.md,
+  },
+  infoText: {
+    fontFamily: font.regular,
+    color: colors.info,
+    fontSize: 12.5,
+    flexShrink: 1,
+  },
+  otpActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  linkText: {
+    fontFamily: font.medium,
+    fontSize: 12.5,
+    color: colors.primary,
+  },
+  linkTextDisabled: {
+    color: colors.muted,
   },
   errorBox: {
     flexDirection: 'row',
