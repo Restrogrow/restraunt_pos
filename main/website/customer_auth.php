@@ -18,6 +18,7 @@ session_write_close();
 
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/customer_session.php';
+require_once __DIR__ . '/../config/repeatgrow_whatsapp.php';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -79,6 +80,14 @@ function handleCustomerSignup($pdo) {
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new Exception('A valid email is required (used for password recovery)');
     if (strlen($password) < 6) throw new Exception('Password must be at least 6 characters long');
     if ($password !== $confirmPassword) throw new Exception('Passwords do not match');
+
+    // Require the phone to have gone through WhatsApp OTP verification
+    // (otp.php, action=verify, purpose=customer_signup) before the account
+    // is created — same gate as the restaurant-owner signup, but scoped
+    // under the real restaurant_id since customers already have one.
+    if (!isPhoneVerifiedRecently($pdo, $restaurantId, $phone, 'customer_signup')) {
+        throw new Exception('Please verify your phone number via WhatsApp before creating your account.');
+    }
 
     $stmt = $pdo->prepare("SELECT id, password_hash FROM customers WHERE restaurant_id = ? AND phone = ? LIMIT 1");
     $stmt->execute([$restaurantId, $phone]);

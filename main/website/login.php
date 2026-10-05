@@ -260,6 +260,14 @@ body {
       <div class="remember-row">
         <label><input type="checkbox" id="signupRemember" checked> Remember me</label>
       </div>
+      <div class="form-group hidden" id="signupOtpGroup">
+        <label>Verification Code</label>
+        <input type="text" id="signupOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from WhatsApp">
+        <div class="remember-row" style="margin-top:8px;margin-bottom:0;">
+          <span style="color:#999;">Sent via WhatsApp</span>
+          <a href="#" id="signupOtpResend" onclick="event.preventDefault();">Resend code</a>
+        </div>
+      </div>
       <button type="submit" class="btn-auth-submit" id="signupSubmitBtn"><i class="fa fa-user-plus"></i> Create Account</button>
     </form>
 
@@ -299,6 +307,11 @@ function switchAuthTab(tab) {
   document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
   document.getElementById('signupForm').classList.toggle('hidden', tab !== 'signup');
   hideAuthError();
+  // Abandoning signup (its OTP, if any, expires server-side in 5 minutes
+  // anyway) — reset so a later visit starts clean.
+  if (tab === 'login' && typeof resetSignupOtpState === 'function') {
+    resetSignupOtpState();
+  }
 }
 
 function showAuthError(msg) {
@@ -367,6 +380,68 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     });
 });
 
+// Signup is two steps: (1) validate the form and send a WhatsApp OTP to
+// the phone number, (2) verify that code, then actually create the
+// account. Scoped under this restaurant's own id + 'customer_signup'
+// purpose — customer_auth.php's handleCustomerSignup() checks for a
+// matching verified row under that same scope before inserting.
+var signupOtpSent = false;
+var signupResendTimer = null;
+var signupFieldIds = ['signupName', 'signupPhone', 'signupEmail', 'signupPassword', 'signupConfirmPassword'];
+
+function resetSignupOtpState() {
+  signupOtpSent = false;
+  document.getElementById('signupOtpGroup').classList.add('hidden');
+  document.getElementById('signupOtpCode').value = '';
+  signupFieldIds.forEach(function(id) { document.getElementById(id).disabled = false; });
+  if (signupResendTimer) { clearInterval(signupResendTimer); signupResendTimer = null; }
+  var resend = document.getElementById('signupOtpResend');
+  resend.style.pointerEvents = 'auto';
+  resend.textContent = 'Resend code';
+}
+
+function startSignupResendCooldown(seconds) {
+  var resend = document.getElementById('signupOtpResend');
+  var remaining = seconds;
+  resend.style.pointerEvents = 'none';
+  resend.textContent = 'Resend code (' + remaining + 's)';
+  if (signupResendTimer) clearInterval(signupResendTimer);
+  signupResendTimer = setInterval(function() {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(signupResendTimer);
+      signupResendTimer = null;
+      resend.style.pointerEvents = 'auto';
+      resend.textContent = 'Resend code';
+    } else {
+      resend.textContent = 'Resend code (' + remaining + 's)';
+    }
+  }, 1000);
+}
+
+function sendSignupOtp(phoneDigits) {
+  var fd = new FormData();
+  fd.append('action', 'send');
+  fd.append('restaurant_id', window.restaurantId);
+  fd.append('purpose', 'customer_signup');
+  fd.append('phone', phoneDigits);
+  return fetch('otp.php', { method: 'POST', body: fd }).then(function(r) { return r.json(); });
+}
+
+document.getElementById('signupOtpResend').addEventListener('click', function() {
+  var phoneDigits = document.getElementById('signupPhone').value.replace(/\D/g, '');
+  sendSignupOtp(phoneDigits).then(function(res) {
+    if (res.success) {
+      showToast('A new code has been sent via WhatsApp.', 'success');
+      startSignupResendCooldown(60);
+    } else {
+      showAuthError(res.message || 'Could not resend the code.');
+    }
+  }).catch(function() {
+    showAuthError('Network error. Please try again.');
+  });
+});
+
 document.getElementById('signupForm').addEventListener('submit', function(e) {
   e.preventDefault();
   hideAuthError();
@@ -375,43 +450,102 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
   var email = document.getElementById('signupEmail').value.trim();
   var password = document.getElementById('signupPassword').value;
   var confirmPassword = document.getElementById('signupConfirmPassword').value;
+  var phoneDigits = phone.replace(/\D/g, '');
 
   if (!name || !phone || !email || !password) { showAuthError('Please fill in all fields'); return; }
   if (password.length < 6) { showAuthError('Password must be at least 6 characters'); return; }
   if (password !== confirmPassword) { showAuthError('Passwords do not match'); return; }
 
   var btn = document.getElementById('signupSubmitBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Creating account...';
 
-  var fd = new FormData();
-  fd.append('action', 'signup');
-  fd.append('restaurant_id', window.restaurantId);
-  fd.append('name', name);
-  fd.append('phone', phone);
-  fd.append('email', email);
-  fd.append('password', password);
-  fd.append('confirmPassword', confirmPassword);
-  fd.append('remember', document.getElementById('signupRemember').checked ? '1' : '');
-  if (window.referralCode) fd.append('ref', window.referralCode);
-
-  fetch('customer_auth.php', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
+  // Step 1: form is valid but no code sent yet — send the OTP and stop
+  // here. Fields are locked so the code that's about to be verified
+  // matches what gets submitted.
+  if (!signupOtpSent) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Sending code...';
+    sendSignupOtp(phoneDigits).then(function(res) {
+      btn.disabled = false;
       if (res.success) {
-        try { localStorage.setItem('customerDetails', JSON.stringify(res.customer)); } catch(e) {}
-        showToast(res.message, 'success');
-        setTimeout(function() { window.location.href = window.redirectUrl; }, 500);
+        signupOtpSent = true;
+        document.getElementById('signupOtpGroup').classList.remove('hidden');
+        signupFieldIds.forEach(function(id) { document.getElementById(id).disabled = true; });
+        startSignupResendCooldown(60);
+        btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify & Create Account';
+        showToast('A verification code has been sent via WhatsApp.', 'success');
+        document.getElementById('signupOtpCode').focus();
       } else {
-        showAuthError(res.message || 'Sign up failed');
-        btn.disabled = false;
         btn.innerHTML = '<i class="fa fa-user-plus"></i> Create Account';
+        showAuthError(res.message || 'Could not send the verification code.');
       }
+    }).catch(function() {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-user-plus"></i> Create Account';
+      showAuthError('Network error. Please try again.');
+    });
+    return;
+  }
+
+  // Step 2: OTP already sent — verify the code, then create the account.
+  var code = document.getElementById('signupOtpCode').value.trim();
+  if (!code) { showAuthError('Please enter the verification code.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Verifying...';
+
+  var verifyFd = new FormData();
+  verifyFd.append('action', 'verify');
+  verifyFd.append('restaurant_id', window.restaurantId);
+  verifyFd.append('purpose', 'customer_signup');
+  verifyFd.append('phone', phoneDigits);
+  verifyFd.append('code', code);
+
+  fetch('otp.php', { method: 'POST', body: verifyFd })
+    .then(function(r) { return r.json(); })
+    .then(function(verifyRes) {
+      if (!verifyRes.success) {
+        showAuthError(verifyRes.message || 'Invalid code. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify & Create Account';
+        return;
+      }
+
+      btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Creating account...';
+
+      var fd = new FormData();
+      fd.append('action', 'signup');
+      fd.append('restaurant_id', window.restaurantId);
+      fd.append('name', name);
+      fd.append('phone', phone);
+      fd.append('email', email);
+      fd.append('password', password);
+      fd.append('confirmPassword', confirmPassword);
+      fd.append('remember', document.getElementById('signupRemember').checked ? '1' : '');
+      if (window.referralCode) fd.append('ref', window.referralCode);
+
+      fetch('customer_auth.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (res.success) {
+            try { localStorage.setItem('customerDetails', JSON.stringify(res.customer)); } catch(e) {}
+            showToast(res.message, 'success');
+            setTimeout(function() { window.location.href = window.redirectUrl; }, 500);
+          } else {
+            showAuthError(res.message || 'Sign up failed');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify & Create Account';
+          }
+        })
+        .catch(function() {
+          showAuthError('Network error. Please try again.');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify & Create Account';
+        });
     })
     .catch(function() {
       showAuthError('Network error. Please try again.');
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa fa-user-plus"></i> Create Account';
+      btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify & Create Account';
     });
 });
 
