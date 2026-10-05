@@ -69,28 +69,6 @@ try {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
-function ensureWhatsappOtpSchema($pdo) {
-    try {
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS whatsapp_otp_codes (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                restaurant_id VARCHAR(10) NOT NULL,
-                phone VARCHAR(20) NOT NULL,
-                purpose VARCHAR(32) NOT NULL DEFAULT 'verify',
-                code_hash VARCHAR(64) NOT NULL,
-                expires_at DATETIME NOT NULL,
-                attempts INT NOT NULL DEFAULT 0,
-                consumed_at DATETIME DEFAULT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_lookup (restaurant_id, phone, purpose, created_at),
-                INDEX idx_expires_at (expires_at)
-            )
-        ");
-    } catch (PDOException $e) {
-        error_log('ensureWhatsappOtpSchema: ' . $e->getMessage());
-    }
-}
-
 function readRequestBasics() {
     $restaurantId = isset($_POST['restaurant_id']) ? trim($_POST['restaurant_id']) : '';
     $phone = isset($_POST['phone']) ? preg_replace('/\D/', '', $_POST['phone']) : '';

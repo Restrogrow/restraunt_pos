@@ -44,6 +44,7 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../config/gstin_helpers.php';
     require_once __DIR__ . '/../config/business_id_helpers.php';
     require_once __DIR__ . '/../config/login_log_helpers.php';
+    require_once __DIR__ . '/../config/repeatgrow_whatsapp.php';
 } else {
     throw new Exception('Database connection file not found');
 }
@@ -606,6 +607,16 @@ function handleSignup() {
                 : $countryInfo['phone_min'] . '-' . $countryInfo['phone_max'] . ' digits';
             throw new Exception("Please enter a valid phone number for {$country} ({$expected})");
         }
+    }
+
+    // Require the phone to have gone through WhatsApp OTP verification
+    // (otp.php, action=verify) before an account can be created — closes
+    // off signup to anyone who can't receive a WhatsApp message at that
+    // number. Scoped under a fixed 'SIGNUP' restaurant_id since there's no
+    // real restaurant_id yet at this point (one is only generated below).
+    $phoneDigits = preg_replace('/\D/', '', $phone);
+    if (!isPhoneVerifiedRecently($pdo, 'SIGNUP', $phoneDigits, 'owner_signup')) {
+        throw new Exception('Please verify your phone number via WhatsApp before creating your account.');
     }
 
     // Check if username or email already exists

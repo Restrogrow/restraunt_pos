@@ -877,8 +877,21 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                             </div>
                             <small id="signupPhoneHint" style="color:#9ca3af;display:block;margin-top:6px;"></small>
                         </div>
+                        <div class="form-group" id="signupOtpGroup" style="display:none;">
+                            <label for="signupOtpCode">VERIFICATION CODE</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <input type="text" id="signupOtpCode" name="otp_code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from WhatsApp">
+                            </div>
+                            <small id="signupOtpHint" style="color:#9ca3af;display:block;margin-top:6px;">
+                                We sent a 6-digit code to your phone on WhatsApp.
+                                <a href="#" id="signupOtpResend" onclick="event.preventDefault();">Resend code</a>
+                            </small>
+                        </div>
                         <button type="submit" class="btn btn-primary" id="signupBtn">
-                            SIGN UP
+                            <span id="signupBtnText">SIGN UP</span>
                             <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                             </svg>
@@ -1060,6 +1073,12 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             // Clear messages
             const messages = document.querySelectorAll('.message');
             messages.forEach(msg => msg.remove());
+
+            // Abandoning the signup form (its OTP, if any, expires server-side
+            // in 5 minutes anyway) — reset so a later visit starts clean.
+            if (tab === 'login' && typeof resetSignupOtpState === 'function') {
+                resetSignupOtpState();
+            }
         }
         
         // Login form submission
@@ -1192,6 +1211,74 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         document.getElementById('signupCountry').addEventListener('change', updateSignupPhoneHint);
         updateSignupPhoneHint();
 
+        // Signup is two steps: (1) validate the form and send a WhatsApp OTP
+        // to the phone number, (2) verify that code, then actually create
+        // the account. otp.php has no concept of a restaurant yet at this
+        // point, so it's scoped under a fixed 'SIGNUP' restaurant_id +
+        // 'owner_signup' purpose — auth.php's handleSignup() checks for a
+        // matching verified row under that same scope before inserting.
+        let signupOtpSent = false;
+        let signupResendTimer = null;
+
+        function resetSignupOtpState() {
+            signupOtpSent = false;
+            document.getElementById('signupOtpGroup').style.display = 'none';
+            document.getElementById('signupOtpCode').value = '';
+            document.getElementById('signupBtnText').textContent = 'SIGN UP';
+            [
+                'signupUsername', 'signupEmail', 'signupPassword', 'signupPasswordConfirm',
+                'restaurantName', 'signupCountry', 'signupPhone',
+            ].forEach((id) => { document.getElementById(id).disabled = false; });
+            if (signupResendTimer) { clearInterval(signupResendTimer); signupResendTimer = null; }
+            const resend = document.getElementById('signupOtpResend');
+            resend.style.pointerEvents = 'auto';
+            resend.textContent = 'Resend code';
+        }
+
+        function startSignupResendCooldown(seconds) {
+            const resend = document.getElementById('signupOtpResend');
+            let remaining = seconds;
+            resend.style.pointerEvents = 'none';
+            resend.textContent = `Resend code (${remaining}s)`;
+            if (signupResendTimer) clearInterval(signupResendTimer);
+            signupResendTimer = setInterval(() => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    clearInterval(signupResendTimer);
+                    signupResendTimer = null;
+                    resend.style.pointerEvents = 'auto';
+                    resend.textContent = 'Resend code';
+                } else {
+                    resend.textContent = `Resend code (${remaining}s)`;
+                }
+            }, 1000);
+        }
+
+        async function sendSignupOtp(phoneDigits) {
+            const response = await fetch('../website/otp.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=send&restaurant_id=SIGNUP&purpose=owner_signup&phone=${encodeURIComponent(phoneDigits)}`,
+            });
+            return response.json();
+        }
+
+        document.getElementById('signupOtpResend').addEventListener('click', async () => {
+            const phoneDigits = document.getElementById('signupPhone').value.replace(/\D/g, '');
+            try {
+                const result = await sendSignupOtp(phoneDigits);
+                if (result.success) {
+                    showMessage('A new code has been sent via WhatsApp.', 'success');
+                    startSignupResendCooldown(60);
+                } else {
+                    showMessage(result.message || 'Could not resend the code.', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Network error. Please try again.', 'error');
+            }
+        });
+
         // Signup form submission
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1205,6 +1292,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             const country = countrySelect.value;
             const phone = document.getElementById('signupPhone').value.trim();
             const signupBtn = document.getElementById('signupBtn');
+            const signupBtnText = document.getElementById('signupBtnText');
 
             if (!username || !email || !password || !passwordConfirm || !restaurantName || !country || !phone) {
                 showMessage('Please fill in all fields.', 'error');
@@ -1241,10 +1329,63 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 return;
             }
 
+            // Step 1: form is valid but no code sent yet — send the OTP and
+            // stop here. The fields are locked (not re-editable) so the
+            // code that's about to be verified matches what gets submitted.
+            if (!signupOtpSent) {
+                signupBtn.disabled = true;
+                signupBtnText.textContent = 'SENDING CODE...';
+                try {
+                    const result = await sendSignupOtp(phoneDigits);
+                    if (result.success) {
+                        signupOtpSent = true;
+                        document.getElementById('signupOtpGroup').style.display = 'block';
+                        [
+                            'signupUsername', 'signupEmail', 'signupPassword', 'signupPasswordConfirm',
+                            'restaurantName', 'signupCountry', 'signupPhone',
+                        ].forEach((id) => { document.getElementById(id).disabled = true; });
+                        startSignupResendCooldown(60);
+                        signupBtnText.textContent = 'VERIFY & CREATE ACCOUNT';
+                        showMessage('A verification code has been sent via WhatsApp.', 'success');
+                        document.getElementById('signupOtpCode').focus();
+                    } else {
+                        signupBtnText.textContent = 'SIGN UP';
+                        showMessage(result.message || 'Could not send the verification code.', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    signupBtnText.textContent = 'SIGN UP';
+                    showMessage('Network error. Please try again.', 'error');
+                } finally {
+                    signupBtn.disabled = false;
+                }
+                return;
+            }
+
+            // Step 2: OTP already sent — verify the code, then create the account.
+            const code = document.getElementById('signupOtpCode').value.trim();
+            if (!code) {
+                showMessage('Please enter the verification code.', 'error');
+                return;
+            }
+
             signupBtn.disabled = true;
-            signupBtn.textContent = 'Creating Account...';
+            signupBtnText.textContent = 'VERIFYING...';
 
             try {
+                const verifyResponse = await fetch('../website/otp.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `action=verify&restaurant_id=SIGNUP&purpose=owner_signup&phone=${encodeURIComponent(phoneDigits)}&code=${encodeURIComponent(code)}`,
+                });
+                const verifyResult = await verifyResponse.json();
+
+                if (!verifyResult.success) {
+                    showMessage(verifyResult.message || 'Invalid code. Please try again.', 'error');
+                    return;
+                }
+
+                signupBtnText.textContent = 'CREATING ACCOUNT...';
                 const response = await fetch('auth.php', {
                     method: 'POST',
                     headers: {
@@ -1252,12 +1393,13 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     },
                     body: `action=signup&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&restaurant_name=${encodeURIComponent(restaurantName)}&country=${encodeURIComponent(country)}&phone=${encodeURIComponent(phone)}`
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     showMessage('Account created successfully! Please sign in.', 'success');
                     setTimeout(() => {
+                        resetSignupOtpState();
                         switchTab('login');
                         document.getElementById('loginUsername').value = username;
                     }, 1500);
@@ -1269,7 +1411,9 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 showMessage('Network error. Please try again.', 'error');
             } finally {
                 signupBtn.disabled = false;
-                signupBtn.textContent = 'Sign Up';
+                if (signupBtnText.textContent !== 'VERIFY & CREATE ACCOUNT') {
+                    signupBtnText.textContent = signupOtpSent ? 'VERIFY & CREATE ACCOUNT' : 'SIGN UP';
+                }
             }
         });
         

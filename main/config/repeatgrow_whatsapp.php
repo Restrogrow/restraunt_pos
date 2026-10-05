@@ -32,6 +32,53 @@
 require_once __DIR__ . '/env_loader.php';
 
 /**
+ * Shared by otp.php (send/verify) and any other flow that needs to gate on
+ * a verified phone (e.g. restaurant-owner signup in admin/auth.php) —
+ * defined here rather than in otp.php so it can be required without
+ * pulling in otp.php's top-level request-handling code.
+ */
+function ensureWhatsappOtpSchema($pdo) {
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS whatsapp_otp_codes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                restaurant_id VARCHAR(10) NOT NULL,
+                phone VARCHAR(20) NOT NULL,
+                purpose VARCHAR(32) NOT NULL DEFAULT 'verify',
+                code_hash VARCHAR(64) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                attempts INT NOT NULL DEFAULT 0,
+                consumed_at DATETIME DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_lookup (restaurant_id, phone, purpose, created_at),
+                INDEX idx_expires_at (expires_at)
+            )
+        ");
+    } catch (PDOException $e) {
+        error_log('ensureWhatsappOtpSchema: ' . $e->getMessage());
+    }
+}
+
+/**
+ * True if $phone was WhatsApp-verified (via otp.php) under the given
+ * restaurant_id/purpose scope within the last $withinMinutes. Used to gate
+ * a follow-up action (e.g. account creation) on a prior successful
+ * action=verify call, without otp.php and the caller needing to share any
+ * state beyond this table.
+ */
+function isPhoneVerifiedRecently($pdo, string $restaurantId, string $phone, string $purpose, int $withinMinutes = 15): bool {
+    ensureWhatsappOtpSchema($pdo);
+    $stmt = $pdo->prepare("
+        SELECT id FROM whatsapp_otp_codes
+        WHERE restaurant_id = ? AND phone = ? AND purpose = ?
+          AND consumed_at IS NOT NULL AND consumed_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+        ORDER BY consumed_at DESC LIMIT 1
+    ");
+    $stmt->execute([$restaurantId, $phone, $purpose, $withinMinutes]);
+    return (bool) $stmt->fetch();
+}
+
+/**
  * Send a WhatsApp OTP code to $phone via RepeatGrow's send API.
  * Throws on any failure (missing config, network error, Meta rejection) —
  * callers decide how to surface that to the end user.
