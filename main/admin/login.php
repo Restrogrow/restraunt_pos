@@ -956,15 +956,33 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         <div class="forgot-password-content">
             <button class="close-modal" onclick="closeForgotPasswordModal()">&times;</button>
             <h2>Forgot Password</h2>
-            <p>Enter your restaurant email address and we'll send you a password reset link.</p>
+            <p id="forgotModalDesc">Enter your restaurant email address and we'll send you a password reset link.</p>
             <form id="forgotPasswordForm">
                 <div class="form-group">
                     <label for="forgotEmail">Email Address:</label>
                     <input type="email" id="forgotEmail" name="email" required placeholder="Enter your restaurant email">
                 </div>
+                <div class="form-group" id="forgotOtpGroup" style="display:none;">
+                    <label for="forgotOtpCode">Verification Code:</label>
+                    <input type="text" id="forgotOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from WhatsApp">
+                    <small style="color:#9ca3af;display:block;margin-top:6px;">
+                        <a href="#" id="forgotOtpResend" onclick="event.preventDefault();">Resend code</a>
+                    </small>
+                </div>
+                <div class="form-group" id="forgotNewPasswordGroup" style="display:none;">
+                    <label for="forgotNewPassword">New Password:</label>
+                    <input type="password" id="forgotNewPassword" placeholder="At least 6 characters">
+                </div>
+                <div class="form-group" id="forgotConfirmPasswordGroup" style="display:none;">
+                    <label for="forgotConfirmPassword">Confirm New Password:</label>
+                    <input type="password" id="forgotConfirmPassword" placeholder="Re-enter new password">
+                </div>
                 <button type="submit" class="btn btn-primary" id="forgotPasswordBtn">Send Reset Link</button>
                 <button type="button" class="btn btn-outline" onclick="closeForgotPasswordModal()" style="background: #f5f5f5; color: #333; border: 2px solid #e0e0e0;">Cancel</button>
             </form>
+            <div style="text-align:center;margin-top:14px;">
+                <a href="#" id="forgotModeToggle" onclick="event.preventDefault(); toggleForgotMode();" style="color:#ff6b35;font-weight:600;font-size:0.85rem;text-decoration:none;">Reset via WhatsApp instead</a>
+            </div>
         </div>
     </div>
 
@@ -1515,63 +1533,131 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             document.getElementById('forgotPasswordModal').classList.add('active');
         });
         
+        // Forgot-password has two independent modes: the original
+        // email-link flow (unchanged), and a WhatsApp-OTP flow that resets
+        // the password right in this modal (no email round-trip). The OTP
+        // flow is itself two steps — send code, then verify code + set new
+        // password — same shape as the signup/login OTP steps elsewhere on
+        // this page.
+        let forgotMode = 'email'; // 'email' | 'otp'
+        let forgotOtpSent = false;
+        let forgotResendTimer = null;
+
+        function resetForgotModalState() {
+            forgotMode = 'email';
+            forgotOtpSent = false;
+            document.getElementById('forgotModalDesc').textContent = "Enter your restaurant email address and we'll send you a password reset link.";
+            document.getElementById('forgotOtpGroup').style.display = 'none';
+            document.getElementById('forgotNewPasswordGroup').style.display = 'none';
+            document.getElementById('forgotConfirmPasswordGroup').style.display = 'none';
+            document.getElementById('forgotEmail').disabled = false;
+            document.getElementById('forgotPasswordBtn').textContent = 'Send Reset Link';
+            document.getElementById('forgotModeToggle').textContent = 'Reset via WhatsApp instead';
+            document.getElementById('forgotModeToggle').style.display = '';
+            if (forgotResendTimer) { clearInterval(forgotResendTimer); forgotResendTimer = null; }
+            const resend = document.getElementById('forgotOtpResend');
+            resend.style.pointerEvents = 'auto';
+            resend.textContent = 'Resend code';
+        }
+
+        function toggleForgotMode() {
+            const messages = document.querySelectorAll('#forgotPasswordForm .message');
+            messages.forEach(msg => msg.remove());
+            if (forgotMode === 'email') {
+                forgotMode = 'otp';
+                document.getElementById('forgotModalDesc').textContent = "Enter your restaurant email address and we'll send a verification code via WhatsApp to the phone on file.";
+                document.getElementById('forgotPasswordBtn').textContent = 'Send Code';
+                document.getElementById('forgotModeToggle').textContent = 'Reset via email link instead';
+            } else {
+                resetForgotModalState();
+            }
+        }
+
+        function startForgotResendCooldown(seconds) {
+            const resend = document.getElementById('forgotOtpResend');
+            let remaining = seconds;
+            resend.style.pointerEvents = 'none';
+            resend.textContent = `Resend code (${remaining}s)`;
+            if (forgotResendTimer) clearInterval(forgotResendTimer);
+            forgotResendTimer = setInterval(() => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    clearInterval(forgotResendTimer);
+                    forgotResendTimer = null;
+                    resend.style.pointerEvents = 'auto';
+                    resend.textContent = 'Resend code';
+                } else {
+                    resend.textContent = `Resend code (${remaining}s)`;
+                }
+            }, 1000);
+        }
+
+        async function sendForgotOtp(email) {
+            const response = await fetch('auth.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=forgotPasswordOtp&email=${encodeURIComponent(email)}`
+            });
+            return response.json();
+        }
+
+        document.getElementById('forgotOtpResend').addEventListener('click', async () => {
+            const email = document.getElementById('forgotEmail').value.trim();
+            try {
+                const result = await sendForgotOtp(email);
+                showForgotPasswordMessage(result.message || 'A new code has been sent via WhatsApp.', 'success');
+                startForgotResendCooldown(60);
+            } catch (error) {
+                console.error('Error:', error);
+                showForgotPasswordMessage('Network error. Please try again.', 'error');
+            }
+        });
+
         function closeForgotPasswordModal() {
             document.getElementById('forgotPasswordModal').classList.remove('active');
             document.getElementById('forgotPasswordForm').reset();
+            resetForgotModalState();
             const messages = document.querySelectorAll('#forgotPasswordForm .message');
             messages.forEach(msg => msg.remove());
         }
-        
+
         // Close modal when clicking outside
         document.getElementById('forgotPasswordModal').addEventListener('click', (e) => {
             if (e.target.id === 'forgotPasswordModal') {
                 closeForgotPasswordModal();
             }
         });
-        
+
         // Forgot Password Form Submission
         document.getElementById('forgotPasswordForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const email = document.getElementById('forgotEmail').value.trim();
             const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
-            
+
             if (!email) {
                 showForgotPasswordMessage('Please enter your email address.', 'error');
                 return;
             }
-            
+
             if (!email.includes('@')) {
                 showForgotPasswordMessage('Please enter a valid email address.', 'error');
                 return;
             }
-            
-            forgotPasswordBtn.disabled = true;
-            forgotPasswordBtn.textContent = 'Sending...';
-            
-            try {
-                const response = await fetch('auth.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `action=forgotPassword&email=${encodeURIComponent(email)}`
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    let message = result.message || 'Password reset link has been sent to your email. Please check your inbox.';
-                    
-                    // Don't show reset link in UI for security reasons
-                    // Link is only sent via email
-                    
-                    showForgotPasswordMessage(message, 'success');
-                    
-                    // Don't auto-close - let user close manually
-                } else {
-                    // Check if there's a cooldown
-                    if (result.cooldown_seconds) {
+
+            if (forgotMode === 'email') {
+                forgotPasswordBtn.disabled = true;
+                forgotPasswordBtn.textContent = 'Sending...';
+                try {
+                    const response = await fetch('auth.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `action=forgotPassword&email=${encodeURIComponent(email)}`
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        showForgotPasswordMessage(result.message || 'Password reset link has been sent to your email. Please check your inbox.', 'success');
+                    } else if (result.cooldown_seconds) {
                         const minutes = Math.floor(result.cooldown_seconds / 60);
                         const seconds = result.cooldown_seconds % 60;
                         const timeStr = minutes > 0 ? (minutes + ' minute(s) and ' + seconds + ' second(s)') : (seconds + ' second(s)');
@@ -1579,13 +1665,71 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     } else {
                         showForgotPasswordMessage(result.message || 'Email not found. Please check your email address.', 'error');
                     }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showForgotPasswordMessage('Network error. Please try again.', 'error');
+                } finally {
+                    forgotPasswordBtn.disabled = false;
+                    forgotPasswordBtn.textContent = 'Send Reset Link';
+                }
+                return;
+            }
+
+            // OTP mode, step 1: send the code and reveal the rest of the form.
+            if (!forgotOtpSent) {
+                forgotPasswordBtn.disabled = true;
+                forgotPasswordBtn.textContent = 'Sending...';
+                try {
+                    const result = await sendForgotOtp(email);
+                    forgotOtpSent = true;
+                    document.getElementById('forgotEmail').disabled = true;
+                    document.getElementById('forgotOtpGroup').style.display = 'block';
+                    document.getElementById('forgotNewPasswordGroup').style.display = 'block';
+                    document.getElementById('forgotConfirmPasswordGroup').style.display = 'block';
+                    document.getElementById('forgotModeToggle').style.display = 'none';
+                    forgotPasswordBtn.textContent = 'Verify & Reset Password';
+                    showForgotPasswordMessage(result.message || 'If an account exists for that email, a code has been sent via WhatsApp.', 'success');
+                    startForgotResendCooldown(60);
+                    document.getElementById('forgotOtpCode').focus();
+                } catch (error) {
+                    console.error('Error:', error);
+                    showForgotPasswordMessage('Network error. Please try again.', 'error');
+                } finally {
+                    forgotPasswordBtn.disabled = false;
+                }
+                return;
+            }
+
+            // OTP mode, step 2: verify the code and set the new password.
+            const code = document.getElementById('forgotOtpCode').value.trim();
+            const newPassword = document.getElementById('forgotNewPassword').value;
+            const confirmPassword = document.getElementById('forgotConfirmPassword').value;
+
+            if (!code) { showForgotPasswordMessage('Please enter the verification code.', 'error'); return; }
+            if (newPassword.length < 6) { showForgotPasswordMessage('New password must be at least 6 characters long.', 'error'); return; }
+            if (newPassword !== confirmPassword) { showForgotPasswordMessage('New passwords do not match.', 'error'); return; }
+
+            forgotPasswordBtn.disabled = true;
+            forgotPasswordBtn.textContent = 'Verifying...';
+            try {
+                const response = await fetch('auth.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `action=resetPasswordOtp&email=${encodeURIComponent(email)}&otp_code=${encodeURIComponent(code)}&newPassword=${encodeURIComponent(newPassword)}&confirmPassword=${encodeURIComponent(confirmPassword)}`
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showForgotPasswordMessage(result.message || 'Password reset successfully. You can now log in.', 'success');
+                    setTimeout(() => { closeForgotPasswordModal(); }, 2000);
+                } else {
+                    showForgotPasswordMessage(result.message || 'Invalid or expired code.', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
                 showForgotPasswordMessage('Network error. Please try again.', 'error');
             } finally {
                 forgotPasswordBtn.disabled = false;
-                forgotPasswordBtn.textContent = 'Send Reset Link';
+                forgotPasswordBtn.textContent = 'Verify & Reset Password';
             }
         });
         

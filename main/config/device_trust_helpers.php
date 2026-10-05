@@ -19,14 +19,19 @@
  * gated either, since there's nowhere to send the code.
  *
  * Reuses the whatsapp_otp_codes table (repeatgrow_whatsapp.php) under a
- * dedicated purpose ('device_login') so this doesn't need its own
- * send/verify plumbing against RepeatGrow.
+ * dedicated purpose ('device_login'), plus that file's generic account-
+ * lockout helpers: 5 wrong codes within 15 minutes locks the account out
+ * of this device-verification step for 30 minutes (separate from, and in
+ * addition to, the per-code 5-attempt cap that just invalidates one code).
  */
 
 const DEVICE_OTP_PURPOSE = 'device_login';
 const DEVICE_OTP_RESEND_COOLDOWN_SECONDS = 60;
 const DEVICE_OTP_EXPIRY_SECONDS = 300;
-const DEVICE_OTP_MAX_ATTEMPTS = 5;
+const DEVICE_OTP_MAX_ATTEMPTS_PER_CODE = 5;
+const DEVICE_OTP_LOCKOUT_MAX_ATTEMPTS = 5;
+const DEVICE_OTP_LOCKOUT_WINDOW_SECONDS = 900;   // 15 minutes
+const DEVICE_OTP_LOCKOUT_SECONDS = 1800;         // 30 minutes
 
 function ensureTrustedDevicesSchema($pdo) {
     try {
@@ -69,85 +74,12 @@ function maskPhoneForDisplay(string $phone): string {
 }
 
 /**
- * Sends a fresh device-login OTP to $phone, respecting the same 60s resend
- * cooldown as otp.php. Returns ['sent' => bool, 'wait' => int|null].
- */
-function issueDeviceOtp($pdo, string $restaurantId, string $phone): array {
-    ensureWhatsappOtpSchema($pdo);
-
-    $stmt = $pdo->prepare("
-        SELECT created_at FROM whatsapp_otp_codes
-        WHERE restaurant_id = ? AND phone = ? AND purpose = ?
-        ORDER BY created_at DESC LIMIT 1
-    ");
-    $stmt->execute([$restaurantId, $phone, DEVICE_OTP_PURPOSE]);
-    $last = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($last) {
-        $secondsSince = time() - strtotime($last['created_at']);
-        if ($secondsSince < DEVICE_OTP_RESEND_COOLDOWN_SECONDS) {
-            return ['sent' => false, 'wait' => DEVICE_OTP_RESEND_COOLDOWN_SECONDS - $secondsSince];
-        }
-    }
-
-    $code = (string) random_int(100000, 999999);
-    $codeHash = hash('sha256', $code);
-    $expiresAt = date('Y-m-d H:i:s', time() + DEVICE_OTP_EXPIRY_SECONDS);
-
-    $pdo->prepare("
-        INSERT INTO whatsapp_otp_codes (restaurant_id, phone, purpose, code_hash, expires_at)
-        VALUES (?, ?, ?, ?, ?)
-    ")->execute([$restaurantId, $phone, DEVICE_OTP_PURPOSE, $codeHash, $expiresAt]);
-
-    sendWhatsappOtpViaRepeatGrow($phone, $code);
-
-    return ['sent' => true, 'wait' => null];
-}
-
-/**
- * Verifies $code for $phone under the device_login purpose. Returns
- * ['success' => bool, 'message' => string].
- */
-function verifyDeviceOtp($pdo, string $restaurantId, string $phone, string $code): array {
-    ensureWhatsappOtpSchema($pdo);
-
-    $stmt = $pdo->prepare("
-        SELECT id, code_hash, expires_at, attempts
-        FROM whatsapp_otp_codes
-        WHERE restaurant_id = ? AND phone = ? AND purpose = ? AND consumed_at IS NULL
-        ORDER BY created_at DESC LIMIT 1
-    ");
-    $stmt->execute([$restaurantId, $phone, DEVICE_OTP_PURPOSE]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$row) {
-        return ['success' => false, 'message' => 'No active code found. Please request a new one.'];
-    }
-    if (strtotime($row['expires_at']) < time()) {
-        return ['success' => false, 'message' => 'This code has expired. Please request a new one.'];
-    }
-    if ((int)$row['attempts'] >= DEVICE_OTP_MAX_ATTEMPTS) {
-        return ['success' => false, 'message' => 'Too many incorrect attempts. Please request a new code.'];
-    }
-    if (!hash_equals($row['code_hash'], hash('sha256', $code))) {
-        $pdo->prepare("UPDATE whatsapp_otp_codes SET attempts = attempts + 1 WHERE id = ?")->execute([$row['id']]);
-        $remaining = DEVICE_OTP_MAX_ATTEMPTS - ((int)$row['attempts'] + 1);
-        return [
-            'success' => false,
-            'message' => $remaining > 0 ? "Invalid code. {$remaining} attempt(s) remaining." : 'Invalid code. Please request a new one.',
-        ];
-    }
-
-    $pdo->prepare("UPDATE whatsapp_otp_codes SET consumed_at = NOW() WHERE id = ?")->execute([$row['id']]);
-    return ['success' => true, 'message' => 'Device verified.'];
-}
-
-/**
  * Called right after password verification, before a session is granted.
  * Returns null when the caller should proceed with normal login (no
  * device_id sent, no phone on file, or device already trusted/now
  * verified). Returns a response array (to be echoed as JSON, then the
  * caller should return/exit) when the client needs to collect/retry an OTP
- * before the login can complete.
+ * — or wait out a lockout — before the login can complete.
  */
 function enforceDeviceTrust($pdo, string $userType, int $userId, ?string $phone, string $restaurantId): ?array {
     $phoneDigits = preg_replace('/\D/', '', (string)$phone);
@@ -167,11 +99,24 @@ function enforceDeviceTrust($pdo, string $userType, int $userId, ?string $phone,
         return null;
     }
 
-    $otpCode = isset($_POST['otp_code']) ? trim($_POST['otp_code']) : '';
     $maskedPhone = maskPhoneForDisplay($phoneDigits);
+    $lockoutScope = "device_otp_{$userType}_{$userId}";
+
+    $lockedFor = otpAccountLockoutRemaining($lockoutScope);
+    if ($lockedFor !== null) {
+        return [
+            'success' => false,
+            'requires_otp' => true,
+            'locked' => true,
+            'message' => 'Too many incorrect codes. Please try again in ' . ceil($lockedFor / 60) . ' minute(s).',
+            'masked_phone' => $maskedPhone,
+        ];
+    }
+
+    $otpCode = isset($_POST['otp_code']) ? trim($_POST['otp_code']) : '';
 
     if ($otpCode === '') {
-        $result = issueDeviceOtp($pdo, $restaurantId, $phoneDigits);
+        $result = issuePurposeOtp($pdo, $restaurantId, $phoneDigits, DEVICE_OTP_PURPOSE, DEVICE_OTP_RESEND_COOLDOWN_SECONDS, DEVICE_OTP_EXPIRY_SECONDS);
         if (!$result['sent']) {
             return [
                 'success' => false,
@@ -188,8 +133,19 @@ function enforceDeviceTrust($pdo, string $userType, int $userId, ?string $phone,
         ];
     }
 
-    $verify = verifyDeviceOtp($pdo, $restaurantId, $phoneDigits, $otpCode);
+    $verify = verifyPurposeOtpCode($pdo, $restaurantId, $phoneDigits, DEVICE_OTP_PURPOSE, $otpCode, DEVICE_OTP_MAX_ATTEMPTS_PER_CODE);
     if (!$verify['success']) {
+        trackOtpAccountFailure($lockoutScope, DEVICE_OTP_LOCKOUT_MAX_ATTEMPTS, DEVICE_OTP_LOCKOUT_WINDOW_SECONDS, DEVICE_OTP_LOCKOUT_SECONDS);
+        $justLocked = otpAccountLockoutRemaining($lockoutScope);
+        if ($justLocked !== null) {
+            return [
+                'success' => false,
+                'requires_otp' => true,
+                'locked' => true,
+                'message' => 'Too many incorrect codes. Please try again in ' . ceil($justLocked / 60) . ' minute(s).',
+                'masked_phone' => $maskedPhone,
+            ];
+        }
         return [
             'success' => false,
             'requires_otp' => true,
@@ -198,6 +154,7 @@ function enforceDeviceTrust($pdo, string $userType, int $userId, ?string $phone,
         ];
     }
 
+    clearOtpAccountFailures($lockoutScope);
     trustDevice($pdo, $userType, $userId, $deviceId);
     return null;
 }

@@ -99,9 +99,11 @@ try {
                 applyAuthRateLimit('signup');
                 break;
             case 'forgotPassword':
+            case 'forgotPasswordOtp':
                 applyAuthRateLimit('forgotPwd');
                 break;
             case 'resetPassword':
+            case 'resetPasswordOtp':
                 applyAuthRateLimit('resetPwd');
                 break;
         }
@@ -159,11 +161,19 @@ try {
         case 'forgotPassword':
             handleForgotPassword();
             break;
-            
+
         case 'resetPassword':
             handleResetPassword();
             break;
-            
+
+        case 'forgotPasswordOtp':
+            handleForgotPasswordOtp();
+            break;
+
+        case 'resetPasswordOtp':
+            handleResetPasswordOtp();
+            break;
+
         default:
             throw new Exception('Invalid action');
     }
@@ -2064,5 +2074,125 @@ function handleResetPassword() {
         // For other database errors, provide more helpful message
         throw new Exception('Database error: ' . $e->getMessage());
     }
+}
+
+// ── WhatsApp-OTP password reset (alternative to the email-link flow above) ──
+// Looks the account up by email (same as handleForgotPassword()) but sends
+// the code to the phone already on file and resets the password right in
+// the same request, with no email round-trip. Errors are echoed directly
+// rather than thrown — the top-level catch above rewrites any message
+// containing "password"/"invalid"/"username"/"login" into a generic
+// "Incorrect username or password", which would otherwise mangle these.
+
+function handleForgotPasswordOtp() {
+    if (function_exists('getConnection')) {
+        $pdo = getConnection();
+    } else {
+        global $pdo;
+        if (!isset($pdo) || !($pdo instanceof PDO)) {
+            throw new Exception('Database connection not available');
+        }
+    }
+
+    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'Please enter a valid email address']);
+        return;
+    }
+
+    $stmt = $pdo->prepare("SELECT id, phone, restaurant_id FROM users WHERE email = ? AND is_active = 1 LIMIT 1");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Same anti-enumeration shape as handleForgotPassword(): always the
+    // same generic message, whether or not the account (or a phone on it)
+    // exists, and regardless of whether a fresh code was actually sent or
+    // one was already in flight (resend cooldown).
+    $generic = 'If this account has a phone number on file, a WhatsApp verification code has been sent to it.';
+
+    if ($user && !empty($user['phone'])) {
+        $phoneDigits = preg_replace('/\D/', '', $user['phone']);
+        issuePurposeOtp($pdo, $user['restaurant_id'], $phoneDigits, 'password_reset', 60, 300);
+    }
+
+    echo json_encode(['success' => true, 'message' => $generic]);
+}
+
+function handleResetPasswordOtp() {
+    if (function_exists('getConnection')) {
+        $pdo = getConnection();
+    } else {
+        global $pdo;
+        if (!isset($pdo) || !($pdo instanceof PDO)) {
+            throw new Exception('Database connection not available');
+        }
+    }
+
+    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+    $code = isset($_POST['otp_code']) ? trim($_POST['otp_code']) : '';
+    $newPassword = isset($_POST['newPassword']) ? $_POST['newPassword'] : '';
+    $confirmPassword = isset($_POST['confirmPassword']) ? $_POST['confirmPassword'] : '';
+
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'Please enter a valid email address']);
+        return;
+    }
+    if (empty($code)) {
+        echo json_encode(['success' => false, 'message' => 'Please enter the verification code']);
+        return;
+    }
+    if (strlen($newPassword) < 6) {
+        echo json_encode(['success' => false, 'message' => 'New password must be at least 6 characters long']);
+        return;
+    }
+    if ($newPassword !== $confirmPassword) {
+        echo json_encode(['success' => false, 'message' => 'New passwords do not match']);
+        return;
+    }
+
+    $stmt = $pdo->prepare("SELECT id, phone, restaurant_id FROM users WHERE email = ? AND is_active = 1 LIMIT 1");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user || empty($user['phone'])) {
+        // Deliberately the same shape as an actually-wrong code — this
+        // endpoint must not double as an email-existence prober.
+        echo json_encode(['success' => false, 'message' => 'That code is incorrect or has expired.']);
+        return;
+    }
+
+    // Account-level lockout: 5 wrong codes within 15 minutes locks this
+    // account out of the OTP-reset path for 30 minutes, independent of the
+    // per-code 5-attempt cap inside verifyPurposeOtpCode() (which only
+    // invalidates that one code — requesting a new one resets it).
+    $lockoutScope = "pwreset_otp_admin_{$user['id']}";
+    $lockedFor = otpAccountLockoutRemaining($lockoutScope);
+    if ($lockedFor !== null) {
+        echo json_encode(['success' => false, 'message' => 'Too many incorrect codes. Please try again in ' . ceil($lockedFor / 60) . ' minute(s).']);
+        return;
+    }
+
+    $phoneDigits = preg_replace('/\D/', '', $user['phone']);
+    $verify = verifyPurposeOtpCode($pdo, $user['restaurant_id'], $phoneDigits, 'password_reset', $code, 5);
+    if (!$verify['success']) {
+        trackOtpAccountFailure($lockoutScope, 5, 900, 1800);
+        echo json_encode(['success' => false, 'message' => $verify['message']]);
+        return;
+    }
+
+    clearOtpAccountFailures($lockoutScope);
+
+    $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+    $pdo->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?")->execute([$hashedPassword, $user['id']]);
+
+    // Invalidate any pending email-link reset tokens too, since the
+    // password just changed via this path.
+    try {
+        $pdo->prepare("UPDATE password_reset_tokens SET used = TRUE WHERE user_id = ? AND used = FALSE")->execute([$user['id']]);
+    } catch (Exception $e) {
+        // table may not exist yet — harmless
+    }
+
+    echo json_encode(['success' => true, 'message' => 'Password reset successfully. You can now log in with your new password.']);
 }
 ?>

@@ -38,6 +38,8 @@ try {
             case 'signup': applyAuthRateLimit('signup'); break;
             case 'forgotPassword': applyAuthRateLimit('forgotPwd'); break;
             case 'resetPassword': applyAuthRateLimit('resetPwd'); break;
+            case 'forgotPasswordOtp': applyAuthRateLimit('forgotPwd'); break;
+            case 'resetPasswordOtp': applyAuthRateLimit('resetPwd'); break;
         }
     }
 
@@ -50,6 +52,8 @@ try {
         case 'logout': handleCustomerLogout($pdo); break;
         case 'forgotPassword': handleCustomerForgotPassword($pdo); break;
         case 'resetPassword': handleCustomerResetPassword($pdo); break;
+        case 'forgotPasswordOtp': handleCustomerForgotPasswordOtp($pdo); break;
+        case 'resetPasswordOtp': handleCustomerResetPasswordOtp($pdo); break;
         default: throw new Exception('Unknown action');
     }
 } catch (Exception $e) {
@@ -324,6 +328,93 @@ function handleCustomerResetPassword($pdo) {
 
     // Reset any remember-me sessions so a stolen device is logged out on password change.
     $pdo->prepare("DELETE FROM customer_remember_tokens WHERE customer_id = ?")->execute([$tokenData['customer_id']]);
+
+    echo json_encode(['success' => true, 'message' => 'Password reset successfully. You can now log in with your new password.']);
+}
+
+// ── WhatsApp-OTP password reset (alternative to the email-link flow above) ──
+// Looks the account up by email (same as handleCustomerForgotPassword()) but
+// sends the code to the phone already on file (verified at signup) and
+// resets the password in the same request, with no email round-trip.
+
+function handleCustomerForgotPasswordOtp($pdo) {
+    $restaurantId = requireRestaurantId();
+    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new Exception('Please enter a valid email address');
+    }
+
+    $stmt = $pdo->prepare("SELECT id, phone FROM customers WHERE restaurant_id = ? AND email = ? AND password_hash IS NOT NULL LIMIT 1");
+    $stmt->execute([$restaurantId, $email]);
+    $customer = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Always the same generic message (same anti-enumeration shape as
+    // handleCustomerForgotPassword()), whether or not the account/phone
+    // exists or a code was already in flight.
+    $generic = 'If an account exists for that email, a WhatsApp verification code has been sent to the phone on file.';
+
+    if ($customer && !empty($customer['phone'])) {
+        $phoneDigits = preg_replace('/\D/', '', $customer['phone']);
+        issuePurposeOtp($pdo, $restaurantId, $phoneDigits, 'password_reset', 60, 300);
+    }
+
+    echo json_encode(['success' => true, 'message' => $generic]);
+}
+
+function handleCustomerResetPasswordOtp($pdo) {
+    $restaurantId = requireRestaurantId();
+    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+    $code = isset($_POST['otp_code']) ? trim($_POST['otp_code']) : '';
+    $newPassword = isset($_POST['newPassword']) ? $_POST['newPassword'] : '';
+    $confirmPassword = isset($_POST['confirmPassword']) ? $_POST['confirmPassword'] : '';
+
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new Exception('Please enter a valid email address');
+    if (empty($code)) throw new Exception('Please enter the verification code');
+    if (strlen($newPassword) < 6) throw new Exception('New password must be at least 6 characters long');
+    if ($newPassword !== $confirmPassword) throw new Exception('New passwords do not match');
+
+    $stmt = $pdo->prepare("SELECT id, phone FROM customers WHERE restaurant_id = ? AND email = ? AND password_hash IS NOT NULL LIMIT 1");
+    $stmt->execute([$restaurantId, $email]);
+    $customer = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$customer || empty($customer['phone'])) {
+        // Deliberately the same shape as an actually-wrong code — this
+        // endpoint must not double as an email-existence prober.
+        throw new Exception('That code is incorrect or has expired.');
+    }
+
+    // Account-level lockout: 5 wrong codes within 15 minutes locks this
+    // account out of the OTP-reset path for 30 minutes, independent of the
+    // per-code 5-attempt cap inside verifyPurposeOtpCode().
+    $lockoutScope = "pwreset_otp_customer_{$customer['id']}";
+    $lockedFor = otpAccountLockoutRemaining($lockoutScope);
+    if ($lockedFor !== null) {
+        throw new Exception('Too many incorrect codes. Please try again in ' . ceil($lockedFor / 60) . ' minute(s).');
+    }
+
+    $phoneDigits = preg_replace('/\D/', '', $customer['phone']);
+    $verify = verifyPurposeOtpCode($pdo, $restaurantId, $phoneDigits, 'password_reset', $code, 5);
+    if (!$verify['success']) {
+        trackOtpAccountFailure($lockoutScope, 5, 900, 1800);
+        throw new Exception($verify['message']);
+    }
+
+    clearOtpAccountFailures($lockoutScope);
+
+    $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+    $pdo->prepare("UPDATE customers SET password_hash = ?, updated_at = NOW() WHERE id = ?")->execute([$hash, $customer['id']]);
+
+    // Reset any remember-me sessions so a stolen device is logged out on password change.
+    $pdo->prepare("DELETE FROM customer_remember_tokens WHERE customer_id = ?")->execute([$customer['id']]);
+
+    // Invalidate any pending email-link reset tokens too, since the
+    // password just changed via this path.
+    try {
+        $pdo->prepare("UPDATE customer_password_reset_tokens SET used = TRUE WHERE customer_id = ? AND used = FALSE")->execute([$customer['id']]);
+    } catch (Exception $e) {
+        // table may not exist yet — harmless
+    }
 
     echo json_encode(['success' => true, 'message' => 'Password reset successfully. You can now log in with your new password.']);
 }

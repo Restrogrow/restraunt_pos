@@ -661,7 +661,22 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
 });
 
 /* ── Forgot Password ── */
+// Two independent reset paths share this modal: the original email-link
+// flow, and a WhatsApp-OTP flow that resets the password right here (no
+// email round-trip, send code -> enter code + new password). Rebuilt via
+// innerHTML like the rest of this modal, so each step is its own render
+// function rather than toggling hidden fields.
+var forgotResendTimer = null;
+
 function openForgotModal() {
+  renderForgotEmailStep();
+}
+function closeForgotModal() {
+  document.getElementById('forgotModalContainer').innerHTML = '';
+  if (forgotResendTimer) { clearInterval(forgotResendTimer); forgotResendTimer = null; }
+}
+
+function renderForgotEmailStep() {
   var container = document.getElementById('forgotModalContainer');
   container.innerHTML =
     '<div class="modal-overlay" onclick="if(event.target===this)closeForgotModal()">' +
@@ -671,13 +686,67 @@ function openForgotModal() {
     '<p>Enter the email you signed up with and we\'ll send you a reset link.</p>' +
     '<div class="form-group"><input type="email" id="forgotEmail" placeholder="your@email.com"></div>' +
     '<div class="auth-form-error" id="forgotError"></div>' +
-    '<button type="button" class="btn-auth-submit" id="forgotSubmitBtn" onclick="submitForgotPassword()"><i class="fa fa-paper-plane"></i> Send Reset Link</button>' +
+    '<button type="button" class="btn-auth-submit" id="forgotSubmitBtn" onclick="submitForgotEmailLink()"><i class="fa fa-paper-plane"></i> Send Reset Link</button>' +
+    '<div style="text-align:center;margin-top:14px;"><a href="#" onclick="event.preventDefault();renderForgotOtpStep1();" style="color:#d63031;font-weight:600;font-size:12px;text-decoration:none;">Reset via WhatsApp instead</a></div>' +
     '</div></div>';
 }
-function closeForgotModal() {
-  document.getElementById('forgotModalContainer').innerHTML = '';
+
+function renderForgotOtpStep1(prefillEmail) {
+  var container = document.getElementById('forgotModalContainer');
+  container.innerHTML =
+    '<div class="modal-overlay" onclick="if(event.target===this)closeForgotModal()">' +
+    '<div class="modal-box">' +
+    '<button class="modal-close" onclick="closeForgotModal()">&times;</button>' +
+    '<h3>Reset via WhatsApp</h3>' +
+    '<p>Enter the email on your account — we\'ll send a verification code via WhatsApp to the phone on file.</p>' +
+    '<div class="form-group"><input type="email" id="forgotEmail" placeholder="your@email.com" value="' + (prefillEmail ? prefillEmail.replace(/"/g, '&quot;') : '') + '"></div>' +
+    '<div class="auth-form-error" id="forgotError"></div>' +
+    '<button type="button" class="btn-auth-submit" id="forgotSubmitBtn" onclick="submitForgotOtpSend()"><i class="fa fa-shield-halved"></i> Send Code</button>' +
+    '<div style="text-align:center;margin-top:14px;"><a href="#" onclick="event.preventDefault();renderForgotEmailStep();" style="color:#d63031;font-weight:600;font-size:12px;text-decoration:none;">Reset via email link instead</a></div>' +
+    '</div></div>';
 }
-function submitForgotPassword() {
+
+function renderForgotOtpStep2(email, message) {
+  var container = document.getElementById('forgotModalContainer');
+  container.innerHTML =
+    '<div class="modal-overlay" onclick="if(event.target===this)closeForgotModal()">' +
+    '<div class="modal-box">' +
+    '<button class="modal-close" onclick="closeForgotModal()">&times;</button>' +
+    '<h3>Enter verification code</h3>' +
+    '<p>' + (message || 'A code was sent via WhatsApp.') + '</p>' +
+    '<div class="form-group"><input type="text" id="forgotOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code"></div>' +
+    '<div class="form-group"><input type="password" id="forgotNewPassword" placeholder="New password (min 6 characters)"></div>' +
+    '<div class="form-group"><input type="password" id="forgotConfirmPassword" placeholder="Confirm new password"></div>' +
+    '<div class="auth-form-error" id="forgotError"></div>' +
+    '<button type="button" class="btn-auth-submit" id="forgotSubmitBtn" onclick="submitForgotOtpVerify(\'' + email.replace(/'/g, "\\'") + '\')"><i class="fa fa-shield-halved"></i> Verify &amp; Reset Password</button>' +
+    '<div style="text-align:center;margin-top:14px;"><a href="#" id="forgotOtpResend" onclick="event.preventDefault();resendForgotOtp(\'' + email.replace(/'/g, "\\'") + '\');" style="color:#d63031;font-weight:600;font-size:12px;text-decoration:none;">Resend code</a></div>' +
+    '</div></div>';
+  startForgotResendCooldown(60);
+}
+
+function startForgotResendCooldown(seconds) {
+  var resend = document.getElementById('forgotOtpResend');
+  if (!resend) return;
+  var remaining = seconds;
+  resend.style.pointerEvents = 'none';
+  resend.textContent = 'Resend code (' + remaining + 's)';
+  if (forgotResendTimer) clearInterval(forgotResendTimer);
+  forgotResendTimer = setInterval(function() {
+    remaining -= 1;
+    var el = document.getElementById('forgotOtpResend');
+    if (!el) { clearInterval(forgotResendTimer); forgotResendTimer = null; return; }
+    if (remaining <= 0) {
+      clearInterval(forgotResendTimer);
+      forgotResendTimer = null;
+      el.style.pointerEvents = 'auto';
+      el.textContent = 'Resend code';
+    } else {
+      el.textContent = 'Resend code (' + remaining + 's)';
+    }
+  }, 1000);
+}
+
+function submitForgotEmailLink() {
   var email = document.getElementById('forgotEmail').value.trim();
   var errEl = document.getElementById('forgotError');
   errEl.style.display = 'none';
@@ -712,6 +781,93 @@ function submitForgotPassword() {
       errEl.style.display = 'block';
       btn.disabled = false;
       btn.innerHTML = '<i class="fa fa-paper-plane"></i> Send Reset Link';
+    });
+}
+
+function submitForgotOtpSend() {
+  var email = document.getElementById('forgotEmail').value.trim();
+  var errEl = document.getElementById('forgotError');
+  errEl.style.display = 'none';
+  if (!email) { errEl.textContent = 'Please enter your email'; errEl.style.display = 'block'; return; }
+
+  var btn = document.getElementById('forgotSubmitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Sending...';
+
+  var fd = new FormData();
+  fd.append('action', 'forgotPasswordOtp');
+  fd.append('restaurant_id', window.restaurantId);
+  fd.append('email', email);
+
+  fetch('customer_auth.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      renderForgotOtpStep2(email, res.message || 'If an account exists for that email, a code has been sent via WhatsApp.');
+    })
+    .catch(function() {
+      errEl.textContent = 'Network error. Please try again.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-shield-halved"></i> Send Code';
+    });
+}
+
+function resendForgotOtp(email) {
+  var fd = new FormData();
+  fd.append('action', 'forgotPasswordOtp');
+  fd.append('restaurant_id', window.restaurantId);
+  fd.append('email', email);
+  fetch('customer_auth.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      startForgotResendCooldown(60);
+    })
+    .catch(function() {});
+}
+
+function submitForgotOtpVerify(email) {
+  var code = document.getElementById('forgotOtpCode').value.trim();
+  var newPassword = document.getElementById('forgotNewPassword').value;
+  var confirmPassword = document.getElementById('forgotConfirmPassword').value;
+  var errEl = document.getElementById('forgotError');
+  errEl.style.display = 'none';
+
+  if (!code) { errEl.textContent = 'Please enter the verification code'; errEl.style.display = 'block'; return; }
+  if (newPassword.length < 6) { errEl.textContent = 'New password must be at least 6 characters long'; errEl.style.display = 'block'; return; }
+  if (newPassword !== confirmPassword) { errEl.textContent = 'New passwords do not match'; errEl.style.display = 'block'; return; }
+
+  var btn = document.getElementById('forgotSubmitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Verifying...';
+
+  var fd = new FormData();
+  fd.append('action', 'resetPasswordOtp');
+  fd.append('restaurant_id', window.restaurantId);
+  fd.append('email', email);
+  fd.append('otp_code', code);
+  fd.append('newPassword', newPassword);
+  fd.append('confirmPassword', confirmPassword);
+
+  fetch('customer_auth.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.success) {
+        document.querySelector('.modal-box').innerHTML =
+          '<button class="modal-close" onclick="closeForgotModal()">&times;</button>' +
+          '<h3>Password reset</h3><p>' + res.message + '</p>' +
+          '<button type="button" class="btn-auth-submit" onclick="closeForgotModal()"><i class="fa fa-check"></i> Done</button>';
+      } else {
+        errEl.textContent = res.message || 'Invalid or expired code';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify &amp; Reset Password';
+      }
+    })
+    .catch(function() {
+      errEl.textContent = 'Network error. Please try again.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify &amp; Reset Password';
     });
 }
 </script>

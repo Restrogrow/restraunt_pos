@@ -177,3 +177,146 @@ function normalizePhoneForWhatsapp(string $phone): string {
     $defaultCc = env('REPEATGROW_DEFAULT_COUNTRY_CODE', '91');
     return '+' . $defaultCc . $digits;
 }
+
+/**
+ * Generic send-OTP for any purpose/restaurant/phone combo, called directly
+ * from PHP (no HTTP round trip) by flows that gate server-side — device
+ * login verification, password-reset verification. otp.php's own
+ * send/verify stays the public endpoint for signup flows; this is the same
+ * mechanics, parameterized. Returns ['sent' => bool, 'wait' => int|null].
+ */
+function issuePurposeOtp($pdo, string $restaurantId, string $phone, string $purpose, int $cooldownSeconds = 60, int $expirySeconds = 300): array {
+    ensureWhatsappOtpSchema($pdo);
+
+    $stmt = $pdo->prepare("
+        SELECT created_at FROM whatsapp_otp_codes
+        WHERE restaurant_id = ? AND phone = ? AND purpose = ?
+        ORDER BY created_at DESC LIMIT 1
+    ");
+    $stmt->execute([$restaurantId, $phone, $purpose]);
+    $last = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($last) {
+        $secondsSince = time() - strtotime($last['created_at']);
+        if ($secondsSince < $cooldownSeconds) {
+            return ['sent' => false, 'wait' => $cooldownSeconds - $secondsSince];
+        }
+    }
+
+    $code = (string) random_int(100000, 999999);
+    $codeHash = hash('sha256', $code);
+    $expiresAt = date('Y-m-d H:i:s', time() + $expirySeconds);
+
+    $pdo->prepare("
+        INSERT INTO whatsapp_otp_codes (restaurant_id, phone, purpose, code_hash, expires_at)
+        VALUES (?, ?, ?, ?, ?)
+    ")->execute([$restaurantId, $phone, $purpose, $codeHash, $expiresAt]);
+
+    sendWhatsappOtpViaRepeatGrow($phone, $code);
+
+    return ['sent' => true, 'wait' => null];
+}
+
+/**
+ * Generic verify-OTP for any purpose/restaurant/phone combo. $maxAttempts
+ * caps wrong tries against this one code — requesting a new code resets
+ * this count, which is why callers that need a harder account-level cap
+ * should also call trackOtpAccountFailure() below. Returns
+ * ['success' => bool, 'message' => string].
+ */
+function verifyPurposeOtpCode($pdo, string $restaurantId, string $phone, string $purpose, string $code, int $maxAttempts = 5): array {
+    ensureWhatsappOtpSchema($pdo);
+
+    $stmt = $pdo->prepare("
+        SELECT id, code_hash, expires_at, attempts
+        FROM whatsapp_otp_codes
+        WHERE restaurant_id = ? AND phone = ? AND purpose = ? AND consumed_at IS NULL
+        ORDER BY created_at DESC LIMIT 1
+    ");
+    $stmt->execute([$restaurantId, $phone, $purpose]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        return ['success' => false, 'message' => 'No active code found. Please request a new one.'];
+    }
+    if (strtotime($row['expires_at']) < time()) {
+        return ['success' => false, 'message' => 'This code has expired. Please request a new one.'];
+    }
+    if ((int)$row['attempts'] >= $maxAttempts) {
+        return ['success' => false, 'message' => 'Too many incorrect attempts. Please request a new code.'];
+    }
+    if (!hash_equals($row['code_hash'], hash('sha256', $code))) {
+        $pdo->prepare("UPDATE whatsapp_otp_codes SET attempts = attempts + 1 WHERE id = ?")->execute([$row['id']]);
+        $remaining = $maxAttempts - ((int)$row['attempts'] + 1);
+        return [
+            'success' => false,
+            'message' => $remaining > 0 ? "Invalid code. {$remaining} attempt(s) remaining." : 'Invalid code. Please request a new one.',
+        ];
+    }
+
+    $pdo->prepare("UPDATE whatsapp_otp_codes SET consumed_at = NOW() WHERE id = ?")->execute([$row['id']]);
+    return ['success' => true, 'message' => 'Code verified.'];
+}
+
+/**
+ * Account-level OTP lockout, independent of the per-code attempt cap in
+ * verifyPurposeOtpCode() (requesting a new code does NOT reset this one).
+ * After $maxAttempts wrong codes within $windowSeconds, the scope is
+ * locked for $lockoutSeconds — same shape as the password-brute-force
+ * lockout in rate_limit.php, kept separate since OTP flows (device login,
+ * password reset) want their own threshold.
+ *
+ * $scopeKey must uniquely identify the account+flow being protected, e.g.
+ * "device_otp_admin_123" or "pwreset_otp_customer_45" — never just the
+ * phone number, since that's attacker-controlled input.
+ */
+function otpAccountLockoutFileBase(string $scopeKey): string {
+    $dir = __DIR__ . '/../tmp/rate_limits';
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+    $safe = preg_replace('/[^a-zA-Z0-9_-]/', '_', $scopeKey);
+    return $dir . '/' . $safe;
+}
+
+/** Seconds remaining if locked, or null if not (and clears an expired lock file). */
+function otpAccountLockoutRemaining(string $scopeKey): ?int {
+    $lockFile = otpAccountLockoutFileBase($scopeKey) . '_lockout.json';
+    if (!file_exists($lockFile)) return null;
+    $data = json_decode(file_get_contents($lockFile), true);
+    if (!$data || !isset($data['locked_until'])) return null;
+    $remaining = $data['locked_until'] - time();
+    if ($remaining <= 0) {
+        @unlink($lockFile);
+        return null;
+    }
+    return $remaining;
+}
+
+function trackOtpAccountFailure(string $scopeKey, int $maxAttempts = 5, int $windowSeconds = 900, int $lockoutSeconds = 1800): void {
+    $base = otpAccountLockoutFileBase($scopeKey);
+    $failFile = $base . '_failed.json';
+    $now = time();
+
+    $data = ['attempts' => []];
+    if (file_exists($failFile)) {
+        $existing = json_decode(file_get_contents($failFile), true);
+        if ($existing && isset($existing['attempts'])) $data = $existing;
+    }
+    $data['attempts'] = array_values(array_filter($data['attempts'], function ($t) use ($now, $windowSeconds) {
+        return ($now - $t) < $windowSeconds;
+    }));
+    $data['attempts'][] = $now;
+
+    if (count($data['attempts']) >= $maxAttempts) {
+        file_put_contents($base . '_lockout.json', json_encode(['locked_until' => $now + $lockoutSeconds]));
+        file_put_contents($failFile, json_encode(['attempts' => []]));
+    } else {
+        file_put_contents($failFile, json_encode($data));
+    }
+}
+
+function clearOtpAccountFailures(string $scopeKey): void {
+    $base = otpAccountLockoutFileBase($scopeKey);
+    @unlink($base . '_failed.json');
+    @unlink($base . '_lockout.json');
+}
