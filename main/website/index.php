@@ -596,7 +596,9 @@ body {
   line-height: 1.2;
 }
 .bsl-rate-pill i { font-size: 10px; }
-.bsl-body { display: flex; flex-direction: column; flex: 1; padding: 16px 2px 0; }
+/* Spare height (a one-line name next to a two-line one) is shared evenly
+   between name, veg line, offer line, price and ADD instead of one gap */
+.bsl-body { display: flex; flex-direction: column; justify-content: space-between; flex: 1; padding: 16px 2px 0; }
 .bsl-name {
   font-size: 16.5px;
   font-weight: 700;
@@ -624,7 +626,7 @@ body {
 .bsl-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--bsl-badge); min-width: 0; white-space: nowrap; overflow: hidden; }
 .bsl-note i { font-size: 11px; }
 .bsl-note span { overflow: hidden; text-overflow: ellipsis; }
-.bsl-foot { margin-top: auto; padding-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.bsl-foot { padding-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .bsl-price { display: flex; align-items: center; gap: 7px; white-space: nowrap; line-height: 1.15; }
 .bsl-price s { font-size: 12.5px; font-weight: 500; color: #9ca3af; }
 /* Current price in a coloured box (Website Appearance > Bestsellers: price colour/style) */
