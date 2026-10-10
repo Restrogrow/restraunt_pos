@@ -179,6 +179,8 @@ function createDemo(PDO $conn, string $assetDir, string $mainUrl, string $credit
         // Header photo: background_theme must be an absolute http(s) URL
         $conn->prepare('INSERT INTO website_settings (restaurant_id, background_theme) VALUES (?, ?) ON DUPLICATE KEY UPDATE background_theme = VALUES(background_theme)')
             ->execute([DEMO_RID, $mainUrl . '/assets/demo_restaurant/hero.jpg']);
+        // Categories in a bar across the top, so dish cards are half-screen wide
+        try { $conn->prepare('UPDATE website_settings SET menu_nav_position = ? WHERE restaurant_id = ?')->execute(['top', DEMO_RID]); } catch (PDOException $e) {}
 
         $conn->commit();
     } catch (Throwable $e) {
