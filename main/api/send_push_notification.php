@@ -8,6 +8,12 @@ require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../config/env_loader.php';
 
+if (!is_file(__DIR__ . '/../../vendor/autoload.php')) {
+    header('Content-Type: application/json; charset=UTF-8');
+    http_response_code(503);
+    echo json_encode(['success' => false, 'message' => 'Push notifications are not set up on this server (WebPush library missing).']);
+    exit;
+}
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 use Minishlink\WebPush\WebPush;

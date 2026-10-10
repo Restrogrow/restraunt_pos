@@ -20,6 +20,15 @@ function ensureGrowthSchema(PDO $conn): void {
     if ($checked) {
         return;
     }
+    // Any DDL below (even an ALTER that fails with "duplicate column")
+    // implicitly COMMITS an open MySQL transaction — e.g. the order-status
+    // transaction that awards loyalty points on Completed, which then failed
+    // with "There is no active transaction". Skip the checks inside a
+    // transaction; the next non-transactional call runs them. Callers inside
+    // transactions (order_state_machine.php) already tolerate failures.
+    if ($conn->inTransaction()) {
+        return;
+    }
     $checked = true;
 
     try {

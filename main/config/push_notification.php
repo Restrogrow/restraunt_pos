@@ -9,8 +9,13 @@
 
 require_once __DIR__ . '/env_loader.php';
 
-// WebPush classes (loaded via require autoload below)
-require_once __DIR__ . '/../../vendor/autoload.php';
+// WebPush classes (Composer). A missing vendor/ (e.g. a fresh local copy
+// without `composer install`) must not crash order processing — this file
+// is required mid-request when an order changes status — so push sending is
+// just skipped (see deliverPushNotifications) when the library is absent.
+if (is_file(__DIR__ . '/../../vendor/autoload.php')) {
+    require_once __DIR__ . '/../../vendor/autoload.php';
+}
 
 use Minishlink\WebPush\WebPush;
 use Minishlink\WebPush\Subscription;
@@ -102,6 +107,10 @@ function notifyWaitersOrderReady(PDO $conn, string $restaurantId, int $orderId) 
 function deliverPushNotifications($conn, $subscriptions, $title, $body, $url, $orderId) {
     if (empty($subscriptions)) {
         return ['sent' => 0, 'message' => 'No subscribers'];
+    }
+    if (!class_exists(WebPush::class)) {
+        error_log('push_notification.php: WebPush library not installed (run composer install) — push skipped');
+        return ['sent' => 0, 'error' => 'WebPush library not installed'];
     }
 
     $vapidPublicKey = env('VAPID_PUBLIC_KEY', '');
