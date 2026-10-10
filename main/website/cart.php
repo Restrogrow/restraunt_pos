@@ -2290,7 +2290,7 @@ function showCheckoutModal(cartData) {
   html += '<div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">';
   // Only show order types enabled in backend settings
   var allOtTypes = [
-    { key: 'delivery', label: '🚚 Delivery', val: 'Delivery' },
+    { key: 'delivery', label: '🛵 Delivery', val: 'Delivery' },
     { key: 'takeaway', label: '🥡 Takeaway', val: 'Takeaway' },
     { key: 'dinein', label: '🍽️ Dine In', val: 'Dine-in' }
   ];

@@ -1246,7 +1246,7 @@ window.socialLinks = {
   </div>
 
   <div class="order-tabs" id="menuSection">
-    <?php if ($enable_delivery): ?><button class="order-tab <?php echo $enable_delivery ? 'active' : ''; ?>" onclick="switchOrder(this, 'delivery')">🚚 Delivery</button><?php endif; ?>
+    <?php if ($enable_delivery): ?><button class="order-tab <?php echo $enable_delivery ? 'active' : ''; ?>" onclick="switchOrder(this, 'delivery')">🛵 Delivery</button><?php endif; ?>
     <?php if ($enable_takeaway): ?><button class="order-tab <?php echo !$enable_delivery && $enable_takeaway ? 'active' : ''; ?>" onclick="switchOrder(this, 'takeaway')">🥡 Take Away</button><?php endif; ?>
     <?php if ($enable_dinein): ?><button class="order-tab <?php echo !$enable_delivery && !$enable_takeaway && $enable_dinein ? 'active' : ''; ?>" onclick="switchOrder(this, 'dinein')">🍽️ Dine In</button><?php endif; ?>
   </div>
