@@ -301,7 +301,7 @@ body {
 .card-img-wrap img {
   width: 100%;
   height: auto;
-  aspect-ratio: 1 / 1; /* always square, whatever the card width */
+  aspect-ratio: 9 / 20; /* tall portrait photo (9:20), whatever the card width */
   object-fit: cover;
   display: block;
 }
