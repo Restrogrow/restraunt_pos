@@ -13746,6 +13746,24 @@ async function initWebsiteThemeEditor() {
         if (radio) radio.checked = active;
       });
     }
+    // Menu page card design (Classic / Modern)
+    function applyMenuCardStyleUI(val) {
+      document.querySelectorAll('.menu-card-style-opt').forEach(function(el) {
+        var active = el.getAttribute('data-value') === val;
+        el.style.borderColor = active ? '#7c3aed' : '#e5e7eb';
+        var icon = el.querySelector('.material-symbols-rounded');
+        if (icon) icon.style.color = active ? '#7c3aed' : '#6b7280';
+        var radio = el.querySelector('input[name="menuCardStyle"]');
+        if (radio) radio.checked = active;
+      });
+    }
+    function currentMenuCardStyleVal() {
+      var r = document.querySelector('input[name="menuCardStyle"]:checked');
+      return r ? r.value : 'classic';
+    }
+    document.querySelectorAll('.menu-card-style-opt').forEach(function(el) {
+      el.addEventListener('click', function() { applyMenuCardStyleUI(el.getAttribute('data-value')); });
+    });
     function currentMenuNavPositionVal() {
       var r = document.querySelector('input[name="menuNavPosition"]:checked');
       return r ? r.value : 'left';
@@ -14635,6 +14653,7 @@ if (!window.customBgThemes) {
       renderThemePresetGrid(data.settings.theme_preset || '');
       applyLayoutHeaderStyleUI(data.settings.layout_style || 'grid', data.settings.header_style || 'hero');
       applyMenuNavPositionUI(data.settings.menu_nav_position || 'left');
+      applyMenuCardStyleUI(data.settings.menu_card_style || 'classic');
 
       // Set background theme URL
       const bgUrl = data.settings.background_theme || '';
@@ -14850,6 +14869,7 @@ if (!window.customBgThemes) {
             layout_style: currentLayoutStyleVal(),
             header_style: currentHeaderStyleVal(),
             menu_nav_position: currentMenuNavPositionVal(),
+            menu_card_style: currentMenuCardStyleVal(),
             bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined
           };
 

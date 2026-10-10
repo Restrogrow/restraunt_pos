@@ -852,9 +852,43 @@ body {
   color: #fff;
   border-color: transparent;
 }
+/* ── Modern menu card (Website Appearance > Menu Card Design: Modern) ── */
+.product-grid .card.mc-card { flex-direction: column; border: 0; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.product-grid .card.mc-card .card-img-wrap { width: 100%; }
+.product-grid .card.mc-card .card-img-wrap img { width: 100%; height: auto; min-height: 0; aspect-ratio: 16 / 9; }
+.mc-card .veg-dot { top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 5px; }
+.mc-card .veg-dot img, .mc-card .veg-dot svg { width: 16px; height: 16px; object-fit: contain; }
+.mc-fav { position: absolute; top: 6px; right: 6px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.35); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; }
+.mc-fav.on { background: #fff; color: #ef4444; }
+.mc-card .img-chip-save { background: var(--primary-red, #e53935); color: #fff; }
+.mc-card .card-body { padding: 10px 12px 12px; gap: 4px; }
+.mc-name { font-size: 15px; font-weight: 700; color: #111827; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.mc-desc { font-size: 11.5px; color: #6b7280; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.mc-price { margin-top: auto; padding-top: 4px; display: flex; align-items: baseline; gap: 6px; }
+.mc-now { font-size: 17px; font-weight: 800; color: var(--primary-red, #e53935); }
+.mc-was { font-size: 12px; font-weight: 600; color: #9ca3af; }
+.mc-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.mc-step { display: flex; align-items: center; justify-content: space-between; height: 34px; min-width: 70px; padding: 0 2px; border: 1.5px solid #e5e7eb; border-radius: 10px; background: #fff; }
+.mc-step button { width: 22px; height: 30px; border: 0; background: none; color: #6b7280; font-size: 12px; cursor: pointer; }
+.mc-step button:last-child { color: var(--primary-red, #e53935); }
+.mc-step span { min-width: 14px; text-align: center; font-size: 14px; font-weight: 700; }
+.mc-add { flex: 1; height: 34px; border: 0; border-radius: 10px; background: var(--primary-red, #e53935); color: #fff; font-family: var(--site-font); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; }
+.mc-add-full { width: 100%; margin-top: 6px; }
+.mc-added { background: color-mix(in srgb, var(--primary-red, #e53935) 12%, #fff); color: var(--primary-red, #e53935); cursor: default; }
+/* Narrow cards (categories on the left): picker above a full-width Add */
+@container (max-width: 140px) {
+  .mc-row { flex-direction: column; align-items: stretch; gap: 6px; }
+  .mc-step { width: 100%; }
+  .mc-add { flex: none; width: 100%; }
+}
+/* Modern design: rounded-square category pictures and a bigger heading */
+.mc-mode .side-nav-btn img { border-radius: 12px; }
+.mc-mode .category-overview h2 { font-size: 18px; }
 </style>
 <script>
 window.websiteRestaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+// Website Appearance > Menu Card Design: 'classic' (original cards) or 'modern'
+window.menuCardStyle = <?php echo json_encode($menu_card_style ?? 'classic'); ?>;
 window.websiteRestaurantSlug = <?php echo json_encode($restaurant_slug ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.websiteTableNumber = <?php echo json_encode($qr_table ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 // Restore table from sessionStorage if URL param missing but previously set (e.g., coming back from cart)
@@ -898,7 +932,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
       <?php endif; ?>
       <div class="header-actions">
         <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;cursor:pointer;background:#f0fdf4;padding:2px 10px 2px 8px;border-radius:20px;border:1px solid #bbf7d0">
-          <span style="font-size:12px;font-weight:600;color:#16a34a">Veg</span>
+          <span style="font-size:12px;font-weight:600;color:#16a34a"><?php echo ($menu_card_style ?? 'classic') === 'modern' ? 'Veg Only' : 'Veg'; ?></span>
           <label class="veg-switch"><input type="checkbox" id="vegToggle" onchange="toggleVeg()"><span class="veg-slider"></span></label>
         </span>
         <div class="filter-dropdown">
@@ -924,7 +958,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
       </div>
     </div>
 
-    <div class="layout-container<?php echo ($menu_nav_position ?? 'left') === 'top' ? ' nav-top' : ''; ?>">
+    <div class="layout-container<?php echo ($menu_nav_position ?? 'left') === 'top' ? ' nav-top' : ''; ?><?php echo ($menu_card_style ?? 'classic') === 'modern' ? ' mc-mode' : ''; ?>">
       <div class="side-nav" id="sideNav">
         <div class="sub-views"><button class="side-nav-btn" disabled><div class="skel-circle skeleton"></div><div class="skel-nav-label skeleton"></div></button></div>
         <div class="sub-views"><button class="side-nav-btn" disabled><div class="skel-circle skeleton"></div><div class="skel-nav-label skeleton"></div></button></div>
@@ -1170,8 +1204,84 @@ function getItemModelById(itemId) {
   return null;
 }
 
+// ── Modern menu card (Website Appearance > Menu Card Design: Modern) ──
+// Wide photo, veg mark + favourite heart, OFF/rating chips, name, 3-line
+// description, price + struck price, and a "− 1 +" picker with an Add button.
+var modernPick = {}; // quantity chosen on a card before it's added to the cart
+function modernCardHtml(item) {
+  var oos = item.is_available == 0;
+  var name = escapeHtml(item.item_name_translated || item.item_name_en || item.name || '');
+  var desc = escapeHtml(String(item.item_description_translated || item.item_description_en || '').replace(/\s+/g, ' ').trim());
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  var now = hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0);
+  var was = !hasVar && item.original_price ? item.original_price : 0;
+  var f = function(n) { return formatPrice(n).replace(/\.00$/, ''); };
+  var fav = isFavItem(item.id);
+  return '<div class="card mc-card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
+    '<div class="card-img-wrap">' +
+      '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy">' +
+      getTypeIcon(item.item_type) +
+      '<button type="button" class="mc-fav' + (fav ? ' on' : '') + '" aria-label="Favourite" aria-pressed="' + fav + '" onclick="event.stopPropagation();toggleFavItem(' + item.id + ', this)"><i class="fa-' + (fav ? 'solid' : 'regular') + ' fa-heart"></i></button>' +
+      cardBadgesHtml(item) +
+      (oos ? '<span class="img-oos">Out of Stock</span>' : '') +
+    '</div>' +
+    '<div class="card-body">' +
+      '<div class="mc-name">' + name + '</div>' +
+      (desc ? '<div class="mc-desc">' + desc + '</div>' : '') +
+      '<div class="mc-price"><span class="mc-now">' + f(now) + '</span>' + (was ? '<s class="mc-was">' + f(was) + '</s>' : '') + '</div>' +
+      (!oos ? '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span>' : '') +
+    '</div>' +
+  '</div>';
+}
+function renderModernCartRow(itemId, item) {
+  var hasVar = item && item.has_variations && item.variations && item.variations.length > 0;
+  // Dishes with sizes: Add opens the dish sheet to pick a size
+  if (hasVar) return '<button type="button" class="mc-add mc-add-full" onclick="event.stopPropagation();showItemDetail(' + itemId + ')"><i class="fa-solid fa-cart-shopping"></i> Add</button>';
+  var inCart = getItemTotalQty(itemId);
+  var q = inCart || modernPick[itemId] || 1;
+  return '<div class="mc-row">' +
+    '<div class="mc-step">' +
+      '<button type="button" aria-label="Decrease" onclick="event.stopPropagation();modernStep(' + itemId + ', -1)"><i class="fa fa-minus"></i></button>' +
+      '<span>' + q + '</span>' +
+      '<button type="button" aria-label="Increase" onclick="event.stopPropagation();modernStep(' + itemId + ', 1)"><i class="fa fa-plus"></i></button>' +
+    '</div>' +
+    (inCart
+      ? '<button type="button" class="mc-add mc-added" onclick="event.stopPropagation()"><i class="fa fa-check"></i> Added</button>'
+      : '<button type="button" class="mc-add" onclick="event.stopPropagation();modernAdd(' + itemId + ')"><i class="fa-solid fa-cart-shopping"></i> Add</button>') +
+  '</div>';
+}
+// Before adding: − / + just choose the quantity. Once in the cart they change the cart.
+function modernStep(itemId, delta) {
+  if (getItemTotalQty(itemId) > 0) {
+    if (delta > 0) addToCart(itemId); else removeFromCart(itemId);
+    return;
+  }
+  modernPick[itemId] = Math.min(20, Math.max(1, (modernPick[itemId] || 1) + delta));
+  var el = document.getElementById('btn-' + itemId);
+  if (el) el.innerHTML = renderCartBtn(itemId, getItemModelById(itemId));
+}
+function modernAdd(itemId) {
+  var n = modernPick[itemId] || 1;
+  delete modernPick[itemId];
+  for (var i = 0; i < n; i++) addToCart(itemId);
+}
+// Favourite hearts: remembered on this device, per restaurant
+function favKey() { return 'rgFavs_' + (window.websiteRestaurantId || ''); }
+function getFavItems() { try { return JSON.parse(localStorage.getItem(favKey()) || '[]'); } catch (e) { return []; } }
+function isFavItem(itemId) { return getFavItems().indexOf(itemId) !== -1; }
+function toggleFavItem(itemId, btn) {
+  var favs = getFavItems(), i = favs.indexOf(itemId);
+  if (i === -1) favs.push(itemId); else favs.splice(i, 1);
+  try { localStorage.setItem(favKey(), JSON.stringify(favs)); } catch (e) {}
+  var on = i === -1;
+  btn.classList.toggle('on', on);
+  btn.setAttribute('aria-pressed', on);
+  btn.innerHTML = '<i class="fa-' + (on ? 'solid' : 'regular') + ' fa-heart"></i>';
+}
+
 function renderCartBtn(itemId, item) {
   if (item && item.is_available == 0) return '';
+  if (window.menuCardStyle === 'modern') return renderModernCartRow(itemId, item);
   var hasVar = item && item.has_variations && item.variations && item.variations.length > 0;
   var qty = getItemTotalQty(itemId);
   if (qty === 0 || hasVar) {
@@ -1381,6 +1491,7 @@ function renderProducts(menuIdx) {
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
     var oos = item.is_available == 0;
+    if (window.menuCardStyle === 'modern') { html += modernCardHtml(item); continue; }
     html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
       '<div class="card-img-wrap">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + (item.item_name_translated || item.item_name_en || item.name) + '" loading="lazy">' +
@@ -2248,6 +2359,7 @@ document.addEventListener('DOMContentLoaded', function() {
               for (var i = 0; i < list.length; i++) {
                 var item = list[i];
                 var oos = item.is_available == 0;
+                if (window.menuCardStyle === 'modern') { html += modernCardHtml(item); continue; }
                 html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
                   '<div class="card-img-wrap"><img src="' + getImageUrl(item.item_image) + '" alt="' + escapeHtml(item.item_name_translated || item.item_name_en) + '" loading="lazy">' +
                   getTypeIcon(item.item_type) + cardBadgesHtml(item) + (oos ? '<span class="img-oos">Out of Stock</span>' : '') + '</div>' +

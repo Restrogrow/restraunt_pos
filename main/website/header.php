@@ -275,6 +275,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $layout_style = 'grid';
     $header_style = 'hero';
     $menu_nav_position = 'left';
+    $menu_card_style = 'classic';
     $site_name_override = null;
     $nav_icon_style = 'classic';
     $nav_labels_json = null;
@@ -283,7 +284,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     if ($restaurant_id) {
         try {
             ensureWebsiteThemeSchema($conn);
-            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position FROM website_settings WHERE restaurant_id = :rid');
+            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
             $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($themeRow) {
@@ -305,6 +306,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 if (in_array($themeRow['layout_style'] ?? '', THEME_LAYOUT_STYLES, true)) $layout_style = $themeRow['layout_style'];
                 if (in_array($themeRow['header_style'] ?? '', THEME_HEADER_STYLES, true)) $header_style = $themeRow['header_style'];
                 if (in_array($themeRow['menu_nav_position'] ?? '', THEME_MENU_NAV_POSITIONS, true)) $menu_nav_position = $themeRow['menu_nav_position'];
+                if (in_array($themeRow['menu_card_style'] ?? '', THEME_MENU_CARD_STYLES, true)) $menu_card_style = $themeRow['menu_card_style'];
                 if (!empty($themeRow['site_name'])) $site_name_override = $themeRow['site_name'];
                 if (array_key_exists($themeRow['nav_icon_style'] ?? '', NAV_ICON_STYLES)) $nav_icon_style = $themeRow['nav_icon_style'];
                 if (!empty($themeRow['nav_labels'])) $nav_labels_json = $themeRow['nav_labels'];

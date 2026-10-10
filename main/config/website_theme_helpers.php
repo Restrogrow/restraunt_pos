@@ -69,6 +69,9 @@ const THEME_LAYOUT_STYLES = ['grid', 'list', 'magazine'];
 const THEME_HEADER_STYLES = ['hero', 'minimal'];
 // Menu page category navigation: left sidebar or a scrolling bar across the top
 const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
+// Menu page dish card design: the original cards, or the modern card (wide photo,
+// description, quantity picker + Add button)
+const THEME_MENU_CARD_STYLES = ['classic', 'modern'];
 
 /**
  * Bottom-nav icon sets: swaps the Font Awesome classes used for the Home /
@@ -169,6 +172,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
     //   nav_icons_custom            — per-slot uploaded nav icons (JSON of data URLs)
     //   bestseller_style            — Bestsellers section look (see getBestsellerStyle())
     //   menu_nav_position           — Menu page categories: left sidebar or top bar
+    //   menu_card_style             — Menu page dish cards: classic or modern
     $columns = [
         'theme_preset'     => "VARCHAR(30) DEFAULT NULL",
         'card_style'       => "VARCHAR(10) DEFAULT 'rounded'",
@@ -182,6 +186,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         'nav_icons_custom' => "LONGTEXT DEFAULT NULL",
         'bestseller_style' => "TEXT DEFAULT NULL",
         'menu_nav_position' => "VARCHAR(10) DEFAULT 'left'",
+        'menu_card_style' => "VARCHAR(10) DEFAULT 'classic'",
     ];
     try {
         $existing = []; $types = [];

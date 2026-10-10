@@ -57,12 +57,12 @@ try {
   ensureWebsiteThemeSchema($conn);
 
   if ($action === 'get') {
-    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position FROM website_settings WHERE restaurant_id = :rid');
+    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style FROM website_settings WHERE restaurant_id = :rid');
     $stmt->execute([':rid' => $restaurant_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     $bestsellerStyle = getBestsellerStyle($row['bestseller_style'] ?? null);
     if (!$row) {
-      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins','theme_preset'=>null,'card_style'=>'rounded','checkout_color'=>null,'layout_style'=>'grid','header_style'=>'hero','site_name'=>null,'nav_icon_style'=>'classic','nav_labels'=>DEFAULT_NAV_LABELS,'favicon_url'=>null,'nav_icons_custom'=>[],'menu_nav_position'=>'left'];
+      $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins','theme_preset'=>null,'card_style'=>'rounded','checkout_color'=>null,'layout_style'=>'grid','header_style'=>'hero','site_name'=>null,'nav_icon_style'=>'classic','nav_labels'=>DEFAULT_NAV_LABELS,'favicon_url'=>null,'nav_icons_custom'=>[],'menu_nav_position'=>'left','menu_card_style'=>'classic'];
     } else {
       $row['nav_labels'] = getNavLabels($row['nav_labels'] ?? null);
       $row['nav_icons_custom'] = getNavIconOverrides($row['nav_icons_custom'] ?? null);
@@ -72,6 +72,7 @@ try {
       if (empty($row['layout_style'])) { $row['layout_style'] = 'grid'; }
       if (empty($row['header_style'])) { $row['header_style'] = 'hero'; }
       if (!in_array($row['menu_nav_position'] ?? '', THEME_MENU_NAV_POSITIONS, true)) { $row['menu_nav_position'] = 'left'; }
+      if (!in_array($row['menu_card_style'] ?? '', THEME_MENU_CARD_STYLES, true)) { $row['menu_card_style'] = 'classic'; }
       // Ensure banner_image is null if empty string
       if (empty($row['banner_image']) || trim($row['banner_image']) === '') {
         $row['banner_image'] = null;
@@ -180,6 +181,11 @@ try {
     if (in_array($data['menu_nav_position'] ?? '', THEME_MENU_NAV_POSITIONS, true)) {
       $conn->prepare('UPDATE website_settings SET menu_nav_position = :p WHERE restaurant_id = :rid')
            ->execute([':p' => $data['menu_nav_position'], ':rid' => $restaurant_id]);
+    }
+    // Menu page card design (classic / modern) — same "only when sent" rule
+    if (in_array($data['menu_card_style'] ?? '', THEME_MENU_CARD_STYLES, true)) {
+      $conn->prepare('UPDATE website_settings SET menu_card_style = :s WHERE restaurant_id = :rid')
+           ->execute([':s' => $data['menu_card_style'], ':rid' => $restaurant_id]);
     }
     // Bestsellers section look (Website Appearance > Bestsellers)
     if (isset($data['bestseller_style']) && is_array($data['bestseller_style'])) {
