@@ -638,6 +638,7 @@ body {
   line-height: 1.3;
 }
 .bsl-rating i { font-size: 9px; }
+.bsl-rating-count { margin-left: 2px; font-weight: 600; opacity: 0.9; }
 /* ADD: white button with red outline; becomes a matching "− 1 +" selector */
 .bsl-qty { margin-top: 10px; }
 .bsl-qty .add-btn,
@@ -2078,8 +2079,9 @@ function renderMenu() {
       var miWas = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
       var miSave = miWas ? Math.round(miWas - parseFloat(item.base_price || 0)) : 0;
       var miRating = item.rating ? parseFloat(item.rating) : 0;
-      var miBadges = (miRating > 0 ? '<span class="bsl-rating" title="Rated ' + miRating.toFixed(1) + ' out of 5 by customers">' +
-          miRating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i></span>' : '') +
+      var miBadges = (miRating > 0 ? '<span class="bsl-rating" title="Rated ' + miRating.toFixed(1) + ' out of 5 from ' + (item.rating_count || 0) + ' rated orders">' +
+          miRating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i>' +
+          (item.rating_count ? '<span class="bsl-rating-count">(' + parseInt(item.rating_count, 10) + ')</span>' : '') + '</span>' : '') +
         (miSave > 0 ? '<span class="menu-item-save">' + formatPrice(miSave).replace(/\.00$/, '') + ' OFF</span>' : '');
       var oos = item.is_available == 0;
       html += '<div class="menu-item' + (oos ? ' oos' : '') + '" onclick="if(!' + oos + ')showItemDetail(' + ci + ',' + ii + ')">' +
@@ -2862,8 +2864,9 @@ function renderBestsellers() {
       '<div class="bsl-img">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy" draggable="false">' +
         (badgeSave > 0 ? '<span class="bsl-save">' + fmt(badgeSave) + ' OFF</span>' : '') +
-        (rating > 0 ? '<span class="bsl-rate-pill" title="Rated ' + rating.toFixed(1) + ' out of 5 by customers">' +
-          rating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i></span>' : '') +
+        (rating > 0 ? '<span class="bsl-rate-pill" title="Rated ' + rating.toFixed(1) + ' out of 5 from ' + (item.rating_count || 0) + ' rated orders">' +
+          rating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i>' +
+          (item.rating_count ? '<span class="bsl-rating-count">(' + parseInt(item.rating_count, 10) + ')</span>' : '') + '</span>' : '') +
       '</div>' +
       '<div class="bsl-body">' +
         '<div class="bsl-name">' + name + '</div>' +
