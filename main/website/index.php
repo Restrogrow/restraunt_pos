@@ -2893,8 +2893,8 @@ function renderBestsellers() {
     var fmt = function(n) { return formatPrice(n).replace(/\.00$/, ''); }; // ₹314, not ₹314.00
     var price = hasVar ? 'From ' + fmt(getMinVariantPrice(item)) : fmt(item.base_price || 0);
     // Savings come only from the real prices: original_price (regular) vs base_price (offer)
-    var was = itemWasPrice(item);
-    var save = was ? Math.round(was - itemNowPrice(item)) : 0;
+    var was = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
+    var save = was ? Math.round(was - parseFloat(item.base_price || 0)) : 0;
     // Rating only when the API sends a genuine one (from customer order feedback)
     var rating = showRating && item.rating ? parseFloat(item.rating) : 0;
     var badgeSave = showOffer ? save : 0; // the price strike-through stays either way
