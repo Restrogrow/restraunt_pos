@@ -776,7 +776,21 @@ body {
   display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px;
   background: color-mix(in srgb, var(--bsl-badge) 12%, #fff); color: var(--bsl-badge); font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.3;
 }
-.menu-item-was { font-size: 0.8em; font-weight: 500; color: #9ca3af; margin-left: 4px; }
+.menu-item-was { font-size: 0.8em; font-weight: 500; color: #9ca3af; margin-right: 7px; }
+/* Menu list current price in a coloured box — same colour/style settings as
+   the Bestsellers cards (Website Appearance > Bestsellers: price box) */
+.menu-item-price-now {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1.5px solid var(--bsl-price);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--bsl-price);
+  font-weight: 800;
+  line-height: 1.3;
+}
+#menuList[data-price-style="filled"] .menu-item-price-now { background: var(--bsl-price); color: #fff; }
+#menuList[data-price-style="soft"] .menu-item-price-now { background: color-mix(in srgb, var(--bsl-price) 12%, #fff); border-color: transparent; }
 
 /* Toast Notification */
 .toast-notification {
@@ -1606,7 +1620,7 @@ window.socialLinks = {
     </div>
   </section>
 
-  <div class="menu-list" id="menuList">
+  <div class="menu-list" id="menuList" data-price-style="<?php echo htmlspecialchars($bestseller_style['price_style'], ENT_QUOTES, 'UTF-8'); ?>">
     <div class="skel-cat-header skeleton"></div>
     <div class="skel-item"><div class="skel-img skeleton"></div><div class="skel-text"><div class="skel-title skeleton"></div><div class="skel-desc skeleton"></div><div class="skel-price skeleton"></div></div></div>
     <div class="skel-item"><div class="skel-img skeleton"></div><div class="skel-text"><div class="skel-title skeleton"></div><div class="skel-desc skeleton"></div><div class="skel-price skeleton"></div></div></div>
@@ -2056,8 +2070,10 @@ function renderMenu() {
       item._ci = ci; item._ii = ii;
       var hasVar = item.has_variations && item.variations && item.variations.length > 0;
       var displayPrice = hasVar ? 'From ' + formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || item.price || 0);
-      // Bestseller offer price (served as base_price) — show the regular price struck through
-      if (!hasVar && item.original_price) displayPrice += ' <s class="menu-item-was">' + formatPrice(item.original_price) + '</s>';
+      // Same layout as the Bestsellers cards: regular price struck through on
+      // the left (only when there's an offer), current price boxed on the right
+      displayPrice = (!hasVar && item.original_price ? '<s class="menu-item-was">' + formatPrice(item.original_price) + '</s>' : '') +
+        '<span class="menu-item-price-now">' + displayPrice + '</span>';
       // SAVE from the real prices, rating only when genuine (same rules as the Bestsellers cards)
       var miWas = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
       var miSave = miWas ? Math.round(miWas - parseFloat(item.base_price || 0)) : 0;

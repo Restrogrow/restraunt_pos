@@ -1805,7 +1805,7 @@ try {
               </div>
 
               <div class="bs-style-grid">
-                <label class="bs-style-field">Price box colour
+                <label class="bs-style-field">Price box colour (cards &amp; menu)
                   <input type="color" id="bsPriceColor" value="#1f7a3a">
                 </label>
                 <label class="bs-style-field">Price box style
