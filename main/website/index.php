@@ -784,7 +784,10 @@ body {
 /* Menu list: struck regular price sits just above the price box (not beside
    it), and the footer aligns to the bottom, so the price box and ADD button
    line up the same way on every row whether or not there's an offer */
-#menuList .menu-item-price { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding-top: 5px; }
+#menuList .menu-item-price { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding-top: 5px; font-size: 12.5px; }
+#menuList .menu-item-price-now { padding: 1px 7px; }
+/* Long descriptions: show 2 lines, then "…" */
+#menuList .menu-item-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 #menuList .menu-item-footer { align-items: flex-end; }
 .menu-item-was { font-size: 0.78em; font-weight: 500; color: #9ca3af; line-height: 1.1; margin-left: 2px; }
 /* Menu list current price in a coloured box — same colour/style settings as
