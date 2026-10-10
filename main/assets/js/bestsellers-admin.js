@@ -217,7 +217,7 @@
   var STYLE_DEFAULTS = {
     show_section: true, title: 'Bestsellers', eyebrow: 'Customer favourites',
     title_color: '#1f2a44', badge_color: '#1f7a3a', add_color: '#e53935',
-    add_animation: 'pulse', show_rating: true, show_offer: true
+    add_animation: 'glow', show_rating: true, show_offer: true
   };
 
   function updateStylePreview() {

@@ -8079,22 +8079,42 @@ body, html {
   color: var(--bsp-add); font: inherit; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.04em;
   cursor: default;
 }
-.bs-style-preview[data-anim="pulse"] .bs-preview-add { animation: bspPulse 2.4s ease-in-out infinite; }
-@keyframes bspPulse {
-  0%, 60%, 100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--bsp-add) 45%, transparent); }
-  20% { transform: scale(1.04); box-shadow: 0 0 0 6px color-mix(in srgb, var(--bsp-add) 0%, transparent); }
+.bs-preview-qty { margin-top: 10px; border-radius: 12px; }
+.bs-preview-qty .bs-preview-add { margin-top: 0; }
+@property --bsp-spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.bs-style-preview[data-anim="glow"] .bs-preview-qty {
+  padding: 3px;
+  background: conic-gradient(from var(--bsp-spin),
+    color-mix(in srgb, var(--bsp-add) 22%, #fff) 0deg,
+    color-mix(in srgb, var(--bsp-add) 22%, #fff) 200deg,
+    color-mix(in srgb, var(--bsp-add) 70%, #fff) 260deg,
+    var(--bsp-add) 315deg,
+    color-mix(in srgb, var(--bsp-add) 45%, #fff) 330deg,
+    color-mix(in srgb, var(--bsp-add) 22%, #fff) 360deg);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--bsp-add) 30%, transparent);
+  animation: bspSpin 2.2s linear infinite;
 }
-.bs-style-preview[data-anim="shine"] .bs-preview-add::after {
-  content: ''; position: absolute; top: 0; left: -60%; width: 45%; height: 100%;
-  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--bsp-add) 22%, transparent), transparent);
-  animation: bspShine 2.8s ease-in-out infinite;
+.bs-style-preview[data-anim="glow"] .bs-preview-add { border-color: transparent; height: 30px; }
+@keyframes bspSpin { to { --bsp-spin: 360deg; } }
+.bs-style-preview[data-anim="bounce"] .bs-preview-add { transform-origin: 50% 100%; animation: bspBounce 2.8s ease-in-out infinite; }
+@keyframes bspBounce {
+  0%, 36%, 100% { transform: translateY(0) scale(1, 1); }
+  6%  { transform: translateY(0) scale(1.06, 0.92); }
+  14% { transform: translateY(-7px) scale(0.97, 1.04); }
+  22% { transform: translateY(0) scale(1.04, 0.95); }
+  28% { transform: translateY(-2px) scale(1, 1); }
 }
-@keyframes bspShine { 0%, 55% { left: -60%; } 100% { left: 130%; } }
-.bs-style-preview[data-anim="wiggle"] .bs-preview-add { animation: bspWiggle 3.2s ease-in-out infinite; }
-@keyframes bspWiggle {
-  0%, 82%, 100% { transform: rotate(0); }
-  85% { transform: rotate(-3deg); } 88% { transform: rotate(3deg); } 91% { transform: rotate(-2deg); } 94% { transform: rotate(1deg); }
+.bs-style-preview[data-anim="ripple"] .bs-preview-qty { position: relative; }
+.bs-style-preview[data-anim="ripple"] .bs-preview-qty::before,
+.bs-style-preview[data-anim="ripple"] .bs-preview-qty::after {
+  content: ''; position: absolute; inset: 0; border: 2px solid var(--bsp-add); border-radius: 10px;
+  pointer-events: none; animation: bspRipple 2.4s ease-out infinite;
+}
+.bs-style-preview[data-anim="ripple"] .bs-preview-qty::after { animation-delay: 0.8s; }
+@keyframes bspRipple {
+  0% { transform: scale(1); opacity: 0.55; }
+  70%, 100% { transform: scale(1.12, 1.45); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .bs-preview-add, .bs-preview-add::after { animation: none !important; }
+  .bs-preview-qty, .bs-preview-add, .bs-preview-qty::before, .bs-preview-qty::after { animation: none !important; }
 }

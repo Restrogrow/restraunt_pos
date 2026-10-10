@@ -657,40 +657,59 @@ body {
 .bsl-qty .qty-control .qty-num { flex: 1; min-width: 0; color: var(--bsl-add); font-size: 15px; font-weight: 800; }
 
 /* Attention animations on the ADD button (Website Appearance > Bestsellers).
-   Only the ADD state animates — once added, the "− 1 +" selector stays still. */
-.bsl[data-add-anim="pulse"] .bsl-qty .add-btn { animation: bslPulse 2.4s ease-in-out infinite; }
-@keyframes bslPulse {
-  0%, 60%, 100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--bsl-add) 45%, transparent); }
-  20% { transform: scale(1.04); box-shadow: 0 0 0 6px color-mix(in srgb, var(--bsl-add) 0%, transparent); }
+   Effects live on the .bsl-qty wrapper (the button's ::before draws the
+   "ADD" label) and only while it holds the ADD button — once added, the
+   "− 1 +" selector stays still. */
+@property --bsl-spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+/* Glow: a bright light travels around the button border */
+.bsl[data-add-anim="glow"] .bsl-qty:has(> .add-btn) {
+  position: relative;
+  padding: 3px;
+  border-radius: 12px;
+  background: conic-gradient(from var(--bsl-spin),
+    color-mix(in srgb, var(--bsl-add) 22%, #fff) 0deg,
+    color-mix(in srgb, var(--bsl-add) 22%, #fff) 200deg,
+    color-mix(in srgb, var(--bsl-add) 70%, #fff) 260deg,
+    var(--bsl-add) 315deg,
+    color-mix(in srgb, var(--bsl-add) 45%, #fff) 330deg,
+    color-mix(in srgb, var(--bsl-add) 22%, #fff) 360deg);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--bsl-add) 30%, transparent);
+  animation: bslSpin 2.2s linear infinite;
 }
-.bsl[data-add-anim="shine"] .bsl-qty .add-btn { position: relative; overflow: hidden; }
-.bsl[data-add-anim="shine"] .bsl-qty .add-btn::after {
+.bsl[data-add-anim="glow"] .bsl-qty:has(> .add-btn) .add-btn { border-color: transparent; height: 32px; }
+@keyframes bslSpin { to { --bsl-spin: 360deg; } }
+/* Bounce: a playful hop and squash every few seconds */
+.bsl[data-add-anim="bounce"] .bsl-qty .add-btn { transform-origin: 50% 100%; animation: bslBounce 2.8s ease-in-out infinite; }
+@keyframes bslBounce {
+  0%, 36%, 100% { transform: translateY(0) scale(1, 1); }
+  6%  { transform: translateY(0) scale(1.06, 0.92); }
+  14% { transform: translateY(-7px) scale(0.97, 1.04); }
+  22% { transform: translateY(0) scale(1.04, 0.95); }
+  28% { transform: translateY(-2px) scale(1, 1); }
+}
+/* Ripple: soft rings spread out from the button */
+.bsl[data-add-anim="ripple"] .bsl-qty:has(> .add-btn) { position: relative; }
+.bsl[data-add-anim="ripple"] .bsl-qty:has(> .add-btn)::before,
+.bsl[data-add-anim="ripple"] .bsl-qty:has(> .add-btn)::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: -60%;
-  width: 45%;
-  height: 100%;
-  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--bsl-add) 22%, transparent), transparent);
-  animation: bslShine 2.8s ease-in-out infinite;
+  inset: 0;
+  border: 2px solid var(--bsl-add);
+  border-radius: 10px;
+  pointer-events: none;
+  animation: bslRipple 2.4s ease-out infinite;
 }
-@keyframes bslShine {
-  0%, 55% { left: -60%; }
-  100% { left: 130%; }
+.bsl[data-add-anim="ripple"] .bsl-qty:has(> .add-btn)::after { animation-delay: 0.8s; }
+@keyframes bslRipple {
+  0% { transform: scale(1); opacity: 0.55; }
+  70%, 100% { transform: scale(1.12, 1.45); opacity: 0; }
 }
-.bsl[data-add-anim="wiggle"] .bsl-qty .add-btn { animation: bslWiggle 3.2s ease-in-out infinite; }
-@keyframes bslWiggle {
-  0%, 82%, 100% { transform: rotate(0); }
-  85% { transform: rotate(-3deg); }
-  88% { transform: rotate(3deg); }
-  91% { transform: rotate(-2deg); }
-  94% { transform: rotate(1deg); }
-}
-.bsl .bsl-qty .add-btn:hover,
-.bsl .bsl-qty .add-btn:focus-visible { animation-play-state: paused; }
+.bsl .bsl-qty:hover,
+.bsl .bsl-qty:hover .add-btn,
+.bsl .bsl-qty:hover::before,
+.bsl .bsl-qty:hover::after { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
-  .bsl .bsl-qty .add-btn,
-  .bsl .bsl-qty .add-btn::after { animation: none !important; }
+  .bsl .bsl-qty, .bsl .bsl-qty .add-btn, .bsl .bsl-qty::before, .bsl .bsl-qty::after { animation: none !important; }
 }
 /* Previous / next arrows over the carousel edges (mouse & trackpad) */
 .bsl-nav { display: none; }

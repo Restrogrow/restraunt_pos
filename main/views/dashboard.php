@@ -1769,9 +1769,9 @@ try {
               <div class="bs-style-grid">
                 <label class="bs-style-field">ADD button animation
                   <select id="bsAddAnimation">
-                    <option value="pulse">Pulse (recommended)</option>
-                    <option value="shine">Shine</option>
-                    <option value="wiggle">Wiggle</option>
+                    <option value="glow">Glow border (recommended)</option>
+                    <option value="bounce">Bounce</option>
+                    <option value="ripple">Ripple</option>
                     <option value="none">No animation</option>
                   </select>
                 </label>
@@ -1789,7 +1789,7 @@ try {
                     <span class="bs-preview-rate" id="bsPreviewRate">4.6 ★</span>
                   </div>
                   <div class="bs-preview-name">Butter Chicken</div>
-                  <button type="button" class="bs-preview-add" id="bsPreviewAdd" tabindex="-1">ADD</button>
+                  <div class="bs-preview-qty"><button type="button" class="bs-preview-add" id="bsPreviewAdd" tabindex="-1">ADD</button></div>
                 </div>
               </div>
             </div>

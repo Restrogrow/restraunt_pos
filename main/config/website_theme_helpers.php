@@ -242,7 +242,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
     }
 }
 
-const BESTSELLER_ADD_ANIMATIONS = ['pulse', 'shine', 'wiggle', 'none'];
+const BESTSELLER_ADD_ANIMATIONS = ['glow', 'bounce', 'ripple', 'none'];
 const BESTSELLER_STYLE_DEFAULTS = [
     'show_section'   => true,
     'title'          => 'Bestsellers',
@@ -250,7 +250,7 @@ const BESTSELLER_STYLE_DEFAULTS = [
     'title_color'    => '#1f2a44',
     'badge_color'    => '#1f7a3a',   // "₹X OFF" tab + rating pill
     'add_color'      => '#e53935',   // ADD button outline/text + qty selector
-    'add_animation'  => 'pulse',
+    'add_animation'  => 'glow',     // older saved values (pulse/shine/wiggle) fall back to this
     'show_rating'    => true,
     'show_offer'     => true,
 ];
