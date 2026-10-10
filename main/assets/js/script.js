@@ -830,6 +830,11 @@ document.addEventListener("DOMContentLoaded", () => {
         loadQRCodes();
       }
 
+      // Offers > Bestsellers (assets/js/bestsellers-admin.js)
+      if (pageId === "bestsellersPage" && typeof window.loadBestsellersAdmin === 'function') {
+        window.loadBestsellersAdmin();
+      }
+
       // Load photo gallery if it's the gallery page
       if (pageId === "galleryPage") {
         if (typeof window.loadPhotoGallery === 'function') {

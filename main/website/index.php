@@ -453,6 +453,104 @@ body {
   .coupon-carousel-inner { scroll-behavior: auto; }
 }
 
+/* Bestsellers carousel */
+.bsl { padding: 14px 0 4px; }
+.bsl[hidden] { display: none; }
+.bsl-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 16px 10px;
+}
+.bsl-eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a8f98;
+}
+.bsl-title { margin: 2px 0 0; font-size: 19px; font-weight: 800; color: #1a1b1f; }
+.bsl-swipe { font-size: 11.5px; color: #8a8f98; display: inline-flex; align-items: center; gap: 4px; }
+.bsl-swipe i { font-size: 10px; }
+.bsl-track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 16px 10px;
+  scroll-padding: 0 16px;
+  scrollbar-width: none;
+}
+.bsl-track::-webkit-scrollbar { display: none; }
+.bsl-card {
+  flex: 0 0 152px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #eef0f3;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  cursor: pointer;
+}
+.bsl-img { position: relative; height: 112px; background: #f3f4f6; }
+.bsl-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bsl-save {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #1f7a3a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.bsl-body { padding: 8px 10px 10px; display: flex; flex-direction: column; flex: 1; }
+.bsl-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.bsl-name {
+  margin-top: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1b1f;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.5em;
+}
+.bsl-foot { margin-top: auto; padding-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.bsl-price { font-size: 14px; font-weight: 800; color: #1a1b1f; white-space: nowrap; }
+.bsl-price s { display: block; font-size: 11px; font-weight: 500; color: #9ca3af; }
+.bsl-note { margin-top: 6px; font-size: 10px; color: #1f7a3a; font-weight: 600; }
+/* ADD pill instead of the round + on bestseller cards */
+.bsl-qty .add-btn {
+  width: auto;
+  height: 30px;
+  padding: 0 10px;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-radius: 8px;
+}
+.bsl-qty .add-btn i { font-size: 11px; }
+.bsl-qty .add-btn:not(:has(span))::before { content: 'ADD'; }
+.bsl-qty .qty-control button { width: 26px; height: 30px; font-size: 12px; }
+.bsl-qty .qty-control .qty-num { min-width: 18px; color: #1a1b1f; }
+.menu-item-was { font-size: 0.8em; font-weight: 500; color: #9ca3af; margin-left: 4px; }
+
 /* Toast Notification */
 .toast-notification {
   position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
@@ -1259,6 +1357,17 @@ window.socialLinks = {
     <div class="coupon-dots" id="couponDots"></div>
   </div>
 
+  <section class="bsl" id="bestsellersSection" aria-labelledby="bestsellersTitle" hidden>
+    <div class="bsl-head">
+      <div>
+        <div class="bsl-eyebrow">Customer favourites</div>
+        <h3 class="bsl-title" id="bestsellersTitle">Bestsellers</h3>
+      </div>
+      <span class="bsl-swipe" aria-hidden="true">Swipe <i class="fa fa-arrow-right"></i></span>
+    </div>
+    <div class="bsl-track" id="bestsellersTrack"></div>
+  </section>
+
   <div class="menu-list" id="menuList">
     <div class="skel-cat-header skeleton"></div>
     <div class="skel-item"><div class="skel-img skeleton"></div><div class="skel-text"><div class="skel-title skeleton"></div><div class="skel-desc skeleton"></div><div class="skel-price skeleton"></div></div></div>
@@ -1634,6 +1743,7 @@ function addToCart(itemId, varInfo) {
   updateCartBadge();
   var el = document.getElementById('qty-' + itemId);
   if (el) el.innerHTML = renderQtyControl(itemId, getItemById(itemId));
+  syncBestsellerQty(itemId);
   saveCart();
 }
 
@@ -1661,6 +1771,7 @@ function removeFromCart(itemId, varIdx) {
   updateCartBadge();
   var el = document.getElementById('qty-' + itemId);
   if (el) el.innerHTML = renderQtyControl(itemId, getItemById(itemId));
+  syncBestsellerQty(itemId);
   saveCart();
 }
 
@@ -1707,6 +1818,8 @@ function renderMenu() {
       item._ci = ci; item._ii = ii;
       var hasVar = item.has_variations && item.variations && item.variations.length > 0;
       var displayPrice = hasVar ? 'From ' + formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || item.price || 0);
+      // Bestseller offer price (served as base_price) — show the regular price struck through
+      if (!hasVar && item.original_price) displayPrice += ' <s class="menu-item-was">' + formatPrice(item.original_price) + '</s>';
       var oos = item.is_available == 0;
       html += '<div class="menu-item' + (oos ? ' oos' : '') + '" onclick="if(!' + oos + ')showItemDetail(' + ci + ',' + ii + ')">' +
         '<div class="menu-item-img">' +
@@ -1915,6 +2028,7 @@ function fetchAndRender() {
       buildCategories();
       loadCart();
       renderMenu();
+      renderBestsellers();
       updateCartBadge();
       generateQR();
     })
@@ -2165,6 +2279,7 @@ function sheetChangeQty(delta) {
   document.getElementById('sheetQtyNum').textContent = getItemTotalQty(itemId);
   var listEl = document.getElementById('qty-' + itemId);
   if (listEl) listEl.innerHTML = renderQtyControl(itemId, item);
+  syncBestsellerQty(itemId);
   if (getItemTotalQty(itemId) === 0) closeProductSheet();
 }
 
@@ -2437,6 +2552,63 @@ function loadCouponCarousel() {
       startCouponAutoScroll();
     })
     .catch(function() {});
+}
+
+// --- Bestsellers carousel (Offers > Bestsellers in the admin) ---
+// The menu API flags featured items (is_bestseller / bestseller_rank) and
+// already serves any offer price as base_price, with original_price kept
+// for the strike-through — so cart and checkout charge the same price.
+function bestsellerVegMark(type) {
+  if (type !== 'Veg' && type !== 'Non Veg' && type !== 'Egg') return '';
+  var color = type === 'Veg' ? '#2ecc40' : type === 'Non Veg' ? '#e53935' : '#ff9800';
+  var label = type === 'Veg' ? 'VEG' : type === 'Non Veg' ? 'NON-VEG' : 'EGG';
+  return '<span class="bsl-type" style="color:' + color + '">' +
+    '<svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true"><rect x="1" y="1" width="12" height="12" fill="#fff" stroke="' + color + '" stroke-width="1.6" rx="2"/><circle cx="7" cy="7" r="3" fill="' + color + '"/></svg>' +
+    label + '</span>';
+}
+
+function renderBestsellers() {
+  var section = document.getElementById('bestsellersSection');
+  var track = document.getElementById('bestsellersTrack');
+  if (!section || !track) return;
+  var list = [];
+  for (var ci = 0; ci < menuCategories.length; ci++) {
+    var items = menuCategories[ci].items || [];
+    for (var ii = 0; ii < items.length; ii++) {
+      if (items[ii].is_bestseller && items[ii].is_available != 0) list.push(items[ii]);
+    }
+  }
+  if (!list.length) { section.hidden = true; return; }
+  list.sort(function(a, b) { return (a.bestseller_rank || 0) - (b.bestseller_rank || 0); });
+  track.innerHTML = list.map(function(item) {
+    var name = escHtml(item.item_name_translated || item.item_name_en || item.name);
+    var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+    var fmt = function(n) { return formatPrice(n).replace(/\.00$/, ''); }; // ₹314, not ₹314.00
+    var price = hasVar ? 'From ' + fmt(getMinVariantPrice(item)) : fmt(item.base_price || 0);
+    var was = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
+    var save = was ? Math.round(was - parseFloat(item.base_price || 0)) : 0;
+    return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
+      '<div class="bsl-img">' +
+        '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy">' +
+        (save > 0 ? '<span class="bsl-save">SAVE ' + fmt(save) + '</span>' : '') +
+      '</div>' +
+      '<div class="bsl-body">' +
+        bestsellerVegMark(item.item_type) +
+        '<div class="bsl-name">' + name + '</div>' +
+        '<div class="bsl-foot">' +
+          '<div class="bsl-price">' + price + (was ? ' <s>' + fmt(was) + '</s>' : '') + '</div>' +
+          '<span class="bsl-qty" id="bsqty-' + item.id + '" onclick="event.stopPropagation()">' + renderQtyControl(item.id, item) + '</span>' +
+        '</div>' +
+        (save > 0 ? '<div class="bsl-note">Item offer applied</div>' : '') +
+      '</div>' +
+    '</article>';
+  }).join('');
+  section.hidden = false;
+}
+
+function syncBestsellerQty(itemId) {
+  var el = document.getElementById('bsqty-' + itemId);
+  if (el) el.innerHTML = renderQtyControl(itemId, getItemById(itemId));
 }
 
 function escapeCouponText(s) {

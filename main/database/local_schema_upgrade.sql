@@ -101,3 +101,15 @@ CREATE TABLE IF NOT EXISTS `deals` (
   KEY `idx_menu_id` (`menu_id`),
   KEY `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── bestsellers (Offers > Bestsellers; also auto-created by config/bestseller_helpers.php) ──
+CREATE TABLE IF NOT EXISTS bestsellers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  restaurant_id VARCHAR(10) NOT NULL,
+  menu_item_id INT NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  offer_price DECIMAL(10,2) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_bestseller (restaurant_id, menu_item_id),
+  KEY idx_restaurant_sort (restaurant_id, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

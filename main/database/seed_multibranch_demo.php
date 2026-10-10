@@ -71,6 +71,11 @@ $AREAS = ['Ground Floor' => 6, 'Rooftop' => 4];
 $CUSTOMERS = ['Aarav Sharma', 'Diya Patel', 'Rohan Iyer', 'Ananya Reddy', 'Kabir Mehta', 'Isha Nair',
               'Vivaan Gupta', 'Meera Joshi', 'Arjun Rao', 'Saanvi Kulkarni', 'Aditya Menon', 'Priya Das'];
 $TAX_RATE = 0.05;
+// Bestsellers in display order: [item name, offer % off (0 = no offer)]
+$BESTSELLERS = [
+    ['Butter Chicken', 10], ['Paneer Tikka', 10], ['Chicken Biryani', 0],
+    ['Dal Makhani', 10], ['Mutton Rogan Josh', 0], ['Gulab Jamun', 0],
+];
 // [code, type, value, minimum order, description] — valid for 3 months from seeding
 $COUPONS = [
     ['WELCOME50', 'flat', 50, 299, 'Flat ₹50 off your first order'],
@@ -82,13 +87,17 @@ $COUPONS = [
 $ids = array_column($BRANCHES, 'id');
 $in = implode(',', array_fill(0, count($ids), '?'));
 
+// DDL implicitly commits in MySQL, so create tables before the transaction
+require_once __DIR__ . '/../config/bestseller_helpers.php';
+ensureBestsellersTable($pdo);
+
 $pdo->beginTransaction();
 try {
     // ── Clean previous demo rows ──
     $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
     $pdo->prepare("DELETE ki FROM kot_items ki JOIN kot k ON k.id = ki.kot_id WHERE k.restaurant_id IN ($in)")->execute($ids);
     $pdo->prepare("DELETE oi FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.restaurant_id IN ($in)")->execute($ids);
-    foreach (['kot', 'orders', 'menu_items', 'menu', 'tables', 'areas', 'staff', 'customers', 'coupons', 'users'] as $t) {
+    foreach (['kot', 'orders', 'bestsellers', 'menu_items', 'menu', 'tables', 'areas', 'staff', 'customers', 'coupons', 'users'] as $t) {
         $pdo->prepare("DELETE FROM `$t` WHERE restaurant_id IN ($in)")->execute($ids);
     }
     $pdo->prepare("DELETE FROM branch_restaurant_links WHERE restaurant_id IN ($in)")->execute($ids);
@@ -125,6 +134,7 @@ try {
         INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, kot_status, subtotal, tax, total, created_at, order_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $insKotItem = $pdo->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
+    $insBestseller = $pdo->prepare("INSERT INTO bestsellers (restaurant_id, menu_item_id, sort_order, offer_price) VALUES (?, ?, ?, ?)");
     $insCoupon = $pdo->prepare("
         INSERT INTO coupons (restaurant_id, coupon_code, discount_type, discount_value, minimum_order_amount,
                              max_uses, current_uses, valid_from, valid_until, is_active, description)
@@ -184,6 +194,15 @@ try {
             $phone = '99' . str_pad((string)($bi * 100 + $ci), 8, '0', STR_PAD_LEFT);
             $insCust->execute([$rid, $cname, $phone, strtolower(str_replace(' ', '.', $cname)) . '@example.com']);
             $custIds[] = ['id' => (int)$pdo->lastInsertId(), 'name' => $cname, 'phone' => $phone];
+        }
+
+        // Bestsellers (website "Customer favourites" row; some with an offer price)
+        $byName = [];
+        foreach ($items as $it) $byName[$it['name']] = $it;
+        foreach ($BESTSELLERS as $rank => [$itemName, $pctOff]) {
+            if (!isset($byName[$itemName])) continue;
+            $offer = $pctOff > 0 ? round($byName[$itemName]['price'] * (100 - $pctOff) / 100) : null;
+            $insBestseller->execute([$rid, $byName[$itemName]['id'], $rank, $offer]);
         }
 
         // Coupons (shown on the customer website, applied at checkout)

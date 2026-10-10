@@ -1221,6 +1221,12 @@ try {
               </a>
             </li>
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="bestsellersPage">
+                <span class="material-symbols-rounded">star</span>
+                <span class="nav-label">Bestsellers</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="cateringPage" onclick="setTimeout(loadAdminCatering, 50)">
                 <span class="material-symbols-rounded">celebration</span>
                 <span class="nav-label">Catering</span>
@@ -3805,6 +3811,48 @@ function toggleGatewayMode() {
                 <tr><td colspan="4" style="text-align:center;padding:30px;color:#999;">Loading deals...</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bestsellers Page (Offers > Bestsellers) -->
+    <div id="bestsellersPage" class="page">
+      <div class="page-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h1 style="margin:0;font-size:1.5rem;">Bestsellers</h1>
+            <p style="margin:0.25rem 0 0;color:#6b7280;">Pick the dishes to feature in the “Bestsellers” row on your website, in the order you want. Add an offer price to show a discount.</p>
+          </div>
+          <button type="button" class="btn btn-primary" id="bsSaveBtn" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.75rem 1.5rem;" disabled>
+            <span class="material-symbols-rounded" style="font-size:1.2rem;">save</span>Save changes
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="bs-admin-grid">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-title">Featured on your website <span class="bs-count" id="bsCount"></span></div>
+            </div>
+            <div class="section-body">
+              <ol class="bs-selected" id="bsSelected">
+                <li class="bs-empty">Loading…</li>
+              </ol>
+              <p class="bs-note">Offer prices apply to the website menu, cart and checkout. Items with sizes/variations keep their regular prices.</p>
+            </div>
+          </div>
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-title">Add dishes</div>
+            </div>
+            <div class="section-body">
+              <div class="bs-search">
+                <span class="material-symbols-rounded">search</span>
+                <input type="search" id="bsSearch" placeholder="Search your menu…" autocomplete="off">
+              </div>
+              <div class="bs-picker" id="bsPicker"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -6461,6 +6509,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/growth.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/qr-standee.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/bestsellers-admin.js?v=<?php echo time(); ?>" defer></script>
   
 
   

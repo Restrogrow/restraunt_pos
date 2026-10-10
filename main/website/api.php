@@ -386,6 +386,9 @@ try {
                 }
                 unset($item);
                 
+                // Bestsellers: flag them and serve any offer price as the price
+                require_once __DIR__ . '/../config/bestseller_helpers.php';
+                applyBestsellersToItems($conn, $restaurantId, $items);
                 echo json_encode($items);
             } catch (PDOException $e) {
                 // If columns don't exist, try with basic columns only
@@ -458,6 +461,9 @@ try {
                         unset($item);
                     }
                     
+                    // Bestsellers: flag them and serve any offer price as the price
+                    require_once __DIR__ . '/../config/bestseller_helpers.php';
+                    applyBestsellersToItems($conn, $restaurantId, $items);
                     echo json_encode($items);
                 } else {
                     throw $e;

@@ -564,6 +564,10 @@ $conn->beginTransaction();
     $verifiedItems = [];
     $calculatedSubtotal = 0;
     $calculatedAddonTotal = 0;
+    // Bestseller offer prices (Offers > Bestsellers) are real prices — the
+    // website menu shows them, so charge them too (see bestseller_helpers.php).
+    require_once __DIR__ . '/../config/bestseller_helpers.php';
+    $bestsellerMap = getBestsellerMap($conn, $restaurant_id);
     foreach ($items as $item) {
         $menuItemId = (int)($item['id'] ?? 0);
         $quantity = (int)($item['quantity'] ?? 0);
@@ -577,6 +581,9 @@ $conn->beginTransaction();
 
         if (!empty($variationName) && isset($variationsByItem[$menuItemId][$variationName])) {
             $unitPrice = $variationsByItem[$menuItemId][$variationName];
+        } else {
+            $offer = bestsellerOfferPrice($bestsellerMap, $menuItemId, $unitPrice, !empty($variationsByItem[$menuItemId]));
+            if ($offer !== null) $unitPrice = $offer;
         }
 
         // --- Server-side addon price verification ---
