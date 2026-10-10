@@ -341,11 +341,10 @@ body {
 .img-chip { position: absolute; bottom: 3px; z-index: 1; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
 .img-chip-save { left: 3px; display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: #fff; color: var(--bsl-badge); font-size: 10.5px; font-weight: 800; line-height: 1.3; }
 .img-chip-rate { right: 3px; }
-/* Cards line up whether or not a dish has an offer: name and description
-   take only the space they need, and price + button sit at the bottom */
+/* Cards line up whether or not a dish has an offer: the name takes only the
+   space it needs, and price + button sit at the bottom */
 .card-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .card-price { min-height: 28px; margin-top: auto; display: flex; align-items: center; }
-.card-desc { font-size: 11px; color: #6b7280; line-height: 1.35; margin-top: -4px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .card-body > span[id^="btn-"] { display: block; }
 .card-body .add-btn { white-space: nowrap; padding-left: 6px; padding-right: 6px; }
 /* Narrow cards (small phones, 2 columns): smaller chips, rating count
@@ -379,9 +378,11 @@ body {
 [data-price-style="soft"] .mrp-now { background: color-mix(in srgb, var(--bsl-price) 14%, #fff); color: var(--bsl-price); }
 [data-price-style="outline"] .mrp-price.has-mrp .mrp-now, [data-price-style="soft"] .mrp-price.has-mrp .mrp-now { border-right: 1.5px solid var(--bsl-price); }
 
-.card.oos { opacity: 0.55; pointer-events: none; }
-.card.oos .card-img-wrap img { filter: grayscale(1); }
-.card-oos-badge { font-size: 10px; font-weight: 600; color: #e74c3c; background: #fdecea; padding: 2px 8px; border-radius: 4px; display: inline-block; text-transform: uppercase; letter-spacing: 0.3px; }
+.card.oos { pointer-events: none; }
+.card.oos .card-img-wrap img { filter: grayscale(1); opacity: 0.6; }
+.card.oos .card-body, .card.oos .img-chip { opacity: 0.55; }
+/* "Out of Stock" label centred on the dish photo: red text, red border */
+.img-oos { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2; padding: 4px 10px; border: 1.5px solid #dc2626; border-radius: 6px; background: #fef2f2; color: #dc2626; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 
 .add-btn {
   width: 100%;
@@ -1068,12 +1069,6 @@ function mrpPriceHtml(now, was) {
   return '<span class="mrp-price' + (was ? ' has-mrp' : '') + '"><span class="mrp-now">' + f(now) + '</span>' +
     (was ? '<span class="mrp-was"><s>' + f(was) + '</s></span>' : '') + '</span>';
 }
-// Short description under the name: always 2 lines tall (clamped with "…",
-// blank if none) so every card keeps the same shape
-function cardDescHtml(item) {
-  var d = item.item_description_translated || item.item_description_en || item.desc || '';
-  return '<div class="card-desc">' + escapeHtml(String(d).replace(/\s+/g, ' ').trim()) + '</div>';
-}
 function cardPriceHtml(item) {
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
   return mrpPriceHtml(hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0), !hasVar && item.original_price ? item.original_price : 0);
@@ -1380,10 +1375,10 @@ function renderProducts(menuIdx) {
       '<div class="card-img-wrap">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + (item.item_name_translated || item.item_name_en || item.name) + '" loading="lazy">' +
         getTypeIcon(item.item_type) + cardBadgesHtml(item) +
+        (oos ? '<span class="img-oos">Out of Stock</span>' : '') +
       '</div>' +
       '<div class="card-body">' +
-        '<div class="card-name">' + (item.item_name_translated || item.item_name_en || item.name) + (oos ? ' <span class="card-oos-badge">Out of Stock</span>' : '') + '</div>' +
-        cardDescHtml(item) +
+        '<div class="card-name">' + (item.item_name_translated || item.item_name_en || item.name) + '</div>' +
         '<div class="card-price">' + cardPriceHtml(item) + '</div>' +
         (!oos ? '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span>' : '') +
       '</div>' +
@@ -2236,12 +2231,12 @@ document.addEventListener('DOMContentLoaded', function() {
               html += '<div style="padding:8px 16px 4px;font-size:13px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer" onclick="switchToMenu(' + menuIdx + ')">' + menuNames[m] + ' <span style="font-size:11px;color:#aaa">↗</span></div>';
               for (var i = 0; i < list.length; i++) {
                 var item = list[i];
-                html += '<div class="card" data-itemId="' + item.id + '" onclick="showItemDetail(' + item.id + ')">' +
+                var oos = item.is_available == 0;
+                html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
                   '<div class="card-img-wrap"><img src="' + getImageUrl(item.item_image) + '" alt="' + escapeHtml(item.item_name_translated || item.item_name_en) + '" loading="lazy">' +
-                  getTypeIcon(item.item_type) + cardBadgesHtml(item) + '</div>' +
+                  getTypeIcon(item.item_type) + cardBadgesHtml(item) + (oos ? '<span class="img-oos">Out of Stock</span>' : '') + '</div>' +
                   '<div class="card-body">' +
                   '<div class="card-name">' + escapeHtml(item.item_name_translated || item.item_name_en) + '</div>' +
-                  cardDescHtml(item) +
                   '<div class="card-price">' + cardPriceHtml(item) + '</div>' +
                   '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span></div></div>';
               }
