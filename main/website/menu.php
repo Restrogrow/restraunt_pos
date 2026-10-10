@@ -15,11 +15,8 @@
 <link rel="apple-touch-icon" href="<?php echo htmlspecialchars($restaurant_logo ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>">
 <link rel="icon" href="<?php echo htmlspecialchars($favicon_href ?? $local_favicon_svg, ENT_QUOTES, 'UTF-8'); ?>">
 <title>Menu - <?php echo htmlspecialchars($restaurant_name ?? 'Dvani Cafe & Grill', ENT_QUOTES, 'UTF-8'); ?></title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700<?php echo $font_family_google_param ? '&family=' . $font_family_google_param . ':wght@300;400;500;600;700' : ''; ?>&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'fontawesome', 'bootstrap-icons']); ?>
+<?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
 <style>
 :root {
   --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
@@ -1001,9 +998,11 @@ function apiUrl(action, extra) {
 function getImageUrl(img) {
   if (!img || img === '' || img === 'no-image') return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Image%3C/text%3E%3C/svg%3E';
   if (img.indexOf('http://') === 0 || img.indexOf('https://') === 0) return img;
-  var ts = Date.now(); // cache-bust
-  if (img.indexOf('db:') === 0) return 'image.php?id=' + encodeURIComponent(img.substring(3)) + '&_=' + ts;
-  return 'image.php?id=' + encodeURIComponent(img) + '&_=' + ts;
+  // No per-load cache-buster: every upload gets a new id (db:<uniqid>), so a
+  // changed photo already has a new URL. Busting on each load made every refresh
+  // re-download all dish photos (they popped in one by one).
+  if (img.indexOf('db:') === 0) return 'image.php?id=' + encodeURIComponent(img.substring(3));
+  return 'image.php?id=' + encodeURIComponent(img);
 }
 
 function getCurrency() {

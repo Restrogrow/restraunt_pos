@@ -59,8 +59,8 @@ $statusLabels = [
 <meta name="restaurant-id" content="<?php echo htmlspecialchars($restaurant_id ?? '', ENT_QUOTES, 'UTF-8'); ?>">
 <title>Track Order - <?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></title>
 <link rel="icon" href="<?php echo htmlspecialchars($favicon_href ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800<?php echo $font_family_google_param ? '&family=' . $font_family_google_param . ':wght@300;400;500;600;700' : ''; ?>&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0">
+<?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'inter', 'material-symbols']); ?>
+<?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
 <style>
 :root {
   --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;

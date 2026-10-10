@@ -180,20 +180,27 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         'bestseller_style' => "TEXT DEFAULT NULL",
     ];
     try {
-        $existing = [];
+        $existing = []; $types = [];
         foreach ($conn->query("SHOW COLUMNS FROM website_settings")->fetchAll(PDO::FETCH_ASSOC) as $col) {
             $existing[strtolower($col['Field'])] = true;
+            $types[strtolower($col['Field'])] = strtolower($col['Type']);
         }
     } catch (PDOException $e) {
         return; // table not there yet — nothing to extend; try again next request
     }
     $missing = array_diff_key($columns, $existing);
+    // background_theme was created as VARCHAR(50), which silently cut off most
+    // image URLs (the hero then showed no background) — widen it once.
+    $widenBg = isset($types['background_theme']) && preg_match('/^varchar\((\d+)\)/', $types['background_theme'], $m) && (int)$m[1] < 500;
     // ALTER TABLE implicitly commits an open transaction — never do it mid-transaction
-    if ($missing && $conn->inTransaction()) {
+    if (($missing || $widenBg) && $conn->inTransaction()) {
         return;
     }
     foreach ($missing as $name => $definition) {
         try { $conn->exec("ALTER TABLE website_settings ADD COLUMN $name $definition"); } catch (PDOException $e) {}
+    }
+    if ($widenBg) {
+        try { $conn->exec("ALTER TABLE website_settings MODIFY background_theme VARCHAR(500) DEFAULT NULL"); } catch (PDOException $e) {}
     }
     $checked = true;
 }
