@@ -23,4 +23,3 @@ if (!isset($GLOBALS['db_cache'])) {
 
 
 ?>
-

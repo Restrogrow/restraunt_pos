@@ -1,6 +1,6 @@
 // Service Worker for PWA Install Support
 // Version bump on each deploy to bust all caches
-const CACHE_NAME = 'restaurant-cache-v10';
+const CACHE_NAME = 'restaurant-cache-v11';
 
 // Install immediately — no heavy precaching (avoids slow PHP page fetches)
 self.addEventListener('install', function(event) {
@@ -48,9 +48,14 @@ self.addEventListener('fetch', function(event) {
   // For all other requests (CSS, JS, images): network-first with cache fallback
   // This ensures updates show immediately while still working offline
   var reqUrl = event.request.url;
-  // Only cache http/https requests (not chrome-extension:// or other schemes)
-  var canCache = reqUrl.startsWith('http://') || reqUrl.startsWith('https://');
-  if (!canCache) { return; }
+  // Only our own origin (this also skips chrome-extension:// etc.).
+  // Cross-origin requests (Google Maps, QR service, CDNs, fonts) go straight
+  // to the network: intercepting them turned any failure into a fake
+  // "Offline" 503 and hid the real error.
+  if (new URL(reqUrl).origin !== self.location.origin) { return; }
+  // Range requests (audio/video streaming) return 206 partial responses,
+  // which the Cache API rejects — let the browser handle them natively.
+  if (event.request.headers.has('range')) { return; }
 
   // Live/dynamic data (order status, delivery tracking, KOT/order polling,
   // etc. — everything under /api/) must never be served from cache when the
@@ -66,12 +71,14 @@ self.addEventListener('fetch', function(event) {
 
   event.respondWith(
     fetch(event.request).then(function(response) {
-      // Cache successful responses for offline use (clone because response is a stream)
-      if (response.ok) {
+      // Cache complete responses for offline use (clone because response is
+      // a stream). Only status 200: response.ok is also true for 206 partial
+      // content, which cache.put() rejects ("Partial response ... unsupported").
+      if (response.status === 200) {
         const clone = response.clone();
         caches.open(CACHE_NAME).then(function(cache) {
-          cache.put(event.request, clone);
-        });
+          return cache.put(event.request, clone);
+        }).catch(function() { /* caching is best-effort */ });
       }
       return response;
     }).catch(function() {

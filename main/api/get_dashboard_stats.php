@@ -203,8 +203,11 @@ try {
         ],
         'recentOrders' => $recentOrders,
         'popularItems' => $popularItems
-    ]);
-    
+    // A customer/item name with invalid UTF-8 used to make json_encode()
+    // return false, so the dashboard got an empty 200 body ("Unexpected end
+    // of JSON input"). Substitute bad bytes instead of failing.
+    ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+
 } catch (PDOException $e) {
     error_log("PDO Error in get_dashboard_stats.php: " . $e->getMessage());
     http_response_code(500);
@@ -213,7 +216,9 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    // Throwable, not just Exception: PHP 8 Errors (TypeError etc.) would
+    // otherwise be fatal and leave the dashboard with an empty response.
     error_log("Error in get_dashboard_stats.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
@@ -222,5 +227,4 @@ try {
     ]);
     exit();
 }
-?>
 

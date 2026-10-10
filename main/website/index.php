@@ -1969,7 +1969,7 @@ function renderMenu() {
       var miRating = item.rating ? parseFloat(item.rating) : 0;
       var miBadges = (miRating > 0 ? '<span class="bsl-rating" title="Rated ' + miRating.toFixed(1) + ' out of 5 by customers">' +
           miRating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i></span>' : '') +
-        (miSave > 0 ? '<span class="menu-item-save">SAVE ' + formatPrice(miSave).replace(/\.00$/, '') + '</span>' : '');
+        (miSave > 0 ? '<span class="menu-item-save">' + formatPrice(miSave).replace(/\.00$/, '') + ' OFF</span>' : '');
       var oos = item.is_available == 0;
       html += '<div class="menu-item' + (oos ? ' oos' : '') + '" onclick="if(!' + oos + ')showItemDetail(' + ci + ',' + ii + ')">' +
         '<div class="menu-item-img">' +
@@ -2746,7 +2746,7 @@ function renderBestsellers() {
     return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
       '<div class="bsl-img">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy" draggable="false">' +
-        (save > 0 ? '<span class="bsl-save">SAVE ' + fmt(save) + '</span>' : '') +
+        (save > 0 ? '<span class="bsl-save">' + fmt(save) + ' OFF</span>' : '') +
         (rating > 0 ? '<span class="bsl-rate-pill" title="Rated ' + rating.toFixed(1) + ' out of 5 by customers">' +
           rating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i></span>' : '') +
       '</div>' +
