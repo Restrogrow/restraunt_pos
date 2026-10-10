@@ -66,18 +66,62 @@ function bestsellerOfferPrice(array $map, $menuItemId, $basePrice, $hasVariation
     return ($offer > 0 && $offer < (float)$basePrice) ? $offer : null;
 }
 
+// A dish needs at least this many rated orders before its rating is shown
+const BESTSELLER_MIN_RATINGS = 3;
+
 /**
- * Annotate website menu items in place: is_bestseller / bestseller_rank, and
- * for valid offers swap base_price to the offer price (original_price keeps
- * the regular price for the strike-through).
+ * Genuine per-dish ratings derived from customer order feedback
+ * (order_feedback is one 1–5 rating per verified order): the average rating
+ * of rated orders that contained the dish. Dishes with fewer than
+ * BESTSELLER_MIN_RATINGS rated orders get no rating rather than a
+ * misleading one. Returns [menu_item_id => ['rating' => float, 'count' => int]].
+ */
+function getItemRatings($conn, $restaurantId, array $menuItemIds) {
+    $menuItemIds = array_values(array_unique(array_map('intval', $menuItemIds)));
+    if (!$menuItemIds) return [];
+    try {
+        $ph = implode(',', array_fill(0, count($menuItemIds), '?'));
+        $stmt = $conn->prepare("
+            SELECT r.menu_item_id, AVG(r.rating) AS avg_rating, COUNT(*) AS rating_count
+            FROM (
+                SELECT DISTINCT f.id, f.rating, oi.menu_item_id
+                FROM order_feedback f
+                JOIN order_items oi ON oi.order_id = f.order_id
+                WHERE f.restaurant_id = ? AND oi.menu_item_id IN ($ph)
+            ) r
+            GROUP BY r.menu_item_id
+            HAVING COUNT(*) >= " . (int)BESTSELLER_MIN_RATINGS);
+        $stmt->execute(array_merge([$restaurantId], $menuItemIds));
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $out[(int)$row['menu_item_id']] = ['rating' => round((float)$row['avg_rating'], 1), 'count' => (int)$row['rating_count']];
+        }
+        return $out;
+    } catch (Exception $e) {
+        // No feedback table yet (nobody has rated an order) — no ratings
+        if (strpos($e->getMessage(), '42S02') === false) error_log('getItemRatings: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Annotate website menu items in place: is_bestseller / bestseller_rank,
+ * rating / rating_count (when genuine ratings exist), and for valid offers
+ * swap base_price to the offer price (original_price keeps the regular
+ * price for the strike-through).
  */
 function applyBestsellersToItems($conn, $restaurantId, array &$items) {
     $map = getBestsellerMap($conn, $restaurantId);
+    $ratings = $map ? getItemRatings($conn, $restaurantId, array_keys($map)) : [];
     foreach ($items as &$item) {
         $id = (int)($item['id'] ?? 0);
         if (!isset($map[$id])) continue;
         $item['is_bestseller'] = 1;
         $item['bestseller_rank'] = $map[$id]['rank'];
+        if (isset($ratings[$id])) {
+            $item['rating'] = $ratings[$id]['rating'];
+            $item['rating_count'] = $ratings[$id]['count'];
+        }
         $hasVariations = !empty($item['has_variations']) && !empty($item['variations']);
         $offer = bestsellerOfferPrice($map, $id, $item['base_price'] ?? 0, $hasVariations);
         if ($offer !== null) {

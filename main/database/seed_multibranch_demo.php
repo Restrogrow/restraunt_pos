@@ -90,6 +90,22 @@ $in = implode(',', array_fill(0, count($ids), '?'));
 // DDL implicitly commits in MySQL, so create tables before the transaction
 require_once __DIR__ . '/../config/bestseller_helpers.php';
 ensureBestsellersTable($pdo);
+// Same definition as api/submit_feedback.php (customer order ratings)
+$pdo->exec("CREATE TABLE IF NOT EXISTS order_feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    restaurant_id VARCHAR(10) NOT NULL,
+    order_id INT NOT NULL,
+    order_number VARCHAR(50) NOT NULL,
+    customer_name VARCHAR(100) DEFAULT NULL,
+    customer_phone VARCHAR(20) DEFAULT NULL,
+    rating TINYINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    review TEXT DEFAULT NULL,
+    is_approved TINYINT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_restaurant (restaurant_id),
+    INDEX idx_order (order_id),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
 $pdo->beginTransaction();
 try {
@@ -97,7 +113,7 @@ try {
     $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
     $pdo->prepare("DELETE ki FROM kot_items ki JOIN kot k ON k.id = ki.kot_id WHERE k.restaurant_id IN ($in)")->execute($ids);
     $pdo->prepare("DELETE oi FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.restaurant_id IN ($in)")->execute($ids);
-    foreach (['kot', 'orders', 'bestsellers', 'menu_items', 'menu', 'tables', 'areas', 'staff', 'customers', 'coupons', 'users'] as $t) {
+    foreach (['order_feedback', 'kot', 'orders', 'bestsellers', 'menu_items', 'menu', 'tables', 'areas', 'staff', 'customers', 'coupons', 'users'] as $t) {
         $pdo->prepare("DELETE FROM `$t` WHERE restaurant_id IN ($in)")->execute($ids);
     }
     $pdo->prepare("DELETE FROM branch_restaurant_links WHERE restaurant_id IN ($in)")->execute($ids);
@@ -134,6 +150,7 @@ try {
         INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, kot_status, subtotal, tax, total, created_at, order_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $insKotItem = $pdo->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
+    $insFeedback = $pdo->prepare("INSERT INTO order_feedback (restaurant_id, order_id, order_number, customer_name, customer_phone, rating, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $insBestseller = $pdo->prepare("INSERT INTO bestsellers (restaurant_id, menu_item_id, sort_order, offer_price) VALUES (?, ?, ?, ?)");
     $insCoupon = $pdo->prepare("
         INSERT INTO coupons (restaurant_id, coupon_code, discount_type, discount_value, minimum_order_amount,
@@ -271,6 +288,12 @@ try {
                 if ($status !== 'Cancelled') {
                     $updCust->execute([$total, date('Y-m-d', $ts), $cust['id']]);
                     if ($day === 0) $todayRevenue += $total;
+                }
+                // Demo customer feedback: ~45% of past completed orders get a 1–5 rating
+                if ($status === 'Completed' && $day > 0 && mt_rand(1, 100) <= 45) {
+                    $rating = [5, 5, 5, 4, 4, 4, 4, 3, 5, 4, 2][mt_rand(0, 10)];
+                    $insFeedback->execute([$rid, $orderId, $orderNo, $cust['name'], $cust['phone'], $rating,
+                                           date('Y-m-d H:i:s', $ts + mt_rand(1800, 7200))]);
                 }
                 $nOrders++;
             }

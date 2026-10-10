@@ -597,24 +597,57 @@ body {
 }
 .bsl-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #1f7a3a; }
 .bsl-note i { font-size: 11px; }
-.bsl-foot { margin-top: auto; padding-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.bsl-foot { margin-top: auto; padding-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .bsl-price { font-size: 15px; font-weight: 800; color: #1f2a44; white-space: nowrap; line-height: 1.15; }
-.bsl-price s { display: block; font-size: 11.5px; font-weight: 500; color: #9ca3af; }
-/* ADD pill instead of the round + on bestseller cards */
-.bsl-qty .add-btn {
-  width: auto;
-  height: 32px;
-  padding: 0 11px;
-  gap: 4px;
-  font-size: 12.5px;
+.bsl-price s { margin-left: 5px; font-size: 12px; font-weight: 500; color: #9ca3af; }
+/* Rating chip (genuine, from customer order feedback) */
+.bsl-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #1f7a3a;
+  color: #fff;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.02em;
-  border-radius: 9px;
+  line-height: 1.3;
 }
-.bsl-qty .add-btn i { font-size: 11px; }
+.bsl-rating i { font-size: 9px; }
+.bsl-rating .bsl-rating-count { font-weight: 600; opacity: 0.85; margin-left: 1px; }
+/* ADD: white button with red outline; becomes a matching "− 1 +" selector */
+.bsl-qty { margin-top: 10px; }
+.bsl-qty .add-btn,
+.bsl-qty .qty-control {
+  width: 100%;
+  height: 38px;
+  border: 1.5px solid #e53935;
+  border-radius: 10px;
+  background: #fff;
+  color: #e53935;
+  box-shadow: 0 1px 3px rgba(229, 57, 53, 0.12);
+}
+.bsl-qty .add-btn {
+  gap: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  transition: background 0.15s ease;
+}
+.bsl-qty .add-btn i { display: none; }
 .bsl-qty .add-btn:not(:has(span))::before { content: 'ADD'; }
-.bsl-qty .qty-control button { width: 26px; height: 32px; font-size: 12px; }
-.bsl-qty .qty-control .qty-num { min-width: 18px; color: #1a1b1f; }
+.bsl-qty .add-btn span { font-size: 15px; font-weight: 800; }
+.bsl-qty .add-btn:hover,
+.bsl-qty .add-btn:active { background: #fff5f5; }
+.bsl-qty .qty-control { justify-content: space-between; overflow: hidden; }
+.bsl-qty .qty-control button {
+  width: 40px;
+  height: 100%;
+  color: #e53935;
+  font-size: 13px;
+}
+.bsl-qty .qty-control button:active { background: #fff5f5; }
+.bsl-qty .qty-control .qty-num { flex: 1; min-width: 0; color: #e53935; font-size: 15px; font-weight: 800; }
 
 /* Previous / next arrows over the carousel edges (mouse & trackpad) */
 .bsl-nav { display: none; }
@@ -2690,7 +2723,12 @@ function renderBestsellers() {
     var was = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
     var save = was ? Math.round(was - parseFloat(item.base_price || 0)) : 0;
     var pctOff = save > 0 ? Math.round(save / was * 100) : 0;
+    // Rating only when the API sends a genuine one (from customer order feedback)
+    var rating = item.rating ? parseFloat(item.rating) : 0;
     var meta = bestsellerVegMark(item.item_type) +
+      (rating > 0 ? '<span class="bsl-rating" title="' + rating.toFixed(1) + ' out of 5 from ' + (item.rating_count || 0) + ' rated orders">' +
+        rating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i>' +
+        (item.rating_count ? '<span class="bsl-rating-count">(' + item.rating_count + ')</span>' : '') + '</span>' : '') +
       (save > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i>Item offer applied</span>' : '');
     return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
       '<div class="bsl-img">' +
@@ -2703,8 +2741,8 @@ function renderBestsellers() {
         (meta ? '<div class="bsl-meta">' + meta + '</div>' : '') +
         '<div class="bsl-foot">' +
           '<div class="bsl-price">' + price + (was ? ' <s>' + fmt(was) + '</s>' : '') + '</div>' +
-          '<span class="bsl-qty" id="bsqty-' + item.id + '" onclick="event.stopPropagation()">' + renderQtyControl(item.id, item) + '</span>' +
         '</div>' +
+        '<div class="bsl-qty" id="bsqty-' + item.id + '" onclick="event.stopPropagation()">' + renderQtyControl(item.id, item) + '</div>' +
       '</div>' +
     '</article>';
   }).join('');
