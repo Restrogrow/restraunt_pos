@@ -341,12 +341,12 @@ body {
 .img-chip { position: absolute; bottom: 6px; z-index: 1; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
 .img-chip-save { left: 6px; display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: #fff; color: var(--bsl-badge); font-size: 10.5px; font-weight: 800; line-height: 1.3; }
 .img-chip-rate { right: 6px; }
-/* Every card the same shape, offer or not: name always takes 2 lines, the
-   price pill is one fixed-height row and the button sits at the bottom */
-.card-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.6em; }
-.card-price { min-height: 28px; display: flex; align-items: center; }
-.card-desc { font-size: 11px; color: #6b7280; line-height: 1.35; margin-top: -4px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.7em; }
-.card-body > span[id^="btn-"] { margin-top: auto; display: block; }
+/* Cards line up whether or not a dish has an offer: name and description
+   take only the space they need, and price + button sit at the bottom */
+.card-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.card-price { min-height: 28px; margin-top: auto; display: flex; align-items: center; }
+.card-desc { font-size: 11px; color: #6b7280; line-height: 1.35; margin-top: -4px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.card-body > span[id^="btn-"] { display: block; }
 .card-body .add-btn { white-space: nowrap; padding-left: 6px; padding-right: 6px; }
 /* Narrow cards (small phones, 2 columns): smaller chips, rating count
    hidden, so the two chips never overlap on the photo */
