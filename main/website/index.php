@@ -42,6 +42,9 @@ if (isset($_GET['table']) && trim($_GET['table']) !== '') {
   --bsl-title: <?php echo htmlspecialchars($bestseller_style['title_color'], ENT_QUOTES, 'UTF-8'); ?>;
   --bsl-badge: <?php echo htmlspecialchars($bestseller_style['badge_color'], ENT_QUOTES, 'UTF-8'); ?>;
   --bsl-add: <?php echo htmlspecialchars($bestseller_style['add_color'], ENT_QUOTES, 'UTF-8'); ?>;
+  /* add_label is whitelisted to letters/digits/space/+&!.- in getBestsellerStyle() */
+  --bsl-add-label: "<?php echo $bestseller_style['add_label']; ?>";
+  --bsl-add-radius: <?php echo ['pill' => '999px', 'square' => '4px'][$bestseller_style['add_shape']] ?? '10px'; ?>;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -629,7 +632,7 @@ body {
   width: 100%;
   height: 38px;
   border: 1.5px solid var(--bsl-add);
-  border-radius: 10px;
+  border-radius: var(--bsl-add-radius);
   background: #fff;
   color: var(--bsl-add);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--bsl-add) 15%, transparent);
@@ -642,7 +645,7 @@ body {
   transition: background 0.15s ease;
 }
 .bsl-qty .add-btn i { display: none; }
-.bsl-qty .add-btn:not(:has(span))::before { content: 'ADD'; }
+.bsl-qty .add-btn:not(:has(span))::before { content: var(--bsl-add-label); }
 .bsl-qty .add-btn span { font-size: 15px; font-weight: 800; }
 .bsl-qty .add-btn:hover,
 .bsl-qty .add-btn:active { background: color-mix(in srgb, var(--bsl-add) 7%, #fff); }
@@ -656,6 +659,19 @@ body {
 .bsl-qty .qty-control button:active { background: color-mix(in srgb, var(--bsl-add) 7%, #fff); }
 .bsl-qty .qty-control .qty-num { flex: 1; min-width: 0; color: var(--bsl-add); font-size: 15px; font-weight: 800; }
 
+/* Button style & "+" icon (Website Appearance > Bestsellers) */
+.bsl[data-add-style="filled"] .bsl-qty .add-btn,
+.bsl[data-add-style="filled"] .bsl-qty .qty-control { background: var(--bsl-add); color: #fff; }
+.bsl[data-add-style="filled"] .bsl-qty .qty-control button,
+.bsl[data-add-style="filled"] .bsl-qty .qty-control .qty-num { color: #fff; }
+.bsl[data-add-style="filled"] .bsl-qty .add-btn:hover,
+.bsl[data-add-style="filled"] .bsl-qty .add-btn:active,
+.bsl[data-add-style="filled"] .bsl-qty .qty-control button:active { background: color-mix(in srgb, var(--bsl-add) 85%, #000); }
+.bsl[data-add-style="soft"] .bsl-qty .add-btn,
+.bsl[data-add-style="soft"] .bsl-qty .qty-control { background: color-mix(in srgb, var(--bsl-add) 12%, #fff); border-color: transparent; box-shadow: none; }
+.bsl[data-add-style="soft"] .bsl-qty .add-btn:hover,
+.bsl[data-add-style="soft"] .bsl-qty .add-btn:active { background: color-mix(in srgb, var(--bsl-add) 20%, #fff); }
+.bsl[data-add-plus="1"] .bsl-qty .add-btn:not(:has(span)) i { display: inline-block; margin-left: 6px; font-size: 12px; }
 /* Attention animations on the ADD button (Website Appearance > Bestsellers).
    Effects live on the .bsl-qty wrapper (the button's ::before draws the
    "ADD" label) and only while it holds the ADD button — once added, the
@@ -665,7 +681,7 @@ body {
 .bsl[data-add-anim="glow"] .bsl-qty:has(> .add-btn) {
   position: relative;
   padding: 3px;
-  border-radius: 12px;
+  border-radius: calc(var(--bsl-add-radius) + 2px);
   background: conic-gradient(from var(--bsl-spin),
     color-mix(in srgb, var(--bsl-add) 22%, #fff) 0deg,
     color-mix(in srgb, var(--bsl-add) 22%, #fff) 200deg,
@@ -695,7 +711,7 @@ body {
   position: absolute;
   inset: 0;
   border: 2px solid var(--bsl-add);
-  border-radius: 10px;
+  border-radius: var(--bsl-add-radius);
   pointer-events: none;
   animation: bslRipple 2.4s ease-out infinite;
 }
@@ -1558,6 +1574,8 @@ window.socialLinks = {
   <section class="bsl" id="bestsellersSection" aria-labelledby="bestsellersTitle" hidden
            data-enabled="<?php echo $bestseller_style['show_section'] ? '1' : '0'; ?>"
            data-add-anim="<?php echo htmlspecialchars($bestseller_style['add_animation'], ENT_QUOTES, 'UTF-8'); ?>"
+           data-add-style="<?php echo htmlspecialchars($bestseller_style['add_style'], ENT_QUOTES, 'UTF-8'); ?>"
+           data-add-plus="<?php echo $bestseller_style['add_plus'] ? '1' : '0'; ?>"
            data-show-rating="<?php echo $bestseller_style['show_rating'] ? '1' : '0'; ?>"
            data-show-offer="<?php echo $bestseller_style['show_offer'] ? '1' : '0'; ?>">
     <div class="bsl-head">

@@ -243,6 +243,8 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
 }
 
 const BESTSELLER_ADD_ANIMATIONS = ['glow', 'bounce', 'ripple', 'none'];
+const BESTSELLER_ADD_STYLES = ['outline', 'filled', 'soft'];
+const BESTSELLER_ADD_SHAPES = ['rounded', 'pill', 'square'];
 const BESTSELLER_STYLE_DEFAULTS = [
     'show_section'   => true,
     'title'          => 'Bestsellers',
@@ -251,6 +253,10 @@ const BESTSELLER_STYLE_DEFAULTS = [
     'badge_color'    => '#1f7a3a',   // "₹X OFF" tab + rating pill
     'add_color'      => '#e53935',   // ADD button outline/text + qty selector
     'add_animation'  => 'glow',     // older saved values (pulse/shine/wiggle) fall back to this
+    'add_style'      => 'outline',  // outline | filled | soft
+    'add_shape'      => 'rounded',  // rounded | pill | square
+    'add_label'      => 'ADD',
+    'add_plus'       => false,      // show a "+" icon after the label
     'show_rating'    => true,
     'show_offer'     => true,
 ];
@@ -264,8 +270,17 @@ const BESTSELLER_STYLE_DEFAULTS = [
 function getBestsellerStyle($raw): array {
     $in = is_array($raw) ? $raw : (is_string($raw) && $raw !== '' ? (json_decode($raw, true) ?: []) : []);
     $out = BESTSELLER_STYLE_DEFAULTS;
-    foreach (['show_section', 'show_rating', 'show_offer'] as $k) {
+    foreach (['show_section', 'show_rating', 'show_offer', 'add_plus'] as $k) {
         if (array_key_exists($k, $in)) $out[$k] = filter_var($in[$k], FILTER_VALIDATE_BOOLEAN);
+    }
+    if (isset($in['add_style']) && in_array($in['add_style'], BESTSELLER_ADD_STYLES, true)) $out['add_style'] = $in['add_style'];
+    if (isset($in['add_shape']) && in_array($in['add_shape'], BESTSELLER_ADD_SHAPES, true)) $out['add_shape'] = $in['add_shape'];
+    // The label is drawn with CSS `content`, so allow only plain text
+    // characters — no quotes, backslashes or angle brackets that could
+    // break out of the CSS string or the <style> block.
+    if (isset($in['add_label'])) {
+        $label = trim(preg_replace('/[^\p{L}\p{M}\p{N} +&!.\-]/u', '', (string)$in['add_label']));
+        $out['add_label'] = $label !== '' ? mb_substr($label, 0, 12) : BESTSELLER_STYLE_DEFAULTS['add_label'];
     }
     foreach (['title' => 40, 'eyebrow' => 40] as $k => $max) {
         if (isset($in[$k])) {

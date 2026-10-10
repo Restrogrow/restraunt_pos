@@ -8118,3 +8118,16 @@ body, html {
 @media (prefers-reduced-motion: reduce) {
   .bs-preview-qty, .bs-preview-add, .bs-preview-qty::before, .bs-preview-qty::after { animation: none !important; }
 }
+
+/* Preview: sample food photo, ADD style / shape / "+" (Bestsellers Section) */
+.bs-style-card { --bsp-add-radius: 10px; }
+.bs-preview-img img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 13px; }
+.bs-preview-add,
+.bs-style-preview[data-anim="ripple"] .bs-preview-qty::before,
+.bs-style-preview[data-anim="ripple"] .bs-preview-qty::after { border-radius: var(--bsp-add-radius); }
+.bs-preview-qty { border-radius: calc(var(--bsp-add-radius) + 2px); }
+.bs-preview-add { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.bs-preview-plus { display: none; font-size: 16px; }
+.bs-style-preview[data-plus="1"] .bs-preview-plus { display: inline-block; }
+.bs-style-preview[data-style="filled"] .bs-preview-add { background: var(--bsp-add); color: #fff; }
+.bs-style-preview[data-style="soft"] .bs-preview-add { background: color-mix(in srgb, var(--bsp-add) 12%, #fff); border-color: transparent; }

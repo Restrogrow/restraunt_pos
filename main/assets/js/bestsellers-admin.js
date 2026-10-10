@@ -217,8 +217,12 @@
   var STYLE_DEFAULTS = {
     show_section: true, title: 'Bestsellers', eyebrow: 'Customer favourites',
     title_color: '#1f2a44', badge_color: '#1f7a3a', add_color: '#e53935',
-    add_animation: 'glow', show_rating: true, show_offer: true
+    add_animation: 'glow', add_style: 'outline', add_shape: 'rounded', add_label: 'ADD', add_plus: false,
+    show_rating: true, show_offer: true
   };
+  var SHAPE_RADIUS = { rounded: '10px', pill: '999px', square: '4px' };
+  // Same whitelist as getBestsellerStyle() on the server
+  function cleanLabel(s) { return (s || '').replace(/[^\p{L}\p{M}\p{N} +&!.\-]/gu, '').trim().slice(0, 12); }
 
   function updateStylePreview() {
     var card = document.querySelector('.bs-style-card');
@@ -226,7 +230,11 @@
     if (!card || !preview) return;
     card.style.setProperty('--bsp-badge', $('bsBadgeColor').value);
     card.style.setProperty('--bsp-add', $('bsAddColor').value);
+    card.style.setProperty('--bsp-add-radius', SHAPE_RADIUS[$('bsAddShape').value] || '10px');
     preview.setAttribute('data-anim', $('bsAddAnimation').value);
+    preview.setAttribute('data-style', $('bsAddStyle').value);
+    preview.setAttribute('data-plus', $('bsAddPlus').checked ? '1' : '0');
+    $('bsPreviewAddText').textContent = cleanLabel($('bsAddLabel').value) || STYLE_DEFAULTS.add_label;
     $('bsPreviewRate').style.display = $('bsShowRating').checked ? '' : 'none';
     $('bsPreviewOff').style.display = $('bsShowOffer').checked ? '' : 'none';
     card.classList.toggle('is-off', !$('bsShowSection').checked);
@@ -243,6 +251,10 @@
     $('bsBadgeColor').value = v('badge_color');
     $('bsAddColor').value = v('add_color');
     $('bsAddAnimation').value = v('add_animation');
+    $('bsAddStyle').value = v('add_style');
+    $('bsAddShape').value = v('add_shape');
+    $('bsAddLabel').value = v('add_label');
+    $('bsAddPlus').checked = !!v('add_plus');
     $('bsShowRating').checked = !!v('show_rating');
     $('bsShowOffer').checked = !!v('show_offer');
     updateStylePreview();
@@ -258,6 +270,10 @@
       badge_color: $('bsBadgeColor').value,
       add_color: $('bsAddColor').value,
       add_animation: $('bsAddAnimation').value,
+      add_style: $('bsAddStyle').value,
+      add_shape: $('bsAddShape').value,
+      add_label: cleanLabel($('bsAddLabel').value) || STYLE_DEFAULTS.add_label,
+      add_plus: $('bsAddPlus').checked,
       show_rating: $('bsShowRating').checked,
       show_offer: $('bsShowOffer').checked
     };

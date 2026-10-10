@@ -1769,7 +1769,7 @@ try {
               <div class="bs-style-grid">
                 <label class="bs-style-field">ADD button animation
                   <select id="bsAddAnimation">
-                    <option value="glow">Glow border (recommended)</option>
+                    <option value="glow">Glow border ★</option>
                     <option value="bounce">Bounce</option>
                     <option value="ripple">Ripple</option>
                     <option value="none">No animation</option>
@@ -1781,15 +1781,39 @@ try {
                 </div>
               </div>
 
+              <div class="bs-style-grid">
+                <label class="bs-style-field">ADD button style
+                  <select id="bsAddStyle">
+                    <option value="outline">Outline</option>
+                    <option value="filled">Filled</option>
+                    <option value="soft">Soft tint</option>
+                  </select>
+                </label>
+                <label class="bs-style-field">ADD button shape
+                  <select id="bsAddShape">
+                    <option value="rounded">Rounded</option>
+                    <option value="pill">Pill</option>
+                    <option value="square">Square</option>
+                  </select>
+                </label>
+                <label class="bs-style-field">ADD button text
+                  <input type="text" id="bsAddLabel" maxlength="12" placeholder="ADD">
+                </label>
+                <div class="bs-style-field">&nbsp;
+                  <label class="bs-style-check"><input type="checkbox" id="bsAddPlus"> Show “+” icon after the text</label>
+                </div>
+              </div>
+
               <div class="bs-style-preview" id="bsPreview" aria-label="Preview">
                 <span class="bs-style-preview-label">Preview</span>
                 <div class="bs-preview-card">
                   <div class="bs-preview-img">
+                    <img src="../../assets/images/default-menu-item.jpg" alt="" loading="lazy">
                     <span class="bs-preview-off" id="bsPreviewOff">₹35 OFF</span>
                     <span class="bs-preview-rate" id="bsPreviewRate">4.6 ★</span>
                   </div>
-                  <div class="bs-preview-name">Butter Chicken</div>
-                  <div class="bs-preview-qty"><button type="button" class="bs-preview-add" id="bsPreviewAdd" tabindex="-1">ADD</button></div>
+                  <div class="bs-preview-name">Steamed Momos</div>
+                  <div class="bs-preview-qty"><button type="button" class="bs-preview-add" id="bsPreviewAdd" tabindex="-1"><span id="bsPreviewAddText">ADD</span><span class="material-symbols-rounded bs-preview-plus" id="bsPreviewPlus" aria-hidden="true">add</span></button></div>
                 </div>
               </div>
             </div>
