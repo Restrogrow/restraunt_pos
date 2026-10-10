@@ -292,7 +292,8 @@ body {
 
 .card-img-wrap img {
   width: 100%;
-  height: 120px;
+  height: auto;
+  aspect-ratio: 1 / 1; /* always square, whatever the card width */
   object-fit: cover;
   display: block;
 }
