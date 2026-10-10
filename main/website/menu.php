@@ -338,9 +338,9 @@ body {
 }
 /* Rating + "₹X OFF" chips under the dish name (same as the home page list) */
 /* Chips on the dish photo: "₹X OFF" bottom-left, rating bottom-right */
-.img-chip { position: absolute; bottom: 6px; z-index: 1; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
-.img-chip-save { left: 6px; display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: #fff; color: var(--bsl-badge); font-size: 10.5px; font-weight: 800; line-height: 1.3; }
-.img-chip-rate { right: 6px; }
+.img-chip { position: absolute; bottom: 3px; z-index: 1; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
+.img-chip-save { left: 3px; display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: #fff; color: var(--bsl-badge); font-size: 10.5px; font-weight: 800; line-height: 1.3; }
+.img-chip-rate { right: 3px; }
 /* Cards line up whether or not a dish has an offer: name and description
    take only the space they need, and price + button sit at the bottom */
 .card-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
@@ -352,9 +352,9 @@ body {
    hidden, so the two chips never overlap on the photo */
 .card-img-wrap { container-type: inline-size; }
 @container (max-width: 150px) {
-  .img-chip { bottom: 5px; }
-  .img-chip-save { left: 5px; padding: 1px 5px; font-size: 9.5px; }
-  .img-chip-rate { right: 5px; padding: 1px 5px; font-size: 9.5px; }
+  .img-chip { bottom: 2px; }
+  .img-chip-save { left: 2px; padding: 1px 5px; font-size: 9.5px; }
+  .img-chip-rate { right: 2px; padding: 1px 5px; font-size: 9.5px; }
   .img-chip-rate .bsl-rating-count { display: none; }
 }
 /* ...and a more compact price pill so price + struck price still fit */
