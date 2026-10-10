@@ -500,6 +500,13 @@ function handleLogin() {
         $_SESSION['linked_restaurants'] = $linked;
         $_SESSION['restaurant_id'] = $linked[0]['restaurant_id'];
         $_SESSION['restaurant_name'] = $linked[0]['restaurant_name'];
+        // Act as the current branch's admin account (see api/switch_restaurant.php)
+        $branchUserStmt = $pdo->prepare("SELECT id FROM users WHERE restaurant_id = ? LIMIT 1");
+        $branchUserStmt->execute([$linked[0]['restaurant_id']]);
+        $branchUserId = $branchUserStmt->fetchColumn();
+        if ($branchUserId) {
+            $_SESSION['user_id'] = (int)$branchUserId;
+        }
 
         regenerateSessionAfterLogin();
 
@@ -507,7 +514,7 @@ function handleLogin() {
         echo json_encode([
             'success' => true,
             'message' => 'Login successful',
-            'redirect' => '../views/dashboard.php',
+            'redirect' => '../views/branches.php',
             'data' => [
                 'username' => $branchAdmin['username'],
                 'restaurant_id' => $linked[0]['restaurant_id'],

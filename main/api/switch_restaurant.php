@@ -57,6 +57,22 @@ if (!$found) {
 $_SESSION['restaurant_id'] = $found['restaurant_id'];
 $_SESSION['restaurant_name'] = $found['restaurant_name'];
 
+// Act as that branch's admin account, so every admin page/API that keys
+// off user_id (settings, staff, add-ons, catering, ...) works per branch.
+try {
+    require_once __DIR__ . '/../db_connection.php';
+    $stmt = getConnection()->prepare("SELECT id FROM users WHERE restaurant_id = ? LIMIT 1");
+    $stmt->execute([$found['restaurant_id']]);
+    $branchUserId = $stmt->fetchColumn();
+    if ($branchUserId) {
+        $_SESSION['user_id'] = (int)$branchUserId;
+    } else {
+        unset($_SESSION['user_id']);
+    }
+} catch (Exception $e) {
+    error_log('switch_restaurant.php: could not resolve branch user_id: ' . $e->getMessage());
+}
+
 ob_end_clean();
 echo json_encode([
     'success' => true,

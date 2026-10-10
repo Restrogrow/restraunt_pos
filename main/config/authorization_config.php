@@ -175,8 +175,14 @@ function isAdmin() {
         return false;
     }
     
-    return isset($_SESSION['user_id']) && 
-           isset($_SESSION['user_type']) && 
+    // Branch admins act as the admin of whichever linked branch they've
+    // switched into (same rule as getUserRole()).
+    if (isset($_SESSION['branch_admin_id'])) {
+        return true;
+    }
+
+    return isset($_SESSION['user_id']) &&
+           isset($_SESSION['user_type']) &&
            $_SESSION['user_type'] === 'admin';
 }
 

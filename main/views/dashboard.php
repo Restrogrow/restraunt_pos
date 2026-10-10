@@ -121,8 +121,9 @@ try {
         ensureGstinColumns($conn);
         require_once __DIR__ . '/../config/business_id_helpers.php';
         ensureBusinessIdColumns($conn);
-        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, photo_gallery_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled, show_business_id, business_id_label, business_id_no FROM users WHERE id = ? LIMIT 1");
-        $stmt->execute([$_SESSION['user_id']]);
+        $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, language, email, phone, address, role, payment_gateway_type, phonepe_merchant_id, phonepe_salt_key, phonepe_environment, enable_gst, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, photo_gallery_enabled, enable_language, payment_gateway_mode, custom_domain, embed_enabled, show_business_id, business_id_label, business_id_no FROM users WHERE " . (isset($_SESSION['user_id']) ? "id = ?" : "restaurant_id = ?") . " LIMIT 1");
+        // Branch admins / staff have no user_id — load the current restaurant's row instead
+        $stmt->execute([$_SESSION['user_id'] ?? $restaurant_id]);
         $userRow = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($userRow) {
             // Payment gateway credentials for pre-filling forms
@@ -217,8 +218,8 @@ try {
     } catch (PDOException $e) {
         // If columns don't exist, try without them
         try {
-            $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol FROM users WHERE id = ? LIMIT 1");
-            $stmt->execute([$_SESSION['user_id']]);
+            $stmt = $conn->prepare("SELECT id, restaurant_logo, currency_symbol FROM users WHERE " . (isset($_SESSION['user_id']) ? "id = ?" : "restaurant_id = ?") . " LIMIT 1");
+            $stmt->execute([$_SESSION['user_id'] ?? $restaurant_id]);
             $logoRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($logoRow) {
                 if (!empty($logoRow['restaurant_logo'])) {
@@ -903,6 +904,7 @@ try {
             <select id="restaurantSwitcher" style="width:100%;padding:4px 6px;font-size:12px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;outline:none;cursor:pointer;">
               <option value="" disabled selected style="color:#333;background:#fff;">Switch restaurant...</option>
             </select>
+            <button type="button" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='branches.php';" style="width:100%;margin-top:6px;padding:5px 6px;font-size:12px;font-weight:600;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;cursor:pointer;">&#8592; All branches</button>
           </div>
         </div>
       </a>
