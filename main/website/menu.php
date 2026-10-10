@@ -863,7 +863,6 @@ body {
 .mc-card .img-chip-save { background: var(--primary-red, #e53935); color: #fff; }
 .mc-card .card-body { padding: 10px 12px 12px; gap: 4px; }
 .mc-name { font-size: 15px; font-weight: 700; color: #111827; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.mc-desc { font-size: 11.5px; color: #6b7280; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
 .mc-price { margin-top: auto; padding-top: 4px; display: flex; align-items: baseline; gap: 6px; }
 .mc-now { font-size: 17px; font-weight: 800; color: var(--primary-red, #e53935); }
 .mc-was { font-size: 12px; font-weight: 600; color: #9ca3af; }
@@ -1205,13 +1204,12 @@ function getItemModelById(itemId) {
 }
 
 // ── Modern menu card (Website Appearance > Menu Card Design: Modern) ──
-// Wide photo, veg mark + favourite heart, OFF/rating chips, name, 3-line
-// description, price + struck price, and a "− 1 +" picker with an Add button.
+// Wide photo, veg mark + favourite heart, OFF/rating chips, name (description
+// only in the dish sheet), price + struck price, and a "− 1 +" picker with Add.
 var modernPick = {}; // quantity chosen on a card before it's added to the cart
 function modernCardHtml(item) {
   var oos = item.is_available == 0;
   var name = escapeHtml(item.item_name_translated || item.item_name_en || item.name || '');
-  var desc = escapeHtml(String(item.item_description_translated || item.item_description_en || '').replace(/\s+/g, ' ').trim());
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
   var now = hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0);
   var was = !hasVar && item.original_price ? item.original_price : 0;
@@ -1227,7 +1225,6 @@ function modernCardHtml(item) {
     '</div>' +
     '<div class="card-body">' +
       '<div class="mc-name">' + name + '</div>' +
-      (desc ? '<div class="mc-desc">' + desc + '</div>' : '') +
       '<div class="mc-price"><span class="mc-now">' + f(now) + '</span>' + (was ? '<s class="mc-was">' + f(was) + '</s>' : '') + '</div>' +
       (!oos ? '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span>' : '') +
     '</div>' +
