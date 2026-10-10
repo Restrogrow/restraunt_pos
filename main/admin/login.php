@@ -1027,6 +1027,16 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         // Notification prompt after login
         var _pendingRedirectUrl = '';
 
+        // Once the user has answered the prompt (Enable or Not Now) on this
+        // device, never show it again — remembered per browser in localStorage.
+        var NOTIF_PROMPT_KEY = 'rg_notif_prompt_answered';
+        function notifPromptAnswered() {
+            try { return localStorage.getItem(NOTIF_PROMPT_KEY) === '1'; } catch (e) { return false; }
+        }
+        function markNotifPromptAnswered() {
+            try { localStorage.setItem(NOTIF_PROMPT_KEY, '1'); } catch (e) {}
+        }
+
         function showNotificationPrompt(redirectUrl) {
             _pendingRedirectUrl = redirectUrl;
             // Check if PushManager is supported and permission not already granted
@@ -1049,6 +1059,11 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 doRedirect(redirectUrl);
                 return;
             }
+            // Already answered on this device — don't ask again
+            if (notifPromptAnswered()) {
+                doRedirect(redirectUrl);
+                return;
+            }
             // Show the prompt modal
             document.getElementById('notifPromptModal').classList.add('active');
         }
@@ -1057,7 +1072,13 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             var btn = document.getElementById('enableNotifBtn');
             btn.disabled = true;
             btn.textContent = 'Setting up...';
-            subscribeToPush().then(function() {
+            markNotifPromptAnswered();
+            // Ask for the browser permission explicitly first, so it gets
+            // recorded even if the push subscription itself fails (e.g. no
+            // VAPID key configured).
+            Promise.resolve(Notification.requestPermission()).then(function(perm) {
+                return perm === 'granted' ? subscribeToPush() : null;
+            }).then(function() {
                 doRedirect(_pendingRedirectUrl);
             }).catch(function() {
                 // Even if push fails, still redirect
@@ -1066,6 +1087,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         }
 
         function skipNotifications() {
+            markNotifPromptAnswered();
             doRedirect(_pendingRedirectUrl);
         }
 
