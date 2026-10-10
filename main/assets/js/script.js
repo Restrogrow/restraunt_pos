@@ -1,3 +1,19 @@
+// Cropped image -> data URL, keeping transparency. JPEG has no alpha channel,
+// so a transparent PNG saved as JPEG came out with a black background. Use
+// JPEG only when every pixel is opaque (keeps photos small); otherwise WebP
+// (alpha + small), or PNG on browsers that can't encode WebP.
+function canvasToImageDataUrl(canvas, quality) {
+  var q = quality || 0.9;
+  var hasAlpha = false;
+  try {
+    var px = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    for (var i = 3; i < px.length; i += 4) { if (px[i] < 255) { hasAlpha = true; break; } }
+  } catch (e) { /* tainted canvas: fall back to JPEG as before */ }
+  if (!hasAlpha) return canvas.toDataURL('image/jpeg', q);
+  var webp = canvas.toDataURL('image/webp', q);
+  return webp.indexOf('data:image/webp') === 0 ? webp : canvas.toDataURL('image/png');
+}
+
 const sidebar = document.querySelector(".sidebar");
 const sidebarToggler = document.querySelector(".sidebar-toggler");
 const menuToggler = document.querySelector(".menu-toggler");
@@ -2050,7 +2066,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     
     if (croppedCanvas) {
-      const croppedDataUrl = croppedCanvas.toDataURL('image/jpeg', 0.9);
+      const croppedDataUrl = canvasToImageDataUrl(croppedCanvas, 0.9);
       const croppedPreviewImg = document.getElementById('croppedMenuPreviewImg');
       const categoryPreviewImage = document.getElementById('menuCategoryPreviewImage');
       
@@ -2100,7 +2116,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         
         if (croppedCanvas) {
-          const croppedDataUrl = croppedCanvas.toDataURL('image/jpeg', 0.9);
+          const croppedDataUrl = canvasToImageDataUrl(croppedCanvas, 0.9);
           
           // Store cropped image as base64
           if (menuImageBase64Input) menuImageBase64Input.value = croppedDataUrl;
@@ -3452,7 +3468,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     
     if (croppedCanvas) {
-      const croppedDataUrl = croppedCanvas.toDataURL('image/jpeg', 0.9);
+      const croppedDataUrl = canvasToImageDataUrl(croppedCanvas, 0.9);
       const croppedPreviewImg = document.getElementById('croppedPreviewImg');
       const websitePreviewImage = document.getElementById('websitePreviewImage');
       
@@ -3500,7 +3516,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     
     if (croppedCanvas) {
-      const croppedDataUrl = croppedCanvas.toDataURL('image/jpeg', 0.9);
+      const croppedDataUrl = canvasToImageDataUrl(croppedCanvas, 0.9);
       
       // Store cropped image as base64
       document.getElementById('itemImageBase64').value = croppedDataUrl;
