@@ -2906,8 +2906,10 @@ function renderBestsellers() {
     var badgeSave = showOffer ? save : 0; // the price strike-through stays either way
     var meta = bestsellerVegMark(item.item_type);
     // Offer note on its own line under the veg mark; the line keeps its space on
-    // every card (blank when there's no offer) so all cards stay the same height
-    var note = badgeSave > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i><span>Item offer applied</span></span>' : '';
+    // every card ("Bestseller" when there is no offer) so all cards stay the same height
+    var note = badgeSave > 0
+      ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i><span>Item offer applied</span></span>'
+      : '<span class="bsl-note"><i class="fa fa-star" aria-hidden="true"></i><span>Bestseller</span></span>';
     return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
       '<div class="bsl-img">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy" draggable="false">' +
