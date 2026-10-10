@@ -1214,17 +1214,17 @@ window.socialLinks = {
 
   </div>
 
-  <div class="coupon-carousel" id="couponCarousel">
-    <div class="coupon-carousel-inner" id="couponCarouselInner">
-      <div class="skeleton" style="flex:0 0 88%;height:80px;border-radius:12px;scroll-snap-align:start"></div>
-      <div class="skeleton" style="flex:0 0 88%;height:80px;border-radius:12px;scroll-snap-align:start"></div>
-    </div>
-  </div>
-
   <div class="grid-btn-rapper">
     <div class="gradient-search-container">
       <input type="text" class="gradient-search-input" id="searchInput" placeholder="Search your favorite food fast ⚡">
       <button type="button" class="gradient-search-button"><i class="bi bi-search"></i></button>
+    </div>
+  </div>
+
+  <div class="coupon-carousel" id="couponCarousel">
+    <div class="coupon-carousel-inner" id="couponCarouselInner">
+      <div class="skeleton" style="flex:0 0 88%;height:80px;border-radius:12px;scroll-snap-align:start"></div>
+      <div class="skeleton" style="flex:0 0 88%;height:80px;border-radius:12px;scroll-snap-align:start"></div>
     </div>
   </div>
 

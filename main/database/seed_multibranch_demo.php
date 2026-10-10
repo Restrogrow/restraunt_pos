@@ -71,6 +71,13 @@ $AREAS = ['Ground Floor' => 6, 'Rooftop' => 4];
 $CUSTOMERS = ['Aarav Sharma', 'Diya Patel', 'Rohan Iyer', 'Ananya Reddy', 'Kabir Mehta', 'Isha Nair',
               'Vivaan Gupta', 'Meera Joshi', 'Arjun Rao', 'Saanvi Kulkarni', 'Aditya Menon', 'Priya Das'];
 $TAX_RATE = 0.05;
+// [code, type, value, minimum order, description] — valid for 3 months from seeding
+$COUPONS = [
+    ['WELCOME50', 'flat', 50, 299, 'Flat ₹50 off your first order'],
+    ['SPICE20', 'percent', 20, 599, '20% off on orders above ₹599'],
+    ['FEAST100', 'flat', 100, 999, '₹100 off on orders above ₹999'],
+    ['WEEKEND15', 'percent', 15, 399, '15% off every weekend order'],
+];
 
 $ids = array_column($BRANCHES, 'id');
 $in = implode(',', array_fill(0, count($ids), '?'));
@@ -81,7 +88,7 @@ try {
     $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
     $pdo->prepare("DELETE ki FROM kot_items ki JOIN kot k ON k.id = ki.kot_id WHERE k.restaurant_id IN ($in)")->execute($ids);
     $pdo->prepare("DELETE oi FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.restaurant_id IN ($in)")->execute($ids);
-    foreach (['kot', 'orders', 'menu_items', 'menu', 'tables', 'areas', 'staff', 'customers', 'users'] as $t) {
+    foreach (['kot', 'orders', 'menu_items', 'menu', 'tables', 'areas', 'staff', 'customers', 'coupons', 'users'] as $t) {
         $pdo->prepare("DELETE FROM `$t` WHERE restaurant_id IN ($in)")->execute($ids);
     }
     $pdo->prepare("DELETE FROM branch_restaurant_links WHERE restaurant_id IN ($in)")->execute($ids);
@@ -96,8 +103,9 @@ try {
     $insUser = $pdo->prepare("
         INSERT INTO users (username, email, phone, address, password, restaurant_id, restaurant_name, owner_name,
                            currency_symbol, timezone, is_active, subscription_status, trial_end_date,
-                           enable_delivery, enable_takeaway, enable_dinein, enable_gst)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'Spice Garden Group', '₹', 'Asia/Kolkata', 1, 'active', ?, 1, 1, 1, 1)");
+                           enable_delivery, enable_takeaway, enable_dinein, enable_gst, description, description_format)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'Spice Garden Group', '₹', 'Asia/Kolkata', 1, 'active', ?, 1, 1, 1, 1,
+                'North Indian curries, smoky tandoor favourites, biryanis and fresh breads — cooked to order.', 'paragraph')");
     $insLink = $pdo->prepare("INSERT INTO branch_restaurant_links (branch_admin_id, restaurant_id, label) VALUES (?, ?, ?)");
     $insMenu = $pdo->prepare("INSERT INTO menu (restaurant_id, menu_name, is_active, sort_order) VALUES (?, ?, 1, ?)");
     $insItem = $pdo->prepare("
@@ -117,6 +125,10 @@ try {
         INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, kot_status, subtotal, tax, total, created_at, order_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $insKotItem = $pdo->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
+    $insCoupon = $pdo->prepare("
+        INSERT INTO coupons (restaurant_id, coupon_code, discount_type, discount_value, minimum_order_amount,
+                             max_uses, current_uses, valid_from, valid_until, is_active, description)
+        VALUES (?, ?, ?, ?, ?, 0, 0, CURDATE(), CURDATE() + INTERVAL 3 MONTH, 1, ?)");
     $updCust = $pdo->prepare("UPDATE customers SET total_visits = total_visits + 1, total_spent = total_spent + ?, last_visit_date = GREATEST(COALESCE(last_visit_date, '2000-01-01'), ?) WHERE id = ?");
 
     $branchPwHash = password_hash($BRANCH_PASSWORD, PASSWORD_DEFAULT);
@@ -172,6 +184,11 @@ try {
             $phone = '99' . str_pad((string)($bi * 100 + $ci), 8, '0', STR_PAD_LEFT);
             $insCust->execute([$rid, $cname, $phone, strtolower(str_replace(' ', '.', $cname)) . '@example.com']);
             $custIds[] = ['id' => (int)$pdo->lastInsertId(), 'name' => $cname, 'phone' => $phone];
+        }
+
+        // Coupons (shown on the customer website, applied at checkout)
+        foreach ($COUPONS as [$code, $type, $value, $minOrder, $desc]) {
+            $insCoupon->execute([$rid, $code, $type, $value, $minOrder, $desc]);
         }
 
         // Orders: 13 past days (completed) + today (mix of statuses)
