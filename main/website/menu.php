@@ -345,6 +345,7 @@ body {
    price pill is one fixed-height row and the button sits at the bottom */
 .card-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.6em; }
 .card-price { min-height: 28px; display: flex; align-items: center; }
+.card-desc { font-size: 11px; color: #6b7280; line-height: 1.35; margin-top: -4px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.7em; }
 .card-body > span[id^="btn-"] { margin-top: auto; display: block; }
 .card-body .add-btn { white-space: nowrap; padding-left: 6px; padding-right: 6px; }
 /* Narrow cards (small phones, 2 columns): smaller chips, rating count
@@ -1067,6 +1068,12 @@ function mrpPriceHtml(now, was) {
   return '<span class="mrp-price' + (was ? ' has-mrp' : '') + '"><span class="mrp-now">' + f(now) + '</span>' +
     (was ? '<span class="mrp-was"><s>' + f(was) + '</s></span>' : '') + '</span>';
 }
+// Short description under the name: always 2 lines tall (clamped with "…",
+// blank if none) so every card keeps the same shape
+function cardDescHtml(item) {
+  var d = item.item_description_translated || item.item_description_en || item.desc || '';
+  return '<div class="card-desc">' + escapeHtml(String(d).replace(/\s+/g, ' ').trim()) + '</div>';
+}
 function cardPriceHtml(item) {
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
   return mrpPriceHtml(hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0), !hasVar && item.original_price ? item.original_price : 0);
@@ -1376,6 +1383,7 @@ function renderProducts(menuIdx) {
       '</div>' +
       '<div class="card-body">' +
         '<div class="card-name">' + (item.item_name_translated || item.item_name_en || item.name) + (oos ? ' <span class="card-oos-badge">Out of Stock</span>' : '') + '</div>' +
+        cardDescHtml(item) +
         '<div class="card-price">' + cardPriceHtml(item) + '</div>' +
         (!oos ? '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span>' : '') +
       '</div>' +
@@ -2233,6 +2241,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   getTypeIcon(item.item_type) + cardBadgesHtml(item) + '</div>' +
                   '<div class="card-body">' +
                   '<div class="card-name">' + escapeHtml(item.item_name_translated || item.item_name_en) + '</div>' +
+                  cardDescHtml(item) +
                   '<div class="card-price">' + cardPriceHtml(item) + '</div>' +
                   '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span></div></div>';
               }
