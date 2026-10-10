@@ -786,7 +786,7 @@ body {
 #menuList .menu-item-footer { align-items: flex-end; }
 #menuList .menu-item-price { padding-top: 5px; }
 /* Menu list price pill: current price in a coloured block; with an offer,
-   "MRP" and the struck regular price sit on the right of the same pill.
+   the struck regular price sits on the right of the same pill.
    Colour/style follow Website Appearance > Bestsellers: price box. */
 .mrp-price { display: inline-flex; align-items: stretch; border: 1.5px solid var(--bsl-price); border-radius: 10px; overflow: hidden; background: #fff; line-height: 1.1; vertical-align: middle; }
 .mrp-now { display: flex; align-items: center; padding: 4px 9px; background: var(--bsl-price); color: #fff; font-size: 14px; font-weight: 800; }
@@ -1890,12 +1890,12 @@ function apiUrl(action, extra) {
   return p;
 }
 
-// Menu list price pill (see .mrp-price): current price, plus "MRP" and the
+// Menu list price pill (see .mrp-price): current price, plus the
 // struck regular price when the dish has an offer. "₹224", not "₹224.00".
 function mrpPriceHtml(now, was) {
   var f = function(n) { return formatPrice(n).replace(/\.00$/, ''); };
   return '<span class="mrp-price' + (was ? ' has-mrp' : '') + '"><span class="mrp-now">' + f(now) + '</span>' +
-    (was ? '<span class="mrp-was"><small>MRP</small><s>' + f(was) + '</s></span>' : '') + '</span>';
+    (was ? '<span class="mrp-was"><s>' + f(was) + '</s></span>' : '') + '</span>';
 }
 
 function getImageUrl(img) {
@@ -2087,7 +2087,7 @@ function renderMenu() {
       var item = items[ii];
       item._ci = ci; item._ii = ii;
       var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-      // Price pill: lowest price for dishes with sizes; offer dishes also show "MRP" + struck regular price
+      // Price pill: lowest price for dishes with sizes; offer dishes also show the struck regular price
       var displayPrice = mrpPriceHtml(hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0), !hasVar && item.original_price ? item.original_price : 0);
       // SAVE from the real prices, rating only when genuine (same rules as the Bestsellers cards)
       var miWas = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
