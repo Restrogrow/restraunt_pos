@@ -900,12 +900,6 @@ try {
         <div class="restaurant-info">
           <div class="restaurant-name" id="restaurantName"><?php echo htmlspecialchars($restaurant_name); ?></div>
           <div class="restaurant-id" id="restaurantId"><?php echo htmlspecialchars($restaurant_id); ?></div>
-          <div id="restaurantSwitcherWrapper" style="display:none;margin-top:6px;">
-            <select id="restaurantSwitcher" style="width:100%;padding:4px 6px;font-size:12px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;outline:none;cursor:pointer;">
-              <option value="" disabled selected style="color:#333;background:#fff;">Switch restaurant...</option>
-            </select>
-            <button type="button" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='branches.php';" style="width:100%;margin-top:6px;padding:5px 6px;font-size:12px;font-weight:600;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;cursor:pointer;">&#8592; All branches</button>
-          </div>
         </div>
       </a>
       <button class="toggler sidebar-toggler">
@@ -915,6 +909,21 @@ try {
         <span class="material-symbols-rounded">menu</span>
       </button>
     </header>
+
+    <!-- Branch switcher (multi-branch logins only — shown by initRestaurantSwitcher) -->
+    <div id="restaurantSwitcherWrapper" class="branch-switcher" style="display:none;">
+      <label class="branch-switcher-label" for="restaurantSwitcher">Current branch</label>
+      <div class="branch-switcher-select">
+        <span class="material-symbols-rounded branch-switcher-icon">storefront</span>
+        <select id="restaurantSwitcher">
+          <option value="" disabled>Switch branch…</option>
+        </select>
+        <span class="material-symbols-rounded branch-switcher-chevron">expand_more</span>
+      </div>
+      <a href="branches.php" class="branch-switcher-all">
+        <span class="material-symbols-rounded">grid_view</span>All branches
+      </a>
+    </div>
 
     <nav class="sidebar-nav">
       <!-- Primary top nav -->

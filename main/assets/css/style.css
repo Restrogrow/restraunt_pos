@@ -92,6 +92,111 @@ html {
   display: none;
 }
 
+/* Keep the restaurant name clear of the absolutely-positioned collapse button */
+@media (min-width: 1025px) {
+  .sidebar:not(.collapsed) .sidebar-header .header-logo {
+    padding-right: 40px;
+  }
+}
+
+/* Branch switcher (multi-branch logins) — sits under the header, full width */
+.branch-switcher {
+  margin: 0 15px 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.sidebar.collapsed .branch-switcher {
+  display: none !important;
+}
+
+.branch-switcher-label {
+  display: block;
+  margin: 0 2px 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.branch-switcher-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.branch-switcher-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 100%;
+  padding: 0 34px 0 38px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #151A2D;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  text-overflow: ellipsis;
+}
+
+.branch-switcher-select select:focus-visible {
+  box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.45);
+}
+
+.branch-switcher-icon,
+.branch-switcher-chevron {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #151A2D;
+}
+
+.branch-switcher-icon {
+  left: 10px;
+  font-size: 1.2rem;
+  color: #ff5a1f;
+}
+
+.branch-switcher-chevron {
+  right: 8px;
+  font-size: 1.3rem;
+}
+
+.branch-switcher-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.branch-switcher-all:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.branch-switcher-all .material-symbols-rounded {
+  font-size: 1.1rem;
+}
+
 .sidebar-header .toggler {
   height: 35px;
   width: 35px;
