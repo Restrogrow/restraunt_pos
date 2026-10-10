@@ -217,7 +217,7 @@
   var STYLE_DEFAULTS = {
     show_section: true, title: 'Bestsellers', eyebrow: 'Customer favourites',
     title_color: '#1f2a44', badge_color: '#1f7a3a', add_color: '#e53935',
-    add_animation: 'glow', add_style: 'outline', add_shape: 'rounded', add_label: 'ADD', add_plus: false,
+    add_animation: 'glow', add_style: 'outline', add_shape: 'rounded', add_label: 'ADD', add_plus: false, price_color: '#1f7a3a', price_style: 'outline',
     show_rating: true, show_offer: true
   };
   var SHAPE_RADIUS = { rounded: '10px', pill: '999px', square: '4px' };
@@ -230,6 +230,8 @@
     if (!card || !preview) return;
     card.style.setProperty('--bsp-badge', $('bsBadgeColor').value);
     card.style.setProperty('--bsp-add', $('bsAddColor').value);
+    card.style.setProperty('--bsp-price', $('bsPriceColor').value);
+    preview.setAttribute('data-price-style', $('bsPriceStyle').value);
     card.style.setProperty('--bsp-add-radius', SHAPE_RADIUS[$('bsAddShape').value] || '10px');
     preview.setAttribute('data-anim', $('bsAddAnimation').value);
     preview.setAttribute('data-style', $('bsAddStyle').value);
@@ -255,6 +257,8 @@
     $('bsAddShape').value = v('add_shape');
     $('bsAddLabel').value = v('add_label');
     $('bsAddPlus').checked = !!v('add_plus');
+    $('bsPriceColor').value = v('price_color');
+    $('bsPriceStyle').value = v('price_style');
     $('bsShowRating').checked = !!v('show_rating');
     $('bsShowOffer').checked = !!v('show_offer');
     updateStylePreview();
@@ -274,6 +278,8 @@
       add_shape: $('bsAddShape').value,
       add_label: cleanLabel($('bsAddLabel').value) || STYLE_DEFAULTS.add_label,
       add_plus: $('bsAddPlus').checked,
+      price_color: $('bsPriceColor').value,
+      price_style: $('bsPriceStyle').value,
       show_rating: $('bsShowRating').checked,
       show_offer: $('bsShowOffer').checked
     };

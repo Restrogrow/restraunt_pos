@@ -1804,6 +1804,19 @@ try {
                 </div>
               </div>
 
+              <div class="bs-style-grid">
+                <label class="bs-style-field">Price box colour
+                  <input type="color" id="bsPriceColor" value="#1f7a3a">
+                </label>
+                <label class="bs-style-field">Price box style
+                  <select id="bsPriceStyle">
+                    <option value="outline">Outline</option>
+                    <option value="filled">Filled</option>
+                    <option value="soft">Soft tint</option>
+                  </select>
+                </label>
+              </div>
+
               <div class="bs-style-preview" id="bsPreview" aria-label="Preview">
                 <span class="bs-style-preview-label">Preview</span>
                 <div class="bs-preview-card">
@@ -1813,6 +1826,7 @@ try {
                     <span class="bs-preview-rate" id="bsPreviewRate">4.6 ★</span>
                   </div>
                   <div class="bs-preview-name">Steamed Momos</div>
+                  <div class="bs-preview-price"><s>₹149</s><span class="bs-preview-price-now">₹114</span></div>
                   <div class="bs-preview-qty"><button type="button" class="bs-preview-add" id="bsPreviewAdd" tabindex="-1"><span id="bsPreviewAddText">ADD</span><span class="material-symbols-rounded bs-preview-plus" id="bsPreviewPlus" aria-hidden="true">add</span></button></div>
                 </div>
               </div>

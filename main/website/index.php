@@ -45,6 +45,7 @@ if (isset($_GET['table']) && trim($_GET['table']) !== '') {
   /* add_label is whitelisted to letters/digits/space/+&!.- in getBestsellerStyle() */
   --bsl-add-label: "<?php echo $bestseller_style['add_label']; ?>";
   --bsl-add-radius: <?php echo ['pill' => '999px', 'square' => '4px'][$bestseller_style['add_shape']] ?? '10px'; ?>;
+  --bsl-price: <?php echo htmlspecialchars($bestseller_style['price_color'], ENT_QUOTES, 'UTF-8'); ?>;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -609,8 +610,20 @@ body {
 .bsl-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--bsl-badge); }
 .bsl-note i { font-size: 11px; }
 .bsl-foot { margin-top: auto; padding-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.bsl-price { font-size: 15px; font-weight: 800; color: #1f2a44; white-space: nowrap; line-height: 1.15; }
-.bsl-price s { margin-left: 5px; font-size: 12px; font-weight: 500; color: #9ca3af; }
+.bsl-price { display: flex; align-items: center; gap: 7px; white-space: nowrap; line-height: 1.15; }
+.bsl-price s { font-size: 12.5px; font-weight: 500; color: #9ca3af; }
+/* Current price in a coloured box (Website Appearance > Bestsellers: price colour/style) */
+.bsl-price-now {
+  padding: 3px 9px;
+  border: 1.5px solid var(--bsl-price);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--bsl-price);
+  font-size: 15px;
+  font-weight: 800;
+}
+.bsl[data-price-style="filled"] .bsl-price-now { background: var(--bsl-price); color: #fff; }
+.bsl[data-price-style="soft"] .bsl-price-now { background: color-mix(in srgb, var(--bsl-price) 12%, #fff); border-color: transparent; }
 /* Rating chip (genuine, from customer order feedback) */
 .bsl-rating {
   display: inline-flex;
@@ -1576,6 +1589,7 @@ window.socialLinks = {
            data-add-anim="<?php echo htmlspecialchars($bestseller_style['add_animation'], ENT_QUOTES, 'UTF-8'); ?>"
            data-add-style="<?php echo htmlspecialchars($bestseller_style['add_style'], ENT_QUOTES, 'UTF-8'); ?>"
            data-add-plus="<?php echo $bestseller_style['add_plus'] ? '1' : '0'; ?>"
+           data-price-style="<?php echo htmlspecialchars($bestseller_style['price_style'], ENT_QUOTES, 'UTF-8'); ?>"
            data-show-rating="<?php echo $bestseller_style['show_rating'] ? '1' : '0'; ?>"
            data-show-offer="<?php echo $bestseller_style['show_offer'] ? '1' : '0'; ?>">
     <div class="bsl-head">
@@ -2839,7 +2853,8 @@ function renderBestsellers() {
         '<div class="bsl-name">' + name + '</div>' +
         (meta ? '<div class="bsl-meta">' + meta + '</div>' : '') +
         '<div class="bsl-foot">' +
-          '<div class="bsl-price">' + price + (was ? ' <s>' + fmt(was) + '</s>' : '') + '</div>' +
+          // Regular price struck through on the left, current price boxed on the right
+          '<div class="bsl-price">' + (was ? '<s>' + fmt(was) + '</s>' : '') + '<span class="bsl-price-now">' + price + '</span></div>' +
         '</div>' +
         '<div class="bsl-qty" id="bsqty-' + item.id + '" onclick="event.stopPropagation()">' + renderQtyControl(item.id, item) + '</div>' +
       '</div>' +

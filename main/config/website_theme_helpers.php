@@ -257,6 +257,8 @@ const BESTSELLER_STYLE_DEFAULTS = [
     'add_shape'      => 'rounded',  // rounded | pill | square
     'add_label'      => 'ADD',
     'add_plus'       => false,      // show a "+" icon after the label
+    'price_color'    => '#1f7a3a',  // box around the current price
+    'price_style'    => 'outline',  // outline | filled | soft
     'show_rating'    => true,
     'show_offer'     => true,
 ];
@@ -288,7 +290,8 @@ function getBestsellerStyle($raw): array {
             $out[$k] = $v !== '' ? mb_substr($v, 0, $max) : BESTSELLER_STYLE_DEFAULTS[$k];
         }
     }
-    foreach (['title_color', 'badge_color', 'add_color'] as $k) {
+    if (isset($in['price_style']) && in_array($in['price_style'], BESTSELLER_ADD_STYLES, true)) $out['price_style'] = $in['price_style'];
+    foreach (['title_color', 'badge_color', 'add_color', 'price_color'] as $k) {
         if (isset($in[$k]) && preg_match('/^#[0-9a-fA-F]{6}$/', (string)$in[$k])) $out[$k] = strtolower($in[$k]);
     }
     if (isset($in['add_animation']) && in_array($in['add_animation'], BESTSELLER_ADD_ANIMATIONS, true)) {

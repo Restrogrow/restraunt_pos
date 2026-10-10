@@ -8127,7 +8127,18 @@ body, html {
 .bs-style-preview[data-anim="ripple"] .bs-preview-qty::after { border-radius: var(--bsp-add-radius); }
 .bs-preview-qty { border-radius: calc(var(--bsp-add-radius) + 2px); }
 .bs-preview-add { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
-.bs-preview-plus { display: none; font-size: 16px; }
-.bs-style-preview[data-plus="1"] .bs-preview-plus { display: inline-block; }
+.bs-preview-add .bs-preview-plus.material-symbols-rounded { display: none; font-size: 16px; }
+.bs-style-preview[data-plus="1"] .bs-preview-add .bs-preview-plus.material-symbols-rounded { display: inline-block; }
 .bs-style-preview[data-style="filled"] .bs-preview-add { background: var(--bsp-add); color: #fff; }
 .bs-style-preview[data-style="soft"] .bs-preview-add { background: color-mix(in srgb, var(--bsp-add) 12%, #fff); border-color: transparent; }
+
+/* Preview: struck regular price + boxed current price */
+.bs-style-card { --bsp-price: #1f7a3a; }
+.bs-preview-price { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
+.bs-preview-price s { font-size: 0.8rem; color: #9ca3af; }
+.bs-preview-price-now {
+  padding: 2px 8px; border: 1.5px solid var(--bsp-price); border-radius: 8px;
+  background: #fff; color: var(--bsp-price); font-weight: 800; font-size: 0.9rem;
+}
+.bs-style-preview[data-price-style="filled"] .bs-preview-price-now { background: var(--bsp-price); color: #fff; }
+.bs-style-preview[data-price-style="soft"] .bs-preview-price-now { background: color-mix(in srgb, var(--bsp-price) 12%, #fff); border-color: transparent; }
