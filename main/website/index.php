@@ -549,7 +549,12 @@ body {
   background: #f3f4f6;
   overflow: visible;
 }
+/* Absolutely positioned so the photo always fills the fixed 1:0.92 box: a
+   tall (portrait) photo used to stretch its box, and the carousel then
+   stretched every Bestsellers card to that taller height */
 .bsl-img img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
