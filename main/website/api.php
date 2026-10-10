@@ -673,6 +673,10 @@ try {
                 unset($item);
                 attachVariationsToItems($conn, $items);
 
+                // Same offer prices + ratings as getMenuItems — search results
+                // used to show the regular price while checkout charged the offer
+                require_once __DIR__ . '/../config/bestseller_helpers.php';
+                applyBestsellersToItems($conn, $restaurantId, $items);
                 echo json_encode($items);
             } catch (PDOException $e) {
                 // If columns don't exist, try with basic columns

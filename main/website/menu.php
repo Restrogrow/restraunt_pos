@@ -27,6 +27,9 @@
   --btn-radius: <?php echo htmlspecialchars($btn_radius_css, ENT_QUOTES, 'UTF-8'); ?>;
   --checkout-color: <?php echo htmlspecialchars($checkout_color, ENT_QUOTES, 'UTF-8'); ?>;
   --checkout-color-dark: <?php echo htmlspecialchars($checkout_color_dark, ENT_QUOTES, 'UTF-8'); ?>;
+  /* Rating/OFF chip + price colours: same Website Appearance > Bestsellers settings as the home page */
+  --bsl-badge: <?php echo htmlspecialchars($bestseller_style['badge_color'], ENT_QUOTES, 'UTF-8'); ?>;
+  --bsl-price: <?php echo htmlspecialchars($bestseller_style['price_color'], ENT_QUOTES, 'UTF-8'); ?>;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
@@ -333,6 +336,23 @@ body {
   font-weight: 600;
   color: #2d3436;
 }
+/* Rating + "₹X OFF" chips under the dish name (same as the home page list) */
+.card-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: -3px; }
+.bsl-rating { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; background: var(--bsl-badge); color: #fff; font-size: 11px; font-weight: 800; line-height: 1.3; }
+.bsl-rating i { font-size: 9px; }
+.bsl-rating-count { margin-left: 2px; font-weight: 600; opacity: 0.9; }
+.menu-item-save { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--bsl-badge) 12%, #fff); color: var(--bsl-badge); font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.3; }
+/* Price pill: current price in a coloured block; with an offer, "MRP" and
+   the struck regular price sit on the right of the same pill */
+.mrp-price { display: inline-flex; align-items: stretch; border: 1.5px solid var(--bsl-price); border-radius: 10px; overflow: hidden; background: #fff; line-height: 1.1; vertical-align: middle; }
+.mrp-now { display: flex; align-items: center; padding: 4px 9px; background: var(--bsl-price); color: #fff; font-size: 14px; font-weight: 800; }
+.mrp-price.has-mrp .mrp-now { border-radius: 0 9px 9px 0; }
+.mrp-was { display: flex; flex-direction: column; justify-content: center; align-items: flex-end; padding: 2px 8px 2px 7px; color: #6b7280; }
+.mrp-was small { font-size: 8.5px; font-weight: 600; letter-spacing: 0.05em; }
+.mrp-was s { font-size: 11px; font-weight: 700; }
+[data-price-style="outline"] .mrp-now { background: #fff; color: var(--bsl-price); }
+[data-price-style="soft"] .mrp-now { background: color-mix(in srgb, var(--bsl-price) 14%, #fff); color: var(--bsl-price); }
+[data-price-style="outline"] .mrp-price.has-mrp .mrp-now, [data-price-style="soft"] .mrp-price.has-mrp .mrp-now { border-right: 1.5px solid var(--bsl-price); }
 
 .card.oos { opacity: 0.55; pointer-events: none; }
 .card.oos .card-img-wrap img { filter: grayscale(1); }
@@ -881,7 +901,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
           <h2 id="categoryTitle"><span class="skel-title-bar skeleton"></span></h2>
           <div class="subcategory-tabs" id="subcategoryTabs" style="display:none"></div>
         </div>
-        <div class="product-grid cols-2 layout-<?php echo htmlspecialchars($layout_style, ENT_QUOTES, 'UTF-8'); ?>" id="productGrid">
+        <div class="product-grid cols-2 layout-<?php echo htmlspecialchars($layout_style, ENT_QUOTES, 'UTF-8'); ?>" id="productGrid" data-price-style="<?php echo htmlspecialchars($bestseller_style['price_style'], ENT_QUOTES, 'UTF-8'); ?>">
           <div class="skel-grid">
             <div class="skel-card"><div class="skel-card-img skeleton"></div><div class="skel-card-body"><div class="skel-card-title skeleton"></div><div class="skel-card-price skeleton"></div></div></div>
             <div class="skel-card"><div class="skel-card-img skeleton"></div><div class="skel-card-body"><div class="skel-card-title skeleton"></div><div class="skel-card-price skeleton"></div></div></div>
@@ -1014,6 +1034,30 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, function(c) {
     return '&#' + c.charCodeAt(0) + ';';
   });
+}
+
+// Price pill (see .mrp-price): current price, plus "MRP" and the struck
+// regular price when the dish has an offer. "₹224", not "₹224.00".
+function mrpPriceHtml(now, was) {
+  var f = function(n) { return formatPrice(n).replace(/\.00$/, ''); };
+  return '<span class="mrp-price' + (was ? ' has-mrp' : '') + '"><span class="mrp-now">' + f(now) + '</span>' +
+    (was ? '<span class="mrp-was"><small>MRP</small><s>' + f(was) + '</s></span>' : '') + '</span>';
+}
+function cardPriceHtml(item) {
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  return mrpPriceHtml(hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0), !hasVar && item.original_price ? item.original_price : 0);
+}
+// Genuine rating (from rated orders) + "₹X OFF" from the real prices — same rules as the home page
+function cardBadgesHtml(item) {
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  var was = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
+  var save = was ? Math.round(was - parseFloat(item.base_price || 0)) : 0;
+  var rating = item.rating ? parseFloat(item.rating) : 0;
+  var html = (rating > 0 ? '<span class="bsl-rating" title="Rated ' + rating.toFixed(1) + ' out of 5 from ' + (item.rating_count || 0) + ' rated orders">' +
+      rating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i>' +
+      (item.rating_count ? '<span class="bsl-rating-count">(' + parseInt(item.rating_count, 10) + ')</span>' : '') + '</span>' : '') +
+    (save > 0 ? '<span class="menu-item-save">' + formatPrice(save).replace(/\.00$/, '') + ' OFF</span>' : '');
+  return html ? '<div class="card-badges">' + html + '</div>' : '';
 }
 
 function formatPrice(price) {
@@ -1301,8 +1345,6 @@ function renderProducts(menuIdx) {
     var html = '';
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
-    var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-    var displayPrice = hasVar ? formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || item.price || 0);
     var oos = item.is_available == 0;
     html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
       '<div class="card-img-wrap">' +
@@ -1311,7 +1353,8 @@ function renderProducts(menuIdx) {
       '</div>' +
       '<div class="card-body">' +
         '<div class="card-name">' + (item.item_name_translated || item.item_name_en || item.name) + (oos ? ' <span class="card-oos-badge">Out of Stock</span>' : '') + '</div>' +
-        '<div class="card-price">' + displayPrice + '</div>' +
+        cardBadgesHtml(item) +
+        '<div class="card-price">' + cardPriceHtml(item) + '</div>' +
         (!oos ? '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span>' : '') +
       '</div>' +
     '</div>';
@@ -2163,14 +2206,13 @@ document.addEventListener('DOMContentLoaded', function() {
               html += '<div style="padding:8px 16px 4px;font-size:13px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer" onclick="switchToMenu(' + menuIdx + ')">' + menuNames[m] + ' <span style="font-size:11px;color:#aaa">↗</span></div>';
               for (var i = 0; i < list.length; i++) {
                 var item = list[i];
-                var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-                var displayPrice = hasVar ? formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || 0);
                 html += '<div class="card" data-itemId="' + item.id + '" onclick="showItemDetail(' + item.id + ')">' +
                   '<div class="card-img-wrap"><img src="' + getImageUrl(item.item_image) + '" alt="' + escapeHtml(item.item_name_translated || item.item_name_en) + '" loading="lazy">' +
                   getTypeIcon(item.item_type) + '</div>' +
                   '<div class="card-body">' +
                   '<div class="card-name">' + escapeHtml(item.item_name_translated || item.item_name_en) + '</div>' +
-                  '<div class="card-price">' + displayPrice + '</div>' +
+                  cardBadgesHtml(item) +
+                  '<div class="card-price">' + cardPriceHtml(item) + '</div>' +
                   '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span></div></div>';
               }
             }

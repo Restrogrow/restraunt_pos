@@ -781,29 +781,22 @@ body {
   display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px;
   background: color-mix(in srgb, var(--bsl-badge) 12%, #fff); color: var(--bsl-badge); font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.3;
 }
-/* Menu list: struck regular price sits just above the price box (not beside
-   it), and the footer aligns to the bottom, so the price box and ADD button
-   line up the same way on every row whether or not there's an offer */
-#menuList .menu-item-price { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding-top: 5px; font-size: 12.5px; }
-#menuList .menu-item-price-now { padding: 1px 7px; }
 /* Long descriptions: show 2 lines, then "…" */
 #menuList .menu-item-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 #menuList .menu-item-footer { align-items: flex-end; }
-.menu-item-was { font-size: 0.78em; font-weight: 500; color: #9ca3af; line-height: 1.1; margin-left: 2px; }
-/* Menu list current price in a coloured box — same colour/style settings as
-   the Bestsellers cards (Website Appearance > Bestsellers: price box) */
-.menu-item-price-now {
-  display: inline-block;
-  padding: 2px 8px;
-  border: 1.5px solid var(--bsl-price);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--bsl-price);
-  font-weight: 800;
-  line-height: 1.3;
-}
-#menuList[data-price-style="filled"] .menu-item-price-now { background: var(--bsl-price); color: #fff; }
-#menuList[data-price-style="soft"] .menu-item-price-now { background: color-mix(in srgb, var(--bsl-price) 12%, #fff); border-color: transparent; }
+#menuList .menu-item-price { padding-top: 5px; }
+/* Menu list price pill: current price in a coloured block; with an offer,
+   "MRP" and the struck regular price sit on the right of the same pill.
+   Colour/style follow Website Appearance > Bestsellers: price box. */
+.mrp-price { display: inline-flex; align-items: stretch; border: 1.5px solid var(--bsl-price); border-radius: 10px; overflow: hidden; background: #fff; line-height: 1.1; vertical-align: middle; }
+.mrp-now { display: flex; align-items: center; padding: 4px 9px; background: var(--bsl-price); color: #fff; font-size: 14px; font-weight: 800; }
+.mrp-price.has-mrp .mrp-now { border-radius: 0 9px 9px 0; }
+.mrp-was { display: flex; flex-direction: column; justify-content: center; align-items: flex-end; padding: 2px 8px 2px 7px; color: #6b7280; }
+.mrp-was small { font-size: 8.5px; font-weight: 600; letter-spacing: 0.05em; }
+.mrp-was s { font-size: 11px; font-weight: 700; }
+[data-price-style="outline"] .mrp-now { background: #fff; color: var(--bsl-price); }
+[data-price-style="soft"] .mrp-now { background: color-mix(in srgb, var(--bsl-price) 14%, #fff); color: var(--bsl-price); }
+[data-price-style="outline"] .mrp-price.has-mrp .mrp-now, [data-price-style="soft"] .mrp-price.has-mrp .mrp-now { border-right: 1.5px solid var(--bsl-price); }
 
 /* Toast Notification */
 .toast-notification {
@@ -1897,6 +1890,14 @@ function apiUrl(action, extra) {
   return p;
 }
 
+// Menu list price pill (see .mrp-price): current price, plus "MRP" and the
+// struck regular price when the dish has an offer. "₹224", not "₹224.00".
+function mrpPriceHtml(now, was) {
+  var f = function(n) { return formatPrice(n).replace(/\.00$/, ''); };
+  return '<span class="mrp-price' + (was ? ' has-mrp' : '') + '"><span class="mrp-now">' + f(now) + '</span>' +
+    (was ? '<span class="mrp-was"><small>MRP</small><s>' + f(was) + '</s></span>' : '') + '</span>';
+}
+
 function getImageUrl(img) {
   if (!img || img === '' || img === 'no-image') return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Image%3C/text%3E%3C/svg%3E';
   if (img.indexOf('http://') === 0 || img.indexOf('https://') === 0) return img;
@@ -2086,11 +2087,8 @@ function renderMenu() {
       var item = items[ii];
       item._ci = ci; item._ii = ii;
       var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-      var displayPrice = hasVar ? formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || item.price || 0);
-      // Same layout as the Bestsellers cards: regular price struck through on
-      // the left (only when there's an offer), current price boxed on the right
-      displayPrice = (!hasVar && item.original_price ? '<s class="menu-item-was">' + formatPrice(item.original_price) + '</s>' : '') +
-        '<span class="menu-item-price-now">' + displayPrice + '</span>';
+      // Price pill: lowest price for dishes with sizes; offer dishes also show "MRP" + struck regular price
+      var displayPrice = mrpPriceHtml(hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0), !hasVar && item.original_price ? item.original_price : 0);
       // SAVE from the real prices, rating only when genuine (same rules as the Bestsellers cards)
       var miWas = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
       var miSave = miWas ? Math.round(miWas - parseFloat(item.base_price || 0)) : 0;
