@@ -6460,6 +6460,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/campaign-calendar.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/growth.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/qr-standee.js?v=<?php echo time(); ?>" defer></script>
   
 
   

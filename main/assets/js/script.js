@@ -4587,6 +4587,10 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="qr-code-table-name">${escapeHtml(table.table_number)}</div>
             <div class="qr-code-area">${escapeHtml(table.area_name)}</div>
             <div class="qr-code-actions">
+              <button class="qr-standee-btn" data-table="${escapeHtml(table.table_number).replace(/"/g, '&quot;')}" data-url="${escapeHtml(tableUrl).replace(/"/g, '&quot;')}" onclick="openQRStandee(this)">
+                <span class="material-symbols-rounded">palette</span>
+                Design standee
+              </button>
               <button class="qr-open-btn" onclick="window.open('${tableUrl}', '_blank')" title="Open in new tab">
                 <span class="material-symbols-rounded">open_in_new</span>
                 Visit
