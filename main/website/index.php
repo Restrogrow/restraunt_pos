@@ -679,6 +679,17 @@ body {
   .bsl-card .bsl-img { transition: transform 0.15s ease, box-shadow 0.15s ease; }
   .bsl-card:hover .bsl-img { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
 }
+/* Menu list: % OFF strip on the photo, rating + SAVE chips under the name */
+.menu-item-off {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 2px 0; background: rgba(32, 32, 36, 0.82); color: #fff;
+  font-size: 10px; font-weight: 700; text-align: center; letter-spacing: 0.02em;
+}
+.menu-item-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 4px; }
+.menu-item-save {
+  display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px;
+  background: #e8f5ec; color: #1f7a3a; font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.3;
+}
 .menu-item-was { font-size: 0.8em; font-weight: 500; color: #9ca3af; margin-left: 4px; }
 
 /* Toast Notification */
@@ -1954,14 +1965,25 @@ function renderMenu() {
       var displayPrice = hasVar ? 'From ' + formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || item.price || 0);
       // Bestseller offer price (served as base_price) — show the regular price struck through
       if (!hasVar && item.original_price) displayPrice += ' <s class="menu-item-was">' + formatPrice(item.original_price) + '</s>';
+      // % OFF / SAVE from the real prices, rating only when genuine (same rules as the Bestsellers cards)
+      var miWas = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
+      var miSave = miWas ? Math.round(miWas - parseFloat(item.base_price || 0)) : 0;
+      var miPct = miSave > 0 ? Math.round(miSave / miWas * 100) : 0;
+      var miRating = item.rating ? parseFloat(item.rating) : 0;
+      var miBadges = (miRating > 0 ? '<span class="bsl-rating" title="' + miRating.toFixed(1) + ' out of 5 from ' + (item.rating_count || 0) + ' rated orders">' +
+          miRating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i>' +
+          (item.rating_count ? '<span class="bsl-rating-count">(' + item.rating_count + ')</span>' : '') + '</span>' : '') +
+        (miSave > 0 ? '<span class="menu-item-save">SAVE ' + formatPrice(miSave).replace(/\.00$/, '') + '</span>' : '');
       var oos = item.is_available == 0;
       html += '<div class="menu-item' + (oos ? ' oos' : '') + '" onclick="if(!' + oos + ')showItemDetail(' + ci + ',' + ii + ')">' +
         '<div class="menu-item-img">' +
           '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + escHtml(item.item_name_translated || item.item_name_en || item.name) + '" loading="lazy">' +
           (item.item_type && (item.item_type === 'Veg' || item.item_type === 'Non Veg' || item.item_type === 'Egg') ? '<div class="veg-icon"><svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" fill="#fff" stroke="' + (item.item_type === 'Veg' ? '#2ecc40' : item.item_type === 'Non Veg' ? '#e53935' : '#ff9800') + '" stroke-width="1.5" rx="2"/><circle cx="7" cy="7" r="3" fill="' + (item.item_type === 'Veg' ? '#2ecc40' : item.item_type === 'Non Veg' ? '#e53935' : '#ff9800') + '"/></svg></div>' : '') +
+          (miPct > 0 ? '<span class="menu-item-off">' + miPct + '% OFF</span>' : '') +
         '</div>' +
         '<div class="menu-item-content">' +
           '<div class="menu-item-name">' + escHtml(item.item_name_translated || item.item_name_en || item.name) + '</div>' +
+          (miBadges ? '<div class="menu-item-badges">' + miBadges + '</div>' : '') +
           '<div class="menu-item-desc">' + (escHtml(item.item_description_en || item.desc || '').replace(/\n/g, item.description_format === 'br' ? '<br>' : ' ')) + '</div>' +
           '<div class="menu-item-footer">' +
             '<div class="menu-item-price">' + displayPrice + '</div>' +

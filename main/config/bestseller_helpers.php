@@ -105,23 +105,23 @@ function getItemRatings($conn, $restaurantId, array $menuItemIds) {
 }
 
 /**
- * Annotate website menu items in place: is_bestseller / bestseller_rank,
- * rating / rating_count (when genuine ratings exist), and for valid offers
- * swap base_price to the offer price (original_price keeps the regular
- * price for the strike-through).
+ * Annotate website menu items in place: rating / rating_count on any item
+ * with genuine ratings; is_bestseller / bestseller_rank on featured items;
+ * and for valid offers swap base_price to the offer price (original_price
+ * keeps the regular price for the strike-through).
  */
 function applyBestsellersToItems($conn, $restaurantId, array &$items) {
     $map = getBestsellerMap($conn, $restaurantId);
-    $ratings = $map ? getItemRatings($conn, $restaurantId, array_keys($map)) : [];
+    $ratings = getItemRatings($conn, $restaurantId, array_map(function ($i) { return (int)($i['id'] ?? 0); }, $items));
     foreach ($items as &$item) {
         $id = (int)($item['id'] ?? 0);
-        if (!isset($map[$id])) continue;
-        $item['is_bestseller'] = 1;
-        $item['bestseller_rank'] = $map[$id]['rank'];
         if (isset($ratings[$id])) {
             $item['rating'] = $ratings[$id]['rating'];
             $item['rating_count'] = $ratings[$id]['count'];
         }
+        if (!isset($map[$id])) continue;
+        $item['is_bestseller'] = 1;
+        $item['bestseller_rank'] = $map[$id]['rank'];
         $hasVariations = !empty($item['has_variations']) && !empty($item['variations']);
         $offer = bestsellerOfferPrice($map, $id, $item['base_price'] ?? 0, $hasVariations);
         if ($offer !== null) {
