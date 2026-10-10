@@ -281,56 +281,58 @@ body {
 
 /* Coupon Card Carousel */
 .coupon-carousel {
-  padding: 6px 16px 0;
+  padding: 10px 16px 2px;
 }
 .coupon-carousel-inner {
   display: flex;
   gap: 12px;
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-snap-type: x proximity;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
-  padding-bottom: 4px;
-  cursor: grab;
+  overscroll-behavior-x: contain;
+  padding: 2px 0 6px;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.coupon-carousel-inner:active { cursor: grabbing; }
 .coupon-carousel-inner::-webkit-scrollbar { height: 0; }
 .coupon-card {
-  flex: 0 0 88%;
+  flex: 0 0 90%;
   scroll-snap-align: start;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   position: relative;
   cursor: pointer;
   transition: transform 0.2s;
   display: flex;
-  height: 80px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  height: 108px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.14);
+  -webkit-user-select: none;
+  user-select: none;
 }
+.coupon-card:only-child { flex-basis: 100%; }
 .coupon-card:active { transform: scale(0.98); }
 .coupon-card-barcode {
-  width: 48px;
+  width: 56px;
   background: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
-  padding: 8px 4px;
+  padding: 10px 4px;
   flex-shrink: 0;
   position: relative;
 }
 .coupon-card-barcode::after {
   content: '';
   position: absolute;
-  right: -6px;
+  right: -7px;
   top: 50%;
   transform: translateY(-50%);
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   background: #fff;
   border-radius: 50%;
 }
@@ -340,21 +342,22 @@ body {
 }
 .coupon-card-content {
   flex: 1;
-  padding: 8px 16px 8px 18px;
+  padding: 12px 16px 12px 20px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 2px;
   position: relative;
   overflow: hidden;
   min-width: 0;
 }
 .coupon-card-discount {
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0,0,0,0.12);
-  padding-right: 28px;
+  padding-right: 34px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -362,71 +365,92 @@ body {
 .coupon-card-divider {
   width: 100%;
   height: 1px;
-  background: rgba(255,255,255,0.3);
-  margin: 3px 0;
+  background: rgba(255,255,255,0.35);
+  margin: 5px 0 4px;
 }
 .coupon-card-code-row {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 600;
+  gap: 6px;
   color: #fff;
   flex-wrap: nowrap;
   overflow: hidden;
 }
 .coupon-card-code-row .use-label {
   opacity: 0.9;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.04em;
   flex-shrink: 0;
 }
 .coupon-card-code-row .coupon-code-val {
   font-weight: 800;
-  letter-spacing: 0.5px;
-  font-size: 12px;
+  letter-spacing: 0.6px;
+  font-size: 14px;
   flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1.5px dashed rgba(255,255,255,0.75);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.12);
 }
 .coupon-card-code-row .copy-icon {
-  font-size: 11px;
-  opacity: 0.85;
+  font-size: 13px;
+  opacity: 0.9;
   cursor: pointer;
   flex-shrink: 0;
 }
-.coupon-card-code-row .cpn-separator {
-  opacity: 0.5;
-  margin: 0 2px;
-  flex-shrink: 0;
-}
-.coupon-card-code-row .cpn-desc-tag {
-  font-size: 9px;
-  opacity: 0.8;
+.coupon-card-desc {
+  margin-top: 4px;
+  font-size: 12px;
   font-weight: 500;
-  max-width: 120px;
+  line-height: 1.3;
+  color: #fff;
+  opacity: 0.9;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .coupon-card-deco {
   position: absolute;
-  right: 8px;
-  top: 8px;
-  font-size: 24px;
+  right: 10px;
+  top: 10px;
+  font-size: 28px;
   opacity: 0.22;
   line-height: 1;
   pointer-events: none;
 }
 .coupon-card-gif {
   position: absolute;
-  right: 6px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
   opacity: 0.8;
   pointer-events: none;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.25));
+}
+.coupon-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px 0 4px;
+}
+.coupon-dots:empty { display: none; }
+.coupon-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: #d1d5db;
+  cursor: pointer;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.coupon-dot.active { width: 20px; background: #e91e63; }
+@media (prefers-reduced-motion: reduce) {
+  .coupon-carousel-inner { scroll-behavior: auto; }
 }
 
 /* Toast Notification */
@@ -1221,17 +1245,18 @@ window.socialLinks = {
     </div>
   </div>
 
-  <div class="coupon-carousel" id="couponCarousel">
-    <div class="coupon-carousel-inner" id="couponCarouselInner">
-      <div class="skeleton" style="flex:0 0 88%;height:80px;border-radius:12px;scroll-snap-align:start"></div>
-      <div class="skeleton" style="flex:0 0 88%;height:80px;border-radius:12px;scroll-snap-align:start"></div>
-    </div>
-  </div>
-
   <div class="order-tabs" id="menuSection">
     <?php if ($enable_delivery): ?><button class="order-tab <?php echo $enable_delivery ? 'active' : ''; ?>" onclick="switchOrder(this, 'delivery')">🚚 Delivery</button><?php endif; ?>
     <?php if ($enable_takeaway): ?><button class="order-tab <?php echo !$enable_delivery && $enable_takeaway ? 'active' : ''; ?>" onclick="switchOrder(this, 'takeaway')">🥡 Take Away</button><?php endif; ?>
     <?php if ($enable_dinein): ?><button class="order-tab <?php echo !$enable_delivery && !$enable_takeaway && $enable_dinein ? 'active' : ''; ?>" onclick="switchOrder(this, 'dinein')">🍽️ Dine In</button><?php endif; ?>
+  </div>
+
+  <div class="coupon-carousel" id="couponCarousel" aria-label="Offers">
+    <div class="coupon-carousel-inner" id="couponCarouselInner">
+      <div class="skeleton" style="flex:0 0 90%;height:104px;border-radius:14px;scroll-snap-align:start"></div>
+      <div class="skeleton" style="flex:0 0 90%;height:104px;border-radius:14px;scroll-snap-align:start"></div>
+    </div>
+    <div class="coupon-dots" id="couponDots"></div>
   </div>
 
   <div class="menu-list" id="menuList">
@@ -2402,11 +2427,12 @@ function loadCouponCarousel() {
             '<div class="coupon-card-discount">' + discountLabel + '</div>' +
             '<div class="coupon-card-divider"></div>' +
             '<div class="coupon-card-code-row">' +
-              '<span class="use-label">USE</span>' +
+              '<span class="use-label">USE CODE</span>' +
               '<span class="coupon-code-val">' + c.coupon_code + '</span>' +
               '<span class="copy-icon" onclick="event.stopPropagation();copyCoupon(\'' + c.coupon_code + '\')">📋</span>' +
-              (desc ? '<span class="cpn-separator">|</span><span class="cpn-desc-tag">' + desc.substring(0, 25) + '</span>' : '') +
             '</div>' +
+            (desc ? '<div class="coupon-card-desc">' + escapeCouponText(desc) + '</div>' : '') +
+            '<span class="coupon-card-deco" aria-hidden="true">' + deco + '</span>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -2416,109 +2442,147 @@ function loadCouponCarousel() {
     .catch(function() {});
 }
 
-// Coupon carousel: touch/mouse + smooth continuous auto-scroll (requestAnimationFrame)
+function escapeCouponText(s) {
+  return String(s).replace(/[&<>"']/g, function(ch) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+  });
+}
+
+// Coupon carousel: native swipe + snap, autoplay one card at a time, dots.
+// Autoplay pauses while the user touches/drags/hovers, when the tab is
+// hidden or the carousel is off-screen, and is off for reduced-motion users.
 (function() {
   var carousel = document.getElementById('couponCarouselInner');
+  var dotsEl = document.getElementById('couponDots');
   if (!carousel) return;
 
-  var isUserInteracting = false;
-  var rafId = null;
-  var scrollPaused = false;
-  var scrollSpeed = 0.6; // px per frame (~36px/sec)
-  var pauseAfterScroll = 2000; // pause 2s at each end before reversing
-  var pauseTimer = null;
-  var direction = 1; // 1 = right, -1 = left
+  var INTERVAL = 3500;        // ms between slides
+  var RESUME_AFTER = 5000;    // ms after the last interaction
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timer = null, resumeTimer = null;
+  var paused = false, hovering = false, visible = true;
 
-  function autoScrollLoop() {
-    if (scrollPaused || isUserInteracting) {
-      rafId = requestAnimationFrame(autoScrollLoop);
-      return;
+  function cards() { return carousel.querySelectorAll('.coupon-card'); }
+
+  function currentIndex() {
+    var list = cards(), best = 0, bestDist = Infinity;
+    for (var i = 0; i < list.length; i++) {
+      var d = Math.abs(list[i].offsetLeft - carousel.offsetLeft - carousel.scrollLeft);
+      if (d < bestDist) { bestDist = d; best = i; }
     }
-    var maxScroll = carousel.scrollWidth - carousel.clientWidth;
-    if (maxScroll <= 0) return; // nothing to scroll
-
-    carousel.scrollLeft += scrollSpeed * direction;
-
-    // Reached right end - pause then reverse
-    if (carousel.scrollLeft >= maxScroll - 1) {
-      carousel.scrollLeft = maxScroll;
-      direction = -1;
-      scrollPaused = true;
-      pauseTimer = setTimeout(function() { scrollPaused = false; }, pauseAfterScroll);
-      return;
-    }
-    // Reached left end - pause then reverse
-    if (carousel.scrollLeft <= 0) {
-      carousel.scrollLeft = 0;
-      direction = 1;
-      scrollPaused = true;
-      pauseTimer = setTimeout(function() { scrollPaused = false; }, pauseAfterScroll);
-      return;
-    }
-
-    rafId = requestAnimationFrame(autoScrollLoop);
+    return best;
   }
 
-  // --- Touch handling ---
-  var startX = 0, startY = 0;
-  carousel.addEventListener('touchstart', function(e) {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    isUserInteracting = true;
-    if (pauseTimer) clearTimeout(pauseTimer);
-  }, { passive: true });
-  carousel.addEventListener('touchmove', function(e) {
-    var dx = Math.abs(e.touches[0].clientX - startX);
-    var dy = Math.abs(e.touches[0].clientY - startY);
-    if (dx > 8 && dx > dy) e.preventDefault();
-  }, { passive: false });
-  carousel.addEventListener('touchend', function() {
-    isUserInteracting = false;
-    // Detect direction from final scroll position
-    direction = 1;
-  }, { passive: true });
+  function goTo(i) {
+    var list = cards();
+    if (!list.length) return;
+    i = (i + list.length) % list.length;
+    var left = list[i].offsetLeft - carousel.offsetLeft;
+    carousel.scrollTo({ left: left, behavior: reduceMotion ? 'auto' : 'smooth' });
+    // Scroll events keep the dots in sync while swiping; this also covers
+    // browsers that coalesce events during programmatic smooth scrolls.
+    setTimeout(updateDots, 500);
+  }
 
-  // --- Mouse drag handling ---
-  var isDragging = false, dragStartX = 0, dragScrollLeft = 0;
+  function renderDots() {
+    if (!dotsEl) return;
+    var n = cards().length;
+    if (n < 2) { dotsEl.innerHTML = ''; return; }
+    var html = '';
+    for (var i = 0; i < n; i++) {
+      html += '<button type="button" class="coupon-dot" aria-label="Show offer ' + (i + 1) + '" data-i="' + i + '"></button>';
+    }
+    dotsEl.innerHTML = html;
+    updateDots();
+  }
+
+  function updateDots() {
+    if (!dotsEl) return;
+    var idx = currentIndex();
+    var dots = dotsEl.querySelectorAll('.coupon-dot');
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle('active', i === idx);
+      dots[i].setAttribute('aria-current', i === idx ? 'true' : 'false');
+    }
+  }
+
+  function tick() {
+    if (paused || hovering || !visible || document.hidden) return;
+    var list = cards();
+    if (list.length < 2) return;
+    var maxScroll = carousel.scrollWidth - carousel.clientWidth;
+    // At the last reachable position, wrap back to the first coupon
+    if (carousel.scrollLeft >= maxScroll - 4) goTo(0);
+    else goTo(currentIndex() + 1);
+  }
+
+  function start() {
+    stop();
+    if (reduceMotion || cards().length < 2) return;
+    timer = setInterval(tick, INTERVAL);
+  }
+  function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+  // Any user interaction pauses autoplay, which resumes a while later
+  function interacted() {
+    paused = true;
+    if (resumeTimer) clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(function() { paused = false; }, RESUME_AFTER);
+  }
+  carousel.addEventListener('touchstart', interacted, { passive: true });
+  carousel.addEventListener('wheel', interacted, { passive: true });
+  carousel.addEventListener('pointerdown', interacted);
+  carousel.addEventListener('pointerenter', function(e) { if (e.pointerType === 'mouse') hovering = true; });
+  carousel.addEventListener('pointerleave', function(e) { if (e.pointerType === 'mouse') hovering = false; });
+
+  // Mouse drag-to-scroll on desktop (touch uses native scrolling)
+  var dragging = false, dragX = 0, dragLeft = 0, dragMoved = false;
   carousel.addEventListener('mousedown', function(e) {
-    isDragging = true;
-    isUserInteracting = true;
-    dragStartX = e.pageX;
-    dragScrollLeft = carousel.scrollLeft;
-    carousel.style.cursor = 'grabbing';
-    carousel.style.userSelect = 'none';
-    e.preventDefault();
+    dragging = true; dragMoved = false;
+    dragX = e.pageX; dragLeft = carousel.scrollLeft;
+    carousel.style.scrollSnapType = 'none';
+    carousel.style.scrollBehavior = 'auto';
   });
   document.addEventListener('mousemove', function(e) {
-    if (!isDragging) return;
-    var dx = e.pageX - dragStartX;
-    carousel.scrollLeft = dragScrollLeft - dx;
+    if (!dragging) return;
+    var dx = e.pageX - dragX;
+    if (Math.abs(dx) > 4) dragMoved = true;
+    carousel.scrollLeft = dragLeft - dx;
   });
   document.addEventListener('mouseup', function() {
-    if (!isDragging) return;
-    isDragging = false;
-    isUserInteracting = false;
-    carousel.style.cursor = '';
-    carousel.style.userSelect = '';
-    // Determine direction based on where we ended up
-    var maxScroll = carousel.scrollWidth - carousel.clientWidth;
-    direction = carousel.scrollLeft >= maxScroll - 10 ? -1 : 1;
+    if (!dragging) return;
+    dragging = false;
+    carousel.style.scrollSnapType = '';
+    carousel.style.scrollBehavior = '';
+    goTo(currentIndex());
   });
+  // Don't treat the end of a drag as a tap (which would copy the coupon)
+  carousel.addEventListener('click', function(e) {
+    if (dragMoved) { e.stopPropagation(); e.preventDefault(); dragMoved = false; }
+  }, true);
 
-  // Pause on hover (desktop)
-  carousel.addEventListener('mouseenter', function() { isUserInteracting = true; });
-  carousel.addEventListener('mouseleave', function() {
-    if (!isDragging) isUserInteracting = false;
-  });
+  carousel.addEventListener('scroll', updateDots, { passive: true });
 
-  // Expose start for loadCouponCarousel to call after coupons render
+  if (dotsEl) {
+    dotsEl.addEventListener('click', function(e) {
+      var b = e.target.closest('.coupon-dot');
+      if (!b) return;
+      interacted();
+      goTo(parseInt(b.getAttribute('data-i'), 10));
+    });
+  }
+
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function(entries) {
+      visible = entries[0].isIntersecting;
+    }, { threshold: 0.3 }).observe(carousel);
+  }
+
+  // Called by loadCouponCarousel() once the coupon cards are rendered
   window.startCouponAutoScroll = function() {
-    if (rafId) cancelAnimationFrame(rafId);
-    if (pauseTimer) clearTimeout(pauseTimer);
-    scrollPaused = false;
-    direction = 1;
     carousel.scrollLeft = 0;
-    rafId = requestAnimationFrame(autoScrollLoop);
+    renderDots();
+    start();
   };
 })();
 
