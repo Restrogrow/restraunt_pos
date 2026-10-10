@@ -781,7 +781,12 @@ body {
   display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px;
   background: color-mix(in srgb, var(--bsl-badge) 12%, #fff); color: var(--bsl-badge); font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.3;
 }
-.menu-item-was { font-size: 0.8em; font-weight: 500; color: #9ca3af; margin-right: 7px; }
+/* Menu list: struck regular price sits just above the price box (not beside
+   it), and the footer aligns to the bottom, so the price box and ADD button
+   line up the same way on every row whether or not there's an offer */
+#menuList .menu-item-price { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding-top: 5px; }
+#menuList .menu-item-footer { align-items: flex-end; }
+.menu-item-was { font-size: 0.78em; font-weight: 500; color: #9ca3af; line-height: 1.1; margin-left: 2px; }
 /* Menu list current price in a coloured box — same colour/style settings as
    the Bestsellers cards (Website Appearance > Bestsellers: price box) */
 .menu-item-price-now {
@@ -2078,7 +2083,7 @@ function renderMenu() {
       var item = items[ii];
       item._ci = ci; item._ii = ii;
       var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-      var displayPrice = hasVar ? 'From ' + formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || item.price || 0);
+      var displayPrice = hasVar ? formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || item.price || 0);
       // Same layout as the Bestsellers cards: regular price struck through on
       // the left (only when there's an offer), current price boxed on the right
       displayPrice = (!hasVar && item.original_price ? '<s class="menu-item-was">' + formatPrice(item.original_price) + '</s>' : '') +

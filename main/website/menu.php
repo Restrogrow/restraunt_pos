@@ -1302,7 +1302,7 @@ function renderProducts(menuIdx) {
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
     var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-    var displayPrice = hasVar ? 'From ' + formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || item.price || 0);
+    var displayPrice = hasVar ? formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || item.price || 0);
     var oos = item.is_available == 0;
     html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
       '<div class="card-img-wrap">' +
@@ -2164,7 +2164,7 @@ document.addEventListener('DOMContentLoaded', function() {
               for (var i = 0; i < list.length; i++) {
                 var item = list[i];
                 var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-                var displayPrice = hasVar ? 'From ' + formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || 0);
+                var displayPrice = hasVar ? formatPrice(getMinVariantPrice(item)) : formatPrice(item.base_price || 0);
                 html += '<div class="card" data-itemId="' + item.id + '" onclick="showItemDetail(' + item.id + ')">' +
                   '<div class="card-img-wrap"><img src="' + getImageUrl(item.item_image) + '" alt="' + escapeHtml(item.item_name_translated || item.item_name_en) + '" loading="lazy">' +
                   getTypeIcon(item.item_type) + '</div>' +
