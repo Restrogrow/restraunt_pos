@@ -150,7 +150,6 @@ try {
         INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, kot_status, subtotal, tax, total, created_at, order_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $insKotItem = $pdo->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
-    $insFeedback = $pdo->prepare("INSERT INTO order_feedback (restaurant_id, order_id, order_number, customer_name, customer_phone, rating, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $insBestseller = $pdo->prepare("INSERT INTO bestsellers (restaurant_id, menu_item_id, sort_order, offer_price) VALUES (?, ?, ?, ?)");
     $insCoupon = $pdo->prepare("
         INSERT INTO coupons (restaurant_id, coupon_code, discount_type, discount_value, minimum_order_amount,
@@ -289,12 +288,8 @@ try {
                     $updCust->execute([$total, date('Y-m-d', $ts), $cust['id']]);
                     if ($day === 0) $todayRevenue += $total;
                 }
-                // Demo customer feedback: ~45% of past completed orders get a 1–5 rating
-                if ($status === 'Completed' && $day > 0 && mt_rand(1, 100) <= 45) {
-                    $rating = [5, 5, 5, 4, 4, 4, 4, 3, 5, 4, 2][mt_rand(0, 10)];
-                    $insFeedback->execute([$rid, $orderId, $orderNo, $cust['name'], $cust['phone'], $rating,
-                                           date('Y-m-d H:i:s', $ts + mt_rand(1800, 7200))]);
-                }
+                // No demo ratings: dish ratings come only from real customer
+                // feedback (Profile > My orders > "Share your feedback").
                 $nOrders++;
             }
         }
