@@ -546,20 +546,39 @@ body {
   -webkit-user-drag: none;
   user-select: none;
 }
+/* SAVE ₹X: corner tab on the photo's top-left */
 .bsl-save {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: calc(100% - 12px);
+  padding: 5px 10px;
+  border-radius: 15px 0 10px 0;
+  background: #1f7a3a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+/* Rating: notched pill on the photo's bottom edge (genuine customer ratings only) */
+.bsl-rate-pill {
   position: absolute;
   left: -1px;
   bottom: -11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   padding: 4px 10px;
   border-radius: 999px;
   border: 3px solid #fff;
   background: #1f7a3a;
   color: #fff;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.02em;
   line-height: 1.2;
 }
+.bsl-rate-pill i { font-size: 10px; }
 .bsl-body { display: flex; flex-direction: column; flex: 1; padding: 16px 2px 0; }
 .bsl-name {
   font-size: 16.5px;
@@ -599,7 +618,6 @@ body {
   line-height: 1.3;
 }
 .bsl-rating i { font-size: 9px; }
-.bsl-rating .bsl-rating-count { font-weight: 600; opacity: 0.85; margin-left: 1px; }
 /* ADD: white button with red outline; becomes a matching "− 1 +" selector */
 .bsl-qty { margin-top: 10px; }
 .bsl-qty .add-btn,
@@ -1949,9 +1967,8 @@ function renderMenu() {
       var miWas = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
       var miSave = miWas ? Math.round(miWas - parseFloat(item.base_price || 0)) : 0;
       var miRating = item.rating ? parseFloat(item.rating) : 0;
-      var miBadges = (miRating > 0 ? '<span class="bsl-rating" title="' + miRating.toFixed(1) + ' out of 5 from ' + (item.rating_count || 0) + ' rated orders">' +
-          miRating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i>' +
-          (item.rating_count ? '<span class="bsl-rating-count">(' + item.rating_count + ')</span>' : '') + '</span>' : '') +
+      var miBadges = (miRating > 0 ? '<span class="bsl-rating" title="Rated ' + miRating.toFixed(1) + ' out of 5 by customers">' +
+          miRating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i></span>' : '') +
         (miSave > 0 ? '<span class="menu-item-save">SAVE ' + formatPrice(miSave).replace(/\.00$/, '') + '</span>' : '');
       var oos = item.is_available == 0;
       html += '<div class="menu-item' + (oos ? ' oos' : '') + '" onclick="if(!' + oos + ')showItemDetail(' + ci + ',' + ii + ')">' +
@@ -2725,14 +2742,13 @@ function renderBestsellers() {
     // Rating only when the API sends a genuine one (from customer order feedback)
     var rating = item.rating ? parseFloat(item.rating) : 0;
     var meta = bestsellerVegMark(item.item_type) +
-      (rating > 0 ? '<span class="bsl-rating" title="' + rating.toFixed(1) + ' out of 5 from ' + (item.rating_count || 0) + ' rated orders">' +
-        rating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i>' +
-        (item.rating_count ? '<span class="bsl-rating-count">(' + item.rating_count + ')</span>' : '') + '</span>' : '') +
       (save > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i>Item offer applied</span>' : '');
     return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
       '<div class="bsl-img">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy" draggable="false">' +
         (save > 0 ? '<span class="bsl-save">SAVE ' + fmt(save) + '</span>' : '') +
+        (rating > 0 ? '<span class="bsl-rate-pill" title="Rated ' + rating.toFixed(1) + ' out of 5 by customers">' +
+          rating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i></span>' : '') +
       '</div>' +
       '<div class="bsl-body">' +
         '<div class="bsl-name">' + name + '</div>' +
