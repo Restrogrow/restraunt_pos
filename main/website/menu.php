@@ -176,7 +176,8 @@ body {
 .main-content::-webkit-scrollbar { display: none; }
 
 .category-overview {
-  background: #fff;
+  /* very light shade of the price colour (Website Appearance > Bestsellers: price) */
+  background: color-mix(in srgb, var(--bsl-price) 9%, #fff);
   padding: 8px 12px 6px;
   border-radius: 0 0 14px 14px;
 }
