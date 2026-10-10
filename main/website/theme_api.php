@@ -10,6 +10,28 @@ require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true); // Skip timeout validation for public customer website
 $restaurant_id = $_GET['restaurant_id'] ?? ($_SESSION['restaurant_id'] ?? 'RES001');
 
+// Reads ('get', 'get_banners') are public — the customer website needs them.
+// Everything else changes a restaurant's website, so it requires a logged-in
+// admin/manager and always applies to their own restaurant: previously any
+// visitor could POST e.g. ?action=save&restaurant_id=<any> and restyle or
+// wipe another restaurant's site.
+if (!in_array($action, ['get', 'get_banners'], true)) {
+    require_once __DIR__ . '/../config/authorization_config.php';
+    if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
+        header('Content-Type: application/json');
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Please log in to change your website appearance']);
+        exit;
+    }
+    if (!isAdmin() && !in_array(getUserRole(), ['Admin', 'Manager'], true)) {
+        header('Content-Type: application/json');
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Only an admin or manager can change the website appearance']);
+        exit;
+    }
+    $restaurant_id = $_SESSION['restaurant_id'];
+}
+
 // Get connection using getConnection() for lazy connection support
 if (function_exists('getConnection')) {
     try {
@@ -35,9 +57,10 @@ try {
   ensureWebsiteThemeSchema($conn);
 
   if ($action === 'get') {
-    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom FROM website_settings WHERE restaurant_id = :rid');
+    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style FROM website_settings WHERE restaurant_id = :rid');
     $stmt->execute([':rid' => $restaurant_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $bestsellerStyle = getBestsellerStyle($row['bestseller_style'] ?? null);
     if (!$row) {
       $row = ['primary_red'=>'#F70000','dark_red'=>'#DA020E','primary_yellow'=>'#FFD100','banner_image'=>null,'layout_columns'=>2,'background_theme'=>null,'logo_shape'=>'circle','logo_size'=>90,'font_family'=>'Poppins','theme_preset'=>null,'card_style'=>'rounded','checkout_color'=>null,'layout_style'=>'grid','header_style'=>'hero','site_name'=>null,'nav_icon_style'=>'classic','nav_labels'=>DEFAULT_NAV_LABELS,'favicon_url'=>null,'nav_icons_custom'=>[]];
     } else {
@@ -66,6 +89,7 @@ try {
     $bannersStmt->execute([':rid' => $restaurant_id]);
     $banners = $bannersStmt->fetchAll(PDO::FETCH_ASSOC);
     $row['banners'] = $banners ?: [];
+    $row['bestseller_style'] = $bestsellerStyle;
 
     echo json_encode(['success'=>true,'settings'=>$row,'presets'=>THEME_PRESETS,'navIconStyles'=>NAV_ICON_STYLES]);
     exit;
@@ -150,6 +174,12 @@ try {
     $ls = $data['logo_shape'] ?? 'circle';
     $lz = isset($data['logo_size']) ? (int)$data['logo_size'] : 90;
     $stmt->execute([':rid'=>$restaurant_id, ':pr'=>$pr, ':dr'=>$dr, ':py'=>$py, ':bi'=>$bi, ':lc'=>$lc, ':bt'=>$bt, ':ls'=>$ls, ':lz'=>$lz, ':ff'=>$ff, ':cs'=>$cs, ':tp'=>$tp, ':cc'=>$cc, ':lyt'=>$lyt, ':hdr'=>$hdr, ':sn'=>$sn, ':nis'=>$nis, ':nl'=>$nl, ':fav'=>$fav]);
+    // Bestsellers section look (Website Appearance > Bestsellers)
+    if (isset($data['bestseller_style']) && is_array($data['bestseller_style'])) {
+      $bs = getBestsellerStyle($data['bestseller_style']);
+      $conn->prepare('UPDATE website_settings SET bestseller_style = :bs WHERE restaurant_id = :rid')
+           ->execute([':bs' => json_encode($bs, JSON_UNESCAPED_UNICODE), ':rid' => $restaurant_id]);
+    }
     echo json_encode(['success'=>true]);
     exit;
   }

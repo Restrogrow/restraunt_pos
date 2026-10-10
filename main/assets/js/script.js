@@ -14558,6 +14558,8 @@ if (!window.customBgThemes) {
       if (py && data.settings.primary_yellow) py.value = data.settings.primary_yellow;
       if (cc) cc.value = data.settings.checkout_color || data.settings.primary_red || DEFAULT_THEME.checkout_color;
       if (fontSelect && data.settings.font_family) fontSelect.value = data.settings.font_family;
+      // Bestsellers section look (assets/js/bestsellers-admin.js)
+      if (window.fillBestsellerStyleForm) window.fillBestsellerStyleForm(data.settings.bestseller_style);
 
       // Website Name & Bottom Nav Icons
       const siteNameLoadEl = document.getElementById('siteNameInput');
@@ -14811,7 +14813,8 @@ if (!window.customBgThemes) {
             theme_preset: themePresetEl && themePresetEl.value ? themePresetEl.value : null,
             checkout_color: cc ? cc.value : null,
             layout_style: currentLayoutStyleVal(),
-            header_style: currentHeaderStyleVal()
+            header_style: currentHeaderStyleVal(),
+            bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined
           };
 
           var res = await fetch('../website/theme_api.php' + sq, {

@@ -212,4 +212,61 @@
   });
 
   window.loadBestsellersAdmin = load;
+
+  // ── Website Appearance > Bestsellers Section (saved with the theme) ──
+  var STYLE_DEFAULTS = {
+    show_section: true, title: 'Bestsellers', eyebrow: 'Customer favourites',
+    title_color: '#1f2a44', badge_color: '#1f7a3a', add_color: '#e53935',
+    add_animation: 'pulse', show_rating: true, show_offer: true
+  };
+
+  function updateStylePreview() {
+    var card = document.querySelector('.bs-style-card');
+    var preview = $('bsPreview');
+    if (!card || !preview) return;
+    card.style.setProperty('--bsp-badge', $('bsBadgeColor').value);
+    card.style.setProperty('--bsp-add', $('bsAddColor').value);
+    preview.setAttribute('data-anim', $('bsAddAnimation').value);
+    $('bsPreviewRate').style.display = $('bsShowRating').checked ? '' : 'none';
+    $('bsPreviewOff').style.display = $('bsShowOffer').checked ? '' : 'none';
+    card.classList.toggle('is-off', !$('bsShowSection').checked);
+  }
+
+  window.fillBestsellerStyleForm = function (s) {
+    if (!$('bsShowSection')) return;
+    s = s || {};
+    var v = function (k) { return s[k] !== undefined && s[k] !== null ? s[k] : STYLE_DEFAULTS[k]; };
+    $('bsShowSection').checked = !!v('show_section');
+    $('bsTitle').value = v('title');
+    $('bsEyebrow').value = v('eyebrow');
+    $('bsTitleColor').value = v('title_color');
+    $('bsBadgeColor').value = v('badge_color');
+    $('bsAddColor').value = v('add_color');
+    $('bsAddAnimation').value = v('add_animation');
+    $('bsShowRating').checked = !!v('show_rating');
+    $('bsShowOffer').checked = !!v('show_offer');
+    updateStylePreview();
+  };
+
+  window.readBestsellerStyleForm = function () {
+    if (!$('bsShowSection')) return undefined;
+    return {
+      show_section: $('bsShowSection').checked,
+      title: $('bsTitle').value.trim() || STYLE_DEFAULTS.title,
+      eyebrow: $('bsEyebrow').value.trim() || STYLE_DEFAULTS.eyebrow,
+      title_color: $('bsTitleColor').value,
+      badge_color: $('bsBadgeColor').value,
+      add_color: $('bsAddColor').value,
+      add_animation: $('bsAddAnimation').value,
+      show_rating: $('bsShowRating').checked,
+      show_offer: $('bsShowOffer').checked
+    };
+  };
+
+  ['input', 'change'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (e.target && e.target.closest && e.target.closest('.bs-style-card')) updateStylePreview();
+    });
+  });
+  document.addEventListener('DOMContentLoaded', updateStylePreview);
 })();

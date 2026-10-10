@@ -8019,3 +8019,82 @@ body, html {
   .bs-offer { margin-left: 38px; }
   .bs-actions { margin-left: auto; }
 }
+
+
+/* ===== Website Appearance > Bestsellers Section ===== */
+.bs-style-card {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  --bsp-badge: #1f7a3a;
+  --bsp-add: #e53935;
+}
+.bs-style-head { font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.5rem; }
+.bs-style-sub { font-size: 0.85rem; color: #6b7280; margin: 0 0 0.9rem; }
+.bs-style-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
+.bs-style-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; font-weight: 600; color: #374151; }
+.bs-style-field input[type="text"],
+.bs-style-field select {
+  padding: 0.6rem 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 500;
+  font-size: 0.92rem;
+  background: #fff;
+}
+.bs-style-field input[type="color"] { width: 100%; height: 44px; padding: 2px; border: 2px solid #e5e7eb; border-radius: 10px; background: #fff; cursor: pointer; }
+.bs-style-check { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 500; color: #374151; cursor: pointer; }
+.bs-style-check input { width: 16px; height: 16px; accent-color: #ff5a1f; }
+.bs-style-card.is-off .bs-style-grid,
+.bs-style-card.is-off .bs-style-preview { opacity: 0.45; pointer-events: none; }
+.bs-style-preview {
+  position: relative;
+  margin-top: 14px;
+  padding: 26px 14px 14px;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  background: #fff;
+  display: flex;
+  justify-content: center;
+}
+.bs-style-preview-label { position: absolute; top: 6px; left: 10px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #9ca3af; }
+.bs-preview-card { width: 170px; }
+.bs-preview-img { position: relative; height: 104px; border-radius: 14px; border: 1px solid #e8eaee; background: #f3f4f6; }
+.bs-preview-off {
+  position: absolute; top: 0; left: 0; padding: 4px 9px; border-radius: 13px 0 9px 0;
+  background: var(--bsp-badge); color: #fff; font-size: 11px; font-weight: 800;
+}
+.bs-preview-rate {
+  position: absolute; left: -1px; bottom: -10px; padding: 3px 9px; border-radius: 999px; border: 3px solid #fff;
+  background: var(--bsp-badge); color: #fff; font-size: 11px; font-weight: 800;
+}
+.bs-preview-name { margin-top: 16px; font-weight: 700; color: #1f2a44; font-size: 0.95rem; }
+.bs-preview-add {
+  position: relative; overflow: hidden;
+  width: 100%; height: 36px; margin-top: 10px;
+  border: 1.5px solid var(--bsp-add); border-radius: 10px; background: #fff;
+  color: var(--bsp-add); font: inherit; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.04em;
+  cursor: default;
+}
+.bs-style-preview[data-anim="pulse"] .bs-preview-add { animation: bspPulse 2.4s ease-in-out infinite; }
+@keyframes bspPulse {
+  0%, 60%, 100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--bsp-add) 45%, transparent); }
+  20% { transform: scale(1.04); box-shadow: 0 0 0 6px color-mix(in srgb, var(--bsp-add) 0%, transparent); }
+}
+.bs-style-preview[data-anim="shine"] .bs-preview-add::after {
+  content: ''; position: absolute; top: 0; left: -60%; width: 45%; height: 100%;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--bsp-add) 22%, transparent), transparent);
+  animation: bspShine 2.8s ease-in-out infinite;
+}
+@keyframes bspShine { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+.bs-style-preview[data-anim="wiggle"] .bs-preview-add { animation: bspWiggle 3.2s ease-in-out infinite; }
+@keyframes bspWiggle {
+  0%, 82%, 100% { transform: rotate(0); }
+  85% { transform: rotate(-3deg); } 88% { transform: rotate(3deg); } 91% { transform: rotate(-2deg); } 94% { transform: rotate(1deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bs-preview-add, .bs-preview-add::after { animation: none !important; }
+}

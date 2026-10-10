@@ -233,6 +233,53 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
     } catch (PDOException $e) {
         try { $conn->exec("ALTER TABLE website_settings ADD COLUMN nav_icons_custom LONGTEXT DEFAULT NULL"); } catch (PDOException $e2) {}
     }
+    // bestseller_style — JSON of the Bestsellers section's look (see
+    // getBestsellerStyle()). NULL means "all defaults".
+    try {
+        $conn->query("SELECT bestseller_style FROM website_settings LIMIT 1");
+    } catch (PDOException $e) {
+        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN bestseller_style TEXT DEFAULT NULL"); } catch (PDOException $e2) {}
+    }
+}
+
+const BESTSELLER_ADD_ANIMATIONS = ['pulse', 'shine', 'wiggle', 'none'];
+const BESTSELLER_STYLE_DEFAULTS = [
+    'show_section'   => true,
+    'title'          => 'Bestsellers',
+    'eyebrow'        => 'Customer favourites',
+    'title_color'    => '#1f2a44',
+    'badge_color'    => '#1f7a3a',   // "₹X OFF" tab + rating pill
+    'add_color'      => '#e53935',   // ADD button outline/text + qty selector
+    'add_animation'  => 'pulse',
+    'show_rating'    => true,
+    'show_offer'     => true,
+];
+
+/**
+ * Website Appearance > Bestsellers settings. Accepts the stored JSON string
+ * or a decoded array (from the admin save request) and returns a complete,
+ * validated settings array — unknown keys dropped, bad values replaced by
+ * the defaults, so it's safe to print into the customer page.
+ */
+function getBestsellerStyle($raw): array {
+    $in = is_array($raw) ? $raw : (is_string($raw) && $raw !== '' ? (json_decode($raw, true) ?: []) : []);
+    $out = BESTSELLER_STYLE_DEFAULTS;
+    foreach (['show_section', 'show_rating', 'show_offer'] as $k) {
+        if (array_key_exists($k, $in)) $out[$k] = filter_var($in[$k], FILTER_VALIDATE_BOOLEAN);
+    }
+    foreach (['title' => 40, 'eyebrow' => 40] as $k => $max) {
+        if (isset($in[$k])) {
+            $v = trim(str_replace(["\0", "\r", "\n", "\t"], '', (string)$in[$k]));
+            $out[$k] = $v !== '' ? mb_substr($v, 0, $max) : BESTSELLER_STYLE_DEFAULTS[$k];
+        }
+    }
+    foreach (['title_color', 'badge_color', 'add_color'] as $k) {
+        if (isset($in[$k]) && preg_match('/^#[0-9a-fA-F]{6}$/', (string)$in[$k])) $out[$k] = strtolower($in[$k]);
+    }
+    if (isset($in['add_animation']) && in_array($in['add_animation'], BESTSELLER_ADD_ANIMATIONS, true)) {
+        $out['add_animation'] = $in['add_animation'];
+    }
+    return $out;
 }
 
 /**

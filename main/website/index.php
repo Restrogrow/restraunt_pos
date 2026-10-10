@@ -38,6 +38,10 @@ if (isset($_GET['table']) && trim($_GET['table']) !== '') {
   --btn-radius: <?php echo htmlspecialchars($btn_radius_css, ENT_QUOTES, 'UTF-8'); ?>;
   --checkout-color: <?php echo htmlspecialchars($checkout_color, ENT_QUOTES, 'UTF-8'); ?>;
   --checkout-color-dark: <?php echo htmlspecialchars($checkout_color_dark, ENT_QUOTES, 'UTF-8'); ?>;
+  /* Website Appearance > Bestsellers (validated hex colours) */
+  --bsl-title: <?php echo htmlspecialchars($bestseller_style['title_color'], ENT_QUOTES, 'UTF-8'); ?>;
+  --bsl-badge: <?php echo htmlspecialchars($bestseller_style['badge_color'], ENT_QUOTES, 'UTF-8'); ?>;
+  --bsl-add: <?php echo htmlspecialchars($bestseller_style['add_color'], ENT_QUOTES, 'UTF-8'); ?>;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -481,7 +485,7 @@ body {
   font-style: italic;
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  color: #1f2a44;
+  color: var(--bsl-title);
   white-space: nowrap;
 }
 .bsl-swipe { display: block; margin-top: 4px; font-size: 11px; color: #9ca3af; }
@@ -554,7 +558,7 @@ body {
   max-width: calc(100% - 12px);
   padding: 5px 10px;
   border-radius: 15px 0 10px 0;
-  background: #1f7a3a;
+  background: var(--bsl-badge);
   color: #fff;
   font-size: 12px;
   font-weight: 800;
@@ -572,7 +576,7 @@ body {
   padding: 4px 10px;
   border-radius: 999px;
   border: 3px solid #fff;
-  background: #1f7a3a;
+  background: var(--bsl-badge);
   color: #fff;
   font-size: 12px;
   font-weight: 800;
@@ -599,7 +603,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.bsl-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #1f7a3a; }
+.bsl-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--bsl-badge); }
 .bsl-note i { font-size: 11px; }
 .bsl-foot { margin-top: auto; padding-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .bsl-price { font-size: 15px; font-weight: 800; color: #1f2a44; white-space: nowrap; line-height: 1.15; }
@@ -611,7 +615,7 @@ body {
   gap: 3px;
   padding: 2px 7px;
   border-radius: 999px;
-  background: #1f7a3a;
+  background: var(--bsl-badge);
   color: #fff;
   font-size: 11px;
   font-weight: 800;
@@ -624,11 +628,11 @@ body {
 .bsl-qty .qty-control {
   width: 100%;
   height: 38px;
-  border: 1.5px solid #e53935;
+  border: 1.5px solid var(--bsl-add);
   border-radius: 10px;
   background: #fff;
-  color: #e53935;
-  box-shadow: 0 1px 3px rgba(229, 57, 53, 0.12);
+  color: var(--bsl-add);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--bsl-add) 15%, transparent);
 }
 .bsl-qty .add-btn {
   gap: 0;
@@ -641,17 +645,53 @@ body {
 .bsl-qty .add-btn:not(:has(span))::before { content: 'ADD'; }
 .bsl-qty .add-btn span { font-size: 15px; font-weight: 800; }
 .bsl-qty .add-btn:hover,
-.bsl-qty .add-btn:active { background: #fff5f5; }
+.bsl-qty .add-btn:active { background: color-mix(in srgb, var(--bsl-add) 7%, #fff); }
 .bsl-qty .qty-control { justify-content: space-between; overflow: hidden; }
 .bsl-qty .qty-control button {
   width: 40px;
   height: 100%;
-  color: #e53935;
+  color: var(--bsl-add);
   font-size: 13px;
 }
-.bsl-qty .qty-control button:active { background: #fff5f5; }
-.bsl-qty .qty-control .qty-num { flex: 1; min-width: 0; color: #e53935; font-size: 15px; font-weight: 800; }
+.bsl-qty .qty-control button:active { background: color-mix(in srgb, var(--bsl-add) 7%, #fff); }
+.bsl-qty .qty-control .qty-num { flex: 1; min-width: 0; color: var(--bsl-add); font-size: 15px; font-weight: 800; }
 
+/* Attention animations on the ADD button (Website Appearance > Bestsellers).
+   Only the ADD state animates — once added, the "− 1 +" selector stays still. */
+.bsl[data-add-anim="pulse"] .bsl-qty .add-btn { animation: bslPulse 2.4s ease-in-out infinite; }
+@keyframes bslPulse {
+  0%, 60%, 100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--bsl-add) 45%, transparent); }
+  20% { transform: scale(1.04); box-shadow: 0 0 0 6px color-mix(in srgb, var(--bsl-add) 0%, transparent); }
+}
+.bsl[data-add-anim="shine"] .bsl-qty .add-btn { position: relative; overflow: hidden; }
+.bsl[data-add-anim="shine"] .bsl-qty .add-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--bsl-add) 22%, transparent), transparent);
+  animation: bslShine 2.8s ease-in-out infinite;
+}
+@keyframes bslShine {
+  0%, 55% { left: -60%; }
+  100% { left: 130%; }
+}
+.bsl[data-add-anim="wiggle"] .bsl-qty .add-btn { animation: bslWiggle 3.2s ease-in-out infinite; }
+@keyframes bslWiggle {
+  0%, 82%, 100% { transform: rotate(0); }
+  85% { transform: rotate(-3deg); }
+  88% { transform: rotate(3deg); }
+  91% { transform: rotate(-2deg); }
+  94% { transform: rotate(1deg); }
+}
+.bsl .bsl-qty .add-btn:hover,
+.bsl .bsl-qty .add-btn:focus-visible { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .bsl .bsl-qty .add-btn,
+  .bsl .bsl-qty .add-btn::after { animation: none !important; }
+}
 /* Previous / next arrows over the carousel edges (mouse & trackpad) */
 .bsl-nav { display: none; }
 .bsl-arrow {
@@ -686,7 +726,7 @@ body {
 .menu-item-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 4px; }
 .menu-item-save {
   display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px;
-  background: #e8f5ec; color: #1f7a3a; font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.3;
+  background: color-mix(in srgb, var(--bsl-badge) 12%, #fff); color: var(--bsl-badge); font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.3;
 }
 .menu-item-was { font-size: 0.8em; font-weight: 500; color: #9ca3af; margin-left: 4px; }
 
@@ -1496,10 +1536,14 @@ window.socialLinks = {
     <div class="coupon-dots" id="couponDots"></div>
   </div>
 
-  <section class="bsl" id="bestsellersSection" aria-labelledby="bestsellersTitle" hidden>
+  <section class="bsl" id="bestsellersSection" aria-labelledby="bestsellersTitle" hidden
+           data-enabled="<?php echo $bestseller_style['show_section'] ? '1' : '0'; ?>"
+           data-add-anim="<?php echo htmlspecialchars($bestseller_style['add_animation'], ENT_QUOTES, 'UTF-8'); ?>"
+           data-show-rating="<?php echo $bestseller_style['show_rating'] ? '1' : '0'; ?>"
+           data-show-offer="<?php echo $bestseller_style['show_offer'] ? '1' : '0'; ?>">
     <div class="bsl-head">
-      <div class="bsl-eyebrow">Customer favourites</div>
-      <div class="bsl-title-row"><h3 class="bsl-title" id="bestsellersTitle">Bestsellers</h3></div>
+      <div class="bsl-eyebrow"><?php echo htmlspecialchars($bestseller_style['eyebrow'], ENT_QUOTES, 'UTF-8'); ?></div>
+      <div class="bsl-title-row"><h3 class="bsl-title" id="bestsellersTitle"><?php echo htmlspecialchars($bestseller_style['title'], ENT_QUOTES, 'UTF-8'); ?></h3></div>
       <span class="bsl-swipe" aria-hidden="true">Swipe <i class="fa fa-arrow-right"></i></span>
     </div>
     <div class="bsl-viewport" id="bestsellersViewport">
@@ -2729,7 +2773,10 @@ function renderBestsellers() {
       if (items[ii].is_bestseller && items[ii].is_available != 0) list.push(items[ii]);
     }
   }
-  if (!list.length) { section.hidden = true; return; }
+  // Website Appearance > Bestsellers switches
+  var showRating = section.getAttribute('data-show-rating') !== '0';
+  var showOffer = section.getAttribute('data-show-offer') !== '0';
+  if (!list.length || section.getAttribute('data-enabled') === '0') { section.hidden = true; return; }
   list.sort(function(a, b) { return (a.bestseller_rank || 0) - (b.bestseller_rank || 0); });
   track.innerHTML = list.map(function(item) {
     var name = escHtml(item.item_name_translated || item.item_name_en || item.name);
@@ -2740,13 +2787,14 @@ function renderBestsellers() {
     var was = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
     var save = was ? Math.round(was - parseFloat(item.base_price || 0)) : 0;
     // Rating only when the API sends a genuine one (from customer order feedback)
-    var rating = item.rating ? parseFloat(item.rating) : 0;
+    var rating = showRating && item.rating ? parseFloat(item.rating) : 0;
+    var badgeSave = showOffer ? save : 0; // the price strike-through stays either way
     var meta = bestsellerVegMark(item.item_type) +
-      (save > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i>Item offer applied</span>' : '');
+      (badgeSave > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i>Item offer applied</span>' : '');
     return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
       '<div class="bsl-img">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy" draggable="false">' +
-        (save > 0 ? '<span class="bsl-save">' + fmt(save) + ' OFF</span>' : '') +
+        (badgeSave > 0 ? '<span class="bsl-save">' + fmt(badgeSave) + ' OFF</span>' : '') +
         (rating > 0 ? '<span class="bsl-rate-pill" title="Rated ' + rating.toFixed(1) + ' out of 5 by customers">' +
           rating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i></span>' : '') +
       '</div>' +

@@ -1734,6 +1734,65 @@ try {
                 <option value="Lora" style="font-family: 'Lora', serif;">Lora (Classic)</option>
               </select>
             </div>
+
+            <!-- Bestsellers section look (saved with the theme as bestseller_style) -->
+            <div class="bs-style-card">
+              <div class="bs-style-head">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #f59e0b;">star</span>
+                Bestsellers Section
+              </div>
+              <p class="bs-style-sub">Customise the “Bestsellers” row on your homepage. Pick which dishes appear under <strong>Offers → Bestsellers</strong>.</p>
+
+              <label class="bs-style-check"><input type="checkbox" id="bsShowSection" checked> Show the Bestsellers section</label>
+
+              <div class="bs-style-grid">
+                <label class="bs-style-field">Heading
+                  <input type="text" id="bsTitle" maxlength="40" placeholder="Bestsellers">
+                </label>
+                <label class="bs-style-field">Small label above
+                  <input type="text" id="bsEyebrow" maxlength="40" placeholder="Customer favourites">
+                </label>
+              </div>
+
+              <div class="bs-style-grid bs-style-colors">
+                <label class="bs-style-field">Heading colour
+                  <input type="color" id="bsTitleColor" value="#1f2a44">
+                </label>
+                <label class="bs-style-field">Offer &amp; rating badges
+                  <input type="color" id="bsBadgeColor" value="#1f7a3a">
+                </label>
+                <label class="bs-style-field">ADD button colour
+                  <input type="color" id="bsAddColor" value="#e53935">
+                </label>
+              </div>
+
+              <div class="bs-style-grid">
+                <label class="bs-style-field">ADD button animation
+                  <select id="bsAddAnimation">
+                    <option value="pulse">Pulse (recommended)</option>
+                    <option value="shine">Shine</option>
+                    <option value="wiggle">Wiggle</option>
+                    <option value="none">No animation</option>
+                  </select>
+                </label>
+                <div class="bs-style-field">Show on cards
+                  <label class="bs-style-check"><input type="checkbox" id="bsShowRating" checked> Customer rating</label>
+                  <label class="bs-style-check"><input type="checkbox" id="bsShowOffer" checked> “₹X OFF” offer badge</label>
+                </div>
+              </div>
+
+              <div class="bs-style-preview" id="bsPreview" aria-label="Preview">
+                <span class="bs-style-preview-label">Preview</span>
+                <div class="bs-preview-card">
+                  <div class="bs-preview-img">
+                    <span class="bs-preview-off" id="bsPreviewOff">₹35 OFF</span>
+                    <span class="bs-preview-rate" id="bsPreviewRate">4.6 ★</span>
+                  </div>
+                  <div class="bs-preview-name">Butter Chicken</div>
+                  <button type="button" class="bs-preview-add" id="bsPreviewAdd" tabindex="-1">ADD</button>
+                </div>
+              </div>
+            </div>
                         <!-- Background Theme Selector -->
             <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
