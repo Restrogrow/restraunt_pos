@@ -40,8 +40,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
     <meta name="description" content="Login to your Restro Grow admin dashboard. Access your restaurant POS system, manage orders, staff, tables, and view real-time analytics.">
     <meta name="robots" content="noindex, nofollow">
     <link rel="canonical" href="https://restrogrow.com/main/admin/login.php">
-    <link rel="icon" type="image/png" href="../assets/images/logo-transparent.png">
-    <link rel="apple-touch-icon" href="../assets/images/logo-transparent.png">
+    <link rel="icon" type="image/png" href="../assets/images/logo-192.png">
+    <link rel="apple-touch-icon" href="../assets/images/logo-192.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ff6b35">
     <meta name="mobile-web-app-capable" content="yes">
@@ -95,8 +95,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         }
         
         .logo-img {
-            width: 36px;
             height: 36px;
+            width: auto;
             object-fit: contain;
             filter: none;
         }
@@ -745,7 +745,6 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             <div class="login-left">
                 <div class="logo-section">
                     <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="logo-img">
-                    <span class="logo-text">Restro Grow</span>
                 </div>
                 <h1 class="login-heading">Login into your account</h1>
                 <p class="login-tagline">Let us make your restaurant grow!</p>

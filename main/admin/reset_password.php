@@ -7,8 +7,8 @@
     <meta name="description" content="Reset your Restro Grow account password. Enter your new password to regain access to your restaurant management dashboard.">
     <meta name="robots" content="noindex, nofollow">
     <link rel="canonical" href="https://restrogrow.com/main/admin/reset_password.php">
-    <link rel="icon" type="image/png" href="../assets/images/logo-transparent.png">
-    <link rel="apple-touch-icon" href="../assets/images/logo-transparent.png">
+    <link rel="icon" type="image/png" href="../assets/images/logo-192.png">
+    <link rel="apple-touch-icon" href="../assets/images/logo-192.png">
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0">
     <style>

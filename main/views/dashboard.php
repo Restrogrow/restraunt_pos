@@ -44,7 +44,7 @@ if (isset($_SESSION['staff_id']) && isset($_SESSION['role'])) {
 // Load restaurant info from database to prevent flash of default content
 $restaurant_name = $_SESSION['restaurant_name'] ?? 'Restaurant Name';
 $restaurant_id = $_SESSION['restaurant_id'] ?? 'RES001';
-$restaurant_logo = '../assets/images/logo-transparent.png'; // Default fallback
+$restaurant_logo = '../assets/images/logo-192.png'; // Default fallback
 // Try to get currency from session first (if saved), otherwise default
 $currency_symbol = $_SESSION['currency_symbol'] ?? '₹'; // Default currency
 $country = $_SESSION['country'] ?? 'India';
@@ -251,12 +251,12 @@ try {
             }
         } catch (PDOException $e2) {
             // Use defaults - currency_symbol already has default '₹' set above
-            $restaurant_logo = '../assets/images/logo-transparent.png';
+            $restaurant_logo = '../assets/images/logo-192.png';
         }
     }
 } catch (Exception $e) {
     // If database query fails, use defaults
-            $restaurant_logo = '../assets/images/logo-transparent.png';
+            $restaurant_logo = '../assets/images/logo-192.png';
 }
 
 // Independent of everything above (which is all keyed off id = $_SESSION
@@ -319,8 +319,8 @@ try {
   <title>Restaurant Management System - Restro Grow</title>
   
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="../assets/images/logo-transparent.png">
-  <link rel="apple-touch-icon" href="../assets/images/logo-transparent.png">
+  <link rel="icon" type="image/png" href="../assets/images/logo-192.png">
+  <link rel="apple-touch-icon" href="../assets/images/logo-192.png">
   <meta name="theme-color" content="#1a3934">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -895,7 +895,7 @@ try {
     <!-- Sidebar header -->
     <header class="sidebar-header">
       <a href="#" class="header-logo">
-        <img id="dashboardRestaurantLogo" src="<?php echo htmlspecialchars($restaurant_logo) . (strpos($restaurant_logo, '?') !== false ? '&' : '?') . 't=' . (time() . '_' . mt_rand(1000, 9999)); ?>" alt="Restro Grow Logo" onerror="this.src='../assets/images/logo-transparent.png'; this.style.borderRadius='50%'; this.style.objectFit='cover';" style="border-radius: 50%; object-fit: cover; width: 46px; height: 46px;">
+        <img id="dashboardRestaurantLogo" src="<?php echo htmlspecialchars($restaurant_logo) . (strpos($restaurant_logo, '?') !== false ? '&' : '?') . 't=' . (time() . '_' . mt_rand(1000, 9999)); ?>" alt="Restro Grow Logo" onerror="this.src='../assets/images/logo-192.png'; this.style.borderRadius='50%'; this.style.objectFit='cover';" style="border-radius: 50%; object-fit: cover; width: 46px; height: 46px;">
         <div class="restaurant-info">
           <div class="restaurant-name" id="restaurantName"><?php echo htmlspecialchars($restaurant_name); ?></div>
           <div class="restaurant-id" id="restaurantId"><?php echo htmlspecialchars($restaurant_id); ?></div>

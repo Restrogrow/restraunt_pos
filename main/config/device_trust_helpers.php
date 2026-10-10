@@ -82,6 +82,10 @@ function maskPhoneForDisplay(string $phone): string {
  * — or wait out a lockout — before the login can complete.
  */
 function enforceDeviceTrust($pdo, string $userType, int $userId, ?string $phone, string $restaurantId): ?array {
+    // Login-time WhatsApp OTP disabled — OTP is only required at account
+    // creation (signup). Remove this line to re-enable the new-device gate.
+    return null;
+
     $phoneDigits = preg_replace('/\D/', '', (string)$phone);
     if ($phoneDigits === '') {
         // Nowhere to send a code — fail open rather than lock the account out.

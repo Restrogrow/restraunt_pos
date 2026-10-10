@@ -137,14 +137,20 @@ body {
 }
 
 .brand-logo {
-    width: 30px;
-    height: 30px;
+    height: 26px;
+    width: auto;
     object-fit: contain;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-brand:hover .brand-logo {
     transform: rotate(-4deg);
+}
+
+/* The logo is a wordmark, so the text label beside it is redundant */
+.brand-logo + .brand-text,
+.footer-logo + span {
+    display: none;
 }
 
 .nav-menu {
@@ -1452,8 +1458,8 @@ body {
 }
 
 .footer-logo {
-    width: 30px;
-    height: 30px;
+    height: 26px;
+    width: auto;
     object-fit: contain;
     filter: brightness(0) saturate(100%) invert(93%) sepia(8%) saturate(462%) hue-rotate(1deg) brightness(97%) contrast(92%);
 }
