@@ -71,9 +71,23 @@
       var img = imgUrl(it.image);
       var sizes = it.has_variations ? (it.variations || []) : [];
       var vo = s.variation_offers || {};
-      // Dishes with sizes: one offer box per size; others: one box
-      var offerHtml = sizes.length
-        ? '<div class="bs-offer-sizes">' + sizes.map(function (sz) {
+      // Dishes with sizes: choose one discount for every size, or a price per
+      // size; others: one offer-price box
+      var allMode = s.offer_mode === 'all' || (s.offer_mode == null && vo['*'] != null);
+      var modeHtml = '<label class="bs-offer bs-offer-mode"><span>Offer type</span>' +
+        '<select data-act="vmode">' +
+          '<option value="each"' + (allMode ? '' : ' selected') + '>Price for each size</option>' +
+          '<option value="all"' + (allMode ? ' selected' : '') + '>Same discount, all sizes</option>' +
+        '</select></label>';
+      var offerHtml = sizes.length && allMode
+        ? '<div class="bs-offer-sizes">' + modeHtml +
+            '<label class="bs-offer" title="Taken off the price of every size. Leave empty for no discount">' +
+              '<span>' + esc(currency()) + ' off each size</span>' +
+              '<input type="number" min="1" step="1" inputmode="decimal" data-act="voff-all" placeholder="—" value="' + (vo['*'] != null ? vo['*'] : '') + '">' +
+            '</label>' +
+          '</div>'
+        : sizes.length
+        ? '<div class="bs-offer-sizes">' + modeHtml + sizes.map(function (sz) {
             return '<label class="bs-offer" title="Regular ' + esc(money(sz.price)) + '. Leave empty for no discount">' +
               '<span>' + esc(sz.name) + ' <small>' + esc(money(sz.price)) + '</small></span>' +
               '<input type="number" min="1" step="1" inputmode="decimal" data-act="voffer" data-size="' + esc(sz.name) + '" placeholder="—" value="' + (vo[sz.name] != null ? vo[sz.name] : '') + '">' +
@@ -160,6 +174,14 @@
       }
       if (it && it.has_variations) {
         var vo = s.variation_offers || {};
+        if (vo['*'] != null) {
+          var cheapest = Math.min.apply(null, (it.variations || []).map(function (z) { return z.price; }));
+          if (!(vo['*'] > 0 && vo['*'] < cheapest)) {
+            notify('Discount for “' + it.name + '” must be less than its cheapest size (' + money(cheapest) + ').', 'error');
+            return;
+          }
+          continue;
+        }
         for (var k = 0; k < (it.variations || []).length; k++) {
           var sz = it.variations[k], p = vo[sz.name];
           if (p != null && !(p > 0 && p < sz.price)) {
@@ -226,6 +248,13 @@
       }
       setDirty(true);
     }
+    if (e.target.getAttribute && e.target.getAttribute('data-act') === 'voff-all') {
+      var aid = parseInt(e.target.closest('.bs-row').getAttribute('data-id'), 10), av = e.target.value.trim();
+      for (var a = 0; a < selected.length; a++) {
+        if (selected[a].menu_item_id === aid) selected[a].variation_offers = av === '' ? {} : { '*': parseFloat(av) };
+      }
+      setDirty(true);
+    }
     if (e.target.getAttribute && e.target.getAttribute('data-act') === 'voffer') {
       var vid = parseInt(e.target.closest('.bs-row').getAttribute('data-id'), 10);
       var size = e.target.getAttribute('data-size'), val = e.target.value.trim();
@@ -236,6 +265,17 @@
       }
       setDirty(true);
     }
+  });
+
+  // Switching a dish between "same discount" and "price per size" starts it fresh
+  document.addEventListener('change', function (e) {
+    if (!(e.target.getAttribute && e.target.getAttribute('data-act') === 'vmode')) return;
+    var mid = parseInt(e.target.closest('.bs-row').getAttribute('data-id'), 10);
+    for (var m = 0; m < selected.length; m++) {
+      if (selected[m].menu_item_id === mid) { selected[m].offer_mode = e.target.value; selected[m].variation_offers = {}; }
+    }
+    setDirty(true);
+    renderSelected();
   });
 
   window.addEventListener('beforeunload', function (e) {

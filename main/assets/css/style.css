@@ -7947,7 +7947,12 @@ body, html {
 .bs-offer input:focus { outline: none; border-color: #ff5a1f; }
 .bs-offer input:disabled { background: #f9fafb; }
 /* Dishes with sizes: one offer box per size, side by side */
-.bs-offer-sizes { flex: none; display: flex; flex-wrap: wrap; gap: 6px; max-width: 300px; }
+/* Dishes with sizes: offer controls on their own line under the dish name
+   (rank 26px + thumb 52px + two 12px gaps = 102px indent) */
+.bs-row:has(.bs-offer-sizes) { flex-wrap: wrap; }
+.bs-offer-sizes { order: 10; flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 10px; padding-left: 102px; }
+.bs-offer-mode { flex: none; }
+.bs-offer select { padding: 6px 8px; border: 1.5px solid #e5e7eb; border-radius: 8px; font: inherit; font-size: 0.82rem; font-weight: 600; color: #111827; background: #fff; }
 .bs-offer-sizes .bs-offer input { width: 80px; }
 .bs-offer small { font-weight: 500; color: #9ca3af; }
 .bs-actions { flex: none; display: flex; gap: 4px; }

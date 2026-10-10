@@ -3978,7 +3978,7 @@ function toggleGatewayMode() {
               <ol class="bs-selected" id="bsSelected">
                 <li class="bs-empty">Loading…</li>
               </ol>
-              <p class="bs-note">Offer prices apply to the website menu, cart and checkout. Items with sizes/variations keep their regular prices.</p>
+              <p class="bs-note">Offer prices apply to the website menu, cart and checkout. For dishes with sizes, choose one discount for every size or a separate offer price for each size.</p>
             </div>
           </div>
           <div class="section-card">

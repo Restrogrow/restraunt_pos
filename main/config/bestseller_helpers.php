@@ -8,8 +8,9 @@
  * (website/api.php getMenuItems) serves it as the item's base_price (with
  * the regular price as original_price), and process_website_order.php
  * charges it — so the menu, cart and checkout always agree. Items with
- * variations (sizes) get one offer price per size instead (variation_offers,
- * keyed by the size name). An offer only applies when it's below the regular price.
+ * variations (sizes) use variation_offers instead: either an offer price per size
+ * ({"Half": 279, "Full": 499}) or one flat discount for every size ({"*": 30},
+ * i.e. Rs 30 off each size). An offer only applies when it's below the regular price.
  */
 
 function ensureBestsellersTable($conn) {
@@ -86,9 +87,15 @@ function decodeVariationOffers($json) {
 
 /**
  * The effective offer price for one size of an item, or null when none applies.
+ * "*" = the same discount (amount off) on every size.
  */
 function bestsellerVariationOfferPrice(array $map, $menuItemId, $variationName, $regularPrice) {
-    $offer = $map[(int)$menuItemId]['variation_offers'][(string)$variationName] ?? null;
+    $offers = $map[(int)$menuItemId]['variation_offers'] ?? [];
+    if (isset($offers['*'])) {
+        $offer = round((float)$regularPrice - $offers['*'], 2);
+    } else {
+        $offer = $offers[(string)$variationName] ?? null;
+    }
     if ($offer === null) return null;
     return ($offer > 0 && $offer < (float)$regularPrice) ? (float)$offer : null;
 }

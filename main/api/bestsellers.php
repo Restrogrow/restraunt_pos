@@ -5,7 +5,7 @@
  * GET               — the restaurant's bestsellers (ordered) plus every menu
  *                     item, for the picker
  * POST (JSON body)  — { items: [{ menu_item_id, offer_price|null,
- *                                 variation_offers: { size name: price } }, ...] }
+ *                                 variation_offers: { size name: price } or { "*": amount off every size } }, ...] }
  *                     replaces the list; array order = display order. Items
  *                     with sizes use variation_offers instead of offer_price.
  *
@@ -146,6 +146,16 @@ try {
         $varOffers = [];
         if (!empty($sizePrices[$id]) && is_array($row['variation_offers'] ?? null)) {
             $offer = null; // sizes have their own offers, never a whole-item one
+            $allOff = $row['variation_offers']['*'] ?? null;
+            if ($allOff !== null && $allOff !== '') {
+                // Same discount on every size: must leave every size above 0
+                $allOff = round((float)$allOff, 2);
+                if ($allOff <= 0 || $allOff >= min($sizePrices[$id])) {
+                    throw new InvalidArgumentException('Discount for "' . $prices[$id]['item_name_en'] . '" must be more than 0 and less than its cheapest size');
+                }
+                $rows[] = [$id, null, json_encode(['*' => $allOff])];
+                continue;
+            }
             foreach ($row['variation_offers'] as $size => $p) {
                 if (!isset($sizePrices[$id][$size]) || $p === '' || $p === null) continue;
                 $p = round((float)$p, 2);
