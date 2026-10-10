@@ -1960,6 +1960,24 @@ function getItemById(itemId) {
   return null;
 }
 
+// Card price for a dish: its price, or for dishes with sizes the cheapest
+// size. itemWasPrice() is the struck regular price when that price is an
+// offer (Offers > Bestsellers, per size for dishes with sizes), else 0.
+function itemNowPrice(item) {
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  return hasVar ? getMinVariantPrice(item) : parseFloat(item.base_price || item.price || 0);
+}
+function itemWasPrice(item) {
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  if (!hasVar) return item.original_price ? parseFloat(item.original_price) : 0;
+  var now = getMinVariantPrice(item);
+  for (var v = 0; v < item.variations.length; v++) {
+    var vr = item.variations[v];
+    if (vr.is_available == 0 || !vr.original_price) continue;
+    if (parseFloat(vr.variation_price || vr.price || 0) === now) return parseFloat(vr.original_price);
+  }
+  return 0;
+}
 function getMinVariantPrice(item) {
   if (!item.variations || !item.variations.length) return null;
   var min = Infinity;
@@ -2095,10 +2113,10 @@ function renderMenu() {
       item._ci = ci; item._ii = ii;
       var hasVar = item.has_variations && item.variations && item.variations.length > 0;
       // Price pill: lowest price for dishes with sizes; offer dishes also show the struck regular price
-      var displayPrice = mrpPriceHtml(hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0), !hasVar && item.original_price ? item.original_price : 0);
+      var displayPrice = mrpPriceHtml(itemNowPrice(item), itemWasPrice(item));
       // SAVE from the real prices, rating only when genuine (same rules as the Bestsellers cards)
-      var miWas = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
-      var miSave = miWas ? Math.round(miWas - parseFloat(item.base_price || 0)) : 0;
+      var miWas = itemWasPrice(item);
+      var miSave = miWas ? Math.round(miWas - itemNowPrice(item)) : 0;
       var miRating = item.rating ? parseFloat(item.rating) : 0;
       var miBadges = (miRating > 0 ? '<span class="bsl-rating" title="Rated ' + miRating.toFixed(1) + ' out of 5 from ' + (item.rating_count || 0) + ' rated orders">' +
           miRating.toFixed(1) + ' <i class="fa fa-star" aria-hidden="true"></i>' +
@@ -2473,7 +2491,8 @@ function showItemDetail(ci, ii) {
       var varOos = varItem.is_available == 0;
       html += '<div class="variant-chip' + (varOos ? ' disabled' : '') + '" data-idx="' + v + '"' + (varOos ? '' : ' onclick="selectVariant(' + v + ')') + '">' +
         varName +
-        (varOos ? ' <span style="color:#999;font-weight:400;font-size:10px">(Unavailable)</span>' : ' <span style="color:var(--primary-red, #e17055);font-weight:600">' + formatPrice(varPrice) + '</span>') +
+        (varOos ? ' <span style="color:#999;font-weight:400;font-size:10px">(Unavailable)</span>' : ' <span style="color:var(--primary-red, #e17055);font-weight:600">' + formatPrice(varPrice) + '</span>' +
+          (varItem.original_price ? ' <s style="color:#9ca3af;font-weight:500;font-size:11px">' + formatPrice(varItem.original_price) + '</s>' : '')) +
       '</div>';
     }
     html += '</div>';
@@ -2874,8 +2893,8 @@ function renderBestsellers() {
     var fmt = function(n) { return formatPrice(n).replace(/\.00$/, ''); }; // ₹314, not ₹314.00
     var price = hasVar ? 'From ' + fmt(getMinVariantPrice(item)) : fmt(item.base_price || 0);
     // Savings come only from the real prices: original_price (regular) vs base_price (offer)
-    var was = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
-    var save = was ? Math.round(was - parseFloat(item.base_price || 0)) : 0;
+    var was = itemWasPrice(item);
+    var save = was ? Math.round(was - itemNowPrice(item)) : 0;
     // Rating only when the API sends a genuine one (from customer order feedback)
     var rating = showRating && item.rating ? parseFloat(item.rating) : 0;
     var badgeSave = showOffer ? save : 0; // the price strike-through stays either way

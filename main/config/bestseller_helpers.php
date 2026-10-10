@@ -7,8 +7,9 @@
  * The offer price is a real price, not just a label: the website menu API
  * (website/api.php getMenuItems) serves it as the item's base_price (with
  * the regular price as original_price), and process_website_order.php
- * charges it — so the menu, cart and checkout always agree. It only applies
- * to items without variations, and only when it's below the regular price.
+ * charges it — so the menu, cart and checkout always agree. Items with
+ * variations (sizes) get one offer price per size instead (variation_offers,
+ * keyed by the size name). An offer only applies when it's below the regular price.
  */
 
 function ensureBestsellersTable($conn) {
@@ -26,11 +27,18 @@ function ensureBestsellersTable($conn) {
             KEY idx_restaurant_sort (restaurant_id, sort_order)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
+    // Per-size offer prices for items with variations: {"Half": 279, "Full": 499}
+    try {
+        if (!$conn->query("SHOW COLUMNS FROM bestsellers LIKE 'variation_offers'")->fetch()) {
+            $conn->exec("ALTER TABLE bestsellers ADD COLUMN variation_offers TEXT DEFAULT NULL");
+        }
+    } catch (PDOException $e) { error_log('ensureBestsellersTable: ' . $e->getMessage()); }
     $done = true;
 }
 
 /**
- * [menu_item_id => ['rank' => int, 'offer_price' => float|null]] for a restaurant.
+ * [menu_item_id => ['rank' => int, 'offer_price' => float|null,
+ *                   'variation_offers' => [size name => float]]] for a restaurant.
  *
  * Read-only on purpose: process_website_order.php calls this inside its
  * order transaction, and any DDL (even CREATE TABLE IF NOT EXISTS) would
@@ -38,14 +46,22 @@ function ensureBestsellersTable($conn) {
  */
 function getBestsellerMap($conn, $restaurantId) {
     try {
-        $stmt = $conn->prepare("SELECT menu_item_id, sort_order, offer_price FROM bestsellers WHERE restaurant_id = ? ORDER BY sort_order, id");
-        $stmt->execute([$restaurantId]);
+        try {
+            $stmt = $conn->prepare("SELECT menu_item_id, sort_order, offer_price, variation_offers FROM bestsellers WHERE restaurant_id = ? ORDER BY sort_order, id");
+            $stmt->execute([$restaurantId]);
+        } catch (PDOException $e) {
+            // variation_offers not added yet on this install — plain offers still work
+            if (strpos($e->getMessage(), '42S22') === false) throw $e;
+            $stmt = $conn->prepare("SELECT menu_item_id, sort_order, offer_price FROM bestsellers WHERE restaurant_id = ? ORDER BY sort_order, id");
+            $stmt->execute([$restaurantId]);
+        }
         $map = [];
         $rank = 0;
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $map[(int)$row['menu_item_id']] = [
                 'rank' => $rank++,
                 'offer_price' => $row['offer_price'] !== null ? (float)$row['offer_price'] : null,
+                'variation_offers' => decodeVariationOffers($row['variation_offers'] ?? null),
             ];
         }
         return $map;
@@ -54,6 +70,27 @@ function getBestsellerMap($conn, $restaurantId) {
         if (strpos($e->getMessage(), '42S02') === false) error_log('getBestsellerMap: ' . $e->getMessage());
         return [];
     }
+}
+
+/** [size name => offer price] from the stored JSON (invalid entries dropped). */
+function decodeVariationOffers($json) {
+    $out = [];
+    $data = is_string($json) ? json_decode($json, true) : null;
+    if (is_array($data)) {
+        foreach ($data as $name => $price) {
+            if (is_string($name) && $name !== '' && is_numeric($price) && (float)$price > 0) $out[$name] = round((float)$price, 2);
+        }
+    }
+    return $out;
+}
+
+/**
+ * The effective offer price for one size of an item, or null when none applies.
+ */
+function bestsellerVariationOfferPrice(array $map, $menuItemId, $variationName, $regularPrice) {
+    $offer = $map[(int)$menuItemId]['variation_offers'][(string)$variationName] ?? null;
+    if ($offer === null) return null;
+    return ($offer > 0 && $offer < (float)$regularPrice) ? (float)$offer : null;
 }
 
 /**
@@ -123,6 +160,18 @@ function applyBestsellersToItems($conn, $restaurantId, array &$items) {
         $item['is_bestseller'] = 1;
         $item['bestseller_rank'] = $map[$id]['rank'];
         $hasVariations = !empty($item['has_variations']) && !empty($item['variations']);
+        if ($hasVariations) {
+            // Per-size offers: each size's price becomes its offer price, with
+            // original_price kept for the strike-through
+            foreach ($item['variations'] as &$v) {
+                $vOffer = bestsellerVariationOfferPrice($map, $id, $v['variation_name'] ?? '', $v['price'] ?? 0);
+                if ($vOffer !== null) {
+                    $v['original_price'] = $v['price'];
+                    $v['price'] = number_format($vOffer, 2, '.', '');
+                }
+            }
+            unset($v);
+        }
         $offer = bestsellerOfferPrice($map, $id, $item['base_price'] ?? 0, $hasVariations);
         if ($offer !== null) {
             $item['original_price'] = $item['base_price'];

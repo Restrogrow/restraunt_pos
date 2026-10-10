@@ -1114,13 +1114,13 @@ function mrpPriceHtml(now, was) {
 }
 function cardPriceHtml(item) {
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-  return mrpPriceHtml(hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0), !hasVar && item.original_price ? item.original_price : 0);
+  return mrpPriceHtml(itemNowPrice(item), itemWasPrice(item));
 }
 // Chips on the photo: "₹X OFF" bottom-left, genuine rating bottom-right (same rules as the home page)
 function cardBadgesHtml(item) {
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-  var was = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
-  var save = was ? Math.round(was - parseFloat(item.base_price || 0)) : 0;
+  var was = itemWasPrice(item);
+  var save = was ? Math.round(was - itemNowPrice(item)) : 0;
   var rating = item.rating ? parseFloat(item.rating) : 0;
   return (save > 0 ? '<span class="img-chip img-chip-save">' + formatPrice(save).replace(/\.00$/, '') + ' OFF</span>' : '') +
     (rating > 0 ? '<span class="img-chip img-chip-rate bsl-rating" title="Rated ' + rating.toFixed(1) + ' out of 5 from ' + (item.rating_count || 0) + ' rated orders">' +
@@ -1182,6 +1182,24 @@ function getItemTotalQty(itemId) {
   return total;
 }
 
+// Card price for a dish: its price, or for dishes with sizes the cheapest
+// size. itemWasPrice() is the struck regular price when that price is an
+// offer (Offers > Bestsellers, per size for dishes with sizes), else 0.
+function itemNowPrice(item) {
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  return hasVar ? getMinVariantPrice(item) : parseFloat(item.base_price || item.price || 0);
+}
+function itemWasPrice(item) {
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  if (!hasVar) return item.original_price ? parseFloat(item.original_price) : 0;
+  var now = getMinVariantPrice(item);
+  for (var v = 0; v < item.variations.length; v++) {
+    var vr = item.variations[v];
+    if (vr.is_available == 0 || !vr.original_price) continue;
+    if (parseFloat(vr.variation_price || vr.price || 0) === now) return parseFloat(vr.original_price);
+  }
+  return 0;
+}
 function getMinVariantPrice(item) {
   if (!item.variations || !item.variations.length) return null;
   var min = Infinity;
@@ -1211,8 +1229,8 @@ function modernCardHtml(item) {
   var oos = item.is_available == 0;
   var name = escapeHtml(item.item_name_translated || item.item_name_en || item.name || '');
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-  var now = hasVar ? getMinVariantPrice(item) : (item.base_price || item.price || 0);
-  var was = !hasVar && item.original_price ? item.original_price : 0;
+  var now = itemNowPrice(item);
+  var was = itemWasPrice(item);
   var f = function(n) { return formatPrice(n).replace(/\.00$/, ''); };
   var fav = isFavItem(item.id);
   return '<div class="card mc-card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
@@ -1603,7 +1621,8 @@ function showItemDetail(itemId) {
       var varOos = varItem.is_available == 0;
       html += '<div class="variant-chip' + (varOos ? ' disabled' : '') + '" data-idx="' + v + '"' + (varOos ? '' : ' onclick="selectVariant(' + v + ')') + '\">' +
         escapeHtml(varName) +
-        (varOos ? ' <span style="color:#999;font-weight:400;font-size:10px">(Unavailable)</span>' : ' <span style="color:var(--primary-red, #e17055);font-weight:600">' + formatPrice(varPrice) + '</span>') +
+        (varOos ? ' <span style="color:#999;font-weight:400;font-size:10px">(Unavailable)</span>' : ' <span style="color:var(--primary-red, #e17055);font-weight:600">' + formatPrice(varPrice) + '</span>' +
+          (varItem.original_price ? ' <s style="color:#9ca3af;font-weight:500;font-size:11px">' + formatPrice(varItem.original_price) + '</s>' : '')) +
       '</div>';
     }
     html += '</div>';

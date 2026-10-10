@@ -7946,6 +7946,10 @@ body, html {
 }
 .bs-offer input:focus { outline: none; border-color: #ff5a1f; }
 .bs-offer input:disabled { background: #f9fafb; }
+/* Dishes with sizes: one offer box per size, side by side */
+.bs-offer-sizes { flex: none; display: flex; flex-wrap: wrap; gap: 6px; max-width: 300px; }
+.bs-offer-sizes .bs-offer input { width: 80px; }
+.bs-offer small { font-weight: 500; color: #9ca3af; }
 .bs-actions { flex: none; display: flex; gap: 4px; }
 .bs-icon-btn {
   width: 32px;
@@ -8016,7 +8020,8 @@ body, html {
 @media (max-width: 560px) {
   .bs-row { flex-wrap: wrap; }
   .bs-info { flex-basis: calc(100% - 110px); }
-  .bs-offer { margin-left: 38px; }
+  .bs-offer, .bs-offer-sizes { margin-left: 38px; }
+  .bs-offer-sizes .bs-offer { margin-left: 0; }
   .bs-actions { margin-left: auto; }
 }
 

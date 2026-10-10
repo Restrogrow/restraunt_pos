@@ -2,14 +2,15 @@
  * Offers > Bestsellers (admin)
  *
  * Pick menu items to feature in the website's "Bestsellers" carousel,
- * reorder them, and optionally give each an offer price. Saved through
+ * reorder them, and optionally give each an offer price (dishes with sizes:
+ * one offer price per size). Saved through
  * ../api/bestsellers.php, which replaces the whole list.
  */
 (function () {
   'use strict';
 
   var allItems = [];       // every menu item of this restaurant
-  var selected = [];       // [{ menu_item_id, offer_price }] in display order
+  var selected = [];       // [{ menu_item_id, offer_price, variation_offers: {size: price} }] in display order
   var maxItems = 20;
   var dirty = false;
 
@@ -68,7 +69,20 @@
       var it = itemById(s.menu_item_id);
       if (!it) return '';
       var img = imgUrl(it.image);
-      var offerDisabled = it.has_variations;
+      var sizes = it.has_variations ? (it.variations || []) : [];
+      var vo = s.variation_offers || {};
+      // Dishes with sizes: one offer box per size; others: one box
+      var offerHtml = sizes.length
+        ? '<div class="bs-offer-sizes">' + sizes.map(function (sz) {
+            return '<label class="bs-offer" title="Regular ' + esc(money(sz.price)) + '. Leave empty for no discount">' +
+              '<span>' + esc(sz.name) + ' <small>' + esc(money(sz.price)) + '</small></span>' +
+              '<input type="number" min="1" step="1" inputmode="decimal" data-act="voffer" data-size="' + esc(sz.name) + '" placeholder="—" value="' + (vo[sz.name] != null ? vo[sz.name] : '') + '">' +
+            '</label>';
+          }).join('') + '</div>'
+        : '<label class="bs-offer" title="Leave empty for no discount">' +
+            '<span>Offer price</span>' +
+            '<input type="number" min="1" step="1" inputmode="decimal" data-act="offer" placeholder="—" value="' + (s.offer_price != null ? s.offer_price : '') + '">' +
+          '</label>';
       return '<li class="bs-row" data-id="' + it.id + '">' +
         '<span class="bs-rank">' + (i + 1) + '</span>' +
         (img ? '<img class="bs-thumb" src="' + esc(img) + '" alt="" loading="lazy">' : '<span class="bs-thumb bs-thumb-empty material-symbols-rounded">restaurant</span>') +
@@ -76,11 +90,7 @@
           '<div class="bs-name">' + vegDot(it.type) + esc(it.name) + (it.available ? '' : ' <span class="bs-badge">Unavailable</span>') + '</div>' +
           '<div class="bs-meta">' + esc(it.category) + ' · ' + money(it.price) + '</div>' +
         '</div>' +
-        '<label class="bs-offer" title="' + (offerDisabled ? 'Items with variations keep their regular prices' : 'Leave empty for no discount') + '">' +
-          '<span>Offer price</span>' +
-          '<input type="number" min="1" step="1" inputmode="decimal" data-act="offer" placeholder="—" ' +
-            (offerDisabled ? 'disabled ' : '') + 'value="' + (s.offer_price != null ? s.offer_price : '') + '">' +
-        '</label>' +
+        offerHtml +
         '<div class="bs-actions">' +
           '<button type="button" class="bs-icon-btn" data-act="up" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '><span class="material-symbols-rounded">arrow_upward</span></button>' +
           '<button type="button" class="bs-icon-btn" data-act="down" aria-label="Move down"' + (i === selected.length - 1 ? ' disabled' : '') + '><span class="material-symbols-rounded">arrow_downward</span></button>' +
@@ -129,6 +139,7 @@
         if (!d.success) throw new Error(d.message || 'Failed to load');
         allItems = d.items || [];
         selected = (d.bestsellers || []).filter(function (s) { return itemById(s.menu_item_id); });
+        selected.forEach(function (s) { if (!s.variation_offers || Array.isArray(s.variation_offers)) s.variation_offers = {}; });
         maxItems = d.max || 20;
         setDirty(false);
         render();
@@ -143,9 +154,19 @@
     // Validate offer prices before sending
     for (var i = 0; i < selected.length; i++) {
       var s = selected[i], it = itemById(s.menu_item_id);
-      if (s.offer_price != null && it && !(s.offer_price > 0 && s.offer_price < it.price)) {
+      if (s.offer_price != null && it && !it.has_variations && !(s.offer_price > 0 && s.offer_price < it.price)) {
         notify('Offer price for “' + it.name + '” must be less than ' + money(it.price) + '.', 'error');
         return;
+      }
+      if (it && it.has_variations) {
+        var vo = s.variation_offers || {};
+        for (var k = 0; k < (it.variations || []).length; k++) {
+          var sz = it.variations[k], p = vo[sz.name];
+          if (p != null && !(p > 0 && p < sz.price)) {
+            notify('Offer price for “' + it.name + ' (' + sz.name + ')” must be less than ' + money(sz.price) + '.', 'error');
+            return;
+          }
+        }
       }
     }
     btn.disabled = true;
@@ -172,7 +193,7 @@
     if (pick) {
       var id = parseInt(pick.getAttribute('data-id'), 10);
       if (isSelected(id)) selected = selected.filter(function (s) { return s.menu_item_id !== id; });
-      else if (selected.length < maxItems) selected.push({ menu_item_id: id, offer_price: null });
+      else if (selected.length < maxItems) selected.push({ menu_item_id: id, offer_price: null, variation_offers: {} });
       setDirty(true);
       render();
       return;
@@ -202,6 +223,16 @@
       var v = e.target.value.trim();
       for (var i = 0; i < selected.length; i++) {
         if (selected[i].menu_item_id === rid) selected[i].offer_price = v === '' ? null : parseFloat(v);
+      }
+      setDirty(true);
+    }
+    if (e.target.getAttribute && e.target.getAttribute('data-act') === 'voffer') {
+      var vid = parseInt(e.target.closest('.bs-row').getAttribute('data-id'), 10);
+      var size = e.target.getAttribute('data-size'), val = e.target.value.trim();
+      for (var j = 0; j < selected.length; j++) {
+        if (selected[j].menu_item_id !== vid) continue;
+        var map = selected[j].variation_offers || (selected[j].variation_offers = {});
+        if (val === '') delete map[size]; else map[size] = parseFloat(val);
       }
       setDirty(true);
     }

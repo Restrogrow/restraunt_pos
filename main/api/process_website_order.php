@@ -581,6 +581,9 @@ $conn->beginTransaction();
 
         if (!empty($variationName) && isset($variationsByItem[$menuItemId][$variationName])) {
             $unitPrice = $variationsByItem[$menuItemId][$variationName];
+            // Per-size bestseller offer (Offers > Bestsellers)
+            $vOffer = bestsellerVariationOfferPrice($bestsellerMap, $menuItemId, $variationName, $unitPrice);
+            if ($vOffer !== null) $unitPrice = $vOffer;
         } else {
             $offer = bestsellerOfferPrice($bestsellerMap, $menuItemId, $unitPrice, !empty($variationsByItem[$menuItemId]));
             if ($offer !== null) $unitPrice = $offer;
