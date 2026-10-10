@@ -126,9 +126,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 1px; /* icon and label sit close; the room goes to a bigger icon */
   width: 72px;
-  padding: 10px 4px;
+  padding: 7px 4px;
   border: none;
   background: transparent;
   border-radius: 8px;
@@ -142,7 +142,7 @@ body {
   transition: all 0.2s;
 }
 .side-nav-btn img {
-  width: 42px; height: 42px;
+  width: 48px; height: 48px;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -156,8 +156,8 @@ body {
 .layout-container.nav-top { flex-direction: column; }
 .layout-container.nav-top .side-nav { width: auto; height: auto; flex-direction: row; flex-shrink: 0; gap: 6px; padding: 6px 10px; border-right: 0; border-bottom: 1.5px solid #ccc; overflow-x: auto; overflow-y: hidden; }
 .layout-container.nav-top .sub-views { flex-shrink: 0; }
-.layout-container.nav-top .side-nav-btn { width: auto; min-width: 68px; padding: 6px 10px; white-space: nowrap; }
-.layout-container.nav-top .side-nav-btn img { width: 36px; height: 36px; }
+.layout-container.nav-top .side-nav-btn { width: auto; min-width: 68px; padding: 3px 10px; gap: 1px; white-space: nowrap; }
+.layout-container.nav-top .side-nav-btn img { width: 44px; height: 44px; }
 
 .main-content {
   flex: 1;
