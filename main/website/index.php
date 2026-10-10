@@ -25,9 +25,21 @@ if (isset($_GET['table']) && trim($_GET['table']) !== '') {
 <title><?php echo htmlspecialchars($restaurant_name ?? 'Dvani Cafe & Grill', ENT_QUOTES, 'UTF-8'); ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700<?php echo $font_family_google_param ? '&family=' . $font_family_google_param . ':wght@300;400;500;600;700' : ''; ?>&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<?php
+// Fonts and icon sets load without blocking the first paint (media="print"
+// then switched to "all" once loaded); text shows in the fallback font for a
+// moment (display=swap) and icons appear as soon as their CSS arrives.
+$__nonBlockingCss = [
+    'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700' . ($font_family_google_param ? '&family=' . $font_family_google_param . ':wght@300;400;500;600;700' : '') . '&display=swap',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
+    'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
+];
+foreach ($__nonBlockingCss as $__href): ?>
+<link rel="stylesheet" href="<?php echo htmlspecialchars($__href, ENT_QUOTES, 'UTF-8'); ?>" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="<?php echo htmlspecialchars($__href, ENT_QUOTES, 'UTF-8'); ?>"></noscript>
+<?php endforeach; ?>
 <style>
 :root {
   --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
@@ -1868,7 +1880,9 @@ window.socialLinks = {
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<!-- async: the QR library must not hold up DOMContentLoaded (which starts the
+     menu fetch); generateQR() is guarded and re-runs once the library arrives -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js" async onload="if (typeof generateQR === 'function') generateQR();"></script>
 <script>
 let cartItems = {};
 let menus = [];
@@ -2280,14 +2294,14 @@ function fetchAndRender() {
     return;
   }
 
-  fetch(apiUrl('getMenus'))
-    .then(function(r) { return r.json(); })
-    .then(function(menusData) {
-      menus = menusData || [];
-      return fetch(apiUrl('getMenuItems'));
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(itemsData) {
+  // Categories and items are independent — fetch them in parallel
+  Promise.all([
+    fetch(apiUrl('getMenus')).then(function(r) { return r.json(); }),
+    fetch(apiUrl('getMenuItems')).then(function(r) { return r.json(); })
+  ])
+    .then(function(results) {
+      menus = results[0] || [];
+      var itemsData = results[1];
       menuItems = itemsData || [];
       buildCategories();
       loadCart();

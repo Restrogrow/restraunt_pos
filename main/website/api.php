@@ -41,6 +41,44 @@ $restaurantId = isset($_GET['restaurant_id']) && $_GET['restaurant_id'] !== ''
 
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
+/**
+ * Attach each item's variations with ONE query for the whole list (it used to
+ * be a SHOW TABLES + SELECT per item — 2 queries per dish on every menu
+ * load). Same fields and per-item order as before (sort_order, then id as a
+ * stable tie-breaker); items without variations get []. A missing table just
+ * means no variations.
+ */
+function attachVariationsToItems(PDO $conn, array &$items): void {
+    $ids = [];
+    foreach ($items as $it) {
+        if (isset($it['id'])) $ids[] = (int)$it['id'];
+    }
+    $byItem = [];
+    if ($ids) {
+        try {
+            $ph = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = $conn->prepare("
+                SELECT menu_item_id, id, variation_name, price, sort_order, is_available
+                FROM menu_item_variations
+                WHERE menu_item_id IN ($ph)
+                ORDER BY menu_item_id, sort_order ASC, id ASC
+            ");
+            $stmt->execute($ids);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $mid = (int)$row['menu_item_id'];
+                unset($row['menu_item_id']);
+                $byItem[$mid][] = $row;
+            }
+        } catch (PDOException $e) {
+            $byItem = [];
+        }
+    }
+    foreach ($items as &$it) {
+        $it['variations'] = $byItem[(int)($it['id'] ?? 0)] ?? [];
+    }
+    unset($it);
+}
+
 try {
     // Get connection using getConnection() for lazy connection support
     if (function_exists('getConnection')) {
@@ -147,6 +185,9 @@ try {
                     $_SESSION['language'] = 'en';
                 }
             } catch (Exception $e) {}
+            // Done with the session: release its lock so this visitor's other
+            // requests (menus, items, coupons) run in parallel instead of queuing.
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
             
             $hasMenuTrans = false;
             try { $hasMenuTrans = $conn->query("SHOW COLUMNS FROM menu LIKE 'translations'")->rowCount() > 0; } catch (Exception $e) {}
@@ -260,6 +301,9 @@ try {
                     $_SESSION['language'] = 'en';
                 }
             } catch (Exception $e) {}
+            // Done with the session: release its lock so this visitor's other
+            // requests (menus, items, coupons) run in parallel instead of queuing.
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
             
             $hasItemTrans = false;
             try { $hasItemTrans = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'translations'")->rowCount() > 0; } catch (Exception $e) {}
@@ -364,28 +408,10 @@ try {
                         $item['item_name_translated'] = $item['item_name_en'];
                         $item['item_description_translated'] = $item['item_description_en'] ?? '';
                     }
-                    
-                    // Load variations for this item
-                    try {
-                        $checkTable = $conn->query("SHOW TABLES LIKE 'menu_item_variations'");
-                        if ($checkTable->rowCount() > 0) {
-                            $variationsStmt = $conn->prepare("
-                                SELECT id, variation_name, price, sort_order, is_available 
-                                FROM menu_item_variations 
-                                WHERE menu_item_id = ?
-                                ORDER BY sort_order ASC
-                            ");
-                            $variationsStmt->execute([$item['id']]);
-                            $item['variations'] = $variationsStmt->fetchAll(PDO::FETCH_ASSOC);
-                        } else {
-                            $item['variations'] = [];
-                        }
-                    } catch (PDOException $e) {
-                        $item['variations'] = [];
-                    }
                 }
                 unset($item);
-                
+                attachVariationsToItems($conn, $items);
+
                 // Bestsellers: flag them and serve any offer price as the price
                 require_once __DIR__ . '/../config/bestseller_helpers.php';
                 applyBestsellersToItems($conn, $restaurantId, $items);
@@ -433,33 +459,8 @@ try {
                     }
                     unset($item);
                     
-                    // Load variations for each item
-                    try {
-                        $checkTable = $conn->query("SHOW TABLES LIKE 'menu_item_variations'");
-                        if ($checkTable->rowCount() > 0) {
-                            foreach ($items as &$item) {
-                                $variationsStmt = $conn->prepare("
-                                    SELECT id, variation_name, price, sort_order, is_available 
-                                    FROM menu_item_variations 
-                                    WHERE menu_item_id = ?
-                                    ORDER BY sort_order ASC
-                                ");
-                                $variationsStmt->execute([$item['id']]);
-                                $item['variations'] = $variationsStmt->fetchAll(PDO::FETCH_ASSOC);
-                            }
-                            unset($item);
-                        } else {
-                            foreach ($items as &$item) {
-                                $item['variations'] = [];
-                            }
-                            unset($item);
-                        }
-                    } catch (PDOException $e) {
-                        foreach ($items as &$item) {
-                            $item['variations'] = [];
-                        }
-                        unset($item);
-                    }
+                    // Load variations for all items in one query
+                    attachVariationsToItems($conn, $items);
                     
                     // Bestsellers: flag them and serve any offer price as the price
                     require_once __DIR__ . '/../config/bestseller_helpers.php';
@@ -591,6 +592,9 @@ try {
                     $_SESSION['language'] = 'en';
                 }
             } catch (Exception $e) {}
+            // Done with the session: release its lock so this visitor's other
+            // requests (menus, items, coupons) run in parallel instead of queuing.
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
             // Explicitly select columns to avoid binary data issues
             // Check if subcategory_id column exists
             $searchHasSubCol = false;
@@ -644,14 +648,7 @@ try {
                 ]);
                 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
-                // Clean up any binary data and load variations
-                try {
-                    $checkTable = $conn->query("SHOW TABLES LIKE 'menu_item_variations'");
-                    $hasVariationsTable = $checkTable->rowCount() > 0;
-                } catch (PDOException $e) {
-                    $hasVariationsTable = false;
-                }
-                
+                // Clean up any binary data and add translations
                 $searchLang = $lang;
                 
                 foreach ($items as &$item) {
@@ -672,27 +669,10 @@ try {
                         $item['item_name_translated'] = $item['item_name_en'];
                         $item['item_description_translated'] = $item['item_description_en'] ?? '';
                     }
-                    
-                    // Load variations
-                    if ($hasVariationsTable) {
-                        try {
-                            $variationsStmt = $conn->prepare("
-                                SELECT id, variation_name, price, sort_order, is_available 
-                                FROM menu_item_variations 
-                                WHERE menu_item_id = ?
-                                ORDER BY sort_order ASC
-                            ");
-                            $variationsStmt->execute([$item['id']]);
-                            $item['variations'] = $variationsStmt->fetchAll(PDO::FETCH_ASSOC);
-                        } catch (PDOException $e) {
-                            $item['variations'] = [];
-                        }
-                    } else {
-                        $item['variations'] = [];
-                    }
                 }
                 unset($item);
-                
+                attachVariationsToItems($conn, $items);
+
                 echo json_encode($items);
             } catch (PDOException $e) {
                 // If columns don't exist, try with basic columns

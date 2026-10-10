@@ -8,6 +8,9 @@ if (ob_get_level()) ob_clean();
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession();
 require_once __DIR__ . '/../config/authorization_config.php';
+// Read-only public endpoint: release the session lock right away ($_SESSION
+// stays readable below) so it doesn't hold up the page's other requests.
+if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 
 header('Content-Type: application/json; charset=UTF-8');
 require_once __DIR__ . '/../config/cors_helper.php';

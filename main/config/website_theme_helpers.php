@@ -154,92 +154,48 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
     if ($checked) {
         return;
     }
+    // Column definitions added over time. Previously each was probed with its
+    // own "SELECT col FROM website_settings" on every page view (~11 queries
+    // per visit); now one SHOW COLUMNS lists them and only missing ones are
+    // added. Semantics of each column:
+    //   theme_preset / card_style   — preset id, card corner style
+    //   checkout_color              — NULL = follow the Primary Color
+    //   layout_style / header_style — menu card layout, hero vs minimal header
+    //   site_name                   — customer-facing name override (NULL = account name)
+    //   nav_icon_style / nav_labels — bottom-nav icon set and label overrides
+    //   favicon_url                 — browser-tab icon override (NULL = logo)
+    //   nav_icons_custom            — per-slot uploaded nav icons (JSON of data URLs)
+    //   bestseller_style            — Bestsellers section look (see getBestsellerStyle())
+    $columns = [
+        'theme_preset'     => "VARCHAR(30) DEFAULT NULL",
+        'card_style'       => "VARCHAR(10) DEFAULT 'rounded'",
+        'checkout_color'   => "VARCHAR(20) DEFAULT NULL",
+        'layout_style'     => "VARCHAR(10) DEFAULT 'grid'",
+        'header_style'     => "VARCHAR(10) DEFAULT 'hero'",
+        'site_name'        => "VARCHAR(191) DEFAULT NULL",
+        'nav_icon_style'   => "VARCHAR(20) DEFAULT 'classic'",
+        'nav_labels'       => "TEXT DEFAULT NULL",
+        'favicon_url'      => "VARCHAR(500) DEFAULT NULL",
+        'nav_icons_custom' => "LONGTEXT DEFAULT NULL",
+        'bestseller_style' => "TEXT DEFAULT NULL",
+    ];
+    try {
+        $existing = [];
+        foreach ($conn->query("SHOW COLUMNS FROM website_settings")->fetchAll(PDO::FETCH_ASSOC) as $col) {
+            $existing[strtolower($col['Field'])] = true;
+        }
+    } catch (PDOException $e) {
+        return; // table not there yet — nothing to extend; try again next request
+    }
+    $missing = array_diff_key($columns, $existing);
+    // ALTER TABLE implicitly commits an open transaction — never do it mid-transaction
+    if ($missing && $conn->inTransaction()) {
+        return;
+    }
+    foreach ($missing as $name => $definition) {
+        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN $name $definition"); } catch (PDOException $e) {}
+    }
     $checked = true;
-
-    try {
-        $conn->query("SELECT theme_preset FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN theme_preset VARCHAR(30) DEFAULT NULL"); } catch (PDOException $e2) {}
-    }
-
-    try {
-        $conn->query("SELECT card_style FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN card_style VARCHAR(10) DEFAULT 'rounded'"); } catch (PDOException $e2) {}
-    }
-
-    // checkout_color — NULL means "use the restaurant's Primary Color",
-    // matching the Checkout button's pre-existing look so nothing changes
-    // visually until an admin explicitly picks a different Checkout Color.
-    try {
-        $conn->query("SELECT checkout_color FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN checkout_color VARCHAR(20) DEFAULT NULL"); } catch (PDOException $e2) {}
-    }
-
-    // layout_style — how the menu page's product cards are arranged
-    // (grid/list/magazine). header_style — hero banner vs a compact minimal
-    // bar on the homepage. Both default to the site's original look.
-    try {
-        $conn->query("SELECT layout_style FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN layout_style VARCHAR(10) DEFAULT 'grid'"); } catch (PDOException $e2) {}
-    }
-    try {
-        $conn->query("SELECT header_style FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN header_style VARCHAR(10) DEFAULT 'hero'"); } catch (PDOException $e2) {}
-    }
-
-    // site_name — optional override of the restaurant's account name for
-    // customer-facing display only (title, hero heading, footer). NULL means
-    // "use the account restaurant_name", matching the checkout_color pattern
-    // above so nothing changes until an admin explicitly sets one.
-    try {
-        $conn->query("SELECT site_name FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN site_name VARCHAR(191) DEFAULT NULL"); } catch (PDOException $e2) {}
-    }
-    // nav_icon_style — id of a NAV_ICON_STYLES preset for the bottom nav's
-    // icon set. Defaults to 'classic' (today's fixed icons), so nothing
-    // changes until an admin explicitly picks another style.
-    try {
-        $conn->query("SELECT nav_icon_style FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN nav_icon_style VARCHAR(20) DEFAULT 'classic'"); } catch (PDOException $e2) {}
-    }
-    // nav_labels — JSON override of the bottom nav's text labels (Home/Menu/
-    // Social/Plans/Reserve/Cart/Profile). NULL means "use the defaults",
-    // matching the nav_icon_style pattern above.
-    try {
-        $conn->query("SELECT nav_labels FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN nav_labels TEXT DEFAULT NULL"); } catch (PDOException $e2) {}
-    }
-    // favicon_url — optional override of the browser-tab icon (and PWA/
-    // apple-touch icon) shown for the customer website. NULL means "use the
-    // uploaded restaurant logo, or the built-in placeholder if none".
-    try {
-        $conn->query("SELECT favicon_url FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN favicon_url VARCHAR(500) DEFAULT NULL"); } catch (PDOException $e2) {}
-    }
-    // nav_icons_custom — JSON map of per-slot uploaded icon images (data URLs)
-    // for the bottom nav, e.g. {"menu":"data:image/png;base64,..."}. A slot
-    // with no entry here just uses the picked NAV_ICON_STYLES icon as before;
-    // this is a per-slot override on top of that, not a replacement for it.
-    try {
-        $conn->query("SELECT nav_icons_custom FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN nav_icons_custom LONGTEXT DEFAULT NULL"); } catch (PDOException $e2) {}
-    }
-    // bestseller_style — JSON of the Bestsellers section's look (see
-    // getBestsellerStyle()). NULL means "all defaults".
-    try {
-        $conn->query("SELECT bestseller_style FROM website_settings LIMIT 1");
-    } catch (PDOException $e) {
-        try { $conn->exec("ALTER TABLE website_settings ADD COLUMN bestseller_style TEXT DEFAULT NULL"); } catch (PDOException $e2) {}
-    }
 }
 
 const BESTSELLER_ADD_ANIMATIONS = ['glow', 'bounce', 'ripple', 'none'];

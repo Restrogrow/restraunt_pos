@@ -20,28 +20,32 @@ function createRestaurantSlug($name) {
 }
 
 function findRestaurantBySlug($conn, $slug) {
-    // Prefer users with menu entries, then most recently created
-    $stmt = $conn->prepare("
-        SELECT u.restaurant_id, u.restaurant_name
-        FROM users u
-        LEFT JOIN (
-            SELECT restaurant_id, COUNT(*) as cnt
-            FROM menu
-            WHERE is_active = 1
-            GROUP BY restaurant_id
-        ) m ON u.restaurant_id = m.restaurant_id
-        WHERE u.restaurant_name IS NOT NULL AND u.restaurant_name != ''
-        ORDER BY COALESCE(m.cnt, 0) DESC, u.id DESC
-    ");
-    $stmt->execute();
-    $restaurants = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($restaurants as $restaurant) {
-        $restaurant_slug = createRestaurantSlug($restaurant['restaurant_name']);
-        if ($restaurant_slug === $slug) {
-            return [
-                'restaurant_id' => $restaurant['restaurant_id'],
-                'restaurant_name' => $restaurant['restaurant_name']
-            ];
+    // A slug is the name's lowercase a-z0-9 runs joined by "-", so the
+    // matching restaurant's name must contain those runs in order. Narrow the
+    // candidates with LIKE '%run1%run2%' (a superset of the true matches)
+    // instead of loading every restaurant on every page view; the exact
+    // createRestaurantSlug() comparison below still decides. Falls back to the
+    // full scan if the narrowed search finds nothing.
+    $tokens = array_values(array_filter(explode('-', (string)$slug), 'strlen'));
+    $narrow = $tokens && !preg_grep('/[^a-z0-9]/', $tokens);
+    foreach ($narrow ? [true, false] : [false] as $useLike) {
+        // Prefer users with menu entries, then most recently created
+        $stmt = $conn->prepare("
+            SELECT u.restaurant_id, u.restaurant_name,
+                   (SELECT COUNT(*) FROM menu m WHERE m.restaurant_id = u.restaurant_id AND m.is_active = 1) AS cnt
+            FROM users u
+            WHERE u.restaurant_name IS NOT NULL AND u.restaurant_name != ''" .
+            ($useLike ? " AND u.restaurant_name LIKE ?" : "") . "
+            ORDER BY cnt DESC, u.id DESC
+        ");
+        $stmt->execute($useLike ? ['%' . implode('%', $tokens) . '%'] : []);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $restaurant) {
+            if (createRestaurantSlug($restaurant['restaurant_name']) === $slug) {
+                return [
+                    'restaurant_id' => $restaurant['restaurant_id'],
+                    'restaurant_name' => $restaurant['restaurant_name']
+                ];
+            }
         }
     }
     return null;
