@@ -257,8 +257,8 @@ const BESTSELLER_STYLE_DEFAULTS = [
     'add_shape'      => 'rounded',  // rounded | pill | square
     'add_label'      => 'ADD',
     'add_plus'       => false,      // show a "+" icon after the label
-    'price_color'    => '#1f7a3a',  // box around the current price
-    'price_style'    => 'outline',  // outline | filled | soft
+    'price_color'    => '#ea580c',  // box around the current price
+    'price_style'    => 'filled',   // outline | filled | soft
     'show_rating'    => true,
     'show_offer'     => true,
 ];

@@ -8133,7 +8133,7 @@ body, html {
 .bs-style-preview[data-style="soft"] .bs-preview-add { background: color-mix(in srgb, var(--bsp-add) 12%, #fff); border-color: transparent; }
 
 /* Preview: struck regular price + boxed current price */
-.bs-style-card { --bsp-price: #1f7a3a; }
+.bs-style-card { --bsp-price: #ea580c; }
 .bs-preview-price { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
 .bs-preview-price s { font-size: 0.8rem; color: #9ca3af; }
 .bs-preview-price-now {

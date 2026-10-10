@@ -217,7 +217,7 @@
   var STYLE_DEFAULTS = {
     show_section: true, title: 'Bestsellers', eyebrow: 'Customer favourites',
     title_color: '#1f2a44', badge_color: '#1f7a3a', add_color: '#e53935',
-    add_animation: 'glow', add_style: 'outline', add_shape: 'rounded', add_label: 'ADD', add_plus: false, price_color: '#1f7a3a', price_style: 'outline',
+    add_animation: 'glow', add_style: 'outline', add_shape: 'rounded', add_label: 'ADD', add_plus: false, price_color: '#ea580c', price_style: 'filled',
     show_rating: true, show_offer: true
   };
   var SHAPE_RADIUS = { rounded: '10px', pill: '999px', square: '4px' };

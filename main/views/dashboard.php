@@ -1806,12 +1806,12 @@ try {
 
               <div class="bs-style-grid">
                 <label class="bs-style-field">Price box colour (cards &amp; menu)
-                  <input type="color" id="bsPriceColor" value="#1f7a3a">
+                  <input type="color" id="bsPriceColor" value="#ea580c">
                 </label>
                 <label class="bs-style-field">Price box style
                   <select id="bsPriceStyle">
                     <option value="outline">Outline</option>
-                    <option value="filled">Filled</option>
+                    <option value="filled" selected>Filled</option>
                     <option value="soft">Soft tint</option>
                   </select>
                 </label>
