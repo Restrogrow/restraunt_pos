@@ -1,7 +1,9 @@
 <?php
 header('Content-Type: application/json; charset=UTF-8');
-require_once __DIR__ . '/../config/session_config.php';
-startSecureSession(true);
+// Polled every few seconds by track.php: must never be served from a browser
+// or CDN cache, and needs no session (order number + phone authorise it), so
+// it no longer opens one — that was a session file + lock on every poll.
+header('Cache-Control: no-store, max-age=0');
 
 if (!file_exists(__DIR__ . '/../db_connection.php')) {
     echo json_encode(['success' => false]); exit();

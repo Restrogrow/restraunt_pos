@@ -69,6 +69,16 @@ $statusLabels = [
   --site-font: <?php echo $font_family_css; ?>;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* Live-update indicator + a pulse on the status badge when the status changes */
+.live-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: #6b7280; margin-bottom: 24px; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
+.live-note.on .live-dot { animation: livePulse 1.6s ease-out infinite; }
+.live-note.offline .live-dot { background: #f59e0b; }
+.live-note.done .live-dot { background: #9ca3af; }
+@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,.55); } 100% { box-shadow: 0 0 0 7px rgba(22,163,74,0); } }
+.status-badge.status-flash { animation: statusFlash 1.2s ease-out 2; }
+@keyframes statusFlash { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22,163,74,.5); } 30% { transform: scale(1.08); } 100% { transform: scale(1); box-shadow: 0 0 0 14px rgba(22,163,74,0); } }
+@media (prefers-reduced-motion: reduce) { .live-note.on .live-dot, .status-badge.status-flash { animation: none; } }
 body {
   font-family: var(--site-font), 'Inter', sans-serif;
   background: #e8ecf2;
@@ -362,12 +372,31 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 <?php if ((float)$order['tax'] > 0): ?>
                 <div class="info-row"><span class="label">Tax</span><span class="value"><?php echo $currency . number_format((float)$order['tax'], 2); ?></span></div>
                 <?php endif; ?>
+                <?php
+                // Discounts and the packaging charge are part of `total` but have
+                // no line of their own here, so the rows didn't add up to the
+                // Total. Show the discounts, and derive packaging (not stored
+                // separately) as whatever is left over.
+                $couponDiscount  = (float)($order['discount_amount'] ?? 0);
+                $loyaltyDiscount = (float)($order['loyalty_discount_amount'] ?? 0);
+                $otherCharges = round((float)$order['total'] - (float)$order['subtotal'] - (float)$order['tax']
+                    - (float)$order['delivery_charge'] + $couponDiscount + $loyaltyDiscount, 2);
+                ?>
+                <?php if ($couponDiscount > 0): ?>
+                <div class="info-row"><span class="label">Discount<?php echo !empty($order['coupon_code']) ? ' (' . htmlspecialchars($order['coupon_code']) . ')' : ''; ?></span><span class="value" style="color:#16a34a;">−<?php echo $currency . number_format($couponDiscount, 2); ?></span></div>
+                <?php endif; ?>
+                <?php if ($loyaltyDiscount > 0): ?>
+                <div class="info-row"><span class="label">Loyalty points</span><span class="value" style="color:#16a34a;">−<?php echo $currency . number_format($loyaltyDiscount, 2); ?></span></div>
+                <?php endif; ?>
+                <?php if ($otherCharges >= 0.01): ?>
+                <div class="info-row" id="otherChargesRow"><span class="label">Packaging</span><span class="value"><?php echo $currency . number_format($otherCharges, 2); ?></span></div>
+                <?php endif; ?>
                 <div class="info-row" id="summaryDeliveryRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>"><span class="label">Delivery</span><span class="value" id="summaryDeliveryValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
                 <div class="info-row" style="font-weight:700;"><span class="label">Total</span><span class="value" id="summaryTotalValue"><?php echo $currency . number_format((float)$order['total'], 2); ?></span></div>
             </div>
         </div>
 
-        <p style="text-align:center;font-size:11px;color:#9ca3af;margin-bottom:24px;">Updates automatically every 20 seconds</p>
+        <p id="liveNote" class="live-note on"><span class="live-dot"></span><span class="live-text">Live · updates automatically</span></p>
     <?php endif; ?>
     </div>
     </div>
@@ -482,12 +511,72 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
         if (noteEl) noteEl.textContent = text;
     }
 
-    setInterval(function() {
-        fetch('../api/get_tracking_status.php?order_number=<?php echo urlencode($order['order_number']); ?>&customer_phone=<?php echo urlencode($customerPhone); ?>')
+    // Live updates: poll fast while the order is moving (every 4-5s, slowing
+    // down only if nothing has changed for minutes), check again the instant
+    // the customer comes back to the tab / unlocks the phone / reconnects,
+    // pause while the tab is hidden and stop once the order is finished.
+    // (Polling rather than a held-open SSE connection: on shared hosting each
+    // open connection would pin a PHP worker per customer watching.)
+    var pollUrl = '../api/get_tracking_status.php?order_number=<?php echo urlencode($order['order_number']); ?>&customer_phone=<?php echo urlencode($customerPhone); ?>';
+    var orderType = <?php echo json_encode($order['order_type']); ?>;
+    var lastStatus = <?php echo json_encode($order['order_status']); ?>;
+    var lastDelivery = <?php echo json_encode($tracking['delivery_status'] ?? null); ?>;
+    var lastChangeAt = Date.now(), pollTimer = null, inFlight = false;
+
+    function isFinished(status, delivery) {
+        if (status === 'Cancelled' || status === 'Rejected') return true;
+        if (orderType === 'Delivery') return delivery === 'Delivered' || status === 'Completed';
+        return status === 'Completed' || status === 'Served';
+    }
+    var finished = isFinished(lastStatus, lastDelivery);
+
+    function nextDelay() {
+        if (lastDelivery === 'Picked_Up' || lastDelivery === 'In_Transit') return 4000; // rider moving
+        var idle = Date.now() - lastChangeAt;
+        if (idle < 10 * 60000) return 5000;
+        if (idle < 30 * 60000) return 10000;
+        return 20000;
+    }
+    function schedule(ms) {
+        clearTimeout(pollTimer);
+        if (finished || document.hidden) return;
+        pollTimer = setTimeout(poll, typeof ms === 'number' ? ms : nextDelay());
+    }
+    function setLive(state) {
+        var el = document.getElementById('liveNote');
+        if (!el) return;
+        el.className = 'live-note ' + state;
+        var txt = el.querySelector('.live-text');
+        if (state === 'done') txt.textContent = 'Final status';
+        else if (state === 'offline') txt.textContent = 'Reconnecting…';
+        else txt.textContent = 'Live · updates automatically';
+    }
+    function flashStatus() {
+        var badgeEl = document.getElementById('orderStatusBadge');
+        if (!badgeEl) return;
+        badgeEl.classList.remove('status-flash');
+        void badgeEl.offsetWidth; // restart the animation
+        badgeEl.classList.add('status-flash');
+    }
+
+    function poll() {
+        if (inFlight || finished) return;
+        inFlight = true;
+        clearTimeout(pollTimer);
+        fetch(pollUrl, { cache: 'no-store' })
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (!d.success) return;
                 consecutivePollFailures = 0;
+                var newDelivery = d.tracking ? (d.tracking.delivery_status || null) : null;
+                if (d.order_status !== lastStatus || newDelivery !== lastDelivery) {
+                    lastChangeAt = Date.now();
+                    if (d.order_status !== lastStatus) flashStatus();
+                    lastStatus = d.order_status;
+                    lastDelivery = newDelivery;
+                }
+                finished = isFinished(lastStatus, lastDelivery);
+                setLive(finished ? 'done' : 'on');
                 var statusEl = document.getElementById('orderStatusText');
                 var badgeEl = document.getElementById('orderStatusBadge');
                 if (statusEl && d.order_status) {
@@ -560,9 +649,25 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 consecutivePollFailures++;
                 if (consecutivePollFailures >= 3) {
                     setLocationNote('Having trouble getting live updates. Checking your connection…');
+                    setLive('offline');
                 }
+            })
+            .then(function() {
+                inFlight = false;
+                schedule();
             });
-    }, 20000);
+    }
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) clearTimeout(pollTimer);
+        else poll(); // catch up immediately when the customer comes back
+    });
+    window.addEventListener('online', poll);
+    window.addEventListener('focus', poll);
+    window.addEventListener('pageshow', function(e) { if (e.persisted) poll(); });
+
+    setLive(finished ? 'done' : 'on');
+    schedule(3000);
 })();
 
 // Keep the embedding iframe sized to this page's actual content — same

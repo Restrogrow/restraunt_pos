@@ -1834,6 +1834,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.hidden) return;
     loadOrderHistory(true);
   }, 15000);
+  // ...and refresh immediately when the customer comes back to the tab, so
+  // they never look at a status up to 15s old after switching apps.
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) loadOrderHistory(true);
+  });
   setupProfileForm();
   var editBtn = document.getElementById('editProfileBtn');
   if (editBtn) editBtn.addEventListener('click', toggleProfileEdit);
