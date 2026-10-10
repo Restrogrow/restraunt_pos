@@ -453,147 +453,198 @@ body {
   .coupon-carousel-inner { scroll-behavior: auto; }
 }
 
-/* Bestsellers carousel */
-.bsl { padding: 14px 0 4px; }
+/* Bestsellers carousel ("Customer favourites") */
+.bsl { padding: 18px 0 6px; }
 .bsl[hidden] { display: none; }
-.bsl-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 0 16px 10px;
-}
+.bsl-head { text-align: center; padding: 0 16px 14px; }
 .bsl-eyebrow {
   font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #8a8f98;
 }
-.bsl-title { margin: 2px 0 0; font-size: 19px; font-weight: 800; color: #1a1b1f; }
-.bsl-swipe { font-size: 11.5px; color: #8a8f98; display: inline-flex; align-items: center; gap: 4px; }
-.bsl-swipe i { font-size: 10px; }
-.bsl-track {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
-  padding: 2px 16px 10px;
-  scroll-padding: 0 16px;
-  scrollbar-width: none;
+.bsl-title-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.bsl-title-row::before,
+.bsl-title-row::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
 }
-.bsl-track::-webkit-scrollbar { display: none; }
-.bsl-card {
-  flex: 0 0 152px;
-  scroll-snap-align: start;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border: 1px solid #eef0f3;
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-  cursor: pointer;
-}
-.bsl-img { position: relative; height: 112px; background: #f3f4f6; }
-.bsl-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.bsl-save {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 3px 7px;
-  border-radius: 6px;
-  background: #1f7a3a;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-.bsl-body { padding: 8px 10px 10px; display: flex; flex-direction: column; flex: 1; }
-.bsl-type {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.bsl-name {
-  margin-top: 3px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #1a1b1f;
-  line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  min-height: 2.5em;
-}
-.bsl-foot { margin-top: auto; padding-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.bsl-price { font-size: 14px; font-weight: 800; color: #1a1b1f; white-space: nowrap; }
-.bsl-price s { display: block; font-size: 11px; font-weight: 500; color: #9ca3af; }
-.bsl-note { margin-top: 6px; font-size: 10px; color: #1f7a3a; font-weight: 600; }
-/* ADD pill instead of the round + on bestseller cards */
-.bsl-qty .add-btn {
-  width: auto;
-  height: 30px;
-  padding: 0 10px;
-  gap: 4px;
-  font-size: 12px;
+.bsl-title-row::before { background: linear-gradient(90deg, rgba(37,99,235,0), rgba(37,99,235,0.28)); }
+.bsl-title-row::after { background: linear-gradient(270deg, rgba(37,99,235,0), rgba(37,99,235,0.28)); }
+.bsl-title {
+  margin: 0;
+  font-size: 21px;
   font-weight: 800;
-  letter-spacing: 0.02em;
-  border-radius: 8px;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #1f2a44;
+  white-space: nowrap;
 }
-.bsl-qty .add-btn i { font-size: 11px; }
-.bsl-qty .add-btn:not(:has(span))::before { content: 'ADD'; }
-.bsl-qty .qty-control button { width: 26px; height: 30px; font-size: 12px; }
-.bsl-qty .qty-control .qty-num { min-width: 18px; color: #1a1b1f; }
-/* Bestsellers: edge fades, drag-to-scroll and arrows (mouse/trackpad) */
+.bsl-swipe { display: block; margin-top: 4px; font-size: 11px; color: #9ca3af; }
+.bsl-swipe i { font-size: 9px; }
+
 .bsl-viewport { position: relative; }
 .bsl-viewport::before,
 .bsl-viewport::after {
   content: '';
   position: absolute;
   top: 0;
-  bottom: 10px;
-  width: 28px;
+  bottom: 12px;
+  width: 24px;
   z-index: 2;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
-.bsl-viewport::before { left: 0; background: linear-gradient(90deg, #fff 15%, rgba(255,255,255,0)); }
-.bsl-viewport::after { right: 0; background: linear-gradient(270deg, #fff 15%, rgba(255,255,255,0)); }
+.bsl-viewport::before { left: 0; background: linear-gradient(90deg, #fff 10%, rgba(255,255,255,0)); }
+.bsl-viewport::after { right: 0; background: linear-gradient(270deg, #fff 10%, rgba(255,255,255,0)); }
 .bsl-viewport.can-left::before,
 .bsl-viewport.can-right::after { opacity: 1; }
-.bsl-track { overscroll-behavior-x: contain; }
+.bsl-track {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  padding: 2px 16px 12px;
+  scroll-padding: 0 16px;
+  scrollbar-width: none;
+}
+.bsl-track::-webkit-scrollbar { display: none; }
 .bsl-track.is-dragging { scroll-snap-type: none; scroll-behavior: auto; cursor: grabbing; }
 .bsl-track.is-dragging .bsl-card { pointer-events: none; }
-.bsl-card img { -webkit-user-drag: none; user-select: none; }
-.bsl-nav { display: none; gap: 6px; }
-.bsl-arrow {
-  width: 32px;
+
+.bsl-card {
+  flex: 0 0 calc((100% - 46px) / 2.15);
+  min-width: 150px;
+  max-width: 230px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+/* Photo with the discount label on top and a notched savings pill below */
+.bsl-img {
+  position: relative;
+  aspect-ratio: 1 / 0.92;
+  border-radius: 16px;
+  border: 1px solid #e8eaee;
+  background: #f3f4f6;
+  overflow: visible;
+}
+.bsl-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 15px;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.bsl-off {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: calc(100% - 12px);
+  padding: 5px 9px;
+  border-radius: 15px 0 10px 0;
+  background: rgba(32, 32, 36, 0.82);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bsl-save {
+  position: absolute;
+  left: -1px;
+  bottom: -11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 3px solid #fff;
+  background: #1f7a3a;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.bsl-body { display: flex; flex-direction: column; flex: 1; padding: 16px 2px 0; }
+.bsl-name {
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #1f2a44;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bsl-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; }
+.bsl-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.bsl-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #1f7a3a; }
+.bsl-note i { font-size: 11px; }
+.bsl-foot { margin-top: auto; padding-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.bsl-price { font-size: 15px; font-weight: 800; color: #1f2a44; white-space: nowrap; line-height: 1.15; }
+.bsl-price s { display: block; font-size: 11.5px; font-weight: 500; color: #9ca3af; }
+/* ADD pill instead of the round + on bestseller cards */
+.bsl-qty .add-btn {
+  width: auto;
   height: 32px;
+  padding: 0 11px;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-radius: 9px;
+}
+.bsl-qty .add-btn i { font-size: 11px; }
+.bsl-qty .add-btn:not(:has(span))::before { content: 'ADD'; }
+.bsl-qty .qty-control button { width: 26px; height: 32px; font-size: 12px; }
+.bsl-qty .qty-control .qty-num { min-width: 18px; color: #1a1b1f; }
+
+/* Previous / next arrows over the carousel edges (mouse & trackpad) */
+.bsl-nav { display: none; }
+.bsl-arrow {
+  position: absolute;
+  top: calc(50% - 40px);
+  z-index: 3;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border: 1px solid #e5e7eb;
   border-radius: 50%;
   background: #fff;
-  color: #1a1b1f;
+  color: #1f2a44;
   font-size: 12px;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  transition: background 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transition: opacity 0.15s ease, background 0.15s ease;
 }
+.bsl-arrow.bsl-prev { left: 6px; }
+.bsl-arrow.bsl-next { right: 6px; }
 .bsl-arrow:hover:not(:disabled) { background: #f3f4f6; }
-.bsl-arrow:disabled { opacity: 0.35; cursor: default; }
+.bsl-arrow:disabled { opacity: 0; pointer-events: none; }
 @media (hover: hover) and (pointer: fine) {
-  .bsl-nav { display: flex; }
+  .bsl-nav { display: block; }
   .bsl-swipe { display: none; }
   .bsl-track { cursor: grab; }
-  .bsl-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
-  .bsl-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
+  .bsl-card .bsl-img { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .bsl-card:hover .bsl-img { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
 }
 .menu-item-was { font-size: 0.8em; font-weight: 500; color: #9ca3af; margin-left: 4px; }
 
@@ -1405,18 +1456,16 @@ window.socialLinks = {
 
   <section class="bsl" id="bestsellersSection" aria-labelledby="bestsellersTitle" hidden>
     <div class="bsl-head">
-      <div>
-        <div class="bsl-eyebrow">Customer favourites</div>
-        <h3 class="bsl-title" id="bestsellersTitle">Bestsellers</h3>
-      </div>
+      <div class="bsl-eyebrow">Customer favourites</div>
+      <div class="bsl-title-row"><h3 class="bsl-title" id="bestsellersTitle">Bestsellers</h3></div>
       <span class="bsl-swipe" aria-hidden="true">Swipe <i class="fa fa-arrow-right"></i></span>
-      <div class="bsl-nav">
-        <button type="button" class="bsl-arrow" id="bestsellersPrev" aria-label="Previous bestsellers"><i class="fa fa-chevron-left"></i></button>
-        <button type="button" class="bsl-arrow" id="bestsellersNext" aria-label="More bestsellers"><i class="fa fa-chevron-right"></i></button>
-      </div>
     </div>
     <div class="bsl-viewport" id="bestsellersViewport">
       <div class="bsl-track" id="bestsellersTrack"></div>
+      <div class="bsl-nav">
+        <button type="button" class="bsl-arrow bsl-prev" id="bestsellersPrev" aria-label="Previous bestsellers"><i class="fa fa-chevron-left"></i></button>
+        <button type="button" class="bsl-arrow bsl-next" id="bestsellersNext" aria-label="More bestsellers"><i class="fa fa-chevron-right"></i></button>
+      </div>
     </div>
   </section>
 
@@ -2637,21 +2686,25 @@ function renderBestsellers() {
     var hasVar = item.has_variations && item.variations && item.variations.length > 0;
     var fmt = function(n) { return formatPrice(n).replace(/\.00$/, ''); }; // ₹314, not ₹314.00
     var price = hasVar ? 'From ' + fmt(getMinVariantPrice(item)) : fmt(item.base_price || 0);
+    // Savings come only from the real prices: original_price (regular) vs base_price (offer)
     var was = !hasVar && item.original_price ? parseFloat(item.original_price) : 0;
     var save = was ? Math.round(was - parseFloat(item.base_price || 0)) : 0;
+    var pctOff = save > 0 ? Math.round(save / was * 100) : 0;
+    var meta = bestsellerVegMark(item.item_type) +
+      (save > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i>Item offer applied</span>' : '');
     return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
       '<div class="bsl-img">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy" draggable="false">' +
+        (pctOff > 0 ? '<span class="bsl-off">' + pctOff + '% OFF</span>' : '') +
         (save > 0 ? '<span class="bsl-save">SAVE ' + fmt(save) + '</span>' : '') +
       '</div>' +
       '<div class="bsl-body">' +
-        bestsellerVegMark(item.item_type) +
         '<div class="bsl-name">' + name + '</div>' +
+        (meta ? '<div class="bsl-meta">' + meta + '</div>' : '') +
         '<div class="bsl-foot">' +
           '<div class="bsl-price">' + price + (was ? ' <s>' + fmt(was) + '</s>' : '') + '</div>' +
           '<span class="bsl-qty" id="bsqty-' + item.id + '" onclick="event.stopPropagation()">' + renderQtyControl(item.id, item) + '</span>' +
         '</div>' +
-        (save > 0 ? '<div class="bsl-note">Item offer applied</div>' : '') +
       '</div>' +
     '</article>';
   }).join('');
