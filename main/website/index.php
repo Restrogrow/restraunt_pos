@@ -611,6 +611,7 @@ body {
    a missing or wrapped line made that card shorter/taller, and the carousel
    stretches every card to the tallest, leaving white space above the price */
 .bsl-meta { display: flex; align-items: center; flex-wrap: nowrap; gap: 4px 8px; margin-top: 4px; height: 18px; min-width: 0; overflow: hidden; }
+.bsl-note-row { margin-top: 2px; }
 .bsl-meta .bsl-type { flex: none; white-space: nowrap; }
 .bsl-type {
   display: inline-flex;
@@ -2903,8 +2904,10 @@ function renderBestsellers() {
     // Rating only when the API sends a genuine one (from customer order feedback)
     var rating = showRating && item.rating ? parseFloat(item.rating) : 0;
     var badgeSave = showOffer ? save : 0; // the price strike-through stays either way
-    var meta = bestsellerVegMark(item.item_type) +
-      (badgeSave > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i><span>Item offer applied</span></span>' : '');
+    var meta = bestsellerVegMark(item.item_type);
+    // Offer note on its own line under the veg mark; the line keeps its space on
+    // every card (blank when there's no offer) so all cards stay the same height
+    var note = badgeSave > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i><span>Item offer applied</span></span>' : '';
     return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
       '<div class="bsl-img">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy" draggable="false">' +
@@ -2916,6 +2919,7 @@ function renderBestsellers() {
       '<div class="bsl-body">' +
         '<div class="bsl-name">' + name + '</div>' +
         '<div class="bsl-meta">' + meta + '</div>' +
+        '<div class="bsl-meta bsl-note-row">' + note + '</div>' +
         '<div class="bsl-foot">' +
           // Regular price struck through on the left, current price boxed on the right
           '<div class="bsl-price">' + (was ? '<s>' + fmt(was) + '</s>' : '') + '<span class="bsl-price-now">' + price + '</span></div>' +
