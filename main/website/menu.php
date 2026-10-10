@@ -151,6 +151,14 @@ body {
   color: #fff;
 }
 
+/* Website Appearance > Menu categories: "Top" turns the left sidebar into a
+   horizontally scrolling bar above the dishes (same buttons and behaviour) */
+.layout-container.nav-top { flex-direction: column; }
+.layout-container.nav-top .side-nav { width: auto; height: auto; flex-direction: row; flex-shrink: 0; gap: 6px; padding: 6px 10px; border-right: 0; border-bottom: 1.5px solid #ccc; overflow-x: auto; overflow-y: hidden; }
+.layout-container.nav-top .sub-views { flex-shrink: 0; }
+.layout-container.nav-top .side-nav-btn { width: auto; min-width: 68px; padding: 6px 10px; white-space: nowrap; }
+.layout-container.nav-top .side-nav-btn img { width: 36px; height: 36px; }
+
 .main-content {
   flex: 1;
   min-width: 0;
@@ -915,7 +923,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
       </div>
     </div>
 
-    <div class="layout-container">
+    <div class="layout-container<?php echo ($menu_nav_position ?? 'left') === 'top' ? ' nav-top' : ''; ?>">
       <div class="side-nav" id="sideNav">
         <div class="sub-views"><button class="side-nav-btn" disabled><div class="skel-circle skeleton"></div><div class="skel-nav-label skeleton"></div></button></div>
         <div class="sub-views"><button class="side-nav-btn" disabled><div class="skel-circle skeleton"></div><div class="skel-nav-label skeleton"></div></button></div>
@@ -1656,6 +1664,12 @@ function updateNavActive(menuIdx) {
     btns[i].classList.remove('active');
     if (parseInt(btns[i].dataset.index) === menuIdx) {
       btns[i].classList.add('active');
+      // Top bar: keep the selected category visible (centred) in the scrolling row
+      var nav = document.getElementById('sideNav');
+      if (nav && nav.parentNode.classList.contains('nav-top')) {
+        var b = btns[i].closest('.sub-views') || btns[i];
+        nav.scrollTo({ left: b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2, behavior: 'smooth' });
+      }
     }
   }
 }

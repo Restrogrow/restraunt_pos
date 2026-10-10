@@ -1895,6 +1895,27 @@ try {
               </div>
             </div>
 
+            <!-- Menu Categories: left sidebar or a scrolling bar across the top -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">view_sidebar</span>
+                Menu Categories
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Where the category buttons sit on your Menu page &mdash; down the left side, or in a scrolling bar across the top.</p>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <label class="menu-nav-pos-opt" data-value="left" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="menuNavPosition" value="left" checked style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">view_sidebar</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Left</span>
+                </label>
+                <label class="menu-nav-pos-opt" data-value="top" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="menuNavPosition" value="top" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_day</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Top</span>
+                </label>
+              </div>
+            </div>
+
             <!-- Header Style: hero banner vs a compact minimal bar -->
             <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">

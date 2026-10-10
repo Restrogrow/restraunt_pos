@@ -13719,6 +13719,24 @@ async function initWebsiteThemeEditor() {
         if (radio) radio.checked = active;
       });
     }
+    // Menu page category position (Left sidebar / Top bar)
+    function applyMenuNavPositionUI(val) {
+      document.querySelectorAll('.menu-nav-pos-opt').forEach(function(el) {
+        var active = el.getAttribute('data-value') === val;
+        el.style.borderColor = active ? '#7c3aed' : '#e5e7eb';
+        var icon = el.querySelector('.material-symbols-rounded');
+        if (icon) icon.style.color = active ? '#7c3aed' : '#6b7280';
+        var radio = el.querySelector('input[name="menuNavPosition"]');
+        if (radio) radio.checked = active;
+      });
+    }
+    function currentMenuNavPositionVal() {
+      var r = document.querySelector('input[name="menuNavPosition"]:checked');
+      return r ? r.value : 'left';
+    }
+    document.querySelectorAll('.menu-nav-pos-opt').forEach(function(el) {
+      el.addEventListener('click', function() { applyMenuNavPositionUI(el.getAttribute('data-value')); });
+    });
     function currentLayoutStyleVal() {
       var r = document.querySelector('input[name="layoutStyle"]:checked');
       return r ? r.value : 'grid';
@@ -14600,6 +14618,7 @@ if (!window.customBgThemes) {
       if (themePresetInput) themePresetInput.value = data.settings.theme_preset || '';
       renderThemePresetGrid(data.settings.theme_preset || '');
       applyLayoutHeaderStyleUI(data.settings.layout_style || 'grid', data.settings.header_style || 'hero');
+      applyMenuNavPositionUI(data.settings.menu_nav_position || 'left');
 
       // Set background theme URL
       const bgUrl = data.settings.background_theme || '';
@@ -14814,6 +14833,7 @@ if (!window.customBgThemes) {
             checkout_color: cc ? cc.value : null,
             layout_style: currentLayoutStyleVal(),
             header_style: currentHeaderStyleVal(),
+            menu_nav_position: currentMenuNavPositionVal(),
             bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined
           };
 
