@@ -2400,18 +2400,16 @@ function loadCouponCarousel() {
       }
       var inner = document.getElementById('couponCarouselInner');
       if (!inner) return;
+      // Alternate pink and green so neighbouring coupons are easy to tell apart
       var gradients = [
         'linear-gradient(135deg, #ff4081, #e91e63)',
+        'linear-gradient(135deg, #22c55e, #15803d)',
         'linear-gradient(135deg, #f50057, #c2185b)',
-        'linear-gradient(135deg, #e91e63, #ad1457)',
-        'linear-gradient(135deg, #ff1744, #d50000)',
-        'linear-gradient(135deg, #f06292, #e91e63)'
+        'linear-gradient(135deg, #10b981, #047857)'
       ];
-      var decos = ['🎁', '🎉', '✨', '🎊', '💫'];
       var barcodeH = [12, 18, 8, 16, 12, 20, 8, 14, 18, 10, 16, 12, 16, 20, 10];
       inner.innerHTML = data.coupons.map(function(c, i) {
         var gradient = gradients[i % gradients.length];
-        var deco = decos[i % decos.length];
         var discountLabel = c.discount_type === 'percent'
           ? 'Flat ' + c.discount_value + '% OFF'
           : 'Flat ' + getCurrencySymbol() + parseFloat(c.discount_value).toFixed(0) + ' OFF';
@@ -2429,10 +2427,9 @@ function loadCouponCarousel() {
             '<div class="coupon-card-code-row">' +
               '<span class="use-label">USE CODE</span>' +
               '<span class="coupon-code-val">' + c.coupon_code + '</span>' +
-              '<span class="copy-icon" onclick="event.stopPropagation();copyCoupon(\'' + c.coupon_code + '\')">📋</span>' +
+              '<span class="copy-icon" role="button" aria-label="Copy code ' + c.coupon_code + '" onclick="event.stopPropagation();copyCoupon(\'' + c.coupon_code + '\')"><i class="fa-regular fa-copy"></i></span>' +
             '</div>' +
             (desc ? '<div class="coupon-card-desc">' + escapeCouponText(desc) + '</div>' : '') +
-            '<span class="coupon-card-deco" aria-hidden="true">' + deco + '</span>' +
           '</div>' +
         '</div>';
       }).join('');
