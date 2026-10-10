@@ -123,12 +123,13 @@
     return imgCache[src];
   }
 
+  // Same logo the dashboard sidebar shows: the restaurant's own upload, or
+  // the RestroGrow logo when none has been uploaded yet.
+  var RG_SQUARE_LOGO = '../assets/images/logo-512.png';
+  function isDefaultLogo(src) { return /logo-(192|512)\.png|logo-transparent\.png/.test(src || ''); }
   function restaurantLogoSrc() {
     var el = document.getElementById('dashboardRestaurantLogo');
-    if (!el || !el.src) return '';
-    // The dashboard falls back to the RestroGrow mark when a restaurant has
-    // no logo of its own — that's not the restaurant's logo.
-    if (/logo-192\.png|logo-transparent\.png/.test(el.src)) return '';
+    if (!el || !el.src || isDefaultLogo(el.src)) return RG_SQUARE_LOGO;
     return el.src;
   }
 
@@ -418,7 +419,7 @@
     el('qsTableColor').disabled = !state.showTable;
     el('qsShapeRow').style.display = state.logoMode === 'none' ? 'none' : '';
     var hint = '';
-    if (state.logoMode === 'restaurant' && !restaurantLogoSrc()) hint = 'No logo uploaded in Settings yet — showing initials. Use “Upload” to add one here.';
+    if (state.logoMode === 'restaurant' && restaurantLogoSrc() === RG_SQUARE_LOGO) hint = 'Showing the RestroGrow logo (same as your dashboard). Upload your restaurant logo in Settings, or use “Upload”, to change it.';
     if (state.logoMode === 'custom') hint = state.customLogo ? 'Click “Upload” again to choose a different image.' : 'Choose a PNG or JPG — a square logo works best.';
     el('qsLogoHint').textContent = hint;
   }
