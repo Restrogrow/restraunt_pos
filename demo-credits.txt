@@ -1,0 +1,120 @@
+RestroGrow demo restaurant ("Spice Garden Demo") - photo credits
+All photos are from Wikimedia Commons, resized for the web (files in /main/assets/demo_restaurant/). Licences as listed.
+
+paneer-tikka.jpg
+  "Panir Tikka Indian cheese grilled.jpg" by Sonja Pauen -Stanhopea
+  Licence: CC BY 2.0 de (https://creativecommons.org/licenses/by/2.0/de/deed.en)
+  Source: https://commons.wikimedia.org/wiki/File:Panir_Tikka_Indian_cheese_grilled.jpg
+
+chicken-65.jpg
+  "Chicken 65 (Dish).jpg" by Amiyashrivastava
+  Licence: CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0)
+  Source: https://commons.wikimedia.org/wiki/File:Chicken_65_(Dish).jpg
+
+veg-spring-rolls.jpg
+  "Golden Vegetable Spring Rolls Served with Dipping Sauce.jpg" by Srujanabotcha
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Golden_Vegetable_Spring_Rolls_Served_with_Dipping_Sauce.jpg
+
+tandoori-chicken.jpg
+  "Tandoori chicken Indian.jpg" by pelican
+  Licence: CC BY-SA 2.0 (https://creativecommons.org/licenses/by-sa/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Tandoori_chicken_Indian.jpg
+
+egg-bhurji.jpg
+  "Spicy egg bhurji @ the eggfactory.jpg" by Praveen from Bangalore, India
+  Licence: CC BY 2.0 (https://creativecommons.org/licenses/by/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Spicy_egg_bhurji_@_the_eggfactory.jpg
+
+butter-chicken.jpg
+  "Chicken makhani.jpg" by stu_spivack
+  Licence: CC BY-SA 2.0 (https://creativecommons.org/licenses/by-sa/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Chicken_makhani.jpg
+
+paneer-butter-masala.jpg
+  "Paneer butter masala 2.jpg" by Gannu03
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Paneer_butter_masala_2.jpg
+
+dal-makhani.jpg
+  "Dal Makhani.jpg" by Charles Haynes
+  Licence: CC BY-SA 2.0 (https://creativecommons.org/licenses/by-sa/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Dal_Makhani.jpg
+
+mutton-rogan-josh.jpg
+  "Rogan josh02.jpg" by gahdjun
+  Licence: CC BY 2.0 (https://creativecommons.org/licenses/by/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Rogan_josh02.jpg
+
+chicken-biryani.jpg
+  "A home made plate of mutton biryani served with chicken kassa cooked in the bengali style.jpg" by Subhrajyoti07
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:A_home_made_plate_of_mutton_biryani_served_with_chicken_kassa_cooked_in_the_bengali_style.jpg
+
+veg-biryani.jpg
+  "Vegetable Biryani IMG 001.jpg" by Phadke09
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Vegetable_Biryani_IMG_001.jpg
+
+butter-naan.jpg
+  "Restaurant Rajasthan (Paris) - Garlic Naan (2).jpg" by Benoît Prieur
+  Licence: CC0 (http://creativecommons.org/publicdomain/zero/1.0/deed.en)
+  Source: https://commons.wikimedia.org/wiki/File:Restaurant_Rajasthan_(Paris)_-_Garlic_Naan_(2).jpg
+
+garlic-naan.jpg
+  "Garlic naan 1.jpg" by Joy
+  Licence: CC BY 2.0 (https://creativecommons.org/licenses/by/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Garlic_naan_1.jpg
+
+tandoori-roti.jpg
+  "Tandoori Roti in clay oven.JPG" by Kamalsahansi
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Tandoori_Roti_in_clay_oven.JPG
+
+laccha-paratha.jpg
+  "Lachha-paratha.jpg" by Sonia Goyal
+  Licence: CC BY-SA 2.0 (https://creativecommons.org/licenses/by-sa/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Lachha-paratha.jpg
+
+masala-chai.jpg
+  "Masala Chai.jpg" by Ganesh Mohan T
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Masala_Chai.jpg
+
+sweet-lassi.jpg
+  "Lassi 1.jpg" by Gaurav Dhwaj Khadka
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Lassi_1.jpg
+
+fresh-lime-soda.jpg
+  "Koh Mak, Thailand, Lime juice with ice, Lemonade, Limeade.jpg" by Vyacheslav Argenberg
+  Licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Koh_Mak,_Thailand,_Lime_juice_with_ice,_Lemonade,_Limeade.jpg
+
+cold-coffee.jpg
+  "Iced Coffee in Glass - Sunshine Coffee - Laramie Cafe (53838344552).jpg" by Tony Webster
+  Licence: CC BY 2.0 (https://creativecommons.org/licenses/by/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Iced_Coffee_in_Glass_-_Sunshine_Coffee_-_Laramie_Cafe_(53838344552).jpg
+
+gulab-jamun.jpg
+  "Two Gulab Jamun in a plate 01.jpg" by Suyash.dwivedi
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Two_Gulab_Jamun_in_a_plate_01.jpg
+
+rasmalai.jpg
+  "Rasmalai with carrot.jpg" by Shreya13jain
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Rasmalai_with_carrot.jpg
+
+kulfi.jpg
+  "Kulfi 3.jpg" by Gaurav Dhwaj Khadka
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Kulfi_3.jpg
+
+hero.jpg
+  "Handi cox's bazar hyderabad biryani.jpg" by Fahad Faisal
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Handi_cox%27s_bazar_hyderabad_biryani.jpg
+
+logo.png
+  Generated for RestroGrow (no third-party content).
