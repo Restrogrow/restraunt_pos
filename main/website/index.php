@@ -549,6 +549,52 @@ body {
 .bsl-qty .add-btn:not(:has(span))::before { content: 'ADD'; }
 .bsl-qty .qty-control button { width: 26px; height: 30px; font-size: 12px; }
 .bsl-qty .qty-control .qty-num { min-width: 18px; color: #1a1b1f; }
+/* Bestsellers: edge fades, drag-to-scroll and arrows (mouse/trackpad) */
+.bsl-viewport { position: relative; }
+.bsl-viewport::before,
+.bsl-viewport::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 10px;
+  width: 28px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.bsl-viewport::before { left: 0; background: linear-gradient(90deg, #fff 15%, rgba(255,255,255,0)); }
+.bsl-viewport::after { right: 0; background: linear-gradient(270deg, #fff 15%, rgba(255,255,255,0)); }
+.bsl-viewport.can-left::before,
+.bsl-viewport.can-right::after { opacity: 1; }
+.bsl-track { overscroll-behavior-x: contain; }
+.bsl-track.is-dragging { scroll-snap-type: none; scroll-behavior: auto; cursor: grabbing; }
+.bsl-track.is-dragging .bsl-card { pointer-events: none; }
+.bsl-card img { -webkit-user-drag: none; user-select: none; }
+.bsl-nav { display: none; gap: 6px; }
+.bsl-arrow {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  background: #fff;
+  color: #1a1b1f;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.bsl-arrow:hover:not(:disabled) { background: #f3f4f6; }
+.bsl-arrow:disabled { opacity: 0.35; cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  .bsl-nav { display: flex; }
+  .bsl-swipe { display: none; }
+  .bsl-track { cursor: grab; }
+  .bsl-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .bsl-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
+}
 .menu-item-was { font-size: 0.8em; font-weight: 500; color: #9ca3af; margin-left: 4px; }
 
 /* Toast Notification */
@@ -1364,8 +1410,14 @@ window.socialLinks = {
         <h3 class="bsl-title" id="bestsellersTitle">Bestsellers</h3>
       </div>
       <span class="bsl-swipe" aria-hidden="true">Swipe <i class="fa fa-arrow-right"></i></span>
+      <div class="bsl-nav">
+        <button type="button" class="bsl-arrow" id="bestsellersPrev" aria-label="Previous bestsellers"><i class="fa fa-chevron-left"></i></button>
+        <button type="button" class="bsl-arrow" id="bestsellersNext" aria-label="More bestsellers"><i class="fa fa-chevron-right"></i></button>
+      </div>
     </div>
-    <div class="bsl-track" id="bestsellersTrack"></div>
+    <div class="bsl-viewport" id="bestsellersViewport">
+      <div class="bsl-track" id="bestsellersTrack"></div>
+    </div>
   </section>
 
   <div class="menu-list" id="menuList">
@@ -2589,7 +2641,7 @@ function renderBestsellers() {
     var save = was ? Math.round(was - parseFloat(item.base_price || 0)) : 0;
     return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
       '<div class="bsl-img">' +
-        '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy">' +
+        '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy" draggable="false">' +
         (save > 0 ? '<span class="bsl-save">SAVE ' + fmt(save) + '</span>' : '') +
       '</div>' +
       '<div class="bsl-body">' +
@@ -2604,12 +2656,98 @@ function renderBestsellers() {
     '</article>';
   }).join('');
   section.hidden = false;
+  if (window.updateBestsellerNav) window.updateBestsellerNav();
 }
 
 function syncBestsellerQty(itemId) {
   var el = document.getElementById('bsqty-' + itemId);
   if (el) el.innerHTML = renderQtyControl(itemId, getItemById(itemId));
 }
+
+// Bestsellers scrolling: touch uses native swipe; mouse gets drag-to-scroll
+// (snapping to the nearest card), ‹ › arrows, and edge fades on both.
+(function() {
+  var track = document.getElementById('bestsellersTrack');
+  var viewport = document.getElementById('bestsellersViewport');
+  var prev = document.getElementById('bestsellersPrev');
+  var next = document.getElementById('bestsellersNext');
+  if (!track || !viewport) return;
+
+  function padLeft() { return parseFloat(getComputedStyle(track).paddingLeft) || 0; }
+  function cards() { return track.querySelectorAll('.bsl-card'); }
+  function maxScroll() { return track.scrollWidth - track.clientWidth; }
+
+  function updateNav() {
+    var max = maxScroll(), x = track.scrollLeft;
+    viewport.classList.toggle('can-left', x > 4);
+    viewport.classList.toggle('can-right', x < max - 4);
+    if (prev) prev.disabled = x <= 4;
+    if (next) next.disabled = x >= max - 4;
+    var nav = prev && prev.parentElement;
+    if (nav) nav.style.visibility = max > 4 ? '' : 'hidden';
+  }
+
+  function nearestCardLeft(x) {
+    var list = cards(), best = 0, bestD = Infinity, pad = padLeft();
+    for (var i = 0; i < list.length; i++) {
+      var left = list[i].offsetLeft - pad;
+      var d = Math.abs(left - x);
+      if (d < bestD) { bestD = d; best = left; }
+    }
+    return Math.max(0, Math.min(best, maxScroll()));
+  }
+
+  function page(dir) {
+    var first = cards()[0];
+    if (!first) return;
+    var step = first.offsetWidth + 12;
+    var perPage = Math.max(1, Math.floor(track.clientWidth / step));
+    track.scrollTo({ left: nearestCardLeft(track.scrollLeft + dir * step * perPage), behavior: 'smooth' });
+    setTimeout(updateNav, 450);
+  }
+  if (prev) prev.addEventListener('click', function() { page(-1); });
+  if (next) next.addEventListener('click', function() { page(1); });
+
+  // Mouse drag-to-scroll
+  var down = false, dragging = false, startX = 0, startLeft = 0, suppressClick = false;
+  track.addEventListener('pointerdown', function(e) {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    down = true; dragging = false;
+    startX = e.clientX; startLeft = track.scrollLeft;
+  });
+  track.addEventListener('pointermove', function(e) {
+    if (!down) return;
+    var dx = e.clientX - startX;
+    if (!dragging && Math.abs(dx) > 5) {
+      dragging = true;
+      track.classList.add('is-dragging');
+      try { track.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    if (dragging) track.scrollLeft = startLeft - dx;
+  });
+  function endDrag() {
+    if (!down) return;
+    down = false;
+    if (!dragging) return;
+    dragging = false;
+    suppressClick = true;
+    setTimeout(function() { suppressClick = false; }, 0);
+    track.classList.remove('is-dragging');
+    track.scrollTo({ left: nearestCardLeft(track.scrollLeft), behavior: 'smooth' });
+    setTimeout(updateNav, 450);
+  }
+  track.addEventListener('pointerup', endDrag);
+  track.addEventListener('pointercancel', endDrag);
+  track.addEventListener('lostpointercapture', endDrag);
+  // A drag must not count as a tap on a card (which opens the item)
+  track.addEventListener('click', function(e) {
+    if (suppressClick) { e.stopPropagation(); e.preventDefault(); suppressClick = false; }
+  }, true);
+
+  track.addEventListener('scroll', updateNav, { passive: true });
+  window.addEventListener('resize', updateNav);
+  window.updateBestsellerNav = function() { track.scrollLeft = 0; updateNav(); };
+})();
 
 function escapeCouponText(s) {
   return String(s).replace(/[&<>"']/g, function(ch) {
