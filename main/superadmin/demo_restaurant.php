@@ -83,9 +83,9 @@ function createDemo(PDO $conn, string $assetDir, string $mainUrl, string $credit
         ['Sweet Lassi', 'Beverages', 'Drink', 89, 'Thick Punjabi-style churned yogurt drink, lightly sweetened and topped with malai.', 240, 5, ['Regular' => 89, 'Large' => 139], 'sweet-lassi'],
         ['Fresh Lime Soda', 'Beverages', 'Drink', 79, 'Freshly squeezed lime with chilled soda. Choose sweet, salted or mixed.', 90, 5, [], 'fresh-lime-soda'],
         ['Cold Coffee', 'Beverages', 'Drink', 129, 'Creamy blended cold coffee with a scoop of vanilla ice cream.', 320, 5, [], 'cold-coffee'],
-        ['Gulab Jamun', 'Desserts', 'Other', 99, 'Two warm milk-solid dumplings soaked in cardamom and rose sugar syrup.', 330, 5, [], 'gulab-jamun'],
-        ['Rasmalai', 'Desserts', 'Other', 129, 'Soft chenna discs soaked in chilled saffron-cardamom milk, topped with pistachio.', 290, 5, [], 'rasmalai'],
-        ['Kulfi', 'Desserts', 'Other', 109, 'Traditional slow-reduced milk ice cream on a stick, flavoured with kesar and pista.', 250, 5, [], 'kulfi'],
+        ['Gulab Jamun', 'Desserts', 'Veg', 99, 'Two warm milk-solid dumplings soaked in cardamom and rose sugar syrup.', 330, 5, [], 'gulab-jamun'],
+        ['Rasmalai', 'Desserts', 'Veg', 129, 'Soft chenna discs soaked in chilled saffron-cardamom milk, topped with pistachio.', 290, 5, [], 'rasmalai'],
+        ['Kulfi', 'Desserts', 'Veg', 109, 'Traditional slow-reduced milk ice cream on a stick, flavoured with kesar and pista.', 250, 5, [], 'kulfi'],
     ];
     $categoryPhoto = ['Starters' => 'paneer-tikka', 'Main Course' => 'butter-chicken', 'Breads' => 'garlic-naan', 'Beverages' => 'sweet-lassi', 'Desserts' => 'gulab-jamun'];
     // Bestsellers in display order => offer price (null = no offer)

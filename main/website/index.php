@@ -607,7 +607,11 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.bsl-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; }
+/* Always one line of fixed height (veg mark + offer note), even when empty:
+   a missing or wrapped line made that card shorter/taller, and the carousel
+   stretches every card to the tallest, leaving white space above the price */
+.bsl-meta { display: flex; align-items: center; flex-wrap: nowrap; gap: 4px 8px; margin-top: 4px; height: 18px; min-width: 0; overflow: hidden; }
+.bsl-meta .bsl-type { flex: none; white-space: nowrap; }
 .bsl-type {
   display: inline-flex;
   align-items: center;
@@ -616,8 +620,9 @@ body {
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.bsl-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--bsl-badge); }
+.bsl-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--bsl-badge); min-width: 0; white-space: nowrap; overflow: hidden; }
 .bsl-note i { font-size: 11px; }
+.bsl-note span { overflow: hidden; text-overflow: ellipsis; }
 .bsl-foot { margin-top: auto; padding-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .bsl-price { display: flex; align-items: center; gap: 7px; white-space: nowrap; line-height: 1.15; }
 .bsl-price s { font-size: 12.5px; font-weight: 500; color: #9ca3af; }
@@ -2899,7 +2904,7 @@ function renderBestsellers() {
     var rating = showRating && item.rating ? parseFloat(item.rating) : 0;
     var badgeSave = showOffer ? save : 0; // the price strike-through stays either way
     var meta = bestsellerVegMark(item.item_type) +
-      (badgeSave > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i>Item offer applied</span>' : '');
+      (badgeSave > 0 ? '<span class="bsl-note"><i class="fa fa-bolt" aria-hidden="true"></i><span>Item offer applied</span></span>' : '');
     return '<article class="bsl-card" onclick="showItemDetail(' + item._ci + ',' + item._ii + ')">' +
       '<div class="bsl-img">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy" draggable="false">' +
@@ -2910,7 +2915,7 @@ function renderBestsellers() {
       '</div>' +
       '<div class="bsl-body">' +
         '<div class="bsl-name">' + name + '</div>' +
-        (meta ? '<div class="bsl-meta">' + meta + '</div>' : '') +
+        '<div class="bsl-meta">' + meta + '</div>' +
         '<div class="bsl-foot">' +
           // Regular price struck through on the left, current price boxed on the right
           '<div class="bsl-price">' + (was ? '<s>' + fmt(was) + '</s>' : '') + '<span class="bsl-price-now">' + price + '</span></div>' +
