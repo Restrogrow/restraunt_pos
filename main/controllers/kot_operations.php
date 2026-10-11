@@ -220,7 +220,7 @@ if (!function_exists('verifyKotCartItemPrices')) {
             }
 
             $expectedPrice = (float)$menuRow['base_price'];
-            $variationName = $ci['variation_name'] ?? '';
+            $variationName = $ci['variation_name'] ?? ($ci['variationName'] ?? '');
             if (!empty($variationName)) {
                 if (!isset($variationsByItem[$mid][$variationName])) {
                     return 'Invalid item variation';

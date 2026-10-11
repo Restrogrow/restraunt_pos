@@ -8436,6 +8436,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (result.success) {
           const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
           showMsg(result.message + " - Order #" + result.order_number, "success");
+          if (window.refreshHeldCount) window.refreshHeldCount();
           // Clear cart - support both local and window.posCart
           if (typeof posCart !== 'undefined') {
             posCart = [];
@@ -8459,6 +8460,113 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Make holdOrder globally available
   window.holdOrder = holdOrder;
+
+  // ── Held orders: list / resume / discard ──────────────────────────────────
+  // Resuming loads the held items back into the cart and retires the held
+  // order on the server, so paying for it records the sale exactly once.
+  async function heldOrdersRequest(action, orderId) {
+    const body = new URLSearchParams({ action });
+    if (orderId) body.append('orderId', orderId);
+    const res = await fetch("../controllers/pos_operations.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
+    return res.json();
+  }
+  function heldMsg(msg, type) {
+    const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
+    showMsg(msg, type);
+  }
+  async function refreshHeldCount() {
+    const badge = document.getElementById('heldOrdersCount');
+    if (!badge) return [];
+    try {
+      const d = await heldOrdersRequest('list_held');
+      const list = (d && d.success && d.orders) || [];
+      badge.textContent = list.length;
+      badge.style.display = list.length ? 'inline-block' : 'none';
+      return list;
+    } catch (e) { return []; }
+  }
+  window.refreshHeldCount = refreshHeldCount;
+
+  function closeHeldOrders() {
+    const m = document.getElementById('heldOrdersModal');
+    if (m) m.remove();
+  }
+  window.closeHeldOrders = closeHeldOrders;
+
+  async function openHeldOrders() {
+    closeHeldOrders();
+    const cur = window.globalCurrencySymbol || '₹';
+    const modal = document.createElement('div');
+    modal.id = 'heldOrdersModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = '<div style="background:#fff;border-radius:14px;width:100%;max-width:440px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,0.25);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eee;">' +
+        '<strong style="font-size:1.05rem;">Held orders</strong>' +
+        '<button type="button" onclick="closeHeldOrders()" style="border:0;background:none;font-size:22px;cursor:pointer;line-height:1;">&times;</button></div>' +
+      '<div id="heldOrdersList" style="overflow:auto;padding:10px 16px 16px;"><p style="color:#6b7280;">Loading…</p></div></div>';
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeHeldOrders(); });
+    document.body.appendChild(modal);
+    const list = await refreshHeldCount();
+    const box = document.getElementById('heldOrdersList');
+    if (!box) return;
+    if (!list.length) { box.innerHTML = '<p style="color:#6b7280;text-align:center;padding:18px 0;">No orders on hold.</p>'; return; }
+    box.innerHTML = list.map(o => {
+      const when = new Date(String(o.created_at).replace(' ', 'T'));
+      const time = isNaN(when) ? '' : when.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:600;">' + escapeHtml(o.order_number) + ' · ' + (o.table_number ? 'Table ' + escapeHtml(o.table_number) : 'Takeaway') + '</div>' +
+          '<div style="font-size:0.8rem;color:#6b7280;">' + (parseInt(o.item_count, 10) || 0) + ((parseInt(o.item_count, 10) || 0) === 1 ? ' item · ' : ' items · ') + cur + parseFloat(o.total).toFixed(2) + (time ? ' · ' + time : '') + '</div></div>' +
+        '<button type="button" class="btn btn-primary" style="padding:6px 12px;width:auto;flex:0 0 auto;" onclick="resumeHeldOrder(' + parseInt(o.id, 10) + ')">Resume</button>' +
+        '<button type="button" class="btn btn-secondary" style="padding:6px 8px;width:40px;min-width:0;flex:0 0 40px;" title="Discard" onclick="discardHeldOrder(' + parseInt(o.id, 10) + ')"><span class="material-symbols-rounded" style="font-size:1.1rem;vertical-align:middle;">delete</span></button>' +
+      '</div>';
+    }).join('');
+  }
+  window.openHeldOrders = openHeldOrders;
+
+  async function resumeHeldOrder(orderId) {
+    const cart = typeof posCart !== 'undefined' ? posCart : (window.posCart || []);
+    const updateCartFn = typeof updatePOSCart !== 'undefined' ? updatePOSCart : (window.updateWaiterPOSCart || window.updatePOSCart || (() => {}));
+    if (cart.length) { heldMsg('Finish, hold or clear the current cart first.', 'error'); return; }
+    let d;
+    try { d = await heldOrdersRequest('resume_held', orderId); } catch (e) { heldMsg('Network error. Please try again.', 'error'); return; }
+    if (!d || !d.success) { heldMsg((d && d.message) || 'Could not resume this order.', 'error'); openHeldOrders(); return; }
+    (d.items || []).forEach(it => {
+      const v = it.variation_name || null;
+      const baseName = String(it.item_name || '');
+      cart.push({
+        id: parseInt(it.menu_item_id, 10),
+        cartKey: v ? it.menu_item_id + '_' + v : String(it.menu_item_id) + (cart.some(c => String(c.id) === String(it.menu_item_id)) ? '_' + baseName : ''),
+        name: v ? baseName + ' (' + v + ')' : baseName,
+        originalName: baseName,
+        price: parseFloat(it.unit_price),
+        image: null,
+        variationName: v,
+        quantity: parseInt(it.quantity, 10) || 1
+      });
+    });
+    const sel = document.getElementById('selectPosTable');
+    if (sel) sel.value = d.table_id ? String(d.table_id) : '';
+    updateCartFn();
+    closeHeldOrders();
+    refreshHeldCount();
+    heldMsg('Order ' + d.order_number + ' is back in the cart.', 'success');
+  }
+  window.resumeHeldOrder = resumeHeldOrder;
+
+  async function discardHeldOrder(orderId) {
+    if (!window.confirm('Discard this held order? It will not be billed.')) return;
+    let d;
+    try { d = await heldOrdersRequest('discard_held', orderId); } catch (e) { heldMsg('Network error. Please try again.', 'error'); return; }
+    heldMsg(d && d.success ? 'Held order ' + d.order_number + ' discarded.' : ((d && d.message) || 'Could not discard.'), d && d.success ? 'success' : 'error');
+    openHeldOrders();
+  }
+  window.discardHeldOrder = discardHeldOrder;
+  if (document.getElementById('heldOrdersBtn')) refreshHeldCount();
   
   // Hold order button listeners
   const holdOrderBtn = document.getElementById("holdOrderBtn");

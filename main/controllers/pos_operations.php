@@ -183,6 +183,18 @@ try {
         case 'hold_order':
             handleHoldOrder($conn, $restaurant_id);
             break;
+
+        case 'list_held':
+            handleListHeldOrders($conn, $restaurant_id);
+            break;
+
+        case 'resume_held':
+            handleRetireHeldOrder($conn, $restaurant_id, true);
+            break;
+
+        case 'discard_held':
+            handleRetireHeldOrder($conn, $restaurant_id, false);
+            break;
             
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action: ' . $action], JSON_UNESCAPED_UNICODE);
@@ -257,7 +269,7 @@ function verifyPosCartItemPrices($conn, $restaurant_id, array $cartItems): ?stri
         }
 
         $expectedPrice = (float)$menuRow['base_price'];
-        $variationName = $ci['variation_name'] ?? '';
+        $variationName = $ci['variation_name'] ?? ($ci['variationName'] ?? '');
         if (!empty($variationName)) {
             if (!isset($variationsByItem[$mid][$variationName])) {
                 return 'Invalid item variation';
@@ -536,6 +548,55 @@ function handleCreateKOT($conn, $restaurant_id) {
     }
 }
 
+// ── Held orders (POS "Hold") ────────────────────────────────────────────────
+// A held order is saved as an order row marked notes = 'Order on hold'. It is
+// NOT a sale: reports skip it. Resume loads it back into the POS cart and
+// retires the held row (soft delete), so paying for it can never count twice.
+function heldOrderRow($conn, $restaurant_id, $orderId, $forUpdate = false) {
+    $stmt = $conn->prepare("SELECT id, order_number, table_id, total FROM orders
+        WHERE id = ? AND restaurant_id = ? AND notes = 'Order on hold'
+          AND order_status NOT IN ('Cancelled','Rejected') AND deleted_at IS NULL" . ($forUpdate ? " FOR UPDATE" : ""));
+    $stmt->execute([$orderId, $restaurant_id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function handleListHeldOrders($conn, $restaurant_id) {
+    require_once __DIR__ . '/../config/soft_delete_helpers.php';
+    ensureOrderSoftDeleteColumns($conn);
+    $stmt = $conn->prepare("SELECT o.id, o.order_number, o.table_id, t.table_number, o.total, o.created_at,
+            (SELECT COALESCE(SUM(quantity), 0) FROM order_items oi WHERE oi.order_id = o.id) AS item_count
+        FROM orders o LEFT JOIN tables t ON t.id = o.table_id
+        WHERE o.restaurant_id = ? AND o.notes = 'Order on hold'
+          AND o.order_status NOT IN ('Cancelled','Rejected') AND o.deleted_at IS NULL
+        ORDER BY o.created_at DESC LIMIT 50");
+    $stmt->execute([$restaurant_id]);
+    echo json_encode(['success' => true, 'orders' => $stmt->fetchAll(PDO::FETCH_ASSOC)], JSON_UNESCAPED_UNICODE);
+}
+
+function handleRetireHeldOrder($conn, $restaurant_id, $resume) {
+    require_once __DIR__ . '/../config/soft_delete_helpers.php';
+    ensureOrderSoftDeleteColumns($conn);
+    $orderId = (int)($_POST['orderId'] ?? 0);
+    $conn->beginTransaction();
+    $held = heldOrderRow($conn, $restaurant_id, $orderId, true);
+    if (!$held) {
+        $conn->rollBack();
+        echo json_encode(['success' => false, 'message' => 'This held order was already resumed or discarded.'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+    $items = [];
+    if ($resume) {
+        $st = $conn->prepare("SELECT menu_item_id, item_name, variation_name, quantity, unit_price FROM order_items WHERE order_id = ? ORDER BY id");
+        $st->execute([$orderId]);
+        $items = $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+    $who = $_SESSION['username'] ?? ($_SESSION['staff_name'] ?? 'POS');
+    $conn->prepare("UPDATE orders SET deleted_at = NOW(), deleted_by = ?, delete_reason = ? WHERE id = ?")
+         ->execute([$who, $resume ? 'Held order resumed in POS' : 'Held order discarded in POS', $orderId]);
+    $conn->commit();
+    echo json_encode(['success' => true, 'order_number' => $held['order_number'], 'table_id' => $held['table_id'], 'items' => $items], JSON_UNESCAPED_UNICODE);
+}
+
 function handleHoldOrder($conn, $restaurant_id) {
     $tableId = $_POST['tableId'] ?? null;
     $cartItems = json_decode($_POST['cartItems'] ?? '[]', true);
@@ -600,7 +661,7 @@ function handleHoldOrder($conn, $restaurant_id) {
         $orderId = $conn->lastInsertId();
         
         // Insert order items
-        $itemStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
+        $itemStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
         
         foreach ($cartItems as $item) {
             // Validate item structure
@@ -612,7 +673,8 @@ function handleHoldOrder($conn, $restaurant_id) {
             $itemStmt->execute([
                 $orderId,
                 (int)$item['id'],
-                (string)$item['name'],
+                (string)($item['originalName'] ?? $item['name']),
+                ($item['variationName'] ?? ($item['variation_name'] ?? null)) ?: null,
                 (int)$item['quantity'],
                 (float)$item['price'],
                 (float)($item['price'] * $item['quantity'])

@@ -5531,10 +5531,16 @@ function toggleGatewayMode() {
           <div class="pos-cart-section">
             <div class="pos-cart-header">
               <h3>Order Cart</h3>
-              <button class="btn-clear-cart" id="clearCartBtn">
-                <span class="material-symbols-rounded">delete</span>
-                Clear Cart
-              </button>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <button class="btn-clear-cart" id="heldOrdersBtn" type="button" onclick="openHeldOrders()" title="Orders put on hold — resume or discard">
+                  <span class="material-symbols-rounded">pause_circle</span>
+                  Held <span id="heldOrdersCount" style="display:none;min-width:18px;padding:0 5px;border-radius:999px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;"></span>
+                </button>
+                <button class="btn-clear-cart" id="clearCartBtn">
+                  <span class="material-symbols-rounded">delete</span>
+                  Clear Cart
+                </button>
+              </div>
             </div>
             
             <div class="pos-table-select">

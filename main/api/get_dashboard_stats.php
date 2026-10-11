@@ -61,27 +61,18 @@ try {
     // Get today's date
     $today = date('Y-m-d');
     
-    // Total Revenue (Today) - prefer payments table; fallback to orders
-    $stmt = $conn->prepare("SELECT COALESCE(SUM(amount), 0) as revenue
-                            FROM payments
+    // Total Revenue (Today) — same rule as the Sales Report (get_sales_report.php):
+    // every order that wasn't cancelled/rejected/deleted, minus QR payments not
+    // yet confirmed and held POS orders (not a sale until billed).
+    $stmt = $conn->prepare("SELECT COALESCE(SUM(total), 0) as revenue
+                            FROM orders
                             WHERE restaurant_id = ?
-                            AND payment_status = 'Success'
-                            AND DATE(created_at) = ?");
+                            AND DATE(created_at) = ?
+                            AND order_status NOT IN ('Cancelled', 'Rejected')
+                            AND NOT (payment_method = 'QR Payment' AND payment_status != 'Paid')
+                            AND deleted_at IS NULL AND NOT (COALESCE(notes, '') = 'Order on hold' AND order_status = 'Pending' AND payment_status = 'Pending')");
     $stmt->execute([$restaurant_id, $today]);
-    $revenueData = $stmt->fetch();
-    $todayRevenue = $revenueData['revenue'] ?? 0;
-    if (!$todayRevenue || $todayRevenue == 0) {
-        $stmt = $conn->prepare("SELECT COALESCE(SUM(total), 0) as revenue 
-                                FROM orders 
-                                WHERE restaurant_id = ? 
-                                AND payment_status = 'Paid'
-                                AND DATE(created_at) = ?
-                                AND deleted_at IS NULL");
-        $stmt->execute([$restaurant_id, $today]);
-        $fallback = $stmt->fetch();
-        $todayRevenue = $fallback['revenue'] ?? 0;
-    }
-    
+    $todayRevenue = $stmt->fetch()['revenue'] ?? 0;
     // Total Orders (Today) — cancelled/rejected orders never happened, so
     // they don't count (same rule as get_sales_report.php). Soft-deleted
     // orders are likewise invisible to every stat below.
@@ -90,7 +81,7 @@ try {
                            WHERE restaurant_id = ? 
                            AND DATE(created_at) = ?
                            AND order_status NOT IN ('Cancelled', 'Rejected')
-                           AND deleted_at IS NULL");
+                           AND deleted_at IS NULL AND NOT (COALESCE(notes, '') = 'Order on hold' AND order_status = 'Pending' AND payment_status = 'Pending')");
     $stmt->execute([$restaurant_id, $today]);
     $ordersData = $stmt->fetch();
     $todayOrders = $ordersData['count'] ?? 0;
@@ -113,7 +104,7 @@ try {
                            AND customer_name != '' 
                            AND customer_name != 'Table Customer'
                            AND customer_name != 'Takeaway'
-                           AND deleted_at IS NULL");
+                           AND deleted_at IS NULL AND NOT (COALESCE(notes, '') = 'Order on hold' AND order_status = 'Pending' AND payment_status = 'Pending')");
     $stmt->execute([$restaurant_id]);
     $customersData = $stmt->fetch();
     $totalCustomers = $customersData['count'] ?? 0;
@@ -152,7 +143,7 @@ try {
                            LEFT JOIN areas a ON t.area_id = a.id
                            WHERE o.restaurant_id = ?
                            AND DATE(o.created_at) = ?
-                           AND o.deleted_at IS NULL
+                           AND o.deleted_at IS NULL AND NOT (COALESCE(o.notes, '') = 'Order on hold' AND o.order_status = 'Pending' AND o.payment_status = 'Pending')
                            ORDER BY o.created_at DESC
                            LIMIT 5");
     $stmt->execute([$restaurant_id, $today]);
@@ -164,7 +155,7 @@ try {
                            JOIN orders o ON oi.order_id = o.id
                            WHERE o.restaurant_id = ?
                            AND DATE(o.created_at) = ?
-                           AND o.deleted_at IS NULL
+                           AND o.deleted_at IS NULL AND NOT (COALESCE(o.notes, '') = 'Order on hold' AND o.order_status = 'Pending' AND o.payment_status = 'Pending')
                            GROUP BY oi.item_name
                            ORDER BY total_qty DESC
                            LIMIT 5");
@@ -176,7 +167,7 @@ try {
                            FROM orders 
                            WHERE restaurant_id = ? 
                            AND order_status IN ('Pending', 'Preparing', 'Ready')
-                           AND deleted_at IS NULL");
+                           AND deleted_at IS NULL AND NOT (COALESCE(notes, '') = 'Order on hold' AND order_status = 'Pending' AND payment_status = 'Pending')");
     $stmt->execute([$restaurant_id]);
     $pendingData = $stmt->fetch();
     $pendingOrders = $pendingData['count'] ?? 0;

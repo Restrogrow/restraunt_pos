@@ -127,6 +127,13 @@ try {
     $dateCondition .= " AND o.deleted_at IS NULL";
     $dateConditionNoAlias .= " AND deleted_at IS NULL";
 
+    // Held POS orders ("Hold" button) still parked (Pending + unpaid) are not
+    // sales. They become one when resumed and paid (which retires the held
+    // row) or when staff complete/charge them from Orders; counting parked
+    // ones double-counted every held-then-billed order.
+    $dateCondition .= " AND NOT (COALESCE(o.notes, '') = 'Order on hold' AND o.order_status = 'Pending' AND o.payment_status = 'Pending')";
+    $dateConditionNoAlias .= " AND NOT (COALESCE(notes, '') = 'Order on hold' AND order_status = 'Pending' AND payment_status = 'Pending')";
+
     // Same period, but against expenses.expense_date (a DATE column, not a
     // timestamp) for the money-out side of the report.
     $expenseDateParams = [];
