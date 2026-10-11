@@ -680,18 +680,20 @@ try {
       ':template' => $template, ':title' => $title, ':subtitle' => $clean($in['subtitle'] ?? '', 90) ?: null,
       ':code' => $code !== '' ? $code : null, ':cta' => $clean($in['cta'] ?? '', 24) ?: null, ':color' => $color,
       ':item' => $itemId ?: null, ':placement' => $placement, ':active' => empty($in['is_active']) ? 0 : 1, ':rid' => $restaurant_id,
+      ':opts' => json_encode(cleanOfferBannerOpts($in), JSON_UNESCAPED_UNICODE),
+      ':ends' => (isset($in['ends_ts']) && (int)$in['ends_ts'] > 0) ? (int)$in['ends_ts'] : null,
     ];
     $id = (int)($in['id'] ?? 0);
     if ($id > 0) {
       $row[':id'] = $id;
       $conn->prepare('UPDATE website_offer_banners SET template=:template, title=:title, subtitle=:subtitle, code=:code, cta=:cta, color=:color,
-                      menu_item_id=:item, placement=:placement, is_active=:active WHERE id=:id AND restaurant_id=:rid')->execute($row);
+                      menu_item_id=:item, placement=:placement, is_active=:active, opts=:opts, ends_ts=:ends WHERE id=:id AND restaurant_id=:rid')->execute($row);
     } else {
       $next = $conn->prepare('SELECT COALESCE(MAX(display_order), -1) + 1 FROM website_offer_banners WHERE restaurant_id = :rid');
       $next->execute([':rid' => $restaurant_id]);
       $row[':ord'] = (int)$next->fetchColumn();
-      $conn->prepare('INSERT INTO website_offer_banners (restaurant_id, template, title, subtitle, code, cta, color, menu_item_id, placement, is_active, display_order)
-                      VALUES (:rid, :template, :title, :subtitle, :code, :cta, :color, :item, :placement, :active, :ord)')->execute($row);
+      $conn->prepare('INSERT INTO website_offer_banners (restaurant_id, template, title, subtitle, code, cta, color, menu_item_id, placement, is_active, display_order, opts, ends_ts)
+                      VALUES (:rid, :template, :title, :subtitle, :code, :cta, :color, :item, :placement, :active, :ord, :opts, :ends)')->execute($row);
       $id = (int)$conn->lastInsertId();
     }
     echo json_encode(['success' => true, 'id' => $id]);

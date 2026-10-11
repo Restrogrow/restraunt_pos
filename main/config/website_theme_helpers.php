@@ -74,7 +74,27 @@ const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
 // Menu page dish card design: the original cards, or the modern card (wide photo,
 // description, quantity picker + Add button)
 // Animated offer banners (Website Appearance > Offer Banners): made in HTML/CSS, no photo needed
-const OFFER_BANNER_TEMPLATES = ['burst', 'ticket', 'neon', 'confetti', 'marquee', 'split'];
+const OFFER_BANNER_TEMPLATES = ['burst', 'ticket', 'neon', 'confetti', 'marquee', 'split', 'countdown', 'aurora', 'stamp', 'bubbles', 'stripes',
+    'spotlight', 'gift', 'tag', 'wave', 'orbit', 'typewriter', 'gold', 'pulse', 'bounce', 'polaroid', 'festive'];
+// Per-banner look options (stored as JSON in website_offer_banners.opts)
+const OFFER_BANNER_SPEEDS = ['calm', 'normal', 'lively', 'off'];
+const OFFER_BANNER_FONTS = ['modern', 'serif', 'rounded', 'condensed'];
+const OFFER_BANNER_SHAPES = ['circle', 'rounded', 'square'];
+
+/** Keeps only known option keys with valid values. */
+function cleanOfferBannerOpts($in) {
+    $in = is_array($in) ? $in : [];
+    $o = [];
+    if (preg_match('/^#[0-9a-fA-F]{6}$/', $in['accent'] ?? '')) $o['accent'] = $in['accent'];
+    $k = trim(preg_replace('/\s+/u', ' ', strip_tags((string)($in['kicker'] ?? ''))));
+    if ($k !== '') $o['kicker'] = mb_substr($k, 0, 30);
+    if (in_array($in['speed'] ?? '', OFFER_BANNER_SPEEDS, true)) $o['speed'] = $in['speed'];
+    if (in_array($in['font'] ?? '', OFFER_BANNER_FONTS, true)) $o['font'] = $in['font'];
+    if (in_array($in['shape'] ?? '', OFFER_BANNER_SHAPES, true)) $o['shape'] = $in['shape'];
+    if (in_array($in['text'] ?? '', ['light', 'dark'], true)) $o['text'] = $in['text'];
+    if (!empty($in['countdown'])) $o['countdown'] = 1;
+    return $o;
+}
 
 /** website_offer_banners table, created once. */
 function ensureOfferBannersTable($conn) {
@@ -98,6 +118,11 @@ function ensureOfferBannersTable($conn) {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_offer_banners_rid (restaurant_id)
         )");
+        // Look options + optional end time (unix seconds; the banner hides itself after it)
+        foreach (['opts' => 'TEXT NULL', 'ends_ts' => 'INT NULL'] as $col => $def) {
+            $has = $conn->query("SHOW COLUMNS FROM website_offer_banners LIKE '$col'");
+            if (!($has && $has->fetch())) $conn->exec("ALTER TABLE website_offer_banners ADD COLUMN $col $def");
+        }
     } catch (PDOException $e) {
         error_log('ensureOfferBannersTable: ' . $e->getMessage());
     }
@@ -106,14 +131,22 @@ function ensureOfferBannersTable($conn) {
 /** Offer banners with the chosen dish's photo reference; $activeOnly for the customer website. */
 function fetchOfferBanners($conn, $restaurant_id, $activeOnly) {
     $sql = 'SELECT ob.id, ob.template, ob.title, ob.subtitle, ob.code, ob.cta, ob.color, ob.menu_item_id, ob.placement, ob.is_active, ob.display_order,
-                   mi.item_image AS image
+                   ob.opts, ob.ends_ts, mi.item_image AS image
             FROM website_offer_banners ob
             LEFT JOIN menu_items mi ON mi.id = ob.menu_item_id AND mi.restaurant_id = ob.restaurant_id
-            WHERE ob.restaurant_id = :rid' . ($activeOnly ? ' AND ob.is_active = 1' : '') . '
+            WHERE ob.restaurant_id = :rid' . ($activeOnly ? ' AND ob.is_active = 1 AND (ob.ends_ts IS NULL OR ob.ends_ts > UNIX_TIMESTAMP())' : '') . '
             ORDER BY ob.display_order ASC, ob.id ASC';
     $st = $conn->prepare($sql);
     $st->execute([':rid' => $restaurant_id]);
-    return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($rows as &$r) {
+        // Flatten the look options onto the banner (accent, kicker, speed, font, shape, text, countdown)
+        $r = array_merge($r, cleanOfferBannerOpts(json_decode((string)$r['opts'], true)));
+        unset($r['opts']);
+        $r['ends_ts'] = $r['ends_ts'] !== null ? (int)$r['ends_ts'] : null;
+    }
+    unset($r);
+    return $rows;
 }
 
 // Where a website banner shows (Website Appearance > Banner Images)
