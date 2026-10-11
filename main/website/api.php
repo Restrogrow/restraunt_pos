@@ -751,6 +751,8 @@ try {
             
             // Query orders directly by customer_phone to avoid name mismatch issues
             $stmt = $conn->prepare("SELECT o.*, 
+                                   (SELECT dt.delivery_status FROM delivery_tracking dt WHERE dt.order_id = o.id LIMIT 1) as delivery_status,
+                                   (SELECT dt.rider_name FROM delivery_tracking dt WHERE dt.order_id = o.id LIMIT 1) as rider_name,
                                    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count,
                                    (SELECT COUNT(*) FROM order_feedback f WHERE f.order_id = o.id) > 0 as has_feedback
                                    FROM orders o 

@@ -29,7 +29,8 @@ if ($orderNumber && $customerPhone) {
         if (!$order) {
             $error = 'Order not found. Please check your order number and phone number.';
         } else {
-            $itemsStmt = $conn->prepare("SELECT item_name, quantity, unit_price, total_price FROM order_items WHERE order_id = ?");
+            // Dish photo for the summary (dishes deleted since show without one)
+            $itemsStmt = $conn->prepare("SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, mi.item_image FROM order_items oi LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id WHERE oi.order_id = ?");
             $itemsStmt->execute([$order['id']]);
             $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -68,353 +69,363 @@ $statusLabels = [
   --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
   --primary-yellow: <?php echo htmlspecialchars($primary_yellow, ENT_QUOTES, 'UTF-8'); ?>;
   --site-font: <?php echo $font_family_css; ?>;
+  /* Progress + main button use the restaurant's checkout colour */
+  --tk: <?php echo htmlspecialchars($checkout_color ?? $primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --tk-dark: <?php echo htmlspecialchars($checkout_color_dark ?? $dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --tk-soft: color-mix(in srgb, var(--tk) 12%, #fff);
+  --ink: #16181d; --muted: #8a8f98; --line: #eceef1; --page: #f2f3f5;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-/* Live-update indicator + a pulse on the status badge when the status changes */
-.live-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: #6b7280; margin-bottom: 24px; }
+body { font-family: var(--site-font), 'Inter', sans-serif; background: #e3e6ea; color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+.phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; position: relative; background: var(--page); box-shadow: 0 0 40px rgba(0,0,0,0.08); }
+@media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 32px; overflow: hidden; } }
+
+/* Top bar: round buttons, centred title */
+.tk-top { display: flex; align-items: center; gap: 10px; padding: 16px 16px 8px; }
+.tk-round { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: #fff; color: var(--ink); cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.06); text-decoration: none; transition: transform .15s; }
+.tk-round:active { transform: scale(.94); }
+.tk-round .material-symbols-rounded { font-size: 22px; }
+.tk-title { flex: 1; min-width: 0; text-align: center; }
+.tk-title b { display: block; font-size: 17px; font-weight: 700; }
+.tk-title small { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-actions { display: flex; gap: 8px; }
+
+.content { padding: 8px 14px 30px; }
+.card { background: #fff; border-radius: 26px; padding: 20px 18px; margin-bottom: 14px; box-shadow: 0 2px 14px rgba(17,24,39,.05); }
+
+/* Headline card */
+.tk-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+.tk-head h1 { flex: 1; font-size: 23px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em; }
+.tk-head .sub { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+.status-badge { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--tk-soft); color: var(--tk-dark); white-space: nowrap; }
+.status-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.status-rejected, .status-cancelled { background: #fee2e2; color: #b91c1c; }
+.status-completed, .status-served { background: #dcfce7; color: #15803d; }
+.status-badge.status-flash { animation: statusFlash 1.2s ease-out 2; }
+@keyframes statusFlash { 0% { transform: scale(1); } 30% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+/* Speech bubble pointing at the current step */
+.tk-bubble { position: relative; margin: 0 2px 16px; padding: 14px 14px 12px; border-radius: 20px; background: #fff; box-shadow: 0 6px 22px rgba(17,24,39,.09); transition: transform .3s; }
+.tk-bubble::after { content: ""; position: absolute; bottom: -8px; left: var(--arrow, 12.5%); width: 18px; height: 18px; margin-left: -9px; background: #fff; transform: rotate(45deg); border-radius: 0 0 4px 0; box-shadow: 4px 4px 8px rgba(17,24,39,.05); transition: left .7s cubic-bezier(.22,1,.36,1); }
+.tk-bubble b { display: block; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.tk-bubble-row { display: flex; align-items: center; gap: 8px; }
+.tk-chip { display: inline-flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 6px 14px 6px 6px; border-radius: 999px; background: #f4f5f7; color: var(--muted); font-size: 13px; font-weight: 500; }
+.tk-chip i { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--ink); color: #fff; font-style: normal; }
+.tk-chip i .material-symbols-rounded { font-size: 17px; }
+.tk-chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-next { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.tk-next i { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #f4f5f7; font-style: normal; font-size: 13px; }
+.tk-bubble.pop { animation: bubblePop .5s cubic-bezier(.2,1.4,.4,1); }
+@keyframes bubblePop { from { transform: translateY(6px) scale(.97); opacity: .6; } to { transform: none; opacity: 1; } }
+
+/* The pill track */
+.tk-track { position: relative; height: 72px; border-radius: 999px; background: #eef0f3; box-shadow: inset 0 0 0 2px #e4e7eb; overflow: hidden; }
+.tk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--tk-dark), var(--tk) 70%, color-mix(in srgb, var(--tk) 35%, #fff)); transition: width .9s cubic-bezier(.22,1,.36,1); }
+.tk-fill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.28) 50%, transparent 70%); background-size: 220% 100%; animation: tkShine 2.6s linear infinite; border-radius: inherit; }
+.tk-nodes { position: absolute; inset: 0; display: flex; }
+.tk-node { flex: 1; display: grid; place-items: center; }
+.tk-node i { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: #fff; color: #9aa0a8; font-style: normal; box-shadow: 0 2px 8px rgba(0,0,0,.08); transition: color .3s, transform .3s; }
+.tk-node i .material-symbols-rounded { font-size: 24px; }
+.tk-node.done i, .tk-node.on i { color: var(--tk-dark); }
+.tk-node.on i { animation: nodePulse 1.8s ease-out infinite; }
+.tk-node.on.final i { animation: none; }
+@keyframes nodePulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.75), 0 2px 8px rgba(0,0,0,.08); } 100% { box-shadow: 0 0 0 12px rgba(255,255,255,0), 0 2px 8px rgba(0,0,0,.08); } }
+@keyframes tkShine { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.tk-labels { display: flex; margin-top: 8px; }
+.tk-labels div { flex: 1; text-align: center; font-size: 13px; font-weight: 600; color: #9aa0a8; transition: color .3s; }
+.tk-labels div em { display: grid; place-items: center; width: 18px; height: 18px; margin: 0 auto 3px; border-radius: 50%; font-style: normal; font-size: 11px; font-weight: 700; color: #9aa0a8; }
+.tk-labels div.done, .tk-labels div.on { color: var(--ink); }
+.tk-labels div.on em { background: var(--ink); color: #fff; }
+.tk-labels div.done em { color: var(--ink); }
+
+/* Status card with a big icon */
+.tk-status { display: flex; align-items: center; gap: 14px; margin-top: 18px; padding: 16px; border-radius: 20px; background: #f4f5f7; }
+.tk-status .ic { width: 64px; height: 64px; flex-shrink: 0; display: grid; place-items: center; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+.tk-status .ic .material-symbols-rounded { font-size: 36px; animation: icBob 2.4s ease-in-out infinite; }
+@keyframes icBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.tk-status b { display: block; font-size: 15.5px; font-weight: 700; margin-bottom: 3px; }
+.tk-status p { font-size: 13px; color: var(--muted); line-height: 1.45; }
+.tk-stopped .tk-status { background: #fef2f2; }
+.tk-stopped .tk-status .ic { color: #b91c1c; }
+
+#trackMap { height: 200px; border-radius: 18px; margin-top: 14px; display: none; overflow: hidden; }
+#riderLocationNote { display: none; font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center; }
+
+.loyalty-note { display: none; margin-top: 14px; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--primary-yellow) 22%, #fff); font-size: 13px; font-weight: 600; color: #7c4a03; }
+.loyalty-note .material-symbols-rounded { font-size: 17px; vertical-align: -3px; }
+
+/* Cards: details and summary */
+h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+.info-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 14px; }
+.label { color: var(--muted); }
+.value { font-weight: 600; color: var(--ink); text-align: right; }
+.tk-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.tk-item + .tk-item { border-top: 1px dashed var(--line); }
+.tk-thumb { width: 58px; height: 58px; flex-shrink: 0; border-radius: 50%; overflow: hidden; background: #f4f5f7; display: grid; place-items: center; color: #c4c8ce; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+.tk-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.tk-item-info { flex: 1; min-width: 0; }
+.tk-item-info b { display: block; font-size: 14.5px; font-weight: 600; line-height: 1.3; }
+.tk-item-info span { font-size: 12.5px; color: var(--muted); }
+.tk-item-price { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.tk-totals { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.tk-totals .info-row:first-child .label { color: var(--ink); font-weight: 600; }
+.tk-grand { margin-top: 6px; padding-top: 10px; border-top: 2px solid #d7dade; font-size: 15px; }
+.tk-grand .label { color: var(--ink); font-weight: 700; }
+.tk-grand .label small { font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.tk-grand .value { font-size: 16px; font-weight: 800; }
+
+/* Big button */
+.tk-cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 17px; border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--tk), var(--tk-dark)); color: #fff; font: 600 16px var(--site-font), 'Inter', sans-serif; cursor: pointer; box-shadow: 0 10px 24px color-mix(in srgb, var(--tk) 35%, transparent); text-decoration: none; transition: transform .15s; }
+.tk-cta:active { transform: scale(.98); }
+.tk-another { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 14px auto 0; font-size: 13.5px; font-weight: 600; color: var(--muted); text-decoration: none; }
+
+/* Live-update indicator */
+.live-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--muted); margin: 6px 0 14px; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
 .live-note.on .live-dot { animation: livePulse 1.6s ease-out infinite; }
 .live-note.offline .live-dot { background: #f59e0b; }
 .live-note.done .live-dot { background: #9ca3af; }
 @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,.55); } 100% { box-shadow: 0 0 0 7px rgba(22,163,74,0); } }
-.status-badge.status-flash { animation: statusFlash 1.2s ease-out 2; }
-@keyframes statusFlash { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22,163,74,.5); } 30% { transform: scale(1.08); } 100% { transform: scale(1); box-shadow: 0 0 0 14px rgba(22,163,74,0); } }
-@media (prefers-reduced-motion: reduce) { .live-note.on .live-dot, .status-badge.status-flash { animation: none; } }
-body {
-  font-family: var(--site-font), 'Inter', sans-serif;
-  background: #e8ecf2;
-  color: #1a1b1f;
-  min-height: 100vh;
-  overflow-x: hidden;
+
+/* Search form (no order yet) */
+.tk-search-ic { width: 72px; height: 72px; margin: 4px auto 12px; display: grid; place-items: center; border-radius: 22px; background: var(--tk-soft); color: var(--tk-dark); }
+.tk-search-ic .material-symbols-rounded { font-size: 38px; }
+.tk-search h1 { font-size: 22px; font-weight: 700; text-align: center; }
+.tk-search .subtitle { font-size: 13px; color: var(--muted); text-align: center; margin: 4px 0 18px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.form-group input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 16px; background: #f8f9fa; font-size: 15px; font-family: inherit; outline: none; transition: border-color .2s, background .2s; }
+.form-group input:focus { border-color: var(--tk); background: #fff; }
+.error-box { margin-top: 14px; padding: 14px; border-radius: 16px; background: #fef2f2; color: #991b1b; font-size: 14px; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .live-note.on .live-dot, .status-badge.status-flash, .tk-fill::after, .tk-node.on i, .tk-status .ic .material-symbols-rounded, .tk-bubble.pop { animation: none; }
+  .tk-fill, .tk-bubble::after { transition: none; }
 }
-.phone-frame {
-  max-width: 425px;
-  margin: 0 auto;
-  min-height: 100vh;
-  position: relative;
-  box-shadow: 0 0 40px rgba(0,0,0,0.08);
-}
-@media (min-width: 768px) {
-  .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 28px; overflow: hidden; }
-}
-.bg-wrapper {
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-.pr-share-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 12px 12px;
-  border-bottom: 1.5px solid #ccc;
-}
-.back-btn-cmon {
-  display: flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
-  color: #fff; border: none; cursor: pointer; font-size: 22px;
-  flex-shrink: 0;
-}
-.header-brand {
-  flex: 1;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1a1b1f;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.header-actions {
-  display: flex; align-items: center; gap: 8px;
-}
-.header-action-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--primary-red, #e17055), var(--dark-red, #d63031));
-  color: #fff; border: none; cursor: pointer; font-size: 18px;
-  flex-shrink: 0;
-  text-decoration: none;
-}
-.content {
-  flex: 1;
-  padding: 12px;
-  padding-bottom: 40px;
-}
-.container { max-width: 440px; width: 100%; }
-.card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-    margin-bottom: 16px;
-}
-.text-center { text-align: center; }
-h1 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 4px; }
-h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
-.subtitle { font-size: 13px; color: #6b7280; text-align: center; margin-bottom: 24px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 4px; }
-.form-group input {
-    width: 100%; padding: 12px 14px; border: 1.5px solid #d1d5db; border-radius: 10px;
-    font-size: 15px; font-family: inherit; outline: none; transition: border-color 0.2s;
-}
-.form-group input:focus { border-color: #1a3934; }
-.btn {
-    display: block; width: 100%; padding: 14px; border: none; border-radius: 12px;
-    font-size: 15px; font-weight: 600; cursor: pointer; text-align: center;
-    background: #1a3934; color: #fff; transition: background 0.2s; font-family: inherit;
-}
-.btn:hover { background: #0f2925; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.error-box {
-    background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px;
-    padding: 20px; text-align: center; color: #991b1b; font-size: 14px;
-}
-.success-msg {
-    text-align: center; padding: 12px; background: #d1fae5;
-    border-radius: 10px; color: #065f46; font-size: 14px; font-weight: 500;
-}
-.status-badge {
-    display: inline-block; padding: 6px 16px; border-radius: 20px;
-    font-size: 13px; font-weight: 600;
-}
-.status-pending { background: #fef3c7; color: #92400e; }
-.status-accepted { background: #dbeafe; color: #1e40af; }
-.status-preparing { background: #dbeafe; color: #1e40af; }
-.status-ready { background: #d1fae5; color: #065f46; }
-.status-served { background: #d1fae5; color: #065f46; }
-.status-completed { background: #d1fae5; color: #065f46; }
-.status-rejected { background: #fce4ec; color: #c62828; }
-.status-cancelled { background: #f3f4f6; color: #6b7280; }
-.info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
-.info-row:last-child { border-bottom: none; }
-.label { color: #6b7280; }
-.value { font-weight: 600; color: #1a1b1f; text-align: right; }
-.item-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; color: #4b5563; }
-.item-name { flex: 1; }
-.item-qty { width: 40px; text-align: center; color: #6b7280; }
-.item-price { width: 70px; text-align: right; font-weight: 500; }
-.delivery-steps {
-    display: flex; justify-content: space-between; margin: 20px 0; position: relative;
-}
-.delivery-steps::before {
-    content: ''; position: absolute; top: 50%; left: 10%; right: 10%;
-    height: 3px; background: #e5e7eb; transform: translateY(-50%); z-index: 0;
-}
-.step {
-    position: relative; z-index: 1; display: flex; flex-direction: column;
-    align-items: center; gap: 4px; width: 25%;
-}
-.step .dot { width: 12px; height: 12px; border-radius: 50%; background: #e5e7eb; border: 2px solid #fff; box-shadow: 0 0 0 2px #e5e7eb; }
-.step.completed .dot { background: #059669; box-shadow: 0 0 0 2px #059669; }
-.step.active .dot { background: #1a3934; box-shadow: 0 0 0 2px #1a3934; animation: pulse 1.5s infinite; }
-.step .step-label { font-size: 9px; color: #9ca3af; text-align: center; white-space: nowrap; }
-.step.completed .step-label { color: #059669; font-weight: 600; }
-.step.active .step-label { color: #1a3934; font-weight: 600; }
-@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 2px #1a3934; } 50% { box-shadow: 0 0 0 6px rgba(26,57,52,0.3); } }
-#trackMap { height: 200px; border-radius: 12px; margin-top: 12px; display: none; }
-.back-link {
-    display: inline-flex; align-items: center; gap: 4px; color: #1a3934;
-    text-decoration: none; font-size: 14px; font-weight: 500; margin-bottom: 20px;
-}
-.back-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 <div class="phone-frame">
-  <div class="bg-wrapper">
-    <div class="pr-share-header">
-      <button class="back-btn-cmon" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">arrow_back</span></button>
-      <span class="header-brand"><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></span>
-      <div class="header-actions">
-        <button class="header-action-btn" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'"><span class="material-symbols-rounded">restaurant_menu</span></button>
-        <button class="header-action-btn" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">home</span></button>
+  <div class="tk-top">
+    <button class="tk-round" aria-label="Back" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">arrow_back_ios_new</span></button>
+    <div class="tk-title"><b>Track Order</b><small><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></small></div>
+    <div class="tk-actions">
+      <button class="tk-round" aria-label="Menu" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'"><span class="material-symbols-rounded">restaurant_menu</span></button>
+      <button class="tk-round" aria-label="Home" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">home</span></button>
+    </div>
+  </div>
+
+  <div class="content">
+  <?php if (!$order): ?>
+    <div class="card tk-search">
+      <div class="tk-search-ic"><span class="material-symbols-rounded">local_shipping</span></div>
+      <h1>Track Your Order</h1>
+      <p class="subtitle">Enter your order number and phone to see live status</p>
+      <form method="POST">
+        <div class="form-group">
+          <label for="tkOrderNo">Order Number</label>
+          <input type="text" id="tkOrderNo" name="order_number" placeholder="e.g. ORD-20261012-1234" required>
+        </div>
+        <div class="form-group">
+          <label for="tkPhone">Phone Number</label>
+          <input type="tel" id="tkPhone" name="customer_phone" placeholder="Phone used at checkout" required>
+        </div>
+        <button type="submit" class="tk-cta">Track Order</button>
+      </form>
+      <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+    </div>
+  <?php else:
+    $tkType = $order['order_type'];
+    // Steps shown in the pill (labels + icons) for this kind of order
+    if ($tkType === 'Delivery') {
+        $tkSteps = [['Placed', 'receipt_long'], ['Preparing', 'skillet'], ['On the way', 'two_wheeler'], ['Delivered', 'where_to_vote']];
+    } elseif ($tkType === 'Takeaway') {
+        $tkSteps = [['Placed', 'receipt_long'], ['Preparing', 'skillet'], ['Pickup', 'shopping_bag'], ['Collected', 'front_hand']];
+    } else {
+        $tkSteps = [['Placed', 'receipt_long'], ['Preparing', 'skillet'], ['Ready', 'room_service'], ['Served', 'restaurant']];
+    }
+  ?>
+    <div class="card" id="tkMain">
+      <div class="tk-head">
+        <h1><span id="tkHeadline">Order placed!</span><span class="sub">Order #<?php echo htmlspecialchars($order['order_number']); ?> · <?php echo htmlspecialchars($tkType); ?></span></h1>
+        <div class="status-badge status-<?php echo strtolower($order['order_status']); ?>" id="orderStatusBadge"><span id="orderStatusText"><?php echo htmlspecialchars($statusLabels[$order['order_status']] ?? $order['order_status']); ?></span></div>
+      </div>
+
+      <div id="tkProgress">
+        <div class="tk-bubble" id="tkBubble">
+          <b id="tkBubbleTitle">Order placed!</b>
+          <div class="tk-bubble-row">
+            <span class="tk-chip"><i><span class="material-symbols-rounded" id="tkChipIcon">receipt_long</span></i><span id="tkChipText">Waiting for the restaurant</span></span>
+            <span class="tk-next" id="tkNext"><i>&rsaquo;</i><span id="tkNextText">Preparing</span></span>
+          </div>
+        </div>
+        <div class="tk-track" role="progressbar" aria-valuemin="1" aria-valuemax="4" id="tkTrack">
+          <div class="tk-fill" id="tkFill"></div>
+          <div class="tk-nodes">
+            <?php foreach ($tkSteps as $i => $st): ?><div class="tk-node" data-icon="<?php echo $st[1]; ?>"><i><span class="material-symbols-rounded"><?php echo $st[1]; ?></span></i></div><?php endforeach; ?>
+          </div>
+        </div>
+        <div class="tk-labels" id="tkLabels">
+          <?php foreach ($tkSteps as $i => $st): ?><div><em><?php echo $i + 1; ?></em><?php echo htmlspecialchars($st[0]); ?></div><?php endforeach; ?>
+        </div>
+      </div>
+
+      <div class="tk-status">
+        <div class="ic"><span class="material-symbols-rounded" id="tkStatusIcon">receipt_long</span></div>
+        <div><b id="tkStatusTitle">We've got your order</b><p id="tkStatusText">The restaurant will confirm it shortly.</p></div>
+      </div>
+
+      <?php if ($tkType === 'Delivery'): ?>
+      <div id="trackMap"></div>
+      <p id="riderLocationNote">Rider's live location</p>
+      <?php endif; ?>
+
+      <div id="loyaltyEarnedNotice" class="loyalty-note" style="display:<?php echo (($order['loyalty_points_earned'] ?? 0) > 0) ? 'block' : 'none'; ?>">
+        <span class="material-symbols-rounded">redeem</span>
+        You earned <span id="loyaltyEarnedPoints"><?php echo (int)($order['loyalty_points_earned'] ?? 0); ?></span> loyalty points on this order!
       </div>
     </div>
-    <div class="content">
-    <div class="container">
-    <?php if (!$order): ?>
-        <div class="card" style="text-align:center;padding-top:40px;">
-            <span class="material-symbols-rounded" style="font-size:48px;color:#1a3934;">search</span>
-            <h1>Track Your Order</h1>
-            <p class="subtitle">Enter your order number and phone to see live status</p>
-        </div>
-        <div class="card">
-            <form method="POST">
-                <div class="form-group">
-                    <label>Order Number</label>
-                    <input type="text" name="order_number" placeholder="e.g. #ORD-123" required>
-                </div>
-                <div class="form-group">
-                    <label>Phone Number</label>
-                    <input type="tel" name="customer_phone" placeholder="Phone used at checkout" required>
-                </div>
-                <button type="submit" class="btn">Track Order</button>
-            </form>
-            <?php if ($error): ?>
-                <div class="error-box" style="margin-top:16px;"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
-        </div>
-    <?php else: ?>
-        <a href="track.php" class="back-link"><span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> Track Another</a>
 
-        <div class="card text-center">
-            <span class="material-symbols-rounded" style="font-size:40px;color:#1a3934;margin-bottom:8px;">receipt_long</span>
-            <h1><?php echo htmlspecialchars($order['restaurant_name']); ?></h1>
-            <p class="subtitle">Order #<?php echo htmlspecialchars($order['order_number']); ?></p>
-            <div class="status-badge status-<?php echo strtolower($order['order_status']); ?>" id="orderStatusBadge">
-                <span id="orderStatusText"><?php echo htmlspecialchars($statusLabels[$order['order_status']] ?? $order['order_status']); ?></span>
-            </div>
-            <div id="loyaltyEarnedNotice" style="display:<?php echo (($order['loyalty_points_earned'] ?? 0) > 0) ? 'block' : 'none'; ?>;margin-top:10px;background:#fdf0ed;border:1.5px dashed #e17055;border-radius:10px;padding:10px 14px;font-size:13px;color:#d63031;font-weight:600;">
-                <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">redeem</span>
-                You earned <span id="loyaltyEarnedPoints"><?php echo (int)($order['loyalty_points_earned'] ?? 0); ?></span> loyalty points on this order!
-            </div>
-        </div>
+    <p id="liveNote" class="live-note on"><span class="live-dot"></span><span class="live-text">Live · updates automatically</span></p>
 
-        <?php if ($order['order_type'] !== 'Delivery' && !in_array($order['order_status'], ['Rejected', 'Cancelled'], true)): ?>
-        <div class="card">
-            <h2>Order Progress</h2>
-            <?php
-            // Grouped rather than one step per raw status: some orders skip
-            // "Accepted" and go straight Pending -> Preparing (both valid per
-            // order_state_machine.php), and Served/Completed are functionally
-            // the same milestone from the customer's point of view.
-            $orderStepLabels = ['Order Placed', 'Preparing', 'Ready', 'Completed'];
-            $orderStepGroups = [
-                ['Pending', 'Accepted'],
-                ['Preparing'],
-                ['Ready'],
-                ['Served', 'Completed'],
-            ];
-            $currentOrderStepIdx = -1;
-            foreach ($orderStepGroups as $i => $statuses) {
-                if (in_array($order['order_status'], $statuses, true)) { $currentOrderStepIdx = $i; break; }
-            }
-            ?>
-            <?php $lastOrderStepIdx = count($orderStepLabels) - 1; ?>
-            <div class="delivery-steps" id="orderSteps">
-                <?php foreach ($orderStepLabels as $i => $label):
-                    // The terminal step (Completed) has no "next" step to be
-                    // "active" ahead of — once reached it should render as
-                    // done (checked, static), not pulsing forever.
-                    if ($i < $currentOrderStepIdx) { $cls = 'completed'; }
-                    elseif ($i === $currentOrderStepIdx) { $cls = ($i === $lastOrderStepIdx) ? 'completed' : 'active'; }
-                    else { $cls = ''; }
-                ?>
-                <div class="step <?php echo $cls; ?>">
-                    <div class="dot"></div>
-                    <span class="step-label"><?php echo htmlspecialchars($label); ?></span>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <?php if ($order['order_type'] === 'Delivery'): ?>
-        <div class="card">
-            <h2>Delivery Progress</h2>
-            <?php
-            // Rendered for every Delivery order, not just ones that already
-            // have a delivery_tracking row — otherwise this card (and the
-            // live-updating script below it) never appears until the
-            // customer manually refreshes after a rider gets assigned.
-            $steps = ['Assigned' => 'Ready', 'Picked_Up' => 'Picked Up', 'In_Transit' => 'In Transit', 'Delivered' => 'Delivered'];
-            $allStatuses = ['Assigned', 'Picked_Up', 'In_Transit', 'Delivered'];
-            $currentIdx = ($tracking && in_array($tracking['delivery_status'] ?? null, $allStatuses, true))
-                ? array_search($tracking['delivery_status'], $allStatuses)
-                : -1;
-            ?>
-            <div class="delivery-steps" id="deliverySteps">
-                <?php foreach ($allStatuses as $i => $s): $cls = $i <= $currentIdx ? 'completed' : ($i === $currentIdx + 1 ? 'active' : ''); ?>
-                <div class="step <?php echo $cls; ?>" data-status="<?php echo $s; ?>">
-                    <div class="dot"></div>
-                    <span class="step-label"><?php echo htmlspecialchars($steps[$s] ?? $s); ?></span>
-                </div>
-                <?php endforeach; ?>
-            </div>
-
-            <div id="trackMap" style="display:none; height:200px; border-radius:12px; margin-top:12px;"></div>
-            <p id="riderLocationNote" style="display:none; font-size:11px;color:#9ca3af;margin-top:8px;text-align:center;">Rider's live location</p>
-        </div>
-        <?php endif; ?>
-
-        <?php if ($order['order_type'] === 'Delivery'): ?>
-        <div class="card">
-            <h2>Delivery Details</h2>
-            <div class="info-row">
-                <span class="label">Address</span>
-                <span class="value" style="max-width:200px;"><?php echo htmlspecialchars($order['customer_address'] ?? 'N/A'); ?></span>
-            </div>
-            <div class="info-row" id="deliveryChargeRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>">
-                <span class="label">Delivery Charge</span>
-                <span class="value" id="deliveryChargeValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span>
-            </div>
-            <div class="info-row" id="riderRow" style="<?php echo ($tracking && $tracking['rider_name']) ? '' : 'display:none;'; ?>">
-                <span class="label">Rider</span>
-                <span class="value" id="riderName"><?php echo $tracking ? htmlspecialchars($tracking['rider_name'] ?? '') : ''; ?></span>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <div class="card">
-            <h2>Order Summary</h2>
-            <?php foreach ($items as $item): ?>
-            <div class="item-row">
-                <span class="item-name"><?php echo htmlspecialchars($item['item_name']); ?></span>
-                <span class="item-qty">x<?php echo (int)$item['quantity']; ?></span>
-                <span class="item-price"><?php echo $currency . number_format((float)$item['total_price'], 2); ?></span>
-            </div>
-            <?php endforeach; ?>
-            <div style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:8px;">
-                <div class="info-row"><span class="label">Subtotal</span><span class="value"><?php echo $currency . number_format((float)$order['subtotal'], 2); ?></span></div>
-                <?php if ((float)$order['tax'] > 0): ?>
-                <div class="info-row"><span class="label">Tax</span><span class="value"><?php echo $currency . number_format((float)$order['tax'], 2); ?></span></div>
-                <?php endif; ?>
-                <?php
-                // Discounts and the packaging charge are part of `total` but have
-                // no line of their own here, so the rows didn't add up to the
-                // Total. Show the discounts, and derive packaging (not stored
-                // separately) as whatever is left over.
-                $couponDiscount  = (float)($order['discount_amount'] ?? 0);
-                $loyaltyDiscount = (float)($order['loyalty_discount_amount'] ?? 0);
-                $otherCharges = round((float)$order['total'] - (float)$order['subtotal'] - (float)$order['tax']
-                    - (float)$order['delivery_charge'] + $couponDiscount + $loyaltyDiscount, 2);
-                ?>
-                <?php if ($couponDiscount > 0): ?>
-                <div class="info-row"><span class="label">Discount<?php echo !empty($order['coupon_code']) ? ' (' . htmlspecialchars($order['coupon_code']) . ')' : ''; ?></span><span class="value" style="color:#16a34a;">−<?php echo $currency . number_format($couponDiscount, 2); ?></span></div>
-                <?php endif; ?>
-                <?php if ($loyaltyDiscount > 0): ?>
-                <div class="info-row"><span class="label">Loyalty points</span><span class="value" style="color:#16a34a;">−<?php echo $currency . number_format($loyaltyDiscount, 2); ?></span></div>
-                <?php endif; ?>
-                <?php if ($otherCharges >= 0.01): ?>
-                <div class="info-row" id="otherChargesRow"><span class="label">Packaging</span><span class="value"><?php echo $currency . number_format($otherCharges, 2); ?></span></div>
-                <?php endif; ?>
-                <div class="info-row" id="summaryDeliveryRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>"><span class="label">Delivery</span><span class="value" id="summaryDeliveryValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
-                <div class="info-row" style="font-weight:700;"><span class="label">Total</span><span class="value" id="summaryTotalValue"><?php echo $currency . number_format((float)$order['total'], 2); ?></span></div>
-            </div>
-        </div>
-
-        <p id="liveNote" class="live-note on"><span class="live-dot"></span><span class="live-text">Live · updates automatically</span></p>
+    <?php if ($tkType === 'Delivery'): ?>
+    <div class="card">
+      <h2>Delivery Details</h2>
+      <div class="info-row"><span class="label">Address</span><span class="value" style="max-width:220px;"><?php echo htmlspecialchars($order['customer_address'] ?? 'N/A'); ?></span></div>
+      <div class="info-row" id="deliveryChargeRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>"><span class="label">Delivery Charge</span><span class="value" id="deliveryChargeValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
+      <div class="info-row" id="riderRow" style="<?php echo ($tracking && $tracking['rider_name']) ? '' : 'display:none;'; ?>"><span class="label">Rider</span><span class="value" id="riderName"><?php echo $tracking ? htmlspecialchars($tracking['rider_name'] ?? '') : ''; ?></span></div>
+    </div>
     <?php endif; ?>
+
+    <div class="card">
+      <h2>Order Summary</h2>
+      <?php foreach ($items as $item):
+        $img = (string)($item['item_image'] ?? '');
+        $imgUrl = $img === '' ? '' : (preg_match('#^(https?:|data:)#', $img) ? $img : 'image.php?id=' . rawurlencode(preg_replace('/^db:/', '', $img)));
+      ?>
+      <div class="tk-item">
+        <div class="tk-thumb"><?php if ($imgUrl): ?><img src="<?php echo htmlspecialchars($imgUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy"><?php else: ?><span class="material-symbols-rounded">restaurant</span><?php endif; ?></div>
+        <div class="tk-item-info"><b><?php echo htmlspecialchars($item['item_name']); ?></b><span><?php echo (int)$item['quantity']; ?> × <?php echo $currency . number_format((float)$item['unit_price'], 2); ?></span></div>
+        <div class="tk-item-price"><?php echo $currency . number_format((float)$item['total_price'], 2); ?></div>
+      </div>
+      <?php endforeach; ?>
+      <?php
+      // Discounts and the packaging charge are part of `total` but have no line
+      // of their own, so show the discounts and derive packaging (not stored
+      // separately) as whatever is left over — the rows then add up to Total.
+      $couponDiscount  = (float)($order['discount_amount'] ?? 0);
+      $loyaltyDiscount = (float)($order['loyalty_discount_amount'] ?? 0);
+      $otherCharges = round((float)$order['total'] - (float)$order['subtotal'] - (float)$order['tax']
+          - (float)$order['delivery_charge'] + $couponDiscount + $loyaltyDiscount, 2);
+      ?>
+      <div class="tk-totals">
+        <div class="info-row"><span class="label">Subtotal</span><span class="value"><?php echo $currency . number_format((float)$order['subtotal'], 2); ?></span></div>
+        <?php if ($couponDiscount > 0): ?>
+        <div class="info-row"><span class="label">Discount<?php echo !empty($order['coupon_code']) ? ' (' . htmlspecialchars($order['coupon_code']) . ')' : ''; ?></span><span class="value" style="color:#16a34a;">−<?php echo $currency . number_format($couponDiscount, 2); ?></span></div>
+        <?php endif; ?>
+        <?php if ($loyaltyDiscount > 0): ?>
+        <div class="info-row"><span class="label">Loyalty points</span><span class="value" style="color:#16a34a;">−<?php echo $currency . number_format($loyaltyDiscount, 2); ?></span></div>
+        <?php endif; ?>
+        <div class="info-row" id="summaryDeliveryRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>"><span class="label">Delivery</span><span class="value" id="summaryDeliveryValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
+        <?php if ($otherCharges >= 0.01): ?>
+        <div class="info-row" id="otherChargesRow"><span class="label">Packaging</span><span class="value"><?php echo $currency . number_format($otherCharges, 2); ?></span></div>
+        <?php endif; ?>
+        <?php if ((float)$order['tax'] > 0): ?>
+        <div class="info-row"><span class="label">Tax</span><span class="value"><?php echo $currency . number_format((float)$order['tax'], 2); ?></span></div>
+        <?php endif; ?>
+        <div class="info-row tk-grand"><span class="label">Total<small>(incl. fees and tax)</small></span><span class="value" id="summaryTotalValue"><?php echo $currency . number_format((float)$order['total'], 2); ?></span></div>
+      </div>
     </div>
-    </div>
+
+    <a class="tk-cta" href="<?php echo restaurantPageUrl('menu'); ?>"><span class="material-symbols-rounded">restaurant_menu</span>Back to Menu</a>
+    <a href="track.php" class="tk-another"><span class="material-symbols-rounded" style="font-size:17px;">search</span>Track another order</a>
+  <?php endif; ?>
   </div>
 </div>
 
+<?php if ($order): ?>
 <script>
 (function() {
     var statusLabels = <?php echo json_encode($statusLabels); ?>;
-    var deliverySteps = ['Assigned', 'Picked_Up', 'In_Transit', 'Delivered'];
-    var map = null, riderMarker = null, leafletPromise = null;
+    var orderType = <?php echo json_encode($order['order_type']); ?>;
+    var map = null, riderMarker = null, leafletPromise = null, riderName = <?php echo json_encode($tracking['rider_name'] ?? ''); ?>;
 
-    // Leaflet is only loaded once we actually have GPS coordinates to show —
-    // most orders spend most of their life with no rider assigned yet, so
-    // there's no point loading a map library that has nothing to render.
-    // This also means the map now appears live the moment a rider starts
-    // sharing location mid-session, instead of requiring a page refresh.
+    // ── What the page says at each point (headline, bubble, status card) ──
+    // Step index in the pill: 0 placed, 1 preparing, 2 ready / on the way, 3 done
+    function stageOf(status, delivery) {
+        if (status === 'Cancelled' || status === 'Rejected') return { stop: true };
+        if (orderType === 'Delivery') {
+            if (delivery === 'Delivered' || status === 'Completed') return { i: 3, k: 'delivered' };
+            if (delivery === 'Picked_Up' || delivery === 'In_Transit') return { i: 2, k: 'onway' };
+            if (status === 'Ready' || delivery === 'Assigned') return { i: 1, k: 'packed' };
+            if (status === 'Preparing') return { i: 1, k: 'preparing' };
+            return { i: 0, k: status === 'Accepted' ? 'accepted' : 'placed' };
+        }
+        if (status === 'Served' || status === 'Completed') return { i: 3, k: 'done' };
+        if (status === 'Ready') return { i: 2, k: 'ready' };
+        if (status === 'Preparing') return { i: 1, k: 'preparing' };
+        return { i: 0, k: status === 'Accepted' ? 'accepted' : 'placed' };
+    }
+    function words(st) {
+        var rider = riderName ? 'Rider ' + riderName : 'Your rider';
+        var take = orderType === 'Takeaway', dine = orderType !== 'Delivery' && !take;
+        var W = {
+            placed:    ['Order placed!', 'Order placed!', 'receipt_long', 'Waiting for the restaurant', 'receipt_long', "We've got your order", 'The restaurant will confirm it shortly.'],
+            accepted:  ['Order confirmed!', 'Order accepted!', 'thumb_up', 'The kitchen starts soon', 'thumb_up', 'Your order is confirmed', 'The kitchen will start on it in a moment.'],
+            preparing: ['Cooking it up', 'Being prepared', 'skillet', 'Fresh in the kitchen', 'skillet', 'Your food is being prepared', 'Made fresh, just for you.'],
+            packed:    ["You're almost there!", 'Packed & ready', 'inventory_2', riderName ? rider + ' is picking it up' : 'Waiting for a rider', 'inventory_2', 'Your order is packed', riderName ? rider + ' is on the way to collect it.' : "We'll assign a rider shortly."],
+            onway:     ["You're almost there!", 'On the way!', 'two_wheeler', rider + ' is heading to you', 'two_wheeler', 'Your order is on the way', rider + ' is bringing it to your door.'],
+            delivered: ['Enjoy your meal!', 'Delivered', 'where_to_vote', 'Delivered to your door', 'check_circle', 'Delivered', 'Hope you enjoy it. You can rate it from your profile.'],
+            ready:     ["You're almost there!", 'Order is ready!', take ? 'shopping_bag' : 'room_service', take ? 'Pick up your order' : 'Coming to your table', take ? 'shopping_bag' : 'room_service', 'Order is ready!', take ? 'Please pick up your order at the counter.' : 'It will be served at your table in a moment.'],
+            done:      ['Enjoy your meal!', take ? 'Collected' : 'Served', 'check_circle', take ? 'Order collected' : 'Served at your table', 'check_circle', take ? 'Collected — enjoy!' : 'Served — enjoy!', 'Hope you enjoy it. You can rate it from your profile.']
+        };
+        return W[st.k];
+    }
+    var nextLabels = Array.prototype.map.call(document.querySelectorAll('#tkLabels div'), function(d) { return d.textContent.replace(/^\d+/, '').trim(); });
+    var lastStage = '';
+
+    function renderStage(status, delivery) {
+        var st = stageOf(status, delivery);
+        var main = document.getElementById('tkMain');
+        var set = function(id, v) { var el = document.getElementById(id); if (el && el.textContent !== v) el.textContent = v; };
+        if (st.stop) {
+            main.classList.add('tk-stopped');
+            document.getElementById('tkProgress').style.display = 'none';
+            set('tkHeadline', status === 'Rejected' ? 'Order not accepted' : 'Order cancelled');
+            set('tkStatusIcon', 'cancel');
+            set('tkStatusTitle', status === 'Rejected' ? 'The restaurant could not take this order' : 'This order was cancelled');
+            set('tkStatusText', 'If you paid online, the refund goes back to your payment method.');
+            return;
+        }
+        var w = words(st);
+        var final = st.i === 3;
+        // Badge follows the same step (a delivery can be 'On the way' while the kitchen status still says Preparing)
+        var take = orderType === 'Takeaway';
+        var badge = { placed: 'Order Placed', accepted: 'Accepted', preparing: 'Preparing', packed: 'Ready', onway: 'On the way', delivered: 'Delivered', ready: 'Ready', done: take ? 'Collected' : 'Served' }[st.k];
+        set('orderStatusText', badge);
+        set('tkHeadline', w[0]); set('tkBubbleTitle', w[1]); set('tkChipIcon', w[2]); set('tkChipText', w[3]);
+        set('tkStatusIcon', w[4]); set('tkStatusTitle', w[5]); set('tkStatusText', w[6]);
+        var next = document.getElementById('tkNext');
+        if (final) next.style.display = 'none'; else { next.style.display = ''; set('tkNextText', nextLabels[st.i + 1] || ''); }
+        // Pill: filled up to the current step (all the way when done)
+        var fill = document.getElementById('tkFill');
+        fill.style.width = final ? '100%' : 'calc(' + (st.i * 25 + 12.5) + '% + 30px)';
+        document.getElementById('tkTrack').setAttribute('aria-valuenow', st.i + 1);
+        document.querySelectorAll('#tkTrack .tk-node').forEach(function(n, k) {
+            n.className = 'tk-node' + (k < st.i ? ' done' : k === st.i ? ' on' + (final ? ' final' : '') : '');
+            var icon = n.querySelector('.material-symbols-rounded');
+            var want = k < st.i || (final && k === st.i) ? 'check' : n.getAttribute('data-icon');
+            if (icon.textContent !== want) icon.textContent = want;
+        });
+        document.querySelectorAll('#tkLabels div').forEach(function(d, k) { d.className = k < st.i ? 'done' : (k === st.i ? 'on' : ''); });
+        var bubble = document.getElementById('tkBubble');
+        bubble.style.setProperty('--arrow', (st.i * 25 + 12.5) + '%');
+        var key = st.i + st.k;
+        if (lastStage && key !== lastStage) { bubble.classList.remove('pop'); void bubble.offsetWidth; bubble.classList.add('pop'); }
+        lastStage = key;
+    }
+
+    // ── Rider map (Leaflet loads only once there are coordinates) ──
     function loadLeaflet() {
         if (window.L) return Promise.resolve();
         if (leafletPromise) return leafletPromise;
@@ -430,28 +441,22 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
         });
         return leafletPromise;
     }
-
     function showRiderOnMap(lat, lng) {
         loadLeaflet().then(function() {
             var mapEl = document.getElementById('trackMap');
             var noteEl = document.getElementById('riderLocationNote');
-            // Explicit 'block'/'' matters here: #trackMap has display:none in
-            // the stylesheet, so clearing the inline style would just fall
-            // back to that CSS default instead of actually showing it.
             if (mapEl) mapEl.style.display = 'block';
             if (noteEl) noteEl.style.display = 'block';
             if (!map) {
                 map = L.map('trackMap').setView([lat, lng], 15);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+                var tk = getComputedStyle(document.documentElement).getPropertyValue('--tk').trim() || '#1a3934';
                 var riderIcon = L.divIcon({
                     className: '',
-                    html: '<div style="background:#1a3934;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span class="material-symbols-rounded" style="font-size:20px;">directions_bike</span></div>',
-                    iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -40]
+                    html: '<div style="background:' + tk + ';color:#fff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span class="material-symbols-rounded" style="font-size:20px;">two_wheeler</span></div>',
+                    iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -40]
                 });
                 riderMarker = L.marker([lat, lng], { icon: riderIcon }).addTo(map).bindPopup('Rider is here');
-                // Leaflet sizes itself off the container's dimensions at
-                // creation time; since it can now be created while the
-                // container just became visible, force a resize check.
                 setTimeout(function() { map.invalidateSize(); }, 0);
             } else {
                 riderMarker.setLatLng([lat, lng]);
@@ -459,52 +464,9 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
             }
         });
     }
-
     <?php if ($tracking && $tracking['current_lat'] && $tracking['current_lng']): ?>
     showRiderOnMap(<?php echo $tracking['current_lat']; ?>, <?php echo $tracking['current_lng']; ?>);
     <?php endif; ?>
-
-    function updateDeliveryProgress(deliveryStatus) {
-        var idx = deliverySteps.indexOf(deliveryStatus);
-        var steps = document.querySelectorAll('#deliverySteps .step');
-        steps.forEach(function(el, i) {
-            el.className = 'step';
-            if (i < idx) el.classList.add('completed');
-            else if (i === idx) el.classList.add('active');
-        });
-    }
-
-    // Mirrors the PHP $orderStepGroups above — kept in sync manually since
-    // this timeline only exists for Dine-in/Takeaway orders and needs to
-    // update live from the same polled order_status the badge text uses.
-    var orderStepGroups = [['Pending', 'Accepted'], ['Preparing'], ['Ready'], ['Served', 'Completed']];
-    function updateOrderProgress(orderStatus) {
-        var stepsEl = document.getElementById('orderSteps');
-        if (!stepsEl) return;
-
-        // Cancelled/Rejected aren't part of the happy-path timeline — leaving
-        // it showing stale progress under a badge that now says "Cancelled"
-        // is confusing, so hide the whole card instead.
-        if (orderStatus === 'Cancelled' || orderStatus === 'Rejected') {
-            var card = stepsEl.closest('.card');
-            if (card) card.style.display = 'none';
-            return;
-        }
-
-        var idx = -1;
-        for (var i = 0; i < orderStepGroups.length; i++) {
-            if (orderStepGroups[i].indexOf(orderStatus) !== -1) { idx = i; break; }
-        }
-        var steps = stepsEl.querySelectorAll('.step');
-        var lastIdx = steps.length - 1;
-        steps.forEach(function(el, i) {
-            el.className = 'step';
-            // Terminal step (Completed) renders as done, not perpetually
-            // "active"/pulsing — mirrors the PHP render above.
-            if (i < idx) el.classList.add('completed');
-            else if (i === idx) el.classList.add(i === lastIdx ? 'completed' : 'active');
-        });
-    }
 
     var consecutivePollFailures = 0;
     function setLocationNote(text) {
@@ -519,7 +481,6 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
     // (Polling rather than a held-open SSE connection: on shared hosting each
     // open connection would pin a PHP worker per customer watching.)
     var pollUrl = '../api/get_tracking_status.php?order_number=<?php echo urlencode($order['order_number']); ?>&customer_phone=<?php echo urlencode($customerPhone); ?>';
-    var orderType = <?php echo json_encode($order['order_type']); ?>;
     var lastStatus = <?php echo json_encode($order['order_status']); ?>;
     var lastDelivery = <?php echo json_encode($tracking['delivery_status'] ?? null); ?>;
     var lastChangeAt = Date.now(), pollTimer = null, inFlight = false;
@@ -532,9 +493,9 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
     var finished = isFinished(lastStatus, lastDelivery);
 
     function nextDelay() {
-        if (lastDelivery === 'Picked_Up' || lastDelivery === 'In_Transit') return 4000; // rider moving
+        if (lastDelivery === 'Picked_Up' || lastDelivery === 'In_Transit') return 3000; // rider moving
         var idle = Date.now() - lastChangeAt;
-        if (idle < 10 * 60000) return 5000;
+        if (idle < 10 * 60000) return 4000;
         if (idle < 30 * 60000) return 10000;
         return 20000;
     }
@@ -570,6 +531,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 if (!d.success) return;
                 consecutivePollFailures = 0;
                 var newDelivery = d.tracking ? (d.tracking.delivery_status || null) : null;
+                if (d.tracking && d.tracking.rider_name) riderName = d.tracking.rider_name;
                 if (d.order_status !== lastStatus || newDelivery !== lastDelivery) {
                     lastChangeAt = Date.now();
                     if (d.order_status !== lastStatus) flashStatus();
@@ -583,8 +545,8 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                 if (statusEl && d.order_status) {
                     statusEl.textContent = statusLabels[d.order_status] || d.order_status;
                     badgeEl.className = 'status-badge status-' + d.order_status.toLowerCase();
-                    updateOrderProgress(d.order_status);
                 }
+                renderStage(lastStatus, lastDelivery);
                 if (typeof d.loyalty_points_earned !== 'undefined' && d.loyalty_points_earned > 0) {
                     var loyaltyNotice = document.getElementById('loyaltyEarnedNotice');
                     var loyaltyPointsEl = document.getElementById('loyaltyEarnedPoints');
@@ -593,60 +555,37 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
                         loyaltyNotice.style.display = 'block';
                     }
                 }
-                // Reflects a delivery charge the restaurant sets when accepting
-                // the order (KM-based delivery pricing) — not present at page
-                // load yet if the order was still Pending, so patch it in live.
+                // A delivery charge the restaurant sets when accepting the order
+                // (KM-based pricing) isn't there at page load if the order was
+                // still Pending, so patch it in live.
                 if (typeof d.delivery_charge !== 'undefined' && d.delivery_charge !== null) {
                     var dc = parseFloat(d.delivery_charge) || 0;
                     if (dc > 0) {
-                        var chargeRow = document.getElementById('deliveryChargeRow');
-                        var chargeVal = document.getElementById('deliveryChargeValue');
-                        var summaryRow = document.getElementById('summaryDeliveryRow');
-                        var summaryVal = document.getElementById('summaryDeliveryValue');
-                        var chargeText = '<?php echo $currency; ?>' + dc.toFixed(2);
-                        if (chargeRow) chargeRow.style.display = '';
-                        if (chargeVal) chargeVal.textContent = chargeText;
-                        if (summaryRow) summaryRow.style.display = '';
-                        if (summaryVal) summaryVal.textContent = chargeText;
+                        var chargeText = <?php echo json_encode($currency); ?> + dc.toFixed(2);
+                        ['deliveryChargeRow', 'summaryDeliveryRow'].forEach(function(id) { var el = document.getElementById(id); if (el) el.style.display = ''; });
+                        ['deliveryChargeValue', 'summaryDeliveryValue'].forEach(function(id) { var el = document.getElementById(id); if (el) el.textContent = chargeText; });
                     }
                 }
                 if (typeof d.total !== 'undefined' && d.total !== null) {
                     var totalVal = document.getElementById('summaryTotalValue');
-                    if (totalVal) totalVal.textContent = '<?php echo $currency; ?>' + parseFloat(d.total).toFixed(2);
+                    if (totalVal) totalVal.textContent = <?php echo json_encode($currency); ?> + parseFloat(d.total).toFixed(2);
                 }
                 if (d.tracking) {
                     if (d.tracking.rider_name) {
-                        document.getElementById('riderName').textContent = d.tracking.rider_name;
-                        document.getElementById('riderRow').style.display = '';
+                        var rn = document.getElementById('riderName'), rr = document.getElementById('riderRow');
+                        if (rn) rn.textContent = d.tracking.rider_name;
+                        if (rr) rr.style.display = '';
                     }
-                    if (d.tracking.delivery_status) {
-                        updateDeliveryProgress(d.tracking.delivery_status);
-                    }
-                    if (d.tracking.current_lat && d.tracking.current_lng) {
-                        // Handles both cases: map already showing (moves the
-                        // pin) and map not yet initialized because the rider
-                        // just started sharing location for the first time
-                        // since this page loaded (creates it on the fly).
-                        showRiderOnMap(d.tracking.current_lat, d.tracking.current_lng);
-                    }
-                    // A frozen map looks identical to a live one unless we say
-                    // otherwise — tell the customer when the rider's location
-                    // hasn't actually updated recently instead of leaving them
-                    // to assume a stalled pin is up to date.
+                    if (d.tracking.current_lat && d.tracking.current_lng) showRiderOnMap(d.tracking.current_lat, d.tracking.current_lng);
+                    // A frozen map looks like a live one: say so when the rider's
+                    // location hasn't updated recently.
                     var ageSec = d.tracking.location_age_seconds;
                     if (typeof ageSec === 'number') {
-                        if (ageSec > 180) {
-                            setLocationNote("Rider's location hasn't updated in a while — they may have a weak signal.");
-                        } else {
-                            setLocationNote("Rider's live location");
-                        }
+                        setLocationNote(ageSec > 180 ? "Rider's location hasn't updated in a while — they may have a weak signal." : "Rider's live location");
                     }
                 }
             })
             .catch(function() {
-                // Network hiccup on our side (not necessarily the rider's) —
-                // after a few misses in a row, tell the customer instead of
-                // leaving a silently-frozen map with no explanation.
                 consecutivePollFailures++;
                 if (consecutivePollFailures >= 3) {
                     setLocationNote('Having trouble getting live updates. Checking your connection…');
@@ -667,29 +606,23 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
     window.addEventListener('focus', poll);
     window.addEventListener('pageshow', function(e) { if (e.persisted) poll(); });
 
+    renderStage(lastStatus, lastDelivery);
     setLive(finished ? 'done' : 'on');
-    schedule(3000);
+    schedule(2500);
 })();
-
-// Keep the embedding iframe sized to this page's actual content — same
-// pattern cart.php/menu.php use, so this page fits the frame like every
-// other page instead of getting clipped or leaving dead space.
+</script>
+<?php endif; ?>
+<script>
+// Keep the embedding iframe sized to this page's content (same as cart/menu)
 (function() {
-  function getContentHeight() {
-    return document.body.scrollHeight;
-  }
   function sendHeight() {
-    var h = getContentHeight();
-    try { window.parent.postMessage({ type: 'rg-embed-resize', height: h }, '*'); } catch(e) {}
+    try { window.parent.postMessage({ type: 'rg-embed-resize', height: document.body.scrollHeight }, '*'); } catch(e) {}
   }
   sendHeight();
   setTimeout(sendHeight, 300);
   setTimeout(sendHeight, 1000);
   if (typeof ResizeObserver !== 'undefined') {
-    try {
-      var ro = new ResizeObserver(function(){ sendHeight(); });
-      ro.observe(document.body);
-    } catch(e){}
+    try { new ResizeObserver(function(){ sendHeight(); }).observe(document.body); } catch(e){}
   }
 })();
 </script>

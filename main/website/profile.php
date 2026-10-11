@@ -344,6 +344,24 @@ body {
 }
 .order-card:hover { border-color: #ccc; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
 .order-card:active { transform: scale(0.99); }
+/* Live mini tracker on active orders (same steps as the tracking page) */
+:root { --checkout-color: <?php echo htmlspecialchars($checkout_color ?? $primary_red, ENT_QUOTES, 'UTF-8'); ?>; --checkout-color-dark: <?php echo htmlspecialchars($checkout_color_dark ?? $dark_red, ENT_QUOTES, 'UTF-8'); ?>; }
+.mini-track { margin: 12px 0 4px; padding: 12px; border-radius: 16px; background: #f6f7f9; }
+.mini-track-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; }
+.mini-track-head b { flex: 1; min-width: 0; font-weight: 700; color: #16181d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-track-head .live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #6b7280; }
+.mini-track-head .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #16a34a; animation: miniLive 1.6s ease-out infinite; }
+@keyframes miniLive { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,.5); } 100% { box-shadow: 0 0 0 6px rgba(22,163,74,0); } }
+.mini-pill { position: relative; height: 34px; border-radius: 999px; background: #e9ebef; overflow: hidden; }
+.mini-pill .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: linear-gradient(90deg, var(--checkout-color-dark, var(--dark-red, #b91c1c)), var(--checkout-color, var(--primary-red, #e11d48)) 75%, color-mix(in srgb, var(--checkout-color, var(--primary-red, #e11d48)) 35%, #fff)); transition: width .8s cubic-bezier(.22,1,.36,1); }
+.mini-pill .nodes { position: absolute; inset: 0; display: flex; }
+.mini-pill .nodes span { flex: 1; display: grid; place-items: center; }
+.mini-pill .nodes i { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: #fff; color: #9aa0a8; font-style: normal; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.mini-pill .nodes i .fa-solid { font-size: 11px; }
+.mini-pill .nodes .done i, .mini-pill .nodes .on i { color: var(--checkout-color-dark, var(--dark-red, #b91c1c)); }
+.mini-labels { display: flex; margin-top: 5px; }
+.mini-labels span { flex: 1; text-align: center; font-size: 10.5px; font-weight: 600; color: #9aa0a8; }
+.mini-labels span.on, .mini-labels span.done { color: #16181d; }
 .order-card-top {
   display: flex;
   justify-content: space-between;
@@ -1624,6 +1642,38 @@ function vegLabel(t) {
   return '';
 }
 
+// ── Live mini tracker for an active order (same steps/wording as track.php) ──
+function miniTrackHtml(o) {
+  var status = o.order_status || 'Pending', dl = o.delivery_status || null, type = o.order_type || '';
+  if (['Cancelled', 'Rejected'].indexOf(status) !== -1) return '';
+  var i, text, rider = o.rider_name ? 'Rider ' + o.rider_name : 'Your rider';
+  if (type === 'Delivery') {
+    if (dl === 'Delivered' || status === 'Completed') return '';
+    if (dl === 'Picked_Up' || dl === 'In_Transit') { i = 2; text = rider + ' is on the way'; }
+    else if (status === 'Ready' || dl === 'Assigned') { i = 1; text = o.rider_name ? 'Packed · ' + rider + ' is picking it up' : 'Packed · waiting for a rider'; }
+    else if (status === 'Preparing') { i = 1; text = 'Being prepared'; }
+    else { i = 0; text = status === 'Accepted' ? 'Order accepted' : 'Waiting for the restaurant'; }
+  } else {
+    if (status === 'Served' || status === 'Completed') return '';
+    if (status === 'Ready') { i = 2; text = type === 'Takeaway' ? 'Ready — pick up your order' : 'Ready — coming to your table'; }
+    else if (status === 'Preparing') { i = 1; text = 'Being prepared'; }
+    else { i = 0; text = status === 'Accepted' ? 'Order accepted' : 'Waiting for the restaurant'; }
+  }
+  // Font Awesome (already loaded on this page) versions of the tracking page's icons
+  var steps = type === 'Delivery' ? [['Placed', 'fa-receipt'], ['Preparing', 'fa-fire-burner'], ['On the way', 'fa-motorcycle'], ['Delivered', 'fa-location-dot']]
+    : type === 'Takeaway' ? [['Placed', 'fa-receipt'], ['Preparing', 'fa-fire-burner'], ['Pickup', 'fa-bag-shopping'], ['Collected', 'fa-hand-holding']]
+    : [['Placed', 'fa-receipt'], ['Preparing', 'fa-fire-burner'], ['Ready', 'fa-bell-concierge'], ['Served', 'fa-utensils']];
+  var nodes = '', labels = '';
+  steps.forEach(function(s, k) {
+    var cls = k < i ? 'done' : (k === i ? 'on' : '');
+    nodes += '<span class="' + cls + '"><i><span class="fa-solid ' + (k < i ? 'fa-check' : s[1]) + '"></span></i></span>';
+    labels += '<span class="' + cls + '">' + s[0] + '</span>';
+  });
+  return '<div class="mini-track"><div class="mini-track-head"><b>' + escapeHtml(text) + '</b><span class="live">Live</span></div>' +
+    '<div class="mini-pill"><div class="fill" style="width:calc(' + (i * 25 + 12.5) + '% + 16px)"></div><div class="nodes">' + nodes + '</div></div>' +
+    '<div class="mini-labels">' + labels + '</div></div>';
+}
+
 function renderOrderCard(o) {
   var date = formatDate(o.created_at);
   var status = o.order_status || 'Pending';
@@ -1641,6 +1691,7 @@ function renderOrderCard(o) {
   html += '<div class="order-card-date">' + date + '</div></div>';
   html += '<span class="order-card-status ' + statusClass + '">' + status + '</span>';
   html += '</div>';
+  html += miniTrackHtml(o);
 
   // ── Items ──
   if (items.length > 0) {
@@ -1899,10 +1950,15 @@ document.addEventListener('DOMContentLoaded', function() {
   // reload — same live-polling pattern track.php already uses for a single
   // order's status. Paused while the tab isn't visible so it's not burning
   // requests on a background tab nobody's looking at.
+  // Every 5 s while an order is active (so rider updates show almost at once), else every 15 s
+  var lastOrdersPoll = 0;
   setInterval(function() {
     if (document.hidden) return;
+    var active = !!document.querySelector('.mini-track');
+    if (Date.now() - lastOrdersPoll < (active ? 5000 : 15000) - 200) return;
+    lastOrdersPoll = Date.now();
     loadOrderHistory(true);
-  }, 15000);
+  }, 5000);
   // ...and refresh immediately when the customer comes back to the tab, so
   // they never look at a status up to 15s old after switching apps.
   document.addEventListener('visibilitychange', function() {
