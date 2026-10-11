@@ -2075,14 +2075,14 @@ try {
             </div>
           </div>
           
-          <div class="settings-section">
+          <div class="settings-section" id="livePreviewSection">
             <h2 class="settings-section-title">
               <span class="material-symbols-rounded">preview</span>
               Live Website Preview
             </h2>
             <p style="color:#666;font-size:0.9rem;margin-bottom:16px;line-height:1.6;">
-              See how your restaurant looks to customers with your current banners, colors, and theme settings.
-              Save theme changes first, then click <strong>Refresh Preview</strong>.
+              Colours, fonts and card corners update here as you change them. Layout options (card design,
+              categories, header) show after you click <strong>Save Theme</strong> &mdash; the preview reloads by itself.
             </p>
 
             <!-- Device Toggle -->

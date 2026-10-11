@@ -8152,3 +8152,22 @@ body, html {
 }
 .bs-style-preview[data-price-style="filled"] .bs-preview-price-now { background: var(--bsp-price); color: #fff; }
 .bs-style-preview[data-price-style="soft"] .bs-preview-price-now { background: color-mix(in srgb, var(--bsp-price) 12%, #fff); border-color: transparent; }
+
+/* ===== Website Appearance: live preview stays in view =====
+   On wide screens the preview column sticks to the top while the settings
+   on the left scroll, so changes can be watched as they're made; the
+   preview card scrolls inside itself if it's taller than the screen. */
+@media (min-width: 1000px) {
+  /* The dashboard containers hide sideways overflow, which silently makes each
+     one a (non-scrolling) scroll box, and sticky only sticks inside its nearest
+     scroll box. On this page use clip instead: same trimming, no scroll box. */
+  html:has(#websiteThemePage.active), body:has(#websiteThemePage.active),
+  .main-content:has(#websiteThemePage.active), #websiteThemePage .page-content { overflow-x: clip; overflow-y: visible; }
+  #websiteThemePage .settings-grid { overflow: visible; align-items: start; }
+  #livePreviewSection {
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+}

@@ -13768,8 +13768,14 @@ async function initWebsiteThemeEditor() {
     }
     ['categoryHeadingAuto', 'categoryHeadingBg', 'bsAddColor'].forEach(function (id) {
       var el = document.getElementById(id);
-      if (el) el.addEventListener('input', function () { applyCategoryHeadingUI(); });
-      if (el) el.addEventListener('change', function () { applyCategoryHeadingUI(); });
+      if (el) el.addEventListener('input', function () { applyCategoryHeadingUI(); applyLivePreview(); });
+      if (el) el.addEventListener('change', function () { applyCategoryHeadingUI(); applyLivePreview(); });
+    });
+    // Bestsellers style colours also update the live preview as they change
+    ['input', 'change'].forEach(function (ev) {
+      document.addEventListener(ev, function (e) {
+        if (e.target && e.target.closest && e.target.closest('.bs-style-card')) applyLivePreview();
+      });
     });
     // Menu page card design (Classic / Modern)
     function applyMenuCardStyleUI(val) {
@@ -14073,6 +14079,18 @@ async function initWebsiteThemeEditor() {
         var radii = cardStyleVal === 'pill' ? { card: '20px', btn: '999px' } : (cardStyleVal === 'sharp' ? { card: '4px', btn: '4px' } : { card: '16px', btn: '12px' });
         root.style.setProperty('--card-radius', radii.card);
         root.style.setProperty('--btn-radius', radii.btn);
+
+        // Bestsellers colours (ADD / price / badge / title) and the category heading colour
+        var bsVars = { bsAddColor: '--bsl-add', bsPriceColor: '--bsl-price', bsBadgeColor: '--bsl-badge', bsTitleColor: '--bsl-title' };
+        Object.keys(bsVars).forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && /^#[0-9a-f]{6}$/i.test(el.value)) root.style.setProperty(bsVars[id], el.value);
+        });
+        var chb = typeof currentCategoryHeadingVal === 'function' ? currentCategoryHeadingVal() : undefined;
+        if (chb !== undefined) {
+          // Automatic = light shade of the ADD colour (overrides any saved custom colour in the preview)
+          root.style.setProperty('--cat-heading-bg', chb || 'color-mix(in srgb, var(--bsl-add) 12%, #fff)');
+        }
 
         // Header style: toggle the compact "minimal" layout on the preview's home section
         var previewHomeSection = doc.getElementById('homeSection');
@@ -14915,6 +14933,9 @@ if (!window.customBgThemes) {
             } else {
               alert('Theme settings saved!');
             }
+            // Reload the live preview so layout options (card design, categories,
+            // header) show too; colours/fonts already update as you change them
+            if (window.refreshPreview) window.refreshPreview();
           } else {
             var errMsg = data.message || 'Save failed';
             if (window.showNotification) {
