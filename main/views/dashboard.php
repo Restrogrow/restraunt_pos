@@ -1227,6 +1227,12 @@ try {
               </a>
             </li>
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="offerFiltersPage">
+                <span class="material-symbols-rounded">filter_alt</span>
+                <span class="nav-label">Offer Filters</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="cateringPage" onclick="setTimeout(loadAdminCatering, 50)">
                 <span class="material-symbols-rounded">celebration</span>
                 <span class="nav-label">Catering</span>
@@ -4023,6 +4029,84 @@ function toggleGatewayMode() {
       </div>
     </div>
 
+    <!-- Offer Filters Page (Offers > Offer Filters) -->
+    <div id="offerFiltersPage" class="page">
+      <style>
+        .of-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+        @media (max-width: 1000px) { .of-grid { grid-template-columns: 1fr; } }
+        .of-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+        .of-preset { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px dashed #d1d5db; border-radius: 999px; background: #fff; color: #374151; font: inherit; font-size: 0.85rem; cursor: pointer; }
+        .of-preset:hover { border-color: #e53935; color: #e53935; }
+        .of-list { display: flex; flex-direction: column; gap: 10px; }
+        .of-empty { padding: 26px 12px; text-align: center; color: #6b7280; font-size: 0.9rem; border: 1px dashed #e5e7eb; border-radius: 12px; }
+        .of-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #fff; }
+        .of-card.off { opacity: 0.6; }
+        .of-top { display: flex; align-items: center; gap: 8px; }
+        .of-icon { width: 54px; padding: 6px 4px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 1.1rem; background: #fff; }
+        .of-title { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; font: inherit; font-weight: 600; }
+        .of-actions { display: flex; gap: 2px; }
+        .of-actions button { width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: #6b7280; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+        .of-actions button:hover { background: #f3f4f6; color: #111827; }
+        .of-actions .material-symbols-rounded { font-size: 1.15rem; }
+        .of-rule { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.88rem; color: #4b5563; }
+        .of-rule select, .of-rule input[type=number] { width: auto; padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 8px; font: inherit; background: #fff; }
+        .of-rule input[type=number] { width: 96px; }
+        .of-switch { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+        .of-pick { margin-top: 10px; border-top: 1px solid #f3f4f6; padding-top: 10px; }
+        .of-pick input[type=search] { width: 100%; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; font: inherit; margin-bottom: 8px; }
+        .of-pick-list { max-height: 220px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 12px; }
+        .of-pick-list label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; padding: 4px 2px; cursor: pointer; }
+        .of-pick-list small { color: #9ca3af; }
+        .of-phone { max-width: 320px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 22px; overflow: hidden; background: #f3f4f6; }
+        .of-phone-sheet { background: #fff; border-radius: 18px 18px 0 0; margin-top: 60px; padding: 16px; }
+        .of-phone-sheet h4 { margin: 0 0 12px; font-size: 1rem; }
+        .of-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .of-chip { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 12px; background: #fff7ed; border: 1px solid #fed7aa; font-size: 0.82rem; font-weight: 700; color: #9a3412; }
+        .of-chip span:first-child { font-size: 1.15rem; }
+        .of-bubble-demo { display: flex; justify-content: flex-end; padding: 0 16px 16px; background: #fff; }
+        .of-bubble-demo span { width: 46px; height: 46px; border-radius: 50%; background: #e53935; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 6px 16px rgba(229,57,53,0.35); }
+      </style>
+      <div class="page-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h1 style="margin:0;font-size:1.5rem;">Offer Filters</h1>
+            <p style="margin:0.25rem 0 0;color:#6b7280;">Quick filters for your website menu. Customers tap the floating offers bubble on the Menu page and pick one, like “Under ₹99” or “50% OFF &amp; more”. The bubble only shows when at least one filter is turned on.</p>
+          </div>
+          <button type="button" class="btn btn-primary" id="ofSaveBtn" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.75rem 1.5rem;" disabled>
+            <span class="material-symbols-rounded" style="font-size:1.2rem;">save</span>Save changes
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="of-grid">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-title">Your filters <span class="bs-count" id="ofCount"></span></div>
+            </div>
+            <div class="section-body">
+              <div class="of-presets" id="ofPresets"></div>
+              <div class="of-list" id="ofList"><div class="of-empty">Loading…</div></div>
+              <p class="bs-note">Filters only use your real menu: prices and discounts come from the dishes themselves (offer prices are set in Offers → Bestsellers). A filter with no matching dishes is hidden from customers.</p>
+            </div>
+          </div>
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-title">How customers see it</div>
+            </div>
+            <div class="section-body">
+              <div class="of-phone">
+                <div class="of-phone-sheet">
+                  <h4>Offers for you</h4>
+                  <div class="of-chips" id="ofPreview"></div>
+                </div>
+                <div class="of-bubble-demo"><span>%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Coupon Modal -->
     <div id="couponModal" class="modal">
       <div class="modal-content" style="max-width:520px;">
@@ -6675,6 +6759,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/qr-standee.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/bestsellers-admin.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/offer-filters-admin.js?v=<?php echo time(); ?>" defer></script>
   
 
   

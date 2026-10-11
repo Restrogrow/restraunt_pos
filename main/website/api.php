@@ -783,6 +783,18 @@ try {
             }
             break;
 
+        case 'getOfferFilters':
+            // Offers > Offer Filters: the quick filters behind the Menu page's offers bubble
+            try {
+                require_once __DIR__ . '/../config/offer_filter_helpers.php';
+                ensureOfferFiltersTable($conn);
+                echo json_encode(getOfferFilters($conn, $restaurantId, true), JSON_UNESCAPED_UNICODE);
+            } catch (Throwable $e) {
+                error_log("Error in getOfferFilters: " . $e->getMessage());
+                echo json_encode([]);
+            }
+            break;
+
     case 'getAddons':
             try {
                 // Auto-create meal_addons table if it doesn't exist

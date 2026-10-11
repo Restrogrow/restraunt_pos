@@ -851,6 +851,11 @@ document.addEventListener("DOMContentLoaded", () => {
         window.loadBestsellersAdmin();
       }
 
+      // Offers > Offer Filters (assets/js/offer-filters-admin.js)
+      if (pageId === "offerFiltersPage" && typeof window.loadOfferFiltersAdmin === 'function') {
+        window.loadOfferFiltersAdmin();
+      }
+
       // Load photo gallery if it's the gallery page
       if (pageId === "galleryPage") {
         if (typeof window.loadPhotoGallery === 'function') {

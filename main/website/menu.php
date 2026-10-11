@@ -745,6 +745,58 @@ body {
   box-shadow: 0 2px 8px rgba(45,52,54,0.15);
 }
 .variant-chip.disabled { opacity: 0.4; cursor: not-allowed; background: #f5f5f5; }
+/* Offers bubble (Offers > Offer Filters in the dashboard) */
+.offer-bubble {
+  position: fixed; z-index: 90;
+  right: max(16px, calc(50% - 212px + 16px));
+  bottom: 88px;
+  width: 56px; height: 56px; border: 0; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-red, #e53935), #ff7a45);
+  color: #fff; font-size: 22px; cursor: pointer;
+  display: none; align-items: center; justify-content: center;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary-red, #e53935) 40%, transparent);
+  animation: offerBubbleIn 0.4s ease;
+}
+.offer-bubble.show { display: flex; }
+.offer-bubble::before {
+  content: ""; position: absolute; inset: -6px; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--primary-red, #e53935) 45%, transparent);
+  animation: offerBubblePulse 2.2s ease-out infinite;
+}
+.offer-bubble:active { transform: scale(0.94); }
+.offer-bubble-count {
+  position: absolute; top: -2px; right: -2px;
+  min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px;
+  background: #fff; color: var(--primary-red, #e53935);
+  font-size: 11px; font-weight: 800; line-height: 20px; text-align: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.offer-bubble.active { background: #1f2937; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+.offer-bubble.active::before { display: none; }
+@keyframes offerBubbleIn { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes offerBubblePulse { 0% { transform: scale(0.9); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .offer-bubble, .offer-bubble::before { animation: none; } }
+.offer-sheet { padding: 18px 18px 22px; }
+.offer-sheet h3 { margin: 4px 0 2px; font-size: 18px; font-weight: 800; color: #1a1b1f; }
+.offer-sheet p { margin: 0 0 14px; font-size: 12.5px; color: #6b7280; }
+.offer-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.offer-tile {
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  padding: 12px; border: 1px solid #fed7aa; border-radius: 14px;
+  background: linear-gradient(135deg, #fff7ed, #fff);
+  font-family: var(--site-font); cursor: pointer;
+}
+.offer-tile.on { border-color: var(--primary-red, #e53935); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-red, #e53935) 25%, transparent); }
+.offer-tile-icon { font-size: 24px; line-height: 1; }
+.offer-tile b { display: block; font-size: 13.5px; color: #1f2937; line-height: 1.25; }
+.offer-tile small { font-size: 11.5px; color: #9a3412; font-weight: 600; }
+.offer-active-bar {
+  grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px 8px 12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--primary-red, #e53935) 8%, #fff);
+  font-size: 13px; font-weight: 700; color: #1f2937;
+}
+.offer-active-bar button { border: 0; border-radius: 999px; padding: 6px 12px; background: #fff; color: var(--primary-red, #e53935); font: inherit; font-size: 12px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 /* Size chooser (opens from Add to Cart on dishes with sizes) */
 .sheet-choose { padding: 18px 20px 8px; }
 .sheet-choose-head { display: flex; align-items: center; gap: 12px; padding-right: 44px; }
@@ -1122,6 +1174,17 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
       </div>
     </div>
 
+<button type="button" class="offer-bubble" id="offerBubble" onclick="openOfferSheet()" aria-label="Offers"><i class="fa-solid fa-percent"></i><span class="offer-bubble-count" id="offerBubbleCount"></span></button>
+<div class="product-sheet-overlay" id="offerSheetOverlay" onclick="closeOfferSheet(event)">
+  <div class="product-sheet" onclick="event.stopPropagation()">
+    <button class="product-sheet-close" onclick="closeOfferSheet()" aria-label="Close"><i class="fa fa-times"></i></button>
+    <div class="offer-sheet">
+      <h3>Offers for you</h3>
+      <p>Pick one to see the matching dishes.</p>
+      <div class="offer-tiles" id="offerTiles"></div>
+    </div>
+  </div>
+</div>
   <div class="checkout-bar" id="checkoutBar">
     <span class="total-label" id="checkoutLabel"><?php echo htmlspecialchars($currency_symbol ?? '₹'); ?>0.00</span>
     <button class="checkout-btn" id="checkoutBtn" onclick="goToCheckout()">Checkout <i class="fa fa-arrow-right"></i></button>
@@ -1612,6 +1675,11 @@ function renderProducts(menuIdx) {
     items = menuItems[menuIdx] ? [].concat(menuItems[menuIdx].items) : [];
     menuName = menuItems[menuIdx] ? menuItems[menuIdx].name : 'Menu';
   }
+  // An active offer filter shows its dishes from the whole menu
+  if (activeOfferFilter) {
+    items = allMenuItemsFlat().filter(function(it) { return offerFilterMatch(activeOfferFilter, it); });
+    menuName = activeOfferFilter.title;
+  }
   var el = document.getElementById('productGrid');
   var titleEl = document.getElementById('categoryTitle');
 
@@ -1653,6 +1721,10 @@ function renderProducts(menuIdx) {
   }
   titleEl.textContent = label + ' (' + items.length + ')';
     var html = '';
+  if (activeOfferFilter) {
+    html += '<div class="offer-active-bar"><span>' + escapeHtml(activeOfferFilter.icon || '🏷️') + ' Showing: ' + escapeHtml(activeOfferFilter.title) + '</span>' +
+      '<button type="button" onclick="clearOfferFilter()">✕ Clear</button></div>';
+  }
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
     var oos = item.is_available == 0;
@@ -1997,6 +2069,106 @@ function sheetAddToCart(itemId) {
   closeProductSheet();
 }
 
+// ── Offers bubble: quick filters set up in the dashboard (Offers > Offer Filters)
+var offerFilters = [];
+var activeOfferFilter = null;
+
+function allMenuItemsFlat() {
+  var out = [];
+  for (var g = 0; g < menuItems.length; g++) out = out.concat(menuItems[g].items || []);
+  return out;
+}
+// Price the customer pays (cheapest available size for dishes with sizes)
+function offerItemPrice(item) {
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  var p = hasVar ? getMinVariantPrice(item) : null;
+  return p !== null ? p : parseFloat(item.base_price || item.price || 0);
+}
+// Biggest real discount on the dish, in % (0 when it has no offer)
+function offerItemDiscount(item) {
+  var best = 0;
+  function pct(now, was) { now = parseFloat(now); was = parseFloat(was); return was > now && was > 0 ? (was - now) / was * 100 : 0; }
+  if (item.original_price) best = pct(item.base_price, item.original_price);
+  (item.variations || []).forEach(function(v) {
+    if (v.original_price) best = Math.max(best, pct(v.variation_price || v.price, v.original_price));
+  });
+  return best;
+}
+function offerFilterMatch(f, item) {
+  if (item.is_available == 0) return false;
+  var type = String(item.item_type || '').toLowerCase();
+  switch (f.rule_type) {
+    case 'price_under':  return offerItemPrice(item) <= f.rule_value;
+    case 'discount_min': return offerItemDiscount(item) + 0.001 >= f.rule_value;
+    case 'any_offer':    return offerItemDiscount(item) > 0;
+    case 'bestsellers':  return !!item.is_bestseller;
+    case 'veg':          return type === 'veg' || (type.indexOf('veg') !== -1 && type.indexOf('non') === -1);
+    case 'handpicked':   return (f.item_ids || []).indexOf(parseInt(item.id, 10)) !== -1;
+  }
+  return false;
+}
+function offerFilterCount(f) {
+  return allMenuItemsFlat().filter(function(it) { return offerFilterMatch(f, it); }).length;
+}
+// Only filters with at least one matching dish are offered
+function visibleOfferFilters() {
+  return offerFilters.filter(function(f) { return offerFilterCount(f) > 0; });
+}
+function refreshOfferBubble() {
+  var b = document.getElementById('offerBubble');
+  if (!b) return;
+  var n = visibleOfferFilters().length;
+  b.classList.toggle('show', n > 0);
+  b.classList.toggle('active', !!activeOfferFilter);
+  document.getElementById('offerBubbleCount').textContent = activeOfferFilter ? '✓' : n;
+}
+function openOfferSheet() {
+  var tiles = document.getElementById('offerTiles');
+  tiles.innerHTML = visibleOfferFilters().map(function(f) {
+    var n = offerFilterCount(f);
+    return '<button type="button" class="offer-tile' + (activeOfferFilter && activeOfferFilter.id === f.id ? ' on' : '') + '" onclick="applyOfferFilter(' + f.id + ')">' +
+      '<span class="offer-tile-icon">' + escapeHtml(f.icon || '🏷️') + '</span>' +
+      '<span><b>' + escapeHtml(f.title) + '</b><small>' + n + ' dish' + (n === 1 ? '' : 'es') + '</small></span></button>';
+  }).join('');
+  document.getElementById('offerSheetOverlay').classList.add('active');
+  document.body.classList.add('no-scroll');
+}
+function closeOfferSheet(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('offerSheetOverlay').classList.remove('active');
+  document.body.classList.remove('no-scroll');
+}
+function applyOfferFilter(id) {
+  activeOfferFilter = null;
+  for (var i = 0; i < offerFilters.length; i++) if (offerFilters[i].id === id) activeOfferFilter = offerFilters[i];
+  var search = document.querySelector('.search-input');
+  if (search && search.value) { search.value = ''; var box = search.closest('.search-container'); if (box) box.classList.remove('has-value'); }
+  closeOfferSheet();
+  renderProducts(currentMenuIdx);
+  refreshOfferBubble();
+  var sc = document.querySelector('.main-content');
+  if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function clearOfferFilter() {
+  activeOfferFilter = null;
+  renderProducts(currentMenuIdx);
+  refreshOfferBubble();
+}
+function initOfferFilters() {
+  fetch(apiUrl('getOfferFilters'))
+    .then(function(r) { return r.json(); })
+    .then(function(list) {
+      if (!Array.isArray(list) || !list.length) return;
+      offerFilters = list;
+      var tries = 0;
+      (function wait() {                                     // dishes load after the page
+        if (menuItems.length) refreshOfferBubble();
+        else if (++tries < 60) setTimeout(wait, 250);
+      })();
+    })
+    .catch(function() {});
+}
+document.addEventListener('DOMContentLoaded', initOfferFilters);
 // Search box hint: "Search for 'Paneer Tikka'", rolling through random dishes
 // from this restaurant's own menu every few seconds.
 function initSearchHints() {
@@ -2411,6 +2583,7 @@ function toggleVeg() {
 }
 
 function switchCategory(menuIdx) {
+  if (activeOfferFilter) { activeOfferFilter = null; refreshOfferBubble(); }
   currentMenuIdx = menuIdx;
   currentSubcategoryId = null;
   renderProducts(menuIdx);
