@@ -2162,7 +2162,7 @@ function getCartTotal() {
   };
 }
 
-// --- Coupon celebration: a short "you saved ₹X" moment when a coupon is on
+// --- Coupon celebration: a 3–4 second "you saved ₹X" moment when a coupon is on
 // the order and the customer taps Checkout. Once per coupon per visit; tap
 // anywhere to skip; then checkout carries on exactly as before.
 function maybeCelebrateCoupon() {
@@ -2182,7 +2182,7 @@ function maybeCelebrateCoupon() {
 
 function showCouponCelebration(code, saved, done) {
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var ms = reduce ? 1400 : 2600;
+  var ms = reduce ? 1600 : 3500;
   var cur = getCurrency();
   var el = document.createElement('div');
   el.className = 'cpn-cele';
@@ -2210,30 +2210,48 @@ function showCouponCelebration(code, saved, done) {
     if (p < 1) requestAnimationFrame(tick);
   })(t0);
 
-  // Confetti
+  // Confetti: coloured squares only — two party-popper bursts from the bottom
+  // corners, then a shower from the top, for the whole popup.
   var canvas = el.querySelector('canvas'), ctx = canvas.getContext && canvas.getContext('2d'), raf = 0;
   if (ctx && !reduce) {
-    var dpr = window.devicePixelRatio || 1;
-    canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+    var dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr);
     var brand = getComputedStyle(document.documentElement).getPropertyValue('--primary-red').trim() || '#e53935';
-    var colors = [brand, '#fbbf24', '#f97316', '#22c55e', '#3b82f6', '#ec4899'];
-    var parts = [], cx = innerWidth / 2, cy = innerHeight / 2 - 40;
-    for (var i = 0; i < 160; i++) {
-      var a = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 9;
-      parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 6, s: 5 + Math.random() * 6,
-        r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, c: colors[i % colors.length], round: Math.random() < 0.3 });
+    var colors = [brand, '#fbbf24', '#f97316', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6'];
+    var parts = [];
+    function square(x, y, vx, vy) {
+      parts.push({ x: x, y: y, vx: vx, vy: vy, s: 6 + Math.random() * 6, r: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.35, flip: Math.random() * Math.PI, vf: 0.08 + Math.random() * 0.12,
+        c: colors[(Math.random() * colors.length) | 0] });
     }
-    (function frame() {
-      ctx.clearRect(0, 0, innerWidth, innerHeight);
-      parts.forEach(function(p) {
-        p.vy += 0.28; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr;
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c;
-        if (p.round) { ctx.beginPath(); ctx.arc(0, 0, p.s / 2, 0, Math.PI * 2); ctx.fill(); }
-        else ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
+    function popper(fromLeft) {
+      for (var i = 0; i < 90; i++) {
+        var ang = (fromLeft ? -60 : -120) + (Math.random() - 0.5) * 40;   // up and inwards
+        var sp = 11 + Math.random() * 9, rad = ang * Math.PI / 180;
+        square(fromLeft ? -10 : W + 10, H - 40, Math.cos(rad) * sp, Math.sin(rad) * sp);
+      }
+    }
+    popper(true); popper(false);
+    var t0 = performance.now(), lastRain = t0;
+    (function frame(now) {
+      ctx.clearRect(0, 0, W, H);
+      // keep a light shower going from the top until near the end
+      if (now - t0 > 500 && now - t0 < ms - 700 && now - lastRain > 60) {
+        lastRain = now;
+        for (var k = 0; k < 4; k++) square(Math.random() * W, -12, (Math.random() - 0.5) * 2, 1 + Math.random() * 2);
+      }
+      for (var i = parts.length - 1; i >= 0; i--) {
+        var p = parts[i];
+        p.vy += 0.22; p.vx *= 0.985; p.vy = Math.min(p.vy, 5.5);
+        p.x += p.vx + Math.sin(p.flip) * 0.6; p.y += p.vy; p.r += p.vr; p.flip += p.vf;
+        if (p.y > H + 20) { parts.splice(i, 1); continue; }
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
+        ctx.scale(1, Math.cos(p.flip));                 // squares tumble as they fall
+        ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s);
         ctx.restore();
-      });
+      }
       raf = requestAnimationFrame(frame);
-    })();
+    })(t0);
   }
 
   var finished = false;
@@ -2264,7 +2282,7 @@ function proceedCheckout() {
     showModal('Minimum Order', getCurrency() + MIN_ORDER.toFixed(2) + ' minimum. Please add more items.');
     return;
   }
-  // A coupon is on the order: celebrate the saving first (2–3 s), then continue
+  // A coupon is on the order: celebrate the saving first (3–4 s), then continue
   if (maybeCelebrateCoupon()) return;
   // Gate checkout behind login/signup/guest, same pattern as profile.php:
   // if this browser session hasn't logged in or already chosen "Continue as
