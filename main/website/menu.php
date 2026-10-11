@@ -754,6 +754,13 @@ body {
 .sheet-step button { width: 32px; height: 100%; border: 0; background: none; color: inherit; font-size: 20px; font-weight: 800; cursor: pointer; }
 .sheet-step span { font-size: 16px; }
 .sheet-add-note { font-size: 11px; color: #9ca3af; }
+/* Bar that slides up after tapping ADD: [ − qty + ] [ Add item · ₹ ] */
+.sheet-add-bar { display: flex; align-items: center; gap: 12px; animation: sheetBarUp 0.25s ease; }
+.sheet-add-bar .sheet-add-btn { flex: 1; width: auto; }
+.sheet-bar-step { display: flex; align-items: center; height: 48px; flex-shrink: 0; border: 1.5px solid #e5e7eb; border-radius: 12px; background: #fff; }
+.sheet-bar-step button { width: 40px; height: 100%; border: 0; background: none; color: var(--primary-red, #e53935); font-size: 22px; font-weight: 800; cursor: pointer; }
+.sheet-bar-step span { min-width: 22px; text-align: center; font-size: 16px; font-weight: 800; color: #1a1b1f; }
+@keyframes sheetBarUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .product-sheet-footer {
   padding: 12px 20px 20px;
   border-top: 1px solid #eee;
@@ -1827,8 +1834,7 @@ function updateSheetPrice(basePrice, itemId) {
   var totalPrice = basePrice + addonTotal;
   var priceEl = document.getElementById('sheetPrice');
   if (priceEl) priceEl.textContent = formatPrice(totalPrice);
-  var btnPrice = document.getElementById('sheetBtnPrice');
-  if (btnPrice) btnPrice.textContent = formatPrice(totalPrice);
+  refreshSheetBarPrice();
 }
 
 function sheetChangeQty(itemId, delta) {
@@ -1862,35 +1868,65 @@ function sheetChangeQty(itemId, delta) {
 }
 
 // ADD control next to the price: Sold out / ADD / − qty +
+// ADD next to the price. Tapping it slides up the bar below:
+// [ − qty + ]  [ Add item · ₹total ]   (dishes with sizes go to the size step first)
 function sheetAddControlHtml(item) {
   if (item.is_available == 0) return '<button type="button" class="sheet-add sold" disabled>Sold out</button>';
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-  if (hasVar) {
-    var inCart = getItemTotalQty(item.id);
-    return '<button type="button" class="sheet-add" onclick="openVariantChooser(' + item.id + ')">ADD<span class="plus">+</span></button>' +
-      '<div class="sheet-add-note">' + (inCart > 0 ? inCart + ' in cart' : 'Customisable') + '</div>';
-  }
-  var qty = getItemTotalQty(item.id);
-  if (qty > 0) {
-    return '<div class="sheet-add sheet-step">' +
-      '<button type="button" onclick="sheetQuickChange(' + item.id + ', -1)" aria-label="Remove one">−</button>' +
-      '<span>' + qty + '</span>' +
-      '<button type="button" onclick="sheetQuickChange(' + item.id + ', 1)" aria-label="Add one">+</button></div>';
-  }
-  return '<button type="button" class="sheet-add" onclick="sheetQuickChange(' + item.id + ', 1)">ADD<span class="plus">+</span></button>';
+  var inCart = getItemTotalQty(item.id);
+  var note = inCart > 0 ? inCart + ' in cart' : (hasVar ? 'Customisable' : '');
+  return '<button type="button" class="sheet-add" onclick="' + (hasVar ? 'openVariantChooser' : 'openSheetAddBar') + '(' + item.id + ')">ADD<span class="plus">+</span></button>' +
+    (note ? '<div class="sheet-add-note">' + note + '</div>' : '');
 }
 
-function sheetQuickChange(itemId, delta) {
-  if (delta > 0) addToCart(itemId); else removeFromCart(itemId);
+function sheetAddBarHtml(itemId, disabled) {
+  return '<div class="product-sheet-footer sheet-add-bar" id="sheetAddBar">' +
+    (disabled ? '' :
+      '<div class="sheet-bar-step">' +
+        '<button type="button" onclick="sheetBarQty(-1)" aria-label="One less">−</button>' +
+        '<span id="sheetBarQty">' + sheetQty + '</span>' +
+        '<button type="button" onclick="sheetBarQty(1)" aria-label="One more">+</button>' +
+      '</div>') +
+    '<button class="sheet-add-btn" id="sheetChooseAdd" onclick="sheetAddToCart(' + itemId + ')"' + (disabled ? ' disabled' : '') + '>' +
+      (disabled ? 'Currently unavailable' : 'Add item · <span id="sheetBtnPrice"></span>') + '</button>' +
+  '</div>';
+}
+
+function openSheetAddBar(itemId) {
+  if (document.getElementById('sheetAddBar')) return;
+  sheetQty = 1;
+  document.getElementById('productSheetContent').insertAdjacentHTML('beforeend', sheetAddBarHtml(itemId, false));
+  refreshSheetBarPrice();
+}
+
+function sheetBarQty(delta) {
+  sheetQty = Math.max(1, Math.min(99, sheetQty + delta));
+  var q = document.getElementById('sheetBarQty');
+  if (q) q.textContent = sheetQty;
+  refreshSheetBarPrice();
+}
+
+function refreshSheetBarPrice() {
   var item = getSheetItem();
-  var wrap = document.getElementById('sheetAddWrap');
-  if (item && wrap) wrap.innerHTML = sheetAddControlHtml(item);
+  var btnPrice = document.getElementById('sheetBtnPrice');
+  if (!item || !btnPrice) return;
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  var key = String(item.id), unit;
+  if (hasVar && selectedVariant !== null) {
+    var v = item.variations[selectedVariant];
+    unit = parseFloat(v.variation_price || v.price || 0);
+    key = item.id + '_v' + selectedVariant;
+  } else {
+    unit = parseFloat(item.base_price || item.price || 0);
+  }
+  btnPrice.textContent = formatPrice((unit + getAddonTotalForItem(key)) * sheetQty);
 }
 
 // Second step for dishes with sizes: pick one, then "Add item"
 function openVariantChooser(itemId) {
   var item = getSheetItem();
   if (!item || !item.variations || !item.variations.length) return;
+  sheetQty = 1;
   var name = item.item_name_translated || item.item_name_en || item.name;
   var first = null;
   var html = '<div class="sheet-choose">' +
@@ -1912,8 +1948,7 @@ function openVariantChooser(itemId) {
     '</label>';
   }
   html += '</div></div>' +
-    '<div class="product-sheet-footer"><button class="sheet-add-btn" id="sheetChooseAdd" onclick="sheetAddToCart(' + item.id + ')"' + (first === null ? ' disabled' : '') + '>' +
-      (first === null ? 'Currently unavailable' : 'Add item · <span id="sheetBtnPrice"></span>') + '</button></div>';
+    sheetAddBarHtml(item.id, first === null);
   document.getElementById('productSheetContent').innerHTML = html;
   if (first !== null) {
     var radio = document.querySelector('.sheet-opt input[value="' + first + '"]');
@@ -1927,11 +1962,14 @@ function sheetAddToCart(itemId) {
   if (!item) return;
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
   if (hasVar && selectedVariant === null) return;
-  if (hasVar) {
-    var v = item.variations[selectedVariant];
-    addToCart(itemId, { varIdx: selectedVariant, varName: v.variation_name, varPrice: parseFloat(v.variation_price || v.price || 0) });
-  } else {
-    addToCart(itemId);
+  var times = Math.max(1, sheetQty || 1);
+  for (var t = 0; t < times; t++) {
+    if (hasVar) {
+      var v = item.variations[selectedVariant];
+      addToCart(itemId, { varIdx: selectedVariant, varName: v.variation_name, varPrice: parseFloat(v.variation_price || v.price || 0) });
+    } else {
+      addToCart(itemId);
+    }
   }
   closeProductSheet();
 }
