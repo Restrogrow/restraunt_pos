@@ -829,6 +829,7 @@ body {
 .sheet-add-bar { animation: sheetBarUp 0.25s ease; }
 .sheet-add-row { display: flex; align-items: center; gap: 12px; }
 /* Optional cooking instruction for this dish (shown to the kitchen, admin and rider) */
+.sheet-bestseller { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 6px; padding: 3px 9px; border-radius: 6px; background: #fef3c7; color: #b45309; font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; }
 .sheet-note { margin-bottom: 10px; }
 .sheet-note-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sheet-cutlery { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: #374151; cursor: pointer; white-space: nowrap; }
@@ -1804,6 +1805,10 @@ function showItemDetail(itemId) {
   } else if (itemType.toLowerCase().indexOf('egg') !== -1) {
     typeColor = '#ff9800';
   }
+  // ★ Bestseller on its own line, just above the dish name
+  if (item.is_bestseller) {
+    html += '<div class="sheet-bestseller">★ Bestseller</div>';
+  }
   html += '<div class="product-sheet-name-row">';
   if (itemType) {
     var typeColor = itemType ? '#2ecc40' : '';
@@ -1819,9 +1824,6 @@ function showItemDetail(itemId) {
 
   // Badge row: prep time, type label, menu name
   var badges = [];
-  if (item.is_bestseller) {
-    badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#fef3c7;font-size:11px;font-weight:700;color:#b45309">★ Bestseller</span>');
-  }
   if (prepTime) {
     badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#fdf2f2;font-size:11px;font-weight:500;color:var(--primary-red, #e17055)"><i class="fa fa-clock" style="font-size:10px"></i> ' + prepTime + ' min</span>');
   }
