@@ -117,6 +117,30 @@ if (!function_exists('ensureKotSchema')) {
     }
 }
 
+if (!function_exists('linkWebsiteKotToOrder')) {
+    /**
+     * Website dine-in tickets ("Order #ORD-… - Website Order") belong to an
+     * order that already exists. Older tickets were saved without kot.order_id,
+     * so marking them Ready/Complete created a second, 'Paid' order from the
+     * ticket and double-counted the sale. Link such a ticket to its real order
+     * (by order number, same restaurant) before acting on it.
+     */
+    function linkWebsiteKotToOrder($conn, array &$kot, $restaurant_id) {
+        if (!empty($kot['order_id'])) return;
+        if (!preg_match('/^Order #(\S+) - Website Order/', (string)($kot['notes'] ?? ''), $m)) return;
+        $st = $conn->prepare("SELECT id FROM orders WHERE order_number = ? AND restaurant_id = ? LIMIT 1");
+        $st->execute([$m[1], $restaurant_id]);
+        $orderId = (int)$st->fetchColumn();
+        if (!$orderId) return;
+        try {
+            $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$orderId, $kot['id']]);
+        } catch (PDOException $e) {
+            error_log('linkWebsiteKotToOrder: ' . $e->getMessage());
+        }
+        $kot['order_id'] = $orderId;
+    }
+}
+
 if (!function_exists('verifyKotCartItemPrices')) {
     /**
      * Verifies every cart item's price against menu_items/menu_item_variations
@@ -356,6 +380,7 @@ function handleUpdateKOTStatus() {
         $lock_stmt = $conn->prepare($lock_sql);
         $lock_stmt->execute([$kot_id, $restaurant_id]);
         $kot = $lock_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($kot) linkWebsiteKotToOrder($conn, $kot, $restaurant_id);
         
         // Check if customer columns exist in kot table
         $hasCustomerCols = false;
@@ -581,6 +606,7 @@ function handleCompleteKOT() {
         if (!$kot) {
             throw new Exception('KOT not found');
         }
+        linkWebsiteKotToOrder($conn, $kot, $restaurant_id);
         
         // If order already exists, update its status to "Ready" and mark KOT as completed
         if (!empty($kot['order_id'])) {

@@ -272,6 +272,29 @@ if (!function_exists('createDineInKOT')) {
         $customer_phone = $order['customer_phone'];
         $customer_email = $order['customer_email'];
         $customer_address = $order['customer_address'];
+        $orderId = (int)($order['id'] ?? 0);
+
+        // kot.order_id links the ticket to this order (added by
+        // kot_operations.php's ensureKotSchema; checked, never created here —
+        // DDL would commit the caller's open transaction).
+        $kotHasOrderId = false;
+        try {
+            $col = $conn->query("SHOW COLUMNS FROM kot LIKE 'order_id'");
+            $kotHasOrderId = $col && $col->rowCount() > 0;
+        } catch (Exception $e) {}
+
+        // One ticket per order, ever: never create a second one if this order
+        // already has a kitchen ticket (linked, or an older unlinked one made
+        // for the same order number).
+        $dupSql = "SELECT id FROM kot WHERE restaurant_id = ? AND (notes = ? OR notes LIKE ?"
+                . ($kotHasOrderId && $orderId ? " OR order_id = ?" : "") . ") LIMIT 1";
+        $dupParams = [$restaurant_id, 'Order #' . $order_number . ' - Website Order', 'Order #' . $order_number . ' - Website Order' . "\n%"];
+        if ($kotHasOrderId && $orderId) $dupParams[] = $orderId;
+        $dup = $conn->prepare($dupSql);
+        $dup->execute($dupParams);
+        if ($dup->fetchColumn()) {
+            return;
+        }
 
         $kotNumber = null;
         $maxAttempts = 100;
@@ -306,6 +329,13 @@ if (!function_exists('createDineInKOT')) {
             $kotStmt->execute([$restaurant_id, $kotNumber, $table_id, $order_type, $customer_name, $subtotal, $tax, $grand_total, $kotNotes]);
         }
         $kotId = $conn->lastInsertId();
+
+        // Link the ticket to its order. Without this the kitchen's Ready /
+        // Complete actions saw "no order yet" and created a second, 'Paid'
+        // order from the ticket — double-counting the sale.
+        if ($kotHasOrderId && $orderId) {
+            $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$orderId, $kotId]);
+        }
 
         $kotItemsHasAddons = false;
         try {

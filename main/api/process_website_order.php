@@ -1057,81 +1057,11 @@ $conn->beginTransaction();
     // fireOrderConfirmedActions() itself.
     $usePhonePe = ($payment_method === 'UPI / NetBanking');
 
-    // Create KOT for Dine-in orders so table map shows as occupied.
-    // Skipped here for PhonePe orders — fired later once payment is verified.
-    // Also skipped for a scheduled order — the kitchen shouldn't see this
-    // ticket until activateDueScheduledOrders() fires it at scheduled_at.
-    if (!$usePhonePe && !$is_scheduled_order && $order_type === 'Dine-in' && !empty($table_id)) {
-        $kotNumber = null;
-        $maxAttempts = 100;
-        $attempt = 0;
-        do {
-            $kotNumber = 'KOT-' . date('Ymd') . '-' . str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
-            try {
-                $checkStmt = $conn->prepare("SELECT COUNT(*) FROM kot WHERE kot_number = ? AND restaurant_id = ?");
-                $checkStmt->execute([$kotNumber, $restaurant_id]);
-                $exists = $checkStmt->fetchColumn() > 0;
-            } catch (PDOException $e) {
-                $exists = false;
-            }
-            $attempt++;
-            if ($attempt >= $maxAttempts) {
-                $kotNumber = 'KOT-' . date('YmdHis') . '-' . str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
-                break;
-            }
-        } while ($exists);
-
-        $kotNotes = 'Order #' . ($order_number ?? '') . ' - Website Order';
-        if (!empty($notes)) {
-            $kotNotes .= "\n" . $notes;
-        }
-
-        $checkKotCols = $conn->query("SHOW COLUMNS FROM kot LIKE 'customer_phone'");
-        if ($checkKotCols && $checkKotCols->rowCount() > 0) {
-            $kotStmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, customer_phone, customer_email, customer_address, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $kotStmt->execute([$restaurant_id, $kotNumber, $table_id, $order_type, $customer_name, $customer_phone, $customer_email, $customer_address, $subtotal, $tax, $grand_total, $kotNotes]);
-        } else {
-            $kotStmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $kotStmt->execute([$restaurant_id, $kotNumber, $table_id, $order_type, $customer_name, $subtotal, $tax, $grand_total, $kotNotes]);
-        }
-        $kotId = $conn->lastInsertId();
-
-        $kotItemsHasAddons = false;
-        try {
-            $checkAddonsCol = $conn->query("SHOW COLUMNS FROM kot_items LIKE 'addons'");
-            $kotItemsHasAddons = $checkAddonsCol && $checkAddonsCol->rowCount() > 0;
-        } catch (Exception $e) {}
-
-        // Batched into a single multi-row INSERT (same reasoning as
-        // order_items above) instead of one round trip per item.
-        $kotItemRows = [];
-        $kotItemParams = [];
-        foreach ($items as $item) {
-            if ($kotItemsHasAddons) {
-                $addonsJson = !empty($item['addons']) ? json_encode($item['addons'], JSON_UNESCAPED_UNICODE) : null;
-                $kotItemRows[] = '(?, ?, ?, ?, ?, ?, ?, ?)';
-                array_push($kotItemParams,
-                    $kotId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'],
-                    (float)$item['price'], (float)($item['price'] * $item['quantity']), $addonsJson,
-                    ($item['notes'] ?? '') !== '' ? $item['notes'] : null
-                );
-            } else {
-                $kotItemRows[] = '(?, ?, ?, ?, ?, ?, ?)';
-                array_push($kotItemParams,
-                    $kotId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'],
-                    (float)$item['price'], (float)($item['price'] * $item['quantity']),
-                    ($item['notes'] ?? '') !== '' ? $item['notes'] : null
-                );
-            }
-        }
-        if (!empty($kotItemRows)) {
-            $kotItemCols = $kotItemsHasAddons
-                ? "(kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons, notes)"
-                : "(kot_id, menu_item_id, item_name, quantity, unit_price, total_price, notes)";
-            $kotItemSql = "INSERT INTO kot_items $kotItemCols VALUES " . implode(', ', $kotItemRows);
-            $conn->prepare($kotItemSql)->execute($kotItemParams);
-        }
-    }
+    // The dine-in kitchen ticket is created ONCE, by fireOrderConfirmedActions()
+    // (config/order_confirmation.php → createDineInKOT()) right after this
+    // commit. It used to also be created here, so every cash dine-in website
+    // order got two tickets — and since neither was linked to the order, the
+    // kitchen marking each one Ready created another 'Paid' order per ticket.
 
     // Commit transaction
     $conn->commit();
