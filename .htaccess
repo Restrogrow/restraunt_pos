@@ -10,6 +10,7 @@ RewriteCond %{HTTP_HOST} !^127\.0\.0\.1(:\d+)?$ [NC]
 RewriteCond %{HTTP_HOST} !^restrogrow\.com$ [NC]
 RewriteCond %{HTTP_HOST} !^www\.restrogrow\.com$ [NC]
 RewriteCond %{HTTP_HOST} !hstgr\.io$ [NC]
+RewriteCond %{HTTP_HOST} !\.ngrok-free\.(app|dev)$ [NC]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^(.*)$ main/website/custom-domain.php [L,QSA]
 
@@ -102,7 +103,8 @@ RewriteRule ^([a-z0-9-]+)/reservations$ main/website/reservations.php?restaurant
 RewriteCond %{HTTP_HOST} ^restrogrow\.com$ [NC,OR]
 RewriteCond %{HTTP_HOST} ^www\.restrogrow\.com$ [NC,OR]
 RewriteCond %{HTTP_HOST} ^localhost(:\d+)?$ [NC,OR]
-RewriteCond %{HTTP_HOST} ^127\.0\.0\.1(:\d+)?$ [NC]
+RewriteCond %{HTTP_HOST} ^127\.0\.0\.1(:\d+)?$ [NC,OR]
+RewriteCond %{HTTP_HOST} \.ngrok-free\.(app|dev)$ [NC]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ main/website/custom-domain.php [L,QSA]
