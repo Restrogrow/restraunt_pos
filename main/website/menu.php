@@ -916,16 +916,16 @@ body {
    circle (cover); Cut-out pictures (Website Appearance > Category Pictures)
    show whole on a transparent background (contain). Sizes (compact, Zomato scale): 42px phones,
    66px tablets, 72px desktops. */
-.layout-container.nav-top { --cat-size: 42px; }
-@media (min-width: 600px) { .layout-container.nav-top { --cat-size: 66px; } }
-@media (min-width: 1024px) { .layout-container.nav-top { --cat-size: 72px; } }
-.layout-container.nav-top .side-nav { gap: 12px; padding: 6px 12px 4px; background: #fff; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
+.layout-container.nav-top { --cat-size: 36px; }
+@media (min-width: 600px) { .layout-container.nav-top { --cat-size: 58px; } }
+@media (min-width: 1024px) { .layout-container.nav-top { --cat-size: 64px; } }
+.layout-container.nav-top .side-nav { gap: 10px; padding: 5px 12px 3px; background: #fff; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
 .layout-container.nav-top .side-nav::-webkit-scrollbar { display: none; }
 .layout-container.nav-top .side-nav .sub-views { flex: 0 0 auto; }
 .layout-container.nav-top .side-nav .side-nav-btn {
-  width: calc(var(--cat-size) + 18px); min-width: 0; padding: 0 0 6px; gap: 6px;
+  width: calc(var(--cat-size) + 16px); min-width: 0; padding: 0 0 5px; gap: 4px;
   background: transparent; color: #374151; box-shadow: none; border-radius: 0;
-  font-size: 12px; font-weight: 500; line-height: 1.2; white-space: normal; animation: none;
+  font-size: 11px; font-weight: 500; line-height: 1.2; white-space: normal; animation: none;
 }
 .layout-container.nav-top .side-nav .side-nav-btn br { display: none; }
 .layout-container.nav-top .side-nav .side-nav-btn img {
@@ -2042,7 +2042,7 @@ function renderSideNav() {
   var allIcon = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2215%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2215%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3C/g%3E%3C/svg%3E';
   var html = menuItems.length ? '<div class="sub-views">' +
       '<button class="side-nav-btn' + (currentMenuIdx === ALL_CATEGORY ? ' active' : '') + '" data-index="' + ALL_CATEGORY + '">' +
-        '<img src="' + (window.allCategoryIcon || allIcon) + '" alt="All dishes" width="42" height="42"><br><span class="cat-name">All</span>' +
+        '<img src="' + (window.allCategoryIcon || allIcon) + '" alt="All dishes" width="36" height="36"><br><span class="cat-name">All</span>' +
       '</button>' +
     '</div>' : '';
   for (var i = 0; i < menuItems.length; i++) {
@@ -2052,7 +2052,7 @@ function renderSideNav() {
     var img = getMenuImage(c) || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2242%22 height=%2242%22 viewBox=%220 0 42 42%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3C/svg%3E';
     html += '<div class="sub-views">' +
       '<button class="side-nav-btn' + active + '" data-index="' + i + '">' +
-        '<img src="' + getImageUrl(img) + '" alt="' + escapeHtml(displayName) + '" width="42" height="42" loading="' + (i < 5 ? 'eager' : 'lazy') + '" decoding="async"><br>' +
+        '<img src="' + getImageUrl(img) + '" alt="' + escapeHtml(displayName) + '" width="36" height="36" loading="' + (i < 5 ? 'eager' : 'lazy') + '" decoding="async"><br>' +
         '<span class="cat-name">' + escapeHtml(displayName) + '</span>' +
       '</button>' +
     '</div>';
