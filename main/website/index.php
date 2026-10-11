@@ -867,8 +867,8 @@ body {
 .category-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 12px; border-radius: 12px;
-  /* very light shade of the price colour, same as the Menu page heading */
-  background: var(--cat-heading-bg, color-mix(in srgb, var(--bsl-price) 9%, #fff));
+  /* Automatic: very light shade of the ADD button colour, same as the Menu page heading */
+  background: var(--cat-heading-bg, color-mix(in srgb, var(--bsl-add) 12%, #fff));
   margin-top: 8px;
 }
 .category-header h3 {

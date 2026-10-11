@@ -1943,7 +1943,7 @@ try {
                 <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">format_color_fill</span>
                 Category Heading Colour
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Background of the category headings (e.g. <b>Starters (6)</b>). <b>Automatic</b> uses a light shade of your price colour; untick it to pick your own &mdash; light colours read best.</p>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Background of the category headings (e.g. <b>Starters (6)</b>). <b>Automatic</b> uses a light shade of your ADD button colour; untick it to pick your own &mdash; light colours read best.</p>
               <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 500; cursor: pointer;"><input type="checkbox" id="categoryHeadingAuto" checked> Automatic</label>
                 <input type="color" id="categoryHeadingBg" value="#fdeee4" style="width: 52px; height: 36px; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 2px; background: #fff; cursor: pointer;" disabled>
@@ -2050,6 +2050,29 @@ try {
                 ?></code>
               </p>
             </div>
+
+            <!-- Banner Upload Section -->
+            <div style="margin-top:2rem;border-top:2px solid #e5e7eb;padding-top:20px;">
+              <h3 style="font-size:1rem;font-weight:700;color:#111827;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+                <span class="material-symbols-rounded" style="font-size:20px;">wallpaper</span>
+                Banner Images (Slideshow)
+              </h3>
+              <div class="form-group">
+                <label for="bannerUpload">Upload Banner Images</label>
+                <p style="color:#666;font-size:0.9rem;margin-bottom:10px;">Upload multiple banner images to display as a slideshow on your website. Each image will display for 3 seconds. Recommended size: 1200x300px or similar. Max size: 5MB per image</p>
+                <input type="file" id="bannerUpload" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" multiple style="margin-bottom:10px;">
+                <button type="button" class="btn btn-primary" id="uploadBannerBtn" style="margin-bottom:10px;">
+                  <span class="material-symbols-rounded">upload</span>
+                  Upload Banners
+                </button>
+              </div>
+              <div id="bannersPreview" style="margin-top:20px;display:block;">
+                <label style="display:block;margin-bottom:10px;font-weight:600;">Banner Previews:</label>
+                <div id="bannersGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:10px;min-height:50px;">
+                  <p style="color:#666;grid-column:1/-1;text-align:center;padding:20px;">Loading banners...</p>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div class="settings-section">
@@ -2105,28 +2128,6 @@ try {
               </a>
             </div>
 
-            <!-- Banner Upload Section -->
-            <div style="border-top:2px solid #e5e7eb;padding-top:20px;">
-              <h3 style="font-size:1rem;font-weight:700;color:#111827;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-rounded" style="font-size:20px;">wallpaper</span>
-                Banner Images (Slideshow)
-              </h3>
-              <div class="form-group">
-                <label for="bannerUpload">Upload Banner Images</label>
-                <p style="color:#666;font-size:0.9rem;margin-bottom:10px;">Upload multiple banner images to display as a slideshow on your website. Each image will display for 3 seconds. Recommended size: 1200x300px or similar. Max size: 5MB per image</p>
-                <input type="file" id="bannerUpload" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" multiple style="margin-bottom:10px;">
-                <button type="button" class="btn btn-primary" id="uploadBannerBtn" style="margin-bottom:10px;">
-                  <span class="material-symbols-rounded">upload</span>
-                  Upload Banners
-                </button>
-              </div>
-              <div id="bannersPreview" style="margin-top:20px;display:block;">
-                <label style="display:block;margin-bottom:10px;font-weight:600;">Banner Previews:</label>
-                <div id="bannersGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:10px;min-height:50px;">
-                  <p style="color:#666;grid-column:1/-1;text-align:center;padding:20px;">Loading banners...</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

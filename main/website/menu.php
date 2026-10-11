@@ -30,6 +30,7 @@
   /* Rating/OFF chip + price colours: same Website Appearance > Bestsellers settings as the home page */
   --bsl-badge: <?php echo htmlspecialchars($bestseller_style['badge_color'], ENT_QUOTES, 'UTF-8'); ?>;
   --bsl-price: <?php echo htmlspecialchars($bestseller_style['price_color'], ENT_QUOTES, 'UTF-8'); ?>;
+  --bsl-add: <?php echo htmlspecialchars($bestseller_style['add_color'], ENT_QUOTES, 'UTF-8'); ?>;
 <?php if (!empty($category_heading_bg)): ?>  --cat-heading-bg: <?php echo htmlspecialchars($category_heading_bg, ENT_QUOTES, 'UTF-8'); ?>;
 <?php endif; ?>}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -191,8 +192,9 @@ body {
 .main-content::-webkit-scrollbar { display: none; }
 
 .category-overview {
-  /* very light shade of the price colour (Website Appearance > Bestsellers: price) */
-  background: var(--cat-heading-bg, color-mix(in srgb, var(--bsl-price) 9%, #fff));
+  /* Automatic: very light shade of the ADD button colour (Website Appearance >
+     Bestsellers: ADD colour); Category Heading Colour can override it */
+  background: var(--cat-heading-bg, color-mix(in srgb, var(--bsl-add) 12%, #fff));
   padding: 8px 12px 6px;
   border-radius: 0 0 14px 14px;
 }

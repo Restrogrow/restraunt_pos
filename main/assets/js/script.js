@@ -13746,18 +13746,18 @@ async function initWebsiteThemeEditor() {
         if (radio) radio.checked = active;
       });
     }
-    // Category heading colour: Automatic (light shade of the price colour) or a picked colour
-    function lightPriceShade() {
-      var pc = document.getElementById('bsPriceColor');
-      var hex = (pc && /^#[0-9a-f]{6}$/i.test(pc.value)) ? pc.value : '#ea580c';
-      var mix = function (i) { return Math.round(parseInt(hex.substr(i, 2), 16) * 0.09 + 255 * 0.91); };
+    // Category heading colour: Automatic (light shade of the ADD button colour) or a picked colour
+    function lightAddShade() {
+      var pc = document.getElementById('bsAddColor');
+      var hex = (pc && /^#[0-9a-f]{6}$/i.test(pc.value)) ? pc.value : '#e53935';
+      var mix = function (i) { return Math.round(parseInt(hex.substr(i, 2), 16) * 0.12 + 255 * 0.88); };
       return '#' + [1, 3, 5].map(function (i) { return ('0' + mix(i).toString(16)).slice(-2); }).join('');
     }
     function applyCategoryHeadingUI(val) {
       var auto = document.getElementById('categoryHeadingAuto'), inp = document.getElementById('categoryHeadingBg'), prev = document.getElementById('categoryHeadingPreview');
       if (!auto || !inp) return;
       if (val !== undefined) { auto.checked = !val; if (val) inp.value = val; }
-      if (auto.checked) inp.value = lightPriceShade();
+      if (auto.checked) inp.value = lightAddShade();
       inp.disabled = auto.checked;
       if (prev) prev.style.background = inp.value;
     }
@@ -13766,7 +13766,7 @@ async function initWebsiteThemeEditor() {
       if (!auto || !inp) return undefined;
       return auto.checked ? '' : inp.value;
     }
-    ['categoryHeadingAuto', 'categoryHeadingBg', 'bsPriceColor'].forEach(function (id) {
+    ['categoryHeadingAuto', 'categoryHeadingBg', 'bsAddColor'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener('input', function () { applyCategoryHeadingUI(); });
       if (el) el.addEventListener('change', function () { applyCategoryHeadingUI(); });
