@@ -742,6 +742,17 @@ body {
 .sheet-opt-off { font-size: 12px; color: #9ca3af; }
 .sheet-opt.disabled { opacity: 0.5; cursor: not-allowed; }
 .sheet-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Price + ADD on one line in the dish details */
+.sheet-price-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 6px; }
+.sheet-price-row .product-sheet-price { margin: 0; }
+.sheet-add-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+.sheet-add { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 112px; height: 40px; padding: 0 20px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; color: var(--primary-red, #e53935); font-family: var(--site-font); font-size: 17px; font-weight: 800; letter-spacing: 0.03em; box-shadow: 0 3px 10px rgba(0,0,0,0.10); cursor: pointer; }
+.sheet-add .plus { position: absolute; top: 1px; right: 7px; font-size: 15px; font-weight: 700; }
+.sheet-add.sold { color: #9ca3af; font-size: 14px; box-shadow: none; cursor: not-allowed; }
+.sheet-step { justify-content: space-between; padding: 0 4px; }
+.sheet-step button { width: 32px; height: 100%; border: 0; background: none; color: inherit; font-size: 20px; font-weight: 800; cursor: pointer; }
+.sheet-step span { font-size: 16px; }
+.sheet-add-note { font-size: 11px; color: #9ca3af; }
 .product-sheet-footer {
   padding: 12px 20px 20px;
   border-top: 1px solid #eee;
@@ -1711,7 +1722,11 @@ function showItemDetail(itemId) {
     html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 6px">' + badges.join('') + '</div>';
   }
 
-  html += '<div class="product-sheet-price" id="sheetPrice">' + formatPrice(itemPrice) + '</div>';
+  // Price with the ADD button right next to it (Swiggy-style)
+  html += '<div class="sheet-price-row">' +
+    '<div class="product-sheet-price" id="sheetPrice">' + formatPrice(itemPrice) + '</div>' +
+    '<div class="sheet-add-wrap" id="sheetAddWrap">' + sheetAddControlHtml(item) + '</div>' +
+  '</div>';
 
   if (itemDesc) {
     var safeDesc = escapeHtml(itemDesc);
@@ -1720,28 +1735,6 @@ function showItemDetail(itemId) {
   }
 
   html += '</div>'; // end body
-
-  // Footer with Add to Cart / Qty
-  html += '<div class="product-sheet-footer">';
-  var oos = item.is_available == 0;
-  if (oos) {
-    html += '<div style="width:100%;padding:14px 0;text-align:center;color:#e74c3c;font-weight:600;font-size:14px">Currently Out of Stock</div>';
-  } else {
-    var existingQty = getItemTotalQty(item.id);
-    if (hasVariants) {
-      // Swiggy-style: sizes are chosen after tapping Add to Cart
-      html += '<button class="sheet-add-btn" onclick="openVariantChooser(' + item.id + ')">Add to Cart · <span id="sheetBtnPrice">' + formatPrice(itemPrice) + '</span></button>';
-    } else if (existingQty > 0) {
-      html += '<div class="sheet-qty-row">' +
-        '<button class="sheet-qty-btn" onclick="sheetChangeQty(' + item.id + ', -1)"><i class="fa fa-minus"></i></button>' +
-        '<span class="sheet-qty-num" id="sheetQtyNum">' + existingQty + '</span>' +
-        '<button class="sheet-qty-btn" onclick="sheetChangeQty(' + item.id + ', 1)"><i class="fa fa-plus"></i></button>' +
-      '</div>';
-    } else {
-      html += '<button class="sheet-add-btn" onclick="sheetAddToCart(' + item.id + ')">Add to Cart · <span id="sheetBtnPrice">' + formatPrice(itemPrice) + '</span></button>';
-    }
-  }
-  html += '</div>';
 
   document.getElementById('productSheetContent').innerHTML = html;
   document.getElementById('productSheetOverlay').classList.add('active');
@@ -1865,6 +1858,32 @@ function sheetChangeQty(itemId, delta) {
   if (listEl) listEl.innerHTML = renderCartBtn(itemId, item);
   if (getItemTotalQty(itemId) === 0) closeProductSheet();
   updateCheckoutBar();
+}
+
+// ADD control next to the price: Sold out / ADD / − qty +
+function sheetAddControlHtml(item) {
+  if (item.is_available == 0) return '<button type="button" class="sheet-add sold" disabled>Sold out</button>';
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  if (hasVar) {
+    var inCart = getItemTotalQty(item.id);
+    return '<button type="button" class="sheet-add" onclick="openVariantChooser(' + item.id + ')">ADD<span class="plus">+</span></button>' +
+      '<div class="sheet-add-note">' + (inCart > 0 ? inCart + ' in cart' : 'Customisable') + '</div>';
+  }
+  var qty = getItemTotalQty(item.id);
+  if (qty > 0) {
+    return '<div class="sheet-add sheet-step">' +
+      '<button type="button" onclick="sheetQuickChange(' + item.id + ', -1)" aria-label="Remove one">−</button>' +
+      '<span>' + qty + '</span>' +
+      '<button type="button" onclick="sheetQuickChange(' + item.id + ', 1)" aria-label="Add one">+</button></div>';
+  }
+  return '<button type="button" class="sheet-add" onclick="sheetQuickChange(' + item.id + ', 1)">ADD<span class="plus">+</span></button>';
+}
+
+function sheetQuickChange(itemId, delta) {
+  if (delta > 0) addToCart(itemId); else removeFromCart(itemId);
+  var item = getSheetItem();
+  var wrap = document.getElementById('sheetAddWrap');
+  if (item && wrap) wrap.innerHTML = sheetAddControlHtml(item);
 }
 
 // Second step for dishes with sizes: pick one, then "Add item"
