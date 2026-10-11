@@ -602,12 +602,17 @@ body {
   to { transform: translateY(0); }
 }
 .product-sheet-drag {
+  /* sits on top of the photo, so no white strip above it */
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 40px;
   height: 4px;
-  background: #ddd;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 0 4px rgba(0,0,0,0.25);
   border-radius: 2px;
-  margin: 8px auto;
-  flex-shrink: 0;
+  z-index: 11;
 }
 .product-sheet-close {
   position: absolute;
@@ -626,13 +631,29 @@ body {
   font-size: 18px;
   z-index: 10;
 }
-.product-sheet-img {
+/* Same-size photo frame for every dish: the whole photo shows (never cropped);
+   any leftover space is filled with a soft blurred copy instead of grey bars. */
+.product-sheet-media {
+  position: relative;
   width: 100%;
-  height: auto; /* follow the photo's own shape: whole picture, no bars, no crop */
-  max-height: min(55vh, 420px); /* very tall photos stop here and fit inside */
-  object-fit: contain;
+  aspect-ratio: 3 / 2;
+  max-height: 45vh;
+  overflow: hidden;
   background: #f5f5f5;
   flex-shrink: 0;
+}
+.product-sheet-media::before {
+  content: "";
+  position: absolute;
+  inset: -24px;
+  background: var(--sheet-img) center / cover no-repeat;
+  filter: blur(18px) brightness(0.92);
+}
+.product-sheet-img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   display: block;
 }
 .product-sheet-body {
@@ -1632,7 +1653,8 @@ function showItemDetail(itemId) {
   var html = '';
 
   // Image
-  html += '<img class="product-sheet-img" src="' + imgUrl + '" alt="' + itemName + '" onerror="this.style.display=\'none\'">';
+  html += '<div class="product-sheet-media" style="--sheet-img:url(&quot;' + String(imgUrl).replace(/"/g, '%22') + '&quot;)">' +
+    '<img class="product-sheet-img" src="' + imgUrl + '" alt="' + itemName + '" onerror="this.parentNode.style.display=\'none\'"></div>';
 
   // Body
   html += '<div class="product-sheet-body">';
