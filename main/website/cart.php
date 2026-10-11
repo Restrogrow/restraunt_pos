@@ -946,6 +946,25 @@ body {
   padding: 6px 14px; font-size: 11px; font-family: var(--site-font);
   cursor: pointer; font-weight: 500;
 }
+/* ── Milestone offers: progress bar to the next coupon ── */
+.ms-card { margin: 0 0 14px; padding: 12px 12px 10px; border-radius: 14px; background: linear-gradient(135deg, #fff7ed, #fffbeb); border: 1px solid #fde68a; }
+.ms-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: #1f2937; line-height: 1.35; }
+.ms-head .ms-emoji { font-size: 18px; }
+.ms-head b { color: var(--primary-red, #e53935); }
+.ms-sub { margin: 3px 0 0 26px; font-size: 12px; color: #6b7280; }
+.ms-sub a { color: var(--primary-red, #e53935); font-weight: 700; text-decoration: none; }
+.ms-track { position: relative; height: 6px; margin: 22px 10px 30px; border-radius: 999px; background: #fde68a; }
+.ms-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: linear-gradient(90deg, #f59e0b, var(--primary-red, #e53935)); transition: width 0.5s ease; }
+.ms-stop { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; }
+.ms-stop.on { background: #16a34a; border-color: #16a34a; }
+.ms-stop .ms-off { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 800; color: #b45309; }
+.ms-stop.on .ms-off { color: #15803d; }
+.ms-stop .ms-at { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; color: #6b7280; font-weight: 600; }
+.ms-applied { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; padding: 8px 10px; border-radius: 10px; background: #dcfce7; color: #166534; font-size: 12.5px; font-weight: 700; }
+.ms-applied.pop { animation: msPop 0.5s ease; }
+.ms-apply-btn { border: 0; border-radius: 8px; padding: 6px 12px; background: var(--primary-red, #e53935); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+@keyframes msPop { 0% { transform: scale(0.9); opacity: 0; } 60% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .ms-applied.pop { animation: none; } .ms-fill { transition: none; } }
 </style>
 <script>
 window.websiteRestaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -1496,6 +1515,7 @@ function renderCart() {
   // Combine totals
   totalQty = regQty + addonQty;
   totalPrice = regPrice + addonPrice;
+  evaluateMilestones(totalPrice);
 
   var couponStatusHtml = '';
   if (appliedCoupon) {
@@ -1507,6 +1527,7 @@ function renderCart() {
 
   cartHtml +=
     '<div class="card card-pad" id="couponCard">' +
+      milestoneCardHtml(totalPrice) +
       '<div class="coupon-header">' +
         '<div class="icon-wrap">%</div>' +
         '<div class="header-text">' +
@@ -1787,7 +1808,8 @@ function loadCouponsFromServer() {
             minOrder: parseFloat(c.minimum_order_amount || 0),
             description: c.description || '',
             validTill: until || 'No expiry',
-            dbId: c.id
+            dbId: c.id,
+            isMilestone: c.is_milestone == 1
           };
         });
         if (appliedCoupon) {
@@ -1801,6 +1823,84 @@ function loadCouponsFromServer() {
       }
     })
     .catch(function() {});
+}
+
+// --- Milestone offers (coupons marked "Milestone offer" in the dashboard) ---
+// The bar shows how far the order is from the next coupon; the best one the
+// order has reached is applied automatically. A coupon the customer picks or
+// removes by hand is respected (couponUserChoice). A coupon whose minimum is
+// no longer met is taken off here, since checkout would refuse it.
+var couponUserChoice = false;
+var lastAutoAppliedCoupon = '';
+var milestoneJustApplied = false;
+
+function couponLabel(c) {
+  return c.type === 'percent' ? c.discount + '% OFF' : getCurrency() + c.discount + ' OFF';
+}
+function couponSaving(c, total) {
+  if (!c) return 0;
+  var v = c.type === 'percent' ? total * c.discount / 100 : c.discount;
+  return Math.max(0, Math.min(v, total));
+}
+function milestoneCoupons() {
+  return availableCoupons.filter(function(c) { return c.isMilestone && c.minOrder > 0; })
+    .sort(function(a, b) { return a.minOrder - b.minOrder; });
+}
+function bestReachedMilestone(total) {
+  var best = null;
+  milestoneCoupons().forEach(function(c) {
+    if (total >= c.minOrder && (!best || couponSaving(c, total) > couponSaving(best, total))) best = c;
+  });
+  return best;
+}
+function evaluateMilestones(total) {
+  milestoneJustApplied = false;
+  if (appliedCoupon && appliedCoupon.minOrder > 0 && total < appliedCoupon.minOrder) {
+    if (couponUserChoice) couponError = appliedCoupon.code + ' removed — it needs a minimum order of ' + getCurrency() + appliedCoupon.minOrder.toFixed(0);
+    appliedCoupon = null;
+    couponUserChoice = false;
+  }
+  if (!couponUserChoice) {
+    var best = bestReachedMilestone(total);
+    if (best && (!appliedCoupon || couponSaving(best, total) > couponSaving(appliedCoupon, total))) {
+      appliedCoupon = best;
+      couponError = '';
+      if (lastAutoAppliedCoupon !== best.code) { milestoneJustApplied = true; lastAutoAppliedCoupon = best.code; }
+    }
+  }
+}
+function applyMilestone(code) {
+  for (var i = 0; i < availableCoupons.length; i++) {
+    if (availableCoupons[i].code === code) { appliedCoupon = availableCoupons[i]; couponError = ''; couponUserChoice = false; lastAutoAppliedCoupon = code; }
+  }
+  renderCart();
+}
+function milestoneCardHtml(total) {
+  var list = milestoneCoupons();
+  if (!list.length) return '';
+  var cur = getCurrency();
+  var next = null;
+  for (var i = 0; i < list.length; i++) { if (total < list[i].minOrder) { next = list[i]; break; } }
+  var top = list[list.length - 1].minOrder;
+  var pct = Math.max(0, Math.min(100, total / top * 100));
+  var head = next
+    ? '<span class="ms-emoji">🎯</span><span>Add <b>' + cur + (next.minOrder - total).toFixed(0) + '</b> more to get <b>' + couponLabel(next) + '</b></span>'
+    : '<span class="ms-emoji">🎉</span><span>You\'ve unlocked the best offer!</span>';
+  var sub = next ? '<div class="ms-sub">Code ' + next.code + ' applies automatically · <a href="' + appendTableParam('<?php echo restaurantPageUrl('menu'); ?>') + '">Add items</a></div>' : '';
+  var stops = list.map(function(c) {
+    var on = total >= c.minOrder;
+    return '<div class="ms-stop' + (on ? ' on' : '') + '" style="left:' + (c.minOrder / top * 100) + '%">' + (on ? '✓' : '') +
+      '<span class="ms-off">' + couponLabel(c) + '</span><span class="ms-at">' + cur + c.minOrder.toFixed(0) + '</span></div>';
+  }).join('');
+  var applied = '';
+  var best = bestReachedMilestone(total);
+  if (appliedCoupon && appliedCoupon.isMilestone) {
+    applied = '<div class="ms-applied' + (milestoneJustApplied ? ' pop' : '') + '"><span>🎉 ' + appliedCoupon.code + ' applied — you save ' + cur + couponSaving(appliedCoupon, total).toFixed(0) + '</span></div>';
+  } else if (best && (!appliedCoupon || couponSaving(best, total) > couponSaving(appliedCoupon, total))) {
+    applied = '<div class="ms-applied" style="background:#fef3c7;color:#92400e"><span>' + best.code + ' unlocked — save ' + cur + couponSaving(best, total).toFixed(0) + '</span><button type="button" class="ms-apply-btn" onclick="applyMilestone(\'' + best.code + '\')">Apply</button></div>';
+  }
+  return '<div class="ms-card"><div class="ms-head">' + head + '</div>' + sub +
+    '<div class="ms-track"><div class="ms-fill" style="width:' + pct + '%"></div>' + stops + '</div>' + applied + '</div>';
 }
 
 function applyCoupon() {
@@ -1842,6 +1942,7 @@ function applyCoupon() {
 
   appliedCoupon = found;
   couponError = '';
+  couponUserChoice = true;
   renderCart();
   setTimeout(function() {
     var inp = document.getElementById('couponInput');
@@ -1852,6 +1953,7 @@ function applyCoupon() {
 function removeCoupon() {
   appliedCoupon = null;
   couponError = '';
+  couponUserChoice = true;
   renderCart();
 }
 
@@ -1914,6 +2016,7 @@ function selectCoupon(code) {
       if (availableCoupons[i].minOrder > 0 && cart.totalPrice < availableCoupons[i].minOrder) return;
       appliedCoupon = availableCoupons[i];
       couponError = '';
+      couponUserChoice = true;
       break;
     }
   }

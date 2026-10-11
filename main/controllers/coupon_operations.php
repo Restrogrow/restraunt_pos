@@ -41,6 +41,15 @@ try {
         )");
     }
 
+    require_once __DIR__ . '/../config/coupon_helpers.php';
+    ensureCouponMilestoneColumn($conn);
+    // Milestone offer: shown on the cart progress bar and auto-applied once the
+    // order reaches the minimum — so it needs a minimum order amount.
+    $isMilestone = !empty($_POST['is_milestone']) ? 1 : 0;
+    if ($isMilestone && in_array($action, ['add', 'update'], true) && (float)($_POST['minimum_order_amount'] ?? 0) <= 0) {
+        throw new Exception('A milestone offer needs a minimum order amount');
+    }
+
     switch ($action) {
         case 'add':
             $code = strtoupper(trim($_POST['coupon_code'] ?? ''));
@@ -65,8 +74,8 @@ try {
             $check->execute([$restaurant_id, $code]);
             if ($check->fetch()) throw new Exception('Coupon code already exists');
 
-            $stmt = $conn->prepare("INSERT INTO coupons (restaurant_id, coupon_code, discount_type, discount_value, minimum_order_amount, max_uses, valid_from, valid_until, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$restaurant_id, $code, $type, $value, $minOrder, $maxUses, $validFrom, $validUntil, $desc]);
+            $stmt = $conn->prepare("INSERT INTO coupons (restaurant_id, coupon_code, discount_type, discount_value, minimum_order_amount, max_uses, valid_from, valid_until, description, is_milestone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$restaurant_id, $code, $type, $value, $minOrder, $maxUses, $validFrom, $validUntil, $desc, $isMilestone]);
             echo json_encode(['success' => true, 'message' => 'Coupon created']);
             break;
 
@@ -96,8 +105,8 @@ try {
             $check->execute([$restaurant_id, $code, $id]);
             if ($check->fetch()) throw new Exception('Coupon code already exists');
 
-            $stmt = $conn->prepare("UPDATE coupons SET coupon_code=?, discount_type=?, discount_value=?, minimum_order_amount=?, max_uses=?, valid_from=?, valid_until=?, description=? WHERE id=? AND restaurant_id=?");
-            $stmt->execute([$code, $type, $value, $minOrder, $maxUses, $validFrom, $validUntil, $desc, $id, $restaurant_id]);
+            $stmt = $conn->prepare("UPDATE coupons SET coupon_code=?, discount_type=?, discount_value=?, minimum_order_amount=?, max_uses=?, valid_from=?, valid_until=?, description=?, is_milestone=? WHERE id=? AND restaurant_id=?");
+            $stmt->execute([$code, $type, $value, $minOrder, $maxUses, $validFrom, $validUntil, $desc, $isMilestone, $id, $restaurant_id]);
             echo json_encode(['success' => true, 'message' => 'Coupon updated']);
             break;
 

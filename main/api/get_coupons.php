@@ -42,7 +42,9 @@ try {
         exit();
     }
 
-    $stmt = $conn->prepare("SELECT id, coupon_code, discount_type, discount_value, minimum_order_amount, description, valid_from, valid_until FROM coupons WHERE restaurant_id = :rid AND is_active = 1 AND (valid_from IS NULL OR valid_from <= CURDATE()) AND (valid_until IS NULL OR valid_until >= CURDATE()) AND (max_uses = 0 OR current_uses < max_uses) ORDER BY discount_value DESC");
+    require_once __DIR__ . '/../config/coupon_helpers.php';
+    ensureCouponMilestoneColumn($conn);
+    $stmt = $conn->prepare("SELECT id, coupon_code, discount_type, discount_value, minimum_order_amount, description, valid_from, valid_until, is_milestone FROM coupons WHERE restaurant_id = :rid AND is_active = 1 AND (valid_from IS NULL OR valid_from <= CURDATE()) AND (valid_until IS NULL OR valid_until >= CURDATE()) AND (max_uses = 0 OR current_uses < max_uses) ORDER BY discount_value DESC");
     $stmt->execute([':rid' => $restaurant_id]);
     $coupons = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

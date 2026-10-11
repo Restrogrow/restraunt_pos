@@ -797,6 +797,13 @@ body {
   font-size: 13px; font-weight: 700; color: #1f2937;
 }
 .offer-active-bar button { border: 0; border-radius: 999px; padding: 6px 12px; background: #fff; color: var(--primary-red, #e53935); font: inherit; font-size: 12px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+/* Milestone offer hint, just above the checkout bar */
+.ms-hint { position: absolute; left: 0; right: 0; bottom: 100%; display: none; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; background: #fffbeb; border-top: 1px solid #fde68a; color: #92400e; font-size: 12.5px; font-weight: 700; text-align: center; }
+.ms-hint.show { display: flex; }
+.ms-hint.done { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+.ms-hint b { color: var(--primary-red, #e53935); }
+.ms-hint.done b { color: #15803d; }
+body.has-ms-hint .offer-bubble { bottom: 120px; }
 /* Size chooser (opens from Add to Cart on dishes with sizes) */
 .sheet-choose { padding: 18px 20px 8px; }
 .sheet-choose-head { display: flex; align-items: center; gap: 12px; padding-right: 44px; }
@@ -1200,6 +1207,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
   </div>
 </div>
   <div class="checkout-bar" id="checkoutBar">
+    <div class="ms-hint" id="msHint"></div>
     <span class="total-label" id="checkoutLabel"><?php echo htmlspecialchars($currency_symbol ?? '₹'); ?>0.00</span>
     <button class="checkout-btn" id="checkoutBtn" onclick="goToCheckout()">Checkout <i class="fa fa-arrow-right"></i></button>
   </div>
@@ -1641,6 +1649,38 @@ function updateCheckoutBar() {
     bar.classList.remove('show');
     if (content) content.classList.remove('has-cart');
   }
+  updateMilestoneHint(totalPrice, totalQty > 0);
+}
+
+// ── Milestone offers hint (coupons marked "Milestone offer" in the dashboard)
+var milestoneOffers = [];
+function loadMilestoneOffers() {
+  fetch('../api/get_coupons.php?restaurant_id=' + encodeURIComponent(window.websiteRestaurantId || ''))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      milestoneOffers = ((d && d.coupons) || []).filter(function(c) { return c.is_milestone == 1 && parseFloat(c.minimum_order_amount) > 0; })
+        .map(function(c) { return { code: c.coupon_code, type: c.discount_type, value: parseFloat(c.discount_value), min: parseFloat(c.minimum_order_amount) }; })
+        .sort(function(a, b) { return a.min - b.min; });
+      updateCheckoutBar();
+    })
+    .catch(function() {});
+}
+document.addEventListener('DOMContentLoaded', loadMilestoneOffers);
+function updateMilestoneHint(total, hasItems) {
+  var el = document.getElementById('msHint');
+  if (!el) return;
+  var cur = window.globalCurrencySymbol || '₹';
+  var label = function(c) { return c.type === 'percent' ? c.value + '% OFF' : cur + c.value + ' OFF'; };
+  var next = null, reached = null;
+  milestoneOffers.forEach(function(c) { if (total >= c.min) reached = c; else if (!next) next = c; });
+  var show = hasItems && milestoneOffers.length > 0;
+  el.classList.toggle('show', show);
+  document.body.classList.toggle('has-ms-hint', show);
+  if (!show) return;
+  el.classList.toggle('done', !next);
+  el.innerHTML = next
+    ? '🎯 Add <b>' + cur + Math.ceil(next.min - total) + '</b> more to get <b>' + label(next) + '</b>' + (reached ? ' · ' + label(reached) + ' unlocked' : '')
+    : '🎉 <b>' + label(reached) + '</b> unlocked — applied at checkout';
 }
 
 function goToCheckout() {

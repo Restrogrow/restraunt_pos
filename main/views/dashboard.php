@@ -4148,6 +4148,10 @@ function toggleGatewayMode() {
                 <input type="number" id="cpnMaxUses" class="form-control" min="0" value="0">
               </div>
             </div>
+            <label class="form-group" for="cpnMilestone" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid #fde68a;border-radius:10px;background:#fffbeb;cursor:pointer;">
+              <input type="checkbox" id="cpnMilestone" style="margin-top:3px;width:16px;height:16px;flex-shrink:0;">
+              <span><strong>🎯 Milestone offer</strong><br><span style="font-size:0.85rem;color:#6b7280;">Show it on the cart's progress bar (“Add ₹40 more to get this offer”) and apply it automatically once the order reaches the minimum amount. Make a few, e.g. ₹100, ₹200 and ₹300.</span></span>
+            </label>
             <div class="row" style="display:flex;gap:12px;">
               <div class="form-group" style="flex:1;">
                 <label>Valid From</label>

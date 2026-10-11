@@ -15516,7 +15516,7 @@ async function loadAdminCoupons() {
       const statusClass = c.is_active == 1 && !expired ? 'badge badge-success' : 'badge badge-danger';
       const statusText = c.is_active == 1 ? (expired ? 'Expired' : 'Active') : 'Inactive';
       return '<tr>' +
-        '<td><strong>' + escHtml(c.coupon_code) + '</strong></td>' +
+        '<td><strong>' + escHtml(c.coupon_code) + '</strong>' + (c.is_milestone == 1 ? ' <span title="Milestone offer" style="font-size:0.75em;background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:6px;">🎯 Milestone</span>' : '') + '</td>' +
         '<td>' + typeLabel + '</td>' +
         '<td>' + valueDisplay + '</td>' +
         '<td>' + minDisplay + '</td>' +
@@ -15559,6 +15559,7 @@ function openCouponModal(data) {
     descInput.value = data.description || '';
     minOrderInput.value = data.minimum_order_amount || 0;
     maxUsesInput.value = data.max_uses || 0;
+    if (document.getElementById('cpnMilestone')) document.getElementById('cpnMilestone').checked = data.is_milestone == 1;
     validFromInput.value = data.valid_from || '';
     validUntilInput.value = data.valid_until || '';
     saveBtn.textContent = 'Update Coupon';
@@ -15571,6 +15572,7 @@ function openCouponModal(data) {
     descInput.value = '';
     minOrderInput.value = 0;
     maxUsesInput.value = 0;
+    if (document.getElementById('cpnMilestone')) document.getElementById('cpnMilestone').checked = false;
     validFromInput.value = '';
     validUntilInput.value = '';
     saveBtn.textContent = 'Save Coupon';
@@ -15594,6 +15596,8 @@ async function saveCoupon(event) {
   const saveBtn = document.getElementById('cpnSaveBtn');
   if (!code) { showSweetAlert('Please enter a coupon code.', 'warning'); return; }
   if (!value || parseFloat(value) <= 0) { showSweetAlert('Please enter a valid discount value.', 'warning'); return; }
+  const isMilestone = !!(document.getElementById('cpnMilestone') && document.getElementById('cpnMilestone').checked);
+  if (isMilestone && !(parseFloat(minOrder) > 0)) { showSweetAlert('A milestone offer needs a minimum order amount (e.g. 200).', 'warning'); return; }
   const action = id ? 'update' : 'add';
   saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
   const formData = new FormData();
@@ -15606,6 +15610,7 @@ async function saveCoupon(event) {
   formData.append('max_uses', maxUses);
   formData.append('valid_from', validFrom);
   formData.append('valid_until', validUntil);
+  formData.append('is_milestone', isMilestone ? '1' : '0');
   if (id) formData.append('id', id);
   try {
     const r = await fetch('../controllers/coupon_operations.php', { method: 'POST', body: formData });
