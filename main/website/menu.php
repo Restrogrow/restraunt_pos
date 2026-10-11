@@ -810,6 +810,29 @@ body {
 @keyframes msHintSwap { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .ms-hint.show, .ms-hint .ms-hint-text.swap { animation: none; } .ms-hint-bar { transition: none; } }
 body.has-ms-hint .offer-bubble { bottom: 120px; }
+/* ── Coupon celebration on Checkout ── */
+.cpn-cele { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(17,24,39,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.25s ease; cursor: pointer; }
+.cpn-cele.show { opacity: 1; }
+.cpn-cele.hide { opacity: 0; transition: opacity 0.35s ease; }
+.cpn-cele canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cpn-cele-card { position: relative; width: 100%; max-width: 300px; padding: 30px 22px 22px; border-radius: 24px; background: #fff; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.3); transform: scale(0.6) translateY(30px); opacity: 0; }
+.cpn-cele.show .cpn-cele-card { animation: celeCardIn 0.55s cubic-bezier(.34,1.56,.64,1) forwards; }
+.cpn-cele-badge { position: relative; width: 76px; height: 76px; margin: -68px auto 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #fff; background: linear-gradient(135deg, #fbbf24, var(--primary-red, #e53935)); box-shadow: 0 10px 24px color-mix(in srgb, var(--primary-red, #e53935) 45%, transparent); border: 5px solid #fff; }
+.cpn-cele.show .cpn-cele-badge { animation: celeBadge 0.9s cubic-bezier(.34,1.56,.64,1) 0.2s both; }
+.cpn-cele-badge::before, .cpn-cele-badge::after { content: ""; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--primary-red, #e53935) 40%, transparent); animation: celeRing 1.6s ease-out 0.4s infinite; }
+.cpn-cele-badge::after { animation-delay: 1.2s; }
+.cpn-cele-kicker { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--primary-red, #e53935); }
+.cpn-cele-amount { margin: 6px 0 4px; font-size: 34px; font-weight: 900; color: #111827; line-height: 1.1; }
+.cpn-cele-amount span { background: linear-gradient(90deg, #f59e0b, var(--primary-red, #e53935)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cpn-cele-code { display: inline-block; margin-top: 8px; padding: 5px 12px; border: 1.5px dashed color-mix(in srgb, var(--primary-red, #e53935) 50%, #fff); border-radius: 8px; font-size: 12.5px; font-weight: 700; color: #374151; letter-spacing: 0.05em; }
+.cpn-cele-note { margin-top: 12px; font-size: 11.5px; color: #9ca3af; }
+.cpn-cele-timer { position: absolute; left: 22px; right: 22px; bottom: 10px; height: 3px; border-radius: 999px; background: #f3f4f6; overflow: hidden; }
+.cpn-cele-timer i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #fbbf24, var(--primary-red, #e53935)); transform-origin: left; animation: celeTimer var(--cele-ms, 2600ms) linear forwards; }
+@keyframes celeCardIn { to { transform: none; opacity: 1; } }
+@keyframes celeBadge { 0% { transform: scale(0) rotate(-30deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes celeRing { from { transform: scale(0.85); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+@keyframes celeTimer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .cpn-cele.show .cpn-cele-card, .cpn-cele.show .cpn-cele-badge { animation: none; transform: none; opacity: 1; } .cpn-cele-badge::before, .cpn-cele-badge::after { animation: none; display: none; } }
 /* Size chooser (opens from Add to Cart on dishes with sizes) */
 .sheet-choose { padding: 18px 20px 8px; }
 .sheet-choose-head { display: flex; align-items: center; gap: 12px; padding-right: 44px; }
@@ -1655,6 +1678,7 @@ function updateCheckoutBar() {
     bar.classList.remove('show');
     if (content) content.classList.remove('has-cart');
   }
+  lastCartTotal = totalPrice;
   updateMilestoneHint(totalPrice, totalQty > 0);
 }
 
@@ -1704,7 +1728,116 @@ function updateMilestoneHint(total, hasItems) {
   setTimeout(function() { if (bar) bar.style.width = pct + '%'; }, 30);
 }
 
+// Checkout from the menu with a milestone offer unlocked: celebrate the saving
+// (3–4 s, square confetti) on the way to the cart. Shares the "already shown"
+// flag with the cart page, so the same coupon is never celebrated twice.
+var lastCartTotal = 0;
+function bestUnlockedOffer(total) {
+  var best = null, bestSave = 0;
+  milestoneOffers.forEach(function(c) {
+    if (total < c.min) return;
+    var save = c.type === 'percent' ? total * c.value / 100 : c.value;
+    save = Math.min(save, total);
+    if (save > bestSave) { best = c; bestSave = save; }
+  });
+  return best ? { code: best.code, saved: Math.round(bestSave) } : null;
+}
+function showCouponCelebration(code, saved, done) {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var ms = reduce ? 1600 : 3500;
+  var cur = window.globalCurrencySymbol || '₹';
+  var el = document.createElement('div');
+  el.className = 'cpn-cele';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', 'You saved ' + cur + saved);
+  el.style.setProperty('--cele-ms', ms + 'ms');
+  el.innerHTML = '<canvas></canvas>' +
+    '<div class="cpn-cele-card">' +
+      '<div class="cpn-cele-badge"><i class="fa fa-gift"></i></div>' +
+      '<div class="cpn-cele-kicker">Congratulations</div>' +
+      '<div class="cpn-cele-amount">You saved <span id="celeAmt">' + cur + '0</span></div>' +
+      '<div style="font-size:13px;color:#6b7280;">on this order</div>' +
+      '<div class="cpn-cele-code">' + escapeHtml(code) + ' applied</div>' +
+      '<div class="cpn-cele-note">Tap anywhere to continue</div>' +
+      '<div class="cpn-cele-timer"><i></i></div>' +
+    '</div>';
+  document.body.appendChild(el);
+  requestAnimationFrame(function() { el.classList.add('show'); });
+
+  // Count the saving up
+  var amt = el.querySelector('#celeAmt'), t0 = performance.now(), dur = reduce ? 1 : 900;
+  (function tick(now) {
+    var p = Math.min(1, (now - t0) / dur);
+    amt.textContent = cur + Math.round(saved * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(tick);
+  })(t0);
+
+  // Confetti: coloured squares only — two party-popper bursts from the bottom
+  // corners, then a shower from the top, for the whole popup.
+  var canvas = el.querySelector('canvas'), ctx = canvas.getContext && canvas.getContext('2d'), raf = 0;
+  if (ctx && !reduce) {
+    var dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr);
+    var brand = getComputedStyle(document.documentElement).getPropertyValue('--primary-red').trim() || '#e53935';
+    var colors = [brand, '#fbbf24', '#f97316', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6'];
+    var parts = [];
+    function square(x, y, vx, vy) {
+      parts.push({ x: x, y: y, vx: vx, vy: vy, s: 6 + Math.random() * 6, r: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.35, flip: Math.random() * Math.PI, vf: 0.08 + Math.random() * 0.12,
+        c: colors[(Math.random() * colors.length) | 0] });
+    }
+    function popper(fromLeft) {
+      for (var i = 0; i < 90; i++) {
+        var ang = (fromLeft ? -60 : -120) + (Math.random() - 0.5) * 40;   // up and inwards
+        var sp = 11 + Math.random() * 9, rad = ang * Math.PI / 180;
+        square(fromLeft ? -10 : W + 10, H - 40, Math.cos(rad) * sp, Math.sin(rad) * sp);
+      }
+    }
+    popper(true); popper(false);
+    var t0 = performance.now(), lastRain = t0;
+    (function frame(now) {
+      ctx.clearRect(0, 0, W, H);
+      // keep a light shower going from the top until near the end
+      if (now - t0 > 500 && now - t0 < ms - 700 && now - lastRain > 60) {
+        lastRain = now;
+        for (var k = 0; k < 4; k++) square(Math.random() * W, -12, (Math.random() - 0.5) * 2, 1 + Math.random() * 2);
+      }
+      for (var i = parts.length - 1; i >= 0; i--) {
+        var p = parts[i];
+        p.vy += 0.22; p.vx *= 0.985; p.vy = Math.min(p.vy, 5.5);
+        p.x += p.vx + Math.sin(p.flip) * 0.6; p.y += p.vy; p.r += p.vr; p.flip += p.vf;
+        if (p.y > H + 20) { parts.splice(i, 1); continue; }
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
+        ctx.scale(1, Math.cos(p.flip));                 // squares tumble as they fall
+        ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s);
+        ctx.restore();
+      }
+      raf = requestAnimationFrame(frame);
+    })(t0);
+  }
+
+  var finished = false;
+  function finish() {
+    if (finished) return;
+    finished = true;
+    el.classList.add('hide');
+    setTimeout(function() { cancelAnimationFrame(raf); el.remove(); done(); }, 300);
+  }
+  el.addEventListener('click', finish);
+  setTimeout(finish, ms);
+}
+
 function goToCheckout() {
+  var offer = bestUnlockedOffer(lastCartTotal);
+  if (offer && !window._menuCelebrating) {
+    var key = 'cpnCelebrated_' + offer.code, seen = false;
+    try { seen = !!sessionStorage.getItem(key); if (!seen) sessionStorage.setItem(key, '1'); } catch (e) {}
+    if (!seen) {
+      window._menuCelebrating = true;
+      showCouponCelebration(offer.code, offer.saved, function() { goToCheckout(); });
+      return;
+    }
+  }
   var url = '<?php echo restaurantPageUrl('cart'); ?>';
   var tbl = window.websiteTableNumber || '';
   if (tbl) {
