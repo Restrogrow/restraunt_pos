@@ -746,9 +746,10 @@ body {
 .sheet-price-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 6px; }
 .sheet-price-row .product-sheet-price { margin: 0; }
 .sheet-add-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
-.sheet-add { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 112px; height: 40px; padding: 0 20px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; color: var(--primary-red, #e53935); font-family: var(--site-font); font-size: 17px; font-weight: 800; letter-spacing: 0.03em; box-shadow: 0 3px 10px rgba(0,0,0,0.10); cursor: pointer; }
-.sheet-add .plus { position: absolute; top: 1px; right: 7px; font-size: 15px; font-weight: 700; }
-.sheet-add.sold { color: #9ca3af; font-size: 14px; box-shadow: none; cursor: not-allowed; }
+.sheet-add { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 112px; height: 42px; padding: 0 22px; border: 0; border-radius: 12px; background: linear-gradient(180deg, #ffe14d 0%, var(--primary-yellow, #FFD100) 100%); color: #1a1b1f; font-family: var(--site-font); font-size: 16px; font-weight: 800; letter-spacing: 0.06em; box-shadow: 0 4px 12px rgba(255, 196, 0, 0.45), inset 0 -2px 0 rgba(0,0,0,0.08); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.sheet-add:active { transform: scale(0.96); box-shadow: 0 2px 6px rgba(255, 196, 0, 0.4), inset 0 -1px 0 rgba(0,0,0,0.08); }
+.sheet-add .plus { position: absolute; top: 2px; right: 8px; font-size: 14px; font-weight: 800; }
+.sheet-add.sold { background: #f3f4f6; color: #9ca3af; font-size: 14px; letter-spacing: 0; box-shadow: none; cursor: not-allowed; }
 .sheet-step { justify-content: space-between; padding: 0 4px; }
 .sheet-step button { width: 32px; height: 100%; border: 0; background: none; color: inherit; font-size: 20px; font-weight: 800; cursor: pointer; }
 .sheet-step span { font-size: 16px; }
