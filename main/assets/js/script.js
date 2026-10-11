@@ -14041,6 +14041,24 @@ async function initWebsiteThemeEditor() {
         if (radio) radio.checked = active;
       });
     }
+    // Home page dishes look (Classic / Grid / Big photo / Compact / Carousel)
+    function applyHomeCardStyleUI(val) {
+      document.querySelectorAll('.home-card-style-opt').forEach(function(el) {
+        var active = el.getAttribute('data-value') === val;
+        el.style.borderColor = active ? '#7c3aed' : '#e5e7eb';
+        var icon = el.querySelector('.material-symbols-rounded');
+        if (icon) icon.style.color = active ? '#7c3aed' : '#6b7280';
+        var radio = el.querySelector('input[name="homeCardStyle"]');
+        if (radio) radio.checked = active;
+      });
+    }
+    function currentHomeCardStyleVal() {
+      var r = document.querySelector('input[name="homeCardStyle"]:checked');
+      return r ? r.value : 'classic';
+    }
+    document.querySelectorAll('.home-card-style-opt').forEach(function(el) {
+      el.addEventListener('click', function() { applyHomeCardStyleUI(el.getAttribute('data-value')); });
+    });
     function currentMenuCardStyleVal() {
       var r = document.querySelector('input[name="menuCardStyle"]:checked');
       return r ? r.value : 'classic';
@@ -14950,6 +14968,7 @@ if (!window.customBgThemes) {
       applyLayoutHeaderStyleUI(data.settings.layout_style || 'grid', data.settings.header_style || 'hero');
       applyMenuNavPositionUI(data.settings.menu_nav_position || 'left');
       applyMenuCardStyleUI(data.settings.menu_card_style || 'classic');
+      applyHomeCardStyleUI(data.settings.home_card_style || 'classic');
       applyCategoryHeadingUI(data.settings.category_heading_bg || '');
       applyCategoryPicStyleUI(data.settings.category_pic_style || 'round');
       var allPrev = document.getElementById('allCategoryIconPreview');
@@ -15170,6 +15189,7 @@ if (!window.customBgThemes) {
             header_style: currentHeaderStyleVal(),
             menu_nav_position: currentMenuNavPositionVal(),
             menu_card_style: currentMenuCardStyleVal(),
+            home_card_style: currentHomeCardStyleVal(),
             category_heading_bg: currentCategoryHeadingVal(),
             category_pic_style: currentCategoryPicStyleVal(),
             bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined

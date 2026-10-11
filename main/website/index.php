@@ -864,6 +864,48 @@ body {
   color: #333; font-size: 16px;
 }
 
+/* ══ Home Page Dishes look (Website Appearance): grid / big / compact / carousel ══ */
+/* Grid: 2 cards per row, photo on top */
+#menuList.hc-grid [id^="catItems"] { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 4px 0 8px; }
+#menuList.hc-grid .menu-item { flex-direction: column; gap: 0; padding: 0; border: 0; border-radius: 16px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden; }
+#menuList.hc-grid .menu-item-img { width: 100%; height: auto; aspect-ratio: 5 / 4; border-radius: 0; }
+#menuList.hc-grid .menu-item-content { padding: 9px 10px 10px; }
+#menuList.hc-grid .menu-item-name { font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#menuList.hc-grid .menu-item-desc { display: none; }
+#menuList.hc-grid .menu-item-footer { margin-top: 8px; }
+#menuList.hc-grid .menu-item-variant { display: none; }
+/* Big photo: one large photo card per dish */
+#menuList.hc-big [id^="catItems"] { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 10px; }
+#menuList.hc-big .menu-item { flex-direction: column; gap: 0; padding: 0; border: 0; border-radius: 20px; background: #fff; box-shadow: 0 6px 20px rgba(0,0,0,0.08); overflow: hidden; }
+#menuList.hc-big .menu-item-img { width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 0; }
+#menuList.hc-big .menu-item-img img { transition: transform 0.5s ease; }
+#menuList.hc-big .menu-item:hover .menu-item-img img { transform: scale(1.04); }
+#menuList.hc-big .veg-icon { top: 10px; left: 10px; }
+#menuList.hc-big .menu-item-content { padding: 12px 14px 14px; }
+#menuList.hc-big .menu-item-name { font-size: 16px; font-weight: 700; }
+#menuList.hc-big .menu-item-desc { font-size: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#menuList.hc-big .menu-item-footer { margin-top: 10px; }
+#menuList.hc-big .menu-item-price { font-size: 16px; }
+/* Compact: short rows for long menus */
+#menuList.hc-compact .menu-item { gap: 10px; padding: 8px 0; align-items: center; }
+#menuList.hc-compact .menu-item-img { width: 48px; height: 48px; border-radius: 10px; }
+#menuList.hc-compact .veg-icon { top: 2px; left: 2px; width: 13px; height: 13px; }
+#menuList.hc-compact .veg-icon svg { width: 11px; height: 11px; }
+#menuList.hc-compact .menu-item-content { flex-direction: row; align-items: center; gap: 8px; }
+#menuList.hc-compact .menu-item-name { flex: 1; min-width: 0; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#menuList.hc-compact .menu-item-desc, #menuList.hc-compact .menu-item-badges, #menuList.hc-compact .menu-item-variant { display: none; }
+#menuList.hc-compact .menu-item-footer { margin-top: 0; gap: 10px; flex-shrink: 0; }
+#menuList.hc-compact .menu-item-price { font-size: 13px; }
+/* Carousel: each category scrolls sideways */
+#menuList.hc-carousel [id^="catItems"] { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 12px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
+#menuList.hc-carousel [id^="catItems"]::-webkit-scrollbar { display: none; }
+#menuList.hc-carousel .menu-item { flex: 0 0 150px; scroll-snap-align: start; flex-direction: column; gap: 0; padding: 0; border: 0; border-radius: 16px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.07); overflow: hidden; }
+#menuList.hc-carousel .menu-item-img { width: 100%; height: 120px; border-radius: 0; }
+#menuList.hc-carousel .menu-item-content { padding: 8px 10px 10px; }
+#menuList.hc-carousel .menu-item-name { font-size: 13px; line-height: 1.3; min-height: 2.6em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#menuList.hc-carousel .menu-item-desc, #menuList.hc-carousel .menu-item-variant, #menuList.hc-carousel .menu-item-badges { display: none; }
+#menuList.hc-carousel .menu-item-footer { margin-top: 6px; }
+@media (prefers-reduced-motion: reduce) { #menuList.hc-big .menu-item-img img { transition: none; } }
 .menu-list { padding: 0 16px 100px; }
 
 .category-header {
@@ -1644,7 +1686,7 @@ window.socialLinks = {
     </div>
   </section>
 
-  <div class="menu-list" id="menuList" data-price-style="<?php echo htmlspecialchars($bestseller_style['price_style'], ENT_QUOTES, 'UTF-8'); ?>">
+  <div class="menu-list<?php echo ($home_card_style ?? 'classic') !== 'classic' ? ' hc-' . htmlspecialchars($home_card_style, ENT_QUOTES, 'UTF-8') : ''; ?>" id="menuList" data-price-style="<?php echo htmlspecialchars($bestseller_style['price_style'], ENT_QUOTES, 'UTF-8'); ?>">
     <div class="skel-cat-header skeleton"></div>
     <div class="skel-item"><div class="skel-img skeleton"></div><div class="skel-text"><div class="skel-title skeleton"></div><div class="skel-desc skeleton"></div><div class="skel-price skeleton"></div></div></div>
     <div class="skel-item"><div class="skel-img skeleton"></div><div class="skel-text"><div class="skel-title skeleton"></div><div class="skel-desc skeleton"></div><div class="skel-price skeleton"></div></div></div>

@@ -71,6 +71,8 @@ const THEME_HEADER_STYLES = ['hero', 'minimal'];
 const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
 // Menu page dish card design: the original cards, or the modern card (wide photo,
 // description, quantity picker + Add button)
+// Home page dish list look (Website Appearance > Home Page Dishes)
+const THEME_HOME_CARD_STYLES = ['classic', 'grid', 'big', 'compact', 'carousel'];
 const THEME_MENU_CARD_STYLES = ['classic', 'modern', 'minimal', 'photo', 'list', 'elegant', 'compact', 'midnight', 'showcase'];
 // Menu page category pictures: round photos, or cut-outs (whole picture, no crop,
 // for transparent PNGs of the dish) with the label highlighted when selected
@@ -193,6 +195,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         'bestseller_style' => "TEXT DEFAULT NULL",
         'menu_nav_position' => "VARCHAR(10) DEFAULT 'left'",
         'menu_card_style' => "VARCHAR(10) DEFAULT 'classic'",
+        'home_card_style' => "VARCHAR(10) DEFAULT 'classic'",
         'category_heading_bg' => "VARCHAR(20) DEFAULT NULL",
         'category_pic_style' => "VARCHAR(10) DEFAULT 'round'",
         'all_category_icon' => "LONGTEXT DEFAULT NULL",

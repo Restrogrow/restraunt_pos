@@ -1978,6 +1978,42 @@ try {
               </div>
             </div>
 
+            <!-- Home page dishes: how the menu list on the home page looks -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">home</span>
+                Home Page Dishes
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How dishes look in the menu on your Home page. <b>Classic</b>: rows with a photo (default). <b>Grid</b>: 2 cards per row. <b>Big photo</b>: one large photo per dish. <b>Compact</b>: short rows for long menus. <b>Carousel</b>: each category scrolls sideways.</p>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <label class="home-card-style-opt" data-value="classic" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="classic" checked style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">view_list</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Classic</span>
+                </label>
+                <label class="home-card-style-opt" data-value="grid" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="grid" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">grid_view</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Grid</span>
+                </label>
+                <label class="home-card-style-opt" data-value="big" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="big" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">image</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Big photo</span>
+                </label>
+                <label class="home-card-style-opt" data-value="compact" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="compact" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">density_small</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Compact</span>
+                </label>
+                <label class="home-card-style-opt" data-value="carousel" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="carousel" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_carousel</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Carousel</span>
+                </label>
+              </div>
+            </div>
+
             <!-- Category Pictures: round photos or cut-outs -->
             <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
