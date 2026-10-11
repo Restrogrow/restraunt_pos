@@ -726,6 +726,22 @@ body {
   box-shadow: 0 2px 8px rgba(45,52,54,0.15);
 }
 .variant-chip.disabled { opacity: 0.4; cursor: not-allowed; background: #f5f5f5; }
+/* Size chooser (opens from Add to Cart on dishes with sizes) */
+.sheet-choose { padding: 18px 20px 8px; }
+.sheet-choose-head { display: flex; align-items: center; gap: 12px; padding-right: 44px; }
+.sheet-back { width: 34px; height: 34px; flex-shrink: 0; border: 0; border-radius: 50%; background: #f3f4f6; color: #374151; font-size: 15px; cursor: pointer; }
+.sheet-choose-name { font-size: 17px; font-weight: 700; color: #1a1b1f; line-height: 1.25; }
+.sheet-choose-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.sheet-choose-list { margin: 16px 0 6px; border: 1px solid #eee; border-radius: 14px; overflow: hidden; }
+.sheet-opt { display: flex; align-items: center; gap: 12px; padding: 14px; border-top: 1px solid #f1f1f1; font-size: 14px; cursor: pointer; }
+.sheet-opt:first-child { border-top: 0; }
+.sheet-opt input { width: 18px; height: 18px; margin: 0; accent-color: var(--primary-red, #e53935); }
+.sheet-opt-name { flex: 1; font-weight: 600; color: #1f2937; }
+.sheet-opt-price { font-weight: 700; color: #111827; }
+.sheet-opt-price s { margin-right: 6px; color: #9ca3af; font-weight: 500; font-size: 12px; }
+.sheet-opt-off { font-size: 12px; color: #9ca3af; }
+.sheet-opt.disabled { opacity: 0.5; cursor: not-allowed; }
+.sheet-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .product-sheet-footer {
   padding: 12px 20px 20px;
   border-top: 1px solid #eee;
@@ -1703,24 +1719,6 @@ function showItemDetail(itemId) {
     html += '<div class="product-sheet-desc">' + displayDesc + '</div>';
   }
 
-  // Variants
-  if (hasVariants) {
-    html += '<div class="product-sheet-section-title">Choose a Variation</div>';
-    html += '<div class="variant-chips" id="variantChips">';
-    for (var v = 0; v < item.variations.length; v++) {
-      var varItem = item.variations[v];
-      var varName = varItem.variation_name || varItem.name || 'Option ' + (v + 1);
-      var varPrice = parseFloat(varItem.variation_price || varItem.price || 0);
-      var varOos = varItem.is_available == 0;
-      html += '<div class="variant-chip' + (varOos ? ' disabled' : '') + '" data-idx="' + v + '"' + (varOos ? '' : ' onclick="selectVariant(' + v + ')') + '\">' +
-        escapeHtml(varName) +
-        (varOos ? ' <span style="color:#999;font-weight:400;font-size:10px">(Unavailable)</span>' : ' <span style="color:var(--primary-red, #e17055);font-weight:600">' + formatPrice(varPrice) + '</span>' +
-          (varItem.original_price ? ' <s style="color:#9ca3af;font-weight:500;font-size:11px">' + formatPrice(varItem.original_price) + '</s>' : '')) +
-      '</div>';
-    }
-    html += '</div>';
-  }
-
   html += '</div>'; // end body
 
   // Footer with Add to Cart / Qty
@@ -1730,7 +1728,10 @@ function showItemDetail(itemId) {
     html += '<div style="width:100%;padding:14px 0;text-align:center;color:#e74c3c;font-weight:600;font-size:14px">Currently Out of Stock</div>';
   } else {
     var existingQty = getItemTotalQty(item.id);
-    if (existingQty > 0) {
+    if (hasVariants) {
+      // Swiggy-style: sizes are chosen after tapping Add to Cart
+      html += '<button class="sheet-add-btn" onclick="openVariantChooser(' + item.id + ')">Add to Cart · <span id="sheetBtnPrice">' + formatPrice(itemPrice) + '</span></button>';
+    } else if (existingQty > 0) {
       html += '<div class="sheet-qty-row">' +
         '<button class="sheet-qty-btn" onclick="sheetChangeQty(' + item.id + ', -1)"><i class="fa fa-minus"></i></button>' +
         '<span class="sheet-qty-num" id="sheetQtyNum">' + existingQty + '</span>' +
@@ -1830,7 +1831,8 @@ function updateSheetPrice(basePrice, itemId) {
   }
   var addonTotal = getAddonTotalForItem(key);
   var totalPrice = basePrice + addonTotal;
-  document.getElementById('sheetPrice').textContent = formatPrice(totalPrice);
+  var priceEl = document.getElementById('sheetPrice');
+  if (priceEl) priceEl.textContent = formatPrice(totalPrice);
   var btnPrice = document.getElementById('sheetBtnPrice');
   if (btnPrice) btnPrice.textContent = formatPrice(totalPrice);
 }
@@ -1863,6 +1865,41 @@ function sheetChangeQty(itemId, delta) {
   if (listEl) listEl.innerHTML = renderCartBtn(itemId, item);
   if (getItemTotalQty(itemId) === 0) closeProductSheet();
   updateCheckoutBar();
+}
+
+// Second step for dishes with sizes: pick one, then "Add item"
+function openVariantChooser(itemId) {
+  var item = getSheetItem();
+  if (!item || !item.variations || !item.variations.length) return;
+  var name = item.item_name_translated || item.item_name_en || item.name;
+  var first = null;
+  var html = '<div class="sheet-choose">' +
+    '<div class="sheet-choose-head">' +
+      '<button type="button" class="sheet-back" onclick="showItemDetail(' + item.id + ')" aria-label="Back"><i class="fa fa-arrow-left"></i></button>' +
+      '<div><div class="sheet-choose-name">' + escapeHtml(name) + '</div><div class="sheet-choose-sub">Choose a size</div></div>' +
+    '</div><div class="sheet-choose-list">';
+  for (var v = 0; v < item.variations.length; v++) {
+    var vi = item.variations[v];
+    var vName = vi.variation_name || vi.name || 'Option ' + (v + 1);
+    var vPrice = parseFloat(vi.variation_price || vi.price || 0);
+    var off = vi.is_available == 0;
+    if (!off && first === null) first = v;
+    html += '<label class="sheet-opt' + (off ? ' disabled' : '') + '">' +
+      '<input type="radio" name="sheetVar" value="' + v + '"' + (off ? ' disabled' : ' onchange="selectVariant(' + v + ')"') + '>' +
+      '<span class="sheet-opt-name">' + escapeHtml(vName) + '</span>' +
+      (off ? '<span class="sheet-opt-off">Unavailable</span>'
+           : '<span class="sheet-opt-price">' + (vi.original_price ? '<s>' + formatPrice(vi.original_price) + '</s>' : '') + formatPrice(vPrice) + '</span>') +
+    '</label>';
+  }
+  html += '</div></div>' +
+    '<div class="product-sheet-footer"><button class="sheet-add-btn" id="sheetChooseAdd" onclick="sheetAddToCart(' + item.id + ')"' + (first === null ? ' disabled' : '') + '>' +
+      (first === null ? 'Currently unavailable' : 'Add item · <span id="sheetBtnPrice"></span>') + '</button></div>';
+  document.getElementById('productSheetContent').innerHTML = html;
+  if (first !== null) {
+    var radio = document.querySelector('.sheet-opt input[value="' + first + '"]');
+    if (radio) radio.checked = true;
+    selectVariant(first);
+  }
 }
 
 function sheetAddToCart(itemId) {
