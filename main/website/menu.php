@@ -798,11 +798,17 @@ body {
 }
 .offer-active-bar button { border: 0; border-radius: 999px; padding: 6px 12px; background: #fff; color: var(--primary-red, #e53935); font: inherit; font-size: 12px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 /* Milestone offer hint, just above the checkout bar */
-.ms-hint { position: absolute; left: 0; right: 0; bottom: 100%; display: none; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; background: #fffbeb; border-top: 1px solid #fde68a; color: #92400e; font-size: 12.5px; font-weight: 700; text-align: center; }
-.ms-hint.show { display: flex; }
-.ms-hint.done { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
-.ms-hint b { color: var(--primary-red, #e53935); }
-.ms-hint.done b { color: #15803d; }
+.ms-hint { position: absolute; left: 0; right: 0; bottom: 100%; display: none; align-items: center; justify-content: center; gap: 7px; padding: 8px 12px 10px; background: #fff; border-top: 1px solid #f1f1f1; box-shadow: 0 -4px 14px rgba(0,0,0,0.06); color: #374151; font-size: 12.5px; font-weight: 600; text-align: center; overflow: hidden; }
+.ms-hint.show { display: flex; animation: msHintIn 0.35s ease; }
+.ms-hint i { color: var(--primary-red, #e53935); }
+.ms-hint b { color: var(--primary-red, #e53935); font-weight: 800; }
+.ms-hint.done i, .ms-hint.done b { color: #16a34a; }
+.ms-hint-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #fbbf24, var(--primary-red, #e53935)); transition: width 0.8s cubic-bezier(.22,1,.36,1); }
+.ms-hint.done .ms-hint-bar { background: #16a34a; }
+.ms-hint .ms-hint-text.swap { animation: msHintSwap 0.4s ease; }
+@keyframes msHintIn { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes msHintSwap { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ms-hint.show, .ms-hint .ms-hint-text.swap { animation: none; } .ms-hint-bar { transition: none; } }
 body.has-ms-hint .offer-bubble { bottom: 120px; }
 /* Size chooser (opens from Add to Cart on dishes with sizes) */
 .sheet-choose { padding: 18px 20px 8px; }
@@ -1678,9 +1684,24 @@ function updateMilestoneHint(total, hasItems) {
   document.body.classList.toggle('has-ms-hint', show);
   if (!show) return;
   el.classList.toggle('done', !next);
-  el.innerHTML = next
-    ? '🎯 Add <b>' + cur + Math.ceil(next.min - total) + '</b> more to get <b>' + label(next) + '</b>' + (reached ? ' · ' + label(reached) + ' unlocked' : '')
-    : '🎉 <b>' + label(reached) + '</b> unlocked — applied at checkout';
+  // Progress toward the next offer (from the last one reached)
+  var from = reached ? reached.min : 0;
+  var pct = next ? Math.max(0, Math.min(100, (total - from) / (next.min - from) * 100)) : 100;
+  var text = next
+    ? '<i class="fa fa-gift"></i><span class="ms-hint-text">Add <b>' + cur + Math.ceil(next.min - total) + '</b> more to get <b>' + label(next) + '</b></span>'
+    : '<i class="fa fa-circle-check"></i><span class="ms-hint-text"><b>' + label(reached) + '</b> unlocked · applied at checkout</span>';
+  var key = next ? next.code : 'done';
+  if (el.getAttribute('data-key') !== key || !el.querySelector('.ms-hint-bar')) {
+    var oldBar = el.querySelector('.ms-hint-bar');
+    var oldW = oldBar ? oldBar.style.width : '0%';
+    el.innerHTML = text + '<span class="ms-hint-bar" style="width:' + oldW + '"></span>';
+    if (el.getAttribute('data-key')) el.querySelector('.ms-hint-text').classList.add('swap');
+    el.setAttribute('data-key', key);
+  } else {
+    el.querySelector('.ms-hint-text').innerHTML = text.replace(/^.*?<span class="ms-hint-text">/, '').replace(/<\/span>$/, '');
+  }
+  var bar = el.querySelector('.ms-hint-bar');
+  setTimeout(function() { if (bar) bar.style.width = pct + '%'; }, 30);
 }
 
 function goToCheckout() {

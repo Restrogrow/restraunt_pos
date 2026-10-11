@@ -946,25 +946,61 @@ body {
   padding: 6px 14px; font-size: 11px; font-family: var(--site-font);
   cursor: pointer; font-weight: 500;
 }
+/* ── Coupon celebration on Checkout ── */
+.cpn-cele { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(17,24,39,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.25s ease; cursor: pointer; }
+.cpn-cele.show { opacity: 1; }
+.cpn-cele.hide { opacity: 0; transition: opacity 0.35s ease; }
+.cpn-cele canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cpn-cele-card { position: relative; width: 100%; max-width: 300px; padding: 30px 22px 22px; border-radius: 24px; background: #fff; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.3); transform: scale(0.6) translateY(30px); opacity: 0; }
+.cpn-cele.show .cpn-cele-card { animation: celeCardIn 0.55s cubic-bezier(.34,1.56,.64,1) forwards; }
+.cpn-cele-badge { position: relative; width: 76px; height: 76px; margin: -68px auto 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #fff; background: linear-gradient(135deg, #fbbf24, var(--primary-red, #e53935)); box-shadow: 0 10px 24px color-mix(in srgb, var(--primary-red, #e53935) 45%, transparent); border: 5px solid #fff; }
+.cpn-cele.show .cpn-cele-badge { animation: celeBadge 0.9s cubic-bezier(.34,1.56,.64,1) 0.2s both; }
+.cpn-cele-badge::before, .cpn-cele-badge::after { content: ""; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--primary-red, #e53935) 40%, transparent); animation: celeRing 1.6s ease-out 0.4s infinite; }
+.cpn-cele-badge::after { animation-delay: 1.2s; }
+.cpn-cele-kicker { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--primary-red, #e53935); }
+.cpn-cele-amount { margin: 6px 0 4px; font-size: 34px; font-weight: 900; color: #111827; line-height: 1.1; }
+.cpn-cele-amount span { background: linear-gradient(90deg, #f59e0b, var(--primary-red, #e53935)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cpn-cele-code { display: inline-block; margin-top: 8px; padding: 5px 12px; border: 1.5px dashed color-mix(in srgb, var(--primary-red, #e53935) 50%, #fff); border-radius: 8px; font-size: 12.5px; font-weight: 700; color: #374151; letter-spacing: 0.05em; }
+.cpn-cele-note { margin-top: 12px; font-size: 11.5px; color: #9ca3af; }
+.cpn-cele-timer { position: absolute; left: 22px; right: 22px; bottom: 10px; height: 3px; border-radius: 999px; background: #f3f4f6; overflow: hidden; }
+.cpn-cele-timer i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #fbbf24, var(--primary-red, #e53935)); transform-origin: left; animation: celeTimer var(--cele-ms, 2600ms) linear forwards; }
+@keyframes celeCardIn { to { transform: none; opacity: 1; } }
+@keyframes celeBadge { 0% { transform: scale(0) rotate(-30deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes celeRing { from { transform: scale(0.85); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+@keyframes celeTimer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .cpn-cele.show .cpn-cele-card, .cpn-cele.show .cpn-cele-badge { animation: none; transform: none; opacity: 1; } .cpn-cele-badge::before, .cpn-cele-badge::after { animation: none; display: none; } }
 /* ── Milestone offers: progress bar to the next coupon ── */
-.ms-card { margin: 0 0 14px; padding: 12px 12px 10px; border-radius: 14px; background: linear-gradient(135deg, #fff7ed, #fffbeb); border: 1px solid #fde68a; }
-.ms-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: #1f2937; line-height: 1.35; }
-.ms-head .ms-emoji { font-size: 18px; }
-.ms-head b { color: var(--primary-red, #e53935); }
-.ms-sub { margin: 3px 0 0 26px; font-size: 12px; color: #6b7280; }
-.ms-sub a { color: var(--primary-red, #e53935); font-weight: 700; text-decoration: none; }
-.ms-track { position: relative; height: 6px; margin: 22px 10px 30px; border-radius: 999px; background: #fde68a; }
-.ms-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: linear-gradient(90deg, #f59e0b, var(--primary-red, #e53935)); transition: width 0.5s ease; }
-.ms-stop { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; }
-.ms-stop.on { background: #16a34a; border-color: #16a34a; }
-.ms-stop .ms-off { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 800; color: #b45309; }
-.ms-stop.on .ms-off { color: #15803d; }
-.ms-stop .ms-at { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; color: #6b7280; font-weight: 600; }
-.ms-applied { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; padding: 8px 10px; border-radius: 10px; background: #dcfce7; color: #166534; font-size: 12.5px; font-weight: 700; }
-.ms-applied.pop { animation: msPop 0.5s ease; }
-.ms-apply-btn { border: 0; border-radius: 8px; padding: 6px 12px; background: var(--primary-red, #e53935); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-@keyframes msPop { 0% { transform: scale(0.9); opacity: 0; } 60% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { .ms-applied.pop { animation: none; } .ms-fill { transition: none; } }
+.ms-card { position: relative; margin: 0 0 14px; padding: 14px 14px 12px; border-radius: 16px; background: #fff; border: 1px solid #f1f1f1; box-shadow: 0 4px 16px rgba(0,0,0,0.05); overflow: hidden; }
+.ms-top { display: flex; align-items: center; gap: 10px; }
+.ms-icon { width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--primary-red, #e53935) 12%, #fff); color: var(--primary-red, #e53935); font-size: 15px; }
+.ms-icon.done { background: #dcfce7; color: #16a34a; animation: msWiggle 2.6s ease-in-out infinite; }
+.ms-title { font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3; }
+.ms-title b { color: var(--primary-red, #e53935); }
+.ms-sub { margin-top: 2px; font-size: 11.5px; color: #6b7280; }
+.ms-sub a { color: var(--primary-red, #e53935); font-weight: 700; text-decoration: none; white-space: nowrap; }
+.ms-track { position: relative; height: 8px; margin: 26px 12px 28px; border-radius: 999px; background: #f3f4f6; }
+.ms-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; overflow: hidden; background: linear-gradient(90deg, #fbbf24, var(--primary-red, #e53935)); transition: width 0.9s cubic-bezier(.22,1,.36,1); }
+.ms-fill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.55) 45%, transparent 70%); background-size: 200% 100%; animation: msShine 1.8s linear infinite; }
+.ms-stop { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #fff; border: 2px solid #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; transition: background 0.3s, border-color 0.3s; }
+.ms-stop.on { background: var(--primary-red, #e53935); border-color: var(--primary-red, #e53935); }
+.ms-stop.just { animation: msPop 0.6s cubic-bezier(.34,1.56,.64,1); }
+.ms-stop.just::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--primary-red, #e53935); animation: msRing 0.9s ease-out forwards; }
+.ms-stop .ms-off { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 800; color: #9ca3af; }
+.ms-stop.on .ms-off { color: var(--primary-red, #e53935); }
+.ms-stop .ms-at { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; color: #9ca3af; font-weight: 600; }
+.ms-stop:last-child .ms-off, .ms-stop:last-child .ms-at { left: auto; right: -6px; transform: none; }
+.ms-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; background: #f0fdf4; color: #15803d; font-size: 12px; font-weight: 700; }
+.ms-pill i { font-size: 11px; }
+.ms-pill.better { background: #fff7ed; color: #9a3412; }
+.ms-pill.just { animation: msSlide 0.5s ease, msGlow 1.2s ease 0.2s; }
+.ms-apply-btn { border: 0; border-radius: 999px; padding: 4px 10px; background: var(--primary-red, #e53935); color: #fff; font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+@keyframes msShine { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+@keyframes msPop { 0% { transform: scale(0.4); } 100% { transform: scale(1); } }
+@keyframes msRing { from { transform: scale(0.8); opacity: 1; } to { transform: scale(2); opacity: 0; } }
+@keyframes msSlide { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes msGlow { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,0.45); } 100% { box-shadow: 0 0 0 12px rgba(22,163,74,0); } }
+@keyframes msWiggle { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-12deg); } 96% { transform: rotate(12deg); } }
+@media (prefers-reduced-motion: reduce) { .ms-fill, .ms-fill::after, .ms-stop.just, .ms-stop.just::after, .ms-pill.just, .ms-icon.done { animation: none; transition: none; } }
 </style>
 <script>
 window.websiteRestaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -1875,6 +1911,8 @@ function applyMilestone(code) {
   }
   renderCart();
 }
+var lastMilestonePct = 0;          // bar slides from where it was to where it is now
+var reachedMilestones = null;      // milestones already reached (pop only the new ones)
 function milestoneCardHtml(total) {
   var list = milestoneCoupons();
   if (!list.length) return '';
@@ -1883,24 +1921,37 @@ function milestoneCardHtml(total) {
   for (var i = 0; i < list.length; i++) { if (total < list[i].minOrder) { next = list[i]; break; } }
   var top = list[list.length - 1].minOrder;
   var pct = Math.max(0, Math.min(100, total / top * 100));
-  var head = next
-    ? '<span class="ms-emoji">🎯</span><span>Add <b>' + cur + (next.minOrder - total).toFixed(0) + '</b> more to get <b>' + couponLabel(next) + '</b></span>'
-    : '<span class="ms-emoji">🎉</span><span>You\'ve unlocked the best offer!</span>';
-  var sub = next ? '<div class="ms-sub">Code ' + next.code + ' applies automatically · <a href="' + appendTableParam('<?php echo restaurantPageUrl('menu'); ?>') + '">Add items</a></div>' : '';
+  var firstPaint = reachedMilestones === null;
+  if (firstPaint) reachedMilestones = {};
+  var title = next
+    ? 'Add <b>' + cur + Math.ceil(next.minOrder - total) + '</b> more to get <b>' + couponLabel(next) + '</b>'
+    : 'Best offer unlocked';
+  var sub = next
+    ? '<div class="ms-sub">' + next.code + ' applies automatically · <a href="' + appendTableParam('<?php echo restaurantPageUrl('menu'); ?>') + '">Add items <i class="fa fa-arrow-right"></i></a></div>'
+    : '<div class="ms-sub">The biggest discount is applied to this order</div>';
   var stops = list.map(function(c) {
     var on = total >= c.minOrder;
-    return '<div class="ms-stop' + (on ? ' on' : '') + '" style="left:' + (c.minOrder / top * 100) + '%">' + (on ? '✓' : '') +
+    var just = on && !firstPaint && !reachedMilestones[c.code];
+    if (on) reachedMilestones[c.code] = 1; else delete reachedMilestones[c.code];
+    return '<div class="ms-stop' + (on ? ' on' : '') + (just ? ' just' : '') + '" style="left:' + (c.minOrder / top * 100) + '%">' + (on ? '<i class="fa fa-check"></i>' : '') +
       '<span class="ms-off">' + couponLabel(c) + '</span><span class="ms-at">' + cur + c.minOrder.toFixed(0) + '</span></div>';
   }).join('');
-  var applied = '';
+  var pill = '';
   var best = bestReachedMilestone(total);
   if (appliedCoupon && appliedCoupon.isMilestone) {
-    applied = '<div class="ms-applied' + (milestoneJustApplied ? ' pop' : '') + '"><span>🎉 ' + appliedCoupon.code + ' applied — you save ' + cur + couponSaving(appliedCoupon, total).toFixed(0) + '</span></div>';
+    pill = '<span class="ms-pill' + (milestoneJustApplied ? ' just' : '') + '"><i class="fa fa-circle-check"></i>' + appliedCoupon.code + ' applied · saving ' + cur + couponSaving(appliedCoupon, total).toFixed(0) + '</span>';
   } else if (best && (!appliedCoupon || couponSaving(best, total) > couponSaving(appliedCoupon, total))) {
-    applied = '<div class="ms-applied" style="background:#fef3c7;color:#92400e"><span>' + best.code + ' unlocked — save ' + cur + couponSaving(best, total).toFixed(0) + '</span><button type="button" class="ms-apply-btn" onclick="applyMilestone(\'' + best.code + '\')">Apply</button></div>';
+    pill = '<span class="ms-pill better">Save ' + cur + couponSaving(best, total).toFixed(0) + ' with ' + best.code + '<button type="button" class="ms-apply-btn" onclick="applyMilestone(\'' + best.code + '\')">Apply</button></span>';
   }
-  return '<div class="ms-card"><div class="ms-head">' + head + '</div>' + sub +
-    '<div class="ms-track"><div class="ms-fill" style="width:' + pct + '%"></div>' + stops + '</div>' + applied + '</div>';
+  var from = lastMilestonePct;
+  lastMilestonePct = pct;
+  setTimeout(function() { var f = document.getElementById('msFill'); if (f) f.style.width = pct + '%'; }, 40);
+  return '<div class="ms-card">' +
+      '<div class="ms-top"><div class="ms-icon' + (next ? '' : ' done') + '"><i class="fa fa-gift"></i></div>' +
+        '<div><div class="ms-title">' + title + '</div>' + sub + '</div></div>' +
+      '<div class="ms-track"><div class="ms-fill" id="msFill" style="width:' + (firstPaint ? 0 : from) + '%"></div>' + stops + '</div>' +
+      pill +
+    '</div>';
 }
 
 function applyCoupon() {
@@ -2111,6 +2162,91 @@ function getCartTotal() {
   };
 }
 
+// --- Coupon celebration: a short "you saved ₹X" moment when a coupon is on
+// the order and the customer taps Checkout. Once per coupon per visit; tap
+// anywhere to skip; then checkout carries on exactly as before.
+function maybeCelebrateCoupon() {
+  if (window._cpnCelebrating || !appliedCoupon) return false;
+  var cart = getCartTotal();
+  var saved = Math.round(cart.discountAmount || 0);
+  if (saved <= 0) return false;
+  var key = 'cpnCelebrated_' + appliedCoupon.code;
+  try { if (sessionStorage.getItem(key)) return false; sessionStorage.setItem(key, '1'); } catch (e) {}
+  showCouponCelebration(appliedCoupon.code, saved, function() {
+    window._cpnCelebrating = true;   // let the next call go straight through
+    proceedCheckout();
+    window._cpnCelebrating = false;
+  });
+  return true;
+}
+
+function showCouponCelebration(code, saved, done) {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var ms = reduce ? 1400 : 2600;
+  var cur = getCurrency();
+  var el = document.createElement('div');
+  el.className = 'cpn-cele';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', 'You saved ' + cur + saved);
+  el.style.setProperty('--cele-ms', ms + 'ms');
+  el.innerHTML = '<canvas></canvas>' +
+    '<div class="cpn-cele-card">' +
+      '<div class="cpn-cele-badge"><i class="fa fa-gift"></i></div>' +
+      '<div class="cpn-cele-kicker">Congratulations</div>' +
+      '<div class="cpn-cele-amount">You saved <span id="celeAmt">' + cur + '0</span></div>' +
+      '<div style="font-size:13px;color:#6b7280;">on this order</div>' +
+      '<div class="cpn-cele-code">' + escapeHtml(code) + ' applied</div>' +
+      '<div class="cpn-cele-note">Tap anywhere to continue</div>' +
+      '<div class="cpn-cele-timer"><i></i></div>' +
+    '</div>';
+  document.body.appendChild(el);
+  requestAnimationFrame(function() { el.classList.add('show'); });
+
+  // Count the saving up
+  var amt = el.querySelector('#celeAmt'), t0 = performance.now(), dur = reduce ? 1 : 900;
+  (function tick(now) {
+    var p = Math.min(1, (now - t0) / dur);
+    amt.textContent = cur + Math.round(saved * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(tick);
+  })(t0);
+
+  // Confetti
+  var canvas = el.querySelector('canvas'), ctx = canvas.getContext && canvas.getContext('2d'), raf = 0;
+  if (ctx && !reduce) {
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+    var brand = getComputedStyle(document.documentElement).getPropertyValue('--primary-red').trim() || '#e53935';
+    var colors = [brand, '#fbbf24', '#f97316', '#22c55e', '#3b82f6', '#ec4899'];
+    var parts = [], cx = innerWidth / 2, cy = innerHeight / 2 - 40;
+    for (var i = 0; i < 160; i++) {
+      var a = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 9;
+      parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 6, s: 5 + Math.random() * 6,
+        r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, c: colors[i % colors.length], round: Math.random() < 0.3 });
+    }
+    (function frame() {
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      parts.forEach(function(p) {
+        p.vy += 0.28; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c;
+        if (p.round) { ctx.beginPath(); ctx.arc(0, 0, p.s / 2, 0, Math.PI * 2); ctx.fill(); }
+        else ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
+        ctx.restore();
+      });
+      raf = requestAnimationFrame(frame);
+    })();
+  }
+
+  var finished = false;
+  function finish() {
+    if (finished) return;
+    finished = true;
+    el.classList.add('hide');
+    setTimeout(function() { cancelAnimationFrame(raf); el.remove(); done(); }, 300);
+  }
+  el.addEventListener('click', finish);
+  setTimeout(finish, ms);
+}
+
 function proceedCheckout() {
   // Use PHP-computed restaurant_open status (server-side IST check) as the source of truth
   // The JS isRestaurantOpen() is only used as fallback if PHP value is not available
@@ -2128,6 +2264,8 @@ function proceedCheckout() {
     showModal('Minimum Order', getCurrency() + MIN_ORDER.toFixed(2) + ' minimum. Please add more items.');
     return;
   }
+  // A coupon is on the order: celebrate the saving first (2–3 s), then continue
+  if (maybeCelebrateCoupon()) return;
   // Gate checkout behind login/signup/guest, same pattern as profile.php:
   // if this browser session hasn't logged in or already chosen "Continue as
   // Guest", send them to the login screen first. Guests still land right

@@ -15516,7 +15516,7 @@ async function loadAdminCoupons() {
       const statusClass = c.is_active == 1 && !expired ? 'badge badge-success' : 'badge badge-danger';
       const statusText = c.is_active == 1 ? (expired ? 'Expired' : 'Active') : 'Inactive';
       return '<tr>' +
-        '<td><strong>' + escHtml(c.coupon_code) + '</strong>' + (c.is_milestone == 1 ? ' <span title="Milestone offer" style="font-size:0.75em;background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:6px;">🎯 Milestone</span>' : '') + '</td>' +
+        '<td><strong>' + escHtml(c.coupon_code) + '</strong>' + (c.is_milestone == 1 ? ' <span title="Milestone offer" style="font-size:0.75em;background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:6px;">Milestone</span>' : '') + '</td>' +
         '<td>' + typeLabel + '</td>' +
         '<td>' + valueDisplay + '</td>' +
         '<td>' + minDisplay + '</td>' +
