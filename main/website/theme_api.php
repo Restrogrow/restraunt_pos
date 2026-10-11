@@ -664,7 +664,7 @@ try {
     $in = json_decode(file_get_contents('php://input'), true) ?: [];
     $clean = function($v, $max) { $v = trim(preg_replace('/\s+/u', ' ', strip_tags((string)$v))); return mb_substr($v, 0, $max); };
     $title = $clean($in['title'] ?? '', 40);
-    if ($title === '') throw new Exception('Add a headline, e.g. 50% OFF');
+    if ($title === '') throw new InvalidArgumentException('Add a headline, e.g. 50% OFF');
     $template = in_array($in['template'] ?? '', OFFER_BANNER_TEMPLATES, true) ? $in['template'] : 'burst';
     $placement = in_array($in['placement'] ?? '', BANNER_PLACEMENTS, true) ? $in['placement'] : 'home_top';
     $color = preg_match('/^#[0-9a-fA-F]{6}$/', $in['color'] ?? '') ? $in['color'] : '#e11d48';
@@ -708,7 +708,7 @@ try {
   if ($action === 'set_banner_placement' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $bid = (int)($_POST['banner_id'] ?? 0);
     $place = (string)($_POST['placement'] ?? '');
-    if ($bid <= 0 || !in_array($place, BANNER_PLACEMENTS, true)) throw new Exception('Invalid banner or placement');
+    if ($bid <= 0 || !in_array($place, BANNER_PLACEMENTS, true)) throw new InvalidArgumentException('Invalid banner or placement');
     $conn->prepare('UPDATE website_banners SET placement = :p WHERE id = :id AND restaurant_id = :rid')
          ->execute([':p' => $place, ':id' => $bid, ':rid' => $restaurant_id]);
     echo json_encode(['success' => true]);
@@ -739,6 +739,10 @@ try {
   }
 
   echo json_encode(['success'=>false,'message'=>'Invalid action']);
+} catch (InvalidArgumentException $e) {
+  // Something the admin typed or picked isn't valid: tell them what
+  http_response_code(400);
+  echo json_encode(['success'=>false,'message'=>$e->getMessage()]);
 } catch (Exception $e) {
   http_response_code(500);
   error_log("Error in theme_api.php: " . $e->getMessage());

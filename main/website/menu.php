@@ -9,6 +9,7 @@ if (isset($_GET['preview_card']) && in_array($_GET['preview_card'], THEME_MENU_C
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="restaurant-id" content="<?php echo htmlspecialchars($restaurant_id ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+<?php include __DIR__ . '/cart_scope.php'; ?>
 <meta name="restaurant-slug" content="<?php echo htmlspecialchars($restaurant_slug ?? '', ENT_QUOTES, 'UTF-8'); ?>">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3589,6 +3590,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 })();
 </script>
+<script>window.RG_MENU_URL = <?php echo json_encode(restaurantPageUrl('menu')); ?>;</script>
 <script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 </body>
 </html>

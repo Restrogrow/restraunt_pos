@@ -615,6 +615,10 @@ try {
             } catch (PDOException $e) {
                 $searchHasSubTable = false;
             }
+
+            // Dish translations (same check as getMenuItems) so search shows translated names too
+            $hasItemTrans = false;
+            try { $hasItemTrans = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'translations'")->rowCount() > 0; } catch (Exception $e) {}
             
                     $itemTransCol = $hasItemTrans ? ", mi.translations" : "";
                     $query = "SELECT mi.id, mi.restaurant_id, mi.menu_id, mi.item_name_en, mi.item_description_en, mi.description_format,

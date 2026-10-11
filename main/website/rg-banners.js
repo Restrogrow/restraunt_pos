@@ -194,8 +194,7 @@
   }
 
   function menuUrl() {
-    var a = document.querySelector('a[href$="/menu"]');
-    if (a) return a.href;
+    if (window.RG_MENU_URL) return window.RG_MENU_URL; // set by the page (works with custom domains)
     return location.pathname.replace(/\/(menu|cart|profile|social|plans|reservations)\/?$/, '').replace(/\/$/, '') + '/menu';
   }
 

@@ -72,7 +72,7 @@ try {
     // Soft-deleted orders: include_deleted=1 flips the list into the
     // "Deleted" view (deleted orders ONLY) — the live list never mixes them
     // in, they're a separate audit view.
-    $includeDeleted = $_GET['include_deleted'] === '1';
+    $includeDeleted = ($_GET['include_deleted'] ?? '') === '1';
 
     // Build WHERE clause with filters
     $whereConditions = ['o.restaurant_id = ?'];

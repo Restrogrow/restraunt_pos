@@ -6,6 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="restaurant-id" content="<?php echo htmlspecialchars($restaurant_id ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+<?php include __DIR__ . '/cart_scope.php'; ?>
 <meta name="restaurant-slug" content="<?php echo htmlspecialchars($restaurant_slug ?? '', ENT_QUOTES, 'UTF-8'); ?>">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3264,8 +3265,7 @@ function processOrder(cartData) {
         initiatePhonePePayment(data.order_id, phone);
         return;
       }
-      cartItems = {};
-      saveCart();
+      clearPlacedOrder();
       var modal = document.getElementById('checkoutModal');
       if (modal) modal.remove();
       showSuccessModal(data.order_number || '', data.is_scheduled ? data.scheduled_at : null);
@@ -3343,6 +3343,17 @@ function initiatePhonePePayment(orderId, customerPhone) {
   });
 }
 
+// The order is placed: empty the cart, and drop its notes, add-ons and coupon so
+// they don't ride along unseen on the customer's next order.
+function clearPlacedOrder() {
+  cartItems = {};
+  saveCart();
+  savedInstruction = '';
+  appliedCoupon = null;
+  try { ['dvaniInstruction', '_itemNotes', '_itemAddons'].forEach(function(k) { localStorage.removeItem(k); }); } catch(e) {}
+  renderCart();
+}
+
 function handlePaymentSuccess(orderNumber) {
   var loader = document.getElementById('ppVerifyLoader');
   if (loader) loader.remove();
@@ -3350,9 +3361,7 @@ function handlePaymentSuccess(orderNumber) {
   sessionStorage.removeItem('phonepe_pending');
   deleteCookie('pp_pending');
   deleteCookie('pp_order_number');
-  cartItems = {};
-  saveCart();
-  renderCart();
+  clearPlacedOrder();
   showSuccessModal(orderNumber);
   var url = new URL(window.location.href);
   url.searchParams.delete('order_id');
@@ -3396,9 +3405,7 @@ function checkPhonePeReturn() {
     sessionStorage.removeItem('phonepe_pending');
     deleteCookie('pp_pending');
     deleteCookie('pp_order_number');
-    cartItems = {};
-    saveCart();
-    renderCart();
+    clearPlacedOrder();
     showSuccessModal(orderNumber);
     var url = new URL(window.location.href);
     url.searchParams.delete('order_id');
@@ -4190,6 +4197,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 })();
 </script>
+<script>window.RG_MENU_URL = <?php echo json_encode(restaurantPageUrl('menu')); ?>;</script>
 <script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 </body>
 </html>

@@ -13884,7 +13884,12 @@ document.addEventListener('DOMContentLoaded', function() {
   if (document.getElementById('previewFrameWrapper')) window.setPreviewDevice('mobile');
   var sec = document.getElementById('livePreviewSection');
   // Refit when the Website Appearance page becomes visible or the card resizes
-  if (sec && typeof ResizeObserver !== 'undefined') new ResizeObserver(function() { window.fitLivePreview(); }).observe(sec);
+  if (sec && typeof ResizeObserver !== 'undefined') {
+    // Resize on the next frame: fitting the preview changes its own size, which inside the
+    // observer callback triggers the browser's "ResizeObserver loop" error
+    var fitRaf = 0;
+    new ResizeObserver(function() { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(window.fitLivePreview); }).observe(sec);
+  }
 });
 window.refreshPreview = function() {
   const iframe = document.getElementById('livePreview');
