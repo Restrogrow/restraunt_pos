@@ -884,24 +884,24 @@ body {
 /* ── Modern menu card (Website Appearance > Menu Card Design: Modern) ── */
 .product-grid .card.mc-card { flex-direction: column; border: 0; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
 .product-grid .card.mc-card .card-img-wrap { width: 100%; }
-.product-grid .card.mc-card .card-img-wrap img { width: 100%; height: auto; min-height: 0; aspect-ratio: 16 / 9; }
+.product-grid .card.mc-card .card-img-wrap img { width: 100%; height: auto; min-height: 0; aspect-ratio: 2 / 1; /* compact: shorter photo */ }
 .mc-card .veg-dot { top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 5px; }
 .mc-card .veg-dot img, .mc-card .veg-dot svg { width: 16px; height: 16px; object-fit: contain; }
 .mc-fav { position: absolute; top: 6px; right: 6px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.35); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; }
 .mc-fav.on { background: #fff; color: #ef4444; }
 .mc-card .img-chip-save { background: var(--primary-red, #e53935); color: #fff; }
-.mc-card .card-body { padding: 10px 12px 12px; gap: 4px; }
-.mc-name { font-size: 15px; font-weight: 700; color: #111827; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.mc-price { margin-top: auto; padding-top: 4px; display: flex; align-items: baseline; gap: 6px; }
-.mc-now { font-size: 17px; font-weight: 800; color: var(--primary-red, #e53935); }
+.mc-card .card-body { padding: 8px 10px 10px; gap: 3px; }
+.mc-name { font-size: 14px; font-weight: 700; color: #111827; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.mc-price { margin-top: auto; padding-top: 2px; display: flex; align-items: baseline; gap: 6px; }
+.mc-now { font-size: 15px; font-weight: 800; color: var(--primary-red, #e53935); }
 .mc-was { font-size: 12px; font-weight: 600; color: #9ca3af; }
-.mc-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-.mc-step { display: flex; align-items: center; justify-content: space-between; height: 34px; min-width: 70px; padding: 0 2px; border: 1.5px solid #e5e7eb; border-radius: 10px; background: #fff; }
+.mc-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.mc-step { display: flex; align-items: center; justify-content: space-between; height: 30px; min-width: 66px; padding: 0 2px; border: 1.5px solid #e5e7eb; border-radius: 10px; background: #fff; }
 .mc-step button { width: 22px; height: 30px; border: 0; background: none; color: #6b7280; font-size: 12px; cursor: pointer; }
 .mc-step button:last-child { color: var(--primary-red, #e53935); }
 .mc-step span { min-width: 14px; text-align: center; font-size: 14px; font-weight: 700; }
-.mc-add { flex: 1; height: 34px; border: 0; border-radius: 10px; background: var(--primary-red, #e53935); color: #fff; font-family: var(--site-font); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; }
-.mc-add-full { width: 100%; margin-top: 6px; }
+.mc-add { flex: 1; height: 30px; border: 0; border-radius: 9px; background: var(--primary-red, #e53935); color: #fff; font-family: var(--site-font); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; }
+.mc-add-full { width: 100%; margin-top: 5px; }
 .mc-added { background: color-mix(in srgb, var(--primary-red, #e53935) 12%, #fff); color: var(--primary-red, #e53935); cursor: default; }
 /* Narrow cards (categories on the left): picker above a full-width Add */
 @container (max-width: 140px) {
