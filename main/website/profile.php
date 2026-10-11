@@ -948,6 +948,24 @@ body {
   padding: 6px 14px; font-size: 11px; font-family: 'Poppins', sans-serif;
   cursor: pointer; font-weight: 500;
 }
+/* ── Favourites (dishes hearted on the menu, this device) ── */
+.fav-count { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: #fff1f2; color: #ef4444; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+.fav-viewall { font-size: 12px; font-weight: 700; color: #ef4444; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.fav-strip { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 6px; scrollbar-width: none; scroll-snap-type: x mandatory; }
+.fav-strip::-webkit-scrollbar { display: none; }
+.fav-tile { flex: 0 0 116px; scroll-snap-align: start; text-decoration: none; color: inherit; animation: favTileIn 0.4s ease both; }
+.fav-tile-img { position: relative; width: 116px; height: 96px; border-radius: 14px; overflow: hidden; background: #f3f4f6; }
+.fav-tile-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fav-tile-img i { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: #fff; color: #ef4444; font-size: 11px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+.fav-tile-name { margin-top: 6px; font-size: 12.5px; font-weight: 700; color: #111827; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fav-tile-price { margin-top: 2px; font-size: 12px; font-weight: 700; color: #6b7280; }
+.fav-empty-box { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: #fff7f7; }
+.fav-empty-box .ic { width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%; background: #fff; color: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 17px; box-shadow: 0 2px 8px rgba(239,68,68,0.15); }
+.fav-empty-box b { display: block; font-size: 13px; color: #111827; }
+.fav-empty-box span { font-size: 12px; color: #6b7280; }
+.fav-empty-box a { margin-left: auto; flex-shrink: 0; padding: 8px 12px; border-radius: 10px; background: #ef4444; color: #fff; font-size: 12px; font-weight: 700; text-decoration: none; }
+@keyframes favTileIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fav-tile { animation: none; } }
 </style>
 </head>
 <body>
@@ -1060,6 +1078,15 @@ body {
           </button>
         </div>
 
+        <!-- Favourites (hearted on the menu, saved on this device) -->
+        <div class="section-card fade-in" style="animation-delay:0.15s" id="favSection">
+          <div class="section-header">
+            <div class="section-title"><i class="fa-solid fa-heart" style="color:#ef4444"></i> Favourites <span class="fav-count" id="favCount">0</span></div>
+            <a class="fav-viewall" id="favViewAll" href="<?php echo restaurantPageUrl('menu'); ?>">View all <i class="fa fa-chevron-right" style="font-size:10px"></i></a>
+          </div>
+          <div id="favList"><div class="fav-strip"></div></div>
+        </div>
+
         <!-- Order History -->
         <div class="section-card fade-in" style="animation-delay:0.2s">
           <div class="section-header">
@@ -1169,6 +1196,47 @@ function updateAvatar(name) {
 }
 
 /* ── Navigation ── */
+// ── Favourites: dishes hearted on the menu (same device storage as the menu page)
+function loadFavourites() {
+  var rid = getRestaurantId();
+  var ids = [];
+  try { ids = JSON.parse(localStorage.getItem('rgFavs_' + rid) || '[]') || []; } catch (e) {}
+  var menuUrl = '<?php echo restaurantPageUrl('menu'); ?>';
+  var favUrl = menuUrl + (menuUrl.indexOf('?') > -1 ? '&' : '?') + 'cat=favourites';
+  var countEl = document.getElementById('favCount'), list = document.getElementById('favList'), all = document.getElementById('favViewAll');
+  if (!list) return;
+  countEl.textContent = ids.length;
+  all.href = favUrl;
+  all.style.display = ids.length ? '' : 'none';
+  if (!ids.length) {
+    list.innerHTML = '<div class="fav-empty-box"><div class="ic"><i class="fa-regular fa-heart"></i></div>' +
+      '<div><b>No favourites yet</b><span>Tap the heart on any dish to save it here</span></div>' +
+      '<a href="' + menuUrl + '">Browse menu</a></div>';
+    return;
+  }
+  fetch('api.php?action=getMenuItems&restaurant_id=' + encodeURIComponent(rid))
+    .then(function(r) { return r.json(); })
+    .then(function(items) {
+      var favs = (Array.isArray(items) ? items : []).filter(function(it) { return ids.indexOf(parseInt(it.id, 10)) !== -1 || ids.indexOf(it.id) !== -1; });
+      countEl.textContent = favs.length;
+      if (!favs.length) { list.innerHTML = '<div class="fav-empty-box"><div class="ic"><i class="fa-regular fa-heart"></i></div><div><b>No favourites yet</b><span>Tap the heart on any dish to save it here</span></div><a href="' + menuUrl + '">Browse menu</a></div>'; return; }
+      var cur = window.globalCurrencySymbol || '<?php echo htmlspecialchars($currency_symbol ?? '₹', ENT_QUOTES, 'UTF-8'); ?>';
+      list.innerHTML = '<div class="fav-strip">' + favs.map(function(it, i) {
+        var price = parseFloat(it.base_price || 0);
+        (it.variations || []).forEach(function(v) { var p = parseFloat(v.price || v.variation_price || 0); if (p > 0 && (price <= 0 || p < price)) price = p; });
+        var img = it.item_image || '';
+        var src = !img ? '' : (/^(https?:|data:)/.test(img) ? img : 'image.php?id=' + encodeURIComponent(img.indexOf('db:') === 0 ? img.substring(3) : img));
+        var name = String(it.item_name_translated || it.item_name_en || '').replace(/[&<>"']/g, function(ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; });
+        return '<a class="fav-tile" href="' + favUrl + '" style="animation-delay:' + (i * 0.05) + 's">' +
+          '<div class="fav-tile-img">' + (src ? '<img src="' + src + '" alt="" loading="lazy">' : '') + '<i class="fa-solid fa-heart"></i></div>' +
+          '<div class="fav-tile-name">' + name + '</div>' +
+          '<div class="fav-tile-price">' + cur + (price % 1 === 0 ? price.toFixed(0) : price.toFixed(2)) + '</div></a>';
+      }).join('') + '</div>';
+    })
+    .catch(function() {});
+}
+document.addEventListener('DOMContentLoaded', loadFavourites);
+
 function goBack() {
   window.location.href = '<?php echo restaurantPageUrl(); ?>';
 }

@@ -2861,12 +2861,6 @@ function renderSideNav() {
       '<button class="side-nav-btn' + (currentMenuIdx === ALL_CATEGORY ? ' active' : '') + '" data-index="' + ALL_CATEGORY + '">' +
         '<img src="' + (window.allCategoryIcon || allIcon) + '" alt="All dishes" width="36" height="36"><br><span class="cat-name">All</span>' +
       '</button>' +
-    '</div>' +
-    // Favourites: every dish hearted on this device
-    '<div class="sub-views">' +
-      '<button class="side-nav-btn fav-nav-btn' + (currentMenuIdx === FAV_CATEGORY ? ' active' : '') + '" data-index="' + FAV_CATEGORY + '">' +
-        '<span class="fav-nav-wrap"><img src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1f2%22/%3E%3Cpath fill=%22%23ef4444%22 d=%22M24 35.5l-1.9-1.7C15.3 27.7 11 23.8 11 19c0-3.9 3.1-7 7-7 2.2 0 4.3 1 5.7 2.7L24 15l.3-.3C25.7 13 27.8 12 30 12c3.9 0 7 3.1 7 7 0 4.8-4.3 8.7-11.1 14.8L24 35.5z%22/%3E%3C/svg%3E" alt="Favourites" width="36" height="36"><span class="fav-nav-count" id="favNavCount"></span></span><br><span class="cat-name">Favourites</span>' +
-      '</button>' +
     '</div>' : '';
   for (var i = 0; i < menuItems.length; i++) {
     var c = menuItems[i];
@@ -2880,6 +2874,13 @@ function renderSideNav() {
       '</button>' +
     '</div>';
   }
+  // Favourites last: every dish hearted on this device
+  if (menuItems.length) html +=
+    '<div class="sub-views">' +
+      '<button class="side-nav-btn fav-nav-btn' + (currentMenuIdx === FAV_CATEGORY ? ' active' : '') + '" data-index="' + FAV_CATEGORY + '">' +
+        '<span class="fav-nav-wrap"><img src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1f2%22/%3E%3Cpath fill=%22%23ef4444%22 d=%22M24 35.5l-1.9-1.7C15.3 27.7 11 23.8 11 19c0-3.9 3.1-7 7-7 2.2 0 4.3 1 5.7 2.7L24 15l.3-.3C25.7 13 27.8 12 30 12c3.9 0 7 3.1 7 7 0 4.8-4.3 8.7-11.1 14.8L24 35.5z%22/%3E%3C/svg%3E" alt="Favourites" width="36" height="36"><span class="fav-nav-count" id="favNavCount"></span></span><br><span class="cat-name">Favourites</span>' +
+      '</button>' +
+    '</div>';
   // Add-ons side nav button - only when this restaurant actually has
   // add-ons configured. addonsList is usually still empty here (its fetch
   // is a separate async call from menu load), so this correctly hides it
@@ -3100,13 +3101,16 @@ function fetchAndRender() {
       renderSideNav();
       var catParam = getQueryParam('cat');
       var startIdx = ALL_CATEGORY; // "All" by default; ?cat=Name opens that category
-      if (catParam) {
+      if (catParam === 'favourites') {
+        startIdx = FAV_CATEGORY;           // ?cat=favourites (e.g. from the profile page)
+      } else if (catParam) {
         for (var i = 0; i < menuItems.length; i++) {
           if (menuItems[i].name === catParam) { startIdx = i; break; }
         }
       }
       currentMenuIdx = startIdx;
       renderProducts(startIdx);
+      if (startIdx === FAV_CATEGORY) { renderSideNav(); updateNavActive(FAV_CATEGORY); }
 
       // Load layout columns setting
       var themeQ = 'action=get&restaurant_id=' + encodeURIComponent(window.websiteRestaurantId);
