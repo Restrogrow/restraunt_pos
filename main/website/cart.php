@@ -501,7 +501,7 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   right: -4px;
   left: auto;
   transform: none;
-  background: #1a3934;
+  background: var(--primary-red, #e53935);
   color: #fff;
   padding: 7px 12px;
   border-radius: 8px;
@@ -521,7 +521,7 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: #1a3934;
+  border-top-color: var(--primary-red, #e53935);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s ease;
@@ -636,6 +636,18 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   transform: scale(0.98);
 }
 
+/* ── Checkout form polish (matches the cart + login) ── */
+.modal-overlay .modal-box { border-radius: 24px; }
+.modal-overlay .modal-header h2 { font-size: 19px; font-weight: 800; }
+.modal-overlay .form-group label { font-size: 12.5px; font-weight: 700; color: #374151; }
+.modal-overlay .form-group input, .modal-overlay .form-group select { border: 1.5px solid #e5e7eb !important; border-radius: 12px !important; background: #fafafa; min-height: 46px; }
+.modal-overlay .form-group input:focus, .modal-overlay .form-group select:focus { border-color: var(--primary-red, #e53935) !important; background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-red, #e53935) 12%, transparent); }
+.modal-overlay .form-group label.order-type-option, .modal-overlay .form-group label.schedule-option { margin-bottom: 0; }
+.modal-overlay .order-type-option, .modal-overlay .schedule-option, .modal-overlay .form-group label.order-type-option, .modal-overlay .form-group label.schedule-option { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-width: 1.5px !important; border-radius: 14px !important; font-weight: 600; transition: all 0.2s ease; }
+.modal-overlay .order-type-option i, .modal-overlay .schedule-option i { font-size: 17px; color: var(--primary-red, #e53935); }
+.modal-overlay .order-summary-box { border-radius: 16px; }
+.modal-overlay .btn-group .btn { height: 50px; border-radius: 14px; font-weight: 700; }
+.modal-overlay .btn-group .btn-primary { box-shadow: 0 10px 22px color-mix(in srgb, var(--primary-red, #e53935) 28%, transparent); }
 /* ── Offers & coupons section ── */
 .cpn-sec-head { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 12px; }
 .cpn-sec-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 800; color: #111827; }
@@ -976,7 +988,7 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   padding: 12px 36px;
   border: none;
   border-radius: 12px;
-  background: #1a3934;
+  background: var(--primary-red, #e53935);
   color: #fff;
   font-size: 15px;
   font-weight: 600;
@@ -2652,18 +2664,18 @@ function showCheckoutModal(cartData) {
   // from last time shows as a compact summary; "Change" reveals the full
   // location picker (current location / search / map) for the rare edit.
   var hasSavedAddress = !!(cd && cd.address);
-  html += '<div id="addressSummary" style="display:' + (hasSavedAddress ? 'flex' : 'none') + ';align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 14px;background:#f0f7f5;border-radius:10px;border:2px solid #e0e0e0;">';
-  html += '<div style="font-size:13px;color:#1a1b1f;line-height:1.4;">📍 ' + esc((cd && cd.address) || '') + ((cd && cd.landmark) ? '<div style="color:#999;font-size:12px;margin-top:2px;">' + esc(cd.landmark) + '</div>' : '') + '</div>';
+  html += '<div id="addressSummary" style="display:' + (hasSavedAddress ? 'flex' : 'none') + ';align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 14px;background:color-mix(in srgb, var(--primary-red, #e53935) 7%, #fff);border-radius:10px;border:2px solid #e0e0e0;">';
+  html += '<div style="font-size:13px;color:#1a1b1f;line-height:1.4;"><i class="fa-solid fa-location-dot" style="color:var(--primary-red, #e53935);margin-right:6px"></i>' + esc((cd && cd.address) || '') + ((cd && cd.landmark) ? '<div style="color:#999;font-size:12px;margin-top:2px;">' + esc(cd.landmark) + '</div>' : '') + '</div>';
   html += '<span onclick="toggleAddressEdit()" style="font-size:12px;color:var(--primary-red, #e17055);font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Change</span>';
   html += '</div>';
 
   html += '<div id="addressPickerFields" style="display:' + (hasSavedAddress ? 'none' : '') + '">';
-  html += '<button type="button" id="useCurrentLocationBtn" onclick="useCurrentLocationForDelivery()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 14px;border:none;border-radius:10px;background:#1a3934;color:#fff;font-size:14px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;">📍 Use My Current Location</button>';
+  html += '<button type="button" id="useCurrentLocationBtn" onclick="useCurrentLocationForDelivery()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 14px;border:none;border-radius:10px;background:var(--primary-red, #e53935);color:#fff;font-size:14px;font-weight:700;font-family:\'Poppins\',sans-serif;cursor:pointer;border-radius:12px;"><i class="fa-solid fa-location-crosshairs"></i> Use my current location</button>';
   html += '<div style="text-align:center;margin:8px 0;font-size:11px;color:#999;">— or —</div>';
   html += '<input type="text" id="google-places-autocomplete" autocomplete="off" placeholder="Search your delivery address..." style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
-  html += '<button type="button" onclick="openMapPicker()" style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border:2px solid #1a3934;border-radius:10px;background:#fff;color:#1a3934;font-size:13px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;">🗺️ Pick Location on Map</button>';
+  html += '<button type="button" onclick="openMapPicker()" style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border:2px solid var(--primary-red, #e53935);border-radius:10px;background:#fff;color:var(--primary-red, #e53935);font-size:13px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;"><i class="fa-regular fa-map"></i> Pick on map</button>';
   html += '<div id="deliveryMapPreview" style="display:none;margin-top:10px;width:100%;height:160px;border-radius:10px;overflow:hidden;border:2px solid #e0e0e0;"></div>';
-  html += '<div id="deliveryInfo" style="display:none;margin-top:8px;padding:10px;background:#f0f7f5;border-radius:8px;font-size:13px;"></div>';
+  html += '<div id="deliveryInfo" style="display:none;margin-top:8px;padding:10px;background:color-mix(in srgb, var(--primary-red, #e53935) 7%, #fff);border-radius:8px;font-size:13px;"></div>';
   // Pincode manual fallback (hidden by default)
   html += '<div id="pincodeFallback" style="display:none;margin-top:8px;">';
   html += '<div style="display:flex;gap:8px;">';
@@ -2738,9 +2750,9 @@ function showCheckoutModal(cartData) {
   html += '<div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">';
   // Only show order types enabled in backend settings
   var allOtTypes = [
-    { key: 'delivery', label: '🛵 Delivery', val: 'Delivery' },
-    { key: 'takeaway', label: '🥡 Takeaway', val: 'Takeaway' },
-    { key: 'dinein', label: '🍽️ Dine In', val: 'Dine-in' }
+    { key: 'delivery', label: '<i class="fa-solid fa-motorcycle"></i>Delivery', val: 'Delivery' },
+    { key: 'takeaway', label: '<i class="fa-solid fa-bag-shopping"></i>Takeaway', val: 'Takeaway' },
+    { key: 'dinein', label: '<i class="fa-solid fa-utensils"></i>Dine in', val: 'Dine-in' }
   ];
   var otOptions = [];
   // If ordering from a table QR code, only show Dine In
@@ -2763,14 +2775,14 @@ function showCheckoutModal(cartData) {
   for (var oi = 0; oi < otOptions.length; oi++) {
     var opt = otOptions[oi];
     var active = savedOrderType === opt.key;
-    html += '<label class="order-type-option" data-ot="' + opt.key + '" style="flex:1;padding:10px;border:2px solid ' + (active ? '#1a3934' : '#e0e0e0') + ';border-radius:10px;text-align:center;cursor:pointer;background:' + (active ? '#f0f7f5' : '#fff') + ';font-size:13px;min-width:80px">';
+    html += '<label class="order-type-option" data-ot="' + opt.key + '" style="flex:1;padding:10px;border:2px solid ' + (active ? 'var(--primary-red, #e53935)' : '#e0e0e0') + ';border-radius:10px;text-align:center;cursor:pointer;background:' + (active ? 'color-mix(in srgb, var(--primary-red, #e53935) 7%, #fff)' : '#fff') + ';font-size:13px;min-width:80px">';
     html += '<input type="radio" name="orderType" value="' + opt.val + '" ' + (active ? 'checked' : '') + ' style="display:none"> ' + opt.label + '</label>';
   }
   html += '</div>';  // close flex wrapper
   // When QR table is set, hide the UI but keep select in DOM for order submission
   var tableSectionDisplay = (savedOrderType === 'dinein' && !qrTable) ? '' : 'none';
   html += '<div id="dineinTableSection" style="margin-top:10px;display:' + tableSectionDisplay + '">';
-  html += '<label style="display:block;margin-bottom:6px;font-weight:500;color:#333;font-size:13px">🍽️ Select a Table</label>';
+  html += '<label style="display:block;margin-bottom:6px;font-weight:500;color:#333;font-size:13px"><i class="fa-solid fa-chair" style="color:var(--primary-red, #e53935);margin-right:6px"></i>Select a table</label>';
 
   html += '<select id="chkTableId" style="width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
   html += '<option value="">Select a table...</option></select>';
@@ -2781,10 +2793,10 @@ function showCheckoutModal(cartData) {
   html += '<div class="form-group">';
   html += '<label>When?</label>';
   html += '<div style="display:flex;gap:10px;margin-top:4px;">';
-  html += '<label class="schedule-option" data-sched="now" style="flex:1;padding:10px;border:2px solid #1a3934;border-radius:10px;text-align:center;cursor:pointer;background:#f0f7f5;font-size:13px;">';
-  html += '<input type="radio" name="scheduleType" value="now" checked style="display:none"> Order Now</label>';
+  html += '<label class="schedule-option" data-sched="now" style="flex:1;padding:10px;border:2px solid var(--primary-red, #e53935);border-radius:10px;text-align:center;cursor:pointer;background:color-mix(in srgb, var(--primary-red, #e53935) 7%, #fff);font-size:13px;">';
+  html += '<input type="radio" name="scheduleType" value="now" checked style="display:none"><i class="fa-solid fa-bolt"></i>Order now</label>';
   html += '<label class="schedule-option" data-sched="later" style="flex:1;padding:10px;border:2px solid #e0e0e0;border-radius:10px;text-align:center;cursor:pointer;background:#fff;font-size:13px;">';
-  html += '<input type="radio" name="scheduleType" value="later" style="display:none"> \u{1F4C5} Schedule for Later</label>';
+  html += '<input type="radio" name="scheduleType" value="later" style="display:none"><i class="fa-regular fa-calendar"></i>Schedule for later</label>';
   html += '</div>';
   html += '<input type="datetime-local" id="chkScheduledAt" style="display:none;margin-top:10px;width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:\'Poppins\',sans-serif;outline:none;box-sizing:border-box">';
   html += '<div id="scheduleHint" style="display:none;margin-top:6px;font-size:11px;color:#999;">Pick a time at least 15 minutes from now, within the next 7 days, during our opening hours.</div>';
@@ -2814,7 +2826,7 @@ function showCheckoutModal(cartData) {
     html += '<div class="form-group" id="payOnlineQrSection" style="display:none;border:1px solid #e0e0e0;border-radius:10px;padding:14px;background:#fafafa;">';
     html += '<div style="text-align:center;">';
     html += '<img src="' + window.businessQrImageUrl + '" alt="Payment QR" style="width:180px;height:180px;object-fit:contain;border:1px solid #ddd;border-radius:8px;background:#fff;">';
-    html += '<div style="margin-top:8px;"><a href="' + window.businessQrImageUrl + '" download="payment-qr.png" style="color:#1a3934;font-weight:600;font-size:13px;text-decoration:none;">⬇ Download QR</a></div>';
+    html += '<div style="margin-top:8px;"><a href="' + window.businessQrImageUrl + '" download="payment-qr.png" style="color:var(--primary-red, #e53935);font-weight:600;font-size:13px;text-decoration:none;">⬇ Download QR</a></div>';
     html += '</div>';
     html += '<label style="display:block;margin:14px 0 6px;font-weight:500;color:#333;font-size:13px">Upload payment screenshot</label>';
     html += '<input type="file" id="paymentProofInput" accept="image/*" style="width:100%;box-sizing:border-box;font-size:13px;">';
@@ -2907,8 +2919,8 @@ function showCheckoutModal(cartData) {
         all[j].style.borderColor = '#e0e0e0';
         all[j].style.background = '#fff';
       }
-      this.style.borderColor = '#1a3934';
-      this.style.background = '#f0f7f5';
+      this.style.borderColor = 'var(--primary-red, #e53935)';
+      this.style.background = 'color-mix(in srgb, var(--primary-red, #e53935) 7%, #fff)';
       var radio = this.querySelector('input[name="orderType"]');
       if (radio) radio.checked = true;
       var ot = this.getAttribute('data-ot');
@@ -2974,8 +2986,8 @@ function showCheckoutModal(cartData) {
         all[j].style.borderColor = '#e0e0e0';
         all[j].style.background = '#fff';
       }
-      this.style.borderColor = '#1a3934';
-      this.style.background = '#f0f7f5';
+      this.style.borderColor = 'var(--primary-red, #e53935)';
+      this.style.background = 'color-mix(in srgb, var(--primary-red, #e53935) 7%, #fff)';
       var radio = this.querySelector('input[name="scheduleType"]');
       if (radio) radio.checked = true;
       var later = this.getAttribute('data-sched') === 'later';
@@ -3872,15 +3884,15 @@ function useCurrentLocationForDelivery() {
     if (typeof showToast === 'function') { showToast(noGeoMsg, 'error'); } else { alert(noGeoMsg); }
     return;
   }
-  if (btn) { btn.disabled = true; btn.innerHTML = '📍 Getting your location...'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Getting your location...'; }
   navigator.geolocation.getCurrentPosition(function(pos) {
     var lat = pos.coords.latitude, lng = pos.coords.longitude;
     reverseGeocode(lat, lng, function(formatted, postcode) {
       applySelectedAddress(lat, lng, formatted, postcode);
     });
-    if (btn) { btn.disabled = false; btn.innerHTML = '📍 Use My Current Location'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Use my current location'; }
   }, function(err) {
-    if (btn) { btn.disabled = false; btn.innerHTML = '📍 Use My Current Location'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Use my current location'; }
     var msg = (err && err.code === 1)
       ? 'Location access was blocked. Please allow location access for this site in your browser settings, or search/pick your address on the map.'
       : 'Could not get your location. Please search your address or pick it on the map instead.';
