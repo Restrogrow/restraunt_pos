@@ -628,7 +628,8 @@ body {
 }
 .product-sheet-img {
   width: 100%;
-  height: 240px;
+  height: auto; /* follow the photo's own shape: whole picture, no bars, no crop */
+  max-height: min(55vh, 420px); /* very tall photos stop here and fit inside */
   object-fit: contain;
   background: #f5f5f5;
   flex-shrink: 0;
@@ -770,7 +771,6 @@ body {
 
 @media (max-width: 425px) {
   .product-sheet { max-height: 92vh; border-radius: 20px 20px 0 0; }
-  .product-sheet-img { height: 200px; }
   .product-sheet-body { padding: 14px 16px; }
   .product-sheet-name { font-size: 18px; }
   .product-sheet-price { font-size: 20px; }
