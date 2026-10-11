@@ -1937,6 +1937,27 @@ try {
               </div>
             </div>
 
+            <!-- Category Pictures: round photos or cut-outs -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">lunch_dining</span>
+                Category Pictures
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How the category buttons on your Menu page show their pictures. <b>Cut-out</b> shows the whole picture with no tile &mdash; best with transparent PNG images of the dish (upload them on each category; transparency is kept).</p>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <label class="cat-pic-style-opt" data-value="round" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="categoryPicStyle" value="round" checked style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">account_circle</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Round</span>
+                </label>
+                <label class="cat-pic-style-opt" data-value="cutout" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="categoryPicStyle" value="cutout" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">lunch_dining</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Cut-out</span>
+                </label>
+              </div>
+            </div>
+
             <!-- Category heading colour (Menu page + home menu list) -->
             <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">

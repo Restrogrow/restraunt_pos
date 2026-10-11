@@ -77,6 +77,13 @@ body {
 .side-nav-btn.active { animation: catPop 0.38s ease; box-shadow: 0 6px 14px color-mix(in srgb, var(--primary-red, #e17055) 35%, transparent); }
 .side-nav-btn.active img { transform: scale(1.06); box-shadow: 0 0 0 2px rgba(255,255,255,0.9); }
 @keyframes catPop { 0% { transform: scale(0.9); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+/* Cut-out category pictures (Website Appearance > Category Pictures: Cut-out):
+   the whole picture (transparent PNG of the dish) floating with a soft shadow,
+   no tile; the selected category gets a coloured, underlined label */
+.layout-container.cat-cutout .side-nav .side-nav-btn { background: transparent; color: #1f2937; box-shadow: none; border-radius: 10px; }
+.layout-container.cat-cutout .side-nav .side-nav-btn img { width: 62px; height: 62px; border-radius: 0; object-fit: contain; box-shadow: none; filter: drop-shadow(0 4px 5px rgba(0,0,0,0.18)); }
+.layout-container.cat-cutout .side-nav .side-nav-btn.active { background: transparent; color: var(--primary-red, #e53935); font-weight: 700; box-shadow: inset 0 -3px 0 var(--primary-red, #e53935); }
+.layout-container.cat-cutout .side-nav .side-nav-btn.active img { transform: scale(1.08); box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   .pr-share-header, .side-nav-btn, .side-nav-btn img { transition: none; }
   .side-nav-btn.active { animation: none; }
@@ -979,7 +986,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
       </div>
     </div>
 
-    <div class="layout-container<?php echo ($menu_nav_position ?? 'left') === 'top' ? ' nav-top' : ''; ?><?php echo ($menu_card_style ?? 'classic') === 'modern' ? ' mc-mode' : ''; ?>">
+    <div class="layout-container<?php echo ($menu_nav_position ?? 'left') === 'top' ? ' nav-top' : ''; ?><?php echo ($menu_card_style ?? 'classic') === 'modern' ? ' mc-mode' : ''; ?><?php echo ($category_pic_style ?? 'round') === 'cutout' ? ' cat-cutout' : ''; ?>">
       <div class="side-nav" id="sideNav">
         <div class="sub-views"><button class="side-nav-btn" disabled><div class="skel-circle skeleton"></div><div class="skel-nav-label skeleton"></div></button></div>
         <div class="sub-views"><button class="side-nav-btn" disabled><div class="skel-circle skeleton"></div><div class="skel-nav-label skeleton"></div></button></div>

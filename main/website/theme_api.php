@@ -57,7 +57,7 @@ try {
   ensureWebsiteThemeSchema($conn);
 
   if ($action === 'get') {
-    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, category_heading_bg FROM website_settings WHERE restaurant_id = :rid');
+    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, category_heading_bg, category_pic_style FROM website_settings WHERE restaurant_id = :rid');
     $stmt->execute([':rid' => $restaurant_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     $bestsellerStyle = getBestsellerStyle($row['bestseller_style'] ?? null);
@@ -190,6 +190,11 @@ try {
         $conn->prepare('UPDATE website_settings SET category_heading_bg = :c WHERE restaurant_id = :rid')
              ->execute([':c' => $chb === '' ? null : $chb, ':rid' => $restaurant_id]);
       }
+    }
+    // Menu page category picture style (round / cutout) — only when sent
+    if (in_array($data['category_pic_style'] ?? '', THEME_CATEGORY_PIC_STYLES, true)) {
+      $conn->prepare('UPDATE website_settings SET category_pic_style = :s WHERE restaurant_id = :rid')
+           ->execute([':s' => $data['category_pic_style'], ':rid' => $restaurant_id]);
     }
     // Menu page card design (classic / modern) — same "only when sent" rule
     if (in_array($data['menu_card_style'] ?? '', THEME_MENU_CARD_STYLES, true)) {

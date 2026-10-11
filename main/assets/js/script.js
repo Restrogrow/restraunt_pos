@@ -13820,6 +13820,24 @@ async function initWebsiteThemeEditor() {
         if (e.target && e.target.closest && e.target.closest('.bs-style-card')) applyLivePreview();
       });
     });
+    // Menu page category pictures (Round / Cut-out)
+    function applyCategoryPicStyleUI(val) {
+      document.querySelectorAll('.cat-pic-style-opt').forEach(function(el) {
+        var active = el.getAttribute('data-value') === val;
+        el.style.borderColor = active ? '#7c3aed' : '#e5e7eb';
+        var icon = el.querySelector('.material-symbols-rounded');
+        if (icon) icon.style.color = active ? '#7c3aed' : '#6b7280';
+        var radio = el.querySelector('input[name="categoryPicStyle"]');
+        if (radio) radio.checked = active;
+      });
+    }
+    function currentCategoryPicStyleVal() {
+      var r = document.querySelector('input[name="categoryPicStyle"]:checked');
+      return r ? r.value : 'round';
+    }
+    document.querySelectorAll('.cat-pic-style-opt').forEach(function(el) {
+      el.addEventListener('click', function() { applyCategoryPicStyleUI(el.getAttribute('data-value')); });
+    });
     // Menu page card design (Classic / Modern)
     function applyMenuCardStyleUI(val) {
       document.querySelectorAll('.menu-card-style-opt').forEach(function(el) {
@@ -14741,6 +14759,7 @@ if (!window.customBgThemes) {
       applyMenuNavPositionUI(data.settings.menu_nav_position || 'left');
       applyMenuCardStyleUI(data.settings.menu_card_style || 'classic');
       applyCategoryHeadingUI(data.settings.category_heading_bg || '');
+      applyCategoryPicStyleUI(data.settings.category_pic_style || 'round');
 
       // Set background theme URL
       const bgUrl = data.settings.background_theme || '';
@@ -14958,6 +14977,7 @@ if (!window.customBgThemes) {
             menu_nav_position: currentMenuNavPositionVal(),
             menu_card_style: currentMenuCardStyleVal(),
             category_heading_bg: currentCategoryHeadingVal(),
+            category_pic_style: currentCategoryPicStyleVal(),
             bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined
           };
 
