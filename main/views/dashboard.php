@@ -2183,6 +2183,22 @@ try {
                 </div>
               </div>
             </div>
+
+            <!-- Offer Banners: animated, made in HTML (no photo needed) -->
+            <div style="margin-top:2rem;border-top:2px solid #e5e7eb;padding-top:20px;">
+              <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+                <div style="flex:1;min-width:220px;">
+                  <h3 style="font-size:1rem;font-weight:700;color:#111827;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
+                    <span class="material-symbols-rounded" style="font-size:20px;">auto_awesome</span>
+                    Offer Banners (animated)
+                  </h3>
+                  <p style="color:#6b7280;font-size:0.88rem;margin:0;">No photo design needed: pick a style, type your offer and code, choose a colour. They move, and they show next to your photo banners. Customers tap the code to copy it.</p>
+                </div>
+                <button type="button" class="btn btn-primary" id="offerBannerNew"><span class="material-symbols-rounded">add</span>New offer banner</button>
+              </div>
+              <div id="offerBannerEditor" style="display:none;padding:14px;margin-bottom:14px;border:2px solid #ede9fe;border-radius:14px;background:#faf8ff;"></div>
+              <div id="offerBannersGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;"></div>
+            </div>
           </div>
           
           <div class="settings-section" id="livePreviewSection">
@@ -6863,6 +6879,8 @@ function toggleGatewayMode() {
   <script src="../assets/js/qr-standee.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/bestsellers-admin.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/offer-filters-admin.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
+  <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   
 
   

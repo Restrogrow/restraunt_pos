@@ -71,6 +71,49 @@ const THEME_HEADER_STYLES = ['hero', 'minimal'];
 const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
 // Menu page dish card design: the original cards, or the modern card (wide photo,
 // description, quantity picker + Add button)
+// Animated offer banners (Website Appearance > Offer Banners): made in HTML/CSS, no photo needed
+const OFFER_BANNER_TEMPLATES = ['burst', 'ticket', 'neon', 'confetti', 'marquee', 'split'];
+
+/** website_offer_banners table, created once. */
+function ensureOfferBannersTable($conn) {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $conn->exec("CREATE TABLE IF NOT EXISTS website_offer_banners (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            restaurant_id VARCHAR(50) NOT NULL,
+            template VARCHAR(20) NOT NULL DEFAULT 'burst',
+            title VARCHAR(40) NOT NULL,
+            subtitle VARCHAR(90) NULL,
+            code VARCHAR(30) NULL,
+            cta VARCHAR(24) NULL,
+            color VARCHAR(7) NOT NULL DEFAULT '#e11d48',
+            menu_item_id INT NULL,
+            placement VARCHAR(20) NOT NULL DEFAULT 'home_top',
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            display_order INT NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_offer_banners_rid (restaurant_id)
+        )");
+    } catch (PDOException $e) {
+        error_log('ensureOfferBannersTable: ' . $e->getMessage());
+    }
+}
+
+/** Offer banners with the chosen dish's photo reference; $activeOnly for the customer website. */
+function fetchOfferBanners($conn, $restaurant_id, $activeOnly) {
+    $sql = 'SELECT ob.id, ob.template, ob.title, ob.subtitle, ob.code, ob.cta, ob.color, ob.menu_item_id, ob.placement, ob.is_active, ob.display_order,
+                   mi.item_image AS image
+            FROM website_offer_banners ob
+            LEFT JOIN menu_items mi ON mi.id = ob.menu_item_id AND mi.restaurant_id = ob.restaurant_id
+            WHERE ob.restaurant_id = :rid' . ($activeOnly ? ' AND ob.is_active = 1' : '') . '
+            ORDER BY ob.display_order ASC, ob.id ASC';
+    $st = $conn->prepare($sql);
+    $st->execute([':rid' => $restaurant_id]);
+    return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
 // Where a website banner shows (Website Appearance > Banner Images)
 const BANNER_PLACEMENTS = ['home_top', 'home_menu', 'menu_top', 'cart'];
 

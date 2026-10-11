@@ -56,6 +56,7 @@ if (function_exists('getConnection')) {
 try {
   ensureWebsiteThemeSchema($conn);
   ensureBannerPlacementColumn($conn);
+  ensureOfferBannersTable($conn);
 
   if ($action === 'get') {
     $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, home_card_style, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');
@@ -104,7 +105,7 @@ try {
     $bannersStmt = $conn->prepare('SELECT id, banner_path, display_order, placement FROM website_banners WHERE restaurant_id = :rid ORDER BY display_order ASC, id ASC');
     $bannersStmt->execute([':rid' => $restaurant_id]);
     $banners = $bannersStmt->fetchAll(PDO::FETCH_ASSOC);
-    echo json_encode(['success' => true, 'banners' => $banners ?: []]);
+    echo json_encode(['success' => true, 'banners' => $banners ?: [], 'offer_banners' => fetchOfferBanners($conn, $restaurant_id, true)]);
     exit;
   }
 
@@ -654,6 +655,55 @@ try {
     }
   }
   
+  // ── Animated offer banners ──
+  if ($action === 'list_offer_banners') {
+    echo json_encode(['success' => true, 'offer_banners' => fetchOfferBanners($conn, $restaurant_id, false)]);
+    exit;
+  }
+  if ($action === 'save_offer_banner' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $in = json_decode(file_get_contents('php://input'), true) ?: [];
+    $clean = function($v, $max) { $v = trim(preg_replace('/\s+/u', ' ', strip_tags((string)$v))); return mb_substr($v, 0, $max); };
+    $title = $clean($in['title'] ?? '', 40);
+    if ($title === '') throw new Exception('Add a headline, e.g. 50% OFF');
+    $template = in_array($in['template'] ?? '', OFFER_BANNER_TEMPLATES, true) ? $in['template'] : 'burst';
+    $placement = in_array($in['placement'] ?? '', BANNER_PLACEMENTS, true) ? $in['placement'] : 'home_top';
+    $color = preg_match('/^#[0-9a-fA-F]{6}$/', $in['color'] ?? '') ? $in['color'] : '#e11d48';
+    $code = strtoupper(preg_replace('/[^A-Za-z0-9_-]/', '', (string)($in['code'] ?? '')));
+    $code = substr($code, 0, 30);
+    $itemId = (int)($in['menu_item_id'] ?? 0);
+    if ($itemId > 0) {
+      $chk = $conn->prepare('SELECT id FROM menu_items WHERE id = :id AND restaurant_id = :rid');
+      $chk->execute([':id' => $itemId, ':rid' => $restaurant_id]);
+      if (!$chk->fetchColumn()) $itemId = 0;
+    }
+    $row = [
+      ':template' => $template, ':title' => $title, ':subtitle' => $clean($in['subtitle'] ?? '', 90) ?: null,
+      ':code' => $code !== '' ? $code : null, ':cta' => $clean($in['cta'] ?? '', 24) ?: null, ':color' => $color,
+      ':item' => $itemId ?: null, ':placement' => $placement, ':active' => empty($in['is_active']) ? 0 : 1, ':rid' => $restaurant_id,
+    ];
+    $id = (int)($in['id'] ?? 0);
+    if ($id > 0) {
+      $row[':id'] = $id;
+      $conn->prepare('UPDATE website_offer_banners SET template=:template, title=:title, subtitle=:subtitle, code=:code, cta=:cta, color=:color,
+                      menu_item_id=:item, placement=:placement, is_active=:active WHERE id=:id AND restaurant_id=:rid')->execute($row);
+    } else {
+      $next = $conn->prepare('SELECT COALESCE(MAX(display_order), -1) + 1 FROM website_offer_banners WHERE restaurant_id = :rid');
+      $next->execute([':rid' => $restaurant_id]);
+      $row[':ord'] = (int)$next->fetchColumn();
+      $conn->prepare('INSERT INTO website_offer_banners (restaurant_id, template, title, subtitle, code, cta, color, menu_item_id, placement, is_active, display_order)
+                      VALUES (:rid, :template, :title, :subtitle, :code, :cta, :color, :item, :placement, :active, :ord)')->execute($row);
+      $id = (int)$conn->lastInsertId();
+    }
+    echo json_encode(['success' => true, 'id' => $id]);
+    exit;
+  }
+  if ($action === 'delete_offer_banner' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $conn->prepare('DELETE FROM website_offer_banners WHERE id = :id AND restaurant_id = :rid')
+         ->execute([':id' => (int)($_POST['id'] ?? 0), ':rid' => $restaurant_id]);
+    echo json_encode(['success' => true]);
+    exit;
+  }
+
   // Where one banner shows on the website (Home top / above the Home menu / Menu page / Cart)
   if ($action === 'set_banner_placement' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $bid = (int)($_POST['banner_id'] ?? 0);
