@@ -1597,62 +1597,52 @@ try {
               </div>
             </div>
 
-            <!-- Bottom Nav Icons -->
-            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <!-- Bottom Navigation: icon style + each item's label and own icon, in one place -->
+            <div style="margin-bottom: 1.5rem; padding: 1.1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
                 <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">apps</span>
-                Bottom Nav Icons
+                Bottom Navigation
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Pick the icon style used for Home, Menu, Social, Cart &amp; Profile in your website's bottom navigation bar.</p>
-              <div id="navIconStyleGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px;"></div>
+              <p style="font-size: 0.82rem; color: #6b7280; margin-bottom: 0.7rem;">Pick an icon style, then rename any item (blank = default) or upload your own icon for it (PNG/JPG/SVG/WebP/GIF, max 1MB).</p>
+              <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">Icon style</div>
+              <div id="navIconStyleGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px;"></div>
               <input type="hidden" id="navIconStyleInput" value="classic">
-            </div>
-
-            <!-- Custom Nav Icon Uploads -->
-            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">upload</span>
-                Custom Nav Icons
-              </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Upload your own icon image for any bottom-nav item &mdash; it replaces the icon style above just for that item. PNG/JPG/SVG/WebP/GIF, max 1MB.</p>
-              <div id="navIconUploadGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;"></div>
-            </div>
-
-            <!-- Bottom Nav Labels -->
-            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">edit</span>
-                Bottom Nav Labels
-              </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Rename any label in your website's bottom navigation bar &mdash; for example, change "Menu" to "Items". Leave a field blank to keep the default.</p>
-              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px;">
-                <div>
-                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Home</label>
-                  <input type="text" id="navLabelHomeInput" maxlength="20" placeholder="Home" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+              <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin: 14px 0 6px;">Items — label &amp; own icon</div>
+              <div id="navIconUploadGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="home" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelHomeInput" maxlength="20" placeholder="Home" aria-label="Home label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="home" style="display:flex;gap:4px;flex-shrink:0;"></span>
                 </div>
-                <div>
-                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Menu</label>
-                  <input type="text" id="navLabelMenuInput" maxlength="20" placeholder="Menu" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="menu" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelMenuInput" maxlength="20" placeholder="Menu" aria-label="Menu label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="menu" style="display:flex;gap:4px;flex-shrink:0;"></span>
                 </div>
-                <div>
-                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Social</label>
-                  <input type="text" id="navLabelSocialInput" maxlength="20" placeholder="Social" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="social" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelSocialInput" maxlength="20" placeholder="Social" aria-label="Social label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="social" style="display:flex;gap:4px;flex-shrink:0;"></span>
                 </div>
-                <div>
-                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Plans</label>
-                  <input type="text" id="navLabelPlansInput" maxlength="20" placeholder="Plans" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="plans" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelPlansInput" maxlength="20" placeholder="Plans" aria-label="Plans label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="plans" style="display:flex;gap:4px;flex-shrink:0;"></span>
                 </div>
-                <div>
-                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Reserve</label>
-                  <input type="text" id="navLabelReservationsInput" maxlength="20" placeholder="Reserve" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="reservations" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelReservationsInput" maxlength="20" placeholder="Reserve" aria-label="Reserve label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="reservations" style="display:flex;gap:4px;flex-shrink:0;"></span>
                 </div>
-                <div>
-                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Cart</label>
-                  <input type="text" id="navLabelCartInput" maxlength="20" placeholder="Cart" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="cart" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelCartInput" maxlength="20" placeholder="Cart" aria-label="Cart label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="cart" style="display:flex;gap:4px;flex-shrink:0;"></span>
                 </div>
-                <div>
-                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#6b7280;margin-bottom:4px;">Profile</label>
-                  <input type="text" id="navLabelProfileInput" maxlength="20" placeholder="Profile" style="width:100%;padding:0.55rem 0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="profile" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelProfileInput" maxlength="20" placeholder="Profile" aria-label="Profile label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="profile" style="display:flex;gap:4px;flex-shrink:0;"></span>
                 </div>
               </div>
             </div>
@@ -1669,55 +1659,34 @@ try {
               <input type="hidden" id="themePresetInput" value="">
             </div>
 
-            <!-- Visual Preview -->
-            <div id="colorPreviewContainer" style="background: white; border-radius: 8px; padding: 1rem; border: 2px solid #e5e7eb; margin-bottom: 2rem;">
-              <div style="font-weight: 700; color: #111827; margin-bottom: 0.75rem;">Preview:</div>
-              <div id="heroPreview" style="background: linear-gradient(135deg, #F70000 0%, #DA020E 100%); border-radius: 8px; padding: 1.5rem; color: white; margin-bottom: 1rem;">
-                <div id="heroPreviewName" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Restaurant Name</div>
-                <div style="font-size: 0.9rem; opacity: 0.9;">Hero Section Background (Gradient)</div>
-              </div>
-              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <div id="categoryButtonPreview" style="border: 2px solid #F70000; color: #F70000; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Category Button</div>
-                <div id="addToCartPreview" style="background: #FFD100; color: #333; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Add to Cart</div>
-                <div id="checkoutPreview" style="background: linear-gradient(135deg, #F70000, #DA020E); color: #fff; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">Checkout</div>
-              </div>
+            <!-- Colours (the real preview on the right shows them: Current mode) -->
+            <div id="colorPreviewContainer" style="display:none;" aria-hidden="true">
+              <div id="heroPreview"><div id="heroPreviewName"></div></div><div id="categoryButtonPreview"></div><div id="addToCartPreview"></div><div id="checkoutPreview"></div>
             </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 16px; padding: 1.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                <div style="text-align: center; margin-bottom: 1rem;">
-                  <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">palette</span>
-                    Primary Color
-                  </div>
-                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">Buttons, links &amp; header</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 1.25rem;">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:#fff;">
+                <input type="color" id="primaryRed" value="#F70000" title="Primary" style="width:46px;height:46px;flex-shrink:0;padding:0;border:0;border-radius:12px;background:none;cursor:pointer;">
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:5px;font-weight:700;color:#111827;font-size:0.88rem;"><span class="material-symbols-rounded" style="font-size:1rem;color:#dc2626;">palette</span>Primary</div>
+                  <div style="font-size:0.72rem;color:#6b7280;margin:1px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Buttons, links &amp; header</div>
+                  <input type="text" id="primaryRedHex" value="#F70000" maxlength="7" placeholder="#F70000" style="width:100%;font-family:'Courier New',monospace;font-size:0.8rem;color:#374151;font-weight:700;background:#f3f4f6;padding:0.3rem 0.45rem;border-radius:6px;border:1.5px solid #e5e7eb;text-transform:uppercase;">
                 </div>
-                <input type="color" id="primaryRed" value="#F70000" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer;">
-                <input type="text" id="primaryRedHex" value="#F70000" maxlength="7" placeholder="#F70000" style="margin-top: 0.75rem; width: 100%; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px; border: 2px solid #e5e7eb; text-transform: uppercase;">
               </div>
-
-              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 16px; padding: 1.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                <div style="text-align: center; margin-bottom: 1rem;">
-                  <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #fbbf24;">star</span>
-                    Add to Cart Color
-                  </div>
-                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">"Add to Cart" buttons &amp; highlights</div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:#fff;">
+                <input type="color" id="primaryYellow" value="#FFD100" title="Add to Cart" style="width:46px;height:46px;flex-shrink:0;padding:0;border:0;border-radius:12px;background:none;cursor:pointer;">
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:5px;font-weight:700;color:#111827;font-size:0.88rem;"><span class="material-symbols-rounded" style="font-size:1rem;color:#f59e0b;">star</span>Add to Cart</div>
+                  <div style="font-size:0.72rem;color:#6b7280;margin:1px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">"Add to Cart" buttons &amp; highlights</div>
+                  <input type="text" id="primaryYellowHex" value="#FFD100" maxlength="7" placeholder="#FFD100" style="width:100%;font-family:'Courier New',monospace;font-size:0.8rem;color:#374151;font-weight:700;background:#f3f4f6;padding:0.3rem 0.45rem;border-radius:6px;border:1.5px solid #e5e7eb;text-transform:uppercase;">
                 </div>
-                <input type="color" id="primaryYellow" value="#FFD100" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer;">
-                <input type="text" id="primaryYellowHex" value="#FFD100" maxlength="7" placeholder="#FFD100" style="margin-top: 0.75rem; width: 100%; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px; border: 2px solid #e5e7eb; text-transform: uppercase;">
               </div>
-
-              <div style="background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 16px; padding: 1.5rem; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                <div style="text-align: center; margin-bottom: 1rem;">
-                  <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">shopping_cart_checkout</span>
-                    Checkout Color
-                  </div>
-                  <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem;">The "Checkout" bar &amp; button, set independently</div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:#fff;">
+                <input type="color" id="checkoutColor" value="#F70000" title="Checkout" style="width:46px;height:46px;flex-shrink:0;padding:0;border:0;border-radius:12px;background:none;cursor:pointer;">
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:5px;font-weight:700;color:#111827;font-size:0.88rem;"><span class="material-symbols-rounded" style="font-size:1rem;color:#dc2626;">shopping_cart_checkout</span>Checkout</div>
+                  <div style="font-size:0.72rem;color:#6b7280;margin:1px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Checkout bar &amp; button</div>
+                  <input type="text" id="checkoutColorHex" value="#F70000" maxlength="7" placeholder="#F70000" style="width:100%;font-family:'Courier New',monospace;font-size:0.8rem;color:#374151;font-weight:700;background:#f3f4f6;padding:0.3rem 0.45rem;border-radius:6px;border:1.5px solid #e5e7eb;text-transform:uppercase;">
                 </div>
-                <input type="color" id="checkoutColor" value="#F70000" style="width: 100%; height: 70px; border-radius: 12px; border: 3px solid #e5e7eb; cursor: pointer;">
-                <input type="text" id="checkoutColorHex" value="#F70000" maxlength="7" placeholder="#F70000" style="margin-top: 0.75rem; width: 100%; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #374151; font-weight: 600; text-align: center; background: #f3f4f6; padding: 0.5rem; border-radius: 8px; border: 2px solid #e5e7eb; text-transform: uppercase;">
               </div>
             </div>
             <!-- Hidden field: gradient shade auto-derived from Primary Color (no manual picker needed) -->
@@ -2192,6 +2161,16 @@ try {
                 <label for="bannerUpload">Upload Banner Images</label>
                 <p style="color:#666;font-size:0.9rem;margin-bottom:10px;">Upload multiple banner images to display as a slideshow on your website. Each image will display for 3 seconds. Recommended size: 1200x300px or similar. Max size: 5MB per image</p>
                 <input type="file" id="bannerUpload" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" multiple style="margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                  <label for="bannerPlacementNew" style="margin:0;font-weight:600;font-size:0.9rem;">Show new banners on:</label>
+                  <select id="bannerPlacementNew" style="padding:0.45rem 0.6rem;border:2px solid #e5e7eb;border-radius:8px;">
+                    <option value="home_top">Home page — top</option>
+                    <option value="home_menu">Home page — above the menu</option>
+                    <option value="menu_top">Menu page — above the dishes</option>
+                    <option value="cart">Cart page — top</option>
+                  </select>
+                  <span style="font-size:0.8rem;color:#6b7280;">You can change it per banner below.</span>
+                </div>
                 <button type="button" class="btn btn-primary" id="uploadBannerBtn" style="margin-bottom:10px;">
                   <span class="material-symbols-rounded">upload</span>
                   Upload Banners
@@ -2235,6 +2214,7 @@ try {
                 Mobile
               </button>
               <span style="flex:1"></span>
+              <a href="layout-gallery.html?site=<?php echo urlencode($basePath . '/' . trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($restaurant_name)), '-')); ?>" target="_blank" title="See every home & menu layout side by side (nothing is saved)" style="display:flex;align-items:center;gap:5px;height:34px;padding:0 10px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;font-size:12.5px;font-weight:700;text-decoration:none;white-space:nowrap;"><span class="material-symbols-rounded" style="font-size:18px;">grid_view</span>All layouts</a>
               <button type="button" onclick="refreshPreview()" title="Refresh preview" aria-label="Refresh preview" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;cursor:pointer;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:19px;">refresh</span></button>
               <a href="<?php echo htmlspecialchars((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $basePath . '/' . urlencode(trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($restaurant_name)), '-'))); ?>" target="_blank" title="Open in new tab" aria-label="Open in new tab" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;cursor:pointer;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:19px;">open_in_new</span></a>
             </div>

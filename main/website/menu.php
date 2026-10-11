@@ -1398,6 +1398,8 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
         <div class="sub-views"><button class="side-nav-btn" disabled><div class="skel-circle skeleton"></div><div class="skel-nav-label skeleton"></div></button></div>
       </div>
       <div class="main-content">
+        <!-- Banners: Menu page — above the dishes -->
+        <div class="rg-banners" data-placement="menu_top" style="padding:10px 4px 12px"></div>
         <div class="category-overview">
           <h2 id="categoryTitle"><span class="skel-title-bar skeleton"></span></h2>
           <div class="subcategory-tabs" id="subcategoryTabs" style="display:none"></div>
@@ -3587,5 +3589,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 })();
 </script>
+<script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 </body>
 </html>

@@ -14261,44 +14261,29 @@ async function initWebsiteThemeEditor() {
       return meta ? meta.content : (document.getElementById('restaurantId') ? document.getElementById('restaurantId').textContent.trim() : '');
     }
 
+    // Bottom Navigation rows: fills each item's icon thumb + Upload/Remove next to its label box
     function renderNavIconUploadGrid() {
       var grid = document.getElementById('navIconUploadGrid');
       if (!grid) return;
-      grid.innerHTML = NAV_LABEL_SLOTS.map(function(slot) {
-        var label = slot.charAt(0).toUpperCase() + slot.slice(1);
+      NAV_LABEL_SLOTS.forEach(function(slot) {
+        var thumb = grid.querySelector('[data-nav-icon-thumb="' + slot + '"]');
+        var actions = grid.querySelector('[data-nav-icon-actions="' + slot + '"]');
+        if (!thumb || !actions) return;
         var url = navIconOverridesCache[slot];
-        var thumbHtml = url
-          ? "<img src='" + url + "' style='width:32px;height:32px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;background:#fff;'>"
-          : "<div style='width:32px;height:32px;border-radius:6px;border:1px dashed #d1d5db;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:14px;'>&mdash;</div>";
-        return "<div style='text-align:center;padding:10px 6px;border-radius:10px;border:2px solid #e5e7eb;background:#fff;'>" +
-          "<div style='display:flex;justify-content:center;margin-bottom:6px;'>" + thumbHtml + "</div>" +
-          "<div style='font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;'>" + label + "</div>" +
+        thumb.innerHTML = url
+          ? "<img src='" + url + "' alt='' style='width:30px;height:30px;object-fit:contain;border-radius:8px;border:1px solid #e5e7eb;background:#fff;'>"
+          : "<span title='Uses the icon style' style='width:30px;height:30px;border-radius:8px;border:1px dashed #d1d5db;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;'>&mdash;</span>";
+        actions.innerHTML =
           "<input type='file' accept='image/png,image/jpeg,image/gif,image/webp,image/svg+xml' data-nav-icon-upload-slot='" + slot + "' style='display:none;'>" +
-          "<div style='display:flex;gap:4px;justify-content:center;'>" +
-          "<button type='button' data-nav-icon-upload-trigger='" + slot + "' style='font-size:10px;padding:4px 8px;border-radius:6px;border:1px solid #d1d5db;background:#fff;cursor:pointer;'>Upload</button>" +
-          (url ? "<button type='button' data-nav-icon-remove='" + slot + "' style='font-size:10px;padding:4px 8px;border-radius:6px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;cursor:pointer;'>Remove</button>" : '') +
-          "</div></div>";
-      }).join('');
-
-      Array.from(grid.querySelectorAll('[data-nav-icon-upload-trigger]')).forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var slot = btn.getAttribute('data-nav-icon-upload-trigger');
-          var input = grid.querySelector('input[data-nav-icon-upload-slot="' + slot + '"]');
-          if (input) input.click();
-        });
-      });
-      Array.from(grid.querySelectorAll('input[data-nav-icon-upload-slot]')).forEach(function(input) {
-        input.addEventListener('change', function() {
-          if (input.files && input.files[0]) uploadNavIcon(input.getAttribute('data-nav-icon-upload-slot'), input.files[0]);
-        });
-      });
-      Array.from(grid.querySelectorAll('[data-nav-icon-remove]')).forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          removeNavIcon(btn.getAttribute('data-nav-icon-remove'));
-        });
+          "<button type='button' data-nav-icon-upload-trigger='" + slot + "' title='Upload your own icon' style='font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid #d1d5db;background:#fff;cursor:pointer;'>" + (url ? 'Change' : 'Upload') + "</button>" +
+          (url ? "<button type='button' data-nav-icon-remove='" + slot + "' title='Remove custom icon' style='font-size:11px;padding:5px 7px;border-radius:7px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;cursor:pointer;'>&times;</button>" : '');
+        var input = actions.querySelector('input[type=file]');
+        actions.querySelector('[data-nav-icon-upload-trigger]').addEventListener('click', function() { input.click(); });
+        input.addEventListener('change', function() { if (input.files && input.files[0]) uploadNavIcon(slot, input.files[0]); });
+        var rm = actions.querySelector('[data-nav-icon-remove]');
+        if (rm) rm.addEventListener('click', function() { removeNavIcon(slot); });
       });
     }
-
     async function uploadNavIcon(slot, file) {
       if (file.size > 1 * 1024 * 1024) {
         showToastFallback('Icon file too large (max 1MB).', 'error');
@@ -14600,11 +14585,34 @@ async function initWebsiteThemeEditor() {
           <button class="delete-banner-btn" data-id="${banner.id}" draggable="false" style="position:absolute;top:8px;right:8px;background:rgba(220,38,38,0.9);color:white;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.3s;box-shadow:0 2px 6px rgba(0,0,0,0.2);z-index:10;">
             <span class="material-symbols-rounded" style="font-size:20px;">delete</span>
           </button>
-          <div style="padding:12px;font-size:0.9rem;color:#666;text-align:center;background:#fff;border-top:1px solid #eee;">Order: ${banner.display_order !== null && banner.display_order !== undefined ? banner.display_order : index + 1}</div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid #eee;" draggable="false">
+            <span class="material-symbols-rounded" style="font-size:18px;color:#6b7280;">place</span>
+            <select class="banner-placement" data-id="${banner.id}" draggable="false" title="Where this banner shows on your website" style="flex:1;padding:6px 8px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.85rem;cursor:pointer;">
+              ${[['home_top','Home page — top'],['home_menu','Home page — above the menu'],['menu_top','Menu page — above the dishes'],['cart','Cart page — top']].map(([v,l]) => `<option value="${v}"${(banner.placement || 'home_top') === v ? ' selected' : ''}>${l}</option>`).join('')}
+            </select>
+            <span style="font-size:0.8rem;color:#9ca3af;white-space:nowrap;">#${banner.display_order !== null && banner.display_order !== undefined ? banner.display_order + 1 : index + 1}</span>
+          </div>
         `;
         bannersGrid.appendChild(bannerCard);
       });
       
+      // Where each banner shows: saved straight away
+      document.querySelectorAll('.banner-placement').forEach(sel => {
+        ['mousedown', 'click', 'dragstart'].forEach(ev => sel.addEventListener(ev, e => e.stopPropagation()));
+        sel.addEventListener('change', async () => {
+          const fd = new FormData();
+          fd.append('banner_id', sel.getAttribute('data-id'));
+          fd.append('placement', sel.value);
+          const sq = rid ? `?action=set_banner_placement&restaurant_id=${encodeURIComponent(rid)}` : '?action=set_banner_placement';
+          try {
+            const res = await fetch(`../website/theme_api.php${sq}`, { method: 'POST', body: fd });
+            const data = await res.json();
+            showNotification(data.success ? 'Banner placement saved' : (data.message || 'Could not save placement'), data.success ? 'success' : 'error');
+            if (data.success && window.refreshPreview) window.refreshPreview();
+          } catch (err) { showNotification('Network error. Please try again.', 'error'); }
+        });
+      });
+
       // Add delete button listeners
       document.querySelectorAll('.delete-banner-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -15153,6 +15161,8 @@ if (!window.customBgThemes) {
         Array.from(bannerUpload.files).forEach((file) => {
           formData.append('banners[]', file);
         });
+        const placeSel = document.getElementById('bannerPlacementNew');
+        if (placeSel) formData.append('placement', placeSel.value);
         
         const sq = rid ? `?action=upload_banner&restaurant_id=${encodeURIComponent(rid)}` : '?action=upload_banner';
         

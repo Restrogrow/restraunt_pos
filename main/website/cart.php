@@ -1227,6 +1227,9 @@ function appendTableParam(url) {
       </div>
     </div>
 
+    <!-- Banners: Cart page — top -->
+    <div class="rg-banners" data-placement="cart" style="padding:12px 12px 0"></div>
+
     <!-- Content -->
     <div class="content" id="cartContent">
       <div class="card" style="overflow:hidden">
@@ -4187,5 +4190,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 })();
 </script>
+<script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 </body>
 </html>

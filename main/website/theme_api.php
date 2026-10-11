@@ -55,6 +55,7 @@ if (function_exists('getConnection')) {
 
 try {
   ensureWebsiteThemeSchema($conn);
+  ensureBannerPlacementColumn($conn);
 
   if ($action === 'get') {
     $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, home_card_style, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');
@@ -88,7 +89,7 @@ try {
     }
 
     // Get all banners from website_banners table
-    $bannersStmt = $conn->prepare('SELECT id, banner_path, display_order FROM website_banners WHERE restaurant_id = :rid ORDER BY display_order ASC, id ASC');
+    $bannersStmt = $conn->prepare('SELECT id, banner_path, display_order, placement FROM website_banners WHERE restaurant_id = :rid ORDER BY display_order ASC, id ASC');
     $bannersStmt->execute([':rid' => $restaurant_id]);
     $banners = $bannersStmt->fetchAll(PDO::FETCH_ASSOC);
     $row['banners'] = $banners ?: [];
@@ -100,7 +101,7 @@ try {
   
   if ($action === 'get_banners' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     // Get banners (exclude binary data from JSON)
-    $bannersStmt = $conn->prepare('SELECT id, banner_path, display_order FROM website_banners WHERE restaurant_id = :rid ORDER BY display_order ASC, id ASC');
+    $bannersStmt = $conn->prepare('SELECT id, banner_path, display_order, placement FROM website_banners WHERE restaurant_id = :rid ORDER BY display_order ASC, id ASC');
     $bannersStmt->execute([':rid' => $restaurant_id]);
     $banners = $bannersStmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode(['success' => true, 'banners' => $banners ?: []]);
@@ -390,6 +391,9 @@ try {
     }
     
     $uploadedBanners = [];
+    // Placement chosen for this upload (Show new banners on: …)
+    $newPlacement = in_array($_POST['placement'] ?? '', BANNER_PLACEMENTS, true) ? $_POST['placement'] : 'home_top';
+    $maxIdBefore = (int)$conn->query('SELECT COALESCE(MAX(id), 0) FROM website_banners')->fetchColumn();
     $uploadDir = __DIR__ . '/../uploads/banners/';
     if (!file_exists($uploadDir)) {
       mkdir($uploadDir, 0755, true);
@@ -603,6 +607,8 @@ try {
       throw new Exception($errorMsg);
     }
     
+    $conn->prepare('UPDATE website_banners SET placement = :p WHERE restaurant_id = :rid AND id > :maxid')
+         ->execute([':p' => $newPlacement, ':rid' => $restaurant_id, ':maxid' => $maxIdBefore]);
     $response = ['success' => true, 'banners' => $uploadedBanners];
     if (!empty($errorMessages)) {
       $response['warnings'] = $errorMessages;
@@ -648,6 +654,17 @@ try {
     }
   }
   
+  // Where one banner shows on the website (Home top / above the Home menu / Menu page / Cart)
+  if ($action === 'set_banner_placement' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $bid = (int)($_POST['banner_id'] ?? 0);
+    $place = (string)($_POST['placement'] ?? '');
+    if ($bid <= 0 || !in_array($place, BANNER_PLACEMENTS, true)) throw new Exception('Invalid banner or placement');
+    $conn->prepare('UPDATE website_banners SET placement = :p WHERE id = :id AND restaurant_id = :rid')
+         ->execute([':p' => $place, ':id' => $bid, ':rid' => $restaurant_id]);
+    echo json_encode(['success' => true]);
+    exit;
+  }
+
   if ($action === 'reorder_banners' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true) ?? [];
     $bannerIds = $data['banner_ids'] ?? [];

@@ -71,6 +71,23 @@ const THEME_HEADER_STYLES = ['hero', 'minimal'];
 const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
 // Menu page dish card design: the original cards, or the modern card (wide photo,
 // description, quantity picker + Add button)
+// Where a website banner shows (Website Appearance > Banner Images)
+const BANNER_PLACEMENTS = ['home_top', 'home_menu', 'menu_top', 'cart'];
+
+/** website_banners.placement, added once (default: Home page top). */
+function ensureBannerPlacementColumn($conn) {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $col = $conn->query("SHOW COLUMNS FROM website_banners LIKE 'placement'");
+        if ($col && $col->fetch()) return;
+        $conn->exec("ALTER TABLE website_banners ADD COLUMN placement VARCHAR(20) NOT NULL DEFAULT 'home_top'");
+    } catch (PDOException $e) {
+        error_log('ensureBannerPlacementColumn: ' . $e->getMessage());
+    }
+}
+
 // Home page dish list look (Website Appearance > Home Page Dishes)
 const THEME_HOME_CARD_STYLES = ['classic', 'grid', 'big', 'compact', 'carousel', 'magazine', 'printed', 'tiles', 'delivery', 'dark'];
 const THEME_MENU_CARD_STYLES = ['classic', 'modern', 'minimal', 'photo', 'list', 'elegant', 'compact', 'midnight', 'showcase'];

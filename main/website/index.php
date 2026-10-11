@@ -1729,6 +1729,9 @@ window.socialLinks = {
     </div>
   </div>
 
+  <!-- Banners: Home page — top (Website Appearance > Banner Images) -->
+  <div class="rg-banners" data-placement="home_top"></div>
+
   <div class="order-tabs" id="menuSection">
     <?php if ($enable_delivery): ?><button class="order-tab <?php echo $enable_delivery ? 'active' : ''; ?>" onclick="switchOrder(this, 'delivery')">🛵 Delivery</button><?php endif; ?>
     <?php if ($enable_takeaway): ?><button class="order-tab <?php echo !$enable_delivery && $enable_takeaway ? 'active' : ''; ?>" onclick="switchOrder(this, 'takeaway')">🥡 Take Away</button><?php endif; ?>
@@ -1765,6 +1768,8 @@ window.socialLinks = {
     </div>
   </section>
 
+  <!-- Banners: Home page — above the menu -->
+  <div class="rg-banners" data-placement="home_menu"></div>
   <div class="menu-list<?php echo ($home_card_style ?? 'classic') !== 'classic' ? ' hc-' . htmlspecialchars($home_card_style, ENT_QUOTES, 'UTF-8') : ''; ?>" id="menuList" data-price-style="<?php echo htmlspecialchars($bestseller_style['price_style'], ENT_QUOTES, 'UTF-8'); ?>">
     <div class="skel-cat-header skeleton"></div>
     <div class="skel-item"><div class="skel-img skeleton"></div><div class="skel-text"><div class="skel-title skeleton"></div><div class="skel-desc skeleton"></div><div class="skel-price skeleton"></div></div></div>
@@ -3382,5 +3387,6 @@ function showToast(msg, type) {
   }
 })();
 </script>
+<script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 </body>
 </html>
