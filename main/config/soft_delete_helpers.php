@@ -12,6 +12,32 @@
 
 if (!function_exists('ensureOrderSoftDeleteColumns')) {
     /**
+     * Order numbers are random per day ("ORD-20261011-4506") and checked
+     * before use, but two orders created at the same instant could still pick
+     * the same one. A unique index lets the database guarantee it: in that
+     * (very rare) clash the second save is refused instead of silently
+     * duplicating a number. Added once, only when no duplicates exist; never
+     * call it inside a transaction (DDL commits implicitly).
+     */
+    function ensureOrderNumberUnique($conn) {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        try {
+            $idx = $conn->query("SHOW INDEX FROM orders WHERE Key_name = 'uq_orders_restaurant_number'");
+            if ($idx && $idx->fetch()) return;
+            $dup = $conn->query("SELECT 1 FROM orders GROUP BY restaurant_id, order_number HAVING COUNT(*) > 1 LIMIT 1");
+            if ($dup && $dup->fetch()) {
+                error_log('soft_delete_helpers.php: duplicate order numbers exist — unique index not added');
+                return;
+            }
+            $conn->exec("CREATE UNIQUE INDEX uq_orders_restaurant_number ON orders (restaurant_id, order_number)");
+        } catch (PDOException $e) {
+            error_log('soft_delete_helpers.php: could not add unique order-number index: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Adds the soft-delete columns to `orders` on first use. Cheap after the
      * first call (one information_schema query), safe to call on every request.
      */

@@ -8963,6 +8963,8 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append('orderType', isTakeaway ? 'Takeaway' : 'Dine-in');
     formData.append('customerName', isTakeaway ? 'Takeaway' : 'Table Customer');
     formData.append('paymentMethod', payResult.paymentMethod);
+    formData.append('paymentStatus', payResult.paymentStatus || 'Paid');
+    formData.append('paidAmount', Math.max(0, total - (parseFloat(payResult.dueAmount) || 0)).toFixed(2));
     // Built from whichever payment methods were actually used (built-in or
     // custom) instead of a hardcoded Cash/UPI/Card list, so a custom method
     // like "Wallet" shows up correctly in the KOT/bill notes too.
@@ -9910,6 +9912,7 @@ window.logout = logout;
               <span class="material-symbols-rounded" style="font-size: 1rem; vertical-align: middle;">print</span>
               Print
             </button>
+            ${markPaidButtonHtml(order)}
             ${status !== 'Cancelled' && status !== 'Completed' ? `
               <button class="btn btn-danger" onclick="updateOrderStatus(${order.id}, 'Cancelled')">Cancel Order</button>
             ` : ''}
@@ -10548,6 +10551,7 @@ function displayOrders(orders) {
           <span class="material-symbols-rounded" style="font-size: 1rem; vertical-align: middle;">print</span>
           Print
         </button>
+        ${markPaidButtonHtml(order)}
         <button class="btn btn-danger" onclick="updateOrderStatus(${order.id}, 'Cancelled')">Cancel Order</button>
       </div>
     </div>
@@ -11249,6 +11253,40 @@ window.cancelOrder = async function(orderId) {
 };
 
 // Update Order Status
+// "Mark paid" for orders whose bill is settled later (waiter tables, cash on
+// delivery, part payments). Uses update_payment_status.php (state machine,
+// manage-orders permission). Hidden once paid, cancelled or rejected.
+function markPaidButtonHtml(order) {
+  const pay = order.payment_status || 'Pending';
+  const st = order.order_status || '';
+  if (pay === 'Paid' || pay === 'Refunded' || st === 'Cancelled' || st === 'Rejected') return '';
+  return `<button class="btn" onclick="markOrderPaid(${parseInt(order.id, 10)}, this)" style="background:#16a34a;color:#fff;border:none;display:flex;align-items:center;gap:0.25rem;">
+      <span class="material-symbols-rounded" style="font-size:1rem;vertical-align:middle;">payments</span>Mark paid</button>`;
+}
+window.markPaidButtonHtml = markPaidButtonHtml;
+
+async function markOrderPaid(orderId, btn) {
+  if (!window.confirm('Mark this order as fully paid?')) return;
+  if (btn) btn.disabled = true;
+  const notify = (m, t) => (typeof showMessage === 'function' ? showMessage(m, t) : (window.showNotification || alert)(m, t));
+  try {
+    const res = await fetch('../api/update_payment_status.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ orderId: String(orderId), status: 'Paid' })
+    });
+    const d = await res.json();
+    if (!d.success) throw new Error(d.message || 'Could not update payment');
+    notify('Payment recorded — order marked as paid.', 'success');
+    if (document.getElementById('ordersList') && typeof loadOrders === 'function') await loadOrders();
+    if (document.getElementById('onlineOrdersList') && typeof loadOnlineOrders === 'function') await loadOnlineOrders();
+  } catch (e) {
+    notify(e.message, 'error');
+    if (btn) btn.disabled = false;
+  }
+}
+window.markOrderPaid = markOrderPaid;
+
 async function updateOrderStatus(orderId, status, btn) {
   // Show confirmation for destructive status changes (Cancelled)
   if (status === 'Cancelled') {

@@ -57,6 +57,7 @@ try {
     // revenue figure below (same rule the Cancelled/Rejected filter uses).
     require_once __DIR__ . '/../config/soft_delete_helpers.php';
     ensureOrderSoftDeleteColumns($conn);
+    ensureOrderNumberUnique($conn);
 
     // Get today's date
     $today = date('Y-m-d');

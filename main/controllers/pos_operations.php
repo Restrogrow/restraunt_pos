@@ -311,6 +311,9 @@ function handleCreateKOT($conn, $restaurant_id) {
     $total = floatval($_POST['total'] ?? 0);
     $notes = trim($_POST['notes'] ?? '');
     $paymentMethod = $_POST['paymentMethod'] ?? 'Cash';
+    // What the Pay screen worked out: fully paid, or part paid with some due
+    $posPaymentStatus = ($_POST['paymentStatus'] ?? '') === 'Partially Paid' ? 'Partially Paid' : 'Paid';
+    $posPaidAmount = isset($_POST['paidAmount']) && is_numeric($_POST['paidAmount']) ? (float)$_POST['paidAmount'] : null;
     $couponCode = strtoupper(trim($_POST['couponCode'] ?? ''));
 
     // Validation
@@ -381,7 +384,7 @@ function handleCreateKOT($conn, $restaurant_id) {
         
         // Append payment method to notes if not Cash
         $kotNotes = $notes;
-        if (!empty($paymentMethod) && $paymentMethod !== 'Cash') {
+        if (!empty($paymentMethod) && $paymentMethod !== 'Cash' && $paymentMethod !== 'Due') { // 'Due' = nothing collected: no paid marker
             if (!empty($kotNotes)) {
                 $kotNotes .= "\n[Payment: " . $paymentMethod . "]";
             } else {
@@ -483,10 +486,10 @@ function handleCreateKOT($conn, $restaurant_id) {
             $hasOrderCustomerCols = $checkOrderCols && $checkOrderCols->rowCount() > 0;
 
             if ($hasOrderCustomerCols) {
-                $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Ready', ?, ?, ?, ?)");
+                $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '" . $posPaymentStatus . "', 'Ready', ?, ?, ?, ?)");
                 $orderStmt->execute([$restaurant_id, $tableIdParam, $orderNumber, $customerName, $customerPhone, $customerEmail, $customerAddress, $orderType, $paymentMethod, $subtotal, $tax, $total, $orderNotes]);
             } else {
-                $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, 'Paid', 'Ready', ?, ?, ?, ?)");
+                $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, '" . $posPaymentStatus . "', 'Ready', ?, ?, ?, ?)");
                 $orderStmt->execute([$restaurant_id, $tableIdParam, $orderNumber, $customerName, $orderType, $paymentMethod, $subtotal, $tax, $total, $orderNotes]);
             }
             $orderId = (int)$conn->lastInsertId();
@@ -497,7 +500,12 @@ function handleCreateKOT($conn, $restaurant_id) {
             }
 
             $payStmt = $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')");
-            $payStmt->execute([$restaurant_id, $orderId, $total, $paymentMethod]);
+            // Record the money actually received (part payments leave the rest due)
+            $received = $total;
+            if ($posPaymentStatus === 'Partially Paid' && $posPaidAmount !== null) {
+                $received = max(0, min($posPaidAmount, $total));
+            }
+            $payStmt->execute([$restaurant_id, $orderId, $received, $paymentMethod]);
 
             // Link the ticket to the order it produced, so the kitchen's later
             // Ready→order-creation step sees an order already exists and skips

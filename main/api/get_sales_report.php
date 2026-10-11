@@ -124,6 +124,7 @@ try {
     // customers, exactly like Cancelled/Rejected.
     require_once __DIR__ . '/../config/soft_delete_helpers.php';
     ensureOrderSoftDeleteColumns($conn);
+    ensureOrderNumberUnique($conn);
     $dateCondition .= " AND o.deleted_at IS NULL";
     $dateConditionNoAlias .= " AND deleted_at IS NULL";
 

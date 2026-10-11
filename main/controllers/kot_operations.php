@@ -483,9 +483,17 @@ function handleUpdateKOTStatus() {
                 
                 // Extract payment method from KOT notes if available
                 $kotPaymentMethod = 'Cash';
+                // Only a ticket that carries a [Payment: …] marker was paid at
+                // checkout. Waiter tickets weren't paid yet: their order starts
+                // unpaid (staff use "Mark paid" in Orders when the bill is
+                // settled) instead of being recorded as Paid with a payment
+                // that never happened.
+                $kotWasPaid = false;
                 if (!empty($kot['notes']) && preg_match('/\[Payment:\s*([^\]]+)\]/', $kot['notes'], $pm)) {
                     $kotPaymentMethod = trim($pm[1]);
+                    $kotWasPaid = strcasecmp($kotPaymentMethod, 'Due') !== 0;
                 }
+                $kotPaymentStatus = $kotWasPaid ? 'Paid' : 'Pending';
                 
                 // Re-verify tax against current enable_gst/tax_percent setting
                 $gstStmt2 = $conn->prepare("SELECT enable_gst, tax_percent FROM users WHERE restaurant_id = ? LIMIT 1");
@@ -517,7 +525,7 @@ function handleUpdateKOTStatus() {
                 }
                 
                 if ($hasOrderCustomerCols && $hasCustomerCols) {
-                    $order_sql = "INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Ready', ?, ?, ?, ?)";
+                    $order_sql = "INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '" . $kotPaymentStatus . "', 'Ready', ?, ?, ?, ?)";
                     $order_stmt = $conn->prepare($order_sql);
                     $order_stmt->execute([
                         $restaurant_id, 
@@ -535,7 +543,7 @@ function handleUpdateKOTStatus() {
                         $order_notes
                     ]);
                 } else {
-                    $order_sql = "INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, 'Paid', 'Ready', ?, ?, ?, ?)";
+                    $order_sql = "INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, '" . $kotPaymentStatus . "', 'Ready', ?, ?, ?, ?)";
                     $order_stmt = $conn->prepare($order_sql);
                     $order_stmt->execute([$restaurant_id, $kot['table_id'], $order_number, $kot['customer_name'] ?? '', $kot['order_type'], $kotPaymentMethod, $kot['subtotal'], $kot['tax'], $kot['total'], $order_notes]);
                 }
@@ -560,9 +568,11 @@ function handleUpdateKOTStatus() {
                 }
 
                 // Record payment
-                $payment_sql = "INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')";
-                $payment_stmt = $conn->prepare($payment_sql);
-                $payment_stmt->execute([$restaurant_id, $order_id, $kot['total'], $kotPaymentMethod]);
+                if ($kotWasPaid) {
+                    $payment_sql = "INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')";
+                    $payment_stmt = $conn->prepare($payment_sql);
+                    $payment_stmt->execute([$restaurant_id, $order_id, $kot['total'], $kotPaymentMethod]);
+                }
                 
                 $conn->commit();
                 
@@ -687,9 +697,17 @@ function handleCompleteKOT() {
                 
                 // Extract payment method from KOT notes if available
                 $kotPaymentMethod = 'Cash';
+                // Only a ticket that carries a [Payment: …] marker was paid at
+                // checkout. Waiter tickets weren't paid yet: their order starts
+                // unpaid (staff use "Mark paid" in Orders when the bill is
+                // settled) instead of being recorded as Paid with a payment
+                // that never happened.
+                $kotWasPaid = false;
                 if (!empty($kot['notes']) && preg_match('/\[Payment:\s*([^\]]+)\]/', $kot['notes'], $pm)) {
                     $kotPaymentMethod = trim($pm[1]);
+                    $kotWasPaid = strcasecmp($kotPaymentMethod, 'Due') !== 0;
                 }
+                $kotPaymentStatus = $kotWasPaid ? 'Paid' : 'Pending';
                 
                 // Create order from KOT - include KOT number in notes for tracking
                 $order_notes = trim($kot['notes'] ?? '');
@@ -730,7 +748,7 @@ function handleCompleteKOT() {
                 }
                 
                 if ($hasOrderCustomerCols && $kotHasCustomerCols) {
-                    $order_sql = "INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Ready', ?, ?, ?, ?)";
+                    $order_sql = "INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '" . $kotPaymentStatus . "', 'Ready', ?, ?, ?, ?)";
                     $order_stmt = $conn->prepare($order_sql);
                     $order_stmt->execute([
                         $restaurant_id, 
@@ -748,7 +766,7 @@ function handleCompleteKOT() {
                         $order_notes
                     ]);
                 } else {
-                    $order_sql = "INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, 'Paid', 'Ready', ?, ?, ?, ?)";
+                    $order_sql = "INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, '" . $kotPaymentStatus . "', 'Ready', ?, ?, ?, ?)";
                     $order_stmt = $conn->prepare($order_sql);
                     $order_stmt->execute([$restaurant_id, $kot['table_id'], $order_number, $kot['customer_name'] ?? '', $kot['order_type'], $kotPaymentMethod, $kot['subtotal'], $kot['tax'], $kot['total'], $order_notes]);
                 }
@@ -773,9 +791,11 @@ function handleCompleteKOT() {
                 }
 
                 // Record payment
-                $payment_sql = "INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')";
-                $payment_stmt = $conn->prepare($payment_sql);
-                $payment_stmt->execute([$restaurant_id, $order_id, $kot['total'], $kotPaymentMethod]);
+                if ($kotWasPaid) {
+                    $payment_sql = "INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')";
+                    $payment_stmt = $conn->prepare($payment_sql);
+                    $payment_stmt->execute([$restaurant_id, $order_id, $kot['total'], $kotPaymentMethod]);
+                }
         } else {
             $conn->rollBack();
             http_response_code(400);
