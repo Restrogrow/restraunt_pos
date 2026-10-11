@@ -173,6 +173,9 @@ body {
    horizontally scrolling bar above the dishes (same buttons and behaviour) */
 .layout-container.nav-top { flex-direction: column; }
 .layout-container.nav-top .side-nav { width: auto; height: auto; flex-direction: row; flex-shrink: 0; gap: 6px; padding: 6px 10px; border-right: 0; border-bottom: 1.5px solid #ccc; overflow-x: auto; overflow-y: hidden; }
+.layout-container.nav-top .side-nav { overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.layout-container.nav-top .side-nav.is-dragging { scroll-behavior: auto; cursor: grabbing; }
+.layout-container.nav-top .side-nav.is-dragging .side-nav-btn { pointer-events: none; }
 .layout-container.nav-top .sub-views { flex-shrink: 0; }
 .layout-container.nav-top .side-nav-btn { width: auto; min-width: 68px; padding: 3px 10px; gap: 1px; white-space: nowrap; }
 .layout-container.nav-top .side-nav-btn img { width: 44px; height: 44px; }
@@ -1863,6 +1866,61 @@ function initMenuChromeAutoHide() {
   }, { passive: true });
 }
 document.addEventListener('DOMContentLoaded', initMenuChromeAutoHide);
+
+// Category bar along the top: touch swipes natively; with a mouse it can be
+// dragged and glides to a stop where it's let go (same feel as Bestsellers).
+// A drag never counts as tapping a category.
+function initCategoryBarDrag() {
+  var bar = document.getElementById('sideNav');
+  if (!bar || !bar.parentNode.classList.contains('nav-top')) return;
+  var down = false, dragging = false, startX = 0, startLeft = 0, lastX = 0, lastT = 0, v = 0, glideId = 0, suppress = false;
+  function stop() { if (glideId) { cancelAnimationFrame(glideId); glideId = 0; } }
+  function glide() {
+    v *= 0.94;
+    if (Math.abs(v) < 0.02) { glideId = 0; return; }
+    bar.scrollLeft -= v * 16;
+    glideId = requestAnimationFrame(glide);
+  }
+  bar.addEventListener('pointerdown', function(e) {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    stop();
+    down = true; dragging = false;
+    startX = lastX = e.clientX; startLeft = bar.scrollLeft; lastT = performance.now(); v = 0;
+  });
+  bar.addEventListener('pointermove', function(e) {
+    if (!down) return;
+    var dx = e.clientX - startX;
+    if (!dragging && Math.abs(dx) > 5) {
+      dragging = true;
+      bar.classList.add('is-dragging');
+      try { bar.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    if (dragging) {
+      bar.scrollLeft = startLeft - dx;
+      var now = performance.now(), dt = now - lastT;
+      if (dt > 0) v = 0.8 * ((e.clientX - lastX) / dt) + 0.2 * v;
+      lastX = e.clientX; lastT = now;
+    }
+  });
+  function end() {
+    if (!down) return;
+    down = false;
+    if (!dragging) return;
+    dragging = false;
+    suppress = true;
+    setTimeout(function() { suppress = false; }, 0);
+    bar.classList.remove('is-dragging');
+    if (performance.now() - lastT > 80) v = 0;
+    if (Math.abs(v) > 0.05) glideId = requestAnimationFrame(glide);
+  }
+  bar.addEventListener('pointerup', end);
+  bar.addEventListener('pointercancel', end);
+  bar.addEventListener('lostpointercapture', end);
+  bar.addEventListener('click', function(e) {
+    if (suppress) { e.stopPropagation(); e.preventDefault(); suppress = false; }
+  }, true);
+}
+document.addEventListener('DOMContentLoaded', initCategoryBarDrag);
 
 function updateNavActive(menuIdx) {
   var btns = document.querySelectorAll('.side-nav-btn');
