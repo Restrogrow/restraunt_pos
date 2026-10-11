@@ -80,10 +80,10 @@ body {
 /* Cut-out category pictures (Website Appearance > Category Pictures: Cut-out):
    the whole picture (transparent PNG of the dish) floating with a soft shadow,
    no tile; the selected category gets a coloured, underlined label */
-.layout-container.cat-cutout .side-nav .side-nav-btn { background: transparent; color: #1f2937; box-shadow: none; border-radius: 10px; }
-.layout-container.cat-cutout .side-nav .side-nav-btn img { width: 62px; height: 62px; border-radius: 0; object-fit: contain; box-shadow: none; filter: drop-shadow(0 4px 5px rgba(0,0,0,0.18)); }
-.layout-container.cat-cutout .side-nav .side-nav-btn.active { background: transparent; color: var(--primary-red, #e53935); font-weight: 700; box-shadow: inset 0 -3px 0 var(--primary-red, #e53935); }
-.layout-container.cat-cutout .side-nav .side-nav-btn.active img { transform: scale(1.08); box-shadow: none; }
+.layout-container.cat-cutout:not(.nav-top) .side-nav .side-nav-btn { background: transparent; color: #1f2937; box-shadow: none; border-radius: 10px; }
+.layout-container.cat-cutout:not(.nav-top) .side-nav .side-nav-btn img { width: 62px; height: 62px; border-radius: 0; object-fit: contain; box-shadow: none; filter: drop-shadow(0 4px 5px rgba(0,0,0,0.18)); }
+.layout-container.cat-cutout:not(.nav-top) .side-nav .side-nav-btn.active { background: transparent; color: var(--primary-red, #e53935); font-weight: 700; box-shadow: inset 0 -3px 0 var(--primary-red, #e53935); }
+.layout-container.cat-cutout:not(.nav-top) .side-nav .side-nav-btn.active img { transform: scale(1.08); box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   .pr-share-header, .side-nav-btn, .side-nav-btn img { transition: none; }
   .side-nav-btn.active { animation: none; }
@@ -914,18 +914,18 @@ body {
    scrolling row (swipe / drag / mouse wheel). The selected category gets a
    coloured, underlined name instead of a filled tile. Round pictures fill the
    circle (cover); Cut-out pictures (Website Appearance > Category Pictures)
-   show whole on a transparent background (contain). Sizes: 80px phones,
-   92px tablets, 104px desktops. */
-.layout-container.nav-top { --cat-size: 80px; }
-@media (min-width: 600px) { .layout-container.nav-top { --cat-size: 92px; } }
-@media (min-width: 1024px) { .layout-container.nav-top { --cat-size: 104px; } }
-.layout-container.nav-top .side-nav { gap: 12px; padding: 10px 14px 8px; background: #fff; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
+   show whole on a transparent background (contain). Sizes (compact, Zomato scale): 60px phones,
+   66px tablets, 72px desktops. */
+.layout-container.nav-top { --cat-size: 60px; }
+@media (min-width: 600px) { .layout-container.nav-top { --cat-size: 66px; } }
+@media (min-width: 1024px) { .layout-container.nav-top { --cat-size: 72px; } }
+.layout-container.nav-top .side-nav { gap: 12px; padding: 6px 12px 4px; background: #fff; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
 .layout-container.nav-top .side-nav::-webkit-scrollbar { display: none; }
 .layout-container.nav-top .side-nav .sub-views { flex: 0 0 auto; }
 .layout-container.nav-top .side-nav .side-nav-btn {
-  width: calc(var(--cat-size) + 14px); min-width: 0; padding: 0 0 8px; gap: 7px;
+  width: calc(var(--cat-size) + 18px); min-width: 0; padding: 0 0 6px; gap: 6px;
   background: transparent; color: #374151; box-shadow: none; border-radius: 0;
-  font-size: 14px; font-weight: 500; line-height: 1.2; white-space: normal; animation: none;
+  font-size: 13px; font-weight: 500; line-height: 1.2; white-space: normal; animation: none;
 }
 .layout-container.nav-top .side-nav .side-nav-btn br { display: none; }
 .layout-container.nav-top .side-nav .side-nav-btn img {
@@ -938,9 +938,9 @@ body {
 .layout-container.nav-top .side-nav .side-nav-btn:active img { transform: scale(0.95); }
 .layout-container.nav-top .side-nav .side-nav-btn.active {
   background: transparent; color: var(--primary-red, #e53935); font-weight: 700;
-  box-shadow: inset 0 -3px 0 var(--primary-red, #e53935);
+  box-shadow: inset 0 -2px 0 var(--primary-red, #e53935);
 }
-.layout-container.nav-top .side-nav .side-nav-btn.active img { transform: scale(1.04); box-shadow: 0 0 0 2px var(--primary-red, #e53935), 0 4px 12px rgba(0,0,0,0.12); }
+.layout-container.nav-top .side-nav .side-nav-btn.active img { transform: scale(1.04); box-shadow: 0 0 0 1.5px var(--primary-red, #e53935); }
 /* Cut-out pictures: whole dish on a transparent background, soft shadow */
 .layout-container.nav-top.cat-cutout .side-nav .side-nav-btn img { object-fit: contain; background: transparent; box-shadow: none; filter: drop-shadow(0 4px 5px rgba(0,0,0,0.16)); }
 .layout-container.nav-top.cat-cutout .side-nav .side-nav-btn.active img { box-shadow: none; }
@@ -2037,10 +2037,10 @@ function getMenuImage(cat) {
 function renderSideNav() {
   var el = document.getElementById('sideNav');
   // "All" first: shows every dish from every category
-  var allIcon = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2210%22 y=%2210%22 width=%2212%22 height=%2212%22 rx=%223%22/%3E%3Crect x=%2226%22 y=%2210%22 width=%2212%22 height=%2212%22 rx=%223%22/%3E%3Crect x=%2210%22 y=%2226%22 width=%2212%22 height=%2212%22 rx=%223%22/%3E%3Crect x=%2226%22 y=%2226%22 width=%2212%22 height=%2212%22 rx=%223%22/%3E%3C/g%3E%3C/svg%3E';
+  var allIcon = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2215%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2215%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3C/g%3E%3C/svg%3E';
   var html = menuItems.length ? '<div class="sub-views">' +
       '<button class="side-nav-btn' + (currentMenuIdx === ALL_CATEGORY ? ' active' : '') + '" data-index="' + ALL_CATEGORY + '">' +
-        '<img src="' + allIcon + '" alt="All dishes" width="80" height="80"><br><span class="cat-name">All</span>' +
+        '<img src="' + allIcon + '" alt="All dishes" width="60" height="60"><br><span class="cat-name">All</span>' +
       '</button>' +
     '</div>' : '';
   for (var i = 0; i < menuItems.length; i++) {
@@ -2050,7 +2050,7 @@ function renderSideNav() {
     var img = getMenuImage(c) || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2242%22 height=%2242%22 viewBox=%220 0 42 42%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3C/svg%3E';
     html += '<div class="sub-views">' +
       '<button class="side-nav-btn' + active + '" data-index="' + i + '">' +
-        '<img src="' + getImageUrl(img) + '" alt="' + escapeHtml(displayName) + '" width="80" height="80" loading="' + (i < 5 ? 'eager' : 'lazy') + '" decoding="async"><br>' +
+        '<img src="' + getImageUrl(img) + '" alt="' + escapeHtml(displayName) + '" width="60" height="60" loading="' + (i < 5 ? 'eager' : 'lazy') + '" decoding="async"><br>' +
         '<span class="cat-name">' + escapeHtml(displayName) + '</span>' +
       '</button>' +
     '</div>';
