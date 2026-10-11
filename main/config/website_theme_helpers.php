@@ -71,7 +71,7 @@ const THEME_HEADER_STYLES = ['hero', 'minimal'];
 const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
 // Menu page dish card design: the original cards, or the modern card (wide photo,
 // description, quantity picker + Add button)
-const THEME_MENU_CARD_STYLES = ['classic', 'modern'];
+const THEME_MENU_CARD_STYLES = ['classic', 'modern', 'minimal', 'photo', 'list', 'elegant'];
 // Menu page category pictures: round photos, or cut-outs (whole picture, no crop,
 // for transparent PNGs of the dish) with the label highlighted when selected
 const THEME_CATEGORY_PIC_STYLES = ['round', 'cutout'];

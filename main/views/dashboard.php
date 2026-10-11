@@ -1928,7 +1928,7 @@ try {
                 <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">dashboard</span>
                 Menu Card Design
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How dishes look on your Menu page. <b>Modern</b>: wide photo, description, quantity picker and an Add button. Looks best with Menu Categories set to <b>Top</b>.</p>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How dishes look on your Menu page. <b>Modern</b>: wide photo with a quantity picker. <b>Minimal</b>: clean photo with a round + button. <b>Photo</b>: big photo with the name over it. <b>List</b>: one dish per row with its description (like delivery apps). <b>Elegant</b>: round plate photo on a cream card. The new designs look best with Menu Categories set to <b>Top</b>.</p>
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <label class="menu-card-style-opt" data-value="classic" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
                   <input type="radio" name="menuCardStyle" value="classic" checked style="display:none;">
@@ -1939,6 +1939,26 @@ try {
                   <input type="radio" name="menuCardStyle" value="modern" style="display:none;">
                   <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">dashboard</span>
                   <span style="font-weight: 500; font-size: 0.8rem;">Modern</span>
+                </label>
+                <label class="menu-card-style-opt" data-value="minimal" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="menuCardStyle" value="minimal" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">crop_square</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Minimal</span>
+                </label>
+                <label class="menu-card-style-opt" data-value="photo" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="menuCardStyle" value="photo" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">photo</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Photo</span>
+                </label>
+                <label class="menu-card-style-opt" data-value="list" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="menuCardStyle" value="list" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_agenda</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">List</span>
+                </label>
+                <label class="menu-card-style-opt" data-value="elegant" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="menuCardStyle" value="elegant" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">restaurant</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Elegant</span>
                 </label>
               </div>
             </div>

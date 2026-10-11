@@ -1071,6 +1071,96 @@ body.has-ms-hint .offer-bubble { bottom: 140px; }
 .mc-card .veg-dot { top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 5px; }
 .mc-card .veg-dot img, .mc-card .veg-dot svg { width: 16px; height: 16px; object-fit: contain; }
 .mc-fav { position: absolute; top: 6px; right: 6px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.35); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; }
+/* ══ Menu card designs: Minimal / Photo / List / Elegant (Website Appearance) ══ */
+.dc-card { position: relative; cursor: pointer; }
+.dc-name { font-weight: 700; color: #111827; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dc-price { display: flex; align-items: baseline; gap: 6px; font-weight: 800; color: #111827; }
+.dc-price s { font-size: 11.5px; font-weight: 500; color: #9ca3af; }
+.dc-desc { font-size: 12px; color: #6b7280; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dc-veg { display: inline-flex; width: 14px; height: 14px; border: 1.5px solid #16a34a; border-radius: 3px; align-items: center; justify-content: center; flex-shrink: 0; }
+.dc-veg i { width: 6px; height: 6px; border-radius: 50%; background: #16a34a; }
+.dc-veg.nonveg { border-color: #dc2626; } .dc-veg.nonveg i { background: #dc2626; }
+.dc-veg.egg { border-color: #f59e0b; } .dc-veg.egg i { background: #f59e0b; }
+/* shared ADD / stepper */
+.dc-add { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 34px; min-width: 84px; padding: 0 14px; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; color: var(--primary-red, #e53935); font-family: var(--site-font); font-size: 13.5px; font-weight: 800; letter-spacing: 0.03em; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,0.10); transition: transform 0.15s ease; }
+.dc-add:active { transform: scale(0.94); }
+.dc-add small { font-size: 9.5px; font-weight: 600; color: #9ca3af; letter-spacing: 0; }
+.dc-step { display: inline-flex; align-items: center; justify-content: space-between; height: 34px; min-width: 84px; border-radius: 10px; background: var(--primary-red, #e53935); color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,0.12); animation: dcIn 0.25s ease; }
+.dc-step button { width: 28px; height: 100%; border: 0; background: none; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; }
+.dc-step span { min-width: 16px; text-align: center; font-size: 14px; font-weight: 800; }
+@keyframes dcIn { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.dc-card.oos .dc-ctrl { display: none; }
+.dc-card .mc-fav { top: 8px; right: 8px; }
+
+/* Minimal */
+.product-grid .dc-minimal { background: none; border: 0; box-shadow: none; border-radius: 0; overflow: visible; }
+.dc-minimal .dc-img { position: relative; border-radius: 18px; overflow: hidden; aspect-ratio: 1 / 1; background: #f3f4f6; }
+.dc-minimal .dc-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease; }
+.dc-minimal:hover .dc-img img { transform: scale(1.04); }
+.dc-minimal .dc-ctrl { position: absolute; right: 8px; bottom: 8px; z-index: 3; }
+.dc-minimal .dc-add { min-width: 0; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: #fff; font-size: 18px; }
+.dc-minimal .dc-add .lbl { display: none; }
+.dc-minimal .dc-add small { display: none; }
+.dc-minimal .dc-step { min-width: 90px; border-radius: 999px; }
+.dc-minimal .dc-info { padding: 8px 2px 4px; }
+.dc-minimal .dc-name { font-size: 13.5px; }
+.dc-minimal .dc-price { margin-top: 3px; font-size: 14px; }
+.dc-minimal .dc-top { display: flex; align-items: flex-start; gap: 6px; }
+.dc-minimal .dc-top .dc-veg { margin-top: 2px; }
+
+/* Photo */
+.product-grid .dc-photo { border: 0; border-radius: 20px; overflow: hidden; aspect-ratio: 4 / 5; background: #111; box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+.dc-photo .dc-img, .dc-photo .dc-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.dc-photo .dc-img img { transition: transform 0.5s ease; }
+.dc-photo:hover .dc-img img { transform: scale(1.05); }
+.dc-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.78) 100%); pointer-events: none; }
+.dc-photo .dc-info { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 10px 10px 10px 12px; color: #fff; }
+.dc-photo .dc-name { color: #fff; font-size: 14px; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+.dc-photo .dc-bottom { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
+.dc-photo .dc-price { color: #fff; font-size: 14.5px; }
+.dc-photo .dc-price s { color: rgba(255,255,255,0.65); }
+.dc-photo .dc-add { min-width: 0; height: 30px; padding: 0 12px; border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.2); color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: none; font-size: 12px; }
+.dc-photo .dc-add small { display: none; }
+.dc-photo .dc-step { min-width: 76px; height: 30px; }
+.dc-photo .dc-veg { position: absolute; top: 10px; left: 10px; z-index: 3; background: #fff; }
+
+/* List */
+.layout-container.dc-list-mode .product-grid { grid-template-columns: 1fr !important; gap: 0; }
+.product-grid .dc-list { display: flex; gap: 14px; padding: 16px 4px 22px; border: 0; border-bottom: 1px dashed #e5e7eb; border-radius: 0; box-shadow: none; background: none; overflow: visible; }
+.product-grid .dc-list:hover { transform: none; box-shadow: none; }
+.dc-list .dc-info { flex: 1; min-width: 0; }
+.dc-list .dc-tags { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.dc-list .dc-best { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #b45309; }
+.dc-list .dc-name { font-size: 15.5px; }
+.dc-list .dc-price { margin: 3px 0 6px; font-size: 14.5px; }
+.dc-list .dc-rate { display: inline-flex; align-items: center; gap: 3px; margin-bottom: 6px; font-size: 11.5px; font-weight: 700; color: #15803d; }
+.dc-list .dc-side { position: relative; width: 124px; flex-shrink: 0; }
+.dc-list .dc-img { width: 124px; height: 120px; border-radius: 16px; overflow: hidden; background: #f3f4f6; }
+.dc-list .dc-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dc-list .dc-ctrl { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); z-index: 3; }
+.product-grid .card.dc-list { flex-direction: row; align-items: flex-start; }
+.dc-list .dc-add { position: relative; min-width: 98px; }
+.dc-list .dc-add small { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; text-align: center; }
+.dc-list .dc-step { min-width: 98px; }
+.dc-list .mc-fav { top: 6px; right: 6px; width: 28px; height: 28px; font-size: 13px; }
+.dc-list .card-img-wrap-chips { display: none; }
+
+/* Elegant */
+.product-grid .dc-elegant { padding: 16px 12px 14px; border: 1px solid #f1e7d6; border-radius: 22px; background: linear-gradient(180deg, #fffaf2, #fff); box-shadow: 0 6px 18px rgba(120, 80, 20, 0.07); text-align: center; overflow: visible; }
+.dc-elegant .dc-img { position: relative; width: 112px; height: 112px; margin: 0 auto 10px; border-radius: 50%; overflow: hidden; box-shadow: 0 10px 22px rgba(0,0,0,0.16), 0 0 0 5px #fff; transition: transform 0.5s ease; }
+.dc-elegant:hover .dc-img { transform: rotate(8deg); }
+.dc-elegant .dc-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dc-elegant .dc-name { font-family: Georgia, 'Times New Roman', serif; font-size: 15px; font-weight: 700; color: #3f2d1d; }
+.dc-elegant .dc-rule { width: 46px; margin: 8px auto; border-top: 2px dotted #e2c79c; }
+.dc-elegant .dc-price { justify-content: center; font-size: 15px; color: #7c2d12; }
+.dc-elegant .dc-ctrl { margin-top: 10px; }
+.dc-elegant .dc-add { height: 32px; min-width: 96px; border: 1.5px solid #e2c79c; border-radius: 999px; background: #fff; color: #7c2d12; box-shadow: none; }
+.dc-elegant .dc-add small { display: none; }
+.dc-elegant .dc-step { min-width: 96px; height: 32px; border-radius: 999px; background: #7c2d12; }
+.dc-elegant .dc-veg { position: absolute; top: 12px; left: 12px; background: #fff; }
+.dc-elegant .mc-fav { top: 10px; right: 10px; background: #fff; color: #b45309; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.dc-elegant .mc-fav.on { color: #ef4444; }
+@media (prefers-reduced-motion: reduce) { .dc-card img, .dc-elegant .dc-img, .dc-step { transition: none; animation: none; } }
 .mc-fav.on { background: #fff; color: #ef4444; }
 .mc-fav.beat i { animation: favBeat 0.45s cubic-bezier(.34,1.56,.64,1); }
 @keyframes favBeat { 0% { transform: scale(0.6); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
@@ -1220,7 +1310,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
       </div>
     </div>
 
-    <div class="layout-container<?php echo ($menu_nav_position ?? 'left') === 'top' ? ' nav-top' : ''; ?><?php echo ($menu_card_style ?? 'classic') === 'modern' ? ' mc-mode' : ''; ?><?php echo ($category_pic_style ?? 'round') === 'cutout' ? ' cat-cutout' : ''; ?>">
+    <div class="layout-container<?php echo ($menu_nav_position ?? 'left') === 'top' ? ' nav-top' : ''; ?><?php echo ($menu_card_style ?? 'classic') === 'modern' ? ' mc-mode' : ''; ?><?php echo ($menu_card_style ?? '') === 'list' ? ' dc-list-mode' : ''; ?><?php echo ($category_pic_style ?? 'round') === 'cutout' ? ' cat-cutout' : ''; ?>">
       <div class="side-nav" id="sideNav">
         <div class="sub-views"><button class="side-nav-btn" disabled><div class="skel-circle skeleton"></div><div class="skel-nav-label skeleton"></div></button></div>
         <div class="sub-views"><button class="side-nav-btn" disabled><div class="skel-circle skeleton"></div><div class="skel-nav-label skeleton"></div></button></div>
@@ -1584,8 +1674,71 @@ function favHeartHtml(item) {
   return '<button type="button" class="mc-fav' + (fav ? ' on' : '') + '" aria-label="Favourite" aria-pressed="' + fav + '" onclick="event.stopPropagation();toggleFavItem(' + item.id + ', this)"><i class="fa-' + (fav ? 'solid' : 'regular') + ' fa-heart"></i></button>';
 }
 
+// ── Menu card designs beyond Classic / Modern (Website Appearance > Menu Card Design)
+var DESIGN_CARD_STYLES = { minimal: 1, photo: 1, list: 1, elegant: 1 };
+function isDesignCardStyle() { return !!DESIGN_CARD_STYLES[window.menuCardStyle]; }
+function dcVegHtml(item) {
+  var t = String(item.item_type || '').toLowerCase();
+  if (!t || t === 'drink' || t === 'beverage') return '';
+  var cls = t.indexOf('non') !== -1 ? ' nonveg' : (t.indexOf('egg') !== -1 ? ' egg' : '');
+  return '<span class="dc-veg' + cls + '"><i></i></span>';
+}
+// ADD (or "− n +" once in the cart); dishes with sizes open the dish sheet
+function designAddCtrl(itemId, item) {
+  if (item && item.is_available == 0) return '';
+  var hasVar = item && item.has_variations && item.variations && item.variations.length > 0;
+  var qty = getItemTotalQty(itemId);
+  if (hasVar) {
+    return '<button type="button" class="dc-add" onclick="event.stopPropagation();showItemDetail(' + itemId + ')"><span class="lbl">ADD</span><i class="fa fa-plus" style="font-size:11px"></i>' +
+      (window.menuCardStyle === 'list' ? '<small>customisable</small>' : '') + '</button>';
+  }
+  if (qty > 0) {
+    return '<div class="dc-step" onclick="event.stopPropagation()">' +
+      '<button type="button" aria-label="One less" onclick="event.stopPropagation();removeFromCart(' + itemId + ')">−</button>' +
+      '<span>' + qty + '</span>' +
+      '<button type="button" aria-label="One more" onclick="event.stopPropagation();addToCart(' + itemId + ')">+</button></div>';
+  }
+  return '<button type="button" class="dc-add" onclick="event.stopPropagation();addToCart(' + itemId + ')"><span class="lbl">ADD</span><i class="fa fa-plus" style="font-size:11px"></i></button>';
+}
+function designCardHtml(item) {
+  var style = window.menuCardStyle;
+  var oos = item.is_available == 0;
+  var name = escapeHtml(item.item_name_translated || item.item_name_en || item.name || '');
+  var f = function(n) { return formatPrice(n).replace(/\.00$/, ''); };
+  var now = itemNowPrice(item), was = itemWasPrice(item);
+  var price = '<div class="dc-price">' + f(now) + (was ? '<s>' + f(was) + '</s>' : '') + '</div>';
+  var img = '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy">';
+  var ctrl = '<span class="dc-ctrl" id="btn-' + item.id + '">' + (oos ? '' : designAddCtrl(item.id, item)) + '</span>';
+  var oosTag = oos ? '<span class="img-oos">Out of Stock</span>' : '';
+  var open = ' data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')"';
+  var cls = 'card dc-card dc-' + style + (oos ? ' oos' : '');
+  var desc = escapeHtml(item.item_description_translated || item.item_description_en || item.desc || '');
+  if (style === 'minimal') {
+    return '<div class="' + cls + '"' + open + '>' +
+      '<div class="dc-img">' + img + favHeartHtml(item) + oosTag + ctrl + '</div>' +
+      '<div class="dc-info"><div class="dc-top">' + dcVegHtml(item) + '<div class="dc-name">' + name + '</div></div>' + price + '</div></div>';
+  }
+  if (style === 'photo') {
+    return '<div class="' + cls + '"' + open + '>' +
+      '<div class="dc-img">' + img + '</div>' + dcVegHtml(item) + favHeartHtml(item) + oosTag +
+      '<div class="dc-info"><div class="dc-name">' + name + '</div><div class="dc-bottom">' + price + ctrl + '</div></div></div>';
+  }
+  if (style === 'list') {
+    var rating = item.rating ? '<div class="dc-rate"><i class="fa-solid fa-star"></i>' + parseFloat(item.rating).toFixed(1) + (item.rating_count ? ' (' + item.rating_count + ')' : '') + '</div>' : '';
+    return '<div class="' + cls + '"' + open + '>' +
+      '<div class="dc-info"><div class="dc-tags">' + dcVegHtml(item) + (item.is_bestseller ? '<span class="dc-best">Bestseller</span>' : '') + '</div>' +
+        '<div class="dc-name">' + name + '</div>' + price + rating + (desc ? '<div class="dc-desc">' + desc + '</div>' : '') + '</div>' +
+      '<div class="dc-side"><div class="dc-img">' + img + '</div>' + favHeartHtml(item) + oosTag + ctrl + '</div></div>';
+  }
+  // elegant
+  return '<div class="' + cls + '"' + open + '>' + dcVegHtml(item) + favHeartHtml(item) +
+    '<div class="dc-img">' + img + '</div>' + oosTag +
+    '<div class="dc-name">' + name + '</div><div class="dc-rule"></div>' + price + ctrl + '</div>';
+}
+
 function renderCartBtn(itemId, item) {
   if (item && item.is_available == 0) return '';
+  if (isDesignCardStyle()) return designAddCtrl(itemId, item);
   if (window.menuCardStyle === 'modern') return renderModernCartRow(itemId, item);
   var hasVar = item && item.has_variations && item.variations && item.variations.length > 0;
   var qty = getItemTotalQty(itemId);
@@ -1977,6 +2130,7 @@ function renderProducts(menuIdx) {
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
     var oos = item.is_available == 0;
+    if (isDesignCardStyle()) { html += designCardHtml(item); continue; }
     if (window.menuCardStyle === 'modern') { html += modernCardHtml(item); continue; }
     html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
       '<div class="card-img-wrap">' +
@@ -3253,7 +3407,8 @@ document.addEventListener('DOMContentLoaded', function() {
               for (var i = 0; i < list.length; i++) {
                 var item = list[i];
                 var oos = item.is_available == 0;
-                if (window.menuCardStyle === 'modern') { html += modernCardHtml(item); continue; }
+                if (isDesignCardStyle()) { html += designCardHtml(item); continue; }
+    if (window.menuCardStyle === 'modern') { html += modernCardHtml(item); continue; }
                 html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
                   '<div class="card-img-wrap"><img src="' + getImageUrl(item.item_image) + '" alt="' + escapeHtml(item.item_name_translated || item.item_name_en) + '" loading="lazy">' +
                   getTypeIcon(item.item_type) + cardBadgesHtml(item) + favHeartHtml(item) + (oos ? '<span class="img-oos">Out of Stock</span>' : '') + '</div>' +
