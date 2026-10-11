@@ -153,14 +153,14 @@ body {
 .hx .profile-img-wrap { background: #fff; box-shadow: 0 8px 22px rgba(0,0,0,.25); margin-bottom: 0; }
 
 /* Glass card — photo with a frosted card (logo half outside the card) */
-.hx-glass { min-height: 430px; justify-content: flex-end; padding: 80px 14px 16px !important; }
+.theme-bg.hx-glass { min-height: 430px; justify-content: flex-end; padding: 80px 14px 16px !important; }
 .hx-glass::before { background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,.35)); }
 .hx-glass .hero-card { margin-top: 46px; padding: 52px 16px 18px; border-radius: 24px; background: rgba(18,18,24,.52); -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 18px 40px rgba(0,0,0,.28); }
 .hx-glass .profile-section { position: absolute; top: -44px; left: 50%; transform: translateX(-50%); }
 .hx-glass .profile-img-wrap { width: 88px !important; height: 88px !important; border: 3px solid rgba(255,255,255,.9); }
 
 /* Full cover — big photo, dark fade, logo + name bottom-left */
-.hx-cover { min-height: 360px; justify-content: flex-end; padding: 70px 16px 18px !important; }
+.theme-bg.hx-cover { min-height: 360px; justify-content: flex-end; padding: 70px 16px 18px !important; }
 .hx-cover::before { background: linear-gradient(180deg, rgba(0,0,0,0) 20%, rgba(0,0,0,.55) 55%, rgba(0,0,0,.85)); }
 .hx-cover .hero-card { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; text-align: left; }
 .hx-cover .profile-section { grid-column: 1; }
@@ -199,7 +199,7 @@ body {
 .hx-cover .rest-name .verify-icon, .hx-poster .rest-name .verify-icon { display: none; }
 
 /* Poster — tall photo, big bold name with a brand-colour underline */
-.hx-poster { min-height: 460px; justify-content: flex-end; padding: 84px 18px 22px !important; }
+.theme-bg.hx-poster { min-height: 460px; justify-content: flex-end; padding: 84px 18px 22px !important; }
 .hx-poster::before { background: linear-gradient(180deg, rgba(0,0,0,.25) 0, rgba(0,0,0,0) 25%, rgba(0,0,0,.35) 50%, rgba(0,0,0,.9)); }
 .hx-poster .hero-card { position: static; align-items: flex-start; text-align: left; }
 .hx-poster .profile-section { position: absolute; top: 12px; left: 16px; z-index: 3; }
@@ -212,6 +212,103 @@ body {
 .hx-poster .hx-meta { justify-content: flex-start; }
 .hx-poster .loc-container { margin-left: 0; margin-right: 0; }
 .hx-poster .location-txt { text-align: left; }
+
+/* Light card headers: dark text on white / cream */
+.hx-light { color: #111827; }
+.hx-light .rest-name { color: #111827; }
+.hx-light .bio-web { color: #4b5563; opacity: 1; }
+.hx-light .location-txt { color: #6b7280; opacity: 1; }
+.hx-light .location-txt i { color: var(--primary-red, #e11d48); }
+.hx-light .hx-chip { background: #f3f4f6; color: #111827; }
+.hx-light .hx-chip.rate { background: #16a34a; color: #fff; }
+.hx-light .hx-chip.closed { background: #fee2e2; color: #b91c1c; }
+.hx-light .hx-chip.soft { background: transparent; color: #4b5563; }
+/* The photo inside a shape (Split, Arch, Stack): drawn by ::after from --hx-photo */
+.hx-split, .hx-arch, .hx-stack { background-image: none !important; }
+
+/* Split — photo on the left, details on the right */
+.theme-bg.hx-split { flex-direction: row; align-items: stretch; min-height: 270px; padding: 0 !important; background-color: #fff !important; }
+.hx-split::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 42%; border-radius: 0 30px 30px 0; background: var(--hx-photo, linear-gradient(135deg, #94a3b8, #475569)) center / cover; box-shadow: 6px 0 24px rgba(0,0,0,.12); }
+.hx-split .hero-card { margin-left: 42%; width: 58%; padding: 58px 14px 20px 16px; align-items: flex-start; text-align: left; justify-content: center; }
+.hx-split .profile-img-wrap { width: 58px !important; height: 58px !important; border: 3px solid #fff; }
+.hx-split .rest-name { justify-content: flex-start; padding: 0; margin-top: 10px; }
+.hx-split .rest-name .rest-name-text { font-size: 20px !important; }
+.hx-split .bio-container, .hx-split .loc-container { margin-left: 0; margin-right: 0; }
+.hx-split .bio-web, .hx-split .location-txt { text-align: left; }
+.hx-split .hx-meta { justify-content: flex-start; }
+
+/* Arch — photo in an arched window on cream, logo below it */
+.hx-arch { padding: 0 18px 22px !important; background-color: #fbf6ee !important; }
+.hx-arch::after { content: ""; order: -1; position: relative; display: block; height: 230px; margin: 50px 22px 0; border-radius: 999px 999px 18px 18px; background: var(--hx-photo, linear-gradient(135deg, #94a3b8, #475569)) center / cover; box-shadow: 0 0 0 6px #fff, 0 16px 34px rgba(60,40,20,.18); }
+.hx-arch .hero-card { margin-top: -44px; }
+.hx-arch .profile-img-wrap { width: 84px !important; height: 84px !important; border: 4px solid #fbf6ee; }
+.hx-arch .rest-name { margin-top: 10px; }
+.hx-arch .rest-name .rest-name-text { font-family: "Playfair Display", Georgia, serif; font-size: 25px !important; }
+
+/* Story — Instagram-story look: progress bars, ringed logo */
+.theme-bg.hx-story { min-height: 440px; justify-content: flex-end; padding: 70px 16px 20px !important; }
+.hx-story::before { background: linear-gradient(180deg, rgba(0,0,0,.45) 0, rgba(0,0,0,0) 22%, rgba(0,0,0,.2) 50%, rgba(0,0,0,.88)); }
+.hx-story::after { content: ""; position: absolute; top: 14px; left: 14px; right: 64px; height: 3px; z-index: 3; border-radius: 2px; background: linear-gradient(90deg, #fff 0 31.5%, transparent 31.5% 34.2%, #fff 34.2% 52%, rgba(255,255,255,.4) 52% 65.8%, transparent 65.8% 68.5%, rgba(255,255,255,.4) 68.5%); }
+.hx-story .hero-card { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; text-align: left; }
+.hx-story .profile-section { grid-column: 1; }
+.hx-story .rest-name { grid-column: 2; justify-content: flex-start; padding: 0; }
+.hx-story .bio-container, .hx-story .hx-meta, .hx-story .loc-container { grid-column: 1 / -1; margin-left: 0; margin-right: 0; }
+.hx-story .hx-meta { justify-content: flex-start; }
+.hx-story .bio-web, .hx-story .location-txt { text-align: left; }
+.hx-story .profile-img-wrap { width: 62px !important; height: 62px !important; border: 3px solid transparent; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(45deg, #f59e0b, #ef4444, #a855f7) border-box; }
+.hx-story .rest-name .verify-icon { display: none; }
+
+/* Neon — dimmed photo, glowing name */
+.hx-neon { padding: 64px 16px 26px !important; }
+.hx-neon::before { background: radial-gradient(circle at 50% 35%, rgba(10,10,20,.55), rgba(5,5,12,.88)); }
+.hx-neon .profile-img-wrap { width: 86px !important; height: 86px !important; border: 2px solid var(--primary-red, #e11d48); box-shadow: 0 0 0 4px rgba(0,0,0,.4), 0 0 26px var(--primary-red, #e11d48); }
+.hx-neon .rest-name { margin-top: 14px; }
+.hx-neon .rest-name .rest-name-text { font-size: 26px !important; color: #fff; text-shadow: 0 0 4px #fff, 0 0 14px var(--primary-red, #e11d48), 0 0 30px var(--primary-red, #e11d48); }
+.hx-neon .hx-chip { background: transparent; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.35); }
+.hx-neon .hx-chip.rate { background: transparent; color: #4ade80; box-shadow: inset 0 0 0 1.5px #4ade80, 0 0 12px rgba(74,222,128,.35); }
+.hx-neon .hx-chip.closed { background: transparent; color: #f87171; box-shadow: inset 0 0 0 1.5px #f87171; }
+
+/* Paper menu — no photo: a printed menu card */
+.hx-paper { padding: 50px 22px 28px !important; background: radial-gradient(rgba(120,90,50,.07) 1px, transparent 1.3px) 0 0 / 14px 14px, #fbf7ef !important; color: #3b2a1a; }
+.hx-paper::before { inset: 10px; border: 4px double rgba(140,100,60,.4); border-radius: 6px; }
+.hx-paper .profile-img-wrap { width: 78px !important; height: 78px !important; border: 2px solid rgba(140,100,60,.5); box-shadow: none; }
+.hx-paper .rest-name { margin-top: 12px; color: #3b2a1a; }
+.hx-paper .rest-name .rest-name-text { font-family: "Playfair Display", Georgia, serif; font-size: 27px !important; font-weight: 700; }
+.hx-paper .bio-container::before { content: ""; display: block; width: 96px; height: 10px; margin: 6px auto 10px; background: linear-gradient(#a47148, #a47148) center / 100% 1px no-repeat, radial-gradient(circle, #a47148 2.6px, #fbf7ef 3px, #fbf7ef 6px, transparent 6.5px) center / 14px 14px no-repeat; }
+.hx-paper .bio-web { color: #5b4632; opacity: 1; font-style: italic; }
+.hx-paper .location-txt { color: #7a6450; opacity: 1; }
+.hx-paper .location-txt i { color: #a47148; }
+.hx-paper .hx-chip { background: rgba(164,113,72,.12); color: #3b2a1a; }
+.hx-paper .hx-chip.soft { background: transparent; color: #5b4632; }
+
+/* Profile — cover strip, logo overlapping on the left, details left-aligned */
+.hx-profile { padding: 150px 16px 8px !important; background-color: #fff !important; background-size: 100% 172px !important; background-repeat: no-repeat !important; background-position: top center !important; }
+.hx-profile::before { height: 172px; bottom: auto; background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.25)); }
+.hx-profile .hero-card { align-items: flex-start; text-align: left; }
+.hx-profile .profile-section { margin-top: -26px; }
+.hx-profile .profile-img-wrap { width: 88px !important; height: 88px !important; border: 4px solid #fff; }
+.hx-profile .rest-name { justify-content: flex-start; padding: 0; margin-top: 8px; }
+.hx-profile .rest-name .rest-name-text { font-size: 23px !important; }
+.hx-profile .bio-container, .hx-profile .loc-container { margin-left: 0; margin-right: 0; }
+.hx-profile .bio-web, .hx-profile .location-txt { text-align: left; }
+.hx-profile .hx-meta { justify-content: flex-start; }
+
+/* Aurora — no photo: brand colours slowly flowing */
+.hx-aurora { padding: 56px 16px 26px !important; background: linear-gradient(120deg, var(--primary-red, #e11d48), var(--primary-yellow, #fbbf24), var(--dark-red, #9f1239), var(--primary-red, #e11d48)) 0 0 / 300% 300% !important; animation: hxAurora 12s ease-in-out infinite; }
+.hx-aurora::before { background: radial-gradient(circle at 20% 15%, rgba(255,255,255,.35), transparent 45%), radial-gradient(circle at 85% 90%, rgba(0,0,0,.18), transparent 50%); }
+.hx-aurora .profile-img-wrap { width: 92px !important; height: 92px !important; border: 4px solid rgba(255,255,255,.55); box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+.hx-aurora .rest-name { margin-top: 12px; }
+.hx-aurora .rest-name .rest-name-text { font-size: 26px !important; text-shadow: 0 2px 14px rgba(0,0,0,.25); }
+.hx-aurora .more-btn { background: rgba(255,255,255,.22); box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+@keyframes hxAurora { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@media (prefers-reduced-motion: reduce) { .hx-aurora { animation: none; } }
+
+/* Stack — the photo as a tilted card on a stack */
+.hx-stack { padding: 0 16px 22px !important; background-color: #f6f7fb !important; }
+.hx-stack::after { content: ""; order: -1; position: relative; display: block; height: 200px; margin: 54px 36px 0; border-radius: 22px; background: var(--hx-photo, linear-gradient(135deg, #94a3b8, #475569)) center / cover; transform: rotate(-3deg); box-shadow: 10px 10px 0 -2px #fff, 12px 12px 0 -1px #e5e7eb, 22px 20px 0 -6px #fff, 23px 21px 0 -5px #d1d5db, 0 20px 34px rgba(17,24,39,.16); }
+.hx-stack .hero-card { margin-top: -40px; }
+.hx-stack .profile-img-wrap { width: 82px !important; height: 82px !important; border: 4px solid #f6f7fb; }
+.hx-stack .rest-name { margin-top: 10px; }
 
 /* Header variant: Minimal — compact single bar (logo + name + location)
    instead of a tall background-image hero. */
@@ -1799,9 +1896,10 @@ window.socialLinks = {
 <body>
 <div class="phone-frame">
 
-  <div class="theme-bg<?php echo $header_style === 'minimal' ? ' header-minimal' : ''; echo $hx_style ? ' hx hx-' . $hx_style : ''; ?>" id="homeSection" style="<?php
-    if ($header_style !== 'minimal' && $hx_style !== 'brand') {
-      echo $background_theme ? 'background-image: url(' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . ');' : 'background: linear-gradient(135deg, #2d3436, #636e72);';
+  <div class="theme-bg<?php echo $header_style === 'minimal' ? ' header-minimal' : ''; echo $hx_style ? ' hx hx-' . $hx_style : ''; echo in_array($hx_style, THEME_HEADER_LIGHT_STYLES, true) ? ' hx-light' : ''; ?>" id="homeSection" style="<?php
+    if ($header_style !== 'minimal' && !in_array($hx_style, THEME_HEADER_NO_PHOTO_STYLES, true)) {
+      // --hx-photo: the same photo for headers that draw it inside a shape (Split, Arch, Stack)
+      echo $background_theme ? 'background-image: url(' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . '); --hx-photo: url(' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . ');' : 'background: linear-gradient(135deg, #2d3436, #636e72);';
     }
   ?>">
     <div class="top-bar">

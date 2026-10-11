@@ -66,9 +66,12 @@ const THEME_PRESETS = [
 
 const THEME_CARD_STYLES = ['rounded', 'sharp', 'pill'];
 const THEME_LAYOUT_STYLES = ['grid', 'list', 'magazine'];
-const THEME_HEADER_STYLES = ['hero', 'minimal', 'glass', 'cover', 'card', 'brand', 'poster'];
+const THEME_HEADER_STYLES = ['hero', 'minimal', 'glass', 'cover', 'card', 'brand', 'poster', 'split', 'arch', 'story', 'neon', 'paper', 'profile', 'aurora', 'stack'];
 // Header styles that use the card layout (index.php .hx): photo/colour + logo, name, tagline, hours, rating
-const THEME_HEADER_CARD_STYLES = ['glass', 'cover', 'card', 'brand', 'poster'];
+const THEME_HEADER_CARD_STYLES = ['glass', 'cover', 'card', 'brand', 'poster', 'split', 'arch', 'story', 'neon', 'paper', 'profile', 'aurora', 'stack'];
+// Card headers on a light background (dark text), and ones that don't use the photo at all
+const THEME_HEADER_LIGHT_STYLES = ['card', 'split', 'arch', 'paper', 'profile', 'stack'];
+const THEME_HEADER_NO_PHOTO_STYLES = ['brand', 'paper', 'aurora'];
 // Menu page category navigation: left sidebar or a scrolling bar across the top
 const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
 // Menu page dish card design: the original cards, or the modern card (wide photo,
