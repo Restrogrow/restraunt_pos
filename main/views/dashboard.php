@@ -1984,7 +1984,7 @@ try {
                 <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">home</span>
                 Home Page Dishes
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How dishes look in the menu on your Home page. <b>Classic</b>: rows with a photo (default). <b>Grid</b>: 2 cards per row. <b>Big photo</b>: one large photo per dish. <b>Compact</b>: short rows for long menus. <b>Carousel</b>: each category scrolls sideways.</p>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How dishes look in the menu on your Home page. <b>Classic</b>: rows with a photo (default). <b>Grid</b>: 2 cards per row. <b>Big photo</b>: one large photo per dish. <b>Compact</b>: short rows for long menus. <b>Carousel</b>: each category scrolls sideways. <b>Magazine</b>: zig-zag cards. <b>Printed menu</b>: no photos, name ····· price. <b>Tiles</b>: 3 per row with the name on the photo. <b>Delivery app</b>: photo on the right with ADD on it. <b>Dark</b>: the dish list in dark mode.</p>
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <label class="home-card-style-opt" data-value="classic" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
                   <input type="radio" name="homeCardStyle" value="classic" checked style="display:none;">
@@ -2010,6 +2010,31 @@ try {
                   <input type="radio" name="homeCardStyle" value="carousel" style="display:none;">
                   <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_carousel</span>
                   <span style="font-weight: 500; font-size: 0.8rem;">Carousel</span>
+                </label>
+                <label class="home-card-style-opt" data-value="magazine" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="magazine" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">auto_stories</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Magazine</span>
+                </label>
+                <label class="home-card-style-opt" data-value="printed" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="printed" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">menu_book</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Printed menu</span>
+                </label>
+                <label class="home-card-style-opt" data-value="tiles" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="tiles" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">apps</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Tiles</span>
+                </label>
+                <label class="home-card-style-opt" data-value="delivery" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="delivery" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">delivery_dining</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Delivery app</span>
+                </label>
+                <label class="home-card-style-opt" data-value="dark" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="dark" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">dark_mode</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Dark</span>
                 </label>
               </div>
             </div>

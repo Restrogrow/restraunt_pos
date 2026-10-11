@@ -72,7 +72,7 @@ const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
 // Menu page dish card design: the original cards, or the modern card (wide photo,
 // description, quantity picker + Add button)
 // Home page dish list look (Website Appearance > Home Page Dishes)
-const THEME_HOME_CARD_STYLES = ['classic', 'grid', 'big', 'compact', 'carousel'];
+const THEME_HOME_CARD_STYLES = ['classic', 'grid', 'big', 'compact', 'carousel', 'magazine', 'printed', 'tiles', 'delivery', 'dark'];
 const THEME_MENU_CARD_STYLES = ['classic', 'modern', 'minimal', 'photo', 'list', 'elegant', 'compact', 'midnight', 'showcase'];
 // Menu page category pictures: round photos, or cut-outs (whole picture, no crop,
 // for transparent PNGs of the dish) with the label highlighted when selected

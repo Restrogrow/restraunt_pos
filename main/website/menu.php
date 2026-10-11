@@ -1,4 +1,7 @@
-<?php require_once __DIR__ . '/header.php'; ?>
+<?php require_once __DIR__ . '/header.php';
+// Preview links (layout gallery): ?preview_card=<design> shows that design without saving it
+if (isset($_GET['preview_card']) && in_array($_GET['preview_card'], THEME_MENU_CARD_STYLES, true)) { $menu_card_style = $_GET['preview_card']; }
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
