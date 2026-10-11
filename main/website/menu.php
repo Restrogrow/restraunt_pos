@@ -1812,12 +1812,16 @@ function initMenuChromeAutoHide() {
   var header = document.querySelector('.pr-share-header');
   var search = document.querySelector('.search-rapper');
   if (!scroller || !header) return;
-  // Hiding/showing the bar resizes the scroll area, which itself fires scroll
-  // events (and momentum scrolling keeps firing them); reacting to those made
-  // the bar flicker while scrolling up. So: switch only after a clear 30px
-  // move in one direction, and ignore scroll events while the bar slides.
-  var THRESHOLD = 30, SLIDE_MS = 320;
+  // Hiding/showing the bar resizes the scroll area, and the browser then moves
+  // the scroll position by itself (most of all in short categories, where the
+  // list barely scrolls once the bar is gone). Reacting to those moves made the
+  // bar flicker or pop back down. So: react only to the customer's own scrolling
+  // (30px in one direction), ignore everything while the bar slides, only hide
+  // when there's enough list to keep scrolling, and force it back only at the
+  // very top.
+  var THRESHOLD = 30, SLIDE_MS = 350;
   var last = scroller.scrollTop, travel = 0, hidden = false, lockedUntil = 0;
+  function barHeight() { return header.offsetHeight + (search ? search.offsetHeight : 0); }
   function setHidden(h) {
     if (h === hidden) return;
     var searchInput = search && search.querySelector('input');
@@ -1825,7 +1829,7 @@ function initMenuChromeAutoHide() {
     hidden = h;
     var menu = document.getElementById('filterMenu');
     if (h && menu) menu.classList.remove('show');
-    header.style.marginTop = h ? -(header.offsetHeight + (search ? search.offsetHeight : 0)) + 'px' : '';
+    header.style.marginTop = h ? -barHeight() + 'px' : '';
     lockedUntil = Date.now() + SLIDE_MS;
     travel = 0;
   }
@@ -1833,12 +1837,18 @@ function initMenuChromeAutoHide() {
     var st = scroller.scrollTop;
     var d = st - last;
     last = st;
-    if (st <= 60) { setHidden(false); travel = 0; return; }   // near the top: always shown
+    if (d === 0) return;                                      // no movement
     if (Date.now() < lockedUntil) return;                     // bar is sliding: ignore
+    if (st <= 4) { setHidden(false); travel = 0; return; }     // at the very top: show
     // Accumulate movement in one direction; a change of direction restarts it
     travel = (d > 0) === (travel > 0) ? travel + d : d;
-    if (travel > THRESHOLD) setHidden(true);
-    else if (travel < -THRESHOLD) setHidden(false);
+    if (travel > THRESHOLD) {
+      // Only hide when the list is long enough to keep scrolling without the bar
+      var room = scroller.scrollHeight - scroller.clientHeight;
+      if (room > barHeight() + 80) setHidden(true);
+    } else if (travel < -THRESHOLD) {
+      setHidden(false);
+    }
   }, { passive: true });
 }
 document.addEventListener('DOMContentLoaded', initMenuChromeAutoHide);
