@@ -18,7 +18,8 @@
     ['stamp', 'Stamp'], ['bubbles', 'Bubbles'], ['stripes', 'Stripes'], ['spotlight', 'Spotlight'],
     ['gift', 'Gift box'], ['tag', 'Price tag'], ['wave', 'Waves'], ['orbit', 'Orbit'],
     ['typewriter', 'Typewriter'], ['gold', 'Gold'], ['pulse', 'Pulse'], ['bounce', 'Bounce'],
-    ['polaroid', 'Polaroid'], ['festive', 'Festive lights']
+    ['polaroid', 'Polaroid'], ['festive', 'Festive lights'], ['flash', 'Flash sale'], ['scratch', 'Scratch card'],
+    ['hearts', 'Hearts'], ['snow', 'Snow'], ['sunrise', 'Sunrise'], ['cinema', 'Cinema']
   ];
   // Look options (saved with the banner): [key, label, [[value, text], …]]
   var SEGMENTS = [
@@ -96,8 +97,8 @@
     ed.innerHTML =
       '<div style="font-weight:700;color:#111827;margin-bottom:10px;">' + (editing.id ? 'Edit offer banner' : 'New offer banner') + '</div>' +
       '<div id="obPreview" style="border-radius:14px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.08);margin-bottom:14px;"></div>' +
-      '<span style="' + lab + '">Style</span>' +
-      '<div id="obTemplates" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px;max-height:380px;overflow-y:auto;padding:2px 4px 2px 2px;"></div>' +
+      '<span style="' + lab + '">Style — ' + TEMPLATES.length + ' animated designs</span>' +
+      '<div id="obTemplates" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px;"></div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:10px;">' +
         '<div><label for="obTitle" style="' + lab + '">Headline</label><input id="obTitle" maxlength="40" placeholder="50% OFF" style="' + field + '"></div>' +
         '<div><label for="obSub" style="' + lab + '">Sub-line</label><input id="obSub" maxlength="90" placeholder="On all biryanis this weekend" style="' + field + '"></div>' +

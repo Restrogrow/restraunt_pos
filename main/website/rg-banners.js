@@ -291,6 +291,57 @@
     '.rg-ob.tight .rg-ob-code{padding:.8cqw 1.8cqw;font-size:2.7cqw}.rg-ob.tight .rg-ob-cta{padding:1.1cqw 2.6cqw;font-size:2.8cqw}' +
     '.rg-ob.tighter .rg-ob-kick{display:none}.rg-ob.tighter .rg-ob-sub{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}';
 
+  var CSS3 = '' +
+    /* Flash sale: hazard stripes + flickering bolt */
+    '.rg-ob-flash{--safe:4.8;background:radial-gradient(circle at 80% 50%,color-mix(in srgb,var(--c) 75%,#fff),var(--c) 45%,var(--c2))}' +
+    '.rg-ob-flash::before,.rg-ob-flash::after{content:"";position:absolute;left:0;right:0;height:4.4cqw;z-index:3;background:repeating-linear-gradient(-45deg,#111 0 2.5cqw,var(--a) 2.5cqw 5cqw);background-size:7.07cqw 7.07cqw;animation:rgObStripes 1.2s linear infinite}' +
+    '.rg-ob-flash::before{top:0}.rg-ob-flash::after{bottom:0;animation-direction:reverse}' +
+    '.rg-ob-flash .rg-ob-kick{color:var(--a)}' +
+    '.rg-ob-bolt{position:absolute;right:9cqw;top:50%;width:19cqw;height:29cqw;margin-top:-14.5cqw;z-index:2;background:var(--a);clip-path:polygon(58% 0,8% 56%,44% 56%,28% 100%,92% 40%,56% 40%,78% 0);animation:rgObFlash 1.8s steps(1) infinite}' +
+    '.rg-ob-flash .rg-ob-dish{right:7cqw;top:50%;width:28cqw;height:28cqw;margin-top:-14cqw;border-radius:50%;border:.8cqw solid #111}' +
+    '.rg-ob-flash.has-dish .rg-ob-bolt{right:28cqw;top:22%;width:10cqw;height:15cqw;margin-top:0}' +
+
+    /* Scratch card: foil wipes off to show the code, then covers it again */
+    '.rg-ob-scratch{background:linear-gradient(135deg,var(--c),var(--c2))}' +
+    '.rg-ob-scr{position:absolute;right:6cqw;top:50%;width:32cqw;margin-top:-13cqw;z-index:2;text-align:center}' +
+    '.rg-ob-scr small{display:block;margin-bottom:1.2cqw;font-size:2.2cqw;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--a)}' +
+    '.rg-ob-scr .card{position:relative;height:20cqw;border-radius:2.4cqw;background:#fff;display:grid;place-items:center;overflow:hidden;box-shadow:0 1.6cqw 4cqw rgba(0,0,0,.25)}' +
+    '.rg-ob-scr .card b{font-size:4.6cqw;font-weight:900;letter-spacing:.06em;color:var(--c2);word-break:break-all;padding:0 2cqw}' +
+    '.rg-ob-scr .foil{position:absolute;inset:0;background:linear-gradient(110deg,#9ca3af,#f3f4f6 30%,#a8b0bb 50%,#e5e7eb 70%,#9ca3af);background-size:200% 100%;animation:rgObFoil 6s ease-in-out infinite}' +
+    '.rg-ob-scr .foil::after{content:"SCRATCH";position:absolute;inset:0;display:grid;place-items:center;font-size:3cqw;font-weight:900;letter-spacing:.3em;color:rgba(255,255,255,.75)}' +
+
+    /* Hearts: hearts float up */
+    '.rg-ob-hearts{background:linear-gradient(150deg,color-mix(in srgb,var(--c) 70%,#fff),var(--c) 50%,var(--c2))}' +
+    '.rg-ob-hearts .rg-ob-fx i{position:absolute;bottom:-8cqw;font-style:normal;line-height:1;z-index:1;color:rgba(255,255,255,.75);animation:rgObRise linear infinite}' +
+    '.rg-ob-hearts .rg-ob-fx i:nth-child(3n){color:var(--a)}' +
+    '.rg-ob-hearts .rg-ob-dish{right:6cqw;top:50%;width:30cqw;height:30cqw;margin-top:-15cqw;border-radius:50%;border:1cqw solid #fff;box-shadow:0 0 0 1.2cqw rgba(255,255,255,.25);animation:rgObBeat 1.4s ease-in-out infinite}' +
+
+    /* Snow: gentle snowfall */
+    '.rg-ob-snow{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 45%,#0b1e3a),#0b1e3a)}' +
+    '.rg-ob-snow .rg-ob-fx i{position:absolute;top:-4cqw;border-radius:50%;background:#fff;z-index:3;opacity:.9;animation:rgObSnow linear infinite}' +
+    '.rg-ob-snow::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5cqw;z-index:1;background:radial-gradient(ellipse at 30% 100%,#fff 0 40%,transparent 41%) 0 100%/30cqw 5cqw repeat-x;opacity:.9}' +
+    '.rg-ob-snow .rg-ob-kick{color:#bae6fd}' +
+    '.rg-ob-snow .rg-ob-dish{right:6cqw;top:50%;width:29cqw;height:29cqw;margin-top:-15cqw;border-radius:50%;border:.9cqw solid #fff;box-shadow:0 0 5cqw rgba(186,230,253,.45)}' +
+
+    /* Sunrise: sun with turning rays, dish inside */
+    '.rg-ob-sunrise{background:linear-gradient(180deg,color-mix(in srgb,var(--a) 45%,var(--c)),var(--c) 60%,var(--c2))}' +
+    '.rg-ob-sun{position:absolute;right:3cqw;bottom:-12cqw;width:40cqw;height:40cqw;z-index:1}' +
+    '.rg-ob-sun::before{content:"";position:absolute;inset:-22cqw;border-radius:50%;background:repeating-conic-gradient(rgba(255,255,255,.22) 0 6deg,transparent 6deg 16deg);-webkit-mask:radial-gradient(circle,#000 30%,transparent 70%);mask:radial-gradient(circle,#000 30%,transparent 70%);animation:rgObSpin 30s linear infinite}' +
+    '.rg-ob-sun i{position:absolute;inset:3cqw;border-radius:50%;overflow:hidden;background:var(--a);box-shadow:0 0 8cqw var(--a)}' +
+    '.rg-ob-sun i img{width:100%;height:100%;object-fit:cover}' +
+
+    /* Cinema: full-bleed dish, slow zoom, film bars */
+    '.rg-ob-cinema{--safe:3.8;background:linear-gradient(135deg,var(--c),var(--c2))}' +
+    '.rg-ob-cinema .rg-ob-dish{inset:0;width:100%;height:100%;z-index:0;animation:rgObKen 14s ease-in-out infinite alternate}' +
+    '.rg-ob-cinema::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(#000,#000) top/100% 3.4cqw no-repeat,linear-gradient(#000,#000) bottom/100% 3.4cqw no-repeat,linear-gradient(90deg,rgba(0,0,0,.85) 0,rgba(0,0,0,.55) 45%,rgba(0,0,0,0) 78%)}' +
+    '.rg-ob-cinema .rg-ob-kick{color:var(--a)}' +
+    '.rg-ob-cinema .rg-ob-cta{background:var(--c);color:#fff}' +
+
+    '@keyframes rgObFlash{0%,100%{opacity:1}44%{opacity:.25}48%{opacity:1}54%{opacity:.4}58%{opacity:1}}' +
+    '@keyframes rgObFoil{0%,12%{clip-path:inset(0 0 0 0)}42%,78%{clip-path:inset(0 0 0 100%)}100%{clip-path:inset(0 0 0 0)}}' +
+    '@keyframes rgObBeat{0%,100%{transform:scale(1)}15%{transform:scale(1.06)}30%{transform:scale(1)}45%{transform:scale(1.04)}}' +
+    '@keyframes rgObSnow{0%{transform:translate(0,0)}50%{transform:translate(2cqw,25cqw)}100%{transform:translate(-1cqw,52cqw)}}' +
+    '@keyframes rgObKen{from{transform:scale(1.04)}to{transform:scale(1.18) translate(-3%,-2%)}}';
   // Speed option: every animation duration is multiplied by --spd (Calm 1.7, Normal 1, Lively .6)
   function scaleAnims(css) {
     return css.replace(/animation:([^;}]+)/g, function (m) {
@@ -301,7 +352,7 @@
     if (document.getElementById('rgBannersCss')) return;
     var st = document.createElement('style');
     st.id = 'rgBannersCss';
-    st.textContent = scaleAnims(CSS + CSS2);
+    st.textContent = scaleAnims(CSS + CSS3 + CSS2);
     document.head.appendChild(st);
   }
 
@@ -311,9 +362,10 @@
 
   var CONFETTI = ['#ffffff', '#fde047', '#22d3ee', '#a3e635', '#f472b6', '#fb923c'];
   var TEMPLATES = ['burst', 'ticket', 'neon', 'confetti', 'marquee', 'split', 'countdown', 'aurora', 'stamp', 'bubbles', 'stripes',
-    'spotlight', 'gift', 'tag', 'wave', 'orbit', 'typewriter', 'gold', 'pulse', 'bounce', 'polaroid', 'festive'];
+    'spotlight', 'gift', 'tag', 'wave', 'orbit', 'typewriter', 'gold', 'pulse', 'bounce', 'polaroid', 'festive',
+    'flash', 'scratch', 'hearts', 'snow', 'sunrise', 'cinema'];
   // Styles whose dish photo sits in a frame (the "photo shape" option applies)
-  var FRAMED = { burst: 1, neon: 1, confetti: 1, aurora: 1, bubbles: 1, stripes: 1, spotlight: 1, wave: 1, orbit: 1, typewriter: 1, gold: 1, pulse: 1, bounce: 1, festive: 1 };
+  var FRAMED = { burst: 1, neon: 1, confetti: 1, aurora: 1, bubbles: 1, stripes: 1, spotlight: 1, wave: 1, orbit: 1, typewriter: 1, gold: 1, pulse: 1, bounce: 1, festive: 1, flash: 1, hearts: 1, snow: 1 };
   var uid = 0;
 
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
@@ -417,13 +469,34 @@
         bulbs += '<i style="left:' + x.toFixed(1) + '%;top:' + y.toFixed(1) + 'cqw;background:' + cols[i % cols.length] + ';color:' + cols[i % cols.length] + ';animation-delay:' + ((i % 3) * 0.45).toFixed(2) + 's"></i>';
       }
       inner = '<i class="rg-ob-wire"></i><div class="rg-ob-bulbs">' + bulbs + '</div>' + dish + copy;
+    } else if (tpl === 'flash') {
+      inner = dish + '<i class="rg-ob-bolt"></i>' + copy;
+    } else if (tpl === 'scratch') {
+      inner = copy + '<div class="rg-ob-scr"><small>' + (b.code ? 'Scratch for your code' : 'Scratch & see') + '</small><div class="card"><b>' + esc(b.code || title) + '</b><i class="foil"></i></div></div>';
+    } else if (tpl === 'hearts') {
+      fx = '';
+      for (i = 0; i < 12; i++) {
+        fx += '<i style="left:' + ((i * 31 + 5) % 95) + '%;font-size:' + (3 + (i * 5) % 5) + 'cqw;animation-duration:calc(' + (4.5 + (i % 4)) + 's * var(--spd));animation-delay:-' + ((i * 0.7) % 5).toFixed(1) + 's">\u2665</i>';
+      }
+      inner = '<div class="rg-ob-fx">' + fx + '</div>' + dish + copy;
+    } else if (tpl === 'snow') {
+      fx = '';
+      for (i = 0; i < 26; i++) {
+        var fl = 0.6 + (i * 7) % 5 * 0.35;
+        fx += '<i style="left:' + ((i * 37 + 3) % 99) + '%;width:' + fl.toFixed(2) + 'cqw;height:' + fl.toFixed(2) + 'cqw;animation-duration:calc(' + (5 + (i % 5)) + 's * var(--spd));animation-delay:-' + ((i * 0.53) % 6).toFixed(1) + 's"></i>';
+      }
+      inner = '<div class="rg-ob-fx">' + fx + '</div>' + dish + copy;
+    } else if (tpl === 'sunrise') {
+      inner = '<div class="rg-ob-sun"><i>' + (img ? '<img src="' + esc(img) + '" alt="">' : '') + '</i></div>' + copy;
+    } else if (tpl === 'cinema') {
+      inner = dish + copy;
     } else {
       inner = dish + copy;
     }
     var attrs = ' data-speed="' + (['calm', 'lively', 'off'].indexOf(b.speed) > -1 ? b.speed : 'normal') + '"' +
       (['serif', 'rounded', 'condensed'].indexOf(b.font) > -1 ? ' data-font="' + b.font + '"' : '') +
       (['rounded', 'square'].indexOf(b.shape) > -1 ? ' data-shape="' + b.shape + '"' : '');
-    return '<div class="rg-ob rg-ob-' + tpl + (b.text === 'dark' ? ' tx-dark' : '') + (opts.live ? ' rg-ob-live' : '') + '"' + attrs +
+    return '<div class="rg-ob rg-ob-' + tpl + (img ? ' has-dish' : '') + (b.text === 'dark' ? ' tx-dark' : '') + (opts.live ? ' rg-ob-live' : '') + '"' + attrs +
       ' style="--c:' + color + (accent ? ';--a:' + accent : '') + '">' + inner + timer + '</div>';
   }
 
@@ -457,9 +530,11 @@
       var copy = el.querySelector('.rg-ob-copy');
       if (!copy || !el.clientHeight) return;
       el.classList.remove('tight', 'tighter');
+      // --safe: a band (in % of the width) kept clear at top and bottom, e.g. Flash sale stripes
+      var safe = (parseFloat(getComputedStyle(el).getPropertyValue('--safe')) || 0) * el.clientWidth / 100 + 1;
       var over = function () {
         var r = el.getBoundingClientRect(), cr = copy.getBoundingClientRect();
-        return cr.top < r.top + 1 || cr.bottom > r.bottom - 1 || copy.scrollHeight > copy.clientHeight + 1;
+        return cr.top < r.top + safe || cr.bottom > r.bottom - safe || copy.scrollHeight > copy.clientHeight + 1;
       };
       if (over()) { el.classList.add('tight'); if (over()) el.classList.add('tighter'); }
     });

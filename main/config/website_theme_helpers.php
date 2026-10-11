@@ -78,7 +78,8 @@ const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
 // description, quantity picker + Add button)
 // Animated offer banners (Website Appearance > Offer Banners): made in HTML/CSS, no photo needed
 const OFFER_BANNER_TEMPLATES = ['burst', 'ticket', 'neon', 'confetti', 'marquee', 'split', 'countdown', 'aurora', 'stamp', 'bubbles', 'stripes',
-    'spotlight', 'gift', 'tag', 'wave', 'orbit', 'typewriter', 'gold', 'pulse', 'bounce', 'polaroid', 'festive'];
+    'spotlight', 'gift', 'tag', 'wave', 'orbit', 'typewriter', 'gold', 'pulse', 'bounce', 'polaroid', 'festive',
+    'flash', 'scratch', 'hearts', 'snow', 'sunrise', 'cinema'];
 // Per-banner look options (stored as JSON in website_offer_banners.opts)
 const OFFER_BANNER_SPEEDS = ['calm', 'normal', 'lively', 'off'];
 const OFFER_BANNER_FONTS = ['modern', 'serif', 'rounded', 'condensed'];
