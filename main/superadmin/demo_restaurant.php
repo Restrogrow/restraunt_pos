@@ -87,7 +87,8 @@ function createDemo(PDO $conn, string $assetDir, string $mainUrl, string $credit
         ['Rasmalai', 'Desserts', 'Veg', 129, 'Soft chenna discs soaked in chilled saffron-cardamom milk, topped with pistachio.', 290, 5, [], 'rasmalai'],
         ['Kulfi', 'Desserts', 'Veg', 109, 'Traditional slow-reduced milk ice cream on a stick, flavoured with kesar and pista.', 250, 5, [], 'kulfi'],
     ];
-    $categoryPhoto = ['Starters' => 'paneer-tikka', 'Main Course' => 'butter-chicken', 'Breads' => 'garlic-naan', 'Beverages' => 'sweet-lassi', 'Desserts' => 'gulab-jamun'];
+    // Category pictures: original flat cut-out icons (transparent WebP), Zomato-style
+    $categoryPhoto = ['Starters' => 'cat-starters', 'Main Course' => 'cat-main-course', 'Breads' => 'cat-breads', 'Beverages' => 'cat-beverages', 'Desserts' => 'cat-desserts'];
     // Bestsellers in display order => offer price (null = no offer)
     $bestsellers = ['Butter Chicken' => 300, 'Paneer Tikka' => 224, 'Chicken Biryani' => 234, 'Dal Makhani' => 206,
                     'Mutton Rogan Josh' => null, 'Gulab Jamun' => null, 'Tandoori Chicken' => null, 'Egg Bhurji' => null, 'Chicken 65' => null];
@@ -136,7 +137,7 @@ function createDemo(PDO $conn, string $assetDir, string $mainUrl, string $credit
             try { $conn->prepare("UPDATE users SET `$col` = ? WHERE restaurant_id = ?")->execute([$val, DEMO_RID]); } catch (PDOException $e) {}
         }
 
-        $insMenu = $conn->prepare("INSERT INTO menu (restaurant_id, menu_name, is_active, sort_order, menu_image, menu_image_data, menu_image_mime_type) VALUES (?, ?, 1, ?, ?, ?, 'image/jpeg')");
+        $insMenu = $conn->prepare("INSERT INTO menu (restaurant_id, menu_name, is_active, sort_order, menu_image, menu_image_data, menu_image_mime_type) VALUES (?, ?, 1, ?, ?, ?, 'image/webp')");
         $insItem = $conn->prepare("INSERT INTO menu_items (restaurant_id, menu_id, item_name_en, item_description_en, item_category, item_type, preparation_time,
                                        is_available, base_price, has_variations, item_image, image_data, image_mime_type, sort_order)
                                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'image/jpeg', ?)");
@@ -145,7 +146,7 @@ function createDemo(PDO $conn, string $assetDir, string $mainUrl, string $credit
         $menuIds = []; $itemIds = []; $sort = 0;
         foreach ($dishes as [$name, $cat, $type, $price, $desc, $cal, $prep, $sizes, $photo]) {
             if (!isset($menuIds[$cat])) {
-                $insMenu->execute([DEMO_RID, $cat, count($menuIds) + 1, 'db:menu_' . uniqid(), $read($categoryPhoto[$cat] . '.jpg')]);
+                $insMenu->execute([DEMO_RID, $cat, count($menuIds) + 1, 'db:menu_' . uniqid(), $read($categoryPhoto[$cat] . '.webp')]);
                 $menuIds[$cat] = (int)$conn->lastInsertId();
                 $sort = 0;
             }

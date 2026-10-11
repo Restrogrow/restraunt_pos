@@ -118,3 +118,6 @@ hero.jpg
 
 logo.png
   Generated for RestroGrow (no third-party content).
+
+cat-starters.webp, cat-main-course.webp, cat-breads.webp, cat-beverages.webp, cat-desserts.webp
+  Category icons drawn for RestroGrow (original artwork, no third-party content).
