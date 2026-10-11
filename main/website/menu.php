@@ -1735,9 +1735,8 @@ function updateMilestoneHint(total, hasItems) {
   setTimeout(function() { if (bar) bar.style.width = pct + '%'; }, 30);
 }
 
-// Checkout from the menu with a milestone offer unlocked: celebrate the saving
-// (3–4 s, square confetti) on the way to the cart. Shares the "already shown"
-// flag with the cart page, so the same coupon is never celebrated twice.
+// View Cart from the menu with a milestone offer unlocked: celebrate the saving
+// (3–4 s, square confetti) on the way to the cart — every time.
 var lastCartTotal = 0;
 function bestUnlockedOffer(total) {
   var best = null, bestSave = 0;
@@ -1836,14 +1835,13 @@ function showCouponCelebration(code, saved, done) {
 
 function goToCheckout() {
   var offer = bestUnlockedOffer(lastCartTotal);
+  // Every tap on View Cart with an offer unlocked plays the celebration
+  // (the cart page then skips its own, since this coupon was just shown)
   if (offer && !window._menuCelebrating) {
-    var key = 'cpnCelebrated_' + offer.code, seen = false;
-    try { seen = !!sessionStorage.getItem(key); if (!seen) sessionStorage.setItem(key, '1'); } catch (e) {}
-    if (!seen) {
-      window._menuCelebrating = true;
-      showCouponCelebration(offer.code, offer.saved, function() { goToCheckout(); });
-      return;
-    }
+    try { sessionStorage.setItem('cpnCelebrated_' + offer.code, '1'); } catch (e) {}
+    window._menuCelebrating = true;
+    showCouponCelebration(offer.code, offer.saved, function() { goToCheckout(); window._menuCelebrating = false; });
+    return;
   }
   var url = '<?php echo restaurantPageUrl('cart'); ?>';
   var tbl = window.websiteTableNumber || '';
