@@ -186,23 +186,71 @@ body {
 .toast-notification.success { background: #10b981; color: #fff; }
 .toast-notification.error { background: #ef4444; color: #fff; }
 .hidden { display: none !important; }
+/* ── Redesign: brand header, logo, sliding tabs, icon fields ── */
+:root {
+  --primary-red: <?php echo htmlspecialchars($primary_red ?? '#e53935', ENT_QUOTES, 'UTF-8'); ?>;
+  --dark-red: <?php echo htmlspecialchars($dark_red ?? '#c62828', ENT_QUOTES, 'UTF-8'); ?>;
+}
+body { background: #eef0f4; }
+.auth-band { position: relative; padding: 14px 14px 64px; background: linear-gradient(135deg, var(--primary-red), var(--dark-red)); color: #fff; overflow: hidden; }
+.auth-band::before, .auth-band::after { content: ""; position: absolute; border-radius: 50%; background: rgba(255,255,255,0.08); }
+.auth-band::before { width: 220px; height: 220px; right: -70px; top: -90px; }
+.auth-band::after { width: 140px; height: 140px; left: -50px; bottom: -40px; }
+.auth-band .back-btn { position: relative; z-index: 1; width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,0.18); font-size: 16px; backdrop-filter: blur(4px); }
+.auth-band .band-name { position: relative; z-index: 1; margin-top: 18px; font-size: 13px; font-weight: 600; opacity: 0.9; letter-spacing: 0.02em; }
+.auth-band h2 { position: relative; z-index: 1; margin-top: 2px; font-size: 24px; font-weight: 800; line-height: 1.2; }
+.auth-band p { position: relative; z-index: 1; margin-top: 4px; font-size: 12.5px; opacity: 0.85; }
+.auth-band h2, .auth-band p { padding-right: 82px; }
+.auth-logo { position: absolute; z-index: 1; right: 18px; bottom: 26px; width: 64px; height: 64px; border-radius: 20px; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 10px 24px rgba(0,0,0,0.18); animation: authFloat 3.2s ease-in-out infinite; }
+.auth-logo img { width: 100%; height: 100%; object-fit: cover; }
+.auth-logo span { font-size: 26px; font-weight: 800; color: var(--primary-red); }
+.auth-sheet { position: relative; margin-top: -40px; background: #fff; border-radius: 26px 26px 0 0; padding: 22px 18px 36px; animation: authUp 0.5s cubic-bezier(.22,1,.36,1); }
+.auth-tabs { position: relative; background: #f3f4f6; border-radius: 14px; padding: 4px; margin-bottom: 22px; }
+.auth-ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 11px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.35s cubic-bezier(.22,1,.36,1); }
+.auth-tabs[data-tab="signup"] .auth-ind { transform: translateX(100%); }
+.auth-tab { position: relative; z-index: 1; padding: 10px; font-size: 13.5px; transition: color 0.25s; }
+.auth-tab.active { background: none; box-shadow: none; color: var(--primary-red); }
+.form-group label { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 7px; }
+.field { position: relative; display: flex; align-items: center; height: 48px; border: 1.5px solid #e5e7eb; border-radius: 14px; background: #fafafa; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s; }
+.field:focus-within { border-color: var(--primary-red); background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-red) 12%, transparent); }
+.field > i { width: 42px; text-align: center; color: #9ca3af; font-size: 14px; flex-shrink: 0; transition: color 0.2s; }
+.field:focus-within > i { color: var(--primary-red); }
+.field .dial { padding-right: 10px; margin-right: 10px; border-right: 1px solid #e5e7eb; font-size: 13.5px; font-weight: 600; color: #374151; }
+.form-group .field input { flex: 1; min-width: 0; height: 100%; padding: 0 12px 0 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 14px; }
+.form-group .field input:focus { box-shadow: none; }
+.field.has-error, .field:has(input.error) { border-color: #ef4444; background: #fef2f2; }
+.field .eye { width: 44px; height: 100%; border: 0; background: none; color: #9ca3af; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+.remember-row label input { accent-color: var(--primary-red); width: 15px; height: 15px; }
+.remember-row a { color: var(--primary-red); }
+.btn-auth-submit { height: 50px; padding: 0; border-radius: 14px; background: linear-gradient(135deg, var(--primary-red), var(--dark-red)); font-size: 15px; font-weight: 700; box-shadow: 0 10px 22px color-mix(in srgb, var(--primary-red) 30%, transparent); transition: transform 0.15s ease, box-shadow 0.2s; }
+.btn-auth-submit:active { transform: scale(0.98); }
+.auth-divider { margin: 22px 0 16px; }
+.btn-guest { height: 48px; padding: 0; border-radius: 14px; border: 1.5px solid #e5e7eb; color: #374151; transition: background 0.2s, transform 0.15s; }
+.btn-guest:active { transform: scale(0.98); }
+.auth-perks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
+.auth-perk { padding: 12px 6px; border-radius: 14px; background: #f9fafb; text-align: center; font-size: 11px; font-weight: 600; color: #4b5563; line-height: 1.3; }
+.auth-perk i { display: block; margin-bottom: 6px; font-size: 16px; color: var(--primary-red); }
+.auth-form-error { border-radius: 12px; }
+#loginForm, #signupForm { animation: authFade 0.35s ease; }
+@keyframes authUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes authFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes authFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@media (prefers-reduced-motion: reduce) { .auth-sheet, .auth-logo, #loginForm, #signupForm { animation: none; } .auth-ind { transition: none; } }
 </style>
 </head>
 <body>
 <div class="phone-frame">
-  <div class="auth-header">
+  <div class="auth-band">
     <button class="back-btn" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'" aria-label="Back"><i class="fa fa-arrow-left"></i></button>
-    <h1><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></h1>
+    <div class="band-name"><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></div>
+    <h2 id="authTitle">Welcome back</h2>
+    <p id="authSub">Log in to track your orders and check out faster</p>
+    <div class="auth-logo"><?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php else: ?><span><?php echo htmlspecialchars(mb_strtoupper(mb_substr($restaurant_name ?? 'R', 0, 1)), ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?></div>
   </div>
 
-  <div class="auth-content">
-    <div class="auth-hero">
-      <div class="auth-hero-icon"><i class="fa fa-user"></i></div>
-      <h2>Welcome</h2>
-      <p>Log in to track your orders and check out faster</p>
-    </div>
-
-    <div class="auth-tabs">
+  <div class="auth-sheet">
+    <div class="auth-tabs" id="authTabs" data-tab="login">
+      <span class="auth-ind"></span>
       <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Login</button>
       <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
     </div>
@@ -212,75 +260,85 @@ body {
     <!-- Login Form -->
     <form id="loginForm">
       <div class="form-group">
-        <label>Phone Number</label>
-        <div class="phone-input-row">
-          <span><?php echo htmlspecialchars($phone_dial_code ?? '+91'); ?></span>
-          <input type="tel" id="loginPhone" placeholder="Enter your phone number" required>
-        </div>
+        <label for="loginPhone">Phone number</label>
+        <div class="field"><i class="fa-solid fa-phone"></i><span class="dial"><?php echo htmlspecialchars($phone_dial_code ?? '+91'); ?></span>
+          <input type="tel" id="loginPhone" placeholder="Enter your phone number" autocomplete="tel-national" required></div>
       </div>
       <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="loginPassword" placeholder="Enter your password" required>
+        <label for="loginPassword">Password</label>
+        <div class="field"><i class="fa-solid fa-lock"></i>
+          <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password" required>
+          <button type="button" class="eye" onclick="togglePw('loginPassword', this)" aria-label="Show password"><i class="fa-regular fa-eye"></i></button></div>
       </div>
       <div class="remember-row">
         <label><input type="checkbox" id="loginRemember" checked> Remember me</label>
         <a href="#" onclick="openForgotModal();return false;">Forgot password?</a>
       </div>
       <div class="form-group hidden" id="loginOtpGroup">
-        <label>Verification Code</label>
-        <input type="text" id="loginOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from WhatsApp">
+        <label for="loginOtpCode">Verification code</label>
+        <div class="field"><i class="fa-solid fa-shield-halved"></i>
+          <input type="text" id="loginOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from WhatsApp"></div>
         <div class="remember-row" style="margin-top:8px;margin-bottom:0;">
           <span style="color:#999;">Sent via WhatsApp</span>
           <a href="#" id="loginOtpResend" onclick="event.preventDefault();">Resend code</a>
         </div>
       </div>
-      <button type="submit" class="btn-auth-submit" id="loginSubmitBtn"><i class="fa fa-right-to-bracket"></i> <span id="loginSubmitBtnText">Login</span></button>
+      <button type="submit" class="btn-auth-submit" id="loginSubmitBtn"><span id="loginSubmitBtnText">Login</span> <i class="fa fa-arrow-right"></i></button>
     </form>
 
     <!-- Signup Form -->
     <form id="signupForm" class="hidden">
       <div class="form-group">
-        <label>Full Name</label>
-        <input type="text" id="signupName" placeholder="Enter your full name" required>
+        <label for="signupName">Full name</label>
+        <div class="field"><i class="fa-regular fa-user"></i>
+          <input type="text" id="signupName" placeholder="Enter your full name" autocomplete="name" required></div>
       </div>
       <div class="form-group">
-        <label>Phone Number</label>
-        <div class="phone-input-row">
-          <span><?php echo htmlspecialchars($phone_dial_code ?? '+91'); ?></span>
-          <input type="tel" id="signupPhone" placeholder="Enter your phone number" required>
-        </div>
+        <label for="signupPhone">Phone number</label>
+        <div class="field"><i class="fa-solid fa-phone"></i><span class="dial"><?php echo htmlspecialchars($phone_dial_code ?? '+91'); ?></span>
+          <input type="tel" id="signupPhone" placeholder="Enter your phone number" autocomplete="tel-national" required></div>
       </div>
       <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" id="signupEmail" placeholder="your@email.com" required>
+        <label for="signupEmail">Email address</label>
+        <div class="field"><i class="fa-regular fa-envelope"></i>
+          <input type="email" id="signupEmail" placeholder="your@email.com" autocomplete="email" required></div>
       </div>
       <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="signupPassword" placeholder="At least 6 characters" required>
+        <label for="signupPassword">Password</label>
+        <div class="field"><i class="fa-solid fa-lock"></i>
+          <input type="password" id="signupPassword" placeholder="At least 6 characters" autocomplete="new-password" required>
+          <button type="button" class="eye" onclick="togglePw('signupPassword', this)" aria-label="Show password"><i class="fa-regular fa-eye"></i></button></div>
       </div>
       <div class="form-group">
-        <label>Confirm Password</label>
-        <input type="password" id="signupConfirmPassword" placeholder="Re-enter your password" required>
+        <label for="signupConfirmPassword">Confirm password</label>
+        <div class="field"><i class="fa-solid fa-lock"></i>
+          <input type="password" id="signupConfirmPassword" placeholder="Re-enter your password" autocomplete="new-password" required></div>
       </div>
       <div class="remember-row">
         <label><input type="checkbox" id="signupRemember" checked> Remember me</label>
       </div>
       <div class="form-group hidden" id="signupOtpGroup">
-        <label>Verification Code</label>
-        <input type="text" id="signupOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from WhatsApp">
+        <label for="signupOtpCode">Verification code</label>
+        <div class="field"><i class="fa-solid fa-shield-halved"></i>
+          <input type="text" id="signupOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from WhatsApp"></div>
         <div class="remember-row" style="margin-top:8px;margin-bottom:0;">
           <span style="color:#999;">Sent via WhatsApp</span>
           <a href="#" id="signupOtpResend" onclick="event.preventDefault();">Resend code</a>
         </div>
       </div>
-      <button type="submit" class="btn-auth-submit" id="signupSubmitBtn"><i class="fa fa-user-plus"></i> Create Account</button>
+      <button type="submit" class="btn-auth-submit" id="signupSubmitBtn">Create account <i class="fa fa-arrow-right"></i></button>
     </form>
 
     <div class="auth-divider">or</div>
-    <button type="button" class="btn-guest" onclick="continueAsGuest()"><i class="fa fa-arrow-right"></i> Continue as Guest</button>
+    <button type="button" class="btn-guest" onclick="continueAsGuest()">Continue as guest</button>
+
+    <div class="auth-perks">
+      <div class="auth-perk"><i class="fa-solid fa-location-crosshairs"></i>Track your order</div>
+      <div class="auth-perk"><i class="fa-solid fa-bolt"></i>Faster checkout</div>
+      <div class="auth-perk"><i class="fa-solid fa-clock-rotate-left"></i>Order history</div>
+    </div>
   </div>
 </div>
-
 <!-- Forgot Password Modal -->
 <div id="forgotModalContainer"></div>
 
@@ -306,7 +364,22 @@ if (window.alreadyLoggedIn) {
   window.location.href = window.redirectUrl;
 }
 
+// Show / hide a password field
+function togglePw(id, btn) {
+  var inp = document.getElementById(id);
+  if (!inp) return;
+  var show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.innerHTML = show ? '<i class="fa-regular fa-eye-slash"></i>' : '<i class="fa-regular fa-eye"></i>';
+  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+}
+
 function switchAuthTab(tab) {
+  var tabs = document.getElementById('authTabs');
+  if (tabs) tabs.setAttribute('data-tab', tab);
+  var title = document.getElementById('authTitle'), sub = document.getElementById('authSub');
+  if (title) title.textContent = tab === 'signup' ? 'Create your account' : 'Welcome back';
+  if (sub) sub.textContent = tab === 'signup' ? 'It takes a minute — then reorder in a tap' : 'Log in to track your orders and check out faster';
   document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
   document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
   document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
@@ -583,12 +656,12 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
         showToast('A verification code has been sent via WhatsApp.', 'success');
         document.getElementById('signupOtpCode').focus();
       } else {
-        btn.innerHTML = '<i class="fa fa-user-plus"></i> Create Account';
+        btn.innerHTML = 'Create account <i class="fa fa-arrow-right"></i>';
         showAuthError(res.message || 'Could not send the verification code.');
       }
     }).catch(function() {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa fa-user-plus"></i> Create Account';
+      btn.innerHTML = 'Create account <i class="fa fa-arrow-right"></i>';
       showAuthError('Network error. Please try again.');
     });
     return;
