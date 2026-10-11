@@ -13686,7 +13686,50 @@ window.setPreviewDevice = function(device) {
       wrapper.classList.remove('mobile-view');
     }
   }
+  var box = document.getElementById('previewFrameBox');
+  if (box) box.classList.toggle('is-mobile', device === 'mobile');
+  window.fitLivePreview();
 };
+
+// Size the live preview: Desktop fills the height left in the (sticky) preview
+// card; Mobile renders a real 390x844 phone screen, scaled down to fit, so the
+// customer site uses its true phone layout.
+window.fitLivePreview = function() {
+  var sec = document.getElementById('livePreviewSection');
+  var wrap = document.getElementById('previewFrameWrapper');
+  var frame = document.getElementById('livePreview');
+  var box = document.getElementById('previewFrameBox');
+  if (!sec || !wrap || !frame || !box || !sec.offsetParent) return; // page not visible yet
+  var mobile = wrap.classList.contains('mobile-view');
+  // Height of everything in the card except the preview box
+  var others = sec.scrollHeight - box.offsetHeight;
+  var avail = window.innerWidth >= 1000 ? window.innerHeight - 32 - others - 4 : 640;
+  avail = Math.max(mobile ? 360 : 420, avail - (mobile ? 24 : 0)); // mobile box has 12px padding top+bottom
+  if (mobile) {
+    var W = 390, H = 844;
+    var s = Math.min(1, avail / H, (box.clientWidth - 24) / W);
+    wrap.style.width = Math.round(W * s) + 'px';
+    wrap.style.height = Math.round(H * s) + 'px';
+    frame.style.width = W + 'px';
+    frame.style.height = H + 'px';
+    frame.style.transform = 'scale(' + s + ')';
+    frame.style.transformOrigin = '0 0';
+  } else {
+    wrap.style.width = '';
+    wrap.style.height = '';
+    frame.style.width = '100%';
+    frame.style.height = avail + 'px';
+    frame.style.transform = '';
+  }
+};
+window.addEventListener('resize', function() { window.fitLivePreview(); });
+document.addEventListener('DOMContentLoaded', function() {
+  // Phone view by default: the customer website is mostly used on phones
+  if (document.getElementById('previewFrameWrapper')) window.setPreviewDevice('mobile');
+  var sec = document.getElementById('livePreviewSection');
+  // Refit when the Website Appearance page becomes visible or the card resizes
+  if (sec && typeof ResizeObserver !== 'undefined') new ResizeObserver(function() { window.fitLivePreview(); }).observe(sec);
+});
 window.refreshPreview = function() {
   const iframe = document.getElementById('livePreview');
   if (iframe) {

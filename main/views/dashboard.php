@@ -2080,25 +2080,25 @@ try {
               <span class="material-symbols-rounded">preview</span>
               Live Website Preview
             </h2>
-            <p style="color:#666;font-size:0.9rem;margin-bottom:16px;line-height:1.6;">
-              Colours, fonts and card corners update here as you change them. Layout options (card design,
-              categories, header) show after you click <strong>Save Theme</strong> &mdash; the preview reloads by itself.
-            </p>
+            <p style="color:#6b7280;font-size:0.8rem;margin:0 0 10px;line-height:1.45;">Colours update instantly; layout options show after <strong>Save Theme</strong> (the preview reloads by itself).</p>
 
-            <!-- Device Toggle -->
-            <div style="display:flex;gap:8px;margin-bottom:16px;">
-              <button type="button" class="device-btn active" data-device="desktop" onclick="setPreviewDevice('desktop')" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border:2px solid #dc2626;border-radius:8px;background:#dc2626;color:#fff;cursor:pointer;font-weight:600;font-size:.85rem;transition:all .2s;">
-                <span class="material-symbols-rounded" style="font-size:18px;">desktop_windows</span>
+            <!-- Toolbar: device + refresh + open (one row, so the preview gets the height) -->
+            <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
+              <button type="button" class="device-btn" data-device="desktop" onclick="setPreviewDevice('desktop')" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;font-size:.8rem;transition:all .2s;">
+                <span class="material-symbols-rounded" style="font-size:17px;">desktop_windows</span>
                 Desktop
               </button>
-              <button type="button" class="device-btn" data-device="mobile" onclick="setPreviewDevice('mobile')" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;font-size:.85rem;transition:all .2s;">
-                <span class="material-symbols-rounded" style="font-size:18px;">phone_iphone</span>
+              <button type="button" class="device-btn active" data-device="mobile" onclick="setPreviewDevice('mobile')" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;font-size:.8rem;transition:all .2s;">
+                <span class="material-symbols-rounded" style="font-size:17px;">phone_iphone</span>
                 Mobile
               </button>
+              <span style="flex:1"></span>
+              <button type="button" onclick="refreshPreview()" title="Refresh preview" aria-label="Refresh preview" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;cursor:pointer;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:19px;">refresh</span></button>
+              <a href="<?php echo htmlspecialchars((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $basePath . '/' . urlencode(trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($restaurant_name)), '-'))); ?>" target="_blank" title="Open in new tab" aria-label="Open in new tab" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;cursor:pointer;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:19px;">open_in_new</span></a>
             </div>
 
             <!-- Live Preview Frame -->
-            <div style="border:2px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff;margin-bottom:16px;">
+            <div id="previewFrameBox" style="border:2px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff;">
               <div id="previewFrameWrapper" style="transition:all .3s ease;margin:0 auto;">
                 <iframe id="livePreview" src="<?php
                   $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
@@ -2108,24 +2108,6 @@ try {
                   echo htmlspecialchars($base_url . $basePath . '/' . urlencode($restaurant_slug));
                 ?>" style="width:100%;height:500px;border:none;display:block;" loading="lazy"></iframe>
               </div>
-            </div>
-
-            <!-- Preview Actions -->
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-              <button type="button" class="btn btn-outline" onclick="refreshPreview()" style="display:flex;align-items:center;gap:6px;">
-                <span class="material-symbols-rounded" style="font-size:18px;">refresh</span>
-                Refresh Preview
-              </button>
-              <a href="<?php
-                $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
-                $restaurant_slug = strtolower($restaurant_name);
-                $restaurant_slug = preg_replace('/[^a-z0-9]+/', '-', $restaurant_slug);
-                $restaurant_slug = trim($restaurant_slug, '-');
-                echo htmlspecialchars($base_url . $basePath . '/' . urlencode($restaurant_slug));
-              ?>" class="btn btn-primary" target="_blank" style="display:flex;align-items:center;gap:6px;">
-                <span class="material-symbols-rounded" style="font-size:18px;">open_in_new</span>
-                Open in New Tab
-              </a>
             </div>
 
           </div>

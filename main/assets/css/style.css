@@ -4672,19 +4672,17 @@ select:focus {
   box-sizing: border-box !important;
 }
 
-/* Exempt live preview elements so mobile-view max-width: 375px works */
-.settings-section #previewFrameWrapper {
-  max-width: none !important;
-  width: auto !important;
+/* Live preview sizing is done by fitLivePreview() (script.js): Desktop fills
+   the available height; Mobile is a real 390x844 phone screen scaled to fit. */
+.settings-section #previewFrameWrapper { max-width: none !important; }
+.settings-section #livePreview { max-width: none !important; }
+#previewFrameWrapper.mobile-view {
+  border-radius: 36px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 0 0 7px #111827, 0 14px 32px rgba(0,0,0,0.28);
 }
-.settings-section #previewFrameWrapper.mobile-view {
-  max-width: 375px !important;
-  width: auto !important;
-}
-.settings-section #livePreview {
-  max-width: none !important;
-  width: 100% !important;
-}
+#previewFrameBox.is-mobile { background: #eef1f5; padding: 12px 0; border-color: #eef1f5 !important; }
 
 /* Specifically target preview containers and ALL their nested children */
 .settings-section #colorPreviewContainer,
@@ -8167,6 +8165,7 @@ body, html {
   #livePreviewSection {
     position: sticky;
     top: 16px;
+    padding: 16px 18px 18px;
     max-height: calc(100vh - 32px);
     overflow-y: auto;
   }
