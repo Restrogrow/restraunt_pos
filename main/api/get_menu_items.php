@@ -180,6 +180,8 @@ try {
     // Build the query - explicitly select columns (exclude binary image_data to avoid JSON issues)
     $translationsCol = $hasItemTranslations ? ", mi.translations" : "";
     $isHiddenCol = $hasIsHiddenColumn ? ", mi.is_hidden" : "";
+    require_once __DIR__ . '/../config/ingredient_helpers.php';
+    $isHiddenCol .= ensureMenuIngredientsColumn($conn) ? ", mi.ingredients" : "";
             $sql = "SELECT mi.id, mi.restaurant_id, mi.menu_id, mi.item_name_en, mi.item_description_en, mi.description_format,
                            mi.item_category, mi.item_type, mi.preparation_time, mi.calories, mi.is_available,
                            mi.base_price, mi.has_variations, mi.item_image,

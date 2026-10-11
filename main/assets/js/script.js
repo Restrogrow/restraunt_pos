@@ -3281,6 +3281,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     document.getElementById("preparationTime").value = data.preparation_time || 0;
     document.getElementById("calories").value = data.calories || 0;
+    if (document.getElementById("ingredients")) document.getElementById("ingredients").value = data.ingredients || '';
     document.getElementById("isAvailable").value = data.is_available ? '1' : '0';
     document.getElementById("basePrice").value = data.base_price || '0.00';
     

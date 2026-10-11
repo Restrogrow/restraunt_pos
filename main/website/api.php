@@ -336,10 +336,12 @@ try {
             
             // Explicitly select columns to avoid issues with binary data and missing columns
             $itemTransCol = $hasItemTrans ? ", mi.translations" : "";
+            require_once __DIR__ . '/../config/ingredient_helpers.php';
+            $ingrCol = ensureMenuIngredientsColumn($conn) ? ", mi.ingredients" : "";
             $query = "SELECT mi.id, mi.restaurant_id, mi.menu_id, mi.item_name_en, mi.item_description_en, mi.description_format,
                              mi.item_category, mi.item_type, mi.preparation_time, mi.calories, mi.is_available, 
                              mi.base_price, mi.has_variations, mi.item_image, 
-                             mi.sort_order, mi.created_at, mi.updated_at, m.menu_name" . $itemTransCol;
+                             mi.sort_order, mi.created_at, mi.updated_at, m.menu_name" . $itemTransCol . $ingrCol;
             
             // Include subcategory info if columns exist
             if ($hasSubcategoryColumn) {

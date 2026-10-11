@@ -840,6 +840,26 @@ body.has-ms-hint .offer-bubble { bottom: 140px; }
 @keyframes celeRing { from { transform: scale(0.85); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
 @keyframes celeTimer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .cpn-cele.show .cpn-cele-card, .cpn-cele.show .cpn-cele-badge { animation: none; transform: none; opacity: 1; } .cpn-cele-badge::before, .cpn-cele-badge::after { animation: none; display: none; } }
+/* ── Ingredients: small button in the dish details → compact popup ── */
+.ingr-btn { display: inline-flex; align-items: center; gap: 8px; margin: 2px 0 12px; padding: 7px 12px 7px 8px; border: 1px solid #d1fae5; border-radius: 999px; background: #f0fdf4; color: #166534; font-family: var(--site-font); font-size: 12.5px; font-weight: 700; cursor: pointer; transition: transform 0.15s ease, background 0.2s; }
+.ingr-btn:active { transform: scale(0.96); }
+.ingr-btn .ic { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #16a34a; color: #fff; font-size: 11px; }
+.ingr-btn .n { color: #15803d; font-weight: 600; opacity: 0.8; }
+.ingr-btn .fa-chevron-right { font-size: 10px; opacity: 0.7; }
+.ingr-pop { position: fixed; inset: 0; z-index: 7000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(17,24,39,0.45); opacity: 0; transition: opacity 0.2s ease; }
+.ingr-pop.show { opacity: 1; }
+.ingr-card { position: relative; width: 100%; max-width: 330px; max-height: 70vh; overflow: auto; padding: 20px 18px 18px; border-radius: 22px; background: #fff; box-shadow: 0 24px 60px rgba(0,0,0,0.25); transform: translateY(16px) scale(0.96); transition: transform 0.3s cubic-bezier(.34,1.56,.64,1); }
+.ingr-pop.show .ingr-card { transform: none; }
+.ingr-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; padding-right: 34px; }
+.ingr-head .ic { width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #dcfce7; color: #16a34a; font-size: 15px; }
+.ingr-head b { display: block; font-size: 16px; font-weight: 800; color: #111827; }
+.ingr-head span { display: block; font-size: 12px; color: #6b7280; }
+.ingr-x { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: #f3f4f6; color: #374151; font-size: 14px; cursor: pointer; }
+.ingr-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.ingr-chip { padding: 7px 12px; border-radius: 999px; background: #f9fafb; border: 1px solid #eef0f3; font-size: 12.5px; font-weight: 600; color: #374151; animation: ingrIn 0.3s ease both; }
+.ingr-note { margin-top: 14px; font-size: 11px; color: #9ca3af; }
+@keyframes ingrIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ingr-card, .ingr-chip { transition: none; animation: none; } }
 /* Size chooser (opens from Add to Cart on dishes with sizes) */
 .sheet-choose { padding: 18px 20px 8px; }
 .sheet-choose-head { display: flex; align-items: center; gap: 12px; padding-right: 44px; }
@@ -2152,6 +2172,30 @@ function renderProducts(menuIdx) {
   updateNavActive(menuIdx);
 }
 
+// Ingredients popup (from the dish details' "Ingredients" button)
+function itemIngredientList(item) {
+  return String((item && item.ingredients) || '').split(',').map(function(x) { return x.trim(); }).filter(Boolean);
+}
+function openIngredients(itemId) {
+  var item = getItemModelById(itemId);
+  var list = itemIngredientList(item);
+  if (!list.length) return;
+  var name = escapeHtml(item.item_name_translated || item.item_name_en || item.name || '');
+  var pop = document.createElement('div');
+  pop.className = 'ingr-pop';
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', 'Ingredients of ' + name);
+  pop.innerHTML = '<div class="ingr-card">' +
+      '<button type="button" class="ingr-x" aria-label="Close"><i class="fa fa-times"></i></button>' +
+      '<div class="ingr-head"><div class="ic"><i class="fa-solid fa-leaf"></i></div><div><b>Ingredients</b><span>' + name + '</span></div></div>' +
+      '<div class="ingr-chips">' + list.map(function(x, i) { return '<span class="ingr-chip" style="animation-delay:' + (i * 0.03) + 's">' + escapeHtml(x) + '</span>'; }).join('') + '</div>' +
+      '<div class="ingr-note">Ask the restaurant if you have an allergy.</div>' +
+    '</div>';
+  function close() { pop.classList.remove('show'); setTimeout(function() { pop.remove(); }, 220); }
+  pop.addEventListener('click', function(e) { if (e.target === pop || e.target.closest('.ingr-x')) close(); });
+  document.body.appendChild(pop);
+  requestAnimationFrame(function() { pop.classList.add('show'); });
+}
 function showItemDetail(itemId) {
   var item = null;
   for (var m = 0; m < menuItems.length && !item; m++) {
@@ -2245,6 +2289,11 @@ function showItemDetail(itemId) {
     var safeDesc = escapeHtml(itemDesc);
     var displayDesc = descFmt === 'br' ? safeDesc.replace(/\n/g, '<br>') : safeDesc;
     html += '<div class="product-sheet-desc">' + displayDesc + '</div>';
+  }
+  // Ingredients: a small button; the list opens in its own popup
+  var ingr = itemIngredientList(item);
+  if (ingr.length) {
+    html += '<button type="button" class="ingr-btn" onclick="openIngredients(' + item.id + ')"><span class="ic"><i class="fa-solid fa-leaf"></i></span>Ingredients <span class="n">(' + ingr.length + ')</span><i class="fa fa-chevron-right"></i></button>';
   }
 
   html += '</div>'; // end body

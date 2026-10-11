@@ -287,6 +287,9 @@ function handleAddMenuItemBase64($conn, $restaurant_id, $menuId, $itemNameEn, $i
         if ($hasVariations && isset($_POST['variations']) && !empty($_POST['variations'])) {
             saveMenuItemVariations($conn, $newMenuItemId, $_POST['variations']);
         }
+
+        require_once __DIR__ . '/../config/ingredient_helpers.php';
+        saveMenuItemIngredients($conn, $newMenuItemId, $restaurant_id);
         
         echo json_encode([
             'success' => true,
@@ -410,6 +413,9 @@ function handleUpdateMenuItemBase64($conn, $restaurant_id, $menuItemId, $menuId,
             // Delete all variations if has_variations is false
             deleteMenuItemVariations($conn, $menuItemId);
         }
+
+        require_once __DIR__ . '/../config/ingredient_helpers.php';
+        saveMenuItemIngredients($conn, $menuItemId, $restaurant_id);
         
         echo json_encode([
             'success' => true,

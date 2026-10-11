@@ -6137,6 +6137,12 @@ function toggleGatewayMode() {
               </select>
             </div>
           </div>
+
+          <div class="form-group">
+            <label for="ingredients">Ingredients <span style="font-weight:400;color:#6b7280;">(optional)</span>:</label>
+            <textarea id="ingredients" name="ingredients" rows="2" maxlength="1200" placeholder="e.g. Paneer, Curd, Kashmiri chilli, Ginger-garlic paste, Lemon"></textarea>
+            <small style="display:block;margin-top:4px;color:#6b7280;font-size:0.8rem;">Separate with commas. Customers see an <b>Ingredients</b> button on this dish that opens the list.</small>
+          </div>
           
           <div class="form-group">
             <label for="itemImage">Item Image:</label>
