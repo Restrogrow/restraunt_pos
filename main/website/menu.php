@@ -590,7 +590,8 @@ body {
   background: #fff;
   width: 100%;
   max-width: 425px;
-  max-height: 90vh;
+  max-height: 50vh; /* opens halfway up the screen */
+  max-height: 50dvh;
   border-radius: 24px 24px 0 0;
   overflow: hidden;
   display: flex;
@@ -638,7 +639,7 @@ body {
   position: relative;
   width: 100%;
   aspect-ratio: 5 / 4; /* same shape as the dashboard crop */
-  max-height: 45vh;
+  max-height: 30vh; /* leaves room for the name and price in the half-height sheet */
   overflow: hidden;
   background: #f5f5f5;
   flex-shrink: 0;
@@ -653,8 +654,6 @@ body {
 }
 .product-sheet-body {
   padding: 16px 20px;
-  overflow-y: auto;
-  flex: 1;
 }
 .product-sheet-veg {
   width: 20px; height: 20px;
@@ -726,7 +725,19 @@ body {
   box-shadow: 0 2px 8px rgba(45,52,54,0.15);
 }
 .variant-chip.disabled { opacity: 0.4; cursor: not-allowed; background: #f5f5f5; }
+/* Photo + details scroll inside the half-height sheet; Add to Cart stays pinned */
+#productSheetContent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 .product-sheet-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: #fff;
   padding: 12px 20px 20px;
   border-top: 1px solid #eee;
   flex-shrink: 0;
@@ -786,7 +797,7 @@ body {
 }
 
 @media (max-width: 425px) {
-  .product-sheet { max-height: 92vh; border-radius: 20px 20px 0 0; }
+  .product-sheet { border-radius: 20px 20px 0 0; }
   .product-sheet-body { padding: 14px 16px; }
   .product-sheet-name { font-size: 18px; }
   .product-sheet-price { font-size: 20px; }
