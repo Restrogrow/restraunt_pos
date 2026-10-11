@@ -14059,6 +14059,85 @@ async function initWebsiteThemeEditor() {
     document.querySelectorAll('.home-card-style-opt').forEach(function(el) {
       el.addEventListener('click', function() { applyHomeCardStyleUI(el.getAttribute('data-value')); });
     });
+    // ── Live preview: "Current" (unsaved choices) vs "Live" (saved website) ──
+    function collectPreviewTheme() {
+      var val = function(sel) { var el = document.querySelector(sel); return el ? el.value : undefined; };
+      var t = {
+        primary_red: pr ? pr.value : undefined,
+        dark_red: dr ? dr.value : undefined,
+        primary_yellow: py ? py.value : undefined,
+        checkout_color: cc && cc.value ? cc.value : undefined,
+        font_family: val('#siteFontSelect'),
+        card_style: val('#cardStyleInput'),
+        layout_columns: parseInt(val('input[name="layoutColumns"]:checked') || '0', 10) || undefined,
+        logo_shape: val('input[name="logoShape"]:checked')
+      };
+      try { t.layout_style = currentLayoutStyleVal(); } catch (e) {}
+      try { t.header_style = currentHeaderStyleVal(); } catch (e) {}
+      try { t.menu_nav_position = currentMenuNavPositionVal(); } catch (e) {}
+      try { t.menu_card_style = currentMenuCardStyleVal(); } catch (e) {}
+      try { t.home_card_style = currentHomeCardStyleVal(); } catch (e) {}
+      try { t.category_pic_style = currentCategoryPicStyleVal(); } catch (e) {}
+      try { var hb = currentCategoryHeadingVal(); t.category_heading_bg = hb || null; } catch (e) {}
+      return t;
+    }
+    var previewSaved = null; // what's saved (JSON), to show the "unsaved" dot
+    function previewUrlFor(raw) {
+      try {
+        var u = new URL(raw, window.location.href);
+        u.searchParams.delete('preview_theme');
+        if (window.previewMode !== 'live') u.searchParams.set('preview_theme', JSON.stringify(collectPreviewTheme()));
+        return u.toString();
+      } catch (e) { return raw; }
+    }
+    function reloadPreviewForMode() {
+      var frame = document.getElementById('livePreview');
+      if (!frame) return;
+      var cur = frame.getAttribute('data-base') || frame.src;
+      try { if (frame.contentWindow && frame.contentWindow.location.href.indexOf('http') === 0) cur = frame.contentWindow.location.href; } catch (e) {}
+      frame.src = previewUrlFor(cur);
+      var dot = document.getElementById('pvUnsavedDot');
+      if (dot) dot.style.display = previewSaved !== null && JSON.stringify(collectPreviewTheme()) !== previewSaved ? 'inline-block' : 'none';
+    }
+    window.setPreviewMode = function(mode) {
+      window.previewMode = mode === 'live' ? 'live' : 'current';
+      var ind = document.getElementById('previewModeInd');
+      if (ind) ind.style.transform = window.previewMode === 'live' ? 'translateX(100%)' : 'none';
+      document.querySelectorAll('.pv-mode-btn').forEach(function(b) {
+        b.style.color = b.getAttribute('data-pv') === window.previewMode ? (window.previewMode === 'live' ? '#15803d' : '#7c3aed') : '#6b7280';
+      });
+      reloadPreviewForMode();
+    };
+    window.previewMode = window.previewMode || 'current';
+    var previewReloadTimer = 0;
+    function schedulePreviewReload() {
+      if (window.previewMode === 'live') return;
+      clearTimeout(previewReloadTimer);
+      previewReloadTimer = setTimeout(reloadPreviewForMode, 450);
+    }
+    // Any layout choice in Website Appearance refreshes the Current preview
+    document.addEventListener('click', function(e) {
+      if (e.target.closest && e.target.closest('#websiteThemePage label[class$="-opt"], #websiteThemePage label[class*="-opt "], #websiteThemePage input[type="radio"]')) schedulePreviewReload();
+    });
+    document.addEventListener('change', function(e) {
+      if (e.target.closest && e.target.closest('#websiteThemePage') && (e.target.tagName === 'SELECT' || e.target.type === 'radio' || e.target.type === 'color')) schedulePreviewReload();
+    });
+    // Keep the unsaved choices while clicking around inside the Current preview
+    (function() {
+      var frame = document.getElementById('livePreview');
+      if (!frame) return;
+      if (!frame.getAttribute('data-base')) frame.setAttribute('data-base', frame.getAttribute('src'));
+      frame.addEventListener('load', function() {
+        if (window.previewMode === 'live') return;
+        try {
+          var href = frame.contentWindow.location.href;
+          if (href.indexOf('http') === 0 && href.indexOf('preview_theme=') === -1) frame.contentWindow.location.replace(previewUrlFor(href));
+        } catch (e) {}
+      });
+      setTimeout(function() { previewSaved = JSON.stringify(collectPreviewTheme()); window.setPreviewMode(window.previewMode); }, 1500);
+    })();
+    window.markPreviewSaved = function() { previewSaved = JSON.stringify(collectPreviewTheme()); var d = document.getElementById('pvUnsavedDot'); if (d) d.style.display = 'none'; };
+
     function currentMenuCardStyleVal() {
       var r = document.querySelector('input[name="menuCardStyle"]:checked');
       return r ? r.value : 'classic';
@@ -14328,6 +14407,7 @@ async function initWebsiteThemeEditor() {
     // Apply the currently selected (not-yet-saved) settings directly into the same-origin
     // live preview iframe, so the preview updates instantly without Save + Refresh.
     function applyLivePreview() {
+      if (window.previewMode === 'live') return; // Live = the saved website, untouched
       var frame = document.getElementById('livePreview');
       if (!frame) return;
       try {
@@ -15212,6 +15292,7 @@ if (!window.customBgThemes) {
             }
             // Reload the live preview so layout options (card design, categories,
             // header) show too; colours/fonts already update as you change them
+            if (window.markPreviewSaved) window.markPreviewSaved();
             if (window.refreshPreview) window.refreshPreview();
           } else {
             var errMsg = data.message || 'Save failed';

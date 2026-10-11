@@ -2211,7 +2211,18 @@ try {
               <span class="material-symbols-rounded">preview</span>
               Live Website Preview
             </h2>
-            <p style="color:#6b7280;font-size:0.8rem;margin:0 0 10px;line-height:1.45;">Colours update instantly; layout options show after <strong>Save Theme</strong> (the preview reloads by itself).</p>
+            <p style="color:#6b7280;font-size:0.8rem;margin:0 0 10px;line-height:1.45;"><strong>Current</strong> shows your changes before you save. <strong>Live</strong> shows the website your customers see now.</p>
+
+            <!-- Current (unsaved) vs Live (saved) -->
+            <div id="previewModeToggle" style="position:relative;display:flex;padding:4px;margin-bottom:10px;background:#f3f4f6;border-radius:12px;">
+              <span id="previewModeInd" style="position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:9px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.10);transition:transform .3s cubic-bezier(.22,1,.36,1);"></span>
+              <button type="button" class="pv-mode-btn" data-pv="current" onclick="setPreviewMode('current')" style="position:relative;flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;border:0;background:none;border-radius:9px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:#7c3aed;">
+                <span class="material-symbols-rounded" style="font-size:17px;">edit</span>Current <span id="pvUnsavedDot" style="display:none;width:7px;height:7px;border-radius:50%;background:#f59e0b;" title="Unsaved changes"></span>
+              </button>
+              <button type="button" class="pv-mode-btn" data-pv="live" onclick="setPreviewMode('live')" style="position:relative;flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;border:0;background:none;border-radius:9px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:#6b7280;">
+                <span style="width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,0.18);"></span>Live
+              </button>
+            </div>
 
             <!-- Toolbar: device + refresh + open (one row, so the preview gets the height) -->
             <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">

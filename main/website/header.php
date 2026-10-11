@@ -325,6 +325,33 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
         } catch (Exception $e) {
         }
     }
+    // ── Dashboard "Current" preview: unsaved Website Appearance choices arrive as
+    // ?preview_theme=<json>. Applied to this page view only (never saved), and
+    // every value is checked against the same allow-lists the save uses.
+    $preview_theme = null;
+    if (!empty($_GET['preview_theme']) && is_string($_GET['preview_theme']) && strlen($_GET['preview_theme']) < 4000) {
+        $pv = json_decode($_GET['preview_theme'], true);
+        if (is_array($pv)) {
+            $hex = function ($v) { return is_string($v) && preg_match('/^#[0-9a-fA-F]{6}$/', $v) ? $v : null; };
+            $preview_theme = [];
+            if ($v = $hex($pv['primary_red'] ?? null)) $primary_red = $v;
+            if ($v = $hex($pv['dark_red'] ?? null)) $dark_red = $v;
+            if ($v = $hex($pv['primary_yellow'] ?? null)) $primary_yellow = $v;
+            if ($v = $hex($pv['checkout_color'] ?? null)) $checkout_color_override = $v;
+            if (in_array($pv['font_family'] ?? '', ['Poppins', 'Playfair Display', 'Roboto', 'Montserrat', 'Nunito', 'Lora'], true)) $font_family = $pv['font_family'];
+            if (in_array($pv['card_style'] ?? '', THEME_CARD_STYLES, true)) $card_style = $pv['card_style'];
+            if (in_array($pv['layout_style'] ?? '', THEME_LAYOUT_STYLES, true)) $layout_style = $pv['layout_style'];
+            if (in_array($pv['header_style'] ?? '', THEME_HEADER_STYLES, true)) $header_style = $pv['header_style'];
+            if (in_array($pv['menu_nav_position'] ?? '', THEME_MENU_NAV_POSITIONS, true)) $menu_nav_position = $pv['menu_nav_position'];
+            if (in_array($pv['menu_card_style'] ?? '', THEME_MENU_CARD_STYLES, true)) $menu_card_style = $pv['menu_card_style'];
+            if (in_array($pv['home_card_style'] ?? '', THEME_HOME_CARD_STYLES, true)) $home_card_style = $pv['home_card_style'];
+            if (in_array($pv['category_pic_style'] ?? '', THEME_CATEGORY_PIC_STYLES, true)) $category_pic_style = $pv['category_pic_style'];
+            if (array_key_exists('category_heading_bg', $pv)) $category_heading_bg = $hex($pv['category_heading_bg']);
+            if (in_array($pv['logo_shape'] ?? '', ['circle', 'square', 'rounded'], true)) $logo_shape = $pv['logo_shape'];
+            $cols = (int)($pv['layout_columns'] ?? 0);
+            if ($cols >= 1 && $cols <= 3) $preview_theme['layout_columns'] = $cols;
+        }
+    }
     $cardStyleRadii = getCardStyleRadii($card_style);
     $card_radius_css = $cardStyleRadii['card_radius'];
     $btn_radius_css = $cardStyleRadii['btn_radius'];

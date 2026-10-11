@@ -1313,6 +1313,7 @@ body.has-ms-hint .offer-bubble { bottom: 140px; }
 window.websiteRestaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 // Website Appearance > Menu Card Design: 'classic' (original cards) or 'modern'
 window.menuCardStyle = <?php echo json_encode($menu_card_style ?? 'classic'); ?>;
+window.__previewTheme = <?php echo json_encode($preview_theme ?? null); ?>;
 // Custom picture for the "All" category button (Website Appearance), or null
 window.allCategoryIcon = <?php echo json_encode($all_category_icon ?? null); ?>;
 window.websiteRestaurantSlug = <?php echo json_encode($restaurant_slug ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -3245,6 +3246,8 @@ function fetchAndRender() {
     .then(function(themeData) {
       if (themeData && themeData.success && themeData.settings) {
         var cols = themeData.settings.layout_columns || 2;
+        // Dashboard "Current" preview: unsaved column count
+        if (window.__previewTheme && window.__previewTheme.layout_columns) cols = window.__previewTheme.layout_columns;
         var grid = document.getElementById('productGrid');
         grid.classList.remove('cols-1', 'cols-2');
         grid.classList.add('cols-' + cols);
