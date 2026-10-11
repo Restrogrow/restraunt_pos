@@ -521,7 +521,9 @@ body {
   display: flex;
   gap: 14px;
   overflow-x: auto;
-  scroll-snap-type: x proximity;
+  /* Free scrolling: stops wherever the customer lets go (even between two
+     cards); only the arrows move card by card */
+  scroll-snap-type: none;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   padding: 2px 16px 12px;
@@ -2942,8 +2944,8 @@ function syncBestsellerQty(itemId) {
   if (el) el.innerHTML = renderQtyControl(itemId, getItemById(itemId));
 }
 
-// Bestsellers scrolling: touch uses native swipe; mouse gets drag-to-scroll
-// (snapping to the nearest card), ‹ › arrows, and edge fades on both.
+// Bestsellers scrolling: touch uses native (free) swipe; mouse gets drag-to-scroll
+// that glides to a stop wherever it ends; ‹ › arrows move card by card; edge fades on both.
 (function() {
   var track = document.getElementById('bestsellersTrack');
   var viewport = document.getElementById('bestsellersViewport');
@@ -2983,15 +2985,26 @@ function syncBestsellerQty(itemId) {
     track.scrollTo({ left: nearestCardLeft(track.scrollLeft + dir * step * perPage), behavior: 'smooth' });
     setTimeout(updateNav, 450);
   }
-  if (prev) prev.addEventListener('click', function() { page(-1); });
-  if (next) next.addEventListener('click', function() { page(1); });
+  if (prev) prev.addEventListener('click', function() { stopGlide(); page(-1); });
+  if (next) next.addEventListener('click', function() { stopGlide(); page(1); });
 
   // Mouse drag-to-scroll
   var down = false, dragging = false, startX = 0, startLeft = 0, suppressClick = false;
+  var lastX = 0, lastT = 0, velocity = 0, glideId = 0;
+  function stopGlide() { if (glideId) { cancelAnimationFrame(glideId); glideId = 0; } }
+  // After a mouse drag, keep moving at the drag speed and ease to a stop
+  function glide() {
+    velocity *= 0.94;
+    if (Math.abs(velocity) < 0.02) { glideId = 0; updateNav(); return; }
+    track.scrollLeft -= velocity * 16;
+    glideId = requestAnimationFrame(glide);
+  }
   track.addEventListener('pointerdown', function(e) {
     if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    stopGlide();
     down = true; dragging = false;
-    startX = e.clientX; startLeft = track.scrollLeft;
+    startX = lastX = e.clientX; startLeft = track.scrollLeft;
+    lastT = performance.now(); velocity = 0;
   });
   track.addEventListener('pointermove', function(e) {
     if (!down) return;
@@ -3001,7 +3014,12 @@ function syncBestsellerQty(itemId) {
       track.classList.add('is-dragging');
       try { track.setPointerCapture(e.pointerId); } catch (err) {}
     }
-    if (dragging) track.scrollLeft = startLeft - dx;
+    if (dragging) {
+      track.scrollLeft = startLeft - dx;
+      var now = performance.now(), dt = now - lastT;
+      if (dt > 0) velocity = 0.8 * ((e.clientX - lastX) / dt) + 0.2 * velocity; // px per ms
+      lastX = e.clientX; lastT = now;
+    }
   });
   function endDrag() {
     if (!down) return;
@@ -3011,8 +3029,9 @@ function syncBestsellerQty(itemId) {
     suppressClick = true;
     setTimeout(function() { suppressClick = false; }, 0);
     track.classList.remove('is-dragging');
-    track.scrollTo({ left: nearestCardLeft(track.scrollLeft), behavior: 'smooth' });
-    setTimeout(updateNav, 450);
+    // No snapping: glide on with the drag speed (if the mouse was still moving)
+    if (performance.now() - lastT > 80) velocity = 0;
+    if (Math.abs(velocity) > 0.05) glideId = requestAnimationFrame(glide); else updateNav();
   }
   track.addEventListener('pointerup', endDrag);
   track.addEventListener('pointercancel', endDrag);
