@@ -65,7 +65,7 @@ body {
   flex-direction: column;
   height: 100%;
 }
-/* Scrolling down the dishes slides the top bar + search up out of view
+/* Scrolling down the dishes slides the top bar (veg toggle, filter...) up out of view
    (scrolling up brings them back); see initMenuChromeAutoHide() */
 .pr-share-header { transition: margin-top 0.28s ease; }
 /* no automatic scroll-position nudging when the bar resizes the scroll area */
@@ -1805,8 +1805,9 @@ function sheetAddToCart(itemId) {
   closeProductSheet();
 }
 
-// Scrolling down the dishes hides the top bar + search (more room for food);
-// scrolling up, or reaching the top, brings them back. The category bar stays.
+// Scrolling down the dishes hides the top bar (back, logo, Veg Only, filter,
+// share) for more room; the search box and categories stay.
+// Scrolling back up, or reaching the top, brings it back.
 function initMenuChromeAutoHide() {
   var scroller = document.querySelector('.main-content');
   var header = document.querySelector('.pr-share-header');
@@ -1821,7 +1822,8 @@ function initMenuChromeAutoHide() {
   // very top.
   var THRESHOLD = 30, SLIDE_MS = 350;
   var last = scroller.scrollTop, travel = 0, hidden = false, lockedUntil = 0;
-  function barHeight() { return header.offsetHeight + (search ? search.offsetHeight : 0); }
+  // Only the top bar (back, logo, Veg Only, filter, share) hides; search stays
+  function barHeight() { return header.offsetHeight; }
   function setHidden(h) {
     if (h === hidden) return;
     var searchInput = search && search.querySelector('input');
