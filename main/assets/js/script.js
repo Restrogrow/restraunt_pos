@@ -13746,6 +13746,31 @@ async function initWebsiteThemeEditor() {
         if (radio) radio.checked = active;
       });
     }
+    // Category heading colour: Automatic (light shade of the price colour) or a picked colour
+    function lightPriceShade() {
+      var pc = document.getElementById('bsPriceColor');
+      var hex = (pc && /^#[0-9a-f]{6}$/i.test(pc.value)) ? pc.value : '#ea580c';
+      var mix = function (i) { return Math.round(parseInt(hex.substr(i, 2), 16) * 0.09 + 255 * 0.91); };
+      return '#' + [1, 3, 5].map(function (i) { return ('0' + mix(i).toString(16)).slice(-2); }).join('');
+    }
+    function applyCategoryHeadingUI(val) {
+      var auto = document.getElementById('categoryHeadingAuto'), inp = document.getElementById('categoryHeadingBg'), prev = document.getElementById('categoryHeadingPreview');
+      if (!auto || !inp) return;
+      if (val !== undefined) { auto.checked = !val; if (val) inp.value = val; }
+      if (auto.checked) inp.value = lightPriceShade();
+      inp.disabled = auto.checked;
+      if (prev) prev.style.background = inp.value;
+    }
+    function currentCategoryHeadingVal() {
+      var auto = document.getElementById('categoryHeadingAuto'), inp = document.getElementById('categoryHeadingBg');
+      if (!auto || !inp) return undefined;
+      return auto.checked ? '' : inp.value;
+    }
+    ['categoryHeadingAuto', 'categoryHeadingBg', 'bsPriceColor'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', function () { applyCategoryHeadingUI(); });
+      if (el) el.addEventListener('change', function () { applyCategoryHeadingUI(); });
+    });
     // Menu page card design (Classic / Modern)
     function applyMenuCardStyleUI(val) {
       document.querySelectorAll('.menu-card-style-opt').forEach(function(el) {
@@ -14654,6 +14679,7 @@ if (!window.customBgThemes) {
       applyLayoutHeaderStyleUI(data.settings.layout_style || 'grid', data.settings.header_style || 'hero');
       applyMenuNavPositionUI(data.settings.menu_nav_position || 'left');
       applyMenuCardStyleUI(data.settings.menu_card_style || 'classic');
+      applyCategoryHeadingUI(data.settings.category_heading_bg || '');
 
       // Set background theme URL
       const bgUrl = data.settings.background_theme || '';
@@ -14870,6 +14896,7 @@ if (!window.customBgThemes) {
             header_style: currentHeaderStyleVal(),
             menu_nav_position: currentMenuNavPositionVal(),
             menu_card_style: currentMenuCardStyleVal(),
+            category_heading_bg: currentCategoryHeadingVal(),
             bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined
           };
 

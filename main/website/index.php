@@ -50,7 +50,8 @@ echo websiteFontLinks(['poppins', 'fontawesome', 'bootstrap-icons']);
   --bsl-add-label: "<?php echo $bestseller_style['add_label']; ?>";
   --bsl-add-radius: <?php echo ['pill' => '999px', 'square' => '4px'][$bestseller_style['add_shape']] ?? '10px'; ?>;
   --bsl-price: <?php echo htmlspecialchars($bestseller_style['price_color'], ENT_QUOTES, 'UTF-8'); ?>;
-}
+<?php if (!empty($category_heading_bg)): ?>  --cat-heading-bg: <?php echo htmlspecialchars($category_heading_bg, ENT_QUOTES, 'UTF-8'); ?>;
+<?php endif; ?>}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: var(--site-font);
@@ -867,7 +868,7 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 12px; border-radius: 12px;
   /* very light shade of the price colour, same as the Menu page heading */
-  background: color-mix(in srgb, var(--bsl-price) 9%, #fff);
+  background: var(--cat-heading-bg, color-mix(in srgb, var(--bsl-price) 9%, #fff));
   margin-top: 8px;
 }
 .category-header h3 {

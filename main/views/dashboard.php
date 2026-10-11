@@ -1937,6 +1937,20 @@ try {
               </div>
             </div>
 
+            <!-- Category heading colour (Menu page + home menu list) -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">format_color_fill</span>
+                Category Heading Colour
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Background of the category headings (e.g. <b>Starters (6)</b>). <b>Automatic</b> uses a light shade of your price colour; untick it to pick your own &mdash; light colours read best.</p>
+              <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 500; cursor: pointer;"><input type="checkbox" id="categoryHeadingAuto" checked> Automatic</label>
+                <input type="color" id="categoryHeadingBg" value="#fdeee4" style="width: 52px; height: 36px; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 2px; background: #fff; cursor: pointer;" disabled>
+                <span id="categoryHeadingPreview" style="padding: 6px 14px; border-radius: 10px; font-weight: 700; color: #1a1b1f; background: #fdeee4;">Starters (6)</span>
+              </div>
+            </div>
+
             <!-- Header Style: hero banner vs a compact minimal bar -->
             <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">

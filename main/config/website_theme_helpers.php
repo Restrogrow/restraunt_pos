@@ -173,6 +173,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
     //   bestseller_style            — Bestsellers section look (see getBestsellerStyle())
     //   menu_nav_position           — Menu page categories: left sidebar or top bar
     //   menu_card_style             — Menu page dish cards: classic or modern
+    //   category_heading_bg         — category heading colour (NULL = light shade of the price colour)
     $columns = [
         'theme_preset'     => "VARCHAR(30) DEFAULT NULL",
         'card_style'       => "VARCHAR(10) DEFAULT 'rounded'",
@@ -187,6 +188,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         'bestseller_style' => "TEXT DEFAULT NULL",
         'menu_nav_position' => "VARCHAR(10) DEFAULT 'left'",
         'menu_card_style' => "VARCHAR(10) DEFAULT 'classic'",
+        'category_heading_bg' => "VARCHAR(20) DEFAULT NULL",
     ];
     try {
         $existing = []; $types = [];

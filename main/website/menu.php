@@ -30,7 +30,8 @@
   /* Rating/OFF chip + price colours: same Website Appearance > Bestsellers settings as the home page */
   --bsl-badge: <?php echo htmlspecialchars($bestseller_style['badge_color'], ENT_QUOTES, 'UTF-8'); ?>;
   --bsl-price: <?php echo htmlspecialchars($bestseller_style['price_color'], ENT_QUOTES, 'UTF-8'); ?>;
-}
+<?php if (!empty($category_heading_bg)): ?>  --cat-heading-bg: <?php echo htmlspecialchars($category_heading_bg, ENT_QUOTES, 'UTF-8'); ?>;
+<?php endif; ?>}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   height: 100%; overflow: hidden;
@@ -62,6 +63,20 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+/* Scrolling down the dishes slides the top bar + search up out of view
+   (scrolling up brings them back); see initMenuChromeAutoHide() */
+.pr-share-header { transition: margin-top 0.28s ease; }
+/* Category buttons: press feedback and a small pop when one is selected */
+.side-nav-btn { transition: transform 0.18s ease, background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease; }
+.side-nav-btn:active { transform: scale(0.94); }
+.side-nav-btn img { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.side-nav-btn.active { animation: catPop 0.38s ease; box-shadow: 0 6px 14px color-mix(in srgb, var(--primary-red, #e17055) 35%, transparent); }
+.side-nav-btn.active img { transform: scale(1.06); box-shadow: 0 0 0 2px rgba(255,255,255,0.9); }
+@keyframes catPop { 0% { transform: scale(0.9); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .pr-share-header, .side-nav-btn, .side-nav-btn img { transition: none; }
+  .side-nav-btn.active { animation: none; }
 }
 
 .pr-share-header {
@@ -177,7 +192,7 @@ body {
 
 .category-overview {
   /* very light shade of the price colour (Website Appearance > Bestsellers: price) */
-  background: color-mix(in srgb, var(--bsl-price) 9%, #fff);
+  background: var(--cat-heading-bg, color-mix(in srgb, var(--bsl-price) 9%, #fff));
   padding: 8px 12px 6px;
   border-radius: 0 0 14px 14px;
 }
@@ -1785,6 +1800,33 @@ function sheetAddToCart(itemId) {
   }
   closeProductSheet();
 }
+
+// Scrolling down the dishes hides the top bar + search (more room for food);
+// scrolling up, or reaching the top, brings them back. The category bar stays.
+function initMenuChromeAutoHide() {
+  var scroller = document.querySelector('.main-content');
+  var header = document.querySelector('.pr-share-header');
+  var search = document.querySelector('.search-rapper');
+  if (!scroller || !header) return;
+  var last = 0, hidden = false;
+  function setHidden(h) {
+    if (h === hidden) return;
+    hidden = h;
+    var menu = document.getElementById('filterMenu');
+    if (h && menu) menu.classList.remove('show');
+    var searchInput = search && search.querySelector('input');
+    if (h && searchInput && document.activeElement === searchInput) { hidden = false; return; } // keep it while typing
+    header.style.marginTop = h ? -(header.offsetHeight + (search ? search.offsetHeight : 0)) + 'px' : '';
+  }
+  scroller.addEventListener('scroll', function() {
+    var st = scroller.scrollTop, d = st - last;
+    if (st < 40) setHidden(false);
+    else if (d > 6) setHidden(true);
+    else if (d < -6) setHidden(false);
+    if (Math.abs(d) > 6 || st < 40) last = st;
+  }, { passive: true });
+}
+document.addEventListener('DOMContentLoaded', initMenuChromeAutoHide);
 
 function updateNavActive(menuIdx) {
   var btns = document.querySelectorAll('.side-nav-btn');
