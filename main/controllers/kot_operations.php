@@ -117,6 +117,38 @@ if (!function_exists('ensureKotSchema')) {
     }
 }
 
+if (!function_exists('advanceLinkedOrderWithKitchen')) {
+    /**
+     * Keep a linked order (e.g. a website dine-in order) in step with its
+     * kitchen ticket: ticket Preparing → order Preparing, ticket Ready /
+     * Completed → order Ready. Only ever moves forward, one allowed step at a
+     * time (Pending/Accepted → Preparing → Ready), so it never skips the
+     * order state machine and never touches a finished or cancelled order.
+     * Staff still mark Served/Completed (where loyalty points are awarded).
+     * Returns true when this call moved the order onto $target.
+     */
+    function advanceLinkedOrderWithKitchen($conn, $orderId, $target, $restaurant_id) {
+        if (!$orderId || !function_exists('validateAndUpdateOrderStatus')) return false;
+        $rank = ['Pending' => 0, 'Accepted' => 1, 'Preparing' => 2, 'Ready' => 3];
+        if (!isset($rank[$target])) return false;
+        $st = $conn->prepare("SELECT order_status FROM orders WHERE id = ? AND restaurant_id = ?");
+        $st->execute([$orderId, $restaurant_id]);
+        $current = $st->fetchColumn();
+        if ($current === false || !isset($rank[$current]) || $rank[$current] >= $rank[$target]) return false;
+        foreach (['Preparing', 'Ready'] as $step) {
+            if ($rank[$step] <= $rank[$current]) continue;
+            $r = validateAndUpdateOrderStatus($conn, (int)$orderId, $step, [], [], $restaurant_id);
+            if (empty($r['success'])) {
+                error_log('advanceLinkedOrderWithKitchen: order ' . $orderId . ' → ' . $step . ' skipped: ' . ($r['message'] ?? ''));
+                return false;
+            }
+            $current = $step;
+            if ($step === $target) return true;
+        }
+        return false;
+    }
+}
+
 if (!function_exists('linkWebsiteKotToOrder')) {
     /**
      * Website dine-in tickets ("Order #ORD-… - Website Order") belong to an
@@ -438,6 +470,12 @@ function handleUpdateKOTStatus() {
         $stmt = $conn->prepare($sql);
         $stmt->execute([$status, $kot_id, $restaurant_id]);
 
+        // A ticket that already belongs to an order (website dine-in) moves that
+        // order along with the kitchen instead of leaving it at Pending
+        if (!empty($kot['order_id']) && ($status === 'Preparing' || $status === 'Ready')) {
+            advanceLinkedOrderWithKitchen($conn, (int)$kot['order_id'], $status, $restaurant_id);
+        }
+
         // If status is "Ready", create order from KOT
         if ($status === 'Ready') {
             if (!$kot['order_id']) {
@@ -612,12 +650,11 @@ function handleCompleteKOT() {
         if (!empty($kot['order_id'])) {
             $order_id = $kot['order_id'];
 
-            // Use state machine for atomic order status update
-            $stateResult = validateAndUpdateOrderStatus($conn, (int)$order_id, 'Ready');
-            if (!$stateResult['success']) {
-                // Order might already be Ready or further along — that's OK, just log
-                error_log('handleCompleteKOT: order status update skipped - ' . $stateResult['message']);
-            }
+            // Step the order forward to Ready (Pending → Preparing → Ready); a
+            // direct Pending → Ready jump is rejected by the state machine,
+            // which used to leave website orders stuck at Pending
+            // (an order that's already Ready or further along is left as it is)
+            $stateResult = ['success' => advanceLinkedOrderWithKitchen($conn, (int)$order_id, 'Ready', $restaurant_id)];
 
             // Update KOT status to completed
             $update_kot_sql = "UPDATE kot SET kot_status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?";

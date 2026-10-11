@@ -450,16 +450,19 @@ function handleCreateKOT($conn, $restaurant_id) {
             }
         }
         
-        // Paid-up-front tickets (the POS "Pay" button — any method other than
-        // Cash means money was already collected, incl. split payments whose
-        // breakdown lives in the notes) must land in `orders` IMMEDIATELY.
+        // Paid-up-front tickets (the POS "Pay" button: the cashier enters the
+        // amount received per method — Cash, Card, UPI or a split like
+        // "Cash+UPI" — so money was already collected) must land in `orders`
+        // IMMEDIATELY. Cash used to be left out here, so counter cash sales
+        // only reached Reports if/when the kitchen marked the ticket Ready.
+        // "Due" (nothing collected) is the one method that is not paid.
         // `orders` is what every sales report sums (get_sales_report.php), so
         // deferring the order row until the kitchen marks the KOT Ready made
         // paid counter sales invisible in Reports — sometimes for hours, and
         // forever whenever the ticket was never advanced. Same shape as
         // kot_operations.php's Ready handler: order 'Paid' + 'Ready', linked
         // back to the ticket via kot.order_id, payment row recorded.
-        $isPaidUpFront = !empty($paymentMethod) && $paymentMethod !== 'Cash';
+        $isPaidUpFront = !empty($paymentMethod) && $paymentMethod !== 'Due';
         if ($isPaidUpFront) {
             $orderNumber = generateOrderNumber($conn, $restaurant_id);
             $orderNotes = trim($kotNotes . (!empty($kotNotes) ? "\n" : '') . "[KOT: " . $kotNumber . "]");
