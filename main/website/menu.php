@@ -1072,6 +1072,15 @@ body.has-ms-hint .offer-bubble { bottom: 140px; }
 .mc-card .veg-dot img, .mc-card .veg-dot svg { width: 16px; height: 16px; object-fit: contain; }
 .mc-fav { position: absolute; top: 6px; right: 6px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.35); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; }
 .mc-fav.on { background: #fff; color: #ef4444; }
+.mc-fav.beat i { animation: favBeat 0.45s cubic-bezier(.34,1.56,.64,1); }
+@keyframes favBeat { 0% { transform: scale(0.6); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
+.fav-nav-wrap { position: relative; display: inline-block; line-height: 0; }
+.layout-container.nav-top .side-nav .side-nav-btn.fav-nav-btn { width: calc(var(--cat-size) + 34px); }
+.fav-nav-count { position: absolute; top: -4px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 9.5px; font-weight: 800; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px #fff; }
+.fav-empty { grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: #6b7280; }
+.fav-empty i { display: block; margin: 0 auto 12px; width: 56px; height: 56px; line-height: 56px; border-radius: 50%; background: #fff1f2; color: #ef4444; font-size: 24px; }
+.fav-empty b { display: block; margin-bottom: 4px; font-size: 15px; color: #111827; }
+@media (prefers-reduced-motion: reduce) { .mc-fav.beat i { animation: none; } }
 .mc-card .img-chip-save { background: var(--primary-red, #e53935); color: #fff; }
 .mc-card .card-body { padding: 8px 10px 10px; gap: 3px; }
 .mc-name { font-size: 14px; font-weight: 700; color: #111827; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
@@ -1558,6 +1567,21 @@ function toggleFavItem(itemId, btn) {
   btn.classList.toggle('on', on);
   btn.setAttribute('aria-pressed', on);
   btn.innerHTML = '<i class="fa-' + (on ? 'solid' : 'regular') + ' fa-heart"></i>';
+  btn.classList.remove('beat'); void btn.offsetWidth; if (on) btn.classList.add('beat');
+  refreshFavNav();
+  // Viewing Favourites: an un-hearted dish leaves the list
+  if (!on && currentMenuIdx === FAV_CATEGORY && !activeOfferFilter) setTimeout(function() { renderProducts(FAV_CATEGORY); }, 250);
+}
+function refreshFavNav() {
+  var el = document.getElementById('favNavCount');
+  if (!el) return;
+  var n = getFavItems().length;
+  el.textContent = n > 99 ? '99+' : n;
+  el.style.display = n ? '' : 'none';
+}
+function favHeartHtml(item) {
+  var fav = isFavItem(item.id);
+  return '<button type="button" class="mc-fav' + (fav ? ' on' : '') + '" aria-label="Favourite" aria-pressed="' + fav + '" onclick="event.stopPropagation();toggleFavItem(' + item.id + ', this)"><i class="fa-' + (fav ? 'solid' : 'regular') + ' fa-heart"></i></button>';
 }
 
 function renderCartBtn(itemId, item) {
@@ -1882,12 +1906,20 @@ function getTypeIcon(type) {
 
 // menuIdx -1 = the "All" category: every dish from every category, in menu order
 var ALL_CATEGORY = -1;
+var FAV_CATEGORY = -2;   // dishes hearted on this device
 function renderProducts(menuIdx) {
   var items, menuName;
   if (menuIdx === ALL_CATEGORY) {
     items = [];
     for (var g = 0; g < menuItems.length; g++) items = items.concat(menuItems[g].items || []);
     menuName = 'All';
+  } else if (menuIdx === FAV_CATEGORY) {
+    var favIds = getFavItems();
+    items = [];
+    for (var fg = 0; fg < menuItems.length; fg++) {
+      (menuItems[fg].items || []).forEach(function(it) { if (favIds.indexOf(parseInt(it.id, 10)) !== -1 || favIds.indexOf(it.id) !== -1) items.push(it); });
+    }
+    menuName = 'Favourites';
   } else {
     items = menuItems[menuIdx] ? [].concat(menuItems[menuIdx].items) : [];
     menuName = menuItems[menuIdx] ? menuItems[menuIdx].name : 'Menu';
@@ -1949,7 +1981,7 @@ function renderProducts(menuIdx) {
     html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
       '<div class="card-img-wrap">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + (item.item_name_translated || item.item_name_en || item.name) + '" loading="lazy">' +
-        getTypeIcon(item.item_type) + cardBadgesHtml(item) +
+        getTypeIcon(item.item_type) + cardBadgesHtml(item) + favHeartHtml(item) +
         (oos ? '<span class="img-oos">Out of Stock</span>' : '') +
       '</div>' +
       '<div class="card-body">' +
@@ -1958,6 +1990,9 @@ function renderProducts(menuIdx) {
         (!oos ? '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span>' : '') +
       '</div>' +
     '</div>';
+  }
+  if (menuIdx === FAV_CATEGORY && !items.length && !activeOfferFilter) {
+    html = '<div class="fav-empty"><i class="fa-regular fa-heart"></i><b>No favourites yet</b>Tap the heart on any dish to save it here</div>';
   }
   el.innerHTML = html;
   updateNavActive(menuIdx);
@@ -2672,6 +2707,12 @@ function renderSideNav() {
       '<button class="side-nav-btn' + (currentMenuIdx === ALL_CATEGORY ? ' active' : '') + '" data-index="' + ALL_CATEGORY + '">' +
         '<img src="' + (window.allCategoryIcon || allIcon) + '" alt="All dishes" width="36" height="36"><br><span class="cat-name">All</span>' +
       '</button>' +
+    '</div>' +
+    // Favourites: every dish hearted on this device
+    '<div class="sub-views">' +
+      '<button class="side-nav-btn fav-nav-btn' + (currentMenuIdx === FAV_CATEGORY ? ' active' : '') + '" data-index="' + FAV_CATEGORY + '">' +
+        '<span class="fav-nav-wrap"><img src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1f2%22/%3E%3Cpath fill=%22%23ef4444%22 d=%22M24 35.5l-1.9-1.7C15.3 27.7 11 23.8 11 19c0-3.9 3.1-7 7-7 2.2 0 4.3 1 5.7 2.7L24 15l.3-.3C25.7 13 27.8 12 30 12c3.9 0 7 3.1 7 7 0 4.8-4.3 8.7-11.1 14.8L24 35.5z%22/%3E%3C/svg%3E" alt="Favourites" width="36" height="36"><span class="fav-nav-count" id="favNavCount"></span></span><br><span class="cat-name">Favourites</span>' +
+      '</button>' +
     '</div>' : '';
   for (var i = 0; i < menuItems.length; i++) {
     var c = menuItems[i];
@@ -2699,6 +2740,7 @@ function renderSideNav() {
     '</div>';
   }
   el.innerHTML = html;
+  refreshFavNav();
 }
 
 // Adds/removes just the Add-ons nav button in place once fetchAddons()
@@ -3214,7 +3256,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (window.menuCardStyle === 'modern') { html += modernCardHtml(item); continue; }
                 html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
                   '<div class="card-img-wrap"><img src="' + getImageUrl(item.item_image) + '" alt="' + escapeHtml(item.item_name_translated || item.item_name_en) + '" loading="lazy">' +
-                  getTypeIcon(item.item_type) + cardBadgesHtml(item) + (oos ? '<span class="img-oos">Out of Stock</span>' : '') + '</div>' +
+                  getTypeIcon(item.item_type) + cardBadgesHtml(item) + favHeartHtml(item) + (oos ? '<span class="img-oos">Out of Stock</span>' : '') + '</div>' +
                   '<div class="card-body">' +
                   '<div class="card-name">' + escapeHtml(item.item_name_translated || item.item_name_en) + '</div>' +
                   '<div class="card-price">' + cardPriceHtml(item) + '</div>' +
