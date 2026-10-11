@@ -1,6 +1,43 @@
 <?php require_once __DIR__ . '/header.php';
 // Preview links (layout gallery): ?preview_home=<style> shows that look without saving it
 if (isset($_GET['preview_home']) && in_array($_GET['preview_home'], THEME_HOME_CARD_STYLES, true)) { $home_card_style = $_GET['preview_home']; }
+
+// ── Header card styles (Glass / Full cover / Photo + card / Brand colour / Poster) ──
+$hx_style = in_array($header_style ?? 'hero', THEME_HEADER_CARD_STYLES, true) ? $header_style : '';
+$hx_meta_html = '';
+if ($hx_style) {
+    $hxTime = function ($t) { return trim(preg_replace('/:00(?=\s*[AaPp][Mm])/', '', (string)$t)); };
+    // Today's hours line: "Open now · Closes 11 PM" / "Closed · Opens 9 AM" / "Closed today"
+    $hxHours = '';
+    $hxHoursClosed = !$restaurant_open;
+    $hxDays = !empty($opening_hours) ? json_decode($opening_hours, true) : null;
+    if (is_array($hxDays)) {
+        $hxNow = new DateTime('now', $restaurant_tz);
+        $hxToday = $hxDays[strtolower($hxNow->format('l'))] ?? null;
+        if (!$hxToday || empty($hxToday['open'])) {
+            $hxHours = 'Closed today';
+        } elseif ($restaurant_open) {
+            $hxHours = 'Open now · Closes ' . $hxTime($hxToday['closing'] ?? '');
+        } else {
+            $hxOpenAt = new DateTime($hxNow->format('Y-m-d') . ' ' . ($hxToday['opening'] ?? '09:00 AM'), $restaurant_tz);
+            $hxHours = $hxNow < $hxOpenAt ? 'Closed · Opens ' . $hxTime($hxToday['opening'] ?? '') : 'Closed now';
+        }
+    } else {
+        $hxHours = $restaurant_open ? 'Open now' : 'Closed now';
+    }
+    // Real rating from customers' order feedback (shown from 3 ratings up)
+    $hxRating = null;
+    try {
+        $hxSt = $conn->prepare('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM order_feedback WHERE restaurant_id = ? AND rating > 0');
+        $hxSt->execute([$restaurant_id]);
+        $hxR = $hxSt->fetch(PDO::FETCH_ASSOC);
+        if ($hxR && (int)$hxR['n'] >= 3) $hxRating = ['avg' => number_format((float)$hxR['avg'], 1), 'n' => (int)$hxR['n']];
+    } catch (Exception $e) {}
+    $hx_meta_html = '<div class="hx-meta">' .
+        '<span class="hx-chip' . ($hxHoursClosed ? ' closed' : '') . '"><i class="fa-regular fa-clock"></i>' . htmlspecialchars($hxHours, ENT_QUOTES, 'UTF-8') . '</span>' .
+        ($hxRating ? '<span class="hx-chip rate">' . $hxRating['avg'] . ' <i class="fa-solid fa-star"></i></span><span class="hx-chip soft">' . $hxRating['n'] . ' reviews</span>' : '') .
+    '</div>';
+}
 // If table parameter is present (from QR code), redirect to menu
 if (isset($_GET['table']) && trim($_GET['table']) !== '') {
     $menuUrl = restaurantPageUrl('menu');
@@ -88,6 +125,93 @@ body {
   position: relative;
   padding-bottom: 20px;
 }
+
+/* ── Header card styles (Website Appearance > Header Style): the logo, name,
+   tagline, today's hours and rating sit together in .hero-card. For Hero and
+   Minimal the wrapper is invisible (display: contents) so they look as before. */
+.hero-card { display: contents; }
+.hx-meta { display: none; }
+.theme-bg.hx { min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; background-size: cover; background-position: center; }
+.theme-bg.hx .top-bar { position: absolute; top: 0; right: 0; z-index: 5; }
+.theme-bg.hx::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hx .hero-card { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.hx .profile-section { order: 1; }
+.hx .rest-name { order: 2; white-space: normal; padding: 0 8px; flex-wrap: wrap; row-gap: 0; }
+.hx .rest-name .rest-name-text { font-size: 22px !important; font-weight: 800; white-space: normal; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hx .rest-name .open-icon { display: none; }
+.hx .bio-container { order: 3; margin: 6px 8px 0; padding: 0; background: none; backdrop-filter: none; border-radius: 0; }
+.hx .bio-web { font-size: 13.5px; line-height: 1.45; opacity: .88; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hx .hx-meta { order: 4; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
+.hx .loc-container { order: 5; margin: 10px 8px 0; padding: 0; background: none; backdrop-filter: none; }
+.hx .location-txt { font-size: 12px; font-weight: 500; opacity: .8; }
+.hx .location-txt i { font-size: 12px; }
+.hx-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; white-space: nowrap; background: rgba(255,255,255,.16); color: #fff; }
+.hx-chip i { font-size: 11px; }
+.hx-chip.rate { background: #16a34a; color: #fff; }
+.hx-chip.closed { background: rgba(220,38,38,.9); color: #fff; }
+.hx-chip.soft { background: transparent; padding-left: 2px; padding-right: 2px; opacity: .85; font-weight: 600; }
+.hx .profile-img-wrap { background: #fff; box-shadow: 0 8px 22px rgba(0,0,0,.25); margin-bottom: 0; }
+
+/* Glass card — photo with a frosted card (logo half outside the card) */
+.hx-glass { min-height: 430px; justify-content: flex-end; padding: 80px 14px 16px !important; }
+.hx-glass::before { background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,.35)); }
+.hx-glass .hero-card { margin-top: 46px; padding: 52px 16px 18px; border-radius: 24px; background: rgba(18,18,24,.52); -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 18px 40px rgba(0,0,0,.28); }
+.hx-glass .profile-section { position: absolute; top: -44px; left: 50%; transform: translateX(-50%); }
+.hx-glass .profile-img-wrap { width: 88px !important; height: 88px !important; border: 3px solid rgba(255,255,255,.9); }
+
+/* Full cover — big photo, dark fade, logo + name bottom-left */
+.hx-cover { min-height: 360px; justify-content: flex-end; padding: 70px 16px 18px !important; }
+.hx-cover::before { background: linear-gradient(180deg, rgba(0,0,0,0) 20%, rgba(0,0,0,.55) 55%, rgba(0,0,0,.85)); }
+.hx-cover .hero-card { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; text-align: left; }
+.hx-cover .profile-section { grid-column: 1; }
+.hx-cover .rest-name { grid-column: 2; justify-content: flex-start; padding: 0; }
+.hx-cover .rest-name .rest-name-text { font-size: 24px !important; }
+.hx-cover .bio-container, .hx-cover .hx-meta, .hx-cover .loc-container { grid-column: 1 / -1; margin-left: 0; margin-right: 0; }
+.hx-cover .hx-meta { justify-content: flex-start; }
+.hx-cover .bio-web, .hx-cover .location-txt { text-align: left; }
+.hx-cover .profile-img-wrap { width: 60px !important; height: 60px !important; border: 2px solid rgba(255,255,255,.85); }
+
+/* Photo + card — photo strip on top, white card overlapping it */
+.hx-card { padding: 128px 14px 4px !important; background-color: #fff !important; background-size: 100% 200px !important; background-repeat: no-repeat !important; background-position: top center !important; color: #111827; }
+.hx-card::before { height: 200px; bottom: auto; background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.25)); }
+.hx-card .hero-card { padding: 54px 16px 18px; border-radius: 24px; background: #fff; box-shadow: 0 12px 32px rgba(17,24,39,.10); border: 1px solid #f1f1f4; }
+.hx-card .profile-section { position: absolute; top: -46px; left: 50%; transform: translateX(-50%); }
+.hx-card .profile-img-wrap { width: 92px !important; height: 92px !important; border: 4px solid #fff; }
+.hx-card .rest-name { color: #111827; }
+.hx-card .bio-web { color: #4b5563; opacity: 1; }
+.hx-card .location-txt { color: #6b7280; opacity: 1; }
+.hx-card .location-txt i { color: var(--primary-red, #e11d48); }
+.hx-card .hx-chip { background: #f3f4f6; color: #111827; }
+.hx-card .hx-chip.rate { background: #16a34a; color: #fff; }
+.hx-card .hx-chip.closed { background: #fee2e2; color: #b91c1c; }
+.hx-card .hx-chip.soft { background: transparent; color: #4b5563; }
+
+/* Brand colour — no photo: brand gradient with a soft dot pattern */
+.hx-brand { padding: 54px 16px 24px !important; background: radial-gradient(circle, rgba(255,255,255,.16) 1.5px, transparent 2px) 0 0 / 20px 20px, linear-gradient(140deg, var(--primary-red, #e11d48), var(--dark-red, #9f1239)) !important; }
+.hx-brand::before { inset: auto -60px -90px auto; width: 240px; height: 240px; border-radius: 50%; background: rgba(255,255,255,.10); }
+.hx-brand::after { content: ""; position: absolute; top: -70px; left: -50px; width: 180px; height: 180px; border-radius: 50%; background: rgba(0,0,0,.08); pointer-events: none; }
+.hx-brand .profile-img-wrap { width: 96px !important; height: 96px !important; border: 4px solid rgba(255,255,255,.9); }
+.hx-brand .rest-name { margin-top: 12px; }
+.hx-brand .rest-name .rest-name-text { font-size: 25px !important; }
+.hx-brand .hx-chip.closed { background: #fff; color: #b91c1c; }
+.hx-brand .more-btn { background: rgba(255,255,255,.22); box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+/* Big two-line names: the verified tick would sit alone on a line */
+.hx-cover .rest-name .verify-icon, .hx-poster .rest-name .verify-icon { display: none; }
+
+/* Poster — tall photo, big bold name with a brand-colour underline */
+.hx-poster { min-height: 460px; justify-content: flex-end; padding: 84px 18px 22px !important; }
+.hx-poster::before { background: linear-gradient(180deg, rgba(0,0,0,.25) 0, rgba(0,0,0,0) 25%, rgba(0,0,0,.35) 50%, rgba(0,0,0,.9)); }
+.hx-poster .hero-card { position: static; align-items: flex-start; text-align: left; }
+.hx-poster .profile-section { position: absolute; top: 12px; left: 16px; z-index: 3; }
+.hx-poster .profile-img-wrap { width: 50px !important; height: 50px !important; border: 2px solid rgba(255,255,255,.9); }
+.hx-poster .rest-name { justify-content: flex-start; padding: 0; }
+.hx-poster .rest-name .rest-name-text { font-size: 34px !important; line-height: 1.02; text-transform: uppercase; letter-spacing: -.01em; }
+.hx-poster .bio-container { margin: 0; }
+.hx-poster .bio-container::before { content: ""; display: block; width: 54px; height: 5px; border-radius: 3px; margin: 12px 0 10px; background: var(--primary-yellow, #fbbf24); }
+.hx-poster .bio-web { text-align: left; font-size: 14px; }
+.hx-poster .hx-meta { justify-content: flex-start; }
+.hx-poster .loc-container { margin-left: 0; margin-right: 0; }
+.hx-poster .location-txt { text-align: left; }
 
 /* Header variant: Minimal — compact single bar (logo + name + location)
    instead of a tall background-image hero. */
@@ -1675,8 +1799,8 @@ window.socialLinks = {
 <body>
 <div class="phone-frame">
 
-  <div class="theme-bg<?php echo $header_style === 'minimal' ? ' header-minimal' : ''; ?>" id="homeSection" style="<?php
-    if ($header_style !== 'minimal') {
+  <div class="theme-bg<?php echo $header_style === 'minimal' ? ' header-minimal' : ''; echo $hx_style ? ' hx hx-' . $hx_style : ''; ?>" id="homeSection" style="<?php
+    if ($header_style !== 'minimal' && $hx_style !== 'brand') {
       echo $background_theme ? 'background-image: url(' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . ');' : 'background: linear-gradient(135deg, #2d3436, #636e72);';
     }
   ?>">
@@ -1697,6 +1821,7 @@ window.socialLinks = {
       </div>
     </div>
 
+    <div class="hero-card">
     <div class="profile-section">
       <div class="profile-img-wrap<?php echo ($logo_shape ?? 'circle') === 'square' ? ' logo-square' : ''; ?>" style="width:<?php echo $logo_size ?? 90; ?>px;height:<?php echo $logo_size ?? 90; ?>px">
         <img src="<?php echo htmlspecialchars($restaurant_logo ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?>">
@@ -1720,6 +1845,8 @@ window.socialLinks = {
     echo $descFmt === 'br' ? nl2br($desc) : $desc;
   ?></p>
 </div>
+    <?php echo $hx_meta_html; ?>
+    </div><!-- /.hero-card -->
 
   </div>
 
@@ -2916,6 +3043,7 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
 }
 
 function fitRestaurantName() {
+  if (document.querySelector('.theme-bg.hx')) return; // card headers wrap the name to 2 lines instead
   fitTextToContainer('.rest-name', '.rest-name-text', 22, 10);
 }
 

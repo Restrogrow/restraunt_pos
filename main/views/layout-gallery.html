@@ -34,8 +34,14 @@
     <h1>All layouts</h1>
     <p>Preview only: nothing here changes your saved settings.</p>
   </div>
-  <nav><a href="#home">Home page dishes (10)</a><a href="#menu">Menu page cards (9)</a></nav>
+  <nav><a href="#header">Header styles (7)</a><a href="#home">Home page dishes (10)</a><a href="#menu">Menu page cards (9)</a></nav>
 </header>
+
+<section id="header">
+  <h2>Header Style</h2>
+  <p>Website Appearance → Header Style. The top of the home page.</p>
+  <div class="grid" id="headerGrid"></div>
+</section>
 
 <section id="home">
   <h2>Home Page Dishes</h2>
@@ -60,6 +66,11 @@
     ['printed', 'Printed menu', 'name ····· price, no photos'], ['tiles', 'Tiles', '3 per row, name on the photo'], ['delivery', 'Delivery app', 'photo on the right with ADD'],
     ['dark', 'Dark', 'dish list in dark mode']
   ];
+  var headers = [
+    ['hero', 'Photo banner', 'original'], ['minimal', 'Minimal bar', 'compact colour bar'], ['glass', 'Glass card', 'frosted card on your photo'],
+    ['cover', 'Full cover', 'big photo, name bottom-left'], ['card', 'Photo + card', 'white card over a photo strip'], ['brand', 'Brand colour', 'no photo needed'],
+    ['poster', 'Poster', 'tall photo, big bold name']
+  ];
   var menu = [
     ['classic', 'Classic', 'original cards'], ['modern', 'Modern', 'wide photo + quantity picker'], ['minimal', 'Minimal', 'clean photo, round +'],
     ['photo', 'Photo', 'name over a big photo'], ['list', 'List', 'one per row with description'], ['elegant', 'Elegant', 'round plate photo, cream card'],
@@ -83,6 +94,7 @@
     fig.appendChild(f);
     grid.appendChild(fig);
   }
+  headers.forEach(function(h) { card(document.getElementById('headerGrid'), base + '?preview_theme=' + encodeURIComponent(JSON.stringify({ header_style: h[0] })), h[1], h[2], false); });
   home.forEach(function(h) { card(document.getElementById('homeGrid'), base + '?preview_home=' + h[0], h[1], h[2], true); });
   menu.forEach(function(m) { card(document.getElementById('menuGrid'), base + '/menu?preview_card=' + m[0], m[1], m[2], false); });
 </script>

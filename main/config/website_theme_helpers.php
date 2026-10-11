@@ -66,7 +66,9 @@ const THEME_PRESETS = [
 
 const THEME_CARD_STYLES = ['rounded', 'sharp', 'pill'];
 const THEME_LAYOUT_STYLES = ['grid', 'list', 'magazine'];
-const THEME_HEADER_STYLES = ['hero', 'minimal'];
+const THEME_HEADER_STYLES = ['hero', 'minimal', 'glass', 'cover', 'card', 'brand', 'poster'];
+// Header styles that use the card layout (index.php .hx): photo/colour + logo, name, tagline, hours, rating
+const THEME_HEADER_CARD_STYLES = ['glass', 'cover', 'card', 'brand', 'poster'];
 // Menu page category navigation: left sidebar or a scrolling bar across the top
 const THEME_MENU_NAV_POSITIONS = ['left', 'top'];
 // Menu page dish card design: the original cards, or the modern card (wide photo,

@@ -2057,17 +2057,42 @@ try {
                 <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">web_asset</span>
                 Header Style
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How the homepage header looks &mdash; a tall photo banner, or a compact colored bar.</p>
-              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                <label class="header-style-opt" data-value="hero" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">The top of your home page: your photo, logo, name, today's hours and rating. Photo styles use your Background Image; the rating shows once you have 3 or more customer reviews.</p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px;">
+                <label class="header-style-opt" data-value="hero" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #7c3aed;border-radius:10px;background:#fff;">
                   <input type="radio" name="headerStyle" value="hero" checked style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">panorama</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Hero Banner</span>
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(135deg,#94a3b8,#475569);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:8px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:16px;right:16px;top:28px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;right:22px;top:35px;background:rgba(255,255,255,.6);"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Photo banner</span>
                 </label>
-                <label class="header-style-opt" data-value="minimal" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                <label class="header-style-opt" data-value="minimal" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
                   <input type="radio" name="headerStyle" value="minimal" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">horizontal_rule</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Minimal Bar</span>
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#fff;"><i style="position:absolute;left:0;right:0;top:0;height:18px;background:#dc2626;"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:4px;top:2px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;width:26px;top:8px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Minimal bar</span>
+                </label>
+                <label class="header-style-opt" data-value="glass" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="glass" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(135deg,#94a3b8,#475569);"><i style="position:absolute;left:6px;right:6px;bottom:4px;height:24px;border-radius:6px;background:rgba(15,15,20,.55);border:1px solid rgba(255,255,255,.3);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:12px;border-radius:4px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:18px;right:18px;bottom:16px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:24px;width:10px;bottom:9px;background:#22c55e;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Glass card</span>
+                </label>
+                <label class="header-style-opt" data-value="cover" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="cover" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8,#1f2937);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:5px;bottom:14px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;width:30px;bottom:19px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:40px;bottom:7px;background:rgba(255,255,255,.6);"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Full cover</span>
+                </label>
+                <label class="header-style-opt" data-value="card" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="card" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8 0 40%,#f3f4f6 40%);"><i style="position:absolute;left:6px;right:6px;bottom:3px;top:16px;border-radius:6px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:9px;box-shadow:0 0 0 2px #fff,0 1px 3px rgba(0,0,0,.2);background:#16a34a;"></i><i style="position:absolute;height:3px;border-radius:2px;left:16px;right:16px;top:30px;background:#111827;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;right:22px;top:37px;background:#d1d5db;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Photo + card</span>
+                </label>
+                <label class="header-style-opt" data-value="brand" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="brand" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:radial-gradient(circle,rgba(255,255,255,.25) 1px,transparent 1.5px) 0 0/6px 6px,linear-gradient(140deg,#ef4444,#991b1b);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:27px;top:6px;border-radius:4px;width:16px;height:16px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:14px;right:14px;top:28px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:20px;right:20px;top:35px;background:rgba(255,255,255,.6);"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Brand colour</span>
+                </label>
+                <label class="header-style-opt" data-value="poster" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="poster" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8,#111827);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:4px;top:4px;width:9px;height:9px;"></i><i style="position:absolute;left:5px;width:42px;bottom:13px;height:7px;border-radius:2px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:12px;bottom:7px;background:#fbbf24;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Poster</span>
                 </label>
               </div>
             </div>
