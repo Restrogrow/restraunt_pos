@@ -332,6 +332,7 @@ body {
   width: 100%;
   height: auto;
   aspect-ratio: 5 / 4; /* a bit shorter than square, whatever the card width */
+  border-radius: var(--card-radius, 14px); /* rounded at the bottom too, not only the top */
   object-fit: cover;
   display: block;
 }
@@ -899,7 +900,7 @@ body {
 /* ── Modern menu card (Website Appearance > Menu Card Design: Modern) ── */
 .product-grid .card.mc-card { flex-direction: column; border: 0; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
 .product-grid .card.mc-card .card-img-wrap { width: 100%; }
-.product-grid .card.mc-card .card-img-wrap img { width: 100%; height: auto; min-height: 0; aspect-ratio: 5 / 4; /* a bit shorter than square */ }
+.product-grid .card.mc-card .card-img-wrap img { width: 100%; height: auto; min-height: 0; aspect-ratio: 5 / 4; /* a bit shorter than square */ border-radius: 16px; /* rounded on all four corners */ }
 .mc-card .veg-dot { top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 5px; }
 .mc-card .veg-dot img, .mc-card .veg-dot svg { width: 16px; height: 16px; object-fit: contain; }
 .mc-fav { position: absolute; top: 6px; right: 6px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.35); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; }
