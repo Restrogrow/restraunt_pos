@@ -1105,7 +1105,7 @@ function apiUrl(action, extra) {
 
 function getImageUrl(img) {
   if (!img || img === '' || img === 'no-image') return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Image%3C/text%3E%3C/svg%3E';
-  if (img.indexOf('http://') === 0 || img.indexOf('https://') === 0) return img;
+  if (img.indexOf('http://') === 0 || img.indexOf('https://') === 0 || img.indexOf('data:') === 0) return img;
   // No per-load cache-buster: every upload gets a new id (db:<uniqid>), so a
   // changed photo already has a new URL. Busting on each load made every refresh
   // re-download all dish photos (they popped in one by one).
@@ -1478,9 +1478,18 @@ function getTypeIcon(type) {
   return '';
 }
 
+// menuIdx -1 = the "All" category: every dish from every category, in menu order
+var ALL_CATEGORY = -1;
 function renderProducts(menuIdx) {
-  var items = menuItems[menuIdx] ? [].concat(menuItems[menuIdx].items) : [];
-  var menuName = menuItems[menuIdx] ? menuItems[menuIdx].name : 'Menu';
+  var items, menuName;
+  if (menuIdx === ALL_CATEGORY) {
+    items = [];
+    for (var g = 0; g < menuItems.length; g++) items = items.concat(menuItems[g].items || []);
+    menuName = 'All';
+  } else {
+    items = menuItems[menuIdx] ? [].concat(menuItems[menuIdx].items) : [];
+    menuName = menuItems[menuIdx] ? menuItems[menuIdx].name : 'Menu';
+  }
   var el = document.getElementById('productGrid');
   var titleEl = document.getElementById('categoryTitle');
 
@@ -1915,10 +1924,16 @@ function getMenuImage(cat) {
 
 function renderSideNav() {
   var el = document.getElementById('sideNav');
-  var html = '';
+  // "All" first: shows every dish from every category
+  var allIcon = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2210%22 y=%2210%22 width=%2212%22 height=%2212%22 rx=%223%22/%3E%3Crect x=%2226%22 y=%2210%22 width=%2212%22 height=%2212%22 rx=%223%22/%3E%3Crect x=%2210%22 y=%2226%22 width=%2212%22 height=%2212%22 rx=%223%22/%3E%3Crect x=%2226%22 y=%2226%22 width=%2212%22 height=%2212%22 rx=%223%22/%3E%3C/g%3E%3C/svg%3E';
+  var html = menuItems.length ? '<div class="sub-views">' +
+      '<button class="side-nav-btn' + (currentMenuIdx === ALL_CATEGORY ? ' active' : '') + '" data-index="' + ALL_CATEGORY + '">' +
+        '<img src="' + allIcon + '" alt="All"><br>All' +
+      '</button>' +
+    '</div>' : '';
   for (var i = 0; i < menuItems.length; i++) {
     var c = menuItems[i];
-    var active = i === 0 ? ' active' : '';
+    var active = i === currentMenuIdx ? ' active' : '';
     var displayName = c.name.replace(/ \(.*\)/, '');
     var img = getMenuImage(c) || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2242%22 height=%2242%22 viewBox=%220 0 42 42%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3C/svg%3E';
     html += '<div class="sub-views">' +
@@ -2145,7 +2160,7 @@ function fetchAndRender() {
       updateCheckoutBar();
       renderSideNav();
       var catParam = getQueryParam('cat');
-      var startIdx = 0;
+      var startIdx = ALL_CATEGORY; // "All" by default; ?cat=Name opens that category
       if (catParam) {
         for (var i = 0; i < menuItems.length; i++) {
           if (menuItems[i].name === catParam) { startIdx = i; break; }
