@@ -636,6 +636,51 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   transform: scale(0.98);
 }
 
+/* ── Note for the restaurant (special instructions) ── */
+.note-card { background: #fff; border: 1px solid #eceef1; border-radius: 16px; box-shadow: 0 2px 12px rgba(17,24,39,0.05); overflow: hidden; }
+.note-head { display: flex; align-items: center; gap: 12px; padding: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.note-ico { width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--primary-red, #e53935) 10%, #fff); color: var(--primary-red, #e53935); font-size: 15px; transition: transform 0.3s ease; }
+.note-card.open .note-ico { transform: rotate(-8deg) scale(1.06); }
+.note-txt { flex: 1; min-width: 0; }
+.note-title { font-size: 14px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 8px; }
+.note-sub { margin-top: 2px; font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note-sub.has { color: #374151; font-style: italic; }
+.note-saved { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #15803d; background: #dcfce7; padding: 2px 7px; border-radius: 999px; }
+.note-saved.pop { animation: notePop 0.5s cubic-bezier(.34,1.56,.64,1); }
+.note-chev { color: #9ca3af; font-size: 13px; transition: transform 0.3s ease, color 0.3s; }
+.note-card.open .note-chev { transform: rotate(180deg); color: var(--primary-red, #e53935); }
+.note-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.35s cubic-bezier(.22,1,.36,1); }
+.note-card.open .note-body { grid-template-rows: 1fr; }
+.note-inner { overflow: hidden; }
+.note-pad { padding: 0 14px 14px; opacity: 0; transform: translateY(-6px); transition: opacity 0.25s ease, transform 0.3s ease; }
+.note-card.open .note-pad { opacity: 1; transform: none; transition-delay: 0.08s; }
+.note-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+.note-chip { border: 1px solid #e5e7eb; background: #fff; color: #374151; border-radius: 999px; padding: 6px 11px; font-family: var(--site-font); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
+.note-chip:active { transform: scale(0.95); }
+.note-chip.on { border-color: var(--primary-red, #e53935); background: color-mix(in srgb, var(--primary-red, #e53935) 8%, #fff); color: var(--primary-red, #e53935); }
+.note-area { position: relative; }
+.note-area textarea { width: 100%; box-sizing: border-box; min-height: 84px; padding: 11px 12px 22px; border: 1.5px solid #e5e7eb; border-radius: 12px; background: #fafafa; font-family: var(--site-font); font-size: 13px; color: #111827; resize: none; outline: none; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s; }
+.note-area textarea:focus { border-color: var(--primary-red, #e53935); background: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-red, #e53935) 12%, transparent); }
+.note-area .char-count { position: absolute; right: 10px; bottom: 7px; font-size: 10.5px; color: #9ca3af; }
+.note-actions { display: flex; gap: 8px; margin-top: 10px; }
+.note-actions button { flex: 1; height: 40px; border-radius: 11px; font-family: var(--site-font); font-size: 13px; font-weight: 700; cursor: pointer; transition: transform 0.15s ease; }
+.note-actions button:active { transform: scale(0.97); }
+.note-clear { border: 1px solid #e5e7eb; background: #fff; color: #6b7280; }
+.note-save { border: 0; background: var(--primary-red, #e53935); color: #fff; }
+@keyframes notePop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+/* ── Bill details ── */
+.bill-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.bill-head .bill-ico { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #f3f4f6; color: #4b5563; font-size: 14px; }
+.bill-head h3 { margin: 0 !important; }
+.bill-save { position: relative; overflow: hidden; display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); color: #15803d; font-size: 12.5px; font-weight: 700; }
+.bill-save i { font-size: 14px; }
+.bill-save::after { content: ""; position: absolute; top: 0; bottom: 0; width: 35%; left: -50%; background: linear-gradient(100deg, transparent, rgba(255,255,255,0.7), transparent); animation: bsShine 3.4s ease-in-out 0.8s infinite; }
+.price-card .price-row { animation: billRow 0.4s ease both; }
+.price-card .price-row:nth-of-type(2) { animation-delay: 0.04s; } .price-card .price-row:nth-of-type(3) { animation-delay: 0.08s; }
+.price-card .price-row:nth-of-type(4) { animation-delay: 0.12s; } .price-card .price-row:nth-of-type(5) { animation-delay: 0.16s; }
+@keyframes billRow { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes bsShine { 0% { left: -60%; } 40%, 100% { left: 130%; } }
+@media (prefers-reduced-motion: reduce) { .note-body, .note-pad, .note-chev, .note-ico { transition: none; } .bill-save::after, .price-card .price-row { animation: none; } }
 /* Price Details */
 .price-card h3 { font-size: 15px; font-weight: 700; color: #1a1b1f; margin-bottom: 10px; }
 .price-row {
@@ -1644,20 +1689,28 @@ function renderCart() {
         '<span>Browse all coupons</span>' +
         '<span class="arrow">→</span>' +
       '</div>' +      '</div>' +
-      '<div class="instr-card">' +
-      '<div class="instr-header" id="instrHeader" onclick="toggleInstruction()">' +
-        '<div class="label-wrap">' +
-          '<div class="label-icon"><i class="fa fa-pen"></i></div>' +
-          '<span class="label-text">Add special instructions</span>' +
+      '<div class="note-card' + (noteOpen ? ' open' : '') + '" id="noteCard">' +
+      '<div class="note-head" id="instrHeader" onclick="toggleInstruction()" role="button" aria-expanded="' + (noteOpen ? 'true' : 'false') + '">' +
+        '<div class="note-ico"><i class="fa-regular fa-message"></i></div>' +
+        '<div class="note-txt">' +
+          '<div class="note-title">Note for the restaurant' + (savedInstruction ? '<span class="note-saved' + (noteJustSaved ? ' pop' : '') + '">Saved</span>' : '') + '</div>' +
+          '<div class="note-sub' + (savedInstruction ? ' has' : '') + '">' + (savedInstruction ? '“' + escapeHtml(savedInstruction) + '”' : 'Allergies, spice level, delivery or gifting notes') + '</div>' +
         '</div>' +
-        '<span class="chevron">&#8964;</span>' +
+        '<i class="fa fa-chevron-down note-chev"></i>' +
       '</div>' +
-      '<div class="instr-body-inner" id="instrBody">' +
-        '<textarea id="instrText" placeholder="Write your instruction here - e.g. dietary preferences, gifting notes, delivery instructions..." oninput="updateCount()">' + (savedInstruction || '') + '</textarea>' +
-        '<div class="char-count"><span id="charCount">' + (savedInstruction ? savedInstruction.length : 0) + '</span> / 500</div>' +
-        '<button class="save-btn" onclick="saveInstruction()">Save Instruction</button>' +
-      '</div>' +
-      
+      '<div class="note-body" id="instrBody"><div class="note-inner"><div class="note-pad">' +
+        '<div class="note-chips">' + ['No onion', 'No garlic', 'Less spicy', 'Extra spicy', 'Jain food', 'Ring the bell'].map(function(t) {
+          return '<button type="button" class="note-chip' + ((savedInstruction || '').toLowerCase().indexOf(t.toLowerCase()) !== -1 ? ' on' : '') + '" onclick="toggleNoteChip(this, \'' + t + '\')">' + t + '</button>';
+        }).join('') + '</div>' +
+        '<div class="note-area">' +
+          '<textarea id="instrText" maxlength="500" placeholder="Anything else the restaurant should know?" oninput="updateCount()">' + escapeHtml(savedInstruction || '') + '</textarea>' +
+          '<div class="char-count"><span id="charCount">' + (savedInstruction ? savedInstruction.length : 0) + '</span>/500</div>' +
+        '</div>' +
+        '<div class="note-actions">' +
+          (savedInstruction ? '<button type="button" class="note-clear" onclick="clearInstruction()">Clear</button>' : '') +
+          '<button type="button" class="note-save" onclick="saveInstruction()">Save note</button>' +
+        '</div>' +
+      '</div></div></div>' +
     '</div>' +
     '<div class="card card-pad" id="cartAddonCard" style="display:none">' +
       '<div class="coupon-header">' +
@@ -1709,7 +1762,7 @@ function renderCart() {
     cartHtml +=
     '<div class="card card-pad">' +
       '<div class="price-card">' +
-        '<h3>Bill details</h3>' +
+        '<div class="bill-head"><div class="bill-ico"><i class="fa-solid fa-receipt"></i></div><h3>Bill details</h3></div>' +
         '<div class="price-row">' +
           '<span>Item total</span>' +
           '<span class="val">' + getCurrency() + regPrice.toFixed(2) + '</span>' +
@@ -1742,7 +1795,8 @@ function renderCart() {
         (MIN_ORDER > 0 ? '<div class="min-order-warning" id="minOrderWarning">' +
           '<i class="bi bi-exclamation-circle"></i> Minimum Order Value Is ' + getCurrency() + MIN_ORDER.toFixed(2) + ' Please Add More Items To Proceed.' +
         '</div>' +
-        '<div class="min-order-bar"><div class="fill" style="width:' + Math.min(100, (totalPrice / MIN_ORDER) * 100) + '%"></div></div>' : '') +
+        (totalPrice < MIN_ORDER ? '<div class="min-order-bar"><div class="fill" style="width:' + Math.min(100, (totalPrice / MIN_ORDER) * 100) + '%"></div></div>' : '') : '') +
+        ((discountAmount + loyaltyDiscountAmount) > 0 ? '<div class="bill-save"><i class="fa-solid fa-circle-check"></i>You\'re saving ' + getCurrency() + (discountAmount + loyaltyDiscountAmount).toFixed(0) + ' on this order</div>' : '') +
       '</div>' +
     '</div>';
 
@@ -1802,12 +1856,35 @@ function deleteItem(key) {
 
 var savedInstruction = '';
 
+// Note for the restaurant: opens/closes with a smooth slide; quick chips add
+// common requests; Save collapses it and shows the note in the header.
+var noteOpen = false, noteJustSaved = false;
 function toggleInstruction() {
-  var header = document.getElementById('instrHeader');
-  var body = document.getElementById('instrBody');
-  if (!header || !body) return;
-  header.classList.toggle('open');
-  body.classList.toggle('visible');
+  var card = document.getElementById('noteCard');
+  if (!card) return;
+  noteOpen = !card.classList.contains('open');
+  card.classList.toggle('open', noteOpen);
+  var head = document.getElementById('instrHeader');
+  if (head) head.setAttribute('aria-expanded', noteOpen ? 'true' : 'false');
+  if (noteOpen) setTimeout(function() { var t = document.getElementById('instrText'); if (t && !t.value) t.focus(); }, 300);
+}
+function toggleNoteChip(btn, text) {
+  var t = document.getElementById('instrText');
+  if (!t) return;
+  var parts = t.value.split(',').map(function(p) { return p.trim(); }).filter(Boolean);
+  var i = parts.map(function(p) { return p.toLowerCase(); }).indexOf(text.toLowerCase());
+  if (i === -1) parts.push(text); else parts.splice(i, 1);
+  t.value = parts.join(', ').slice(0, 500);
+  btn.classList.toggle('on', i === -1);
+  updateCount();
+}
+function clearInstruction() {
+  var t = document.getElementById('instrText');
+  if (t) t.value = '';
+  savedInstruction = '';
+  try { localStorage.removeItem('dvaniInstruction'); } catch(e) {}
+  noteOpen = true;
+  renderCart();
 }
 
 function updateCount() {
@@ -1819,9 +1896,13 @@ function updateCount() {
 function saveInstruction() {
   var t = document.getElementById('instrText');
   if (!t) return;
-  savedInstruction = t.value;
+  savedInstruction = t.value.trim();
   try { localStorage.setItem('dvaniInstruction', savedInstruction); } catch(e) {}
-  showToast('Instruction saved! ✓');
+  noteOpen = false;
+  noteJustSaved = !!savedInstruction;
+  renderCart();
+  noteJustSaved = false;
+  showToast(savedInstruction ? 'Note saved' : 'Note removed');
 }
 
 function loadInstruction() {

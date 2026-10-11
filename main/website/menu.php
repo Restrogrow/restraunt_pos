@@ -872,7 +872,11 @@ body.has-ms-hint .offer-bubble { bottom: 140px; }
 .sheet-add-bar { animation: sheetBarUp 0.25s ease; }
 .sheet-add-row { display: flex; align-items: center; gap: 12px; }
 /* Optional cooking instruction for this dish (shown to the kitchen, admin and rider) */
-.sheet-bestseller { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 6px; padding: 3px 9px; border-radius: 6px; background: #fef3c7; color: #b45309; font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; }
+.sheet-bestseller { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; padding: 4px 10px 4px 8px; border-radius: 999px; background: linear-gradient(135deg, #fff7e6, #ffedd5); border: 1px solid #fcd9a8; color: #b45309; font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.sheet-bestseller i { font-size: 11px; color: #f59e0b; }
+.sheet-bestseller::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255,255,255,0.85), transparent); animation: bsShine 3.2s ease-in-out 0.6s infinite; }
+@keyframes bsShine { 0% { left: -60%; } 40%, 100% { left: 130%; } }
+@media (prefers-reduced-motion: reduce) { .sheet-bestseller::after { animation: none; display: none; } }
 .sheet-note { margin-bottom: 10px; }
 .sheet-note-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sheet-cutlery { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: #374151; cursor: pointer; white-space: nowrap; }
@@ -2006,7 +2010,7 @@ function showItemDetail(itemId) {
   }
   // ★ Bestseller on its own line, just above the dish name
   if (item.is_bestseller) {
-    html += '<div class="sheet-bestseller">★ Bestseller</div>';
+    html += '<div class="sheet-bestseller"><i class="fa-solid fa-award"></i><span>Bestseller</span></div>';
   }
   html += '<div class="product-sheet-name-row">';
   if (itemType) {
