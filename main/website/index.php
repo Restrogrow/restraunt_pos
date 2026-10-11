@@ -5,6 +5,20 @@ if (isset($_GET['preview_home']) && in_array($_GET['preview_home'], THEME_HOME_C
 // ── Header card styles (Glass / Full cover / Photo + card / Brand colour / Poster) ──
 $hx_style = in_array($header_style ?? 'hero', THEME_HEADER_CARD_STYLES, true) ? $header_style : '';
 $hx_meta_html = '';
+// Story header: its own photos (Website Appearance > Header Style > Story photos), played like stories
+$hx_story_photos = [];
+if (($hx_style ?? '') === 'story') {
+    try {
+        $sp = $conn->prepare("SELECT id, banner_path FROM website_banners WHERE restaurant_id = ? AND placement = 'story' ORDER BY display_order ASC, id ASC LIMIT " . STORY_PHOTOS_MAX);
+        $sp->execute([$restaurant_id]);
+        foreach ($sp->fetchAll(PDO::FETCH_ASSOC) as $p) {
+            $path = (string)$p['banner_path'];
+            if (preg_match('#^https?://#', $path)) $hx_story_photos[] = $path;
+            elseif (strpos($path, 'db:') === 0) $hx_story_photos[] = 'image.php?type=banner&id=' . (int)$p['id'] . '&p=' . rawurlencode(substr($path, 3));
+            else $hx_story_photos[] = '../' . $path;
+        }
+    } catch (Exception $e) {}
+}
 if ($hx_style) {
     $hxTime = function ($t) { return trim(preg_replace('/:00(?=\s*[AaPp][Mm])/', '', (string)$t)); };
     // Today's hours line: "Open now · Closes 11 PM" / "Closed · Opens 9 AM" / "Closed today"
@@ -225,6 +239,21 @@ body {
 .hx-light .hx-chip.soft { background: transparent; color: #4b5563; }
 /* The photo inside a shape (Split, Arch, Stack): drawn by ::after from --hx-photo */
 .hx-split, .hx-arch, .hx-stack { background-image: none !important; }
+
+/* Story photos playing (Story header with its own photos) */
+.hx-story.has-slides { background-image: none !important; }
+.hx-story.has-slides::after { display: none; }
+.hx-story.has-slides::before { z-index: 1; }
+.hx-story-slides { position: absolute; inset: 0; z-index: 0; }
+.hx-story-slides img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.04); transition: opacity .6s ease, transform 6s ease; }
+.hx-story-slides img.on { opacity: 1; transform: scale(1); }
+.hx-story-bars { position: absolute; top: 14px; left: 14px; right: 64px; z-index: 4; display: flex; gap: 4px; }
+.hx-story-bars i { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.35); overflow: hidden; }
+.hx-story-bars i b { display: block; height: 100%; width: 0; background: #fff; }
+.hx-story-bars i.done b { width: 100%; }
+.hx-story-bars i.on b { animation: hxStoryFill var(--hx-story-ms, 5000ms) linear forwards; }
+.hx-story.paused .hx-story-bars i.on b { animation-play-state: paused; }
+@keyframes hxStoryFill { from { width: 0; } to { width: 100%; } }
 
 /* Split — photo on the left, details on the right */
 .theme-bg.hx-split { flex-direction: row; align-items: stretch; min-height: 270px; padding: 0 !important; background-color: #fff !important; }
@@ -1896,7 +1925,7 @@ window.socialLinks = {
 <body>
 <div class="phone-frame">
 
-  <div class="theme-bg<?php echo $header_style === 'minimal' ? ' header-minimal' : ''; echo $hx_style ? ' hx hx-' . $hx_style : ''; echo in_array($hx_style, THEME_HEADER_LIGHT_STYLES, true) ? ' hx-light' : ''; ?>" id="homeSection" style="<?php
+  <div class="theme-bg<?php echo $header_style === 'minimal' ? ' header-minimal' : ''; echo $hx_style ? ' hx hx-' . $hx_style : ''; echo !empty($hx_story_photos) ? ' has-slides' : ''; echo in_array($hx_style, THEME_HEADER_LIGHT_STYLES, true) ? ' hx-light' : ''; ?>" id="homeSection" style="<?php
     if ($header_style !== 'minimal' && !in_array($hx_style, THEME_HEADER_NO_PHOTO_STYLES, true)) {
       // --hx-photo: the same photo for headers that draw it inside a shape (Split, Arch, Stack)
       echo $background_theme ? 'background-image: url(' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . '); --hx-photo: url(' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . ');' : 'background: linear-gradient(135deg, #2d3436, #636e72);';
@@ -1919,6 +1948,10 @@ window.socialLinks = {
       </div>
     </div>
 
+    <?php if ($hx_story_photos): ?>
+    <div class="hx-story-slides" aria-hidden="true"><?php foreach ($hx_story_photos as $i => $u): ?><img src="<?php echo htmlspecialchars($u, ENT_QUOTES, 'UTF-8'); ?>" alt=""<?php echo $i ? ' loading="lazy"' : ' class="on"'; ?>><?php endforeach; ?></div>
+    <div class="hx-story-bars" aria-hidden="true"><?php foreach ($hx_story_photos as $i => $u): ?><i<?php echo $i ? '' : ' class="on"'; ?>><b></b></i><?php endforeach; ?></div>
+    <?php endif; ?>
     <div class="hero-card">
     <div class="profile-section">
       <div class="profile-img-wrap<?php echo ($logo_shape ?? 'circle') === 'square' ? ' logo-square' : ''; ?>" style="width:<?php echo $logo_size ?? 90; ?>px;height:<?php echo $logo_size ?? 90; ?>px">
@@ -3139,6 +3172,36 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
     textSpan.style.fontSize = fontSize + 'px';
   }
 }
+
+// Story header: play the story photos (tap right = next, left = previous, hold = pause)
+(function() {
+  var head = document.querySelector('.hx-story.has-slides');
+  if (!head) return;
+  var imgs = head.querySelectorAll('.hx-story-slides img'), bars = head.querySelectorAll('.hx-story-bars i');
+  if (imgs.length < 2) return;
+  var MS = 5000, idx = 0, timer = 0, left = MS, startedAt = 0;
+  head.style.setProperty('--hx-story-ms', MS + 'ms');
+  function show(n) {
+    idx = (n + imgs.length) % imgs.length;
+    imgs.forEach(function(im, k) { im.classList.toggle('on', k === idx); if (k === idx + 1 || (idx === imgs.length - 1 && k === 0)) im.loading = 'eager'; });
+    bars.forEach(function(b, k) { b.classList.remove('on'); b.classList.toggle('done', k < idx); });
+    void head.offsetWidth; // restart the fill animation
+    bars[idx].classList.add('on');
+    left = MS; run();
+  }
+  function run() { clearTimeout(timer); startedAt = Date.now(); timer = setTimeout(function() { show(idx + 1); }, left); }
+  function pause() { if (head.classList.contains('paused')) return; clearTimeout(timer); left -= Date.now() - startedAt; head.classList.add('paused'); }
+  function resume() { if (!head.classList.contains('paused')) return; head.classList.remove('paused'); run(); }
+  head.addEventListener('click', function(e) {
+    if (e.target.closest('a, button, .top-bar, .profile-img-wrap, .loc-container, .hx-meta')) return;
+    var r = head.getBoundingClientRect();
+    show(e.clientX - r.left < r.width * 0.33 ? idx - 1 : idx + 1);
+  });
+  head.addEventListener('pointerdown', function(e) { if (e.pointerType !== 'mouse') pause(); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(ev) { head.addEventListener(ev, resume); });
+  document.addEventListener('visibilitychange', function() { document.hidden ? pause() : resume(); });
+  run();
+})();
 
 function fitRestaurantName() {
   if (document.querySelector('.theme-bg.hx')) return; // card headers wrap the name to 2 lines instead

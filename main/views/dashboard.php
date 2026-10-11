@@ -2135,6 +2135,19 @@ try {
                   <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Stack</span>
                 </label>
               </div>
+              <!-- Story photos: only while the Story header is selected -->
+              <div id="storyPhotosPanel" style="display:none;margin-top:12px;padding:12px;border-radius:12px;border:2px dashed #ddd6fe;background:#faf8ff;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                  <span class="material-symbols-rounded" style="font-size:20px;color:#7c3aed;">auto_stories</span>
+                  <b style="flex:1;min-width:140px;color:#111827;">Story photos <span id="storyPhotosCount" style="font-weight:600;color:#6b7280;"></span></b>
+                  <label class="btn btn-primary" style="margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;font-size:0.85rem;">
+                    <span class="material-symbols-rounded" style="font-size:18px;">add_photo_alternate</span> Add photos
+                    <input type="file" id="storyPhotosInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none;">
+                  </label>
+                </div>
+                <p style="margin:0 0 10px;font-size:0.8rem;color:#6b7280;">Up to 10 photos play one after another at the top of your home page, like Instagram stories. Customers tap the right side for the next one. With no photos here, Story uses your Background Image.</p>
+                <div id="storyPhotosGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;"></div>
+              </div>
             </div>
             <!-- Logo Shape & Size Settings -->
             <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
@@ -6946,6 +6959,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/offer-filters-admin.js?v=<?php echo time(); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
+  <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>
   
 
   

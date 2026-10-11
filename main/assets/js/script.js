@@ -14539,6 +14539,8 @@ async function initWebsiteThemeEditor() {
     
     // Function to render banners grid
     const renderBanners = (banners) => {
+      // Story header photos are managed under Header Style, not in this slideshow list
+      banners = (banners || []).filter(b => b.placement !== 'story');
       const bannersGrid = document.getElementById('bannersGrid');
       if (!bannersGrid) {
         setTimeout(() => {

@@ -394,6 +394,13 @@ try {
     $uploadedBanners = [];
     // Placement chosen for this upload (Show new banners on: …)
     $newPlacement = in_array($_POST['placement'] ?? '', BANNER_PLACEMENTS, true) ? $_POST['placement'] : 'home_top';
+    if ($newPlacement === 'story') {
+      // Story header: at most STORY_PHOTOS_MAX photos
+      $have = $conn->prepare("SELECT COUNT(*) FROM website_banners WHERE restaurant_id = :rid AND placement = 'story'");
+      $have->execute([':rid' => $restaurant_id]);
+      $incoming = isset($_FILES['banners']['name']) && is_array($_FILES['banners']['name']) ? count($_FILES['banners']['name']) : 0;
+      if ((int)$have->fetchColumn() + $incoming > STORY_PHOTOS_MAX) throw new InvalidArgumentException('Story can have up to ' . STORY_PHOTOS_MAX . ' photos. Remove some first.');
+    }
     $maxIdBefore = (int)$conn->query('SELECT COALESCE(MAX(id), 0) FROM website_banners')->fetchColumn();
     $uploadDir = __DIR__ . '/../uploads/banners/';
     if (!file_exists($uploadDir)) {

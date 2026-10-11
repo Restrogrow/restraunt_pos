@@ -154,7 +154,9 @@ function fetchOfferBanners($conn, $restaurant_id, $activeOnly) {
 }
 
 // Where a website banner shows (Website Appearance > Banner Images)
-const BANNER_PLACEMENTS = ['home_top', 'home_menu', 'menu_top', 'cart'];
+// 'story' = photos for the Story header style (not shown as a slideshow)
+const BANNER_PLACEMENTS = ['home_top', 'home_menu', 'menu_top', 'cart', 'story'];
+const STORY_PHOTOS_MAX = 10;
 
 /** website_banners.placement, added once (default: Home page top). */
 function ensureBannerPlacementColumn($conn) {
