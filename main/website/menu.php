@@ -830,7 +830,10 @@ body {
 .sheet-add-row { display: flex; align-items: center; gap: 12px; }
 /* Optional cooking instruction for this dish (shown to the kitchen, admin and rider) */
 .sheet-note { margin-bottom: 10px; }
-.sheet-note-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #374151; font-family: var(--site-font); font-size: 13px; font-weight: 600; cursor: pointer; }
+.sheet-note-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sheet-cutlery { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: #374151; cursor: pointer; white-space: nowrap; }
+.sheet-cutlery input { width: 15px; height: 15px; margin: 0; accent-color: var(--primary-red, #e53935); }
+.sheet-note-toggle { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 0; border: 0; background: none; color: #374151; font-family: var(--site-font); font-size: 13px; font-weight: 600; cursor: pointer; }
 .sheet-note-toggle i { color: var(--primary-red, #e53935); }
 .sheet-note-toggle span { color: #9ca3af; font-weight: 500; }
 .sheet-note-box { position: relative; margin-top: 8px; }
@@ -1816,6 +1819,9 @@ function showItemDetail(itemId) {
 
   // Badge row: prep time, type label, menu name
   var badges = [];
+  if (item.is_bestseller) {
+    badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#fef3c7;font-size:11px;font-weight:700;color:#b45309">★ Bestseller</span>');
+  }
   if (prepTime) {
     badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#fdf2f2;font-size:11px;font-weight:500;color:var(--primary-red, #e17055)"><i class="fa fa-clock" style="font-size:10px"></i> ' + prepTime + ' min</span>');
   }
@@ -1885,6 +1891,7 @@ function selectVariant(idx) {
   if (!item || !item.variations || !item.variations[idx]) return;
 
   selectedVariant = idx;
+  syncSheetCutlery(item);
   var chips = document.querySelectorAll('.variant-chip');
   for (var i = 0; i < chips.length; i++) {
     chips[i].classList.toggle('selected', i === idx);
@@ -1988,10 +1995,13 @@ function sheetAddBarHtml(itemId, disabled) {
   return '<div class="product-sheet-footer sheet-add-bar" id="sheetAddBar">' +
     (disabled ? '' :
       '<div class="sheet-note">' +
-        '<button type="button" class="sheet-note-toggle" onclick="toggleSheetNote()"><i class="fa-regular fa-note-sticky"></i> Add cooking instructions <span>(optional)</span></button>' +
+        '<div class="sheet-note-row">' +
+          '<button type="button" class="sheet-note-toggle" onclick="toggleSheetNote()"><i class="fa-regular fa-note-sticky"></i> Add instructions <span>(optional)</span></button>' +
+          '<label class="sheet-cutlery"><input type="checkbox" id="sheetCutlery"> 🍴 Cutlery</label>' +
+        '</div>' +
         '<div class="sheet-note-box" id="sheetNoteBox" hidden>' +
-          '<textarea id="sheetNote" maxlength="150" rows="2" placeholder="e.g. Less spicy, no onion, extra crispy" oninput="document.getElementById(\'sheetNoteCount\').textContent = this.value.length"></textarea>' +
-          '<div class="sheet-note-count"><span id="sheetNoteCount">0</span>/150</div>' +
+          '<textarea id="sheetNote" maxlength="130" rows="2" placeholder="e.g. Less spicy, no onion, extra crispy" oninput="document.getElementById(\'sheetNoteCount\').textContent = this.value.length"></textarea>' +
+          '<div class="sheet-note-count"><span id="sheetNoteCount">0</span>/130</div>' +
         '</div>' +
       '</div>') +
     '<div class="sheet-add-row">' +
@@ -2011,11 +2021,25 @@ function sheetAddBarHtml(itemId, disabled) {
 function getItemNotes() {
   try { return JSON.parse(localStorage.getItem('_itemNotes') || '{}') || {}; } catch (e) { return {}; }
 }
-function setItemNote(key, text) {
+// The cutlery tick box travels inside the note ("Less spicy · 🍴 Cutlery needed"),
+// so the kitchen, admin, rider and WhatsApp all see it with the instruction.
+var CUTLERY_TAG = '🍴 Cutlery needed';
+function splitItemNote(note) {
+  note = String(note || '');
+  var cutlery = note.indexOf(CUTLERY_TAG) !== -1;
+  var text = note.replace(' · ' + CUTLERY_TAG, '').replace(CUTLERY_TAG, '').trim();
+  return { text: text, cutlery: cutlery };
+}
+function setItemNote(key, text, cutlery) {
   var all = getItemNotes();
-  text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 150);
+  text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 130);
+  if (cutlery) text = text ? text + ' · ' + CUTLERY_TAG : CUTLERY_TAG;
   if (text) all[key] = text; else delete all[key];
   try { localStorage.setItem('_itemNotes', JSON.stringify(all)); } catch (e) {}
+}
+function syncSheetCutlery(item) {
+  var cb = document.getElementById('sheetCutlery');
+  if (cb && item) cb.checked = splitItemNote(getItemNotes()[sheetCartKey(item)]).cutlery;
 }
 function sheetCartKey(item) {
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
@@ -2028,7 +2052,7 @@ function toggleSheetNote() {
   if (!box.hidden) {
     var ta = document.getElementById('sheetNote'), item = getSheetItem();
     if (ta && !ta.value && item) {
-      ta.value = getItemNotes()[sheetCartKey(item)] || '';
+      ta.value = splitItemNote(getItemNotes()[sheetCartKey(item)]).text;
       document.getElementById('sheetNoteCount').textContent = ta.value.length;
     }
     if (ta) ta.focus();
@@ -2039,6 +2063,7 @@ function openSheetAddBar(itemId) {
   if (document.getElementById('sheetAddBar')) return;
   sheetQty = 1;
   document.getElementById('productSheetContent').insertAdjacentHTML('beforeend', sheetAddBarHtml(itemId, false));
+  syncSheetCutlery(getSheetItem());
   refreshSheetBarPrice();
 }
 
@@ -2106,7 +2131,11 @@ function sheetAddToCart(itemId) {
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
   if (hasVar && selectedVariant === null) return;
   var noteBox = document.getElementById('sheetNoteBox');
-  if (noteBox && !noteBox.hidden) setItemNote(sheetCartKey(item), document.getElementById('sheetNote').value);
+  var noteKey = sheetCartKey(item), prevNote = splitItemNote(getItemNotes()[noteKey]);
+  var cutEl = document.getElementById('sheetCutlery');
+  setItemNote(noteKey,
+    noteBox && !noteBox.hidden ? document.getElementById('sheetNote').value : prevNote.text,
+    cutEl ? cutEl.checked : prevNote.cutlery);
   var times = Math.max(1, sheetQty || 1);
   for (var t = 0; t < times; t++) {
     if (hasVar) {
