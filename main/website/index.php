@@ -3390,5 +3390,6 @@ function showToast(msg, type) {
 </script>
 <script>window.RG_MENU_URL = <?php echo json_encode(restaurantPageUrl('menu')); ?>;</script>
 <script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
+<script src="rg-drag-scroll.js?v=<?php echo @filemtime(__DIR__ . '/rg-drag-scroll.js'); ?>" defer></script>
 </body>
 </html>
