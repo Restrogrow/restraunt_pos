@@ -1932,6 +1932,10 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (menuImageInput && menuImageInput.files.length > 0) {
         formData.append('menuImage', menuImageInput.files[0]);
       }
+      // A new category picture is processed on the server (background, centring)
+      if (saveBtn && formData.has('menuImageBase64') || saveBtn && formData.has('menuImage')) {
+        saveBtn.textContent = 'Saving & processing picture…';
+      }
 
       const response = await fetch("../controllers/menu_operations.php", {
         method: "POST",

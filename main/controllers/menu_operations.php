@@ -80,6 +80,23 @@ try {
         }
     }
     
+    // Category picture processing (category images only): optimised WebP, plain
+    // background removed when there is one, subject centred on a square canvas.
+    // The original upload is kept in menu_image_original* for recovery.
+    $menuImageOriginalData = null;
+    $menuImageOriginalMime = null;
+    $imageProcessingNote = '';
+    if ($menuImageData !== null) {
+        require_once __DIR__ . '/../config/category_image_processor.php';
+        $menuImageOriginalData = $menuImageData;
+        $menuImageOriginalMime = $menuImageMimeType;
+        $processed = processCategoryImage($menuImageData, (string)$menuImageMimeType);
+        $menuImageData = $processed['data'];
+        $menuImageMimeType = $processed['mime'];
+        $imageProcessingNote = $processed['message'];
+        ensureMenuOriginalImageColumns($conn);
+    }
+
     // Validate action
     if (empty($action)) {
         throw new Exception('Action is required');
@@ -119,6 +136,9 @@ try {
             // Insert new menu with image
             $insertStmt = $conn->prepare("INSERT INTO menu (restaurant_id, menu_name, menu_image, menu_image_data, menu_image_mime_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
             $result = $insertStmt->execute([$restaurant_id, $menuName, $menuImagePath, $menuImageData, $menuImageMimeType]);
+            if ($result && $menuImageOriginalData !== null) {
+                saveMenuOriginalImage($conn, (int)$conn->lastInsertId(), $restaurant_id, $menuImageOriginalData, $menuImageOriginalMime);
+            }
             
             if ($result) {
                 $newMenuId = $conn->lastInsertId();
@@ -126,7 +146,8 @@ try {
                 // Return success response
                 echo json_encode([
                     'success' => true,
-                    'message' => 'Menu added successfully',
+                    'message' => 'Menu added successfully' . ($imageProcessingNote ? ' Picture: ' . $imageProcessingNote : ''),
+                    'image_processing' => $imageProcessingNote,
                     'data' => [
                         'id' => $newMenuId,
                         'name' => $menuName,
@@ -170,12 +191,16 @@ try {
             // Update menu with image
             $updateStmt = $conn->prepare("UPDATE menu SET menu_name = ?, menu_image = ?, menu_image_data = ?, menu_image_mime_type = ?, updated_at = NOW() WHERE id = ? AND restaurant_id = ?");
             $result = $updateStmt->execute([$menuName, $menuImagePath, $menuImageData, $menuImageMimeType, $menuId, $restaurant_id]);
+            if ($result && $menuImageOriginalData !== null) {
+                saveMenuOriginalImage($conn, $menuId, $restaurant_id, $menuImageOriginalData, $menuImageOriginalMime);
+            }
             
             if ($result) {
                 // Return success response
                 echo json_encode([
                     'success' => true,
-                    'message' => 'Menu updated successfully',
+                    'message' => 'Menu updated successfully' . ($imageProcessingNote ? ' Picture: ' . $imageProcessingNote : ''),
+                    'image_processing' => $imageProcessingNote,
                     'data' => [
                         'id' => $menuId,
                         'name' => $menuName,
@@ -487,5 +512,30 @@ function handleBase64MenuImage($base64String) {
         'size' => strlen($imageData)
     ];
 }
-?>
+/**
+ * Original (unprocessed) category picture, kept for recovery next to the
+ * processed one in menu_image_data. Added on demand; never inside a
+ * transaction (DDL would commit it).
+ */
+function ensureMenuOriginalImageColumns($conn) {
+    static $done = false;
+    if ($done || $conn->inTransaction()) return;
+    try {
+        if (!$conn->query("SHOW COLUMNS FROM menu LIKE 'menu_image_original'")->fetch()) {
+            $conn->exec("ALTER TABLE menu ADD COLUMN menu_image_original LONGBLOB NULL, ADD COLUMN menu_image_original_mime VARCHAR(50) NULL");
+        }
+        $done = true;
+    } catch (PDOException $e) {
+        error_log('ensureMenuOriginalImageColumns: ' . $e->getMessage());
+    }
+}
 
+function saveMenuOriginalImage($conn, $menuId, $restaurantId, $data, $mime) {
+    try {
+        $conn->prepare("UPDATE menu SET menu_image_original = ?, menu_image_original_mime = ? WHERE id = ? AND restaurant_id = ?")
+             ->execute([$data, $mime, $menuId, $restaurantId]);
+    } catch (PDOException $e) {
+        error_log('saveMenuOriginalImage: ' . $e->getMessage()); // processed picture is saved either way
+    }
+}
+?>
