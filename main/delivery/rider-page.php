@@ -49,7 +49,7 @@ if (empty($token)) {
         if (!$delivery) {
             $error = 'This QR code is invalid or has expired. Please ask the restaurant for a new one.';
         } else {
-            $itemsStmt = $conn->prepare("SELECT item_name, quantity, unit_price, total_price FROM order_items WHERE order_id = ?");
+            $itemsStmt = $conn->prepare("SELECT item_name, quantity, unit_price, total_price, notes FROM order_items WHERE order_id = ?");
             $itemsStmt->execute([$delivery['order_id']]);
             $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
         }
@@ -315,7 +315,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
         <h2>Order Items</h2>
         <?php foreach ($items as $item): ?>
         <div class="item-row">
-            <span class="item-name"><?php echo htmlspecialchars($item['item_name']); ?></span>
+            <span class="item-name"><?php echo htmlspecialchars($item['item_name']); ?><?php if (!empty($item['notes'])): ?><small style="display:block;color:#b45309;font-size:12px;margin-top:2px">📝 <?php echo htmlspecialchars($item['notes']); ?></small><?php endif; ?></span>
             <span class="item-qty">x<?php echo (int)$item['quantity']; ?></span>
             <span class="item-price"><?php echo $currency . number_format((float)$item['total_price'], 2); ?></span>
         </div>

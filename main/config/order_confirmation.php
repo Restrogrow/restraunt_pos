@@ -38,7 +38,7 @@ if (!function_exists('fireOrderConfirmedActions')) {
 
         $restaurant_id = $order['restaurant_id'];
 
-        $itemsStmt = $conn->prepare("SELECT menu_item_id AS id, item_name AS name, variation_name, quantity, unit_price AS price, addons FROM order_items WHERE order_id = ?");
+        $itemsStmt = $conn->prepare("SELECT menu_item_id AS id, item_name AS name, variation_name, quantity, unit_price AS price, addons, notes FROM order_items WHERE order_id = ?");
         $itemsStmt->execute([$orderId]);
         $rawItems = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
         $items = [];
@@ -53,6 +53,7 @@ if (!function_exists('fireOrderConfirmedActions')) {
                 // order-creation time before being stored here, so this JSON
                 // does not need re-verification.
                 'addons' => $ri['addons'] ? json_decode($ri['addons'], true) : [],
+                'notes' => $ri['notes'] ?? null,
             ];
         }
 
@@ -210,7 +211,7 @@ if (!function_exists('sendOrderConfirmationEmailsForOrder')) {
             return;
         }
 
-        $itemsStmt = $conn->prepare("SELECT menu_item_id AS id, item_name AS name, variation_name, quantity, unit_price AS price, addons FROM order_items WHERE order_id = ?");
+        $itemsStmt = $conn->prepare("SELECT menu_item_id AS id, item_name AS name, variation_name, quantity, unit_price AS price, addons, notes FROM order_items WHERE order_id = ?");
         $itemsStmt->execute([$orderId]);
         $rawItems = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
         $items = [];
@@ -222,6 +223,7 @@ if (!function_exists('sendOrderConfirmationEmailsForOrder')) {
                 'quantity' => (int)$ri['quantity'],
                 'price' => (float)$ri['price'],
                 'addons' => $ri['addons'] ? json_decode($ri['addons'], true) : [],
+                'notes' => $ri['notes'] ?? null,
             ];
         }
 
@@ -318,7 +320,7 @@ if (!function_exists('createDineInKOT')) {
             }
 
             if ($kotItemsHasAddons) {
-                $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
                 $kotItemStmt->execute([
                     $kotId,
                     (int)$item['id'],
@@ -326,17 +328,19 @@ if (!function_exists('createDineInKOT')) {
                     (int)$item['quantity'],
                     (float)$item['price'],
                     (float)($item['price'] * $item['quantity']),
-                    $addonsJson
+                    $addonsJson,
+                    $item['notes'] ?? null
                 ]);
             } else {
-                $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
+                $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 $kotItemStmt->execute([
                     $kotId,
                     (int)$item['id'],
                     (string)$item['name'],
                     (int)$item['quantity'],
                     (float)$item['price'],
-                    (float)($item['price'] * $item['quantity'])
+                    (float)($item['price'] * $item['quantity']),
+                    $item['notes'] ?? null
                 ]);
             }
         }

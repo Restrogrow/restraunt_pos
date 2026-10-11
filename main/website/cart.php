@@ -1235,6 +1235,13 @@ function getAddonNamesString(key) {
   for (var a = 0; a < addons.length; a++) { names.push(addons[a].name); }
   return names.length ? '+ ' + names.join(', ') : '';
 }
+// Cooking instruction per cart line, added on the Menu page (optional)
+function getItemNote(key) {
+  try { var all = JSON.parse(localStorage.getItem('_itemNotes') || '{}') || {}; return all[key] || ''; } catch(e) { return ''; }
+}
+function clearItemNote(key) {
+  try { var all = JSON.parse(localStorage.getItem('_itemNotes') || '{}') || {}; delete all[key]; localStorage.setItem('_itemNotes', JSON.stringify(all)); } catch(e) {}
+}
 function clearAddonsForItem(key) {
   try { var s = localStorage.getItem('_itemAddons'); var all = s ? JSON.parse(s) : {}; delete all[key]; localStorage.setItem('_itemAddons', JSON.stringify(all)); } catch(e){}
 }
@@ -1457,6 +1464,10 @@ function renderCart() {
     if (addonNames) {
       varDisplay += '<div class="item-variant" style="color:#888;font-size:11px">' + escapeHtml(addonNames) + '</div>';
     }
+    var itemNote = getItemNote(key);
+    if (itemNote) {
+      varDisplay += '<div class="item-variant" style="color:#b45309;font-size:11px">📝 ' + escapeHtml(itemNote) + '</div>';
+    }
     var addonTotal = getAddonTotalForItem(key);
     if (addonTotal > 0) {
       price = price + (addonTotal / qty);
@@ -1656,12 +1667,14 @@ function changeQty(key, delta) {
     raw.qty = Math.max(0, (raw.qty || 0) + delta);
     if (raw.qty === 0) delete cartItems[key];
   }
+  if (!cartItems[key]) clearItemNote(key);
   saveCart();
   renderCart();
 }
 
 function deleteItem(key) {
   clearAddonsForItem(key);
+  clearItemNote(key);
   delete cartItems[key];
   saveCart();
   renderCart();
@@ -2720,7 +2733,8 @@ function processOrder(cartData) {
         variation_name: variationName,
         quantity: getCartQty(key),
         price: parseFloat(getCartPrice(key)),
-        addons: getAddonsForItemKey(key)
+        addons: getAddonsForItemKey(key),
+        notes: getItemNote(key)
       });
       // Include add-on price in total
       var addonTotal = getAddonTotalForItem(key);
@@ -3136,7 +3150,7 @@ function redirectToWhatsApp(info) {
   var itemsSummary = '';
   if (info.items && info.items.length > 0) {
     for (var i = 0; i < info.items.length; i++) {
-      itemsSummary += info.items[i].name + ' x' + info.items[i].quantity + ', ';
+      itemsSummary += info.items[i].name + ' x' + info.items[i].quantity + (info.items[i].notes ? ' (📝 ' + info.items[i].notes + ')' : '') + ', ';
     }
     if (itemsSummary) itemsSummary = itemsSummary.slice(0, -2);
   }

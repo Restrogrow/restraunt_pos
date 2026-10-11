@@ -62,7 +62,8 @@ try {
                         oi.item_name,
                         oi.quantity,
                         oi.unit_price,
-                        oi.total_price
+                        oi.total_price,
+                        oi.notes
                       FROM order_items oi
                       WHERE oi.order_id = ?
                       ORDER BY oi.id";

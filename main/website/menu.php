@@ -826,7 +826,17 @@ body {
 .sheet-step span { font-size: 16px; }
 .sheet-add-note { font-size: 11px; color: #9ca3af; }
 /* Bar that slides up after tapping ADD: [ − qty + ] [ Add item · ₹ ] */
-.sheet-add-bar { display: flex; align-items: center; gap: 12px; animation: sheetBarUp 0.25s ease; }
+.sheet-add-bar { animation: sheetBarUp 0.25s ease; }
+.sheet-add-row { display: flex; align-items: center; gap: 12px; }
+/* Optional cooking instruction for this dish (shown to the kitchen, admin and rider) */
+.sheet-note { margin-bottom: 10px; }
+.sheet-note-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #374151; font-family: var(--site-font); font-size: 13px; font-weight: 600; cursor: pointer; }
+.sheet-note-toggle i { color: var(--primary-red, #e53935); }
+.sheet-note-toggle span { color: #9ca3af; font-weight: 500; }
+.sheet-note-box { position: relative; margin-top: 8px; }
+.sheet-note-box textarea { width: 100%; box-sizing: border-box; min-height: 58px; padding: 10px 12px 18px; border: 1.5px solid #e5e7eb; border-radius: 12px; font-family: var(--site-font); font-size: 13px; resize: none; outline: none; }
+.sheet-note-box textarea:focus { border-color: var(--primary-red, #e53935); }
+.sheet-note-count { position: absolute; right: 10px; bottom: 6px; font-size: 10.5px; color: #9ca3af; }
 .sheet-add-bar .sheet-add-btn { flex: 1; width: auto; }
 .sheet-bar-step { display: flex; align-items: center; height: 48px; flex-shrink: 0; border: 1.5px solid #e5e7eb; border-radius: 12px; background: #fff; }
 .sheet-bar-step button { width: 40px; height: 100%; border: 0; background: none; color: var(--primary-red, #e53935); font-size: 22px; font-weight: 800; cursor: pointer; }
@@ -1977,6 +1987,15 @@ function sheetAddControlHtml(item) {
 function sheetAddBarHtml(itemId, disabled) {
   return '<div class="product-sheet-footer sheet-add-bar" id="sheetAddBar">' +
     (disabled ? '' :
+      '<div class="sheet-note">' +
+        '<button type="button" class="sheet-note-toggle" onclick="toggleSheetNote()"><i class="fa-regular fa-note-sticky"></i> Add cooking instructions <span>(optional)</span></button>' +
+        '<div class="sheet-note-box" id="sheetNoteBox" hidden>' +
+          '<textarea id="sheetNote" maxlength="150" rows="2" placeholder="e.g. Less spicy, no onion, extra crispy" oninput="document.getElementById(\'sheetNoteCount\').textContent = this.value.length"></textarea>' +
+          '<div class="sheet-note-count"><span id="sheetNoteCount">0</span>/150</div>' +
+        '</div>' +
+      '</div>') +
+    '<div class="sheet-add-row">' +
+    (disabled ? '' :
       '<div class="sheet-bar-step">' +
         '<button type="button" onclick="sheetBarQty(-1)" aria-label="One less">−</button>' +
         '<span id="sheetBarQty">' + sheetQty + '</span>' +
@@ -1984,7 +2003,36 @@ function sheetAddBarHtml(itemId, disabled) {
       '</div>') +
     '<button class="sheet-add-btn" id="sheetChooseAdd" onclick="sheetAddToCart(' + itemId + ')"' + (disabled ? ' disabled' : '') + '>' +
       (disabled ? 'Currently unavailable' : 'Add item · <span id="sheetBtnPrice"></span>') + '</button>' +
+    '</div>' +
   '</div>';
+}
+
+// --- Cooking instructions: one per cart line (dish, or dish + size), saved with the cart
+function getItemNotes() {
+  try { return JSON.parse(localStorage.getItem('_itemNotes') || '{}') || {}; } catch (e) { return {}; }
+}
+function setItemNote(key, text) {
+  var all = getItemNotes();
+  text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 150);
+  if (text) all[key] = text; else delete all[key];
+  try { localStorage.setItem('_itemNotes', JSON.stringify(all)); } catch (e) {}
+}
+function sheetCartKey(item) {
+  var hasVar = item.has_variations && item.variations && item.variations.length > 0;
+  return hasVar && selectedVariant !== null ? item.id + '_v' + selectedVariant : String(item.id);
+}
+function toggleSheetNote() {
+  var box = document.getElementById('sheetNoteBox');
+  if (!box) return;
+  box.hidden = !box.hidden;
+  if (!box.hidden) {
+    var ta = document.getElementById('sheetNote'), item = getSheetItem();
+    if (ta && !ta.value && item) {
+      ta.value = getItemNotes()[sheetCartKey(item)] || '';
+      document.getElementById('sheetNoteCount').textContent = ta.value.length;
+    }
+    if (ta) ta.focus();
+  }
 }
 
 function openSheetAddBar(itemId) {
@@ -2057,6 +2105,8 @@ function sheetAddToCart(itemId) {
   if (!item) return;
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
   if (hasVar && selectedVariant === null) return;
+  var noteBox = document.getElementById('sheetNoteBox');
+  if (noteBox && !noteBox.hidden) setItemNote(sheetCartKey(item), document.getElementById('sheetNote').value);
   var times = Math.max(1, sheetQty || 1);
   for (var t = 0; t < times; t++) {
     if (hasVar) {

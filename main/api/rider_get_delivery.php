@@ -42,7 +42,7 @@ try {
     }
 
     // Get order items
-    $itemsStmt = $conn->prepare("SELECT item_name, quantity, unit_price, total_price FROM order_items WHERE order_id = ?");
+    $itemsStmt = $conn->prepare("SELECT item_name, quantity, unit_price, total_price, notes FROM order_items WHERE order_id = ?");
     $itemsStmt->execute([$tracking['order_id']]);
     $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
 

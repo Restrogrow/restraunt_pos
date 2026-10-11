@@ -7414,7 +7414,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <tbody>
                       ${order.items.map(item => `
                         <tr style="border-bottom: 1px solid #eee;">
-                          <td style="padding: 0.75rem;">${escapeHtml(item.item_name)}</td>
+                          <td style="padding: 0.75rem;">${escapeHtml(item.item_name)}${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px">📝 ${escapeHtml(item.notes)}</div>` : ''}</td>
                           <td style="padding: 0.75rem; text-align: center;">${item.quantity}</td>
                           <td style="padding: 0.75rem; text-align: right;">${formatCurrency(item.total_price)}</td>
                         </tr>
@@ -10427,6 +10427,7 @@ function displayOrders(orders) {
             <span class="item-name">${escapeHtml(item.item_name)}</span>
             <span class="item-qty">x${item.quantity}</span>
             <span class="item-price">${formatCurrency(item.total_price)}</span>
+            ${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px">📝 ${escapeHtml(item.notes)}</div>` : ''}
           </div>
         `).join('')}
       </div>

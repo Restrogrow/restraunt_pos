@@ -558,6 +558,14 @@ $conn->beginTransaction();
     }
     // --- End batch-fetch ---
 
+    // Customer's per-dish cooking instruction: plain text, one line, 150 chars max
+    if (!function_exists('cleanItemInstruction')) {
+        function cleanItemInstruction($s) {
+            $s = trim(preg_replace('/\s+/u', ' ', strip_tags((string)$s)));
+            return mb_substr($s, 0, 150);
+        }
+    }
+
     // --- Server-side price verification ---
     // Verifies menu item prices, variation prices, AND addon prices
     // against the database to prevent price manipulation by clients.
@@ -629,6 +637,8 @@ $conn->beginTransaction();
             'quantity' => $quantity,
             'price' => $unitPrice,
             'addons' => $verifiedAddons,   // Use verified addon data (DB prices)
+            // Customer's cooking instruction for this dish (optional, plain text)
+            'notes' => cleanItemInstruction($item['notes'] ?? ''),
         ];
         $calculatedSubtotal += $unitPrice * $quantity;
     }
@@ -932,10 +942,11 @@ $conn->beginTransaction();
     $itemParams = [];
     foreach ($items as $item) {
         $addonsJson = !empty($item['addons']) ? json_encode($item['addons'], JSON_UNESCAPED_UNICODE) : null;
-        $itemRows[] = '(?, ?, ?, ?, ?, ?, ?, ?)';
+        $itemRows[] = '(?, ?, ?, ?, ?, ?, ?, ?, ?)';
         array_push($itemParams,
             $order_id, $item['id'], $item['name'], $item['variation_name'] ?? null,
-            $item['quantity'], $item['price'], $item['price'] * $item['quantity'], $addonsJson
+            $item['quantity'], $item['price'], $item['price'] * $item['quantity'], $addonsJson,
+            ($item['notes'] ?? '') !== '' ? $item['notes'] : null
         );
     }
     if (!empty($global_addons) && is_array($global_addons)) {
@@ -943,16 +954,16 @@ $conn->beginTransaction();
             $gName = $gAddon['name'] ?? 'Add-on';
             $gPrice = (float)($gAddon['price'] ?? 0);
             $gQty = (int)($gAddon['quantity'] ?? 1);
-            $itemRows[] = '(?, ?, ?, ?, ?, ?, ?, ?)';
+            $itemRows[] = '(?, ?, ?, ?, ?, ?, ?, ?, ?)';
             array_push($itemParams,
-                $order_id, null, $gName, 'Add-on', $gQty, $gPrice, $gPrice * $gQty, null
+                $order_id, null, $gName, 'Add-on', $gQty, $gPrice, $gPrice * $gQty, null, null
             );
         }
     }
 
     $firstOrderItemId = null;
     if (!empty($itemRows)) {
-        $itemSql = "INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price, addons) VALUES " . implode(', ', $itemRows);
+        $itemSql = "INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price, addons, notes) VALUES " . implode(', ', $itemRows);
         $conn->prepare($itemSql)->execute($itemParams);
         $firstOrderItemId = (int)$conn->lastInsertId();
     }
@@ -1098,23 +1109,25 @@ $conn->beginTransaction();
         foreach ($items as $item) {
             if ($kotItemsHasAddons) {
                 $addonsJson = !empty($item['addons']) ? json_encode($item['addons'], JSON_UNESCAPED_UNICODE) : null;
+                $kotItemRows[] = '(?, ?, ?, ?, ?, ?, ?, ?)';
+                array_push($kotItemParams,
+                    $kotId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'],
+                    (float)$item['price'], (float)($item['price'] * $item['quantity']), $addonsJson,
+                    ($item['notes'] ?? '') !== '' ? $item['notes'] : null
+                );
+            } else {
                 $kotItemRows[] = '(?, ?, ?, ?, ?, ?, ?)';
                 array_push($kotItemParams,
                     $kotId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'],
-                    (float)$item['price'], (float)($item['price'] * $item['quantity']), $addonsJson
-                );
-            } else {
-                $kotItemRows[] = '(?, ?, ?, ?, ?, ?)';
-                array_push($kotItemParams,
-                    $kotId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'],
-                    (float)$item['price'], (float)($item['price'] * $item['quantity'])
+                    (float)$item['price'], (float)($item['price'] * $item['quantity']),
+                    ($item['notes'] ?? '') !== '' ? $item['notes'] : null
                 );
             }
         }
         if (!empty($kotItemRows)) {
             $kotItemCols = $kotItemsHasAddons
-                ? "(kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons)"
-                : "(kot_id, menu_item_id, item_name, quantity, unit_price, total_price)";
+                ? "(kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons, notes)"
+                : "(kot_id, menu_item_id, item_name, quantity, unit_price, total_price, notes)";
             $kotItemSql = "INSERT INTO kot_items $kotItemCols VALUES " . implode(', ', $kotItemRows);
             $conn->prepare($kotItemSql)->execute($kotItemParams);
         }
