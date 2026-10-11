@@ -278,6 +278,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $menu_card_style = 'classic';
     $category_heading_bg = null;
     $category_pic_style = 'round';
+    $all_category_icon = null;
     $site_name_override = null;
     $nav_icon_style = 'classic';
     $nav_labels_json = null;
@@ -286,7 +287,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     if ($restaurant_id) {
         try {
             ensureWebsiteThemeSchema($conn);
-            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, category_heading_bg, category_pic_style FROM website_settings WHERE restaurant_id = :rid');
+            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
             $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($themeRow) {
@@ -311,6 +312,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 if (in_array($themeRow['menu_card_style'] ?? '', THEME_MENU_CARD_STYLES, true)) $menu_card_style = $themeRow['menu_card_style'];
                 if (preg_match('/^#[0-9a-fA-F]{6}$/', (string)($themeRow['category_heading_bg'] ?? ''))) $category_heading_bg = $themeRow['category_heading_bg'];
                 if (in_array($themeRow['category_pic_style'] ?? '', THEME_CATEGORY_PIC_STYLES, true)) $category_pic_style = $themeRow['category_pic_style'];
+                if (preg_match('#^data:image/(webp|png|jpeg|gif);base64,[A-Za-z0-9+/=]+$#', (string)($themeRow['all_category_icon'] ?? ''))) $all_category_icon = $themeRow['all_category_icon'];
                 if (!empty($themeRow['site_name'])) $site_name_override = $themeRow['site_name'];
                 if (array_key_exists($themeRow['nav_icon_style'] ?? '', NAV_ICON_STYLES)) $nav_icon_style = $themeRow['nav_icon_style'];
                 if (!empty($themeRow['nav_labels'])) $nav_labels_json = $themeRow['nav_labels'];

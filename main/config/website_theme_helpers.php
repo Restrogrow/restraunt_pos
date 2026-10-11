@@ -178,6 +178,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
     //   menu_card_style             — Menu page dish cards: classic or modern
     //   category_heading_bg         — category heading colour (NULL = light shade of the ADD button colour)
     //   category_pic_style          — Menu page category pictures: round or cutout
+    //   all_category_icon           — custom picture for the Menu page "All" button (data URL, NULL = grid icon)
     $columns = [
         'theme_preset'     => "VARCHAR(30) DEFAULT NULL",
         'card_style'       => "VARCHAR(10) DEFAULT 'rounded'",
@@ -194,6 +195,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         'menu_card_style' => "VARCHAR(10) DEFAULT 'classic'",
         'category_heading_bg' => "VARCHAR(20) DEFAULT NULL",
         'category_pic_style' => "VARCHAR(10) DEFAULT 'round'",
+        'all_category_icon' => "LONGTEXT DEFAULT NULL",
     ];
     try {
         $existing = []; $types = [];

@@ -953,6 +953,8 @@ body {
 window.websiteRestaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 // Website Appearance > Menu Card Design: 'classic' (original cards) or 'modern'
 window.menuCardStyle = <?php echo json_encode($menu_card_style ?? 'classic'); ?>;
+// Custom picture for the "All" category button (Website Appearance), or null
+window.allCategoryIcon = <?php echo json_encode($all_category_icon ?? null); ?>;
 window.websiteRestaurantSlug = <?php echo json_encode($restaurant_slug ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.websiteTableNumber = <?php echo json_encode($qr_table ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 // Restore table from sessionStorage if URL param missing but previously set (e.g., coming back from cart)
@@ -2040,7 +2042,7 @@ function renderSideNav() {
   var allIcon = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2215%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2215%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3C/g%3E%3C/svg%3E';
   var html = menuItems.length ? '<div class="sub-views">' +
       '<button class="side-nav-btn' + (currentMenuIdx === ALL_CATEGORY ? ' active' : '') + '" data-index="' + ALL_CATEGORY + '">' +
-        '<img src="' + allIcon + '" alt="All dishes" width="48" height="48"><br><span class="cat-name">All</span>' +
+        '<img src="' + (window.allCategoryIcon || allIcon) + '" alt="All dishes" width="48" height="48"><br><span class="cat-name">All</span>' +
       '</button>' +
     '</div>' : '';
   for (var i = 0; i < menuItems.length; i++) {

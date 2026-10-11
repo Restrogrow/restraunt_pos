@@ -13842,6 +13842,42 @@ async function initWebsiteThemeEditor() {
     document.querySelectorAll('.cat-pic-style-opt').forEach(function(el) {
       el.addEventListener('click', function() { applyCategoryPicStyleUI(el.getAttribute('data-value')); });
     });
+    // Custom picture for the Menu page "All" category button (saved immediately)
+    (function () {
+      var input = document.getElementById('allCategoryIconInput');
+      var removeBtn = document.getElementById('allCategoryIconRemove');
+      var prev = document.getElementById('allCategoryIconPreview');
+      var status = document.getElementById('allCategoryIconStatus');
+      if (!input || !prev) return;
+      function setStatus(t) { if (status) status.textContent = t; }
+      input.addEventListener('change', async function () {
+        var file = input.files && input.files[0];
+        input.value = '';
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) { setStatus('File too large (max 2MB).'); return; }
+        setStatus('Uploading & processing picture…');
+        var fd = new FormData();
+        fd.append('icon_image', file);
+        try {
+          var res = await fetch('../website/theme_api.php?action=upload_all_category_icon&restaurant_id=' + encodeURIComponent(currentRestaurantId() || ''), { method: 'POST', body: fd });
+          var d = await res.json();
+          if (!d.success) throw new Error(d.message || 'Upload failed');
+          prev.src = d.icon_url;
+          setStatus('Saved. ' + (d.message || ''));
+          if (window.refreshPreview) window.refreshPreview();
+        } catch (e) { setStatus('Upload failed: ' + e.message); }
+      });
+      if (removeBtn) removeBtn.addEventListener('click', async function () {
+        try {
+          var res = await fetch('../website/theme_api.php?action=remove_all_category_icon&restaurant_id=' + encodeURIComponent(currentRestaurantId() || ''), { method: 'POST' });
+          var d = await res.json();
+          if (!d.success) throw new Error(d.message || 'Failed');
+          prev.src = prev.getAttribute('data-default');
+          setStatus('Back to the default grid icon.');
+          if (window.refreshPreview) window.refreshPreview();
+        } catch (e) { setStatus('Error: ' + e.message); }
+      });
+    })();
     // Menu page card design (Classic / Modern)
     function applyMenuCardStyleUI(val) {
       document.querySelectorAll('.menu-card-style-opt').forEach(function(el) {
@@ -14764,6 +14800,8 @@ if (!window.customBgThemes) {
       applyMenuCardStyleUI(data.settings.menu_card_style || 'classic');
       applyCategoryHeadingUI(data.settings.category_heading_bg || '');
       applyCategoryPicStyleUI(data.settings.category_pic_style || 'round');
+      var allPrev = document.getElementById('allCategoryIconPreview');
+      if (allPrev) allPrev.src = data.settings.all_category_icon || allPrev.getAttribute('data-default');
 
       // Set background theme URL
       const bgUrl = data.settings.background_theme || '';

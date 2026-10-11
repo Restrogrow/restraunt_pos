@@ -1956,6 +1956,14 @@ try {
                   <span style="font-weight: 500; font-size: 0.8rem;">Cut-out</span>
                 </label>
               </div>
+              <!-- Custom picture for the Menu page "All" button -->
+              <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <span style="font-weight: 600; font-size: 0.85rem; color: #111827;">&ldquo;All&rdquo; button picture</span>
+                <img id="allCategoryIconPreview" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2215%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2215%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3C/g%3E%3C/svg%3E" data-default="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2215%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2215%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3C/g%3E%3C/svg%3E" alt="All button picture" style="width: 48px; height: 48px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid #e5e7eb;">
+                <label class="btn btn-outline" style="cursor: pointer; margin: 0;">Upload<input type="file" id="allCategoryIconInput" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;"></label>
+                <button type="button" class="btn btn-outline" id="allCategoryIconRemove">Use default</button>
+                <span id="allCategoryIconStatus" style="font-size: 0.8rem; color: #6b7280;">JPG, PNG or WebP, max 2MB &mdash; saved straight away.</span>
+              </div>
             </div>
 
             <!-- Category heading colour (Menu page + home menu list) -->

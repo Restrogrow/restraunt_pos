@@ -57,7 +57,7 @@ try {
   ensureWebsiteThemeSchema($conn);
 
   if ($action === 'get') {
-    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, category_heading_bg, category_pic_style FROM website_settings WHERE restaurant_id = :rid');
+    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');
     $stmt->execute([':rid' => $restaurant_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     $bestsellerStyle = getBestsellerStyle($row['bestseller_style'] ?? null);
@@ -325,6 +325,34 @@ try {
     $stmt->execute([':rid' => $restaurant_id, ':nic' => json_encode($overrides)]);
 
     echo json_encode(['success' => true, 'icon_url' => $dataUrl, 'slot' => $slot]);
+    exit;
+  }
+
+  if ($action === 'upload_all_category_icon' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Custom picture for the Menu page "All" category button. Goes through the
+    // same category image processing as category uploads (plain background
+    // removed, trimmed, centred, WebP) and is stored as a data URL.
+    if (!isset($_FILES['icon_image']) || $_FILES['icon_image']['error'] !== UPLOAD_ERR_OK) {
+      throw new Exception(($_FILES['icon_image']['error'] ?? -1) === UPLOAD_ERR_INI_SIZE ? 'File too large (max 2MB)' : 'No file uploaded');
+    }
+    $file = $_FILES['icon_image'];
+    if ($file['size'] > 2 * 1024 * 1024) throw new Exception('File too large (max 2MB)');
+    $imageData = file_get_contents($file['tmp_name']);
+    $info = $imageData !== false ? @getimagesizefromstring($imageData) : false;
+    $types = [IMAGETYPE_JPEG => 'image/jpeg', IMAGETYPE_PNG => 'image/png', IMAGETYPE_GIF => 'image/gif', IMAGETYPE_WEBP => 'image/webp'];
+    if (!$info || !isset($types[$info[2]])) throw new Exception('Invalid image. Allowed: JPG, PNG, GIF, WebP');
+    require_once __DIR__ . '/../config/category_image_processor.php';
+    $processed = processCategoryImage($imageData, $types[$info[2]]);
+    $dataUrl = 'data:' . $processed['mime'] . ';base64,' . base64_encode($processed['data']);
+    $conn->prepare('INSERT INTO website_settings (restaurant_id, all_category_icon) VALUES (:rid, :i) ON DUPLICATE KEY UPDATE all_category_icon = VALUES(all_category_icon)')
+         ->execute([':rid' => $restaurant_id, ':i' => $dataUrl]);
+    echo json_encode(['success' => true, 'icon_url' => $dataUrl, 'message' => $processed['message']]);
+    exit;
+  }
+
+  if ($action === 'remove_all_category_icon' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $conn->prepare('UPDATE website_settings SET all_category_icon = NULL WHERE restaurant_id = :rid')->execute([':rid' => $restaurant_id]);
+    echo json_encode(['success' => true]);
     exit;
   }
 
