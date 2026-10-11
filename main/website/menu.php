@@ -222,32 +222,51 @@ body {
   display: flex; padding: 10px 16px;
 }
 .search-container {
-  display: flex; align-items: center;
-  width: 100%;
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; height: 44px;
+  padding: 0 6px 0 14px;
   background: #fff;
-  border: 1px solid #2d3436;
-  border-radius: 999px;
-  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+.search-container:focus-within {
+  border-color: var(--primary-red, #e53935);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-red, #e53935) 14%, transparent);
+}
+.search-lead { color: var(--primary-red, #e53935); font-size: 17px; flex-shrink: 0; }
+.search-field { position: relative; flex: 1; min-width: 0; height: 100%; }
 .search-input {
-  flex: 1; border: none; outline: none;
-  padding: 6px 14px;
+  width: 100%; height: 100%;
+  border: none; outline: none; padding: 0;
   font-size: 14px; font-family: var(--site-font);
-  height: 32px;
   background: transparent;
   color: #111;
 }
-.search-input::placeholder {
-  color: #999; font-size: 13px;
+.search-input::-webkit-search-cancel-button { display: none; }
+/* "Search for 'Paneer Tikka'" — dish names from this menu roll by */
+.search-hint {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; gap: 4px;
+  font-size: 14px; color: #9ca3af;
+  white-space: nowrap; overflow: hidden;
+  pointer-events: none;
 }
-.search-btn {
-  width: 39px; height: 38px;
-  border: none; border-left: 1px solid #ddd;
-  background: transparent;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  color: #333; font-size: 16px;
+.search-container.has-value .search-hint { display: none; }
+.search-hint-word { position: relative; display: inline-block; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: #4b5563; font-weight: 600; }
+.search-hint-word.roll { animation: searchHintRoll 0.45s ease; }
+@keyframes searchHintRoll { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .search-hint-word.roll { animation: none; } }
+.search-clear {
+  display: none; flex-shrink: 0;
+  width: 30px; height: 30px;
+  border: 0; border-radius: 50%;
+  background: #f3f4f6; color: #6b7280;
+  font-size: 16px; line-height: 1; cursor: pointer;
+  align-items: center; justify-content: center;
 }
+.search-container.has-value .search-clear { display: flex; }
 
 .product-grid {
   display: grid;
@@ -1070,8 +1089,12 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
 
     <div class="search-rapper">
       <div class="search-container">
-        <input type="text" class="search-input" placeholder="Search your favorite food fast ⚡">
-        <button type="button" class="search-btn"><i class="bi bi-search"></i></button>
+        <i class="bi bi-search search-lead" aria-hidden="true"></i>
+        <div class="search-field">
+          <input type="search" class="search-input" aria-label="Search dishes" autocomplete="off" enterkeyhint="search">
+          <div class="search-hint" aria-hidden="true">Search for <span class="search-hint-word" id="searchHintWord">your favourite dish</span></div>
+        </div>
+        <button type="button" class="search-clear" aria-label="Clear search"><i class="fa fa-times"></i></button>
       </div>
     </div>
 
@@ -1974,6 +1997,43 @@ function sheetAddToCart(itemId) {
   closeProductSheet();
 }
 
+// Search box hint: "Search for 'Paneer Tikka'", rolling through random dishes
+// from this restaurant's own menu every few seconds.
+function initSearchHints() {
+  var word = document.getElementById('searchHintWord');
+  if (!word) return;
+  var names = [], i = 0, tries = 0;
+  function collect() {
+    var seen = {};
+    for (var m = 0; m < (menuItems || []).length; m++) {
+      var list = menuItems[m] && menuItems[m].items || [];
+      for (var k = 0; k < list.length; k++) {
+        var it = list[k];
+        var n = (it.item_name_translated || it.item_name_en || it.name || '').trim();
+        if (n && it.is_available != 0 && !seen[n]) { seen[n] = 1; names.push(n); }
+      }
+    }
+    for (var j = names.length - 1; j > 0; j--) {          // shuffle
+      var r = Math.floor(Math.random() * (j + 1)); var t = names[j]; names[j] = names[r]; names[r] = t;
+    }
+    names = names.slice(0, 15);
+  }
+  function show() {
+    word.textContent = '‘' + names[i % names.length] + '’';
+    word.classList.remove('roll'); void word.offsetWidth; word.classList.add('roll');
+    i++;
+  }
+  (function wait() {                                       // dishes load after the page
+    if (typeof menuItems !== 'undefined' && menuItems.length) {
+      collect();
+      if (!names.length) return;
+      show();
+      setInterval(function() { if (!document.hidden) show(); }, 2600);
+    } else if (++tries < 60) {
+      setTimeout(wait, 250);
+    }
+  })();
+}
 // Scrolling down the dishes hides the top bar (back, logo, Veg Only, filter,
 // share) for more room; the search box and categories stay.
 // Scrolling back up, or reaching the top, brings it back.
@@ -2639,7 +2699,16 @@ document.addEventListener('DOMContentLoaded', function() {
   if (searchInput) {
     var searchTimer = null;
     var searchReqId = 0;
+    var searchBox = searchInput.closest('.search-container');
+    var clearBtn = searchBox && searchBox.querySelector('.search-clear');
+    if (clearBtn) clearBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+      searchInput.focus();
+    });
+    initSearchHints();
     searchInput.addEventListener('input', function() {
+      if (searchBox) searchBox.classList.toggle('has-value', this.value !== '');
       var q = this.value.toLowerCase().trim();
       if (!q) {
         currentSubcategoryId = null;
@@ -2681,7 +2750,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (menuItems[j].name === menuNames[m]) { menuIdx = j; break; }
               }
               if (menuIdx === -1) continue;
-              html += '<div style="padding:8px 16px 4px;font-size:13px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer" onclick="switchToMenu(' + menuIdx + ')">' + menuNames[m] + ' <span style="font-size:11px;color:#aaa">↗</span></div>';
+              html += '<div style="grid-column:1/-1;padding:8px 4px 2px;font-size:13px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer" onclick="switchToMenu(' + menuIdx + ')">' + menuNames[m] + ' <span style="font-size:11px;color:#aaa">↗</span></div>';
               for (var i = 0; i < list.length; i++) {
                 var item = list[i];
                 var oos = item.is_available == 0;
