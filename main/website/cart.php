@@ -636,6 +636,35 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   transform: scale(0.98);
 }
 
+/* ── Offers & coupons section ── */
+.cpn-sec-head { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 12px; }
+.cpn-sec-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 800; color: #111827; }
+.cpn-sec-ico { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--primary-red, #e53935) 10%, #fff); color: var(--primary-red, #e53935); font-size: 14px; }
+.cpn-viewall { border: 0; background: none; color: var(--primary-red, #e53935); font-family: var(--site-font); font-size: 12.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; padding: 6px 0; }
+.cpn-viewall i { font-size: 10px; }
+.cpn-ticket { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #f0fdf4; border: 1.5px dashed #86efac; }
+.cpn-ticket::before, .cpn-ticket::after { content: ""; position: absolute; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%; background: #fff; border: 1.5px dashed #86efac; }
+.cpn-ticket::before { left: -8px; clip-path: inset(0 0 0 50%); }
+.cpn-ticket::after { right: -8px; clip-path: inset(0 50% 0 0); }
+.cpn-ticket.pop { animation: cpnPop 0.55s cubic-bezier(.34,1.56,.64,1); }
+.cpn-ticket-ico { width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #16a34a; color: #fff; font-size: 14px; }
+.cpn-ticket-txt { flex: 1; min-width: 0; line-height: 1.3; }
+.cpn-ticket-txt b { display: block; font-size: 14px; font-weight: 800; color: #14532d; letter-spacing: 0.04em; }
+.cpn-ticket-txt span { font-size: 12px; color: #15803d; font-weight: 600; }
+.cpn-ticket-remove { border: 0; background: none; color: #6b7280; font-family: var(--site-font); font-size: 12px; font-weight: 700; cursor: pointer; padding: 6px 2px; text-decoration: underline; text-underline-offset: 3px; }
+.cpn-code-row { display: flex; gap: 8px; }
+.cpn-code-box { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; height: 44px; padding: 0 12px; border: 1.5px solid #e5e7eb; border-radius: 12px; background: #fafafa; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s; }
+.cpn-code-box:focus-within { border-color: var(--primary-red, #e53935); background: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-red, #e53935) 12%, transparent); }
+.cpn-code-box i { color: #9ca3af; font-size: 12px; }
+.cpn-code-box input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-family: var(--site-font); font-size: 13.5px; font-weight: 600; letter-spacing: 0.04em; color: #111827; }
+.cpn-code-box input::placeholder { letter-spacing: 0; font-weight: 500; color: #9ca3af; }
+.cpn-code-box input.error { color: #dc2626; }
+.cpn-apply { height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--primary-red, #e53935); color: #fff; font-family: var(--site-font); font-size: 13.5px; font-weight: 700; cursor: pointer; transition: transform 0.15s; }
+.cpn-apply:active { transform: scale(0.96); }
+.cpn-error { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; font-weight: 600; color: #dc2626; animation: cpnShake 0.4s ease; }
+@keyframes cpnPop { 0% { transform: scale(0.92); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes cpnShake { 0%, 100% { transform: none; } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@media (prefers-reduced-motion: reduce) { .cpn-ticket.pop, .cpn-error { animation: none; } }
 /* ── Note for the restaurant (special instructions) ── */
 .note-card { background: #fff; border: 1px solid #eceef1; border-radius: 16px; box-shadow: 0 2px 12px rgba(17,24,39,0.05); overflow: hidden; }
 .note-head { display: flex; align-items: center; gap: 12px; padding: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -1660,6 +1689,8 @@ function renderCart() {
   totalQty = regQty + addonQty;
   totalPrice = regPrice + addonPrice;
   evaluateMilestones(totalPrice);
+  var ticketJustApplied = !!(appliedCoupon && lastTicketCoupon !== appliedCoupon.code);
+  lastTicketCoupon = appliedCoupon ? appliedCoupon.code : '';
 
   var couponStatusHtml = '';
   if (appliedCoupon) {
@@ -1672,23 +1703,24 @@ function renderCart() {
   cartHtml +=
     '<div class="card card-pad" id="couponCard">' +
       milestoneCardHtml(totalPrice) +
-      '<div class="coupon-header">' +
-        '<div class="icon-wrap">%</div>' +
-        '<div class="header-text">' +
-          '<strong>Have a coupon code?</strong>' +
-          '<span>Enter below or browse available offers</span>' +
-        '</div>' +
+      // Offers & coupons: applied coupon as a ticket, otherwise a code box
+      '<div class="cpn-sec-head">' +
+        '<div class="cpn-sec-title"><span class="cpn-sec-ico"><i class="fa-solid fa-ticket"></i></span>Offers &amp; coupons</div>' +
+        '<button type="button" class="cpn-viewall" onclick="openCouponSheet()">View all <i class="fa fa-chevron-right"></i></button>' +
       '</div>' +
-      '<div class="coupon-input-row">' +
-        '<input type="text" id="couponInput" placeholder="Enter coupon code" maxlength="20" ' + (appliedCoupon ? 'disabled' : '') + ' onkeydown="if(event.key===\'Enter\')applyCoupon()">' +
-        '<button class="apply-coupon-btn" id="applyCouponBtn" onclick="applyCoupon()" ' + (appliedCoupon ? 'disabled' : '') + '>Apply</button>' +
-      '</div>' +
-      '<div id="couponStatus">' + couponStatusHtml + '</div>' +
-      '<div class="coupon-browse" onclick="openCouponSheet()">' +
-        '<div class="badge">%</div>' +
-        '<span>Browse all coupons</span>' +
-        '<span class="arrow">→</span>' +
-      '</div>' +      '</div>' +
+      (appliedCoupon
+        ? '<div class="cpn-ticket' + (ticketJustApplied ? ' pop' : '') + '">' +
+            '<div class="cpn-ticket-ico"><i class="fa-solid fa-tag"></i></div>' +
+            '<div class="cpn-ticket-txt"><b>' + escapeHtml(appliedCoupon.code) + '</b>' +
+              '<span>You save ' + getCurrency() + couponSaving(appliedCoupon, totalPrice).toFixed(0) + ' with this code</span></div>' +
+            '<button type="button" class="cpn-ticket-remove" onclick="removeCoupon()">Remove</button>' +
+          '</div>'
+        : '<div class="cpn-code-row">' +
+            '<div class="cpn-code-box"><i class="fa-solid fa-percent"></i>' +
+              '<input type="text" id="couponInput" value="' + escapeHtml(lastCouponTyped) + '" placeholder="Enter coupon code" maxlength="20" autocomplete="off" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key===\'Enter\')applyCoupon()"></div>' +
+            '<button type="button" class="cpn-apply" id="applyCouponBtn" onclick="applyCoupon()">Apply</button>' +
+          '</div>' +
+          (couponError ? '<div class="cpn-error"><i class="fa-solid fa-circle-exclamation"></i>' + escapeHtml(couponError) + '</div>' : '')) +      '</div>' +
       '<div class="note-card' + (noteOpen ? ' open' : '') + '" id="noteCard">' +
       '<div class="note-head" id="instrHeader" onclick="toggleInstruction()" role="button" aria-expanded="' + (noteOpen ? 'true' : 'false') + '">' +
         '<div class="note-ico"><i class="fa-regular fa-message"></i></div>' +
@@ -2011,6 +2043,8 @@ function loadCouponsFromServer() {
 // removes by hand is respected (couponUserChoice). A coupon whose minimum is
 // no longer met is taken off here, since checkout would refuse it.
 var couponUserChoice = false;
+var lastTicketCoupon = '';
+var lastCouponTyped = '';
 var lastAutoAppliedCoupon = '';
 var milestoneJustApplied = false;
 
@@ -2082,8 +2116,9 @@ function milestoneCardHtml(total) {
   }).join('');
   var pill = '';
   var best = bestReachedMilestone(total);
+  // (the applied coupon itself is shown as the ticket in Offers & coupons)
   if (appliedCoupon && appliedCoupon.isMilestone) {
-    pill = '<span class="ms-pill' + (milestoneJustApplied ? ' just' : '') + '"><i class="fa fa-circle-check"></i>' + appliedCoupon.code + ' applied · saving ' + cur + couponSaving(appliedCoupon, total).toFixed(0) + '</span>';
+    pill = '';
   } else if (best && (!appliedCoupon || couponSaving(best, total) > couponSaving(appliedCoupon, total))) {
     pill = '<span class="ms-pill better">Save ' + cur + couponSaving(best, total).toFixed(0) + ' with ' + best.code + '<button type="button" class="ms-apply-btn" onclick="applyMilestone(\'' + best.code + '\')">Apply</button></span>';
   }
@@ -2102,6 +2137,7 @@ function applyCoupon() {
   var input = document.getElementById('couponInput');
   var code = input ? input.value.trim().toUpperCase() : '';
   if (!code) return;
+  lastCouponTyped = code;
 
   couponError = '';
   var found = null;
@@ -2138,6 +2174,7 @@ function applyCoupon() {
   appliedCoupon = found;
   couponError = '';
   couponUserChoice = true;
+  lastCouponTyped = '';
   renderCart();
   setTimeout(function() {
     var inp = document.getElementById('couponInput');
