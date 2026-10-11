@@ -178,6 +178,51 @@ body {
 .delete-btn:hover { opacity: 0.88; transform: scale(1.08); }
 .delete-btn:active { transform: scale(0.95); }
 
+/* ── Cart redesign: soft cards, one "Your order" list, quiet delete, floating bar ── */
+.content { background: #f5f6f8; padding-bottom: 110px; }
+.card { border: 1px solid #eceef1; border-radius: 16px; box-shadow: 0 2px 12px rgba(17,24,39,0.05); }
+.order-card { padding: 2px 14px 0; }
+.order-head { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0 8px; }
+.order-head strong { font-size: 15px; font-weight: 800; color: #111827; }
+.order-head span { font-size: 12px; color: #6b7280; font-weight: 500; }
+.order-row { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid #f1f2f4; }
+.order-row img { width: 60px; height: 60px; border-radius: 12px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
+.order-main { flex: 1; min-width: 0; }
+.order-name-row { display: flex; align-items: flex-start; gap: 7px; }
+.veg-mark { width: 13px; height: 13px; flex-shrink: 0; margin-top: 3px; border: 1.5px solid #16a34a; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+.veg-mark i { width: 6px; height: 6px; border-radius: 50%; background: #16a34a; }
+.veg-mark.nonveg { border-color: #dc2626; } .veg-mark.nonveg i { background: #dc2626; }
+.veg-mark.egg { border-color: #f59e0b; } .veg-mark.egg i { background: #f59e0b; }
+.order-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3; }
+.order-del { width: 30px; height: 30px; margin: -5px -6px 0 0; flex-shrink: 0; border: 0; border-radius: 8px; background: none; color: #9ca3af; font-size: 13px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.order-del:hover, .order-del:active { background: #fef2f2; color: #dc2626; }
+.order-size { margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--primary-red, #e53935); }
+.order-addon { margin-top: 2px; font-size: 11.5px; color: #6b7280; }
+.order-note { margin-top: 3px; font-size: 11.5px; color: #b45309; line-height: 1.35; }
+.order-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }
+.qty-pill { display: inline-flex; align-items: center; height: 30px; border: 1.5px solid color-mix(in srgb, var(--primary-red, #e53935) 35%, #fff); border-radius: 10px; background: #fff; overflow: hidden; }
+.qty-pill button { width: 30px; height: 100%; border: 0; background: none; color: var(--primary-red, #e53935); font-size: 16px; font-weight: 800; cursor: pointer; font-family: var(--site-font); }
+.qty-pill button:active { background: color-mix(in srgb, var(--primary-red, #e53935) 10%, #fff); }
+.qty-pill span { min-width: 18px; text-align: center; font-size: 14px; font-weight: 800; color: #111827; }
+.order-price { text-align: right; line-height: 1.2; }
+.order-price b { display: block; font-size: 14.5px; font-weight: 800; color: #111827; }
+.order-price small { font-size: 11px; color: #9ca3af; }
+.order-more { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 0 -14px; padding: 13px 0; border-top: 1px dashed #e5e7eb; color: var(--primary-red, #e53935); font-size: 13px; font-weight: 700; text-decoration: none; }
+.order-more:active { background: #fafafa; }
+body .price-card h3 { font-size: 15px; font-weight: 800; }
+body .price-row { font-size: 13px; color: #4b5563; margin-bottom: 9px; }
+body .divider { border-top: 1px dashed #d1d5db; margin: 10px 0; }
+body .total-row { font-size: 16px; font-weight: 800; color: #111827; }
+/* Floating checkout bar, same as the menu's View Cart bar */
+body .checkout-bar { bottom: 12px; width: calc(100% - 24px); max-width: 401px; border-radius: 16px; padding: 10px 10px 10px 18px; box-shadow: 0 12px 28px color-mix(in srgb, var(--checkout-color, #e17055) 35%, transparent), 0 4px 10px rgba(0,0,0,0.12); }
+@media (min-width: 768px) { body .checkout-bar { bottom: 32px; border-radius: 16px; } }
+<?php if ($host === 'triposhsymmetry.in'): ?>
+body .checkout-bar { max-width: calc(100% - 24px); }
+<?php endif; ?>
+body .checkout-bar .total-label { font-size: 14.5px; white-space: nowrap; }
+body .checkout-bar .checkout-btn { background: #fff; color: var(--checkout-color, #e17055); font-weight: 800; font-size: 14px; border-radius: 11px; padding: 10px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); transition: transform 0.15s ease; }
+body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
+
 .add-more-btn {
   display: flex;
   align-items: center;
@@ -1487,6 +1532,7 @@ function renderCart() {
   var regQty = 0, regPrice = 0;
   var addonQty = 0, addonPrice = 0;
   var cartHtml = '';
+  var orderRows = '';
   var addonKeys = [];
 
   // First pass: render regular items + collect addon keys
@@ -1511,17 +1557,17 @@ function renderCart() {
 
     var varDisplay = '';
     if (raw && typeof raw === 'object' && raw.varName) {
-      varDisplay = '<div class="item-variant">' + escapeHtml(raw.varName) + '</div>';
+      varDisplay = '<div class="order-size">' + escapeHtml(raw.varName) + '</div>';
     }
     
     // Show add-ons for this item
     var addonNames = getAddonNamesString(key);
     if (addonNames) {
-      varDisplay += '<div class="item-variant" style="color:#888;font-size:11px">' + escapeHtml(addonNames) + '</div>';
+      varDisplay += '<div class="order-addon">' + escapeHtml(addonNames) + '</div>';
     }
     var itemNote = getItemNote(key);
     if (itemNote) {
-      varDisplay += '<div class="item-variant" style="color:#b45309;font-size:11px">📝 ' + escapeHtml(itemNote) + '</div>';
+      varDisplay += '<div class="order-note"><i class="fa-regular fa-note-sticky"></i> ' + escapeHtml(itemNote) + '</div>';
     }
     var addonTotal = getAddonTotalForItem(key);
     if (addonTotal > 0) {
@@ -1529,23 +1575,40 @@ function renderCart() {
     }
     regPrice += price * qty;
 
-    cartHtml +=
-      '<div class="card card-pad" id="cartCard-' + key.replace('.', '_') + '">' +
-        '<div class="cart-item">' +
-          '<img src="' + getImageUrl(info.item_image || info.image) + '" alt="' + escapeHtml(info.item_name_translated || info.item_name_en || info.name) + '" loading="lazy">' +
-          '<div class="item-info">' +
-            '<div class="item-name">' + escapeHtml(info.item_name_translated || info.item_name_en || info.name) + '</div>' +
-            varDisplay +
-            '<div class="item-price"><span>QTY: ' + qty + '&nbsp;</span>' + getCurrency() + (price * qty).toFixed(2) + '</div>' +
-            '<div class="qty-ctrl">' +
-              '<button onclick="changeQty(\'' + key + '\', -1)">−</button>' +
-              '<span>' + qty + '</span>' +
-              '<button onclick="changeQty(\'' + key + '\', 1)">+</button>' +
-            '</div>' +
+    // One row per dish inside the "Your order" card
+    var dishName = escapeHtml(info.item_name_translated || info.item_name_en || info.name);
+    var typeLc = String(info.item_type || '').toLowerCase();
+    var vegCls = typeLc.indexOf('non') !== -1 ? ' nonveg' : (typeLc.indexOf('egg') !== -1 ? ' egg' : '');
+    var showVeg = typeLc && typeLc !== 'drink' && typeLc !== 'beverage';
+    orderRows +=
+      '<div class="order-row" id="cartCard-' + key.replace('.', '_') + '">' +
+        '<img src="' + getImageUrl(info.item_image || info.image) + '" alt="' + dishName + '" loading="lazy">' +
+        '<div class="order-main">' +
+          '<div class="order-name-row">' +
+            (showVeg ? '<span class="veg-mark' + vegCls + '"><i></i></span>' : '') +
+            '<div class="order-name">' + dishName + '</div>' +
+            '<button type="button" class="order-del" onclick="deleteItem(\'' + key + '\')" title="Remove" aria-label="Remove ' + dishName + '"><i class="fa-regular fa-trash-can"></i></button>' +
           '</div>' +
-          '<button class="delete-btn" onclick="deleteItem(\'' + key + '\')" title="Remove">🗑</button>' +
+          varDisplay +
+          '<div class="order-bottom">' +
+            '<div class="qty-pill">' +
+              '<button type="button" onclick="changeQty(\'' + key + '\', -1)" aria-label="One less">−</button>' +
+              '<span>' + qty + '</span>' +
+              '<button type="button" onclick="changeQty(\'' + key + '\', 1)" aria-label="One more">+</button>' +
+            '</div>' +
+            '<div class="order-price"><b>' + getCurrency() + (price * qty).toFixed(2) + '</b>' +
+              (qty > 1 ? '<small>' + getCurrency() + price.toFixed(2) + ' each</small>' : '') + '</div>' +
+          '</div>' +
         '</div>' +
       '</div>';
+  }
+
+  if (orderRows) {
+    cartHtml += '<div class="card order-card">' +
+      '<div class="order-head"><strong>Your order</strong><span>' + regQty + (regQty === 1 ? ' item' : ' items') + '</span></div>' +
+      orderRows +
+      '<a class="order-more" href="' + appendTableParam('<?php echo restaurantPageUrl('menu'); ?>') + '"><i class="fa fa-plus"></i> Add more items</a>' +
+    '</div>';
   }
 
   // Combine totals
@@ -1646,9 +1709,9 @@ function renderCart() {
     cartHtml +=
     '<div class="card card-pad">' +
       '<div class="price-card">' +
-        '<h3>Price Details</h3>' +
+        '<h3>Bill details</h3>' +
         '<div class="price-row">' +
-          '<span>Total Items (' + regQty + ' Items)</span>' +
+          '<span>Item total</span>' +
           '<span class="val">' + getCurrency() + regPrice.toFixed(2) + '</span>' +
         '</div>' +
         (addonQty > 0 ? '<div class="price-row">' +
@@ -1673,7 +1736,7 @@ function renderCart() {
         '</div>' +
         '<hr class="divider">' +
         '<div class="total-row">' +
-          '<span>Total Amount</span>' +
+          '<span>To pay</span>' +
           '<span>' + getCurrency() + finalTotal.toFixed(2) + '</span>' +
         '</div>' +
         (MIN_ORDER > 0 ? '<div class="min-order-warning" id="minOrderWarning">' +
@@ -1702,7 +1765,7 @@ function renderCart() {
   container.innerHTML = cartHtml;
   renderGlobalAddons();
   var sym = getCurrency();
-  document.getElementById('checkoutLabel').textContent = sym + finalTotal.toFixed(2) + ' (' + regQty + ' Items)';
+  document.getElementById('checkoutLabel').innerHTML = regQty + (regQty === 1 ? ' item' : ' items') + '<span style="opacity:.55;margin:0 6px;font-weight:400">|</span>' + sym + finalTotal.toFixed(2);
   document.getElementById('checkoutBtn').disabled = true;
 
   if (MIN_ORDER <= 0 || totalPrice >= MIN_ORDER) {
