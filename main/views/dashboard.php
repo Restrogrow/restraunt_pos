@@ -6044,7 +6044,7 @@ function toggleGatewayMode() {
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1rem;">
                 <!-- Cropper Container -->
                 <div>
-                  <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Crop Image:</label>
+                  <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Crop Image <span style="font-weight:400;color:#6b7280;">(same shape customers see on the menu)</span>:</label>
                   <div style="max-width: 100%; height: 300px; background: #f3f4f6; border-radius: 8px; overflow: hidden;">
                     <img id="imageToCrop" src="" alt="Image to crop" style="max-width: 100%; max-height: 100%; display: block;">
                   </div>
@@ -6064,7 +6064,7 @@ function toggleGatewayMode() {
                 <div>
                   <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Preview on Website:</label>
                   <div style="border: 2px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div id="websitePreviewImage" style="width: 100%; height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                    <div id="websitePreviewImage" style="width: 100%; aspect-ratio: 5 / 4; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
                       <img id="croppedPreviewImg" src="" alt="Preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
                       <span style="color: white; font-size: 3rem; opacity: 0.5;">🍽️</span>
                     </div>

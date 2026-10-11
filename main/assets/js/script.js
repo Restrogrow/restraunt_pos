@@ -3417,10 +3417,9 @@ document.addEventListener("DOMContentLoaded", () => {
         imageToCrop.src = imageUrl;
         cropperSection.style.display = 'block';
         
-        // Initialize Cropper.js
-        // Match the website preview aspect ratio (width:height = ~1.5:1 for menu cards)
+        // Same 5:4 shape the website uses for dish photos (menu cards and the detail view)
         imageCropper = new Cropper(imageToCrop, {
-          aspectRatio: 1.5, // Match website card image ratio (wider than tall)
+          aspectRatio: 5 / 4, // a bit wider than tall, like the website dish photos
           viewMode: 1,
           dragMode: 'move',
           autoCropArea: 0.8,
@@ -3466,7 +3465,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const croppedCanvas = imageCropper.getCroppedCanvas({
       width: 600,
-      height: 400,
+      height: 480,
       imageSmoothingEnabled: true,
       imageSmoothingQuality: 'high'
     });
@@ -3513,7 +3512,7 @@ document.addEventListener("DOMContentLoaded", () => {
         newCropBtn.innerHTML = '<span class="material-symbols-rounded" style="font-size: 1.2rem; vertical-align: middle;">hourglass_empty</span> Processing...';
     
     const croppedCanvas = imageCropper.getCroppedCanvas({
-      width: 1200,
+      width: 1000,
       height: 800,
       imageSmoothingEnabled: true,
       imageSmoothingQuality: 'high'

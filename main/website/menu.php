@@ -636,7 +636,7 @@ body {
 .product-sheet-media {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 2;
+  aspect-ratio: 5 / 4; /* same shape as the dashboard crop */
   max-height: 45vh;
   overflow: hidden;
   background: #f5f5f5;
