@@ -199,8 +199,9 @@ body {
   transition: padding-bottom 0.2s;
 }
 .main-content.has-cart {
-  padding-bottom: 100px;
+  padding-bottom: 110px;
 }
+body.has-ms-hint .main-content.has-cart { padding-bottom: 160px; }
 .main-content::-webkit-scrollbar { display: none; }
 
 .category-overview {
@@ -509,26 +510,32 @@ body {
 .skel-nav-label { height: 10px; width: 50px; border-radius: 4px; margin: 4px auto 0; }
 .skel-title-bar { display: inline-block; width: 140px; height: 22px; border-radius: 6px; vertical-align: middle; }
 
+/* Floating "View Cart" bar: rounded on every side, lifted off the edges */
 .checkout-bar {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: <?php echo ($host === 'triposhsymmetry.in') ? '100%' : '425px'; ?>;
+  position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+  width: calc(100% - 24px); max-width: <?php echo ($host === 'triposhsymmetry.in') ? 'calc(100% - 24px)' : '401px'; ?>;
   background: linear-gradient(135deg, var(--checkout-color, #F70000), var(--checkout-color-dark, #DA020E));
-  display: none; justify-content: space-between; align-items: center;
-  padding: 14px 18px; z-index: 100;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.15);
+  display: none; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 10px 10px 10px 18px; z-index: 100;
+  border-radius: 16px;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--checkout-color, #F70000) 35%, transparent), 0 4px 10px rgba(0,0,0,0.12);
 }
 @media (min-width: 768px) {
-  .checkout-bar { border-radius: 0 0 28px 28px; }
+  .checkout-bar { bottom: 32px; }
 }
-.checkout-bar.show { display: flex; }
-.checkout-bar .total-label { color: #fff; font-weight: 700; font-size: 15px; }
+.checkout-bar.show { display: flex; animation: cartBarIn 0.35s cubic-bezier(.22,1,.36,1); }
+@keyframes cartBarIn { from { transform: translate(-50%, 24px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+.checkout-bar .total-label { color: #fff; font-weight: 700; font-size: 14.5px; white-space: nowrap; }
+.checkout-bar .total-label .sep { opacity: 0.55; margin: 0 6px; font-weight: 400; }
 .checkout-bar .checkout-btn {
-  color: #fff; font-weight: 700; font-size: 15px;
-  background: none; border: none; cursor: pointer;
-  display: flex; align-items: center; gap: 6px;
-  font-family: var(--site-font);
+  color: var(--checkout-color, #F70000); font-weight: 800; font-size: 14px;
+  background: #fff; border: none; border-radius: 11px; padding: 10px 14px; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  font-family: var(--site-font); box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  transition: transform 0.15s ease;
 }
-.checkout-bar .checkout-btn:hover { opacity: .85; }
+.checkout-bar .checkout-btn:active { transform: scale(0.96); }
+.checkout-bar .checkout-btn:hover { opacity: .92; }
 .checkout-bar .checkout-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .veg-switch { position:relative; display:inline-block; width:40px; height:22px; }
 .veg-switch input { opacity:0; width:0; height:0; }
@@ -749,7 +756,7 @@ body {
 .offer-bubble {
   position: fixed; z-index: 90;
   right: max(16px, calc(50% - 212px + 16px));
-  bottom: 88px;
+  bottom: 92px;
   width: 56px; height: 56px; border: 0; border-radius: 50%;
   background: linear-gradient(135deg, var(--primary-red, #e53935), #ff7a45);
   color: #fff; font-size: 22px; cursor: pointer;
@@ -798,7 +805,7 @@ body {
 }
 .offer-active-bar button { border: 0; border-radius: 999px; padding: 6px 12px; background: #fff; color: var(--primary-red, #e53935); font: inherit; font-size: 12px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 /* Milestone offer hint, just above the checkout bar */
-.ms-hint { position: absolute; left: 0; right: 0; bottom: 100%; display: none; align-items: center; justify-content: center; gap: 7px; padding: 8px 12px 10px; background: #fff; border-top: 1px solid #f1f1f1; box-shadow: 0 -4px 14px rgba(0,0,0,0.06); color: #374151; font-size: 12.5px; font-weight: 600; text-align: center; overflow: hidden; }
+.ms-hint { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); display: none; align-items: center; justify-content: center; gap: 7px; padding: 9px 12px 11px; background: #fff; border-radius: 12px; border: 1px solid #f1f1f1; box-shadow: 0 6px 18px rgba(0,0,0,0.08); color: #374151; font-size: 12.5px; font-weight: 600; text-align: center; overflow: hidden; }
 .ms-hint.show { display: flex; animation: msHintIn 0.35s ease; }
 .ms-hint i { color: var(--primary-red, #e53935); }
 .ms-hint b { color: var(--primary-red, #e53935); font-weight: 800; }
@@ -809,7 +816,7 @@ body {
 @keyframes msHintIn { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes msHintSwap { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .ms-hint.show, .ms-hint .ms-hint-text.swap { animation: none; } .ms-hint-bar { transition: none; } }
-body.has-ms-hint .offer-bubble { bottom: 120px; }
+body.has-ms-hint .offer-bubble { bottom: 140px; }
 /* ── Coupon celebration on Checkout ── */
 .cpn-cele { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(17,24,39,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.25s ease; cursor: pointer; }
 .cpn-cele.show { opacity: 1; }
@@ -1238,7 +1245,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
   <div class="checkout-bar" id="checkoutBar">
     <div class="ms-hint" id="msHint"></div>
     <span class="total-label" id="checkoutLabel"><?php echo htmlspecialchars($currency_symbol ?? '₹'); ?>0.00</span>
-    <button class="checkout-btn" id="checkoutBtn" onclick="goToCheckout()">Checkout <i class="fa fa-arrow-right"></i></button>
+    <button class="checkout-btn" id="checkoutBtn" onclick="goToCheckout()">View Cart <i class="fa fa-arrow-right"></i></button>
   </div>
 </div>
 
@@ -1672,7 +1679,7 @@ function updateCheckoutBar() {
   if (totalQty > 0) {
     bar.classList.add('show');
     if (content) content.classList.add('has-cart');
-    label.textContent = (window.globalCurrencySymbol || '₹') + totalPrice.toFixed(2) + ' (' + totalQty + ' Items)';
+    label.innerHTML = totalQty + (totalQty === 1 ? ' item' : ' items') + '<span class="sep">|</span>' + (window.globalCurrencySymbol || '₹') + totalPrice.toFixed(2);
     btn.disabled = false;
   } else {
     bar.classList.remove('show');
