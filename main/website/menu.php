@@ -631,8 +631,8 @@ body {
   font-size: 18px;
   z-index: 10;
 }
-/* Same-size photo frame for every dish: the whole photo shows (never cropped);
-   any leftover space is filled with a soft blurred copy instead of grey bars. */
+/* Same-size photo frame for every dish (5:4, the dashboard crop shape).
+   The photo fills it edge to edge, so there are no bars or blurred edges. */
 .product-sheet-media {
   position: relative;
   width: 100%;
@@ -642,18 +642,12 @@ body {
   background: #f5f5f5;
   flex-shrink: 0;
 }
-.product-sheet-media::before {
-  content: "";
-  position: absolute;
-  inset: -24px;
-  background: var(--sheet-img) center / cover no-repeat;
-  filter: blur(18px) brightness(0.92);
-}
 .product-sheet-img {
   position: relative;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  object-position: center;
   display: block;
 }
 .product-sheet-body {
@@ -1653,7 +1647,7 @@ function showItemDetail(itemId) {
   var html = '';
 
   // Image
-  html += '<div class="product-sheet-media" style="--sheet-img:url(&quot;' + String(imgUrl).replace(/"/g, '%22') + '&quot;)">' +
+  html += '<div class="product-sheet-media">' +
     '<img class="product-sheet-img" src="' + imgUrl + '" alt="' + itemName + '" onerror="this.parentNode.style.display=\'none\'"></div>';
 
   // Body
