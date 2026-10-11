@@ -68,6 +68,8 @@ body {
 /* Scrolling down the dishes slides the top bar + search up out of view
    (scrolling up brings them back); see initMenuChromeAutoHide() */
 .pr-share-header { transition: margin-top 0.28s ease; }
+/* no automatic scroll-position nudging when the bar resizes the scroll area */
+.main-content { overflow-anchor: none; }
 /* Category buttons: press feedback and a small pop when one is selected */
 .side-nav-btn { transition: transform 0.18s ease, background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease; }
 .side-nav-btn:active { transform: scale(0.94); }
@@ -1810,22 +1812,33 @@ function initMenuChromeAutoHide() {
   var header = document.querySelector('.pr-share-header');
   var search = document.querySelector('.search-rapper');
   if (!scroller || !header) return;
-  var last = 0, hidden = false;
+  // Hiding/showing the bar resizes the scroll area, which itself fires scroll
+  // events (and momentum scrolling keeps firing them); reacting to those made
+  // the bar flicker while scrolling up. So: switch only after a clear 30px
+  // move in one direction, and ignore scroll events while the bar slides.
+  var THRESHOLD = 30, SLIDE_MS = 320;
+  var last = scroller.scrollTop, travel = 0, hidden = false, lockedUntil = 0;
   function setHidden(h) {
     if (h === hidden) return;
+    var searchInput = search && search.querySelector('input');
+    if (h && searchInput && document.activeElement === searchInput) return; // keep it while typing
     hidden = h;
     var menu = document.getElementById('filterMenu');
     if (h && menu) menu.classList.remove('show');
-    var searchInput = search && search.querySelector('input');
-    if (h && searchInput && document.activeElement === searchInput) { hidden = false; return; } // keep it while typing
     header.style.marginTop = h ? -(header.offsetHeight + (search ? search.offsetHeight : 0)) + 'px' : '';
+    lockedUntil = Date.now() + SLIDE_MS;
+    travel = 0;
   }
   scroller.addEventListener('scroll', function() {
-    var st = scroller.scrollTop, d = st - last;
-    if (st < 40) setHidden(false);
-    else if (d > 6) setHidden(true);
-    else if (d < -6) setHidden(false);
-    if (Math.abs(d) > 6 || st < 40) last = st;
+    var st = scroller.scrollTop;
+    var d = st - last;
+    last = st;
+    if (st <= 60) { setHidden(false); travel = 0; return; }   // near the top: always shown
+    if (Date.now() < lockedUntil) return;                     // bar is sliding: ignore
+    // Accumulate movement in one direction; a change of direction restarts it
+    travel = (d > 0) === (travel > 0) ? travel + d : d;
+    if (travel > THRESHOLD) setHidden(true);
+    else if (travel < -THRESHOLD) setHidden(false);
   }, { passive: true });
 }
 document.addEventListener('DOMContentLoaded', initMenuChromeAutoHide);
