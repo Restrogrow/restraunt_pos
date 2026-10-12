@@ -567,6 +567,24 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
 // account. Scoped under this restaurant's own id + 'customer_signup'
 // purpose — customer_auth.php's handleCustomerSignup() checks for a
 // matching verified row under that same scope before inserting.
+// Local copy (XAMPP): no WhatsApp — the server hands back the code (local_code).
+// Fill it in, say so under the field, and return true so the caller can carry on.
+function useLocalOtp(res, inputId) {
+  if (!res || !res.local_code) return false;
+  var input = document.getElementById(inputId);
+  if (!input) return false;
+  input.value = res.local_code;
+  var noteId = inputId + 'LocalNote';
+  if (!document.getElementById(noteId)) {
+    var p = document.createElement('p');
+    p.id = noteId;
+    p.style.cssText = 'margin:6px 0 0;padding:8px 10px;border-radius:10px;background:#ecfdf5;color:#047857;font-size:12.5px;font-weight:600;';
+    p.textContent = res.local_note || 'Local mode: no OTP needed. The code was filled in for you.';
+    input.parentNode.parentNode.insertBefore(p, input.parentNode.nextSibling);
+  }
+  return true;
+}
+
 var signupOtpSent = false;
 var signupResendTimer = null;
 var signupFieldIds = ['signupName', 'signupPhone', 'signupEmail', 'signupPassword', 'signupConfirmPassword'];
@@ -654,6 +672,11 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
         signupFieldIds.forEach(function(id) { document.getElementById(id).disabled = true; });
         startSignupResendCooldown(60);
         btn.innerHTML = '<i class="fa fa-shield-halved"></i> Verify & Create Account';
+        if (useLocalOtp(res, 'signupOtpCode')) {
+          // Local mode: no code to wait for — verify and create the account straight away
+          document.getElementById('signupForm').requestSubmit();
+          return;
+        }
         showToast('A verification code has been sent via WhatsApp.', 'success');
         document.getElementById('signupOtpCode').focus();
       } else {
@@ -874,6 +897,7 @@ function submitForgotOtpSend() {
     .then(function(r) { return r.json(); })
     .then(function(res) {
       renderForgotOtpStep2(email, res.message || 'If an account exists for that email, a code has been sent via WhatsApp.');
+      useLocalOtp(res, 'forgotOtpCode');
     })
     .catch(function() {
       errEl.textContent = 'Network error. Please try again.';

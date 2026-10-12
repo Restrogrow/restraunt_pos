@@ -359,7 +359,7 @@ function handleCustomerForgotPasswordOtp($pdo) {
         issuePurposeOtp($pdo, $restaurantId, $phoneDigits, 'password_reset', 60, 300);
     }
 
-    echo json_encode(['success' => true, 'message' => $generic]);
+    echo json_encode(array_merge(['success' => true, 'message' => $generic], localOtpFields()));
 }
 
 function handleCustomerResetPasswordOtp($pdo) {

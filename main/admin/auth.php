@@ -2122,7 +2122,7 @@ function handleForgotPasswordOtp() {
         issuePurposeOtp($pdo, $user['restaurant_id'], $phoneDigits, 'password_reset', 60, 300);
     }
 
-    echo json_encode(['success' => true, 'message' => $generic]);
+    echo json_encode(array_merge(['success' => true, 'message' => $generic], localOtpFields()));
 }
 
 function handleResetPasswordOtp() {

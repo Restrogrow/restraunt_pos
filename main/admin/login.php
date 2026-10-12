@@ -1711,7 +1711,14 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     forgotPasswordBtn.textContent = 'Verify & Reset Password';
                     showForgotPasswordMessage(result.message || 'If an account exists for that email, a code has been sent via WhatsApp.', 'success');
                     startForgotResendCooldown(60);
-                    document.getElementById('forgotOtpCode').focus();
+                    if (result.local_code) {
+                        // Local copy (XAMPP): no WhatsApp, so the code comes back and is filled in
+                        document.getElementById('forgotOtpCode').value = result.local_code;
+                        showForgotPasswordMessage(result.local_note || 'Local mode: no OTP needed. The code was filled in for you.', 'success');
+                        document.getElementById('forgotNewPassword').focus();
+                    } else {
+                        document.getElementById('forgotOtpCode').focus();
+                    }
                 } catch (error) {
                     console.error('Error:', error);
                     showForgotPasswordMessage('Network error. Please try again.', 'error');

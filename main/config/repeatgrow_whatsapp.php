@@ -79,6 +79,30 @@ function isPhoneVerifiedRecently($pdo, string $restaurantId, string $phone, stri
 }
 
 /**
+ * Local copy on this computer (XAMPP): WhatsApp can't be reached, so OTPs are
+ * not sent — the code is handed back to the page instead (localOtpFields())
+ * and filled in automatically. Needs BOTH a request from this machine and a
+ * localhost address, so a visitor on the live site can never get here (a
+ * spoofed Host header alone isn't enough; REMOTE_ADDR is the real client).
+ */
+function isLocalDevRequest(): bool {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+    $localHost = in_array($host, ['localhost', '127.0.0.1', '[::1]'], true) || substr($host, -10) === '.localhost';
+    return in_array($ip, ['127.0.0.1', '::1'], true) && $localHost;
+}
+
+/** Extra JSON fields for an OTP response in local mode (empty everywhere else). */
+function localOtpFields(): array {
+    if (!isset($GLOBALS['RG_LOCAL_OTP_CODE'])) return [];
+    return [
+        'local_mode' => true,
+        'local_code' => $GLOBALS['RG_LOCAL_OTP_CODE'],
+        'local_note' => 'Local mode: WhatsApp is not used on this computer, so no OTP is needed. The code was filled in for you.',
+    ];
+}
+
+/**
  * Send a WhatsApp OTP code to $phone via RepeatGrow's send API.
  * Throws on any failure (missing config, network error, Meta rejection) —
  * callers decide how to surface that to the end user.
@@ -86,6 +110,10 @@ function isPhoneVerifiedRecently($pdo, string $restaurantId, string $phone, stri
  * @return array{message_id:?string}
  */
 function sendWhatsappOtpViaRepeatGrow(string $phone, string $code): array {
+    if (isLocalDevRequest()) {
+        $GLOBALS['RG_LOCAL_OTP_CODE'] = $code; // see localOtpFields()
+        return ['message_id' => null];
+    }
     $apiUrl = env('REPEATGROW_API_URL');
     $apiKey = env('REPEATGROW_API_KEY');
     $sendMode = env('REPEATGROW_OTP_SEND_MODE', 'template');

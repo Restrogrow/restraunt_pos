@@ -131,11 +131,11 @@ function handleSendOtp($pdo) {
     // having a "valid" code that was never actually delivered.
     sendWhatsappOtpViaRepeatGrow($phone, $code);
 
-    echo json_encode([
+    echo json_encode(array_merge([
         'success' => true,
         'message' => 'A verification code has been sent via WhatsApp.',
         'expires_in' => OTP_EXPIRY_SECONDS,
-    ]);
+    ], localOtpFields()));
 }
 
 function handleVerifyOtp($pdo) {
