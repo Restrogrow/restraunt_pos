@@ -273,6 +273,55 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
   .tk-scene *, .tk-scene .hero, .tk-burst i, .tk-rider.on { animation: none !important; }
 }
 
+/* ── Progress section: one dark "journey" card (scene, status, steps) ── */
+.tk-journey { position: relative; margin-top: 16px; padding: 4px 12px 18px; border-radius: 26px; color: #fff; overflow: hidden;
+  background: radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--tk) 42%, transparent), transparent 70%), linear-gradient(180deg, #1c1e25, #111217);
+  box-shadow: 0 16px 34px rgba(17,24,39,.28); }
+.tk-journey svg { display: block; }
+.tk-journey .tk-scene { margin: 0 -12px; height: 150px; background: transparent; border-radius: 0; }
+.tk-journey .tk-scene .hero { width: 84px; height: 84px; margin: -48px 0 0 -42px; border-radius: 50%; background: #fff; color: var(--tk);
+  box-shadow: 0 0 0 8px rgba(255,255,255,.07), 0 0 46px color-mix(in srgb, var(--tk) 65%, transparent); }
+.tk-journey .tk-scene .hero svg { width: 40px; height: 40px; }
+.tk-journey .sc-onway .hero { width: 74px; height: 74px; margin: -34px 0 0 -37px; }
+.tk-journey .sc-done .hero, .tk-journey .sc-delivered .hero { color: #16a34a; box-shadow: 0 0 0 8px rgba(255,255,255,.07), 0 0 46px rgba(22,163,74,.55); }
+.tk-journey .sc-stop { background: transparent; }
+.tk-journey .sc-stop .hero { color: #ef4444; box-shadow: 0 0 0 8px rgba(255,255,255,.07), 0 0 46px rgba(239,68,68,.5); }
+.tk-journey .sc-placed .fx i.slot { background: rgba(255,255,255,.35); }
+.tk-journey .sc-accepted .fx i.ring { border-color: rgba(255,255,255,.55); border-radius: 50%; }
+.tk-journey .sc-preparing .fx i.steam { background: linear-gradient(transparent, rgba(255,255,255,.75)); }
+.tk-journey .sc-onway .fx i.road { background: #2a2d36; }
+.tk-journey .sc-onway .fx i.town { filter: invert(1); opacity: .28; }
+.tk-journey .sc-onway .fx i.cloud { background: rgba(255,255,255,.14); }
+.tk-journey .fx i.spark { background: #fde047; }
+.tk-journey .tk-status-text { margin-top: 2px; }
+.tk-journey .tk-status-text b { color: #fff; font-size: 18px; }
+.tk-journey .tk-status-text p { color: #a3a8b3; }
+.tk-journey .tk-tip { background: rgba(255,255,255,.08); color: #f3f4f6; }
+.tk-journey .tk-tip svg { width: 15px; height: 15px; color: #fde047; }
+
+/* Steps: rail with a glowing fill, a spinning ring on the current step */
+.tk-steps { position: relative; display: flex; margin-top: 22px; }
+.tk-steps .rail { position: absolute; left: 12.5%; right: 12.5%; top: 21px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.1); }
+.tk-steps .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 4px; background: linear-gradient(90deg, var(--tk-dark), var(--tk), color-mix(in srgb, var(--tk) 45%, #fff)); box-shadow: 0 0 12px color-mix(in srgb, var(--tk) 70%, transparent); transition: width 1s cubic-bezier(.22,1,.36,1); }
+.tk-steps .fill::after { content: ""; position: absolute; right: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--tk) 45%, transparent), 0 0 14px #fff; animation: tkGlow 1.4s ease-in-out infinite; }
+.tk-steps.final .fill::after, .tk-steps.start .fill::after { display: none; }
+.tk-step { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0; }
+.tk-step i { position: relative; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; background: #272a33; color: #7d828d; font-style: normal; transition: background .4s, color .4s, transform .4s; }
+.tk-step i svg { width: 21px; height: 21px; }
+.tk-step.done i { background: var(--tk); color: #fff; }
+.tk-step.on i { background: #fff; color: var(--tk); transform: scale(1.12); }
+.tk-step.on i::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; background: conic-gradient(var(--tk) 0 28%, transparent 28% 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); animation: tkSpin 1.3s linear infinite; }
+.tk-step.on.final i { background: #16a34a; color: #fff; }
+.tk-step.on.final i::before { display: none; }
+.tk-step span { font-size: 12px; font-weight: 600; color: #7d828d; text-align: center; line-height: 1.2; }
+.tk-step.done span, .tk-step.on span { color: #fff; }
+.tk-step.on span { font-weight: 800; }
+@keyframes tkGlow { 50% { transform: scale(1.3); } }
+@keyframes tkSpin { to { transform: rotate(360deg); } }
+.tk-chip i svg { width: 16px; height: 16px; }
+@media (prefers-reduced-motion: reduce) { .tk-steps .fill::after, .tk-step.on i::before { animation: none; } .tk-steps .fill { transition: none; } }
+
 /* Search form (no order yet) */
 .tk-search-ic { width: 72px; height: 72px; margin: 4px auto 12px; display: grid; place-items: center; border-radius: 22px; background: var(--tk-soft); color: var(--tk-dark); }
 .tk-search-ic .material-symbols-rounded { font-size: 38px; }
@@ -322,6 +371,28 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
     </div>
   <?php else:
     $tkType = $order['order_type'];
+  ?><?php
+    // Drawn icons for the progress section (no icon font needed); keys = the names used below
+    $tkIconPaths = [
+        'receipt_long' => '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+        'thumb_up' => '<path d="M7 11v9H4v-9z"/><path d="M7 11l4-8c1.1 0 2 .9 2 2v4h5.2a2 2 0 0 1 2 2.4l-1.3 6.4A2 2 0 0 1 16.9 20H7"/>',
+        'skillet' => '<path d="M3 11h13a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/><path d="M16 11h5"/><path d="M7 3c0 1.5 1.2 1.5 1.2 3S7 7.5 7 9M11 3c0 1.5 1.2 1.5 1.2 3S11 7.5 11 9"/>',
+        'inventory_2' => '<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>',
+        'shopping_bag' => '<path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+        'two_wheeler' => '<circle cx="5.5" cy="17" r="3"/><circle cx="18.5" cy="17" r="3"/><path d="M5.5 17h7l3-7h3M15 6h2.5l1 4M9 10h4"/>',
+        'where_to_vote' => '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><path d="M9.5 10l2 2 3.5-3.5"/>',
+        'front_hand' => '<path d="M7 13V6.5a1.5 1.5 0 0 1 3 0V11M10 11V5a1.5 1.5 0 0 1 3 0v6M13 11V6.5a1.5 1.5 0 0 1 3 0V13M16 13v-2.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3L5 14.5a1.5 1.5 0 0 1 2.4-1.8L9 14"/>',
+        'room_service' => '<path d="M3 18h18M5 18a7 7 0 0 1 14 0M12 8V6M10 6h4"/>',
+        'restaurant' => '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 0-3 2.5-3 6h3v12"/>',
+        'check_circle' => '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/>',
+        'check' => '<path d="M20 6L9 17l-5-5"/>',
+        'cancel' => '<circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>',
+        'sparkle' => '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>',
+    ];
+    $tkIcon = function ($k) use ($tkIconPaths) {
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($tkIconPaths[$k] ?? $tkIconPaths['check']) . '</svg>';
+    };
+  ?><?php
     // Steps shown in the pill (labels + icons) for this kind of order
     if ($tkType === 'Delivery') {
         $tkSteps = [['Placed', 'receipt_long'], ['Preparing', 'skillet'], ['On the way', 'two_wheeler'], ['Delivered', 'where_to_vote']];
@@ -343,29 +414,26 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         <div class="tk-bubble" id="tkBubble">
           <b id="tkBubbleTitle">Order placed!</b>
           <div class="tk-bubble-row">
-            <span class="tk-chip"><i><span class="material-symbols-rounded" id="tkChipIcon">receipt_long</span></i><span id="tkChipText">Waiting for the restaurant</span></span>
+            <span class="tk-chip"><i id="tkChipIcon"><?php echo $tkIcon('receipt_long'); ?></i><span id="tkChipText">Waiting for the restaurant</span></span>
             <span class="tk-next" id="tkNext"><i>&rsaquo;</i><span id="tkNextText">Preparing</span></span>
           </div>
         </div>
-        <div class="tk-track" role="progressbar" aria-valuemin="1" aria-valuemax="4" id="tkTrack">
-          <div class="tk-fill" id="tkFill"></div>
-          <div class="tk-nodes">
-            <?php foreach ($tkSteps as $i => $st): ?><div class="tk-node" data-icon="<?php echo $st[1]; ?>"><i><span class="material-symbols-rounded"><?php echo $st[1]; ?></span></i></div><?php endforeach; ?>
-          </div>
-        </div>
-        <div class="tk-labels" id="tkLabels">
-          <?php foreach ($tkSteps as $i => $st): ?><div><em><?php echo $i + 1; ?></em><?php echo htmlspecialchars($st[0]); ?></div><?php endforeach; ?>
-        </div>
       </div>
 
-      <div class="tk-scene sc-placed" id="tkScene" aria-hidden="true">
-        <div class="fx" id="tkSceneFx"></div>
-        <div class="hero"><span class="material-symbols-rounded" id="tkStatusIcon">receipt_long</span></div>
-      </div>
-      <div class="tk-status-text">
-        <b id="tkStatusTitle">We've got your order</b>
-        <p id="tkStatusText">The restaurant will confirm it shortly.</p>
-        <span class="tk-tip" id="tkTip"><span class="material-symbols-rounded">auto_awesome</span><span id="tkTipText">Sending your order to the kitchen</span></span>
+      <div class="tk-journey" id="tkJourney">
+        <div class="tk-scene sc-placed" id="tkScene" aria-hidden="true">
+          <div class="fx" id="tkSceneFx"></div>
+          <div class="hero" id="tkStatusIcon"><?php echo $tkIcon('receipt_long'); ?></div>
+        </div>
+        <div class="tk-status-text">
+          <b id="tkStatusTitle">We've got your order</b>
+          <p id="tkStatusText">The restaurant will confirm it shortly.</p>
+          <span class="tk-tip" id="tkTip"><?php echo $tkIcon('sparkle'); ?><span id="tkTipText">Sending your order to the kitchen</span></span>
+        </div>
+        <div class="tk-steps" role="progressbar" aria-valuemin="1" aria-valuemax="4" id="tkTrack">
+          <div class="rail"><div class="fill" id="tkFill"></div></div>
+          <?php foreach ($tkSteps as $i => $st): ?><div class="tk-step" data-icon="<?php echo $st[1]; ?>"><i><?php echo $tkIcon($st[1]); ?></i><span><?php echo htmlspecialchars($st[0]); ?></span></div><?php endforeach; ?>
+        </div>
       </div>
 
       <?php if ($tkType === 'Delivery'): ?>
@@ -567,7 +635,10 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         if (!card.classList.contains('on')) card.classList.add('on');
     }
 
-    var nextLabels = Array.prototype.map.call(document.querySelectorAll('#tkLabels div'), function(d) { return d.textContent.replace(/^\d+/, '').trim(); });
+    var ICONS = <?php echo json_encode($tkIconPaths); ?>;
+    function svgIcon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[k] || ICONS.check) + '</svg>'; }
+    function setIcon(id, k) { var el = document.getElementById(id); if (el && el.getAttribute('data-k') !== k) { el.setAttribute('data-k', k); el.innerHTML = svgIcon(k); } }
+    var nextLabels = Array.prototype.map.call(document.querySelectorAll('#tkTrack .tk-step span'), function(d) { return d.textContent.trim(); });
     var lastStage = '';
 
     function renderStage(status, delivery) {
@@ -578,7 +649,8 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
             main.classList.add('tk-stopped');
             document.getElementById('tkProgress').style.display = 'none';
             set('tkHeadline', status === 'Rejected' ? 'Order not accepted' : 'Order cancelled');
-            set('tkStatusIcon', 'cancel');
+            setIcon('tkStatusIcon', 'cancel');
+            document.getElementById('tkTrack').style.display = 'none';
             set('tkStatusTitle', status === 'Rejected' ? 'The restaurant could not take this order' : 'This order was cancelled');
             set('tkStatusText', 'If you paid online, the refund goes back to your payment method.');
             setScene('stop'); setTips('');
@@ -590,21 +662,22 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         var take = orderType === 'Takeaway';
         var badge = { placed: 'Order Placed', accepted: 'Accepted', preparing: 'Preparing', packed: 'Ready', onway: 'On the way', delivered: 'Delivered', ready: 'Ready', done: take ? 'Collected' : 'Served' }[st.k];
         set('orderStatusText', badge);
-        set('tkHeadline', w[0]); set('tkBubbleTitle', w[1]); set('tkChipIcon', w[2]); set('tkChipText', w[3]);
-        set('tkStatusIcon', w[4]); set('tkStatusTitle', w[5]); set('tkStatusText', w[6]);
+        set('tkHeadline', w[0]); set('tkBubbleTitle', w[1]); setIcon('tkChipIcon', w[2]); set('tkChipText', w[3]);
+        setIcon('tkStatusIcon', w[4]); set('tkStatusTitle', w[5]); set('tkStatusText', w[6]);
         var next = document.getElementById('tkNext');
         if (final) next.style.display = 'none'; else { next.style.display = ''; set('tkNextText', nextLabels[st.i + 1] || ''); }
-        // Pill: filled up to the current step (all the way when done)
-        var fill = document.getElementById('tkFill');
-        fill.style.width = final ? '100%' : 'calc(' + (st.i * 25 + 12.5) + '% + 30px)';
-        document.getElementById('tkTrack').setAttribute('aria-valuenow', st.i + 1);
-        document.querySelectorAll('#tkTrack .tk-node').forEach(function(n, k) {
-            n.className = 'tk-node' + (k < st.i ? ' done' : k === st.i ? ' on' + (final ? ' final' : '') : '');
-            var icon = n.querySelector('.material-symbols-rounded');
+        // Steps: rail filled up to the current step, ticks on finished ones
+        var track = document.getElementById('tkTrack');
+        document.getElementById('tkFill').style.width = (st.i / 3 * 100) + '%';
+        track.classList.toggle('final', final);
+        track.classList.toggle('start', st.i === 0);
+        track.setAttribute('aria-valuenow', st.i + 1);
+        track.querySelectorAll('.tk-step').forEach(function(n, k) {
+            n.className = 'tk-step' + (k < st.i ? ' done' : k === st.i ? ' on' + (final ? ' final' : '') : '');
             var want = k < st.i || (final && k === st.i) ? 'check' : n.getAttribute('data-icon');
-            if (icon.textContent !== want) icon.textContent = want;
+            var i = n.querySelector('i');
+            if (i.getAttribute('data-k') !== want) { i.setAttribute('data-k', want); i.innerHTML = svgIcon(want); }
         });
-        document.querySelectorAll('#tkLabels div').forEach(function(d, k) { d.className = k < st.i ? 'done' : (k === st.i ? 'on' : ''); });
         var bubble = document.getElementById('tkBubble');
         bubble.style.setProperty('--arrow', (st.i * 25 + 12.5) + '%');
         var key = st.i + st.k;
