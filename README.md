@@ -36,6 +36,7 @@
 | **Push notifications** | Actually sent now | They needed a Composer library that was never installed, so nothing was ever delivered. Now sent with PHP's own OpenSSL (VAPID + aes128gcm); keys are created automatically if `.env` has none. Tested end to end with Google's push service and Chrome. |
 | **Offers** | New **All offers** page, clearer Coupons, Combos & New | One page lists every offer tool, where customers see it, whether it's on and what needs attention. Coupons show orders, sales and discount from each code in 30 days, with pause / edit / delete and filters. "Deals" (really the Menu page's Combos / New filters) is renamed and simplified. |
 | **Website appearance** | Same settings, better layout | Six groups (Brand, Colours and font, Home page, Menu page, Navigation and profile, Banners and sharing), a jump bar and a save bar that stays in view. |
+| **Marketing studio** | Posters, Videos, Captions, Calendar as one studio | Tabs across the four tools; posters and videos start with a photo from the restaurant's own menu, with “use its name and price” and upload; the preview stays in view while editing; the calendar uses icons and says when to post. |
 | **Refresh fix** | Every section loads after a page refresh | 16 sections (Loyalty Studio, WhatsApp, Policy pages, Marketing, Inventory, Catering…) only loaded from a menu click and stayed empty after a refresh. Checked on all 50 sections. |
 
 ### 12 October 2026
@@ -83,6 +84,10 @@
   <tr>
     <td><img src="main/assets/guide/tablesPage.jpg" alt="Tables"><br><b>Tables</b>: live status, bulk changes, QR codes</td>
     <td><img src="main/assets/guide/tableMapPage.jpg" alt="Table map"><br><b>Table map</b>: who is seated and for how long</td>
+  </tr>
+  <tr>
+    <td><img src="main/assets/guide/marketingPostersPage.jpg" alt="Posters"><br><b>Posters</b>: pick a dish from your menu, download</td>
+    <td><img src="main/assets/guide/marketingCalendarPage.jpg" alt="Campaign calendar"><br><b>Campaign calendar</b>: what to promote and when to post</td>
   </tr>
   <tr>
     <td><img src="main/assets/guide/embedPage.jpg" alt="Custom domain"><br><b>Custom domain</b>: DNS record and a real check</td>

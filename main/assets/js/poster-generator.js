@@ -1113,6 +1113,13 @@
   }
 
   function buildPhotoField(labelText, onLoaded) {
+    // dish photos from the menu, or your own upload (marketing-studio.js)
+    if (window.MK) return window.MK.photoPicker({ label: labelText, onImage: onLoaded, onUseText: function (d) {
+      posterState.headline = d.name;
+      if (d.price) posterState.subtext = 'Now at ' + (window.globalCurrencySymbol || '₹') + Math.round(d.price);
+      renderFields(getTemplate(posterState.templateId));
+      renderPoster();
+    } });
     var wrap = document.createElement('div');
     wrap.className = 'poster-field';
     var label = document.createElement('label');
@@ -1209,6 +1216,8 @@
     posterState.phone = window.restaurantPhone || '';
     renderTemplateGrid();
     selectTemplate(POSTER_TEMPLATES[0].id);
+    // start with a real dish photo instead of an empty box
+    if (window.MK) window.MK.firstPhoto().then(function (r) { if (r && !posterState.photoImg) { posterState.photoImg = r.img; renderPoster(); } });
   };
 
   window.prefillPoster = function(templateId, fields) {

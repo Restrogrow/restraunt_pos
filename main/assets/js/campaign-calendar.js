@@ -44,73 +44,73 @@
 
   var OCCASIONS = [
     {
-      emoji: '🎉', name: "New Year's Day", getDate: function() { return nextFixedDate(1, 1); },
+      icon: 'celebration', name: "New Year's Day", getDate: function() { return nextFixedDate(1, 1); },
       posterTemplateId: 'festive_special',
       posterFields: { headline: "Happy New Year!", subtext: 'Ring in the new year with us', badge: 'New Year Special' },
       captionType: 'festive', captionSubject: "New Year's Day", captionTone: 'fun'
     },
     {
-      emoji: '❤️', name: "Valentine's Day", getDate: function() { return nextFixedDate(2, 14); },
+      icon: 'favorite', name: "Valentine's Day", getDate: function() { return nextFixedDate(2, 14); },
       posterTemplateId: 'combo',
       posterFields: { headline: 'Valentine’s Dinner for Two', subtext: 'Reserve your table today' },
       captionType: 'combo', captionSubject: "Valentine's dinner for two", captionTone: 'elegant'
     },
     {
-      emoji: '💐', name: "Women's Day", getDate: function() { return nextFixedDate(3, 8); },
+      icon: 'local_florist', name: "Women's Day", getDate: function() { return nextFixedDate(3, 8); },
       posterTemplateId: 'festive_special',
       posterFields: { headline: "Happy Women's Day", subtext: 'A treat, on us', badge: "Women's Day Special" },
       captionType: 'festive', captionSubject: "Women's Day", captionTone: 'elegant'
     },
     {
-      emoji: '🌸', name: "Mother's Day", getDate: function() { return nextNthWeekday(5, 0, 2); },
+      icon: 'volunteer_activism', name: "Mother's Day", getDate: function() { return nextNthWeekday(5, 0, 2); },
       posterTemplateId: 'festive_special',
       posterFields: { headline: "Happy Mother's Day", subtext: "Treat mom to a meal she'll love", badge: "Mother's Day Special" },
       captionType: 'festive', captionSubject: "Mother's Day", captionTone: 'elegant'
     },
     {
-      emoji: '👔', name: "Father's Day", getDate: function() { return nextNthWeekday(6, 0, 3); },
+      icon: 'man', name: "Father's Day", getDate: function() { return nextNthWeekday(6, 0, 3); },
       posterTemplateId: 'festive_special',
       posterFields: { headline: "Happy Father's Day", subtext: 'Treat dad to something special', badge: "Father's Day Special" },
       captionType: 'festive', captionSubject: "Father's Day", captionTone: 'elegant'
     },
     {
-      emoji: '👯', name: 'Friendship Day', getDate: function() { return nextNthWeekday(8, 0, 1); },
+      icon: 'group', name: 'Friendship Day', getDate: function() { return nextNthWeekday(8, 0, 1); },
       posterTemplateId: 'combo',
       posterFields: { headline: 'Friendship Day Feast', subtext: 'Better with friends' },
       captionType: 'combo', captionSubject: 'Friendship Day feast', captionTone: 'fun'
     },
     {
-      emoji: '🇮🇳', name: 'Independence Day', getDate: function() { return nextFixedDate(8, 15); },
+      icon: 'flag', name: 'Independence Day', getDate: function() { return nextFixedDate(8, 15); },
       posterTemplateId: 'festive_special',
       posterFields: { headline: 'Happy Independence Day', subtext: 'Celebrate with great food', badge: 'Independence Day Special' },
       captionType: 'festive', captionSubject: 'Independence Day', captionTone: 'fun'
     },
     {
-      emoji: '🍎', name: "Teacher's Day", getDate: function() { return nextFixedDate(9, 5); },
+      icon: 'school', name: "Teacher's Day", getDate: function() { return nextFixedDate(9, 5); },
       posterTemplateId: 'festive_special',
       posterFields: { headline: "Happy Teacher's Day", subtext: 'A thank-you treat for teachers', badge: "Teacher's Day Special" },
       captionType: 'festive', captionSubject: "Teacher's Day", captionTone: 'elegant'
     },
     {
-      emoji: '🎃', name: 'Halloween', getDate: function() { return nextFixedDate(10, 31); },
+      icon: 'dark_mode', name: 'Halloween', getDate: function() { return nextFixedDate(10, 31); },
       posterTemplateId: 'festive_special',
       posterFields: { headline: 'Spooky Season Specials', subtext: 'Treats all season long', badge: 'Halloween Special' },
       captionType: 'festive', captionSubject: 'Halloween', captionTone: 'fun'
     },
     {
-      emoji: '🎄', name: 'Christmas', getDate: function() { return nextFixedDate(12, 25); },
+      icon: 'park', name: 'Christmas', getDate: function() { return nextFixedDate(12, 25); },
       posterTemplateId: 'festive_special',
       posterFields: { headline: 'Merry Christmas', subtext: 'Celebrate the season with us', badge: 'Christmas Special' },
       captionType: 'festive', captionSubject: 'Christmas', captionTone: 'elegant'
     },
     {
-      emoji: '🥂', name: "New Year's Eve", getDate: function() { return nextFixedDate(12, 31); },
+      icon: 'nightlife', name: "New Year's Eve", getDate: function() { return nextFixedDate(12, 31); },
       posterTemplateId: 'happy_hour',
       posterFields: { headline: "New Year's Eve", subtext: 'Ring it in with us', badge: 'NYE Party' },
       captionType: 'happy_hour', captionSubject: "New Year's Eve party", captionTone: 'urgent'
     },
     {
-      emoji: '📅', name: 'Weekend Special', getDate: function() { return nextWeekday(5); }, recurring: true,
+      icon: 'weekend', name: 'Weekend Special', getDate: function() { return nextWeekday(5); }, recurring: true,
       posterTemplateId: 'bold_discount',
       posterFields: { headline: 'Weekend Special', subtext: 'This Sat-Sun only', badge: 'Weekend Offer' },
       captionType: 'weekend', captionSubject: 'our weekend special', captionTone: 'fun'
@@ -153,7 +153,8 @@
     top.className = 'campaign-card-top';
     var title = document.createElement('div');
     title.className = 'campaign-card-title';
-    title.textContent = occasion.emoji + ' ' + occasion.name;
+    title.innerHTML = '<span class="campaign-card-ic material-symbols-rounded">' + (occasion.icon || 'event') + '</span>';
+    title.appendChild(document.createTextNode(occasion.name));
     var pill = document.createElement('div');
     pill.className = 'campaign-card-pill' + (n <= 1 ? ' campaign-card-pill-soon' : '');
     pill.textContent = daysLabel(n);
@@ -163,19 +164,23 @@
     var dateEl = document.createElement('div');
     dateEl.className = 'campaign-card-date';
     dateEl.textContent = formatDate(date) + (occasion.recurring ? ' (weekly)' : '');
+    var tip = document.createElement('div');
+    tip.className = 'campaign-card-tip';
+    var postBy = new Date(date); postBy.setDate(postBy.getDate() - (occasion.recurring ? 1 : 3));
+    tip.textContent = n <= (occasion.recurring ? 1 : 3) ? 'Post today so customers see it in time' : 'Best to post by ' + formatDate(postBy);
 
     var actions = document.createElement('div');
     actions.className = 'campaign-card-actions';
 
     var posterBtn = document.createElement('button');
     posterBtn.type = 'button';
-    posterBtn.className = 'btn-secondary';
+    posterBtn.className = 'btn btn-secondary btn-sm';
     posterBtn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">imagesmode</span> Create Poster';
     posterBtn.addEventListener('click', function() { goToPoster(occasion); });
 
     var captionBtn = document.createElement('button');
     captionBtn.type = 'button';
-    captionBtn.className = 'btn-secondary';
+    captionBtn.className = 'btn btn-secondary btn-sm';
     captionBtn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">chat_bubble</span> Create Caption';
     captionBtn.addEventListener('click', function() { goToCaption(occasion); });
 
@@ -184,6 +189,7 @@
 
     card.appendChild(top);
     card.appendChild(dateEl);
+    card.appendChild(tip);
     card.appendChild(actions);
     return card;
   }

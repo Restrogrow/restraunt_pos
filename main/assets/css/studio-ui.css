@@ -852,3 +852,76 @@
   .dh-col { display: contents; }
   .dh-att { order: -1; }
 }
+
+/* ── Marketing studio (mk-*): Posters, Videos, Captions, Calendar (assets/js/marketing-studio.js) ── */
+.mk-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+.mk-tabs button { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 12px; border: 1px solid var(--sx-line); border-radius: 14px; background: #fff; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+.mk-tabs button > .material-symbols-rounded { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: #f3f4f6; color: var(--sx-muted); font-size: 19px; }
+.mk-tabs button > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.mk-tabs b { color: var(--sx-ink); font-size: .9rem; }
+.mk-tabs small { color: var(--sx-faint); font-size: .74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-tabs button:hover { border-color: #cbd5e1; }
+.mk-tabs button.on { border-color: #93c5fd; background: #eff6ff; }
+.mk-tabs button.on > .material-symbols-rounded { background: var(--sx-accent); color: #fff; }
+.mk-tabs button.on b { color: var(--sx-accent); }
+
+.mk .poster-studio { grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 18px; }
+.mk .poster-controls-panel, .mk .caption-controls-panel, .mk .caption-results-panel { padding: 18px; border: 1px solid var(--sx-line); border-radius: var(--sx-r-lg); background: #fff; box-shadow: var(--sx-shadow); }
+.mk .poster-panel-title { margin-bottom: 12px; color: var(--sx-ink); font-size: .92rem; font-weight: 800; letter-spacing: 0; text-transform: none; }
+.mk .poster-template-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.mk .poster-template-card { flex-direction: column; aspect-ratio: auto; padding: 0; border: 1.5px solid var(--sx-line); border-radius: 12px; background: #fff; }
+.mk .poster-template-card canvas { aspect-ratio: 1 / 1; height: auto; }
+.mk .poster-template-name { position: static; text-align: left; padding: 6px 8px 7px; background: #fff; color: #374151; font-size: .72rem; font-weight: 700; border-top: 1px solid var(--sx-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk .poster-template-card:hover { border-color: #cbd5e1; }
+.mk .poster-template-card.active { border-color: var(--sx-accent); box-shadow: 0 0 0 3px var(--sx-ring); }
+.mk .poster-template-card.active .poster-template-name { color: var(--sx-accent); }
+.mk .poster-field label { color: #374151; font-size: .8rem; font-weight: 700; }
+.mk .poster-preview-panel { position: sticky; top: 16px; padding: 18px; border: 1px solid var(--sx-line); border-radius: var(--sx-r-lg); background: #fff; }
+.mk .poster-canvas-wrap { border-radius: 14px; overflow: hidden; box-shadow: 0 18px 40px -24px rgba(17,24,39,.45); }
+.mk .mk-main { width: 100%; margin-top: 14px; }
+
+.mk-photo .mk-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; }
+.mk-strip button { flex: 0 0 76px; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; text-align: left; }
+.mk-strip img { width: 76px; height: 76px; object-fit: cover; border-radius: 12px; border: 2px solid transparent; background: #f3f4f6; transition: border-color .15s, transform .15s; }
+.mk-strip button span { color: #374151; font-size: .7rem; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mk-strip button:hover img { transform: translateY(-2px); }
+.mk-strip button.on img { border-color: var(--sx-accent); box-shadow: 0 0 0 3px var(--sx-ring); }
+.mk-strip-load { color: var(--sx-muted); font-size: .8rem; padding: 8px 0; }
+.mk-photo-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.mk-upload { position: relative; display: inline-flex !important; align-items: center; gap: 6px; height: 34px; margin: 0 !important; padding: 0 12px; border: 1.5px dashed #cbd5e1; border-radius: 10px; color: #374151; font-size: .8rem !important; font-weight: 700; cursor: pointer; }
+.mk-upload:hover { border-color: var(--sx-accent); color: var(--sx-accent); }
+.mk-upload .material-symbols-rounded { font-size: 17px; }
+.mk-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.mk-usetext { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 0; border-radius: 10px; background: #eff6ff; color: var(--sx-accent); font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; max-width: 100%; }
+.mk-usetext .material-symbols-rounded { font-size: 17px; }
+
+.mk .caption-studio { gap: 18px; }
+.mk .caption-card { border: 1px solid var(--sx-line); border-radius: 14px; background: var(--sx-soft); }
+.mk .caption-card-text { color: #1f2937; font-size: .88rem; line-height: 1.6; }
+
+.mk .campaign-calendar-grid { gap: 12px; }
+.mk .campaign-card { padding: 16px; border: 1px solid var(--sx-line); border-radius: var(--sx-r-lg); background: #fff; box-shadow: var(--sx-shadow); }
+.mk .campaign-card-title { display: flex; align-items: center; gap: 10px; color: var(--sx-ink); font-size: .98rem; font-weight: 800; }
+.campaign-card-ic { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: #fef3c7; color: #b45309; font-size: 19px !important; }
+.mk .campaign-card-date { color: var(--sx-muted); font-size: .84rem; margin-top: 6px; }
+.campaign-card-tip { margin-top: 4px; color: #047857; font-size: .78rem; font-weight: 600; }
+.mk .campaign-card-actions { gap: 8px; margin-top: 12px; }
+.mk .campaign-card-actions .btn { flex: 1; }
+
+@media (max-width: 1100px) {
+  .mk-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .mk .poster-studio { grid-template-columns: 1fr; }
+  .mk .poster-preview-panel { position: static; order: -1; }
+}
+@media (max-width: 700px) {
+  .mk-tabs { display: flex; overflow-x: auto; scrollbar-width: none; }
+  .mk-tabs::-webkit-scrollbar { display: none; }
+  .mk-tabs button { flex: 0 0 auto; padding: 8px 12px 8px 8px; border-radius: 999px; }
+  .mk-tabs button > .material-symbols-rounded { width: 28px; height: 28px; border-radius: 50%; font-size: 16px; }
+  .mk-tabs small { display: none; }
+}
+/* keep the poster / video preview in view while editing the fields below (no clipping ancestors) */
+html:has(.page.mk.active), body:has(.page.mk.active), .main-content:has(.page.mk.active), .page.mk .page-content { overflow-x: clip; overflow-y: visible; }
+.mk-usetext[hidden] { display: none; }

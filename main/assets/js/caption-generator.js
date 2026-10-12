@@ -263,7 +263,7 @@
 
     var copyBtn = document.createElement('button');
     copyBtn.type = 'button';
-    copyBtn.className = 'btn-secondary';
+    copyBtn.className = 'btn btn-secondary btn-sm';
     copyBtn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">content_copy</span> Copy';
     copyBtn.addEventListener('click', function() {
       navigator.clipboard.writeText(text).then(function() {
@@ -277,7 +277,7 @@
 
     var waBtn = document.createElement('button');
     waBtn.type = 'button';
-    waBtn.className = 'btn-secondary';
+    waBtn.className = 'btn btn-secondary btn-sm';
     waBtn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">share</span> Share on WhatsApp';
     waBtn.addEventListener('click', function() {
       window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');

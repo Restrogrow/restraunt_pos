@@ -224,10 +224,10 @@ var GROUPS = [
   { id: 'analytics', title: 'Analytics', where: 'Payments › Analytics', img: 'analyticsPage', what: 'Website visits, popular dishes, peak hours and revenue trends.', steps: ['Check which days and hours are busiest to plan staff and offers.'] },
  ]},
  { id: 'marketing', title: 'Marketing', intro: 'Ready-made posters, videos and captions for social media.', items: [
-  { id: 'posters', title: 'Posters', where: 'Marketing › Posters', img: 'marketingPostersPage', what: 'Design posters for WhatsApp, Instagram and Facebook from templates, with your dishes and offers.', steps: ['Pick a template, choose a dish or offer, edit the text and download.'] },
-  { id: 'videos', title: 'Videos', where: 'Marketing › Videos', img: 'marketingVideosPage', what: 'Short animated promo videos for WhatsApp Status and Reels.', steps: ['Choose a style and dishes, preview, then download the video.'] },
+  { id: 'posters', title: 'Posters', where: 'Marketing › Posters', img: 'marketingPostersPage', isNew: 1, what: 'Design posters for WhatsApp, Instagram and Facebook from templates. A new poster starts with a photo from your own menu.', steps: ['Pick a design on the left.', 'Under Photo, tap any dish from your menu (or upload your own). Tap “Use … as the text” to put the dish name and price on the poster.', 'Write your offer, pick a colour and keep the Scan to Order QR on.', 'Download poster and share it.'] },
+  { id: 'videos', title: 'Videos', where: 'Marketing › Videos', img: 'marketingVideosPage', isNew: 1, what: 'Short animated promo videos for WhatsApp Status and Reels, using photos from your menu.', steps: ['Choose a style and dishes, preview, then download the video.'] },
   { id: 'captions', title: 'Social captions', where: 'Marketing › Social Captions', img: 'marketingCaptionsPage', what: 'Ready-to-post captions with hashtags.', steps: ['Pick the occasion and tone, copy the caption and post.'] },
-  { id: 'calendar', title: 'Campaign calendar', where: 'Marketing › Campaign Calendar', img: 'marketingCalendarPage', what: 'Upcoming festivals and days worth promoting, each with a pre-filled poster or caption.', steps: ['Open an occasion a few days early and prepare your post.'] },
+  { id: 'calendar', title: 'Campaign calendar', where: 'Marketing › Campaign Calendar', img: 'marketingCalendarPage', isNew: 1, what: 'Upcoming festivals and days worth promoting, each with a pre-filled poster or caption.', steps: ['Open an occasion a few days early and prepare your post.'] },
  ]},
  { id: 'offers', title: 'Offers', intro: 'Discounts, featured dishes and tools that raise the order value.', items: [
   { id: 'alloffers', title: 'All offers', where: 'Offers › All offers', img: 'offersHomePage', isNew: 1, what: 'Every offer tool on one page, grouped by what it does: discounts, dishes in the spotlight, raising the order value, and bulk orders. Each shows where customers see it, whether it is on, and how it is doing.', steps: ['Start here when you are not sure which tool you need.', 'Anything that needs your attention (for example a wallet without PhonePe, or new catering requests) shows at the top.', 'Click a card to set that tool up.'] },
@@ -346,6 +346,7 @@ var GROUPS = [
 
   // What's new: [date, title, one line, guide section]
   var NEWS = [
+    ['13 Oct 2026', 'Marketing studio', 'Posters, videos, captions and the calendar now sit under one set of tabs. Posters and videos start with a photo from your own menu, and the calendar tells you when to post.', 'posters'],
     ['13 Oct 2026', 'A new Dashboard', 'Today’s sales, orders and average order against yesterday, what needs your attention, orders in progress, the last 7 days, busy tables, reservations and best sellers.', 'dashboard'],
     ['13 Oct 2026', 'Order alerts in the background', 'New orders now ring and notify you even when the dashboard is in another tab or minimised. Turn them on once per device.', 'alerts'],
     ['13 Oct 2026', 'Offers made easier', 'A new All offers page shows every offer tool, where customers see it and whether it’s on. Coupons show how many orders each one brought. “Deals” is now Combos & New.', 'alloffers'],

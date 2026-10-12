@@ -3551,11 +3551,11 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Marketing > Posters Page -->
-    <div id="marketingPostersPage" class="page">
+    <div id="marketingPostersPage" class="page sx mk">
       <div class="page-header">
         <div>
           <h1>Posters</h1>
-          <p>Create posters to promote your restaurant on WhatsApp, Instagram & Facebook</p>
+          <p>Pick a design, choose a dish photo from your menu, write your offer, download. Ready for WhatsApp, Instagram and Facebook.</p>
         </div>
       </div>
       <div class="page-content">
@@ -3571,8 +3571,8 @@ function toggleGatewayMode() {
             <div class="poster-canvas-wrap">
               <canvas id="posterCanvas" width="1080" height="1080"></canvas>
             </div>
-            <button type="button" class="btn-secondary" onclick="downloadPoster()">
-              <span class="material-symbols-rounded" style="font-size:18px;">download</span> Download PNG
+            <button type="button" class="btn btn-primary mk-main" onclick="downloadPoster()">
+              <span class="material-symbols-rounded" style="font-size:18px;">download</span> Download poster
             </button>
           </div>
         </div>
@@ -3580,11 +3580,11 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Marketing > Videos Page -->
-    <div id="marketingVideosPage" class="page">
+    <div id="marketingVideosPage" class="page sx mk">
       <div class="page-header">
         <div>
           <h1>Videos</h1>
-          <p>Create short animated promo videos for WhatsApp Status, Instagram & Facebook</p>
+          <p>Short animated promos for WhatsApp Status, Instagram Reels and Facebook. The preview plays on a loop; record it to download.</p>
         </div>
       </div>
       <div class="page-content">
@@ -3600,7 +3600,7 @@ function toggleGatewayMode() {
             <div class="poster-canvas-wrap">
               <canvas id="videoCanvas" width="1080" height="1080"></canvas>
             </div>
-            <button type="button" class="btn-secondary" id="recordVideoBtn" onclick="recordVideo()">
+            <button type="button" class="btn btn-primary mk-main" id="recordVideoBtn" onclick="recordVideo()">
               <span class="material-symbols-rounded" style="font-size:18px;">videocam</span>
               <span class="video-record-label">Record &amp; Download Video</span>
             </button>
@@ -3611,11 +3611,11 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Marketing > Social Captions Page -->
-    <div id="marketingCaptionsPage" class="page">
+    <div id="marketingCaptionsPage" class="page sx mk">
       <div class="page-header">
         <div>
           <h1>Social Captions</h1>
-          <p>Generate ready-to-post captions with hashtags for Instagram, Facebook & WhatsApp</p>
+          <p>Say what you are promoting and get ready-to-post captions with your link and hashtags.</p>
         </div>
       </div>
       <div class="page-content">
@@ -3656,10 +3656,10 @@ function toggleGatewayMode() {
               </div>
             </div>
             <div style="display:flex;gap:10px;margin-top:16px;">
-              <button type="button" class="btn-secondary" style="flex:1;" onclick="generateCaptions()">
+              <button type="button" class="btn btn-primary" style="flex:1;" onclick="generateCaptions()">
                 <span class="material-symbols-rounded" style="font-size:18px;">auto_awesome</span> Generate Captions
               </button>
-              <button type="button" class="btn-secondary" title="Get different phrasing for the same inputs" onclick="generateCaptions()">
+              <button type="button" class="btn btn-secondary" title="Get different phrasing for the same inputs" aria-label="Different wording" onclick="generateCaptions()">
                 <span class="material-symbols-rounded" style="font-size:18px;">shuffle</span>
               </button>
             </div>
@@ -3673,11 +3673,11 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Marketing > Campaign Calendar Page -->
-    <div id="marketingCalendarPage" class="page">
+    <div id="marketingCalendarPage" class="page sx mk">
       <div class="page-header">
         <div>
           <h1>Campaign Calendar</h1>
-          <p>Upcoming occasions worth promoting - jump straight into a poster or caption, pre-filled</p>
+          <p>Occasions coming up in the next three months. Start a poster or caption for one, already filled in.</p>
         </div>
       </div>
       <div class="page-content">
@@ -7476,6 +7476,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/offers-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offers-studio.js'); ?>" defer></script>
   <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
   <script src="../assets/js/dashboard-home.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-home.js'); ?>" defer></script>
+  <script src="../assets/js/marketing-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/marketing-studio.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>
