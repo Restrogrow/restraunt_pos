@@ -12,7 +12,7 @@
  */
 (function () {
   'use strict';
-  var ROWS = '#menuList.hc-carousel [id^="catItems"], .rg-bn-track';
+  var ROWS = '#menuList.hc-carousel [id^="catItems"], .rg-bn-track, .tds-track';
 
   // Mouse users get a thin scrollbar too, so the row looks scrollable
   var st = document.createElement('style');

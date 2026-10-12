@@ -4325,24 +4325,30 @@ function toggleGatewayMode() {
         .ts-wrap { max-width: 980px; }
         .ts-now { display: flex; align-items: center; gap: 8px; padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: #fff7ed; color: #9a3412; font-size: 0.9rem; }
         .ts-now .material-symbols-rounded { font-size: 20px; }
-        .ts-head, .ts-row { display: grid; grid-template-columns: 170px minmax(0, 1.2fr) minmax(0, 1.6fr) 110px; gap: 10px; align-items: center; }
-        .ts-head { padding: 0 12px 6px; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
-        .ts-row { padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; margin-bottom: 8px; }
+        .ts-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; margin-bottom: 8px; }
+        .ts-head { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) 100px 34px; gap: 8px; margin-left: 182px; padding: 0 12px 6px; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+        .ts-entries { display: flex; flex-direction: column; gap: 8px; }
+        .ts-entry { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) 100px 34px; gap: 8px; align-items: center; }
+        .ts-del { width: 34px; height: 34px; border: 1px solid #fecaca; border-radius: 9px; background: #fef2f2; color: #dc2626; font-size: 18px; cursor: pointer; }
+        .ts-add { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border: 1.5px dashed #d1d5db; border-radius: 9px; background: #fff; color: #374151; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+        .ts-add .material-symbols-rounded { font-size: 18px; }
+        .ts-add:disabled { opacity: .5; cursor: default; }
+        .ts-count { display: block; margin-top: 4px; font-size: 0.72rem; color: #9ca3af; }
         .ts-row.every { background: #faf5ff; border-color: #e9d5ff; margin-bottom: 14px; }
         .ts-day b { display: block; font-size: 0.92rem; color: #111827; }
         .ts-day small { display: block; font-size: 0.72rem; color: #6b7280; }
         .ts-today { margin-left: 4px; padding: 2px 7px; border-radius: 999px; background: #16a34a; color: #fff; font-size: 0.65rem; font-weight: 700; vertical-align: middle; }
-        .ts-row select, .ts-row input { width: 100%; padding: 9px 10px; border: 1.5px solid #e5e7eb; border-radius: 9px; font: inherit; font-size: 0.88rem; background: #fff; }
+        .ts-entry select, .ts-entry input { width: 100%; padding: 9px 10px; border: 1.5px solid #e5e7eb; border-radius: 9px; font: inherit; font-size: 0.88rem; background: #fff; }
         .ts-empty { padding: 26px; text-align: center; color: #6b7280; border: 1px dashed #e5e7eb; border-radius: 12px; }
-        @media (max-width: 860px) { .ts-head { display: none; } .ts-row { grid-template-columns: 1fr 1fr; } .ts-day, .ts-note { grid-column: 1 / -1; } }
+        @media (max-width: 860px) { .ts-head { display: none; } .ts-row { grid-template-columns: 1fr; } .ts-entry { grid-template-columns: 1fr 90px 34px; } .ts-entry .ts-note { grid-column: 1 / -1; order: 5; } }
       </style>
       <div class="ts-wrap">
         <div class="page-header" style="margin-bottom:14px;">
           <h1 style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">local_fire_department</span> Today's Special</h1>
-          <p style="color:#6b7280;margin:4px 0 0;">A dish of the day for each weekday, shown on your home page above Bestsellers with your note and how many plates are left today.</p>
+          <p style="color:#6b7280;margin:4px 0 0;">Dishes of the day for each weekday (up to 6 a day), shown on your home page above Bestsellers with your note, a countdown to the end of the day and how many plates are left.</p>
         </div>
         <div class="ts-now" id="tsTodayNow"></div>
-        <div class="ts-head"><span>Day</span><span>Dish</span><span>Chef's note (optional)</span><span>Plates / day</span></div>
+        <div class="ts-head"><span>Dish</span><span>Chef's note (optional)</span><span>Plates / day</span><span></span></div>
         <div id="tsSlots"></div>
         <div style="display:flex;justify-content:flex-end;margin-top:6px;">
           <button type="button" class="btn btn-primary" id="tsSave"><span class="material-symbols-rounded">save</span> Save specials</button>

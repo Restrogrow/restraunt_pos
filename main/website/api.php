@@ -808,10 +808,10 @@ try {
             // Offers > Today's Special: today's dish, note, limit and plates sold today
             try {
                 require_once __DIR__ . '/../config/todays_special_helpers.php';
-                echo json_encode(['success' => true, 'special' => getTodaysSpecial($conn, $restaurantId)], JSON_UNESCAPED_UNICODE);
+                echo json_encode(['success' => true, 'specials' => getTodaysSpecials($conn, $restaurantId)], JSON_UNESCAPED_UNICODE);
             } catch (Throwable $e) {
                 error_log('Error in getTodaysSpecial: ' . $e->getMessage());
-                echo json_encode(['success' => true, 'special' => null]);
+                echo json_encode(['success' => true, 'specials' => null]);
             }
             break;
 

@@ -340,7 +340,23 @@ body {
 .hx-stack .rest-name { margin-top: 10px; }
 
 /* ── Today's Special (Offers > Today's Special): showcase card above Bestsellers ── */
-.tds { margin: 18px 16px 6px; }
+.tds { margin: 18px 0 6px; }
+.tds-top { display: flex; align-items: center; gap: 10px; margin: 0 16px 10px; }
+.tds-top .ic { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: linear-gradient(135deg, #fb923c, var(--primary-red, #e11d48)); color: #fff; box-shadow: 0 6px 14px rgba(225,29,72,.3); animation: tdsFlick 2.4s ease-in-out infinite; }
+.tds-top .ic svg { width: 20px; height: 20px; }
+@keyframes tdsFlick { 0%, 100% { transform: rotate(-3deg) scale(1); } 50% { transform: rotate(3deg) scale(1.06); } }
+.tds-top h3 { flex: 1; min-width: 0; margin: 0; font-size: 18px; font-weight: 800; color: #111827; line-height: 1.15; }
+.tds-top h3 small { display: block; font-size: 12px; font-weight: 600; color: #6b7280; }
+.tds-top .tds-timer { position: static; background: #111827; }
+.tds-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 16px 8px; scrollbar-width: none; }
+.tds-track::-webkit-scrollbar { display: none; }
+.tds-track > .tds-card { flex: 0 0 86%; scroll-snap-align: center; }
+.tds-track > .tds-card:only-child { flex-basis: 100%; }
+.tds-dots { display: flex; justify-content: center; gap: 5px; margin-top: 4px; }
+.tds-dots i { width: 6px; height: 6px; border-radius: 999px; background: #d1d5db; transition: width .3s, background .3s; }
+.tds-dots i.on { width: 18px; background: var(--primary-red, #e11d48); }
+.tds-fast { position: absolute; left: 12px; bottom: 44px; z-index: 2; padding: 4px 9px; border-radius: 999px; background: #fde047; color: #713f12; font-size: 11px; font-weight: 800; letter-spacing: .02em; animation: tdsPulse 1.6s ease-in-out infinite; }
+@keyframes tdsPulse { 50% { transform: scale(1.06); } }
 .tds-card { position: relative; border-radius: 24px; padding: 2px; overflow: hidden; cursor: pointer;
   background: conic-gradient(from var(--tds-a, 0deg), var(--primary-red, #e11d48), var(--primary-yellow, #fbbf24), #fff, var(--primary-red, #e11d48)); animation: tdsRing 6s linear infinite; }
 @property --tds-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
@@ -1791,7 +1807,14 @@ body {
   padding: 12px 20px 20px;
   border-top: 1px solid #eee;
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: #fff;
 }
+/* The whole sheet scrolls (photo, text, nutrition) so nothing is cut off */
+#productSheetContent { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+#productSheetContent .product-sheet-body { overflow: visible; flex: none; }
 .sheet-add-btn {
   width: 100%;
   padding: 14px;
@@ -3241,12 +3264,12 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
   run();
 })();
 
-// ── Today's Special (Offers > Today's Special): above Bestsellers ──
+// ── Today's Specials (Offers > Today's Special): a swipeable row above Bestsellers ──
 (function() {
   var box = document.getElementById('todaySpecial');
   var rid = (document.querySelector('meta[name="restaurant-id"]') || {}).content || '';
   if (!box || !rid) return;
-  var data = null, endTs = 0;
+  var endTs = 0;
   function tdsEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function findItem(id) {
@@ -3261,19 +3284,19 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
     var left = Math.max(0, endTs - Math.floor(Date.now() / 1000));
     el.textContent = 'Ends in ' + pad(Math.floor(left / 3600)) + ':' + pad(Math.floor(left % 3600 / 60)) + ':' + pad(left % 60);
   }
-  function render(found) {
-    var it = found.item, s = data;
+  var FLAME = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 5.4 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5.5 1-8.5z"/></svg>';
+  function cardHtml(f, s, k) {
+    var it = f.item;
     var name = it.item_name_translated || it.item_name_en || it.name || '';
     var limit = s.daily_limit, left = limit ? Math.max(0, limit - s.sold_today) : null;
     var soldOut = (left === 0) || it.is_available == 0;
+    var fast = limit && !soldOut && s.sold_today >= limit / 2;
     var priceNow = typeof itemNowPrice === 'function' ? itemNowPrice(it) : parseFloat(it.base_price || 0);
     var priceWas = typeof itemWasPrice === 'function' ? itemWasPrice(it) : 0;
-    endTs = s.ends_ts;
-    box.className = 'tds' + (soldOut ? ' soldout' : '');
-    box.innerHTML = '<div class="tds-card"><div class="tds-inner">' +
-      '<div class="tds-photo"><img src="' + getImageUrl(it.item_image || it.image) + '" alt="">' +
-        '<span class="tds-ribbon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 5.4 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5.5 1-8.5z"/></svg>' + tdsEsc(s.weekday_name) + "'s Special</span>" +
-        '<span class="tds-timer"></span>' +
+    return '<div class="tds-card' + (soldOut ? ' soldout' : '') + '" data-k="' + k + '"><div class="tds-inner">' +
+      '<div class="tds-photo"><img src="' + getImageUrl(it.item_image || it.image) + '" alt="" loading="' + (k ? 'lazy' : 'eager') + '">' +
+        '<span class="tds-ribbon">' + FLAME + 'Special ' + (k + 1) + '</span>' +
+        (fast ? '<span class="tds-fast">Selling fast</span>' : '') +
         '<div class="tds-name">' + tdsEsc(name) + '</div></div>' +
       '<div class="tds-body">' +
         (s.note ? '<p class="tds-note">' + tdsEsc(s.note) + '</p>' : '') +
@@ -3281,36 +3304,55 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
         '<div class="tds-foot">' + mrpPriceHtml(priceNow, priceWas) +
           '<button type="button" class="tds-add"' + (soldOut ? ' disabled' : '') + '>' + (soldOut ? 'Sold out' : 'Add <i class="fa fa-plus" style="font-size:11px"></i>') + '</button></div>' +
       '</div></div></div>';
+  }
+  function render(data, found) {
+    endTs = data.ends_ts;
+    var n = found.length;
+    box.className = 'tds';
+    box.innerHTML = '<div class="tds-top"><span class="ic">' + FLAME + '</span><h3>Today\u2019s Special' + (n > 1 ? 's' : '') + '<small>' + tdsEsc(data.weekday_name) + ' only' + (n > 1 ? ' \u00b7 ' + n + ' dishes' : '') + '</small></h3><span class="tds-timer"></span></div>' +
+      '<div class="tds-track">' + found.map(function(f, k) { return cardHtml(f.f, f.s, k); }).join('') + '</div>' +
+      (n > 1 ? '<div class="tds-dots">' + found.map(function(f, k) { return '<i' + (k ? '' : ' class="on"') + '></i>'; }).join('') + '</div>' : '');
     box.hidden = false;
     tick();
+    var track = box.querySelector('.tds-track'), dots = box.querySelectorAll('.tds-dots i');
+    if (dots.length) track.addEventListener('scroll', function() {
+      var cards = track.children, best = 0, bd = 1e9, mid = track.scrollLeft + track.clientWidth / 2;
+      for (var i = 0; i < cards.length; i++) { var d = Math.abs(cards[i].offsetLeft + cards[i].offsetWidth / 2 - mid); if (d < bd) { bd = d; best = i; } }
+      dots.forEach(function(dt, i) { dt.classList.toggle('on', i === best); });
+    }, { passive: true });
     box.onclick = function(e) {
+      var card = e.target.closest('.tds-card');
+      if (!card) return;
+      var f = found[+card.getAttribute('data-k')].f, it = f.item;
       var add = e.target.closest('.tds-add');
+      if (card.classList.contains('soldout')) return;
       var hasVar = it.has_variations && it.variations && it.variations.length;
-      if (add && !soldOut && !hasVar) {
+      if (add && !hasVar) {
         e.stopPropagation();
         addToCart(it.id);
         add.classList.add('added'); add.innerHTML = 'Added <i class="fa fa-check" style="font-size:11px"></i>';
         setTimeout(function() { add.classList.remove('added'); add.innerHTML = 'Add <i class="fa fa-plus" style="font-size:11px"></i>'; }, 1600);
         return;
       }
-      if (soldOut && add) return;
-      showItemDetail(found.ci, found.ii); // dish details (sizes, add-ons, notes)
+      showItemDetail(f.ci, f.ii); // dish details (sizes, add-ons, notes)
     };
   }
   fetch('api.php?action=getTodaysSpecial&restaurant_id=' + encodeURIComponent(rid))
     .then(function(r) { return r.json(); })
     .then(function(d) {
-      if (!d || !d.special) return;
-      data = d.special;
-      // wait for the menu to load, then show it
+      var data = d && d.specials;
+      if (!data || !data.items || !data.items.length) return;
+      // wait for the menu to load, then show them
       var tries = 0, t = setInterval(function() {
-        var found = menuCategories.length ? findItem(data.menu_item_id) : null;
-        if (found || ++tries > 40) { clearInterval(t); if (found) { render(found); setInterval(tick, 1000); } }
+        if (!menuCategories.length && ++tries <= 40) return;
+        clearInterval(t);
+        var found = [];
+        data.items.forEach(function(s) { var f = findItem(s.menu_item_id); if (f) found.push({ f: f, s: s }); });
+        if (found.length) { render(data, found); setInterval(tick, 1000); }
       }, 250);
     })
     .catch(function() {});
 })();
-
 function fitRestaurantName() {
   if (document.querySelector('.theme-bg.hx')) return; // card headers wrap the name to 2 lines instead
   fitTextToContainer('.rest-name', '.rest-name-text', 22, 10);
