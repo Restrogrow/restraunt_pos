@@ -1104,7 +1104,7 @@ function handleUpdateRestaurantSettings() {
             if (!function_exists('env') && file_exists(__DIR__ . '/../config/env_loader.php')) {
                 require_once __DIR__ . '/../config/env_loader.php';
             }
-            $geoKey = function_exists('env') ? env('GOOGLE_MAPS_API_KEY', '') : '';
+            $geoKey = function_exists('googleMapsApiKey') ? googleMapsApiKey() : '';
             if (!empty($geoKey)) {
                 $geoUrl = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($address) . '&key=' . $geoKey;
                 $ch = curl_init();

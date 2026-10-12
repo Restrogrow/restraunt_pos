@@ -275,7 +275,7 @@ try {
     $meal_subscriptions_enabled = 0;
 }
 ?>
-<?php $googleMapsApiKey = function_exists('env') ? env('GOOGLE_MAPS_API_KEY', '') : ''; ?>
+<?php $googleMapsApiKey = function_exists('googleMapsApiKey') ? googleMapsApiKey() : ''; ?>
 <!DOCTYPE html>
 <!-- Coding By CodingNepal - youtube.com/@codingnepal -->
 <html lang="en">

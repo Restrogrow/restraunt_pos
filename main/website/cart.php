@@ -19,7 +19,7 @@
 <?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'material-symbols', 'fontawesome', 'bootstrap-icons']); ?>
 <?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
 <!-- Google Maps Places Autocomplete (Delivery address) -->
-<?php $googleMapsApiKey = env('GOOGLE_MAPS_API_KEY', ''); ?>
+<?php $googleMapsApiKey = function_exists('googleMapsApiKey') ? googleMapsApiKey() : ''; ?>
 <?php if ($googleMapsApiKey): ?>
 <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo urlencode($googleMapsApiKey); ?>&libraries=places&loading=async" async defer></script>
 <?php endif; ?>

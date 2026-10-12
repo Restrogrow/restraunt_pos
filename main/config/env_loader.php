@@ -103,3 +103,14 @@ if (file_exists($localEnv)) {
     loadEnvFile($localEnv, true);
 }
 
+/**
+ * The Google Maps key, or '' when it isn't a real one (e.g. the placeholder
+ * copied from .env.example on a local copy). Pages then skip loading Google
+ * Maps and use their no-map fallback instead of Google's "Oops! Something
+ * went wrong" box. Real browser keys look like AIza + 35 characters.
+ */
+function googleMapsApiKey(): string {
+    $key = trim((string) env('GOOGLE_MAPS_API_KEY', ''), " 	
+\"'");
+    return preg_match('/^AIza[0-9A-Za-z_-]{30,}$/', $key) ? $key : '';
+}
