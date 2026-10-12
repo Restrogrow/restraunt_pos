@@ -2263,7 +2263,7 @@ window.socialLinks = {
           . $indexNavCartHtml;
   }
   ?>
-  <div class="bottom-nav bn-<?php echo in_array($nav_bar_style ?? 'classic', THEME_NAV_BAR_STYLES, true) ? $nav_bar_style : 'classic'; ?>">
+  <div class="bottom-nav bn-<?php echo in_array($nav_bar_style ?? 'classic', THEME_NAV_BAR_STYLES, true) ? $nav_bar_style : 'classic'; ?><?php echo !empty($navIcons['anim']) ? ' ni-' . htmlspecialchars($navIcons['anim'], ENT_QUOTES, 'UTF-8') : ''; ?>">
     <?php echo $indexNavItemsHtml; ?>
     <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="<?php echo htmlspecialchars($navLabels['profile'], ENT_QUOTES, 'UTF-8'); ?>" style="font-size:16px;padding:6px 10px;"><?php echo renderNavIconTag('profile', $navIcons, $navIconOverrides, false); ?></button>
   </div>

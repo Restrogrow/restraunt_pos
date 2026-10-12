@@ -53,4 +53,41 @@ define('RG_NAV_BAR_STYLES_CSS', true);
 .bottom-nav.bn-minimal { padding: 12px 14px 14px; }
 .bottom-nav.bn-minimal .nav-item span { display: none; }
 .bottom-nav.bn-minimal .nav-item.active::after { content: ""; width: 5px; height: 5px; margin-top: 4px; border-radius: 50%; background: var(--primary-red, #e11d48); }
+/* ── Animated icon styles (Bottom Navigation > Icon style: Playful, Chef, Café,
+   Fresh, Spicy, Sweet). Icons pop in on load, the current page's icon keeps a
+   gentle motion, and any icon reacts when tapped. ── */
+.bottom-nav[class*=" ni-"] .nav-item > .nav-icon { display: inline-block; animation: niIn .55s cubic-bezier(.2,1.5,.4,1) both; }
+.bottom-nav[class*=" ni-"] .nav-item:nth-child(2) > .nav-icon { animation-delay: .06s; }
+.bottom-nav[class*=" ni-"] .nav-item:nth-child(3) > .nav-icon { animation-delay: .12s; }
+.bottom-nav[class*=" ni-"] .nav-item:nth-child(4) > .nav-icon { animation-delay: .18s; }
+.bottom-nav[class*=" ni-"] .nav-item:nth-child(5) > .nav-icon { animation-delay: .24s; }
+.bottom-nav[class*=" ni-"] .nav-item:nth-child(6) > .nav-icon { animation-delay: .3s; }
+@keyframes niIn { from { opacity: 0; transform: translateY(10px) scale(.6); } to { opacity: 1; transform: none; } }
+
+.bottom-nav.ni-bounce .nav-item.active > .nav-icon { animation: niBounce 2.6s ease-in-out .7s infinite; }
+.bottom-nav.ni-bounce .nav-item:active > .nav-icon { animation: niBounce .5s ease-out; }
+@keyframes niBounce { 0%, 40%, 100% { transform: translateY(0); } 12% { transform: translateY(-7px); } 24% { transform: translateY(0); } 32% { transform: translateY(-3px); } }
+
+.bottom-nav.ni-swing .nav-item > .nav-icon { transform-origin: 50% 10%; }
+.bottom-nav.ni-swing .nav-item.active > .nav-icon { animation: niSwing 3s ease-in-out .7s infinite; }
+.bottom-nav.ni-swing .nav-item:active > .nav-icon { animation: niSwing .7s ease-out; }
+@keyframes niSwing { 0%, 50%, 100% { transform: rotate(0); } 10% { transform: rotate(16deg); } 20% { transform: rotate(-12deg); } 30% { transform: rotate(7deg); } 40% { transform: rotate(-4deg); } }
+
+.bottom-nav.ni-pulse .nav-item.active > .nav-icon { animation: niPulse 2.2s ease-in-out .7s infinite; }
+.bottom-nav.ni-pulse .nav-item:active > .nav-icon { animation: niPulse .45s ease-out; }
+@keyframes niPulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); } 50% { transform: scale(1.18); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary-red, #e11d48) 55%, transparent)); } }
+
+.bottom-nav.ni-float .nav-item.active > .nav-icon { animation: niFloat 2.8s ease-in-out .7s infinite; }
+.bottom-nav.ni-float .nav-item:active > .nav-icon { animation: niFloat .6s ease-out; }
+@keyframes niFloat { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-5px) rotate(-6deg); } }
+
+.bottom-nav.ni-pop .nav-item.active > .nav-icon { animation: niPop 2.4s cubic-bezier(.2,1.6,.4,1) .7s infinite; }
+.bottom-nav.ni-pop .nav-item:active > .nav-icon { animation: niPop .45s cubic-bezier(.2,1.6,.4,1); }
+@keyframes niPop { 0%, 45%, 100% { transform: scale(1) rotate(0); } 15% { transform: scale(1.32) rotate(-10deg); } 30% { transform: scale(.94) rotate(4deg); } }
+
+.bottom-nav.ni-wiggle .nav-item.active > .nav-icon { animation: niWiggle 2.6s ease-in-out .7s infinite; }
+.bottom-nav.ni-wiggle .nav-item:active > .nav-icon { animation: niWiggle .5s ease-in-out; }
+@keyframes niWiggle { 0%, 40%, 100% { transform: rotate(0) scale(1); } 8% { transform: rotate(-14deg) scale(1.1); } 16% { transform: rotate(12deg) scale(1.1); } 24% { transform: rotate(-8deg); } 32% { transform: rotate(4deg); } }
+
+@media (prefers-reduced-motion: reduce) { .bottom-nav[class*=" ni-"] .nav-item > .nav-icon { animation: none !important; } }
 </style>

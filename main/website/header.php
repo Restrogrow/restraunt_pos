@@ -376,6 +376,15 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
             if (in_array($pv['home_card_style'] ?? '', THEME_HOME_CARD_STYLES, true)) $home_card_style = $pv['home_card_style'];
             if (in_array($pv['profile_style'] ?? '', THEME_PROFILE_STYLES, true)) $profile_style = $pv['profile_style'];
             if (in_array($pv['nav_bar_style'] ?? '', THEME_NAV_BAR_STYLES, true)) $nav_bar_style = $pv['nav_bar_style'];
+            if (array_key_exists($pv['nav_icon_style'] ?? '', NAV_ICON_STYLES)) $nav_icon_style = $pv['nav_icon_style'];
+            if (isset($pv['site_name']) && is_string($pv['site_name'])) $site_name_override = trim(mb_substr(strip_tags($pv['site_name']), 0, 191)) ?: null;
+            if (isset($pv['nav_labels']) && is_array($pv['nav_labels'])) {
+                $pvLabels = [];
+                foreach (DEFAULT_NAV_LABELS as $slot => $default) {
+                    if (!empty($pv['nav_labels'][$slot]) && is_string($pv['nav_labels'][$slot])) $pvLabels[$slot] = mb_substr(strip_tags($pv['nav_labels'][$slot]), 0, 20);
+                }
+                $nav_labels_json = json_encode($pvLabels);
+            }
             if (isset($pv['profile_opts']) && is_array($pv['profile_opts'])) $profile_opts = cleanProfileOpts($pv['profile_opts']);
             if (in_array($pv['category_pic_style'] ?? '', THEME_CATEGORY_PIC_STYLES, true)) $category_pic_style = $pv['category_pic_style'];
             if (array_key_exists('category_heading_bg', $pv)) $category_heading_bg = $hex($pv['category_heading_bg']);

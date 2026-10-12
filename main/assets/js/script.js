@@ -14171,6 +14171,10 @@ async function initWebsiteThemeEditor() {
       try { t.home_card_style = currentHomeCardStyleVal(); } catch (e) {}
       try { t.profile_style = currentProfileStyleVal(); } catch (e) {}
       try { t.nav_bar_style = currentNavBarStyleVal(); } catch (e) {}
+      // Typed text and the icon set follow the preview (and the phone) before saving too
+      var nis = document.getElementById('navIconStyleInput'); if (nis && nis.value) t.nav_icon_style = nis.value;
+      var sn = document.getElementById('siteNameInput'); if (sn) t.site_name = sn.value.trim();
+      try { var nl = {}; NAV_LABEL_SLOTS.forEach(function(slot) { var el = navLabelInputEl(slot); if (el && el.value.trim()) nl[slot] = el.value.trim(); }); t.nav_labels = nl; } catch (e) {}
       try { t.profile_opts = currentProfileOpts(); } catch (e) {}
       try { t.category_pic_style = currentCategoryPicStyleVal(); } catch (e) {}
       try { var hb = currentCategoryHeadingVal(); t.category_heading_bg = hb || null; } catch (e) {}
@@ -14215,6 +14219,15 @@ async function initWebsiteThemeEditor() {
       clearTimeout(previewReloadTimer);
       previewReloadTimer = setTimeout(reloadPreviewForMode, 450);
     }
+    window.schedulePreviewReload = schedulePreviewReload;
+    // Typing (name, bottom bar labels…) refreshes the preview once you pause
+    var previewTypeTimer = 0;
+    document.addEventListener('input', function(e) {
+      if (!e.target.closest || !e.target.closest('#websiteThemePage') || e.target.type !== 'text') return;
+      if (window.previewMode === 'live') return;
+      clearTimeout(previewTypeTimer);
+      previewTypeTimer = setTimeout(reloadPreviewForMode, 700);
+    });
     // Any layout choice in Website Appearance refreshes the Current preview
     document.addEventListener('click', function(e) {
       var opt = e.target.closest && e.target.closest('#websiteThemePage label[class$="-opt"], #websiteThemePage label[class*="-opt "], #websiteThemePage input[type="radio"]');
@@ -14391,8 +14404,35 @@ async function initWebsiteThemeEditor() {
       storefront: { label: 'Storefront', home: 'store', menu: 'utensils', social: 'comments', plans: 'calendar-check', cart: 'shopping-bag', profile: 'user-circle' },
       foodie: { label: 'Foodie', home: 'home', menu: 'pizza-slice', social: 'share-alt', plans: 'calendar-check', cart: 'cart-plus', profile: 'user' },
       minimal: { label: 'Minimal', home: 'house', menu: 'list', social: 'comment-dots', plans: 'calendar-check', cart: 'bag-shopping', profile: 'circle-user' },
-      bold: { label: 'Bold', home: 'home', menu: 'bowl-food', social: 'share-nodes', plans: 'calendar-days', cart: 'cart-shopping', profile: 'user-circle' }
+      bold: { label: 'Bold', home: 'home', menu: 'bowl-food', social: 'share-nodes', plans: 'calendar-days', cart: 'cart-shopping', profile: 'user-circle' },
+      playful: { label: 'Playful', anim: 'bounce', home: 'house-chimney', menu: 'burger', social: 'heart', plans: 'calendar-days', cart: 'basket-shopping', profile: 'face-smile' },
+      chef: { label: 'Chef', anim: 'swing', home: 'bell-concierge', menu: 'kitchen-set', social: 'bullhorn', plans: 'clipboard-list', cart: 'bag-shopping', profile: 'user-tie' },
+      cafe: { label: 'Caf\u00e9', anim: 'pulse', home: 'mug-hot', menu: 'mug-saucer', social: 'paper-plane', plans: 'calendar-check', cart: 'basket-shopping', profile: 'circle-user' },
+      fresh: { label: 'Fresh', anim: 'float', home: 'leaf', menu: 'carrot', social: 'seedling', plans: 'calendar-check', cart: 'basket-shopping', profile: 'user' },
+      spicy: { label: 'Spicy', anim: 'pop', home: 'fire-flame-curved', menu: 'pepper-hot', social: 'bolt', plans: 'calendar-days', cart: 'cart-shopping', profile: 'crown' },
+      sweet: { label: 'Sweet', anim: 'wiggle', home: 'ice-cream', menu: 'cake-candles', social: 'gift', plans: 'calendar-days', cart: 'bag-shopping', profile: 'heart' }
     };
+    // Animated sets wiggle in the picker too, so the motion is visible before choosing
+    (function() {
+      if (document.getElementById('nisAnimCss')) return;
+      var st = document.createElement('style');
+      st.id = 'nisAnimCss';
+      st.textContent =
+        '.nis-tile .nis-ic i{display:inline-block}' +
+        '.nis-tile:hover .nis-ic i,.nis-tile.on .nis-ic i{animation-duration:1.6s;animation-iteration-count:infinite;animation-timing-function:ease-in-out}' +
+        '.nis-tile .nis-ic i:nth-child(2){animation-delay:.12s}.nis-tile .nis-ic i:nth-child(3){animation-delay:.24s}.nis-tile .nis-ic i:nth-child(4){animation-delay:.36s}.nis-tile .nis-ic i:nth-child(5){animation-delay:.48s}' +
+        '.nis-a-bounce:hover .nis-ic i,.nis-a-bounce.on .nis-ic i{animation-name:nisBounce}.nis-a-swing:hover .nis-ic i,.nis-a-swing.on .nis-ic i{animation-name:nisSwing;transform-origin:50% 10%}' +
+        '.nis-a-pulse:hover .nis-ic i,.nis-a-pulse.on .nis-ic i{animation-name:nisPulse}.nis-a-float:hover .nis-ic i,.nis-a-float.on .nis-ic i{animation-name:nisFloat}' +
+        '.nis-a-pop:hover .nis-ic i,.nis-a-pop.on .nis-ic i{animation-name:nisPop}.nis-a-wiggle:hover .nis-ic i,.nis-a-wiggle.on .nis-ic i{animation-name:nisWiggle}' +
+        '@keyframes nisBounce{0%,50%,100%{transform:translateY(0)}20%{transform:translateY(-5px)}}' +
+        '@keyframes nisSwing{0%,60%,100%{transform:rotate(0)}15%{transform:rotate(16deg)}30%{transform:rotate(-12deg)}45%{transform:rotate(5deg)}}' +
+        '@keyframes nisPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}' +
+        '@keyframes nisFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-4px) rotate(-6deg)}}' +
+        '@keyframes nisPop{0%,55%,100%{transform:scale(1)}20%{transform:scale(1.35) rotate(-8deg)}35%{transform:scale(.9)}}' +
+        '@keyframes nisWiggle{0%,50%,100%{transform:rotate(0)}12%{transform:rotate(-14deg)}25%{transform:rotate(12deg)}37%{transform:rotate(-6deg)}}' +
+        '.nis-badge{display:inline-block;margin-left:4px;padding:1px 5px;border-radius:999px;background:#ede9fe;color:#6d28d9;font-size:9px;font-weight:800;vertical-align:1px}';
+      document.head.appendChild(st);
+    })();
     const NAV_ICON_SLOTS = ['home', 'menu', 'social', 'cart', 'profile'];
 
     // Mirrors DEFAULT_NAV_LABELS in main/config/website_theme_helpers.php
@@ -14410,10 +14450,10 @@ async function initWebsiteThemeEditor() {
         var isSelected = id === selectedId;
         var borderColor = isSelected ? '#dc2626' : '#e5e7eb';
         var boxShadow = isSelected ? '0 0 0 2px #dc2626' : '0 2px 4px rgba(0,0,0,0.06)';
-        var icons = NAV_ICON_SLOTS.map(function(slot) { return "<i class='fa fa-" + st[slot] + "' style='font-size:14px;color:#6b7280;'></i>"; }).join('');
-        return "<div data-nav-icon='" + id + "' style='cursor:pointer;text-align:center;padding:10px 6px;border-radius:10px;border:3px solid " + borderColor + ";background:#fff;box-shadow:" + boxShadow + ";transition:all 0.2s;'>" +
-          "<div style='display:flex;justify-content:center;gap:6px;margin-bottom:6px;'>" + icons + "</div>" +
-          "<div style='font-size:11px;font-weight:600;color:#374151;'>" + st.label + "</div>" +
+        var icons = NAV_ICON_SLOTS.map(function(slot) { return "<i class='fa fa-" + st[slot] + "' style='font-size:14px;color:" + (st.anim ? '#6d28d9' : '#6b7280') + ";'></i>"; }).join('');
+        return "<div data-nav-icon='" + id + "' class='nis-tile" + (st.anim ? ' nis-a-' + st.anim : '') + (isSelected ? ' on' : '') + "' style='cursor:pointer;text-align:center;padding:10px 6px;border-radius:10px;border:3px solid " + borderColor + ";background:#fff;box-shadow:" + boxShadow + ";transition:all 0.2s;'>" +
+          "<div class='nis-ic' style='display:flex;justify-content:center;gap:6px;margin-bottom:6px;'>" + icons + "</div>" +
+          "<div style='font-size:11px;font-weight:600;color:#374151;'>" + st.label + (st.anim ? "<span class='nis-badge'>Animated</span>" : '') + "</div>" +
         "</div>";
       }).join('');
       grid.onclick = function(e) {
@@ -14428,6 +14468,7 @@ async function initWebsiteThemeEditor() {
       if (input) input.value = id || 'classic';
       renderNavIconStyleGrid(id || 'classic');
       applyLivePreview();
+      if (window.schedulePreviewReload) window.schedulePreviewReload();
     };
 
     // Per-slot custom nav icon uploads — overrides the picked icon style above

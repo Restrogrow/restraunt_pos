@@ -336,6 +336,8 @@ try {
   
   <!-- Critical CSS -->
   <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo time(); ?>">
+  <!-- Font Awesome: the bottom-bar icon style previews in Website Appearance (loaded without blocking the page) -->
+  <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css" media="print" onload="this.media='all'">
   
   <!-- Optimized Font Loading -->
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">

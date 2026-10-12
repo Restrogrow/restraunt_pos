@@ -238,6 +238,44 @@ const NAV_ICON_STYLES = [
         'plans' => 'calendar-days', 'cart' => 'cart-shopping', 'profile' => 'user-circle',
         'install' => 'download',
     ],
+    // Animated sets: 'anim' = how the icons move (pop in on load, the current
+    // page's icon keeps moving gently, every icon reacts when tapped)
+    'playful' => [
+        'label' => 'Playful', 'anim' => 'bounce',
+        'home' => 'house-chimney', 'menu' => 'burger', 'social' => 'heart',
+        'plans' => 'calendar-days', 'cart' => 'basket-shopping', 'profile' => 'face-smile',
+        'install' => 'download',
+    ],
+    'chef' => [
+        'label' => 'Chef', 'anim' => 'swing',
+        'home' => 'bell-concierge', 'menu' => 'kitchen-set', 'social' => 'bullhorn',
+        'plans' => 'clipboard-list', 'cart' => 'bag-shopping', 'profile' => 'user-tie',
+        'install' => 'download',
+    ],
+    'cafe' => [
+        'label' => 'Café', 'anim' => 'pulse',
+        'home' => 'mug-hot', 'menu' => 'mug-saucer', 'social' => 'paper-plane',
+        'plans' => 'calendar-check', 'cart' => 'basket-shopping', 'profile' => 'circle-user',
+        'install' => 'download',
+    ],
+    'fresh' => [
+        'label' => 'Fresh', 'anim' => 'float',
+        'home' => 'leaf', 'menu' => 'carrot', 'social' => 'seedling',
+        'plans' => 'calendar-check', 'cart' => 'basket-shopping', 'profile' => 'user',
+        'install' => 'download',
+    ],
+    'spicy' => [
+        'label' => 'Spicy', 'anim' => 'pop',
+        'home' => 'fire-flame-curved', 'menu' => 'pepper-hot', 'social' => 'bolt',
+        'plans' => 'calendar-days', 'cart' => 'cart-shopping', 'profile' => 'crown',
+        'install' => 'download',
+    ],
+    'sweet' => [
+        'label' => 'Sweet', 'anim' => 'wiggle',
+        'home' => 'ice-cream', 'menu' => 'cake-candles', 'social' => 'gift',
+        'plans' => 'calendar-days', 'cart' => 'bag-shopping', 'profile' => 'heart',
+        'install' => 'download',
+    ],
 ];
 
 /**
