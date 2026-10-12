@@ -2017,7 +2017,8 @@ function upsellChoose(id) {
 // Wallet balance for "Pay from wallet" at checkout (logged-in customers only)
 window.cartWallet = null;
 function loadCartWallet() {
-  var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
+  var rid = window.websiteRestaurantId || document.querySelector('meta[name=restaurant-id]')?.content || '';
+  if (!rid) return;
   fetch('wallet_api.php?action=summary&restaurant_id=' + encodeURIComponent(rid), { credentials: 'same-origin', cache: 'no-store' })
     .then(function(r) { return r.json(); })
     .then(function(d) { if (d && d.success && d.enabled && d.logged_in) window.cartWallet = { name: d.name, balance: +d.balance || 0 }; })
@@ -2028,7 +2029,8 @@ function loadCartWallet() {
 // for a logged-in member; this mirrors them so the bill shows the same numbers.
 window.cartVip = null;
 function loadCartVip() {
-  var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
+  var rid = window.websiteRestaurantId || document.querySelector('meta[name=restaurant-id]')?.content || '';
+  if (!rid) return;
   fetch('vip_api.php?action=summary&restaurant_id=' + encodeURIComponent(rid), { credentials: 'same-origin', cache: 'no-store' })
     .then(function(r) { return r.json(); })
     .then(function(d) {

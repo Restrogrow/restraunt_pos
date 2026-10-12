@@ -1387,6 +1387,13 @@ try {
           </a>
           <span class="nav-tooltip">Custom Domain</span>
         </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="howToPage" onclick="openHowTo(document.querySelector('.page.active'))">
+            <span class="nav-icon material-symbols-rounded">help</span>
+            <span class="nav-label">How to use</span>
+          </a>
+          <span class="nav-tooltip">How to use</span>
+        </li>
 
       </ul>
 
@@ -2821,6 +2828,58 @@ try {
         }
       }
     </script>
+    <!-- How to use: the user guide, opened at the screen the owner came from -->
+    <div id="howToPage" class="page">
+      <style>
+        .howto-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .howto-bar p { margin: 0; color: #6b7280; font-size: .88rem; }
+        .howto-bar p b { color: #111827; }
+        .howto-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+        .howto-acts a { text-decoration: none; }
+        .howto-frame { width: 100%; height: calc(100vh - 210px); min-height: 520px; border: 1px solid #e5e7eb; border-radius: 16px; background: #fff; box-shadow: 0 10px 30px -20px rgba(15,23,42,.35); }
+      </style>
+      <div class="page-header">
+        <h1>How to use</h1>
+        <p>Every screen explained step by step, with pictures. Search for any feature.</p>
+      </div>
+      <div class="page-content">
+        <div class="howto-bar">
+          <p id="howToFrom">Start with the <b>Quick start checklist</b> to go live in ten steps.</p>
+          <div class="howto-acts">
+            <button type="button" class="btn btn-secondary" onclick="openHowTo(null, 'quick-start')"><span class="material-symbols-rounded">checklist</span> Quick start</button>
+            <a class="btn btn-primary" id="howToNewTab" href="user-guide.html" target="_blank" rel="noopener"><span class="material-symbols-rounded">open_in_new</span> Open in a new tab</a>
+          </div>
+        </div>
+        <iframe id="howToFrame" class="howto-frame" title="RestroGrow guide" loading="lazy"></iframe>
+      </div>
+    </div>
+    <script>
+      // "How to use": open the guide at the screen (and Studio / WhatsApp tab) the owner was just on
+      function openHowTo(fromPage, anchor) {
+        var labels = { growthSettingsPage: 'Loyalty Studio', whatsappPage: 'WhatsApp' };
+        var hash = '', where = '';
+        if (anchor) hash = anchor;
+        else if (fromPage && fromPage.id && fromPage.id !== 'howToPage') {
+          var tab = fromPage.querySelector('.ls-tab.on');
+          if (fromPage.id === 'growthSettingsPage' && tab) {
+            hash = { program: 'loyalty', card: 'phonecard' }[tab.getAttribute('data-ls-tab')] || tab.getAttribute('data-ls-tab');
+          } else if (fromPage.id === 'whatsappPage' && tab && tab.getAttribute('data-wa-tab') === 'camp') {
+            hash = 'wacampaigns';
+          } else {
+            hash = 'from-' + fromPage.id;
+          }
+          var h1 = fromPage.querySelector('.page-header h1');
+          where = labels[fromPage.id] || (h1 ? h1.textContent.trim() : '');
+        }
+        var frame = document.getElementById('howToFrame'), note = document.getElementById('howToFrom'), nt = document.getElementById('howToNewTab');
+        var url = 'user-guide.html' + (hash ? '#' + hash : '');
+        if (note) note.innerHTML = where ? 'Showing how to use <b>' + where.replace(/[<>&]/g, '') + '</b>. Scroll or search for anything else.' : 'Start with the <b>Quick start checklist</b> to go live in ten steps.';
+        if (nt) nt.href = url;
+        if (!frame) return;
+        frame.src = 'user-guide.html?v=' + Date.now() + (hash ? '&go=' + encodeURIComponent(hash) : '');   // fresh load; ?go= not #, so the dashboard itself doesn't scroll
+      }
+    </script>
+
     <!-- Custom Domain / Embed Page -->
     <div id="embedPage" class="page">
       <div class="page-header">

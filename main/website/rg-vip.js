@@ -124,6 +124,6 @@
     }
   });
 
-  var ready = checkReturn().then(fetchSummary);
+  var ready = window.restaurantId ? checkReturn().then(fetchSummary) : Promise.resolve();
   window.lxVipMount = function () { ready.then(draw); };
 })();

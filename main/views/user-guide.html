@@ -104,6 +104,8 @@ footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--line);
   .feat { padding: 16px; } .feat-b, .feat-b.phone { grid-template-columns: 1fr; }
   .logo b { display: none; }
 }
+  .feat.flash { animation: featFlash 2.2s ease; }
+  @keyframes featFlash { 0%, 40% { box-shadow: 0 0 0 4px rgba(124,58,237,.45); } 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); } }
 </style>
 </head>
 <body>
@@ -385,7 +387,21 @@ var GROUPS = [
     else if (e.target.closest('#lb')) lb.classList.remove('on');
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') lb.classList.remove('on'); });
-  if (location.hash) { var t = document.querySelector(location.hash); if (t) setTimeout(function () { t.scrollIntoView(); }, 50); }
+  // Opening at a section: #<id> when the guide is opened directly, or ?go=<id> / ?go=from-<dashboardPageId>
+  // from the dashboard's "How to use" (a #hash in a frame makes the browser scroll the dashboard too).
+  // from-<page> finds the feature whose screenshot is that dashboard screen.
+  var go = new URLSearchParams(location.search).get('go') || location.hash.slice(1);
+  var target = /^[A-Za-z0-9_-]+$/.test(go || '') ? go : '';
+  var fromPage = /^from-([A-Za-z0-9_]+)$/.exec(target);
+  if (fromPage) {
+    target = '';
+    GROUPS.forEach(function (g) { g.items.forEach(function (f) { if (!target && f.img === fromPage[1]) target = f.id; }); });
+  }
+  var t = target ? document.getElementById(target) : null;
+  if (t) setTimeout(function () {
+    window.scrollTo(0, t.getBoundingClientRect().top + window.scrollY - 80);   // not scrollIntoView: inside the dashboard it would scroll the dashboard too
+    if (window.parent !== window) { t.classList.add('flash'); setTimeout(function () { t.classList.remove('flash'); }, 2200); }
+  }, 80);
 })();
 </script>
 </body>
