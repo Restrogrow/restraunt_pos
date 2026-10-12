@@ -11,6 +11,8 @@
  * POST JSON { section: 'games', action: 'style' | 'save' | 'toggle' | 'delete', ... }
  * GET  ?section=vip       — the club, plans with their members and revenue, latest members
  * POST JSON { section: 'vip', action: 'settings' | 'save' | 'toggle' | 'delete', ... }
+ * GET  ?section=performance&days=30|90|365 — what loyalty brings in: revenue from gift codes by
+ *                          source, members vs guests, repeat rate, weekly trend, what is owed
  * Always scoped to the session's restaurant.
  */
 require_once __DIR__ . '/../db_connection.php';
@@ -19,6 +21,7 @@ startSecureSession();
 require_once __DIR__ . '/../config/authorization_config.php';
 require_once __DIR__ . '/../config/loyalty_autopilot.php';
 require_once __DIR__ . '/../config/vip_membership.php';
+require_once __DIR__ . '/../config/wallet_helpers.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
@@ -42,6 +45,7 @@ try {
     $conn = getConnection();
     ensureLoyaltyAutopilotSchema($conn);
     ensureVipSchema($conn);
+    ensureWalletTables($conn);   // orders.wallet_paid, used by Performance
     $cur = (string)($conn->query('SELECT currency_symbol FROM users WHERE restaurant_id = ' . $conn->quote($rid) . ' LIMIT 1')->fetchColumn() ?: '₹');
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -116,6 +120,79 @@ try {
                     return $c + ['display_title' => loyaltyChallengeTitle($c, $cur), 'reward' => loyaltyChallengeRewardLabel($conn, $rid, $c, $cur), 'stats' => loyaltyChallengeStats($conn, $rid, $c)];
                 }, loyaltyChallenges($conn, $rid)),
                 'items' => laItems($conn, $rid),
+            ]);
+        }
+        if ($section === 'performance') {
+            $days = (int)($_GET['days'] ?? 30);
+            if (!in_array($days, [30, 90, 365], true)) $days = 30;
+            $from = date('Y-m-d H:i:s', strtotime('-' . $days . ' days'));
+            $prevFrom = date('Y-m-d H:i:s', strtotime('-' . (2 * $days) . ' days'));
+            $one = function ($sql, $args) use ($conn) { $st = $conn->prepare($sql); $st->execute($args); return $st->fetch(PDO::FETCH_ASSOC) ?: []; };
+            $all = function ($sql, $args) use ($conn) { $st = $conn->prepare($sql); $st->execute($args); return $st->fetchAll(PDO::FETCH_ASSOC); };
+            $live = "o.restaurant_id = ? AND o.deleted_at IS NULL AND o.order_status NOT IN ('Cancelled', 'Rejected')";
+            // An order loyalty helped bring in: a personal gift code, points, the member discount or the wallet
+            $codes = "SELECT coupon_code FROM loyalty_rewards_issued WHERE restaurant_id = ? UNION SELECT coupon_code FROM scratch_cards WHERE restaurant_id = ? AND coupon_code IS NOT NULL";
+            $loyal = "(o.coupon_code IN ($codes) OR o.loyalty_points_redeemed > 0 OR o.vip_discount > 0 OR o.wallet_paid > 0)";
+            $period = function ($a, $b) use ($one, $live, $loyal, $rid) {
+                return $one("SELECT COUNT(*) orders, COALESCE(SUM(o.total), 0) revenue, COUNT(DISTINCT NULLIF(o.customer_phone, '')) customers,
+                    COALESCE(SUM(CASE WHEN $loyal THEN o.total END), 0) loyal_revenue, SUM($loyal) loyal_orders,
+                    COALESCE(SUM(CASE WHEN $loyal THEN o.discount_amount + o.loyalty_discount_amount + o.vip_discount END), 0) given
+                    FROM orders o WHERE $live AND o.created_at >= ? AND o.created_at < ?", [$rid, $rid, $rid, $rid, $rid, $rid, $rid, $a, $b]);
+            };
+            $now = $period($from, date('Y-m-d H:i:s', time() + 60));
+            $prev = $period($prevFrom, $from);
+
+            // Revenue from each kind of gift code
+            $bySource = $all("SELECT r.source, COUNT(DISTINCT r.id) issued, COUNT(DISTINCT o.id) used, COALESCE(SUM(o.total), 0) revenue, COALESCE(SUM(o.discount_amount), 0) cost
+                FROM loyalty_rewards_issued r LEFT JOIN orders o ON o.restaurant_id = r.restaurant_id AND o.coupon_code = r.coupon_code AND o.deleted_at IS NULL
+                    AND o.order_status NOT IN ('Cancelled', 'Rejected')
+                WHERE r.restaurant_id = ? AND r.created_at >= ? GROUP BY r.source", [$rid, $from]);
+            $sc = $one("SELECT COUNT(DISTINCT s.id) issued, COUNT(DISTINCT o.id) used, COALESCE(SUM(o.total), 0) revenue, COALESCE(SUM(o.discount_amount), 0) cost
+                FROM scratch_cards s LEFT JOIN orders o ON o.restaurant_id = s.restaurant_id AND o.coupon_code = s.coupon_code AND o.deleted_at IS NULL AND o.order_status NOT IN ('Cancelled', 'Rejected')
+                WHERE s.restaurant_id = ? AND s.prize_type <> 'none' AND s.status = 'scratched' AND s.created_at >= ?", [$rid, $from]);
+            if ((int)($sc['issued'] ?? 0) > 0) $bySource[] = ['source' => 'scratch'] + $sc;
+            $pts = $one("SELECT COUNT(*) used, COALESCE(SUM(o.total), 0) revenue, COALESCE(SUM(o.loyalty_discount_amount), 0) cost FROM orders o WHERE $live AND o.created_at >= ? AND o.loyalty_points_redeemed > 0", [$rid, $from]);
+            if ((int)($pts['used'] ?? 0) > 0) $bySource[] = ['source' => 'points', 'issued' => null] + $pts;
+            $vipO = $one("SELECT COUNT(*) used, COALESCE(SUM(o.total), 0) revenue, COALESCE(SUM(o.vip_discount), 0) cost FROM orders o WHERE $live AND o.created_at >= ? AND o.vip_discount > 0", [$rid, $from]);
+            if ((int)($vipO['used'] ?? 0) > 0) $bySource[] = ['source' => 'vip_orders', 'issued' => null] + $vipO;
+            $bySource = array_map(function ($r) { return ['source' => $r['source'], 'issued' => $r['issued'] === null ? null : (int)$r['issued'], 'used' => (int)$r['used'],
+                'revenue' => (float)$r['revenue'], 'cost' => (float)$r['cost']]; }, $bySource);
+            usort($bySource, function ($a, $b) { return $b['revenue'] <=> $a['revenue']; });
+
+            // Members (signed up) vs guests, and VIP members
+            $seg = $all("SELECT CASE WHEN c.password_hash IS NOT NULL THEN 'members' ELSE 'guests' END seg, COUNT(*) orders, COALESCE(SUM(o.total), 0) revenue,
+                    COUNT(DISTINCT o.customer_phone) customers
+                FROM orders o LEFT JOIN customers c ON c.restaurant_id = o.restaurant_id AND c.phone = o.customer_phone
+                WHERE $live AND o.created_at >= ? AND o.customer_phone IS NOT NULL AND o.customer_phone <> '' GROUP BY seg", [$rid, $from]);
+            $segOut = ['members' => ['orders' => 0, 'revenue' => 0, 'customers' => 0], 'guests' => ['orders' => 0, 'revenue' => 0, 'customers' => 0]];
+            foreach ($seg as $r) $segOut[$r['seg']] = ['orders' => (int)$r['orders'], 'revenue' => (float)$r['revenue'], 'customers' => (int)$r['customers']];
+            $vipSeg = $one("SELECT COUNT(*) orders, COALESCE(SUM(o.total), 0) revenue, COUNT(DISTINCT o.customer_phone) customers FROM orders o WHERE $live AND o.created_at >= ?
+                AND EXISTS (SELECT 1 FROM vip_members m WHERE m.restaurant_id = o.restaurant_id AND m.phone = o.customer_phone AND m.status = 'Active' AND o.created_at BETWEEN m.starts_at AND m.ends_at)", [$rid, $from]);
+            $segOut['vip'] = ['orders' => (int)($vipSeg['orders'] ?? 0), 'revenue' => (float)($vipSeg['revenue'] ?? 0), 'customers' => (int)($vipSeg['customers'] ?? 0)];
+            $rep = $one("SELECT COUNT(*) customers, SUM(n >= 2) repeaters FROM (SELECT COUNT(*) n FROM orders o WHERE $live AND o.created_at >= ? AND o.customer_phone IS NOT NULL AND o.customer_phone <> '' GROUP BY o.customer_phone) x", [$rid, $from]);
+
+            // Weekly trend (last 12 weeks): all revenue and the loyalty-helped part
+            $weeks = $all("SELECT YEARWEEK(o.created_at, 3) w, MIN(DATE(o.created_at)) d, COALESCE(SUM(o.total), 0) revenue, COALESCE(SUM(CASE WHEN $loyal THEN o.total END), 0) loyal
+                FROM orders o WHERE $live AND o.created_at >= NOW() - INTERVAL 12 WEEK GROUP BY w ORDER BY w", [$rid, $rid, $rid]);
+
+            // What is owed: points, wallet money, unused gift codes, stamp cards in progress
+            $s = getGrowthSettings($conn, $rid);
+            $owed = $one("SELECT COALESCE(SUM(loyalty_points_balance), 0) points, SUM(stamps > 0) stamp_cards, COALESCE(SUM(stamps), 0) stamps FROM customers WHERE restaurant_id = ?", [$rid]);
+            $wallet = 0.0;
+            try { $wallet = (float)($one('SELECT COALESCE(SUM(balance), 0) b FROM wallets WHERE restaurant_id = ?', [$rid])['b'] ?? 0); } catch (PDOException $e) {}
+            $gifts = $one("SELECT COUNT(*) n, COALESCE(SUM(CASE WHEN discount_type = 'flat' THEN discount_value END), 0) flat, SUM(discount_type = 'percent') pct
+                FROM coupons WHERE restaurant_id = ? AND owner_phone IS NOT NULL AND is_active = 1 AND current_uses < max_uses AND (valid_until IS NULL OR valid_until >= CURDATE())", [$rid]);
+            $vipMembers = (int)($one("SELECT COUNT(DISTINCT phone) n FROM vip_members WHERE restaurant_id = ? AND status = 'Active' AND starts_at <= NOW() AND ends_at > NOW()", [$rid])['n'] ?? 0);
+
+            $f = function ($r) { return ['orders' => (int)($r['orders'] ?? 0), 'revenue' => (float)($r['revenue'] ?? 0), 'customers' => (int)($r['customers'] ?? 0),
+                'loyal_revenue' => (float)($r['loyal_revenue'] ?? 0), 'loyal_orders' => (int)($r['loyal_orders'] ?? 0), 'given' => (float)($r['given'] ?? 0)]; };
+            laOut(['success' => true, 'currency' => $cur, 'days' => $days, 'program_type' => loyaltyProgramType($s), 'loyalty_enabled' => (int)$s['loyalty_enabled'],
+                'now' => $f($now), 'prev' => $f($prev), 'sources' => $bySource, 'segments' => $segOut,
+                'repeat' => ['customers' => (int)($rep['customers'] ?? 0), 'repeaters' => (int)($rep['repeaters'] ?? 0)],
+                'weeks' => array_map(function ($w) { return ['from' => $w['d'], 'revenue' => (float)$w['revenue'], 'loyal' => (float)$w['loyal']]; }, $weeks),
+                'owed' => ['points' => (int)$owed['points'], 'points_value' => round((int)$owed['points'] * (float)$s['redeem_value_per_point'], 2),
+                           'wallet' => $wallet, 'gift_codes' => (int)($gifts['n'] ?? 0), 'gift_flat' => (float)($gifts['flat'] ?? 0), 'gift_pct' => (int)($gifts['pct'] ?? 0),
+                           'stamp_cards' => (int)($owed['stamp_cards'] ?? 0), 'vip_members' => $vipMembers],
             ]);
         }
         if ($section === 'vip') {

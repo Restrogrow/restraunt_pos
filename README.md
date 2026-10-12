@@ -38,7 +38,7 @@ RestroGrow gives every restaurant its own ordering website plus an admin dashboa
 - **Payments**: transactions, PhonePe gateway*, sales reports with CSV, analytics
 - **Marketing**: posters, promo videos, social captions, campaign calendar
 - **Offers**: coupons and milestone offers, deals, bestsellers, Today's Special, Complete your meal (auto / manual / both), scratch card, wallet, offer filters, catering
-- **Growth**: loyalty points and levels, free-dish rewards, referrals, customer segments, growth reports, counter QR
+- **Growth › Loyalty Studio**: earn by cashback, points or a stamp card on every channel; Autopilot gifts (welcome, birthday, anniversary, win-back, level up, milestones, referrals); Games (challenges, weekly streaks, scratch card or spin wheel); a paid VIP membership; a Performance dashboard. Also referrals, customer segments, growth reports, counter QR
 - **Delivery**: zones (pincode / per-km), live delivery map, feedback
 - **Settings** and **Website appearance** with live preview, policy pages, custom domain / embed
 
@@ -72,12 +72,13 @@ RestroGrow gives every restaurant its own ordering website plus an admin dashboa
 | Rewards landing page | The counter QR opens a full rewards page: join, member card, levels, free dishes, invites, redeem. Accounts and orders matched by 10-digit phone; faster loyalty queries. |
 | Wallet | Top up with PhonePe (bonus on bigger top-ups), pay orders fully or partly, refund on cancel / reject, cashback on completion; wallet card and balance on the profile; owner page with stats and corrections. |
 | Scratch card | Card on the tracking page after checkout; owner sets prizes, chances, per-prize minimum next order and a monthly budget; private one-time reward codes. |
+| Loyalty Studio | Program type (cashback / points / stamps) earned on website, POS and table orders; personal one-time gift codes; Autopilot gifts with message templates kept for WhatsApp; challenges and streaks; spin wheel; paid VIP plans (PhonePe or wallet) with perks applied at checkout; Performance (revenue by source, return, members vs guests, what customers can still claim). Cron backstop: `main/cron/loyalty_autopilot.php`. |
 | Complete your meal | Cart suggestions from the owner's picks and from real orders (often ordered together, missing drink / dessert / side), with an "unlocks the next offer" push. |
 | Today's Special | Several dishes per weekday, swipeable row with chef's note, plates left and countdown. |
 | Nutrition and ingredients | Calories, macros, health tags and "What's inside" on every dish. |
 | Profile page | 10 designs with options for avatar, corners, stats and colours; photo gallery section. |
 | Order tracking | Redesigned journey with live updates and rider card. |
-| Local development | OTP shown on screen locally (no WhatsApp), map picker falls back to OpenStreetMap without a Google key, wallet top-ups simulated without PhonePe test keys. |
+| Local development | OTP shown on screen locally (no WhatsApp), map picker falls back to OpenStreetMap without a Google key, wallet top-ups and VIP payments simulated without PhonePe test keys. |
 
 ## Project structure
 
