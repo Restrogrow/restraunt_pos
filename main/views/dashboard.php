@@ -2881,110 +2881,14 @@ try {
       }
     </script>
 
-    <!-- Custom Domain / Embed Page -->
-    <div id="embedPage" class="page">
+    <!-- Customer Website > Custom Domain: own domain + embed code (assets/js/custom-domain-studio.js) -->
+    <div id="embedPage" class="page sx">
       <div class="page-header">
-        <h1>Custom Domain / Embed</h1>
-        <p>Embed your restaurant menu on any website with a single code snippet.</p>
+        <h1>Custom Domain</h1>
+        <p>Put your ordering website on your own web address, or add your menu to a website you already have.</p>
       </div>
       <div class="page-content">
-        <div class="settings-grid">
-          <div class="settings-section">
-            <h2 class="settings-section-title">
-              <span class="material-symbols-rounded">language</span>
-              Embed Your Restaurant
-            </h2>
-
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:16px;background:#f8f9fa;border:2px solid #e5e7eb;border-radius:12px">
-              <div>
-                <div style="font-weight:600;font-size:15px;color:#1a1b1f">Enable Custom Domain / Embed</div>
-                <div style="font-size:12px;color:#888">Turn on to activate and configure your embed settings</div>
-              </div>
-              <label class="day-toggle-label">
-                <input type="checkbox" id="embedToggle" onchange="toggleEmbedFeature(this.checked)">
-                <span id="embedToggleLabel">Disabled</span>
-              </label>
-            </div>
-
-            <div id="embedSettingsContent" style="display:none">
-              <p style="color:#666;margin-bottom:20px;line-height:1.6">
-                Paste this code on any website to display your full restaurant menu, cart, and ordering system.
-                Everything loads from our server — updates to your menu, prices, or features reflect automatically.
-              </p>
-
-              <div style="background:#f8f9fa;border:2px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:20px">
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-                  <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#e17055,#d63031);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:20px">&lt;/&gt;</div>
-                  <div>
-                    <div style="font-weight:600;font-size:15px;color:#1a1b1f">Your Embed Code</div>
-                    <div style="font-size:12px;color:#888">Copy and paste this into your website HTML</div>
-                  </div>
-                </div>
-                <div style="position:relative">
-                  <textarea id="embedCodeDisplay" readonly style="width:100%;min-height:70px;padding:14px;border:1px solid #d1d5db;border-radius:10px;font-family:'Courier New',monospace;font-size:13px;background:#fff;color:#1a1b1f;resize:none;outline:none" onclick="this.select()"></textarea>
-                  <button onclick="copyEmbedCode()" style="position:absolute;top:8px;right:8px;padding:6px 14px;border:none;border-radius:8px;background:#e17055;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif">Copy</button>
-                </div>
-              </div>
-
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-                <div style="background:#fff;border:2px solid #e5e7eb;border-radius:12px;padding:16px">
-                  <div style="font-size:13px;color:#888;margin-bottom:4px">Restaurant ID</div>
-                  <div style="font-weight:600;font-size:16px" id="embedRestaurantId">-</div>
-                </div>
-                <div style="background:#fff;border:2px solid #e5e7eb;border-radius:12px;padding:16px">
-                  <div style="font-size:13px;color:#888;margin-bottom:4px">Status</div>
-                  <div style="font-weight:600;font-size:16px;color:#27ae60" id="embedStatus">Active</div>
-                </div>
-              </div>
-
-              <div style="background:#fff;border:2px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:20px">
-                <div style="font-weight:600;font-size:15px;color:#1a1b1f;margin-bottom:8px">Custom Domain</div>
-                <div style="font-size:12px;color:#888;margin-bottom:12px">Enter your own domain to host the menu (e.g. menu.yourdomain.com)</div>
-                <div style="display:flex;gap:10px">
-                  <input type="text" id="customDomainInput" placeholder="menu.yourdomain.com" style="flex:1;padding:10px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;outline:none;font-family:'Poppins',sans-serif">
-                  <button onclick="saveCustomDomain()" style="padding:10px 24px;border:none;border-radius:8px;background:#1a1b1f;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;white-space:nowrap">Save</button>
-                </div>
-                <div id="customDomainUrlDisplay" style="display:none;margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px;color:#166534">
-                  <strong>Your live URL:</strong> <a id="customDomainUrlLink" href="" target="_blank" style="color:#166534;text-decoration:underline"></a>
-                </div>
-                <div id="customDomainSetupInstructions" style="display:none;margin-top:12px;padding:12px;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;color:#555;line-height:1.6">
-                  <strong style="color:#1a1b1f">DNS Setup Instructions:</strong><br>
-                  1. The restaurant owner goes to their domain registrar (GoDaddy, Namecheap, etc.)<br>
-                  2. Adds an <strong>A record</strong> pointing to server IP: <code id="serverIpDisplay" style="background:#e5e7eb;padding:1px 5px;border-radius:3px;font-weight:600"></code><br>
-                  3. Or adds a <strong>CNAME record</strong> pointing to: <code id="mainDomainDisplay" style="background:#e5e7eb;padding:1px 5px;border-radius:3px;font-weight:600"></code><br>
-                  4. Once DNS propagates (up to 48 hours), the restaurant's website is live on their own domain<br>
-                  5. All pages work automatically: <code style="background:#e5e7eb;padding:1px 4px;border-radius:3px">theirdomain.com/menu</code>, <code style="background:#e5e7eb;padding:1px 4px;border-radius:3px">theirdomain.com/cart</code>
-                </div>
-              </div>
-
-              <div style="background:linear-gradient(135deg,#fef3ef,#fff);border:2px solid #f5d5cc;border-radius:12px;padding:16px">
-                <div style="display:flex;align-items:flex-start;gap:10px">
-                  <span class="material-symbols-rounded" style="color:#e17055;font-size:20px">info</span>
-                  <div style="font-size:13px;color:#666;line-height:1.5">
-                    <strong style="color:#1a1b1f">How it works:</strong><br>
-                    1. The restaurant owner points their domain to our server (DNS setup above)<br>
-                    2. Their full website loads directly on their domain — no iframe, no embed code needed<br>
-                    3. All pages work naturally: <code style="background:#f1f1f1;padding:1px 4px;border-radius:3px">theirdomain.com/menu</code>, <code style="background:#f1f1f1;padding:1px 4px;border-radius:3px">theirdomain.com/cart</code>, etc.<br>
-                    4. Menu updates, prices, and features reflect automatically
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-section" id="embedPreviewSection" style="display:none">
-            <h2 class="settings-section-title">
-              <span class="material-symbols-rounded">preview</span>
-              Preview
-            </h2>
-            <p style="color:#666;margin-bottom:12px;line-height:1.5">
-              This is how your menu will appear on your website.
-            </p>
-            <div style="border:2px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff">
-              <iframe id="embedPreview" src="" style="width:100%;height:500px;border:none" loading="lazy"></iframe>
-            </div>
-          </div>
-        </div>
+        <div id="cdRoot"></div>
       </div>
     </div>
     <!-- Category Management Page -->
@@ -7924,6 +7828,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/studio-ui.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/studio-ui.js'); ?>" defer></script>
   <script src="../assets/js/areas-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/areas-studio.js'); ?>" defer></script>
   <script src="../assets/js/tables-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/tables-studio.js'); ?>" defer></script>
+  <script src="../assets/js/custom-domain-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/custom-domain-studio.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>
@@ -8538,129 +8443,7 @@ function renderFeedback() {
   tbody.innerHTML = html;
 }
 
-// ===== Embed / Custom Domain Functions =====
-var embedSettings = null;
-
-function loadEmbedSettings() {
-  fetch("../api/get_embed_settings.php")
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (!res.success) {
-        // Previously silent — left embedSettings as null with no visible
-        // sign anything was wrong, so the toggle switch still looked
-        // interactive. Flipping it while embedSettings was null used to
-        // wipe out the saved custom domain (see toggleEmbedFeature/
-        // saveCustomDomain — now fixed to never do that regardless), but
-        // this is still worth surfacing so a failed load isn't invisible.
-        showNotification('error', res.message || 'Could not load custom domain settings. Please refresh and try again.');
-        return;
-      }
-      embedSettings = res.data;
-      var enabled = res.data.embed_enabled;
-      document.getElementById('embedToggle').checked = enabled;
-      document.getElementById('embedToggleLabel').textContent = enabled ? 'Enabled' : 'Disabled';
-      document.getElementById('embedSettingsContent').style.display = enabled ? 'block' : 'none';
-      document.getElementById('embedPreviewSection').style.display = enabled ? 'block' : 'none';
-      var code = res.data.embed_code || '';
-      document.getElementById('embedCodeDisplay').value = code;
-      document.getElementById('embedRestaurantId').textContent = res.data.restaurant_id || '-';
-      document.getElementById('embedStatus').textContent = enabled ? 'Active' : 'Available';
-      document.getElementById('embedStatus').style.color = enabled ? '#27ae60' : '#f39c12';
-      document.getElementById('customDomainInput').value = res.data.custom_domain || '';
-      var customDomain = res.data.custom_domain || '';
-      var urlDisplay = document.getElementById('customDomainUrlDisplay');
-      var urlLink = document.getElementById('customDomainUrlLink');
-      var setupInstructions = document.getElementById('customDomainSetupInstructions');
-      if (customDomain) {
-        var protocol = window.location.protocol + '//';
-        urlLink.href = protocol + customDomain;
-        urlLink.textContent = protocol + customDomain;
-        urlDisplay.style.display = 'block';
-        setupInstructions.style.display = 'block';
-      } else {
-        urlDisplay.style.display = 'none';
-        setupInstructions.style.display = 'none';
-      }
-      document.getElementById('serverIpDisplay').textContent = res.data.server_ip || window.location.hostname;
-      document.getElementById('mainDomainDisplay').textContent = res.data.main_domain || window.location.hostname;
-      // Load preview
-      var preview = document.getElementById('embedPreview');
-      if (preview && res.data.restaurant_id) {
-        preview.src = '../embed/embed.php?restaurant_id=' + encodeURIComponent(res.data.restaurant_id);
-      }
-    })
-    .catch(function() {
-      showNotification('error', 'Could not load custom domain settings. Please check your connection and refresh.');
-    });
-}
-
-function toggleEmbedFeature(enabled) {
-  document.getElementById('embedToggleLabel').textContent = enabled ? 'Enabled' : 'Disabled';
-  document.getElementById('embedSettingsContent').style.display = enabled ? 'block' : 'none';
-  document.getElementById('embedPreviewSection').style.display = enabled ? 'block' : 'none';
-  // Only send embed_enabled — never re-send custom_domain here. This used
-  // to resend embedSettings.custom_domain "for safety", but if that cached
-  // value was ever null/stale (e.g. the initial GET failed), it silently
-  // blanked out an already-saved custom domain. The API now updates each
-  // field independently, so this only ever touches embed_enabled.
-  fetch("../api/save_embed_settings.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ embed_enabled: enabled })
-  })
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (res.success) {
-        if (embedSettings) embedSettings.embed_enabled = enabled;
-        showNotification('success', enabled ? 'Custom domain / embed enabled' : 'Custom domain / embed disabled');
-      } else {
-        showNotification('error', res.message || 'Failed to save');
-      }
-    })
-    .catch(function() {
-      showNotification('error', 'Network error');
-    });
-}
-
-function saveCustomDomain() {
-  var domain = document.getElementById('customDomainInput').value.trim();
-  // Only send custom_domain — never re-send embed_enabled here, for the
-  // same reason as toggleEmbedFeature() above.
-  fetch("../api/save_embed_settings.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ custom_domain: domain })
-  })
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (res.success) {
-        if (embedSettings) embedSettings.custom_domain = domain;
-        showNotification('success', 'Custom domain saved');
-        loadEmbedSettings();
-      } else {
-        showNotification('error', res.message || 'Failed to save');
-      }
-    })
-    .catch(function() {
-      showNotification('error', 'Network error');
-    });
-}
-
-function copyEmbedCode() {
-  var el = document.getElementById('embedCodeDisplay');
-  if (!el || !el.value) return;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(el.value).then(function() {
-      var btn = el.nextElementSibling;
-      if (btn) { btn.textContent = 'Copied!'; setTimeout(function() { btn.textContent = 'Copy'; }, 2000); }
-    });
-  } else {
-    el.select();
-    document.execCommand('copy');
-    var btn = el.nextElementSibling;
-    if (btn) { btn.textContent = 'Copied!'; setTimeout(function() { btn.textContent = 'Copy'; }, 2000); }
-  }
-}
+// Custom Domain page: see assets/js/custom-domain-studio.js (window.loadEmbedSettings)
 
 // Country -> currency auto-fill (still manually overridable via the Currency Symbol field below)
 document.getElementById('countrySelect').addEventListener('change', function() {

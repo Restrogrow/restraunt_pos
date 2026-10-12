@@ -485,6 +485,14 @@ if (!empty($custom_domain) && $embed_enabled && !$is_custom_domain) {
         }
     }
     
+    // Keep the query string (e.g. ?table=T3 from a printed QR code), minus the
+    // parameters that only identify the restaurant on the main platform
+    $keep_query = $_GET;
+    unset($keep_query['restaurant_id'], $keep_query['restaurant'], $keep_query['page']);
+    if ($keep_query) {
+        $redirect_path .= '?' . http_build_query($keep_query);
+    }
+
     // Clean output buffer before redirect
     ob_end_clean();
     header('Location: ' . $scheme . '://' . $domain . $redirect_path);
