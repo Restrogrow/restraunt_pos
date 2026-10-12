@@ -62,6 +62,9 @@ if (!function_exists('ensureScratchTables')) {
             if (!($q && $q->fetch())) $conn->exec("ALTER TABLE scratch_prizes ADD COLUMN min_order DECIMAL(10,2) NULL DEFAULT NULL");
             $q = $conn->query("SHOW COLUMNS FROM scratch_cards LIKE 'prize_min'");
             if (!($q && $q->fetch())) $conn->exec("ALTER TABLE scratch_cards ADD COLUMN prize_min DECIMAL(10,2) NULL DEFAULT NULL AFTER prize_value");
+            // Loyalty Studio > Games: scratch card or spin wheel
+            $q = $conn->query("SHOW COLUMNS FROM scratch_settings LIKE 'game_style'");
+            if (!($q && $q->fetch())) $conn->exec("ALTER TABLE scratch_settings ADD COLUMN game_style VARCHAR(10) NOT NULL DEFAULT 'scratch'");
         } catch (PDOException $e) {
             error_log('ensureScratchTables: ' . $e->getMessage());
         }
@@ -69,12 +72,13 @@ if (!function_exists('ensureScratchTables')) {
 
     function getScratchSettings(PDO $conn, string $rid): array {
         ensureScratchTables($conn);
-        $st = $conn->prepare('SELECT enabled, title, min_order, next_min_order, valid_days, monthly_budget FROM scratch_settings WHERE restaurant_id = ?');
+        $st = $conn->prepare('SELECT * FROM scratch_settings WHERE restaurant_id = ?');
         $st->execute([$rid]);
         $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
         return ['enabled' => (int)($r['enabled'] ?? 0), 'title' => (string)($r['title'] ?? ''),
                 'min_order' => (float)($r['min_order'] ?? 0), 'next_min_order' => (float)($r['next_min_order'] ?? 0),
-                'valid_days' => (int)($r['valid_days'] ?? 15) ?: 15, 'monthly_budget' => (float)($r['monthly_budget'] ?? 0)];
+                'valid_days' => (int)($r['valid_days'] ?? 15) ?: 15, 'monthly_budget' => (float)($r['monthly_budget'] ?? 0),
+                'game_style' => ($r['game_style'] ?? '') === 'wheel' ? 'wheel' : 'scratch'];
     }
 
     function getScratchPrizes(PDO $conn, string $rid): array {
@@ -99,7 +103,8 @@ if (!function_exists('ensureScratchTables')) {
     function scratchOdds(array $prizes, string $cur, float $generalMin = 0): array {
         $sum = array_sum(array_column($prizes, 'weight')) ?: 1;
         return array_map(function ($p) use ($sum, $cur, $generalMin) {
-            return ['label' => scratchPrizeLabel($p['type'], $p['value'], $cur, $p['min_order'] ?? $generalMin), 'pct' => round($p['weight'] / $sum * 100, 1)];
+            return ['label' => scratchPrizeLabel($p['type'], $p['value'], $cur, $p['min_order'] ?? $generalMin), 'pct' => round($p['weight'] / $sum * 100, 1),
+                    'type' => $p['type'], 'value' => (float)$p['value']];
         }, $prizes);
     }
 
@@ -137,7 +142,7 @@ if (!function_exists('ensureScratchTables')) {
             if (strtotime((string)$order['created_at']) < time() - 3 * 86400) return null;   // old orders don't get one
             $prizes = getScratchPrizes($conn, $rid);
             if (!$prizes) return null;
-            $base = ['state' => 'locked', 'title' => $s['title'], 'odds' => scratchOdds($prizes, $cur, $s['next_min_order'])];
+            $base = ['state' => 'locked', 'title' => $s['title'], 'style' => $s['game_style'], 'odds' => scratchOdds($prizes, $cur, $s['next_min_order'])];
             if ($status === 'Pending') return $base;
 
             // Draw within the month's budget
@@ -154,7 +159,7 @@ if (!function_exists('ensureScratchTables')) {
             if (!$card) return null;
         }
 
-        $out = ['state' => $card['status'] === 'scratched' ? 'scratched' : 'new', 'title' => $s['title'],
+        $out = ['state' => $card['status'] === 'scratched' ? 'scratched' : 'new', 'title' => $s['title'], 'style' => $s['game_style'],
                 'odds' => scratchOdds(getScratchPrizes($conn, $rid) ?: [['type' => $card['prize_type'], 'value' => (float)$card['prize_value'], 'weight' => 1]], $cur, $s['next_min_order'])];
         if ($out['state'] === 'scratched') $out['prize'] = scratchPrizeOut($card, $s, $cur);
         return $out;

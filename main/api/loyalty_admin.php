@@ -7,6 +7,8 @@
  * POST JSON { section: 'program', ... }   — save the program
  * POST JSON { section: 'autopilot', type, enabled, reward_kind, ... } — save one automation
  * POST JSON { section: 'autopilot', action: 'run' } — run the date checks now
+ * GET  ?section=games     — the after-checkout game (style, prizes) and the challenges with their numbers
+ * POST JSON { section: 'games', action: 'style' | 'save' | 'toggle' | 'delete', ... }
  * Always scoped to the session's restaurant.
  */
 require_once __DIR__ . '/../db_connection.php';
@@ -92,6 +94,26 @@ try {
                 'items' => laItems($conn, $rid),
             ]);
         }
+        if ($section === 'games') {
+            require_once __DIR__ . '/../config/scratch_helpers.php';
+            $s = getGrowthSettings($conn, $rid);
+            $g = $conn->prepare('SELECT enabled, title, monthly_budget, game_style FROM scratch_settings WHERE restaurant_id = ?');
+            $g->execute([$rid]);
+            $game = $g->fetch(PDO::FETCH_ASSOC) ?: ['enabled' => 0, 'title' => null, 'monthly_budget' => 0, 'game_style' => 'scratch'];
+            $prizes = getScratchPrizes($conn, $rid);
+            $plays = $conn->prepare("SELECT COUNT(*) played, SUM(prize_type <> 'none') won FROM scratch_cards WHERE restaurant_id = ? AND status = 'scratched' AND created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')");
+            $plays->execute([$rid]);
+            $pl = $plays->fetch(PDO::FETCH_ASSOC) ?: [];
+            laOut(['success' => true, 'currency' => $cur, 'loyalty_enabled' => (int)$s['loyalty_enabled'],
+                'game' => ['enabled' => (int)$game['enabled'], 'style' => $game['game_style'] === 'wheel' ? 'wheel' : 'scratch', 'title' => $game['title'],
+                           'budget' => (float)$game['monthly_budget'], 'spent' => scratchSpentThisMonth($conn, $rid), 'played' => (int)($pl['played'] ?? 0), 'won' => (int)($pl['won'] ?? 0),
+                           'prizes' => array_map(function ($o) { return $o; }, scratchOdds($prizes, $cur, 0))],
+                'challenges' => array_map(function ($c) use ($conn, $rid, $cur) {
+                    return $c + ['display_title' => loyaltyChallengeTitle($c, $cur), 'reward' => loyaltyChallengeRewardLabel($conn, $rid, $c, $cur), 'stats' => loyaltyChallengeStats($conn, $rid, $c)];
+                }, loyaltyChallenges($conn, $rid)),
+                'items' => laItems($conn, $rid),
+            ]);
+        }
         laOut(['success' => false, 'message' => 'Unknown section'], 400);
     }
 
@@ -117,6 +139,57 @@ try {
                         $num($in['stamp_reward_value'] ?? 0, 0, 100000), (int)$num($in['reward_valid_days'] ?? 30, 1, 365), $rid]);
         loyaltySyncCashbackToWallet($conn, $rid, getGrowthSettings($conn, $rid));
         laOut(['success' => true]);
+    }
+
+    if ($section === 'games') {
+        $action = (string)($in['action'] ?? '');
+        $own = function ($itemId) use ($conn, $rid) {
+            if (!$itemId) return 0;
+            $st = $conn->prepare('SELECT 1 FROM menu_items WHERE id = ? AND restaurant_id = ?');
+            $st->execute([(int)$itemId, $rid]);
+            return $st->fetchColumn() ? (int)$itemId : 0;
+        };
+        if ($action === 'style') {
+            $style = ($in['style'] ?? '') === 'wheel' ? 'wheel' : 'scratch';
+            $conn->prepare('INSERT INTO scratch_settings (restaurant_id, game_style) VALUES (?, ?) ON DUPLICATE KEY UPDATE game_style = VALUES(game_style)')->execute([$rid, $style]);
+            laOut(['success' => true]);
+        }
+        $id = (int)($in['id'] ?? 0);
+        if ($action === 'toggle' || $action === 'delete') {
+            $sql = $action === 'toggle' ? 'UPDATE loyalty_challenges SET active = ? WHERE id = ? AND restaurant_id = ?' : 'DELETE FROM loyalty_challenges WHERE id = ? AND restaurant_id = ?';
+            $conn->prepare($sql)->execute($action === 'toggle' ? [empty($in['active']) ? 0 : 1, $id, $rid] : [$id, $rid]);
+            laOut(['success' => true]);
+        }
+        if ($action === 'save') {
+            $kind = in_array($in['kind'] ?? '', LOYALTY_CHALLENGE_KINDS, true) ? $in['kind'] : null;
+            if (!$kind) laOut(['success' => false, 'message' => 'Pick a challenge type'], 400);
+            $limits = ['visits' => [2, 31], 'spend' => [100, 1000000], 'dish' => [1, 31], 'streak' => [2, 12]];
+            $target = round((float)($in['target'] ?? 0), 2);
+            if ($target < $limits[$kind][0] || $target > $limits[$kind][1]) laOut(['success' => false, 'message' => 'Set a goal between ' . $limits[$kind][0] . ' and ' . $limits[$kind][1]], 400);
+            if ($kind !== 'spend') $target = (int)$target;
+            $itemId = $own($in['item_id'] ?? 0);
+            if ($kind === 'dish' && !$itemId) laOut(['success' => false, 'message' => 'Pick the dish for this challenge'], 400);
+            $rk = in_array($in['reward_kind'] ?? '', ['item', 'flat', 'percent'], true) ? $in['reward_kind'] : 'flat';
+            $rv = max(0, min($rk === 'percent' ? 100 : 100000, round((float)($in['reward_value'] ?? 0), 2)));
+            $rItem = $own($in['reward_item_id'] ?? 0);
+            if ($rk === 'item' && !$rItem) laOut(['success' => false, 'message' => 'Pick the free dish'], 400);
+            if ($rk !== 'item' && $rv <= 0) laOut(['success' => false, 'message' => 'Set the reward amount'], 400);
+            $title = trim(mb_substr((string)($in['title'] ?? ''), 0, 80));
+            $vals = [$kind, $title !== '' ? $title : null, $target, $kind === 'dish' ? $itemId : null, $rk, $rv, $rItem ?: null,
+                     max(0, min(100000, round((float)($in['min_order'] ?? 0), 2))), max(1, min(365, (int)($in['valid_days'] ?? 30)))];
+            if ($id) {
+                $conn->prepare('UPDATE loyalty_challenges SET kind = ?, title = ?, target = ?, item_id = ?, reward_kind = ?, reward_value = ?, reward_item_id = ?, min_order = ?, valid_days = ? WHERE id = ? AND restaurant_id = ?')
+                     ->execute(array_merge($vals, [$id, $rid]));
+            } else {
+                $n = $conn->prepare('SELECT COUNT(*) FROM loyalty_challenges WHERE restaurant_id = ?');
+                $n->execute([$rid]);
+                if ((int)$n->fetchColumn() >= 12) laOut(['success' => false, 'message' => 'You can have up to 12 challenges. Remove an old one first.'], 400);
+                $conn->prepare('INSERT INTO loyalty_challenges (kind, title, target, item_id, reward_kind, reward_value, reward_item_id, min_order, valid_days, restaurant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+                     ->execute(array_merge($vals, [$rid]));
+            }
+            laOut(['success' => true]);
+        }
+        laOut(['success' => false, 'message' => 'Unknown action'], 400);
     }
 
     if ($section === 'autopilot') {

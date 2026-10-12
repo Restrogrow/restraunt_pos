@@ -166,10 +166,16 @@ try {
                 // cashback / stamps programs reward referrals with a gift code for both friends
                 'referral_gift' => loyaltyProgramType($settings) !== 'points' && $autos['referral']['enabled'] ? loyaltyAutoRewardLabel($conn, $restaurantId, $autos['referral']) : null,
                 'birthday_gift' => $autos['birthday']['enabled'] ? loyaltyAutoRewardLabel($conn, $restaurantId, $autos['birthday']) : null,
+                'challenges' => [],
                 'tiers' => $tiers,
                 'rewards' => $settings['loyalty_enabled'] ? loyaltyRewardsWithDish($conn, $restaurantId) : [],
             ];
             $customer = $settings['loyalty_enabled'] ? loyaltyResolveCustomer($conn, $restaurantId, $phone) : null;
+            if ($settings['loyalty_enabled']) {
+                $cs = $conn->prepare('SELECT currency_symbol FROM users WHERE restaurant_id = ? LIMIT 1');
+                $cs->execute([$restaurantId]);
+                $program['challenges'] = loyaltyChallengesForCustomer($conn, $restaurantId, $customer ?: null, (string)($cs->fetchColumn() ?: '₹'));
+            }
             $loggedIn = (bool)getLoggedInCustomer($conn, $restaurantId) || $customer;
             echo json_encode(['success' => true, 'program' => $program, 'logged_in' => (bool)$loggedIn,
                 'member' => $customer ? loyaltyMember($conn, $restaurantId, $customer, $settings, $tiers) : null], JSON_UNESCAPED_UNICODE);

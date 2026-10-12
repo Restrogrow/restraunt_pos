@@ -183,6 +183,25 @@ button { font-family: inherit; }
 .lx-st.gift:not(.on) { border-style: solid; border-color: var(--gold); color: var(--gold); }
 @keyframes lxStamp { from { transform: scale(.3) rotate(-30deg); opacity: 0; } to { transform: none; opacity: 1; } }
 .lx-gifts { display: grid; gap: 10px; }
+.lx-chs { display: grid; gap: 10px; }
+.lx-ch { display: flex; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: #fff; }
+.lx-ch-ic { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 13px; background: linear-gradient(135deg, #f59e0b, #ea580c); color: #fff; font-size: 17px; }
+.lx-ch > div { flex: 1; min-width: 0; }
+.lx-ch b { display: block; font-size: 15px; }
+.lx-ch-rw { display: inline-block; margin-top: 3px; padding: 2px 8px; border-radius: 999px; background: #fff7ed; color: #c2410c; font-size: 11.5px; font-weight: 700; }
+.lx-ch-bar { height: 8px; margin: 10px 0 5px; border-radius: 999px; background: #f1f1f4; overflow: hidden; }
+.lx-ch-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #f59e0b, #ea580c); transition: width 1s cubic-bezier(.2,.8,.2,1) .2s; }
+.lx-sec.in .lx-ch-bar i { width: var(--w); }
+.lx-ch small { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.lx-ch small span:first-child { white-space: nowrap; }
+.lx-ch small span:last-child { text-align: right; }
+.lx-ch-weeks { display: flex; gap: 5px; margin: 10px 0 5px; }
+.lx-ch-weeks i { flex: 1; height: 26px; display: grid; place-items: center; border-radius: 8px; background: #f1f1f4; color: #c4c4cc; font-size: 12px; }
+.lx-ch-weeks i.on { background: linear-gradient(135deg, #f59e0b, #ea580c); color: #fff; }
+.lx-ch-weeks i.now { outline: 2px dashed #f59e0b; outline-offset: 1px; color: #f59e0b; background: #fff7ed; }
+.lx-ch.done { border-color: #bbf7d0; background: linear-gradient(135deg, #f0fdf4, #fff); }
+.lx-ch.done .lx-ch-ic { background: linear-gradient(135deg, #22c55e, #15803d); }
+.lx-ch.done .lx-ch-bar i { background: linear-gradient(90deg, #22c55e, #15803d); }
 .lx-gift { padding: 14px; border-radius: 16px; background: linear-gradient(135deg, #fff7ed, #fdf2f8); border: 1px solid #fde4cf; }
 .lx-gift.dead { background: #f9fafb; border-color: var(--line); opacity: .7; }
 .lx-gift-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -374,7 +393,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     '</div></section>';
   }
   // Gifts: personal one-time codes (stamp cards, birthday, win-back…)
-  var GIFT_SRC = { stamps: 'Stamp card', birthday: 'Birthday gift', anniversary: 'Anniversary gift', welcome: 'Welcome gift', winback: 'We miss you', tier_up: 'Level up', milestone: 'Milestone', referral: 'Referral gift', challenge: 'Challenge', streak: 'Streak', vip: 'VIP' };
+  var GIFT_SRC = { stamps: 'Stamp card', birthday: 'Birthday gift', anniversary: 'Anniversary gift', welcome: 'Welcome gift', winback: 'We miss you', tier_up: 'Level up', milestone: 'Milestone', referral: 'Referral gift', challenge: 'Challenge', streak: 'Weekly streak', vip: 'VIP' };
   function gifts() {
     var G = (M && M.gifts) || [];
     if (!G.length) return '';
@@ -387,6 +406,29 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
           '<b>' + esc(g.label) + '</b>' + (g.min_order > 0 ? '<small>On orders above ' + money(g.min_order) + '</small>' : '') +
           (dead ? '' : '<div class="lx-gift-code"><span>' + esc(g.code) + '</span><button type="button" data-gift-copy="' + esc(g.code) + '">Copy</button><button type="button" class="use" data-gift-use="' + esc(g.code) + '">Use now</button></div>') +
         '</div>';
+      }).join('') + '</div></section>';
+  }
+  // Challenges (Loyalty Studio > Games): monthly goals and weekly streaks
+  var CH_IC = { visits: 'fa-repeat', spend: 'fa-indian-rupee-sign', dish: 'fa-bowl-food', streak: 'fa-fire' };
+  function challenges() {
+    var C = P.challenges || [];
+    if (!C.length) return '';
+    return '<section class="lx-sec"><div class="lx-h"><h2>Challenges</h2><small>' + (M ? C.filter(function (c) { return c.done; }).length + ' of ' + C.length + ' done' : 'Join to take part') + '</small></div><div class="lx-chs">' +
+      C.map(function (c) {
+        var pct = c.target ? Math.min(100, Math.round(c.progress / c.target * 100)) : 0;
+        var prog = c.kind === 'spend' ? money(c.progress) + ' of ' + money(c.target) : c.kind === 'streak' ? c.progress + ' of ' + c.target + ' weeks' : c.progress + ' of ' + c.target;
+        var meter;
+        if (c.kind === 'streak') {
+          meter = '<div class="lx-ch-weeks">';
+          for (var i = 0; i < c.target; i++) meter += '<i class="' + (i < c.progress ? 'on' : (M && i === c.progress && !c.this_week ? 'now' : '')) + '"><span class="fa fa-fire"></span></i>';
+          meter += '</div>';
+        } else meter = '<div class="lx-ch-bar"><i style="--w:' + pct + '%"></i></div>';
+        var note = c.done ? 'Done: reward in Your gifts'
+                 : c.kind === 'streak' ? (M && c.this_week ? 'This week counts. See you next week' : 'Order this week to keep it going')
+                 : 'Ends ' + fmtDay(c.ends);
+        return '<div class="lx-ch' + (c.done ? ' done' : '') + '"><span class="lx-ch-ic"><i class="fa ' + (c.done ? 'fa-check' : CH_IC[c.kind]) + '"></i></span><div>' +
+          '<b>' + esc(c.title) + '</b><span class="lx-ch-rw">Reward: ' + esc(c.reward) + (c.min_order > 0 ? ' above ' + money(c.min_order) : '') + '</span>' + meter +
+          '<small><span>' + (M ? esc(prog) : '') + '</span><span>' + esc(note) + '</span></small></div></div>';
       }).join('') + '</div></section>';
   }
   function fmtDay(d) { var x = new Date(String(d).replace(' ', 'T')); return isNaN(x) ? d : x.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }
@@ -476,8 +518,8 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     if (!P.loyalty_enabled) { $('lxHeroBody').innerHTML = '<div class="lx-kicker"><i class="fa fa-crown"></i> Rewards</div><h1 class="lx-title">Something <em>tasty</em> is coming</h1>'; $('lxOff').classList.remove('hidden'); return; }
     if (!bodyOnly) $('lxHeroBody').innerHTML = M ? heroMember() : heroGuest();
     var isPts = TYPE() === 'points';
-    $('lxBody').innerHTML = facts() + (M ? gifts() + (isPts ? redeem() + rewards() : '') + details() + (isPts ? tiers() : '') + referral() + (isPts ? activity() : '')
-                                        : steps() + (isPts ? rewards() + tiers() : '') + referral()) +
+    $('lxBody').innerHTML = facts() + (M ? gifts() + challenges() + (isPts ? redeem() + rewards() : '') + details() + (isPts ? tiers() : '') + referral() + (isPts ? activity() : '')
+                                        : steps() + challenges() + (isPts ? rewards() + tiers() : '') + referral()) +
       '<p class="lx-fine">' + (TYPE() === 'cashback' ? 'Cashback lands in your wallet when your order is completed and comes off if it’s cancelled.' : TYPE() === 'stamps' ? 'A stamp is added when your order is completed. Cancelled orders don’t count.' : 'Points are added when your order is completed and come off if it’s cancelled.' + (P.points_expiry_days ? ' Points expire after ' + P.points_expiry_days + ' days without an order.' : '')) + '</p>';
     $('lxBody').classList.remove('hidden');
     $('lxSticky').innerHTML = M ? '<a class="lx-btn brand" href="' + esc(window.lxMenuUrl) + '"><i class="fa fa-utensils"></i> Order now and earn ' + (TYPE() === 'cashback' ? 'cashback' : TYPE() === 'stamps' ? 'a stamp' : 'points') + '</a>'

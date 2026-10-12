@@ -17,6 +17,7 @@
  * owner's message, ready for WhatsApp sending later.
  */
 require_once __DIR__ . '/loyalty_engine.php';
+require_once __DIR__ . '/loyalty_games.php';
 
 if (!function_exists('loyaltyAutopilotDefaults')) {
 
@@ -38,6 +39,7 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
         if ($done || $conn->inTransaction()) return;
         $done = true;
         ensureLoyaltyEngineSchema($conn);
+        ensureLoyaltyGamesSchema($conn);
         $conn->exec("CREATE TABLE IF NOT EXISTS loyalty_automations (
             restaurant_id VARCHAR(50) NOT NULL,
             type VARCHAR(20) NOT NULL,
@@ -147,6 +149,9 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
                 loyaltyAutoGift($conn, $rid, $A['referral'], $c, 'refd' . $ref['id']);
             }
         }
+
+        // Challenges and streaks (Games)
+        loyaltyChallengeHooks($conn, $order, $c);
     }
 
     /**

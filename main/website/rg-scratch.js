@@ -7,6 +7,8 @@
  * then a card you rub off with a finger or the mouse. The prize is drawn on
  * the server and only fetched on the first scratch. A won prize shows its
  * private code with Copy and "Use on my next order" (the cart applies it).
+ * The owner can switch the card to a spin wheel (Loyalty Studio > Games):
+ * same prize, drawn the same way, and the wheel lands on it.
  */
 (function () {
   'use strict';
@@ -33,7 +35,7 @@
     }).join('') + '</ul></details>';
   }
   function headHtml(sub) {
-    return '<div class="sc-head"><span class="sc-ic">' + GIFT + '</span><div><b>' + esc(card.title || 'Your scratch card') + '</b><small>' + sub + '</small></div></div>';
+    return '<div class="sc-head"><span class="sc-ic">' + GIFT + '</span><div><b>' + esc(card.title || (card.style === 'wheel' ? 'Spin the wheel' : 'Your scratch card')) + '</b><small>' + sub + '</small></div></div>';
   }
 
   function prizeHtml(p) {
@@ -61,10 +63,11 @@
       return;
     }
     if (card.state === 'scratched') {
-      box.innerHTML = '<div class="card sc-card">' + headHtml(card.prize.type === 'none' ? 'Scratched' : 'Your reward') +
+      box.innerHTML = '<div class="card sc-card">' + headHtml(card.prize.type === 'none' ? (card.style === 'wheel' ? 'Spun' : 'Scratched') : 'Your reward') +
         '<div class="sc-area open">' + prizeHtml(card.prize) + '</div>' + wonExtras(card.prize) + oddsHtml() + '</div>';
       return;
     }
+    if (card.style === 'wheel') { renderWheel(); return; }
     box.innerHTML = '<div class="card sc-card">' + headHtml('Scratch to reveal your reward') +
       '<div class="sc-area" id="scArea"><div id="scUnder">' + prizeHtml(null) + '</div><canvas id="scCanvas"></canvas><div class="sc-hint">Scratch here</div></div>' +
       '<div id="scAfter"></div>' + oddsHtml() + '</div>';
@@ -144,6 +147,99 @@
     card.state = 'scratched'; card.prize = prize;
   }
 
+  /* ── Spin the wheel (Loyalty Studio > Games): same prize, drawn on the server ── */
+  var spinning = false;
+  function injectWheelCss() {
+    if (document.getElementById('scWheelCss')) return;
+    var st = document.createElement('style');
+    st.id = 'scWheelCss';
+    st.textContent =
+      '.sc-wheel-wrap{position:relative;width:min(290px,100%);aspect-ratio:1;margin:6px auto 4px}' +
+      '.sc-wheel{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 6px #1f1530,0 0 0 9px #f5c451,0 18px 30px -12px rgba(0,0,0,.45);transition:transform 5.2s cubic-bezier(.12,.72,.1,1)}' +
+      '.sc-wheel svg{display:block;width:100%;height:100%}' +
+      '.sc-wheel-dots{position:absolute;inset:-6px;border-radius:50%;pointer-events:none}' +
+      '.sc-wheel-dots i{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fff6d6;box-shadow:0 0 6px #ffd76a}' +
+      '.sc-wheel-pin{position:absolute;left:50%;top:-14px;width:30px;height:38px;margin-left:-15px;z-index:2;filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}' +
+      '.sc-wheel-btn{position:absolute;left:50%;top:50%;width:76px;height:76px;margin:-38px;border-radius:50%;border:4px solid #f5c451;background:radial-gradient(circle at 35% 30%,#3a2a55,#1f1530);color:#ffe08a;font:800 15px/1 Poppins,system-ui,sans-serif;letter-spacing:.06em;cursor:pointer;z-index:2;box-shadow:0 6px 14px -4px rgba(0,0,0,.5)}' +
+      '.sc-wheel-btn:disabled{cursor:default;opacity:.9}' +
+      '.sc-wheel-btn:not(:disabled){animation:scPulse 1.6s ease-in-out infinite}' +
+      '@keyframes scPulse{50%{transform:scale(1.07)}}' +
+      '.sc-wheel-res{margin-top:12px}' +
+      '.sc-wheel-res .sc-prize{position:static;min-height:0;padding:14px;border-radius:14px}' +
+      '@media (prefers-reduced-motion:reduce){.sc-wheel{transition-duration:.01s}.sc-wheel-btn{animation:none}}';
+    document.head.appendChild(st);
+  }
+  function short(o) {
+    var c = box.getAttribute('data-cur') || '\u20b9';
+    if (o.type === 'flat') return c + (+o.value) + ' OFF';
+    if (o.type === 'percent') return (+o.value) + '% OFF';
+    return 'TRY AGAIN';
+  }
+  function segments() {
+    var base = (card.odds || []).filter(function (o) { return o.type; });
+    if (!base.length) return [];
+    var segs = [];
+    while (segs.length < 6) segs = segs.concat(base);       // a full-looking wheel: 6 to 8 slices
+    return segs.slice(0, Math.max(6, Math.min(8, segs.length)));
+  }
+  function wheelSvg(segs) {
+    var n = segs.length, a = 360 / n, r = 100, css = getComputedStyle(document.documentElement);
+    var brand = (css.getPropertyValue('--primary-red') || '').trim() || '#e53935';
+    var cols = [brand, '#fff7e0', '#2b1f40', '#ffe08a'];
+    var out = '<svg viewBox="-100 -100 200 200" aria-hidden="true">';
+    segs.forEach(function (s, i) {
+      var a0 = (i * a - 90) * Math.PI / 180, a1 = ((i + 1) * a - 90) * Math.PI / 180;
+      var fill = s.type === 'none' ? (i % 2 ? '#e9e3f5' : '#d9d0ec') : cols[i % cols.length];
+      var ink = fill === brand || fill === '#2b1f40' ? '#fff' : '#3b2604';
+      out += '<path d="M0 0L' + (r * Math.cos(a0)).toFixed(2) + ' ' + (r * Math.sin(a0)).toFixed(2) + 'A' + r + ' ' + r + ' 0 0 1 ' + (r * Math.cos(a1)).toFixed(2) + ' ' + (r * Math.sin(a1)).toFixed(2) + 'Z" fill="' + fill + '" stroke="rgba(0,0,0,.12)" stroke-width=".6"/>';
+      out += '<text transform="rotate(' + (i * a + a / 2) + ') translate(0 -62) rotate(90)" fill="' + ink + '" font-family="Poppins,system-ui,sans-serif" font-weight="800" font-size="' + (n > 6 ? 9.5 : 11) + '" text-anchor="middle" dominant-baseline="middle">' + esc(short(s)) + '</text>';
+    });
+    return out + '</svg>';
+  }
+  function renderWheel() {
+    injectWheelCss();
+    var segs = segments();
+    if (!segs.length) { box.innerHTML = ''; return; }
+    var dots = '';
+    for (var i = 0; i < 16; i++) { var t = i / 16 * 2 * Math.PI; dots += '<i style="left:' + (50 + Math.cos(t) * 50).toFixed(2) + '%;top:' + (50 + Math.sin(t) * 50).toFixed(2) + '%"></i>'; }
+    box.innerHTML = '<div class="card sc-card">' + headHtml('Tap spin to win a reward on your next order') +
+      '<div class="sc-wheel-wrap"><svg class="sc-wheel-pin" viewBox="0 0 30 38"><path d="M15 38L2 12a14 14 0 1 1 26 0z" fill="#ef4444" stroke="#fff" stroke-width="2.5"/><circle cx="15" cy="13" r="4.5" fill="#fff"/></svg>' +
+        '<div class="sc-wheel" id="scWheel">' + wheelSvg(segs) + '</div><div class="sc-wheel-dots">' + dots + '</div>' +
+        '<button type="button" class="sc-wheel-btn" id="scSpin">SPIN</button></div>' +
+      '<div id="scAfter" class="sc-wheel-res"></div>' + oddsHtml() + '</div>';
+    document.getElementById('scSpin').addEventListener('click', function () { spin(segs); });
+  }
+  function spin(segs) {
+    if (spinning || done) return;
+    spinning = true;
+    var btn = document.getElementById('scSpin'), wheel = document.getElementById('scWheel');
+    btn.disabled = true; btn.textContent = '...';
+    fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_number: order, customer_phone: phone }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.success || !d.prize) { spinning = false; load(); return; }
+        prize = d.prize;
+        var hits = [];
+        segs.forEach(function (s, i) { if (s.type === prize.type && (prize.type === 'none' || +s.value === +prize.value)) hits.push(i); });
+        if (!hits.length) { card.state = 'scratched'; card.prize = prize; render(); return; }   // prizes changed since: just show it
+        var i = hits[Math.floor(Math.random() * hits.length)], a = 360 / segs.length;
+        var land = 360 * 6 - (i * a + a / 2) + (Math.random() - 0.5) * a * 0.6;
+        wheel.addEventListener('transitionend', function () { wheelDone(); }, { once: true });
+        requestAnimationFrame(function () { wheel.style.transform = 'rotate(' + land + 'deg)'; });
+      })
+      .catch(function () { spinning = false; btn.disabled = false; btn.textContent = 'SPIN'; });
+  }
+  function wheelDone() {
+    if (done) return;
+    done = true;
+    var after = document.getElementById('scAfter'), btn = document.getElementById('scSpin');
+    if (btn) btn.textContent = prize.type === 'none' ? 'OOPS' : 'WON';
+    if (after) after.innerHTML = prizeHtml(prize) + wonExtras(prize);
+    var head = box.querySelector('.sc-head small');
+    if (head) head.textContent = prize.type === 'none' ? 'Spun' : 'Your reward';
+    if (prize.type !== 'none') confetti(box.querySelector('.sc-wheel-wrap'));
+    card.state = 'scratched'; card.prize = prize;
+  }
   function confetti(host) {
     if (!host || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
     var colors = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#facc15'];
@@ -184,6 +280,7 @@
         var before = card ? card.state : null;
         card = d.card;
         if (card && card.state === 'new' && before === 'new') return;   // don't redraw a card being scratched
+        if (done || spinning) return;
         render();
       })
       .catch(function () {});
