@@ -6392,6 +6392,17 @@ function toggleGatewayMode() {
               <input type="number" id="calories" name="calories" min="0" value="0" placeholder="0">
               <span class="input-suffix">kcal</span>
             </div>
+
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Nutrition per serving <span style="font-weight:400;color:#6b7280;">(optional, grams)</span>:</label>
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
+                <input type="number" id="protein_g" name="protein_g" min="0" step="0.1" placeholder="Protein" aria-label="Protein (g)">
+                <input type="number" id="fat_g" name="fat_g" min="0" step="0.1" placeholder="Fat" aria-label="Fat (g)">
+                <input type="number" id="carbs_g" name="carbs_g" min="0" step="0.1" placeholder="Carbs" aria-label="Carbs (g)">
+                <input type="number" id="fibre_g" name="fibre_g" min="0" step="0.1" placeholder="Fibre" aria-label="Fibre (g)">
+              </div>
+              <small style="display:block;margin-top:4px;color:#6b7280;font-size:0.8rem;">Shown with the calories as "Nutritional info" in the dish details. Leave blank to hide.</small>
+            </div>
             
             <div class="form-group">
               <label for="isAvailable">Stock Status:</label>
@@ -6404,8 +6415,8 @@ function toggleGatewayMode() {
 
           <div class="form-group">
             <label for="ingredients">Ingredients <span style="font-weight:400;color:#6b7280;">(optional)</span>:</label>
-            <textarea id="ingredients" name="ingredients" rows="2" maxlength="1200" placeholder="e.g. Paneer, Curd, Kashmiri chilli, Ginger-garlic paste, Lemon"></textarea>
-            <small style="display:block;margin-top:4px;color:#6b7280;font-size:0.8rem;">Separate with commas. Customers see an <b>Ingredients</b> button on this dish that opens the list.</small>
+            <textarea id="ingredients" name="ingredients" rows="4" maxlength="4000" placeholder="One per line, with an optional note after a dash:&#10;Paneer - excellent source of protein and calcium&#10;Spinach - rich in iron and fibre&#10;Ginger-garlic paste"></textarea>
+            <small style="display:block;margin-top:4px;color:#6b7280;font-size:0.8rem;">One per line; add a short note after a dash and customers see it under <b>What's inside</b> in the dish details (a comma list still works).</small>
           </div>
           
           <div class="form-group">

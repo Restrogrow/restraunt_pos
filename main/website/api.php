@@ -338,6 +338,7 @@ try {
             $itemTransCol = $hasItemTrans ? ", mi.translations" : "";
             require_once __DIR__ . '/../config/ingredient_helpers.php';
             $ingrCol = ensureMenuIngredientsColumn($conn) ? ", mi.ingredients" : "";
+            if (ensureMenuNutritionColumns($conn)) $ingrCol .= ", mi.protein_g, mi.fat_g, mi.carbs_g, mi.fibre_g";
             $query = "SELECT mi.id, mi.restaurant_id, mi.menu_id, mi.item_name_en, mi.item_description_en, mi.description_format,
                              mi.item_category, mi.item_type, mi.preparation_time, mi.calories, mi.is_available, 
                              mi.base_price, mi.has_variations, mi.item_image, 

@@ -290,6 +290,7 @@ function handleAddMenuItemBase64($conn, $restaurant_id, $menuId, $itemNameEn, $i
 
         require_once __DIR__ . '/../config/ingredient_helpers.php';
         saveMenuItemIngredients($conn, $newMenuItemId, $restaurant_id);
+        saveMenuItemNutrition($conn, $newMenuItemId, $restaurant_id);
         
         echo json_encode([
             'success' => true,
@@ -416,6 +417,7 @@ function handleUpdateMenuItemBase64($conn, $restaurant_id, $menuItemId, $menuId,
 
         require_once __DIR__ . '/../config/ingredient_helpers.php';
         saveMenuItemIngredients($conn, $menuItemId, $restaurant_id);
+        saveMenuItemNutrition($conn, $menuItemId, $restaurant_id);
         
         echo json_encode([
             'success' => true,

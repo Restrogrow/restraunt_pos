@@ -3282,6 +3282,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("preparationTime").value = data.preparation_time || 0;
     document.getElementById("calories").value = data.calories || 0;
     if (document.getElementById("ingredients")) document.getElementById("ingredients").value = data.ingredients || '';
+    ['protein_g', 'fat_g', 'carbs_g', 'fibre_g'].forEach(function(k) { var el = document.getElementById(k); if (el) el.value = data[k] != null && parseFloat(data[k]) > 0 ? parseFloat(data[k]) : ''; });
     document.getElementById("isAvailable").value = data.is_available ? '1' : '0';
     document.getElementById("basePrice").value = data.base_price || '0.00';
     

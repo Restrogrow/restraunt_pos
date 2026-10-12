@@ -2384,15 +2384,8 @@ function showItemDetail(itemId) {
     var displayDesc = descFmt === 'br' ? safeDesc.replace(/\n/g, '<br>') : safeDesc;
     html += '<div class="product-sheet-desc">' + displayDesc + '</div>';
   }
-  // Ingredients: shown right here (scroll the sheet to see them all)
-  var ingr = itemIngredientList(item);
-  if (ingr.length) {
-    html += '<div class="ingr-section">' +
-      '<div class="ingr-head"><div class="ic"><i class="fa-solid fa-leaf"></i></div><div><b>Ingredients</b><span>' + ingr.length + ' ingredient' + (ingr.length > 1 ? 's' : '') + '</span></div></div>' +
-      '<div class="ingr-chips">' + ingr.map(function(x, i) { return '<span class="ingr-chip" style="animation-delay:' + (i * 0.03) + 's">' + escapeHtml(x) + '</span>'; }).join('') + '</div>' +
-      '<div class="ingr-note">Ask the restaurant if you have an allergy.</div>' +
-    '</div>';
-  }
+  // Nutritional info + What's inside (rg-nutrition.js, shared with the Home page)
+  if (window.RGNutrition) html += window.RGNutrition.html(item);
 
   html += '</div>'; // end body
 
@@ -3608,6 +3601,7 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 <script>window.RG_MENU_URL = <?php echo json_encode(restaurantPageUrl('menu')); ?>;</script>
+<script src="rg-nutrition.js?v=<?php echo @filemtime(__DIR__ . '/rg-nutrition.js'); ?>" defer></script>
 <script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 <script src="rg-drag-scroll.js?v=<?php echo @filemtime(__DIR__ . '/rg-drag-scroll.js'); ?>" defer></script>
 </body>
