@@ -863,6 +863,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (pageId === "scratchPage" && typeof window.loadScratchAdmin === 'function') {
         window.loadScratchAdmin();
       }
+      // Offers > Wallet (assets/js/wallet-admin.js)
+      if (pageId === "walletPage" && typeof window.loadWalletAdmin === 'function') {
+        window.loadWalletAdmin();
+      }
       // Offers > Offer Filters (assets/js/offer-filters-admin.js)
       if (pageId === "offerFiltersPage" && typeof window.loadOfferFiltersAdmin === 'function') {
         window.loadOfferFiltersAdmin();

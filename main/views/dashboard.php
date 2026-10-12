@@ -1245,6 +1245,12 @@ try {
               </a>
             </li>
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="walletPage">
+                <span class="material-symbols-rounded">account_balance_wallet</span>
+                <span class="nav-label">Wallet</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="offerFiltersPage">
                 <span class="material-symbols-rounded">filter_alt</span>
                 <span class="nav-label">Offer Filters</span>
@@ -4502,6 +4508,30 @@ function toggleGatewayMode() {
       </div>
     </div>
 
+    <div id="walletPage" class="page">
+      <style>
+        .wl-warn { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; margin-bottom: 12px; border-radius: 12px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 0.86rem; }
+        .wl-tier { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.86rem; color: #374151; font-weight: 600; }
+        .wl-tier input { width: 110px; }
+        .wl-adj { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .wl-adj input:nth-child(3) { grid-column: 1 / -1; }
+        .wl-adj .btn { grid-column: 1 / -1; justify-content: center; }
+        #walletPage select, #walletPage input:not([type=checkbox]) { padding: 8px 10px; border: 1.5px solid #e5e7eb; border-radius: 9px; font: inherit; font-size: 0.86rem; background: #fff; color: #111827; min-width: 0; }
+        #walletPage .scx-stats { grid-template-columns: repeat(4, 1fr); }
+        @media (max-width: 960px) { #walletPage .scx-stats { grid-template-columns: repeat(2, 1fr); } }
+      </style>
+      <div class="scx-wrap">
+        <div class="page-header" style="margin-bottom:22px;">
+          <h1 style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">account_balance_wallet</span> Wallet</h1>
+          <p style="color:#6b7280;margin:4px 0 0;">Customers add money with PhonePe and pay for orders from it on your website. Give extra money on bigger top-ups and cashback on orders to bring them back. The money can only be used at your restaurant.</p>
+        </div>
+        <div id="wlBody"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+          <button type="button" class="btn btn-primary" id="wlSave"><span class="material-symbols-rounded">save</span> Save</button>
+        </div>
+      </div>
+    </div>
+
     <div id="offerFiltersPage" class="page">
       <style>
         .of-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -7280,6 +7310,7 @@ function toggleGatewayMode() {
   <script src="../website/rg-upsell.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-upsell.js'); ?>" defer></script>
   <script src="../assets/js/upsell-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/upsell-admin.js'); ?>" defer></script>
   <script src="../assets/js/scratch-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/scratch-admin.js'); ?>" defer></script>
+  <script src="../assets/js/wallet-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/wallet-admin.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>

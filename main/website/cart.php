@@ -756,6 +756,13 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
 .ups-add:active { transform: scale(.94); }
 .ups-add.done { background: #16a34a; border-color: #16a34a; color: #fff; }
 @media (prefers-reduced-motion: reduce) { .ups-ico svg, .ups-item { animation: none; } }
+/* Pay from wallet (checkout) */
+.chk-wallet { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 12px; border-radius: 14px; background: linear-gradient(135deg, #eef2ff, #f5f3ff); border: 1.5px solid #c7d2fe; cursor: pointer; }
+.chk-wallet input { width: 18px; height: 18px; accent-color: #4338ca; flex-shrink: 0; }
+.chk-wallet .cw-ic { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: #4338ca; color: #fff; }
+.chk-wallet .cw-ic svg { width: 18px; height: 18px; }
+.chk-wallet b { display: block; font-size: 14px; color: #1e1b4b; }
+.chk-wallet small { display: block; font-size: 12px; color: #4b5563; }
 /* Price Details */
 .price-card h3 { font-size: 15px; font-weight: 700; color: #1a1b1f; margin-bottom: 10px; }
 .price-row {
@@ -1994,6 +2001,16 @@ function upsellChoose(id) {
   window.location.href = url + (url.indexOf('?') === -1 ? '?' : '&') + 'dish=' + id;
 }
 
+// Wallet balance for "Pay from wallet" at checkout (logged-in customers only)
+window.cartWallet = null;
+function loadCartWallet() {
+  var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
+  fetch('wallet_api.php?action=summary&restaurant_id=' + encodeURIComponent(rid), { credentials: 'same-origin', cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d && d.success && d.enabled && d.logged_in) window.cartWallet = { name: d.name, balance: +d.balance || 0 }; })
+    .catch(function() {});
+}
+
 function changeQty(key, delta) {
   if (!cartItems[key]) return;
   var raw = cartItems[key];
@@ -2971,6 +2988,15 @@ function showCheckoutModal(cartData) {
   // zero payment options — if no online method is configured either, keep Cash.
   var codEnabled = (window.codEnabled == 1 || window.codEnabled === true || window.codEnabled === undefined);
   var hasOnlinePayment = !!window.phonepeConfigured || !!window.businessQrAvailable;
+  // Wallet (Offers > Wallet): logged-in customers with money in it
+  var cw = window.cartWallet;
+  if (cw && cw.balance > 0) {
+    var wPays = Math.min(cw.balance, total);
+    html += '<label class="chk-wallet"><input type="checkbox" id="chkUseWallet" checked>' +
+      '<span class="cw-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></span>' +
+      '<span class="cw-txt"><b>Pay from ' + escapeHtml(cw.name) + '</b><small>' + getCurrency() + cw.balance.toFixed(2) + ' available' +
+      (cw.balance >= total ? ' \u00b7 covers this order' : ' \u00b7 pays ' + getCurrency() + wPays.toFixed(2) + ', the rest below') + '</small></span></label>';
+  }
   html += '<div class="form-group"><label>Payment Method</label>';
   html += '<select id="chkPayment">';
   if (codEnabled || !hasOnlinePayment) {
@@ -3393,6 +3419,7 @@ function processOrder(cartData) {
       coupon_code: appliedCoupon ? appliedCoupon.code : '',
       discount_amount: cartData.discountAmount || 0,
       redeem_points: cartData.loyaltyPointsRedeemed || 0,
+      use_wallet: !!(document.getElementById('chkUseWallet') || {}).checked,
       delivery_zone_id: deliveryZoneId,
       delivery_charge: deliveryCharge,
       packaging_charge: PACKAGING_CHARGE,
@@ -4364,6 +4391,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderCart();
   loadMenuItems();
   loadUpsell();
+  loadCartWallet();
   fetchAddons();
   loadCouponsFromServer();
   loadLoyaltyBalance();

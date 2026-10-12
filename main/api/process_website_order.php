@@ -77,6 +77,7 @@ if ($payment_proof_base64 !== '' && preg_match('/^data:(image\/(?:jpeg|jpg|png|w
 $coupon_code = $input['coupon_code'] ?? '';
 $discount_amount = (float)($input['discount_amount'] ?? 0);
 $redeem_points_requested = max(0, (int)($input['redeem_points'] ?? 0));
+$use_wallet = !empty($input['use_wallet']);
 $delivery_zone_id = $input['delivery_zone_id'] ?? '';
 $delivery_charge = (float)($input['delivery_charge'] ?? 0);
 $packaging_charge = (float)($input['packaging_charge'] ?? 0);
@@ -475,6 +476,14 @@ if ($orderType === 'delivery') {
         }
     }
 
+if ($use_wallet) {
+    // Wallet tables must exist before the transaction (creating them would commit it)
+    require_once __DIR__ . '/../config/wallet_helpers.php';
+    require_once __DIR__ . '/../website/customer_session.php';
+    ensureWalletTables($conn);
+    $walletCustomer = getLoggedInCustomer($conn, $restaurant_id);   // may touch tables: before the transaction
+}
+
 $conn->beginTransaction();
     
     // Validate coupon if provided (WITH row lock to prevent race condition)
@@ -819,6 +828,27 @@ $conn->beginTransaction();
     
     // Payment starts as Pending
     $paymentStatus = 'Pending';
+
+    // --- Wallet (Offers > Wallet): pay all or part of the order from the wallet ---
+    // Only for a logged-in customer paying with their own phone's wallet; the
+    // server decides the amount (never more than the balance or the bill).
+    $wallet_paid = 0.0;
+    if ($use_wallet && $grand_total > 0) {
+        $walletSettings = getWalletSettings($conn, $restaurant_id);
+        if (!$walletSettings['enabled'] || !$walletCustomer || (orderAbuseNormalizePhone((string)$walletCustomer['phone']) ?? (string)$walletCustomer['phone']) !== (string)$customer_phone) {
+            $conn->rollBack();
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Please log in with this phone number to pay from your wallet'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        $walletLock = $conn->prepare('SELECT balance FROM wallets WHERE restaurant_id = ? AND phone = ? FOR UPDATE');
+        $walletLock->execute([$restaurant_id, $customer_phone]);
+        $wallet_paid = round(min((float)$walletLock->fetchColumn(), round($grand_total, 2)), 2);
+        if ($wallet_paid > 0 && $wallet_paid >= round($grand_total, 2)) {
+            $payment_method = 'Wallet';      // nothing left to pay
+            $paymentStatus = 'Paid';
+        }
+    }
     
     // --- All write operations inside transaction ---
     
@@ -1058,11 +1088,26 @@ $conn->beginTransaction();
         }
     }
 
+    // Take the wallet part now that the order exists (row still locked from above)
+    if ($wallet_paid > 0) {
+        try {
+            walletApply($conn, $restaurant_id, $customer_phone, -$wallet_paid, 'spend', 'Paid for order ' . $order_number, (int)$order_id);
+            $conn->prepare('UPDATE orders SET wallet_paid = ? WHERE id = ?')->execute([$wallet_paid, $order_id]);
+            $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, 'Wallet', 'Success')")
+                 ->execute([$restaurant_id, $order_id, $wallet_paid]);
+        } catch (Exception $e) {
+            $conn->rollBack();
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Could not pay from your wallet. Please try again.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+    }
+
     // Record payment (skip for PhonePe — recorded via webhook/callback)
-    if ($payment_method !== 'PhonePe' && $payment_method !== 'UPI / NetBanking') {
+    if ($payment_method !== 'PhonePe' && $payment_method !== 'UPI / NetBanking' && $payment_method !== 'Wallet') {
         try {
             $paymentStmt = $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Pending')");
-            $paymentStmt->execute([$restaurant_id, $order_id, $grand_total, $payment_method]);
+            $paymentStmt->execute([$restaurant_id, $order_id, round($grand_total - $wallet_paid, 2), $payment_method]);
         } catch (Exception $e) {
             // Payments table might not exist, skip
         }
@@ -1100,6 +1145,7 @@ $conn->beginTransaction();
         'order_number' => $order_number,
         'order_type' => $order_type,
         'total_with_tax' => $grand_total,
+        'wallet_paid' => $wallet_paid,
         'phonepe_required' => $usePhonePe,
         'whatsapp_enabled' => $whatsappEnabled,
         'whatsapp_phone' => $whatsappPhone,

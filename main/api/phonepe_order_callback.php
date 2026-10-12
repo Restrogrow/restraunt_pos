@@ -74,6 +74,24 @@ try {
         exit();
     }
 
+    // Wallet top-up (Offers > Wallet): same rule, only PhonePe's own status API counts
+    if (strpos($merchant_transaction_id, 'WT') === 0) {
+        require_once __DIR__ . '/../config/wallet_helpers.php';
+        ensureWalletTables($conn);
+        $tStmt = $conn->prepare('SELECT * FROM wallet_topups WHERE transaction_id = ? LIMIT 1');
+        $tStmt->execute([$merchant_transaction_id]);
+        $topup = $tStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$topup) { http_response_code(404); echo json_encode(['success' => false, 'message' => 'Top-up not found']); exit(); }
+        if ($topup['status'] === 'Pending') {
+            $verified = phonepeVerifyOrderState($conn, $topup['restaurant_id'], $merchant_transaction_id);
+            if ($verified === 'COMPLETED') walletCompleteTopup($conn, $topup);
+            elseif (in_array($verified, ['FAILED', 'REJECTED', 'CANCELLED', 'EXPIRED'], true)) walletFailTopup($conn, $topup);
+        }
+        http_response_code(200);
+        echo json_encode(['success' => true]);
+        exit();
+    }
+
     $payStmt = $conn->prepare("SELECT p.id, p.order_id, p.amount, p.payment_status, o.restaurant_id FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.transaction_id = ? AND p.payment_method = 'Online' LIMIT 1");
     $payStmt->execute([$merchant_transaction_id]);
     $payment = $payStmt->fetch(PDO::FETCH_ASSOC);

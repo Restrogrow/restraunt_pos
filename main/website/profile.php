@@ -1215,6 +1215,10 @@ $pfStyle = (!empty($background_theme) ? "--pf-photo: url('" . $background_theme 
               <div class="stat-number" id="statOrders">0</div>
               <div class="stat-label">Orders</div>
             </div>
+            <div class="stat-card stat-wallet" id="statWalletCard" hidden role="button" tabindex="0" title="Open your wallet">
+              <div class="stat-number" id="statWallet">-</div>
+              <div class="stat-label">Wallet</div>
+            </div>
             <div class="stat-card">
               <div class="stat-number" id="statSpent"><span id="statCurrency"><?php echo htmlspecialchars($currency_symbol ?? '₹'); ?></span>0</div>
               <div class="stat-label">Total Spent</div>
@@ -1227,6 +1231,95 @@ $pfStyle = (!empty($background_theme) ? "--pf-photo: url('" . $background_theme 
         </div>
 
         <!-- Personal Details -->
+        <!-- Wallet (Offers > Wallet): balance, add money with PhonePe, history -->
+        <style>
+          #pfWallet { margin-bottom: 16px; }
+          .wl-wrap { padding: 14px; border-radius: 24px; background: #fff; box-shadow: 0 4px 20px rgba(17,24,39,.06); border: 1px solid #f1f2f4; }
+          /* the card */
+          .wl-card { position: relative; overflow: hidden; padding: 18px 18px 16px; border-radius: 20px; color: #fff; min-height: 150px; display: flex; flex-direction: column;
+            background: linear-gradient(135deg, #312e81 0%, #4c1d95 45%, #831843 100%); box-shadow: 0 16px 30px -12px rgba(76,29,149,.55); }
+          .wl-card::before, .wl-card::after { content: ""; position: absolute; border-radius: 50%; pointer-events: none; }
+          .wl-card::before { width: 220px; height: 220px; right: -70px; top: -90px; background: radial-gradient(circle, rgba(255,255,255,.22), rgba(255,255,255,0) 65%); }
+          .wl-card::after { width: 180px; height: 180px; left: -60px; bottom: -110px; background: radial-gradient(circle, rgba(244,114,182,.35), rgba(244,114,182,0) 70%); }
+          .wl-shine { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.14) 48%, transparent 60%); background-size: 260% 100%; animation: wlShine 5s ease-in-out infinite; pointer-events: none; }
+          @keyframes wlShine { 0%, 60% { background-position: 130% 0; } 100% { background-position: -60% 0; } }
+          .wl-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+          .wl-name { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+          .wl-name svg { width: 18px; height: 18px; opacity: .9; }
+          .wl-chipico { width: 34px; height: 26px; border-radius: 6px; background: linear-gradient(135deg, #fde68a, #f59e0b); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); position: relative; }
+          .wl-chipico::after { content: ""; position: absolute; inset: 6px 8px; border: 1.5px solid rgba(120,53,15,.35); border-radius: 3px; }
+          .wl-lbl { position: relative; z-index: 1; margin-top: auto; padding-top: 18px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+          .wl-bal { position: relative; z-index: 1; font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+          .wl-bal.pop { animation: wlPop .7s cubic-bezier(.2,1.6,.4,1); }
+          @keyframes wlPop { 0% { transform: scale(.85); } 100% { transform: scale(1); } }
+          .wl-meta { position: relative; z-index: 1; margin-top: 8px; display: flex; justify-content: space-between; font-size: 12px; opacity: .75; letter-spacing: .06em; }
+          /* actions */
+          .wl-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+          .wl-act { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border: 1.5px solid #e5e7eb; border-radius: 14px; background: #fff; color: #111827; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform .15s, background .2s; }
+          .wl-act svg { width: 18px; height: 18px; }
+          .wl-act.main { border-color: #4c1d95; background: #4c1d95; color: #fff; }
+          .wl-act.on { background: #f5f3ff; border-color: #c4b5fd; color: #4c1d95; }
+          .wl-act:active { transform: scale(.97); }
+          .wl-act.full { grid-column: 1 / -1; }
+          /* offers */
+          .wl-offers { margin-top: 12px; overflow-x: auto; scrollbar-width: none; }
+          .wl-offers::-webkit-scrollbar { display: none; }
+          .wl-track { display: flex; width: max-content; }
+          .wl-offers.marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent); }
+          .wl-offers.marquee .wl-track { animation: wlMarq var(--wl-d, 18s) linear infinite; }
+          .wl-offers.marquee:hover .wl-track, .wl-offers.marquee.hold .wl-track { animation-play-state: paused; }
+          @keyframes wlMarq { to { transform: translateX(-50%); } }
+          .wl-offer { flex: 0 0 auto; margin-right: 8px; position: relative; display: flex; align-items: center; gap: 8px; padding: 9px 14px 9px 10px; border-radius: 12px; background: #fffbeb; border: 1px dashed #fcd34d; font-size: 12px; color: #78350f; }
+          .wl-offer i { width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center; border-radius: 8px; background: #fef3c7; color: #b45309; font-style: normal; }
+          .wl-offer i svg { width: 15px; height: 15px; }
+          .wl-offer b { display: block; font-size: 13px; color: #92400e; }
+          .wl-offer.cb { background: #f0fdf4; border-color: #86efac; color: #14532d; }
+          .wl-offer.cb i { background: #dcfce7; color: #15803d; }
+          .wl-offer.cb b { color: #166534; }
+          /* add money */
+          .wl-add { margin-top: 12px; padding: 14px; border-radius: 18px; background: #faf9ff; border: 1px solid #ede9fe; animation: wlIn .25s ease; }
+          @keyframes wlIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+          .wl-add h4 { margin: 0 0 10px; font-size: 14px; color: #111827; }
+          .wl-amts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+          .wl-amt { position: relative; padding: 12px 6px 10px; border: 1.5px solid #e5e7eb; border-radius: 14px; background: #fff; color: #111827; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; transition: border-color .15s, background .15s; }
+          .wl-amt small { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 700; color: #16a34a; }
+          .wl-amt.on { border-color: #4c1d95; background: #f5f3ff; box-shadow: 0 0 0 3px rgba(76,29,149,.12); }
+          .wl-own { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 0 14px; border: 1.5px solid #e5e7eb; border-radius: 14px; background: #fff; font-weight: 800; color: #6b7280; }
+          .wl-own:focus-within { border-color: #4c1d95; }
+          .wl-own input { flex: 1; min-width: 0; padding: 12px 0; border: 0; background: none; color: #111827; font: inherit; font-size: 16px; outline: none; }
+          .wl-sum { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #fff; border: 1px solid #ede9fe; font-size: 13px; color: #4b5563; }
+          .wl-sum b { display: block; font-size: 17px; color: #111827; }
+          .wl-sum .get b { color: #16a34a; text-align: right; }
+          .wl-sum .arrow { color: #c4b5fd; font-size: 20px; }
+          .wl-pay { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; padding: 14px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #4c1d95, #6d28d9); color: #fff; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 10px 20px -8px rgba(76,29,149,.6); }
+          .wl-pay svg { width: 18px; height: 18px; }
+          .wl-pay:disabled { opacity: .5; cursor: default; box-shadow: none; }
+          .wl-fine { display: flex; gap: 6px; margin: 10px 2px 0; font-size: 11.5px; color: #6b7280; line-height: 1.45; }
+          .wl-fine svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; color: #16a34a; }
+          /* history */
+          .wl-hist { margin-top: 14px; }
+          .wl-hist h4 { display: flex; justify-content: space-between; margin: 0 2px 6px; font-size: 13px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+          .wl-item { display: flex; align-items: center; gap: 12px; padding: 11px 2px; border-bottom: 1px solid #f3f4f6; }
+          .wl-item:last-child { border-bottom: 0; }
+          .wl-dot { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: #fef2f2; color: #dc2626; }
+          .wl-dot svg { width: 18px; height: 18px; }
+          .wl-dot.in { background: #f0fdf4; color: #16a34a; }
+          .wl-dot.gift { background: #fffbeb; color: #d97706; }
+          .wl-what { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; color: #111827; }
+          .wl-what small { display: block; font-size: 12px; font-weight: 500; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .wl-amtx { font-size: 14.5px; font-weight: 800; color: #111827; white-space: nowrap; }
+          .wl-amtx.in { color: #16a34a; }
+          .wl-empty { margin: 14px 0 2px; padding: 16px; text-align: center; border-radius: 14px; background: #f9fafb; font-size: 13px; color: #6b7280; }
+          .wl-login { margin-top: 12px; font-size: 13px; color: #4b5563; text-align: center; }
+          .stats-grid.has-wallet { grid-template-columns: repeat(4, 1fr); }
+          .stats-grid.has-wallet .stat-number { font-size: 0.95em; }
+          .stat-wallet { cursor: pointer; }
+          .stat-wallet .stat-number { color: #6d28d9; }
+          @media (prefers-reduced-motion: reduce) { .wl-shine, .wl-add, .wl-offers.marquee .wl-track { animation: none; } .wl-offers.marquee { overflow-x: auto; } }
+        </style>
+        <div id="pfWallet" hidden data-cur="<?php echo htmlspecialchars($currency_symbol ?? '₹', ENT_QUOTES, 'UTF-8'); ?>"></div>
+        <script src="rg-wallet.js?v=<?php echo @filemtime(__DIR__ . '/rg-wallet.js'); ?>" defer></script>
+
         <div class="section-card fade-in" style="animation-delay:0.1s" id="pfDetails">
           <div class="section-header">
             <div class="section-title"><i class="fa fa-user"></i> Personal Details</div>

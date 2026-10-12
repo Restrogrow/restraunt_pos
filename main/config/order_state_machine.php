@@ -274,6 +274,18 @@ function validateAndUpdateOrderStatus(
         }
     }
 
+    // Wallet hook (Offers > Wallet): money paid from the wallet goes back when
+    // an order is cancelled or rejected; cashback lands when it's completed.
+    // Once per order; never blocks the status change.
+    if (in_array($newStatus, ['Cancelled', 'Rejected', 'Completed'], true)) {
+        try {
+            require_once __DIR__ . '/wallet_helpers.php';
+            walletOrderStatusHook($conn, $orderId, $newStatus);
+        } catch (Exception $e) {
+            error_log('Wallet hook failed for order ' . $orderId . ': ' . $e->getMessage());
+        }
+    }
+
     // Waiter "order Ready" push notification is intentionally NOT fired
     // here. It used to be, but that meant sending a synchronous network
     // call to the push service while still holding this row's FOR UPDATE

@@ -195,7 +195,8 @@ function handleCreatePayment() {
         if ($embedMode) {
             $config['redirect_url'] = str_replace('/website/cart.php', '/embed/embed.php', $config['redirect_url']);
         }
-        $amount = (float)$order['total'];
+        // Part may already be paid from the customer's wallet (Offers > Wallet)
+        $amount = round((float)$order['total'] - (float)($order['wallet_paid'] ?? 0), 2);
 
         if ($amount <= 0) {
             throw new Exception('Invalid amount');
