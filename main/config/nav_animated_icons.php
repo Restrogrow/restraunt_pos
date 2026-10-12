@@ -64,6 +64,14 @@ if (!function_exists('navAnimatedSvg')) {
     }
 
     function navAnimatedSvg(string $slot, string $variant = 'line', bool $inNavItem = true): string {
+        // The bold navy-outline packs (Cozy, Bistro, Café, Fresh, Fiesta) live in nav_icon_packs.php
+        require_once __DIR__ . '/nav_icon_packs.php';
+        if (in_array($variant, navIconPackNames(), true)) {
+            $parts = navIconPackParts($variant);
+            $inner = $parts[$slot] ?? $parts['plans'];
+            $slotAttr = htmlspecialchars($slot, ENT_QUOTES, 'UTF-8');
+            return '<svg class="nav-svg v-navy p-' . $variant . ($inNavItem ? ' nav-icon' : ' small') . '" data-nav-slot="' . $slotAttr . '" viewBox="0 0 32 32" aria-hidden="true" focusable="false">' . $inner . '</svg>';
+        }
         $parts = navAnimatedSvgParts();
         $inner = $parts[$slot] ?? $parts['plans'];
         $variant = $variant === 'flat' ? 'flat' : 'line';
@@ -125,6 +133,48 @@ if (!function_exists('navAnimatedSvg')) {
 @keyframes nvBlink { 0%, 38%, 46%, 100% { transform: scaleY(1); } 42% { transform: scaleY(.1); } }
 .nav-svg .arw { animation-name: nvArrow; }
 @keyframes nvArrow { 0%, 40%, 100% { transform: none; } 14% { transform: translateY(3px); } 24% { transform: translateY(-1px); } }
+
+/* Bold navy-outline packs (Cozy, Bistro, Café, Fresh, Fiesta) */
+.nav-svg.v-navy .ol { fill: none; stroke: #13306e; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bn-dark .nav-svg.v-navy .ol { stroke: #e2e8f0; }
+.nav-svg .k-bob { animation-name: kBob; }
+@keyframes kBob { 0%, 100% { transform: none; } 50% { transform: translateY(-2px); } }
+.nav-svg .k-hop { animation-name: kHop; }
+@keyframes kHop { 0%, 40%, 100% { transform: none; } 12% { transform: translateY(-3.5px); } 24% { transform: translateY(0) scale(1.04, .96); } 32% { transform: translateY(-1px); } }
+.nav-svg .k-float { animation-name: kFloat; }
+@keyframes kFloat { 0%, 100% { transform: none; } 50% { transform: translateY(-2.4px) rotate(-6deg); } }
+.nav-svg .k-pop { animation-name: kPop; }
+@keyframes kPop { 0%, 36%, 100% { transform: scale(1); } 8% { transform: scale(1.16); } 16% { transform: scale(.95); } 24% { transform: scale(1.1); } }
+.nav-svg .k-swayl { animation-name: kSwayL; }
+@keyframes kSwayL { 0%, 100% { transform: none; } 50% { transform: rotate(-7deg); } }
+.nav-svg .k-swayr { animation-name: kSwayR; }
+@keyframes kSwayR { 0%, 100% { transform: none; } 50% { transform: rotate(7deg); } }
+.nav-svg .k-flick { animation-name: kFlick; }
+@keyframes kFlick { 0%, 100% { transform: scale(1, 1); } 25% { transform: scale(.88, 1.14) skewX(4deg); } 50% { transform: scale(1.06, .92); } 75% { transform: scale(.94, 1.08) skewX(-4deg); } }
+.nav-svg .k-rise { animation-name: nvSteam; }
+.nav-svg .k-door { animation-name: kDoor; }
+@keyframes kDoor { 0%, 52%, 100% { transform: none; } 14%, 36% { transform: scaleX(.22); } }
+.nav-svg .k-lift { animation-name: nvLid; }
+.nav-svg .k-tick { animation-name: nvCheck; }
+.nav-svg .k-tick[stroke-dasharray="8"] { animation-name: kTick8; }
+@keyframes kTick8 { 0% { stroke-dashoffset: 8; opacity: 1; } 22% { stroke-dashoffset: 0; } 72% { stroke-dashoffset: 0; opacity: 1; } 86% { opacity: 0; } 100% { stroke-dashoffset: 8; opacity: 0; } }
+.nav-svg .k-twinkle { animation-name: kTwinkle; }
+@keyframes kTwinkle { 0%, 100% { opacity: .2; transform: scale(.6) rotate(0); } 30% { opacity: 1; transform: scale(1.2) rotate(45deg); } 60% { opacity: .5; transform: scale(.9) rotate(90deg); } }
+.nav-svg .k-drop { animation-name: nvBox; }
+.nav-svg .k-shake { animation-name: kShake; }
+@keyframes kShake { 0%, 40%, 100% { transform: none; } 5% { transform: rotate(10deg); } 10% { transform: rotate(-10deg); } 15% { transform: rotate(8deg); } 20% { transform: rotate(-8deg); } 25% { transform: rotate(4deg); } 30% { transform: rotate(-2deg); } }
+.nav-svg .k-clinkl { animation-name: kClinkL; }
+@keyframes kClinkL { 0%, 46%, 100% { transform: none; } 18%, 28% { transform: rotate(14deg); } }
+.nav-svg .k-clinkr { animation-name: kClinkR; }
+@keyframes kClinkR { 0%, 46%, 100% { transform: none; } 18%, 28% { transform: rotate(-14deg); } }
+.nav-svg .k-squash { animation-name: kSquash; }
+@keyframes kSquash { 0%, 100% { transform: none; } 50% { transform: scale(1.03, .9); } }
+.nav-svg .k-drip { animation-name: kDrip; }
+@keyframes kDrip { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.7); } }
+.nav-svg .k-wave { animation-name: kWave; }
+@keyframes kWave { 0%, 100% { opacity: .25; transform: translateX(-1px); } 50% { opacity: 1; transform: translateX(1px); } }
+.nav-svg .k-roll { animation-name: nvCart; }
+.nav-svg .k-blink { animation-name: nvBlink; }
 
 @media (prefers-reduced-motion: reduce) { .nav-svg .a { animation: none !important; } }
 CSS;

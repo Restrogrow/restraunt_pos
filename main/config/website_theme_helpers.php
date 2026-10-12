@@ -252,6 +252,37 @@ const NAV_ICON_STYLES = [
         'plans' => 'calendar-check', 'cart' => 'cart-shopping', 'profile' => 'face-smile',
         'install' => 'download',
     ],
+    // Bold navy-outline packs (config/nav_icon_packs.php)
+    'cozy' => [
+        'label' => 'Cozy', 'svg' => 'cozy',
+        'home' => 'home', 'menu' => 'utensils', 'social' => 'heart',
+        'plans' => 'calendar-check', 'cart' => 'cart-shopping', 'profile' => 'face-smile',
+        'install' => 'download',
+    ],
+    'bistro' => [
+        'label' => 'Bistro', 'svg' => 'bistro',
+        'home' => 'home', 'menu' => 'utensils', 'social' => 'heart',
+        'plans' => 'calendar-check', 'cart' => 'cart-shopping', 'profile' => 'face-smile',
+        'install' => 'download',
+    ],
+    'cafe' => [
+        'label' => 'Café', 'svg' => 'cafe',
+        'home' => 'home', 'menu' => 'utensils', 'social' => 'heart',
+        'plans' => 'calendar-check', 'cart' => 'cart-shopping', 'profile' => 'face-smile',
+        'install' => 'download',
+    ],
+    'fresh' => [
+        'label' => 'Fresh', 'svg' => 'fresh',
+        'home' => 'home', 'menu' => 'utensils', 'social' => 'heart',
+        'plans' => 'calendar-check', 'cart' => 'cart-shopping', 'profile' => 'face-smile',
+        'install' => 'download',
+    ],
+    'fiesta' => [
+        'label' => 'Fiesta', 'svg' => 'fiesta',
+        'home' => 'home', 'menu' => 'utensils', 'social' => 'heart',
+        'plans' => 'calendar-check', 'cart' => 'cart-shopping', 'profile' => 'face-smile',
+        'install' => 'download',
+    ],
 ];
 
 /**

@@ -897,7 +897,7 @@ try {
   .nis-tile .nav-svg { width: 17px; height: 17px; display: inline-block; flex-shrink: 0; }
   .nis-tile .nis-ic { gap: 3px !important; flex-wrap: nowrap; }
   .nis-badge { display: inline-block; margin-left: 4px; padding: 1px 5px; border-radius: 999px; background: #ede9fe; color: #6d28d9; font-size: 9px; font-weight: 800; vertical-align: 1px; }</style>
-  <script>window.NAV_ANIM_SVGS = <?php echo json_encode(['line' => navAnimatedSvgAll('line'), 'flat' => navAnimatedSvgAll('flat')], JSON_HEX_TAG | JSON_HEX_AMP); ?>;</script>
+  <script>window.NAV_ANIM_SVGS = <?php require_once __DIR__ . '/../config/nav_icon_packs.php'; $navAnimAll = ['line' => navAnimatedSvgAll('line'), 'flat' => navAnimatedSvgAll('flat')]; foreach (navIconPackNames() as $pk) $navAnimAll[$pk] = navAnimatedSvgAll($pk); echo json_encode($navAnimAll, JSON_HEX_TAG | JSON_HEX_AMP); ?>;</script>
 </head>
 <body>
   <aside class="sidebar">

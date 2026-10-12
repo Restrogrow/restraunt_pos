@@ -14406,7 +14406,12 @@ async function initWebsiteThemeEditor() {
       minimal: { label: 'Minimal', home: 'house', menu: 'list', social: 'comment-dots', plans: 'calendar-check', cart: 'bag-shopping', profile: 'circle-user' },
       bold: { label: 'Bold', home: 'home', menu: 'bowl-food', social: 'share-nodes', plans: 'calendar-days', cart: 'cart-shopping', profile: 'user-circle' },
       lively: { label: 'Lively', svg: 'line', home: 'home', menu: 'bowl-food', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' },
-      cartoon: { label: 'Cartoon', svg: 'flat', home: 'home', menu: 'bowl-food', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' }
+      cartoon: { label: 'Cartoon', svg: 'flat', home: 'home', menu: 'bowl-food', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' },
+      cozy: { label: 'Cozy', svg: 'cozy', home: 'home', menu: 'utensils', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' },
+      bistro: { label: 'Bistro', svg: 'bistro', home: 'home', menu: 'utensils', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' },
+      cafe: { label: 'Caf\u00e9', svg: 'cafe', home: 'home', menu: 'utensils', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' },
+      fresh: { label: 'Fresh', svg: 'fresh', home: 'home', menu: 'utensils', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' },
+      fiesta: { label: 'Fiesta', svg: 'fiesta', home: 'home', menu: 'utensils', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' }
     };
     // Picker tiles for the drawn animated icons
     function nisIconHtml(st, slot) {
