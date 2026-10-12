@@ -1427,188 +1427,33 @@ try {
   <!-- Main Content Area -->
   <main class="main-content">
     <!-- Dashboard Page (Default) -->
-    <div id="dashboardPage" class="page active">
-      <div class="page-header">
-        <div class="dashboard-header-row">
-          <div>
-            <h1>Dashboard Overview</h1>
-            <p id="dashboardTime">Welcome back! Here's what's happening today.</p>
-            <div id="trialInfo" style="margin-top:.25rem;color:#92400e;font-weight:700;display:none;"></div>
+    <!-- Dashboard home (assets/js/dashboard-home.js, data: api/dashboard_home.php, styles dh-* in studio-ui.css) -->
+    <div id="dashboardPage" class="page active sx dh">
+      <div class="dh-head">
+        <div class="dh-head-l">
+          <span class="dh-hello" id="dhHello">Welcome back</span>
+          <h1 id="dhName"><?php echo htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8'); ?></h1>
+          <div class="dh-meta">
+            <span id="dhDate"></span>
+            <span class="dh-store" id="dhStore" hidden></span>
+            <span class="dh-plan" id="trialInfo" style="display:none;"></span>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div id="liveClock" style="font-size:.85rem;color:#6b7280;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;background:#f3f4f6;padding:6px 12px;border-radius:8px;border:1px solid #e5e7eb;display:flex;align-items:center;gap:6px;">
-              <span class="material-symbols-rounded" style="font-size:16px;color:#9ca3af;">schedule</span>
-              <span id="clockDisplay">--:--:--</span>
-            </div>
-            <button class="btn-refresh-dashboard" onclick="loadDashboardStats()" title="Refresh">
-              <span class="material-symbols-rounded">refresh</span>
-            </button>
-          </div>
+        </div>
+        <div class="dh-head-r">
+          <span class="dh-updated" id="dashboardTime"></span>
+          <button type="button" class="btn btn-secondary dh-icon" onclick="loadDashboardStats()" title="Refresh" aria-label="Refresh"><span class="material-symbols-rounded">refresh</span></button>
+          <a class="btn btn-secondary" href="<?php
+            if (!empty($restaurant_custom_domain) && $restaurant_embed_enabled) {
+                echo htmlspecialchars('https://' . preg_replace('#^https?://#', '', $restaurant_custom_domain) . '/', ENT_QUOTES, 'UTF-8');
+            } else {
+                echo htmlspecialchars($basePath . '/' . urlencode(trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($restaurant_name)), '-')), ENT_QUOTES, 'UTF-8');
+            }
+          ?>" target="_blank" rel="noopener"><span class="material-symbols-rounded">storefront</span><span class="dh-hide-s">Your website</span></a>
+          <button type="button" class="btn btn-primary" data-dh-go="posPage"><span class="material-symbols-rounded">add</span>New order</button>
         </div>
       </div>
-      <div class="page-content">
-        <!-- Main Stats Row -->
-        <div class="main-stats">
-          <div class="main-stat-card revenue">
-            <div class="stat-main">
-              <span class="material-symbols-rounded">payments</span>
-              <div class="stat-main-info">
-                <div class="stat-label">Today's Revenue</div>
-                <div class="stat-value-large" id="todayRevenue"><?php echo htmlspecialchars($currency_symbol); ?>0.00</div>
-              </div>
-            </div>
-            <div class="stat-footer">
-              <span class="material-symbols-rounded">trending_up</span>
-              <span>View Reports</span>
-            </div>
-          </div>
-          
-          <div class="main-stat-card orders">
-            <div class="stat-main">
-              <span class="material-symbols-rounded">receipt_long</span>
-              <div class="stat-main-info">
-                <div class="stat-label">Today's Orders</div>
-                <div class="stat-value-large" id="todayOrders">0</div>
-              </div>
-            </div>
-            <div class="stat-footer">
-              <span class="material-symbols-rounded">schedule</span>
-              <span>Last 24 hours</span>
-            </div>
-          </div>
-          
-          <div class="main-stat-card kot">
-            <div class="stat-main">
-              <span class="material-symbols-rounded">restaurant_menu</span>
-              <div class="stat-main-info">
-                <div class="stat-label">Active KOT</div>
-                <div class="stat-value-large" id="activeKOT">0</div>
-              </div>
-            </div>
-            <div class="stat-footer">
-              <span class="material-symbols-rounded">kitchen</span>
-              <span id="kotStatus">In Progress</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Secondary Stats -->
-        <div class="secondary-stats">
-          <div class="secondary-stat-card">
-            <div class="stat-icon-circle customers">
-              <span class="material-symbols-rounded">people</span>
-            </div>
-            <div class="stat-info">
-              <div class="stat-label">Customers</div>
-              <div class="stat-value" id="totalCustomers">0</div>
-            </div>
-          </div>
-          
-          <div class="secondary-stat-card">
-            <div class="stat-icon-circle tables">
-              <span class="material-symbols-rounded">table_restaurant</span>
-            </div>
-            <div class="stat-info">
-              <div class="stat-label">Tables</div>
-              <div class="stat-value" id="tableInfo">0/0</div>
-            </div>
-          </div>
-          
-          <div class="secondary-stat-card">
-            <div class="stat-icon-circle items">
-              <span class="material-symbols-rounded">restaurant</span>
-            </div>
-            <div class="stat-info">
-              <div class="stat-label">Menu Items</div>
-              <div class="stat-value" id="totalItems">0</div>
-            </div>
-          </div>
-          
-          <div class="secondary-stat-card">
-            <div class="stat-icon-circle pending">
-              <span class="material-symbols-rounded">pending_actions</span>
-            </div>
-            <div class="stat-info">
-              <div class="stat-label">Pending</div>
-              <div class="stat-value" id="pendingOrders">0</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Content Grid -->
-        <div class="dashboard-content-grid">
-          <!-- Recent Orders Card -->
-          <div class="dashboard-card-modern">
-            <div class="card-header-modern">
-              <h3>
-                <span class="material-symbols-rounded">schedule</span>
-                Recent Orders
-              </h3>
-              <button class="btn-view-all" onclick="showPage('ordersPage')">View All</button>
-            </div>
-            <div class="card-body-modern" id="recentOrders">
-              <div class="loading">Loading...</div>
-            </div>
-          </div>
-          
-          <!-- Popular Items Card -->
-          <div class="dashboard-card-modern">
-            <div class="card-header-modern">
-              <h3>
-                <span class="material-symbols-rounded">local_fire_department</span>
-                Popular Today
-              </h3>
-              <span class="badge-today">Today</span>
-            </div>
-            <div class="card-body-modern" id="popularItems">
-              <div class="loading">Loading...</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Quick Actions -->
-        <div class="dashboard-card-modern">
-          <div class="card-header-modern">
-            <h3>
-              <span class="material-symbols-rounded">rocket_launch</span>
-              Quick Actions
-            </h3>
-          </div>
-          <div class="quick-actions-grid">
-            <button class="quick-action-btn" onclick="showPage('posPage')">
-              <span class="material-symbols-rounded">point_of_sale</span>
-              <span class="action-label">New Order</span>
-            </button>
-            <button class="quick-action-btn" onclick="showPage('kotPage')">
-              <span class="material-symbols-rounded">restaurant_menu</span>
-              <span class="action-label">KOT</span>
-            </button>
-            <button class="quick-action-btn" onclick="showPage('ordersPage')">
-              <span class="material-symbols-rounded">receipt_long</span>
-              <span class="action-label">Orders</span>
-            </button>
-            <button class="quick-action-btn" onclick="showPage('menuItemsPage')">
-              <span class="material-symbols-rounded">menu_book</span>
-              <span class="action-label">Menu</span>
-            </button>
-            <button class="quick-action-btn" onclick="showPage('tablesPage')">
-              <span class="material-symbols-rounded">table_chart</span>
-              <span class="action-label">Tables</span>
-            </button>
-            <button class="quick-action-btn" onclick="showPage('customersPage')">
-              <span class="material-symbols-rounded">people</span>
-              <span class="action-label">Customers</span>
-            </button>
-            <button class="quick-action-btn" onclick="showPage('staffPage')">
-              <span class="material-symbols-rounded">groups</span>
-              <span class="action-label">Staff</span>
-            </button>
-            <button class="quick-action-btn" onclick="showPage('reservationsPage')">
-              <span class="material-symbols-rounded">event</span>
-              <span class="action-label">Reservations</span>
-            </button>
-          </div>
-        </div>
+      <div class="page-content dh-body">
+        <div id="dhRoot"><div class="sx-loading"><span></span><span></span><span></span></div></div>
       </div>
     </div>
 
@@ -7630,6 +7475,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/settings-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/settings-studio.js'); ?>" defer></script>
   <script src="../assets/js/offers-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offers-studio.js'); ?>" defer></script>
   <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
+  <script src="../assets/js/dashboard-home.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-home.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>
@@ -8587,15 +8433,18 @@ async function checkSubscriptionOnLoad() {
     const trialInfo = document.getElementById('trialInfo');
     if (trialInfo) {
       if (data.status === 'trial' && data.days_left > 0 && data.days_left <= 7) {
-        trialInfo.innerHTML = '⚠️ Your free trial ends in <strong>' + data.days_left + ' day(s)</strong>. <a href="#" onclick="showSubscriptionModal();return false;" style="color:#dc2626;text-decoration:underline;">Renew now</a>';
+        trialInfo.dataset.state = 'warn';
+        trialInfo.innerHTML = 'Free trial ends in <strong>' + data.days_left + ' day' + (data.days_left == 1 ? '' : 's') + '</strong> · <a href="#" onclick="showSubscriptionModal();return false;" style="color:#dc2626;text-decoration:underline;">Renew now</a>';
         trialInfo.style.display = 'block';
       } else if (data.status === 'expired' || data.status === 'disabled') {
-        trialInfo.innerHTML = '🔒 Your subscription has expired. <a href="#" onclick="showSubscriptionModal();return false;" style="color:#dc2626;text-decoration:underline;">Renew now</a>';
+        trialInfo.dataset.state = 'bad';
+        trialInfo.innerHTML = 'Subscription expired · <a href="#" onclick="showSubscriptionModal();return false;" style="color:#dc2626;text-decoration:underline;">Renew now</a>';
         trialInfo.style.display = 'block';
         // Show renewal modal automatically after short delay
         setTimeout(() => showSubscriptionModal(), 1000);
       } else if (data.days_left >= 0) {
-        trialInfo.innerHTML = '✅ Your subscription is active. <strong>' + data.days_left + ' day(s)</strong> remaining.';
+        trialInfo.dataset.state = 'ok';
+        trialInfo.innerHTML = 'Plan active · <strong>' + data.days_left + ' day' + (data.days_left == 1 ? '' : 's') + '</strong> left';
         trialInfo.style.display = 'block';
       }
     }
