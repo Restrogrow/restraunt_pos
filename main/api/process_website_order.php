@@ -488,6 +488,24 @@ $conn->beginTransaction();
             echo json_encode(['success' => false, 'message' => 'Invalid or expired coupon code'], JSON_UNESCAPED_UNICODE);
             exit();
         }
+        // Scratch card reward: only for the phone that won it, and not if that order was cancelled
+        if (!empty($coupon['owner_phone'])) {
+            $rewardOk = $coupon['owner_phone'] === $customer_phone;
+            if ($rewardOk) {
+                try {
+                    $src = $conn->prepare("SELECT o.order_status FROM scratch_cards sc JOIN orders o ON o.id = sc.order_id WHERE sc.restaurant_id = ? AND sc.coupon_code = ? LIMIT 1");
+                    $src->execute([$restaurant_id, $coupon['coupon_code']]);
+                    $srcStatus = $src->fetchColumn();
+                    if (in_array($srcStatus, ['Cancelled', 'Rejected'], true)) $rewardOk = false;
+                } catch (PDOException $e) { /* table not there yet */ }
+            }
+            if (!$rewardOk) {
+                $conn->rollBack();
+                ob_end_clean();
+                echo json_encode(['success' => false, 'message' => 'This reward code can only be used by the customer who won it'], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+        }
     }
 
     // --- Batch-fetch menu items, variations, and addons up front ---

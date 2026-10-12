@@ -1239,6 +1239,12 @@ try {
               </a>
             </li>
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="scratchPage">
+                <span class="material-symbols-rounded">confirmation_number</span>
+                <span class="nav-label">Scratch card</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="offerFiltersPage">
                 <span class="material-symbols-rounded">filter_alt</span>
                 <span class="nav-label">Offer Filters</span>
@@ -4435,6 +4441,66 @@ function toggleGatewayMode() {
       </div>
     </div>
 
+    <div id="scratchPage" class="page">
+      <style>
+        .scx-wrap { max-width: 1100px; }
+        .scx-stats { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
+        .scx-stats > div { padding: 14px; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; }
+        .scx-stats > div.hi { background: linear-gradient(135deg, #fff1f2, #ffedd5); border-color: #fecdd3; }
+        .scx-stats b { display: block; font-size: 1.4rem; color: #111827; }
+        .scx-stats span { font-size: 0.78rem; color: #6b7280; }
+        .scx-stats small { position: absolute; right: 4px; top: -18px; font-size: 0.7rem; color: #9ca3af; }
+        .scx-cols { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+        .scx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .scx-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; font-weight: 600; color: #6b7280; }
+        .scx-grid label:first-child { grid-column: 1 / -1; }
+        #scratchPage select, #scratchPage input:not([type=checkbox]) { padding: 8px 10px; border: 1.5px solid #e5e7eb; border-radius: 9px; font: inherit; font-size: 0.86rem; background: #fff; color: #111827; min-width: 0; }
+        #scratchPage input:disabled { background: #f9fafb; }
+        .scx-budget { margin-top: 12px; }
+        .scx-budget > div { height: 8px; border-radius: 999px; background: #f3f4f6; overflow: hidden; }
+        .scx-budget i { display: block; height: 100%; background: linear-gradient(90deg, #f59e0b, #f43f5e); border-radius: 999px; }
+        .scx-budget span { display: block; margin-top: 6px; font-size: 0.78rem; color: #6b7280; }
+        .scx-prize-head, .scx-prize { display: grid; grid-template-columns: minmax(0, 1.5fr) 100px 130px 26px; gap: 8px; align-items: center; }
+        .scx-prize-head { padding: 0 2px 6px; font-size: 0.72rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+        .scx-prize { margin-bottom: 8px; }
+        .scx-weight { display: flex; align-items: center; gap: 6px; }
+        .scx-weight input { width: 64px; }
+        .scx-weight b { font-size: 0.85rem; color: #be123c; min-width: 46px; }
+        .scx-math { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 12px; border-radius: 12px; background: #f0fdf4; color: #14532d; font-size: 0.86rem; }
+        .scx-math .material-symbols-rounded { color: #16a34a; }
+        .scx-note { margin: 10px 0 0; font-size: 0.78rem; color: #6b7280; line-height: 1.5; }
+        .scx-phone { max-width: 300px; margin: 0 auto; padding: 14px; border-radius: 20px; background: #fff; box-shadow: 0 10px 30px rgba(17,24,39,.1); border: 1px solid #f3f4f6; }
+        .scx-mock-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .scx-mock-head i { width: 32px; height: 32px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b, #f43f5e); }
+        .scx-mock-head b { display: block; font-size: 0.88rem; color: #111827; }
+        .scx-mock-head small { font-size: 0.72rem; color: #6b7280; }
+        .scx-foil { position: relative; height: 110px; border-radius: 14px; overflow: hidden; display: grid; place-items: center; background: linear-gradient(135deg, #c0c4cc, #eef0f3 45%, #d5d8de 55%, #a9aeb8); }
+        .scx-foil span { font-weight: 800; color: #e11d48; letter-spacing: .1em; font-size: 0.85rem; }
+        .scx-foil em { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.7) 50%, transparent 70%); background-size: 250% 100%; animation: scxShine 2.4s linear infinite; }
+        @keyframes scxShine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+        .scx-mock-odds { margin-top: 8px; font-size: 0.72rem; color: #6b7280; font-weight: 600; }
+        .scx-recent > div { display: grid; grid-template-columns: 1fr 1.2fr auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 0.82rem; }
+        .scx-recent .ph { font-weight: 600; color: #111827; }
+        .scx-recent .ph small { display: block; font-weight: 400; color: #9ca3af; font-size: 0.7rem; }
+        .scx-recent .pz { color: #be123c; font-weight: 600; }
+        .scx-recent .pz.no { color: #6b7280; font-weight: 500; }
+        .scx-recent .tag { padding: 3px 8px; border-radius: 999px; background: #fff1f2; color: #9f1239; font-size: 0.7rem; font-weight: 700; letter-spacing: .04em; }
+        .scx-recent .tag.used { background: #dcfce7; color: #166534; }
+        @media (max-width: 960px) { .scx-cols { grid-template-columns: 1fr; } .scx-stats { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .scx-grid { grid-template-columns: 1fr; } .scx-prize-head { display: none; } .scx-prize { grid-template-columns: 1fr 26px; } .scx-prize .scx-value, .scx-prize .scx-weight { grid-column: 1; } }
+      </style>
+      <div class="scx-wrap">
+        <div class="page-header" style="margin-bottom:22px;">
+          <h1 style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">confirmation_number</span> Scratch card</h1>
+          <p style="color:#6b7280;margin:4px 0 0;">After checkout, customers scratch a card on the order tracking page and can win a reward for their next order. You choose the prizes, the chances and a monthly budget.</p>
+        </div>
+        <div id="scBody"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+          <button type="button" class="btn btn-primary" id="scSave"><span class="material-symbols-rounded">save</span> Save</button>
+        </div>
+      </div>
+    </div>
+
     <div id="offerFiltersPage" class="page">
       <style>
         .of-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -7212,6 +7278,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/todays-special-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/todays-special-admin.js'); ?>" defer></script>
   <script src="../website/rg-upsell.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-upsell.js'); ?>" defer></script>
   <script src="../assets/js/upsell-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/upsell-admin.js'); ?>" defer></script>
+  <script src="../assets/js/scratch-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/scratch-admin.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>

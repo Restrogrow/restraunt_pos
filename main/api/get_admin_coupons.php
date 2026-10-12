@@ -45,7 +45,9 @@ try {
 
     require_once __DIR__ . '/../config/coupon_helpers.php';
     ensureCouponMilestoneColumn($conn);
-    $stmt = $conn->prepare("SELECT * FROM coupons WHERE restaurant_id = ? ORDER BY created_at DESC");
+    ensureCouponOwnerColumn($conn);
+    // Scratch card reward codes (owner_phone set) live under Offers > Scratch card
+    $stmt = $conn->prepare("SELECT * FROM coupons WHERE restaurant_id = ? AND owner_phone IS NULL ORDER BY created_at DESC");
     $stmt->execute([$restaurant_id]);
     $coupons = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

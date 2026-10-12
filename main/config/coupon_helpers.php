@@ -21,3 +21,22 @@ if (!function_exists('ensureCouponMilestoneColumn')) {
         }
     }
 }
+
+/**
+ * Private coupons (Offers > Scratch card rewards): owner_phone set = only that
+ * customer may use it, and it is never listed publicly.
+ */
+if (!function_exists('ensureCouponOwnerColumn')) {
+    function ensureCouponOwnerColumn($conn) {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        try {
+            $col = $conn->query("SHOW COLUMNS FROM coupons LIKE 'owner_phone'");
+            if ($col && $col->fetch()) return;
+            $conn->exec("ALTER TABLE coupons ADD COLUMN owner_phone VARCHAR(20) NULL DEFAULT NULL");
+        } catch (PDOException $e) {
+            error_log('coupon_helpers.php: could not add owner_phone: ' . $e->getMessage());
+        }
+    }
+}

@@ -337,6 +337,53 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
   .live-note.on .live-dot, .status-badge.status-flash, .tk-fill::after, .tk-node.on i, .tk-status .ic .material-symbols-rounded, .tk-bubble.pop { animation: none; }
   .tk-fill, .tk-bubble::after { transition: none; }
 }
+/* Scratch card (Offers > Scratch card) */
+.sc-card { padding: 16px; overflow: hidden; }
+.sc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.sc-ic { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #f43f5e); color: #fff; box-shadow: 0 6px 14px rgba(244,63,94,.3); animation: scWiggle 2.8s ease-in-out infinite; }
+.sc-ic svg { width: 20px; height: 20px; }
+@keyframes scWiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-10deg); } 90% { transform: rotate(10deg); } 95% { transform: rotate(-5deg); } }
+.sc-head b { display: block; font-size: 15px; font-weight: 800; color: #111827; }
+.sc-head small { display: block; font-size: 12px; color: #6b7280; }
+.sc-area { position: relative; height: 150px; border-radius: 18px; overflow: hidden; background: radial-gradient(circle at 30% 20%, #fff7ed, #ffe4e6 60%, #fce7f3); touch-action: none; user-select: none; -webkit-user-select: none; }
+.sc-area canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; transition: opacity .6s ease, transform .6s ease; }
+.sc-area canvas.gone { opacity: 0; transform: scale(1.08); pointer-events: none; }
+.sc-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 4px 10px; border-radius: 999px; background: rgba(17,24,39,.75); color: #fff; font-size: 11px; font-weight: 700; pointer-events: none; animation: scHint 1.6s ease-in-out infinite; }
+.sc-area.scratching .sc-hint, .sc-area.open .sc-hint { display: none; }
+@keyframes scHint { 50% { transform: translateX(-50%) translateY(-3px); } }
+#scUnder, .sc-prize { position: absolute; inset: 0; }
+.sc-prize { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; padding: 10px; }
+.sc-prize small { font-size: 12px; font-weight: 700; color: #9f1239; text-transform: uppercase; letter-spacing: .08em; }
+.sc-prize.win b { font-size: 38px; line-height: 1.05; font-weight: 900; background: linear-gradient(135deg, #f43f5e, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sc-area.open .sc-prize.win b { animation: scPop .6s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes scPop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.sc-prize span { font-size: 13px; color: #4b5563; font-weight: 600; }
+.sc-prize.lose b { font-size: 22px; font-weight: 800; color: #111827; }
+.sc-prize.wait { background: rgba(255,255,255,.4); }
+.sc-spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid #fecdd3; border-top-color: #f43f5e; animation: scSpin .8s linear infinite; }
+@keyframes scSpin { to { transform: rotate(360deg); } }
+.sc-area.locked { background: repeating-linear-gradient(135deg, #f3f4f6 0 14px, #e5e7eb 14px 28px); }
+.sc-lockface { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #374151; }
+.sc-lockface i { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.08); margin-bottom: 4px; animation: scBreath 2s ease-in-out infinite; }
+.sc-lockface i svg { width: 20px; height: 20px; }
+@keyframes scBreath { 50% { transform: scale(1.08); } }
+.sc-lockface b { font-size: 15px; }
+.sc-lockface span { font-size: 12px; color: #6b7280; }
+.sc-bit { position: absolute; top: 50%; width: 8px; height: 12px; border-radius: 2px; pointer-events: none; animation: scBurst 1.4s cubic-bezier(.15,.7,.4,1) forwards; }
+@keyframes scBurst { from { transform: translate(0, 0) rotate(0); opacity: 1; } to { transform: translate(var(--dx), calc(var(--dy) + 220px)) rotate(var(--r)); opacity: 0; } }
+.sc-won { margin-top: 12px; }
+.sc-code { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 10px 10px 14px; border: 2px dashed #fda4af; border-radius: 14px; background: #fff1f2; }
+.sc-code span { font-size: 18px; font-weight: 900; letter-spacing: .12em; color: #9f1239; }
+.sc-copy { padding: 7px 14px; border: 0; border-radius: 10px; background: #111827; color: #fff; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.sc-won p { margin: 8px 2px 10px; font-size: 12px; color: #6b7280; line-height: 1.45; }
+.sc-use { width: 100%; padding: 13px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #f43f5e, #f59e0b); color: #fff; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 8px 18px rgba(244,63,94,.28); }
+.sc-use.saved { background: #16a34a; box-shadow: none; }
+.sc-odds { margin-top: 10px; font-size: 12px; color: #6b7280; }
+.sc-odds summary { cursor: pointer; font-weight: 600; }
+.sc-odds ul { list-style: none; margin: 6px 0 0; padding: 0; }
+.sc-odds li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f3f4f6; }
+.sc-odds li b { color: #111827; }
+@media (prefers-reduced-motion: reduce) { .sc-ic, .sc-hint, .sc-lockface i, .sc-area.open .sc-prize.win b { animation: none; } }
 </style>
 </head>
 <body>
@@ -454,6 +501,9 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         You earned <span id="loyaltyEarnedPoints"><?php echo (int)($order['loyalty_points_earned'] ?? 0); ?></span> loyalty points on this order!
       </div>
     </div>
+
+    <div id="tkScratch" data-order="<?php echo htmlspecialchars($order['order_number'], ENT_QUOTES, 'UTF-8'); ?>" data-phone="<?php echo htmlspecialchars($customerPhone, ENT_QUOTES, 'UTF-8'); ?>" data-rid="<?php echo htmlspecialchars($order['restaurant_id'], ENT_QUOTES, 'UTF-8'); ?>" data-cur="<?php echo htmlspecialchars($currency, ENT_QUOTES, 'UTF-8'); ?>"></div>
+    <script src="rg-scratch.js?v=<?php echo @filemtime(__DIR__ . '/rg-scratch.js'); ?>" defer></script>
 
     <?php if (!empty($restaurant_phone)): ?>
     <div class="tk-help">

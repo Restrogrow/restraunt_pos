@@ -2163,6 +2163,7 @@ function loadCouponsFromServer() {
           if (!stillValid) { appliedCoupon = null; couponError = ''; }
         }
         renderCart();
+        applySavedReward();
       }
     })
     .catch(function() {});
@@ -2264,9 +2265,25 @@ function milestoneCardHtml(total) {
     '</div>';
 }
 
-function applyCoupon() {
+// Private codes (scratch card rewards) aren't in the public list: look one up once
+var couponLookedUp = {};
+function couponFromRow(c) {
+  var until = c.valid_until || '';
+  if (until) { var parts = until.split('-'); if (parts.length === 3) until = parts[2] + '/' + parts[1] + '/' + parts[0]; }
+  return { code: c.coupon_code, discount: parseFloat(c.discount_value), type: c.discount_type, minOrder: parseFloat(c.minimum_order_amount || 0),
+           description: c.description || '', validTill: until || 'No expiry', dbId: c.id, isMilestone: c.is_milestone == 1 };
+}
+function lookupCoupon(code, done) {
+  var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
+  fetch('../api/get_coupons.php?restaurant_id=' + encodeURIComponent(rid) + '&code=' + encodeURIComponent(code))
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d.success && d.coupons && d.coupons.length) availableCoupons.push(couponFromRow(d.coupons[0])); done(); })
+    .catch(function() { done(); });
+}
+
+function applyCoupon(codeArg) {
   var input = document.getElementById('couponInput');
-  var code = input ? input.value.trim().toUpperCase() : '';
+  var code = typeof codeArg === 'string' ? codeArg : (input ? input.value.trim().toUpperCase() : '');
   if (!code) return;
   lastCouponTyped = code;
 
@@ -2277,6 +2294,12 @@ function applyCoupon() {
       found = availableCoupons[i];
       break;
     }
+  }
+
+  if (!found && !couponLookedUp[code]) {
+    couponLookedUp[code] = true;
+    lookupCoupon(code, function() { applyCoupon(code); });
+    return;
   }
 
   if (!found) {
@@ -2311,6 +2334,26 @@ function applyCoupon() {
     var inp = document.getElementById('couponInput');
     if (inp) inp.classList.remove('error');
   }, 0);
+}
+
+// A scratch card reward saved on the tracking page ("Use on my next order")
+function applySavedReward() {
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem('rgRewardCode') || 'null'); } catch (e) {}
+  var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
+  if (!saved || !saved.code || saved.rid !== rid) return;
+  if (appliedCoupon && appliedCoupon.code === saved.code) return;
+  lookupCoupon(saved.code, function() {
+    var c = null;
+    for (var i = 0; i < availableCoupons.length; i++) if (availableCoupons[i].code === saved.code) c = availableCoupons[i];
+    if (!c) { try { localStorage.removeItem('rgRewardCode'); } catch (e) {} return; }   // used or expired
+    var cart = getCartTotal();
+    if (appliedCoupon && couponSaving(appliedCoupon, cart.totalPrice) >= couponSaving(c, cart.totalPrice)) return;
+    if (c.minOrder > 0 && cart.totalPrice < c.minOrder) return;
+    appliedCoupon = c; couponError = ''; couponUserChoice = true;
+    renderCart();
+    if (typeof showToast === 'function') showToast('Your scratch card reward ' + c.code + ' is applied', 'success');
+  });
 }
 
 function removeCoupon() {

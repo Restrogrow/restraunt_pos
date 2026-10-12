@@ -859,6 +859,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (pageId === "upsellPage" && typeof window.loadUpsellAdmin === 'function') {
         window.loadUpsellAdmin();
       }
+      // Offers > Scratch card (assets/js/scratch-admin.js)
+      if (pageId === "scratchPage" && typeof window.loadScratchAdmin === 'function') {
+        window.loadScratchAdmin();
+      }
       // Offers > Offer Filters (assets/js/offer-filters-admin.js)
       if (pageId === "offerFiltersPage" && typeof window.loadOfferFiltersAdmin === 'function') {
         window.loadOfferFiltersAdmin();

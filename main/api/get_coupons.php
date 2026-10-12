@@ -44,8 +44,17 @@ try {
 
     require_once __DIR__ . '/../config/coupon_helpers.php';
     ensureCouponMilestoneColumn($conn);
-    $stmt = $conn->prepare("SELECT id, coupon_code, discount_type, discount_value, minimum_order_amount, description, valid_from, valid_until, is_milestone FROM coupons WHERE restaurant_id = :rid AND is_active = 1 AND (valid_from IS NULL OR valid_from <= CURDATE()) AND (valid_until IS NULL OR valid_until >= CURDATE()) AND (max_uses = 0 OR current_uses < max_uses) ORDER BY discount_value DESC");
-    $stmt->execute([':rid' => $restaurant_id]);
+    ensureCouponOwnerColumn($conn);
+    $valid = "restaurant_id = :rid AND is_active = 1 AND (valid_from IS NULL OR valid_from <= CURDATE()) AND (valid_until IS NULL OR valid_until >= CURDATE()) AND (max_uses = 0 OR current_uses < max_uses)";
+    if (!empty($_GET['code'])) {
+        // One typed-in code, private ones included (scratch card rewards; checkout checks the phone)
+        $stmt = $conn->prepare("SELECT id, coupon_code, discount_type, discount_value, minimum_order_amount, description, valid_from, valid_until, is_milestone FROM coupons WHERE $valid AND coupon_code = :code LIMIT 1");
+        $stmt->execute([':rid' => $restaurant_id, ':code' => strtoupper(substr((string)$_GET['code'], 0, 50))]);
+    } else {
+        // Private reward codes are never listed
+        $stmt = $conn->prepare("SELECT id, coupon_code, discount_type, discount_value, minimum_order_amount, description, valid_from, valid_until, is_milestone FROM coupons WHERE $valid AND owner_phone IS NULL ORDER BY discount_value DESC");
+        $stmt->execute([':rid' => $restaurant_id]);
+    }
     $coupons = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['success' => true, 'coupons' => $coupons]);
