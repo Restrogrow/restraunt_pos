@@ -921,7 +921,20 @@ body.has-ms-hint .offer-bubble { bottom: 140px; }
   padding: 12px 20px 20px;
   border-top: 1px solid #eee;
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: #fff;
 }
+/* The whole sheet scrolls — photo, text and ingredients — so nothing is cut off */
+#productSheetContent { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+#productSheetContent .product-sheet-body { overflow: visible; flex: none; }
+/* Ingredients, shown right in the dish details */
+.ingr-section { margin: 4px 0 14px; padding: 14px; border-radius: 18px; background: #f7fbf8; border: 1px solid #e3f4e8; }
+.ingr-section .ingr-head { padding-right: 0; }
+.ingr-section .ingr-chips { margin-top: 12px; }
+.ingr-section .ingr-chip { background: #fff; }
+.ingr-section .ingr-note { margin-top: 12px; }
 .sheet-add-btn {
   width: 100%;
   padding: 14px;
@@ -2371,10 +2384,14 @@ function showItemDetail(itemId) {
     var displayDesc = descFmt === 'br' ? safeDesc.replace(/\n/g, '<br>') : safeDesc;
     html += '<div class="product-sheet-desc">' + displayDesc + '</div>';
   }
-  // Ingredients: a small button; the list opens in its own popup
+  // Ingredients: shown right here (scroll the sheet to see them all)
   var ingr = itemIngredientList(item);
   if (ingr.length) {
-    html += '<button type="button" class="ingr-btn" onclick="openIngredients(' + item.id + ')"><span class="ic"><i class="fa-solid fa-leaf"></i></span>Ingredients <span class="n">(' + ingr.length + ')</span><i class="fa fa-chevron-right"></i></button>';
+    html += '<div class="ingr-section">' +
+      '<div class="ingr-head"><div class="ic"><i class="fa-solid fa-leaf"></i></div><div><b>Ingredients</b><span>' + ingr.length + ' ingredient' + (ingr.length > 1 ? 's' : '') + '</span></div></div>' +
+      '<div class="ingr-chips">' + ingr.map(function(x, i) { return '<span class="ingr-chip" style="animation-delay:' + (i * 0.03) + 's">' + escapeHtml(x) + '</span>'; }).join('') + '</div>' +
+      '<div class="ingr-note">Ask the restaurant if you have an allergy.</div>' +
+    '</div>';
   }
 
   html += '</div>'; // end body
