@@ -141,7 +141,7 @@ function handleCustomerSignup($pdo) {
         $bday = trim((string)($_POST['birthday'] ?? ''));
         $bday = preg_match('/^\d{4}-\d{2}-\d{2}$/', $bday) && $bday <= date('Y-m-d') && $bday >= '1900-01-01' ? $bday : null;
         $optin = !empty($_POST['whatsapp_optin']) ? 1 : 0;
-        $pdo->prepare('UPDATE customers SET birthday = COALESCE(?, birthday), whatsapp_optin = GREATEST(whatsapp_optin, ?), optin_at = IF(? = 1 AND optin_at IS NULL, NOW(), optin_at) WHERE id = ?')
+        $pdo->prepare('UPDATE customers SET birthday = COALESCE(?, birthday), whatsapp_optin = IF(wa_stopped_at IS NULL, GREATEST(whatsapp_optin, ?), whatsapp_optin), optin_at = IF(? = 1 AND optin_at IS NULL AND wa_stopped_at IS NULL, NOW(), optin_at) WHERE id = ?')
             ->execute([$bday, $optin, $optin, (int)$customerId]);
     } catch (Throwable $e) {
         error_log('Signup loyalty details: ' . $e->getMessage());

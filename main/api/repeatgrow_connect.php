@@ -7,6 +7,9 @@
  *                              API key, save it, and return to the dashboard
  *   ?error=…&state=…         — they pressed Cancel on RepeatGrow
  *
+ * Once connected, every message type's template is created straight away, so the owner
+ * lands on the WhatsApp page with them already in review ("Create templates" stays for later edits).
+ *
  * See config/repeatgrow_connect.php and docs/REPEATGROW_CONNECT.md.
  */
 require_once __DIR__ . '/../db_connection.php';
@@ -51,12 +54,14 @@ try {
     [$ok, $data] = rgcExchangeCode($code);
     if (!$ok) rgcBack('failed', $data);
 
-    $conn->prepare("INSERT INTO wa_settings (restaurant_id, mode, api_key, account_name, rg_account_id, rg_phone, connected_via, connected_at)
-        VALUES (?, 'own', ?, ?, ?, ?, 'connect', NOW())
+    $conn->prepare("INSERT INTO wa_settings (restaurant_id, mode, api_key, account_name, rg_account_id, rg_phone, connected_via, connected_at, lost_at, templates_retry)
+        VALUES (?, 'own', ?, ?, ?, ?, 'connect', NOW(), NULL, 0)
         ON DUPLICATE KEY UPDATE mode = 'own', api_key = VALUES(api_key), account_name = VALUES(account_name), rg_account_id = VALUES(rg_account_id),
-            rg_phone = VALUES(rg_phone), connected_via = 'connect', connected_at = NOW()")
-         ->execute([$rid, (string)$data['api_key'], mb_substr((string)($data['account']['name'] ?? 'RepeatGrow'), 0, 120),
+            rg_phone = VALUES(rg_phone), connected_via = 'connect', connected_at = NOW(), lost_at = NULL, templates_retry = 0")
+         ->execute([$rid, waKeySeal((string)$data['api_key']), mb_substr((string)($data['account']['name'] ?? 'RepeatGrow'), 0, 120),
                     mb_substr((string)($data['account']['id'] ?? ''), 0, 64), mb_substr((string)($data['phone_number'] ?? ''), 0, 30)]);
+    // send every template for review now; a rate limit or error is picked up by the next check
+    try { waTemplatesCreate($conn, $rid); } catch (Throwable $e) { error_log('repeatgrow_connect.php templates: ' . $e->getMessage()); }
     rgcBack('connected');
 } catch (Throwable $e) {
     error_log('repeatgrow_connect.php: ' . $e->getMessage());

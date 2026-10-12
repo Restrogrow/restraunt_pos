@@ -43,7 +43,7 @@
       D = d; draw();
       // templates waiting for WhatsApp: check again every 30 s while this page is open
       clearTimeout(pollT);
-      var waiting = d.settings.connected_via === 'connect' && (d.auto.some(function (a) { return a.template_status === 'pending' || a.pending_template; }) || d.campaigns.some(function (c) { return c.template_status === 'pending'; }));
+      var waiting = d.settings.connected_via === 'connect' && (d.auto.some(function (a) { return a.template_status === 'pending' || a.pending_template; }) || d.campaigns.some(function (c) { return c.template_status === 'pending' || c.template_status === 'queued'; }));
       if (waiting) pollT = setTimeout(function () { var pg = $('whatsappPage'); if (pg && pg.classList.contains('active') && !open && !draft) post({ action: 'templates_sync' }).then(load); else load(); }, 30000);
     });
   }
@@ -133,7 +133,11 @@
       '<div class="wa-grid">' + A.map(autoCard).join('') + '</div>';
   }
   function connectBanner() {
-    if (!D.connect.available) return '';
+    // RepeatGrow stopped accepting the connection (the owner removed RestroGrow there)
+    var lost = D.settings.connection_lost;
+    if (!D.connect.available) return lost ? '<div class="sx-note warn"><span class="material-symbols-rounded">link_off</span><span>' + esc(D.settings.lost_message) + '</span></div>' : '';
+    if (lost) return '<div class="wa-connect wa-connect-lost"><div class="wa-connect-logo"><span class="material-symbols-rounded">link_off</span></div><div><b>' + esc(D.settings.lost_message) + '</b><small>Messages are paused and waiting. Log in to RepeatGrow and click Allow to pick up where you left off.</small></div>' +
+      '<a class="btn btn-primary wa-connect-btn" href="' + esc(D.connect.url) + '"><span class="material-symbols-rounded">link</span> Connect again</a></div>';
     return '<div class="wa-connect"><div class="wa-connect-logo"><span class="material-symbols-rounded">forum</span></div><div><b>Connect your RepeatGrow account</b><small>Log in to RepeatGrow and click Allow. We set up every WhatsApp template for you, no copying.</small></div>' +
       '<a class="btn btn-primary wa-connect-btn" href="' + esc(D.connect.url) + '"><span class="material-symbols-rounded">link</span> Connect RepeatGrow</a></div>';
   }
@@ -180,7 +184,7 @@
     return (draft ? campaignForm() : '<div class="wa-new"><div><b>Send a campaign</b><span>Pick who gets it, write the message, add a gift code if you like.</span></div><button type="button" class="btn btn-primary" data-wa-new><span class="material-symbols-rounded">add</span> New campaign</button></div>') +
       (C.length ? '<div class="wa-camps">' + C.map(function (c) {
         var aud = D.audiences.filter(function (a) { return a.key === c.audience; })[0];
-        return '<div class="wa-camp"><div class="wa-camp-h"><b>' + esc(c.name) + '</b>' + (c.status === 'scheduled' && c.template_status === 'pending' ? '<span class="wa-pill wait">Waiting for approval</span>' : pill(c.status)) + '</div><small>' + esc(aud ? aud.label : c.audience) + ' · ' + esc(String(c.scheduled_at).slice(0, 16).replace('T', ' ')) + (c.gift_kind ? ' · with gift' : '') + '</small>' +
+        return '<div class="wa-camp"><div class="wa-camp-h"><b>' + esc(c.name) + '</b>' + (c.status === 'scheduled' && (c.template_status === 'pending' || c.template_status === 'queued') ? '<span class="wa-pill wait">Waiting for approval</span>' : pill(c.status)) + '</div><small>' + esc(aud ? aud.label : c.audience) + ' · ' + esc(String(c.scheduled_at).slice(0, 16).replace('T', ' ')) + (c.gift_kind ? ' · with gift' : '') + '</small>' +
           '<div class="wa-nums"><div><b>' + c.audience_count + '</b><span>Reached</span></div><div><b>' + c.sent + '</b><span>Sent</span></div><div><b>' + c.orders + '</b><span>Orders</span></div><div><b>' + money(c.revenue) + '</b><span>Revenue</span></div>' +
           (c.status === 'scheduled' || c.status === 'sending' ? '<button type="button" class="lsa-edit" data-wa-cancel="' + c.id + '">Stop</button>' : '') + '</div></div>';
       }).join('') + '</div>' : (draft ? '' : '<div class="lsa-empty" style="margin-top:12px"><span class="material-symbols-rounded">campaign</span><b>No campaigns yet</b><span>Start from a ready idea: “We miss you” brings back quiet customers best.</span></div>'));
@@ -290,6 +294,7 @@
       t.disabled = true; t.innerHTML = '<span class="material-symbols-rounded wa-spin">progress_activity</span> Creating…';
       post({ action: 'templates_create' }).then(function (d) {
         var errs = d.errors ? Object.keys(d.errors).length : 0;
+        if (d.success && d.paused === 'rate_limited') { notify((d.created ? d.created + ' sent to WhatsApp for approval. ' : '') + d.message, 'warning'); load(); return; }
         notify(!d.success ? (d.message || 'Could not create') : d.created + ' sent to WhatsApp for approval' + (errs ? ', ' + errs + ' had a problem' : '') + '. Usually a few minutes.', !d.success || errs ? 'warning' : 'success');
         load();
       });

@@ -18,7 +18,19 @@
  * is open) and from cron/whatsapp_dispatch.php.
  *
  * Never sends from a local computer: localhost requests and CLI runs on Windows
- * are dry runs (logged as "test", nothing leaves the machine).
+ * are dry runs (logged as "test", nothing leaves the machine). The one exception is a
+ * local stand-in RepeatGrow (REPEATGROW_API_URL / REPEATGROW_CONNECT_URL on localhost),
+ * used to test error handling.
+ *
+ * What RepeatGrow can answer, and what happens:
+ *   401 unauthorized   the owner disconnected RestroGrow in RepeatGrow: the connection is
+ *                      cleared (waConnectionLost) and the page asks them to connect again
+ *   429 rate_limited   stop this restaurant's batch; messages stay queued, templates are
+ *                      retried (templates_retry) on the next run
+ *   409 on a template  that name exists with other wording: the next version (_vN) is tried once
+ *   opted_out          the customer replied STOP: no longer opted in here either (waOptedOut)
+ *
+ * The API key is stored encrypted (waKeySeal / waKeyOpen, WA_KEY_SECRET in .env).
  */
 require_once __DIR__ . '/env_loader.php';
 require_once __DIR__ . '/repeatgrow_whatsapp.php';
@@ -123,6 +135,44 @@ if (!function_exists('ensureWhatsappSchema')) {
             INDEX idx_wc_due (status, scheduled_at)
         )");
         ensureRepeatgrowConnectSchema($conn);   // template tracking for "Connect RepeatGrow"
+        waKeysEncryptAll($conn);
+    }
+
+    /* ───────────── API key at rest: AES-256-GCM with WA_KEY_SECRET from .env ───────────── */
+
+    function waKeySecret(): ?string {
+        $k = trim((string)env('WA_KEY_SECRET', ''));
+        if ($k === '') return null;
+        $raw = base64_decode($k, true);
+        return hash('sha256', ($raw !== false && strlen($raw) >= 32) ? $raw : $k, true);
+    }
+    /** Plain key → 'enc:v1:…'. Without WA_KEY_SECRET the key stays as it is (and is encrypted once the secret is set). */
+    function waKeySeal(string $plain): string {
+        if ($plain === '' || strpos($plain, 'enc:v1:') === 0) return $plain;
+        $k = waKeySecret();
+        if ($k === null) return $plain;
+        $iv = random_bytes(12);
+        $tag = '';
+        $ct = openssl_encrypt($plain, 'aes-256-gcm', $k, OPENSSL_RAW_DATA, $iv, $tag, '', 16);
+        return $ct === false ? $plain : 'enc:v1:' . base64_encode($iv . $tag . $ct);
+    }
+    /** Stored value → plain key ('' when it can't be read, e.g. WA_KEY_SECRET changed). Plain values pass through. */
+    function waKeyOpen(string $stored): string {
+        if (strpos($stored, 'enc:v1:') !== 0) return $stored;
+        $k = waKeySecret();
+        $raw = base64_decode(substr($stored, 7), true);
+        $plain = ($k !== null && $raw !== false && strlen($raw) > 28) ? openssl_decrypt(substr($raw, 28), 'aes-256-gcm', $k, OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16)) : false;
+        if ($plain === false) { error_log('WhatsApp: a stored RepeatGrow key could not be decrypted (is WA_KEY_SECRET the same as when it was saved?)'); return ''; }
+        return $plain;
+    }
+    /** Older rows saved before encryption: encrypt them (runs with the schema check, once per request). */
+    function waKeysEncryptAll(PDO $conn): void {
+        if (waKeySecret() === null) return;
+        try {
+            $rows = $conn->query("SELECT restaurant_id, api_key FROM wa_settings WHERE api_key IS NOT NULL AND api_key <> '' AND api_key NOT LIKE 'enc:v1:%'")->fetchAll(PDO::FETCH_ASSOC);
+            $up = $conn->prepare('UPDATE wa_settings SET api_key = ? WHERE restaurant_id = ? AND api_key = ?');
+            foreach ($rows as $r) $up->execute([waKeySeal($r['api_key']), $r['restaurant_id'], $r['api_key']]);
+        } catch (PDOException $e) { error_log('waKeysEncryptAll: ' . $e->getMessage()); }
     }
 
     /** Local computer: never send for real. */
@@ -137,12 +187,49 @@ if (!function_exists('ensureWhatsappSchema')) {
         $st->execute([$rid]);
         $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
         return ['enabled' => (int)($r['enabled'] ?? 0), 'mode' => ($r['mode'] ?? '') === 'own' ? 'own' : 'platform',
-                'api_key' => (string)($r['api_key'] ?? ''), 'account_name' => (string)($r['account_name'] ?? ''),
+                'api_key' => waKeyOpen((string)($r['api_key'] ?? '')), 'account_name' => (string)($r['account_name'] ?? ''),
                 'quiet_start' => (int)($r['quiet_start'] ?? 21), 'quiet_end' => (int)($r['quiet_end'] ?? 9),
                 'weekly_cap' => (int)($r['weekly_cap'] ?? 2), 'test_phone' => (string)($r['test_phone'] ?? ''),
                 'last_dispatch' => $r['last_dispatch'] ?? null,
                 'connected_via' => (string)($r['connected_via'] ?? ''), 'rg_phone' => (string)($r['rg_phone'] ?? ''),
-                'connected_at' => $r['connected_at'] ?? null, 'templates_synced_at' => $r['templates_synced_at'] ?? null];
+                'connected_at' => $r['connected_at'] ?? null, 'templates_synced_at' => $r['templates_synced_at'] ?? null,
+                'lost_at' => $r['lost_at'] ?? null, 'templates_retry' => (int)($r['templates_retry'] ?? 0)];
+    }
+
+    /** Template statuses are checked at most every 10 minutes (and right away after a rate limit cleared them). */
+    function waTemplatesSyncDue(array $s): bool {
+        return $s['connected_via'] === 'connect' && (empty($s['templates_synced_at']) || strtotime($s['templates_synced_at']) < time() - 600);
+    }
+
+    /** Forget every template made through a connection (Disconnect, or the key stopped working). */
+    function waResetTemplates(PDO $conn, string $rid): void {
+        // a different RepeatGrow account may be connected next: its templates are checked again from scratch
+        $conn->prepare('UPDATE wa_auto SET template_name = IF(template_text IS NULL, template_name, NULL), template_status = NULL, template_reason = NULL, pending_template = NULL, pending_text = NULL, pending_vars = NULL, template_text = NULL WHERE restaurant_id = ?')->execute([$rid]);
+    }
+
+    /** RepeatGrow answered 401: the owner disconnected RestroGrow there. Clear it as Disconnect does. */
+    function waConnectionLost(PDO $conn, string $rid): void {
+        $conn->prepare("UPDATE wa_settings SET enabled = 0, api_key = NULL, account_name = NULL, rg_account_id = NULL, rg_phone = NULL, connected_via = NULL, connected_at = NULL,
+            templates_retry = 0, lost_at = NOW() WHERE restaurant_id = ?")->execute([$rid]);
+        waResetTemplates($conn, $rid);
+        error_log("WhatsApp $rid: RepeatGrow no longer accepts the key (401), connection cleared");
+    }
+    function waLostMessage(): string { return 'RepeatGrow was disconnected. Connect again to keep sending.'; }
+
+    /** The customer replied STOP on WhatsApp (RepeatGrow: opted_out): stop messaging them from here too. */
+    function waOptedOut(PDO $conn, string $rid, array $m): void {
+        $why = 'Replied STOP on WhatsApp, so no longer opted in';
+        $conn->prepare('UPDATE customers SET whatsapp_optin = 0, wa_stopped_at = NOW() WHERE restaurant_id = ? AND (id = ? OR phone = ?)')
+             ->execute([$rid, (int)($m['customer_id'] ?? 0), (string)$m['phone']]);
+        // this message and anything else still waiting for them
+        $rows = $conn->prepare("SELECT id, ref_type, ref_id FROM wa_outbox WHERE restaurant_id = ? AND phone = ? AND (id = ? OR status = 'queued')");
+        $rows->execute([$rid, (string)$m['phone'], (int)$m['id']]);
+        $skip = $conn->prepare("UPDATE wa_outbox SET status = 'skipped', error = ?, attempts = attempts + IF(id = ?, 1, 0) WHERE id = ?");
+        $gift = $conn->prepare("UPDATE loyalty_rewards_issued SET notify_status = 'opted_out' WHERE id = ? AND restaurant_id = ?");
+        foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $o) {
+            $skip->execute([$why, (int)$m['id'], (int)$o['id']]);
+            if ($o['ref_type'] === 'gift') $gift->execute([(int)$o['ref_id'], $rid]);
+        }
     }
 
     /** RestroGrow's ready-made gift template (platform mode). */
@@ -164,7 +251,10 @@ if (!function_exists('ensureWhatsappSchema')) {
     /** The owner's setup for each message type, defaults filled in. */
     function waAutoConfig(PDO $conn, string $rid): array {
         $out = [];
-        foreach (waKinds() as $k => $d) $out[$k] = ['kind' => $k, 'label' => $d[0], 'icon' => $d[1], 'enabled' => 1, 'template_name' => '', 'language' => 'en', 'message' => $d[2]];
+        foreach (waKinds() as $k => $d) $out[$k] = ['kind' => $k, 'label' => $d[0], 'icon' => $d[1], 'enabled' => 1, 'template_name' => '', 'language' => 'en', 'message' => $d[2],
+            // no row yet (e.g. just connected): no template made for it so far
+            'template_status' => null, 'template_reason' => null, 'pending_template' => null, 'template_text' => null, 'pending_text' => null,
+            'template_version' => 0, 'template_vars' => null, 'pending_vars' => null];
         $st = $conn->prepare('SELECT * FROM wa_auto WHERE restaurant_id = ?');
         $st->execute([$rid]);
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
@@ -262,11 +352,17 @@ if (!function_exists('ensureWhatsappSchema')) {
         return ['template_name' => $name, 'language' => $auto['language'] ?? 'en', 'params' => $params, 'body' => $body];
     }
 
-    /** POST one message to RepeatGrow. Returns [ok, message_id|null, error|null]. */
+    function waLocalUrl(string $url): bool { return in_array(parse_url($url, PHP_URL_HOST), ['localhost', '127.0.0.1'], true); }
+
+    /**
+     * POST one message to RepeatGrow. Returns [ok, message_id|null, error|null, reason|null] where
+     * reason is 'unauthorized' (401), 'rate_limited' (429), 'opted_out' (customer replied STOP) or 'network'.
+     */
     function waSend(array $s, string $phone, ?string $templateName, string $lang, array $params, string $text): array {
-        if (waDryRun()) return [true, 'test-' . substr(md5($phone . microtime(true)), 0, 10), null];
         $c = waConnection($s);
-        if (!$c) return [false, null, 'WhatsApp is not connected'];
+        // local computer: nothing is sent, except to a local stand-in RepeatGrow
+        if (waDryRun() && !($c && waLocalUrl($c['url']))) return [true, 'test-' . substr(md5($phone . microtime(true)), 0, 10), null, null];
+        if (!$c) return [false, null, 'WhatsApp is not connected', null];
         $payload = ['to' => normalizePhoneForWhatsapp($phone)];
         if ($templateName) $payload += ['type' => 'template', 'template' => ['name' => $templateName, 'language' => $lang, 'params' => array_values($params)]];
         else $payload += ['type' => 'text', 'text' => $text];
@@ -277,10 +373,11 @@ if (!function_exists('ensureWhatsappSchema')) {
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $err = curl_error($ch);
         curl_close($ch);
-        if ($res === false) return [false, null, 'Could not reach WhatsApp: ' . $err];
-        $d = json_decode((string)$res, true);
-        if ($code >= 200 && $code < 300) return [true, $d['data']['whatsapp_message_id'] ?? $d['data']['message_id'] ?? null, null];
-        return [false, null, mb_substr((string)($d['error']['message'] ?? ('Error ' . $code)), 0, 250)];
+        if ($res === false) return [false, null, 'Could not reach WhatsApp: ' . $err, 'network'];
+        $d = json_decode((string)$res, true) ?: [];
+        if ($code >= 200 && $code < 300) return [true, $d['data']['whatsapp_message_id'] ?? $d['data']['message_id'] ?? null, null, null];
+        $why = $code === 401 ? 'unauthorized' : ($code === 429 ? 'rate_limited' : rgcErrorCode($d));
+        return [false, null, mb_substr(rgcError($d, 'Error ' . $code), 0, 250), $why !== '' ? $why : null];
     }
 
     /** Check an API key (GET …/me). Returns [ok, account name or error]. */
@@ -431,6 +528,7 @@ if (!function_exists('ensureWhatsappSchema')) {
         $samples = waTemplateSamples($conn, $rid);
         $slug = waTemplateSlug($conn, $rid);
         $save = $conn->prepare('INSERT INTO wa_auto (restaurant_id, kind) VALUES (?, ?) ON DUPLICATE KEY UPDATE kind = kind');
+        try {
         foreach (waAutoConfig($conn, $rid) as $kind => $a) {
             if ($kinds !== null && !in_array($kind, $kinds, true)) continue;
             [$text, $vars] = waTemplateFromMessage($a['message']);
@@ -439,7 +537,14 @@ if (!function_exists('ensureWhatsappSchema')) {
             $isUpdate = $a['template_status'] === 'approved' && !empty($a['template_name']);
             $version = $isUpdate ? (int)$a['template_version'] + 1 : (int)$a['template_version'];
             $name = $slug . '_' . $kind . '_gift' . ($version > 0 ? '_v' . ($version + 1) : '');
-            [$ok, $res] = rgcCreateTemplate($s['api_key'], $name, $a['language'] ?: 'en', $text, array_map(function ($k) use ($samples) { return (string)$samples[$k]; }, $vars));
+            $sampleVals = array_map(function ($k) use ($samples) { return (string)$samples[$k]; }, $vars);
+            [$ok, $res, $http] = rgcCreateTemplate($s['api_key'], $name, $a['language'] ?: 'en', $text, $sampleVals);
+            if (!$ok && $http === 409) {
+                // RepeatGrow already has this name with other wording (e.g. after reconnecting): use the next version
+                $version++;
+                $name = $slug . '_' . $kind . '_gift_v' . ($version + 1);
+                [$ok, $res, $http] = rgcCreateTemplate($s['api_key'], $name, $a['language'] ?: 'en', $text, $sampleVals);
+            }
             if (!$ok) { $out['errors'][$kind] = $res; continue; }
             $save->execute([$rid, $kind]);
             $status = rgcStatus($res);
@@ -451,6 +556,23 @@ if (!function_exists('ensureWhatsappSchema')) {
                      ->execute([$name, $status, $text, json_encode($vars), $version, $rid, $kind]);
             }
             $out['created']++;
+        }
+        } catch (RgcHalt $h) {
+            return waTemplatesHalted($conn, $rid, $h, $out);
+        }
+        if ($kinds === null && $s['templates_retry']) $conn->prepare('UPDATE wa_settings SET templates_retry = 0 WHERE restaurant_id = ?')->execute([$rid]);
+        return $out;
+    }
+
+    /** A template call was stopped by RepeatGrow: 401 clears the connection, 429 tries the rest on the next run. */
+    function waTemplatesHalted(PDO $conn, string $rid, RgcHalt $h, array $out): array {
+        $out['paused'] = $h->reason;
+        if ($h->reason === 'unauthorized') {
+            waConnectionLost($conn, $rid);
+            $out['errors']['_'] = waLostMessage();
+        } else {
+            $conn->prepare('UPDATE wa_settings SET templates_retry = 1, templates_synced_at = NULL WHERE restaurant_id = ?')->execute([$rid]);
+            $out['errors']['_rate'] = 'RepeatGrow is busy right now. The rest go for review by themselves in a few minutes.';
         }
         return $out;
     }
@@ -467,7 +589,20 @@ if (!function_exists('ensureWhatsappSchema')) {
         }
         $name = waTemplateSlug($conn, $rid) . '_offer_' . substr(md5($text), 0, 8);
         $samples = waTemplateSamples($conn, $rid);
-        [$ok, $res] = rgcCreateTemplate($s['api_key'], $name, $language, $text, array_map(function ($k) use ($samples) { return (string)$samples[$k]; }, $vars));
+        $sampleVals = array_map(function ($k) use ($samples) { return (string)$samples[$k]; }, $vars);
+        try {
+            [$ok, $res, $http] = rgcCreateTemplate($s['api_key'], $name, $language, $text, $sampleVals);
+            if (!$ok && $http === 409) {   // that name exists in RepeatGrow with other wording: next version
+                $name .= '_v2';
+                [$ok, $res, $http] = rgcCreateTemplate($s['api_key'], $name, $language, $text, $sampleVals);
+            }
+        } catch (RgcHalt $h) {
+            if ($h->reason === 'unauthorized') { waConnectionLost($conn, $rid); return [false, waLostMessage()]; }
+            // rate limited: the campaign waits, and the next check creates its template
+            $conn->prepare("UPDATE wa_campaigns SET template_name = ?, template_status = 'queued', template_vars = ? WHERE id = ?")->execute([$name, json_encode($vars), $campaignId]);
+            $conn->prepare('UPDATE wa_settings SET templates_retry = 1, templates_synced_at = NULL WHERE restaurant_id = ?')->execute([$rid]);
+            return [true, 'queued'];
+        }
         if (!$ok) return [false, $res];
         $status = rgcStatus($res);
         $conn->prepare('UPDATE wa_campaigns SET template_name = ?, template_status = ?, template_vars = ? WHERE id = ?')->execute([$name, $status, json_encode($vars), $campaignId]);
@@ -482,6 +617,17 @@ if (!function_exists('ensureWhatsappSchema')) {
         $s = waSettings($conn, $rid);
         if ($s['connected_via'] !== 'connect' || $s['api_key'] === '') return [];
         $conn->prepare('UPDATE wa_settings SET templates_synced_at = NOW() WHERE restaurant_id = ?')->execute([$rid]);
+        try {
+            return waTemplatesSyncRun($conn, $rid, $s);
+        } catch (RgcHalt $h) {
+            if ($h->reason === 'unauthorized') { waConnectionLost($conn, $rid); return ['paused' => 'unauthorized', 'message' => waLostMessage()]; }
+            // rate limited: check again on the next run instead of in 10 minutes
+            $conn->prepare('UPDATE wa_settings SET templates_synced_at = NULL WHERE restaurant_id = ?')->execute([$rid]);
+            return ['paused' => 'rate_limited'];
+        }
+    }
+
+    function waTemplatesSyncRun(PDO $conn, string $rid, array $s): array {
         $auto = waAutoConfig($conn, $rid);
         $names = [];
         foreach ($auto as $a) { if (!empty($a['template_name']) && !empty($a['template_status'])) $names[] = $a['template_name']; if (!empty($a['pending_template'])) $names[] = $a['pending_template']; }
@@ -513,6 +659,17 @@ if (!function_exists('ensureWhatsappSchema')) {
             $conn->prepare('UPDATE wa_campaigns SET template_status = ?, template_reason = ?' . ($cs === 'rejected' ? ", status = 'rejected'" : '') . ' WHERE id = ?')
                  ->execute([$cs, $st[$c['template_name']][1] ?: null, (int)$c['id']]);
         }
+        // campaigns whose template waited for a rate limit
+        $waitCamps = $conn->prepare("SELECT id, message, language FROM wa_campaigns WHERE restaurant_id = ? AND template_status = 'queued' AND status = 'scheduled' ORDER BY id");
+        $waitCamps->execute([$rid]);
+        foreach ($waitCamps->fetchAll(PDO::FETCH_ASSOC) as $c) {
+            [$ok, $res] = waCampaignTemplate($conn, $rid, (int)$c['id'], $c['message'], $c['language'] ?: 'en');
+            if ($ok && $res === 'queued') return ['paused' => 'rate_limited'];
+            if (!$ok) $conn->prepare("UPDATE wa_campaigns SET template_status = 'rejected', template_reason = ?, status = 'rejected' WHERE id = ?")->execute([mb_substr($res, 0, 255), (int)$c['id']]);
+            if (!$ok && $res === waLostMessage()) return ['paused' => 'unauthorized', 'message' => $res];
+        }
+        // a template batch that hit the rate limit: send the rest now
+        if ($s['templates_retry']) return waTemplatesCreate($conn, $rid);
         // wordings changed since their template was made (e.g. edited in Autopilot): send the new one for review
         $changed = [];
         foreach (waAutoConfig($conn, $rid) as $kind => $a) {
@@ -537,8 +694,9 @@ if (!function_exists('ensureWhatsappSchema')) {
         if (!$lock) return $out;
         try {
             $conn->prepare('UPDATE wa_settings SET last_dispatch = NOW() WHERE restaurant_id = ?')->execute([$rid]);
-            if ($s['connected_via'] === 'connect' && (empty($s['templates_synced_at']) || strtotime($s['templates_synced_at']) < time() - 600)) {
-                try { waTemplatesSync($conn, $rid); } catch (Throwable $e) { error_log('waTemplatesSync: ' . $e->getMessage()); }
+            if (waTemplatesSyncDue($s)) {
+                try { $sync = waTemplatesSync($conn, $rid); } catch (Throwable $e) { $sync = []; error_log('waTemplatesSync: ' . $e->getMessage()); }
+                if (($sync['paused'] ?? '') === 'unauthorized') { $out['paused'] = 'unauthorized'; return $out; }
             }
             waQueueGifts($conn, $rid, $s);
             if ($s['mode'] === 'own') waStartCampaigns($conn, $rid, $s);
@@ -547,18 +705,33 @@ if (!function_exists('ensureWhatsappSchema')) {
             $st->execute([$rid]);
             $cap = $conn->prepare("SELECT COUNT(*) FROM wa_outbox WHERE restaurant_id = ? AND phone = ? AND kind = 'campaign' AND status = 'sent' AND sent_at >= NOW() - INTERVAL 7 DAY");
             $upd = $conn->prepare('UPDATE wa_outbox SET status = ?, error = ?, attempts = attempts + 1, sent_at = ?, message_id = ?, send_after = ? WHERE id = ?');
+            $stopped = [];   // phones that replied STOP during this run: their other messages are already skipped
             foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $m) {
+                if (isset($stopped[$m['phone']])) continue;
                 $retry = false;
                 if ($m['kind'] === 'campaign' && $s['weekly_cap'] > 0) {
                     $cap->execute([$rid, $m['phone']]);
                     if ((int)$cap->fetchColumn() >= $s['weekly_cap']) { $upd->execute(['skipped', 'Weekly limit for this customer', null, null, null, $m['id']]); continue; }
                 }
-                [$ok, $mid, $err] = waSend($s, $m['phone'], $m['template_name'] ?: null, $m['language'] ?: 'en', json_decode((string)$m['params'], true) ?: [], (string)$m['body']);
+                [$ok, $mid, $err, $why] = waSend($s, $m['phone'], $m['template_name'] ?: null, $m['language'] ?: 'en', json_decode((string)$m['params'], true) ?: [], (string)$m['body']) + [3 => null];
+                if (!$ok && $why === 'rate_limited') {
+                    // RepeatGrow's limit (120 a minute): this one and the rest wait for the next run, not failed
+                    $conn->prepare('UPDATE wa_outbox SET error = ? WHERE id = ?')->execute(['Waiting: RepeatGrow asked us to slow down. Sends on the next run.', $m['id']]);
+                    $out['paused'] = 'rate_limited';
+                    break;
+                }
+                if (!$ok && $why === 'unauthorized' && $s['mode'] === 'own') {
+                    // the owner disconnected RestroGrow in RepeatGrow: stays queued until they connect again
+                    waConnectionLost($conn, $rid);
+                    $out['paused'] = 'unauthorized';
+                    break;
+                }
+                if (!$ok && $why === 'opted_out') { waOptedOut($conn, $rid, $m); $stopped[$m['phone']] = true; $out['opted_out'] = ($out['opted_out'] ?? 0) + 1; continue; }
                 if ($ok) {
                     $upd->execute(['sent', null, date('Y-m-d H:i:s'), $mid, null, $m['id']]);
                     $out['sent']++;
                 } else {
-                    $retry = (int)$m['attempts'] + 1 < 3 && stripos((string)$err, 'reach') !== false;   // network trouble: try again later
+                    $retry = (int)$m['attempts'] + 1 < 3 && $why === 'network';   // network trouble: try again later
                     $upd->execute([$retry ? 'queued' : 'failed', $err, null, null, $retry ? date('Y-m-d H:i:s', time() + 600) : null, $m['id']]);
                     if (!$retry) $out['failed']++;
                 }

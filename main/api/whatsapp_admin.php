@@ -80,7 +80,9 @@ try {
         waOut(['success' => true, 'currency' => $r['cur'], 'restaurant' => $r['name'], 'dry_run' => waDryRun(),
             'settings' => ['enabled' => $s['enabled'], 'mode' => $s['mode'], 'key_last4' => $s['api_key'] !== '' ? substr($s['api_key'], -4) : '', 'account_name' => $s['account_name'],
                            'quiet_start' => $s['quiet_start'], 'quiet_end' => $s['quiet_end'], 'weekly_cap' => $s['weekly_cap'], 'test_phone' => $s['test_phone'], 'last_dispatch' => $s['last_dispatch'],
-                           'connected_via' => $s['connected_via'], 'rg_phone' => $s['rg_phone'], 'connected_at' => $s['connected_at'], 'templates_synced_at' => $s['templates_synced_at']],
+                           'connected_via' => $s['connected_via'], 'rg_phone' => $s['rg_phone'], 'connected_at' => $s['connected_at'], 'templates_synced_at' => $s['templates_synced_at'],
+                           // the owner disconnected RestroGrow in RepeatGrow (it answered 401)
+                           'connection_lost' => !empty($s['lost_at']) && $s['connected_via'] === '', 'lost_message' => waLostMessage()],
             'connect' => ['available' => rgcAvailable(), 'url' => '../api/repeatgrow_connect.php?action=start', 'repeatgrow' => rgcBase()],
             'platform' => ['available' => env('REPEATGROW_API_URL') && env('REPEATGROW_API_KEY') && $pt['name'] !== '', 'template' => $pt['name'], 'text' => $pt['text']],
             'kpis' => ['customers' => (int)$k['total'], 'optin' => (int)$k['optin'], 'sent' => (int)$sum['sent'], 'failed' => (int)$sum['failed'], 'queued' => (int)$sum['queued'], 'revenue' => $rev],
@@ -89,6 +91,7 @@ try {
             'campaigns' => array_map(function ($c) { return ['id' => (int)$c['id'], 'name' => $c['name'], 'audience' => $c['audience'], 'template_name' => $c['template_name'], 'language' => $c['language'],
                 'message' => $c['message'], 'gift_kind' => $c['gift_kind'], 'gift_value' => (float)$c['gift_value'], 'gift_item_id' => $c['gift_item_id'] ? (int)$c['gift_item_id'] : null,
                 'gift_min_order' => (float)$c['gift_min_order'], 'gift_valid_days' => (int)$c['gift_valid_days'], 'scheduled_at' => $c['scheduled_at'], 'status' => $c['status'],
+                'template_status' => $c['template_status'] ?? null,
                 'audience_count' => (int)$c['audience_count'], 'sent' => (int)$c['sent'], 'failed' => (int)$c['failed'], 'orders' => (int)$c['orders'], 'revenue' => (float)$c['revenue']]; }, $campaigns),
             'log' => array_map(function ($l) { return ['id' => (int)$l['id'], 'kind' => $l['kind'], 'phone' => substr($l['phone'], 0, 2) . '******' . substr($l['phone'], -2), 'name' => $l['name'],
                 'body' => $l['body'], 'status' => $l['status'], 'error' => $l['error'], 'at' => $l['sent_at'] ?: $l['created_at']]; }, $log),
@@ -114,8 +117,9 @@ try {
         if (isset($in['api_key']) && trim((string)$in['api_key']) !== '') {
             [$ok, $name] = waCheckKey(trim((string)$in['api_key']));
             if (!$ok) waOut(['success' => false, 'message' => $name], 400);
-            $cols['api_key'] = trim((string)$in['api_key']);
+            $cols['api_key'] = waKeySeal(trim((string)$in['api_key']));   // stored encrypted
             $cols['connected_via'] = 'key';
+            $cols['lost_at'] = null;
             $cols['account_name'] = mb_substr($name, 0, 120);
         }
         if ($cols['enabled'] && $mode === 'own' && empty($cols['api_key']) && $s['api_key'] === '') waOut(['success' => false, 'message' => 'Paste your RepeatGrow API key to use your own number'], 400);
@@ -150,6 +154,7 @@ try {
             // connected: the new wording goes to Meta for review by itself
             if ($s['connected_via'] === 'connect') {
                 $r2 = waTemplatesCreate($conn, $rid, [$kind]);
+                if (!empty($r2['errors']['_']) || !empty($r2['errors']['_rate'])) waOut(['success' => true, 'warning' => 'Saved. ' . ($r2['errors']['_'] ?? $r2['errors']['_rate'])]);
                 if (!empty($r2['errors'][$kind])) waOut(['success' => true, 'warning' => 'Saved, but RepeatGrow said: ' . $r2['errors'][$kind]]);
                 if ($r2['created']) waOut(['success' => true, 'submitted' => true]);
             }
@@ -178,7 +183,10 @@ try {
                     : ($st0 === 'rejected' ? 'WhatsApp turned this wording down. Change the message and save to send it again.' : 'Add the approved template name first')], 400);
             }
         }
-        [$ok, $mid, $err] = waSend($s, $s['test_phone'], $b['template_name'], $b['language'], $b['params'], $b['body']);
+        [$ok, $mid, $err, $why] = waSend($s, $s['test_phone'], $b['template_name'], $b['language'], $b['params'], $b['body']);
+        if (!$ok && $why === 'unauthorized' && $s['mode'] === 'own') { waConnectionLost($conn, $rid); $err = waLostMessage(); }
+        if (!$ok && $why === 'rate_limited') $err = 'RepeatGrow is busy right now. Try the test again in a minute.';
+        if (!$ok && $why === 'opted_out') $err = 'Your test number replied STOP on WhatsApp, so RepeatGrow won’t send offers to it. Use another number for tests.';
         waOut(['success' => $ok, 'message' => $ok ? (waDryRun() ? 'Test only: on this computer nothing is sent. It would say: ' . $b['body'] : 'Sent to your phone') : $err, 'body' => $b['body']]);
     }
 
@@ -235,15 +243,14 @@ try {
     if ($action === 'templates_create') {
         $kinds = isset($in['kinds']) && is_array($in['kinds']) ? array_values(array_intersect($in['kinds'], array_keys(waKinds()))) : null;
         $r3 = waTemplatesCreate($conn, $rid, $kinds);
-        waOut(['success' => empty($r3['errors']['_']), 'message' => $r3['errors']['_'] ?? null] + $r3);
+        waOut(['success' => empty($r3['errors']['_']), 'message' => $r3['errors']['_'] ?? $r3['errors']['_rate'] ?? null] + $r3);
     }
     if ($action === 'templates_sync') waOut(['success' => true, 'result' => waTemplatesSync($conn, $rid)]);
 
     if ($action === 'disconnect') {
         if ($s['connected_via'] === 'connect' && $s['api_key'] !== '') rgcRevoke($s['api_key']);
-        $conn->prepare("UPDATE wa_settings SET enabled = 0, api_key = NULL, account_name = NULL, rg_account_id = NULL, rg_phone = NULL, connected_via = NULL, connected_at = NULL WHERE restaurant_id = ?")->execute([$rid]);
-        // a different RepeatGrow account may be connected next: its templates are checked again from scratch
-        $conn->prepare('UPDATE wa_auto SET template_name = IF(template_text IS NULL, template_name, NULL), template_status = NULL, template_reason = NULL, pending_template = NULL, pending_text = NULL, pending_vars = NULL, template_text = NULL WHERE restaurant_id = ?')->execute([$rid]);
+        $conn->prepare("UPDATE wa_settings SET enabled = 0, api_key = NULL, account_name = NULL, rg_account_id = NULL, rg_phone = NULL, connected_via = NULL, connected_at = NULL, lost_at = NULL, templates_retry = 0 WHERE restaurant_id = ?")->execute([$rid]);
+        waResetTemplates($conn, $rid);
         waOut(['success' => true]);
     }
 

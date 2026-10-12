@@ -76,6 +76,9 @@ All responses use the existing `{ data }` / `{ error: { code, message } }` envel
 - RestroGrow checks statuses every ~10 minutes (and every 30 s while the owner watches the page)
   with `GET /api/v1/templates?names=…` (up to 50 names per call).
 - Body only: no header, footer or buttons. Category is sent uppercase (`MARKETING`).
+- Right after the owner connects, all 11 are created at once (they land on the WhatsApp page
+  already in review). Restaurants that are connected but haven't switched WhatsApp on yet
+  still get their statuses checked by the cron.
 
 **Sending** (existing endpoint):
 ```json
@@ -184,10 +187,21 @@ Vitest: scope list; code issue/exchange (expired, reused, wrong redirect_uri, wr
 template create idempotency (same body pending/approved → no resubmit, approved+different → 409,
 rejected → resubmit); revoke-self; consent page rejects unknown redirect_uri without redirecting.
 
+**How RestroGrow handles RepeatGrow's answers:**
+
+| Answer | What RestroGrow does |
+|---|---|
+| `401 unauthorized` (key revoked, e.g. disconnected in RepeatGrow › Settings › Connected apps) | Clears the connection (key, `connected_via`, `rg_*`, WhatsApp off) and shows "RepeatGrow was disconnected. Connect again to keep sending." Queued messages stay queued for the reconnect. Only for the restaurant's own key, never RestroGrow's platform key. |
+| `429 rate_limited` | Stops that restaurant's batch. Messages stay queued (not failed); template creation and status checks resume on the next cron run. |
+| `409` on `POST /api/v1/templates` | That name and language exist with other wording: retries once as the next version (`_vN`). |
+| `error.code = "opted_out"` on send | The customer replied STOP: marked not opted in (`customers.whatsapp_optin = 0`, `wa_stopped_at`), their other waiting messages are skipped, and the log shows "Replied STOP on WhatsApp". Checkout doesn't opt them back in; only ticking the box on the rewards page does. |
+
 ## 4. Security notes
 - Exact-match redirect URIs; the code is single-use, 5 minutes, stored hashed.
 - The client secret only ever travels server to server; the API key is never shown in either UI.
 - Keys are account-scoped and carry only the approved scopes; the owner can revoke from either side.
+- RestroGrow stores the key encrypted (AES-256-GCM, `WA_KEY_SECRET` in `.env`); keys saved before
+  that are encrypted automatically once the secret is set.
 - `restaurant` and `state` are untrusted: escape when displaying, pass `state` back unchanged.
 
 ## 5. Local testing

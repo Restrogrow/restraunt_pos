@@ -22,7 +22,7 @@ require_once __DIR__ . '/growth_helpers.php';
 require_once __DIR__ . '/coupon_helpers.php';
 require_once __DIR__ . '/order_abuse_guard.php';
 
-if (!defined('LOYALTY_ENGINE_VERSION')) define('LOYALTY_ENGINE_VERSION', 1);
+if (!defined('LOYALTY_ENGINE_VERSION')) define('LOYALTY_ENGINE_VERSION', 2);   // 2: customers.wa_stopped_at (WhatsApp STOP)
 if (!defined('LOYALTY_PROGRAM_TYPES')) define('LOYALTY_PROGRAM_TYPES', ['cashback', 'points', 'stamps']);
 
 if (!function_exists('ensureLoyaltyEngineSchema')) {
@@ -59,6 +59,7 @@ if (!function_exists('ensureLoyaltyEngineSchema')) {
             'anniversary' => 'DATE NULL',
             'whatsapp_optin' => 'TINYINT NOT NULL DEFAULT 0',
             'optin_at' => 'DATETIME NULL',
+            'wa_stopped_at' => 'DATETIME NULL',   // replied STOP on WhatsApp: only the rewards page opts them back in
             'stamps' => 'INT NOT NULL DEFAULT 0',
         ] as $col => $def) $addCol('customers', $col, $def);
 

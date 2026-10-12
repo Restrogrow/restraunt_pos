@@ -5,6 +5,10 @@
  * already does this every minute while it is open; run this every 5 minutes so
  * messages also go out when nobody is logged in.
  *
+ * Restaurants connected to RepeatGrow but with WhatsApp not switched on yet still get
+ * their template reviews checked (every 10 minutes), so the statuses are current when
+ * the owner turns it on. Nothing is sent for them.
+ *
  * CLI:  php /path/to/main/cron/whatsapp_dispatch.php
  * URL:  https://restrogrow.com/main/cron/whatsapp_dispatch.php?key=YOUR_SECRET
  */
@@ -39,6 +43,18 @@ try {
             $sent += $r['sent']; $failed += $r['failed'];
         } catch (Throwable $e) { error_log("whatsapp cron $rid: " . $e->getMessage()); }
     }
+    // Connected but not switched on yet: only follow Meta's template review
+    $idle = $conn->query("SELECT restaurant_id FROM wa_settings WHERE enabled = 0 AND connected_via = 'connect'")->fetchAll(PDO::FETCH_COLUMN);
+    $synced = 0;
+    foreach ($idle as $rid) {
+        try {
+            if (!waTemplatesSyncDue(waSettings($conn, $rid))) continue;
+            waTemplatesSync($conn, $rid);
+            $synced++;
+        } catch (Throwable $e) { error_log("whatsapp cron templates $rid: " . $e->getMessage()); }
+    }
+    echo "Template reviews checked (WhatsApp not on yet): {$synced}
+";
     // Phone wallet cards: push balance changes for every restaurant with the card on
     require_once __DIR__ . '/../config/wallet_card.php';
     require_once __DIR__ . '/../config/vip_membership.php';

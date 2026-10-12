@@ -901,11 +901,16 @@ $conn->beginTransaction();
     // features (see customer_session.php's getAuthorizedCustomer()) work for
     // guest checkout without requiring an account, while still requiring
     // actual proof of ownership rather than trusting a bare phone parameter.
-    // WhatsApp consent ticked at checkout (Growth › WhatsApp). Only ever switches it on here.
+    // WhatsApp consent ticked at checkout (Growth › WhatsApp). Only ever switches it on here,
+    // and not for someone who replied STOP on WhatsApp (the box may just be remembered by their phone).
     if (!empty($input['whatsapp_optin'])) {
         try {
-            $conn->prepare('UPDATE customers SET optin_at = IF(whatsapp_optin = 1, optin_at, NOW()), whatsapp_optin = 1 WHERE id = ?')->execute([(int)$customer_id]);
-        } catch (PDOException $e) { error_log('checkout WhatsApp opt-in: ' . $e->getMessage()); }
+            $conn->prepare('UPDATE customers SET optin_at = IF(whatsapp_optin = 1, optin_at, NOW()), whatsapp_optin = 1 WHERE id = ? AND wa_stopped_at IS NULL')->execute([(int)$customer_id]);
+        } catch (PDOException $e) {
+            // wa_stopped_at not added on this server yet
+            try { $conn->prepare('UPDATE customers SET optin_at = IF(whatsapp_optin = 1, optin_at, NOW()), whatsapp_optin = 1 WHERE id = ?')->execute([(int)$customer_id]); }
+            catch (PDOException $e2) { error_log('checkout WhatsApp opt-in: ' . $e2->getMessage()); }
+        }
     }
 
     $_SESSION['ordering_customer_id'] = (int)$customer_id;

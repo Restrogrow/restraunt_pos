@@ -195,8 +195,9 @@ try {
             if (!$customer) throw new Exception('Please log in first.');
             $date = function ($v) { $v = trim((string)$v); return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) && strtotime($v) && $v <= date('Y-m-d') && $v >= '1900-01-01' ? $v : null; };
             $optin = !empty($_POST['whatsapp_optin']) ? 1 : 0;
-            $conn->prepare('UPDATE customers SET optin_at = IF(? = 1 AND whatsapp_optin = 0, NOW(), optin_at), birthday = COALESCE(?, birthday), anniversary = ?, whatsapp_optin = ? WHERE id = ?')
-                 ->execute([$optin, $date($_POST['birthday'] ?? ''), $date($_POST['anniversary'] ?? ''), $optin, (int)$customer['id']]);
+            // ticking the box here is a clear choice, so it also undoes an earlier STOP on WhatsApp
+            $conn->prepare('UPDATE customers SET optin_at = IF(? = 1 AND whatsapp_optin = 0, NOW(), optin_at), wa_stopped_at = IF(? = 1, NULL, wa_stopped_at), birthday = COALESCE(?, birthday), anniversary = ?, whatsapp_optin = ? WHERE id = ?')
+                 ->execute([$optin, $optin, $date($_POST['birthday'] ?? ''), $date($_POST['anniversary'] ?? ''), $optin, (int)$customer['id']]);
             echo json_encode(['success' => true]);
             break;
 

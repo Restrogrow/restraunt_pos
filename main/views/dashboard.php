@@ -4493,6 +4493,8 @@ function toggleGatewayMode() {
         .wa-tplbar > div, .wa-connect > div:nth-child(2), .wa-connected > div { flex: 1; min-width: 200px; }
         .wa-tplbar b, .wa-connect b, .wa-connected b { display: block; color: #111827; } .wa-tplbar small, .wa-connect small, .wa-connected small { font-size: .82rem; color: #6b7280; }
         .wa-connect { background: radial-gradient(120% 140% at 100% 0%, #dcfce7, transparent 60%), #fff; border: 1.5px solid #86efac; box-shadow: 0 12px 28px -22px rgba(7,94,84,.8); animation: waIn .4s ease both; }
+        .wa-connect.wa-connect-lost { background: radial-gradient(120% 140% at 100% 0%, #ffedd5, transparent 60%), #fff; border-color: #fdba74; }
+        .wa-connect-lost .wa-connect-logo { background: #f97316; }
         .wa-connect-logo { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(135deg, #25d366, #075e54); color: #fff; }
         .wa-connect-btn { text-decoration: none; background: #128c7e !important; border-color: #128c7e !important; }
         .wa-connected { background: #f0fdf4; border: 1px solid #bbf7d0; margin-top: 12px; }
