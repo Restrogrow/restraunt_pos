@@ -34,8 +34,8 @@ if (!function_exists('ensureWhatsappSchema')) {
             'birthday'    => ['Birthday treat', 'cake', 'Happy birthday, {name}! {restaurant} has a treat for you: {reward}. Use code {code} before {valid_till}.'],
             'anniversary' => ['Anniversary', 'favorite', 'Happy anniversary, {name}! Celebrate with {reward} at {restaurant}. Use code {code} before {valid_till}.'],
             'winback'     => ['We miss you', 'history', 'We miss you, {name}! Come back to {restaurant} for {reward}. Use code {code} before {valid_till}.'],
-            'tier_up'     => ['Level up', 'military_tech', 'You just reached {tier} at {restaurant}, {name}! Enjoy {reward}. Use code {code} before {valid_till}.'],
-            'milestone'   => ['Order milestone', 'emoji_events', 'Order number {count}! Thank you, {name}. Here is {reward} from {restaurant}. Use code {code} before {valid_till}.'],
+            'tier_up'     => ['Level up', 'military_tech', 'Well done, {name}! You just reached {tier} at {restaurant}. Enjoy {reward}. Use code {code} before {valid_till}.'],
+            'milestone'   => ['Order milestone', 'emoji_events', 'Thank you, {name}! That was order number {count} at {restaurant}. Here is {reward}. Use code {code} before {valid_till}.'],
             'referral'    => ['Referral gift', 'group_add', 'Thanks for spreading the word, {name}! You get {reward} at {restaurant}. Use code {code} before {valid_till}.'],
             'stamps'      => ['Full stamp card', 'approval', 'Your stamp card at {restaurant} is full, {name}! Enjoy {reward}. Use code {code} before {valid_till}.'],
             'challenge'   => ['Challenge done', 'flag', 'Challenge complete, {name}! {restaurant} has {reward} for you. Use code {code} before {valid_till}.'],
@@ -211,9 +211,11 @@ if (!function_exists('ensureWhatsappSchema')) {
         $st = $conn->prepare('SELECT restaurant_name, currency_symbol FROM users WHERE restaurant_id = ? LIMIT 1');
         $st->execute([$rid]);
         $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
-        $base = rtrim((string)env('APP_URL', ''), '/');
+        $base = rtrim((string)env('APP_URL', ''), '/') ?: 'https://restrogrow.com';
+        // the restaurant's own rewards page address: restrogrow.com/<name-as-slug>/loyalty
+        $slug = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower((string)($r['restaurant_name'] ?? ''))), '-');
         return $cache[$rid] = ['name' => (string)($r['restaurant_name'] ?? ''), 'cur' => (string)($r['currency_symbol'] ?? '') ?: '₹',
-            'link' => ($base !== '' ? $base : 'https://restrogrow.com') . '/main/website/loyalty.php?restaurant_id=' . rawurlencode($rid)];
+            'link' => $slug !== '' ? $base . '/' . $slug . '/loyalty' : $base . '/main/website/loyalty.php?restaurant_id=' . rawurlencode($rid)];
     }
 
     /** Values for one issued gift. */

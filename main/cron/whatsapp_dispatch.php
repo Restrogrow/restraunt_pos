@@ -6,7 +6,7 @@
  * messages also go out when nobody is logged in.
  *
  * CLI:  php /path/to/main/cron/whatsapp_dispatch.php
- * URL:  https://yourdomain.com/main/cron/whatsapp_dispatch.php?key=YOUR_SECRET
+ * URL:  https://restrogrow.com/main/cron/whatsapp_dispatch.php?key=YOUR_SECRET
  */
 
 $isCli = (php_sapi_name() === 'cli');

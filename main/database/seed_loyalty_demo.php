@@ -121,7 +121,8 @@ echo '  Demo customers: birthdays and anniversaries for ' . count($ids) . " cust
 if (waDryRun()) {
     $conn->prepare("INSERT INTO wa_settings (restaurant_id, enabled, mode, api_key, account_name, quiet_start, quiet_end, weekly_cap) VALUES (?, 1, 'own', 'local_test_key_0000', 'Local test account', 22, 9, 2)
         ON DUPLICATE KEY UPDATE enabled = 1, mode = 'own', api_key = COALESCE(api_key, VALUES(api_key)), account_name = COALESCE(account_name, VALUES(account_name))")->execute([$rid]);
-    $slug = substr(preg_replace('/[^a-z0-9]+/', '_', strtolower($name)), 0, 20);
+    $slug = trim(preg_replace('/[^a-z0-9]+/', '_', strtolower($name)), '_');
+    if (strlen($slug) > 30) $slug = preg_replace('/_[^_]*$/', '', substr($slug, 0, 30));
     $wa = $conn->prepare('INSERT INTO wa_auto (restaurant_id, kind, enabled, template_name, language) VALUES (?, ?, 1, ?, ?) ON DUPLICATE KEY UPDATE enabled = 1, template_name = COALESCE(template_name, VALUES(template_name))');
     foreach (array_keys(waKinds()) as $k) $wa->execute([$rid, $k, trim($slug, '_') . '_' . $k . '_gift', 'en']);
     $conn->prepare("UPDATE customers SET whatsapp_optin = 1, optin_at = COALESCE(optin_at, NOW()) WHERE restaurant_id = ? AND phone LIKE '99000001%'")->execute([$rid]);

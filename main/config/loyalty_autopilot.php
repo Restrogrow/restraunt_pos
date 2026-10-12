@@ -24,13 +24,13 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
     function loyaltyAutopilotDefaults(): array {
         // type => [enabled, kind, value, param, min_order, valid_days, message]; all off until the owner turns one on
         return [
-            'welcome'     => [0, 'flat', 50, 0, 199, 30, 'Welcome to {restaurant}, {name}! Here is {reward} on your next order. Code: {code}'],
-            'birthday'    => [0, 'item', 0, 7, 0, 14, 'Happy birthday, {name}! A treat is waiting at {restaurant}: {reward}. Code: {code}'],
-            'anniversary' => [0, 'percent', 15, 7, 499, 14, 'Happy anniversary, {name}! Celebrate with {reward} at {restaurant}. Code: {code}'],
-            'winback'     => [0, 'flat', 75, 30, 299, 14, 'We miss you, {name}! Come back for {reward} at {restaurant}. Code: {code}'],
-            'tier_up'     => [0, 'flat', 100, 0, 399, 30, 'You just reached {tier} at {restaurant}! Enjoy {reward}. Code: {code}'],
-            'milestone'   => [0, 'percent', 20, 10, 0, 30, 'Order number {count}! Thank you, {name}. Here is {reward}. Code: {code}'],
-            'referral'    => [0, 'flat', 50, 0, 199, 30, 'Thanks for spreading the word, {name}! You and your friend each get {reward} at {restaurant}. Code: {code}'],
+            'welcome'     => [0, 'flat', 50, 0, 199, 30, 'Welcome to {restaurant}, {name}! Here is {reward} on your next order. Use code {code} before {valid_till}.'],
+            'birthday'    => [0, 'item', 0, 7, 0, 14, 'Happy birthday, {name}! {restaurant} has a treat for you: {reward}. Use code {code} before {valid_till}.'],
+            'anniversary' => [0, 'percent', 15, 7, 499, 14, 'Happy anniversary, {name}! Celebrate with {reward} at {restaurant}. Use code {code} before {valid_till}.'],
+            'winback'     => [0, 'flat', 75, 30, 299, 14, 'We miss you, {name}! Come back to {restaurant} for {reward}. Use code {code} before {valid_till}.'],
+            'tier_up'     => [0, 'flat', 100, 0, 399, 30, 'Well done, {name}! You just reached {tier} at {restaurant}. Enjoy {reward}. Use code {code} before {valid_till}.'],
+            'milestone'   => [0, 'percent', 20, 10, 0, 30, 'Thank you, {name}! That was order number {count} at {restaurant}. Here is {reward}. Use code {code} before {valid_till}.'],
+            'referral'    => [0, 'flat', 50, 0, 199, 30, 'Thanks for spreading the word, {name}! You get {reward} at {restaurant}. Use code {code} before {valid_till}.'],
         ];
     }
 
@@ -105,7 +105,8 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
         $name = trim(explode(' ', (string)($customer['customer_name'] ?? ''))[0]) ?: 'there';
         $rest = (string)($conn->query('SELECT restaurant_name FROM users WHERE restaurant_id = ' . $conn->quote($rid) . ' LIMIT 1')->fetchColumn() ?: '');
         $msg = strtr((string)$a['message'], ['{name}' => $name, '{reward}' => $g['label'], '{code}' => $g['code'], '{restaurant}' => $rest,
-                                             '{tier}' => $vars['tier'] ?? '', '{count}' => (string)($vars['count'] ?? '')]);
+                                             '{tier}' => $vars['tier'] ?? '', '{count}' => (string)($vars['count'] ?? ''),
+                                             '{valid_till}' => !empty($g['expires_on']) ? date('j M', strtotime($g['expires_on'])) : 'soon']);
         $conn->prepare('UPDATE loyalty_rewards_issued SET message = ? WHERE restaurant_id = ? AND coupon_code = ?')->execute([mb_substr($msg, 0, 600), $rid, $g['code']]);
         return $g;
     }

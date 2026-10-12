@@ -139,6 +139,44 @@ On localhost, OTP codes are shown on screen, and PhonePe runs in sandbox / simul
 
 Pushing to `main` deploys to restrogrow.com automatically. The code detects the Hostinger server and connects through the local MySQL socket.
 
+### Cron jobs (Hostinger)
+
+Timers on the server that run a file by themselves. Without them, WhatsApp messages and phone-card updates only go out while someone has the dashboard open.
+
+1. hPanel › **Advanced › Cron Jobs**.
+2. Find your home folder: hPanel › **Files › File Manager** shows it at the top, e.g. `/home/u123456789/domains/restrogrow.com/public_html`. Below, `<HOME>` means that path.
+3. Add each job: type **Custom**, paste the command, pick the timing, **Save**.
+
+| What it does | Command | When |
+|---|---|---|
+| WhatsApp messages, birthday / win-back gifts, phone-card updates | `/usr/bin/php <HOME>/main/cron/whatsapp_dispatch.php` | Every 5 minutes (`*/5 * * * *`) |
+| Birthday / win-back gifts for restaurants without WhatsApp | `/usr/bin/php <HOME>/main/cron/loyalty_autopilot.php` | Once a day, e.g. 9 am (`0 9 * * *`) |
+| Scheduled website orders | `/usr/bin/php <HOME>/main/cron/activate_scheduled_orders.php` | Every 5 minutes (`*/5 * * * *`) |
+| Meal-subscription deliveries | `/usr/bin/php <HOME>/main/cron/generate_subscription_deliveries.php` | Once a day, e.g. 5 am (`0 5 * * *`) |
+
+Each run writes one line (e.g. "Checked 3 restaurant(s): 12 sent, 0 failed"); hPanel shows it under the job's output. They can also run as a URL (`https://restrogrow.com/main/cron/whatsapp_dispatch.php?key=…`) once `CRON_SECRET_KEY` is set in `.env`.
+
+### WhatsApp templates (RepeatGrow)
+
+Meta only lets a business start a WhatsApp chat with an **approved template**. A restaurant using its own number creates one template per message it uses, in RepeatGrow › Templates (category **Marketing**, language **English**). Growth › WhatsApp shows each one's exact name and text with a Copy button; `{{1}}`, `{{2}}`… are filled in for each customer (name, gift, code, last day…).
+
+| # | Message | Needed when |
+|---|---|---|
+| 1 | Welcome gift | Autopilot › Welcome gift is on |
+| 2 | Birthday treat | Autopilot › Birthday is on |
+| 3 | Anniversary | Autopilot › Anniversary is on |
+| 4 | We miss you | Autopilot › We miss you is on |
+| 5 | Level up | Autopilot › Level up is on |
+| 6 | Order milestone | Autopilot › Milestone is on |
+| 7 | Referral gift | Autopilot › Referral gift is on (cashback / stamp programs) |
+| 8 | Full stamp card | Program is a stamp card |
+| 9 | Challenge done | A challenge is live (Games) |
+| 10 | Weekly streak | A streak challenge is live (Games) |
+| 11 | Member welcome gift | A VIP plan has a welcome gift |
+| + | One per campaign wording | Each new campaign text; reuse a template for campaigns with the same text |
+
+Restaurants on RestroGrow's number need none of these: they all use one ready-made template (`REPEATGROW_GIFT_TEMPLATE`, text in `.env.example`), created once by the RestroGrow team.
+
 ## Roadmap
 
 Done recently: inventory, table map, customer accounts, loyalty landing page, wallet, scratch card, cart upsell, Today's Special, nutrition.

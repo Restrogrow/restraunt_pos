@@ -108,7 +108,9 @@ if (!function_exists('ensureWalletCardSchema')) {
             'name' => trim((string)($customer['customer_name'] ?? '')) ?: 'Member', 'phone' => $phone,
             'program' => $type, 'balance_label' => $label, 'balance' => $value,
             'tier' => $tier['tier_name'] ?? null, 'vip' => $vip, 'gifts' => $gifts,
-            'link' => $base . '/main/website/loyalty.php?restaurant_id=' . rawurlencode($rid),
+            'link' => ($slug = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower((string)($r['restaurant_name'] ?? ''))), '-')) !== ''
+                ? $base . '/' . $slug . '/loyalty' : $base . '/main/website/loyalty.php?restaurant_id=' . rawurlencode($rid),
+            'base' => $base,
             'barcode' => $phone, 'barcode_alt' => 'Member ' . substr($phone, 0, 2) . '••••' . substr($phone, -4),
         ];
     }
@@ -250,7 +252,7 @@ if (!function_exists('ensureWalletCardSchema')) {
         if (!walletCardPlatforms()['apple']) return null;
         $rec = $rec ?: walletCardRecord($conn, $rid, (int)$customer['id'], 'apple');
         $c = walletCardContent($conn, $rid, $customer);
-        $base = preg_replace('#/main/website/loyalty\.php.*$#', '', $c['link']);
+        $base = $c['base'];
         $pass = [
             'formatVersion' => 1, 'passTypeIdentifier' => env('APPLE_PASS_TYPE_ID'), 'serialNumber' => $rec['serial'], 'teamIdentifier' => env('APPLE_TEAM_ID'),
             'organizationName' => $c['restaurant'], 'description' => $c['restaurant'] . ' rewards card', 'logoText' => $c['restaurant'],

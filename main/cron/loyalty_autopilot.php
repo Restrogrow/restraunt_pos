@@ -6,7 +6,7 @@
  * whose pages nobody opens on a given day. Run it once or twice a day.
  *
  * CLI:  php /path/to/main/cron/loyalty_autopilot.php
- * URL:  https://yourdomain.com/main/cron/loyalty_autopilot.php?key=YOUR_SECRET
+ * URL:  https://restrogrow.com/main/cron/loyalty_autopilot.php?key=YOUR_SECRET
  *
  * Safe to run as often as you like: each gift has a unique key per customer
  * and occasion (birthday 2026, quiet since 2026-09-01...), so nothing is

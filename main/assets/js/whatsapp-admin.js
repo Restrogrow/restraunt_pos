@@ -28,7 +28,7 @@
   function money(n) { return cur() + Math.round(n || 0).toLocaleString('en-IN'); }
   function get(q) { return fetch(API + '?' + q, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }); }
   function post(b) { return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
-  function slug() { return String(D.restaurant || 'shop').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 20) || 'shop'; }
+  function slug() { var s = String(D.restaurant || 'shop').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); if (s.length > 30) s = s.slice(0, 30).replace(/_[^_]*$/, ''); return s || 'shop'; }
   function sample() {
     return { name: 'Priya', reward: cur() + '50 off', code: 'GIFT7K2Q9M', valid_till: new Date(Date.now() + 14 * 864e5).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
       restaurant: D.restaurant, min_order: cur() + '199', link: 'restrogrow.com/r/' + slug(), tier: 'Gold', count: '10' };

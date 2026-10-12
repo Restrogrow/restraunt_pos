@@ -8,7 +8,7 @@
  * cPanel supports scheduling either a CLI command or a URL hit.
  *
  * CLI:  php /path/to/main/cron/activate_scheduled_orders.php
- * URL:  https://yourdomain.com/main/cron/activate_scheduled_orders.php?key=YOUR_SECRET
+ * URL:  https://restrogrow.com/main/cron/activate_scheduled_orders.php?key=YOUR_SECRET
  *
  * Safe to run as often as you like — activateDueScheduledOrders() only acts
  * on orders whose scheduled_at has actually arrived, and each one is moved

@@ -5,7 +5,7 @@
  * Hostinger's cPanel supports scheduling either a CLI command or a URL hit.
  *
  * CLI:  php /path/to/main/cron/generate_subscription_deliveries.php
- * URL:  https://yourdomain.com/main/cron/generate_subscription_deliveries.php?key=YOUR_SECRET
+ * URL:  https://restrogrow.com/main/cron/generate_subscription_deliveries.php?key=YOUR_SECRET
  *
  * Loops every restaurant (unlike the admin panel's "Generate Today's
  * Deliveries" button, which is scoped to the single restaurant in session)
