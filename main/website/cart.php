@@ -3870,7 +3870,14 @@ function updateDeliveryMapPreview(lat, lng) {
 // Generic reverse geocode helper (lat/lng -> formatted address + postcode)
 function reverseGeocode(lat, lng, callback) {
   var apiKey = window.googleMapsApiKey;
-  if (!apiKey) { callback('', ''); return; }
+  if (!apiKey) {
+    // No Google key: OpenStreetMap's free address lookup
+    fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng), { headers: { 'Accept-Language': 'en' } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { callback((d && d.display_name) || '', (d && d.address && d.address.postcode) || ''); })
+      .catch(function() { callback('', ''); });
+    return;
+  }
   var url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' + lat + ',' + lng + '&key=' + apiKey;
   fetch(url)
     .then(function(r) { return r.json(); })
@@ -3963,12 +3970,54 @@ function initGeoAutocomplete(retries) {
 var mapPickerMap = null;
 var mapPickerMarker = null;
 
+// ── No Google Maps (no key, or it failed to load): the same picker on
+// OpenStreetMap (Leaflet). mapPickerMap / mapPickerMarker get the few Google-
+// style methods the rest of the picker uses (setCenter, setZoom, setPosition,
+// getPosition), so useCurrentLocationOnMap / confirmMapLocation work unchanged.
+var leafletLoading = null;
+function loadLeafletOnce() {
+  if (window.L) return Promise.resolve();
+  if (leafletLoading) return leafletLoading;
+  leafletLoading = new Promise(function(resolve, reject) {
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(css);
+    var js = document.createElement('script');
+    js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    js.onload = function() { resolve(); };
+    js.onerror = function() { leafletLoading = null; reject(); };
+    document.head.appendChild(js);
+  });
+  return leafletLoading;
+}
+function startOsmMapPicker(center) {
+  var addrEl = document.getElementById('mapPickerAddress');
+  if (addrEl) addrEl.textContent = 'Loading map...';
+  loadLeafletOnce().then(function() {
+    if (!document.getElementById('mapPickerCanvas')) return; // closed meanwhile
+    var map = L.map('mapPickerCanvas').setView([center.lat, center.lng], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+    var marker = L.marker([center.lat, center.lng], { draggable: true }).addTo(map);
+    map.on('click', function(e) { marker.setLatLng(e.latlng); reverseGeocodeForPicker(e.latlng.lat, e.latlng.lng); });
+    marker.on('dragend', function() { var p = marker.getLatLng(); reverseGeocodeForPicker(p.lat, p.lng); });
+    mapPickerMap = {
+      setCenter: function(p) { map.setView([p.lat, p.lng], map.getZoom()); },
+      setZoom: function(z) { map.setZoom(z); }
+    };
+    mapPickerMarker = {
+      setPosition: function(p) { marker.setLatLng([p.lat, p.lng]); },
+      getPosition: function() { var p = marker.getLatLng(); return { lat: function() { return p.lat; }, lng: function() { return p.lng; } }; }
+    };
+    setTimeout(function() { map.invalidateSize(); }, 50);
+    reverseGeocodeForPicker(center.lat, center.lng);
+  }).catch(function() {
+    if (addrEl) addrEl.textContent = 'The map could not load. Please type your address or use your current location.';
+  });
+}
+
 function openMapPicker() {
-  if (typeof google === 'undefined' || !google.maps) {
-    if (typeof showToast === 'function') { showToast('Map is still loading, please try again in a moment', 'error'); }
-    else { alert('Map is still loading, please try again in a moment'); }
-    return;
-  }
+  var useOsm = (typeof google === 'undefined' || !google.maps);
   if (document.getElementById('mapPickerOverlay')) return; // already open
 
   var restLat = parseFloat(window.restaurantLat);
@@ -4000,6 +4049,7 @@ function openMapPicker() {
       '</div>' +
     '</div>';
   document.body.appendChild(overlay);
+  if (useOsm) { startOsmMapPicker(startCenter); return; }
 
   mapPickerMap = new google.maps.Map(document.getElementById('mapPickerCanvas'), {
     center: startCenter,
@@ -4054,7 +4104,6 @@ function useCurrentLocationOnMap() {
 
 function reverseGeocodeForPicker(lat, lng) {
   var addrEl = document.getElementById('mapPickerAddress');
-  if (!window.googleMapsApiKey) return;
   if (addrEl) addrEl.textContent = 'Looking up address...';
   reverseGeocode(lat, lng, function(formatted, postcode) {
     if (!addrEl) return;
