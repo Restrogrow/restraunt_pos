@@ -2008,6 +2008,42 @@ try {
               </div>
             </div>
 
+            <!-- Profile page: how the customer's profile page looks -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">account_circle</span>
+                Profile Page
+              </div>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How your customers' profile page looks (their details, orders and favourites). <b>Cover</b> uses your Background Image.</p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px;">
+                <label class="profile-style-opt" data-value="midnight" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #7c3aed;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="midnight" checked style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:5px;right:5px;top:5px;height:28px;border-radius:6px;background:linear-gradient(180deg,#3b1d24,#15161b);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:9px;top:12px;background:#ef4444;"></i><i style="position:absolute;height:3px;border-radius:2px;left:27px;width:24px;top:15px;background:#fff;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Midnight</span>
+                </label>
+                <label class="profile-style-opt" data-value="brand" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="brand" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:5px;right:5px;top:5px;height:28px;border-radius:6px;background:linear-gradient(140deg,#ef4444,#991b1b);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:9px;top:12px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:27px;width:24px;top:15px;background:#fff;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Brand</span>
+                </label>
+                <label class="profile-style-opt" data-value="soft" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="soft" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:5px;right:5px;top:5px;height:28px;border-radius:6px;background:linear-gradient(160deg,#fde2e2,#fff);border:1px solid #fbd5d5;"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:9px;top:12px;background:#ef4444;"></i><i style="position:absolute;height:3px;border-radius:2px;left:27px;width:24px;top:15px;background:#374151;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Soft</span>
+                </label>
+                <label class="profile-style-opt" data-value="centered" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="centered" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:5px;right:5px;top:5px;height:12px;border-radius:6px 6px 0 0;background:#ef4444;"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:50%;margin-left:-7px;top:10px;background:#16a34a;box-shadow:0 0 0 2px #fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;right:22px;top:28px;background:#374151;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Centered</span>
+                </label>
+                <label class="profile-style-opt" data-value="cover" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="cover" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:5px;right:5px;top:5px;height:28px;border-radius:6px;background:linear-gradient(180deg,#94a3b8,#334155);"></i><i style="position:absolute;left:9px;right:9px;top:16px;height:13px;border-radius:4px;background:rgba(255,255,255,.35);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:12px;top:15px;width:10px;height:10px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:26px;width:22px;top:20px;background:#fff;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Cover</span>
+                </label>
+              </div>
+            </div>
+
             <!-- Category Pictures: round photos or cut-outs -->
             <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">

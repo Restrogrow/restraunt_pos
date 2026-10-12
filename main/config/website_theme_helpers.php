@@ -173,6 +173,8 @@ function ensureBannerPlacementColumn($conn) {
 }
 
 // Home page dish list look (Website Appearance > Home Page Dishes)
+// Customer profile page look (Website Appearance > Profile Page)
+const THEME_PROFILE_STYLES = ['midnight', 'brand', 'soft', 'centered', 'cover'];
 const THEME_HOME_CARD_STYLES = ['classic', 'grid', 'big', 'compact', 'carousel', 'magazine', 'printed', 'tiles', 'delivery', 'dark'];
 const THEME_MENU_CARD_STYLES = ['classic', 'modern', 'minimal', 'photo', 'list', 'elegant', 'compact', 'midnight', 'showcase'];
 // Menu page category pictures: round photos, or cut-outs (whole picture, no crop,
@@ -297,6 +299,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         'menu_nav_position' => "VARCHAR(10) DEFAULT 'left'",
         'menu_card_style' => "VARCHAR(10) DEFAULT 'classic'",
         'home_card_style' => "VARCHAR(10) DEFAULT 'classic'",
+        'profile_style' => "VARCHAR(10) DEFAULT 'midnight'",
         'category_heading_bg' => "VARCHAR(20) DEFAULT NULL",
         'category_pic_style' => "VARCHAR(10) DEFAULT 'round'",
         'all_category_icon' => "LONGTEXT DEFAULT NULL",

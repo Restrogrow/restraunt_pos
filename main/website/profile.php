@@ -1055,10 +1055,57 @@ body { background: #e3e6ea; }
 .edit-form-card { border: 0; border-radius: 26px; box-shadow: 0 2px 14px rgba(17,24,39,.05); }
 .edit-form-card .form-group input, .edit-form-card .form-group textarea { border-radius: 14px; }
 .edit-form-card .form-group input:focus, .edit-form-card .form-group textarea:focus { border-color: var(--pf); }
+/* ── Profile looks (Website Appearance > Profile Page). Midnight = the base above ── */
+/* Brand: hero filled with the brand colour */
+.pf-brand .profile-hero { background: radial-gradient(circle at 88% -10%, rgba(255,255,255,.28), transparent 45%), linear-gradient(140deg, var(--pf), var(--pf-dark)); box-shadow: 0 16px 34px color-mix(in srgb, var(--pf) 35%, transparent); }
+.pf-brand .avatar-container { background: #fff !important; color: var(--pf) !important; box-shadow: 0 0 0 4px rgba(255,255,255,.3); }
+.pf-brand .hero-user-phone, .pf-brand .stat-label { color: rgba(255,255,255,.82); }
+.pf-brand .stat-card { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.18); }
+.pf-brand .filter-tab.active { background: var(--pf); box-shadow: 0 4px 12px color-mix(in srgb, var(--pf) 35%, transparent); }
+
+/* Soft: everything light, hero tinted with the brand */
+.pf-soft.phone-frame, .pf-soft .bg-wrapper { background: #fbfaf9; }
+.pf-soft .profile-hero { color: var(--pf-ink); background: linear-gradient(160deg, var(--pf-soft), #fff 75%); border: 1px solid color-mix(in srgb, var(--pf) 14%, #fff); box-shadow: 0 2px 14px rgba(17,24,39,.05); }
+.pf-soft .avatar-container { box-shadow: 0 0 0 4px #fff, 0 6px 18px color-mix(in srgb, var(--pf) 30%, transparent); }
+.pf-soft .hero-user-name { color: var(--pf-ink); }
+.pf-soft .hero-user-phone, .pf-soft .stat-label { color: var(--pf-muted); }
+.pf-soft .hero-edit-btn { background: #fff; border-color: #eceef1; color: var(--pf); }
+.pf-soft .stat-card { background: #fff; border: 1px solid #f0f1f3; }
+.pf-soft .stat-number { color: var(--pf); }
+.pf-soft .section-card, .pf-soft .quick-action-btn { box-shadow: 0 1px 6px rgba(17,24,39,.04); border: 1px solid #f1f2f4; }
+.pf-soft .filter-tab.active { background: var(--pf-soft); color: var(--pf); box-shadow: none; }
+
+/* Centered: big centred avatar on a brand band, quick actions as a list */
+.pf-centered .profile-hero { color: var(--pf-ink); padding-top: 0; background: linear-gradient(140deg, var(--pf), var(--pf-dark)) top / 100% 96px no-repeat, #fff; box-shadow: 0 2px 14px rgba(17,24,39,.06); }
+.pf-centered .profile-hero-top { flex-direction: column; text-align: center; gap: 10px; padding-top: 44px; }
+.pf-centered .avatar-container { width: 92px; height: 92px; font-size: 30px; box-shadow: 0 0 0 5px #fff, 0 8px 22px rgba(0,0,0,.15); }
+.pf-centered .hero-user-name { color: var(--pf-ink); font-size: 20px; }
+.pf-centered .hero-user-phone, .pf-centered .stat-label { color: var(--pf-muted); }
+.pf-centered .hero-edit-btn { position: absolute; top: 12px; right: 0; background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.25); }
+.pf-centered .stat-card { background: #f6f7f9; border: 0; }
+.pf-centered .stat-number { color: var(--pf-ink); }
+.pf-centered .quick-actions { grid-template-columns: 1fr; gap: 0; padding: 4px 0; border-radius: 26px; background: #fff; box-shadow: 0 2px 14px rgba(17,24,39,.05); overflow: hidden; }
+.pf-centered .quick-action-btn { border-radius: 0; box-shadow: none; padding: 13px 40px 13px 16px; border-bottom: 1px solid #f1f2f4; }
+.pf-centered .quick-action-btn:last-child { border-bottom: 0; }
+.pf-centered .quick-action-btn:hover { transform: none; box-shadow: none; background: #fafafa; }
+.pf-centered .quick-action-btn::after { right: 18px; }
+
+/* Cover: the restaurant's Background Image behind a frosted hero */
+.pf-cover .profile-hero { min-height: 230px; display: flex; flex-direction: column; justify-content: flex-end; background: linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.72)), var(--pf-photo, linear-gradient(135deg, #64748b, #1f2937)) center / cover; }
+.pf-cover .profile-hero-top { padding: 14px; border-radius: 20px; background: rgba(255,255,255,.12); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.18); }
+.pf-cover .hero-user-phone, .pf-cover .stat-label { color: rgba(255,255,255,.8); }
+.pf-cover .stat-card { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.16); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 </style>
 </head>
 <body>
-<div class="phone-frame">
+<?php
+// Gallery / dashboard previews (?preview_demo=1 together with ?preview_theme=...): a
+// made-up customer so each look can be seen filled in. Only for that page view —
+// nothing is read from or written to the visitor's saved details.
+$pf_demo = !empty($_GET['preview_demo']) && !empty($_GET['preview_theme']);
+?>
+<div class="phone-frame pf-<?php echo htmlspecialchars($profile_style ?? 'midnight', ENT_QUOTES, 'UTF-8'); ?>"<?php if (!empty($background_theme)): ?> style="--pf-photo: url('<?php echo htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8'); ?>')"<?php endif; ?>>
+<?php if ($pf_demo): ?><script>window.__pfDemo = { name: 'Aarav Sharma', phone: '9000012345', email: 'aarav@example.com', address: '12th Main Road, Indiranagar, Bengaluru' };</script><?php endif; ?>
   <div class="bg-wrapper">
     <!-- Header -->
     <div class="pr-share-header">
@@ -1354,6 +1401,7 @@ function saveCustomerToStorage(d) {
   localStorage.setItem('customerDetails', JSON.stringify(d));
 }
 function loadCustomerFromStorage() {
+  if (window.__pfDemo) return window.__pfDemo; // preview only
   try { var s = localStorage.getItem('customerDetails'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
 }
 
@@ -2020,7 +2068,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Gate: if not logged in and this browser session hasn't already chosen
   // "Continue as Guest", show the Login / Sign Up / Guest screen first
   // instead of jumping straight to the (possibly stale) guest details.
-  if (!window.loggedInCustomer) {
+  if (!window.loggedInCustomer && !window.__pfDemo) {
     var guestSessionActive = false;
     try { guestSessionActive = sessionStorage.getItem('guestSessionActive') === '1'; } catch(e) {}
     if (!guestSessionActive) {

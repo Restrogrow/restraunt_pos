@@ -34,13 +34,19 @@
     <h1>All layouts</h1>
     <p>Preview only: nothing here changes your saved settings.</p>
   </div>
-  <nav><a href="#header">Header styles (15)</a><a href="#home">Home page dishes (10)</a><a href="#menu">Menu page cards (9)</a></nav>
+  <nav><a href="#header">Header styles (15)</a><a href="#profile">Profile page (5)</a><a href="#home">Home page dishes (10)</a><a href="#menu">Menu page cards (9)</a></nav>
 </header>
 
 <section id="header">
   <h2>Header Style</h2>
   <p>Website Appearance → Header Style. The top of the home page.</p>
   <div class="grid" id="headerGrid"></div>
+</section>
+
+<section id="profile">
+  <h2>Profile Page</h2>
+  <p>Website Appearance → Profile Page. Shown with a sample customer.</p>
+  <div class="grid" id="profileGrid"></div>
 </section>
 
 <section id="home">
@@ -97,6 +103,9 @@
     grid.appendChild(fig);
   }
   headers.forEach(function(h) { card(document.getElementById('headerGrid'), base + '?preview_theme=' + encodeURIComponent(JSON.stringify({ header_style: h[0] })), h[1], h[2], false); });
+  [['midnight', 'Midnight', 'dark card, brand glow (default)'], ['brand', 'Brand', 'card in your brand colour'], ['soft', 'Soft', 'all light, gentle tint'], ['centered', 'Centered', 'big centred avatar, list of links'], ['cover', 'Cover', 'your photo behind frosted glass']].forEach(function(p) {
+    card(document.getElementById('profileGrid'), base + '/profile?preview_demo=1&preview_theme=' + encodeURIComponent(JSON.stringify({ profile_style: p[0] })), p[1], p[2], false);
+  });
   home.forEach(function(h) { card(document.getElementById('homeGrid'), base + '?preview_home=' + h[0], h[1], h[2], true); });
   menu.forEach(function(m) { card(document.getElementById('menuGrid'), base + '/menu?preview_card=' + m[0], m[1], m[2], false); });
 </script>

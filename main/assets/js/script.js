@@ -14057,6 +14057,21 @@ async function initWebsiteThemeEditor() {
         if (radio) radio.checked = active;
       });
     }
+    function applyProfileStyleUI(val) {
+      document.querySelectorAll('.profile-style-opt').forEach(function(el) {
+        var active = el.getAttribute('data-value') === val;
+        el.style.borderColor = active ? '#7c3aed' : '#e5e7eb';
+        var radio = el.querySelector('input[name="profileStyle"]');
+        if (radio) radio.checked = active;
+      });
+    }
+    function currentProfileStyleVal() {
+      var r = document.querySelector('input[name="profileStyle"]:checked');
+      return r ? r.value : 'midnight';
+    }
+    document.querySelectorAll('.profile-style-opt').forEach(function(el) {
+      el.addEventListener('click', function() { applyProfileStyleUI(el.getAttribute('data-value')); });
+    });
     function currentHomeCardStyleVal() {
       var r = document.querySelector('input[name="homeCardStyle"]:checked');
       return r ? r.value : 'classic';
@@ -14082,6 +14097,7 @@ async function initWebsiteThemeEditor() {
       try { t.menu_nav_position = currentMenuNavPositionVal(); } catch (e) {}
       try { t.menu_card_style = currentMenuCardStyleVal(); } catch (e) {}
       try { t.home_card_style = currentHomeCardStyleVal(); } catch (e) {}
+      try { t.profile_style = currentProfileStyleVal(); } catch (e) {}
       try { t.category_pic_style = currentCategoryPicStyleVal(); } catch (e) {}
       try { var hb = currentCategoryHeadingVal(); t.category_heading_bg = hb || null; } catch (e) {}
       return t;
@@ -15064,6 +15080,7 @@ if (!window.customBgThemes) {
       applyMenuNavPositionUI(data.settings.menu_nav_position || 'left');
       applyMenuCardStyleUI(data.settings.menu_card_style || 'classic');
       applyHomeCardStyleUI(data.settings.home_card_style || 'classic');
+      applyProfileStyleUI(data.settings.profile_style || 'midnight');
       applyCategoryHeadingUI(data.settings.category_heading_bg || '');
       applyCategoryPicStyleUI(data.settings.category_pic_style || 'round');
       var allPrev = document.getElementById('allCategoryIconPreview');
@@ -15287,6 +15304,7 @@ if (!window.customBgThemes) {
             menu_nav_position: currentMenuNavPositionVal(),
             menu_card_style: currentMenuCardStyleVal(),
             home_card_style: currentHomeCardStyleVal(),
+            profile_style: currentProfileStyleVal(),
             category_heading_bg: currentCategoryHeadingVal(),
             category_pic_style: currentCategoryPicStyleVal(),
             bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined
