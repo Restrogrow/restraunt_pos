@@ -967,14 +967,14 @@ try {
               <span class="nav-tooltip">Menu Items</span>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="addonsPage" onclick="setTimeout(loadAdminAddons, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="addonsPage">
                 <span class="nav-icon material-symbols-rounded">playlist_add</span>
                 <span class="nav-label">Add-ons</span>
               </a>
               <span class="nav-tooltip">Add-ons</span>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="inventoryPage" onclick="setTimeout(loadInventory, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="inventoryPage">
                 <span class="nav-icon material-symbols-rounded">inventory_2</span>
                 <span class="nav-label">Inventory</span>
               </a>
@@ -1003,14 +1003,14 @@ try {
           <span class="nav-tooltip">Subscriptions</span>
           <ul class="submenu">
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="mealPlansPage" onclick="setTimeout(loadAdminMealPlans, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="mealPlansPage">
                 <span class="nav-icon material-symbols-rounded">event_repeat</span>
                 <span class="nav-label">Meal Plans</span>
               </a>
               <span class="nav-tooltip">Meal Plans</span>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="mealSubscriptionsPage" onclick="setTimeout(loadAdminMealSubscriptions, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="mealSubscriptionsPage">
                 <span class="nav-icon material-symbols-rounded">group</span>
                 <span class="nav-label">Subscribers</span>
               </a>
@@ -1104,7 +1104,7 @@ try {
               <span class="nav-tooltip">Orders</span>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="blocklistPage" onclick="setTimeout(loadAdminBlocklist, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="blocklistPage">
                 <span class="nav-icon material-symbols-rounded">block</span>
                 <span class="nav-label">Blocked Customers</span>
               </a>
@@ -1180,28 +1180,28 @@ try {
           <span class="nav-tooltip">Marketing</span>
           <ul class="submenu">
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="marketingPostersPage" onclick="setTimeout(initPosterStudio, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="marketingPostersPage">
                 <span class="nav-icon material-symbols-rounded">imagesmode</span>
                 <span class="nav-label">Posters</span>
               </a>
               <span class="nav-tooltip">Posters</span>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="marketingVideosPage" onclick="setTimeout(initVideoStudio, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="marketingVideosPage">
                 <span class="nav-icon material-symbols-rounded">movie</span>
                 <span class="nav-label">Videos</span>
               </a>
               <span class="nav-tooltip">Videos</span>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="marketingCaptionsPage" onclick="setTimeout(initCaptionStudio, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="marketingCaptionsPage">
                 <span class="nav-icon material-symbols-rounded">chat_bubble</span>
                 <span class="nav-label">Social Captions</span>
               </a>
               <span class="nav-tooltip">Social Captions</span>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="marketingCalendarPage" onclick="setTimeout(initCampaignCalendar, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="marketingCalendarPage">
                 <span class="nav-icon material-symbols-rounded">event</span>
                 <span class="nav-label">Campaign Calendar</span>
               </a>
@@ -1218,13 +1218,13 @@ try {
           <span class="nav-tooltip">Offers</span>
           <ul class="submenu">
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="couponsPage" onclick="setTimeout(loadAdminCoupons, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="couponsPage">
                 <span class="material-symbols-rounded">confirmation_number</span>
                 <span class="nav-label">Coupons</span>
               </a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="dealsPage" onclick="setTimeout(function(){loadDealMenus();loadDeals();},50)">
+              <a href="#" class="nav-link submenu-link" data-page="dealsPage">
                 <span class="material-symbols-rounded">local_offer</span>
                 <span class="nav-label">Deals</span>
               </a>
@@ -1266,7 +1266,7 @@ try {
               </a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="cateringPage" onclick="setTimeout(loadAdminCatering, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="cateringPage">
                 <span class="material-symbols-rounded">celebration</span>
                 <span class="nav-label">Catering</span>
               </a>
@@ -1282,31 +1282,31 @@ try {
           <span class="nav-tooltip">Growth</span>
           <ul class="submenu">
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="growthSettingsPage" onclick="setTimeout(function(){ loadGrowthSettings(); if (window.loadLoyaltyStudio) loadLoyaltyStudio(); }, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="growthSettingsPage">
                 <span class="material-symbols-rounded">loyalty</span>
                 <span class="nav-label">Loyalty Studio</span>
               </a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="whatsappPage" onclick="setTimeout(function(){ if (window.loadWhatsappAdmin) loadWhatsappAdmin(); }, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="whatsappPage">
                 <span class="material-symbols-rounded">chat</span>
                 <span class="nav-label">WhatsApp</span>
               </a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="customerSegmentsPage" onclick="setTimeout(loadCustomerSegments, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="customerSegmentsPage">
                 <span class="material-symbols-rounded">groups</span>
                 <span class="nav-label">Customer Segments</span>
               </a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="referralsPage" onclick="setTimeout(loadReferrals, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="referralsPage">
                 <span class="material-symbols-rounded">group_add</span>
                 <span class="nav-label">Referrals</span>
               </a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="growthReportsPage" onclick="setTimeout(loadGrowthReports, 50); setTimeout(function(){ loadClvReport(''); }, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="growthReportsPage">
                 <span class="material-symbols-rounded">insights</span>
                 <span class="nav-label">Reports</span>
               </a>
@@ -1322,13 +1322,13 @@ try {
           <span class="nav-tooltip">Delivery</span>
           <ul class="submenu">
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="deliveryPage" onclick="setTimeout(loadDeliveryZones, 150)">
+              <a href="#" class="nav-link submenu-link" data-page="deliveryPage">
                 <span class="material-symbols-rounded">pin_drop</span>
                 <span class="nav-label">Zones</span>
               </a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="deliveryMapPage" onclick="setTimeout(initDeliveryMap, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="deliveryMapPage">
                 <span class="material-symbols-rounded">map</span>
                 <span class="nav-label">Map View</span>
               </a>
@@ -1336,7 +1336,7 @@ try {
           </ul>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" data-page="feedbackPage" onclick="setTimeout(loadFeedback, 50)">
+          <a href="#" class="nav-link" data-page="feedbackPage">
             <span class="nav-icon material-symbols-rounded">star</span>
             <span class="nav-label">Feedback</span>
           </a>
@@ -1375,14 +1375,14 @@ try {
           <span class="nav-tooltip">Website Appearance</span>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" data-page="policyPagesPage" onclick="setTimeout(initPolicyPagesEditor, 50)">
+          <a href="#" class="nav-link" data-page="policyPagesPage">
             <span class="nav-icon material-symbols-rounded">gavel</span>
             <span class="nav-label">Policy Pages</span>
           </a>
           <span class="nav-tooltip">Policy Pages</span>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" data-page="embedPage" onclick="setTimeout(loadEmbedSettings, 50)">
+          <a href="#" class="nav-link" data-page="embedPage">
             <span class="nav-icon material-symbols-rounded">language</span>
             <span class="nav-label">Custom Domain</span>
           </a>
@@ -1607,149 +1607,199 @@ try {
     </div>
 
     <!-- Website Theme Page -->
-    <div id="websiteThemePage" class="page">
+    <div id="websiteThemePage" class="page sx">
       <div class="page-header">
         <h1>Website Appearance</h1>
-        <p>Change the colors and banner image used in the customer website.</p>
+        <p>How your website looks: colours, fonts, layouts and banners. The preview shows every change before you save.</p>
       </div>
       <div class="page-content">
         <div class="settings-grid">
           <div class="settings-section">
-            <h2 class="settings-section-title">
-              <span class="material-symbols-rounded">palette</span>
-              Colors
-            </h2>
+            <nav class="wt-jump" aria-label="Jump to">
+              <button type="button" data-wt-jump="wtg-brand"><span class="material-symbols-rounded">storefront</span>Brand</button>
+              <button type="button" data-wt-jump="wtg-colours"><span class="material-symbols-rounded">palette</span>Colours and font</button>
+              <button type="button" data-wt-jump="wtg-home"><span class="material-symbols-rounded">home</span>Home page</button>
+              <button type="button" data-wt-jump="wtg-menu"><span class="material-symbols-rounded">restaurant_menu</span>Menu page</button>
+              <button type="button" data-wt-jump="wtg-nav"><span class="material-symbols-rounded">apps</span>Navigation and profile</button>
+              <button type="button" data-wt-jump="wtg-banners"><span class="material-symbols-rounded">campaign</span>Banners and sharing</button>
+            </nav>
 
-            <!-- Website Name -->
-            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">badge</span>
+            <section class="wt-group" id="wtg-brand">
+              <div class="wt-group-h"><span class="material-symbols-rounded">storefront</span><div><h3>Brand</h3><p>Your name, logo, browser icon and the top of your home page.</p></div></div>
+<!-- Website Name -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#dc2626">badge</span>
                 Website Display Name
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">The name shown to customers on your website. Leave blank to keep using your account name.</p>
+              <p class="wt-desc">The name shown to customers on your website. Leave blank to keep using your account name.</p>
               <input type="text" id="siteNameInput" maxlength="191" placeholder="<?php echo htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8'); ?>" style="width: 100%; padding: 0.65rem 0.85rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; background: #fff;">
             </div>
-
-            <!-- Favicon -->
-            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">tab</span>
+<!-- Logo Shape & Size Settings -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#dc2626">crop</span>
+                Logo Style
+              </div>
+              <p class="wt-desc">Customize how your restaurant logo appears on the website.</p>
+              
+              <!-- Shape Toggle -->
+              <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: #374151;">Logo Shape</label>
+                <div style="display: flex; gap: 1rem;">
+                  <label class="logo-shape-btn" data-shape="circle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.6rem 1.2rem; border: 2px solid #dc2626; border-radius: 8px; background: #dc2626; color: #fff; transition: all 0.2s;" onmouseover="this.style.borderColor='#b91c1c'" onmouseout="this.style.borderColor='#dc2626'" onclick="document.querySelectorAll('.logo-shape-btn').forEach(function(el){el.style.borderColor='#e5e7eb';el.style.background='#fff';el.style.color='#374151'});this.style.borderColor='#dc2626';this.style.background='#dc2626';this.style.color='#fff'">
+                    <input type="radio" name="logoShape" value="circle" checked style="accent-color: #fff; display: none;">
+                    <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #fff; flex-shrink: 0;"></span>
+                    <span style="font-weight: 500; font-size: 0.9rem;">Circle</span>
+                  </label>
+                  <label class="logo-shape-btn" data-shape="square" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.6rem 1.2rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; color: #374151; transition: all 0.2s;" onmouseover="this.style.borderColor='#d1d5db'" onmouseout="this.style.borderColor='#e5e7eb'" onclick="document.querySelectorAll('.logo-shape-btn').forEach(function(el){el.style.borderColor='#e5e7eb';el.style.background='#fff';el.style.color='#374151'});this.style.borderColor='#dc2626';this.style.background='#dc2626';this.style.color='#fff'">
+                    <input type="radio" name="logoShape" value="square" style="accent-color: #dc2626; display: none;">
+                    <span style="display: inline-block; width: 20px; height: 20px; border-radius: 4px; background: #6b7280; flex-shrink: 0;"></span>
+                    <span style="font-weight: 500; font-size: 0.9rem;">Square (Rounded)</span>
+                  </label>
+                </div>
+              </div>
+              
+              <!-- Size Slider -->
+              <div>
+                <label for="logoSizeSlider" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: #374151;">
+                  Logo Size: <span id="logoSizeDisplay" style="color: #dc2626;">90</span>px
+                </label>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="font-size: 0.8rem; color: #9ca3af; font-weight: 500;">Small</span>
+                  <input type="range" id="logoSizeSlider" min="50" max="150" value="90" style="flex: 1; height: 6px; -webkit-appearance: none; appearance: none; background: linear-gradient(to right, #dc2626 0%, #dc2626 40%, #e5e7eb 40%, #e5e7eb 100%); border-radius: 3px; outline: none; cursor: pointer;" oninput="document.getElementById('logoSizeDisplay').textContent = this.value; this.style.background = 'linear-gradient(to right, #dc2626 0%, #dc2626 ' + ((this.value - 50) / 100 * 100) + '%, #e5e7eb ' + ((this.value - 50) / 100 * 100) + '%, #e5e7eb 100%)'">
+                  <span style="font-size: 0.8rem; color: #9ca3af; font-weight: 500;">Large</span>
+                </div>
+              </div>
+            </div>
+<!-- Favicon -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#dc2626">tab</span>
                 Browser Tab Icon (Favicon)
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Paste a direct image URL to use as your website's browser-tab icon. Leave blank to use your uploaded logo.</p>
+              <p class="wt-desc">Paste a direct image URL to use as your website's browser-tab icon. Leave blank to use your uploaded logo.</p>
               <div style="display:flex; align-items:center; gap:10px;">
                 <img id="faviconPreviewImg" src="" alt="" style="width:36px;height:36px;border-radius:6px;border:2px solid #e5e7eb;object-fit:cover;display:none;background:#fff;">
                 <input type="text" id="faviconUrlInput" maxlength="500" placeholder="https://example.com/favicon.png" style="flex:1; padding: 0.65rem 0.85rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; background: #fff;">
               </div>
             </div>
-
-            <!-- Bottom Navigation: icon style + each item's label and own icon, in one place -->
-            <div style="margin-bottom: 1.5rem; padding: 1.1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">apps</span>
-                Bottom Navigation
+<!-- Header Style: hero banner vs a compact minimal bar -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">web_asset</span>
+                Header Style
               </div>
-              <p style="font-size: 0.82rem; color: #6b7280; margin-bottom: 0.7rem;">Pick how the bar looks and an icon style, then rename any item (blank = default) or upload your own icon for it (PNG/JPG/SVG/WebP/GIF, max 1MB).</p>
-              <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">Bar style</div>
-              <style>
-                .nbs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-bottom: 14px; }
-                .nav-bar-style-opt { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 2px solid #e5e7eb; border-radius: 12px; background: #fff; cursor: pointer; transition: border-color .15s; }
-                .nav-bar-style-opt input { display: none; }
-                .nav-bar-style-opt b { font-size: 0.8rem; color: #111827; }
-                .nav-bar-style-opt small { font-size: 0.7rem; color: #6b7280; line-height: 1.3; }
-                .nbs-m { position: relative; height: 54px; border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #fde68a, #fca5a5 60%, #c4b5fd); }
-                .nbs-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; display: flex; align-items: center; justify-content: space-around; background: #fff; border-top: 1px solid #e5e7eb; }
-                .nbs-bar i { width: 8px; height: 8px; border-radius: 3px; background: #9ca3af; position: relative; }
-                .nbs-bar i.on { background: #e11d48; }
-                .nbs-floating .nbs-bar { left: 6px; right: 6px; bottom: 5px; border-radius: 10px; border: 0; box-shadow: 0 4px 10px rgba(0,0,0,.18); }
-                .nbs-glass .nbs-bar { background: rgba(255,255,255,.55); border-top-color: rgba(255,255,255,.8); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-                .nbs-dark .nbs-bar { background: #111827; border: 0; }
-                .nbs-dark .nbs-bar i { background: #6b7280; } .nbs-dark .nbs-bar i.on { background: #fff; }
-                .nbs-pill .nbs-bar i.on { width: 26px; border-radius: 999px; background: #fecdd3; box-shadow: inset 0 0 0 3px #fecdd3, inset 8px 0 0 0 #e11d48; }
-                .nbs-bubble .nbs-bar i.on { width: 16px; height: 16px; border-radius: 50%; margin-top: -14px; border: 2px solid #fff; }
-                .nbs-line .nbs-bar i.on::before { content: ""; position: absolute; top: -7px; left: -3px; width: 14px; height: 2px; border-radius: 2px; background: #e11d48; }
-                .nbs-fab .nbs-bar i.mid { width: 18px; height: 18px; border-radius: 50%; margin-top: -16px; background: #e11d48; border: 2px solid #fff; }
-                .nbs-minimal .nbs-bar i.on::after { content: ""; position: absolute; bottom: -5px; left: 2px; width: 4px; height: 4px; border-radius: 50%; background: #e11d48; }
-              </style>
-              <div class="nbs-grid">
-                <?php foreach ([
-                  'classic'  => ['Classic', 'Icons with labels'],
-                  'floating' => ['Floating', 'Rounded bar above the edge'],
-                  'glass'    => ['Glass', 'Frosted, see-through'],
-                  'dark'     => ['Dark', 'Dark bar, light icons'],
-                  'pill'     => ['Pill', 'Current tab in a pill'],
-                  'bubble'   => ['Bubble', 'Current tab pops up'],
-                  'line'     => ['Top line', 'Accent line on top'],
-                  'fab'      => ['Raised cart', 'Big round cart button'],
-                  'minimal'  => ['Icons only', 'No labels, a dot'],
-                ] as $nbsId => $nbs): ?>
-                <label class="nav-bar-style-opt" data-value="<?php echo $nbsId; ?>">
-                  <input type="radio" name="navBarStyle" value="<?php echo $nbsId; ?>"<?php echo $nbsId === 'classic' ? ' checked' : ''; ?>>
-                  <span class="nbs-m nbs-<?php echo $nbsId; ?>"><span class="nbs-bar"><i class="on"></i><i></i><i class="mid"></i><i></i><i></i></span></span>
-                  <b><?php echo $nbs[0]; ?></b><small><?php echo $nbs[1]; ?></small>
+              <p class="wt-desc">The top of your home page: your photo, logo, name, today's hours and rating. Photo styles use your Background Image; the rating shows once you have 3 or more customer reviews.</p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px;">
+                <label class="header-style-opt" data-value="hero" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #7c3aed;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="hero" checked style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(135deg,#94a3b8,#475569);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:8px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:16px;right:16px;top:28px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;right:22px;top:35px;background:rgba(255,255,255,.6);"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Photo banner</span>
                 </label>
-                <?php endforeach; ?>
+                <label class="header-style-opt" data-value="minimal" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="minimal" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#fff;"><i style="position:absolute;left:0;right:0;top:0;height:18px;background:#dc2626;"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:4px;top:2px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;width:26px;top:8px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Minimal bar</span>
+                </label>
+                <label class="header-style-opt" data-value="glass" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="glass" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(135deg,#94a3b8,#475569);"><i style="position:absolute;left:6px;right:6px;bottom:4px;height:24px;border-radius:6px;background:rgba(15,15,20,.55);border:1px solid rgba(255,255,255,.3);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:12px;border-radius:4px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:18px;right:18px;bottom:16px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:24px;width:10px;bottom:9px;background:#22c55e;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Glass card</span>
+                </label>
+                <label class="header-style-opt" data-value="cover" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="cover" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8,#1f2937);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:5px;bottom:14px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;width:30px;bottom:19px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:40px;bottom:7px;background:rgba(255,255,255,.6);"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Full cover</span>
+                </label>
+                <label class="header-style-opt" data-value="card" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="card" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8 0 40%,#f3f4f6 40%);"><i style="position:absolute;left:6px;right:6px;bottom:3px;top:16px;border-radius:6px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:9px;box-shadow:0 0 0 2px #fff,0 1px 3px rgba(0,0,0,.2);background:#16a34a;"></i><i style="position:absolute;height:3px;border-radius:2px;left:16px;right:16px;top:30px;background:#111827;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;right:22px;top:37px;background:#d1d5db;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Photo + card</span>
+                </label>
+                <label class="header-style-opt" data-value="brand" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="brand" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:radial-gradient(circle,rgba(255,255,255,.25) 1px,transparent 1.5px) 0 0/6px 6px,linear-gradient(140deg,#ef4444,#991b1b);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:27px;top:6px;border-radius:4px;width:16px;height:16px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:14px;right:14px;top:28px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:20px;right:20px;top:35px;background:rgba(255,255,255,.6);"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Brand colour</span>
+                </label>
+                <label class="header-style-opt" data-value="poster" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="poster" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8,#111827);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:4px;top:4px;width:9px;height:9px;"></i><i style="position:absolute;left:5px;width:42px;bottom:13px;height:7px;border-radius:2px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:12px;bottom:7px;background:#fbbf24;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Poster</span>
+                </label>
+                <label class="header-style-opt" data-value="split" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="split" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#fff;"><i style="position:absolute;left:0;top:0;bottom:0;width:40%;border-radius:0 8px 8px 0;background:linear-gradient(135deg,#94a3b8,#475569);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:46%;top:8px;background:#16a34a;"></i><i style="position:absolute;height:3px;border-radius:2px;left:46%;right:6px;top:26px;background:#111827;"></i><i style="position:absolute;height:3px;border-radius:2px;left:46%;right:14px;top:33px;background:#d1d5db;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Split</span>
+                </label>
+                <label class="header-style-opt" data-value="arch" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="arch" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#fbf6ee;"><i style="position:absolute;left:22px;right:22px;top:4px;height:24px;border-radius:12px 12px 3px 3px;background:linear-gradient(135deg,#94a3b8,#475569);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:22px;background:#16a34a;box-shadow:0 0 0 2px #fbf6ee;"></i><i style="position:absolute;height:3px;border-radius:2px;left:18px;right:18px;bottom:4px;background:#111827;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Arch</span>
+                </label>
+                <label class="header-style-opt" data-value="story" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="story" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8,#111827);"><i style="position:absolute;height:3px;border-radius:2px;left:4px;right:20px;top:3px;height:2px;background:linear-gradient(90deg,#fff 0 33%,transparent 33% 36%,#fff 36% 55%,rgba(255,255,255,.4) 55%);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:5px;bottom:12px;box-shadow:0 0 0 2px #f59e0b;"></i><i style="position:absolute;height:3px;border-radius:2px;left:23px;width:28px;bottom:17px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:40px;bottom:5px;background:rgba(255,255,255,.6);"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Story</span>
+                </label>
+                <label class="header-style-opt" data-value="neon" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="neon" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#0b0b14;"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:6px;box-shadow:0 0 0 2px #ef4444,0 0 8px #ef4444;"></i><i style="position:absolute;height:3px;border-radius:2px;left:14px;right:14px;top:27px;background:#fff;box-shadow:0 0 6px #ef4444;"></i><i style="position:absolute;height:3px;border-radius:2px;left:24px;right:24px;top:35px;background:rgba(255,255,255,.4);"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Neon</span>
+                </label>
+                <label class="header-style-opt" data-value="paper" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="paper" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#fbf7ef;box-shadow:inset 0 0 0 3px #fbf7ef,inset 0 0 0 4px rgba(140,100,60,.45);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:6px;box-shadow:0 0 0 1px rgba(140,100,60,.6);"></i><i style="position:absolute;height:3px;border-radius:2px;left:16px;right:16px;top:25px;background:#3b2a1a;"></i><i style="position:absolute;height:3px;border-radius:2px;left:26px;right:26px;top:33px;height:1px;background:#a47148;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Paper menu</span>
+                </label>
+                <label class="header-style-opt" data-value="profile" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="profile" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8 0 50%,#fff 50%);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:5px;top:15px;background:#16a34a;box-shadow:0 0 0 2px #fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:38px;top:32px;background:#111827;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:28px;top:38px;background:#d1d5db;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Profile</span>
+                </label>
+                <label class="header-style-opt" data-value="aurora" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="aurora" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(120deg,#ef4444,#fbbf24,#991b1b);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:6px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:14px;right:14px;top:27px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;right:22px;top:34px;background:rgba(255,255,255,.6);"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Aurora</span>
+                </label>
+                <label class="header-style-opt" data-value="stack" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="headerStyle" value="stack" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#f6f7fb;"><i style="position:absolute;left:18px;right:16px;top:5px;height:22px;border-radius:5px;background:#fff;box-shadow:2px 2px 0 #d1d5db;transform:rotate(3deg);"></i><i style="position:absolute;left:16px;right:20px;top:4px;height:22px;border-radius:5px;background:linear-gradient(135deg,#94a3b8,#475569);transform:rotate(-3deg);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:22px;background:#16a34a;box-shadow:0 0 0 2px #f6f7fb;"></i><i style="position:absolute;height:3px;border-radius:2px;left:18px;right:18px;bottom:3px;background:#111827;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Stack</span>
+                </label>
               </div>
-              <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">Icon style</div>
-              <div id="navIconStyleGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px;"></div>
-              <input type="hidden" id="navIconStyleInput" value="classic">
-              <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin: 14px 0 6px;">Items — label &amp; own icon</div>
-              <div id="navIconUploadGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px;">
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <span data-nav-icon-thumb="home" style="display:flex;flex-shrink:0;"></span>
-                  <input type="text" id="navLabelHomeInput" maxlength="20" placeholder="Home" aria-label="Home label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
-                  <span data-nav-icon-actions="home" style="display:flex;gap:4px;flex-shrink:0;"></span>
+              <!-- Story photos: only while the Story header is selected -->
+              <div id="storyPhotosPanel" style="display:none;margin-top:12px;padding:12px;border-radius:12px;border:2px dashed #ddd6fe;background:#faf8ff;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                  <span class="material-symbols-rounded" style="font-size:20px;color:#7c3aed;">auto_stories</span>
+                  <b style="flex:1;min-width:140px;color:#111827;">Story photos <span id="storyPhotosCount" style="font-weight:600;color:#6b7280;"></span></b>
+                  <label class="btn btn-primary" style="margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;font-size:0.85rem;">
+                    <span class="material-symbols-rounded" style="font-size:18px;">add_photo_alternate</span> Add photos
+                    <input type="file" id="storyPhotosInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none;">
+                  </label>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <span data-nav-icon-thumb="menu" style="display:flex;flex-shrink:0;"></span>
-                  <input type="text" id="navLabelMenuInput" maxlength="20" placeholder="Menu" aria-label="Menu label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
-                  <span data-nav-icon-actions="menu" style="display:flex;gap:4px;flex-shrink:0;"></span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <span data-nav-icon-thumb="social" style="display:flex;flex-shrink:0;"></span>
-                  <input type="text" id="navLabelSocialInput" maxlength="20" placeholder="Social" aria-label="Social label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
-                  <span data-nav-icon-actions="social" style="display:flex;gap:4px;flex-shrink:0;"></span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <span data-nav-icon-thumb="plans" style="display:flex;flex-shrink:0;"></span>
-                  <input type="text" id="navLabelPlansInput" maxlength="20" placeholder="Plans" aria-label="Plans label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
-                  <span data-nav-icon-actions="plans" style="display:flex;gap:4px;flex-shrink:0;"></span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <span data-nav-icon-thumb="reservations" style="display:flex;flex-shrink:0;"></span>
-                  <input type="text" id="navLabelReservationsInput" maxlength="20" placeholder="Reserve" aria-label="Reserve label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
-                  <span data-nav-icon-actions="reservations" style="display:flex;gap:4px;flex-shrink:0;"></span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <span data-nav-icon-thumb="cart" style="display:flex;flex-shrink:0;"></span>
-                  <input type="text" id="navLabelCartInput" maxlength="20" placeholder="Cart" aria-label="Cart label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
-                  <span data-nav-icon-actions="cart" style="display:flex;gap:4px;flex-shrink:0;"></span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <span data-nav-icon-thumb="profile" style="display:flex;flex-shrink:0;"></span>
-                  <input type="text" id="navLabelProfileInput" maxlength="20" placeholder="Profile" aria-label="Profile label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
-                  <span data-nav-icon-actions="profile" style="display:flex;gap:4px;flex-shrink:0;"></span>
-                </div>
+                <p style="margin:0 0 10px;font-size:0.8rem;color:#6b7280;">Up to 10 photos play one after another at the top of your home page, like Instagram stories. Customers tap the right side for the next one. With no photos here, Story uses your Background Image.</p>
+                <div id="storyPhotosGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;"></div>
               </div>
             </div>
+            </section>
 
-            <!-- Theme Presets -->
-            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">auto_awesome</span>
+            <section class="wt-group" id="wtg-colours">
+              <div class="wt-group-h"><span class="material-symbols-rounded">palette</span><div><h3>Colours and font</h3><p>Start from a ready theme, then fine-tune colours, font and background.</p></div></div>
+<!-- Theme Presets -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">auto_awesome</span>
                 Quick Themes
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Pick a theme for a distinct color, font &amp; shape combo so your site doesn't look identical to every other restaurant on the platform. You can still fine-tune colors below afterward.</p>
+              <p class="wt-desc">Pick a theme for a distinct color, font &amp; shape combo so your site doesn't look identical to every other restaurant on the platform. You can still fine-tune colors below afterward.</p>
               <div id="themePresetGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px;"></div>
               <input type="hidden" id="cardStyleInput" value="rounded">
               <input type="hidden" id="themePresetInput" value="">
             </div>
-
-            <!-- Colours (the real preview on the right shows them: Current mode) -->
+<!-- Colours (the real preview on the right shows them: Current mode) -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#dc2626">palette</span>Colours</div>
+              <p class="wt-desc">Tap a swatch to pick, or type a hex code. The preview changes as you go.</p>
             <div id="colorPreviewContainer" style="display:none;" aria-hidden="true">
               <div id="heroPreview"><div id="heroPreviewName"></div></div><div id="categoryButtonPreview"></div><div id="addToCartPreview"></div><div id="checkoutPreview"></div>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 1.25rem;">
+            <div class="wt-swatches">
               <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:#fff;">
                 <input type="color" id="primaryRed" value="#F70000" title="Primary" style="width:46px;height:46px;flex-shrink:0;padding:0;border:0;border-radius:12px;background:none;cursor:pointer;">
                 <div style="flex:1;min-width:0;">
@@ -1777,15 +1827,14 @@ try {
             </div>
             <!-- Hidden field: gradient shade auto-derived from Primary Color (no manual picker needed) -->
             <input type="hidden" id="darkRed" value="#DA020E">
-            <p style="margin: -0.75rem 0 1.5rem; font-size: 0.8rem; color: #9ca3af;">The gradient shade used in headers is generated automatically from your Primary Color.</p>
-
-            <!-- Font Picker -->
-            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #2563eb;">font_download</span>
+            <p class="wt-desc" style="margin:0">The gradient shade used in headers is generated automatically from your Primary Color.</p>
+            </div>
+<!-- Font Picker -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#2563eb">font_download</span>
                 Website Font
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Choose the font used across your customer-facing website.</p>
+              <p class="wt-desc">Choose the font used across your customer-facing website.</p>
               <select id="siteFontSelect" style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; background: #fff; cursor: pointer;">
                 <option value="Poppins" style="font-family: 'Poppins', sans-serif;">Poppins (Default)</option>
                 <option value="Playfair Display" style="font-family: 'Playfair Display', serif;">Playfair Display (Elegant)</option>
@@ -1795,8 +1844,99 @@ try {
                 <option value="Lora" style="font-family: 'Lora', serif;">Lora (Classic)</option>
               </select>
             </div>
+<!-- Background Theme Selector -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#8b5cf6">wallpaper</span>
+                Background Theme
+              </div>
+              <p class="wt-desc">Pick a background for your homepage. <strong>Click any preset</strong> to select it, then <strong>click Save Theme</strong> below. Or upload your own image — it will be saved automatically.</p>
+              <div id="backgroundThemeGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px;"></div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <input type="file" id="backgroundImageUpload" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" style="flex: 1; min-width: 200px; padding: 0.4rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.85rem; background: #fff;">
+                <button type="button" id="uploadBackgroundImageBtn" class="btn btn-primary" style="padding: 0.6rem 1rem; font-size: 0.85rem; white-space: nowrap;">
+                  <span class="material-symbols-rounded" style="font-size: 1rem; vertical-align: middle;">upload</span>
+                  Upload & Save
+                </button>
+              </div>
+              <div id="bgUploadStatus" style="margin-top: 6px; font-size: 0.8rem; color: #888;"></div>
+              <input type="hidden" id="backgroundThemeInput" value="">
+            </div>
+<!-- Category heading colour (Menu page + home menu list) -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">format_color_fill</span>
+                Category Heading Colour
+              </div>
+              <p class="wt-desc">Background of the category headings (e.g. <b>Starters (6)</b>). <b>Automatic</b> uses a light shade of your ADD button colour; untick it to pick your own &mdash; light colours read best.</p>
+              <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 500; cursor: pointer;"><input type="checkbox" id="categoryHeadingAuto" checked> Automatic</label>
+                <input type="color" id="categoryHeadingBg" value="#fdeee4" style="width: 52px; height: 36px; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 2px; background: #fff; cursor: pointer;" disabled>
+                <span id="categoryHeadingPreview" style="padding: 6px 14px; border-radius: 10px; font-weight: 700; color: #1a1b1f; background: #fdeee4;">Starters (6)</span>
+              </div>
+            </div>
+            </section>
 
-            <!-- Bestsellers section look (saved with the theme as bestseller_style) -->
+            <section class="wt-group" id="wtg-home">
+              <div class="wt-group-h"><span class="material-symbols-rounded">home</span><div><h3>Home page</h3><p>What customers see first.</p></div></div>
+<!-- Home page dishes: how the menu list on the home page looks -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">home</span>
+                Home Page Dishes
+              </div>
+              <p class="wt-desc">How dishes look in the menu on your Home page. <b>Classic</b>: rows with a photo (default). <b>Grid</b>: 2 cards per row. <b>Big photo</b>: one large photo per dish. <b>Compact</b>: short rows for long menus. <b>Carousel</b>: each category scrolls sideways. <b>Magazine</b>: zig-zag cards. <b>Printed menu</b>: no photos, name ····· price. <b>Tiles</b>: 3 per row with the name on the photo. <b>Delivery app</b>: photo on the right with ADD on it. <b>Dark</b>: the dish list in dark mode.</p>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <label class="home-card-style-opt" data-value="classic" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="classic" checked style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">view_list</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Classic</span>
+                </label>
+                <label class="home-card-style-opt" data-value="grid" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="grid" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">grid_view</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Grid</span>
+                </label>
+                <label class="home-card-style-opt" data-value="big" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="big" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">image</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Big photo</span>
+                </label>
+                <label class="home-card-style-opt" data-value="compact" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="compact" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">density_small</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Compact</span>
+                </label>
+                <label class="home-card-style-opt" data-value="carousel" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="carousel" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_carousel</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Carousel</span>
+                </label>
+                <label class="home-card-style-opt" data-value="magazine" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="magazine" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">auto_stories</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Magazine</span>
+                </label>
+                <label class="home-card-style-opt" data-value="printed" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="printed" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">menu_book</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Printed menu</span>
+                </label>
+                <label class="home-card-style-opt" data-value="tiles" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="tiles" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">apps</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Tiles</span>
+                </label>
+                <label class="home-card-style-opt" data-value="delivery" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="delivery" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">delivery_dining</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Delivery app</span>
+                </label>
+                <label class="home-card-style-opt" data-value="dark" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="homeCardStyle" value="dark" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">dark_mode</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Dark</span>
+                </label>
+              </div>
+            </div>
+<!-- Bestsellers section look (saved with the theme as bestseller_style) -->
             <div class="bs-style-card">
               <div class="bs-style-head">
                 <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #f59e0b;">star</span>
@@ -1892,32 +2032,17 @@ try {
                 </div>
               </div>
             </div>
-                        <!-- Background Theme Selector -->
-            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #8b5cf6;">wallpaper</span>
-                Background Theme
-              </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Pick a background for your homepage. <strong>Click any preset</strong> to select it, then <strong>click Save Theme</strong> below. Or upload your own image — it will be saved automatically.</p>
-              <div id="backgroundThemeGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px;"></div>
-              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                <input type="file" id="backgroundImageUpload" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" style="flex: 1; min-width: 200px; padding: 0.4rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.85rem; background: #fff;">
-                <button type="button" id="uploadBackgroundImageBtn" class="btn btn-primary" style="padding: 0.6rem 1rem; font-size: 0.85rem; white-space: nowrap;">
-                  <span class="material-symbols-rounded" style="font-size: 1rem; vertical-align: middle;">upload</span>
-                  Upload & Save
-                </button>
-              </div>
-              <div id="bgUploadStatus" style="margin-top: 6px; font-size: 0.8rem; color: #888;"></div>
-              <input type="hidden" id="backgroundThemeInput" value="">
-            </div>
-            <!-- Desktop Layout Toggle -->
+            </section>
 
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">grid_view</span>
+            <section class="wt-group" id="wtg-menu">
+              <div class="wt-group-h"><span class="material-symbols-rounded">restaurant_menu</span><div><h3>Menu page</h3><p>How dishes and categories are laid out.</p></div></div>
+<!-- Desktop Layout Toggle -->
+
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#dc2626">grid_view</span>
                 Mobile Layout
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Choose how many product columns to show on phone screens. Desktop/laptop always shows 2 columns.</p>
+              <p class="wt-desc">Choose how many product columns to show on phone screens. Desktop/laptop always shows 2 columns.</p>
               <div style="display: flex; gap: 1rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; transition: all 0.2s;" onmouseover="this.style.borderColor='#d1d5db'" onmouseout="this.style.borderColor='#e5e7eb'">
                   <input type="radio" name="layoutColumns" value="1" style="accent-color: #dc2626;">
@@ -1929,14 +2054,12 @@ try {
                 </label>
               </div>
             </div>
-
-            <!-- Card Layout: real structural variants, not just recoloring -->
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">view_agenda</span>
+<!-- Card Layout: real structural variants, not just recoloring -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">view_agenda</span>
                 Card Layout
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How menu items are arranged on your Menu page &mdash; a real layout change, not just a color swap.</p>
+              <p class="wt-desc">How menu items are arranged on your Menu page &mdash; a real layout change, not just a color swap.</p>
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <label class="layout-style-opt" data-value="grid" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
                   <input type="radio" name="layoutStyle" value="grid" checked style="display:none;">
@@ -1955,35 +2078,12 @@ try {
                 </label>
               </div>
             </div>
-
-            <!-- Menu Categories: left sidebar or a scrolling bar across the top -->
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">view_sidebar</span>
-                Menu Categories
-              </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Where the category buttons sit on your Menu page &mdash; down the left side, or in a scrolling bar across the top.</p>
-              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                <label class="menu-nav-pos-opt" data-value="left" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="menuNavPosition" value="left" checked style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">view_sidebar</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Left</span>
-                </label>
-                <label class="menu-nav-pos-opt" data-value="top" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="menuNavPosition" value="top" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_day</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Top</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- Menu Card Design: original cards or the modern card -->
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">dashboard</span>
+<!-- Menu Card Design: original cards or the modern card -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">dashboard</span>
                 Menu Card Design
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How dishes look on your Menu page. <b>Modern</b>: wide photo with a quantity picker. <b>Minimal</b>: clean photo with a round + button. <b>Photo</b>: big photo with the name over it. <b>List</b>: one dish per row with its description (like delivery apps). <b>Elegant</b>: round plate photo on a cream card. <b>Compact</b>: 3 small dishes per row for big menus. <b>Midnight</b>: dark cards with a glowing price. <b>Showcase</b>: one big photo per row. The new designs look best with Menu Categories set to <b>Top</b>.</p>
+              <p class="wt-desc">How dishes look on your Menu page. <b>Modern</b>: wide photo with a quantity picker. <b>Minimal</b>: clean photo with a round + button. <b>Photo</b>: big photo with the name over it. <b>List</b>: one dish per row with its description (like delivery apps). <b>Elegant</b>: round plate photo on a cream card. <b>Compact</b>: 3 small dishes per row for big menus. <b>Midnight</b>: dark cards with a glowing price. <b>Showcase</b>: one big photo per row. The new designs look best with Menu Categories set to <b>Top</b>.</p>
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <label class="menu-card-style-opt" data-value="classic" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
                   <input type="radio" name="menuCardStyle" value="classic" checked style="display:none;">
@@ -2032,75 +2132,150 @@ try {
                 </label>
               </div>
             </div>
-
-            <!-- Home page dishes: how the menu list on the home page looks -->
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">home</span>
-                Home Page Dishes
+<!-- Menu Categories: left sidebar or a scrolling bar across the top -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">view_sidebar</span>
+                Menu Categories
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How dishes look in the menu on your Home page. <b>Classic</b>: rows with a photo (default). <b>Grid</b>: 2 cards per row. <b>Big photo</b>: one large photo per dish. <b>Compact</b>: short rows for long menus. <b>Carousel</b>: each category scrolls sideways. <b>Magazine</b>: zig-zag cards. <b>Printed menu</b>: no photos, name ····· price. <b>Tiles</b>: 3 per row with the name on the photo. <b>Delivery app</b>: photo on the right with ADD on it. <b>Dark</b>: the dish list in dark mode.</p>
+              <p class="wt-desc">Where the category buttons sit on your Menu page &mdash; down the left side, or in a scrolling bar across the top.</p>
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                <label class="home-card-style-opt" data-value="classic" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="classic" checked style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">view_list</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Classic</span>
+                <label class="menu-nav-pos-opt" data-value="left" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="menuNavPosition" value="left" checked style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">view_sidebar</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Left</span>
                 </label>
-                <label class="home-card-style-opt" data-value="grid" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="grid" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">grid_view</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Grid</span>
-                </label>
-                <label class="home-card-style-opt" data-value="big" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="big" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">image</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Big photo</span>
-                </label>
-                <label class="home-card-style-opt" data-value="compact" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="compact" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">density_small</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Compact</span>
-                </label>
-                <label class="home-card-style-opt" data-value="carousel" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="carousel" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_carousel</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Carousel</span>
-                </label>
-                <label class="home-card-style-opt" data-value="magazine" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="magazine" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">auto_stories</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Magazine</span>
-                </label>
-                <label class="home-card-style-opt" data-value="printed" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="printed" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">menu_book</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Printed menu</span>
-                </label>
-                <label class="home-card-style-opt" data-value="tiles" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="tiles" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">apps</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Tiles</span>
-                </label>
-                <label class="home-card-style-opt" data-value="delivery" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="delivery" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">delivery_dining</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Delivery app</span>
-                </label>
-                <label class="home-card-style-opt" data-value="dark" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="homeCardStyle" value="dark" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">dark_mode</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Dark</span>
+                <label class="menu-nav-pos-opt" data-value="top" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="menuNavPosition" value="top" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">view_day</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Top</span>
                 </label>
               </div>
             </div>
+<!-- Category Pictures: round photos or cut-outs -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">lunch_dining</span>
+                Category Pictures
+              </div>
+              <p class="wt-desc">How the category buttons on your Menu page show their pictures. <b>Cut-out</b> shows the whole picture with no tile &mdash; best with transparent PNG images of the dish (upload them on each category; transparency is kept).</p>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <label class="cat-pic-style-opt" data-value="round" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="categoryPicStyle" value="round" checked style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">account_circle</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Round</span>
+                </label>
+                <label class="cat-pic-style-opt" data-value="cutout" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
+                  <input type="radio" name="categoryPicStyle" value="cutout" style="display:none;">
+                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">lunch_dining</span>
+                  <span style="font-weight: 500; font-size: 0.8rem;">Cut-out</span>
+                </label>
+              </div>
+              <!-- Custom picture for the Menu page "All" button -->
+              <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <span style="font-weight: 600; font-size: 0.85rem; color: #111827;">&ldquo;All&rdquo; button picture</span>
+                <img id="allCategoryIconPreview" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2215%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2215%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3C/g%3E%3C/svg%3E" data-default="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2215%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2215%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3C/g%3E%3C/svg%3E" alt="All button picture" style="width: 48px; height: 48px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid #e5e7eb;">
+                <label class="btn btn-outline" style="cursor: pointer; margin: 0;">Upload<input type="file" id="allCategoryIconInput" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;"></label>
+                <button type="button" class="btn btn-outline" id="allCategoryIconRemove">Use default</button>
+                <span id="allCategoryIconStatus" style="font-size: 0.8rem; color: #6b7280;">JPG, PNG or WebP, max 2MB &mdash; saved straight away.</span>
+              </div>
+            </div>
+            </section>
 
-            <!-- Profile page: how the customer's profile page looks -->
-            <div id="profileDesignBox" style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">account_circle</span>
+            <section class="wt-group" id="wtg-nav">
+              <div class="wt-group-h"><span class="material-symbols-rounded">apps</span><div><h3>Navigation and profile</h3><p>The bottom bar and the customer’s profile page.</p></div></div>
+<!-- Bottom Navigation: icon style + each item's label and own icon, in one place -->
+            <div class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#dc2626">apps</span>
+                Bottom Navigation
+              </div>
+              <p class="wt-desc">Pick how the bar looks and an icon style, then rename any item (blank = default) or upload your own icon for it (PNG/JPG/SVG/WebP/GIF, max 1MB).</p>
+              <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">Bar style</div>
+              <style>
+                .nbs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-bottom: 14px; }
+                .nav-bar-style-opt { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 2px solid #e5e7eb; border-radius: 12px; background: #fff; cursor: pointer; transition: border-color .15s; }
+                .nav-bar-style-opt input { display: none; }
+                .nav-bar-style-opt b { font-size: 0.8rem; color: #111827; }
+                .nav-bar-style-opt small { font-size: 0.7rem; color: #6b7280; line-height: 1.3; }
+                .nbs-m { position: relative; height: 54px; border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #fde68a, #fca5a5 60%, #c4b5fd); }
+                .nbs-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; display: flex; align-items: center; justify-content: space-around; background: #fff; border-top: 1px solid #e5e7eb; }
+                .nbs-bar i { width: 8px; height: 8px; border-radius: 3px; background: #9ca3af; position: relative; }
+                .nbs-bar i.on { background: #e11d48; }
+                .nbs-floating .nbs-bar { left: 6px; right: 6px; bottom: 5px; border-radius: 10px; border: 0; box-shadow: 0 4px 10px rgba(0,0,0,.18); }
+                .nbs-glass .nbs-bar { background: rgba(255,255,255,.55); border-top-color: rgba(255,255,255,.8); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+                .nbs-dark .nbs-bar { background: #111827; border: 0; }
+                .nbs-dark .nbs-bar i { background: #6b7280; } .nbs-dark .nbs-bar i.on { background: #fff; }
+                .nbs-pill .nbs-bar i.on { width: 26px; border-radius: 999px; background: #fecdd3; box-shadow: inset 0 0 0 3px #fecdd3, inset 8px 0 0 0 #e11d48; }
+                .nbs-bubble .nbs-bar i.on { width: 16px; height: 16px; border-radius: 50%; margin-top: -14px; border: 2px solid #fff; }
+                .nbs-line .nbs-bar i.on::before { content: ""; position: absolute; top: -7px; left: -3px; width: 14px; height: 2px; border-radius: 2px; background: #e11d48; }
+                .nbs-fab .nbs-bar i.mid { width: 18px; height: 18px; border-radius: 50%; margin-top: -16px; background: #e11d48; border: 2px solid #fff; }
+                .nbs-minimal .nbs-bar i.on::after { content: ""; position: absolute; bottom: -5px; left: 2px; width: 4px; height: 4px; border-radius: 50%; background: #e11d48; }
+              </style>
+              <div class="nbs-grid">
+                <?php foreach ([
+                  'classic'  => ['Classic', 'Icons with labels'],
+                  'floating' => ['Floating', 'Rounded bar above the edge'],
+                  'glass'    => ['Glass', 'Frosted, see-through'],
+                  'dark'     => ['Dark', 'Dark bar, light icons'],
+                  'pill'     => ['Pill', 'Current tab in a pill'],
+                  'bubble'   => ['Bubble', 'Current tab pops up'],
+                  'line'     => ['Top line', 'Accent line on top'],
+                  'fab'      => ['Raised cart', 'Big round cart button'],
+                  'minimal'  => ['Icons only', 'No labels, a dot'],
+                ] as $nbsId => $nbs): ?>
+                <label class="nav-bar-style-opt" data-value="<?php echo $nbsId; ?>">
+                  <input type="radio" name="navBarStyle" value="<?php echo $nbsId; ?>"<?php echo $nbsId === 'classic' ? ' checked' : ''; ?>>
+                  <span class="nbs-m nbs-<?php echo $nbsId; ?>"><span class="nbs-bar"><i class="on"></i><i></i><i class="mid"></i><i></i><i></i></span></span>
+                  <b><?php echo $nbs[0]; ?></b><small><?php echo $nbs[1]; ?></small>
+                </label>
+                <?php endforeach; ?>
+              </div>
+              <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">Icon style</div>
+              <div id="navIconStyleGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px;"></div>
+              <input type="hidden" id="navIconStyleInput" value="classic">
+              <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin: 14px 0 6px;">Items — label &amp; own icon</div>
+              <div id="navIconUploadGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="home" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelHomeInput" maxlength="20" placeholder="Home" aria-label="Home label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="home" style="display:flex;gap:4px;flex-shrink:0;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="menu" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelMenuInput" maxlength="20" placeholder="Menu" aria-label="Menu label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="menu" style="display:flex;gap:4px;flex-shrink:0;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="social" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelSocialInput" maxlength="20" placeholder="Social" aria-label="Social label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="social" style="display:flex;gap:4px;flex-shrink:0;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="plans" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelPlansInput" maxlength="20" placeholder="Plans" aria-label="Plans label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="plans" style="display:flex;gap:4px;flex-shrink:0;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="reservations" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelReservationsInput" maxlength="20" placeholder="Reserve" aria-label="Reserve label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="reservations" style="display:flex;gap:4px;flex-shrink:0;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="cart" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelCartInput" maxlength="20" placeholder="Cart" aria-label="Cart label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="cart" style="display:flex;gap:4px;flex-shrink:0;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <span data-nav-icon-thumb="profile" style="display:flex;flex-shrink:0;"></span>
+                  <input type="text" id="navLabelProfileInput" maxlength="20" placeholder="Profile" aria-label="Profile label" style="flex:1;min-width:0;padding:0.45rem 0.6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#fff;">
+                  <span data-nav-icon-actions="profile" style="display:flex;gap:4px;flex-shrink:0;"></span>
+                </div>
+              </div>
+            </div>
+<!-- Profile page: how the customer's profile page looks -->
+            <div id="profileDesignBox" class="wt-card">
+              <div class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">account_circle</span>
                 Profile Page
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How your customers' profile page looks: pick a top card, then how the sections below look. <b>Cover</b> uses your Background Image.</p>
+              <p class="wt-desc">How your customers' profile page looks: pick a top card, then how the sections below look. <b>Cover</b> uses your Background Image.</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px;">
                 <label class="profile-style-opt" data-value="midnight" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #7c3aed;border-radius:10px;background:#fff;">
                   <input type="radio" name="profileStyle" value="midnight" checked style="display:none;">
@@ -2196,232 +2371,13 @@ try {
                 <span style="font-size:0.75rem;color:#9ca3af;">Unticked: your brand colour.</span></div>
               </div>
             </div>
+            </section>
 
-            <!-- Category Pictures: round photos or cut-outs -->
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">lunch_dining</span>
-                Category Pictures
-              </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How the category buttons on your Menu page show their pictures. <b>Cut-out</b> shows the whole picture with no tile &mdash; best with transparent PNG images of the dish (upload them on each category; transparency is kept).</p>
-              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                <label class="cat-pic-style-opt" data-value="round" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #7c3aed; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="categoryPicStyle" value="round" checked style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #7c3aed;">account_circle</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Round</span>
-                </label>
-                <label class="cat-pic-style-opt" data-value="cutout" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; min-width: 90px;">
-                  <input type="radio" name="categoryPicStyle" value="cutout" style="display:none;">
-                  <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #6b7280;">lunch_dining</span>
-                  <span style="font-weight: 500; font-size: 0.8rem;">Cut-out</span>
-                </label>
-              </div>
-              <!-- Custom picture for the Menu page "All" button -->
-              <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                <span style="font-weight: 600; font-size: 0.85rem; color: #111827;">&ldquo;All&rdquo; button picture</span>
-                <img id="allCategoryIconPreview" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2215%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2215%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3C/g%3E%3C/svg%3E" data-default="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23fff1ec%22/%3E%3Cg fill=%22%23ea580c%22%3E%3Crect x=%2215%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2215%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2215%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3Crect x=%2225%22 y=%2225%22 width=%228%22 height=%228%22 rx=%222%22/%3E%3C/g%3E%3C/svg%3E" alt="All button picture" style="width: 48px; height: 48px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid #e5e7eb;">
-                <label class="btn btn-outline" style="cursor: pointer; margin: 0;">Upload<input type="file" id="allCategoryIconInput" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;"></label>
-                <button type="button" class="btn btn-outline" id="allCategoryIconRemove">Use default</button>
-                <span id="allCategoryIconStatus" style="font-size: 0.8rem; color: #6b7280;">JPG, PNG or WebP, max 2MB &mdash; saved straight away.</span>
-              </div>
-            </div>
-
-            <!-- Category heading colour (Menu page + home menu list) -->
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">format_color_fill</span>
-                Category Heading Colour
-              </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Background of the category headings (e.g. <b>Starters (6)</b>). <b>Automatic</b> uses a light shade of your ADD button colour; untick it to pick your own &mdash; light colours read best.</p>
-              <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 500; cursor: pointer;"><input type="checkbox" id="categoryHeadingAuto" checked> Automatic</label>
-                <input type="color" id="categoryHeadingBg" value="#fdeee4" style="width: 52px; height: 36px; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 2px; background: #fff; cursor: pointer;" disabled>
-                <span id="categoryHeadingPreview" style="padding: 6px 14px; border-radius: 10px; font-weight: 700; color: #1a1b1f; background: #fdeee4;">Starters (6)</span>
-              </div>
-            </div>
-
-            <!-- Header Style: hero banner vs a compact minimal bar -->
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">web_asset</span>
-                Header Style
-              </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">The top of your home page: your photo, logo, name, today's hours and rating. Photo styles use your Background Image; the rating shows once you have 3 or more customer reviews.</p>
-              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px;">
-                <label class="header-style-opt" data-value="hero" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #7c3aed;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="hero" checked style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(135deg,#94a3b8,#475569);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:8px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:16px;right:16px;top:28px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;right:22px;top:35px;background:rgba(255,255,255,.6);"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Photo banner</span>
-                </label>
-                <label class="header-style-opt" data-value="minimal" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="minimal" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#fff;"><i style="position:absolute;left:0;right:0;top:0;height:18px;background:#dc2626;"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:4px;top:2px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;width:26px;top:8px;background:#fff;"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Minimal bar</span>
-                </label>
-                <label class="header-style-opt" data-value="glass" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="glass" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(135deg,#94a3b8,#475569);"><i style="position:absolute;left:6px;right:6px;bottom:4px;height:24px;border-radius:6px;background:rgba(15,15,20,.55);border:1px solid rgba(255,255,255,.3);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:12px;border-radius:4px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:18px;right:18px;bottom:16px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:24px;width:10px;bottom:9px;background:#22c55e;"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Glass card</span>
-                </label>
-                <label class="header-style-opt" data-value="cover" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="cover" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8,#1f2937);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:5px;bottom:14px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;width:30px;bottom:19px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:40px;bottom:7px;background:rgba(255,255,255,.6);"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Full cover</span>
-                </label>
-                <label class="header-style-opt" data-value="card" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="card" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8 0 40%,#f3f4f6 40%);"><i style="position:absolute;left:6px;right:6px;bottom:3px;top:16px;border-radius:6px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:9px;box-shadow:0 0 0 2px #fff,0 1px 3px rgba(0,0,0,.2);background:#16a34a;"></i><i style="position:absolute;height:3px;border-radius:2px;left:16px;right:16px;top:30px;background:#111827;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;right:22px;top:37px;background:#d1d5db;"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Photo + card</span>
-                </label>
-                <label class="header-style-opt" data-value="brand" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="brand" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:radial-gradient(circle,rgba(255,255,255,.25) 1px,transparent 1.5px) 0 0/6px 6px,linear-gradient(140deg,#ef4444,#991b1b);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:27px;top:6px;border-radius:4px;width:16px;height:16px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:14px;right:14px;top:28px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:20px;right:20px;top:35px;background:rgba(255,255,255,.6);"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Brand colour</span>
-                </label>
-                <label class="header-style-opt" data-value="poster" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="poster" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8,#111827);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:4px;top:4px;width:9px;height:9px;"></i><i style="position:absolute;left:5px;width:42px;bottom:13px;height:7px;border-radius:2px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:12px;bottom:7px;background:#fbbf24;"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Poster</span>
-                </label>
-                <label class="header-style-opt" data-value="split" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="split" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#fff;"><i style="position:absolute;left:0;top:0;bottom:0;width:40%;border-radius:0 8px 8px 0;background:linear-gradient(135deg,#94a3b8,#475569);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:46%;top:8px;background:#16a34a;"></i><i style="position:absolute;height:3px;border-radius:2px;left:46%;right:6px;top:26px;background:#111827;"></i><i style="position:absolute;height:3px;border-radius:2px;left:46%;right:14px;top:33px;background:#d1d5db;"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Split</span>
-                </label>
-                <label class="header-style-opt" data-value="arch" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="arch" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#fbf6ee;"><i style="position:absolute;left:22px;right:22px;top:4px;height:24px;border-radius:12px 12px 3px 3px;background:linear-gradient(135deg,#94a3b8,#475569);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:22px;background:#16a34a;box-shadow:0 0 0 2px #fbf6ee;"></i><i style="position:absolute;height:3px;border-radius:2px;left:18px;right:18px;bottom:4px;background:#111827;"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Arch</span>
-                </label>
-                <label class="header-style-opt" data-value="story" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="story" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8,#111827);"><i style="position:absolute;height:3px;border-radius:2px;left:4px;right:20px;top:3px;height:2px;background:linear-gradient(90deg,#fff 0 33%,transparent 33% 36%,#fff 36% 55%,rgba(255,255,255,.4) 55%);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:5px;bottom:12px;box-shadow:0 0 0 2px #f59e0b;"></i><i style="position:absolute;height:3px;border-radius:2px;left:23px;width:28px;bottom:17px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:40px;bottom:5px;background:rgba(255,255,255,.6);"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Story</span>
-                </label>
-                <label class="header-style-opt" data-value="neon" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="neon" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#0b0b14;"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:6px;box-shadow:0 0 0 2px #ef4444,0 0 8px #ef4444;"></i><i style="position:absolute;height:3px;border-radius:2px;left:14px;right:14px;top:27px;background:#fff;box-shadow:0 0 6px #ef4444;"></i><i style="position:absolute;height:3px;border-radius:2px;left:24px;right:24px;top:35px;background:rgba(255,255,255,.4);"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Neon</span>
-                </label>
-                <label class="header-style-opt" data-value="paper" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="paper" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#fbf7ef;box-shadow:inset 0 0 0 3px #fbf7ef,inset 0 0 0 4px rgba(140,100,60,.45);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:6px;box-shadow:0 0 0 1px rgba(140,100,60,.6);"></i><i style="position:absolute;height:3px;border-radius:2px;left:16px;right:16px;top:25px;background:#3b2a1a;"></i><i style="position:absolute;height:3px;border-radius:2px;left:26px;right:26px;top:33px;height:1px;background:#a47148;"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Paper menu</span>
-                </label>
-                <label class="header-style-opt" data-value="profile" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="profile" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#94a3b8 0 50%,#fff 50%);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:5px;top:15px;background:#16a34a;box-shadow:0 0 0 2px #fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:38px;top:32px;background:#111827;"></i><i style="position:absolute;height:3px;border-radius:2px;left:5px;width:28px;top:38px;background:#d1d5db;"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Profile</span>
-                </label>
-                <label class="header-style-opt" data-value="aurora" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="aurora" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:linear-gradient(120deg,#ef4444,#fbbf24,#991b1b);"><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:6px;"></i><i style="position:absolute;height:3px;border-radius:2px;left:14px;right:14px;top:27px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:22px;right:22px;top:34px;background:rgba(255,255,255,.6);"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Aurora</span>
-                </label>
-                <label class="header-style-opt" data-value="stack" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <input type="radio" name="headerStyle" value="stack" style="display:none;">
-                  <span aria-hidden="true" style="position:relative;display:block;height:44px;border-radius:6px;overflow:hidden;background:#f6f7fb;"><i style="position:absolute;left:18px;right:16px;top:5px;height:22px;border-radius:5px;background:#fff;box-shadow:2px 2px 0 #d1d5db;transform:rotate(3deg);"></i><i style="position:absolute;left:16px;right:20px;top:4px;height:22px;border-radius:5px;background:linear-gradient(135deg,#94a3b8,#475569);transform:rotate(-3deg);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6);left:28px;top:22px;background:#16a34a;box-shadow:0 0 0 2px #f6f7fb;"></i><i style="position:absolute;height:3px;border-radius:2px;left:18px;right:18px;bottom:3px;background:#111827;"></i></span>
-                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Stack</span>
-                </label>
-              </div>
-              <!-- Story photos: only while the Story header is selected -->
-              <div id="storyPhotosPanel" style="display:none;margin-top:12px;padding:12px;border-radius:12px;border:2px dashed #ddd6fe;background:#faf8ff;">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-                  <span class="material-symbols-rounded" style="font-size:20px;color:#7c3aed;">auto_stories</span>
-                  <b style="flex:1;min-width:140px;color:#111827;">Story photos <span id="storyPhotosCount" style="font-weight:600;color:#6b7280;"></span></b>
-                  <label class="btn btn-primary" style="margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;font-size:0.85rem;">
-                    <span class="material-symbols-rounded" style="font-size:18px;">add_photo_alternate</span> Add photos
-                    <input type="file" id="storyPhotosInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none;">
-                  </label>
-                </div>
-                <p style="margin:0 0 10px;font-size:0.8rem;color:#6b7280;">Up to 10 photos play one after another at the top of your home page, like Instagram stories. Customers tap the right side for the next one. With no photos here, Story uses your Background Image.</p>
-                <div id="storyPhotosGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;"></div>
-              </div>
-            </div>
-            <!-- Logo Shape & Size Settings -->
-            <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">crop</span>
-                Logo Style
-              </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">Customize how your restaurant logo appears on the website.</p>
-              
-              <!-- Shape Toggle -->
-              <div style="margin-bottom: 1rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: #374151;">Logo Shape</label>
-                <div style="display: flex; gap: 1rem;">
-                  <label class="logo-shape-btn" data-shape="circle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.6rem 1.2rem; border: 2px solid #dc2626; border-radius: 8px; background: #dc2626; color: #fff; transition: all 0.2s;" onmouseover="this.style.borderColor='#b91c1c'" onmouseout="this.style.borderColor='#dc2626'" onclick="document.querySelectorAll('.logo-shape-btn').forEach(function(el){el.style.borderColor='#e5e7eb';el.style.background='#fff';el.style.color='#374151'});this.style.borderColor='#dc2626';this.style.background='#dc2626';this.style.color='#fff'">
-                    <input type="radio" name="logoShape" value="circle" checked style="accent-color: #fff; display: none;">
-                    <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #fff; flex-shrink: 0;"></span>
-                    <span style="font-weight: 500; font-size: 0.9rem;">Circle</span>
-                  </label>
-                  <label class="logo-shape-btn" data-shape="square" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.6rem 1.2rem; border: 2px solid #e5e7eb; border-radius: 8px; background: #fff; color: #374151; transition: all 0.2s;" onmouseover="this.style.borderColor='#d1d5db'" onmouseout="this.style.borderColor='#e5e7eb'" onclick="document.querySelectorAll('.logo-shape-btn').forEach(function(el){el.style.borderColor='#e5e7eb';el.style.background='#fff';el.style.color='#374151'});this.style.borderColor='#dc2626';this.style.background='#dc2626';this.style.color='#fff'">
-                    <input type="radio" name="logoShape" value="square" style="accent-color: #dc2626; display: none;">
-                    <span style="display: inline-block; width: 20px; height: 20px; border-radius: 4px; background: #6b7280; flex-shrink: 0;"></span>
-                    <span style="font-weight: 500; font-size: 0.9rem;">Square (Rounded)</span>
-                  </label>
-                </div>
-              </div>
-              
-              <!-- Size Slider -->
-              <div>
-                <label for="logoSizeSlider" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: #374151;">
-                  Logo Size: <span id="logoSizeDisplay" style="color: #dc2626;">90</span>px
-                </label>
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="font-size: 0.8rem; color: #9ca3af; font-weight: 500;">Small</span>
-                  <input type="range" id="logoSizeSlider" min="50" max="150" value="90" style="flex: 1; height: 6px; -webkit-appearance: none; appearance: none; background: linear-gradient(to right, #dc2626 0%, #dc2626 40%, #e5e7eb 40%, #e5e7eb 100%); border-radius: 3px; outline: none; cursor: pointer;" oninput="document.getElementById('logoSizeDisplay').textContent = this.value; this.style.background = 'linear-gradient(to right, #dc2626 0%, #dc2626 ' + ((this.value - 50) / 100 * 100) + '%, #e5e7eb ' + ((this.value - 50) / 100 * 100) + '%, #e5e7eb 100%)'">
-                  <span style="font-size: 0.8rem; color: #9ca3af; font-weight: 500;">Large</span>
-                </div>
-              </div>
-            </div>
-            <div class="form-actions">
-              <button type="button" class="btn btn-save" id="saveWebsiteThemeBtn">Save Theme</button>
-              <button type="button" class="btn btn-outline" id="resetWebsiteThemeBtn" style="display:flex;align-items:center;gap:6px;">
-                <span class="material-symbols-rounded" style="font-size:18px;">restart_alt</span>
-                Reset to Default
-              </button>
-              <a href="<?php echo $basePath; ?>/<?php
-                $restaurant_slug = strtolower($restaurant_name);
-                $restaurant_slug = preg_replace('/[^a-z0-9]+/', '-', $restaurant_slug);
-                $restaurant_slug = trim($restaurant_slug, '-');
-                echo urlencode($restaurant_slug);
-              ?>" class="btn btn-primary" target="_blank">Open Website</a>
-            </div>
-            <p style="margin-top:10px;color:#666;">Saved locally on this server (no link parameters required). The website reads saved colors automatically from the same origin.</p>
-            
-            <!-- Restaurant Website Link -->
-            <div style="margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 12px; border: 2px solid #e5e7eb;">
-              <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: #111827; display: flex; align-items: center; gap: 0.5rem;">
-                <span class="material-symbols-rounded" style="font-size: 1.3rem; color: var(--primary-red);">link</span>
-                Your Restaurant Website Link
-              </h3>
-              <p style="margin: 0 0 1rem 0; color: #6b7280; font-size: 0.9rem;">Share this unique link with your customers. Each restaurant has its own unique URL.</p>
-              <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                <input type="text" id="restaurantWebsiteLink" readonly value="<?php 
-                  $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
-                  $restaurant_slug = strtolower($restaurant_name);
-                  $restaurant_slug = preg_replace('/[^a-z0-9]+/', '-', $restaurant_slug);
-                  $restaurant_slug = trim($restaurant_slug, '-');
-                  echo htmlspecialchars($base_url . $basePath . '/' . urlencode($restaurant_slug));
-                ?>" style="flex: 1; min-width: 300px; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; background: white; color: #111827;">
-                <button type="button" class="btn btn-primary" onclick="copyRestaurantLink()" style="white-space: nowrap;">
-                  <span class="material-symbols-rounded">content_copy</span>
-                  Copy Link
-                </button>
-              </div>
-              <p style="margin: 0.75rem 0 0 0; color: #6b7280; font-size: 0.85rem;">
-                <strong>Short URL format:</strong> <code style="background: #e5e7eb; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.85rem;"><?php 
-                  $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
-                  echo htmlspecialchars($base_url . $basePath . '/' . urlencode($restaurant_slug));
-                ?></code>
-              </p>
-            </div>
-
-            <!-- Banner Upload Section -->
-            <div style="margin-top:2rem;border-top:2px solid #e5e7eb;padding-top:20px;">
-              <h3 style="font-size:1rem;font-weight:700;color:#111827;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-rounded" style="font-size:20px;">wallpaper</span>
+            <section class="wt-group" id="wtg-banners">
+              <div class="wt-group-h"><span class="material-symbols-rounded">campaign</span><div><h3>Banners and sharing</h3><p>Photo banners, animated offer banners and your website link. Banners save as soon as you upload or edit them; everything else saves with Save Theme.</p></div></div>
+<!-- Banner Upload Section -->
+            <div class="wt-card">
+              <h3 class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">wallpaper</span>
                 Banner Images (Slideshow)
               </h3>
               <div class="form-group">
@@ -2450,21 +2406,60 @@ try {
                 </div>
               </div>
             </div>
-
-            <!-- Offer Banners: animated, made in HTML (no photo needed) -->
-            <div style="margin-top:2rem;border-top:2px solid #e5e7eb;padding-top:20px;">
+<!-- Offer Banners: animated, made in HTML (no photo needed) -->
+            <div class="wt-card">
               <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
                 <div style="flex:1;min-width:220px;">
-                  <h3 style="font-size:1rem;font-weight:700;color:#111827;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
-                    <span class="material-symbols-rounded" style="font-size:20px;">auto_awesome</span>
+                  <h3 class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#7c3aed">auto_awesome</span>
                     Offer Banners (animated)
                   </h3>
-                  <p style="color:#6b7280;font-size:0.88rem;margin:0;">No photo design needed: pick a style, type your offer and code, choose a colour. They move, and they show next to your photo banners. Customers tap the code to copy it.</p>
+                  <p class="wt-desc" style="margin:0">No photo design needed: pick a style, type your offer and code, choose a colour. They move, and they show next to your photo banners. Customers tap the code to copy it.</p>
                 </div>
                 <button type="button" class="btn btn-primary" id="offerBannerNew"><span class="material-symbols-rounded">add</span>New offer banner</button>
               </div>
               <div id="offerBannerEditor" style="display:none;padding:14px;margin-bottom:14px;border:2px solid #ede9fe;border-radius:14px;background:#faf8ff;"></div>
               <div id="offerBannersGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;"></div>
+            </div>
+<!-- Restaurant Website Link -->
+            <div class="wt-card">
+              <h3 class="wt-card-h"><span class="material-symbols-rounded wt-ic" style="--c:#2563eb">link</span>
+                Your Restaurant Website Link
+              </h3>
+              <p class="wt-desc">Share this unique link with your customers. Each restaurant has its own unique URL.</p>
+              <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <input type="text" id="restaurantWebsiteLink" readonly value="<?php 
+                  $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+                  $restaurant_slug = strtolower($restaurant_name);
+                  $restaurant_slug = preg_replace('/[^a-z0-9]+/', '-', $restaurant_slug);
+                  $restaurant_slug = trim($restaurant_slug, '-');
+                  echo htmlspecialchars($base_url . $basePath . '/' . urlencode($restaurant_slug));
+                ?>" style="flex: 1; min-width: 300px; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; background: white; color: #111827;">
+                <button type="button" class="btn btn-primary" onclick="copyRestaurantLink()" style="white-space: nowrap;">
+                  <span class="material-symbols-rounded">content_copy</span>
+                  Copy Link
+                </button>
+              </div>
+              <p style="margin: 0.75rem 0 0 0; color: #6b7280; font-size: 0.85rem;">
+                <strong>Short URL format:</strong> <code style="background: #e5e7eb; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.85rem;"><?php 
+                  $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+                  echo htmlspecialchars($base_url . $basePath . '/' . urlencode($restaurant_slug));
+                ?></code>
+              </p>
+            </div>
+            </section>
+
+            <div class="form-actions wt-savebar">
+              <button type="button" class="btn btn-primary btn-save" id="saveWebsiteThemeBtn"><span class="material-symbols-rounded">save</span>Save Theme</button>
+              <button type="button" class="btn btn-secondary" id="resetWebsiteThemeBtn">
+                <span class="material-symbols-rounded">restart_alt</span>
+                Reset to Default
+              </button>
+              <a href="<?php echo $basePath; ?>/<?php
+                $restaurant_slug = strtolower($restaurant_name);
+                $restaurant_slug = preg_replace('/[^a-z0-9]+/', '-', $restaurant_slug);
+                $restaurant_slug = trim($restaurant_slug, '-');
+                echo urlencode($restaurant_slug);
+              ?>" class="btn btn-secondary" target="_blank"><span class="material-symbols-rounded">open_in_new</span>Open website</a>
             </div>
           </div>
           

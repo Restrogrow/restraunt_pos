@@ -36,4 +36,25 @@
     isActive: function (pageId) { var p = document.getElementById(pageId); return !!(p && p.classList.contains('active')) && !document.hidden; }
   };
   window.SX = SX;
+
+  // Jump bars (Website Appearance): a chip scrolls to its group; the group on screen is highlighted
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-wt-jump]');
+    if (!b) return;
+    var g = document.getElementById(b.getAttribute('data-wt-jump'));
+    b.parentNode.querySelectorAll('[data-wt-jump]').forEach(function (x) { x.classList.toggle('on', x === b); });
+    if (g) g.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  });
+  var spyT = 0;
+  window.addEventListener('scroll', function () {
+    clearTimeout(spyT);
+    spyT = setTimeout(function () {
+      document.querySelectorAll('.page.active .wt-jump').forEach(function (bar) {
+        var btns = bar.querySelectorAll('[data-wt-jump]'), cur = null;
+        btns.forEach(function (x) { var g = document.getElementById(x.getAttribute('data-wt-jump')); if (g && g.getBoundingClientRect().top <= 140) cur = x; });
+        btns.forEach(function (x) { x.classList.toggle('on', x === (cur || btns[0])); });
+        if (cur && cur.scrollIntoView && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = cur.offsetLeft - 8;
+      });
+    }, 60);
+  }, { passive: true, capture: true });
 })();
