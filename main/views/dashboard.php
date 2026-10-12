@@ -1233,6 +1233,12 @@ try {
               </a>
             </li>
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="upsellPage">
+                <span class="material-symbols-rounded">add_shopping_cart</span>
+                <span class="nav-label">Complete your meal</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="offerFiltersPage">
                 <span class="material-symbols-rounded">filter_alt</span>
                 <span class="nav-label">Offer Filters</span>
@@ -4356,6 +4362,79 @@ function toggleGatewayMode() {
       </div>
     </div>
 
+    <div id="upsellPage" class="page">
+      <style>
+        .up-wrap { max-width: 980px; }
+        .up-stats { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+        .up-stats > div { padding: 14px; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; }
+        .up-stats > div.hi { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-color: #a7f3d0; }
+        .up-stats b { display: block; font-size: 1.4rem; color: #111827; }
+        .up-stats span { font-size: 0.78rem; color: #6b7280; }
+        .up-stats small { position: absolute; right: 4px; top: -18px; font-size: 0.7rem; color: #9ca3af; }
+        .up-card { padding: 16px; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; margin-bottom: 12px; transition: opacity .2s; }
+        .up-card.off { opacity: .45; pointer-events: none; }
+        .up-card h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; font-size: 1rem; color: #111827; }
+        .up-card h3 .material-symbols-rounded { font-size: 20px; color: #7c3aed; }
+        .up-switch { display: flex; align-items: center; gap: 10px; font-weight: 600; color: #111827; cursor: pointer; margin-bottom: 12px; }
+        .up-switch input { display: none; }
+        .up-switch span { width: 40px; height: 22px; border-radius: 999px; background: #d1d5db; position: relative; transition: background .2s; flex-shrink: 0; }
+        .up-switch span::after { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
+        .up-switch input:checked + span { background: #16a34a; }
+        .up-switch input:checked + span::after { transform: translateX(18px); }
+        .up-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+        .up-mode { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 12px; background: #fff; text-align: left; font: inherit; cursor: pointer; }
+        .up-mode .material-symbols-rounded { font-size: 22px; color: #9ca3af; }
+        .up-mode b { font-size: 0.92rem; color: #111827; }
+        .up-mode b em { margin-left: 4px; padding: 1px 6px; border-radius: 999px; background: #ede9fe; color: #6d28d9; font-size: 0.65rem; font-style: normal; }
+        .up-mode small { font-size: 0.76rem; color: #6b7280; line-height: 1.35; }
+        .up-mode.on { border-color: #7c3aed; background: #faf5ff; }
+        .up-mode.on .material-symbols-rounded { color: #7c3aed; }
+        .up-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .up-grid label, .up-roles label { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; font-weight: 600; color: #6b7280; }
+        #upsellPage select, #upsellPage input:not([type=checkbox]) { padding: 8px 10px; border: 1.5px solid #e5e7eb; border-radius: 9px; font: inherit; font-size: 0.86rem; background: #fff; color: #111827; }
+        .up-check { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.86rem; color: #374151; cursor: pointer; }
+        .up-sub { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.86rem; font-weight: 700; color: #111827; }
+        .up-sub small { font-weight: 400; color: #6b7280; }
+        .up-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+        .up-chips select { max-width: 220px; }
+        .up-chip { display: inline-flex; align-items: center; gap: 4px; padding: 5px 6px 5px 11px; border-radius: 999px; background: #f3f4f6; font-size: 0.82rem; font-weight: 600; color: #111827; }
+        .up-chip-x, .up-pair-x { width: 22px; height: 22px; border: 0; border-radius: 50%; background: #fff; color: #6b7280; font-size: 15px; line-height: 1; cursor: pointer; }
+        .up-pair { display: grid; grid-template-columns: 170px 22px 1fr 26px; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 6px; border: 1px solid #f3f4f6; border-radius: 10px; background: #fafafa; }
+        .up-pair b { font-size: 0.86rem; }
+        .up-pair > .material-symbols-rounded { font-size: 18px; color: #9ca3af; }
+        .up-pair-x { background: #fef2f2; color: #dc2626; }
+        .up-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+        .up-link { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; border: 0; background: none; color: #7c3aed; font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        .up-link .material-symbols-rounded { font-size: 16px; }
+        .up-learned { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px; }
+        .up-learned div { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; background: #f5f3ff; font-size: 0.82rem; font-weight: 600; color: #111827; }
+        .up-learned .material-symbols-rounded { font-size: 15px; color: #7c3aed; }
+        .up-learned em { margin-left: auto; font-style: normal; font-weight: 500; font-size: 0.74rem; color: #6d28d9; white-space: nowrap; }
+        .up-empty { padding: 16px; text-align: center; color: #6b7280; font-size: 0.86rem; border: 1px dashed #e5e7eb; border-radius: 10px; }
+        .up-preview { background: #fcfcfd; }
+        #upPreview { margin-top: 12px; }
+        .up-pv-head { font-weight: 800; font-size: 0.95rem; margin-bottom: 8px; color: #111827; }
+        .up-pv-head small { font-weight: 500; color: #9ca3af; margin-left: 6px; }
+        .up-pv { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+        .up-pv-card { flex: 0 0 150px; display: flex; flex-direction: column; gap: 3px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
+        .up-pv-card img, .up-pv-card .ph { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; background: #f3f4f6; }
+        .up-pv-card b { font-size: 0.84rem; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .up-pv-card .why { font-size: 0.7rem; color: #7c3aed; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .up-pv-card .pr { font-size: 0.84rem; font-weight: 700; color: #111827; }
+        @media (max-width: 760px) { .up-stats, .up-modes, .up-grid { grid-template-columns: 1fr 1fr; } .up-pair { grid-template-columns: 1fr 26px; } .up-pair > .material-symbols-rounded { display: none; } .up-pair .up-chips { grid-column: 1 / -1; } }
+      </style>
+      <div class="up-wrap">
+        <div class="page-header" style="margin-bottom:22px;">
+          <h1 style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">add_shopping_cart</span> Complete your meal</h1>
+          <p style="color:#6b7280;margin:4px 0 0;">Suggestions on the cart page that raise the order value: a drink with the biryani, a dessert to finish. Let it pick from your real orders, choose the dishes yourself, or both.</p>
+        </div>
+        <div id="upBody"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+          <button type="button" class="btn btn-primary" id="upSave"><span class="material-symbols-rounded">save</span> Save</button>
+        </div>
+      </div>
+    </div>
+
     <div id="offerFiltersPage" class="page">
       <style>
         .of-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -7131,6 +7210,8 @@ function toggleGatewayMode() {
   <script src="../assets/js/bestsellers-admin.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/offer-filters-admin.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/todays-special-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/todays-special-admin.js'); ?>" defer></script>
+  <script src="../website/rg-upsell.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-upsell.js'); ?>" defer></script>
+  <script src="../assets/js/upsell-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/upsell-admin.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>

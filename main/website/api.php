@@ -815,6 +815,29 @@ try {
             }
             break;
 
+        case 'getUpsell':
+            // Offers > Complete your meal: everything the cart needs to rank suggestions
+            try {
+                require_once __DIR__ . '/../config/upsell_helpers.php';
+                echo json_encode(['success' => true, 'upsell' => getUpsellData($conn, $restaurantId)], JSON_UNESCAPED_UNICODE);
+            } catch (Throwable $e) {
+                error_log('Error in getUpsell: ' . $e->getMessage());
+                echo json_encode(['success' => true, 'upsell' => null]);
+            }
+            break;
+
+        case 'trackUpsell':
+            // One 'view' per cart visit, one 'add' per dish added from the row (price read here, not sent)
+            try {
+                require_once __DIR__ . '/../config/upsell_helpers.php';
+                $ev = (string)($_GET['event'] ?? '');
+                if (in_array($ev, ['view', 'add'], true)) trackUpsell($conn, $restaurantId, $ev, (int)($_GET['item_id'] ?? 0));
+            } catch (Throwable $e) {
+                error_log('Error in trackUpsell: ' . $e->getMessage());
+            }
+            echo json_encode(['success' => true]);
+            break;
+
         case 'getOfferFilters':
             // Offers > Offer Filters: the quick filters behind the Menu page's offers bubble
             try {

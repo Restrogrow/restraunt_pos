@@ -683,6 +683,12 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
 .note-head { display: flex; align-items: center; gap: 12px; padding: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .note-ico { width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--primary-red, #e53935) 10%, #fff); color: var(--primary-red, #e53935); font-size: 15px; transition: transform 0.3s ease; }
 .note-card.open .note-ico { transform: rotate(-8deg) scale(1.06); }
+.note-ico { position: relative; background: linear-gradient(135deg, color-mix(in srgb, var(--primary-red, #e53935) 80%, #fff), var(--primary-red, #e53935)); color: #fff; box-shadow: 0 6px 14px color-mix(in srgb, var(--primary-red, #e53935) 28%, transparent); }
+.note-ico svg.hat { width: 21px; height: 21px; }
+.note-ico .pen { position: absolute; right: -5px; bottom: -5px; width: 18px; height: 18px; border-radius: 50%; background: #fff; color: var(--primary-red, #e53935); display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+.note-ico .pen svg { width: 10px; height: 10px; }
+.note-card.open .note-ico .pen { animation: notePen 0.9s ease-in-out 2; }
+@keyframes notePen { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-1px, -1px) rotate(-14deg); } 75% { transform: translate(1px, 0) rotate(10deg); } }
 .note-txt { flex: 1; min-width: 0; }
 .note-title { font-size: 14px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 8px; }
 .note-sub { margin-top: 2px; font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -723,6 +729,33 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
 @keyframes billRow { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes bsShine { 0% { left: -60%; } 40%, 100% { left: 130%; } }
 @media (prefers-reduced-motion: reduce) { .note-body, .note-pad, .note-chev, .note-ico { transition: none; } .bill-save::after, .price-card .price-row { animation: none; } }
+/* Complete your meal (Offers > Complete your meal): suggestions for this cart */
+.ups-card { padding: 14px 0 12px; overflow: hidden; }
+.ups-head { display: flex; align-items: center; gap: 10px; padding: 0 14px 10px; }
+.ups-ico { width: 34px; height: 34px; flex-shrink: 0; border-radius: 11px; display: grid; place-items: center; background: linear-gradient(135deg, #a78bfa, #6366f1); color: #fff; }
+.ups-ico svg { width: 18px; height: 18px; animation: upsTwinkle 2.6s ease-in-out infinite; }
+@keyframes upsTwinkle { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.12) rotate(12deg); } }
+.ups-head b { display: block; font-size: 15px; font-weight: 800; color: #111827; }
+.ups-head span { display: block; font-size: 12px; color: #6b7280; }
+.ups-head span b { display: inline; font-size: 12px; color: #16a34a; }
+.ups-track { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 14px 4px; scrollbar-width: none; }
+.ups-track::-webkit-scrollbar { display: none; }
+.ups-item { position: relative; flex: 0 0 138px; scroll-snap-align: start; display: flex; flex-direction: column; border: 1px solid #eef0f3; border-radius: 16px; background: #fff; overflow: hidden; animation: upsIn .35s ease both; }
+.ups-item:nth-child(2) { animation-delay: .05s; } .ups-item:nth-child(3) { animation-delay: .1s; } .ups-item:nth-child(4) { animation-delay: .15s; }
+@keyframes upsIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.ups-item img { width: 100%; height: 96px; object-fit: cover; background: #f3f4f6; display: block; }
+.ups-unlock { position: absolute; left: 6px; top: 6px; padding: 3px 7px; border-radius: 999px; background: #16a34a; color: #fff; font-size: 10px; font-weight: 800; box-shadow: 0 2px 6px rgba(22,163,74,.35); }
+.ups-body { display: flex; flex-direction: column; gap: 2px; padding: 8px 9px 9px; flex: 1; }
+.ups-name { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; color: #111827; }
+.ups-name span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ups-name .veg-mark { flex-shrink: 0; }
+.ups-why { font-size: 10.5px; font-weight: 600; color: #6d28d9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ups-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 6px; }
+.ups-foot b { font-size: 13px; color: #111827; }
+.ups-add { padding: 5px 11px; border: 1.5px solid var(--primary-red, #e53935); border-radius: 9px; background: #fff; color: var(--primary-red, #e53935); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; transition: transform .15s, background .2s, color .2s; }
+.ups-add:active { transform: scale(.94); }
+.ups-add.done { background: #16a34a; border-color: #16a34a; color: #fff; }
+@media (prefers-reduced-motion: reduce) { .ups-ico svg, .ups-item { animation: none; } }
 /* Price Details */
 .price-card h3 { font-size: 15px; font-weight: 700; color: #1a1b1f; margin-bottom: 10px; }
 .price-row {
@@ -1700,6 +1733,7 @@ function renderCart() {
       '<a class="order-more" href="' + appendTableParam('<?php echo restaurantPageUrl('menu'); ?>') + '"><i class="fa fa-plus"></i> Add more items</a>' +
     '</div>';
   }
+  cartHtml += '<div id="cartUpsell"></div>';
 
   // Combine totals
   totalQty = regQty + addonQty;
@@ -1739,7 +1773,8 @@ function renderCart() {
           (couponError ? '<div class="cpn-error"><i class="fa-solid fa-circle-exclamation"></i>' + escapeHtml(couponError) + '</div>' : '')) +      '</div>' +
       '<div class="note-card' + (noteOpen ? ' open' : '') + '" id="noteCard">' +
       '<div class="note-head" id="instrHeader" onclick="toggleInstruction()" role="button" aria-expanded="' + (noteOpen ? 'true' : 'false') + '">' +
-        '<div class="note-ico"><i class="fa-regular fa-message"></i></div>' +
+        '<div class="note-ico"><svg class="hat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.32-.84.73-1.04a4 4 0 0 0-2.14-7.59 5 5 0 0 0-9.18 0 4 4 0 0 0-2.14 7.59c.41.2.73.58.73 1.04V20a1 1 0 0 0 1 1Z"/><path d="M6 17h12"/></svg>' +
+          '<span class="pen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span></div>' +
         '<div class="note-txt">' +
           '<div class="note-title">Note for the restaurant' + (savedInstruction ? '<span class="note-saved' + (noteJustSaved ? ' pop' : '') + '">Saved</span>' : '') + '</div>' +
           '<div class="note-sub' + (savedInstruction ? ' has' : '') + '">' + (savedInstruction ? '“' + escapeHtml(savedInstruction) + '”' : 'Allergies, spice level, delivery or gifting notes') + '</div>' +
@@ -1866,6 +1901,7 @@ function renderCart() {
 
   container.innerHTML = cartHtml;
   renderGlobalAddons();
+  renderUpsell(keys, totalPrice);
   var sym = getCurrency();
   document.getElementById('checkoutLabel').innerHTML = regQty + (regQty === 1 ? ' item' : ' items') + '<span style="opacity:.55;margin:0 6px;font-weight:400">|</span>' + sym + finalTotal.toFixed(2);
   document.getElementById('checkoutBtn').disabled = true;
@@ -1877,6 +1913,85 @@ function renderCart() {
     }
     document.getElementById('checkoutBtn').disabled = false;
   }
+}
+
+// ── Complete your meal (Offers > Complete your meal) ──
+// One request for the restaurant's picks, learned pairs and settings; the
+// ranking for the current cart runs here (rg-upsell.js) on every re-draw.
+var upsellData = null, upsellViewed = false, upsellJustAdded = 0;
+function loadUpsell() {
+  var rid = window.websiteRestaurantId || (document.querySelector('meta[name="restaurant-id"]') || {}).content || '';
+  if (!rid) return;
+  fetch('api.php?action=getUpsell&restaurant_id=' + encodeURIComponent(rid))
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d && d.upsell) { upsellData = d.upsell; if (flatItems.length) renderCart(); } })
+    .catch(function() {});
+}
+function trackUpsellEvent(ev, id) {
+  var rid = window.websiteRestaurantId || (document.querySelector('meta[name="restaurant-id"]') || {}).content || '';
+  try { fetch('api.php?action=trackUpsell&restaurant_id=' + encodeURIComponent(rid) + '&event=' + ev + (id ? '&item_id=' + id : ''), { method: 'POST', keepalive: true }); } catch (e) {}
+}
+function upsellGoal(total) {
+  if (MIN_ORDER > 0 && total < MIN_ORDER) return { gap: MIN_ORDER - total, label: 'Reaches minimum order' };
+  var list = typeof milestoneCoupons === 'function' ? milestoneCoupons() : [];
+  for (var i = 0; i < list.length; i++) if (total < list[i].minOrder) return { gap: list[i].minOrder - total, label: 'Unlocks ' + couponLabel(list[i]) };
+  return null;
+}
+function renderUpsell(keys, total) {
+  var box = document.getElementById('cartUpsell');
+  if (!box || !upsellData || !window.RGUpsell) return;
+  var lines = [];
+  keys.forEach(function(k) {
+    var raw = cartItems[k];
+    if (raw && typeof raw === 'object' && raw.isAddon) return;
+    var id = parseInt(String(k).split('_v')[0], 10);
+    if (id && getCartQty(k) > 0) lines.push({ id: id, qty: getCartQty(k) });
+  });
+  var goal = upsellGoal(total);
+  var list = RGUpsell.rank(upsellData, lines, flatItems, { total: total, goal: goal });
+  if (!list.length) { box.innerHTML = ''; return; }
+  var cur = getCurrency();
+  var sub = goal && list.some(function(o) { return o.unlock; })
+    ? 'Add <b>' + cur + Math.ceil(goal.gap) + '</b> more: ' + escapeHtml(goal.label.replace(/^Unlocks /, 'unlock ').replace(/^Reaches /, 'reach the '))
+    : 'Picked to go with your order';
+  box.innerHTML = '<div class="card ups-card">' +
+    '<div class="ups-head"><div class="ups-ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.9 5.8L20 10l-6.1 2.2L12 18l-1.9-5.8L4 10l6.1-2.2z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" opacity=".75"/></svg></div>' +
+      '<div><b>' + escapeHtml(upsellData.title || 'Complete your meal') + '</b><span>' + sub + '</span></div></div>' +
+    '<div class="ups-track">' + list.map(function(o) {
+      var it = o.item, nm = escapeHtml(it.item_name_translated || it.item_name_en || it.name);
+      var typeLc = String(it.item_type || '').toLowerCase();
+      var vegCls = typeLc.indexOf('non') !== -1 ? ' nonveg' : (typeLc.indexOf('egg') !== -1 ? ' egg' : '');
+      var showVeg = typeLc && typeLc !== 'drink' && typeLc !== 'beverage';
+      var hasVar = it.has_variations == 1 && it.variations && it.variations.length;
+      return '<div class="ups-item">' +
+        '<img src="' + getImageUrl(it.item_image || it.image) + '" alt="" loading="lazy">' +
+        (o.unlock ? '<span class="ups-unlock">' + escapeHtml(o.unlock) + '</span>' : '') +
+        '<div class="ups-body">' +
+          '<div class="ups-name">' + (showVeg ? '<span class="veg-mark' + vegCls + '"><i></i></span>' : '') + '<span>' + nm + '</span></div>' +
+          '<div class="ups-why">' + escapeHtml(o.reason) + '</div>' +
+          '<div class="ups-foot"><b>' + cur + parseFloat(it.base_price || 0).toFixed(0) + '</b>' +
+            (hasVar
+              ? '<button type="button" class="ups-add" onclick="upsellChoose(' + it.id + ')">Choose</button>'
+              : '<button type="button" class="ups-add' + (upsellJustAdded === it.id ? ' done' : '') + '" onclick="upsellAdd(' + it.id + ', this)">ADD +</button>') +
+          '</div></div></div>';
+    }).join('') + '</div></div>';
+  if (!upsellViewed) { upsellViewed = true; trackUpsellEvent('view'); }
+}
+function upsellAdd(id, btn) {
+  var key = String(id);
+  if (typeof cartItems[key] === 'object' && cartItems[key]) cartItems[key].qty = (cartItems[key].qty || 0) + 1;
+  else cartItems[key] = (parseInt(cartItems[key], 10) || 0) + 1;
+  saveCart();
+  trackUpsellEvent('add', id);
+  if (btn) { btn.classList.add('done'); btn.textContent = 'Added'; }
+  var it = getItemByKey(key);
+  if (typeof showToast === 'function' && it) showToast((it.item_name_translated || it.item_name_en || 'Dish') + ' added', 'success');
+  setTimeout(renderCart, 450);
+}
+function upsellChoose(id) {
+  trackUpsellEvent('add', id);
+  var url = appendTableParam('<?php echo restaurantPageUrl('menu'); ?>');
+  window.location.href = url + (url.indexOf('?') === -1 ? '?' : '&') + 'dish=' + id;
 }
 
 function changeQty(key, delta) {
@@ -4205,6 +4320,7 @@ loadInstruction();
 document.addEventListener('DOMContentLoaded', function() {
   renderCart();
   loadMenuItems();
+  loadUpsell();
   fetchAddons();
   loadCouponsFromServer();
   loadLoyaltyBalance();
@@ -4249,5 +4365,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>window.RG_MENU_URL = <?php echo json_encode(restaurantPageUrl('menu')); ?>;</script>
 <script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 <script src="rg-drag-scroll.js?v=<?php echo @filemtime(__DIR__ . '/rg-drag-scroll.js'); ?>" defer></script>
+<script src="rg-upsell.js?v=<?php echo @filemtime(__DIR__ . '/rg-upsell.js'); ?>" defer></script>
 </body>
 </html>

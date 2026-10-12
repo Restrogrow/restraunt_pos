@@ -3251,6 +3251,8 @@ function fetchAndRender() {
       currentMenuIdx = startIdx;
       renderProducts(startIdx);
       if (startIdx === FAV_CATEGORY) { renderSideNav(); updateNavActive(FAV_CATEGORY); }
+      var dishParam = parseInt(getQueryParam('dish'), 10);
+      if (dishParam) setTimeout(function() { showItemDetail(dishParam); }, 300);
 
       // Load layout columns setting
       var themeQ = 'action=get&restaurant_id=' + encodeURIComponent(window.websiteRestaurantId);

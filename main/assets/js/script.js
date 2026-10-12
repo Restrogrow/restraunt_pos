@@ -855,6 +855,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (pageId === "todaysSpecialPage" && typeof window.loadTodaysSpecialAdmin === 'function') {
         window.loadTodaysSpecialAdmin();
       }
+      // Offers > Complete your meal (assets/js/upsell-admin.js)
+      if (pageId === "upsellPage" && typeof window.loadUpsellAdmin === 'function') {
+        window.loadUpsellAdmin();
+      }
       // Offers > Offer Filters (assets/js/offer-filters-admin.js)
       if (pageId === "offerFiltersPage" && typeof window.loadOfferFiltersAdmin === 'function') {
         window.loadOfferFiltersAdmin();
