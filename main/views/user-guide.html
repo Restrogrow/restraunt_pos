@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RestroGrow User Guide</title>
+<meta name="description" content="How to use every RestroGrow feature: dashboard, menu, orders, POS, offers, loyalty, wallet, website, staff apps and more.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root { --ink: #12101c; --muted: #5d6475; --line: #e8e9ef; --bg: #f6f6fa; --card: #fff; --brand: #e11d48; --violet: #6d28d9; --gold: #b7791f; --gold-bg: #fff8e6; --green: #15803d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --ink: #ecebf3; --muted: #a3a8b8; --line: #2a2838; --bg: #0f0e17; --card: #181624; --gold-bg: #2a2212; }
+}
+:root[data-theme="dark"] { --ink: #ecebf3; --muted: #a3a8b8; --line: #2a2838; --bg: #0f0e17; --card: #181624; --gold-bg: #2a2212; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body { font-family: 'Poppins', system-ui, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
+a { color: var(--violet); }
+img { max-width: 100%; display: block; }
+
+/* top bar */
+.top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: color-mix(in srgb, var(--card) 88%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; text-decoration: none; color: var(--ink); white-space: nowrap; }
+.logo span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: linear-gradient(135deg, #f43f5e, #6d28d9); color: #fff; font-size: 15px; }
+.search { flex: 1; max-width: 420px; margin-left: auto; position: relative; }
+.search input { width: 100%; padding: 10px 14px 10px 38px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: inherit; font-size: 14px; outline: none; }
+.search input:focus { border-color: var(--violet); }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--muted); }
+.menu-btn { display: none; padding: 9px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+
+/* layout */
+.wrap { display: grid; grid-template-columns: 270px minmax(0, 1fr); max-width: 1240px; margin: 0 auto; }
+nav.toc { position: sticky; top: 61px; align-self: start; height: calc(100vh - 61px); overflow-y: auto; padding: 20px 14px 40px 20px; border-right: 1px solid var(--line); font-size: 13.5px; }
+.toc h4 { margin: 16px 8px 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.toc a { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 8px; color: var(--ink); text-decoration: none; }
+.toc a:hover, .toc a.on { background: color-mix(in srgb, var(--violet) 10%, transparent); color: var(--violet); }
+.toc a i { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+main { padding: 28px 32px 80px; min-width: 0; }
+
+/* hero */
+.hero { padding: 34px 32px; border-radius: 24px; color: #fff; background: radial-gradient(90% 120% at 100% 0%, #6d28d9 0%, transparent 60%), radial-gradient(80% 100% at 0% 100%, #be123c 0%, transparent 60%), #1a1230; }
+.hero small { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+.hero h1 { margin-top: 12px; font-size: 36px; line-height: 1.15; letter-spacing: -.02em; }
+.hero p { margin-top: 10px; max-width: 640px; color: rgba(255,255,255,.8); }
+.hero .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.hero .links a { padding: 10px 16px; border-radius: 12px; background: rgba(255,255,255,.12); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,.18); }
+.hero .links a.main { background: #fff; color: #1a1230; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 0; font-size: 13px; color: var(--muted); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.all { background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); }
+.pill.sa { background: var(--gold-bg); color: var(--gold); border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); }
+.pill.new { background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); }
+
+/* group + feature */
+.group { margin-top: 44px; }
+.group > h2 { font-size: 26px; letter-spacing: -.01em; }
+.group > p { margin-top: 4px; color: var(--muted); }
+.feat { margin-top: 18px; padding: 22px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
+.feat-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.feat-h h3 { font-size: 19px; letter-spacing: -.01em; margin-right: auto; }
+.where { margin-top: 4px; font-size: 13px; color: var(--muted); }
+.where b { color: var(--ink); font-weight: 600; }
+.feat-b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 22px; margin-top: 14px; align-items: start; }
+.feat-b.phone { grid-template-columns: minmax(0, 1.4fr) minmax(0, .8fr); }
+.feat-b.noimg { grid-template-columns: 1fr; }
+.feat p.what { color: var(--ink); }
+.feat h5 { margin: 14px 0 6px; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.feat ol, .feat ul { padding-left: 20px; }
+.feat li { margin: 4px 0; }
+.feat li::marker { color: var(--violet); font-weight: 700; }
+.shot img { height: auto; }
+.shot { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--bg); cursor: zoom-in; box-shadow: 0 10px 30px -18px rgba(0,0,0,.4); }
+.feat-b.phone .shot { max-width: 300px; justify-self: center; }
+.sa-box { margin-top: 14px; display: flex; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--gold-bg); border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent); font-size: 14px; }
+.sa-box svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--gold); margin-top: 2px; }
+.tip { margin-top: 12px; padding: 10px 14px; border-radius: 12px; border-left: 3px solid var(--violet); background: color-mix(in srgb, var(--violet) 7%, transparent); font-size: 14px; }
+
+/* checklist */
+.check { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-top: 16px; }
+.check div { padding: 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); font-size: 14px; }
+.check b { display: flex; align-items: center; gap: 8px; }
+.check b span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--violet); color: #fff; font-size: 12px; flex-shrink: 0; }
+.check p { margin-top: 4px; color: var(--muted); font-size: 13px; }
+table.sa-table { width: 100%; margin-top: 14px; border-collapse: collapse; font-size: 14px; background: var(--card); border-radius: 16px; overflow: hidden; }
+.sa-table th, .sa-table td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+.sa-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.empty { display: none; margin-top: 30px; padding: 30px; text-align: center; color: var(--muted); border: 1.5px dashed var(--line); border-radius: 18px; }
+
+/* lightbox */
+.lb { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; padding: 20px; background: rgba(8,6,16,.85); cursor: zoom-out; }
+.lb.on { display: grid; }
+.lb img { max-height: 92vh; border-radius: 12px; }
+footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: 1fr; }
+  nav.toc { position: fixed; top: 61px; left: 0; bottom: 0; z-index: 15; width: 280px; height: auto; background: var(--card); transform: translateX(-100%); transition: transform .25s; box-shadow: 10px 0 30px rgba(0,0,0,.15); }
+  nav.toc.open { transform: none; }
+  .menu-btn { display: block; }
+  main { padding: 18px 16px 60px; }
+  .hero { padding: 24px 20px; } .hero h1 { font-size: 28px; }
+  .feat { padding: 16px; } .feat-b, .feat-b.phone { grid-template-columns: 1fr; }
+  .logo b { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="menu-btn" id="menuBtn" aria-label="Sections">Sections</button>
+  <a class="logo" href="#top"><span>R</span><b>RestroGrow Guide</b></a>
+  <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Search features, e.g. wallet, QR, coupon"></label>
+</header>
+<div class="wrap" id="top">
+  <nav class="toc" id="toc"></nav>
+  <main>
+    <section class="hero">
+      <small>For restaurant owners and staff</small>
+      <h1>Everything RestroGrow can do, and how to use it</h1>
+      <p>A walk through every screen of your dashboard, your customer website and the staff apps, with screenshots and step-by-step instructions. Use the search box to jump to any feature.</p>
+      <div class="links">
+        <a class="main" href="#quick-start">Quick start checklist</a>
+        <a href="layout-gallery.html">See all website layouts</a>
+        <a href="#superadmin">Features your superadmin switches on</a>
+      </div>
+    </section>
+    <div class="legend">
+      <span><span class="pill all">Every restaurant</span> ready to use</span>
+      <span><span class="pill sa">Superadmin</span> turned on for you by the RestroGrow team</span>
+      <span><span class="pill new">New</span> recently added</span>
+    </div>
+    <div id="content"></div>
+    <div class="empty" id="empty">Nothing matches your search. Try another word, like “orders” or “QR”.</div>
+    <footer>RestroGrow user guide. Screenshots come from the demo restaurant “Spice Garden”; phone numbers and emails are hidden. Your screens may look slightly different depending on your settings.</footer>
+  </main>
+</div>
+<div class="lb" id="lb"><img alt=""></div>
+
+<script>
+/* Guide content. Each feature: id, title, where (menu path), img (assets/guide/<img>.jpg),
+   phone (true for phone screenshots), sa (superadmin switch name), isNew, what, steps, tips */
+var SA = {
+  gallery: 'Photo Gallery', meals: 'Meal Subscriptions', gateway: 'Payment Gateway (cash + online)',
+  install: 'Install App', whatsapp: 'WhatsApp Orders', branches: 'Branches'
+};
+var GROUPS = [
+ { id: 'start', title: 'Getting started', intro: 'Log in, find your way around and set up the basics.', items: [
+  { id: 'login', title: 'Logging in', where: 'restrogrow.com/main/admin', what: 'Owners and managers log in with the username and password from the RestroGrow team. Waiters, chefs and managers you add under Staff get their own logins and land on their own simpler dashboards.',
+    steps: ['Open the admin login page and enter your username and password.', 'Forgot it? Use “Forgot password” or ask your superadmin to reset it.', 'On a new device you may be asked for a one-time WhatsApp code.'] },
+  { id: 'dashboard', title: 'Dashboard overview', where: 'Dashboard', img: 'dashboardPage', what: 'Today at a glance: sales, orders, kitchen tickets and a live clock in your restaurant’s time zone. New website orders pop up with a sound so nothing is missed.',
+    steps: ['Keep the dashboard open on a counter screen during service.', 'When the “New Order Received” popup appears, Accept or Reject it straight away.', 'Use the left menu to open any section; groups like Menu and Offers expand when clicked.'],
+    tips: ['Not seeing a new menu item after an update? Press Ctrl + Shift + R to reload the dashboard fresh.'] },
+ ]},
+ { id: 'menu', title: 'Menu', intro: 'Your categories, dishes, add-ons, stock and photos.', items: [
+  { id: 'categories', title: 'Categories', where: 'Menu › Category', img: 'menuPage', what: 'The sections of your menu (Starters, Main Course, Drinks…). Their order here is the order customers see.',
+    steps: ['Click “Add” and type the category name; add a photo if you like.', 'Drag or set the sort order to arrange them.', 'Hide a category to take it off the website without deleting it.'] },
+  { id: 'items', title: 'Menu items', where: 'Menu › Menu Items', img: 'menuItemsPage', what: 'Every dish: name, photo, price, veg / non-veg / egg, preparation time, sizes (variations), add-ons, ingredients, nutrition and health tags.',
+    steps: ['Click “Add item”, pick the category, enter name and price, upload a photo.', 'Sizes: switch on variations and add each size with its price (Half / Full).', 'Ingredients: one per line as “Name - note”, e.g. “Paneer - rich in protein”. Customers see them in the dish details.', 'Nutrition: add calories and protein / carbs / fat / fibre; tick health tags (High protein, Gluten free…) from the dropdown.', 'Turn “Available” off when a dish runs out; it shows as unavailable instead of disappearing.'],
+    tips: ['Good photos sell: use the Photo Gallery (if switched on) for ready-made pictures.'] },
+  { id: 'addons', title: 'Add-ons', where: 'Menu › Add-ons', img: 'addonsPage', what: 'Extras like cheese, dips or extra roti, with their own price. They appear on dishes and in the cart’s Add-ons section.',
+    steps: ['Add the add-on name, price and an optional photo.', 'Switch an add-on off when it’s out of stock.'] },
+  { id: 'inventory', title: 'Inventory', where: 'Menu › Inventory', img: 'inventoryPage', what: 'Track stock of ingredients and supplies, and record purchases and wastage.',
+    steps: ['Add each stock item with its unit and current quantity.', 'Record purchases when stock arrives and wastage when something is thrown away.', 'Check low stock before service.'] },
+  { id: 'gallery', title: 'Photo Gallery', where: 'Menu › Photo Gallery', img: 'galleryPage', sa: 'gallery', what: 'High-quality stock food photos sorted by category, ready to use for your dishes and banners.',
+    steps: ['Browse by category or search.', 'Pick a photo and use it for a dish or download it.'] },
+ ]},
+ { id: 'subs', title: 'Meal subscriptions', intro: 'Tiffin and weekly meal plans customers subscribe to.', items: [
+  { id: 'mealplans', title: 'Meal plans', where: 'Subscriptions › Meal Plans', img: 'mealPlansPage', sa: 'meals', what: 'Create tiffin or subscription bundles (e.g. “Weekday lunch, 20 meals”) with a weekly menu and price.',
+    steps: ['Click “New plan”, set the name, price, number of meals and days.', 'Fill in the weekly menu so customers know what they get each day.', 'Customers subscribe from the Plans page of your website.'] },
+  { id: 'subscribers', title: 'Subscribers', where: 'Subscriptions › Subscribers', img: 'mealSubscriptionsPage', sa: 'meals', what: 'Everyone who subscribed, their plan, remaining meals and payments.',
+    steps: ['Check today’s list before cooking.', 'Pause, extend or cancel a subscription when a customer asks.'] },
+ ]},
+ { id: 'tables', title: 'Tables, QR codes and reservations', intro: 'Dine-in setup: areas, tables, table QR codes, the floor map and bookings.', items: [
+  { id: 'areas', title: 'Areas', where: 'Tables › Area', img: 'areaPage', what: 'Parts of your restaurant (Ground floor, Terrace, AC hall) to group tables.', steps: ['Add each area once; tables are then placed in an area.'] },
+  { id: 'tablesl', title: 'Tables', where: 'Tables › Tables', img: 'tablesPage', what: 'Each table with its number, area and seats.', steps: ['Add tables with their seat count so reservations know the capacity.'] },
+  { id: 'qr', title: 'Table QR codes', where: 'Tables › QR Code', img: 'qrCodesPage', what: 'A QR code for every table. Customers scan it, the menu opens with the table already chosen, and the order reaches your kitchen as a dine-in order for that table.',
+    steps: ['Pick the table(s) and download or print the QR codes.', 'Stick them on the tables or on table tents.', 'Customers can also tap “Call waiter” from the menu after scanning.'] },
+  { id: 'tablemap', title: 'Table map', where: 'Tables › Table Map', img: 'tableMapPage', isNew: 1, what: 'A live floor plan showing which tables are free, ordering, eating or waiting for the bill.', steps: ['Keep it open at the host stand to seat guests quickly.'] },
+  { id: 'reservations', title: 'Reservations', where: 'Reservations', img: 'reservationsPage', what: 'Table bookings from your website with date, time slot, guests and meal type. Capacity is checked automatically.',
+    steps: ['New bookings appear here; confirm or decline them.', 'Set your time slots and limits in the reservation settings.', 'Customers book from the Reserve tab of your website.'] },
+ ]},
+ { id: 'pos', title: 'POS and kitchen', intro: 'Take orders at the counter and run the kitchen.', items: [
+  { id: 'posl', title: 'POS (point of sale)', where: 'POS', img: 'posPage', what: 'A fast billing screen for walk-in, dine-in and phone orders: pick dishes, choose a table, take payment by cash, card or UPI, and print the bill.',
+    steps: ['Choose the order type (dine-in / takeaway) and the table.', 'Tap dishes to add them; change quantity or add notes.', 'Apply a discount if needed, choose the payment method and complete the order.', 'The kitchen ticket (KOT) is created automatically.'] },
+  { id: 'kot', title: 'KOT (kitchen tickets)', where: 'Orders › KOT', img: 'kotPage', what: 'Kitchen Order Tickets for every order, with status from new to ready. Print them for the kitchen or use the Chef dashboard.',
+    steps: ['Mark a ticket “Preparing” when cooking starts and “Ready” when done.', 'Print a ticket if your kitchen works from paper.'] },
+ ]},
+ { id: 'orders', title: 'Orders and customers', intro: 'Website orders, all orders, customers, staff and service requests.', items: [
+  { id: 'onlineorders', title: 'Online orders', where: 'Orders › Online Orders', img: 'onlineOrdersPage', what: 'Orders placed on your website, refreshing every 15 seconds with a sound for new ones. Accept or reject, move them through Preparing → Ready → Completed, print, mark paid, or open the delivery route.',
+    steps: ['Accept a new order (set the preparation time) or Reject it with a reason.', 'Move it forward as it cooks; the customer’s tracking page updates live.', 'Use “Mark paid” for cash orders once paid.', 'Search by order number or customer name; filter by status.'] },
+  { id: 'allorders', title: 'All orders', where: 'Orders › Orders', img: 'ordersPage', what: 'Every order from every channel (website, POS, tables) with filters, details and printing.', steps: ['Filter by date, status or type; open an order to see items, payments and history.'] },
+  { id: 'blocklist', title: 'Blocked customers', where: 'Orders › Blocked Customers', img: 'blocklistPage', what: 'Phones or devices blocked from ordering on your website: added automatically after 3 fake orders, or by you.', steps: ['Unblock someone who was blocked by mistake.', 'Block a number that keeps placing fake orders.'] },
+  { id: 'customers', title: 'Customers', where: 'Customers', img: 'customersPage', what: 'Everyone who ordered: visits, total spent, last visit and their order history.', steps: ['Search a customer by name or phone.', 'Open a customer to see their orders and loyalty points.'] },
+  { id: 'staff', title: 'Staff', where: 'Staff', img: 'staffPage', what: 'Add waiters, chefs and managers with their own logins and permissions.',
+    steps: ['Add a staff member with role, username and password.', 'Waiters see table requests, chefs see kitchen tickets, managers see a reduced dashboard.', 'Deactivate staff who leave.'] },
+  { id: 'waiter', title: 'Waiter requests', where: 'Waiter Requests', img: 'waiterRequestsPage', what: 'Requests sent from tables (“Call waiter”, “Water”, “Bill please”). Waiters get an alert on their dashboard.', steps: ['Create the request types customers can choose.', 'Mark requests done as staff handle them.'] },
+ ]},
+ { id: 'payments', title: 'Payments, reports and analytics', intro: 'Money in, and how your restaurant is doing.', items: [
+  { id: 'paymentsl', title: 'Payment transactions', where: 'Payments › Payments', img: 'paymentsPage', what: 'Every payment: cash, UPI, PhonePe, wallet, with status and the order it belongs to.', steps: ['Filter by method or date to match your cash and bank statements.'] },
+  { id: 'gateway', title: 'Payment gateway (PhonePe)', where: 'Payments › Gateway', img: 'gatewayPage', sa: 'gateway', what: 'Online payments on your website with PhonePe (UPI, cards, net banking). Use your own PhonePe merchant account, or the RestroGrow one if your superadmin set it up for you. You can also show a business UPI QR for customers to pay and upload a screenshot.',
+    steps: ['Choose how you want to take online payments.', 'Own account: paste your PhonePe Client ID and Secret and pick Production.', 'Save, then place a small test order and pay online.', 'Cash on delivery can be switched off once online payments work.'],
+    tips: ['The Wallet’s “Add money” also uses these PhonePe keys.'] },
+  { id: 'reports', title: 'Sales reports', where: 'Payments › Reports', img: 'reportsPage', what: 'Sales by day, top dishes, payment methods and busy hours, with CSV export.', steps: ['Pick a date range and export to CSV for your accountant.'] },
+  { id: 'analytics', title: 'Analytics', where: 'Payments › Analytics', img: 'analyticsPage', what: 'Website visits, popular dishes, peak hours and revenue trends.', steps: ['Check which days and hours are busiest to plan staff and offers.'] },
+ ]},
+ { id: 'marketing', title: 'Marketing', intro: 'Ready-made posters, videos and captions for social media.', items: [
+  { id: 'posters', title: 'Posters', where: 'Marketing › Posters', img: 'marketingPostersPage', what: 'Design posters for WhatsApp, Instagram and Facebook from templates, with your dishes and offers.', steps: ['Pick a template, choose a dish or offer, edit the text and download.'] },
+  { id: 'videos', title: 'Videos', where: 'Marketing › Videos', img: 'marketingVideosPage', what: 'Short animated promo videos for WhatsApp Status and Reels.', steps: ['Choose a style and dishes, preview, then download the video.'] },
+  { id: 'captions', title: 'Social captions', where: 'Marketing › Social Captions', img: 'marketingCaptionsPage', what: 'Ready-to-post captions with hashtags.', steps: ['Pick the occasion and tone, copy the caption and post.'] },
+  { id: 'calendar', title: 'Campaign calendar', where: 'Marketing › Campaign Calendar', img: 'marketingCalendarPage', what: 'Upcoming festivals and days worth promoting, each with a pre-filled poster or caption.', steps: ['Open an occasion a few days early and prepare your post.'] },
+ ]},
+ { id: 'offers', title: 'Offers', intro: 'Discounts, featured dishes and tools that raise the order value.', items: [
+  { id: 'coupons', title: 'Coupons and milestone offers', where: 'Offers › Coupons', img: 'couponsPage', what: 'Discount codes (% or ₹ off) with a minimum order, dates and usage limits. Tick “Milestone offer” and the cart shows a progress bar (“Add ₹80 more to get ₹50 OFF”) and applies the best reached offer by itself.',
+    steps: ['Click “Add coupon”, set the code, discount, minimum order and validity.', 'Tick “Milestone offer” for automatic offers at order amounts (e.g. ₹20 off above ₹100, ₹50 off above ₹200).', 'Customers can also type any active code in the cart.'],
+    tips: ['The checkout always re-checks a coupon on the server, so discounts can’t be faked.'] },
+  { id: 'deals', title: 'Deals', where: 'Offers › Deals', img: 'dealsPage', what: 'Combo and special deals (e.g. Biryani + Coke at a set price).', steps: ['Create the deal with its dishes and price; it shows on your website.'] },
+  { id: 'bestsellers', title: 'Bestsellers', where: 'Offers › Bestsellers', img: 'bestsellersPage', what: 'Choose the dishes for the Bestsellers row on your home page, in your order, with an optional offer price.', steps: ['Add dishes, drag them into order, set an offer price to show a discount.', 'Pick the row’s look (buttons, price style, ratings) in the same page.'] },
+  { id: 'specials', title: 'Today’s Special', where: 'Offers › Today’s Special', img: 'todaysSpecialPage', isNew: 1, what: 'Dishes of the day for each weekday (up to 6 a day), shown above Bestsellers with your chef’s note, a countdown to the end of the day and the real plates left.',
+    steps: ['For each day (or “Every day”), click “Add dish”, pick the dish and write a short note.', 'Set “Plates / day” to show a limit; the count comes from today’s real orders.', 'Save. Customers see a swipeable row of today’s specials.'] },
+  { id: 'upsell', title: 'Complete your meal', where: 'Offers › Complete your meal', img: 'upsellPage', isNew: 1, what: 'Suggestions on the cart page that raise the order value: a drink with the biryani, a dessert to finish. Auto (learned from your real orders plus what the meal is missing), Manual (your own picks) or Both.',
+    steps: ['Turn it on and choose Auto, Manual or Both (recommended).', 'Manual: add “Always suggest” dishes and “Goes well with” pairs.', 'Auto: set what each category is (main, side, drink, dessert). “Often ordered together” fills in from your orders.', 'Use “Try it” to see exactly what a customer with those dishes would get.', 'Watch the numbers: times shown, dishes added and extra sales.'] },
+  { id: 'scratch', title: 'Scratch card', where: 'Offers › Scratch card', img: 'scratchPage', isNew: 1, what: 'After checkout, customers scratch a card on the tracking page and can win a reward for their next order. You choose prizes, chances, a minimum next order (per prize if you like) and a monthly budget.',
+    steps: ['Turn it on, set which orders get a card (e.g. above ₹200) and how long codes last.', 'Add prizes: ₹ off, % off or “Better luck next time”, each with a chance.', 'Optionally give a prize its own minimum next order, and set a monthly budget.', 'Customers see the real chances; a won code works once, for their phone only.'] },
+  { id: 'wallet', title: 'Wallet', where: 'Offers › Wallet', img: 'walletPage', isNew: 1, what: 'Customers add money with PhonePe and pay for orders from it. Give extra money on bigger top-ups and cashback on orders. The money can only be used at your restaurant, comes back automatically if an order is cancelled, and you can correct a balance by hand.',
+    steps: ['Turn on the wallet and set its name and limits.', 'Add top-up offers, e.g. add ₹1000, get ₹75 extra.', 'Set cashback on completed orders (e.g. 5%, up to ₹50).', 'Make sure your PhonePe keys are added under Payments › Gateway.'] },
+  { id: 'filters', title: 'Offer filters', where: 'Offers › Offer Filters', img: 'offerFiltersPage', what: 'Quick filters on your menu page’s offers bubble (e.g. “Under ₹199”, “On offer”). They only use your real menu prices.', steps: ['Add or edit filters; a filter with no matching dishes stays hidden.'] },
+  { id: 'catering', title: 'Catering', where: 'Offers › Catering', img: 'cateringPage', what: 'Bulk and event orders: price tiers per guest count and incoming requests.', steps: ['Set your catering packages and price tiers.', 'Customers send requests from the Catering page; reply from here.'] },
+ ]},
+ { id: 'growth', title: 'Loyalty and growth', intro: 'Bring customers back with points, levels and referrals.', items: [
+  { id: 'loyalty', title: 'Loyalty and rewards', where: 'Growth › Loyalty & Rewards', img: 'growthSettingsPage', what: 'Points on every order, member levels with faster earning, free-dish rewards, a referral program, and a counter QR that opens a beautiful rewards page.',
+    steps: ['Turn on loyalty and set the earn rate (e.g. 10 points per ₹100) and what a point is worth.', 'Add levels like Silver, Gold (1.5x points) and Platinum (2x points) with the spend needed.', 'Add free-dish rewards with their points cost.', 'Print the “Loyalty Card QR” for your counter: guests scan, join and see their points.', 'When a guest shows a 5-character code at the counter, enter it in “Verify Redemption”.'] },
+  { id: 'segments', title: 'Customer segments', where: 'Growth › Customer Segments', img: 'customerSegmentsPage', what: 'Who is new, repeat, high-spending or lapsed, so you know whom to win back.', steps: ['Open a segment and reach out to lapsed customers with an offer.'] },
+  { id: 'referrals', title: 'Referrals', where: 'Growth › Referrals', img: 'referralsPage', what: 'Friends who joined with a customer’s invite code, and the points both earned.', steps: ['Set the referral points on the Loyalty page; track sign-ups here.'] },
+  { id: 'growthreports', title: 'Growth reports', where: 'Growth › Reports', img: 'growthReportsPage', what: 'Revenue that came from loyalty members and referrals.', steps: ['Compare months to see whether loyalty is paying off.'] },
+ ]},
+ { id: 'delivery', title: 'Delivery and feedback', intro: 'Where you deliver, live rider tracking and reviews.', items: [
+  { id: 'zones', title: 'Delivery zones', where: 'Delivery › Zones', img: 'deliveryPage', what: 'Where you deliver and what it costs: by pincode, or by distance (per km) from your restaurant.',
+    steps: ['Add pincodes with their delivery charge, or switch on distance-based delivery and set the rate per km and the radius.', 'Switch a zone off temporarily when you can’t deliver there.'] },
+  { id: 'deliverymap', title: 'Delivery map', where: 'Delivery › Map View', img: 'deliveryMapPage', what: 'All active deliveries on a map with the rider’s live location.', steps: ['Riders open the link from the order and share their location; customers see it on the tracking page.'] },
+  { id: 'feedback', title: 'Feedback', where: 'Feedback', img: 'feedbackPage', what: 'Ratings and reviews customers leave after their orders.', steps: ['Read and reply; happy customers can be nudged to rate you on Google.'] },
+ ]},
+ { id: 'settings', title: 'Settings and your website', intro: 'Restaurant details and how your customer website looks.', items: [
+  { id: 'settingsl', title: 'Settings', where: 'Settings', img: 'settingsPage', what: 'Restaurant name, address (with map pin), phone, opening hours, order types (dine-in / takeaway / delivery), minimum order, packaging charge, GST, cash on delivery and more.',
+    steps: ['Fill in your details and drop the map pin exactly on your restaurant.', 'Set opening hours; outside them, customers can schedule orders instead.', 'Turn order types and GST on or off.'] },
+  { id: 'appearance', title: 'Website appearance', where: 'Customer Website › Website Appearance', img: 'websiteThemePage', what: 'Make the website yours: colors, logo, banners, fonts, home page layout, card styles, menu layout, bottom bar icons, profile page design (10 styles) and much more, with a live preview.',
+    steps: ['Change any option and watch the live preview on the right.', 'Switch between “Current” (unsaved) and “Live” to compare.', 'Click Save when you like it.'],
+    tips: ['See every layout side by side in the <a href="layout-gallery.html">layout gallery</a>.'] },
+  { id: 'policies', title: 'Policy pages', where: 'Customer Website › Policy Pages', img: 'policyPagesPage', what: 'Privacy, terms, refund, shipping and cookie pages, with a simple editor. Blank pages show the default text.', steps: ['Edit a page like a document and save.'] },
+  { id: 'domain', title: 'Custom domain and embed', where: 'Customer Website › Custom Domain', img: 'embedPage', what: 'Use your own domain (e.g. order.yourrestaurant.com) or embed the menu on your existing website.', steps: ['Follow the DNS steps shown, or copy the embed code into your site.'] },
+  { id: 'profileacc', title: 'My profile', where: 'Profile', img: 'profilePage', what: 'Your own account: name, email, password and security.', steps: ['Change your password here; keep your email up to date for resets.'] },
+ ]},
+ { id: 'website', title: 'Your customer website', intro: 'What your customers see on their phones.', items: [
+  { id: 'c-home', title: 'Home page', where: 'yourrestaurant.restrogrow.com', img: 'c_home', phone: 1, what: 'Your banner, logo, categories, Today’s Specials, Bestsellers and the full menu, in the layout you picked.', steps: ['Customers browse, tap a dish for details and add it to the cart.'] },
+  { id: 'c-dish', title: 'Dish details', where: 'Tap any dish', img: 'c_dish', phone: 1, what: 'Photo, description, price, sizes and add-ons, plus nutrition (calories, protein, carbs, fat) and “What’s inside”.', steps: ['Customers pick a size and add-ons, add a note and add to cart.'] },
+  { id: 'c-specials', title: 'Today’s Specials row', where: 'Home page', img: 'c_specials', phone: 1, isNew: 1, what: 'Swipeable special cards with your note, plates left and a countdown.' },
+  { id: 'c-cart', title: 'Cart and checkout', where: 'Cart', img: 'c_cart', phone: 1, what: 'Order list, milestone offers, coupons, Complete your meal suggestions, a note for the kitchen and the bill. Checkout asks for name, phone, address (with map), order type and payment.',
+    steps: ['Customers can pay cash, online with PhonePe, by UPI QR, or from their wallet.', 'Logged-in customers can also use loyalty points.'] },
+  { id: 'c-track', title: 'Order tracking', where: 'After placing an order', img: 'c_track', phone: 1, what: 'A live journey from Order placed to Delivered, the rider’s location, the order summary and help buttons. Updates by itself.' },
+  { id: 'c-scratch', title: 'Scratch card (customer)', where: 'Tracking page', img: 'c_scratch', phone: 1, isNew: 1, what: 'Unlocks once you accept the order; customers scratch, see their prize and save the code for next time.' },
+  { id: 'c-loyalty', title: 'Rewards page (counter QR)', where: '/loyalty or the counter QR', img: 'c_loyalty', phone: 1, isNew: 1, what: 'First-time scanners see the program and a big “Join free” button; members see their points, level, free dishes, invite code and codes to show staff.' },
+  { id: 'c-member', title: 'Rewards page (member)', where: '/loyalty, logged in', img: 'c_member', phone: 1, isNew: 1, what: 'Points worth, progress to the next level, quick redeem and free-dish rewards.' },
+  { id: 'c-reserve', title: 'Reservations (customer)', where: 'Reserve tab', img: 'c_reserve', phone: 1, what: 'Pick date, time, guests and meal; you confirm it in your dashboard.' },
+  { id: 'c-pwa', title: 'Install as an app', where: 'Bottom bar › Install', sa: 'install', what: 'Customers can add your website to their home screen like an app, with your logo.', steps: ['When switched on, an Install button appears in the website’s bottom bar.'] },
+ ]},
+ { id: 'staffapps', title: 'Staff apps', intro: 'Simpler screens for the team.', items: [
+  { id: 'waiterapp', title: 'Waiter dashboard', where: 'Staff login (waiter)', what: 'Table requests with sound alerts, table status and orders for their tables. Waiters can also take orders at the table.', steps: ['Log in with the waiter username you created under Staff.'] },
+  { id: 'chefapp', title: 'Chef dashboard', where: 'Staff login (chef)', what: 'Kitchen tickets in big cards; tap to move them to Preparing and Ready.', steps: ['Keep it open on a kitchen tablet.'] },
+  { id: 'managerapp', title: 'Manager dashboard', where: 'Staff login (manager)', what: 'The main dashboard without owner-only settings.' },
+  { id: 'rider', title: 'Rider page', where: 'Link / QR from the order', what: 'Riders open a link (no login), see the address and route, update the delivery status and share their live location.' },
+ ]},
+];
+</script>
+<script>
+(function () {
+  'use strict';
+  var IMG = '../assets/guide/';
+  // Image sizes up front, so the page doesn't jump while screenshots load (and #links land right)
+  var SIZE = { c_specials: [400, 800], c_scratch: [400, 350], c_loyalty: [420, 1000], c_member: [420, 1100] };
+  function dims(f) { var d = SIZE[f.img] || (f.phone ? [400, 860] : [1100, 739]); return ' width="' + d[0] + '" height="' + d[1] + '"'; }
+  var ICON_SA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/></svg>';
+
+  function feat(f) {
+    var hasImg = !!f.img;
+    var sa = f.sa ? '<div class="sa-box">' + ICON_SA + '<div><b>Switched on by your superadmin.</b> ' + SA[f.sa] + ' is enabled for each restaurant by the RestroGrow team. If you don’t see it in your dashboard, ask your superadmin to turn on <b>' + SA[f.sa] + '</b> for your restaurant.</div></div>' : '';
+    var steps = f.steps ? '<h5>How to use it</h5><ol>' + f.steps.map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ol>' : '';
+    var tips = (f.tips || []).map(function (t) { return '<div class="tip">' + t + '</div>'; }).join('');
+    return '<article class="feat" id="' + f.id + '" data-text="' + (f.title + ' ' + (f.where || '') + ' ' + f.what + ' ' + (f.steps || []).join(' ')).toLowerCase().replace(/"/g, '') + '">' +
+      '<div class="feat-h"><h3>' + f.title + '</h3>' + (f.isNew ? '<span class="pill new">New</span>' : '') + (f.sa ? '<span class="pill sa">Superadmin</span>' : '<span class="pill all">Every restaurant</span>') + '</div>' +
+      (f.where ? '<div class="where">Where: <b>' + f.where + '</b></div>' : '') +
+      '<div class="feat-b' + (hasImg ? (f.phone ? ' phone' : '') : ' noimg') + '"><div><p class="what">' + f.what + '</p>' + steps + tips + sa + '</div>' +
+      (hasImg ? '<div class="shot"><img loading="lazy"' + dims(f) + ' src="' + IMG + f.img + '.jpg" alt="' + f.title + ' screenshot"></div>' : '') +
+      '</div></article>';
+  }
+
+  var html = '<section class="group" id="quick-start"><h2>Quick start checklist</h2><p>Ten steps to go live. Each links to the full guide below.</p><div class="check">' +
+    [['Fill in Settings', 'Name, address with map pin, hours, order types, GST.', 'settingsl'], ['Build your menu', 'Categories first, then dishes with photos and prices.', 'items'], ['Pick your look', 'Colors, logo, banners and layout with live preview.', 'appearance'],
+     ['Set delivery', 'Pincodes or per-km delivery, and charges.', 'zones'], ['Take payments', 'Add PhonePe keys or a UPI QR.', 'gateway'], ['Print table QR codes', 'For dine-in ordering from the table.', 'qr'],
+     ['Add your team', 'Waiter, chef and manager logins.', 'staff'], ['Create offers', 'A milestone coupon and Today’s Special.', 'coupons'], ['Start loyalty', 'Points, levels and the counter QR.', 'loyalty'], ['Share your link', 'Instagram bio, WhatsApp, Google profile.', 'domain']]
+    .map(function (c, i) { return '<div><b><span>' + (i + 1) + '</span><a href="#' + c[2] + '">' + c[0] + '</a></b><p>' + c[1] + '</p></div>'; }).join('') + '</div></section>';
+
+  GROUPS.forEach(function (g) {
+    html += '<section class="group" id="g-' + g.id + '"><h2>' + g.title + '</h2><p>' + g.intro + '</p>' + g.items.map(feat).join('') + '</section>';
+  });
+
+  html += '<section class="group" id="superadmin"><h2>Features your superadmin switches on</h2><p>Some features are turned on per restaurant by the RestroGrow team (the superadmin). If one is missing from your dashboard or website, contact your superadmin and ask them to enable it for your restaurant.</p>' +
+    '<table class="sa-table"><thead><tr><th>Feature</th><th>What you get</th><th>How to get it</th></tr></thead><tbody>' +
+    [['Photo Gallery', 'Stock food photos under Menu › Photo Gallery.', 'Ask your superadmin to turn on “Photo Gallery”.'],
+     ['Meal Subscriptions', 'The Subscriptions menu (Meal Plans, Subscribers) and the Plans page on your website.', 'Ask your superadmin to turn on “Meal Subscriptions”.'],
+     ['Payment Gateway', 'Online payments (UPI / cards) at checkout instead of cash only.', 'Ask your superadmin to set your account to “Cash + Gateway”, then add your PhonePe keys under Payments › Gateway.'],
+     ['Install App', 'An Install button so customers can add your website to their home screen.', 'Ask your superadmin to turn on “Install App”.'],
+     ['WhatsApp Orders', 'Order details sent to your WhatsApp and a WhatsApp option for customers after ordering.', 'Ask your superadmin to turn on “WhatsApp Orders”.'],
+     ['Branches', 'Several outlets under one owner login, with branch admins.', 'Ask your superadmin to create branch admins and link your restaurants.'],
+     ['Menu from photos', 'Your whole menu built for you from photos of your printed menu.', 'Send menu photos to your superadmin; they import it for you.'],
+     ['Subscription and trial', 'Your RestroGrow plan. When it expires, the website stops taking orders.', 'Renew with your superadmin; they update your plan.']]
+    .map(function (r) { return '<tr><td><b>' + r[0] + '</b></td><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>'; }).join('') + '</tbody></table></section>';
+
+  html += '<section class="group" id="help"><h2>Troubleshooting</h2>' +
+    '<article class="feat"><ul>' +
+    '<li><b>A new feature isn’t in my menu.</b> Press Ctrl + Shift + R on the dashboard. If it’s a superadmin feature, ask them to switch it on.</li>' +
+    '<li><b>Customers can’t pay online / add money to the wallet.</b> Check your PhonePe keys under Payments › Gateway and that your superadmin set “Cash + Gateway”.</li>' +
+    '<li><b>The new-order popup keeps ringing.</b> Accept or reject the pending order; it stops once no order is pending.</li>' +
+    '<li><b>A customer says their points are missing.</b> Points are added when the order is marked Completed. Check the order status.</li>' +
+    '<li><b>The website shows old colors.</b> Click Save in Website Appearance, then reload the website.</li>' +
+    '<li><b>“Restaurant is not accepting orders”.</b> Your plan may have expired; contact your superadmin.</li>' +
+    '</ul></article></section>';
+
+  document.getElementById('content').innerHTML = html;
+
+  // Sidebar
+  var toc = '<h4>Start</h4><a href="#quick-start">Quick start checklist</a>';
+  GROUPS.forEach(function (g) {
+    toc += '<h4>' + g.title + '</h4>' + g.items.map(function (f) { return '<a href="#' + f.id + '" data-id="' + f.id + '">' + f.title + (f.sa ? '<i title="Superadmin"></i>' : '') + '</a>'; }).join('');
+  });
+  toc += '<h4>More</h4><a href="#superadmin">Superadmin features</a><a href="#help">Troubleshooting</a><a href="layout-gallery.html">Layout gallery</a>';
+  var nav = document.getElementById('toc'); nav.innerHTML = toc;
+
+  // Search
+  var q = document.getElementById('q');
+  q.addEventListener('input', function () {
+    var v = q.value.trim().toLowerCase(), any = false;
+    document.querySelectorAll('.feat[data-text]').forEach(function (a) { var hit = !v || a.getAttribute('data-text').indexOf(v) !== -1; a.style.display = hit ? '' : 'none'; if (hit) any = true; });
+    document.querySelectorAll('.group').forEach(function (g) { var f = g.querySelectorAll('.feat[data-text]'); if (!f.length) { g.style.display = v ? 'none' : ''; return; } g.style.display = Array.prototype.some.call(f, function (x) { return x.style.display !== 'none'; }) ? '' : 'none'; });
+    document.getElementById('empty').style.display = any ? 'none' : 'block';
+    nav.querySelectorAll('a[data-id]').forEach(function (a) { var el = document.getElementById(a.getAttribute('data-id')); a.style.display = el && el.style.display === 'none' ? 'none' : ''; });
+  });
+
+  // Mobile menu, current section, image zoom
+  document.getElementById('menuBtn').onclick = function () { nav.classList.toggle('open'); };
+  nav.addEventListener('click', function (e) { if (e.target.closest('a')) nav.classList.remove('open'); });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { nav.querySelectorAll('a.on').forEach(function (a) { a.classList.remove('on'); }); var a = nav.querySelector('a[data-id="' + e.target.id + '"]'); if (a) { a.classList.add('on'); } } }); }, { rootMargin: '-30% 0px -60% 0px' });
+    document.querySelectorAll('.feat[id]').forEach(function (f) { io.observe(f); });
+  }
+  var lb = document.getElementById('lb');
+  document.addEventListener('click', function (e) {
+    var img = e.target.closest('.shot img');
+    if (img) { lb.querySelector('img').src = img.src; lb.classList.add('on'); }
+    else if (e.target.closest('#lb')) lb.classList.remove('on');
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') lb.classList.remove('on'); });
+  if (location.hash) { var t = document.querySelector(location.hash); if (t) setTimeout(function () { t.scrollIntoView(); }, 50); }
+})();
+</script>
+</body>
+</html>
