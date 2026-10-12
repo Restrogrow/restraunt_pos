@@ -177,21 +177,22 @@ function swUrlBase64ToUint8Array(base64String) {
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-
-  var targetUrl = event.notification.data && event.notification.data.url
-    ? event.notification.data.url
-    : '../views/dashboard.php';
-
+  if (event.action === 'dismiss') return;
+  var d = event.notification.data || {};
+  // The link is relative to this file (e.g. ../views/dashboard.php), so compare full paths:
+  // matching the relative text against an open tab's address never found it before.
+  var target = new URL(d.url || '../views/dashboard.php', self.location.href);
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       for (var i = 0; i < clientList.length; i++) {
         var client = clientList[i];
-        if (client.url.indexOf(targetUrl) !== -1 && 'focus' in client) {
+        if (new URL(client.url).pathname === target.pathname && 'focus' in client) {
+          if (d.orderId) client.postMessage({ type: 'rg-open-order', orderId: d.orderId });
           return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
+        return clients.openWindow(target.href + (d.orderId ? (target.search ? '&' : '?') + 'open_order=' + encodeURIComponent(d.orderId) : ''));
       }
     })
   );

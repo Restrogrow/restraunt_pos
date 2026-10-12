@@ -724,11 +724,11 @@ $restaurant_id = $_SESSION['restaurant_id'];
                     return;
                 }
 
-                var reg = await navigator.serviceWorker.register('../website/sw.php?v=6', { scope: '../' });
+                var reg = await navigator.serviceWorker.register('../website/sw.php?v=7', { scope: '../' });
                 reg = await navigator.serviceWorker.ready;
                 var sub = await reg.pushManager.getSubscription();
                 if (!sub) {
-                    var vapidKey = <?php echo json_encode(env('VAPID_PUBLIC_KEY', '')); ?>;
+                    var vapidKey = ((await (await fetch('../api/get_vapid_key.php', { cache: 'no-store' })).json()).publicKey || '');
                     if (!vapidKey) {
                         alert('Push notifications are not configured on the server yet.');
                         if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Alerts'; }

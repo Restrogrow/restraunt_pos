@@ -1,152 +1,64 @@
 <?php
 /**
- * API: Send push notifications to subscribed admin users
- * POST: Send a notification to one or all admin users
+ * API: send a push notification to this restaurant's subscribed admin devices
+ * (the dashboard's "Test notification" button). POST {title, body, url, orderId}.
+ * Sending is done by config/push_notification.php → config/web_push.php (no library needed).
  */
-
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../config/env_loader.php';
-
-if (!is_file(__DIR__ . '/../../vendor/autoload.php')) {
-    header('Content-Type: application/json; charset=UTF-8');
-    http_response_code(503);
-    echo json_encode(['success' => false, 'message' => 'Push notifications are not set up on this server (WebPush library missing).']);
-    exit;
-}
-require_once __DIR__ . '/../../vendor/autoload.php';
-
-use Minishlink\WebPush\WebPush;
-use Minishlink\WebPush\Subscription;
+require_once __DIR__ . '/../config/push_notification.php';
 
 startSecureSession();
 header('Content-Type: application/json; charset=UTF-8');
 
-// Only allow authenticated requests
 if (!isSessionValid() || !isset($_SESSION['restaurant_id'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
-
-$method = $_SERVER['REQUEST_METHOD'];
-if ($method !== 'POST') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
     exit;
 }
-
 $restaurantId = $_SESSION['restaurant_id'];
+session_write_close();
 
 try {
     $conn = getConnection();
-    
-    // Get the user IDs for this restaurant
-    $stmt = $conn->prepare("SELECT id FROM users WHERE restaurant_id = ?");
+    $stmt = $conn->prepare('SELECT id FROM users WHERE restaurant_id = ?');
     $stmt->execute([$restaurantId]);
     $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    
     if (empty($userIds)) {
         echo json_encode(['success' => false, 'message' => 'No users found']);
         exit;
     }
-    
-    // Get all push subscriptions for these users
     $placeholders = implode(',', array_fill(0, count($userIds), '?'));
     $stmt = $conn->prepare("SELECT id, endpoint, p256dh_key, auth_key FROM push_subscriptions WHERE user_id IN ($placeholders)");
     $stmt->execute($userIds);
     $subscriptions = $stmt->fetchAll();
-    
     if (empty($subscriptions)) {
-        echo json_encode(['success' => true, 'sent' => 0, 'message' => 'No subscribers found']);
+        echo json_encode(['success' => true, 'sent' => 0, 'total_subscribers' => 0, 'message' => 'No device has turned on notifications yet']);
         exit;
     }
-    
-    // Get notification payload from request
-    $input = json_decode(file_get_contents('php://input'), true);
-    $title = $input['title'] ?? 'RestroGrow Admin';
-    $body = $input['body'] ?? 'You have a new notification';
-    $url = $input['url'] ?? '../views/dashboard.php';
-    $orderId = $input['orderId'] ?? null;
-    
-    // Load VAPID keys from env
-    $vapidPublicKey = env('VAPID_PUBLIC_KEY', '');
-    $vapidPrivateKey = env('VAPID_PRIVATE_KEY', '');
-    $vapidSubject = env('VAPID_SUBJECT', 'mailto:admin@restrogrow.com');
-    
-    if (empty($vapidPublicKey) || empty($vapidPrivateKey)) {
-        echo json_encode(['success' => false, 'message' => 'VAPID keys not configured']);
-        exit;
-    }
-    
-    $auth = [
-        'VAPID' => [
-            'subject' => $vapidSubject,
-            'publicKey' => $vapidPublicKey,
-            'privateKey' => $vapidPrivateKey,
-        ],
-    ];
-    
-    $webPush = new WebPush($auth);
-    $payload = json_encode([
-        'title' => $title,
-        'body' => $body,
-        'url' => $url,
-        'orderId' => $orderId,
-        'tag' => 'order-' . ($orderId ?: date('His')),
-        'actions' => $orderId ? [
-            ['action' => 'view', 'title' => 'View Order'],
-            ['action' => 'dismiss', 'title' => 'Dismiss'],
-        ] : [],
-    ]);
-    
-    $sent = 0;
-    $failed = 0;
-    $failureReasons = [];
 
-    foreach ($subscriptions as $sub) {
-        try {
-            $subscription = Subscription::create([
-                'endpoint' => $sub['endpoint'],
-                'keys' => [
-                    'p256dh' => $sub['p256dh_key'],
-                    'auth' => $sub['auth_key'],
-                ],
-            ]);
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $title = mb_substr((string)($input['title'] ?? 'RestroGrow'), 0, 80);
+    $body = mb_substr((string)($input['body'] ?? 'You have a new notification'), 0, 200);
+    $url = (string)($input['url'] ?? '../views/dashboard.php');
+    $orderId = isset($input['orderId']) ? (int)$input['orderId'] : null;
 
-            // sendOneNotification() sends synchronously and returns a
-            // MessageSentReport — it does NOT throw for a rejected push
-            // (expired subscription, 404/410, bad VAPID auth, etc), so the
-            // old try/catch here counted every attempt as "sent" even when
-            // delivery actually failed, and never cleaned up dead
-            // subscriptions since the catch block was effectively dead code.
-            $report = $webPush->sendOneNotification($subscription, $payload);
-            if ($report->isSuccess()) {
-                $sent++;
-            } else {
-                $failed++;
-                $failureReasons[] = $report->getReason();
-                if ($report->isSubscriptionExpired()) {
-                    $stmt = $conn->prepare("DELETE FROM push_subscriptions WHERE id = ?");
-                    $stmt->execute([$sub['id']]);
-                }
-            }
-        } catch (Exception $e) {
-            $failed++;
-            $failureReasons[] = $e->getMessage();
-        }
-    }
-
+    $r = deliverPushNotifications($conn, $subscriptions, $title, $body, $url, $orderId);
     echo json_encode([
         'success' => true,
-        'sent' => $sent,
-        'failed' => $failed,
+        'sent' => (int)($r['sent'] ?? 0),
+        'failed' => (int)($r['failed'] ?? 0),
         'total_subscribers' => count($subscriptions),
-        'failure_reasons' => array_values(array_unique($failureReasons)),
+        'failure_reasons' => $r['failure_reasons'] ?? [],
     ]);
-    
-} catch (Exception $e) {
-    error_log("Send push notification error: " . $e->getMessage());
+} catch (Throwable $e) {
+    error_log('Send push notification error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Error sending notifications: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Could not send the notification. Please try again.']);
 }

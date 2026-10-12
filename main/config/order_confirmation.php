@@ -77,9 +77,9 @@ if (!function_exists('fireOrderConfirmedActions')) {
             sendPushNotification(
                 $conn,
                 $restaurant_id,
-                '📦 New Order!',
-                'Order #' . $order['order_number'] . ' received - ' . $currencySymbol . number_format((float)$order['total'], 2),
-                '../views/orders.php',
+                'New order #' . $order['order_number'],
+                $currencySymbol . number_format((float)$order['total'], 2) . ' · ' . $order['order_type'] . (!empty($order['customer_name']) ? ' · ' . $order['customer_name'] : ''),
+                '../views/dashboard.php',
                 $orderId
             );
             // Kitchen needs to know the moment an order is confirmed, not

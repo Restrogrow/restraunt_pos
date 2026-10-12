@@ -1192,7 +1192,8 @@ document.addEventListener("DOMContentLoaded", () => {
         window._overlayProcessing = false;
 
         async function checkNewPendingOrder() {
-          if (document.hidden) return;
+          // keeps checking while the tab is in the background: that is exactly when the owner
+          // needs the ring and the notification (order-alerts.js)
           try {
             const overlay = document.getElementById('newOrderOverlay');
             if (overlay && overlay.classList.contains('show')) return;
@@ -1256,6 +1257,7 @@ document.addEventListener("DOMContentLoaded", () => {
         window._currentNotifOrder = order;
 
         startNewOrderRing();
+        if (typeof window.rgOrderAlert === 'function') window.rgOrderAlert(order);   // background: system notification + tab title
 
         var e = document.getElementById('notifOrderNumber');
         if (e) e.textContent = 'Order #' + (order.order_number || order.id);

@@ -4,21 +4,12 @@
  * Send Web Push notifications from any part of the application
  * 
  * Usage:
- *   sendPushNotification($conn, $restaurantId, 'New Order!', 'Order #42 received', '../views/orders.php');
+ *   sendPushNotification($conn, $restaurantId, 'New order #42', '₹450 · Delivery', '../views/dashboard.php', 42);
  */
 
 require_once __DIR__ . '/env_loader.php';
 
-// WebPush classes (Composer). A missing vendor/ (e.g. a fresh local copy
-// without `composer install`) must not crash order processing — this file
-// is required mid-request when an order changes status — so push sending is
-// just skipped (see deliverPushNotifications) when the library is absent.
-if (is_file(__DIR__ . '/../../vendor/autoload.php')) {
-    require_once __DIR__ . '/../../vendor/autoload.php';
-}
-
-use Minishlink\WebPush\WebPush;
-use Minishlink\WebPush\Subscription;
+require_once __DIR__ . '/web_push.php';   // Web Push without a library
 
 function sendPushNotification($conn, $restaurantId, $title, $body, $url = '../views/dashboard.php', $orderId = null) {
     // Get user IDs for this restaurant
@@ -89,7 +80,7 @@ function notifyWaitersOrderReady(PDO $conn, string $restaurantId, int $orderId) 
             $conn,
             $restaurantId,
             ['Waiter'],
-            '🔔 Order Ready!',
+            'Order ready',
             'Order #' . $detail['order_number'] . ' (' . $detail['order_type'] . ') is ready to serve',
             '../views/waiter_dashboard.php',
             $orderId
@@ -108,29 +99,9 @@ function deliverPushNotifications($conn, $subscriptions, $title, $body, $url, $o
     if (empty($subscriptions)) {
         return ['sent' => 0, 'message' => 'No subscribers'];
     }
-    if (!class_exists(WebPush::class)) {
-        error_log('push_notification.php: WebPush library not installed (run composer install) — push skipped');
-        return ['sent' => 0, 'error' => 'WebPush library not installed'];
-    }
-
-    $vapidPublicKey = env('VAPID_PUBLIC_KEY', '');
-    $vapidPrivateKey = env('VAPID_PRIVATE_KEY', '');
-    $vapidSubject = env('VAPID_SUBJECT', 'mailto:admin@restrogrow.com');
-
-    if (empty($vapidPublicKey) || empty($vapidPrivateKey)) {
-        error_log("Push notification skipped: VAPID keys not configured");
-        return ['sent' => 0, 'error' => 'VAPID keys not configured'];
-    }
-
-    $auth = [
-        'VAPID' => [
-            'subject' => $vapidSubject,
-            'publicKey' => $vapidPublicKey,
-            'privateKey' => $vapidPrivateKey,
-        ],
-    ];
-
-    $webPush = new WebPush($auth);
+    // Sent with config/web_push.php (PHP's own OpenSSL). The Composer WebPush library this
+    // used to need was never installed on the server, so no push was ever delivered.
+    $vapid = wpVapidKeys($conn);
     $payload = json_encode([
         'title' => $title,
         'body' => $body,
@@ -138,41 +109,28 @@ function deliverPushNotifications($conn, $subscriptions, $title, $body, $url, $o
         'orderId' => $orderId,
         'tag' => 'order-' . ($orderId ?: date('His')),
         'actions' => $orderId ? [
-            ['action' => 'view', 'title' => 'View Order'],
+            ['action' => 'view', 'title' => 'View order'],
             ['action' => 'dismiss', 'title' => 'Dismiss'],
         ] : [],
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 
     $sent = 0;
-
+    $failed = 0;
+    $reasons = [];
     foreach ($subscriptions as $sub) {
-        try {
-            $subscription = Subscription::create([
-                'endpoint' => $sub['endpoint'],
-                'keys' => [
-                    'p256dh' => $sub['p256dh_key'],
-                    'auth' => $sub['auth_key'],
-                ],
-            ]);
-            // sendOneNotification() sends synchronously and returns a
-            // MessageSentReport — it does NOT throw for a rejected push
-            // (expired subscription, 404/410, bad VAPID auth, etc). The old
-            // code only had a catch block here, so every failed delivery was
-            // silently counted as "sent" and expired subscriptions were
-            // never cleaned up.
-            $report = $webPush->sendOneNotification($subscription, $payload);
-            if ($report->isSuccess()) {
-                $sent++;
-            } elseif ($report->isSubscriptionExpired()) {
-                $stmt = $conn->prepare("DELETE FROM push_subscriptions WHERE id = ?");
-                $stmt->execute([$sub['id']]);
-            } else {
-                error_log('Push notification failed for subscription ' . $sub['id'] . ': ' . $report->getReason());
-            }
-        } catch (Exception $e) {
-            error_log('Push notification exception for subscription ' . $sub['id'] . ': ' . $e->getMessage());
+        $r = wpSend($vapid, $sub['endpoint'], $sub['p256dh_key'], $sub['auth_key'], $payload);
+        if ($r['ok']) {
+            $sent++;
+            continue;
+        }
+        $failed++;
+        $reasons[] = $r['error'];
+        if ($r['expired']) {
+            // the browser dropped this subscription (404 / 410): forget it
+            $conn->prepare('DELETE FROM push_subscriptions WHERE id = ?')->execute([$sub['id']]);
+        } else {
+            error_log('Push notification failed for subscription ' . $sub['id'] . ': ' . $r['error']);
         }
     }
-
-    return ['sent' => $sent, 'total' => count($subscriptions)];
+    return ['sent' => $sent, 'failed' => $failed, 'total' => count($subscriptions), 'failure_reasons' => array_values(array_unique(array_filter($reasons)))];
 }

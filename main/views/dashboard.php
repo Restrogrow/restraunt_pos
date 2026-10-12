@@ -7629,6 +7629,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/custom-domain-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/custom-domain-studio.js'); ?>" defer></script>
   <script src="../assets/js/settings-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/settings-studio.js'); ?>" defer></script>
   <script src="../assets/js/offers-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offers-studio.js'); ?>" defer></script>
+  <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>
@@ -8881,7 +8882,7 @@ if ('serviceWorker' in navigator) {
   (function(){
     try {
       // Cache-busting version: bump this when sw.js changes
-      var SW_VERSION = 6;
+      var SW_VERSION = 7;   // 7: notification click focuses the open dashboard
       var swUrl = '../website/sw.php?v=' + SW_VERSION;
       
       // Calculate proper scope from the service worker URL path
@@ -9036,7 +9037,7 @@ async function testPushNotification(btn) {
     var reg = await navigator.serviceWorker.ready;
     var sub = await reg.pushManager.getSubscription();
     if (!sub) {
-      var vapidKey = <?php echo json_encode(env('VAPID_PUBLIC_KEY', '')); ?>;
+      var vapidKey = ((await (await fetch('../api/get_vapid_key.php', { cache: 'no-store' })).json()).publicKey || '');
       if (!vapidKey) {
         alert('VAPID_PUBLIC_KEY is not configured on the server (.env) — push notifications cannot be set up at all until that\'s set.');
         setStatus('Server not configured', '#dc2626');

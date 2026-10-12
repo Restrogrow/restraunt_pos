@@ -999,7 +999,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 var registration = await navigator.serviceWorker.ready;
                 var subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array('<?php echo env('VAPID_PUBLIC_KEY', ''); ?>')
+                    applicationServerKey: urlBase64ToUint8Array(((await (await fetch('../api/get_vapid_key.php', { cache: 'no-store' })).json()).publicKey || ''))
                 });
                 // Send subscription to server
                 await fetch('../api/save_push_subscription.php', {
