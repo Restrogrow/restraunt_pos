@@ -50,7 +50,7 @@
             '<label>Heading<input id="scTitle" maxlength="60" placeholder="Your scratch card" value="' + esc(s.title) + '"></label>' +
             '<label>Orders above (' + cur() + ')<input id="scMin" type="number" min="0" value="' + (+s.min_order || '') + '" placeholder="Any order"></label>' +
             '<label>Code valid for<select id="scDays">' + [3, 7, 15, 30, 60].map(function (d) { return '<option value="' + d + '"' + (+s.valid_days === d ? ' selected' : '') + '>' + d + ' days</option>'; }).join('') + '</select></label>' +
-            '<label>Next order must be above (' + cur() + ')<input id="scNextMin" type="number" min="0" value="' + (+s.next_min_order || '') + '" placeholder="Any amount"></label>' +
+            '<label>Next order must be above (' + cur() + '), unless a prize sets its own<input id="scNextMin" type="number" min="0" value="' + (+s.next_min_order || '') + '" placeholder="Any amount"></label>' +
             '<label>Monthly budget (' + cur() + ')<input id="scBudget" type="number" min="0" value="' + (+s.monthly_budget || '') + '" placeholder="No limit"></label>' +
           '</div>' +
           (+s.monthly_budget > 0 ? '<div class="scx-budget"><div><i style="width:' + Math.min(100, k.spent_month / s.monthly_budget * 100) + '%"></i></div><span>' + money(k.spent_month) + ' of ' + money(s.monthly_budget) + ' given this month. When it runs out, no more cards until next month.</span></div>' : '') +
@@ -58,12 +58,13 @@
 
         '<div class="up-card">' +
           '<h3><span class="material-symbols-rounded">redeem</span> Prizes and chances</h3>' +
-          '<div class="scx-prize-head"><span>Prize</span><span>Amount</span><span>Chance</span><span></span></div>' +
+          '<div class="scx-prize-head"><span>Prize</span><span>Amount</span><span>Min. next order <em>optional</em></span><span>Chance</span><span></span></div>' +
           ps.map(function (p, i) {
             return '<div class="scx-prize" data-i="' + i + '">' +
               '<select class="scx-type">' + [['flat', cur() + ' off next order'], ['percent', '% off next order'], ['none', 'Better luck next time']].map(function (o) {
                 return '<option value="' + o[0] + '"' + (p.type === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
               '<input class="scx-value" type="number" min="1"' + (p.type === 'none' ? ' disabled value=""' : ' value="' + (+p.value) + '"') + ' placeholder="' + (p.type === 'percent' ? '%' : cur()) + '">' +
+              '<input class="scx-pmin" type="number" min="0"' + (p.type === 'none' ? ' disabled value=""' : ' value="' + (+p.min_order || '') + '"') + ' placeholder="' + (+s.next_min_order > 0 ? cur() + (+s.next_min_order) : 'Any') + '" title="Leave empty to use the general minimum above">' +
               '<div class="scx-weight"><input class="scx-w" type="number" min="1" max="1000" value="' + (+p.weight) + '"><b>' + Math.round(p.weight / sum * 1000) / 10 + '%</b></div>' +
               '<button type="button" class="up-pair-x scx-del" title="Remove">&times;</button>' +
             '</div>';
@@ -135,6 +136,7 @@
     else if (p && t.classList.contains('scx-type')) { p.type = t.value; if (p.type === 'percent' && p.value > 50) p.value = 10; }
     else if (p && t.classList.contains('scx-value')) p.value = +t.value || 0;
     else if (p && t.classList.contains('scx-w')) p.weight = Math.max(1, +t.value || 1);
+    else if (p && t.classList.contains('scx-pmin')) p.min_order = +t.value > 0 ? +t.value : null;
     else return;
     if (redraw) render();
   }

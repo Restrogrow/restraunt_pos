@@ -56,6 +56,15 @@ if (!function_exists('ensureScratchTables')) {
             INDEX idx_scratch_rest (restaurant_id, created_at),
             INDEX idx_scratch_code (coupon_code)
         )");
+        // Optional minimum next order per prize (NULL = the general "next order must be above")
+        try {
+            $q = $conn->query("SHOW COLUMNS FROM scratch_prizes LIKE 'min_order'");
+            if (!($q && $q->fetch())) $conn->exec("ALTER TABLE scratch_prizes ADD COLUMN min_order DECIMAL(10,2) NULL DEFAULT NULL");
+            $q = $conn->query("SHOW COLUMNS FROM scratch_cards LIKE 'prize_min'");
+            if (!($q && $q->fetch())) $conn->exec("ALTER TABLE scratch_cards ADD COLUMN prize_min DECIMAL(10,2) NULL DEFAULT NULL AFTER prize_value");
+        } catch (PDOException $e) {
+            error_log('ensureScratchTables: ' . $e->getMessage());
+        }
     }
 
     function getScratchSettings(PDO $conn, string $rid): array {
@@ -70,25 +79,27 @@ if (!function_exists('ensureScratchTables')) {
 
     function getScratchPrizes(PDO $conn, string $rid): array {
         ensureScratchTables($conn);
-        $st = $conn->prepare('SELECT type, value, weight FROM scratch_prizes WHERE restaurant_id = ? ORDER BY position, id');
+        $st = $conn->prepare('SELECT type, value, weight, min_order FROM scratch_prizes WHERE restaurant_id = ? ORDER BY position, id');
         $st->execute([$rid]);
         return array_map(function ($r) {
-            return ['type' => $r['type'], 'value' => (float)$r['value'], 'weight' => (int)$r['weight']];
+            return ['type' => $r['type'], 'value' => (float)$r['value'], 'weight' => (int)$r['weight'],
+                    'min_order' => $r['min_order'] !== null && (float)$r['min_order'] > 0 ? (float)$r['min_order'] : null];
         }, $st->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    function scratchPrizeLabel(string $type, float $value, string $cur): string {
+    function scratchPrizeLabel(string $type, float $value, string $cur, ?float $min = null): string {
         $v = rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
-        if ($type === 'flat') return $cur . $v . ' off your next order';
-        if ($type === 'percent') return $v . '% off your next order';
+        $above = $min > 0 ? ' above ' . $cur . rtrim(rtrim(number_format($min, 2, '.', ''), '0'), '.') : '';
+        if ($type === 'flat') return $cur . $v . ' off your next order' . $above;
+        if ($type === 'percent') return $v . '% off your next order' . $above;
         return 'Better luck next time';
     }
 
     /** The chances, exactly as drawn: [{label, pct}] */
-    function scratchOdds(array $prizes, string $cur): array {
+    function scratchOdds(array $prizes, string $cur, float $generalMin = 0): array {
         $sum = array_sum(array_column($prizes, 'weight')) ?: 1;
-        return array_map(function ($p) use ($sum, $cur) {
-            return ['label' => scratchPrizeLabel($p['type'], $p['value'], $cur), 'pct' => round($p['weight'] / $sum * 100, 1)];
+        return array_map(function ($p) use ($sum, $cur, $generalMin) {
+            return ['label' => scratchPrizeLabel($p['type'], $p['value'], $cur, $p['min_order'] ?? $generalMin), 'pct' => round($p['weight'] / $sum * 100, 1)];
         }, $prizes);
     }
 
@@ -126,7 +137,7 @@ if (!function_exists('ensureScratchTables')) {
             if (strtotime((string)$order['created_at']) < time() - 3 * 86400) return null;   // old orders don't get one
             $prizes = getScratchPrizes($conn, $rid);
             if (!$prizes) return null;
-            $base = ['state' => 'locked', 'title' => $s['title'], 'odds' => scratchOdds($prizes, $cur)];
+            $base = ['state' => 'locked', 'title' => $s['title'], 'odds' => scratchOdds($prizes, $cur, $s['next_min_order'])];
             if ($status === 'Pending') return $base;
 
             // Draw within the month's budget
@@ -136,23 +147,29 @@ if (!function_exists('ensureScratchTables')) {
             if (!$pool) return null;
             $roll = random_int(1, array_sum(array_column($pool, 'weight')));
             foreach ($pool as $p) { $roll -= $p['weight']; if ($roll <= 0) break; }
-            $conn->prepare('INSERT IGNORE INTO scratch_cards (restaurant_id, order_id, customer_phone, prize_type, prize_value, cost) VALUES (?, ?, ?, ?, ?, ?)')
-                 ->execute([$rid, (int)$order['id'], (string)$order['customer_phone'], $p['type'], $p['value'], scratchPrizeCost($p, $total)]);
+            $conn->prepare('INSERT IGNORE INTO scratch_cards (restaurant_id, order_id, customer_phone, prize_type, prize_value, prize_min, cost) VALUES (?, ?, ?, ?, ?, ?, ?)')
+                 ->execute([$rid, (int)$order['id'], (string)$order['customer_phone'], $p['type'], $p['value'], $p['min_order'] ?? null, scratchPrizeCost($p, $total)]);
             $st->execute([(int)$order['id']]);
             $card = $st->fetch(PDO::FETCH_ASSOC);
             if (!$card) return null;
         }
 
         $out = ['state' => $card['status'] === 'scratched' ? 'scratched' : 'new', 'title' => $s['title'],
-                'odds' => scratchOdds(getScratchPrizes($conn, $rid) ?: [['type' => $card['prize_type'], 'value' => (float)$card['prize_value'], 'weight' => 1]], $cur)];
+                'odds' => scratchOdds(getScratchPrizes($conn, $rid) ?: [['type' => $card['prize_type'], 'value' => (float)$card['prize_value'], 'weight' => 1]], $cur, $s['next_min_order'])];
         if ($out['state'] === 'scratched') $out['prize'] = scratchPrizeOut($card, $s, $cur);
         return $out;
     }
 
+    /** A card's minimum next order: the prize's own, else the general setting. */
+    function scratchCardMin(array $card, array $s): float {
+        return isset($card['prize_min']) && (float)$card['prize_min'] > 0 ? (float)$card['prize_min'] : (float)$s['next_min_order'];
+    }
+
     function scratchPrizeOut(array $card, array $s, string $cur): array {
+        $min = scratchCardMin($card, $s);
         return ['type' => $card['prize_type'], 'value' => (float)$card['prize_value'],
-                'label' => scratchPrizeLabel($card['prize_type'], (float)$card['prize_value'], $cur),
-                'code' => $card['coupon_code'], 'expires_on' => $card['expires_on'], 'min_order' => $s['next_min_order']];
+                'label' => scratchPrizeLabel($card['prize_type'], (float)$card['prize_value'], $cur, $min),
+                'code' => $card['coupon_code'], 'expires_on' => $card['expires_on'], 'min_order' => $min];
     }
 
     /** Scratch it: a won prize becomes a private single-use coupon for this phone. */
@@ -177,7 +194,7 @@ if (!function_exists('ensureScratchTables')) {
                 } while ($exists->fetchColumn());
                 $conn->prepare("INSERT INTO coupons (restaurant_id, coupon_code, discount_type, discount_value, minimum_order_amount, max_uses, current_uses, valid_from, valid_until, is_active, description, is_milestone, owner_phone)
                     VALUES (?, ?, ?, ?, ?, 1, 0, CURDATE(), ?, 1, 'Scratch card reward', 0, ?)")
-                     ->execute([$rid, $code, $card['prize_type'], $card['prize_value'], $s['next_min_order'], $until, $card['customer_phone']]);
+                     ->execute([$rid, $code, $card['prize_type'], $card['prize_value'], scratchCardMin($card, $s), $until, $card['customer_phone']]);
             }
             $conn->prepare("UPDATE scratch_cards SET status = 'scratched', scratched_at = NOW(), coupon_code = ?, expires_on = ? WHERE id = ? AND status = 'new'")
                  ->execute([$code, $until, (int)$card['id']]);

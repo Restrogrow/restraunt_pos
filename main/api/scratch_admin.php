@@ -4,7 +4,7 @@
  *
  * GET              — settings, prizes, the last 30 days' numbers and recent cards
  * POST (JSON body) — { settings: {enabled, title, min_order, next_min_order, valid_days, monthly_budget},
- *                      prizes: [{ type: flat|percent|none, value, weight }] }
+ *                      prizes: [{ type: flat|percent|none, value, weight, min_order (optional) }] }
  *
  * Always scoped to the session's restaurant.
  */
@@ -73,7 +73,8 @@ try {
         if ($type === 'flat' && ($value <= 0 || $value > 100000)) continue;
         if ($type === 'percent' && ($value <= 0 || $value > 100)) continue;
         if ($type === 'none') $value = 0;
-        $prizes[] = [$type, $value, $weight];
+        $min = round((float)($p['min_order'] ?? 0), 2);
+        $prizes[] = [$type, $value, $weight, $type !== 'none' && $min > 0 ? min($min, 1000000) : null];
     }
     if (!empty($s['enabled']) && !$prizes) throw new InvalidArgumentException('Add at least one prize to switch the scratch card on');
 
@@ -83,8 +84,8 @@ try {
                     max(0, min(1000000, (float)($s['min_order'] ?? 0))), max(0, min(1000000, (float)($s['next_min_order'] ?? 0))),
                     max(1, min(90, (int)($s['valid_days'] ?? 15))), max(0, min(10000000, (float)($s['monthly_budget'] ?? 0)))]);
     $conn->prepare('DELETE FROM scratch_prizes WHERE restaurant_id = ?')->execute([$restaurantId]);
-    $ins = $conn->prepare('INSERT INTO scratch_prizes (restaurant_id, type, value, weight, position) VALUES (?, ?, ?, ?, ?)');
-    foreach ($prizes as $i => $p) $ins->execute([$restaurantId, $p[0], $p[1], $p[2], $i]);
+    $ins = $conn->prepare('INSERT INTO scratch_prizes (restaurant_id, type, value, weight, min_order, position) VALUES (?, ?, ?, ?, ?, ?)');
+    foreach ($prizes as $i => $p) $ins->execute([$restaurantId, $p[0], $p[1], $p[2], $p[3], $i]);
     $conn->commit();
     echo json_encode(['success' => true]);
 } catch (InvalidArgumentException $e) {

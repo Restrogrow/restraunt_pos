@@ -4460,7 +4460,8 @@ function toggleGatewayMode() {
         .scx-budget > div { height: 8px; border-radius: 999px; background: #f3f4f6; overflow: hidden; }
         .scx-budget i { display: block; height: 100%; background: linear-gradient(90deg, #f59e0b, #f43f5e); border-radius: 999px; }
         .scx-budget span { display: block; margin-top: 6px; font-size: 0.78rem; color: #6b7280; }
-        .scx-prize-head, .scx-prize { display: grid; grid-template-columns: minmax(0, 1.5fr) 100px 130px 26px; gap: 8px; align-items: center; }
+        .scx-prize-head, .scx-prize { display: grid; grid-template-columns: minmax(0, 1.4fr) 90px minmax(0, 1fr) 124px 26px; gap: 8px; align-items: center; }
+        .scx-prize-head em { font-style: normal; font-weight: 500; text-transform: none; letter-spacing: 0; color: #9ca3af; }
         .scx-prize-head { padding: 0 2px 6px; font-size: 0.72rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
         .scx-prize { margin-bottom: 8px; }
         .scx-weight { display: flex; align-items: center; gap: 6px; }
@@ -4487,7 +4488,7 @@ function toggleGatewayMode() {
         .scx-recent .tag { padding: 3px 8px; border-radius: 999px; background: #fff1f2; color: #9f1239; font-size: 0.7rem; font-weight: 700; letter-spacing: .04em; }
         .scx-recent .tag.used { background: #dcfce7; color: #166534; }
         @media (max-width: 960px) { .scx-cols { grid-template-columns: 1fr; } .scx-stats { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 600px) { .scx-grid { grid-template-columns: 1fr; } .scx-prize-head { display: none; } .scx-prize { grid-template-columns: 1fr 26px; } .scx-prize .scx-value, .scx-prize .scx-weight { grid-column: 1; } }
+        @media (max-width: 600px) { .scx-grid { grid-template-columns: 1fr; } .scx-prize-head { display: none; } .scx-prize { grid-template-columns: 1fr 26px; } .scx-prize .scx-value, .scx-prize .scx-pmin, .scx-prize .scx-weight { grid-column: 1; } }
       </style>
       <div class="scx-wrap">
         <div class="page-header" style="margin-bottom:22px;">
