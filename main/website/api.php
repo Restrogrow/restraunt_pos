@@ -750,6 +750,7 @@ try {
             }
             
             // Query orders directly by customer_phone to avoid name mismatch issues
+            try {
             $stmt = $conn->prepare("SELECT o.*, 
                                    (SELECT dt.delivery_status FROM delivery_tracking dt WHERE dt.order_id = o.id LIMIT 1) as delivery_status,
                                    (SELECT dt.rider_name FROM delivery_tracking dt WHERE dt.order_id = o.id LIMIT 1) as rider_name,
@@ -769,9 +770,20 @@ try {
                 $itemsStmt->execute([':order_id' => $order['id']]);
                 $order['items'] = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
                 $order['has_feedback'] = (bool)$order['has_feedback'];
+                // A column holding binary data (e.g. an uploaded payment proof) or broken
+                // text made json_encode return false: the customer then got an empty reply
+                // and 'Could Not Load Orders'. Leave such fields out instead.
+                foreach ($order as $k => $v) {
+                    if (is_string($v) && !mb_check_encoding($v, 'UTF-8')) unset($order[$k]);
+                }
             }
-            
-            echo json_encode($orders);
+            unset($order);
+            echo json_encode($orders, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+            } catch (Throwable $e) {
+                error_log('getCustomerOrders: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Could not load orders']);
+            }
             break;
             
         case 'getDeals':

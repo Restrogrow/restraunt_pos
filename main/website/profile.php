@@ -1481,8 +1481,11 @@ async function loadOrderHistory(silent) {
       if (attempt) await new Promise(function(res) { setTimeout(res, attempt === 1 ? 1000 : 2500); });
       try {
         var r = await fetch(url, { cache: 'no-store' });
-        if (r.ok) data = await r.json();
-      } catch (err) { data = null; }
+        var body = await r.text();
+        try { data = r.ok ? JSON.parse(body) : null; } catch (pe) { data = null; }
+        // Leave the server's real answer in the console, so a failure can be traced
+        if (data === null) console.warn('Orders request failed (attempt ' + (attempt + 1) + '): HTTP ' + r.status, body.slice(0, 300));
+      } catch (err) { data = null; console.warn('Orders request failed (attempt ' + (attempt + 1) + '):', err && err.message); }
     }
     if (data === null) throw new Error('orders unavailable');
     allOrders = sortOrders(Array.isArray(data) ? data : (data.orders || []));
