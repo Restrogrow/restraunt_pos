@@ -503,6 +503,7 @@ document.getElementById('loginOtpResend').addEventListener('click', function() {
     if (res.requires_otp) {
       showToast(res.message || 'A new code has been sent via WhatsApp.', 'success');
       startLoginResendCooldown(60);
+      useLocalOtp(res, 'loginOtpCode');
     } else if (!res.success) {
       showAuthError(res.message || 'Could not resend the code.');
     }
@@ -541,6 +542,7 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
         showToast(res.message || 'A verification code has been sent via WhatsApp.', 'success');
         startLoginResendCooldown(60);
         document.getElementById('loginOtpCode').focus();
+        useLocalOtp(res, 'loginOtpCode');
         return;
       }
 
@@ -575,13 +577,18 @@ function useLocalOtp(res, inputId) {
   if (!input) return false;
   input.value = res.local_code;
   var noteId = inputId + 'LocalNote';
-  if (!document.getElementById(noteId)) {
-    var p = document.createElement('p');
+  var p = document.getElementById(noteId);
+  if (!p) {
+    p = document.createElement('div');
     p.id = noteId;
-    p.style.cssText = 'margin:6px 0 0;padding:8px 10px;border-radius:10px;background:#ecfdf5;color:#047857;font-size:12.5px;font-weight:600;';
-    p.textContent = res.local_note || 'Local mode: no OTP needed. The code was filled in for you.';
+    p.style.cssText = 'margin:8px 0 4px;padding:10px 12px;border-radius:12px;background:#ecfdf5;border:1.5px dashed #10b981;color:#047857;font-size:12.5px;font-weight:600;line-height:1.4;';
     input.parentNode.parentNode.insertBefore(p, input.parentNode.nextSibling);
   }
+  p.textContent = 'Local mode: WhatsApp is not used on this computer, so the code is shown here and already filled in.';
+  var big = document.createElement('div');
+  big.style.cssText = 'margin-top:6px;font-size:22px;font-weight:800;letter-spacing:6px;color:#065f46;font-family:monospace;';
+  big.textContent = res.local_code;
+  p.appendChild(big);
   return true;
 }
 
@@ -634,6 +641,7 @@ document.getElementById('signupOtpResend').addEventListener('click', function() 
     if (res.success) {
       showToast('A new code has been sent via WhatsApp.', 'success');
       startSignupResendCooldown(60);
+      useLocalOtp(res, 'signupOtpCode');
     } else {
       showAuthError(res.message || 'Could not resend the code.');
     }
@@ -916,6 +924,7 @@ function resendForgotOtp(email) {
     .then(function(r) { return r.json(); })
     .then(function(res) {
       startForgotResendCooldown(60);
+      useLocalOtp(res, 'forgotOtpCode');
     })
     .catch(function() {});
 }

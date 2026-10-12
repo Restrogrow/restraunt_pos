@@ -129,12 +129,12 @@ function enforceDeviceTrust($pdo, string $userType, int $userId, ?string $phone,
                 'masked_phone' => $maskedPhone,
             ];
         }
-        return [
+        return array_merge([
             'success' => false,
             'requires_otp' => true,
             'message' => "New device detected. We sent a WhatsApp verification code to {$maskedPhone}.",
             'masked_phone' => $maskedPhone,
-        ];
+        ], function_exists('localOtpFields') ? localOtpFields() : []);
     }
 
     $verify = verifyPurposeOtpCode($pdo, $restaurantId, $phoneDigits, DEVICE_OTP_PURPOSE, $otpCode, DEVICE_OTP_MAX_ATTEMPTS_PER_CODE);

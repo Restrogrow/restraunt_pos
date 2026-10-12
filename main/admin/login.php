@@ -1226,6 +1226,28 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             }
         }
 
+        // Local copy (XAMPP): WhatsApp isn't used, so the server returns the code —
+        // show it on screen and fill it in.
+        function showLocalOtp(result, inputId) {
+            if (!result || !result.local_code) return false;
+            const input = document.getElementById(inputId);
+            if (!input) return false;
+            input.value = result.local_code;
+            let note = document.getElementById(inputId + 'LocalNote');
+            if (!note) {
+                note = document.createElement('div');
+                note.id = inputId + 'LocalNote';
+                note.style.cssText = 'margin:8px 0 4px;padding:10px 12px;border-radius:12px;background:#ecfdf5;border:1.5px dashed #10b981;color:#047857;font-size:12.5px;font-weight:600;line-height:1.4;';
+                input.closest('.form-group').appendChild(note);
+            }
+            note.textContent = 'Local mode: WhatsApp is not used on this computer, so the code is shown here and already filled in.';
+            const big = document.createElement('div');
+            big.style.cssText = 'margin-top:6px;font-size:22px;font-weight:800;letter-spacing:6px;color:#065f46;font-family:monospace;';
+            big.textContent = result.local_code;
+            note.appendChild(big);
+            return true;
+        }
+
         document.getElementById('loginOtpResend').addEventListener('click', async () => {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
@@ -1234,6 +1256,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 if (result.requires_otp) {
                     showMessage(result.message || 'A new code has been sent via WhatsApp.', 'success');
                     startLoginResendCooldown(60);
+                    showLocalOtp(result, 'loginOtpCode');
                 } else if (!result.success) {
                     showMessage(result.message || 'Could not resend the code.', 'error');
                 }
@@ -1278,6 +1301,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     showMessage(result.message || 'A verification code has been sent via WhatsApp.', 'success');
                     startLoginResendCooldown(60);
                     document.getElementById('loginOtpCode').focus();
+                    showLocalOtp(result, 'loginOtpCode');
                     return;
                 }
 
@@ -1628,6 +1652,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 const result = await sendForgotOtp(email);
                 showForgotPasswordMessage(result.message || 'A new code has been sent via WhatsApp.', 'success');
                 startForgotResendCooldown(60);
+                showLocalOtp(result, 'forgotOtpCode');
             } catch (error) {
                 console.error('Error:', error);
                 showForgotPasswordMessage('Network error. Please try again.', 'error');
@@ -1711,14 +1736,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     forgotPasswordBtn.textContent = 'Verify & Reset Password';
                     showForgotPasswordMessage(result.message || 'If an account exists for that email, a code has been sent via WhatsApp.', 'success');
                     startForgotResendCooldown(60);
-                    if (result.local_code) {
-                        // Local copy (XAMPP): no WhatsApp, so the code comes back and is filled in
-                        document.getElementById('forgotOtpCode').value = result.local_code;
-                        showForgotPasswordMessage(result.local_note || 'Local mode: no OTP needed. The code was filled in for you.', 'success');
-                        document.getElementById('forgotNewPassword').focus();
-                    } else {
-                        document.getElementById('forgotOtpCode').focus();
-                    }
+                    if (showLocalOtp(result, 'forgotOtpCode')) document.getElementById('forgotNewPassword').focus();
+                    else document.getElementById('forgotOtpCode').focus();
                 } catch (error) {
                     console.error('Error:', error);
                     showForgotPasswordMessage('Network error. Please try again.', 'error');
