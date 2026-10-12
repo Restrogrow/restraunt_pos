@@ -238,87 +238,19 @@ const NAV_ICON_STYLES = [
         'plans' => 'calendar-days', 'cart' => 'cart-shopping', 'profile' => 'user-circle',
         'install' => 'download',
     ],
-    // Animated sets: 'anim' = how the icons move (pop in on load, the current
-    // page's icon keeps moving gently, every icon reacts when tapped)
-    'playful' => [
-        'label' => 'Playful', 'anim' => 'bounce',
-        'home' => 'house-chimney', 'menu' => 'burger', 'social' => 'heart',
-        'plans' => 'calendar-days', 'cart' => 'basket-shopping', 'profile' => 'face-smile',
+    // Animated drawn icons (config/nav_animated_icons.php): 'svg' = look ('line' outlined, 'flat'
+    // no outlines). The icon names are only a fallback for places that draw font icons.
+    'lively' => [
+        'label' => 'Lively', 'svg' => 'line',
+        'home' => 'home', 'menu' => 'bowl-food', 'social' => 'heart',
+        'plans' => 'calendar-check', 'cart' => 'cart-shopping', 'profile' => 'face-smile',
         'install' => 'download',
     ],
-    'chef' => [
-        'label' => 'Chef', 'anim' => 'swing',
-        'home' => 'bell-concierge', 'menu' => 'kitchen-set', 'social' => 'bullhorn',
-        'plans' => 'clipboard-list', 'cart' => 'bag-shopping', 'profile' => 'user-tie',
+    'cartoon' => [
+        'label' => 'Cartoon', 'svg' => 'flat',
+        'home' => 'home', 'menu' => 'bowl-food', 'social' => 'heart',
+        'plans' => 'calendar-check', 'cart' => 'cart-shopping', 'profile' => 'face-smile',
         'install' => 'download',
-    ],
-    'cafe' => [
-        'label' => 'Café', 'anim' => 'pulse',
-        'home' => 'mug-hot', 'menu' => 'mug-saucer', 'social' => 'paper-plane',
-        'plans' => 'calendar-check', 'cart' => 'basket-shopping', 'profile' => 'circle-user',
-        'install' => 'download',
-    ],
-    'fresh' => [
-        'label' => 'Fresh', 'anim' => 'float',
-        'home' => 'leaf', 'menu' => 'carrot', 'social' => 'seedling',
-        'plans' => 'calendar-check', 'cart' => 'basket-shopping', 'profile' => 'user',
-        'install' => 'download',
-    ],
-    'spicy' => [
-        'label' => 'Spicy', 'anim' => 'pop',
-        'home' => 'fire-flame-curved', 'menu' => 'pepper-hot', 'social' => 'bolt',
-        'plans' => 'calendar-days', 'cart' => 'cart-shopping', 'profile' => 'crown',
-        'install' => 'download',
-    ],
-    'sweet' => [
-        'label' => 'Sweet', 'anim' => 'wiggle',
-        'home' => 'ice-cream', 'menu' => 'cake-candles', 'social' => 'gift',
-        'plans' => 'calendar-days', 'cart' => 'bag-shopping', 'profile' => 'heart',
-        'install' => 'download',
-    ],
-    // Colourful + animated sets: 'paint' = how the colours are used (solid / gradient /
-    // tile / glow / pastel), 'colors' = one colour or 'from,to' per item
-    'rainbow' => [
-        'label' => 'Rainbow', 'anim' => 'bounce', 'paint' => 'solid',
-        'home' => 'house', 'menu' => 'utensils', 'social' => 'heart',
-        'plans' => 'calendar-days', 'cart' => 'cart-shopping', 'profile' => 'face-smile',
-        'install' => 'download',
-        'colors' => ['home' => '#f97316', 'menu' => '#ef4444', 'social' => '#ec4899', 'plans' => '#8b5cf6', 'reservations' => '#0ea5e9', 'cart' => '#10b981', 'profile' => '#f59e0b', 'install' => '#3b82f6'],
-    ],
-    'candy' => [
-        'label' => 'Candy', 'anim' => 'wiggle', 'paint' => 'gradient',
-        'home' => 'house-chimney', 'menu' => 'pizza-slice', 'social' => 'heart',
-        'plans' => 'calendar-days', 'cart' => 'basket-shopping', 'profile' => 'user',
-        'install' => 'download',
-        'colors' => ['home' => '#fb7185,#f59e0b', 'menu' => '#f97316,#ef4444', 'social' => '#ec4899,#8b5cf6', 'plans' => '#6366f1,#06b6d4', 'reservations' => '#14b8a6,#3b82f6', 'cart' => '#22c55e,#14b8a6', 'profile' => '#a855f7,#ec4899', 'install' => '#3b82f6,#6366f1'],
-    ],
-    'tiles' => [
-        'label' => 'App tiles', 'anim' => 'pop', 'paint' => 'tile',
-        'home' => 'house', 'menu' => 'utensils', 'social' => 'share-nodes',
-        'plans' => 'calendar-check', 'cart' => 'bag-shopping', 'profile' => 'user',
-        'install' => 'download',
-        'colors' => ['home' => '#fb923c,#ef4444', 'menu' => '#f43f5e,#be123c', 'social' => '#a78bfa,#6d28d9', 'plans' => '#38bdf8,#2563eb', 'reservations' => '#2dd4bf,#0d9488', 'cart' => '#4ade80,#16a34a', 'profile' => '#fbbf24,#d97706', 'install' => '#60a5fa,#4f46e5'],
-    ],
-    'neon' => [
-        'label' => 'Neon', 'anim' => 'pulse', 'paint' => 'glow',
-        'home' => 'house', 'menu' => 'burger', 'social' => 'comment-dots',
-        'plans' => 'calendar-days', 'cart' => 'cart-shopping', 'profile' => 'circle-user',
-        'install' => 'download',
-        'colors' => ['home' => '#06b6d4', 'menu' => '#ec4899', 'social' => '#84cc16', 'plans' => '#eab308', 'reservations' => '#a855f7', 'cart' => '#f97316', 'profile' => '#0ea5e9', 'install' => '#06b6d4'],
-    ],
-    'fiesta' => [
-        'label' => 'Fiesta', 'anim' => 'swing', 'paint' => 'gradient',
-        'home' => 'store', 'menu' => 'pepper-hot', 'social' => 'champagne-glasses',
-        'plans' => 'calendar-days', 'cart' => 'basket-shopping', 'profile' => 'star',
-        'install' => 'download',
-        'colors' => ['home' => '#f59e0b,#ef4444', 'menu' => '#ef4444,#be123c', 'social' => '#f472b6,#f59e0b', 'plans' => '#f97316,#e11d48', 'reservations' => '#fb923c,#db2777', 'cart' => '#eab308,#f97316', 'profile' => '#facc15,#f97316', 'install' => '#f97316,#e11d48'],
-    ],
-    'garden' => [
-        'label' => 'Garden', 'anim' => 'float', 'paint' => 'pastel',
-        'home' => 'seedling', 'menu' => 'carrot', 'social' => 'apple-whole',
-        'plans' => 'calendar-check', 'cart' => 'basket-shopping', 'profile' => 'user',
-        'install' => 'download',
-        'colors' => ['home' => '#16a34a', 'menu' => '#ea580c', 'social' => '#dc2626', 'plans' => '#0891b2', 'reservations' => '#7c3aed', 'cart' => '#65a30d', 'profile' => '#ca8a04', 'install' => '#16a34a'],
     ],
 ];
 
@@ -540,16 +472,14 @@ function renderNavIconTag(string $slot, array $navIcons, array $navIconOverrides
         $src = htmlspecialchars($navIconOverrides[$slot], ENT_QUOTES, 'UTF-8');
         return '<img src="' . $src . '" class="' . ($navItemLayout ? 'nav-icon' : '') . '" data-nav-slot="' . $slot . '" alt="" style="width:' . $imgSize . 'px;height:' . $imgSize . 'px;object-fit:contain;' . $imgLayoutStyle . '">';
     }
+    // Animated drawn icons (Lively / Cartoon)
+    if (!empty($navIcons['svg'])) {
+        require_once __DIR__ . '/nav_animated_icons.php';
+        return navAnimatedSvg($slot, $navIcons['svg'], $navItemLayout);
+    }
     $iconName = htmlspecialchars($navIcons[$slot] ?? '', ENT_QUOTES, 'UTF-8');
     $iconClass = 'fa fa-' . $iconName . ($navItemLayout ? ' nav-icon' : '');
-    // Colourful sets: the item's colour(s), used by the bar's np-<paint> styles
-    $colorAttr = '';
-    if (!empty($navIcons['colors'][$slot])) {
-        $c = array_map('trim', explode(',', $navIcons['colors'][$slot]));
-        $ok = function ($v) { return preg_match('/^#[0-9a-fA-F]{6}$/', $v) ? $v : '#e11d48'; };
-        $colorAttr = ' style="--ic:' . $ok($c[0]) . ';--ic2:' . $ok($c[1] ?? $c[0]) . '"';
-    }
-    return '<i class="' . $iconClass . '" data-nav-slot="' . $slot . '"' . $colorAttr . '></i>';
+    return '<i class="' . $iconClass . '" data-nav-slot="' . $slot . '"></i>';
 }
 
 /**

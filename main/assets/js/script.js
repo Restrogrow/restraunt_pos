@@ -14405,50 +14405,14 @@ async function initWebsiteThemeEditor() {
       foodie: { label: 'Foodie', home: 'home', menu: 'pizza-slice', social: 'share-alt', plans: 'calendar-check', cart: 'cart-plus', profile: 'user' },
       minimal: { label: 'Minimal', home: 'house', menu: 'list', social: 'comment-dots', plans: 'calendar-check', cart: 'bag-shopping', profile: 'circle-user' },
       bold: { label: 'Bold', home: 'home', menu: 'bowl-food', social: 'share-nodes', plans: 'calendar-days', cart: 'cart-shopping', profile: 'user-circle' },
-      playful: { label: 'Playful', anim: 'bounce', home: 'house-chimney', menu: 'burger', social: 'heart', plans: 'calendar-days', cart: 'basket-shopping', profile: 'face-smile' },
-      chef: { label: 'Chef', anim: 'swing', home: 'bell-concierge', menu: 'kitchen-set', social: 'bullhorn', plans: 'clipboard-list', cart: 'bag-shopping', profile: 'user-tie' },
-      cafe: { label: 'Caf\u00e9', anim: 'pulse', home: 'mug-hot', menu: 'mug-saucer', social: 'paper-plane', plans: 'calendar-check', cart: 'basket-shopping', profile: 'circle-user' },
-      fresh: { label: 'Fresh', anim: 'float', home: 'leaf', menu: 'carrot', social: 'seedling', plans: 'calendar-check', cart: 'basket-shopping', profile: 'user' },
-      spicy: { label: 'Spicy', anim: 'pop', home: 'fire-flame-curved', menu: 'pepper-hot', social: 'bolt', plans: 'calendar-days', cart: 'cart-shopping', profile: 'crown' },
-      sweet: { label: 'Sweet', anim: 'wiggle', home: 'ice-cream', menu: 'cake-candles', social: 'gift', plans: 'calendar-days', cart: 'bag-shopping', profile: 'heart' },
-      rainbow: { label: 'Rainbow', anim: 'bounce', paint: 'solid', home: 'house', menu: 'utensils', social: 'heart', plans: 'calendar-days', cart: 'cart-shopping', profile: 'face-smile', colors: {"home":"#f97316","menu":"#ef4444","social":"#ec4899","plans":"#8b5cf6","reservations":"#0ea5e9","cart":"#10b981","profile":"#f59e0b","install":"#3b82f6"} },
-      candy: { label: 'Candy', anim: 'wiggle', paint: 'gradient', home: 'house-chimney', menu: 'pizza-slice', social: 'heart', plans: 'calendar-days', cart: 'basket-shopping', profile: 'user', colors: {"home":"#fb7185,#f59e0b","menu":"#f97316,#ef4444","social":"#ec4899,#8b5cf6","plans":"#6366f1,#06b6d4","reservations":"#14b8a6,#3b82f6","cart":"#22c55e,#14b8a6","profile":"#a855f7,#ec4899","install":"#3b82f6,#6366f1"} },
-      tiles: { label: 'App tiles', anim: 'pop', paint: 'tile', home: 'house', menu: 'utensils', social: 'share-nodes', plans: 'calendar-check', cart: 'bag-shopping', profile: 'user', colors: {"home":"#fb923c,#ef4444","menu":"#f43f5e,#be123c","social":"#a78bfa,#6d28d9","plans":"#38bdf8,#2563eb","reservations":"#2dd4bf,#0d9488","cart":"#4ade80,#16a34a","profile":"#fbbf24,#d97706","install":"#60a5fa,#4f46e5"} },
-      neon: { label: 'Neon', anim: 'pulse', paint: 'glow', home: 'house', menu: 'burger', social: 'comment-dots', plans: 'calendar-days', cart: 'cart-shopping', profile: 'circle-user', colors: {"home":"#06b6d4","menu":"#ec4899","social":"#84cc16","plans":"#eab308","reservations":"#a855f7","cart":"#f97316","profile":"#0ea5e9","install":"#06b6d4"} },
-      fiesta: { label: 'Fiesta', anim: 'swing', paint: 'gradient', home: 'store', menu: 'pepper-hot', social: 'champagne-glasses', plans: 'calendar-days', cart: 'basket-shopping', profile: 'star', colors: {"home":"#f59e0b,#ef4444","menu":"#ef4444,#be123c","social":"#f472b6,#f59e0b","plans":"#f97316,#e11d48","reservations":"#fb923c,#db2777","cart":"#eab308,#f97316","profile":"#facc15,#f97316","install":"#f97316,#e11d48"} },
-      garden: { label: 'Garden', anim: 'float', paint: 'pastel', home: 'seedling', menu: 'carrot', social: 'apple-whole', plans: 'calendar-check', cart: 'basket-shopping', profile: 'user', colors: {"home":"#16a34a","menu":"#ea580c","social":"#dc2626","plans":"#0891b2","reservations":"#7c3aed","cart":"#65a30d","profile":"#ca8a04","install":"#16a34a"} }
+      lively: { label: 'Lively', svg: 'line', home: 'home', menu: 'bowl-food', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' },
+      cartoon: { label: 'Cartoon', svg: 'flat', home: 'home', menu: 'bowl-food', social: 'heart', plans: 'calendar-check', cart: 'cart-shopping', profile: 'face-smile' }
     };
-    // How one icon looks in the picker for the colourful sets (mirrors np-<paint> in bottom_nav_styles.php)
-    function nisIconCss(st, slot) {
-      if (!st.colors || !st.colors[slot]) return 'font-size:14px;color:' + (st.anim ? '#6d28d9' : '#6b7280') + ';';
-      var c = st.colors[slot].split(','), a = c[0], b = c[1] || c[0];
-      if (st.paint === 'gradient') return 'font-size:15px;background:linear-gradient(135deg,' + a + ',' + b + ');-webkit-background-clip:text;background-clip:text;color:transparent;';
-      if (st.paint === 'tile') return 'font-size:10px;width:20px;height:20px;display:inline-grid;place-items:center;border-radius:6px;background:linear-gradient(135deg,' + a + ',' + b + ');color:#fff;';
-      if (st.paint === 'glow') return 'font-size:14px;color:' + a + ';filter:drop-shadow(0 0 3px ' + a + ');';
-      if (st.paint === 'pastel') return 'font-size:11px;width:22px;height:18px;display:inline-grid;place-items:center;border-radius:999px;background:color-mix(in srgb,' + a + ' 16%,#fff);color:' + a + ';';
-      return 'font-size:15px;color:' + a + ';';
+    // Picker tiles for the drawn animated icons
+    function nisIconHtml(st, slot) {
+      if (st.svg) return (window.NAV_ANIM_SVGS && window.NAV_ANIM_SVGS[st.svg] && window.NAV_ANIM_SVGS[st.svg][slot]) || '';
+      return "<i class='fa fa-" + st[slot] + "' style='font-size:14px;color:#6b7280;'></i>";
     }
-    // Animated sets wiggle in the picker too, so the motion is visible before choosing
-    (function() {
-      if (document.getElementById('nisAnimCss')) return;
-      var st = document.createElement('style');
-      st.id = 'nisAnimCss';
-      st.textContent =
-        '.nis-tile .nis-ic i{display:inline-block}' +
-        '.nis-tile:hover .nis-ic i,.nis-tile.on .nis-ic i{animation-duration:1.6s;animation-iteration-count:infinite;animation-timing-function:ease-in-out}' +
-        '.nis-tile .nis-ic i:nth-child(2){animation-delay:.12s}.nis-tile .nis-ic i:nth-child(3){animation-delay:.24s}.nis-tile .nis-ic i:nth-child(4){animation-delay:.36s}.nis-tile .nis-ic i:nth-child(5){animation-delay:.48s}' +
-        '.nis-a-bounce:hover .nis-ic i,.nis-a-bounce.on .nis-ic i{animation-name:nisBounce}.nis-a-swing:hover .nis-ic i,.nis-a-swing.on .nis-ic i{animation-name:nisSwing;transform-origin:50% 10%}' +
-        '.nis-a-pulse:hover .nis-ic i,.nis-a-pulse.on .nis-ic i{animation-name:nisPulse}.nis-a-float:hover .nis-ic i,.nis-a-float.on .nis-ic i{animation-name:nisFloat}' +
-        '.nis-a-pop:hover .nis-ic i,.nis-a-pop.on .nis-ic i{animation-name:nisPop}.nis-a-wiggle:hover .nis-ic i,.nis-a-wiggle.on .nis-ic i{animation-name:nisWiggle}' +
-        '@keyframes nisBounce{0%,50%,100%{transform:translateY(0)}20%{transform:translateY(-5px)}}' +
-        '@keyframes nisSwing{0%,60%,100%{transform:rotate(0)}15%{transform:rotate(16deg)}30%{transform:rotate(-12deg)}45%{transform:rotate(5deg)}}' +
-        '@keyframes nisPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}' +
-        '@keyframes nisFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-4px) rotate(-6deg)}}' +
-        '@keyframes nisPop{0%,55%,100%{transform:scale(1)}20%{transform:scale(1.35) rotate(-8deg)}35%{transform:scale(.9)}}' +
-        '@keyframes nisWiggle{0%,50%,100%{transform:rotate(0)}12%{transform:rotate(-14deg)}25%{transform:rotate(12deg)}37%{transform:rotate(-6deg)}}' +
-        '.nis-badge{display:inline-block;margin-left:4px;padding:1px 5px;border-radius:999px;background:#ede9fe;color:#6d28d9;font-size:9px;font-weight:800;vertical-align:1px}';
-      document.head.appendChild(st);
-    })();
     const NAV_ICON_SLOTS = ['home', 'menu', 'social', 'cart', 'profile'];
 
     // Mirrors DEFAULT_NAV_LABELS in main/config/website_theme_helpers.php
@@ -14466,10 +14430,10 @@ async function initWebsiteThemeEditor() {
         var isSelected = id === selectedId;
         var borderColor = isSelected ? '#dc2626' : '#e5e7eb';
         var boxShadow = isSelected ? '0 0 0 2px #dc2626' : '0 2px 4px rgba(0,0,0,0.06)';
-        var icons = NAV_ICON_SLOTS.map(function(slot) { return "<i class='fa fa-" + st[slot] + "' style='" + nisIconCss(st, slot) + "'></i>"; }).join('');
-        return "<div data-nav-icon='" + id + "' class='nis-tile" + (st.anim ? ' nis-a-' + st.anim : '') + (isSelected ? ' on' : '') + "' style='cursor:pointer;text-align:center;padding:10px 6px;border-radius:10px;border:3px solid " + borderColor + ";background:#fff;box-shadow:" + boxShadow + ";transition:all 0.2s;'>" +
+        var icons = NAV_ICON_SLOTS.map(function(slot) { return nisIconHtml(st, slot); }).join('');
+        return "<div data-nav-icon='" + id + "' class='nis-tile" + (isSelected ? ' on' : '') + "' style='cursor:pointer;text-align:center;padding:10px 6px;border-radius:10px;border:3px solid " + borderColor + ";background:#fff;box-shadow:" + boxShadow + ";transition:all 0.2s;'>" +
           "<div class='nis-ic' style='display:flex;justify-content:center;gap:6px;margin-bottom:6px;'>" + icons + "</div>" +
-          "<div style='font-size:11px;font-weight:600;color:#374151;'>" + st.label + (st.colors ? "<span class='nis-badge' style='background:linear-gradient(90deg,#fde68a,#fbcfe8,#c7d2fe);color:#7c2d12'>Colourful</span>" : (st.anim ? "<span class='nis-badge'>Animated</span>" : '')) + "</div>" +
+          "<div style='font-size:11px;font-weight:600;color:#374151;'>" + st.label + (st.svg ? "<span class='nis-badge'>Animated</span>" : '') + "</div>" +
         "</div>";
       }).join('');
       grid.onclick = function(e) {
@@ -14721,6 +14685,8 @@ async function initWebsiteThemeEditor() {
         var navStyleId = (navIconStyleEl && NAV_ICON_STYLES[navIconStyleEl.value]) ? navIconStyleEl.value : 'classic';
         var navStyle = NAV_ICON_STYLES[navStyleId];
         doc.querySelectorAll('[data-nav-slot]').forEach(function(el) {
+          // Drawn animated icons are swapped by the preview's reload, not here
+          if (navStyle.svg || el.tagName.toLowerCase() === 'svg') return;
           var slot = el.getAttribute('data-nav-slot');
           var overrideUrl = (typeof navIconOverridesCache !== 'undefined') ? navIconOverridesCache[slot] : null;
           var navItemLayout = slot !== 'profile';
