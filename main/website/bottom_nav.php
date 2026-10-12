@@ -84,7 +84,7 @@ if (!empty($show_install_app)) {
         . $navCartHtml;
 }
 ?>
-<div class="bottom-nav bn-<?php echo $navBarStyle; ?><?php echo !empty($navIcons['anim']) ? ' ni-' . htmlspecialchars($navIcons['anim'], ENT_QUOTES, 'UTF-8') : ''; ?>">
+<div class="bottom-nav bn-<?php echo $navBarStyle; ?><?php echo !empty($navIcons['anim']) ? ' ni-' . htmlspecialchars($navIcons['anim'], ENT_QUOTES, 'UTF-8') : ''; ?><?php echo !empty($navIcons['paint']) ? ' np-' . htmlspecialchars($navIcons['paint'], ENT_QUOTES, 'UTF-8') : ''; ?>">
   <?php echo $navItemsHtml; ?>
   <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="<?php echo htmlspecialchars($navLabels['profile'], ENT_QUOTES, 'UTF-8'); ?>" style="font-size:16px;padding:6px 10px;"><?php echo renderNavIconTag('profile', $navIcons, $navIconOverrides, false); ?></button>
 </div>

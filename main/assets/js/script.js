@@ -14410,8 +14410,24 @@ async function initWebsiteThemeEditor() {
       cafe: { label: 'Caf\u00e9', anim: 'pulse', home: 'mug-hot', menu: 'mug-saucer', social: 'paper-plane', plans: 'calendar-check', cart: 'basket-shopping', profile: 'circle-user' },
       fresh: { label: 'Fresh', anim: 'float', home: 'leaf', menu: 'carrot', social: 'seedling', plans: 'calendar-check', cart: 'basket-shopping', profile: 'user' },
       spicy: { label: 'Spicy', anim: 'pop', home: 'fire-flame-curved', menu: 'pepper-hot', social: 'bolt', plans: 'calendar-days', cart: 'cart-shopping', profile: 'crown' },
-      sweet: { label: 'Sweet', anim: 'wiggle', home: 'ice-cream', menu: 'cake-candles', social: 'gift', plans: 'calendar-days', cart: 'bag-shopping', profile: 'heart' }
+      sweet: { label: 'Sweet', anim: 'wiggle', home: 'ice-cream', menu: 'cake-candles', social: 'gift', plans: 'calendar-days', cart: 'bag-shopping', profile: 'heart' },
+      rainbow: { label: 'Rainbow', anim: 'bounce', paint: 'solid', home: 'house', menu: 'utensils', social: 'heart', plans: 'calendar-days', cart: 'cart-shopping', profile: 'face-smile', colors: {"home":"#f97316","menu":"#ef4444","social":"#ec4899","plans":"#8b5cf6","reservations":"#0ea5e9","cart":"#10b981","profile":"#f59e0b","install":"#3b82f6"} },
+      candy: { label: 'Candy', anim: 'wiggle', paint: 'gradient', home: 'house-chimney', menu: 'pizza-slice', social: 'heart', plans: 'calendar-days', cart: 'basket-shopping', profile: 'user', colors: {"home":"#fb7185,#f59e0b","menu":"#f97316,#ef4444","social":"#ec4899,#8b5cf6","plans":"#6366f1,#06b6d4","reservations":"#14b8a6,#3b82f6","cart":"#22c55e,#14b8a6","profile":"#a855f7,#ec4899","install":"#3b82f6,#6366f1"} },
+      tiles: { label: 'App tiles', anim: 'pop', paint: 'tile', home: 'house', menu: 'utensils', social: 'share-nodes', plans: 'calendar-check', cart: 'bag-shopping', profile: 'user', colors: {"home":"#fb923c,#ef4444","menu":"#f43f5e,#be123c","social":"#a78bfa,#6d28d9","plans":"#38bdf8,#2563eb","reservations":"#2dd4bf,#0d9488","cart":"#4ade80,#16a34a","profile":"#fbbf24,#d97706","install":"#60a5fa,#4f46e5"} },
+      neon: { label: 'Neon', anim: 'pulse', paint: 'glow', home: 'house', menu: 'burger', social: 'comment-dots', plans: 'calendar-days', cart: 'cart-shopping', profile: 'circle-user', colors: {"home":"#06b6d4","menu":"#ec4899","social":"#84cc16","plans":"#eab308","reservations":"#a855f7","cart":"#f97316","profile":"#0ea5e9","install":"#06b6d4"} },
+      fiesta: { label: 'Fiesta', anim: 'swing', paint: 'gradient', home: 'store', menu: 'pepper-hot', social: 'champagne-glasses', plans: 'calendar-days', cart: 'basket-shopping', profile: 'star', colors: {"home":"#f59e0b,#ef4444","menu":"#ef4444,#be123c","social":"#f472b6,#f59e0b","plans":"#f97316,#e11d48","reservations":"#fb923c,#db2777","cart":"#eab308,#f97316","profile":"#facc15,#f97316","install":"#f97316,#e11d48"} },
+      garden: { label: 'Garden', anim: 'float', paint: 'pastel', home: 'seedling', menu: 'carrot', social: 'apple-whole', plans: 'calendar-check', cart: 'basket-shopping', profile: 'user', colors: {"home":"#16a34a","menu":"#ea580c","social":"#dc2626","plans":"#0891b2","reservations":"#7c3aed","cart":"#65a30d","profile":"#ca8a04","install":"#16a34a"} }
     };
+    // How one icon looks in the picker for the colourful sets (mirrors np-<paint> in bottom_nav_styles.php)
+    function nisIconCss(st, slot) {
+      if (!st.colors || !st.colors[slot]) return 'font-size:14px;color:' + (st.anim ? '#6d28d9' : '#6b7280') + ';';
+      var c = st.colors[slot].split(','), a = c[0], b = c[1] || c[0];
+      if (st.paint === 'gradient') return 'font-size:15px;background:linear-gradient(135deg,' + a + ',' + b + ');-webkit-background-clip:text;background-clip:text;color:transparent;';
+      if (st.paint === 'tile') return 'font-size:10px;width:20px;height:20px;display:inline-grid;place-items:center;border-radius:6px;background:linear-gradient(135deg,' + a + ',' + b + ');color:#fff;';
+      if (st.paint === 'glow') return 'font-size:14px;color:' + a + ';filter:drop-shadow(0 0 3px ' + a + ');';
+      if (st.paint === 'pastel') return 'font-size:11px;width:22px;height:18px;display:inline-grid;place-items:center;border-radius:999px;background:color-mix(in srgb,' + a + ' 16%,#fff);color:' + a + ';';
+      return 'font-size:15px;color:' + a + ';';
+    }
     // Animated sets wiggle in the picker too, so the motion is visible before choosing
     (function() {
       if (document.getElementById('nisAnimCss')) return;
@@ -14450,10 +14466,10 @@ async function initWebsiteThemeEditor() {
         var isSelected = id === selectedId;
         var borderColor = isSelected ? '#dc2626' : '#e5e7eb';
         var boxShadow = isSelected ? '0 0 0 2px #dc2626' : '0 2px 4px rgba(0,0,0,0.06)';
-        var icons = NAV_ICON_SLOTS.map(function(slot) { return "<i class='fa fa-" + st[slot] + "' style='font-size:14px;color:" + (st.anim ? '#6d28d9' : '#6b7280') + ";'></i>"; }).join('');
+        var icons = NAV_ICON_SLOTS.map(function(slot) { return "<i class='fa fa-" + st[slot] + "' style='" + nisIconCss(st, slot) + "'></i>"; }).join('');
         return "<div data-nav-icon='" + id + "' class='nis-tile" + (st.anim ? ' nis-a-' + st.anim : '') + (isSelected ? ' on' : '') + "' style='cursor:pointer;text-align:center;padding:10px 6px;border-radius:10px;border:3px solid " + borderColor + ";background:#fff;box-shadow:" + boxShadow + ";transition:all 0.2s;'>" +
           "<div class='nis-ic' style='display:flex;justify-content:center;gap:6px;margin-bottom:6px;'>" + icons + "</div>" +
-          "<div style='font-size:11px;font-weight:600;color:#374151;'>" + st.label + (st.anim ? "<span class='nis-badge'>Animated</span>" : '') + "</div>" +
+          "<div style='font-size:11px;font-weight:600;color:#374151;'>" + st.label + (st.colors ? "<span class='nis-badge' style='background:linear-gradient(90deg,#fde68a,#fbcfe8,#c7d2fe);color:#7c2d12'>Colourful</span>" : (st.anim ? "<span class='nis-badge'>Animated</span>" : '')) + "</div>" +
         "</div>";
       }).join('');
       grid.onclick = function(e) {

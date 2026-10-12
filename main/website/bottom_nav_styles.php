@@ -89,5 +89,18 @@ define('RG_NAV_BAR_STYLES_CSS', true);
 .bottom-nav.ni-wiggle .nav-item:active > .nav-icon { animation: niWiggle .5s ease-in-out; }
 @keyframes niWiggle { 0%, 40%, 100% { transform: rotate(0) scale(1); } 8% { transform: rotate(-14deg) scale(1.1); } 16% { transform: rotate(12deg) scale(1.1); } 24% { transform: rotate(-8deg); } 32% { transform: rotate(4deg); } }
 
+/* ── Colourful icon styles (Rainbow, Candy, App tiles, Neon, Fiesta, Garden):
+   each icon carries --ic / --ic2 (its colours) ── */
+.bottom-nav.np-solid .nav-item > .nav-icon { color: var(--ic) !important; }
+.bottom-nav.np-gradient .nav-item > .nav-icon { background: linear-gradient(135deg, var(--ic), var(--ic2)); -webkit-background-clip: text; background-clip: text; color: transparent !important; }
+.bottom-nav.np-tile .nav-item > .nav-icon { width: 34px; height: 34px; display: grid !important; place-items: center; margin: 0 auto 2px; border-radius: 11px; background: linear-gradient(135deg, var(--ic), var(--ic2)); color: #fff !important; font-size: 15px; box-shadow: 0 5px 12px -4px var(--ic2); }
+.bottom-nav.np-tile .nav-item.active > .nav-icon { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ic), 0 6px 14px -4px var(--ic2); }
+.bottom-nav.np-glow .nav-item > .nav-icon { color: var(--ic) !important; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ic) 70%, transparent)); }
+.bottom-nav.np-glow .nav-item.active > .nav-icon { filter: drop-shadow(0 0 8px var(--ic)); }
+.bottom-nav.np-pastel .nav-item > .nav-icon { width: 40px; height: 30px; display: grid !important; place-items: center; margin: 0 auto 2px; border-radius: 999px; background: color-mix(in srgb, var(--ic) 15%, #fff); color: var(--ic) !important; font-size: 16px; }
+.bottom-nav.np-pastel .nav-item.active > .nav-icon { background: color-mix(in srgb, var(--ic) 28%, #fff); }
+.bottom-nav.np-solid .nav-item.active span, .bottom-nav.np-glow .nav-item.active span, .bottom-nav.np-pastel .nav-item.active span { color: var(--ink, #111827); }
+.bottom-nav.bn-dark.np-pastel .nav-item > .nav-icon { background: color-mix(in srgb, var(--ic) 26%, #111827); }
+
 @media (prefers-reduced-motion: reduce) { .bottom-nav[class*=" ni-"] .nav-item > .nav-icon { animation: none !important; } }
 </style>
