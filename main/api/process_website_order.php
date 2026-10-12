@@ -484,6 +484,18 @@ if ($use_wallet) {
     $walletCustomer = getLoggedInCustomer($conn, $restaurant_id);   // may touch tables: before the transaction
 }
 
+// VIP membership perks (Loyalty Studio > VIP): only for a logged-in member ordering
+// with their own phone number. Tables first (creating them would commit the transaction).
+$vipCustomer = null;
+try {
+    require_once __DIR__ . '/../config/vip_membership.php';
+    require_once __DIR__ . '/../website/customer_session.php';
+    ensureVipSchema($conn);
+    $vipCustomer = isset($walletCustomer) ? $walletCustomer : getLoggedInCustomer($conn, $restaurant_id);
+} catch (Throwable $e) {
+    error_log('VIP perks lookup: ' . $e->getMessage());
+}
+
 $conn->beginTransaction();
     
     // Validate coupon if provided (WITH row lock to prevent race condition)
@@ -771,6 +783,17 @@ $conn->beginTransaction();
     }
     // --- End loyalty points verification ---
 
+    // --- VIP membership: % off the food and free delivery (server-authoritative) ---
+    $vip_discount = 0.0;
+    $vip_free_delivery = false;
+    if ($vipCustomer && (orderAbuseNormalizePhone((string)$vipCustomer['phone']) ?? (string)$vipCustomer['phone']) === (string)$customer_phone) {
+        $vipPerks = vipCheckoutPerks($conn, $restaurant_id, (string)$customer_phone, max(0, $total - $discount_amount - $loyalty_discount_amount), $order_type, (float)$total);
+        if ($vipPerks) {
+            $vip_discount = (float)$vipPerks['discount'];
+            if ($vipPerks['free_delivery'] && $delivery_charge > 0) { $delivery_charge = 0; $vip_free_delivery = true; }
+        }
+    }
+
     // Generate unique order number function
     if (!function_exists('generateOrderNumber')) {
         function generateOrderNumber($conn = null, $restaurant_id = null) {
@@ -821,7 +844,7 @@ $conn->beginTransaction();
     $deliveryCharge = (float)$delivery_charge;
     $subtotal = (float)$total;
     // Tax is on the discounted subtotal only — packaging is NOT taxable
-    $taxable = $subtotal - (float)$discount_amount - (float)$loyalty_discount_amount;
+    $taxable = $subtotal - (float)$discount_amount - (float)$loyalty_discount_amount - (float)$vip_discount;
     if ($taxable < 0) $taxable = 0;
     $tax = $gstEnabled ? round($taxable * ($taxPercent / 100), 2) : 0;
     $grand_total = $taxable + $tax + $deliveryCharge + (float)$packaging_charge;
@@ -1088,6 +1111,10 @@ $conn->beginTransaction();
         }
     }
 
+    if ($vip_discount > 0) {
+        $conn->prepare('UPDATE orders SET vip_discount = ? WHERE id = ?')->execute([$vip_discount, $order_id]);
+    }
+
     // Take the wallet part now that the order exists (row still locked from above)
     if ($wallet_paid > 0) {
         try {
@@ -1146,6 +1173,8 @@ $conn->beginTransaction();
         'order_type' => $order_type,
         'total_with_tax' => $grand_total,
         'wallet_paid' => $wallet_paid,
+        'vip_discount' => $vip_discount,
+        'vip_free_delivery' => $vip_free_delivery,
         'phonepe_required' => $usePhonePe,
         'whatsapp_enabled' => $whatsappEnabled,
         'whatsapp_phone' => $whatsappPhone,

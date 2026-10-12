@@ -235,6 +235,7 @@ function validateAndUpdateOrderStatus(
                     // The program type decides what's earned (points here; stamps and
                     // milestones in loyalty_engine.php; cashback via the wallet hook).
                     require_once __DIR__ . '/loyalty_autopilot.php';
+                    require_once __DIR__ . '/vip_membership.php';
                     $fullStmt = $conn->prepare('SELECT * FROM orders WHERE id = ?');
                     $fullStmt->execute([$orderId]);
                     $fullOrder = $fullStmt->fetch(PDO::FETCH_ASSOC);

@@ -92,6 +92,24 @@ try {
         exit();
     }
 
+    // VIP membership (Loyalty Studio > VIP): same rule, only PhonePe's own status API counts
+    if (strpos($merchant_transaction_id, 'VM') === 0) {
+        require_once __DIR__ . '/../config/vip_membership.php';
+        ensureVipSchema($conn);
+        $vStmt = $conn->prepare('SELECT * FROM vip_members WHERE transaction_id = ? LIMIT 1');
+        $vStmt->execute([$merchant_transaction_id]);
+        $vip = $vStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$vip) { http_response_code(404); echo json_encode(['success' => false, 'message' => 'Membership not found']); exit(); }
+        if ($vip['status'] === 'Pending') {
+            $verified = phonepeVerifyOrderState($conn, $vip['restaurant_id'], $merchant_transaction_id);
+            if ($verified === 'COMPLETED') vipActivate($conn, $vip);
+            elseif (in_array($verified, ['FAILED', 'REJECTED', 'CANCELLED', 'EXPIRED'], true)) vipFail($conn, $vip);
+        }
+        http_response_code(200);
+        echo json_encode(['success' => true]);
+        exit();
+    }
+
     $payStmt = $conn->prepare("SELECT p.id, p.order_id, p.amount, p.payment_status, o.restaurant_id FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.transaction_id = ? AND p.payment_method = 'Online' LIMIT 1");
     $payStmt->execute([$merchant_transaction_id]);
     $payment = $payStmt->fetch(PDO::FETCH_ASSOC);

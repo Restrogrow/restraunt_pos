@@ -188,6 +188,9 @@ if (!function_exists('ensureWalletTables')) {
             if (!$s['enabled'] || $s['cashback_pct'] <= 0) return;
             $cash = floor((float)$o['total'] * $s['cashback_pct']) / 100;
             if ($s['cashback_max'] > 0) $cash = min($cash, $s['cashback_max']);
+            // VIP members earn faster (Loyalty Studio > VIP membership)
+            require_once __DIR__ . '/vip_membership.php';
+            if (function_exists('vipEarnBoost')) $cash *= vipEarnBoost($conn, $o['restaurant_id'], (string)$o['customer_phone']);
             $cash = round($cash, 2);
             if ($cash <= 0) return;
             $done->execute([$orderId, 'cashback']);

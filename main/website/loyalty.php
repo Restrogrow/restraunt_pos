@@ -183,6 +183,45 @@ button { font-family: inherit; }
 .lx-st.gift:not(.on) { border-style: solid; border-color: var(--gold); color: var(--gold); }
 @keyframes lxStamp { from { transform: scale(.3) rotate(-30deg); opacity: 0; } to { transform: none; opacity: 1; } }
 .lx-gifts { display: grid; gap: 10px; }
+/* VIP membership (rg-vip.js) */
+.lxv-sec { opacity: 1; transform: none; }
+.lxv-head { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+.lxv-head h2 { margin: 0; font-size: 18px; font-weight: 800; }
+.lxv-head p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.lxv-crest { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(135deg, #ffe08a, #d99a1e); color: #3b2604; font-size: 19px; box-shadow: 0 8px 18px -10px rgba(217,154,30,.9); }
+.lxv-plans { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 12px 16px 6px; scrollbar-width: none; }
+.lxv-plans::-webkit-scrollbar { display: none; }
+.lxv-plan { position: relative; flex: 0 0 min(250px, 78%); scroll-snap-align: start; display: flex; flex-direction: column; padding: 18px 16px 16px; border-radius: 20px; color: #f8f5ff; background: radial-gradient(120% 90% at 100% 0%, rgba(245,196,81,.24), transparent 55%), linear-gradient(160deg, #2a1b3f, #120c1b); box-shadow: 0 14px 28px -16px rgba(18,12,27,.8); }
+.lxv-plan.hl { box-shadow: 0 0 0 2px #f5c451, 0 16px 30px -14px rgba(180,83,9,.6); }
+.lxv-badge { position: absolute; top: -10px; left: 16px; padding: 3px 10px; border-radius: 999px; background: linear-gradient(135deg, #ffe08a, #d99a1e); color: #3b2604; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.lxv-name { font-size: 15px; letter-spacing: .02em; }
+.lxv-price { margin-top: 6px; }
+.lxv-price b { font-size: 28px; font-weight: 800; color: #ffe08a; }
+.lxv-price span { margin-left: 4px; font-size: 13px; color: rgba(255,255,255,.65); }
+.lxv-pm { font-size: 11.5px; color: rgba(255,255,255,.55); }
+.lxv-plan ul { list-style: none; margin: 12px 0 14px; padding: 12px 0 0; border-top: 1px solid rgba(255,255,255,.1); display: grid; gap: 8px; flex: 1; align-content: start; }
+.lxv-plan li { display: flex; gap: 9px; align-items: baseline; font-size: 13px; line-height: 1.35; }
+.lxv-plan li i { width: 14px; color: #f5c451; font-size: 12px; text-align: center; }
+.lxv-plan .lx-btn { width: 100%; }
+.lxv-pay { display: grid; gap: 8px; }
+.lxv-pay .lx-btn.light { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.18); }
+.lxv-pay .lx-btn:disabled { opacity: .45; }
+.lxv-pay small { font-size: 11px; color: rgba(255,255,255,.55); text-align: center; }
+.lxv-card { position: relative; overflow: hidden; padding: 18px; border-radius: 20px; color: #fff; background: radial-gradient(90% 120% at 100% 0%, rgba(245,196,81,.35), transparent 55%), linear-gradient(150deg, #2a1b3f, #0f0a17); box-shadow: 0 18px 34px -18px rgba(18,12,27,.9); }
+.lxv-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.08) 50%, transparent 65%); pointer-events: none; }
+.lxv-card-top { display: flex; align-items: center; gap: 12px; }
+.lxv-card-top > div { flex: 1; min-width: 0; }
+.lxv-card-top small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #f5c451; }
+.lxv-card-top b { font-size: 18px; }
+.lxv-left { padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.1); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.lxv-perks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.lxv-perks span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,.09); font-size: 12px; }
+.lxv-perks i { color: #f5c451; }
+.lxv-foot { display: flex; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.1); }
+.lxv-foot div { flex: 1; }
+.lxv-foot small { display: block; font-size: 11px; color: rgba(255,255,255,.55); }
+.lxv-foot b { font-size: 17px; color: #ffe08a; }
+.lxv-renew { width: 100%; margin-top: 12px; }
 .lx-chs { display: grid; gap: 10px; }
 .lx-ch { display: flex; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: #fff; }
 .lx-ch-ic { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 13px; background: linear-gradient(135deg, #f59e0b, #ea580c); color: #fff; font-size: 17px; }
@@ -393,7 +432,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     '</div></section>';
   }
   // Gifts: personal one-time codes (stamp cards, birthday, win-back…)
-  var GIFT_SRC = { stamps: 'Stamp card', birthday: 'Birthday gift', anniversary: 'Anniversary gift', welcome: 'Welcome gift', winback: 'We miss you', tier_up: 'Level up', milestone: 'Milestone', referral: 'Referral gift', challenge: 'Challenge', streak: 'Weekly streak', vip: 'VIP' };
+  var GIFT_SRC = { stamps: 'Stamp card', birthday: 'Birthday gift', anniversary: 'Anniversary gift', welcome: 'Welcome gift', winback: 'We miss you', tier_up: 'Level up', milestone: 'Milestone', referral: 'Referral gift', challenge: 'Challenge', streak: 'Weekly streak', vip: 'Member welcome gift' };
   function gifts() {
     var G = (M && M.gifts) || [];
     if (!G.length) return '';
@@ -518,13 +557,14 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     if (!P.loyalty_enabled) { $('lxHeroBody').innerHTML = '<div class="lx-kicker"><i class="fa fa-crown"></i> Rewards</div><h1 class="lx-title">Something <em>tasty</em> is coming</h1>'; $('lxOff').classList.remove('hidden'); return; }
     if (!bodyOnly) $('lxHeroBody').innerHTML = M ? heroMember() : heroGuest();
     var isPts = TYPE() === 'points';
-    $('lxBody').innerHTML = facts() + (M ? gifts() + challenges() + (isPts ? redeem() + rewards() : '') + details() + (isPts ? tiers() : '') + referral() + (isPts ? activity() : '')
-                                        : steps() + challenges() + (isPts ? rewards() + tiers() : '') + referral()) +
+    $('lxBody').innerHTML = facts() + (M ? '<div id="lxVip"></div>' + gifts() + challenges() + (isPts ? redeem() + rewards() : '') + details() + (isPts ? tiers() : '') + referral() + (isPts ? activity() : '')
+                                        : steps() + '<div id="lxVip"></div>' + challenges() + (isPts ? rewards() + tiers() : '') + referral()) +
       '<p class="lx-fine">' + (TYPE() === 'cashback' ? 'Cashback lands in your wallet when your order is completed and comes off if it’s cancelled.' : TYPE() === 'stamps' ? 'A stamp is added when your order is completed. Cancelled orders don’t count.' : 'Points are added when your order is completed and come off if it’s cancelled.' + (P.points_expiry_days ? ' Points expire after ' + P.points_expiry_days + ' days without an order.' : '')) + '</p>';
     $('lxBody').classList.remove('hidden');
     $('lxSticky').innerHTML = M ? '<a class="lx-btn brand" href="' + esc(window.lxMenuUrl) + '"><i class="fa fa-utensils"></i> Order now and earn ' + (TYPE() === 'cashback' ? 'cashback' : TYPE() === 'stamps' ? 'a stamp' : 'points') + '</a>'
                                 : '<a class="lx-btn gold" href="' + esc(window.lxLoginUrl) + '"><i class="fa fa-user-plus"></i> Join free and start earning</a>';
     reveal();
+    if (window.lxVipMount) window.lxVipMount();
     if (bodyOnly) { document.querySelectorAll('.lx-sec').forEach(function (s) { s.classList.add('in'); }); return; }
     if (M) { countUp(); setTimeout(function () { var p = $('lxProg'); if (p) p.style.width = p.getAttribute('data-w') + '%'; }, 250); }
   }
@@ -618,6 +658,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
   document.addEventListener('DOMContentLoaded', load);
 })();
 </script>
+<script src="rg-vip.js?v=<?php echo @filemtime(__DIR__ . '/rg-vip.js'); ?>"></script>
 <?php require_once __DIR__ . '/bottom_nav.php'; ?>
 </body>
 </html>

@@ -424,6 +424,14 @@ function awardLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id, 
     // order's worth of spend.
     $tier = getCustomerTier($conn, $restaurant_id, (float)($customer['total_spent'] ?? 0));
     $multiplier = $tier ? (float)$tier['points_multiplier'] : 1.0;
+    // VIP members earn faster (Loyalty Studio > VIP membership)
+    $vipBoost = 1.0;
+    if (function_exists('vipEarnBoost')) {
+        $ph = $conn->prepare('SELECT phone FROM customers WHERE id = ?');
+        $ph->execute([$customer_id]);
+        $vipBoost = vipEarnBoost($conn, $restaurant_id, (string)$ph->fetchColumn());
+        $multiplier *= $vipBoost;
+    }
     if ($multiplier > 1.0) {
         $points = (int)floor($points * $multiplier);
     }
@@ -437,7 +445,7 @@ function awardLoyaltyPoints(PDO $conn, string $restaurant_id, int $customer_id, 
     $conn->prepare(
         "INSERT INTO loyalty_points_ledger (restaurant_id, customer_id, order_id, points_change, balance_after, type, note)
          VALUES (?, ?, ?, ?, ?, 'earned', ?)"
-    )->execute([$restaurant_id, $customer_id, $order_id, $points, $newBalance, $order_id ? ("Earned from order #$order_id" . ($tier && $multiplier > 1.0 ? " ({$tier['tier_name']} tier, {$multiplier}x)" : '')) : 'Earned']);
+    )->execute([$restaurant_id, $customer_id, $order_id, $points, $newBalance, $order_id ? ("Earned from order #$order_id" . ($multiplier > 1.0 ? ' (' . ($tier ? $tier['tier_name'] . ' tier, ' : '') . ($vipBoost > 1.0 ? 'VIP, ' : '') . $multiplier . 'x)' : '')) : 'Earned']);
 
     if ($order_id) {
         $conn->prepare("UPDATE orders SET loyalty_points_earned = ? WHERE id = ?")->execute([$points, $order_id]);

@@ -540,8 +540,9 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
       // separately) as whatever is left over — the rows then add up to Total.
       $couponDiscount  = (float)($order['discount_amount'] ?? 0);
       $loyaltyDiscount = (float)($order['loyalty_discount_amount'] ?? 0);
+      $vipDiscount = (float)($order['vip_discount'] ?? 0);
       $otherCharges = round((float)$order['total'] - (float)$order['subtotal'] - (float)$order['tax']
-          - (float)$order['delivery_charge'] + $couponDiscount + $loyaltyDiscount, 2);
+          - (float)$order['delivery_charge'] + $couponDiscount + $loyaltyDiscount + $vipDiscount, 2);
       ?>
       <div class="tk-totals">
         <div class="info-row"><span class="label">Subtotal</span><span class="value"><?php echo $currency . number_format((float)$order['subtotal'], 2); ?></span></div>
@@ -550,6 +551,9 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         <?php endif; ?>
         <?php if ($loyaltyDiscount > 0): ?>
         <div class="info-row"><span class="label">Loyalty points</span><span class="value" style="color:#16a34a;">−<?php echo $currency . number_format($loyaltyDiscount, 2); ?></span></div>
+        <?php endif; ?>
+        <?php if ($vipDiscount > 0): ?>
+        <div class="info-row"><span class="label">Member discount</span><span class="value" style="color:#16a34a;">−<?php echo $currency . number_format($vipDiscount, 2); ?></span></div>
         <?php endif; ?>
         <div class="info-row" id="summaryDeliveryRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>"><span class="label">Delivery</span><span class="value" id="summaryDeliveryValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
         <?php if ($otherCharges >= 0.01): ?>

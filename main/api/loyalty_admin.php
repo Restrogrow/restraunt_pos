@@ -9,6 +9,8 @@
  * POST JSON { section: 'autopilot', action: 'run' } — run the date checks now
  * GET  ?section=games     — the after-checkout game (style, prizes) and the challenges with their numbers
  * POST JSON { section: 'games', action: 'style' | 'save' | 'toggle' | 'delete', ... }
+ * GET  ?section=vip       — the club, plans with their members and revenue, latest members
+ * POST JSON { section: 'vip', action: 'settings' | 'save' | 'toggle' | 'delete', ... }
  * Always scoped to the session's restaurant.
  */
 require_once __DIR__ . '/../db_connection.php';
@@ -16,6 +18,7 @@ require_once __DIR__ . '/../config/session_config.php';
 startSecureSession();
 require_once __DIR__ . '/../config/authorization_config.php';
 require_once __DIR__ . '/../config/loyalty_autopilot.php';
+require_once __DIR__ . '/../config/vip_membership.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
@@ -38,6 +41,7 @@ function laItems(PDO $conn, string $rid): array {
 try {
     $conn = getConnection();
     ensureLoyaltyAutopilotSchema($conn);
+    ensureVipSchema($conn);
     $cur = (string)($conn->query('SELECT currency_symbol FROM users WHERE restaurant_id = ' . $conn->quote($rid) . ' LIMIT 1')->fetchColumn() ?: '₹');
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -114,6 +118,36 @@ try {
                 'items' => laItems($conn, $rid),
             ]);
         }
+        if ($section === 'vip') {
+            $vs = vipSettings($conn, $rid);
+            $q = function ($sql, $args = null) use ($conn, $rid) { $st = $conn->prepare($sql); $st->execute($args ?: [$rid]); return $st->fetchColumn(); };
+            $plans = array_map(function ($p) use ($conn, $rid, $cur, $q) {
+                return $p + ['gift' => vipGiftLabel($conn, $rid, $p, $cur),
+                    'members' => (int)$q("SELECT COUNT(DISTINCT phone) FROM vip_members WHERE restaurant_id = ? AND plan_id = ? AND status = 'Active' AND ends_at > NOW()", [$rid, $p['id']]),
+                    'sold' => (int)$q("SELECT COUNT(*) FROM vip_members WHERE restaurant_id = ? AND plan_id = ? AND status = 'Active'", [$rid, $p['id']]),
+                    'revenue' => (float)$q("SELECT COALESCE(SUM(amount), 0) FROM vip_members WHERE restaurant_id = ? AND plan_id = ? AND status = 'Active'", [$rid, $p['id']])];
+            }, vipPlans($conn, $rid));
+            $recent = $conn->prepare("SELECT m.phone, m.plan_name, m.amount, m.paid_via, m.starts_at, m.ends_at, m.created_at, c.customer_name FROM vip_members m
+                LEFT JOIN customers c ON c.restaurant_id = m.restaurant_id AND c.phone = m.phone WHERE m.restaurant_id = ? AND m.status = 'Active' ORDER BY m.id DESC LIMIT 10");
+            $recent->execute([$rid]);
+            $u = $conn->prepare('SELECT phonepe_merchant_id, payment_gateway_mode FROM users WHERE restaurant_id = ? LIMIT 1');
+            $u->execute([$rid]);
+            $uu = $u->fetch(PDO::FETCH_ASSOC) ?: [];
+            laOut(['success' => true, 'currency' => $cur, 'settings' => $vs, 'plans' => $plans, 'items' => laItems($conn, $rid),
+                'phonepe_ready' => !empty($uu['phonepe_merchant_id']) || ($uu['payment_gateway_mode'] ?? 'own') !== 'own',
+                'wallet_enabled' => (int)$q('SELECT enabled FROM wallet_settings WHERE restaurant_id = ?'),
+                'kpis' => [
+                    'members' => (int)$q("SELECT COUNT(DISTINCT phone) FROM vip_members WHERE restaurant_id = ? AND status = 'Active' AND starts_at <= NOW() AND ends_at > NOW()"),
+                    'revenue_month' => (float)$q("SELECT COALESCE(SUM(amount), 0) FROM vip_members WHERE restaurant_id = ? AND status = 'Active' AND created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')"),
+                    'revenue_total' => (float)$q("SELECT COALESCE(SUM(amount), 0) FROM vip_members WHERE restaurant_id = ? AND status = 'Active'"),
+                    'given' => (float)$q("SELECT COALESCE(SUM(vip_discount), 0) FROM orders WHERE restaurant_id = ? AND deleted_at IS NULL AND order_status NOT IN ('Cancelled', 'Rejected')"),
+                    'renewing_soon' => (int)$q("SELECT COUNT(DISTINCT phone) FROM vip_members m WHERE restaurant_id = ? AND status = 'Active' AND ends_at > NOW() AND ends_at <= NOW() + INTERVAL 7 DAY
+                        AND NOT EXISTS (SELECT 1 FROM vip_members n WHERE n.restaurant_id = m.restaurant_id AND n.phone = m.phone AND n.status = 'Active' AND n.ends_at > m.ends_at)"),
+                ],
+                'recent' => array_map(function ($r) { return ['name' => $r['customer_name'] ?: 'Customer', 'phone' => substr($r['phone'], 0, 2) . '******' . substr($r['phone'], -2),
+                    'plan' => $r['plan_name'], 'amount' => (float)$r['amount'], 'via' => $r['paid_via'], 'at' => $r['created_at'], 'ends_at' => $r['ends_at']]; }, $recent->fetchAll(PDO::FETCH_ASSOC)),
+            ]);
+        }
         laOut(['success' => false, 'message' => 'Unknown section'], 400);
     }
 
@@ -139,6 +173,64 @@ try {
                         $num($in['stamp_reward_value'] ?? 0, 0, 100000), (int)$num($in['reward_valid_days'] ?? 30, 1, 365), $rid]);
         loyaltySyncCashbackToWallet($conn, $rid, getGrowthSettings($conn, $rid));
         laOut(['success' => true]);
+    }
+
+    if ($section === 'vip') {
+        $action = (string)($in['action'] ?? '');
+        if ($action === 'settings') {
+            $conn->prepare('UPDATE growth_settings SET vip_enabled = ?, vip_name = ?, vip_tagline = ? WHERE restaurant_id = ?')
+                 ->execute([empty($in['enabled']) ? 0 : 1, trim(mb_substr((string)($in['name'] ?? ''), 0, 40)) ?: null, trim(mb_substr((string)($in['tagline'] ?? ''), 0, 120)) ?: null, $rid]);
+            laOut(['success' => true]);
+        }
+        $id = (int)($in['id'] ?? 0);
+        if ($action === 'toggle') {
+            $conn->prepare('UPDATE vip_plans SET active = ? WHERE id = ? AND restaurant_id = ?')->execute([empty($in['active']) ? 0 : 1, $id, $rid]);
+            laOut(['success' => true]);
+        }
+        if ($action === 'delete') {
+            $used = $conn->prepare('SELECT COUNT(*) FROM vip_members WHERE plan_id = ? AND restaurant_id = ?');
+            $used->execute([$id, $rid]);
+            if ((int)$used->fetchColumn() > 0) {
+                // members keep their perks: hide the plan instead of removing it
+                $conn->prepare('UPDATE vip_plans SET active = 0 WHERE id = ? AND restaurant_id = ?')->execute([$id, $rid]);
+                laOut(['success' => true, 'hidden' => true]);
+            }
+            $conn->prepare('DELETE FROM vip_plans WHERE id = ? AND restaurant_id = ?')->execute([$id, $rid]);
+            laOut(['success' => true]);
+        }
+        if ($action === 'save') {
+            $name = trim(mb_substr((string)($in['name'] ?? ''), 0, 40));
+            if ($name === '') laOut(['success' => false, 'message' => 'Give the plan a name'], 400);
+            $price = round((float)($in['price'] ?? 0), 2);
+            if ($price < 1 || $price > 100000) laOut(['success' => false, 'message' => 'Set a price for the plan'], 400);
+            $days = (int)($in['duration_days'] ?? 30);
+            if ($days < 7 || $days > 730) laOut(['success' => false, 'message' => 'A plan runs between 7 days and 2 years'], 400);
+            $pct = max(0, min(50, round((float)($in['discount_pct'] ?? 0), 2)));
+            $boost = max(1, min(5, round((float)($in['earn_boost'] ?? 1), 2)));
+            $free = empty($in['free_delivery']) ? 0 : 1;
+            $gk = in_array($in['gift_kind'] ?? '', ['flat', 'percent', 'item'], true) ? $in['gift_kind'] : null;
+            $gv = max(0, min($gk === 'percent' ? 100 : 100000, round((float)($in['gift_value'] ?? 0), 2)));
+            $gi = (int)($in['gift_item_id'] ?? 0);
+            if ($gi) { $own = $conn->prepare('SELECT 1 FROM menu_items WHERE id = ? AND restaurant_id = ?'); $own->execute([$gi, $rid]); if (!$own->fetchColumn()) $gi = 0; }
+            if ($gk === 'item' && !$gi) laOut(['success' => false, 'message' => 'Pick the welcome dish'], 400);
+            if ($gk && $gk !== 'item' && $gv <= 0) $gk = null;
+            if ($pct <= 0 && !$free && $boost <= 1 && !$gk) laOut(['success' => false, 'message' => 'Give members at least one perk'], 400);
+            $vals = [$name, $price, $days, $pct, max(0, min(100000, round((float)($in['discount_max'] ?? 0), 2))), $free, max(0, min(100000, round((float)($in['free_delivery_min'] ?? 0), 2))),
+                     $boost, $gk, $gk === 'item' ? 0 : $gv, $gk === 'item' ? $gi : null, empty($in['highlight']) ? 0 : 1];
+            if (!empty($in['highlight'])) $conn->prepare('UPDATE vip_plans SET highlight = 0 WHERE restaurant_id = ?')->execute([$rid]);
+            if ($id) {
+                $conn->prepare('UPDATE vip_plans SET name = ?, price = ?, duration_days = ?, discount_pct = ?, discount_max = ?, free_delivery = ?, free_delivery_min = ?, earn_boost = ?, gift_kind = ?, gift_value = ?, gift_item_id = ?, highlight = ? WHERE id = ? AND restaurant_id = ?')
+                     ->execute(array_merge($vals, [$id, $rid]));
+            } else {
+                $n = $conn->prepare('SELECT COUNT(*) FROM vip_plans WHERE restaurant_id = ?');
+                $n->execute([$rid]);
+                if ((int)$n->fetchColumn() >= 6) laOut(['success' => false, 'message' => 'Up to 6 plans. Hide or remove one first.'], 400);
+                $conn->prepare('INSERT INTO vip_plans (name, price, duration_days, discount_pct, discount_max, free_delivery, free_delivery_min, earn_boost, gift_kind, gift_value, gift_item_id, highlight, restaurant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+                     ->execute(array_merge($vals, [$rid]));
+            }
+            laOut(['success' => true]);
+        }
+        laOut(['success' => false, 'message' => 'Unknown action'], 400);
     }
 
     if ($section === 'games') {

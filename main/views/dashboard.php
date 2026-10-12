@@ -4076,6 +4076,37 @@ function toggleGatewayMode() {
         .lsg-bar { height: 7px; margin: 8px 0 2px; border-radius: 99px; background: #f3f4f6; overflow: hidden; }
         .lsg-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e0b, #ea580c); }
         @media (max-width: 860px) { .lsg-styles, .lsg-ed-body { grid-template-columns: 1fr; } .lsg-kinds { grid-template-columns: 1fr 1fr; } }
+        .lsv-hero { background: radial-gradient(90% 140% at 100% 0%, #b45309, transparent 55%), radial-gradient(60% 120% at 0% 100%, #6d28d9, transparent 60%), #17111f; }
+        .lsv-plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-top: 14px; align-items: start; }
+        .lsv-plan { position: relative; padding: 18px 16px 16px; border-radius: 18px; color: #f8f5ff; background: radial-gradient(120% 90% at 100% 0%, rgba(245,196,81,.22), transparent 55%), linear-gradient(160deg, #241736, #120c1b); box-shadow: 0 14px 30px -18px rgba(18,12,27,.8); }
+        .lsv-plan.hl { box-shadow: 0 0 0 2px #f5c451, 0 18px 34px -16px rgba(180,83,9,.6); }
+        .lsv-plan.off { opacity: .55; }
+        .lsv-badge { position: absolute; top: -10px; right: 14px; padding: 3px 10px; border-radius: 999px; background: linear-gradient(135deg, #ffe08a, #d99a1e); color: #3b2604; font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+        .lsv-plan-h { display: flex; align-items: center; gap: 8px; }
+        .lsv-plan-h .material-symbols-rounded { font-size: 20px; color: #f5c451; }
+        .lsv-plan-h b { font-size: 1rem; letter-spacing: .02em; }
+        .lsv-price { margin-top: 10px; }
+        .lsv-price b { font-size: 1.9rem; font-weight: 800; color: #ffe08a; }
+        .lsv-price span { margin-left: 4px; font-size: .85rem; color: rgba(255,255,255,.65); }
+        .lsv-pm { display: block; font-size: .74rem; color: rgba(255,255,255,.55); }
+        .lsv-plan ul { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid rgba(255,255,255,.1); display: grid; gap: 8px; }
+        .lsv-plan li { display: flex; gap: 8px; align-items: flex-start; font-size: .84rem; line-height: 1.35; }
+        .lsv-plan li .material-symbols-rounded { font-size: 17px; color: #f5c451; }
+        .lsv-cta { display: block; margin-top: 14px; padding: 10px; border-radius: 12px; background: linear-gradient(135deg, #ffe08a, #d99a1e); color: #3b2604; text-align: center; font-weight: 800; font-size: .88rem; }
+        .lsv-stats { display: flex; gap: 6px; margin-top: 14px; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.06); }
+        .lsv-stats div { flex: 1; min-width: 0; }
+        .lsv-stats b { display: block; font-size: .95rem; }
+        .lsv-stats span { font-size: .68rem; color: rgba(255,255,255,.55); }
+        .lsv-acts { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+        .lsv-acts .up-switch { flex: 1; margin: 0; color: rgba(255,255,255,.8); font-size: .8rem; font-weight: 700; }
+        .lsv-acts .lsa-edit { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); color: #fff; }
+        .lsv-acts .lsg-del.sure { background: #fef2f2; color: #b91c1c; }
+        .lsv-h4 { margin: 16px 0 8px; font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #9ca3af; }
+        .lsv-check { justify-content: flex-end; }
+        .lsv-check span { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border: 1.5px solid #e5e7eb; border-radius: 10px; color: #111827; font-size: .88rem; font-weight: 700; cursor: pointer; }
+        .lsv-check input { width: 17px; height: 17px; accent-color: #7c3aed; }
+        .lsv-prev { background: #f5f3ff; }
+        .lsv-prev .lsv-plan { margin-top: 8px; }
         .lsa-fine { margin: 12px 2px 0; font-size: .76rem; color: #9ca3af; line-height: 1.5; }
         @media (max-width: 760px) { .lsa-grid { grid-template-columns: 1fr; } .lsa-msg { grid-template-columns: 1fr; } .lsa-bubble { grid-column: 1; grid-row: auto; } .lsa-foot { flex-wrap: wrap; } .lsa-row code { display: none; } }
         @media (max-width: 860px) { .ls-types { grid-template-columns: 1fr; } }
@@ -7535,6 +7566,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/loyalty-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio.js'); ?>" defer></script>
   <script src="../assets/js/loyalty-studio-autopilot.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-autopilot.js'); ?>" defer></script>
   <script src="../assets/js/loyalty-studio-games.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-games.js'); ?>" defer></script>
+  <script src="../assets/js/loyalty-studio-vip.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-vip.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>

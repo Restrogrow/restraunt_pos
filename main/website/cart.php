@@ -1828,7 +1828,8 @@ function renderCart() {
     var loyaltyMaxUsable = getLoyaltyMaxUsablePoints(remainingAfterCoupon);
     var canUseLoyalty = loyaltyMaxUsable >= loyaltyMinRedeemPoints && loyaltyMaxUsable > 0;
     var loyaltyDiscountAmount = (useLoyaltyPoints && canUseLoyalty) ? +(loyaltyMaxUsable * loyaltyRedeemValuePerPoint).toFixed(2) : 0;
-    var finalTotal = Math.max(0, remainingAfterCoupon - loyaltyDiscountAmount);
+    var vipDiscountAmount = vipCartDiscount(Math.max(0, remainingAfterCoupon - loyaltyDiscountAmount));
+    var finalTotal = Math.max(0, remainingAfterCoupon - loyaltyDiscountAmount - vipDiscountAmount);
 
     if (loyaltyProgramEnabled && loyaltyBalance > 0) {
       cartHtml +=
@@ -1869,13 +1870,17 @@ function renderCart() {
           '<span>Loyalty Points (' + loyaltyMaxUsable + ' pts)</span>' +
           '<span class="val">-' + getCurrency() + loyaltyDiscountAmount.toFixed(2) + '</span>' +
         '</div>' : '') +
+        (vipDiscountAmount > 0 ? '<div class="price-row discount">' +
+          '<span>' + escapeHtml(window.cartVip.name) + ' member (' + window.cartVip.pct + '% off)</span>' +
+          '<span class="val">-' + getCurrency() + vipDiscountAmount.toFixed(2) + '</span>' +
+        '</div>' : '') +
         (PACKAGING_CHARGE > 0 ? '<div class="price-row">' +
           '<span>Packaging Charge</span>' +
           '<span class="val">' + getCurrency() + PACKAGING_CHARGE.toFixed(2) + '</span>' +
         '</div>' : '') +
         '<div class="price-row">' +
           '<span>Delivery Fee</span>' +
-          '<span class="note">Delivery fee is calculated after login</span>' +
+          (vipFreeDelivery(totalPrice) ? '<span class="val" style="color:#16a34a">Free for ' + escapeHtml(window.cartVip.name) + ' members</span>' : '<span class="note">Delivery fee is calculated after login</span>') +
         '</div>' +
         '<hr class="divider">' +
         '<div class="total-row">' +
@@ -1886,7 +1891,7 @@ function renderCart() {
           '<i class="bi bi-exclamation-circle"></i> Minimum Order Value Is ' + getCurrency() + MIN_ORDER.toFixed(2) + ' Please Add More Items To Proceed.' +
         '</div>' +
         (totalPrice < MIN_ORDER ? '<div class="min-order-bar"><div class="fill" style="width:' + Math.min(100, (totalPrice / MIN_ORDER) * 100) + '%"></div></div>' : '') : '') +
-        ((discountAmount + loyaltyDiscountAmount) > 0 ? '<div class="bill-save"><i class="fa-solid fa-circle-check"></i>You\'re saving ' + getCurrency() + (discountAmount + loyaltyDiscountAmount).toFixed(0) + ' on this order</div>' : '') +
+        ((discountAmount + loyaltyDiscountAmount + vipDiscountAmount) > 0 ? '<div class="bill-save"><i class="fa-solid fa-circle-check"></i>You\'re saving ' + getCurrency() + (discountAmount + loyaltyDiscountAmount + vipDiscountAmount).toFixed(0) + ' on this order</div>' : '') +
       '</div>' +
     '</div>';
 
@@ -2010,6 +2015,30 @@ function loadCartWallet() {
     .then(function(d) { if (d && d.success && d.enabled && d.logged_in) window.cartWallet = { name: d.name, balance: +d.balance || 0 }; })
     .catch(function() {});
 }
+
+// VIP membership perks (Loyalty Studio > VIP): the server applies them at checkout
+// for a logged-in member; this mirrors them so the bill shows the same numbers.
+window.cartVip = null;
+function loadCartVip() {
+  var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
+  fetch('vip_api.php?action=summary&restaurant_id=' + encodeURIComponent(rid), { credentials: 'same-origin', cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d || !d.success || !d.membership) return;
+      var m = d.membership;
+      window.cartVip = { name: d.name, pct: +m.discount_pct || 0, max: +m.discount_max || 0, freeDelivery: !!+m.free_delivery, freeMin: +m.free_delivery_min || 0 };
+      if (typeof renderCart === 'function' && document.getElementById('cartContent')) renderCart();
+      if (typeof refreshCheckoutTotal === 'function') refreshCheckoutTotal();
+    })
+    .catch(function() {});
+}
+function vipCartDiscount(foodLeft) {
+  var v = window.cartVip;
+  if (!v || v.pct <= 0 || foodLeft <= 0) return 0;
+  var d = Math.round(foodLeft * v.pct) / 100;
+  return +(v.max > 0 ? Math.min(d, v.max) : d).toFixed(2);
+}
+function vipFreeDelivery(itemsTotal) { var v = window.cartVip; return !!(v && v.freeDelivery && itemsTotal >= v.freeMin); }
 
 function changeQty(key, delta) {
   if (!cartItems[key]) return;
@@ -2525,11 +2554,13 @@ function getCartTotal() {
   var loyaltyMaxUsable = getLoyaltyMaxUsablePoints(remainingAfterCoupon);
   var loyaltyPointsRedeemed = (useLoyaltyPoints && loyaltyMaxUsable >= loyaltyMinRedeemPoints && loyaltyMaxUsable > 0) ? loyaltyMaxUsable : 0;
   var loyaltyDiscountAmount = loyaltyPointsRedeemed > 0 ? +(loyaltyPointsRedeemed * loyaltyRedeemValuePerPoint).toFixed(2) : 0;
-  var finalTotal = Math.max(0, remainingAfterCoupon - loyaltyDiscountAmount);
+  var vipDiscountAmount = vipCartDiscount(Math.max(0, remainingAfterCoupon - loyaltyDiscountAmount));
+  var finalTotal = Math.max(0, remainingAfterCoupon - loyaltyDiscountAmount - vipDiscountAmount);
   return {
     totalQty: totalQty, totalPrice: totalPrice, keys: keys,
     discountAmount: discountAmount, appliedCoupon: appliedCoupon,
     loyaltyPointsRedeemed: loyaltyPointsRedeemed, loyaltyDiscountAmount: loyaltyDiscountAmount,
+    vipDiscountAmount: vipDiscountAmount,
     finalTotal: finalTotal
   };
 }
@@ -2749,6 +2780,8 @@ function refreshCheckoutTotal() {
   var hasPackaging = (isDelivery || isTakeaway) && PACKAGING_CHARGE > 0;
   var pkgCharge = hasPackaging ? PACKAGING_CHARGE : 0;
   var delCharge = isDelivery ? checkoutDeliveryCharge : 0;
+  var vipFree = isDelivery && delCharge > 0 && vipFreeDelivery(getCartTotal().totalPrice);
+  if (vipFree) delCharge = 0;
 
   var showGst = window.enableGst == 1 || window.enableGst === true;
   var taxable = baseAmt;
@@ -2772,8 +2805,9 @@ function refreshCheckoutTotal() {
   var feeRow = document.getElementById('deliveryFeeRow');
   var feeAmount = document.getElementById('deliveryFeeAmount');
   if (feeRow && feeAmount) {
-    feeRow.style.display = isDelivery && delCharge > 0 ? 'flex' : 'none';
-    if (isDelivery && delCharge > 0) {
+    feeRow.style.display = isDelivery && (delCharge > 0 || vipFree) ? 'flex' : 'none';
+    if (vipFree) feeAmount.innerHTML = '<s style="color:#9ca3af">' + getCurrency() + checkoutDeliveryCharge.toFixed(2) + '</s> <b style="color:#16a34a">Free</b>';
+    else if (isDelivery && delCharge > 0) {
       feeAmount.textContent = getCurrency() + delCharge.toFixed(2);
     }
   }
@@ -2899,6 +2933,11 @@ function showCheckoutModal(cartData) {
   if (cartData.discountAmount > 0) {
     html += '<div class="summary-discount">';
     html += '<span>Discount (' + cartData.appliedCoupon.code + ')</span><span>-' + getCurrency() + cartData.discountAmount.toFixed(2) + '</span>';
+    html += '</div>';
+  }
+  if (cartData.vipDiscountAmount > 0) {
+    html += '<div class="summary-discount">';
+    html += '<span>' + esc(window.cartVip.name) + ' member (' + window.cartVip.pct + '% off)</span><span>-' + getCurrency() + cartData.vipDiscountAmount.toFixed(2) + '</span>';
     html += '</div>';
   }
   html += '<div id="packagingChargeRow" class="summary-row" style="display:none;">';
@@ -4392,6 +4431,7 @@ document.addEventListener('DOMContentLoaded', function() {
   loadMenuItems();
   loadUpsell();
   loadCartWallet();
+  loadCartVip();
   fetchAddons();
   loadCouponsFromServer();
   loadLoyaltyBalance();
