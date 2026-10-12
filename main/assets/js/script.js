@@ -1625,6 +1625,37 @@ document.addEventListener("DOMContentLoaded", () => {
       if (pageId === "analyticsPage") {
         setTimeout(() => loadAnalytics(), 100);
       }
+
+      // Sections that used to load only from their menu link's onclick. Loading them here means
+      // they also fill in when the page is reopened after a refresh, or opened from a button.
+      const sectionLoaders = {
+        inventoryPage: ['loadInventory'],
+        mealPlansPage: ['loadAdminMealPlans'],
+        mealSubscriptionsPage: ['loadAdminMealSubscriptions'],
+        blocklistPage: ['loadAdminBlocklist'],
+        cateringPage: ['loadAdminCatering'],
+        marketingPostersPage: ['initPosterStudio'],
+        marketingVideosPage: ['initVideoStudio'],
+        marketingCaptionsPage: ['initCaptionStudio'],
+        marketingCalendarPage: ['initCampaignCalendar'],
+        growthSettingsPage: ['loadGrowthSettings', 'loadLoyaltyStudio'],
+        whatsappPage: ['loadWhatsappAdmin'],
+        customerSegmentsPage: ['loadCustomerSegments'],
+        referralsPage: ['loadReferrals'],
+        growthReportsPage: ['loadGrowthReports', ['loadClvReport', '']],
+        policyPagesPage: ['initPolicyPagesEditor'],
+      };
+      if (sectionLoaders[pageId]) {
+        setTimeout(() => sectionLoaders[pageId].forEach((f) => {
+          const [name, ...args] = Array.isArray(f) ? f : [f];
+          if (typeof window[name] === 'function') window[name](...args);
+        }), 50);
+      }
+      // How to use: its menu link opens the guide for the page you came from; after a refresh, open it plainly
+      if (pageId === "howToPage") {
+        const frame = document.getElementById('howToFrame');
+        if (frame && !frame.getAttribute('src') && typeof window.openHowTo === 'function') window.openHowTo(null);
+      }
     }
   }
   
