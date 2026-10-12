@@ -96,6 +96,7 @@ function isLocalDevRequest(): bool {
 function localOtpFields(): array {
     if (!isset($GLOBALS['RG_LOCAL_OTP_CODE'])) return [];
     return [
+        'message' => 'Local mode: WhatsApp is not used on this computer. Your code is shown on screen.',
         'local_mode' => true,
         'local_code' => $GLOBALS['RG_LOCAL_OTP_CODE'],
         'local_note' => 'Local mode: WhatsApp is not used on this computer, so no OTP is needed. The code was filled in for you.',
