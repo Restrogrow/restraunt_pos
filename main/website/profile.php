@@ -985,6 +985,76 @@ body {
 .fav-empty-box a { margin-left: auto; flex-shrink: 0; padding: 8px 12px; border-radius: 10px; background: #ef4444; color: #fff; font-size: 12px; font-weight: 700; text-decoration: none; }
 @keyframes favTileIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .fav-tile { animation: none; } }
+/* ══ Redesign (matches the tracking page): soft page, white cards, dark hero ══ */
+:root { --pf: var(--checkout-color, #e11d48); --pf-dark: var(--checkout-color-dark, #9f1239); --pf-soft: color-mix(in srgb, var(--pf) 11%, #fff); --pf-ink: #16181d; --pf-muted: #8a8f98; }
+body { background: #e3e6ea; }
+.bg-wrapper, .phone-frame { background: #f2f3f5; }
+.pr-share-header { position: relative; justify-content: center; padding: 16px 16px 10px; border-bottom: 0; background: transparent; }
+.pr-share-header .back-btn { position: absolute; left: 16px; top: 14px; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--pf-ink); font-size: 17px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.pr-share-header h1 { margin: 0; font-size: 17px; font-weight: 700; text-align: center; line-height: 1.2; }
+.pr-share-header h1 small { display: block; font-size: 11.5px; font-weight: 500; color: var(--pf-muted); }
+.content { padding: 8px 14px 30px; }
+
+/* Hero: dark card with a brand glow */
+.profile-hero { border-radius: 26px; padding: 22px 16px 16px; margin-bottom: 14px; color: #fff;
+  background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--pf) 45%, transparent), transparent 70%), linear-gradient(180deg, #1c1e25, #111217);
+  box-shadow: 0 16px 34px rgba(17,24,39,.25); }
+.profile-hero::before, .profile-hero::after { display: none; }
+.avatar-container { width: 66px; height: 66px; font-size: 24px; background: linear-gradient(135deg, var(--pf), var(--pf-dark)); border: 0; box-shadow: 0 0 0 4px rgba(255,255,255,.12), 0 0 26px color-mix(in srgb, var(--pf) 55%, transparent); }
+.hero-user-name { font-size: 19px; font-weight: 800; }
+.hero-user-phone { color: #a3a8b3; }
+.hero-edit-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); color: #fff; }
+.stats-grid { gap: 10px; margin-top: 18px; }
+.stat-card { border-radius: 18px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.08); padding: 13px 6px; }
+.stat-number { font-size: 18px; font-weight: 800; color: #fff; }
+.stat-label { color: #a3a8b3; letter-spacing: .06em; }
+
+/* Cards */
+.section-card { border: 0; border-radius: 26px; padding: 18px 16px; margin-bottom: 14px; box-shadow: 0 2px 14px rgba(17,24,39,.05); }
+.section-card:hover { box-shadow: 0 2px 14px rgba(17,24,39,.05); }
+.section-title { font-size: 16px; font-weight: 700; color: var(--pf-ink); gap: 10px; }
+.section-title > i:first-child { width: 30px; height: 30px; display: inline-grid; place-items: center; border-radius: 10px; background: var(--pf-soft); color: var(--pf) !important; font-size: 13px; }
+.section-badge { background: #dcfce7; color: #15803d; border: 0; border-radius: 999px; }
+.profile-info-row { padding: 11px 0; border-bottom: 1px dashed #eceef1; }
+.profile-info-row:last-child { border-bottom: 0; }
+.profile-icon { width: 38px; height: 38px; border-radius: 12px; background: var(--pf-soft) !important; color: var(--pf) !important; }
+.profile-label-text { color: var(--pf-muted); }
+.profile-value-text { font-size: 14.5px; font-weight: 600; color: var(--pf-ink); }
+
+/* Quick actions: tiles with an arrow */
+.quick-actions { gap: 10px; margin-bottom: 14px; }
+.quick-action-btn { position: relative; border: 0; border-radius: 20px; padding: 14px 30px 14px 12px; background: #fff; box-shadow: 0 2px 12px rgba(17,24,39,.05); }
+.quick-action-btn::after { content: "\f054"; font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "FontAwesome"; font-weight: 900; position: absolute; right: 12px; top: 50%; margin-top: -7px; font-size: 10px; color: #c4c8ce; }
+.quick-action-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(17,24,39,.08); border: 0; }
+.quick-action-icon { width: 40px; height: 40px; border-radius: 13px; font-size: 16px; }
+.quick-action-text { font-size: 13px; font-weight: 700; color: var(--pf-ink); }
+.quick-action-sub { color: var(--pf-muted); }
+
+/* Order history */
+.order-filter-tabs { gap: 8px; padding: 2px 0 6px; }
+.filter-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 0; border-radius: 999px; background: #f4f5f7; color: #4b5563; font-weight: 600; }
+.filter-tab i { font-size: 11px; opacity: .8; }
+.filter-tab:hover { border: 0; color: var(--pf-ink); background: #eceef1; }
+.filter-tab.active { background: var(--pf-ink); color: #fff; box-shadow: 0 4px 12px rgba(17,24,39,.2); }
+.order-card { border: 1px solid #eef0f3; border-radius: 22px; box-shadow: 0 2px 10px rgba(17,24,39,.04); }
+.order-card-top { padding: 14px 14px 8px; }
+.order-card-id { color: var(--pf-ink) !important; font-weight: 700; }
+.order-card-status { padding: 4px 11px; font-size: 10.5px; font-weight: 700; border-radius: 999px; }
+.order-item-thumb { width: 46px; height: 46px; border-radius: 50%; border: 0; box-shadow: 0 3px 8px rgba(0,0,0,.08); }
+.order-card-note { border-radius: 14px; }
+.order-card-note i { color: #b45309; margin-right: 4px; }
+.order-card-actions { gap: 10px; padding: 10px 14px 14px; }
+.action-btn { min-height: 42px; border-radius: 999px; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.action-btn.track { border: 0; background: linear-gradient(135deg, var(--pf), var(--pf-dark)); color: #fff; box-shadow: 0 6px 14px color-mix(in srgb, var(--pf) 30%, transparent); }
+.action-btn.reorder { background: #fff; border: 1.5px solid #e5e7eb; color: var(--pf-ink); }
+.action-btn.reorder:hover { border-color: var(--pf); color: var(--pf); }
+.mini-track { border-radius: 18px; background: #f6f7f9; }
+.empty-state-icon { display: inline-grid; place-items: center; width: 62px; height: 62px; margin-bottom: 10px; border-radius: 20px; background: var(--pf-soft); color: var(--pf); font-size: 24px; }
+
+/* Edit form */
+.edit-form-card { border: 0; border-radius: 26px; box-shadow: 0 2px 14px rgba(17,24,39,.05); }
+.edit-form-card .form-group input, .edit-form-card .form-group textarea { border-radius: 14px; }
+.edit-form-card .form-group input:focus, .edit-form-card .form-group textarea:focus { border-color: var(--pf); }
 </style>
 </head>
 <body>
@@ -993,7 +1063,7 @@ body {
     <!-- Header -->
     <div class="pr-share-header">
       <button class="back-btn" onclick="goBack()" aria-label="Back"><i class="fa fa-arrow-left"></i></button>
-      <h1>My Profile</h1>
+      <h1>My Profile<small><?php echo htmlspecialchars($restaurant_name ?? '', ENT_QUOTES, 'UTF-8'); ?></small></h1>
     </div>
 
     <div class="content">
@@ -1114,10 +1184,10 @@ body {
           <!-- Filter Tabs -->
           <div class="order-filter-tabs" id="filterTabs">
             <button class="filter-tab active" data-filter="all" onclick="filterOrders('all')">All</button>
-            <button class="filter-tab" data-filter="Pending" onclick="filterOrders('Pending')">⏳ Pending</button>
-            <button class="filter-tab" data-filter="Accepted,Preparing,Ready" onclick="filterOrders('Accepted,Preparing,Ready')">👨‍🍳 In Progress</button>
-            <button class="filter-tab" data-filter="Completed" onclick="filterOrders('Completed')">✅ Completed</button>
-            <button class="filter-tab" data-filter="Cancelled,Rejected" onclick="filterOrders('Cancelled,Rejected')">❌ Cancelled</button>
+            <button class="filter-tab" data-filter="Pending" onclick="filterOrders('Pending')"><i class="fa-solid fa-hourglass-half"></i> Pending</button>
+            <button class="filter-tab" data-filter="Accepted,Preparing,Ready" onclick="filterOrders('Accepted,Preparing,Ready')"><i class="fa-solid fa-fire-burner"></i> In Progress</button>
+            <button class="filter-tab" data-filter="Completed" onclick="filterOrders('Completed')"><i class="fa-solid fa-circle-check"></i> Completed</button>
+            <button class="filter-tab" data-filter="Cancelled,Rejected" onclick="filterOrders('Cancelled,Rejected')"><i class="fa-solid fa-ban"></i> Cancelled</button>
           </div>
           <div id="orderHistory" style="min-height:80px">
             <!-- Skeletons loaded by JS -->
@@ -1432,7 +1502,7 @@ function setupProfileForm() {
       saveCustomerToStorage({ name: name, phone: phone, email: email, address: address });
       loadProfileData();
       cancelProfileEdit();
-      showToast('Profile saved successfully! ✅', 'success');
+      showToast('Profile saved successfully!', 'success');
       btn.disabled = false;
       btn.innerHTML = '<i class="fa fa-check"></i> Save Profile';
     }, 300);
@@ -1464,7 +1534,7 @@ async function loadOrderHistory(silent) {
   if (!el) return;
   var c = window.loggedInCustomer || loadCustomerFromStorage();
   if (!c || !c.phone) {
-    el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">📋</span><div class="empty-state-title">No Orders Yet</div><div class="empty-state-desc">Save your phone number in your profile to see your order history here.</div></div>';
+    el.innerHTML = '<div class="empty-state"><span class="empty-state-icon"><i class="fa-solid fa-receipt"></i></span><div class="empty-state-title">No Orders Yet</div><div class="empty-state-desc">Save your phone number in your profile to see your order history here.</div></div>';
     return;
   }
   // Background refresh (see the polling loop below) — don't blank the list
@@ -1501,7 +1571,7 @@ async function loadOrderHistory(silent) {
     // that was already showing fine — only show the error on the real
     // initial load.
     if (!silent) {
-      el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">⚠️</span><div class="empty-state-title">Could Not Load Orders</div><div class="empty-state-desc">Please check your connection and try again.</div><button type="button" onclick="loadOrderHistory()" style="margin-top:12px;padding:9px 20px;border:0;border-radius:999px;background:var(--checkout-color, #e11d48);color:#fff;font:600 13px inherit;cursor:pointer;">Try again</button></div>';
+      el.innerHTML = '<div class="empty-state"><span class="empty-state-icon"><i class="fa-solid fa-triangle-exclamation"></i></span><div class="empty-state-title">Could Not Load Orders</div><div class="empty-state-desc">Please check your connection and try again.</div><button type="button" onclick="loadOrderHistory()" style="margin-top:12px;padding:9px 20px;border:0;border-radius:999px;background:var(--checkout-color, #e11d48);color:#fff;font:600 13px inherit;cursor:pointer;">Try again</button></div>';
     }
   }
 }
@@ -1527,10 +1597,10 @@ function showGoogleReviewPrompt(reviewLink, rid, phone) {
   modal.className = 'modal-overlay';
   modal.innerHTML = '<div class="success-box" style="position:relative;">' +
     '<button onclick="respondGoogleReview(\'later\')" aria-label="Close" style="position:absolute;top:10px;right:12px;border:none;background:none;font-size:18px;color:#9ca3af;cursor:pointer;">&times;</button>' +
-    '<div style="font-size:36px;margin-bottom:8px;">⭐</div>' +
+    '<div style="font-size:34px;margin-bottom:8px;color:#f59e0b;"><i class="fa-solid fa-star"></i></div>' +
     '<h2>Enjoying your orders?</h2>' +
     '<p style="margin:8px 0 16px;color:#374151;font-size:14px;">Would you like to rate our restaurant on Google?</p>' +
-    '<button class="btn-profile" style="margin-bottom:8px;" onclick="respondGoogleReview(\'rate\')">⭐ Rate Us</button>' +
+    '<button class="btn-profile" style="margin-bottom:8px;" onclick="respondGoogleReview(\'rate\')"><i class="fa-solid fa-star"></i> Rate Us</button>' +
     '<button class="btn-profile" style="background:#e5e7eb;color:#374151;" onclick="respondGoogleReview(\'never\')">Don\'t ask again</button>' +
   '</div>';
   document.body.appendChild(modal);
@@ -1609,7 +1679,7 @@ function renderOrders(orders, el) {
     else if (currentFilter === 'Pending') msg = 'No pending orders.';
     else if (currentFilter === 'Cancelled,Rejected') msg = 'No cancelled orders.';
     else if (currentFilter === 'Accepted,Preparing,Ready') msg = 'No orders in progress.';
-    el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">📦</span><div class="empty-state-title">' + msg.split('.')[0] + '</div><div class="empty-state-desc">' + (msg.split('.').slice(1).join('.') || '') + '</div></div>';
+    el.innerHTML = '<div class="empty-state"><span class="empty-state-icon"><i class="fa-solid fa-box-open"></i></span><div class="empty-state-title">' + msg.split('.')[0] + '</div><div class="empty-state-desc">' + (msg.split('.').slice(1).join('.') || '') + '</div></div>';
     return;
   }
   el.innerHTML = filtered.map(function(o) {
@@ -1619,15 +1689,15 @@ function renderOrders(orders, el) {
 
 function statusIcon(status) {
   var map = {
-    'Completed': '✅',
-    'Accepted': '👨‍🍳',
-    'Preparing': '👨‍🍳',
-    'Ready': '🍽️',
-    'Pending': '⏳',
-    'Rejected': '❌',
-    'Cancelled': '🚫'
+    'Completed': '<i class="fa-solid fa-circle-check"></i>',
+    'Accepted': '<i class="fa-solid fa-fire-burner"></i>',
+    'Preparing': '<i class="fa-solid fa-fire-burner"></i>',
+    'Ready': '<i class="fa-solid fa-bell-concierge"></i>',
+    'Pending': '<i class="fa-solid fa-hourglass-half"></i>',
+    'Rejected': '<i class="fa-solid fa-circle-xmark"></i>',
+    'Cancelled': '<i class="fa-solid fa-ban"></i>'
   };
-  return map[status] || '⏳';
+  return map[status] || '<i class="fa-solid fa-hourglass-half"></i>';
 }
 
 function formatDate(dateStr) {
@@ -1645,6 +1715,7 @@ function formatDate(dateStr) {
 function getItemImageUrl(src) {
   if (!src || src === 'placeholder') return '';
   if (src.indexOf('http') === 0 || src.indexOf('data:') === 0) return src;
+  if (src.indexOf('db:') === 0) return 'image.php?id=' + encodeURIComponent(src.slice(3)); // stored in the database
   return '../api/image.php?type=file&path=' + encodeURIComponent('../' + src);
 }
 
@@ -1731,7 +1802,7 @@ function renderOrderCard(o) {
 
   // ── Notes ──
   if (o.notes) {
-    html += '<div class="order-card-note"><span>📝</span> ' + escapeHtml(o.notes) + '</div>';
+    html += '<div class="order-card-note"><i class="fa-solid fa-note-sticky"></i> ' + escapeHtml(o.notes) + '</div>';
   }
 
   // ── Divider ──
@@ -1751,17 +1822,17 @@ function renderOrderCard(o) {
     var trackCustomer = window.loggedInCustomer || loadCustomerFromStorage();
     var trackPhone = trackCustomer ? (trackCustomer.phone || '') : '';
     if (trackPhone) {
-      html += '<button class="action-btn reorder" onclick="window.location.href=\'track.php?order_number=' + encodeURIComponent(orderNum) + '&customer_phone=' + encodeURIComponent(trackPhone) + '\'">📍 Track Order</button>';
+      html += '<button class="action-btn track" onclick="window.location.href=\'track.php?order_number=' + encodeURIComponent(orderNum) + '&customer_phone=' + encodeURIComponent(trackPhone) + '\'"><i class="fa-solid fa-location-dot"></i> Track Order</button>';
     }
   }
   if (isRatable) {
-    html += '<button class="action-btn rate" onclick="openFeedback(\'' + escapeHtml(orderNum) + '\')">★ Share your feedback</button>';
-    html += '<button class="action-btn reorder" onclick="reorderOrder(\'' + escapeHtml(orderNum) + '\')">🔄 Reorder</button>';
+    html += '<button class="action-btn rate" onclick="openFeedback(\'' + escapeHtml(orderNum) + '\')"><i class="fa-solid fa-star"></i> Share your feedback</button>';
+    html += '<button class="action-btn reorder" onclick="reorderOrder(\'' + escapeHtml(orderNum) + '\')"><i class="fa-solid fa-rotate-right"></i> Reorder</button>';
   } else if (isCompleted && hasFeedback) {
-    html += '<button class="action-btn rated-stars">★ Rated</button>';
-    html += '<button class="action-btn reorder" onclick="reorderOrder(\'' + escapeHtml(orderNum) + '\')">🔄 Reorder</button>';
+    html += '<button class="action-btn rated-stars"><i class="fa-solid fa-star"></i> Rated</button>';
+    html += '<button class="action-btn reorder" onclick="reorderOrder(\'' + escapeHtml(orderNum) + '\')"><i class="fa-solid fa-rotate-right"></i> Reorder</button>';
   } else {
-    html += '<button class="action-btn reorder" onclick="reorderOrder(\'' + escapeHtml(orderNum) + '\')">🔄 Reorder</button>';
+    html += '<button class="action-btn reorder" onclick="reorderOrder(\'' + escapeHtml(orderNum) + '\')"><i class="fa-solid fa-rotate-right"></i> Reorder</button>';
   }
   html += '</div>';
 
@@ -1857,7 +1928,7 @@ function resetHoverRating() {
 
 function submitFeedback() {
   if (selectedRating === 0) {
-    document.getElementById('feedbackError').textContent = 'Please select a rating ⭐';
+    document.getElementById('feedbackError').textContent = 'Please select a rating';
     document.getElementById('feedbackError').style.display = 'block';
     return;
   }
@@ -1881,7 +1952,7 @@ function submitFeedback() {
       if (res.success) {
         modal.innerHTML =
           '<div class="feedback-success">' +
-          '<span class="feedback-success-icon">🎉</span>' +
+          '<span class="feedback-success-icon"><i class="fa-solid fa-circle-check" style="color:#16a34a"></i></span>' +
           '<div class="feedback-success-title">Thank You!</div>' +
           '<div class="feedback-success-msg">' + (res.message || 'Your feedback helps us serve you better!') + '</div>' +
           '<button class="submit-feedback-btn" style="margin-top:20px" onclick="closeFeedback();window.loadOrderHistory();"><i class="fa fa-check"></i> Done</button>' +
@@ -1913,7 +1984,7 @@ function showToast(msg, type) {
   type = type || 'success';
   var existing = document.querySelector('.toast-notification');
   if (existing) existing.remove();
-  var icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  var icons = { success: '<i class="fa-solid fa-circle-check"></i>', error: '<i class="fa-solid fa-circle-xmark"></i>', info: '<i class="fa-solid fa-circle-info"></i>', warning: '<i class="fa-solid fa-triangle-exclamation"></i>' };
   var toast = document.createElement('div');
   toast.className = 'toast-notification ' + type;
   toast.innerHTML = '<span class="toast-icon">' + (icons[type] || icons.success) + '</span>' + msg;
