@@ -104,6 +104,12 @@ footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--line);
   .feat { padding: 16px; } .feat-b, .feat-b.phone { grid-template-columns: 1fr; }
   .logo b { display: none; }
 }
+  .news { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
+  .news-item { display: flex; flex-direction: column; gap: 4px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); text-decoration: none; transition: border-color .15s, transform .15s; }
+  .news-item:hover { border-color: var(--violet); transform: translateY(-2px); }
+  .news-item small { color: var(--violet); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .news-item b { font-size: 15px; }
+  .news-item span { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
   .feat.flash { animation: featFlash 2.2s ease; }
   @keyframes featFlash { 0%, 40% { box-shadow: 0 0 0 4px rgba(124,58,237,.45); } 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); } }
 </style>
@@ -124,6 +130,7 @@ footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--line);
       <p>A walk through every screen of your dashboard, your customer website and the staff apps, with screenshots and step-by-step instructions. Use the search box to jump to any feature.</p>
       <div class="links">
         <a class="main" href="#quick-start">Quick start checklist</a>
+        <a href="#whats-new">What’s new</a>
         <a href="layout-gallery.html">See all website layouts</a>
         <a href="#superadmin">Features your superadmin switches on</a>
       </div>
@@ -151,9 +158,12 @@ var GROUPS = [
  { id: 'start', title: 'Getting started', intro: 'Log in, find your way around and set up the basics.', items: [
   { id: 'login', title: 'Logging in', where: 'restrogrow.com/main/admin', what: 'Owners and managers log in with the username and password from the RestroGrow team. Waiters, chefs and managers you add under Staff get their own logins and land on their own simpler dashboards.',
     steps: ['Open the admin login page and enter your username and password.', 'Forgot it? Use “Forgot password” or ask your superadmin to reset it.', 'On a new device you may be asked for a one-time WhatsApp code.'] },
-  { id: 'dashboard', title: 'Dashboard', where: 'Dashboard', img: 'dashboardPage', what: 'Today at a glance: sales, orders and average order compared with this time yesterday, whether you are open now, what needs your attention, orders in progress, the last 7 days, busy tables, today’s reservations and best sellers. New website orders ring and pop up, and with order alerts on you also get a notification when the dashboard is in the background.',
+  { id: 'dashboard', title: 'Dashboard', where: 'Dashboard', img: 'dashboardPage', isNew: 1, what: 'Today at a glance: sales, orders and average order compared with this time yesterday, whether you are open now, what needs your attention, orders in progress, the last 7 days, busy tables, today’s reservations and best sellers. New website orders ring and pop up, and with order alerts on you also get a notification when the dashboard is in the background.',
     steps: ['Click “Turn on order alerts” once on each device you use (it allows the ring and notifications).', 'Start with “Needs attention”: website orders to accept, tables calling a waiter, reservations to confirm, catering requests, old kitchen tickets. Click one to go straight there.', 'When the “New Order Received” popup appears, Accept or Reject it straight away.', 'Switch the 7-day chart between Sales and Orders; use New order for the POS, or the shortcuts at the bottom.'],
     tips: ['The page refreshes itself every minute while it is open.', 'Notifications can be turned on or off per device in Settings › Account › Push notifications.'] },
+  { id: 'alerts', title: 'New-order alerts and notifications', where: 'Dashboard (any page)', img: 'orderAlerts', isNew: 1, what: 'Every new website order rings like a phone call and opens a popup with the customer, address, items and total, so you can Accept or Reject it at once. It keeps working when the dashboard is in another tab or minimised: you get a notification on your computer or phone, and the tab title flashes “New order”.',
+    steps: ['On each device you use, click <b>Turn on</b> on the “Turn on order alerts” bar once. This allows the ring and asks your browser for permission to show notifications: click <b>Allow</b>.', 'Keep the dashboard open (it can be in the background). A new order rings and shows a notification; click the notification to jump to Online Orders.', 'Accept or Reject from the popup; the ringing stops.', 'To turn notifications off for one device, use Settings › Account › Push notifications.'],
+    tips: ['On a phone, add the dashboard to your home screen (Settings › Account › Install the app) for the most reliable notifications.', 'If you pressed Block by mistake: click the lock icon next to the address, allow Notifications, then reload.'] },
  ]},
  { id: 'menu', title: 'Menu', intro: 'Your categories, dishes, add-ons, stock and photos.', items: [
   { id: 'categories', title: 'Categories', where: 'Menu › Category', img: 'menuPage', what: 'The sections of your menu (Starters, Main Course, Drinks…). Their order here is the order customers see.',
@@ -220,11 +230,11 @@ var GROUPS = [
   { id: 'calendar', title: 'Campaign calendar', where: 'Marketing › Campaign Calendar', img: 'marketingCalendarPage', what: 'Upcoming festivals and days worth promoting, each with a pre-filled poster or caption.', steps: ['Open an occasion a few days early and prepare your post.'] },
  ]},
  { id: 'offers', title: 'Offers', intro: 'Discounts, featured dishes and tools that raise the order value.', items: [
-  { id: 'alloffers', title: 'All offers', where: 'Offers › All offers', img: 'offersHomePage', what: 'Every offer tool on one page, grouped by what it does: discounts, dishes in the spotlight, raising the order value, and bulk orders. Each shows where customers see it, whether it is on, and how it is doing.', steps: ['Start here when you are not sure which tool you need.', 'Anything that needs your attention (for example a wallet without PhonePe, or new catering requests) shows at the top.', 'Click a card to set that tool up.'] },
-  { id: 'coupons', title: 'Coupons and milestone offers', where: 'Offers › Coupons', img: 'couponsPage', what: 'Discount codes (% or ₹ off) with a minimum order, dates and usage limits. Tick “Milestone offer” and the cart shows a progress bar (“Add ₹80 more to get ₹50 OFF”) and applies the best reached offer by itself.',
+  { id: 'alloffers', title: 'All offers', where: 'Offers › All offers', img: 'offersHomePage', isNew: 1, what: 'Every offer tool on one page, grouped by what it does: discounts, dishes in the spotlight, raising the order value, and bulk orders. Each shows where customers see it, whether it is on, and how it is doing.', steps: ['Start here when you are not sure which tool you need.', 'Anything that needs your attention (for example a wallet without PhonePe, or new catering requests) shows at the top.', 'Click a card to set that tool up.'] },
+  { id: 'coupons', title: 'Coupons and milestone offers', where: 'Offers › Coupons', img: 'couponsPage', isNew: 1, what: 'Discount codes (% or ₹ off) with a minimum order, dates and usage limits. Tick “Milestone offer” and the cart shows a progress bar (“Add ₹80 more to get ₹50 OFF”) and applies the best reached offer by itself.',
     steps: ['Click “New coupon” (or pick one of the ready ideas), set the code, discount, minimum order and validity.', 'Each coupon shows how many orders and how much in sales it brought in the last 30 days. Use the switch to pause it, and the filters to see Live, Paused or Ended ones.', 'Tick “Milestone offer” for automatic offers at order amounts (e.g. ₹20 off above ₹100, ₹50 off above ₹200).', 'Customers can also type any active code in the cart.'],
     tips: ['The checkout always re-checks a coupon on the server, so discounts can’t be faked.'] },
-  { id: 'deals', title: 'Combos & New', where: 'Offers › Combos & New', img: 'dealsPage', what: 'Adds “Combos” and “New” filter buttons to your Menu page. Each one shows the dishes of one category you choose. They do not change prices.', steps: ['Make a category for your combos (or new dishes) in Menu › Category first.', 'Pick it under Combos or New. Choose None to hide that button.'] },
+  { id: 'deals', title: 'Combos & New', where: 'Offers › Combos & New', img: 'dealsPage', isNew: 1, what: 'Adds “Combos” and “New” filter buttons to your Menu page. Each one shows the dishes of one category you choose. They do not change prices.', steps: ['Make a category for your combos (or new dishes) in Menu › Category first.', 'Pick it under Combos or New. Choose None to hide that button.'] },
   { id: 'bestsellers', title: 'Bestsellers', where: 'Offers › Bestsellers', img: 'bestsellersPage', what: 'Choose the dishes for the Bestsellers row on your home page, in your order, with an optional offer price.', steps: ['Add dishes, drag them into order, set an offer price to show a discount.', 'Pick the row’s look (buttons, price style, ratings) in the same page.'] },
   { id: 'specials', title: 'Today’s Special', where: 'Offers › Today’s Special', img: 'todaysSpecialPage', isNew: 1, what: 'Dishes of the day for each weekday (up to 6 a day), shown above Bestsellers with your chef’s note, a countdown to the end of the day and the real plates left.',
     steps: ['For each day (or “Every day”), click “Add dish”, pick the dish and write a short note.', 'Set “Plates / day” to show a limit; the count comes from today’s real orders.', 'Save. Customers see a swipeable row of today’s specials.'] },
@@ -235,7 +245,7 @@ var GROUPS = [
   { id: 'wallet', title: 'Wallet', where: 'Offers › Wallet', img: 'walletPage', isNew: 1, what: 'Customers add money with PhonePe and pay for orders from it. Give extra money on bigger top-ups and cashback on orders. The money can only be used at your restaurant, comes back automatically if an order is cancelled, and you can correct a balance by hand.',
     steps: ['Turn on the wallet and set its name and limits.', 'Add top-up offers, e.g. add ₹1000, get ₹75 extra.', 'Set cashback on completed orders (e.g. 5%, up to ₹50).', 'Make sure your PhonePe keys are added under Payments › Gateway.'] },
   { id: 'filters', title: 'Offer filters', where: 'Offers › Offer Filters', img: 'offerFiltersPage', what: 'Quick filters on your menu page’s offers bubble (e.g. “Under ₹199”, “On offer”). They only use your real menu prices.', steps: ['Add or edit filters; a filter with no matching dishes stays hidden.'] },
-  { id: 'catering', title: 'Catering', where: 'Offers › Catering', img: 'cateringPage', what: 'Bulk and event orders: price tiers per guest count and incoming requests.', steps: ['Set your catering packages and price tiers.', 'Customers send requests from the Catering page; reply from here.'] },
+  { id: 'catering', title: 'Catering', where: 'Offers › Catering', img: 'cateringPage', isNew: 1, what: 'Bulk and event orders: price tiers per guest count and incoming requests.', steps: ['Set your catering packages and price tiers.', 'Customers send requests from the Catering page; reply from here.'] },
  ]},
  { id: 'growth', title: 'Loyalty and growth', intro: 'Bring customers back: earn on every order, gifts on autopilot, games, a paid membership, and numbers that show what it brings in.', items: [
   { id: 'loyalty', title: 'Loyalty Studio: program', where: 'Growth › Loyalty Studio › Program', img: 'growthSettingsPage', isNew: 1, what: 'Choose how customers earn on every completed order with a phone number (website, POS and table orders alike): cashback into their wallet, points, or a stamp card. Points, levels, free-dish rewards, referrals and the counter QR are set up here too.',
@@ -271,13 +281,13 @@ var GROUPS = [
   { id: 'feedback', title: 'Feedback', where: 'Feedback', img: 'feedbackPage', what: 'Ratings and reviews customers leave after their orders.', steps: ['Read and reply; happy customers can be nudged to rate you on Google.'] },
  ]},
  { id: 'settings', title: 'Settings and your website', intro: 'Restaurant details and how your customer website looks.', items: [
-  { id: 'settingsl', title: 'Settings', where: 'Settings', img: 'settingsPage', what: 'Restaurant name, address (with map pin), phone, opening hours, order types (dine-in / takeaway / delivery), minimum order, packaging charge, GST, cash on delivery and more.',
+  { id: 'settingsl', title: 'Settings', where: 'Settings', img: 'settingsPage', isNew: 1, what: 'Restaurant name, address (with map pin), phone, opening hours, order types (dine-in / takeaway / delivery), minimum order, packaging charge, GST, cash on delivery and more.',
     steps: ['Pick a section from the list on the left (on a phone, the row of buttons at the top): Restaurant profile, Location, Business hours, Ordering, Delivery, Payments, Tax and bill, Social links, Region and language, Printer or Account.', 'Change what you need. A bar appears at the bottom: press Save changes (or Discard). You can change several sections and save once.', 'In Location, drop the map pin exactly on your restaurant. In Business hours, switch a day off to close it; outside your hours customers can schedule orders instead.'] },
-  { id: 'appearance', title: 'Website appearance', where: 'Customer Website › Website Appearance', img: 'websiteThemePage', what: 'Make the website yours: colors, logo, banners, fonts, home page layout, card styles, menu layout, the bottom bar (9 bar styles such as Floating, Glass, Pill, Bubble and Raised cart, plus icon sets), profile page design (10 styles) and much more, with a live preview.',
-    steps: ['Change any option and watch the live preview on the right.', 'Switch between “Current” (unsaved) and “Live” to compare.', 'Click Save when you like it.', 'Test on a real phone: click <b>Phone</b> above the preview and scan the QR. Every change you make on the laptop appears on the phone within a second, without refreshing. Nothing is saved until you click Save; click Stop when done.'],
+  { id: 'appearance', title: 'Website appearance', where: 'Customer Website › Website Appearance', img: 'websiteThemePage', isNew: 1, what: 'Make the website yours: colors, logo, banners, fonts, home page layout, card styles, menu layout, the bottom bar (9 bar styles such as Floating, Glass, Pill, Bubble and Raised cart, plus icon sets), profile page design (10 styles) and much more, with a live preview. Everything is on one page in six groups: Brand, Colours and font, Home page, Menu page, Navigation and profile, Banners and sharing.',
+    steps: ['Use the buttons at the top to jump to a group, or just scroll.', 'Change any option and watch the live preview on the right.', 'Save Theme, Reset and Open website stay at the bottom of the screen; banners save as soon as you upload them.', 'Switch between “Current” (unsaved) and “Live” to compare.', 'Click Save when you like it.', 'Test on a real phone: click <b>Phone</b> above the preview and scan the QR. Every change you make on the laptop appears on the phone within a second, without refreshing. Nothing is saved until you click Save; click Stop when done.'],
     tips: ['See every layout side by side in the <a href="layout-gallery.html">layout gallery</a>.'] },
-  { id: 'policies', title: 'Policy pages', where: 'Customer Website › Policy Pages', img: 'policyPagesPage', what: 'Privacy, terms, refund, shipping and cookie pages, with a simple editor. Blank pages show the default text.', steps: ['Edit a page like a document and save.'] },
-  { id: 'domain', title: 'Custom domain and embed', where: 'Customer Website › Custom Domain', img: 'embedPage', what: 'Put your ordering website on your own address (e.g. order.yourrestaurant.com), or add your menu to a website you already have.', steps: ['Own domain: type your domain and press Save domain.', 'Add the record shown in step 2 where you bought the domain (GoDaddy, Hostinger and so on). It can take up to 48 hours to start working.', 'Press Check my domain. When it says Ready, switch on Send customers to your domain. Your RestroGrow link and every table QR code then open your domain, and printed QR codes keep working.', 'Add to your website: copy the embed code and paste it into your page (WordPress: Custom HTML block; Wix: Embed HTML). Use the preview to see it on a phone or a computer.'] },
+  { id: 'policies', title: 'Policy pages', where: 'Customer Website › Policy Pages', img: 'policyPagesPage', isNew: 1, what: 'Privacy, terms, refund, shipping and cookie pages, with a simple editor. Blank pages show the default text. On your website they carry your logo and colours, with tabs between the five policies, an “On this page” list, a contact card with Call and Email buttons, and a clean print view.', steps: ['Edit a page like a document and save.', 'The “Updated” date on the website shows when you last saved that page.'] },
+  { id: 'domain', title: 'Custom domain and embed', where: 'Customer Website › Custom Domain', img: 'embedPage', isNew: 1, what: 'Put your ordering website on your own address (e.g. order.yourrestaurant.com), or add your menu to a website you already have.', steps: ['Own domain: type your domain and press Save domain.', 'Add the record shown in step 2 where you bought the domain (GoDaddy, Hostinger and so on). It can take up to 48 hours to start working.', 'Press Check my domain. When it says Ready, switch on Send customers to your domain. Your RestroGrow link and every table QR code then open your domain, and printed QR codes keep working.', 'Add to your website: copy the embed code and paste it into your page (WordPress: Custom HTML block; Wix: Embed HTML). Use the preview to see it on a phone or a computer.'] },
   { id: 'profileacc', title: 'My profile', where: 'Profile', img: 'profilePage', what: 'Your own account: name, email, password and security.', steps: ['Change your password here; keep your email up to date for resets.'] },
  ]},
  { id: 'website', title: 'Your customer website', intro: 'What your customers see on their phones.', items: [
@@ -334,6 +344,20 @@ var GROUPS = [
      ['Add your team', 'Waiter, chef and manager logins.', 'staff'], ['Create offers', 'A milestone coupon and Today’s Special.', 'coupons'], ['Start loyalty', 'Cashback, points or stamps, and the counter QR.', 'loyalty'], ['Share your link', 'Instagram bio, WhatsApp, Google profile.', 'domain']]
     .map(function (c, i) { return '<div><b><span>' + (i + 1) + '</span><a href="#' + c[2] + '">' + c[0] + '</a></b><p>' + c[1] + '</p></div>'; }).join('') + '</div></section>';
 
+  // What's new: [date, title, one line, guide section]
+  var NEWS = [
+    ['13 Oct 2026', 'A new Dashboard', 'Today’s sales, orders and average order against yesterday, what needs your attention, orders in progress, the last 7 days, busy tables, reservations and best sellers.', 'dashboard'],
+    ['13 Oct 2026', 'Order alerts in the background', 'New orders now ring and notify you even when the dashboard is in another tab or minimised. Turn them on once per device.', 'alerts'],
+    ['13 Oct 2026', 'Offers made easier', 'A new All offers page shows every offer tool, where customers see it and whether it’s on. Coupons show how many orders each one brought. “Deals” is now Combos & New.', 'alloffers'],
+    ['13 Oct 2026', 'Website appearance, tidied up', 'All the same settings, grouped, with a jump bar at the top and the Save button always in reach.', 'appearance'],
+    ['12 Oct 2026', 'Settings, by section', 'A list of sections (business hours, ordering, delivery, payments, tax…) and one save bar for everything.', 'settingsl'],
+    ['12 Oct 2026', 'Custom domain with a real check', 'Step by step, with the exact DNS record to add and a check that your domain really shows your website before customers are sent there.', 'domain'],
+    ['12 Oct 2026', 'Tables and table map', 'Live status for every table, bulk changes, QR codes per table, and a table map that shows who is seated and for how long.', 'tablesl'],
+    ['12 Oct 2026', 'Policy pages', 'Your privacy, terms and refund pages now carry your logo and colours and are easy to read on a phone.', 'policies'],
+  ];
+  html += '<section class="group" id="whats-new"><h2>What’s new</h2><p>The latest changes to your dashboard. Click one to read how it works.</p><div class="news">' +
+    NEWS.map(function (n) { return '<a class="news-item" href="#' + n[3] + '"><small>' + n[0] + '</small><b>' + n[1] + '</b><span>' + n[2] + '</span></a>'; }).join('') + '</div></section>';
+
   GROUPS.forEach(function (g) {
     html += '<section class="group" id="g-' + g.id + '"><h2>' + g.title + '</h2><p>' + g.intro + '</p>' + g.items.map(feat).join('') + '</section>';
   });
@@ -354,6 +378,7 @@ var GROUPS = [
     '<article class="feat"><ul>' +
     '<li><b>A new feature isn’t in my menu.</b> Press Ctrl + Shift + R on the dashboard. If it’s a superadmin feature, ask them to switch it on.</li>' +
     '<li><b>Customers can’t pay online / add money to the wallet.</b> Check your PhonePe keys under Payments › Gateway and that your superadmin set “Cash + Gateway”.</li>' +
+    '<li><b>No ring or notification for new orders.</b> Click “Turn on order alerts” on the dashboard (once per device) and allow notifications. If you blocked them, allow them again from the lock icon next to the address. Keep the dashboard open; it can be in the background.</li>' +
     '<li><b>The new-order popup keeps ringing.</b> Accept or reject the pending order; it stops once no order is pending.</li>' +
     '<li><b>A customer says their points are missing.</b> Points are added when the order is marked Completed. Check the order status.</li>' +
     '<li><b>The website shows old colors.</b> Click Save in Website Appearance, then reload the website.</li>' +
@@ -363,7 +388,7 @@ var GROUPS = [
   document.getElementById('content').innerHTML = html;
 
   // Sidebar
-  var toc = '<h4>Start</h4><a href="#quick-start">Quick start checklist</a>';
+  var toc = '<h4>Start</h4><a href="#quick-start">Quick start checklist</a><a href="#whats-new">What’s new</a>';
   GROUPS.forEach(function (g) {
     toc += '<h4>' + g.title + '</h4>' + g.items.map(function (f) { return '<a href="#' + f.id + '" data-id="' + f.id + '">' + f.title + (f.sa ? '<i title="Superadmin"></i>' : '') + '</a>'; }).join('');
   });

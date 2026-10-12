@@ -1,61 +1,143 @@
-# RestroGrow — Restaurant ordering, POS and growth platform
+# RestroGrow
 
-RestroGrow gives every restaurant its own ordering website plus an admin dashboard for menu, orders, POS, kitchen, delivery, offers, loyalty, wallet and marketing, with separate apps for waiters, chefs, managers and riders. Many restaurants run on one installation; a superadmin manages them.
+**Restaurant ordering, POS and growth platform.** Every restaurant gets its own ordering website and an admin dashboard for the menu, orders, POS, kitchen, tables, delivery, offers, loyalty, WhatsApp and marketing, plus apps for waiters, chefs, managers and riders. Many restaurants run on one installation; a superadmin manages them.
 
-**Live:** [restrogrow.com](https://restrogrow.com)
+**Live:** [restrogrow.com](https://restrogrow.com) · **User guide:** [restrogrow.com/main/views/user-guide.html](https://restrogrow.com/main/views/user-guide.html) · **WhatsApp partner:** [repeatgrow.com](https://repeatgrow.com)
 
-## Guides and previews
+<p align="center">
+  <img src="main/assets/guide/dashboardPage.jpg" alt="RestroGrow dashboard" width="900">
+</p>
 
-| Page | What it shows |
+---
+
+## Contents
+
+- [What's new](#whats-new)
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [New-order alerts and push notifications](#new-order-alerts-and-push-notifications)
+- [Guides and documents](#guides-and-documents)
+- [Running it locally](#running-it-locally-xampp)
+- [Configuration (.env)](#configuration-env)
+- [Deploying, cron jobs and WhatsApp templates](#deploying)
+- [Project structure and tech stack](#project-structure)
+- [Roadmap and known limitations](#roadmap)
+
+---
+
+## What's new
+
+### 13 October 2026
+
+| | Change | What it means for a restaurant |
+|---|---|---|
+| **Dashboard** | Redesigned home screen | Sales, orders and average order vs this time yesterday; open / closed now; **Needs attention** (website orders to accept, tables calling a waiter, reservations to confirm, catering requests, old kitchen tickets); orders in progress; last 7 days; busy tables; today's reservations; best sellers. Refreshes every minute. |
+| **Order alerts** | Work in the background | The new-order check no longer stops when the tab is hidden. A system notification appears and the tab title flashes; clicking it opens Online Orders. One click on **Turn on order alerts** unlocks the ring and notifications on each device. |
+| **Push notifications** | Actually sent now | They needed a Composer library that was never installed, so nothing was ever delivered. Now sent with PHP's own OpenSSL (VAPID + aes128gcm); keys are created automatically if `.env` has none. Tested end to end with Google's push service and Chrome. |
+| **Offers** | New **All offers** page, clearer Coupons, Combos & New | One page lists every offer tool, where customers see it, whether it's on and what needs attention. Coupons show orders, sales and discount from each code in 30 days, with pause / edit / delete and filters. "Deals" (really the Menu page's Combos / New filters) is renamed and simplified. |
+| **Website appearance** | Same settings, better layout | Six groups (Brand, Colours and font, Home page, Menu page, Navigation and profile, Banners and sharing), a jump bar and a save bar that stays in view. |
+| **Refresh fix** | Every section loads after a page refresh | 16 sections (Loyalty Studio, WhatsApp, Policy pages, Marketing, Inventory, Catering…) only loaded from a menu click and stayed empty after a refresh. Checked on all 50 sections. |
+
+### 12 October 2026
+
+| | Change | What it means for a restaurant |
+|---|---|---|
+| **Settings** | Sections and one save bar | Restaurant profile, Location, Business hours, Ordering, Delivery, Payments, Tax and bill, Social links, Region and language, Printer, Account. Fixed "open till 11:59 PM" being saved as 11:00 PM. |
+| **Custom domain** | Step by step, with a real check | The exact DNS record to add, then a check that `https://<domain>/` really shows the restaurant (DNS, SSL, right site) before customers are sent there. Printed table QR codes keep their table after the redirect. |
+| **Policy pages** | Redesigned, on both sites | Restaurant pages carry the logo and colours, tabs between policies, "On this page" list, contact card, print view. restrogrow.com legal pages match the main site and got the missing phone menu. |
+| **Tables, Table map, Areas** | Rebuilt | Live status per table, bulk changes, safe delete, QR per table; floor map with shapes, chairs, busy timers and reservations. |
+| **Connect RepeatGrow** | One-click WhatsApp setup | The owner approves on RepeatGrow; all message templates are created and followed through Meta's review. Handles revoked keys, rate limits, template conflicts and customers who reply STOP. API keys are stored encrypted. |
+
+<details>
+<summary><b>Earlier in October 2026</b></summary>
+
+| Feature | Details |
 |---|---|
-| **[User guide](https://restrogrow.com/main/views/user-guide.html)** ([source](main/views/user-guide.html)) | Every feature, where to find it and how to use it, with screenshots. Marks the features a superadmin has to switch on. Start here. |
-| [Website layout gallery](https://restrogrow.com/main/views/layout-gallery.html) ([source](main/views/layout-gallery.html)) | All customer-website designs side by side: home layouts, menu styles, cards, profile page designs and more. |
-| [Table map preview](https://restrogrow.com/table-map-preview.html) ([source](table-map-preview.html)) | The live floor-plan view of tables. |
-| [Project documentation](main/docs/PROJECT_DOCUMENTATION.html) | Technical overview of the codebase. |
-| [AGENTS.md](AGENTS.md) | Architecture, routing and conventions for developers. |
-| [Connect RepeatGrow](docs/REPEATGROW_CONNECT.md) | How RestroGrow and RepeatGrow (our WhatsApp CRM, [repeatgrow.com](https://repeatgrow.com)) link up: the Connect button, template creation, and what RepeatGrow has to provide. |
+| Rewards landing page | The counter QR opens a full rewards page: join, member card, levels, free dishes, invites, redeem. |
+| Wallet | Top up with PhonePe (bonus on bigger top-ups), pay fully or partly, refund on cancel / reject, cashback; owner page with stats and corrections. |
+| Scratch card | On the tracking page after checkout; prizes, chances, minimum next order and a monthly budget. |
+| Loyalty Studio | Cashback / points / stamps on every channel; Autopilot gifts; challenges, streaks, spin wheel; paid VIP plans; Performance. |
+| Phone wallet card | Apple Wallet and Google Wallet rewards card that updates by itself. |
+| WhatsApp (Growth) | Gift codes and campaigns on WhatsApp through RepeatGrow, with a message log and revenue per message. |
+| Complete your meal, Today's Special, nutrition, profile designs, order tracking | See the user guide. |
+
+</details>
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="main/assets/guide/dashboardPage.jpg" alt="Dashboard"><br><b>Dashboard</b>: today at a glance and what needs attention</td>
+    <td width="50%"><img src="docs/screenshots/new-order-popup.jpg" alt="New order popup"><br><b>New order</b>: rings, pops up, Accept or Reject</td>
+  </tr>
+  <tr>
+    <td><img src="main/assets/guide/offersHomePage.jpg" alt="All offers"><br><b>All offers</b>: every offer tool and whether it's on</td>
+    <td><img src="main/assets/guide/couponsPage.jpg" alt="Coupons"><br><b>Coupons</b>: what each code brought in</td>
+  </tr>
+  <tr>
+    <td><img src="main/assets/guide/settingsPage.jpg" alt="Settings"><br><b>Settings</b>: sections and one save bar</td>
+    <td><img src="main/assets/guide/websiteThemePage.jpg" alt="Website appearance"><br><b>Website appearance</b>: live preview, grouped settings</td>
+  </tr>
+  <tr>
+    <td><img src="main/assets/guide/tablesPage.jpg" alt="Tables"><br><b>Tables</b>: live status, bulk changes, QR codes</td>
+    <td><img src="main/assets/guide/tableMapPage.jpg" alt="Table map"><br><b>Table map</b>: who is seated and for how long</td>
+  </tr>
+  <tr>
+    <td><img src="main/assets/guide/embedPage.jpg" alt="Custom domain"><br><b>Custom domain</b>: DNS record and a real check</td>
+    <td><img src="main/assets/guide/growthSettingsPage.jpg" alt="Loyalty Studio"><br><b>Loyalty Studio</b>: program, autopilot, games, VIP</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/policy-page-restaurant.jpg" alt="Restaurant policy page"><br><b>Policy pages</b> on a restaurant's website</td>
+    <td><img src="docs/screenshots/policy-page-restrogrow.jpg" alt="restrogrow.com legal page"><br><b>Legal pages</b> on restrogrow.com</td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-phone.jpg" alt="Dashboard on a phone" width="260">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/order-alerts-chip.jpg" alt="Turn on order alerts" width="560">
+  <br><sub>The dashboard on a phone, and the one-click “Turn on order alerts” bar</sub>
+</p>
+
+---
 
 ## Features
 
 ### Customer website
 - Mobile-first ordering site per restaurant at `restrogrow.com/{slug}` or the restaurant's own domain
-- Home page with banners, categories, **Today's Specials**, **Bestsellers** and the full menu; many layouts to choose from
-- Dish details with sizes, add-ons, notes, **ingredients ("What's inside")**, **nutrition** (calories and macros) and **health tags**
-- Cart with **milestone offers** (auto-applied), coupons, **Complete your meal** suggestions, a note for the kitchen and a clear bill
-- Checkout for dine-in, takeaway and delivery (pincode or per-km), scheduled orders, map pin for the address
-- Payments: cash, PhonePe (UPI / cards), UPI QR with screenshot, **wallet**, loyalty points
-- **Live order tracking** with a journey view, rider location on the map and a **scratch card** reward
-- Customer accounts with OTP sign-up, a profile page (10 designs), order history, favourites and the **wallet card**
-- **Rewards page** (counter QR): join, points, levels, free dishes, invite codes, redeem
-- Table QR ordering, call waiter, reservations, catering requests, meal-plan subscriptions, policy pages, install as an app
+- Home page with banners, categories, **Today's Specials**, **Bestsellers** and the full menu; many layouts ([layout gallery](https://restrogrow.com/main/views/layout-gallery.html))
+- Dish details with sizes, add-ons, notes, ingredients, nutrition and health tags
+- Cart with **milestone offers**, coupons, **Complete your meal** suggestions and a clear bill
+- Dine-in, takeaway and delivery (pincode or per-km), scheduled orders, map pin for the address
+- Payments: cash, PhonePe (UPI / cards), UPI QR with screenshot, wallet, loyalty points
+- **Live order tracking** with rider location and a **scratch card** reward
+- Customer accounts (OTP), profile page (10 designs), order history, favourites, phone **wallet card**
+- **Rewards page** from the counter QR; table QR ordering, call waiter, reservations, catering, meal plans
+- Policy pages in the restaurant's own look; install as an app
 
 ### Admin dashboard
-- **Dashboard** with today's numbers and a sound alert for new orders
+- **Dashboard**: today vs yesterday, needs attention, orders in progress, 7-day chart, floor, reservations, best sellers
+- **New-order alerts**: ring, popup, background notifications on computer and phone
 - **Menu**: categories, dishes (variations, add-ons, ingredients, nutrition, health tags), add-ons, inventory, photo gallery*
-- **Subscriptions***: tiffin / meal plans and subscribers
 - **Tables**: areas, tables, QR codes, live table map, reservations
-- **POS** and **KOT** (kitchen tickets)
-- **Orders**: online orders (accept / reject / status / mark paid / route), all orders, blocked customers, customers, staff, waiter requests
+- **POS** and **KOT** (kitchen tickets), with network or browser printing
+- **Orders**: online orders (accept / reject / status / route), all orders, blocked customers, customers, staff, waiter requests
 - **Payments**: transactions, PhonePe gateway*, sales reports with CSV, analytics
 - **Marketing**: posters, promo videos, social captions, campaign calendar
-- **Offers**: coupons and milestone offers, deals, bestsellers, Today's Special, Complete your meal (auto / manual / both), scratch card, wallet, offer filters, catering
-- **Growth › Loyalty Studio**: earn by cashback, points or a stamp card on every channel; Autopilot gifts (welcome, birthday, anniversary, win-back, level up, milestones, referrals); Games (challenges, weekly streaks, scratch card or spin wheel); a paid VIP membership; a rewards card in Apple / Google Wallet; a Performance dashboard. **Growth › WhatsApp**: every gift code sent on WhatsApp by itself, campaigns to chosen audiences with personal codes, message log. Also referrals, customer segments, growth reports, counter QR
-- **Delivery**: zones (pincode / per-km), live delivery map, feedback
-- **Settings** and **Website appearance** with live preview, policy pages, custom domain / embed
+- **Offers**: All offers overview, coupons and milestone offers, offer filters, Combos & New, bestsellers, Today's Special, Complete your meal, scratch card, wallet, catering
+- **Growth**: Loyalty Studio (cashback / points / stamps, Autopilot gifts, games, VIP, phone card, performance) and WhatsApp (automatic gift messages and campaigns through RepeatGrow), referrals, segments, growth reports
+- **Delivery**: zones, live delivery map, feedback
+- **Customer website**: settings, website appearance with live preview, policy pages, custom domain / embed
 
-\* switched on per restaurant by the superadmin (see below)
+\* switched on per restaurant by the superadmin
 
-### Staff apps
-- Waiter, chef and manager dashboards with their own logins
-- Rider page (no login) with route, status updates and live location
+### Staff apps and superadmin
+- Waiter, chef and manager dashboards with their own logins and push notifications; rider page (no login) with route and live location
+- Superadmin: restaurants, subscriptions and trials, payment links, feature switches, branch admins, menu import from photos
 
-### Superadmin
-- Create and manage restaurants, subscriptions and trials, payment links and settlements
-- Turn features on per restaurant, create branch admins, import a menu from photos
-
-## Features a superadmin switches on
-
-| Feature | What the restaurant gets |
+| Feature a superadmin switches on | What the restaurant gets |
 |---|---|
 | Photo Gallery | Stock food photos in Menu › Photo Gallery |
 | Meal Subscriptions | Meal plans, subscribers and the Plans page on the website |
@@ -66,53 +148,35 @@ RestroGrow gives every restaurant its own ordering website plus an admin dashboa
 | Menu from photos | Menu imported from photos of the printed menu |
 | Subscription / trial | Whether the site accepts orders |
 
-## What's new (October 2026)
+---
 
-| Feature | Details |
+## New-order alerts and push notifications
+
+| Situation | What happens |
 |---|---|
-| Rewards landing page | The counter QR opens a full rewards page: join, member card, levels, free dishes, invites, redeem. Accounts and orders matched by 10-digit phone; faster loyalty queries. |
-| Wallet | Top up with PhonePe (bonus on bigger top-ups), pay orders fully or partly, refund on cancel / reject, cashback on completion; wallet card and balance on the profile; owner page with stats and corrections. |
-| Scratch card | Card on the tracking page after checkout; owner sets prizes, chances, per-prize minimum next order and a monthly budget; private one-time reward codes. |
-| Loyalty Studio | Program type (cashback / points / stamps) earned on website, POS and table orders; personal one-time gift codes; Autopilot gifts with message templates kept for WhatsApp; challenges and streaks; spin wheel; paid VIP plans (PhonePe or wallet) with perks applied at checkout; Performance (revenue by source, return, members vs guests, what customers can still claim). Cron backstop: `main/cron/loyalty_autopilot.php`. |
-| Phone wallet card | Members add the rewards card to Apple Wallet (signed .pkpass, live updates through `website/wallet_card_service.php` and APNs) or Google Wallet (Save link, updates through the Wallet REST API). Balance, level and gifts update by themselves; the QR is the member's phone for the counter. Needs the Apple / Google credentials in `.env` (see `.env.example`). |
-| WhatsApp (Growth) | Gift codes from every part of the loyalty program go out on WhatsApp to opted-in customers (own RepeatGrow number with the owner's approved templates, or RestroGrow's number with one ready-made template); campaigns to audiences with a personal code each, scheduling, weekly limit per customer, quiet hours; message log with retry; revenue each message brought back. Opt-in at checkout, sign-up and the rewards page. Sends from the dashboard every minute and `main/cron/whatsapp_dispatch.php` (run every 5 minutes). Never sends from a local computer. |
-| Loyalty demo | `php main/database/seed_loyalty_demo.php [RESTAURANT_ID]` switches the whole system on for the demo restaurant (default RESSGI002): Autopilot, wheel and challenges, Spice Club plans, phone card, demo birthdays; WhatsApp and demo opt-ins only on a local computer. |
-| Complete your meal | Cart suggestions from the owner's picks and from real orders (often ordered together, missing drink / dessert / side), with an "unlocks the next offer" push. |
-| Today's Special | Several dishes per weekday, swipeable row with chef's note, plates left and countdown. |
-| Nutrition and ingredients | Calories, macros, health tags and "What's inside" on every dish. |
-| Profile page | 10 designs with options for avatar, corners, stats and colours; photo gallery section. |
-| Order tracking | Redesigned journey with live updates and rider card. |
-| Local development | OTP shown on screen locally (no WhatsApp), map picker falls back to OpenStreetMap without a Google key, wallet top-ups and VIP payments simulated without PhonePe test keys, WhatsApp messages prepared and logged but never sent. |
+| Dashboard open and in front | The order rings like a phone call and a popup shows customer, address, items and total with **Accept / Reject**. |
+| Dashboard in another tab or minimised | It keeps checking for orders; a system notification appears (“New order #1042 · ₹450 · Delivery · Priya”) and the tab title flashes. |
+| Browser closed or phone locked | A Web Push notification from the server (needs notifications allowed once on that device). Clicking it opens the dashboard on Online Orders. |
 
-## Project structure
+- **Turning it on:** the dashboard shows a **Turn on order alerts** bar until the owner clicks it once per device. Browsers only allow sound after a click, and notifications only after permission. Per device it can be switched off in **Settings › Account › Push notifications**.
+- **How push is sent:** `main/config/web_push.php` signs (VAPID, RFC 8292) and encrypts (aes128gcm, RFC 8291) with PHP's OpenSSL. No Composer or vendor folder is needed. `main/config/push_notification.php` sends to the owner, kitchen and waiters, and forgets subscriptions the browser has dropped.
+- **Keys:** `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in `.env` if you have them. Otherwise a key pair is generated on first use and kept in the `push_vapid` table.
+- **Requirements:** HTTPS (or localhost). On iPhone, notifications need the dashboard added to the Home Screen.
 
-```
-main/
-├── admin/          Admin login, auth, PWA manifest
-├── api/            JSON endpoints (orders, menu, payments, offers, wallet, scratch card…)
-├── assets/         CSS, JS (dashboard modules like wallet-admin.js), images, guide screenshots
-├── config/         DB, session, env, helpers per feature (wallet_helpers.php, growth_helpers.php…)
-├── controllers/    Business logic (menu, orders, staff, POS, KOT, growth)
-├── database/       SQL schemas, migrations, full_database_dump.sql
-├── delivery/       Rider page
-├── superadmin/     Multi-restaurant management
-├── views/          Dashboards (admin, manager, waiter, chef), user guide, layout gallery
-└── website/        Customer website (menu, cart, track, profile, loyalty) and its scripts (rg-*.js)
-```
+---
 
-New tables and columns create themselves on first use (each feature has an `ensure…` function), so no manual migration is needed after deploying.
+## Guides and documents
 
-## Tech stack
-
-| Layer | Technology |
+| Page | What it shows |
 |---|---|
-| Backend | PHP 8 (no framework), PDO |
-| Database | MySQL / MariaDB |
-| Frontend | Vanilla JavaScript, CSS |
-| Payments | PhonePe (OAuth v2), UPI QR |
-| Messaging | WhatsApp OTP and alerts, Web Push (VAPID), SMTP email |
-| Maps | Google Maps, Leaflet / OpenStreetMap |
-| Icons | Font Awesome, Material Symbols |
+| **[User guide](https://restrogrow.com/main/views/user-guide.html)** ([source](main/views/user-guide.html)) | Every feature with screenshots and steps, a **What's new** section and a quick-start checklist. Start here. |
+| [Website layout gallery](https://restrogrow.com/main/views/layout-gallery.html) | All customer-website designs side by side. |
+| [Table map preview](https://restrogrow.com/table-map-preview.html) | The live floor-plan view. |
+| [AGENTS.md](AGENTS.md) | Architecture, routing and conventions for developers. |
+| [Connect RepeatGrow](docs/REPEATGROW_CONNECT.md) | How RestroGrow and RepeatGrow link up, which errors are handled and how. |
+| [Project documentation](main/docs/PROJECT_DOCUMENTATION.html) | Technical overview of the codebase. |
+
+---
 
 ## Running it locally (XAMPP)
 
@@ -121,74 +185,112 @@ New tables and columns create themselves on first use (each feature has an `ensu
 git clone https://github.com/Restrogrow/restraunt_pos.git menuwebsite
 
 # 2. Create the database and import main/database/full_database_dump.sql
-#    (e.g. database "menuwebsite_db", user root, no password on XAMPP)
+#    (database "menuwebsite_db", user root, no password on XAMPP)
 
-# 3. PHP dependencies (Web Push)
-cd menuwebsite
-php composer.phar install
+# 3. Configuration: copy main/.env.example to main/.env and fill in what you need
 
-# 4. Configuration: copy main/.env.example to main/.env and fill in keys
-
-# 5. Open
+# 4. Open
 #    Customer site: http://localhost/menuwebsite/{restaurant-slug}
 #    Admin:         http://localhost/menuwebsite/main/admin/login.php
 ```
 
-On localhost, OTP codes are shown on screen, and PhonePe runs in sandbox / simulated mode.
+No Composer step is needed. On a local computer, by design:
+- OTP codes are shown on screen;
+- PhonePe runs in sandbox / simulated mode;
+- WhatsApp messages are prepared and logged but never sent, and RepeatGrow is only called if it runs on localhost;
+- the map falls back to OpenStreetMap without a Google key.
+
+Demo data for the loyalty features: `php main/database/seed_loyalty_demo.php [RESTAURANT_ID]` (default `RESSGI002`).
+
+---
+
+## Configuration (.env)
+
+The full list with comments is in [`main/.env.example`](main/.env.example). The ones that matter most:
+
+| Variable | Needed for |
+|---|---|
+| `DB_*` | Database (Hostinger is detected automatically) |
+| `PHONEPE_*` | Online payments, wallet top-ups, VIP plans |
+| `REPEATGROW_CONNECT_URL`, `REPEATGROW_CLIENT_ID`, `REPEATGROW_CLIENT_SECRET` | The **Connect RepeatGrow** button (WhatsApp) |
+| `WA_KEY_SECRET` | Encrypts each restaurant's RepeatGrow key. Make one with `php -r "echo base64_encode(random_bytes(32));"` and never change it. |
+| `REPEATGROW_API_URL`, `REPEATGROW_API_KEY`, `REPEATGROW_GIFT_TEMPLATE` | WhatsApp OTP and RestroGrow's shared number |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional: push keys (generated automatically if missing) |
+| `CRON_SECRET_KEY` | Running cron jobs by URL |
+| Apple / Google Wallet keys | The phone wallet card |
+
+---
 
 ## Deploying
 
-Pushing to `main` deploys to restrogrow.com automatically. The code detects the Hostinger server and connects through the local MySQL socket.
+Pushing to `main` deploys to restrogrow.com automatically. The code detects the Hostinger server and connects through the local MySQL socket. New tables and columns create themselves on first use (each feature has an `ensure…` function), so no manual migration is needed.
 
 ### Cron jobs (Hostinger)
 
-Timers on the server that run a file by themselves. Without them, WhatsApp messages and phone-card updates only go out while someone has the dashboard open.
-
-1. hPanel › **Advanced › Cron Jobs**.
-2. Find your home folder: hPanel › **Files › File Manager** shows it at the top, e.g. `/home/u123456789/domains/restrogrow.com/public_html`. Below, `<HOME>` means that path.
-3. Add each job: type **Custom**, paste the command, pick the timing, **Save**.
+hPanel › **Advanced › Cron Jobs** › type **Custom**. `<HOME>` is the folder shown at the top of hPanel › Files › File Manager, e.g. `/home/u123456789/domains/restrogrow.com/public_html`.
 
 | What it does | Command | When |
 |---|---|---|
-| WhatsApp messages, birthday / win-back gifts, phone-card updates | `/usr/bin/php <HOME>/main/cron/whatsapp_dispatch.php` | Every 5 minutes (`*/5 * * * *`) |
-| Birthday / win-back gifts for restaurants without WhatsApp | `/usr/bin/php <HOME>/main/cron/loyalty_autopilot.php` | Once a day, e.g. 9 am (`0 9 * * *`) |
-| Scheduled website orders | `/usr/bin/php <HOME>/main/cron/activate_scheduled_orders.php` | Every 5 minutes (`*/5 * * * *`) |
-| Meal-subscription deliveries | `/usr/bin/php <HOME>/main/cron/generate_subscription_deliveries.php` | Once a day, e.g. 5 am (`0 5 * * *`) |
+| WhatsApp messages, template reviews, birthday / win-back gifts, phone-card updates | `/usr/bin/php <HOME>/main/cron/whatsapp_dispatch.php` | Every 5 minutes (`*/5 * * * *`) |
+| Gifts for restaurants without WhatsApp | `/usr/bin/php <HOME>/main/cron/loyalty_autopilot.php` | Daily, e.g. 9 am (`0 9 * * *`) |
+| Scheduled website orders | `/usr/bin/php <HOME>/main/cron/activate_scheduled_orders.php` | Every 5 minutes |
+| Meal-subscription deliveries | `/usr/bin/php <HOME>/main/cron/generate_subscription_deliveries.php` | Daily, e.g. 5 am (`0 5 * * *`) |
 
-Each run writes one line (e.g. "Checked 3 restaurant(s): 12 sent, 0 failed"); hPanel shows it under the job's output. They can also run as a URL (`https://restrogrow.com/main/cron/whatsapp_dispatch.php?key=…`) once `CRON_SECRET_KEY` is set in `.env`.
+Each run writes one line, which hPanel shows under the job's output. They can also run as a URL (`…/whatsapp_dispatch.php?key=…`) once `CRON_SECRET_KEY` is set.
 
 ### WhatsApp templates (RepeatGrow)
 
-WhatsApp messages go through **RepeatGrow** ([repeatgrow.com](https://repeatgrow.com)), our WhatsApp CRM (separate project, `Desktop/Repeat grow/wacrm`). With **Connect RepeatGrow** (Growth › WhatsApp) the owner logs in to RepeatGrow and clicks Allow; RestroGrow then creates every template below for them and follows Meta's review, so nothing has to be copied. Contract: [docs/REPEATGROW_CONNECT.md](docs/REPEATGROW_CONNECT.md). Without it, templates are created by hand as described here.
+WhatsApp messages go through **RepeatGrow** ([repeatgrow.com](https://repeatgrow.com)).
+- **With Connect RepeatGrow** (Growth › WhatsApp): the owner logs in to RepeatGrow and clicks Allow. RestroGrow then creates every template and follows Meta's review by itself. Contract: [docs/REPEATGROW_CONNECT.md](docs/REPEATGROW_CONNECT.md).
+- **Without it:** templates are created by hand in RepeatGrow › Templates (category Marketing, language English), one per message in use. These are Welcome gift, Birthday, Anniversary, We miss you, Level up, Order milestone, Referral gift, Full stamp card, Challenge done, Weekly streak and Member welcome gift, plus one per campaign wording. Growth › WhatsApp shows each template's exact name and text with a Copy button.
+- **On RestroGrow's shared number:** restaurants need none of these, because one ready-made template (`REPEATGROW_GIFT_TEMPLATE`) covers them.
 
-Meta only lets a business start a WhatsApp chat with an **approved template**. A restaurant using its own number creates one template per message it uses, in RepeatGrow › Templates (category **Marketing**, language **English**). Growth › WhatsApp shows each one's exact name and text with a Copy button; `{{1}}`, `{{2}}`… are filled in for each customer (name, gift, code, last day…).
+---
 
-| # | Message | Needed when |
-|---|---|---|
-| 1 | Welcome gift | Autopilot › Welcome gift is on |
-| 2 | Birthday treat | Autopilot › Birthday is on |
-| 3 | Anniversary | Autopilot › Anniversary is on |
-| 4 | We miss you | Autopilot › We miss you is on |
-| 5 | Level up | Autopilot › Level up is on |
-| 6 | Order milestone | Autopilot › Milestone is on |
-| 7 | Referral gift | Autopilot › Referral gift is on (cashback / stamp programs) |
-| 8 | Full stamp card | Program is a stamp card |
-| 9 | Challenge done | A challenge is live (Games) |
-| 10 | Weekly streak | A streak challenge is live (Games) |
-| 11 | Member welcome gift | A VIP plan has a welcome gift |
-| + | One per campaign wording | Each new campaign text; reuse a template for campaigns with the same text |
+## Project structure
 
-Restaurants on RestroGrow's number need none of these: they all use one ready-made template (`REPEATGROW_GIFT_TEMPLATE`, text in `.env.example`), created once by the RestroGrow team.
+```
+main/
+├── admin/          Login, auth, admin service worker, catering page
+├── api/            JSON endpoints (orders, menu, payments, offers, wallet, dashboard_home, offers_studio…)
+├── assets/
+│   ├── css/        style.css, studio-ui.css (the shared look of the redesigned screens)
+│   ├── js/         script.js plus one file per redesigned screen: dashboard-home, order-alerts,
+│   │               offers-studio, settings-studio, tables-studio, areas-studio, custom-domain-studio,
+│   │               loyalty-studio-*, whatsapp-admin…
+│   └── guide/      Screenshots used by the user guide and this README
+├── config/         DB, session, env and one helper per feature (web_push.php, whatsapp_engine.php,
+│                   repeatgrow_connect.php, loyalty_engine.php…)
+├── controllers/    Business logic (menu, orders, staff, POS, KOT, coupons)
+├── cron/           Timed jobs (WhatsApp, loyalty, scheduled orders, subscriptions)
+├── database/       SQL schemas, migrations, demo seeds, full_database_dump.sql
+├── delivery/       Rider page
+├── superadmin/     Multi-restaurant management
+├── views/          Dashboards (admin, manager, waiter, chef), user guide, layout gallery
+└── website/        Customer website (menu, cart, track, profile, loyalty, policy pages) and its service worker
+docs/               RepeatGrow contract, audits, README screenshots
+```
+
+### Tech stack
+
+| Layer | Technology |
+|---|---|
+| Backend | PHP 8 (no framework, no Composer dependencies), PDO |
+| Database | MySQL / MariaDB |
+| Frontend | Vanilla JavaScript and CSS; Material Symbols icons |
+| Payments | PhonePe (OAuth v2), UPI QR |
+| Messaging | WhatsApp through RepeatGrow, Web Push (VAPID + aes128gcm with OpenSSL), SMTP email |
+| Maps | Google Maps, Leaflet / OpenStreetMap |
+
+---
 
 ## Roadmap
 
-Done recently: inventory, table map, customer accounts, loyalty landing page, wallet, scratch card, cart upsell, Today's Special, nutrition.
-
-Next ideas:
+Ideas for next:
 - Birthday and welcome bonus points; WhatsApp points-balance messages
 - Time-of-day suggestions in Complete your meal
 - Group cart ("unlock the table") and a fill-the-thali milestone bar
-- Visual reports with PDF / Excel export
+- Reports with PDF / Excel export
 - Multi-language customer website
 - Automated backups
 
@@ -196,9 +298,8 @@ Next ideas:
 
 | Area | Detail |
 |---|---|
-| Hosting | Shared-hosting MySQL connection limits (~150–200 at once) |
+| Hosting | Shared-hosting MySQL connection limits (~150–200 at once); a VPS is recommended beyond about 10 busy restaurants |
 | Email | SMTP sending limits on shared hosting |
-| Push | Needs HTTPS for the service worker |
-| Scale | A VPS is recommended beyond about 10 busy restaurants |
+| Push | Needs HTTPS; on iPhone the dashboard must be added to the Home Screen; a browser that is fully closed on a computer only gets the notification when it opens again |
 
 This is a private project. For feature requests or bug reports, contact the maintainer.
