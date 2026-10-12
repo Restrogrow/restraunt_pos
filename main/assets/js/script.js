@@ -4563,6 +4563,8 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Load tables
   async function loadTables() {
+    // Tables › Tables is drawn by tables-studio.js now
+    if (typeof window.loadTablesStudio === 'function' && !document.getElementById("tableList")) { window.loadTablesStudio(); return; }
     const tableList = document.getElementById("tableList");
     tableList.innerHTML = '<div class="loading">Loading tables...</div>';
 
@@ -4815,7 +4817,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </head>
         <body>
           <div class="print-container">
-            <div class="qr-logo">🍽️</div>
+            <div class="qr-logo"><span class="material-symbols-rounded">restaurant</span></div>
             ${restaurantName ? `<div class="qr-restaurant-name">${escapeHtml(restaurantName)}</div>` : ''}
             <h1 class="qr-title">Table ${tableName}</h1>
             <div class="qr-image">
@@ -9712,7 +9714,7 @@ window.logout = logout;
     return `
       <div class="delivery-map-block" style="margin-top:8px;padding:10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          <span style="font-size:0.85rem;color:#0369a1;">🗺️ ${distanceLabel}</span>
+          <span style="font-size:0.85rem;color:#0369a1;display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-rounded" style="font-size:16px;">route</span>${distanceLabel}</span>
           <a href="${directionsUrl}" target="_blank" rel="noopener" style="background:#0ea5e9;color:white;border:none;padding:4px 10px;font-size:0.8rem;text-decoration:none;border-radius:6px;white-space:nowrap;">Open Route in Google Maps</a>
         </div>
         ${embedHtml}
@@ -16423,7 +16425,7 @@ window.showTableMapDetail = function(tableId) {
         + '<div style="background:#f9fafb;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;">' + table.capacity + '</div><div style="font-size:11px;color:#6b7280;margin-top:2px;">Seats</div></div>'
         + '</div>'
         + (table.customer_name ? '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:12px;text-align:center;font-size:13px;"><strong>Customer:</strong> ' + escapeHtml(table.customer_name) + '</div>' : '')
-        + (table.order_timer ? '<div style="background:#fee2e2;border:1px solid #fecaca;border-radius:8px;padding:10px;margin-bottom:12px;text-align:center;font-size:13px;color:#b91c1c;"><strong>⏱ Active for:</strong> ' + escapeHtml(table.order_timer) + '</div>' : '')
+        + (table.order_timer ? '<div style="background:#fee2e2;border:1px solid #fecaca;border-radius:8px;padding:10px;margin-bottom:12px;text-align:center;font-size:13px;color:#b91c1c;"><strong>Busy for:</strong> ' + escapeHtml(table.order_timer) + '</div>' : '')
         + '</div>',
       showCancelButton: table.status === 'free',
       confirmButtonText: table.status === 'free' ? '<span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">add_shopping_cart</span> Start Order' : 'OK',
@@ -16456,105 +16458,74 @@ window.showTableMapDetail = function(tableId) {
 
 // Cache table data for popup use
 window._tableMapData = null;
-window.renderTableMap = async function() {
+window.renderTableMap = async function(force) {
+  // Tables › Table map: each area as a floor (its own icon and colour), tables drawn by
+  // size (round for 2, square for 4, long for 6+) with chairs, live status, how long a
+  // table has been busy, and reserved guests. Refreshes every 15 s while the page is open.
   var container = document.getElementById('tableMapContainer');
   if (!container) return;
-  
-  container.innerHTML = '<div class="loading" style="color:#94a3b8;text-align:center;padding:60px 20px;"><div style="font-size:40px;margin-bottom:16px;">🗺️</div><div style="font-size:18px;font-weight:600;margin-bottom:8px;">Loading Table Map...</div></div>';
-  
+  var SXh = window.SX || { esc: escapeHtml, look: function (a, i) { return { icon: 'table_restaurant', color: '#7c3aed' }; } };
+  if (!container.children.length || force === true) container.innerHTML = '<div class="sx-loading"><span></span><span></span><span></span></div>';
+  if (window._tableMapTimer) clearTimeout(window._tableMapTimer);
   try {
-    var res = await fetch('../api/get_table_status.php');
+    var res = await fetch('../api/get_table_status.php', { cache: 'no-store' });
     var data = await res.json();
     if (!data.success || !data.data) {
-      container.innerHTML = '<div class="empty-state" style="color:#94a3b8;padding:40px;"><span class="material-symbols-rounded" style="font-size:48px;display:block;margin-bottom:12px;">error</span><h3>Failed to load table data</h3></div>';
+      container.innerHTML = '<div class="sx-empty"><span class="material-symbols-rounded">error</span><b>Could not load the table map</b><span>Please try again.</span></div>';
       return;
     }
-    
-    // Cache the data for the detail popup
     window._tableMapData = data.data;
-    
-    var tables = data.data;
-    var areas = data.areas || [];
-    
-    if (tables.length === 0) {
-      container.innerHTML = '<div class="empty-state" style="color:#94a3b8;padding:60px;"><span class="material-symbols-rounded" style="font-size:48px;display:block;margin-bottom:12px;">table_restaurant</span><h3>No tables found</h3><p style="margin-top:8px;">Add tables in the Tables section first.</p></div>';
+    var tables = data.data, areas = (data.areas || []).slice();
+    if (!tables.length) {
+      container.innerHTML = '<div class="sx-empty"><span class="material-symbols-rounded">table_restaurant</span><b>No tables yet</b><span>Add areas and tables first, then your floor shows here.</span>' +
+        '<button type="button" class="btn btn-primary" onclick="document.querySelector(\'[data-page=areaPage]\').click()">Open Areas</button></div>';
       return;
     }
-    
-    // Count stats
-    var free = 0, occupied = 0, reserved = 0;
-    tables.forEach(function(t) {
-      if (t.status === 'free') free++;
-      else if (t.status === 'occupied') occupied++;
-      else if (t.status === 'reserved') reserved++;
-    });
-    
-    // Update stats in header if they exist
-    var els = document.querySelectorAll('.table-map-stat');
-    // Simple inline stats at top of the map
-    var statsHtml = '<div style="display:flex;gap:16px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #334155;">';
-    statsHtml += '<span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#94a3b8;"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span> Free: <strong style="color:#e2e8f0;">' + free + '</strong></span>';
-    statsHtml += '<span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#94a3b8;"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span> Occupied: <strong style="color:#e2e8f0;">' + occupied + '</strong></span>';
-    statsHtml += '<span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#94a3b8;"><span style="width:10px;height:10px;border-radius:50%;background:#eab308;display:inline-block;"></span> Reserved: <strong style="color:#e2e8f0;">' + reserved + '</strong></span>';
-    statsHtml += '<span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#94a3b8;margin-left:auto;">Total: <strong style="color:#e2e8f0;">' + tables.length + '</strong></span>';
-    statsHtml += '</div>';
-    
-    var floorHtml = '';
-    
-    // Build floor plan by area
-    areas.forEach(function(area) {
-      var areaTables = tables.filter(function(t) { return parseInt(t.area_id) === parseInt(area.id); });
-      if (areaTables.length === 0) return;
-      
-      floorHtml += '<div class="area-section" style="margin-bottom:28px;">';
-      floorHtml += '<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #334155;display:flex;align-items:center;gap:8px;">';
-      var areaIcons = ['table_restaurant','meeting_room','outdoor_garden','star','deck','balcony','room'];
-      var areaIcon = areaIcons[(area.id - 1) % areaIcons.length];
-      floorHtml += '<span class="material-symbols-rounded" style="font-size:16px;">' + areaIcon + '</span>';
-      floorHtml += escapeHtml(area.area_name);
-      floorHtml += '<span style="font-weight:400;color:#475569;font-size:11px;margin-left:4px;">(' + areaTables.length + ' tables)</span>';
-      floorHtml += '</div>';
-      floorHtml += '<div style="display:flex;flex-wrap:wrap;gap:16px;padding:4px;">';
-      
-      areaTables.forEach(function(table) {
-        var st = table.status;
-        var bg, border, shadow, bBg, bText;
-        if (st === 'free') { bg = 'linear-gradient(145deg,#052e16,#064e3b)'; border = '#22c55e'; shadow = 'rgba(34,197,94,0.2)'; bBg = '#22c55e'; bText = '#052e16'; }
-        else if (st === 'occupied') { bg = 'linear-gradient(145deg,#450a0a,#7f1d1d)'; border = '#ef4444'; shadow = 'rgba(239,68,68,0.2)'; bBg = '#ef4444'; bText = '#fff'; }
-        else { bg = 'linear-gradient(145deg,#422006,#713f12)'; border = '#eab308'; shadow = 'rgba(234,179,8,0.2)'; bBg = '#eab308'; bText = '#422006'; }
-        
-        floorHtml += '<div onclick="showTableMapDetail(' + table.id + ')" style="position:relative;width:110px;height:110px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;border:2px solid ' + border + ';background:' + bg + ';box-shadow:0 4px 12px ' + shadow + ';"';
-        floorHtml += ' onmouseover="this.style.transform=\'translateY(-4px) scale(1.04)\';this.style.boxShadow=\'0 8px 24px ' + shadow.replace('0.2','0.35') + '\'"';
-        floorHtml += ' onmouseout="this.style.transform=\'\';this.style.boxShadow=\'0 4px 12px ' + shadow + '\'">';
-        floorHtml += '<div style="position:absolute;top:-6px;right:-6px;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;background:' + bBg + ';color:' + bText + ';">' + st + '</div>';
-        floorHtml += '<div style="font-size:26px;font-weight:800;color:#f1f5f9;line-height:1;margin-bottom:2px;">' + escapeHtml(table.table_number) + '</div>';
-        floorHtml += '<div style="font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:4px;"><span class="material-symbols-rounded" style="font-size:13px;">group</span>' + table.capacity + '</div>';
-        if (table.customer_name) {
-          floorHtml += '<div style="font-size:9px;color:#94a3b8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">' + escapeHtml(table.customer_name) + '</div>';
-        }
-        if (table.order_timer) {
-          floorHtml += '<div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);background:#0f172a;border:1px solid #334155;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;color:#fbbf24;white-space:nowrap">⏱ ' + escapeHtml(table.order_timer) + '</div>';
-        }
-        floorHtml += '</div>';
-      });
-      
-      floorHtml += '</div></div>';
-    });
-    
-    container.innerHTML = statsHtml + floorHtml;
-    
+    var known = {};
+    areas.forEach(function (a) { known[a.id] = 1; });
+    if (tables.some(function (t) { return !known[t.area_id]; })) areas.push({ id: -1, area_name: 'No area' });
+    var chairs = function (cap, shape) {
+      var n = Math.min(cap, 8), out = '';
+      for (var i = 0; i < n; i++) {
+        var st;
+        if (shape === 's2') { var ang = (i / n) * 2 * Math.PI - Math.PI / 2; st = 'left:calc(50% + ' + (Math.cos(ang) * 50).toFixed(1) + '% - 7px);top:calc(50% + ' + (Math.sin(ang) * 50).toFixed(1) + '% - 3.5px);transform:rotate(' + (ang * 180 / Math.PI + 90).toFixed(0) + 'deg)'; }
+        else { var half = Math.ceil(n / 2), top = i < half, k = top ? i : i - half, cnt = top ? half : n - half; st = 'left:calc(' + ((k + 1) * 100 / (cnt + 1)).toFixed(1) + '% - 7px);' + (top ? 'top:0' : 'bottom:0'); }
+        out += '<i style="' + st + '"></i>';
+      }
+      return '<span class="tm-chairs">' + out + '</span>';
+    };
+    var html = areas.map(function (area, ai) {
+      var list = tables.filter(function (t) { return area.id === -1 ? !known[t.area_id] : parseInt(t.area_id, 10) === parseInt(area.id, 10); });
+      if (!list.length) return '';
+      var L = SXh.look({ name: area.area_name, icon: area.icon, color: area.color }, ai);
+      var busy = list.filter(function (t) { return t.status === 'occupied'; }).length, free = list.filter(function (t) { return t.status === 'free'; }).length;
+      return '<section class="tm-area" style="--c:' + L.color + ';animation-delay:' + (ai * 60) + 'ms"><div class="tm-area-h"><span class="sx-ic material-symbols-rounded">' + L.icon + '</span><b>' + SXh.esc(area.area_name) + '</b>' +
+        '<small>' + list.length + ' table' + (list.length > 1 ? 's' : '') + ' · ' + busy + ' busy · ' + free + ' free</small></div><div class="tm-floor">' +
+        list.map(function (t) {
+          var cap = parseInt(t.capacity, 10) || 4, shape = cap <= 2 ? 's2' : cap <= 4 ? 's4' : cap <= 6 ? 's6' : 's8';
+          var st = t.status === 'free' && t.is_available === false ? 'off' : t.status;
+          var hours = /(\d+)h/.exec(t.order_timer || ''), stale = st === 'occupied' && hours && +hours[1] >= 6;
+          var label = 'Table ' + t.table_number + ', ' + cap + ' seats, ' + (st === 'occupied' ? 'busy ' + (t.order_timer || '') : st === 'reserved' ? 'reserved' + (t.customer_name ? ' for ' + t.customer_name : '') : st === 'off' ? 'switched off' : 'free');
+          return '<button type="button" class="tm-t ' + shape + ' ' + st + (stale ? ' stale' : '') + '" onclick="showTableMapDetail(' + t.id + ')" title="' + SXh.esc(label) + (stale ? '. Open for over 6 hours: close its old kitchen ticket.' : '') + '" aria-label="' + SXh.esc(label) + '">' +
+            chairs(cap, shape) + (st === 'occupied' ? '<span class="tm-dot"></span>' : '') +
+            '<b>' + SXh.esc(t.table_number) + '</b><small><span class="material-symbols-rounded">person</span>' + cap + '</small>' +
+            (st === 'occupied' && t.order_timer ? '<span class="tm-badge"><span class="material-symbols-rounded">schedule</span>' + SXh.esc(t.order_timer) + '</span>'
+              : st === 'reserved' && t.customer_name ? '<span class="tm-badge"><span class="material-symbols-rounded">event</span>' + SXh.esc(String(t.customer_name).split(' ')[0]) + '</span>' : '') +
+          '</button>';
+        }).join('') + '</div></section>';
+    }).join('');
+    container.innerHTML = html;
+    var up = document.getElementById('tmUpdated');
+    if (up) up.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   } catch (e) {
     console.error('Table map error', e);
-    container.innerHTML = '<div class="empty-state" style="color:#94a3b8;padding:40px;"><span class="material-symbols-rounded" style="font-size:48px;display:block;margin-bottom:12px;">error</span><h3>Error loading table map</h3><p style="margin-top:8px;">' + escapeHtml(e.message || 'Please try again') + '</p></div>';
+    if (!container.querySelector('.tm-area')) container.innerHTML = '<div class="sx-empty"><span class="material-symbols-rounded">wifi_off</span><b>Could not load the table map</b><span>' + escapeHtml(e.message || 'Please try again') + '</span></div>';
   }
-  
-  // Auto-refresh every 10 seconds while this view is active
-  if (window._tableMapTimer) clearTimeout(window._tableMapTimer);
-  window._tableMapTimer = setTimeout(function() {
-    if (document.getElementById('tableMapContainer')) {
-      renderTableMap();
-    }
-  }, 10000);
+  // refresh while the Table map is the open page (and the tab is visible)
+  window._tableMapTimer = setTimeout(function tick() {
+    var pg = document.getElementById('tableMapPage');
+    if (pg && pg.classList.contains('active') && !document.hidden) renderTableMap(); else window._tableMapTimer = setTimeout(tick, 15000);
+  }, 15000);
 };
 
 })();

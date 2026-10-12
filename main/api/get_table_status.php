@@ -141,7 +141,7 @@ try {
     }
 
     // Also return areas list
-    $areaStmt = $conn->prepare("SELECT id, area_name FROM areas WHERE restaurant_id = ? ORDER BY sort_order ASC, id ASC");
+    $areaStmt = $conn->prepare("SELECT * FROM areas WHERE restaurant_id = ? ORDER BY sort_order ASC, id ASC");   // * : icon and color too, when the Areas page has added them
     $areaStmt->execute([$restaurant_id]);
     $areas = $areaStmt->fetchAll(PDO::FETCH_ASSOC);
 

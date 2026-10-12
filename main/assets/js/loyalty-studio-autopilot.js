@@ -41,7 +41,9 @@
   function preview(a) {
     var rest = window.restaurantName || (document.querySelector('.restaurant-name') || {}).textContent || 'your restaurant';
     return esc(a.message).replace(/\{name\}/g, '<b>Priya</b>').replace(/\{reward\}/g, '<b>' + esc(rewardText(a)) + '</b>').replace(/\{code\}/g, '<b>GIFT7K2Q9M</b>')
-      .replace(/\{restaurant\}/g, esc(String(rest).trim())).replace(/\{tier\}/g, '<b>Gold</b>').replace(/\{count\}/g, '<b>' + (a.param || 10) + '</b>');
+      .replace(/\{restaurant\}/g, esc(String(rest).trim())).replace(/\{tier\}/g, '<b>Gold</b>').replace(/\{count\}/g, '<b>' + (a.param || 10) + '</b>')
+      .replace(/\{valid_till\}/g, '<b>' + new Date(Date.now() + (+a.valid_days || 30) * 864e5).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + '</b>')
+      .replace(/\{min_order\}/g, '<b>' + (a.min_order > 0 ? money(a.min_order) : 'any order') + '</b>').replace(/\{link\}/g, '<b>restrogrow.com/…/loyalty</b>');
   }
 
   function card(type) {

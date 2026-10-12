@@ -336,6 +336,7 @@ try {
   
   <!-- Critical CSS -->
   <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo time(); ?>">
+  <link rel="stylesheet" href="../assets/css/studio-ui.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/studio-ui.css'); ?>">
   <!-- Font Awesome: the bottom-bar icon style previews in Website Appearance (loaded without blocking the page) -->
   <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css" media="print" onload="this.media='all'">
   
@@ -2829,7 +2830,7 @@ try {
       }
     </script>
     <!-- How to use: the user guide, opened at the screen the owner came from -->
-    <div id="howToPage" class="page">
+    <div id="howToPage" class="page sx">
       <style>
         .howto-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
         .howto-bar p { margin: 0; color: #6b7280; font-size: .88rem; }
@@ -4001,7 +4002,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- ═══════ Growth Module: Loyalty Settings ═══════ -->
-    <div id="growthSettingsPage" class="page">
+    <div id="growthSettingsPage" class="page sx">
       <style>
         .ls-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 16px; padding: 5px; border-radius: 14px; background: #f3f4f6; scrollbar-width: none; }
         .ls-tab { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 9px 14px; border: 0; border-radius: 10px; background: none; color: #4b5563; font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; }
@@ -4541,7 +4542,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- ═══════ Growth Module: Referrals ═══════ -->
-    <div id="whatsappPage" class="page">
+    <div id="whatsappPage" class="page sx">
       <style>
         #whatsappPage .ls-grid input, #whatsappPage .ls-grid select, #whatsappPage textarea { padding: 9px 11px; border: 1.5px solid #e5e7eb; border-radius: 10px; font: inherit; font-size: .9rem; color: #111827; background: #fff; }
         #whatsappPage textarea { width: 100%; resize: vertical; min-height: 92px; box-sizing: border-box; }
@@ -6322,7 +6323,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Area Management Page -->
-    <div id="areaPage" class="page">
+    <div id="areaPage" class="page sx">
       <style>
         #areaPage .ar-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 20px; margin-bottom: 16px; border-radius: 20px; color: #fff; background: radial-gradient(90% 140% at 100% 0%, #7c3aed, transparent 55%), radial-gradient(60% 120% at 0% 100%, #0ea5e9, transparent 60%), #111827; box-shadow: 0 18px 40px -26px rgba(17,24,39,.9); }
         .ar-hero-l { flex: 1; min-width: 220px; }
@@ -6439,24 +6440,12 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Tables Management Page -->
-    <div id="tablesPage" class="page">
+    <div id="tablesPage" class="page sx">
       <div class="page-header">
-        <h1>Tables Management</h1>
-        <p>Create, edit, and manage your restaurant tables</p>
+        <h1>Tables</h1>
+        <p>Every table with its live status. Edit, switch off, print QR codes, or change many at once.</p>
       </div>
-      <div class="page-content">
-        <div class="menu-actions">
-          <button class="btn btn-primary" id="addTableBtn">
-            <span class="material-symbols-rounded">add</span>
-            Add New Table
-          </button>
-        </div>
-        
-        <div class="menu-list" id="tableList">
-          <!-- Tables will be loaded here dynamically -->
-          <div class="loading">Loading tables...</div>
-        </div>
-      </div>
+      <div class="page-content"><div id="tablesRoot"></div></div>
     </div>
 
     <!-- QR Codes Page -->
@@ -6543,39 +6532,18 @@ function toggleGatewayMode() {
     <?php endif; ?>
 
     <!-- Table Map Page -->
-    <div id="tableMapPage" class="page">
+    <div id="tableMapPage" class="page sx">
       <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-          <div>
-            <h1 style="display:flex;align-items:center;gap:8px;">
-              <span class="material-symbols-rounded" style="font-size:28px;color:#3b82f6;">map</span>
-              Table Map
-            </h1>
-            <p>Visual floor plan of all tables with live status.</p>
-          </div>
-          <div style="display:flex;gap:12px;align-items:center;">
-            <div style="display:flex;gap:10px;font-size:13px;">
-              <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span> Free</span>
-              <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span> Occupied</span>
-              <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#eab308;display:inline-block;"></span> Reserved</span>
-            </div>
-            <button class="btn btn-secondary" onclick="renderTableMap()" style="padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px;">
-              <span class="material-symbols-rounded" style="font-size:16px;">refresh</span> Refresh
-            </button>
-          </div>
-        </div>
+        <h1>Table map</h1>
+        <p>Your floor live: who is seated, for how long, and what is reserved. Tap a table for details.</p>
       </div>
       <div class="page-content">
-        <div id="tableMapContainer" style="background:#0f172a;border-radius:16px;border:1px solid #334155;padding:24px;min-height:500px;">
-          <div class="loading" style="color:#94a3b8;text-align:center;padding:60px 20px;">
-            <div style="font-size:40px;margin-bottom:16px;">🗺️</div>
-            <div style="font-size:18px;font-weight:600;margin-bottom:8px;">Loading Table Map...</div>
-            <div style="font-size:13px;color:#64748b;">Fetching table data and live status</div>
-          </div>
-        </div>
+        <div class="tm-head"><div class="tm-legend"><span class="f">Free</span><span class="o">Busy</span><span class="r">Reserved</span><span class="x">Switched off</span></div>
+          <div style="display:flex;align-items:center;gap:10px"><span class="tm-updated" id="tmUpdated"></span><button type="button" class="btn btn-secondary btn-sm" onclick="renderTableMap(true)"><span class="material-symbols-rounded">refresh</span> Refresh</button></div></div>
+        <div id="tableMapContainer" class="tm-wrap" style="margin-top:14px"></div>
       </div>
     </div>
-    
+
     <!-- Reservations Management Page -->
     <div id="reservationsPage" class="page">
       <div class="page-header">
@@ -7953,7 +7921,9 @@ function toggleGatewayMode() {
   <script src="../assets/js/loyalty-studio-card.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-card.js'); ?>" defer></script>
   <script src="../assets/js/loyalty-studio-performance.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-performance.js'); ?>" defer></script>
   <script src="../assets/js/whatsapp-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/whatsapp-admin.js'); ?>" defer></script>
+  <script src="../assets/js/studio-ui.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/studio-ui.js'); ?>" defer></script>
   <script src="../assets/js/areas-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/areas-studio.js'); ?>" defer></script>
+  <script src="../assets/js/tables-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/tables-studio.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>
