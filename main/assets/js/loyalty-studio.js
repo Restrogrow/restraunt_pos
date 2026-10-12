@@ -9,7 +9,7 @@
   'use strict';
 
   var API = '../api/loyalty_admin.php';
-  var TABS = [['program', 'Program', 'workspace_premium'], ['autopilot', 'Autopilot', 'auto_mode'], ['games', 'Games', 'sports_esports'], ['vip', 'VIP membership', 'diamond'], ['performance', 'Performance', 'insights']];
+  var TABS = [['program', 'Program', 'workspace_premium'], ['autopilot', 'Autopilot', 'auto_mode'], ['games', 'Games', 'sports_esports'], ['vip', 'VIP membership', 'diamond'], ['card', 'Phone card', 'wallet'], ['performance', 'Performance', 'insights']];
   var tab = 'program', P = null, D = {};
 
   function $(id) { return document.getElementById(id); }

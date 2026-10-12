@@ -29,6 +29,7 @@ require_once __DIR__ . '/../config/growth_helpers.php';
 require_once __DIR__ . '/../config/order_abuse_guard.php';
 require_once __DIR__ . '/customer_session.php';
 require_once __DIR__ . '/../config/loyalty_autopilot.php';
+require_once __DIR__ . '/../config/wallet_card.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -139,6 +140,7 @@ try {
 
     ensureGrowthSchema($conn);
     ensureLoyaltyAutopilotSchema($conn);
+    ensureWalletCardSchema($conn);
 
     switch ($action) {
         case 'page':
@@ -167,6 +169,11 @@ try {
                 'referral_gift' => loyaltyProgramType($settings) !== 'points' && $autos['referral']['enabled'] ? loyaltyAutoRewardLabel($conn, $restaurantId, $autos['referral']) : null,
                 'birthday_gift' => $autos['birthday']['enabled'] ? loyaltyAutoRewardLabel($conn, $restaurantId, $autos['birthday']) : null,
                 'challenges' => [],
+                // "Add to Apple / Google Wallet" (Loyalty Studio › Phone card)
+                'wallet_card' => (function () use ($conn, $restaurantId) {
+                    $cs = walletCardSettings($conn, $restaurantId);
+                    return $cs['enabled'] ? walletCardPlatforms() : ['apple' => false, 'google' => false];
+                })(),
                 'tiers' => $tiers,
                 'rewards' => $settings['loyalty_enabled'] ? loyaltyRewardsWithDish($conn, $restaurantId) : [],
             ];

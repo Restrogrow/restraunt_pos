@@ -11,6 +11,8 @@
  * POST JSON { section: 'games', action: 'style' | 'save' | 'toggle' | 'delete', ... }
  * GET  ?section=vip       — the club, plans with their members and revenue, latest members
  * POST JSON { section: 'vip', action: 'settings' | 'save' | 'toggle' | 'delete', ... }
+ * GET  ?section=card      — the phone wallet card: switch, colours, which wallets are ready, cards added
+ * POST JSON { section: 'card', enabled, color, text_color }
  * GET  ?section=performance&days=30|90|365 — what loyalty brings in: revenue from gift codes by
  *                          source, members vs guests, repeat rate, weekly trend, what is owed
  * Always scoped to the session's restaurant.
@@ -22,6 +24,7 @@ require_once __DIR__ . '/../config/authorization_config.php';
 require_once __DIR__ . '/../config/loyalty_autopilot.php';
 require_once __DIR__ . '/../config/vip_membership.php';
 require_once __DIR__ . '/../config/wallet_helpers.php';
+require_once __DIR__ . '/../config/wallet_card.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
@@ -46,6 +49,7 @@ try {
     ensureLoyaltyAutopilotSchema($conn);
     ensureVipSchema($conn);
     ensureWalletTables($conn);   // orders.wallet_paid, used by Performance
+    ensureWalletCardSchema($conn);
     $cur = (string)($conn->query('SELECT currency_symbol FROM users WHERE restaurant_id = ' . $conn->quote($rid) . ' LIMIT 1')->fetchColumn() ?: '₹');
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -121,6 +125,21 @@ try {
                 }, loyaltyChallenges($conn, $rid)),
                 'items' => laItems($conn, $rid),
             ]);
+        }
+        if ($section === 'card') {
+            $cs = walletCardSettings($conn, $rid);
+            $n = $conn->prepare('SELECT platform, COUNT(*) n FROM wallet_cards WHERE restaurant_id = ? GROUP BY platform');
+            $n->execute([$rid]);
+            $counts = ['apple' => 0, 'google' => 0];
+            foreach ($n->fetchAll(PDO::FETCH_ASSOC) as $x) $counts[$x['platform']] = (int)$x['n'];
+            // a sample member for the preview: the top customer, else a made-up one
+            $top = $conn->prepare('SELECT * FROM customers WHERE restaurant_id = ? ORDER BY total_spent DESC LIMIT 1');
+            $top->execute([$rid]);
+            $sample = $top->fetch(PDO::FETCH_ASSOC) ?: ['id' => 0, 'customer_name' => 'Priya Sharma', 'phone' => '9876543210', 'total_spent' => 0, 'stamps' => 3, 'loyalty_points_balance' => 240];
+            $c = walletCardContent($conn, $rid, $sample);
+            $c['name'] = 'Priya Sharma'; $c['barcode_alt'] = 'Member 98••••3210';
+            laOut(['success' => true, 'currency' => $cur, 'enabled' => $cs['enabled'], 'color' => $cs['color'], 'text_color' => $cs['text_color'],
+                'loyalty_enabled' => $cs['loyalty_enabled'], 'platforms' => walletCardPlatforms(), 'counts' => $counts, 'preview' => $c]);
         }
         if ($section === 'performance') {
             $days = (int)($_GET['days'] ?? 30);
@@ -249,6 +268,13 @@ try {
                         (int)$num($in['stamp_goal'] ?? 6, 2, 20), $num($in['stamp_min_order'] ?? 0, 0, 100000), $kind, $itemId ?: null,
                         $num($in['stamp_reward_value'] ?? 0, 0, 100000), (int)$num($in['reward_valid_days'] ?? 30, 1, 365), $rid]);
         loyaltySyncCashbackToWallet($conn, $rid, getGrowthSettings($conn, $rid));
+        laOut(['success' => true]);
+    }
+
+    if ($section === 'card') {
+        $hex = function ($v, $d) { return preg_match('/^#[0-9a-fA-F]{6}$/', (string)$v) ? strtolower($v) : $d; };
+        $conn->prepare('UPDATE growth_settings SET card_enabled = ?, card_color = ?, card_text_color = ? WHERE restaurant_id = ?')
+             ->execute([empty($in['enabled']) ? 0 : 1, $hex($in['color'] ?? '', '#1c1230'), $hex($in['text_color'] ?? '', '#ffffff'), $rid]);
         laOut(['success' => true]);
     }
 

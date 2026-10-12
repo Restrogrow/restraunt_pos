@@ -183,6 +183,15 @@ button { font-family: inherit; }
 .lx-st.gift:not(.on) { border-style: solid; border-color: var(--gold); color: var(--gold); }
 @keyframes lxStamp { from { transform: scale(.3) rotate(-30deg); opacity: 0; } to { transform: none; opacity: 1; } }
 .lx-gifts { display: grid; gap: 10px; }
+/* Add to Apple / Google Wallet */
+.lx-wallet { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; padding: 14px 16px; border-radius: 20px; background: #fff; box-shadow: 0 4px 16px -10px rgba(28,18,48,.2); }
+.lx-wallet > div { flex: 1 1 100%; min-width: 0; }
+.lx-wallet b { display: block; font-size: 14px; }
+.lx-wallet small { font-size: 12px; color: var(--muted); }
+.lx-wbtn { flex: 1 1 140px; justify-content: center; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 10px; background: #000; color: #fff; text-decoration: none; font-size: 13px; font-weight: 600; line-height: 1.1; transition: transform .15s; }
+.lx-wbtn:active { transform: scale(.97); }
+.lx-wbtn svg { width: 18px; height: 18px; flex-shrink: 0; }
+.lx-wbtn span small { display: block; font-size: 9.5px; font-weight: 500; color: rgba(255,255,255,.75); }
 /* VIP membership (rg-vip.js) */
 .lxv-sec { opacity: 1; transform: none; }
 .lxv-head { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
@@ -432,7 +441,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     '</div></section>';
   }
   // Gifts: personal one-time codes (stamp cards, birthday, win-back…)
-  var GIFT_SRC = { stamps: 'Stamp card', birthday: 'Birthday gift', anniversary: 'Anniversary gift', welcome: 'Welcome gift', winback: 'We miss you', tier_up: 'Level up', milestone: 'Milestone', referral: 'Referral gift', challenge: 'Challenge', streak: 'Weekly streak', vip: 'Member welcome gift' };
+  var GIFT_SRC = { stamps: 'Stamp card', birthday: 'Birthday gift', anniversary: 'Anniversary gift', welcome: 'Welcome gift', winback: 'We miss you', tier_up: 'Level up', milestone: 'Milestone', referral: 'Referral gift', challenge: 'Challenge', streak: 'Weekly streak', vip: 'Member welcome gift', campaign: 'Special offer' };
   function gifts() {
     var G = (M && M.gifts) || [];
     if (!G.length) return '';
@@ -472,6 +481,18 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
   }
   function fmtDay(d) { var x = new Date(String(d).replace(' ', 'T')); return isNaN(x) ? d : x.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }
   // Birthday / anniversary / WhatsApp opt-in
+  function walletCard() {
+    var w = P.wallet_card || {};
+    if (!M || (!w.apple && !w.google)) return '';
+    var ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
+    var showA = w.apple && !android, showG = w.google && !ios;
+    if (!showA && !showG) return '';
+    var url = function (t) { return 'wallet_card.php?restaurant_id=' + encodeURIComponent(window.restaurantId) + '&type=' + t; };
+    return '<div class="lx-wallet"><div><b>Keep your card on your phone</b><small>Your balance updates on it by itself.</small></div>' +
+      (showA ? '<a class="lx-wbtn" href="' + url('apple') + '"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.2.8c1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-.9-2.4-3.9zM14 5.5c.7-.8 1.1-1.9 1-3-1 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.5 2.8-1.3z"/></svg><span><small>Add to</small>Apple Wallet</span></a>' : '') +
+      (showG ? '<a class="lx-wbtn" href="' + url('google') + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" fill="#4285F4"/><rect x="3" y="8" width="18" height="4" fill="#34A853"/><rect x="3" y="11" width="18" height="4" fill="#FBBC04"/><rect x="3" y="14" width="18" height="5" rx="2" fill="#EA4335"/></svg><span><small>Add to</small>Google Wallet</span></a>' : '') +
+    '</div>';
+  }
   function details() {
     if (!M) return '';
     var d = M.details || {}, need = !d.birthday;
@@ -557,7 +578,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     if (!P.loyalty_enabled) { $('lxHeroBody').innerHTML = '<div class="lx-kicker"><i class="fa fa-crown"></i> Rewards</div><h1 class="lx-title">Something <em>tasty</em> is coming</h1>'; $('lxOff').classList.remove('hidden'); return; }
     if (!bodyOnly) $('lxHeroBody').innerHTML = M ? heroMember() : heroGuest();
     var isPts = TYPE() === 'points';
-    $('lxBody').innerHTML = facts() + (M ? '<div id="lxVip"></div>' + gifts() + challenges() + (isPts ? redeem() + rewards() : '') + details() + (isPts ? tiers() : '') + referral() + (isPts ? activity() : '')
+    $('lxBody').innerHTML = facts() + (M ? walletCard() + '<div id="lxVip"></div>' + gifts() + challenges() + (isPts ? redeem() + rewards() : '') + details() + (isPts ? tiers() : '') + referral() + (isPts ? activity() : '')
                                         : steps() + '<div id="lxVip"></div>' + challenges() + (isPts ? rewards() + tiers() : '') + referral()) +
       '<p class="lx-fine">' + (TYPE() === 'cashback' ? 'Cashback lands in your wallet when your order is completed and comes off if it’s cancelled.' : TYPE() === 'stamps' ? 'A stamp is added when your order is completed. Cancelled orders don’t count.' : 'Points are added when your order is completed and come off if it’s cancelled.' + (P.points_expiry_days ? ' Points expire after ' + P.points_expiry_days + ' days without an order.' : '')) + '</p>';
     $('lxBody').classList.remove('hidden');
