@@ -1644,6 +1644,7 @@ document.addEventListener("DOMContentLoaded", () => {
         referralsPage: ['loadReferrals'],
         growthReportsPage: ['loadGrowthReports', ['loadClvReport', '']],
         policyPagesPage: ['initPolicyPagesEditor'],
+        offersHomePage: ['loadOffersHome'],
       };
       if (sectionLoaders[pageId]) {
         setTimeout(() => sectionLoaders[pageId].forEach((f) => {

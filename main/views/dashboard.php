@@ -446,7 +446,7 @@ try {
       var container = document.getElementById('cateringList');
       if (!container) return;
       if (!container.querySelector('iframe')) {
-        container.innerHTML = '<iframe src="../admin/catering.php" style="width:100%;height:700px;border:none;border-radius:8px;overflow:auto;"></iframe>';
+        container.innerHTML = '<iframe src="../admin/catering.php?embed=1" title="Catering" style="width:100%;height:700px;border:none;overflow:auto;background:transparent;"></iframe>';
       }
     }
 
@@ -1218,15 +1218,27 @@ try {
           <span class="nav-tooltip">Offers</span>
           <ul class="submenu">
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="offersHomePage">
+                <span class="material-symbols-rounded">dashboard</span>
+                <span class="nav-label">All offers</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="couponsPage">
                 <span class="material-symbols-rounded">confirmation_number</span>
                 <span class="nav-label">Coupons</span>
               </a>
             </li>
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="offerFiltersPage">
+                <span class="material-symbols-rounded">filter_alt</span>
+                <span class="nav-label">Offer filters</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="dealsPage">
-                <span class="material-symbols-rounded">local_offer</span>
-                <span class="nav-label">Deals</span>
+                <span class="material-symbols-rounded">sell</span>
+                <span class="nav-label">Combos &amp; New</span>
               </a>
             </li>
             <li class="nav-item">
@@ -1249,7 +1261,7 @@ try {
             </li>
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="scratchPage">
-                <span class="material-symbols-rounded">confirmation_number</span>
+                <span class="material-symbols-rounded">redeem</span>
                 <span class="nav-label">Scratch card</span>
               </a>
             </li>
@@ -1257,12 +1269,6 @@ try {
               <a href="#" class="nav-link submenu-link" data-page="walletPage">
                 <span class="material-symbols-rounded">account_balance_wallet</span>
                 <span class="nav-label">Wallet</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="offerFiltersPage">
-                <span class="material-symbols-rounded">filter_alt</span>
-                <span class="nav-label">Offer Filters</span>
               </a>
             </li>
             <li class="nav-item">
@@ -3036,10 +3042,10 @@ try {
     <?php endif; ?>
 
     <!-- Catering Page -->
-    <div id="cateringPage" class="page">
+    <div id="cateringPage" class="page sx">
       <div class="page-header">
         <h1>Catering</h1>
-        <p>Bulk/event order price tiers and incoming requests</p>
+        <p>Price per guest for parties and events, and the catering requests customers send you.</p>
       </div>
       <div class="page-content">
         <div id="cateringList" style="min-height:400px;">
@@ -3873,33 +3879,27 @@ function toggleGatewayMode() {
     </style>
 
     <!-- Coupons Page -->
-    <div id="couponsPage" class="page">
+    <!-- Offers home: every offer tool, where customers see it, on or off (assets/js/offers-studio.js) -->
+    <div id="offersHomePage" class="page sx">
       <div class="page-header">
-        <h1>Coupons</h1>
-        <p>Manage discount coupons for your customers</p>
+        <h1>Offers</h1>
+        <p>Every way to bring customers in and raise the bill, in one place. Pick one to set it up.</p>
       </div>
       <div class="page-content">
-        <div class="section-card">
-          <div class="section-header">
-            <div class="section-title">All Coupons</div>
-            <button class="btn btn-primary" id="btnNewCoupon" onclick="openCouponModal()">+ New Coupon</button>
-          </div>
-          <div class="section-body" style="overflow-x:auto;">
-            <table class="data-table" id="couponsTable">
-              <thead>
-                <tr>
-                  <th>Code</th><th>Type</th><th>Value</th><th>Min Order</th><th>Uses</th><th>Valid</th><th>Created</th><th>Status</th><th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="couponsTbody">
-                <tr><td colspan="9" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <div id="offersHomeRoot"></div>
       </div>
     </div>
 
+    <!-- Offers › Coupons (assets/js/offers-studio.js; the add / edit form is #couponModal) -->
+    <div id="couponsPage" class="page sx">
+      <div class="page-header">
+        <h1>Coupons</h1>
+        <p>Codes customers type at checkout for money off. See which ones bring orders, pause or edit them anytime.</p>
+      </div>
+      <div class="page-content">
+        <div id="couponsRoot"></div>
+      </div>
+    </div>
     <!-- ═══════ Growth Module: Loyalty Settings ═══════ -->
     <div id="growthSettingsPage" class="page sx">
       <style>
@@ -4685,57 +4685,16 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Deals Page -->
-    <div id="dealsPage" class="page">
+    <!-- Offers › Combos & New: which category the Menu page's "Combos" / "New" filters show (offers-studio.js) -->
+    <div id="dealsPage" class="page sx">
       <div class="page-header">
-        <h1>Deals</h1>
-        <p>Manage combo and special deals</p>
+        <h1>Combos &amp; New</h1>
+        <p>Filter buttons on your Menu page: one category for your combos and one for new dishes.</p>
       </div>
       <div class="page-content">
-        <div class="section-card" style="margin-bottom:20px;">
-          <div class="section-header">
-            <div class="section-title">Create New Deal</div>
-          </div>
-          <div class="section-body">
-            <form id="dealForm" onsubmit="return saveDeal(event)" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
-              <input type="hidden" id="dealId" value="">
-              <div style="flex:1;min-width:160px;">
-                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">Deal Type</label>
-                <select id="dealType" class="form-control" required>
-                  <option value="">Select type...</option>
-                  <option value="combo">Combo Deal</option>
-                  <option value="new">New Deal</option>
-                </select>
-              </div>
-              <div style="flex:2;min-width:200px;">
-                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">Select Menu</label>
-                <select id="dealMenu" class="form-control" required>
-                  <option value="">Select menu...</option>
-                </select>
-              </div>
-              <button type="submit" class="btn btn-primary" id="dealSaveBtn" style="height:42px;">+ Create Deal</button>
-            </form>
-          </div>
-        </div>
-        <div class="section-card">
-          <div class="section-header">
-            <div class="section-title">Active Deals</div>
-          </div>
-          <div class="section-body" style="overflow-x:auto;">
-            <table class="data-table" id="dealsTable">
-              <thead>
-                <tr>
-                  <th>Type</th><th>Menu</th><th>Created</th><th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="dealsTbody">
-                <tr><td colspan="4" style="text-align:center;padding:30px;color:#999;">Loading deals...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <div id="dealsRoot"></div>
       </div>
     </div>
-
     <!-- Bestsellers Page (Offers > Bestsellers) -->
     <div id="bestsellersPage" class="page">
       <div class="page-header">
@@ -7669,6 +7628,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/tables-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/tables-studio.js'); ?>" defer></script>
   <script src="../assets/js/custom-domain-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/custom-domain-studio.js'); ?>" defer></script>
   <script src="../assets/js/settings-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/settings-studio.js'); ?>" defer></script>
+  <script src="../assets/js/offers-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offers-studio.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>

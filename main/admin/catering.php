@@ -80,9 +80,24 @@ $currency_symbol = $_SESSION['currency_symbol'] ?? '₹';
         .toggle-slider::before { content: ''; position: absolute; width: 20px; height: 20px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.3s; }
         .toggle input:checked + .toggle-slider { background: #10b981; }
         .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+        /* Inside the dashboard (Offers › Catering, ?embed=1): no second title or back link, and the dashboard's colours */
+        body.embedded { background: transparent; padding: 4px 2px 20px; }
+        body.embedded .back-link, body.embedded .header > div:first-child { display: none; }
+        body.embedded .header { justify-content: flex-end; margin-bottom: 14px; }
+        body.embedded .btn { border-radius: 12px; height: 42px; }
+        body.embedded .btn-sm { height: 34px; border-radius: 10px; }
+        body.embedded .btn-primary { background: #2563eb; box-shadow: 0 6px 14px -8px rgba(37,99,235,.7); }
+        body.embedded .btn-primary:hover { background: #1d4ed8; }
+        body.embedded .btn-secondary { background: #fff; color: #111827; border: 1.5px solid #e5e7eb; }
+        body.embedded .btn-edit { background: #fff; color: #374151; border: 1.5px solid #e5e7eb; }
+        body.embedded .btn-delete { background: #fff; color: #dc2626; border: 1.5px solid #fecaca; }
+        body.embedded .tabs { box-shadow: none; background: #f3f4f6; border-radius: 12px; }
+        body.embedded .tab-btn.active { background: #fff; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        body.embedded .card { box-shadow: none; border: 1px solid #e5e7eb; border-radius: 18px; }
+        body.embedded .form-group input:focus { outline: 0; border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
     </style>
 </head>
-<body>
+<body<?php echo !empty($_GET['embed']) ? ' class="embedded"' : ''; ?>>
     <div class="container">
         <a href="index.php" class="back-link"><i class="fa fa-arrow-left"></i> Back to Dashboard</a>
 
