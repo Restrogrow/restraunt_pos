@@ -24,6 +24,7 @@ require_once __DIR__ . '/env_loader.php';
 require_once __DIR__ . '/repeatgrow_whatsapp.php';
 require_once __DIR__ . '/loyalty_engine.php';
 require_once __DIR__ . '/loyalty_autopilot.php';
+require_once __DIR__ . '/repeatgrow_connect.php';
 
 if (!function_exists('ensureWhatsappSchema')) {
 
@@ -121,6 +122,7 @@ if (!function_exists('ensureWhatsappSchema')) {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_wc_due (status, scheduled_at)
         )");
+        ensureRepeatgrowConnectSchema($conn);   // template tracking for "Connect RepeatGrow"
     }
 
     /** Local computer: never send for real. */
@@ -138,7 +140,9 @@ if (!function_exists('ensureWhatsappSchema')) {
                 'api_key' => (string)($r['api_key'] ?? ''), 'account_name' => (string)($r['account_name'] ?? ''),
                 'quiet_start' => (int)($r['quiet_start'] ?? 21), 'quiet_end' => (int)($r['quiet_end'] ?? 9),
                 'weekly_cap' => (int)($r['weekly_cap'] ?? 2), 'test_phone' => (string)($r['test_phone'] ?? ''),
-                'last_dispatch' => $r['last_dispatch'] ?? null];
+                'last_dispatch' => $r['last_dispatch'] ?? null,
+                'connected_via' => (string)($r['connected_via'] ?? ''), 'rg_phone' => (string)($r['rg_phone'] ?? ''),
+                'connected_at' => $r['connected_at'] ?? null, 'templates_synced_at' => $r['templates_synced_at'] ?? null];
     }
 
     /** RestroGrow's ready-made gift template (platform mode). */
@@ -169,6 +173,10 @@ if (!function_exists('ensureWhatsappSchema')) {
             $out[$r['kind']]['template_name'] = (string)$r['template_name'];
             $out[$r['kind']]['language'] = $r['language'] ?: 'en';
             if (!empty($r['message'])) $out[$r['kind']]['message'] = $r['message'];
+            foreach (['template_status', 'template_reason', 'pending_template', 'template_text', 'pending_text'] as $f) $out[$r['kind']][$f] = $r[$f] ?? null;
+            $out[$r['kind']]['template_version'] = (int)($r['template_version'] ?? 0);
+            $out[$r['kind']]['template_vars'] = !empty($r['template_vars']) ? (json_decode($r['template_vars'], true) ?: null) : null;
+            $out[$r['kind']]['pending_vars'] = !empty($r['pending_vars']) ? (json_decode($r['pending_vars'], true) ?: null) : null;
         }
         // Autopilot gifts keep their message with the automation (Autopilot edits the same text)
         foreach (loyaltyAutomations($conn, $rid) as $k => $a) {
@@ -243,10 +251,15 @@ if (!function_exists('ensureWhatsappSchema')) {
         }
         $name = trim((string)($auto['template_name'] ?? ''));
         if ($name === '') return null;
+        // templates created through Connect RepeatGrow have a review status; only an approved one sends
+        if (!empty($auto['template_status']) && $auto['template_status'] !== 'approved') return null;
         [, $order] = waTemplateFromMessage($message);
-        return ['template_name' => $name, 'language' => $auto['language'] ?? 'en',
-                'params' => array_map(function ($k) use ($vars) { $v = (string)($vars[$k] ?? ''); return $v !== '' ? $v : '-'; }, $order),
-                'body' => waFill($message, $vars)];
+        if (!empty($auto['template_vars'])) $order = $auto['template_vars'];   // the approved template's own order
+        $params = array_map(function ($k) use ($vars) { $v = (string)($vars[$k] ?? ''); return $v !== '' ? $v : '-'; }, $order);
+        // the log shows what the customer really gets: the approved template's wording
+        $body = waFill($message, $vars);
+        if (!empty($auto['template_text'])) { $body = $auto['template_text']; foreach ($params as $i => $p) $body = str_replace('{{' . ($i + 1) . '}}', $p, $body); }
+        return ['template_name' => $name, 'language' => $auto['language'] ?? 'en', 'params' => $params, 'body' => $body];
     }
 
     /** POST one message to RepeatGrow. Returns [ok, message_id|null, error|null]. */
@@ -323,7 +336,8 @@ if (!function_exists('ensureWhatsappSchema')) {
 
     /** Due campaigns → outbox rows (with a personal gift code each, if the campaign has one). */
     function waStartCampaigns(PDO $conn, string $rid, array $s): void {
-        $st = $conn->prepare("SELECT * FROM wa_campaigns WHERE restaurant_id = ? AND status = 'scheduled' AND scheduled_at <= NOW()");
+        $st = $conn->prepare("SELECT * FROM wa_campaigns WHERE restaurant_id = ? AND status = 'scheduled' AND scheduled_at <= NOW()
+            AND (template_status IS NULL OR template_status = 'approved')");
         $st->execute([$rid]);
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $c) {
             $conn->prepare("UPDATE wa_campaigns SET status = 'sending' WHERE id = ? AND status = 'scheduled'")->execute([(int)$c['id']]);
@@ -333,6 +347,7 @@ if (!function_exists('ensureWhatsappSchema')) {
             $ins = $conn->prepare("INSERT IGNORE INTO wa_outbox (restaurant_id, kind, ref_type, ref_id, customer_id, phone, name, template_name, language, params, body, status, send_after)
                 VALUES (?, 'campaign', 'campaign', ?, ?, ?, ?, ?, ?, ?, ?, 'queued', NOW())");
             [, $order] = waTemplateFromMessage($c['message']);
+            if (!empty($c['template_vars'])) $order = json_decode($c['template_vars'], true) ?: $order;
             $r = waRestaurant($conn, $rid);
             foreach ($list as $p) {
                 $vars = ['name' => trim(explode(' ', trim((string)$p['customer_name']))[0] ?? '') ?: 'there', 'restaurant' => $r['name'], 'link' => $r['link'],
@@ -377,6 +392,7 @@ if (!function_exists('ensureWhatsappSchema')) {
             $message = $a['message'];
             $vars = waGiftVars($conn, $g, $g);
             $b = waBuild($s, $a, $message, $vars);
+            if (!$b && $s['mode'] === 'own' && in_array($a['template_status'] ?? '', ['pending'], true)) continue;   // goes out once Meta approves
             if (!$b) {
                 $ins->execute([$rid, $kind, $g['id'], $g['customer_id'], $g['phone'], $g['customer_name'], null, null, null, mb_substr(waFill($message, $vars), 0, 1000), 'skipped', 'No approved template set for this message']);
                 $mark->execute(['no_template', $g['id']]);
@@ -386,6 +402,125 @@ if (!function_exists('ensureWhatsappSchema')) {
                 json_encode($b['params'], JSON_UNESCAPED_UNICODE), mb_substr($b['body'], 0, 1000), 'queued', null]);
             $mark->execute(['queued', $g['id']]);
         }
+    }
+
+    /* ───────────── Templates through Connect RepeatGrow ───────────── */
+
+    /** Example values Meta sees when reviewing a template. */
+    function waTemplateSamples(PDO $conn, string $rid): array {
+        $r = waRestaurant($conn, $rid);
+        return ['name' => 'Priya', 'reward' => $r['cur'] . '50 off', 'code' => 'GIFT7K2Q9M', 'valid_till' => date('j M', strtotime('+14 days')),
+                'restaurant' => $r['name'] ?: 'Our restaurant', 'min_order' => $r['cur'] . '199', 'link' => $r['link'], 'tier' => 'Gold', 'count' => '10'];
+    }
+    function waTemplateSlug(PDO $conn, string $rid): string {
+        $s = trim(preg_replace('/[^a-z0-9]+/', '_', strtolower(waRestaurant($conn, $rid)['name'])), '_');
+        if (strlen($s) > 30) $s = preg_replace('/_[^_]*$/', '', substr($s, 0, 30));
+        return $s !== '' ? $s : 'restaurant';
+    }
+
+    /**
+     * Create (or update) the templates for these message types in RepeatGrow, which
+     * sends them to Meta for review. A changed wording on an approved template goes in
+     * as a new version; the approved one keeps sending until the new one is approved.
+     * Returns ['created' => n, 'unchanged' => n, 'errors' => [kind => message]].
+     */
+    function waTemplatesCreate(PDO $conn, string $rid, ?array $kinds = null): array {
+        $s = waSettings($conn, $rid);
+        $out = ['created' => 0, 'unchanged' => 0, 'errors' => []];
+        if ($s['connected_via'] !== 'connect' || $s['api_key'] === '') { $out['errors']['_'] = 'Connect RepeatGrow first'; return $out; }
+        $samples = waTemplateSamples($conn, $rid);
+        $slug = waTemplateSlug($conn, $rid);
+        $save = $conn->prepare('INSERT INTO wa_auto (restaurant_id, kind) VALUES (?, ?) ON DUPLICATE KEY UPDATE kind = kind');
+        foreach (waAutoConfig($conn, $rid) as $kind => $a) {
+            if ($kinds !== null && !in_array($kind, $kinds, true)) continue;
+            [$text, $vars] = waTemplateFromMessage($a['message']);
+            if ($text === ($a['template_text'] ?? null) && in_array($a['template_status'], ['approved', 'pending'], true)) { $out['unchanged']++; continue; }
+            if ($text === ($a['pending_text'] ?? null)) { $out['unchanged']++; continue; }   // in review, or turned down: change the wording first
+            $isUpdate = $a['template_status'] === 'approved' && !empty($a['template_name']);
+            $version = $isUpdate ? (int)$a['template_version'] + 1 : (int)$a['template_version'];
+            $name = $slug . '_' . $kind . '_gift' . ($version > 0 ? '_v' . ($version + 1) : '');
+            [$ok, $res] = rgcCreateTemplate($s['api_key'], $name, $a['language'] ?: 'en', $text, array_map(function ($k) use ($samples) { return (string)$samples[$k]; }, $vars));
+            if (!$ok) { $out['errors'][$kind] = $res; continue; }
+            $save->execute([$rid, $kind]);
+            $status = rgcStatus($res);
+            if ($isUpdate) {
+                $conn->prepare('UPDATE wa_auto SET pending_template = ?, pending_text = ?, pending_vars = ?, template_version = ? WHERE restaurant_id = ? AND kind = ?')
+                     ->execute([$name, $text, json_encode($vars), $version, $rid, $kind]);
+            } else {
+                $conn->prepare('UPDATE wa_auto SET template_name = ?, template_status = ?, template_reason = NULL, template_text = ?, template_vars = ?, template_version = ? WHERE restaurant_id = ? AND kind = ?')
+                     ->execute([$name, $status, $text, json_encode($vars), $version, $rid, $kind]);
+            }
+            $out['created']++;
+        }
+        return $out;
+    }
+
+    /** Template for a campaign: reuse an approved one with the same wording, else create it. */
+    function waCampaignTemplate(PDO $conn, string $rid, int $campaignId, string $message, string $language): array {
+        $s = waSettings($conn, $rid);
+        [$text, $vars] = waTemplateFromMessage($message);
+        $same = $conn->prepare("SELECT template_name, template_status FROM wa_campaigns WHERE restaurant_id = ? AND message = ? AND template_status IN ('approved', 'pending') AND id <> ? ORDER BY template_status = 'approved' DESC, id DESC LIMIT 1");
+        $same->execute([$rid, $message, $campaignId]);
+        if ($prev = $same->fetch(PDO::FETCH_ASSOC)) {
+            $conn->prepare('UPDATE wa_campaigns SET template_name = ?, template_status = ?, template_vars = ? WHERE id = ?')->execute([$prev['template_name'], $prev['template_status'], json_encode($vars), $campaignId]);
+            return [true, $prev['template_status']];
+        }
+        $name = waTemplateSlug($conn, $rid) . '_offer_' . substr(md5($text), 0, 8);
+        $samples = waTemplateSamples($conn, $rid);
+        [$ok, $res] = rgcCreateTemplate($s['api_key'], $name, $language, $text, array_map(function ($k) use ($samples) { return (string)$samples[$k]; }, $vars));
+        if (!$ok) return [false, $res];
+        $status = rgcStatus($res);
+        $conn->prepare('UPDATE wa_campaigns SET template_name = ?, template_status = ?, template_vars = ? WHERE id = ?')->execute([$name, $status, json_encode($vars), $campaignId]);
+        return [true, $status];
+    }
+
+    /**
+     * Ask RepeatGrow how Meta's review is going, switch approved new versions in,
+     * and send changed wordings (e.g. edited in Autopilot) for review by themselves.
+     */
+    function waTemplatesSync(PDO $conn, string $rid): array {
+        $s = waSettings($conn, $rid);
+        if ($s['connected_via'] !== 'connect' || $s['api_key'] === '') return [];
+        $conn->prepare('UPDATE wa_settings SET templates_synced_at = NOW() WHERE restaurant_id = ?')->execute([$rid]);
+        $auto = waAutoConfig($conn, $rid);
+        $names = [];
+        foreach ($auto as $a) { if (!empty($a['template_name']) && !empty($a['template_status'])) $names[] = $a['template_name']; if (!empty($a['pending_template'])) $names[] = $a['pending_template']; }
+        $camps = $conn->prepare("SELECT id, template_name FROM wa_campaigns WHERE restaurant_id = ? AND template_status = 'pending'");
+        $camps->execute([$rid]);
+        $campRows = $camps->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($campRows as $c) $names[] = $c['template_name'];
+        $st = $names ? rgcTemplateStatuses($s['api_key'], $names) : [];
+        foreach ($auto as $kind => $a) {
+            if (!empty($a['template_name']) && isset($st[$a['template_name']]) && !empty($a['template_status'])) {
+                $conn->prepare('UPDATE wa_auto SET template_status = ?, template_reason = ? WHERE restaurant_id = ? AND kind = ?')
+                     ->execute([rgcStatus($st[$a['template_name']][0]), $st[$a['template_name']][1] ?: null, $rid, $kind]);
+            }
+            if (!empty($a['pending_template']) && isset($st[$a['pending_template']])) {
+                $ps = rgcStatus($st[$a['pending_template']][0]);
+                if ($ps === 'approved') {
+                    $conn->prepare("UPDATE wa_auto SET template_name = pending_template, template_text = pending_text, template_vars = pending_vars, template_status = 'approved', template_reason = NULL,
+                        pending_template = NULL, pending_text = NULL, pending_vars = NULL WHERE restaurant_id = ? AND kind = ?")->execute([$rid, $kind]);
+                } elseif ($ps === 'rejected') {
+                    // keep the turned-down wording (pending_text) so it isn't sent again until the owner changes it
+                    $conn->prepare('UPDATE wa_auto SET template_reason = ?, pending_template = NULL, pending_vars = NULL WHERE restaurant_id = ? AND kind = ?')
+                         ->execute(['Meta turned down the new wording' . ($st[$a['pending_template']][1] ? ': ' . $st[$a['pending_template']][1] : '') . '. The approved one keeps sending.', $rid, $kind]);
+                }
+            }
+        }
+        foreach ($campRows as $c) {
+            if (!isset($st[$c['template_name']])) continue;
+            $cs = rgcStatus($st[$c['template_name']][0]);
+            $conn->prepare('UPDATE wa_campaigns SET template_status = ?, template_reason = ?' . ($cs === 'rejected' ? ", status = 'rejected'" : '') . ' WHERE id = ?')
+                 ->execute([$cs, $st[$c['template_name']][1] ?: null, (int)$c['id']]);
+        }
+        // wordings changed since their template was made (e.g. edited in Autopilot): send the new one for review
+        $changed = [];
+        foreach (waAutoConfig($conn, $rid) as $kind => $a) {
+            if (empty($a['template_status']) || !$a['enabled']) continue;
+            [$text] = waTemplateFromMessage($a['message']);
+            if ($text !== $a['template_text'] && $text !== $a['pending_text']) $changed[] = $kind;
+        }
+        return $changed ? waTemplatesCreate($conn, $rid, $changed) : ['created' => 0];
     }
 
     /**
@@ -402,6 +537,9 @@ if (!function_exists('ensureWhatsappSchema')) {
         if (!$lock) return $out;
         try {
             $conn->prepare('UPDATE wa_settings SET last_dispatch = NOW() WHERE restaurant_id = ?')->execute([$rid]);
+            if ($s['connected_via'] === 'connect' && (empty($s['templates_synced_at']) || strtotime($s['templates_synced_at']) < time() - 600)) {
+                try { waTemplatesSync($conn, $rid); } catch (Throwable $e) { error_log('waTemplatesSync: ' . $e->getMessage()); }
+            }
             waQueueGifts($conn, $rid, $s);
             if ($s['mode'] === 'own') waStartCampaigns($conn, $rid, $s);
             if (waInQuietHours($s)) return $out;

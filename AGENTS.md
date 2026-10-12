@@ -89,3 +89,10 @@ php main/admin/generate_vapid.php
 
 - No npm scripts, no bundler, no codegen.
 - PHP files are served directly by Apache.
+
+## Related project: RepeatGrow
+
+- WhatsApp sending (OTP, gift messages, campaigns) goes through RepeatGrow (https://repeatgrow.com), our WhatsApp CRM: Next.js + Supabase, code in `Desktop/Repeat grow/wacrm`.
+- RestroGrow side: `main/config/repeatgrow_whatsapp.php` (OTP), `main/config/whatsapp_engine.php` (gifts, campaigns, outbox), `main/config/repeatgrow_connect.php` + `main/api/repeatgrow_connect.php` (Connect button, template creation).
+- The contract between the two is `docs/REPEATGROW_CONNECT.md` (a copy lives in the RepeatGrow repo as `docs/RESTROGROW_CONNECT.md`). Change both sides together.
+- Never send real WhatsApp messages from a local computer: `waDryRun()` and `rgcBlocked()` guard this.

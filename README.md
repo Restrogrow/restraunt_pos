@@ -13,6 +13,7 @@ RestroGrow gives every restaurant its own ordering website plus an admin dashboa
 | [Table map preview](https://restrogrow.com/table-map-preview.html) ([source](table-map-preview.html)) | The live floor-plan view of tables. |
 | [Project documentation](main/docs/PROJECT_DOCUMENTATION.html) | Technical overview of the codebase. |
 | [AGENTS.md](AGENTS.md) | Architecture, routing and conventions for developers. |
+| [Connect RepeatGrow](docs/REPEATGROW_CONNECT.md) | How RestroGrow and RepeatGrow (our WhatsApp CRM, [repeatgrow.com](https://repeatgrow.com)) link up: the Connect button, template creation, and what RepeatGrow has to provide. |
 
 ## Features
 
@@ -157,6 +158,8 @@ Timers on the server that run a file by themselves. Without them, WhatsApp messa
 Each run writes one line (e.g. "Checked 3 restaurant(s): 12 sent, 0 failed"); hPanel shows it under the job's output. They can also run as a URL (`https://restrogrow.com/main/cron/whatsapp_dispatch.php?key=…`) once `CRON_SECRET_KEY` is set in `.env`.
 
 ### WhatsApp templates (RepeatGrow)
+
+WhatsApp messages go through **RepeatGrow** ([repeatgrow.com](https://repeatgrow.com)), our WhatsApp CRM (separate project, `Desktop/Repeat grow/wacrm`). With **Connect RepeatGrow** (Growth › WhatsApp) the owner logs in to RepeatGrow and clicks Allow; RestroGrow then creates every template below for them and follows Meta's review, so nothing has to be copied. Contract: [docs/REPEATGROW_CONNECT.md](docs/REPEATGROW_CONNECT.md). Without it, templates are created by hand as described here.
 
 Meta only lets a business start a WhatsApp chat with an **approved template**. A restaurant using its own number creates one template per message it uses, in RepeatGrow › Templates (category **Marketing**, language **English**). Growth › WhatsApp shows each one's exact name and text with a Copy button; `{{1}}`, `{{2}}`… are filled in for each customer (name, gift, code, last day…).
 

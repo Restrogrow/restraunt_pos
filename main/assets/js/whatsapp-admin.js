@@ -13,7 +13,7 @@
   'use strict';
 
   var API = '../api/whatsapp_admin.php';
-  var D = null, tab = 'auto', open = null, draft = null, logFilter = 'all';
+  var D = null, tab = 'auto', open = null, draft = null, logFilter = 'all', pendingDisconnect = false, pollT = null;
   var PRESETS = [
     ['We miss you', 'lapsed30', 'Hi {name}, it has been a while! Come back to {restaurant} this week for {reward}. Use code {code} before {valid_till}.', 'flat', 75],
     ['Weekend treat', 'recent', 'Hi {name}, your weekend treat from {restaurant}: {reward} on orders above {min_order}. Use code {code} before {valid_till}.', 'percent', 15],
@@ -38,7 +38,14 @@
   function load() {
     var el = $('waRoot'); if (!el) return;
     if (!D) el.innerHTML = '<div class="up-empty">Loading…</div>';
-    get('view=all').then(function (d) { if (!d.success) { el.innerHTML = '<div class="up-empty">' + esc(d.message || 'Could not load') + '</div>'; return; } D = d; draw(); });
+    get('view=all').then(function (d) {
+      if (!d.success) { el.innerHTML = '<div class="up-empty">' + esc(d.message || 'Could not load') + '</div>'; return; }
+      D = d; draw();
+      // templates waiting for WhatsApp: check again every 30 s while this page is open
+      clearTimeout(pollT);
+      var waiting = d.settings.connected_via === 'connect' && (d.auto.some(function (a) { return a.template_status === 'pending' || a.pending_template; }) || d.campaigns.some(function (c) { return c.template_status === 'pending'; }));
+      if (waiting) pollT = setTimeout(function () { var pg = $('whatsappPage'); if (pg && pg.classList.contains('active') && !open && !draft) post({ action: 'templates_sync' }).then(load); else load(); }, 30000);
+    });
   }
 
   /* ── pieces ── */
@@ -62,14 +69,26 @@
 
   /* ── automatic messages ── */
   function autoSample(a) { return a.sample_reward ? { reward: a.sample_reward } : {}; }
+  function linked() { return D.settings.connected_via === 'connect'; }
+  /** Template state chip: approved / waiting for Meta / turned down / new wording in review */
+  function tplChip(a) {
+    if (D.settings.mode === 'platform') return D.platform.available ? '<span class="wa-chip ok"><span class="material-symbols-rounded">check_circle</span>Ready-made template</span>' : '<span class="wa-chip muted">Template coming soon</span>';
+    if (!linked()) return a.template_name ? '<span class="wa-chip ok"><span class="material-symbols-rounded">check_circle</span>' + esc(a.template_name) + '</span>' : '<span class="wa-chip warn"><span class="material-symbols-rounded">pending</span>Needs a template</span>';
+    var out = '';
+    if (!a.template_status) out = '<span class="wa-chip warn"><span class="material-symbols-rounded">add_circle</span>Not created yet</span>';
+    else if (a.template_status === 'approved') out = '<span class="wa-chip ok"><span class="material-symbols-rounded">verified</span>Approved by WhatsApp</span>';
+    else if (a.template_status === 'pending') out = '<span class="wa-chip wait"><span class="material-symbols-rounded wa-spin">progress_activity</span>Waiting for approval</span>';
+    else out = '<span class="wa-chip bad" title="' + esc(a.template_reason || '') + '"><span class="material-symbols-rounded">error</span>Turned down</span>';
+    if (a.pending_template) out += ' <span class="wa-chip wait"><span class="material-symbols-rounded wa-spin">progress_activity</span>New wording in review</span>';
+    else if (a.needs_update) out += ' <span class="wa-chip warn">Wording changed</span>';
+    return out;
+  }
   function autoCard(a) {
     var st = a.stats || {}, platform = D.settings.mode === 'platform';
-    var ready = platform ? D.platform.available : !!a.template_name;
     var isOpen = open === a.kind;
     var head = '<div class="wa-card' + (a.enabled ? ' on' : '') + (isOpen ? ' open' : '') + '" data-wa-kind="' + a.kind + '">' +
       '<div class="wa-card-top"><span class="wa-ic material-symbols-rounded">' + a.icon + '</span><div class="wa-card-t"><b>' + esc(a.label) + '</b>' +
-        '<small>' + (ready ? '<span class="wa-chip ok"><span class="material-symbols-rounded">check_circle</span>' + (platform ? 'Ready-made template' : esc(a.template_name)) + '</span>'
-                           : '<span class="wa-chip warn"><span class="material-symbols-rounded">pending</span>Needs a template</span>') +
+        '<small>' + tplChip(a) +
         (a.autopilot_on === 0 ? ' <span class="wa-chip muted">Gift is off in Autopilot</span>' : '') + '</small></div>' +
         '<label class="up-switch"><input type="checkbox" data-wa-auto-toggle="' + a.kind + '"' + (a.enabled ? ' checked' : '') + '><span></span></label></div>' +
       '<p class="wa-card-msg">' + fill(a.message, autoSample(a)) + '</p>' +
@@ -81,18 +100,42 @@
       (platform ? '<div class="lsa-note" style="margin:0 0 12px">You are using RestroGrow’s number, so every gift uses one ready-made message. Connect your own number in Settings to write your own.</div>'
         : '<label class="wa-lbl">Message<textarea data-wa-f="message" rows="4" maxlength="700">' + esc(a.message) + '</textarea></label>' +
           '<div class="wa-varbar">' + Object.keys(D.vars).filter(function (k) { return (k !== 'tier' || a.kind === 'tier_up') && (k !== 'count' || a.kind === 'milestone'); }).map(function (k) { return '<button type="button" data-wa-var="{' + k + '}" title="' + esc(D.vars[k]) + '">{' + k + '}</button>'; }).join('') + '</div>' +
-          '<div class="ls-grid" style="margin-top:12px"><label>Approved template name<input data-wa-f="template_name" value="' + esc(a.template_name) + '" placeholder="' + esc(tplName) + '"></label>' +
-          '<label>Language<select data-wa-f="language">' + [['en', 'English'], ['en_US', 'English (US)'], ['hi', 'Hindi']].map(function (l) { return '<option value="' + l[0] + '"' + (a.language === l[0] ? ' selected' : '') + '>' + l[1] + '</option>'; }).join('') + '</select></label></div>' +
-          templateBox(tplName, a.message)) +
+          (linked() ? linkedBox(a)
+            : '<div class="ls-grid" style="margin-top:12px"><label>Approved template name<input data-wa-f="template_name" value="' + esc(a.template_name) + '" placeholder="' + esc(tplName) + '"></label>' +
+              '<label>Language<select data-wa-f="language">' + [['en', 'English'], ['en_US', 'English (US)'], ['hi', 'Hindi']].map(function (l) { return '<option value="' + l[0] + '"' + (a.language === l[0] ? ' selected' : '') + '>' + l[1] + '</option>'; }).join('') + '</select></label></div>' +
+              templateBox(tplName, a.message))) +
       '</div><div class="wa-ed-r">' + phone(platform ? fill(D.platform.text.replace(/\{\{1\}\}/, '{name}').replace(/\{\{2\}\}/, '{restaurant}').replace(/\{\{3\}\}/, '{reward}').replace(/\{\{4\}\}/, '{code}').replace(/\{\{5\}\}/, '{valid_till}')) : fill(a.message, autoSample(a))) +
         '<div class="wa-ed-acts"><button type="button" class="btn btn-secondary" data-wa-test="' + a.kind + '"><span class="material-symbols-rounded">send</span> Send me a test</button>' +
         (platform ? '' : '<button type="button" class="btn btn-primary" data-wa-save="' + a.kind + '"><span class="material-symbols-rounded">save</span> Save</button>') + '</div></div></div></div>';
   }
+  function linkedBox(a) {
+    var st = a.template_status;
+    var line = !st ? 'Save, and we send this wording to WhatsApp for approval for you.'
+      : st === 'approved' ? (a.pending_template ? 'Your new wording is waiting for approval. Until then the approved one keeps sending.' : 'Approved. Change the wording and Save: we send the new one for approval, and the approved one keeps sending meanwhile.')
+      : st === 'pending' ? 'Sent to WhatsApp for approval, usually a few minutes. Gifts earned meanwhile go out as soon as it is approved.'
+      : 'WhatsApp turned this wording down' + (a.template_reason ? ' (' + esc(a.template_reason) + ')' : '') + '. Change it a little (keep it friendly, no all-caps) and Save to try again.';
+    if (st === 'approved' && a.template_reason) line += ' ' + esc(a.template_reason);
+    return '<div class="wa-linked ' + (st || 'none') + '"><span class="material-symbols-rounded">' + (st === 'approved' ? 'verified' : st === 'pending' ? 'hourglass_top' : st ? 'error' : 'auto_awesome') + '</span><div><b>' +
+      (st === 'approved' ? 'Approved by WhatsApp' : st === 'pending' ? 'Waiting for WhatsApp approval' : st ? 'Turned down by WhatsApp' : 'We create the template for you') + '</b><small>' + line + '</small></div></div>';
+  }
   function autoTab() {
-    var A = D.auto, ready = A.filter(function (a) { return D.settings.mode === 'platform' ? D.platform.available : a.template_name; }).length;
+    var A = D.auto, ready = A.filter(function (a) { return D.settings.mode === 'platform' ? D.platform.available : linked() ? a.template_status === 'approved' : a.template_name; }).length;
+    var missing = A.filter(function (a) { return a.enabled && (!a.template_status || a.needs_update); }).length;
+    var waiting = A.filter(function (a) { return a.template_status === 'pending' || a.pending_template; }).length;
     return '<div class="wa-intro"><span class="material-symbols-rounded">bolt</span><div><b>Every gift code goes out on WhatsApp by itself.</b> Welcome, birthday, win-back, stamp cards, challenges and more: the moment a customer earns a gift, they get it on WhatsApp with their code. ' +
-      (D.settings.mode === 'own' ? ready + ' of ' + A.length + ' messages have an approved template.' : '') + '</div></div>' +
+      (D.settings.mode === 'own' ? ready + ' of ' + A.length + ' messages are approved by WhatsApp.' : '') + '</div></div>' +
+      (D.settings.mode === 'own' && !D.settings.key_last4 ? connectBanner() : '') +
+      (linked() && (missing || waiting) ? '<div class="wa-tplbar"><span class="material-symbols-rounded">' + (missing ? 'auto_awesome' : 'hourglass_top') + '</span><div><b>' +
+        (missing ? missing + ' message' + (missing > 1 ? 's need' : ' needs') + ' a WhatsApp template' : waiting + ' waiting for WhatsApp approval') + '</b><small>' +
+        (missing ? 'One click creates them in RepeatGrow and sends them to WhatsApp for approval.' : 'Usually a few minutes. This page checks by itself.') + '</small></div>' +
+        (missing ? '<button type="button" class="btn btn-primary" data-wa-tpl-create><span class="material-symbols-rounded">auto_awesome</span> Create ' + (missing > 1 ? 'all ' + missing : 'it') + '</button>'
+                 : '<button type="button" class="btn btn-secondary" data-wa-tpl-sync><span class="material-symbols-rounded">refresh</span> Check now</button>') + '</div>' : '') +
       '<div class="wa-grid">' + A.map(autoCard).join('') + '</div>';
+  }
+  function connectBanner() {
+    if (!D.connect.available) return '';
+    return '<div class="wa-connect"><div class="wa-connect-logo"><span class="material-symbols-rounded">forum</span></div><div><b>Connect your RepeatGrow account</b><small>Log in to RepeatGrow and click Allow. We set up every WhatsApp template for you, no copying.</small></div>' +
+      '<a class="btn btn-primary wa-connect-btn" href="' + esc(D.connect.url) + '"><span class="material-symbols-rounded">link</span> Connect RepeatGrow</a></div>';
   }
 
   /* ── campaigns ── */
@@ -122,20 +165,22 @@
         '</div>' +
         '<div class="ls-grid" style="margin-top:12px"><label>When<select data-wc="when"><option value="now"' + (c.when === 'now' ? ' selected' : '') + '>Send now</option><option value="later"' + (c.when === 'later' ? ' selected' : '') + '>Schedule</option></select></label>' +
           (c.when === 'later' ? '<label>Date and time<input type="datetime-local" data-wc="scheduled_at" value="' + esc(c.scheduled_at || '') + '"></label>' : '') +
-          '<label>Approved template name<input data-wc="template_name" value="' + esc(c.template_name) + '" placeholder="' + esc(tplName) + '"></label></div>' +
-        templateBox(tplName, c.message) +
+          (linked() ? '' : '<label>Approved template name<input data-wc="template_name" value="' + esc(c.template_name) + '" placeholder="' + esc(tplName) + '"></label>') + '</div>' +
+        (linked() ? '<div class="wa-linked none" style="margin-top:12px"><span class="material-symbols-rounded">auto_awesome</span><div><b>We create the template for you</b><small>WhatsApp approves new wording first, usually within minutes. The campaign starts by itself as soon as it is approved. Same wording as an earlier campaign? It goes out right away.</small></div></div>'
+                  : templateBox(tplName, c.message)) +
       '</div><div class="wa-ed-r">' + phone(fill(c.message, giftSample(c))) +
         '<div class="wa-reach"><b>' + (aud.count || 0) + '</b> customer' + (aud.count === 1 ? '' : 's') + ' will get this' + (c.gift_kind ? ', each with their own one-time code' : '') + '. Messages pause during quiet hours and each customer gets at most ' + D.settings.weekly_cap + ' campaign' + (D.settings.weekly_cap === 1 ? '' : 's') + ' a week.</div>' +
         '<div class="wa-ed-acts"><button type="button" class="btn btn-secondary" data-wa-test-campaign><span class="material-symbols-rounded">send</span> Send me a test</button>' +
         '<button type="button" class="btn btn-primary" data-wa-launch><span class="material-symbols-rounded">rocket_launch</span> ' + (c.when === 'later' ? 'Schedule' : 'Send to ' + (aud.count || 0)) + '</button></div></div></div></div>';
   }
   function campTab() {
+    if (D.settings.mode === 'own' && !D.settings.key_last4 && D.connect.available) return connectBanner();
     if (D.settings.mode !== 'own') return '<div class="wa-lock"><span class="material-symbols-rounded">lock</span><b>Campaigns need your own WhatsApp number</b><p>Connect your RepeatGrow account in Settings. Then send offers to the customers you pick, with your own name and messages.</p><button type="button" class="btn btn-primary" data-wa-tab="settings">Open Settings</button></div>';
     var C = D.campaigns;
     return (draft ? campaignForm() : '<div class="wa-new"><div><b>Send a campaign</b><span>Pick who gets it, write the message, add a gift code if you like.</span></div><button type="button" class="btn btn-primary" data-wa-new><span class="material-symbols-rounded">add</span> New campaign</button></div>') +
       (C.length ? '<div class="wa-camps">' + C.map(function (c) {
         var aud = D.audiences.filter(function (a) { return a.key === c.audience; })[0];
-        return '<div class="wa-camp"><div class="wa-camp-h"><b>' + esc(c.name) + '</b>' + pill(c.status) + '</div><small>' + esc(aud ? aud.label : c.audience) + ' · ' + esc(String(c.scheduled_at).slice(0, 16).replace('T', ' ')) + (c.gift_kind ? ' · with gift' : '') + '</small>' +
+        return '<div class="wa-camp"><div class="wa-camp-h"><b>' + esc(c.name) + '</b>' + (c.status === 'scheduled' && c.template_status === 'pending' ? '<span class="wa-pill wait">Waiting for approval</span>' : pill(c.status)) + '</div><small>' + esc(aud ? aud.label : c.audience) + ' · ' + esc(String(c.scheduled_at).slice(0, 16).replace('T', ' ')) + (c.gift_kind ? ' · with gift' : '') + '</small>' +
           '<div class="wa-nums"><div><b>' + c.audience_count + '</b><span>Reached</span></div><div><b>' + c.sent + '</b><span>Sent</span></div><div><b>' + c.orders + '</b><span>Orders</span></div><div><b>' + money(c.revenue) + '</b><span>Revenue</span></div>' +
           (c.status === 'scheduled' || c.status === 'sending' ? '<button type="button" class="lsa-edit" data-wa-cancel="' + c.id + '">Stop</button>' : '') + '</div></div>';
       }).join('') + '</div>' : (draft ? '' : '<div class="lsa-empty" style="margin-top:12px"><span class="material-symbols-rounded">campaign</span><b>No campaigns yet</b><span>Start from a ready idea: “We miss you” brings back quiet customers best.</span></div>'));
@@ -160,9 +205,12 @@
     return '<div class="wa-modes">' +
       '<button type="button" class="wa-mode' + (s.mode === 'platform' ? ' on' : '') + '" data-wa-mode="platform"><span class="material-symbols-rounded">rocket_launch</span><b>Quick start</b><small>Gift messages from RestroGrow’s WhatsApp number with a ready-made template. Nothing to set up.</small>' + (D.platform.available ? '<i class="ok">Available</i>' : '<i>Coming soon</i>') + '</button>' +
       '<button type="button" class="wa-mode' + (s.mode === 'own' ? ' on' : '') + '" data-wa-mode="own"><span class="material-symbols-rounded">verified</span><b>Your own number</b><small>Messages come from your restaurant’s WhatsApp through RepeatGrow. Your words, your campaigns.</small><i class="ok">Recommended</i></button></div>' +
-      (s.mode === 'own' ? '<div class="ls-box" style="margin-top:12px"><div class="ls-grid"><label style="grid-column:span 2">RepeatGrow API key' +
+      (s.mode === 'own' && linked() ? '<div class="wa-connected"><span class="material-symbols-rounded">verified</span><div><b>Connected to RepeatGrow</b><small>' + esc(s.account_name || 'Your account') + (s.rg_phone ? ' · ' + esc(s.rg_phone) : '') + (s.connected_at ? ' · since ' + esc(String(s.connected_at).slice(0, 10)) : '') + '</small></div>' +
+        '<button type="button" class="btn btn-secondary" data-wa-disconnect' + (pendingDisconnect ? ' style="color:#b91c1c;border-color:#fecaca"' : '') + '>' + (pendingDisconnect ? 'Disconnect? Click again' : 'Disconnect') + '</button></div>' : '') +
+      (s.mode === 'own' && !linked() && D.connect.available ? connectBanner() : '') +
+      (s.mode === 'own' && !linked() ? (D.connect.available ? '<details class="wa-manual"' + (s.key_last4 ? ' open' : '') + '><summary>Or paste an API key instead</summary>' : '') + '<div class="ls-box" style="margin-top:12px"><div class="ls-grid"><label style="grid-column:span 2">RepeatGrow API key' +
         '<input type="password" id="waKey" autocomplete="off" placeholder="' + (s.key_last4 ? 'Saved: ••••' + esc(s.key_last4) + '. Paste a new key to replace it' : 'wacrm_live_...') + '"></label></div>' +
-        '<p class="lsa-fine" style="margin:8px 0 0">In RepeatGrow: Settings › API keys › New key with the “messages:send” permission.' + (s.account_name ? ' Connected to <b>' + esc(s.account_name) + '</b>.' : '') + '</p></div>' : '') +
+        '<p class="lsa-fine" style="margin:8px 0 0">In RepeatGrow: Settings › API keys › New key with the “messages:send” permission.' + (s.account_name ? ' Connected to <b>' + esc(s.account_name) + '</b>.' : '') + '</p></div>' + (D.connect.available ? '</details>' : '') : '') +
       '<div class="ls-box" style="margin-top:12px"><div class="ls-grid">' +
         '<label>Don’t send after<select id="waQs">' + hours.map(function (h) { return '<option value="' + h + '"' + (h === s.quiet_start ? ' selected' : '') + '>' + hl(h) + '</option>'; }).join('') + '</select></label>' +
         '<label>Start again at<select id="waQe">' + hours.map(function (h) { return '<option value="' + h + '"' + (h === s.quiet_end ? ' selected' : '') + '>' + hl(h) + '</option>'; }).join('') + '</select></label>' +
@@ -175,7 +223,7 @@
   function draw() {
     var el = $('waRoot'); if (!el || !D) return;
     var s = D.settings, k = D.kpis, pct = k.customers ? Math.round(k.optin * 100 / k.customers) : 0;
-    var conn = s.mode === 'own' ? (s.key_last4 ? 'Your number' + (s.account_name ? ' (' + esc(s.account_name) + ')' : '') : 'Your number: not connected yet') : (D.platform.available ? 'RestroGrow’s number' : 'Not connected');
+    var conn = s.mode === 'own' ? (linked() ? 'Connected to RepeatGrow: ' + esc(s.account_name || '') + (s.rg_phone ? ' (' + esc(s.rg_phone) + ')' : '') : s.key_last4 ? 'Your number' + (s.account_name ? ' (' + esc(s.account_name) + ')' : '') : 'Your number: not connected yet') : (D.platform.available ? 'RestroGrow’s number' : 'Not connected');
     el.innerHTML =
       (D.dry_run ? '<div class="wa-dry"><span class="material-symbols-rounded">science</span>Test mode on this computer: messages are prepared and logged, but nothing is sent to anyone.</div>' : '') +
       '<div class="wa-hero"><div class="wa-hero-l"><label class="up-switch" style="margin:0"><input type="checkbox" id="waOn"' + (s.enabled ? ' checked' : '') + '><span></span> <b>WhatsApp messages are ' + (s.enabled ? 'on' : 'off') + '</b></label>' +
@@ -192,9 +240,14 @@
   function readDraft() { var box = document.querySelector('.wa-compose'); if (!box) return; box.querySelectorAll('[data-wc]').forEach(function (f) { draft[f.getAttribute('data-wc')] = f.value; }); }
   function saveAuto(a, btn, extra) {
     if (btn) btn.disabled = true;
-    var body = { action: 'auto', kind: a.kind, enabled: a.enabled, template_name: a.template_name, language: a.language };
+    var body = { action: 'auto', kind: a.kind, enabled: a.enabled };
+    if (!linked()) { body.template_name = a.template_name; body.language = a.language; }
     if (extra) body.message = a.message;
-    return post(body).then(function (d) { if (btn) btn.disabled = false; notify(d.success ? a.label + ' saved' : (d.message || 'Could not save'), d.success ? 'success' : 'error'); return d.success; });
+    return post(body).then(function (d) {
+      if (btn) btn.disabled = false;
+      notify(!d.success ? (d.message || 'Could not save') : d.warning ? d.warning : d.submitted ? a.label + ' saved and sent to WhatsApp for approval' : a.label + ' saved', !d.success ? 'error' : d.warning ? 'warning' : 'success');
+      return d.success;
+    });
   }
 
   document.addEventListener('click', function (e) {
@@ -222,7 +275,7 @@
       post(Object.assign({ action: 'campaign', send_now: draft.when !== 'later' }, draft)).then(function (d) {
         t.disabled = false;
         if (!d.success) { notify(d.message || 'Could not start', 'error'); return; }
-        notify(draft.when === 'later' ? 'Campaign scheduled' : 'Campaign started' + (d.dispatched ? ': ' + d.dispatched.sent + ' sent so far' : ''), 'success');
+        notify(d.waiting_approval ? 'Campaign saved. It starts by itself once WhatsApp approves the wording (usually minutes).' : draft.when === 'later' ? 'Campaign scheduled' : 'Campaign started' + (d.dispatched ? ': ' + d.dispatched.sent + ' sent so far' : ''), 'success');
         draft = null; load();
       });
       return;
@@ -233,6 +286,21 @@
     if ((t = e.target.closest('[data-wa-retry]'))) { t.disabled = true; post({ action: 'retry' }).then(function (d) { notify(d.success ? d.requeued + ' queued again' : 'Could not retry', d.success ? 'success' : 'error'); load(); }); return; }
     if ((t = e.target.closest('[data-wa-mode]'))) { D.settings.mode = t.getAttribute('data-wa-mode'); draw(); return; }
     if ((t = e.target.closest('[data-wa-save-settings]'))) saveSettings(t);
+    if ((t = e.target.closest('[data-wa-tpl-create]'))) {
+      t.disabled = true; t.innerHTML = '<span class="material-symbols-rounded wa-spin">progress_activity</span> Creating…';
+      post({ action: 'templates_create' }).then(function (d) {
+        var errs = d.errors ? Object.keys(d.errors).length : 0;
+        notify(!d.success ? (d.message || 'Could not create') : d.created + ' sent to WhatsApp for approval' + (errs ? ', ' + errs + ' had a problem' : '') + '. Usually a few minutes.', !d.success || errs ? 'warning' : 'success');
+        load();
+      });
+      return;
+    }
+    if ((t = e.target.closest('[data-wa-tpl-sync]'))) { t.disabled = true; post({ action: 'templates_sync' }).then(function () { notify('Checked with WhatsApp', 'success'); load(); }); return; }
+    if ((t = e.target.closest('[data-wa-disconnect]'))) {
+      if (!pendingDisconnect) { pendingDisconnect = true; draw(); setTimeout(function () { pendingDisconnect = false; }, 6000); return; }
+      pendingDisconnect = false; t.disabled = true;
+      post({ action: 'disconnect' }).then(function (d) { notify(d.success ? 'RepeatGrow disconnected. WhatsApp messages are off.' : 'Could not disconnect', d.success ? 'success' : 'error'); load(); });
+    }
   });
   function test(body, btn) {
     if (btn) btn.disabled = true;
@@ -269,6 +337,23 @@
   });
 
   window.loadWhatsappAdmin = function () { load(); };
+
+  // Back from RepeatGrow's Connect page: say how it went, open WhatsApp, tidy the address
+  (function () {
+    var q = new URLSearchParams(location.search), r = q.get('wa');
+    if (!r) return;
+    var msg = { connected: ['RepeatGrow connected. Next: create your WhatsApp templates in one click.', 'success'], cancelled: ['Connecting was cancelled. Nothing changed.', 'info'],
+                unavailable: [q.get('wa_msg') || 'Connecting is not available yet.', 'warning'], failed: [q.get('wa_msg') || 'Could not connect RepeatGrow. Please try again.', 'error'] }[r];
+    q.delete('wa'); q.delete('wa_msg');
+    history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash);
+    var show = function () {
+      var nav = document.querySelector('[data-page="whatsappPage"]');
+      if (nav && !(document.getElementById('whatsappPage') || {}).classList.contains('active')) nav.click(); else load();
+      if (msg) setTimeout(function () { notify(msg[0], msg[1]); }, 600);
+      if (r === 'connected') { tab = 'auto'; }
+    };
+    if (document.readyState === 'complete') setTimeout(show, 800); else window.addEventListener('load', function () { setTimeout(show, 800); });
+  })();
 
   // Sender heartbeat: queued gift messages and campaigns go out while the dashboard is open
   var beatDelay = 60000;

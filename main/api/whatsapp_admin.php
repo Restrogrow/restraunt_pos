@@ -4,7 +4,9 @@
  *
  * GET  ?view=all                      — everything the page shows
  * GET  ?view=audience&key=lapsed30    — how many opted-in customers a campaign would reach
- * POST JSON { action: 'settings' | 'check_key' | 'auto' | 'test' | 'campaign' | 'cancel' | 'retry' | 'dispatch', ... }
+ * POST JSON { action: 'settings' | 'check_key' | 'auto' | 'test' | 'campaign' | 'cancel' | 'retry' | 'dispatch'
+ *              | 'templates_create' | 'templates_sync' | 'disconnect', ... }
+ * Connect RepeatGrow itself starts at api/repeatgrow_connect.php?action=start.
  *
  * Scoped to the session's restaurant. The API key is never sent back (last 4 only).
  */
@@ -58,6 +60,8 @@ try {
             [$tpl, $vars] = waTemplateFromMessage($a['message']);
             // the preview shows the gift this automation really gives
             $sampleReward = isset($autos[$a['kind']]) ? loyaltyAutoRewardLabel($conn, $rid, $autos[$a['kind']]) : null;
+            // connected: does the wording still match the template that was sent for review?
+            $a['needs_update'] = !empty($a['template_status']) && $tpl !== $a['template_text'] && $tpl !== $a['pending_text'];
             return $a + ['sample_reward' => $sampleReward, 'template_text' => $tpl, 'template_vars' => $vars, 'stats' => $stats[$a['kind']] ?? (object)[], 'orders' => $used[$a['kind']] ?? ['orders' => 0, 'revenue' => 0]];
         }, waAutoConfig($conn, $rid)));
         $campaigns = $q("SELECT c.*, (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.status = 'sent') sent,
@@ -75,7 +79,9 @@ try {
         $items = $q('SELECT mi.id, mi.item_name_en name, mi.base_price price FROM menu_items mi WHERE mi.restaurant_id = ? ORDER BY mi.item_name_en', [$rid])->fetchAll(PDO::FETCH_ASSOC);
         waOut(['success' => true, 'currency' => $r['cur'], 'restaurant' => $r['name'], 'dry_run' => waDryRun(),
             'settings' => ['enabled' => $s['enabled'], 'mode' => $s['mode'], 'key_last4' => $s['api_key'] !== '' ? substr($s['api_key'], -4) : '', 'account_name' => $s['account_name'],
-                           'quiet_start' => $s['quiet_start'], 'quiet_end' => $s['quiet_end'], 'weekly_cap' => $s['weekly_cap'], 'test_phone' => $s['test_phone'], 'last_dispatch' => $s['last_dispatch']],
+                           'quiet_start' => $s['quiet_start'], 'quiet_end' => $s['quiet_end'], 'weekly_cap' => $s['weekly_cap'], 'test_phone' => $s['test_phone'], 'last_dispatch' => $s['last_dispatch'],
+                           'connected_via' => $s['connected_via'], 'rg_phone' => $s['rg_phone'], 'connected_at' => $s['connected_at'], 'templates_synced_at' => $s['templates_synced_at']],
+            'connect' => ['available' => rgcAvailable(), 'url' => '../api/repeatgrow_connect.php?action=start', 'repeatgrow' => rgcBase()],
             'platform' => ['available' => env('REPEATGROW_API_URL') && env('REPEATGROW_API_KEY') && $pt['name'] !== '', 'template' => $pt['name'], 'text' => $pt['text']],
             'kpis' => ['customers' => (int)$k['total'], 'optin' => (int)$k['optin'], 'sent' => (int)$sum['sent'], 'failed' => (int)$sum['failed'], 'queued' => (int)$sum['queued'], 'revenue' => $rev],
             'auto' => $auto, 'vars' => waVars(),
@@ -109,6 +115,7 @@ try {
             [$ok, $name] = waCheckKey(trim((string)$in['api_key']));
             if (!$ok) waOut(['success' => false, 'message' => $name], 400);
             $cols['api_key'] = trim((string)$in['api_key']);
+            $cols['connected_via'] = 'key';
             $cols['account_name'] = mb_substr($name, 0, 120);
         }
         if ($cols['enabled'] && $mode === 'own' && empty($cols['api_key']) && $s['api_key'] === '') waOut(['success' => false, 'message' => 'Paste your RepeatGrow API key to use your own number'], 400);
@@ -126,14 +133,26 @@ try {
         $tpl = trim(mb_substr((string)($in['template_name'] ?? ''), 0, 100));
         if ($tpl !== '' && !preg_match('/^[a-z0-9_]+$/', $tpl)) waOut(['success' => false, 'message' => 'Template names use lowercase letters, numbers and _ only (as in RepeatGrow)'], 400);
         $lang = preg_match('/^[a-z]{2}(_[A-Z]{2})?$/', (string)($in['language'] ?? '')) ? $in['language'] : 'en';
-        $conn->prepare('INSERT INTO wa_auto (restaurant_id, kind, enabled, template_name, language) VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), template_name = VALUES(template_name), language = VALUES(language)')
-             ->execute([$rid, $kind, empty($in['enabled']) ? 0 : 1, $tpl ?: null, $lang]);
+        if (array_key_exists('template_name', $in)) {
+            $conn->prepare('INSERT INTO wa_auto (restaurant_id, kind, enabled, template_name, language, template_status) VALUES (?, ?, ?, ?, ?, NULL)
+                ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), template_name = VALUES(template_name), language = VALUES(language),
+                    template_status = IF(VALUES(template_name) <=> template_name, template_status, NULL)')
+                 ->execute([$rid, $kind, empty($in['enabled']) ? 0 : 1, $tpl ?: null, $lang]);
+        } else {
+            $conn->prepare('INSERT INTO wa_auto (restaurant_id, kind, enabled) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE enabled = VALUES(enabled)')
+                 ->execute([$rid, $kind, empty($in['enabled']) ? 0 : 1]);
+        }
         if (isset($in['message'])) {
             $msg = trim(mb_substr((string)$in['message'], 0, 700));
             if ($msg === '') waOut(['success' => false, 'message' => 'Write the message'], 400);
             if (strpos($msg, '{code}') === false) waOut(['success' => false, 'message' => 'Keep {code} in the message so the customer gets their gift code'], 400);
             waSaveMessage($conn, $rid, $kind, $msg);
+            // connected: the new wording goes to Meta for review by itself
+            if ($s['connected_via'] === 'connect') {
+                $r2 = waTemplatesCreate($conn, $rid, [$kind]);
+                if (!empty($r2['errors'][$kind])) waOut(['success' => true, 'warning' => 'Saved, but RepeatGrow said: ' . $r2['errors'][$kind]]);
+                if ($r2['created']) waOut(['success' => true, 'submitted' => true]);
+            }
         }
         waOut(['success' => true]);
     }
@@ -153,7 +172,11 @@ try {
             $kind = (string)($in['kind'] ?? '');
             if (!isset($auto[$kind])) waOut(['success' => false, 'message' => 'Unknown message'], 400);
             $b = waBuild($s, $auto[$kind], $auto[$kind]['message'], $vars);
-            if (!$b) waOut(['success' => false, 'message' => 'Add the approved template name first'], 400);
+            if (!$b) {
+                $st0 = $auto[$kind]['template_status'] ?? '';
+                waOut(['success' => false, 'message' => $st0 === 'pending' ? 'This message is still waiting for WhatsApp’s approval (usually a few minutes). Try again soon.'
+                    : ($st0 === 'rejected' ? 'WhatsApp turned this wording down. Change the message and save to send it again.' : 'Add the approved template name first')], 400);
+            }
         }
         [$ok, $mid, $err] = waSend($s, $s['test_phone'], $b['template_name'], $b['language'], $b['params'], $b['body']);
         waOut(['success' => $ok, 'message' => $ok ? (waDryRun() ? 'Test only: on this computer nothing is sent. It would say: ' . $b['body'] : 'Sent to your phone') : $err, 'body' => $b['body']]);
@@ -166,7 +189,9 @@ try {
         $tpl = trim((string)($in['template_name'] ?? ''));
         $msg = trim(mb_substr((string)($in['message'] ?? ''), 0, 700));
         if ($name === '' || !isset(waAudiences()[$aud]) || $msg === '') waOut(['success' => false, 'message' => 'Give the campaign a name, an audience and a message'], 400);
-        if (!preg_match('/^[a-z0-9_]+$/', $tpl)) waOut(['success' => false, 'message' => 'Add the approved template name (lowercase letters, numbers and _)'], 400);
+        $managed = $s['connected_via'] === 'connect';
+        if ($managed) $tpl = '';
+        elseif (!preg_match('/^[a-z0-9_]+$/', $tpl)) waOut(['success' => false, 'message' => 'Add the approved template name (lowercase letters, numbers and _)'], 400);
         $gk = in_array($in['gift_kind'] ?? '', ['flat', 'percent', 'item'], true) ? $in['gift_kind'] : null;
         $gv = max(0, min($gk === 'percent' ? 100 : 100000, round((float)($in['gift_value'] ?? 0), 2)));
         $gi = (int)($in['gift_item_id'] ?? 0);
@@ -181,8 +206,15 @@ try {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
              ->execute([$rid, $name, $aud, $tpl, preg_match('/^[a-z]{2}(_[A-Z]{2})?$/', (string)($in['language'] ?? '')) ? $in['language'] : 'en', $msg, $gk,
                         $gk === 'item' ? 0 : $gv, $gk === 'item' ? $gi : null, max(0, round((float)($in['gift_min_order'] ?? 0), 2)), max(1, min(90, (int)($in['gift_valid_days'] ?? 14))), $when]);
-        $res = !empty($in['send_now']) ? waDispatch($conn, $rid, 25) : null;
-        waOut(['success' => true, 'dispatched' => $res]);
+        $cid = (int)$conn->lastInsertId();
+        $waiting = false;
+        if ($managed) {
+            [$ok, $res0] = waCampaignTemplate($conn, $rid, $cid, $msg, preg_match('/^[a-z]{2}(_[A-Z]{2})?$/', (string)($in['language'] ?? '')) ? $in['language'] : 'en');
+            if (!$ok) { $conn->prepare('DELETE FROM wa_campaigns WHERE id = ?')->execute([$cid]); waOut(['success' => false, 'message' => 'RepeatGrow could not create the template: ' . $res0], 400); }
+            $waiting = $res0 !== 'approved';
+        }
+        $res = !empty($in['send_now']) && !$waiting ? waDispatch($conn, $rid, 25) : null;
+        waOut(['success' => true, 'dispatched' => $res, 'waiting_approval' => $waiting]);
     }
 
     if ($action === 'cancel') {
@@ -199,6 +231,21 @@ try {
     }
 
     if ($action === 'dispatch') waOut(['success' => true, 'dispatched' => waDispatch($conn, $rid, 25)]);
+
+    if ($action === 'templates_create') {
+        $kinds = isset($in['kinds']) && is_array($in['kinds']) ? array_values(array_intersect($in['kinds'], array_keys(waKinds()))) : null;
+        $r3 = waTemplatesCreate($conn, $rid, $kinds);
+        waOut(['success' => empty($r3['errors']['_']), 'message' => $r3['errors']['_'] ?? null] + $r3);
+    }
+    if ($action === 'templates_sync') waOut(['success' => true, 'result' => waTemplatesSync($conn, $rid)]);
+
+    if ($action === 'disconnect') {
+        if ($s['connected_via'] === 'connect' && $s['api_key'] !== '') rgcRevoke($s['api_key']);
+        $conn->prepare("UPDATE wa_settings SET enabled = 0, api_key = NULL, account_name = NULL, rg_account_id = NULL, rg_phone = NULL, connected_via = NULL, connected_at = NULL WHERE restaurant_id = ?")->execute([$rid]);
+        // a different RepeatGrow account may be connected next: its templates are checked again from scratch
+        $conn->prepare('UPDATE wa_auto SET template_name = IF(template_text IS NULL, template_name, NULL), template_status = NULL, template_reason = NULL, pending_template = NULL, pending_text = NULL, pending_vars = NULL, template_text = NULL WHERE restaurant_id = ?')->execute([$rid]);
+        waOut(['success' => true]);
+    }
 
     waOut(['success' => false, 'message' => 'Unknown action'], 400);
 } catch (Throwable $e) {

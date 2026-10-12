@@ -4573,6 +4573,26 @@ function toggleGatewayMode() {
         .wa-card-t small { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
         .wa-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; font-size: .7rem; font-weight: 700; }
         .wa-chip .material-symbols-rounded { font-size: 14px; }
+        .wa-chip.wait { background: #eff6ff; color: #1d4ed8; } .wa-chip.bad { background: #fef2f2; color: #b91c1c; }
+        .wa-spin { animation: waSpin 1.1s linear infinite; display: inline-block; }
+        @keyframes waSpin { to { transform: rotate(360deg); } }
+        .wa-linked { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .wa-linked > .material-symbols-rounded { color: #059669; }
+        .wa-linked.pending { background: #eff6ff; border-color: #bfdbfe; } .wa-linked.pending > .material-symbols-rounded { color: #2563eb; }
+        .wa-linked.rejected { background: #fef2f2; border-color: #fecaca; } .wa-linked.rejected > .material-symbols-rounded { color: #dc2626; }
+        .wa-linked.none { background: #faf5ff; border-color: #e9d5ff; } .wa-linked.none > .material-symbols-rounded { color: #7c3aed; }
+        .wa-linked b { display: block; font-size: .88rem; color: #111827; } .wa-linked small { font-size: .8rem; color: #4b5563; line-height: 1.45; }
+        .wa-tplbar, .wa-connect, .wa-connected { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; padding: 14px 16px; border-radius: 16px; }
+        .wa-tplbar { background: linear-gradient(135deg, #faf5ff, #fff); border: 1.5px solid #e9d5ff; }
+        .wa-tplbar > .material-symbols-rounded { color: #7c3aed; font-size: 26px; }
+        .wa-tplbar > div, .wa-connect > div:nth-child(2), .wa-connected > div { flex: 1; min-width: 200px; }
+        .wa-tplbar b, .wa-connect b, .wa-connected b { display: block; color: #111827; } .wa-tplbar small, .wa-connect small, .wa-connected small { font-size: .82rem; color: #6b7280; }
+        .wa-connect { background: radial-gradient(120% 140% at 100% 0%, #dcfce7, transparent 60%), #fff; border: 1.5px solid #86efac; box-shadow: 0 12px 28px -22px rgba(7,94,84,.8); animation: waIn .4s ease both; }
+        .wa-connect-logo { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(135deg, #25d366, #075e54); color: #fff; }
+        .wa-connect-btn { text-decoration: none; background: #128c7e !important; border-color: #128c7e !important; }
+        .wa-connected { background: #f0fdf4; border: 1px solid #bbf7d0; margin-top: 12px; }
+        .wa-connected > .material-symbols-rounded { color: #059669; font-size: 26px; }
+        .wa-manual { margin-top: 10px; } .wa-manual summary { cursor: pointer; font-size: .84rem; font-weight: 700; color: #6b7280; }
         .wa-chip.ok { background: #ecfdf5; color: #047857; } .wa-chip.warn { background: #fffbeb; color: #b45309; } .wa-chip.muted { background: #f3f4f6; color: #6b7280; }
         .wa-card-msg { margin: 10px 0 0; padding: 10px 12px; border-radius: 4px 12px 12px 12px; background: #f0fdf4; color: #374151; font-size: .82rem; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
         .wa-card.open .wa-card-msg { display: none; }
