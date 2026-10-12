@@ -9952,39 +9952,60 @@ window.logout = logout;
         </div>
       `;
     }).join('');
-    applyOnlineOrderColumns();
+    applyOnlineOrderColumns(orders);
   }
 
-  // Online Orders: "Columns" picker (Auto / 1-5). With a number, the cards are
-  // dealt left to right into that many stacked columns (newest across the top
-  // row) so the page fills without gaps. Remembered on this device; narrow
-  // screens use fewer columns so cards never get squashed.
+  // Online Orders: "Columns" picker. List = cards as before; 3 / 4 / 5 = a
+  // board with one column per stage of the order (status), each with its
+  // count. Remembered on this device; the board scrolls sideways on small
+  // screens instead of squashing the cards.
+  const OO_BOARDS = {
+    5: [['New', ['Pending', 'Scheduled'], '#f59e0b'], ['Accepted', ['Accepted'], '#3b82f6'], ['Preparing', ['Preparing'], '#8b5cf6'], ['Ready', ['Ready'], '#10b981'], ['Done', ['Served', 'Completed', 'Cancelled', 'Rejected'], '#6b7280']],
+    4: [['New', ['Pending', 'Scheduled'], '#f59e0b'], ['Cooking', ['Accepted', 'Preparing'], '#8b5cf6'], ['Ready', ['Ready'], '#10b981'], ['Done', ['Served', 'Completed', 'Cancelled', 'Rejected'], '#6b7280']],
+    3: [['New', ['Pending', 'Scheduled'], '#f59e0b'], ['In progress', ['Accepted', 'Preparing', 'Ready'], '#3b82f6'], ['Done', ['Served', 'Completed', 'Cancelled', 'Rejected'], '#6b7280']],
+  };
+  let ooLastOrders = [];
   function onlineOrderColumns() {
     let n = 0;
     try { n = parseInt(localStorage.getItem('rgOnlineOrderCols') || '0', 10) || 0; } catch (e) {}
-    return n;
+    return OO_BOARDS[n] ? n : 0;
   }
-  function applyOnlineOrderColumns() {
+  function applyOnlineOrderColumns(orders) {
+    if (orders) ooLastOrders = orders;
     const container = document.getElementById('onlineOrdersList');
     if (!container) return;
     const want = onlineOrderColumns();
     document.querySelectorAll('#ooColsPick button').forEach(b => b.classList.toggle('on', +b.dataset.cols === want));
     const cards = Array.from(container.querySelectorAll('.order-card'));
     container.querySelectorAll(':scope > .oo-col').forEach(col => col.remove());
-    if (!want || !cards.length) {
+    // one card per order, in the same order: that's how each card knows its status
+    if (!want || !cards.length || cards.length !== ooLastOrders.length) {
       container.classList.remove('oo-split');
       container.style.removeProperty('--oo-cols');
       cards.forEach(card => container.appendChild(card));
       return;
     }
-    const w = container.clientWidth || window.innerWidth;
-    const fit = Math.max(1, Math.floor((w + 16) / 276));      // about 260px per card at least
-    const n = Math.min(want, fit);
+    const board = OO_BOARDS[want];
     container.classList.add('oo-split');
-    container.style.setProperty('--oo-cols', n);
-    const cols = [];
-    for (let i = 0; i < n; i++) { const col = document.createElement('div'); col.className = 'oo-col'; container.appendChild(col); cols.push(col); }
-    cards.forEach((card, i) => cols[i % n].appendChild(card));
+    container.style.setProperty('--oo-cols', board.length);
+    const cols = board.map(([name, , color]) => {
+      const col = document.createElement('div');
+      col.className = 'oo-col';
+      col.innerHTML = `<div class="oo-col-head" style="--oo-c:${color}"><b>${name}</b><span>0</span></div><div class="oo-col-body"></div>`;
+      container.appendChild(col);
+      return col;
+    });
+    cards.forEach((card, i) => {
+      const st = ooLastOrders[i].order_status || 'Pending';
+      let k = board.findIndex(([, list]) => list.includes(st));
+      if (k < 0) k = board.length - 1;
+      cols[k].querySelector('.oo-col-body').appendChild(card);
+    });
+    cols.forEach(col => {
+      const n = col.querySelectorAll('.order-card').length;
+      col.querySelector('.oo-col-head span').textContent = n;
+      if (!n) col.querySelector('.oo-col-body').innerHTML = '<div class="oo-col-empty">No orders</div>';
+    });
   }
   window.applyOnlineOrderColumns = applyOnlineOrderColumns;
   document.addEventListener('click', function (e) {
@@ -9993,8 +10014,6 @@ window.logout = logout;
     try { localStorage.setItem('rgOnlineOrderCols', b.dataset.cols); } catch (err) {}
     applyOnlineOrderColumns();
   });
-  let ooResizeT = null;
-  window.addEventListener('resize', function () { clearTimeout(ooResizeT); ooResizeT = setTimeout(applyOnlineOrderColumns, 150); });
 
   function rejectOnlineOrder(orderId, orderNumber, btn) {
     Swal.fire({

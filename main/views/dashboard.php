@@ -6183,12 +6183,10 @@ function toggleGatewayMode() {
           </select>
           <div class="oo-cols-pick" id="ooColsPick" role="group" aria-label="Columns">
             <span class="material-symbols-rounded" title="Columns">view_column</span>
-            <button type="button" data-cols="0" title="Fit as many as the screen allows">Auto</button>
-            <button type="button" data-cols="1">1</button>
-            <button type="button" data-cols="2">2</button>
-            <button type="button" data-cols="3">3</button>
-            <button type="button" data-cols="4">4</button>
-            <button type="button" data-cols="5">5</button>
+            <button type="button" data-cols="0" title="All orders as cards">List</button>
+            <button type="button" data-cols="3" title="New · In progress · Done">3</button>
+            <button type="button" data-cols="4" title="New · Cooking · Ready · Done">4</button>
+            <button type="button" data-cols="5" title="New · Accepted · Preparing · Ready · Done">5</button>
           </div>
         </div>
         <style>
@@ -6197,8 +6195,13 @@ function toggleGatewayMode() {
           .oo-cols-pick button { min-width: 34px; height: 32px; padding: 0 9px; border: 0; border-radius: 7px; background: none; color: #374151; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
           .oo-cols-pick button:hover { background: #f3f4f6; }
           .oo-cols-pick button.on { background: #111827; color: #fff; }
-          #onlineOrdersList.oo-split { display: grid; grid-template-columns: repeat(var(--oo-cols, 3), minmax(0, 1fr)); gap: 16px; align-items: start; }
-          #onlineOrdersList.oo-split .oo-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+          #onlineOrdersList.oo-split { display: grid; grid-template-columns: repeat(var(--oo-cols, 3), minmax(240px, 1fr)); gap: 14px; align-items: start; overflow-x: auto; padding-bottom: 6px; }
+          #onlineOrdersList.oo-split .oo-col { min-width: 0; border-radius: 14px; background: #f8fafc; border: 1px solid #eef0f3; padding: 10px; }
+          #onlineOrdersList.oo-split .oo-col-body { display: flex; flex-direction: column; gap: 12px; }
+          .oo-col-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 10px; margin-bottom: 10px; border-bottom: 3px solid var(--oo-c); }
+          .oo-col-head b { font-size: 0.95rem; color: #111827; }
+          .oo-col-head span { min-width: 26px; height: 24px; padding: 0 8px; display: inline-grid; place-items: center; border-radius: 999px; background: var(--oo-c); color: #fff; font-size: 0.78rem; font-weight: 700; }
+          .oo-col-empty { padding: 22px 10px; text-align: center; color: #9ca3af; font-size: 0.85rem; border: 1.5px dashed #e5e7eb; border-radius: 10px; }
           #onlineOrdersList.oo-split .order-card { min-width: 0; max-width: none; width: 100%; box-sizing: border-box; }
         </style>
         <div class="orders-list" id="onlineOrdersList">
