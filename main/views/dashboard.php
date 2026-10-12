@@ -6181,26 +6181,7 @@ function toggleGatewayMode() {
             <option value="Completed">Completed</option>
             <option value="Cancelled">Cancelled</option>
           </select>
-          <div class="oo-cols-pick" id="ooColsPick" role="group" aria-label="Columns">
-            <span class="material-symbols-rounded" title="Columns">view_column</span>
-            <button type="button" data-cols="0" title="Fit as many as the screen allows">Auto</button>
-            <button type="button" data-cols="1">1</button>
-            <button type="button" data-cols="2">2</button>
-            <button type="button" data-cols="3">3</button>
-            <button type="button" data-cols="4">4</button>
-            <button type="button" data-cols="5">5</button>
-          </div>
         </div>
-        <style>
-          .oo-cols-pick { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
-          .oo-cols-pick .material-symbols-rounded { font-size: 19px; color: #6b7280; padding: 0 6px 0 4px; }
-          .oo-cols-pick button { min-width: 34px; height: 32px; padding: 0 9px; border: 0; border-radius: 7px; background: none; color: #374151; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
-          .oo-cols-pick button:hover { background: #f3f4f6; }
-          .oo-cols-pick button.on { background: #111827; color: #fff; }
-          #onlineOrdersList.oo-split { display: grid; grid-template-columns: repeat(var(--oo-cols, 3), minmax(0, 1fr)); gap: 16px; align-items: start; }
-          #onlineOrdersList.oo-split .oo-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-          #onlineOrdersList.oo-split .order-card { min-width: 0; max-width: none; width: 100%; box-sizing: border-box; }
-        </style>
         <div class="orders-list" id="onlineOrdersList">
           <div class="loading">Loading online orders...</div>
         </div>
