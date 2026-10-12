@@ -833,7 +833,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       // Load areas if it's the area page
       if (pageId === "areaPage") {
-        loadAreas();
+        if (typeof window.loadAreasStudio === 'function') window.loadAreasStudio(); else loadAreas();   // Tables › Areas (areas-studio.js)
       }
       
       // Load tables if it's the tables page
