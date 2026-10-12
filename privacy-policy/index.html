@@ -26,10 +26,14 @@
     <link rel="stylesheet" href="../style.css?v=2.3">
     
     <!-- Optimized Font Loading -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
+    <link rel="stylesheet" href="../assets/legal.css?v=1">
 </head>
-<body>
+<body class="lg">
+    <div class="pp-progress" aria-hidden="true"><span></span></div>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container">
@@ -39,83 +43,118 @@
             </a>
             <ul class="nav-menu">
                 <li><a href="../index.html#features">Features</a></li>
-                <li><a href="../index.html#benefits">Benefits</a></li>
                 <li><a href="../index.html#pricing">Pricing</a></li>
+                <li><a href="../about/">About</a></li>
+                <li><a href="../blog/">Blog</a></li>
+                <li><a href="../faq/">FAQ</a></li>
                 <li><a href="../index.html#contact">Contact</a></li>
                 <li><a href="../main/admin/login.php" class="btn-nav">Login</a></li>
             </ul>
+            <button class="nav-toggle" aria-label="Open menu">
+                <span class="material-symbols-rounded">menu</span>
+            </button>
         </div>
     </nav>
 
-    <!-- Privacy Policy Content -->
-    <section class="features" style="padding-top: 120px; padding-bottom: 80px;">
-        <div class="container">
-            <div style="max-width: 800px; margin: 0 auto;">
-                <h1 class="section-title" style="text-align: left; margin-bottom: 2rem;">Privacy Policy</h1>
-                <p style="color: var(--gray); margin-bottom: 2rem; font-size: 1.1rem;">Last updated: December 2024</p>
-                
-                <div style="line-height: 1.8; color: var(--dark);">
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">1. Introduction</h2>
-                    <p style="margin-bottom: 1.5rem;">Restro Grow ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our restaurant management system and services.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">2. Information We Collect</h2>
-                    <p style="margin-bottom: 1rem;">We collect information that you provide directly to us, including:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li>Restaurant name, contact information, and business details</li>
-                        <li>Staff member information (name, email, role)</li>
-                        <li>Customer information (for order processing and reservations)</li>
-                        <li>Payment information (processed securely through third-party payment processors)</li>
-                        <li>Menu items, pricing, and inventory data</li>
-                        <li>Order history and transaction records</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">3. How We Use Your Information</h2>
-                    <p style="margin-bottom: 1rem;">We use the information we collect to:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li>Provide, maintain, and improve our services</li>
-                        <li>Process orders and manage restaurant operations</li>
-                        <li>Send you service-related communications</li>
-                        <li>Generate reports and analytics</li>
-                        <li>Comply with legal obligations</li>
-                        <li>Protect against fraud and unauthorized access</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">4. Data Security</h2>
-                    <p style="margin-bottom: 1.5rem;">We implement appropriate technical and organizational security measures to protect your data against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the Internet is 100% secure.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">5. Data Retention</h2>
-                    <p style="margin-bottom: 1.5rem;">We retain your information for as long as necessary to provide our services and comply with legal obligations. You may request deletion of your data by contacting us.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">6. Your Rights</h2>
-                    <p style="margin-bottom: 1rem;">You have the right to:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li>Access your personal information</li>
-                        <li>Correct inaccurate data</li>
-                        <li>Request deletion of your data</li>
-                        <li>Object to processing of your data</li>
-                        <li>Data portability</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">7. Third-Party Services</h2>
-                    <p style="margin-bottom: 1.5rem;">Our service may contain links to third-party websites or integrate with third-party payment processors. We are not responsible for the privacy practices of these third parties.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">8. Changes to This Policy</h2>
-                    <p style="margin-bottom: 1.5rem;">We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">9. Contact Us</h2>
-                    <p style="margin-bottom: 1.5rem;">If you have any questions about this Privacy Policy, please contact us:</p>
-                    <p style="margin-bottom: 1.5rem;">
-                        <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com" style="color: var(--primary);">restrogrow@gmail.com</a><br>
-                        <strong>Phone:</strong> <a href="tel:+916377568749" style="color: var(--primary);">+91 63775 68749</a>
-                    </p>
-                </div>
-                
-                <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--gray-lighter);">
-                    <a href="../" class="btn btn-primary">Back to Home</a>
+    <!-- Legal page -->
+    <header class="lg-hero">
+        <div class="container lg-container">
+            <span class="lg-eyebrow"><span class="material-symbols-rounded">verified_user</span>Legal</span>
+            <div class="lg-hero-row">
+                <span class="lg-hero-ic material-symbols-rounded">shield_person</span>
+                <div>
+                    <h1>Privacy Policy</h1>
+                    <p class="lg-lead">What data RestroGrow collects from restaurants, their staff and their guests, why we need it, and how we keep it safe.</p>
                 </div>
             </div>
+            <div class="lg-meta">
+                <span><span class="material-symbols-rounded">update</span>Updated December 2024</span>
+                <span><span class="material-symbols-rounded">schedule</span>2 min read</span>
+                <button type="button" class="lg-print" onclick="window.print()"><span class="material-symbols-rounded">print</span>Print</button>
+            </div>
+            <nav class="lg-tabs" aria-label="Legal pages">
+                    <a href="../privacy-policy/" class="on" aria-current="page"><span class="material-symbols-rounded">shield_person</span>Privacy</a>
+                    <a href="../terms-of-service/"><span class="material-symbols-rounded">gavel</span>Terms</a>
+                    <a href="../refund-policy/"><span class="material-symbols-rounded">currency_exchange</span>Refunds</a>
+                    <a href="../cookie-policy/"><span class="material-symbols-rounded">cookie</span>Cookies</a>
+            </nav>
         </div>
-    </section>
+    </header>
+
+    <main class="container lg-container lg-main">
+        <details class="pp-toc" id="ppToc" open hidden>
+            <summary><span class="material-symbols-rounded">toc</span>On this page<span class="material-symbols-rounded pp-chev">expand_more</span></summary>
+            <ol></ol>
+        </details>
+        <div class="lg-col">
+            <article class="lg-card lg-body" id="ppBody">
+                <h2>1. Introduction</h2>
+                <p>Restro Grow ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our restaurant management system and services.</p>
+                
+                <h2>2. Information We Collect</h2>
+                <p>We collect information that you provide directly to us, including:</p>
+                <ul>
+                    <li>Restaurant name, contact information, and business details</li>
+                    <li>Staff member information (name, email, role)</li>
+                    <li>Customer information (for order processing and reservations)</li>
+                    <li>Payment information (processed securely through third-party payment processors)</li>
+                    <li>Menu items, pricing, and inventory data</li>
+                    <li>Order history and transaction records</li>
+                </ul>
+                
+                <h2>3. How We Use Your Information</h2>
+                <p>We use the information we collect to:</p>
+                <ul>
+                    <li>Provide, maintain, and improve our services</li>
+                    <li>Process orders and manage restaurant operations</li>
+                    <li>Send you service-related communications</li>
+                    <li>Generate reports and analytics</li>
+                    <li>Comply with legal obligations</li>
+                    <li>Protect against fraud and unauthorized access</li>
+                </ul>
+                
+                <h2>4. Data Security</h2>
+                <p>We implement appropriate technical and organizational security measures to protect your data against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the Internet is 100% secure.</p>
+                
+                <h2>5. Data Retention</h2>
+                <p>We retain your information for as long as necessary to provide our services and comply with legal obligations. You may request deletion of your data by contacting us.</p>
+                
+                <h2>6. Your Rights</h2>
+                <p>You have the right to:</p>
+                <ul>
+                    <li>Access your personal information</li>
+                    <li>Correct inaccurate data</li>
+                    <li>Request deletion of your data</li>
+                    <li>Object to processing of your data</li>
+                    <li>Data portability</li>
+                </ul>
+                
+                <h2>7. Third-Party Services</h2>
+                <p>Our service may contain links to third-party websites or integrate with third-party payment processors. We are not responsible for the privacy practices of these third parties.</p>
+                
+                <h2>8. Changes to This Policy</h2>
+                <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.</p>
+                
+                <h2>9. Contact Us</h2>
+                <p>If you have any questions about this Privacy Policy, please contact us:</p>
+                <p>
+                    <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com">restrogrow@gmail.com</a><br>
+                    <strong>Phone:</strong> <a href="tel:+916377568749">+91 63775 68749</a>
+                </p>
+                </article>
+            <section class="lg-card lg-help">
+                <span class="lg-help-ic material-symbols-rounded">support_agent</span>
+                <div class="lg-help-text">
+                    <b>Questions about this policy?</b>
+                    <span>Email or call the RestroGrow team and we will help you out.</span>
+                </div>
+                <div class="lg-help-actions">
+                    <a class="lg-btn" href="mailto:restrogrow@gmail.com"><span class="material-symbols-rounded">mail</span>Email us</a>
+                    <a class="lg-btn lg-btn-ghost" href="tel:+916377568749"><span class="material-symbols-rounded">call</span>Call us</a>
+                </div>
+            </section>
+        </div>
+    </main>
 
     <!-- Footer -->
     <footer class="footer">
@@ -161,7 +200,9 @@
         </div>
     </footer>
 
-    <script src="../script.js?v=2.2"></script>
+    <button type="button" class="pp-up" id="ppUp" aria-label="Back to top"><span class="material-symbols-rounded">arrow_upward</span></button>
+    <script src="../script.js?v=2.3"></script>
+    <script src="../main/website/policy_page.js?v=2" defer></script>
 </body>
 </html>
 

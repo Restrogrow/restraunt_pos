@@ -26,10 +26,14 @@
     <link rel="stylesheet" href="../style.css?v=2.3">
     
     <!-- Optimized Font Loading -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
+    <link rel="stylesheet" href="../assets/legal.css?v=1">
 </head>
-<body>
+<body class="lg">
+    <div class="pp-progress" aria-hidden="true"><span></span></div>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container">
@@ -39,71 +43,106 @@
             </a>
             <ul class="nav-menu">
                 <li><a href="../index.html#features">Features</a></li>
-                <li><a href="../index.html#benefits">Benefits</a></li>
                 <li><a href="../index.html#pricing">Pricing</a></li>
+                <li><a href="../about/">About</a></li>
+                <li><a href="../blog/">Blog</a></li>
+                <li><a href="../faq/">FAQ</a></li>
                 <li><a href="../index.html#contact">Contact</a></li>
                 <li><a href="../main/admin/login.php" class="btn-nav">Login</a></li>
             </ul>
+            <button class="nav-toggle" aria-label="Open menu">
+                <span class="material-symbols-rounded">menu</span>
+            </button>
         </div>
     </nav>
 
-    <!-- Cookie Policy Content -->
-    <section class="features" style="padding-top: 120px; padding-bottom: 80px;">
-        <div class="container">
-            <div style="max-width: 800px; margin: 0 auto;">
-                <h1 class="section-title" style="text-align: left; margin-bottom: 2rem;">Cookie Policy</h1>
-                <p style="color: var(--gray); margin-bottom: 2rem; font-size: 1.1rem;">Last updated: December 2024</p>
-                
-                <div style="line-height: 1.8; color: var(--dark);">
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">1. What Are Cookies</h2>
-                    <p style="margin-bottom: 1.5rem;">Cookies are small text files that are placed on your device when you visit a website. They are widely used to make websites work more efficiently and provide information to website owners.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">2. How We Use Cookies</h2>
-                    <p style="margin-bottom: 1rem;">Restro Grow uses cookies for the following purposes:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li><strong>Essential Cookies:</strong> Required for the service to function properly, including authentication and session management</li>
-                        <li><strong>Functional Cookies:</strong> Remember your preferences and settings to enhance your experience</li>
-                        <li><strong>Analytics Cookies:</strong> Help us understand how visitors interact with our service to improve performance</li>
-                        <li><strong>Performance Cookies:</strong> Monitor system performance and identify issues</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">3. Types of Cookies We Use</h2>
-                    <p style="margin-bottom: 1rem;"><strong>Session Cookies:</strong> Temporary cookies that expire when you close your browser. These are essential for maintaining your login session and ensuring security.</p>
-                    <p style="margin-bottom: 1rem;"><strong>Persistent Cookies:</strong> Remain on your device for a set period or until you delete them. These remember your preferences and settings.</p>
-                    <p style="margin-bottom: 1.5rem;"><strong>Third-Party Cookies:</strong> Set by third-party services we use, such as payment processors or analytics tools.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">4. Managing Cookies</h2>
-                    <p style="margin-bottom: 1rem;">You can control and manage cookies in several ways:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li>Browser settings allow you to refuse or delete cookies</li>
-                        <li>Most browsers automatically accept cookies, but you can modify settings to decline them</li>
-                        <li>Note that disabling cookies may affect the functionality of our service</li>
-                        <li>Essential cookies cannot be disabled as they are necessary for the service to work</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">5. Third-Party Cookies</h2>
-                    <p style="margin-bottom: 1.5rem;">We may use third-party services that set their own cookies. These include payment processors, analytics services, and other tools. We do not control these cookies, and you should review the privacy policies of these third parties.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">6. Cookie Consent</h2>
-                    <p style="margin-bottom: 1.5rem;">By using our service, you consent to our use of cookies as described in this policy. If you do not agree to our use of cookies, please adjust your browser settings accordingly or discontinue use of our service.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">7. Updates to This Policy</h2>
-                    <p style="margin-bottom: 1.5rem;">We may update this Cookie Policy from time to time to reflect changes in our practices or for other operational, legal, or regulatory reasons. We will notify you of any material changes by posting the updated policy on this page.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">8. Contact Us</h2>
-                    <p style="margin-bottom: 1.5rem;">If you have any questions about our use of cookies, please contact us:</p>
-                    <p style="margin-bottom: 1.5rem;">
-                        <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com" style="color: var(--primary);">restrogrow@gmail.com</a><br>
-                        <strong>Phone:</strong> <a href="tel:+916377568749" style="color: var(--primary);">+91 63775 68749</a>
-                    </p>
-                </div>
-                
-                <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--gray-lighter);">
-                    <a href="../" class="btn btn-primary">Back to Home</a>
+    <!-- Legal page -->
+    <header class="lg-hero">
+        <div class="container lg-container">
+            <span class="lg-eyebrow"><span class="material-symbols-rounded">verified_user</span>Legal</span>
+            <div class="lg-hero-row">
+                <span class="lg-hero-ic material-symbols-rounded">cookie</span>
+                <div>
+                    <h1>Cookie Policy</h1>
+                    <p class="lg-lead">Which cookies RestroGrow uses, what they do, and how you can control them.</p>
                 </div>
             </div>
+            <div class="lg-meta">
+                <span><span class="material-symbols-rounded">update</span>Updated December 2024</span>
+                <span><span class="material-symbols-rounded">schedule</span>2 min read</span>
+                <button type="button" class="lg-print" onclick="window.print()"><span class="material-symbols-rounded">print</span>Print</button>
+            </div>
+            <nav class="lg-tabs" aria-label="Legal pages">
+                    <a href="../privacy-policy/"><span class="material-symbols-rounded">shield_person</span>Privacy</a>
+                    <a href="../terms-of-service/"><span class="material-symbols-rounded">gavel</span>Terms</a>
+                    <a href="../refund-policy/"><span class="material-symbols-rounded">currency_exchange</span>Refunds</a>
+                    <a href="../cookie-policy/" class="on" aria-current="page"><span class="material-symbols-rounded">cookie</span>Cookies</a>
+            </nav>
         </div>
-    </section>
+    </header>
+
+    <main class="container lg-container lg-main">
+        <details class="pp-toc" id="ppToc" open hidden>
+            <summary><span class="material-symbols-rounded">toc</span>On this page<span class="material-symbols-rounded pp-chev">expand_more</span></summary>
+            <ol></ol>
+        </details>
+        <div class="lg-col">
+            <article class="lg-card lg-body" id="ppBody">
+                <h2>1. What Are Cookies</h2>
+                <p>Cookies are small text files that are placed on your device when you visit a website. They are widely used to make websites work more efficiently and provide information to website owners.</p>
+                
+                <h2>2. How We Use Cookies</h2>
+                <p>Restro Grow uses cookies for the following purposes:</p>
+                <ul>
+                    <li><strong>Essential Cookies:</strong> Required for the service to function properly, including authentication and session management</li>
+                    <li><strong>Functional Cookies:</strong> Remember your preferences and settings to enhance your experience</li>
+                    <li><strong>Analytics Cookies:</strong> Help us understand how visitors interact with our service to improve performance</li>
+                    <li><strong>Performance Cookies:</strong> Monitor system performance and identify issues</li>
+                </ul>
+                
+                <h2>3. Types of Cookies We Use</h2>
+                <p><strong>Session Cookies:</strong> Temporary cookies that expire when you close your browser. These are essential for maintaining your login session and ensuring security.</p>
+                <p><strong>Persistent Cookies:</strong> Remain on your device for a set period or until you delete them. These remember your preferences and settings.</p>
+                <p><strong>Third-Party Cookies:</strong> Set by third-party services we use, such as payment processors or analytics tools.</p>
+                
+                <h2>4. Managing Cookies</h2>
+                <p>You can control and manage cookies in several ways:</p>
+                <ul>
+                    <li>Browser settings allow you to refuse or delete cookies</li>
+                    <li>Most browsers automatically accept cookies, but you can modify settings to decline them</li>
+                    <li>Note that disabling cookies may affect the functionality of our service</li>
+                    <li>Essential cookies cannot be disabled as they are necessary for the service to work</li>
+                </ul>
+                
+                <h2>5. Third-Party Cookies</h2>
+                <p>We may use third-party services that set their own cookies. These include payment processors, analytics services, and other tools. We do not control these cookies, and you should review the privacy policies of these third parties.</p>
+                
+                <h2>6. Cookie Consent</h2>
+                <p>By using our service, you consent to our use of cookies as described in this policy. If you do not agree to our use of cookies, please adjust your browser settings accordingly or discontinue use of our service.</p>
+                
+                <h2>7. Updates to This Policy</h2>
+                <p>We may update this Cookie Policy from time to time to reflect changes in our practices or for other operational, legal, or regulatory reasons. We will notify you of any material changes by posting the updated policy on this page.</p>
+                
+                <h2>8. Contact Us</h2>
+                <p>If you have any questions about our use of cookies, please contact us:</p>
+                <p>
+                    <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com">restrogrow@gmail.com</a><br>
+                    <strong>Phone:</strong> <a href="tel:+916377568749">+91 63775 68749</a>
+                </p>
+                </article>
+            <section class="lg-card lg-help">
+                <span class="lg-help-ic material-symbols-rounded">support_agent</span>
+                <div class="lg-help-text">
+                    <b>Questions about this policy?</b>
+                    <span>Email or call the RestroGrow team and we will help you out.</span>
+                </div>
+                <div class="lg-help-actions">
+                    <a class="lg-btn" href="mailto:restrogrow@gmail.com"><span class="material-symbols-rounded">mail</span>Email us</a>
+                    <a class="lg-btn lg-btn-ghost" href="tel:+916377568749"><span class="material-symbols-rounded">call</span>Call us</a>
+                </div>
+            </section>
+        </div>
+    </main>
 
     <!-- Footer -->
     <footer class="footer">
@@ -149,7 +188,9 @@
         </div>
     </footer>
 
-    <script src="../script.js?v=2.2"></script>
+    <button type="button" class="pp-up" id="ppUp" aria-label="Back to top"><span class="material-symbols-rounded">arrow_upward</span></button>
+    <script src="../script.js?v=2.3"></script>
+    <script src="../main/website/policy_page.js?v=2" defer></script>
 </body>
 </html>
 

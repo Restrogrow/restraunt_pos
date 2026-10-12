@@ -26,10 +26,14 @@
     <link rel="stylesheet" href="../style.css?v=2.3">
     
     <!-- Optimized Font Loading -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
+    <link rel="stylesheet" href="../assets/legal.css?v=1">
 </head>
-<body>
+<body class="lg">
+    <div class="pp-progress" aria-hidden="true"><span></span></div>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container">
@@ -39,85 +43,120 @@
             </a>
             <ul class="nav-menu">
                 <li><a href="../index.html#features">Features</a></li>
-                <li><a href="../index.html#benefits">Benefits</a></li>
                 <li><a href="../index.html#pricing">Pricing</a></li>
+                <li><a href="../about/">About</a></li>
+                <li><a href="../blog/">Blog</a></li>
+                <li><a href="../faq/">FAQ</a></li>
                 <li><a href="../index.html#contact">Contact</a></li>
                 <li><a href="../main/admin/login.php" class="btn-nav">Login</a></li>
             </ul>
+            <button class="nav-toggle" aria-label="Open menu">
+                <span class="material-symbols-rounded">menu</span>
+            </button>
         </div>
     </nav>
 
-    <!-- Refund Policy Content -->
-    <section class="features" style="padding-top: 120px; padding-bottom: 80px;">
-        <div class="container">
-            <div style="max-width: 800px; margin: 0 auto;">
-                <h1 class="section-title" style="text-align: left; margin-bottom: 2rem;">Refund and Return Policy</h1>
-                <p style="color: var(--gray); margin-bottom: 2rem; font-size: 1.1rem;">Last updated: July 2026</p>
-                
-                <div style="line-height: 1.8; color: var(--dark);">
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">1. Subscription Cancellation</h2>
-                    <p style="margin-bottom: 1.5rem;">You may cancel your Restro Grow subscription at any time from your account settings. Cancellation takes effect at the end of your current billing period. No further charges will be made after cancellation.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">2. Refund Policy for Subscriptions</h2>
-                    <p style="margin-bottom: 1rem;">We offer the following refund terms for subscription payments:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li><strong>Free Trial:</strong> No payment is required during the 7-day free trial. You can cancel anytime with no charges.</li>
-                        <li><strong>Monthly Subscriptions:</strong> Refunds are provided if cancellation is requested within the first 7 days of the billing cycle. After 7 days, the subscription continues until the end of the paid period.</li>
-                        <li><strong>Annual Subscriptions:</strong> A prorated refund is available for the unused portion if cancelled within the first 30 days. After 30 days, refunds are not available for the current billing year.</li>
-                        <li><strong>Refund Processing:</strong> Approved refunds are processed within 5-10 business days and credited to the original payment method.</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">3. Service Refunds</h2>
-                    <p style="margin-bottom: 1rem;">Refunds for services are considered on a case-by-case basis:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li><strong>Setup Fees:</strong> No setup fees are charged for our service.</li>
-                        <li><strong>Custom Development:</strong> Fees for custom development work are non-refundable once work has commenced.</li>
-                        <li><strong>Add-on Services:</strong> Refunds for add-on services are subject to the terms agreed upon at purchase.</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">4. Payment Processing Refunds</h2>
-                    <p style="margin-bottom: 1.5rem;">Payments processed through our platform (transactions between restaurants and their customers) are subject to the payment processor's terms. Restro Grow is not liable for refunds between restaurants and their customers. Restaurants should handle customer refunds according to their own policies.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">5. Chargebacks</h2>
-                    <p style="margin-bottom: 1.5rem;">If you dispute a charge through your bank or card issuer (chargeback), your account may be suspended pending investigation. We will provide evidence of the transaction and service provided. If the chargeback is found to be invalid, your account will be reinstated and any fees incurred will be added to your account.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">6. Data Export After Cancellation</h2>
-                    <p style="margin-bottom: 1.5rem;">Upon cancellation, you have 30 days to export your data from the system. After this period, your data may be permanently deleted from our servers. We recommend exporting all important data before or immediately after cancellation.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">7. Exceptions</h2>
-                    <p style="margin-bottom: 1rem;">Refund exceptions may be made in the following circumstances:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li>Extended service outages on our part</li>
-                        <li>Billing errors or duplicate charges</li>
-                        <li>Technical issues preventing core functionality</li>
-                        <li>Other exceptional circumstances at management's discretion</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">8. How to Request a Refund</h2>
-                    <p style="margin-bottom: 1.5rem;">To request a refund or cancellation, please contact our support team:</p>
-                    <p style="margin-bottom: 1.5rem;">
-                        <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com" style="color: var(--primary);">restrogrow@gmail.com</a><br>
-                        <strong>Phone:</strong> <a href="tel:+916377568749" style="color: var(--primary);">+91 63775 68749</a><br>
-                        <strong>Response Time:</strong> We aim to respond to all refund requests within 24-48 hours.
-                    </p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">9. Changes to This Policy</h2>
-                    <p style="margin-bottom: 1.5rem;">We reserve the right to modify this Refund and Return Policy at any time. Changes will be effective immediately upon posting to this page. We encourage you to review this policy periodically for any updates.</p>
-
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">10. Contact Us</h2>
-                    <p style="margin-bottom: 1.5rem;">
-                        If you have any questions about this Refund and Return Policy, please contact us:<br>
-                        <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com" style="color: var(--primary);">restrogrow@gmail.com</a><br>
-                        <strong>Phone:</strong> <a href="tel:+916377568749" style="color: var(--primary);">+91 63775 68749</a>
-                    </p>
-                </div>
-                
-                <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--gray-lighter);">
-                    <a href="../" class="btn btn-primary">Back to Home</a>
+    <!-- Legal page -->
+    <header class="lg-hero">
+        <div class="container lg-container">
+            <span class="lg-eyebrow"><span class="material-symbols-rounded">verified_user</span>Legal</span>
+            <div class="lg-hero-row">
+                <span class="lg-hero-ic material-symbols-rounded">currency_exchange</span>
+                <div>
+                    <h1>Refund and Return Policy</h1>
+                    <p class="lg-lead">How plans, cancellations and refunds work, and how long a refund takes.</p>
                 </div>
             </div>
+            <div class="lg-meta">
+                <span><span class="material-symbols-rounded">update</span>Updated July 2026</span>
+                <span><span class="material-symbols-rounded">schedule</span>2 min read</span>
+                <button type="button" class="lg-print" onclick="window.print()"><span class="material-symbols-rounded">print</span>Print</button>
+            </div>
+            <nav class="lg-tabs" aria-label="Legal pages">
+                    <a href="../privacy-policy/"><span class="material-symbols-rounded">shield_person</span>Privacy</a>
+                    <a href="../terms-of-service/"><span class="material-symbols-rounded">gavel</span>Terms</a>
+                    <a href="../refund-policy/" class="on" aria-current="page"><span class="material-symbols-rounded">currency_exchange</span>Refunds</a>
+                    <a href="../cookie-policy/"><span class="material-symbols-rounded">cookie</span>Cookies</a>
+            </nav>
         </div>
-    </section>
+    </header>
+
+    <main class="container lg-container lg-main">
+        <details class="pp-toc" id="ppToc" open hidden>
+            <summary><span class="material-symbols-rounded">toc</span>On this page<span class="material-symbols-rounded pp-chev">expand_more</span></summary>
+            <ol></ol>
+        </details>
+        <div class="lg-col">
+            <article class="lg-card lg-body" id="ppBody">
+                <h2>1. Subscription Cancellation</h2>
+                <p>You may cancel your Restro Grow subscription at any time from your account settings. Cancellation takes effect at the end of your current billing period. No further charges will be made after cancellation.</p>
+                
+                <h2>2. Refund Policy for Subscriptions</h2>
+                <p>We offer the following refund terms for subscription payments:</p>
+                <ul>
+                    <li><strong>Free Trial:</strong> No payment is required during the 7-day free trial. You can cancel anytime with no charges.</li>
+                    <li><strong>Monthly Subscriptions:</strong> Refunds are provided if cancellation is requested within the first 7 days of the billing cycle. After 7 days, the subscription continues until the end of the paid period.</li>
+                    <li><strong>Annual Subscriptions:</strong> A prorated refund is available for the unused portion if cancelled within the first 30 days. After 30 days, refunds are not available for the current billing year.</li>
+                    <li><strong>Refund Processing:</strong> Approved refunds are processed within 5-10 business days and credited to the original payment method.</li>
+                </ul>
+                
+                <h2>3. Service Refunds</h2>
+                <p>Refunds for services are considered on a case-by-case basis:</p>
+                <ul>
+                    <li><strong>Setup Fees:</strong> No setup fees are charged for our service.</li>
+                    <li><strong>Custom Development:</strong> Fees for custom development work are non-refundable once work has commenced.</li>
+                    <li><strong>Add-on Services:</strong> Refunds for add-on services are subject to the terms agreed upon at purchase.</li>
+                </ul>
+                
+                <h2>4. Payment Processing Refunds</h2>
+                <p>Payments processed through our platform (transactions between restaurants and their customers) are subject to the payment processor's terms. Restro Grow is not liable for refunds between restaurants and their customers. Restaurants should handle customer refunds according to their own policies.</p>
+                
+                <h2>5. Chargebacks</h2>
+                <p>If you dispute a charge through your bank or card issuer (chargeback), your account may be suspended pending investigation. We will provide evidence of the transaction and service provided. If the chargeback is found to be invalid, your account will be reinstated and any fees incurred will be added to your account.</p>
+                
+                <h2>6. Data Export After Cancellation</h2>
+                <p>Upon cancellation, you have 30 days to export your data from the system. After this period, your data may be permanently deleted from our servers. We recommend exporting all important data before or immediately after cancellation.</p>
+                
+                <h2>7. Exceptions</h2>
+                <p>Refund exceptions may be made in the following circumstances:</p>
+                <ul>
+                    <li>Extended service outages on our part</li>
+                    <li>Billing errors or duplicate charges</li>
+                    <li>Technical issues preventing core functionality</li>
+                    <li>Other exceptional circumstances at management's discretion</li>
+                </ul>
+                
+                <h2>8. How to Request a Refund</h2>
+                <p>To request a refund or cancellation, please contact our support team:</p>
+                <p>
+                    <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com">restrogrow@gmail.com</a><br>
+                    <strong>Phone:</strong> <a href="tel:+916377568749">+91 63775 68749</a><br>
+                    <strong>Response Time:</strong> We aim to respond to all refund requests within 24-48 hours.
+                </p>
+                
+                <h2>9. Changes to This Policy</h2>
+                <p>We reserve the right to modify this Refund and Return Policy at any time. Changes will be effective immediately upon posting to this page. We encourage you to review this policy periodically for any updates.</p>
+
+                <h2>10. Contact Us</h2>
+                <p>
+                    If you have any questions about this Refund and Return Policy, please contact us:<br>
+                    <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com">restrogrow@gmail.com</a><br>
+                    <strong>Phone:</strong> <a href="tel:+916377568749">+91 63775 68749</a>
+                </p>
+                </article>
+            <section class="lg-card lg-help">
+                <span class="lg-help-ic material-symbols-rounded">support_agent</span>
+                <div class="lg-help-text">
+                    <b>Questions about this policy?</b>
+                    <span>Email or call the RestroGrow team and we will help you out.</span>
+                </div>
+                <div class="lg-help-actions">
+                    <a class="lg-btn" href="mailto:restrogrow@gmail.com"><span class="material-symbols-rounded">mail</span>Email us</a>
+                    <a class="lg-btn lg-btn-ghost" href="tel:+916377568749"><span class="material-symbols-rounded">call</span>Call us</a>
+                </div>
+            </section>
+        </div>
+    </main>
 
     <!-- Footer -->
     <footer class="footer">
@@ -163,6 +202,8 @@
         </div>
     </footer>
 
-    <script src="../script.js?v=2.2"></script>
+    <button type="button" class="pp-up" id="ppUp" aria-label="Back to top"><span class="material-symbols-rounded">arrow_upward</span></button>
+    <script src="../script.js?v=2.3"></script>
+    <script src="../main/website/policy_page.js?v=2" defer></script>
 </body>
 </html>

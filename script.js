@@ -2,7 +2,9 @@
 (function ensureSweetAlert(){
     if (!window.Swal) {
         const script = document.createElement('script');
-        script.src = 'main/assets/js/sweetalert2.all.min.js';
+        // relative to this file, so pages in sub-folders (/faq/, /privacy-policy/) find it too
+        const here = document.currentScript && document.currentScript.src ? new URL('.', document.currentScript.src).href : '';
+        script.src = here + 'main/assets/js/sweetalert2.all.min.js';
         script.defer = true;
         document.head.appendChild(script);
     }

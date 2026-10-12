@@ -26,10 +26,14 @@
     <link rel="stylesheet" href="../style.css?v=2.3">
     
     <!-- Optimized Font Loading -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
+    <link rel="stylesheet" href="../assets/legal.css?v=1">
 </head>
-<body>
+<body class="lg">
+    <div class="pp-progress" aria-hidden="true"><span></span></div>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container">
@@ -39,89 +43,124 @@
             </a>
             <ul class="nav-menu">
                 <li><a href="../index.html#features">Features</a></li>
-                <li><a href="../index.html#benefits">Benefits</a></li>
                 <li><a href="../index.html#pricing">Pricing</a></li>
+                <li><a href="../about/">About</a></li>
+                <li><a href="../blog/">Blog</a></li>
+                <li><a href="../faq/">FAQ</a></li>
                 <li><a href="../index.html#contact">Contact</a></li>
                 <li><a href="../main/admin/login.php" class="btn-nav">Login</a></li>
             </ul>
+            <button class="nav-toggle" aria-label="Open menu">
+                <span class="material-symbols-rounded">menu</span>
+            </button>
         </div>
     </nav>
 
-    <!-- Terms of Service Content -->
-    <section class="features" style="padding-top: 120px; padding-bottom: 80px;">
-        <div class="container">
-            <div style="max-width: 800px; margin: 0 auto;">
-                <h1 class="section-title" style="text-align: left; margin-bottom: 2rem;">Terms of Service</h1>
-                <p style="color: var(--gray); margin-bottom: 2rem; font-size: 1.1rem;">Last updated: December 2024</p>
-                
-                <div style="line-height: 1.8; color: var(--dark);">
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">1. Acceptance of Terms</h2>
-                    <p style="margin-bottom: 1.5rem;">By accessing and using Restro Grow's restaurant management system, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these terms, please do not use our service.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">2. Description of Service</h2>
-                    <p style="margin-bottom: 1.5rem;">Restro Grow provides a cloud-based Point of Sale (POS) and restaurant management system that includes order management, staff management, inventory tracking, payment processing, and reporting features.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">3. User Accounts</h2>
-                    <p style="margin-bottom: 1rem;">To use our service, you must:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li>Provide accurate and complete registration information</li>
-                        <li>Maintain the security of your account credentials</li>
-                        <li>Accept responsibility for all activities under your account</li>
-                        <li>Notify us immediately of any unauthorized use</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">4. Subscription and Payment</h2>
-                    <p style="margin-bottom: 1rem;">Our service is provided on a subscription basis:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li>Subscription fees are billed monthly or annually as selected</li>
-                        <li>All fees are non-refundable except as required by law</li>
-                        <li>We reserve the right to change pricing with 30 days notice</li>
-                        <li>Failure to pay may result in service suspension or termination</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">5. Acceptable Use</h2>
-                    <p style="margin-bottom: 1rem;">You agree not to:</p>
-                    <ul style="margin-left: 2rem; margin-bottom: 1.5rem; line-height: 2;">
-                        <li>Use the service for any illegal purpose</li>
-                        <li>Attempt to gain unauthorized access to our systems</li>
-                        <li>Interfere with or disrupt the service</li>
-                        <li>Reverse engineer or attempt to extract source code</li>
-                        <li>Resell or redistribute the service without permission</li>
-                    </ul>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">6. Intellectual Property</h2>
-                    <p style="margin-bottom: 1.5rem;">All content, features, and functionality of Restro Grow, including but not limited to text, graphics, logos, images, and software, are owned by Restro Grow or its licensors and are protected by copyright, trademark, and other intellectual property laws.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">7. Data Ownership</h2>
-                    <p style="margin-bottom: 1.5rem;">You retain ownership of all data you upload to our service. We will not use, disclose, or sell your data except as necessary to provide the service or as required by law.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">8. Service Availability</h2>
-                    <p style="margin-bottom: 1.5rem;">We strive to maintain high availability but do not guarantee uninterrupted service. We reserve the right to perform maintenance, updates, or modifications that may temporarily interrupt service.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">9. Limitation of Liability</h2>
-                    <p style="margin-bottom: 1.5rem;">To the maximum extent permitted by law, Restro Grow shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">10. Termination</h2>
-                    <p style="margin-bottom: 1.5rem;">Either party may terminate this agreement at any time. Upon termination, your access to the service will cease, and we may delete your data after a reasonable retention period.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">11. Changes to Terms</h2>
-                    <p style="margin-bottom: 1.5rem;">We reserve the right to modify these terms at any time. We will notify users of material changes via email or through the service. Continued use after changes constitutes acceptance.</p>
-                    
-                    <h2 style="font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1rem; color: var(--dark);">12. Contact Information</h2>
-                    <p style="margin-bottom: 1.5rem;">
-                        For questions about these Terms of Service, please contact us:<br>
-
-                        <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com" style="color: var(--primary);">restrogrow@gmail.com</a><br>
-                        <strong>Phone:</strong> <a href="tel:+916377568749" style="color: var(--primary);">+91 63775 68749</a>
-                    </p>
-                </div>
-                
-                <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--gray-lighter);">
-                    <a href="../" class="btn btn-primary">Back to Home</a>
+    <!-- Legal page -->
+    <header class="lg-hero">
+        <div class="container lg-container">
+            <span class="lg-eyebrow"><span class="material-symbols-rounded">verified_user</span>Legal</span>
+            <div class="lg-hero-row">
+                <span class="lg-hero-ic material-symbols-rounded">gavel</span>
+                <div>
+                    <h1>Terms of Service</h1>
+                    <p class="lg-lead">The agreement between you and RestroGrow when you use our restaurant software.</p>
                 </div>
             </div>
+            <div class="lg-meta">
+                <span><span class="material-symbols-rounded">update</span>Updated December 2024</span>
+                <span><span class="material-symbols-rounded">schedule</span>2 min read</span>
+                <button type="button" class="lg-print" onclick="window.print()"><span class="material-symbols-rounded">print</span>Print</button>
+            </div>
+            <nav class="lg-tabs" aria-label="Legal pages">
+                    <a href="../privacy-policy/"><span class="material-symbols-rounded">shield_person</span>Privacy</a>
+                    <a href="../terms-of-service/" class="on" aria-current="page"><span class="material-symbols-rounded">gavel</span>Terms</a>
+                    <a href="../refund-policy/"><span class="material-symbols-rounded">currency_exchange</span>Refunds</a>
+                    <a href="../cookie-policy/"><span class="material-symbols-rounded">cookie</span>Cookies</a>
+            </nav>
         </div>
-    </section>
+    </header>
+
+    <main class="container lg-container lg-main">
+        <details class="pp-toc" id="ppToc" open hidden>
+            <summary><span class="material-symbols-rounded">toc</span>On this page<span class="material-symbols-rounded pp-chev">expand_more</span></summary>
+            <ol></ol>
+        </details>
+        <div class="lg-col">
+            <article class="lg-card lg-body" id="ppBody">
+                <h2>1. Acceptance of Terms</h2>
+                <p>By accessing and using Restro Grow's restaurant management system, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these terms, please do not use our service.</p>
+                
+                <h2>2. Description of Service</h2>
+                <p>Restro Grow provides a cloud-based Point of Sale (POS) and restaurant management system that includes order management, staff management, inventory tracking, payment processing, and reporting features.</p>
+                
+                <h2>3. User Accounts</h2>
+                <p>To use our service, you must:</p>
+                <ul>
+                    <li>Provide accurate and complete registration information</li>
+                    <li>Maintain the security of your account credentials</li>
+                    <li>Accept responsibility for all activities under your account</li>
+                    <li>Notify us immediately of any unauthorized use</li>
+                </ul>
+                
+                <h2>4. Subscription and Payment</h2>
+                <p>Our service is provided on a subscription basis:</p>
+                <ul>
+                    <li>Subscription fees are billed monthly or annually as selected</li>
+                    <li>All fees are non-refundable except as required by law</li>
+                    <li>We reserve the right to change pricing with 30 days notice</li>
+                    <li>Failure to pay may result in service suspension or termination</li>
+                </ul>
+                
+                <h2>5. Acceptable Use</h2>
+                <p>You agree not to:</p>
+                <ul>
+                    <li>Use the service for any illegal purpose</li>
+                    <li>Attempt to gain unauthorized access to our systems</li>
+                    <li>Interfere with or disrupt the service</li>
+                    <li>Reverse engineer or attempt to extract source code</li>
+                    <li>Resell or redistribute the service without permission</li>
+                </ul>
+                
+                <h2>6. Intellectual Property</h2>
+                <p>All content, features, and functionality of Restro Grow, including but not limited to text, graphics, logos, images, and software, are owned by Restro Grow or its licensors and are protected by copyright, trademark, and other intellectual property laws.</p>
+                
+                <h2>7. Data Ownership</h2>
+                <p>You retain ownership of all data you upload to our service. We will not use, disclose, or sell your data except as necessary to provide the service or as required by law.</p>
+                
+                <h2>8. Service Availability</h2>
+                <p>We strive to maintain high availability but do not guarantee uninterrupted service. We reserve the right to perform maintenance, updates, or modifications that may temporarily interrupt service.</p>
+                
+                <h2>9. Limitation of Liability</h2>
+                <p>To the maximum extent permitted by law, Restro Grow shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly.</p>
+                
+                <h2>10. Termination</h2>
+                <p>Either party may terminate this agreement at any time. Upon termination, your access to the service will cease, and we may delete your data after a reasonable retention period.</p>
+                
+                <h2>11. Changes to Terms</h2>
+                <p>We reserve the right to modify these terms at any time. We will notify users of material changes via email or through the service. Continued use after changes constitutes acceptance.</p>
+                
+                <h2>12. Contact Information</h2>
+                <p>
+                    For questions about these Terms of Service, please contact us:<br>
+
+                    <strong>Email:</strong> <a href="mailto:restrogrow@gmail.com">restrogrow@gmail.com</a><br>
+                    <strong>Phone:</strong> <a href="tel:+916377568749">+91 63775 68749</a>
+                </p>
+                </article>
+            <section class="lg-card lg-help">
+                <span class="lg-help-ic material-symbols-rounded">support_agent</span>
+                <div class="lg-help-text">
+                    <b>Questions about this policy?</b>
+                    <span>Email or call the RestroGrow team and we will help you out.</span>
+                </div>
+                <div class="lg-help-actions">
+                    <a class="lg-btn" href="mailto:restrogrow@gmail.com"><span class="material-symbols-rounded">mail</span>Email us</a>
+                    <a class="lg-btn lg-btn-ghost" href="tel:+916377568749"><span class="material-symbols-rounded">call</span>Call us</a>
+                </div>
+            </section>
+        </div>
+    </main>
 
     <!-- Footer -->
     <footer class="footer">
@@ -167,7 +206,9 @@
         </div>
     </footer>
 
-    <script src="../script.js?v=2.2"></script>
+    <button type="button" class="pp-up" id="ppUp" aria-label="Back to top"><span class="material-symbols-rounded">arrow_upward</span></button>
+    <script src="../script.js?v=2.3"></script>
+    <script src="../main/website/policy_page.js?v=2" defer></script>
 </body>
 </html>
 
