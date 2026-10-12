@@ -354,7 +354,8 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     if (t === 'cashback') f = [['fa-wallet', (+P.cashback_pct) + '% back', 'On every completed order'], ['fa-bolt', 'Spend it anytime', 'Pay from your wallet at checkout']];
     else if (t === 'stamps') f = [['fa-stamp', P.stamp_goal + ' stamps', 'Fill the card for ' + (P.stamp_reward || 'a reward')], ['fa-receipt', '1 per order', P.stamp_min_order > 0 ? 'Orders above ' + money(P.stamp_min_order) : 'Every order counts']];
     else f = [['fa-coins', earnLine(), 'Earn on every order'], ['fa-tag', '1 point = ' + money(P.redeem_value_per_point), 'Use from ' + num(P.min_redeem_points) + ' points']];
-    if (P.referral_enabled) f.push(['fa-user-group', '+' + num(P.referrer_reward_points) + ' points', 'For every friend you invite']);
+    if (P.referral_enabled && TYPE() === 'points') f.push(['fa-user-group', '+' + num(P.referrer_reward_points) + ' points', 'For every friend you invite']);
+    else if (P.referral_enabled && P.referral_gift) f.push(['fa-user-group', P.referral_gift, 'For you and every friend you invite']);
     f.push(['fa-cake-candles', 'Birthday treat', 'A gift on your day']);
     return '<div class="lx-facts">' + f.map(function (x) { return '<div class="lx-fact"><i class="fa ' + x[0] + '"></i><div><b>' + esc(x[1]) + '</b>' + esc(x[2]) + '</div></div>'; }).join('') + '</div>';
   }
@@ -373,7 +374,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     '</div></section>';
   }
   // Gifts: personal one-time codes (stamp cards, birthday, win-back…)
-  var GIFT_SRC = { stamps: 'Stamp card', birthday: 'Birthday gift', anniversary: 'Anniversary gift', welcome: 'Welcome gift', winback: 'We miss you', tier: 'Level up', milestone: 'Milestone', challenge: 'Challenge', streak: 'Streak', vip: 'VIP' };
+  var GIFT_SRC = { stamps: 'Stamp card', birthday: 'Birthday gift', anniversary: 'Anniversary gift', welcome: 'Welcome gift', winback: 'We miss you', tier_up: 'Level up', milestone: 'Milestone', referral: 'Referral gift', challenge: 'Challenge', streak: 'Streak', vip: 'VIP' };
   function gifts() {
     var G = (M && M.gifts) || [];
     if (!G.length) return '';
@@ -394,7 +395,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     if (!M) return '';
     var d = M.details || {}, need = !d.birthday;
     return '<section class="lx-sec' + (need ? ' lx-hl' : '') + '"><div class="lx-h"><h2>' + (need ? 'Get a treat on your birthday' : 'Your special days') + '</h2></div>' +
-      (need ? '<p class="lx-note" style="margin:0 0 12px">Add your birthday and we\u2019ll have a gift waiting for you.</p>' : '') +
+      (need ? '<p class="lx-note" style="margin:0 0 12px">Add your birthday and we\u2019ll have ' + (P.birthday_gift ? '<b>' + esc(P.birthday_gift) + '</b>' : 'a gift') + ' waiting for you.</p>' : (P.birthday_gift ? '<p class="lx-note" style="margin:0 0 12px">A <b>' + esc(P.birthday_gift) + '</b> arrives in your gifts the week of your birthday.</p>' : '')) +
       '<div class="lx-form"><label>Birthday<input type="date" id="lxBday" value="' + esc(d.birthday || '') + '" max="' + new Date().toISOString().slice(0, 10) + '"></label>' +
       '<label>Anniversary <em>optional</em><input type="date" id="lxAnniv" value="' + esc(d.anniversary || '') + '" max="' + new Date().toISOString().slice(0, 10) + '"></label></div>' +
       '<label class="lx-optin"><input type="checkbox" id="lxOptin"' + (d.whatsapp_optin ? ' checked' : '') + '><span><b>Send my rewards and offers on WhatsApp</b>Gift codes, birthday treats and the odd special. Stop anytime.</span></label>' +
@@ -426,15 +427,20 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
   }
   function referral() {
     if (!P.referral_enabled) return '';
-    var gift = '<div class="lx-ref-gift"><div><b>+' + num(P.referred_reward_points) + '</b><span>points for your friend</span></div><div><b>+' + num(P.referrer_reward_points) + '</b><span>points for you</span></div></div>';
+    // points programs give points; cashback / stamps give both friends a gift code
+    var pts = TYPE() === 'points', rg = P.referral_gift;
+    if (!pts && !rg) return '';
+    var gift = pts ? '<div class="lx-ref-gift"><div><b>+' + num(P.referred_reward_points) + '</b><span>points for your friend</span></div><div><b>+' + num(P.referrer_reward_points) + '</b><span>points for you</span></div></div>'
+                   : '<div class="lx-ref-gift"><div><b>' + esc(rg) + '</b><span>for your friend</span></div><div><b>' + esc(rg) + '</b><span>for you</span></div></div>';
+    var what = pts ? 'points' : 'a gift';
     if (!M || !M.referral_code) {
       return '<section class="lx-sec"><div class="lx-h"><h2>Invite friends</h2></div><div class="lx-ref">' + gift +
-        '<p class="lx-note">Join to get your own invite code. When a friend orders with it, you both get points.</p></div></section>';
+        '<p class="lx-note">Join to get your own invite code. When a friend orders with it, you both get ' + what + '.</p></div></section>';
     }
     var link = refLink(M.referral_code);
-    return '<section class="lx-sec"><div class="lx-h"><h2>Invite friends</h2><small>You both get points</small></div><div class="lx-ref">' + gift +
+    return '<section class="lx-sec"><div class="lx-h"><h2>Invite friends</h2><small>You both get ' + what + '</small></div><div class="lx-ref">' + gift +
       '<div class="lx-code"><b>' + esc(M.referral_code) + '</b><button type="button" data-act="copy">Copy link</button></div>' +
-      '<div class="lx-ref-actions"><a class="lx-btn lx-wa" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent('Try ' + window.restaurantName + '! Use my code ' + M.referral_code + ' and we both get reward points: ' + link) + '"><i class="fab fa-whatsapp"></i> WhatsApp</a>' +
+      '<div class="lx-ref-actions"><a class="lx-btn lx-wa" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent('Try ' + window.restaurantName + '! Use my code ' + M.referral_code + ' and we both get ' + (pts ? 'reward points' : 'a treat') + ': ' + link) + '"><i class="fab fa-whatsapp"></i> WhatsApp</a>' +
         '<button type="button" class="lx-btn light" data-act="share"><i class="fa fa-share-nodes"></i> Share</button></div>' +
       '<div class="lx-ref-qr"><img alt="Invite QR code" loading="lazy" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=' + encodeURIComponent(link) + '"><span>Friends can scan this at your table to join with your code.</span></div>' +
     '</div></section>';
@@ -474,7 +480,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
                                         : steps() + (isPts ? rewards() + tiers() : '') + referral()) +
       '<p class="lx-fine">' + (TYPE() === 'cashback' ? 'Cashback lands in your wallet when your order is completed and comes off if it’s cancelled.' : TYPE() === 'stamps' ? 'A stamp is added when your order is completed. Cancelled orders don’t count.' : 'Points are added when your order is completed and come off if it’s cancelled.' + (P.points_expiry_days ? ' Points expire after ' + P.points_expiry_days + ' days without an order.' : '')) + '</p>';
     $('lxBody').classList.remove('hidden');
-    $('lxSticky').innerHTML = M ? '<a class="lx-btn brand" href="' + esc(window.lxMenuUrl) + '"><i class="fa fa-utensils"></i> Order now and earn points</a>'
+    $('lxSticky').innerHTML = M ? '<a class="lx-btn brand" href="' + esc(window.lxMenuUrl) + '"><i class="fa fa-utensils"></i> Order now and earn ' + (TYPE() === 'cashback' ? 'cashback' : TYPE() === 'stamps' ? 'a stamp' : 'points') + '</a>'
                                 : '<a class="lx-btn gold" href="' + esc(window.lxLoginUrl) + '"><i class="fa fa-user-plus"></i> Join free and start earning</a>';
     reveal();
     if (bodyOnly) { document.querySelectorAll('.lx-sec').forEach(function (s) { s.classList.add('in'); }); return; }
@@ -540,7 +546,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     if (a === 'copy') { var link = refLink(M.referral_code); (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(function () { toast('Invite link copied'); }, function () { toast(link); }); return; }
     if (a === 'share') {
       var l = refLink(M.referral_code);
-      if (navigator.share) navigator.share({ title: window.restaurantName, text: 'Use my code ' + M.referral_code + ' and we both get reward points', url: l }).catch(function () {});
+      if (navigator.share) navigator.share({ title: window.restaurantName, text: 'Use my code ' + M.referral_code + ' and we both get ' + (TYPE() === 'points' ? 'reward points' : 'a treat'), url: l }).catch(function () {});
       else { (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(function () { toast('Invite link copied'); }, function () {}); }
       return;
     }

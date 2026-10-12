@@ -28,7 +28,7 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/../config/growth_helpers.php';
 require_once __DIR__ . '/../config/order_abuse_guard.php';
 require_once __DIR__ . '/customer_session.php';
-require_once __DIR__ . '/../config/loyalty_engine.php';
+require_once __DIR__ . '/../config/loyalty_autopilot.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -88,7 +88,12 @@ function loyaltyRewardsWithDish(PDO $conn, string $rid): array {
 
 /** The member's own card: points, tier and progress, referral code, history. */
 function loyaltyMember(PDO $conn, string $rid, array $customer, array $settings, array $tiers): array {
-    $spent = (float)$customer['total_spent'];
+    // POS / table orders don't add to customers.total_spent, so count completed orders too
+    $done = $conn->prepare("SELECT COUNT(*), COALESCE(SUM(total), 0) FROM orders WHERE restaurant_id = ? AND customer_phone = ? AND order_status = 'Completed' AND deleted_at IS NULL");
+    $done->execute([$rid, $customer['phone']]);
+    [$doneCount, $doneSum] = $done->fetch(PDO::FETCH_NUM);
+    $spent = max((float)$customer['total_spent'], (float)$doneSum);
+    $customer['total_visits'] = max((int)$customer['total_visits'], (int)$doneCount);
     $currentTier = null; $nextTier = null;
     foreach ($tiers as $t) {
         if ($spent >= $t['min_total_spent']) $currentTier = $t;
@@ -133,11 +138,14 @@ try {
     if (!$restaurantId) throw new Exception('Restaurant not identified');
 
     ensureGrowthSchema($conn);
-    ensureLoyaltyEngineSchema($conn);
+    ensureLoyaltyAutopilotSchema($conn);
 
     switch ($action) {
         case 'page':
+            // birthday / anniversary / win-back gifts (at most once an hour per restaurant)
+            try { loyaltyRunSweep($conn, $restaurantId); } catch (Throwable $e) { error_log('autopilot sweep: ' . $e->getMessage()); }
             $settings = getGrowthSettings($conn, $restaurantId);
+            $autos = loyaltyAutomations($conn, $restaurantId);
             $tiers = loyaltyTiers($conn, $restaurantId);
             $program = [
                 'loyalty_enabled' => (bool)$settings['loyalty_enabled'],
@@ -155,6 +163,9 @@ try {
                 'stamp_goal' => (int)($settings['stamp_goal'] ?? 6),
                 'stamp_min_order' => (float)($settings['stamp_min_order'] ?? 0),
                 'stamp_reward' => loyaltyProgramType($settings) === 'stamps' ? loyaltyStampRewardLabel($conn, $settings + ['restaurant_id' => $restaurantId]) : null,
+                // cashback / stamps programs reward referrals with a gift code for both friends
+                'referral_gift' => loyaltyProgramType($settings) !== 'points' && $autos['referral']['enabled'] ? loyaltyAutoRewardLabel($conn, $restaurantId, $autos['referral']) : null,
+                'birthday_gift' => $autos['birthday']['enabled'] ? loyaltyAutoRewardLabel($conn, $restaurantId, $autos['birthday']) : null,
                 'tiers' => $tiers,
                 'rewards' => $settings['loyalty_enabled'] ? loyaltyRewardsWithDish($conn, $restaurantId) : [],
             ];

@@ -234,7 +234,7 @@ function validateAndUpdateOrderStatus(
                     // order's phone gets a customer record the first time, so it earns too.
                     // The program type decides what's earned (points here; stamps and
                     // milestones in loyalty_engine.php; cashback via the wallet hook).
-                    require_once __DIR__ . '/loyalty_engine.php';
+                    require_once __DIR__ . '/loyalty_autopilot.php';
                     $fullStmt = $conn->prepare('SELECT * FROM orders WHERE id = ?');
                     $fullStmt->execute([$orderId]);
                     $fullOrder = $fullStmt->fetch(PDO::FETCH_ASSOC);
@@ -244,7 +244,11 @@ function validateAndUpdateOrderStatus(
                         if (loyaltyProgramType($growthSettingsNow) === 'points') {
                             awardLoyaltyPoints($conn, $orderRestaurantId, $customerId, $orderId, (float)$detail['total']);
                         }
-                        completeReferralIfPending($conn, $orderRestaurantId, $customerId);
+                        // points programs reward the referrer with points; the others
+                        // give both friends a gift code (autopilot, in loyaltyOnOrderCompleted)
+                        if (loyaltyProgramType($growthSettingsNow) === 'points') {
+                            completeReferralIfPending($conn, $orderRestaurantId, $customerId);
+                        }
                         loyaltyOnOrderCompleted($conn, $orderId, $customerId);
                     }
                 }

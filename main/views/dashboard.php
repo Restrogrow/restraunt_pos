@@ -3972,6 +3972,57 @@ function toggleGatewayMode() {
         .ls-st.on { border: 0; background: linear-gradient(135deg, #ffe08a, #d99a1e); color: #3b2604; }
         .ls-st.gift { border-style: solid; border-color: #f5c451; color: #f5c451; }
         .ls-st .material-symbols-rounded { font-size: 20px; }
+        .lsa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); grid-auto-flow: row dense; gap: 12px; align-items: start; margin-bottom: 22px; }
+        .lsa-card { padding: 14px; border: 1px solid #e5e7eb; border-radius: 16px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+        .lsa-card.on { border-color: #ddd6fe; box-shadow: 0 10px 24px -18px rgba(109,40,217,.55); }
+        .lsa-card.open { grid-column: 1 / -1; border-color: #a78bfa; }
+        .lsa-top { display: flex; align-items: center; gap: 12px; }
+        .lsa-ic { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: #f3f4f6; color: #9ca3af; font-size: 23px; }
+        .lsa-card.on .lsa-ic { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; }
+        .lsa-t { flex: 1; min-width: 0; }
+        .lsa-t b { display: block; font-size: .95rem; color: #111827; }
+        .lsa-t small { display: block; margin-top: 2px; font-size: .78rem; color: #6b7280; }
+        .lsa-t em { font-style: normal; font-weight: 700; color: #6d28d9; }
+        .lsa-card:not(.on) .lsa-t em { color: #6b7280; }
+        .lsa-sw { margin: 0; }
+        .lsa-nums { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e5e7eb; }
+        .lsa-nums div { flex: 1; min-width: 0; }
+        .lsa-nums b { display: block; font-size: .98rem; color: #111827; }
+        .lsa-nums span { font-size: .7rem; color: #9ca3af; font-weight: 600; }
+        .lsa-edit { display: flex; align-items: center; gap: 4px; padding: 7px 11px; border: 1.5px solid #e5e7eb; border-radius: 10px; background: #fff; color: #374151; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+        .lsa-edit:hover { border-color: #a78bfa; color: #6d28d9; }
+        .lsa-edit .material-symbols-rounded { font-size: 17px; }
+        .lsa-note { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: #f9fafb; color: #6b7280; font-size: .76rem; line-height: 1.45; }
+        .lsa-ed { margin-top: 14px; padding-top: 14px; border-top: 1px solid #ede9fe; }
+        .lsa-msg { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; align-items: start; }
+        .lsa-msg label { display: flex; flex-direction: column; gap: 5px; font-size: .78rem; font-weight: 700; color: #6b7280; }
+        #growthSettingsPage .lsa-msg textarea { padding: 10px 11px; border: 1.5px solid #e5e7eb; border-radius: 10px; font: inherit; font-size: .88rem; color: #111827; resize: vertical; min-height: 84px; }
+        .lsa-vars { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1; }
+        .lsa-vars button { padding: 4px 9px; border: 1px solid #ddd6fe; border-radius: 999px; background: #faf5ff; color: #6d28d9; font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer; }
+        .lsa-bubble { grid-column: 2; grid-row: 1 / span 2; padding: 12px; border-radius: 14px; background: #e7f7ee; }
+        .lsa-bubble-h { display: block; margin-bottom: 6px; font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #15803d; }
+        .lsa-bubble p { margin: 0; padding: 10px 12px; border-radius: 4px 12px 12px 12px; background: #fff; color: #111827; font-size: .86rem; line-height: 1.5; box-shadow: 0 1px 1px rgba(0,0,0,.06); }
+        .lsa-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: #f5f3ff; color: #4c1d95; font-size: .8rem; line-height: 1.45; }
+        .lsa-foot > .material-symbols-rounded { color: #7c3aed; font-size: 20px; }
+        .lsa-foot > span:nth-child(2) { flex: 1; }
+        .lsa-foot .btn { flex-shrink: 0; }
+        .lsa-side-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .lsa-recent { border: 1px solid #e5e7eb; border-radius: 16px; background: #fff; overflow: hidden; }
+        .lsa-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px solid #f3f4f6; }
+        .lsa-row:first-child { border-top: 0; }
+        .lsa-row > div { flex: 1; min-width: 0; }
+        .lsa-row b { display: block; font-size: .88rem; color: #111827; }
+        .lsa-row small { font-size: .76rem; color: #6b7280; }
+        .lsa-ric { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: #f5f3ff; color: #7c3aed; font-size: 19px; }
+        .lsa-row code { padding: 3px 8px; border-radius: 8px; background: #f3f4f6; color: #374151; font-size: .78rem; font-weight: 700; letter-spacing: .03em; }
+        .lsa-pill { padding: 3px 9px; border-radius: 999px; font-size: .7rem; font-weight: 800; }
+        .lsa-pill.ready { background: #ecfdf5; color: #047857; }
+        .lsa-pill.used { background: #ede9fe; color: #6d28d9; }
+        .lsa-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 26px; border: 1px dashed #d1d5db; border-radius: 16px; color: #6b7280; font-size: .84rem; text-align: center; }
+        .lsa-empty .material-symbols-rounded { font-size: 30px; color: #c4b5fd; }
+        .lsa-empty b { color: #111827; }
+        .lsa-fine { margin: 12px 2px 0; font-size: .76rem; color: #9ca3af; line-height: 1.5; }
+        @media (max-width: 760px) { .lsa-grid { grid-template-columns: 1fr; } .lsa-msg { grid-template-columns: 1fr; } .lsa-bubble { grid-column: 1; grid-row: auto; } .lsa-foot { flex-wrap: wrap; } .lsa-row code { display: none; } }
         @media (max-width: 860px) { .ls-types { grid-template-columns: 1fr; } }
       </style>      <div class="page-header">
         <h1>Loyalty Studio</h1>
@@ -7427,6 +7478,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/scratch-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/scratch-admin.js'); ?>" defer></script>
   <script src="../assets/js/wallet-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/wallet-admin.js'); ?>" defer></script>
   <script src="../assets/js/loyalty-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio.js'); ?>" defer></script>
+  <script src="../assets/js/loyalty-studio-autopilot.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-autopilot.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>
