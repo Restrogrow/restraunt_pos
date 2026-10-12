@@ -94,8 +94,13 @@ function handleCustomerSignup($pdo) {
         throw new Exception('Please verify your phone number via WhatsApp before creating your account.');
     }
 
-    $stmt = $pdo->prepare("SELECT id, password_hash FROM customers WHERE restaurant_id = ? AND phone = ? LIMIT 1");
-    $stmt->execute([$restaurantId, $phone]);
+    // Orders store the 10-digit form (order_abuse_guard.php): use it here too, so the
+    // account and the customer's order history (points, spend) are one record
+    require_once __DIR__ . '/../config/order_abuse_guard.php';
+    $rawPhone = $phone;
+    $phone = orderAbuseNormalizePhone($phone) ?? $phone;
+    $stmt = $pdo->prepare("SELECT id, password_hash FROM customers WHERE restaurant_id = ? AND phone IN (?, ?) ORDER BY password_hash IS NOT NULL DESC, phone = ? DESC LIMIT 1");
+    $stmt->execute([$restaurantId, $phone, $rawPhone, $phone]);
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
@@ -168,8 +173,10 @@ function handleCustomerLogin($pdo) {
         }
     }
 
-    $stmt = $pdo->prepare("SELECT id, restaurant_id, customer_name, phone, email, password_hash FROM customers WHERE restaurant_id = ? AND phone = ? LIMIT 1");
-    $stmt->execute([$restaurantId, $phone]);
+    // Accounts made before phones were stored in the 10-digit form may have a leading 0 / 91
+    require_once __DIR__ . '/../config/order_abuse_guard.php';
+    $stmt = $pdo->prepare("SELECT id, restaurant_id, customer_name, phone, email, password_hash FROM customers WHERE restaurant_id = ? AND phone IN (?, ?) ORDER BY password_hash IS NOT NULL DESC LIMIT 1");
+    $stmt->execute([$restaurantId, $phone, orderAbuseNormalizePhone($phone) ?? $phone]);
     $customer = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$customer || empty($customer['password_hash']) || !password_verify($password, $customer['password_hash'])) {

@@ -9,6 +9,8 @@ if (defined('GROWTH_HELPERS_LOADED')) {
     return;
 }
 define('GROWTH_HELPERS_LOADED', true);
+// Bump when ensureGrowthSchema() gains a table, column or index
+define('GROWTH_SCHEMA_VERSION', 2);
 
 /**
  * Self-healing schema creation, matching the pattern used by
@@ -30,6 +32,17 @@ function ensureGrowthSchema(PDO $conn): void {
         return;
     }
     $checked = true;
+
+    // Fast path: the checks below (~15 queries, one on information_schema)
+    // already ran to the end for this schema version — one query instead.
+    // Bump GROWTH_SCHEMA_VERSION whenever a table/column/index is added below.
+    try {
+        if ((int)$conn->query("SELECT v FROM growth_schema_version LIMIT 1")->fetchColumn() === GROWTH_SCHEMA_VERSION) {
+            return;
+        }
+    } catch (PDOException $e) {
+        // marker table not there yet: run the full checks
+    }
 
     try {
         $conn->query("SELECT restaurant_id FROM growth_settings LIMIT 1");
@@ -251,6 +264,25 @@ function ensureGrowthSchema(PDO $conn): void {
         $conn->query("SELECT google_review_last_prompted_visit FROM customers LIMIT 1");
     } catch (PDOException $e) {
         try { $conn->exec("ALTER TABLE customers ADD COLUMN google_review_last_prompted_visit INT NOT NULL DEFAULT 0"); } catch (PDOException $e2) {}
+    }
+
+    // A customer's history (newest first) without scanning the whole ledger
+    try {
+        $idx = $conn->query("SHOW INDEX FROM loyalty_points_ledger WHERE Key_name = 'idx_customer_recent'");
+        if (!($idx && $idx->fetch())) {
+            $conn->exec("ALTER TABLE loyalty_points_ledger ADD INDEX idx_customer_recent (restaurant_id, customer_id, id)");
+        }
+    } catch (PDOException $e) {
+        error_log('ensureGrowthSchema (ledger index): ' . $e->getMessage());
+    }
+
+    // Everything above is in place: later requests take the fast path
+    try {
+        $conn->exec("CREATE TABLE IF NOT EXISTS growth_schema_version (v INT NOT NULL)");
+        $conn->exec("DELETE FROM growth_schema_version");
+        $conn->prepare("INSERT INTO growth_schema_version (v) VALUES (?)")->execute([GROWTH_SCHEMA_VERSION]);
+    } catch (PDOException $e) {
+        error_log('ensureGrowthSchema (version marker): ' . $e->getMessage());
     }
 }
 

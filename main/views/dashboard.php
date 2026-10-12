@@ -4037,7 +4037,16 @@ function toggleGatewayMode() {
           </div>
           <div class="form-group">
             <label>Icon (Material Symbol name)</label>
-            <input type="text" id="tierIcon" class="form-control" placeholder="star" value="star">
+            <select id="tierIcon" class="form-control">
+              <option value="star">Star</option>
+              <option value="medal">Medal</option>
+              <option value="crown">Crown</option>
+              <option value="gem">Gem</option>
+              <option value="trophy">Trophy</option>
+              <option value="award">Award</option>
+              <option value="fire">Fire</option>
+              <option value="heart">Heart</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Sort Order</label>

@@ -75,7 +75,8 @@ async function loadGrowthSettings() {
     const qrImg = document.getElementById('loyaltyQrImage');
     if (qrImg) {
       const loyaltyUrl = growthBuildLoyaltyPageUrl();
-      qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(loyaltyUrl);
+      // ?src=qr: the page greets people who scanned the counter card
+      qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(loyaltyUrl + (loyaltyUrl.indexOf('?') === -1 ? '?' : '&') + 'src=qr');
     }
   } catch (e) {
     console.error('loadGrowthSettings error', e);
