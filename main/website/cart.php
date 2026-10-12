@@ -732,9 +732,9 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
 /* Complete your meal (Offers > Complete your meal): suggestions for this cart */
 .ups-card { padding: 14px 0 12px; overflow: hidden; }
 .ups-head { display: flex; align-items: center; gap: 10px; padding: 0 14px 10px; }
-.ups-ico { width: 34px; height: 34px; flex-shrink: 0; border-radius: 11px; display: grid; place-items: center; background: linear-gradient(135deg, #a78bfa, #6366f1); color: #fff; }
+.ups-ico { width: 34px; height: 34px; flex-shrink: 0; border-radius: 11px; display: grid; place-items: center; background: linear-gradient(135deg, color-mix(in srgb, var(--primary-red, #e53935) 75%, #fff), var(--primary-red, #e53935)); color: #fff; }
 .ups-ico svg { width: 18px; height: 18px; animation: upsTwinkle 2.6s ease-in-out infinite; }
-@keyframes upsTwinkle { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.12) rotate(12deg); } }
+@keyframes upsTwinkle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 .ups-head b { display: block; font-size: 15px; font-weight: 800; color: #111827; }
 .ups-head span { display: block; font-size: 12px; color: #6b7280; }
 .ups-head span b { display: inline; font-size: 12px; color: #16a34a; }
@@ -1955,7 +1955,7 @@ function renderUpsell(keys, total) {
     ? 'Add <b>' + cur + Math.ceil(goal.gap) + '</b> more: ' + escapeHtml(goal.label.replace(/^Unlocks /, 'unlock ').replace(/^Reaches /, 'reach the '))
     : 'Picked to go with your order';
   box.innerHTML = '<div class="card ups-card">' +
-    '<div class="ups-head"><div class="ups-ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.9 5.8L20 10l-6.1 2.2L12 18l-1.9-5.8L4 10l6.1-2.2z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" opacity=".75"/></svg></div>' +
+    '<div class="ups-head"><div class="ups-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17a8 8 0 0 1 16 0"/><path d="M2 17h20"/><path d="M12 9V7"/><path d="M10.5 7h3"/><path d="M5 20h14"/></svg></div>' +
       '<div><b>' + escapeHtml(upsellData.title || 'Complete your meal') + '</b><span>' + sub + '</span></div></div>' +
     '<div class="ups-track">' + list.map(function(o) {
       var it = o.item, nm = escapeHtml(it.item_name_translated || it.item_name_en || it.name);
