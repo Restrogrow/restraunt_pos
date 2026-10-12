@@ -620,7 +620,7 @@ body.has-ms-hint .main-content.has-cart { padding-bottom: 160px; }
   background: #fff;
   width: 100%;
   max-width: 425px;
-  max-height: 90vh;
+  max-height: 84vh; /* leaves room at the top */
   border-radius: 24px 24px 0 0;
   overflow: hidden;
   display: flex;
@@ -990,7 +990,7 @@ body.has-ms-hint .offer-bubble { bottom: 140px; }
 }
 
 @media (max-width: 425px) {
-  .product-sheet { max-height: 92vh; border-radius: 20px 20px 0 0; }
+  .product-sheet { max-height: 86vh; border-radius: 20px 20px 0 0; }
   .product-sheet-body { padding: 14px 16px; }
   .product-sheet-name { font-size: 18px; }
   .product-sheet-price { font-size: 20px; }

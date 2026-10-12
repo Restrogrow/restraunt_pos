@@ -6437,7 +6437,24 @@ function toggleGatewayMode() {
                 <input type="number" id="carbs_g" name="carbs_g" min="0" step="0.1" placeholder="Carbs" aria-label="Carbs (g)">
                 <input type="number" id="fibre_g" name="fibre_g" min="0" step="0.1" placeholder="Fibre" aria-label="Fibre (g)">
               </div>
-              <small style="display:block;margin-top:4px;color:#6b7280;font-size:0.8rem;">Shown with the calories as "Nutritional info" in the dish details. Leave blank to hide.</small>
+              <input type="hidden" name="health_tags_sent" value="1">
+              <details id="healthTagsDropdown" style="margin-top:10px;border:1.5px solid #e5e7eb;border-radius:10px;background:#fff;">
+                <summary style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;cursor:pointer;font-size:0.9rem;font-weight:600;list-style:none;"><span>Health tags: <span id="healthTagsSummary" style="font-weight:500;color:#6b7280;">none</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#6b7280;">expand_more</span></summary>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 8px;padding:4px 8px 10px;border-top:1px solid #f1f2f4;">
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="high_protein" class="health-tag-cb"> High protein</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="low_carb" class="health-tag-cb"> Low carb</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="low_fat" class="health-tag-cb"> Low fat</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="high_fibre" class="health-tag-cb"> High fibre</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="low_calorie" class="health-tag-cb"> Low calorie</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="low_sugar" class="health-tag-cb"> Low sugar</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="keto" class="health-tag-cb"> Keto friendly</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="vegan" class="health-tag-cb"> Vegan</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="gluten_free" class="health-tag-cb"> Gluten free</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="dairy_free" class="health-tag-cb"> Dairy free</label>
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.88rem;"><input type="checkbox" name="health_tags[]" value="jain" class="health-tag-cb"> Jain</label>
+                </div>
+              </details>
+              <small style="display:block;margin-top:4px;color:#6b7280;font-size:0.8rem;">Shown with the calories as "Nutritional info" in the dish details. Leave blank to hide. Tick health tags to show them as labels (only the ones you tick).</small>
             </div>
             
             <div class="form-group">

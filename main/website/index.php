@@ -1667,7 +1667,7 @@ body {
   background: #fff;
   width: 100%;
   max-width: 425px;
-  max-height: 90vh;
+  max-height: 84vh; /* leaves room at the top */
   border-radius: 24px 24px 0 0;
   overflow: hidden;
   display: flex;
@@ -1913,7 +1913,7 @@ body {
 }
 
 @media (max-width: 425px) {
-  .product-sheet { max-height: 92vh; border-radius: 20px 20px 0 0; }
+  .product-sheet { max-height: 86vh; border-radius: 20px 20px 0 0; }
   .product-sheet-img { height: 200px; }
   .product-sheet-body { padding: 14px 16px; }
   .product-sheet-name { font-size: 18px; }

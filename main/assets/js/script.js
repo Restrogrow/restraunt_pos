@@ -3057,6 +3057,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Menu Items functionality
   const menuItemModal = document.getElementById("menuItemModal");
   const menuItemForm = document.getElementById("menuItemForm");
+  // Health tags dropdown: show which are ticked in its header
+  window.updateHealthTagsSummary = function() {
+    var el = document.getElementById('healthTagsSummary');
+    if (!el) return;
+    var on = Array.prototype.filter.call(document.querySelectorAll('.health-tag-cb'), function(cb) { return cb.checked; }).map(function(cb) { return cb.parentNode.textContent.trim(); });
+    el.textContent = on.length ? on.join(', ') : 'none';
+  };
+  document.addEventListener('change', function(e) { if (e.target.classList && e.target.classList.contains('health-tag-cb')) window.updateHealthTagsSummary(); });
+  document.addEventListener('reset', function() { setTimeout(window.updateHealthTagsSummary, 0); }, true);
   const addMenuItemBtn = document.getElementById("addMenuItemBtn");
   const menuItemModalTitle = document.getElementById("menuItemModalTitle");
   const menuItemIdInput = document.getElementById("menuItemId");
@@ -3287,6 +3296,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("calories").value = data.calories || 0;
     if (document.getElementById("ingredients")) document.getElementById("ingredients").value = data.ingredients || '';
     ['protein_g', 'fat_g', 'carbs_g', 'fibre_g'].forEach(function(k) { var el = document.getElementById(k); if (el) el.value = data[k] != null && parseFloat(data[k]) > 0 ? parseFloat(data[k]) : ''; });
+    var tagList = String(data.health_tags || '').split(',');
+    document.querySelectorAll('.health-tag-cb').forEach(function(cb) { cb.checked = tagList.indexOf(cb.value) !== -1; });
+    if (window.updateHealthTagsSummary) window.updateHealthTagsSummary();
     document.getElementById("isAvailable").value = data.is_available ? '1' : '0';
     document.getElementById("basePrice").value = data.base_price || '0.00';
     
