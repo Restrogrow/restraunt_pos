@@ -1473,8 +1473,18 @@ async function loadOrderHistory(silent) {
   if (!silent) showSkeletons(el, 3);
   try {
     var rid = getRestaurantId();
-    var r = await fetch('api.php?action=getCustomerOrders&restaurant_id=' + encodeURIComponent(rid) + '&phone=' + encodeURIComponent(c.phone));
-    var data = await r.json();
+    // A busy server can answer one request with an error page (e.g. 503):
+    // try again twice before giving up, so one bad moment isn't an error screen
+    var url = 'api.php?action=getCustomerOrders&restaurant_id=' + encodeURIComponent(rid) + '&phone=' + encodeURIComponent(c.phone);
+    var data = null;
+    for (var attempt = 0; attempt < 3 && data === null; attempt++) {
+      if (attempt) await new Promise(function(res) { setTimeout(res, attempt === 1 ? 1000 : 2500); });
+      try {
+        var r = await fetch(url, { cache: 'no-store' });
+        if (r.ok) data = await r.json();
+      } catch (err) { data = null; }
+    }
+    if (data === null) throw new Error('orders unavailable');
     allOrders = sortOrders(Array.isArray(data) ? data : (data.orders || []));
     updateStats(allOrders);
     renderOrders(allOrders, el);
@@ -1488,7 +1498,7 @@ async function loadOrderHistory(silent) {
     // that was already showing fine — only show the error on the real
     // initial load.
     if (!silent) {
-      el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">⚠️</span><div class="empty-state-title">Could Not Load Orders</div><div class="empty-state-desc">Please check your connection and try again.</div></div>';
+      el.innerHTML = '<div class="empty-state"><span class="empty-state-icon">⚠️</span><div class="empty-state-title">Could Not Load Orders</div><div class="empty-state-desc">Please check your connection and try again.</div><button type="button" onclick="loadOrderHistory()" style="margin-top:12px;padding:9px 20px;border:0;border-radius:999px;background:var(--checkout-color, #e11d48);color:#fff;font:600 13px inherit;cursor:pointer;">Try again</button></div>';
     }
   }
 }
