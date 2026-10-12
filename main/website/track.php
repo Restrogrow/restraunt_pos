@@ -187,6 +187,92 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 .live-note.done .live-dot { background: #9ca3af; }
 @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,.55); } 100% { box-shadow: 0 0 0 7px rgba(22,163,74,0); } }
 
+/* ── Fun layer: animated scene per step, rotating lines, rider card, confetti ── */
+.tk-scene { position: relative; height: 150px; margin-top: 18px; border-radius: 22px; overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--tk) 10%, #fff), color-mix(in srgb, var(--tk) 22%, #fff)); }
+.tk-scene .hero { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -46px 0 0 -38px; display: grid; place-items: center; border-radius: 24px; background: #fff; color: var(--tk-dark); box-shadow: 0 10px 24px color-mix(in srgb, var(--tk) 25%, transparent); z-index: 3; }
+.tk-scene .hero .material-symbols-rounded { font-size: 42px; }
+.tk-scene .fx { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.tk-scene .fx i { position: absolute; display: block; font-style: normal; }
+/* placed: a receipt printing out of a slot */
+.sc-placed .hero { animation: scPrint 2.4s ease-in-out infinite; }
+.sc-placed .fx i.slot { left: 50%; top: 34px; width: 110px; height: 10px; margin-left: -55px; border-radius: 6px; background: var(--tk-dark); opacity: .85; }
+@keyframes scPrint { 0% { transform: translateY(-18px) scale(.9); opacity: 0; } 25%, 80% { transform: none; opacity: 1; } 100% { transform: translateY(6px); opacity: 0; } }
+/* accepted: thumbs up with rings */
+.sc-accepted .hero { animation: scPop 1.8s ease-in-out infinite; }
+.sc-accepted .fx i.ring { left: 50%; top: 50%; width: 76px; height: 76px; margin: -46px 0 0 -38px; border-radius: 24px; border: 3px solid var(--tk); animation: scRing 1.8s ease-out infinite; }
+.sc-accepted .fx i.ring:nth-child(2) { animation-delay: .6s; }
+@keyframes scPop { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.12) rotate(-8deg); } 30% { transform: scale(1); } }
+@keyframes scRing { from { transform: scale(1); opacity: .7; } to { transform: scale(1.9); opacity: 0; } }
+/* preparing: flames under, steam rising */
+.sc-preparing .hero { animation: scWobble 1.6s ease-in-out infinite; }
+.sc-preparing .fx i.steam { top: 2px; width: 9px; height: 26px; border-radius: 10px; background: linear-gradient(transparent, color-mix(in srgb, var(--tk) 45%, #fff)); filter: blur(.6px); animation: scSteam 2.2s ease-in infinite; }
+.sc-preparing .fx i.steam:nth-child(1) { left: calc(50% - 22px); }
+.sc-preparing .fx i.steam:nth-child(2) { left: calc(50% - 5px); animation-delay: .7s; }
+.sc-preparing .fx i.steam:nth-child(3) { left: calc(50% + 12px); animation-delay: 1.4s; }
+.sc-preparing .fx i.flame { bottom: 16px; width: 14px; height: 22px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: radial-gradient(circle at 50% 70%, #fde047, #f97316 60%, #ef4444); animation: scFlame .5s ease-in-out infinite alternate; }
+.sc-preparing .fx i.flame:nth-child(4) { left: calc(50% - 26px); }
+.sc-preparing .fx i.flame:nth-child(5) { left: calc(50% - 7px); height: 28px; animation-delay: .15s; }
+.sc-preparing .fx i.flame:nth-child(6) { left: calc(50% + 12px); animation-delay: .3s; }
+@keyframes scWobble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
+@keyframes scSteam { 0% { transform: translateY(16px) scaleY(.4); opacity: 0; } 35% { opacity: 1; } 100% { transform: translateY(-8px) scaleY(1.1) translateX(5px); opacity: 0; } }
+@keyframes scFlame { from { transform: scaleY(.85) translateY(2px); } to { transform: scaleY(1.15); } }
+/* packed / ready: bag bounces, sparkles */
+.sc-packed .hero, .sc-ready .hero { animation: scBounce 1.2s cubic-bezier(.3,1.6,.5,1) infinite; }
+.sc-packed .fx i.spark, .sc-ready .fx i.spark { width: 14px; height: 14px; background: var(--tk); clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: scTwinkle 1.6s ease-in-out infinite; }
+.fx i.spark:nth-child(1) { left: 26%; top: 24%; } .fx i.spark:nth-child(2) { left: 70%; top: 20%; animation-delay: .4s; }
+.fx i.spark:nth-child(3) { left: 22%; top: 66%; animation-delay: .8s; } .fx i.spark:nth-child(4) { left: 74%; top: 64%; animation-delay: 1.2s; }
+@keyframes scBounce { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-14px); } }
+@keyframes scTwinkle { 0%, 100% { transform: scale(.3) rotate(0); opacity: .2; } 50% { transform: scale(1.1) rotate(45deg); opacity: 1; } }
+/* on the way: scooter on a moving road, town passing by */
+.sc-onway .hero { width: 70px; height: 70px; margin: -30px 0 0 -35px; border-radius: 50%; animation: scRide .45s ease-in-out infinite alternate; }
+.sc-onway .fx i.road { left: 0; right: 0; bottom: 0; height: 34px; background: #4b5563; }
+.sc-onway .fx i.dash { left: 0; right: 0; bottom: 15px; height: 4px; background: repeating-linear-gradient(90deg, #fde047 0 26px, transparent 26px 52px); background-size: 52px 4px; animation: scRoad .6s linear infinite; }
+.sc-onway .fx i.town { left: 0; right: 0; bottom: 34px; height: 46px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='46'%3E%3Cg fill='rgba(0,0,0,0.16)'%3E%3Crect x='8' y='14' width='24' height='32' rx='2'/%3E%3Crect x='38' y='2' width='18' height='44' rx='2'/%3E%3Crect x='62' y='22' width='30' height='24' rx='2'/%3E%3Crect x='98' y='8' width='16' height='38' rx='2'/%3E%3Crect x='120' y='18' width='28' height='28' rx='2'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 160px 46px repeat-x; animation: scTown 6s linear infinite; }
+.sc-onway .fx i.cloud { top: 16px; width: 54px; height: 18px; border-radius: 20px; background: #fff; opacity: .9; animation: scCloud 9s linear infinite; }
+.sc-onway .fx i.cloud:nth-child(5) { top: 34px; width: 38px; animation-duration: 13s; animation-delay: -5s; }
+@keyframes scRide { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-3px) rotate(2deg); } }
+@keyframes scRoad { to { background-position: -52px 0; } }
+@keyframes scTown { from { background-position: 0 0; } to { background-position: -160px 0; } }
+@keyframes scCloud { from { left: 105%; } to { left: -20%; } }
+/* delivered / served: tick + falling confetti */
+.sc-done .hero, .sc-delivered .hero { color: #16a34a; animation: scPop 2.4s ease-in-out infinite; }
+.tk-scene .fx i.conf { top: -14px; width: 8px; height: 8px; border-radius: 2px; animation: scFall linear infinite; }
+@keyframes scFall { to { transform: translateY(190px) rotate(540deg); } }
+/* cancelled */
+.sc-stop { background: #fef2f2; }
+.sc-stop .hero { color: #b91c1c; animation: scShake 2.4s ease-in-out infinite; }
+@keyframes scShake { 0%, 60%, 100% { transform: none; } 65%, 75% { transform: translateX(-5px); } 70%, 80% { transform: translateX(5px); } }
+
+.tk-status-text { margin-top: 14px; text-align: center; }
+.tk-status-text b { display: block; font-size: 17px; font-weight: 800; }
+.tk-status-text p { margin-top: 4px; font-size: 13.5px; color: var(--muted); line-height: 1.45; }
+.tk-tip { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 7px 14px; border-radius: 999px; background: #f4f5f7; font-size: 12.5px; font-weight: 600; color: var(--ink); transition: opacity .35s, transform .35s; }
+.tk-tip .material-symbols-rounded { font-size: 16px; color: var(--tk); }
+.tk-tip.out { opacity: 0; transform: translateY(4px); }
+.tk-clock { display: flex; align-items: center; gap: 6px; margin: -8px 0 14px; font-size: 12px; color: var(--muted); }
+.tk-clock .material-symbols-rounded { font-size: 15px; }
+
+.tk-rider { display: none; align-items: center; gap: 12px; margin-top: 14px; padding: 12px; border-radius: 18px; background: #f4f5f7; }
+.tk-rider.on { display: flex; animation: bubblePop .5s cubic-bezier(.2,1.4,.4,1); }
+.tk-rider .av { width: 46px; height: 46px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(135deg, var(--tk), var(--tk-dark)); color: #fff; font-size: 18px; font-weight: 800; }
+.tk-rider .who { flex: 1; min-width: 0; }
+.tk-rider .who b { display: block; font-size: 14.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-rider .who span { font-size: 12px; color: var(--muted); }
+.tk-call { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: #16a34a; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(22,163,74,.35); }
+.tk-call .material-symbols-rounded { font-size: 20px; }
+.tk-help { display: flex; gap: 10px; margin-bottom: 14px; }
+.tk-help a { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border-radius: 16px; background: #fff; color: var(--ink); font-size: 13.5px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(17,24,39,.05); }
+.tk-help a .material-symbols-rounded { font-size: 19px; color: var(--tk); }
+
+/* Celebration burst when a step changes */
+.tk-burst { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }
+.tk-burst i { position: absolute; top: 40%; left: 50%; width: 9px; height: 9px; border-radius: 2px; animation: tkBurst 1.4s cubic-bezier(.15,.7,.3,1) forwards; }
+@keyframes tkBurst { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tk-scene *, .tk-scene .hero, .tk-burst i, .tk-rider.on { animation: none !important; }
+}
+
 /* Search form (no order yet) */
 .tk-search-ic { width: 72px; height: 72px; margin: 4px auto 12px; display: grid; place-items: center; border-radius: 22px; background: var(--tk-soft); color: var(--tk-dark); }
 .tk-search-ic .material-symbols-rounded { font-size: 38px; }
@@ -251,6 +337,8 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         <div class="status-badge status-<?php echo strtolower($order['order_status']); ?>" id="orderStatusBadge"><span id="orderStatusText"><?php echo htmlspecialchars($statusLabels[$order['order_status']] ?? $order['order_status']); ?></span></div>
       </div>
 
+      <div class="tk-clock"><span class="material-symbols-rounded">schedule</span><span>Placed at <?php echo htmlspecialchars(date('g:i A', strtotime($order['created_at']))); ?></span><span id="tkAgo"></span></div>
+
       <div id="tkProgress">
         <div class="tk-bubble" id="tkBubble">
           <b id="tkBubbleTitle">Order placed!</b>
@@ -270,10 +358,23 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         </div>
       </div>
 
-      <div class="tk-status">
-        <div class="ic"><span class="material-symbols-rounded" id="tkStatusIcon">receipt_long</span></div>
-        <div><b id="tkStatusTitle">We've got your order</b><p id="tkStatusText">The restaurant will confirm it shortly.</p></div>
+      <div class="tk-scene sc-placed" id="tkScene" aria-hidden="true">
+        <div class="fx" id="tkSceneFx"></div>
+        <div class="hero"><span class="material-symbols-rounded" id="tkStatusIcon">receipt_long</span></div>
       </div>
+      <div class="tk-status-text">
+        <b id="tkStatusTitle">We've got your order</b>
+        <p id="tkStatusText">The restaurant will confirm it shortly.</p>
+        <span class="tk-tip" id="tkTip"><span class="material-symbols-rounded">auto_awesome</span><span id="tkTipText">Sending your order to the kitchen</span></span>
+      </div>
+
+      <?php if ($tkType === 'Delivery'): ?>
+      <div class="tk-rider<?php echo ($tracking && !empty($tracking['rider_name'])) ? ' on' : ''; ?>" id="tkRider">
+        <div class="av" id="tkRiderInitial"><?php echo htmlspecialchars(mb_strtoupper(mb_substr((string)($tracking['rider_name'] ?? 'R'), 0, 1))); ?></div>
+        <div class="who"><b id="tkRiderName"><?php echo htmlspecialchars((string)($tracking['rider_name'] ?? '')); ?></b><span>Your delivery partner</span></div>
+        <a class="tk-call" id="tkRiderCall" href="<?php echo !empty($tracking['rider_phone']) ? 'tel:' . htmlspecialchars(preg_replace('/[^\d+]/', '', $tracking['rider_phone'])) : '#'; ?>" style="<?php echo !empty($tracking['rider_phone']) ? '' : 'display:none;'; ?>" aria-label="Call rider"><span class="material-symbols-rounded">call</span></a>
+      </div>
+      <?php endif; ?>
 
       <?php if ($tkType === 'Delivery'): ?>
       <div id="trackMap"></div>
@@ -285,6 +386,12 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         You earned <span id="loyaltyEarnedPoints"><?php echo (int)($order['loyalty_points_earned'] ?? 0); ?></span> loyalty points on this order!
       </div>
     </div>
+
+    <?php if (!empty($restaurant_phone)): ?>
+    <div class="tk-help">
+      <a href="tel:<?php echo htmlspecialchars(preg_replace('/[^\d+]/', '', $restaurant_phone)); ?>"><span class="material-symbols-rounded">call</span>Call restaurant</a>
+    </div>
+    <?php endif; ?>
 
     <p id="liveNote" class="live-note on"><span class="live-dot"></span><span class="live-text">Live · updates automatically</span></p>
 
@@ -381,6 +488,85 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         };
         return W[st.k];
     }
+    // ── Fun layer: scene per step, rotating lines, celebration ──
+    var TIPS = {
+        placed: ['Sending your order to the kitchen', 'The restaurant is taking a look', 'Hang tight, it starts in a moment'],
+        accepted: ['The chef said yes', 'Ingredients coming out of the fridge', 'Starting the stove'],
+        preparing: ['Chef is firing up the stove', 'Adding the secret masala', 'Tasting for the perfect salt', 'Plating it with care'],
+        packed: ['Sealed tight and still hot', 'Double-checking everything is in', 'Ready to roll'],
+        onway: ['Dodging traffic like a pro', 'Your food is warm in the bag', 'Taking the quickest route', 'Almost at your door'],
+        ready: ['Hot and ready', 'Packed with care', 'Waiting just for you'],
+        delivered: ['Time to dig in', 'Hope it tastes amazing', 'Thanks for ordering'],
+        done: ['Time to dig in', 'Hope it tastes amazing', 'Thanks for ordering']
+    };
+    var CONF = ['#fde047', '#22d3ee', '#a3e635', '#f472b6', '#fb923c', '#a78bfa'];
+    var tipTimer = 0, tipIdx = 0, tipKey = '';
+    function sceneFx(k) {
+        var h = '', i;
+        if (k === 'placed') h = '<i class="slot"></i>';
+        else if (k === 'accepted') h = '<i class="ring"></i><i class="ring"></i>';
+        else if (k === 'preparing') h = '<i class="steam"></i><i class="steam"></i><i class="steam"></i><i class="flame"></i><i class="flame"></i><i class="flame"></i>';
+        else if (k === 'packed' || k === 'ready') h = '<i class="spark"></i><i class="spark"></i><i class="spark"></i><i class="spark"></i>';
+        else if (k === 'onway') h = '<i class="town"></i><i class="road"></i><i class="dash"></i><i class="cloud"></i><i class="cloud"></i>';
+        else if (k === 'delivered' || k === 'done') {
+            for (i = 0; i < 18; i++) h += '<i class="conf" style="left:' + ((i * 37 + 4) % 96) + '%;background:' + CONF[i % CONF.length] + ';animation-duration:' + (2.4 + (i % 5) * 0.5) + 's;animation-delay:-' + ((i * 0.37) % 3).toFixed(2) + 's"></i>';
+        }
+        return h;
+    }
+    function setScene(k) {
+        var sc = document.getElementById('tkScene');
+        if (!sc || sc.getAttribute('data-k') === k) return;
+        sc.setAttribute('data-k', k);
+        sc.className = 'tk-scene sc-' + k;
+        document.getElementById('tkSceneFx').innerHTML = sceneFx(k);
+    }
+    function setTips(k) {
+        if (tipKey === k) return;
+        tipKey = k; tipIdx = 0;
+        var list = TIPS[k] || [];
+        var tipEl = document.getElementById('tkTip'), txt = document.getElementById('tkTipText');
+        if (!tipEl) return;
+        tipEl.style.display = list.length ? '' : 'none';
+        if (list.length) txt.textContent = list[0];
+        clearInterval(tipTimer);
+        if (list.length < 2) return;
+        tipTimer = setInterval(function() {
+            tipEl.classList.add('out');
+            setTimeout(function() { tipIdx = (tipIdx + 1) % list.length; txt.textContent = list[tipIdx]; tipEl.classList.remove('out'); }, 350);
+        }, 3800);
+    }
+    function celebrate(big) {
+        try { if (navigator.vibrate) navigator.vibrate(big ? [60, 40, 90] : 50); } catch (e) {}
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        var wrap = document.createElement('div'), n = big ? 46 : 18, h = '';
+        wrap.className = 'tk-burst';
+        for (var i = 0; i < n; i++) {
+            var a = (i / n) * Math.PI * 2, d = (big ? 160 : 90) + (i % 4) * 30;
+            h += '<i style="background:' + CONF[i % CONF.length] + ';--x:' + Math.round(Math.cos(a) * d) + 'px;--y:' + Math.round(Math.sin(a) * d + (big ? 120 : 60)) + 'px;--r:' + (i * 47 % 360) + 'deg"></i>';
+        }
+        wrap.innerHTML = h;
+        document.body.appendChild(wrap);
+        setTimeout(function() { wrap.remove(); }, 1600);
+    }
+    // "· 12 min ago" next to the order time
+    var placedAt = <?php echo (int)(strtotime($order['created_at']) * 1000); ?>;
+    function tickAgo() {
+        var el = document.getElementById('tkAgo');
+        if (!el) return;
+        var m = Math.max(0, Math.round((Date.now() - placedAt) / 60000));
+        el.textContent = m < 1 ? '· just now' : m < 60 ? '· ' + m + ' min ago' : (m < 1440 ? '· ' + Math.floor(m / 60) + ' h ' + (m % 60) + ' min ago' : '');
+    }
+    tickAgo(); setInterval(tickAgo, 30000);
+    function setRider(name, phone) {
+        var card = document.getElementById('tkRider');
+        if (!card || !name) return;
+        document.getElementById('tkRiderName').textContent = name;
+        document.getElementById('tkRiderInitial').textContent = name.trim().charAt(0).toUpperCase();
+        var call = document.getElementById('tkRiderCall');
+        if (phone) { call.href = 'tel:' + String(phone).replace(/[^\d+]/g, ''); call.style.display = ''; }
+        if (!card.classList.contains('on')) card.classList.add('on');
+    }
+
     var nextLabels = Array.prototype.map.call(document.querySelectorAll('#tkLabels div'), function(d) { return d.textContent.replace(/^\d+/, '').trim(); });
     var lastStage = '';
 
@@ -395,6 +581,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
             set('tkStatusIcon', 'cancel');
             set('tkStatusTitle', status === 'Rejected' ? 'The restaurant could not take this order' : 'This order was cancelled');
             set('tkStatusText', 'If you paid online, the refund goes back to your payment method.');
+            setScene('stop'); setTips('');
             return;
         }
         var w = words(st);
@@ -421,7 +608,8 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         var bubble = document.getElementById('tkBubble');
         bubble.style.setProperty('--arrow', (st.i * 25 + 12.5) + '%');
         var key = st.i + st.k;
-        if (lastStage && key !== lastStage) { bubble.classList.remove('pop'); void bubble.offsetWidth; bubble.classList.add('pop'); }
+        setScene(st.k); setTips(st.k);
+        if (lastStage && key !== lastStage) { bubble.classList.remove('pop'); void bubble.offsetWidth; bubble.classList.add('pop'); celebrate(final); }
         lastStage = key;
     }
 
@@ -531,7 +719,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
                 if (!d.success) return;
                 consecutivePollFailures = 0;
                 var newDelivery = d.tracking ? (d.tracking.delivery_status || null) : null;
-                if (d.tracking && d.tracking.rider_name) riderName = d.tracking.rider_name;
+                if (d.tracking && d.tracking.rider_name) { riderName = d.tracking.rider_name; setRider(d.tracking.rider_name, d.tracking.rider_phone); }
                 if (d.order_status !== lastStatus || newDelivery !== lastDelivery) {
                     lastChangeAt = Date.now();
                     if (d.order_status !== lastStatus) flashStatus();
