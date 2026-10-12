@@ -2465,7 +2465,7 @@ try {
             </div>
 
             <!-- Toolbar: device + refresh + open (one row, so the preview gets the height) -->
-            <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;">
               <button type="button" class="device-btn" data-device="desktop" onclick="setPreviewDevice('desktop')" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;font-size:.8rem;transition:all .2s;">
                 <span class="material-symbols-rounded" style="font-size:17px;">desktop_windows</span>
                 Desktop
@@ -2475,9 +2475,27 @@ try {
                 Mobile
               </button>
               <span style="flex:1"></span>
+              <button type="button" id="lpBtn" onclick="toggleLivePhone()" title="Open this preview on your phone; it updates live as you change things here" style="display:flex;align-items:center;gap:5px;height:34px;padding:0 10px;border:2px solid #c4b5fd;border-radius:8px;background:#faf5ff;color:#6d28d9;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;"><span class="material-symbols-rounded" style="font-size:18px;">qr_code_2</span>Phone</button>
               <a href="layout-gallery.html?site=<?php echo urlencode($basePath . '/' . trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($restaurant_name)), '-')); ?>" target="_blank" title="See every home & menu layout side by side (nothing is saved)" style="display:flex;align-items:center;gap:5px;height:34px;padding:0 10px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;font-size:12.5px;font-weight:700;text-decoration:none;white-space:nowrap;"><span class="material-symbols-rounded" style="font-size:18px;">grid_view</span>All layouts</a>
               <button type="button" onclick="refreshPreview()" title="Refresh preview" aria-label="Refresh preview" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;cursor:pointer;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:19px;">refresh</span></button>
               <a href="<?php echo htmlspecialchars((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $basePath . '/' . urlencode(trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($restaurant_name)), '-'))); ?>" target="_blank" title="Open in new tab" aria-label="Open in new tab" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:2px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;cursor:pointer;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:19px;">open_in_new</span></a>
+            </div>
+
+            <!-- Live preview on a phone: QR + link; changes here show up on the phone by themselves -->
+            <div id="lpPanel" style="display:none;margin-bottom:10px;padding:14px;border:2px solid #c4b5fd;border-radius:14px;background:linear-gradient(135deg,#faf5ff,#fff);">
+              <div style="display:flex;gap:14px;align-items:flex-start;">
+                <img id="lpQr" alt="QR code for the phone preview" width="132" height="132" style="flex-shrink:0;border-radius:10px;background:#fff;border:1px solid #ede9fe;padding:6px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:8px;font-weight:800;color:#111827;font-size:.95rem;"><span id="lpDot" style="width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.25);"></span><span id="lpStatus">Live on your phone</span></div>
+                  <p style="margin:6px 0 10px;font-size:.8rem;color:#4b5563;line-height:1.5;">Scan with your phone camera. Every change you make here shows up on the phone within a second, no refresh needed. Nothing is saved until you click Save.</p>
+                  <div style="display:flex;gap:6px;">
+                    <input id="lpLink" readonly style="flex:1;min-width:0;padding:7px 9px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.75rem;background:#fff;color:#374151;">
+                    <button type="button" onclick="copyLivePhoneLink()" style="padding:0 10px;border:0;border-radius:8px;background:#111827;color:#fff;font-size:.75rem;font-weight:700;cursor:pointer;">Copy</button>
+                    <button type="button" onclick="stopLivePhone()" style="padding:0 10px;border:1.5px solid #fecaca;border-radius:8px;background:#fff;color:#dc2626;font-size:.75rem;font-weight:700;cursor:pointer;">Stop</button>
+                  </div>
+                  <div id="lpLocalHint" style="display:none;margin-top:8px;font-size:.75rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 8px;">This link uses <b>localhost</b>, which a phone can&rsquo;t open. On your live website it just works; on this computer, open the dashboard using your computer&rsquo;s network address (e.g. http://192.168.x.x/…) and the link follows.</div>
+                </div>
+              </div>
             </div>
 
             <!-- Live Preview Frame -->

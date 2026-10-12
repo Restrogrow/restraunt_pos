@@ -14256,6 +14256,67 @@ async function initWebsiteThemeEditor() {
     })();
     window.markPreviewSaved = function() { previewSaved = JSON.stringify(collectPreviewTheme()); var d = document.getElementById('pvUnsavedDot'); if (d) d.style.display = 'none'; };
 
+    // ── Live preview on a phone: a private link (QR); the unsaved choices are sent
+    // whenever they change, and the phone reloads itself (website/theme_live.php) ──
+    var lp = { token: null, sent: '', timer: 0, busy: false };
+    function lpApi(body) {
+      return fetch('../api/theme_live_preview.php', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function(r) { return r.json(); });
+    }
+    function lpPhoneUrl() {
+      var frame = document.getElementById('livePreview');
+      var base = frame ? (frame.getAttribute('data-base') || frame.src).split('?')[0] : location.origin;
+      return base + '?live_preview=' + lp.token;
+    }
+    function lpPush() {
+      if (!lp.token || lp.busy) return;
+      var now = JSON.stringify(collectPreviewTheme());
+      if (now === lp.sent) return;
+      lp.busy = true;
+      lpApi({ action: 'push', token: lp.token, theme: JSON.parse(now) }).then(function(d) {
+        lp.busy = false;
+        if (d && d.success) { lp.sent = now; return; }
+        if (d && d.ended) { lpEnded(); }
+      }).catch(function() { lp.busy = false; });
+    }
+    function lpEnded() {
+      clearInterval(lp.timer); lp.token = null;
+      var s = document.getElementById('lpStatus'), dot = document.getElementById('lpDot');
+      if (s) s.textContent = 'Preview ended. Click "Phone" to start again';
+      if (dot) dot.style.background = '#9ca3af';
+    }
+    window.toggleLivePhone = function() {
+      var panel = document.getElementById('lpPanel');
+      if (lp.token) { panel.style.display = panel.style.display === 'none' ? '' : 'none'; return; }
+      var btn = document.getElementById('lpBtn');
+      btn.disabled = true;
+      var theme = collectPreviewTheme();
+      lpApi({ action: 'start', theme: theme }).then(function(d) {
+        btn.disabled = false;
+        if (!d || !d.success) { if (typeof showNotification === 'function') showNotification((d && d.message) || 'Could not start the phone preview', 'error'); return; }
+        lp.token = d.token; lp.sent = JSON.stringify(theme);
+        var url = lpPhoneUrl();
+        document.getElementById('lpLink').value = url;
+        document.getElementById('lpQr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=0&data=' + encodeURIComponent(url);
+        document.getElementById('lpLocalHint').style.display = /\/\/(localhost|127\.0\.0\.1)[:/]/.test(url) ? '' : 'none';
+        document.getElementById('lpStatus').textContent = 'Live on your phone';
+        document.getElementById('lpDot').style.background = '#22c55e';
+        panel.style.display = '';
+        clearInterval(lp.timer);
+        lp.timer = setInterval(lpPush, 900);
+      }).catch(function() { btn.disabled = false; });
+    };
+    window.copyLivePhoneLink = function() {
+      var el = document.getElementById('lpLink');
+      (navigator.clipboard ? navigator.clipboard.writeText(el.value) : Promise.reject()).then(function() {
+        if (typeof showNotification === 'function') showNotification('Link copied', 'success');
+      }, function() { el.select(); document.execCommand('copy'); });
+    };
+    window.stopLivePhone = function() {
+      if (lp.token) lpApi({ action: 'stop', token: lp.token });
+      clearInterval(lp.timer); lp.token = null;
+      document.getElementById('lpPanel').style.display = 'none';
+    };
+
     function currentMenuCardStyleVal() {
       var r = document.querySelector('input[name="menuCardStyle"]:checked');
       return r ? r.value : 'classic';

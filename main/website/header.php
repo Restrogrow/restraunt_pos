@@ -335,8 +335,31 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     // ?preview_theme=<json>. Applied to this page view only (never saved), and
     // every value is checked against the same allow-lists the save uses.
     $preview_theme = null;
-    if (!empty($_GET['preview_theme']) && is_string($_GET['preview_theme']) && strlen($_GET['preview_theme']) < 4000) {
-        $pv = json_decode($_GET['preview_theme'], true);
+    // Live preview on a phone (Website Appearance > "On your phone"): the same unsaved
+    // choices, from a private session (?live_preview=<token>, then a cookie while browsing)
+    $rg_live_preview = null;
+    $pvRaw = (!empty($_GET['preview_theme']) && is_string($_GET['preview_theme'])) ? $_GET['preview_theme'] : null;
+    $lpToken = isset($_GET['live_preview']) ? (string)$_GET['live_preview'] : (string)($_COOKIE['rg_live_preview'] ?? '');
+    if ($pvRaw === null && $lpToken !== '' && !empty($restaurant_id) && isset($conn)) {
+        require_once __DIR__ . '/../config/theme_live_preview.php';
+        $lpRow = themeLivePreviewGet($conn, $lpToken);
+        if ($lpRow && $lpRow['restaurant_id'] === $restaurant_id) {
+            $rg_live_preview = ['token' => $lpRow['token'], 'v' => (int)$lpRow['version']];
+            $pvRaw = (string)$lpRow['theme'];
+            if (isset($_GET['live_preview']) && !headers_sent()) {
+                setcookie('rg_live_preview', $lpRow['token'], ['expires' => time() + 7200, 'path' => '/', 'samesite' => 'Lax']);
+            }
+            // The page reloads itself when the dashboard changes something
+            register_shutdown_function(function () use ($rg_live_preview) {
+                foreach (headers_list() as $h) {
+                    if (stripos($h, 'content-type:') === 0 && stripos($h, 'text/html') === false) return;
+                }
+                echo str_replace(['__TOKEN__', '__VERSION__'], [json_encode($rg_live_preview['token']), (int)$rg_live_preview['v']], RG_LIVE_PREVIEW_SCRIPT);
+            });
+        }
+    }
+    if ($pvRaw !== null && $pvRaw !== '' && strlen($pvRaw) < 4000) {
+        $pv = json_decode($pvRaw, true);
         if (is_array($pv)) {
             $hex = function ($v) { return is_string($v) && preg_match('/^#[0-9a-fA-F]{6}$/', $v) ? $v : null; };
             $preview_theme = [];
