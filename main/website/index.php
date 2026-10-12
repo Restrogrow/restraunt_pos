@@ -2242,7 +2242,7 @@ window.socialLinks = {
   <?php $indexNavReservationsHtml = ob_get_clean();
 
   ob_start(); ?>
-    <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
+    <div class="nav-item" id="navCartItem" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
       <?php echo renderNavIconTag('cart', $navIcons, $navIconOverrides); ?>
       <span data-nav-label="cart"><?php echo htmlspecialchars($navLabels['cart'], ENT_QUOTES, 'UTF-8'); ?></span>
       <div class="cart-badge">0</div>
@@ -2263,11 +2263,12 @@ window.socialLinks = {
           . $indexNavCartHtml;
   }
   ?>
-  <div class="bottom-nav">
+  <div class="bottom-nav bn-<?php echo in_array($nav_bar_style ?? 'classic', THEME_NAV_BAR_STYLES, true) ? $nav_bar_style : 'classic'; ?>">
     <?php echo $indexNavItemsHtml; ?>
     <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="<?php echo htmlspecialchars($navLabels['profile'], ENT_QUOTES, 'UTF-8'); ?>" style="font-size:16px;padding:6px 10px;"><?php echo renderNavIconTag('profile', $navIcons, $navIconOverrides, false); ?></button>
   </div>
 </div>
+<?php require __DIR__ . '/bottom_nav_styles.php'; ?>
 <style>
 /* Draws the eye to "Install App" without using color — bigger icon, bolder
    label, and a slow, gentle scale pulse. */

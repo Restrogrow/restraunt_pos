@@ -278,6 +278,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $menu_card_style = 'classic';
     $home_card_style = 'classic';
     $profile_style = 'midnight';
+    $nav_bar_style = 'classic';
     $profile_opts = cleanProfileOpts([]);
     $category_heading_bg = null;
     $category_pic_style = 'round';
@@ -290,7 +291,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     if ($restaurant_id) {
         try {
             ensureWebsiteThemeSchema($conn);
-            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, home_card_style, profile_style, profile_opts, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');
+            $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, home_card_style, profile_style, profile_opts, nav_bar_style, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
             $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($themeRow) {
@@ -315,6 +316,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 if (in_array($themeRow['menu_card_style'] ?? '', THEME_MENU_CARD_STYLES, true)) $menu_card_style = $themeRow['menu_card_style'];
                 if (in_array($themeRow['home_card_style'] ?? '', THEME_HOME_CARD_STYLES, true)) $home_card_style = $themeRow['home_card_style'];
                 if (in_array($themeRow['profile_style'] ?? '', THEME_PROFILE_STYLES, true)) $profile_style = $themeRow['profile_style'];
+                if (in_array($themeRow['nav_bar_style'] ?? '', THEME_NAV_BAR_STYLES, true)) $nav_bar_style = $themeRow['nav_bar_style'];
                 $profile_opts = cleanProfileOpts(json_decode((string)($themeRow['profile_opts'] ?? ''), true));
                 if (preg_match('/^#[0-9a-fA-F]{6}$/', (string)($themeRow['category_heading_bg'] ?? ''))) $category_heading_bg = $themeRow['category_heading_bg'];
                 if (in_array($themeRow['category_pic_style'] ?? '', THEME_CATEGORY_PIC_STYLES, true)) $category_pic_style = $themeRow['category_pic_style'];
@@ -350,6 +352,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
             if (in_array($pv['menu_card_style'] ?? '', THEME_MENU_CARD_STYLES, true)) $menu_card_style = $pv['menu_card_style'];
             if (in_array($pv['home_card_style'] ?? '', THEME_HOME_CARD_STYLES, true)) $home_card_style = $pv['home_card_style'];
             if (in_array($pv['profile_style'] ?? '', THEME_PROFILE_STYLES, true)) $profile_style = $pv['profile_style'];
+            if (in_array($pv['nav_bar_style'] ?? '', THEME_NAV_BAR_STYLES, true)) $nav_bar_style = $pv['nav_bar_style'];
             if (isset($pv['profile_opts']) && is_array($pv['profile_opts'])) $profile_opts = cleanProfileOpts($pv['profile_opts']);
             if (in_array($pv['category_pic_style'] ?? '', THEME_CATEGORY_PIC_STYLES, true)) $category_pic_style = $pv['category_pic_style'];
             if (array_key_exists('category_heading_bg', $pv)) $category_heading_bg = $hex($pv['category_heading_bg']);

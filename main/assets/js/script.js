@@ -14121,6 +14121,22 @@ async function initWebsiteThemeEditor() {
     document.querySelectorAll('#profileDesignBox .pf-opt').forEach(function(el) {
       el.addEventListener('click', function() { var o = currentProfileOpts(); o[el.getAttribute('data-group')] = el.getAttribute('data-value'); applyProfileOptsUI(o); });
     });
+    // Bottom navigation bar look (Website Appearance > Bottom Navigation > Bar style)
+    function applyNavBarStyleUI(val) {
+      document.querySelectorAll('.nav-bar-style-opt').forEach(function(el) {
+        var active = el.getAttribute('data-value') === val;
+        el.style.borderColor = active ? '#7c3aed' : '#e5e7eb';
+        var radio = el.querySelector('input[name="navBarStyle"]');
+        if (radio) radio.checked = active;
+      });
+    }
+    function currentNavBarStyleVal() {
+      var r = document.querySelector('input[name="navBarStyle"]:checked');
+      return r ? r.value : 'classic';
+    }
+    document.querySelectorAll('.nav-bar-style-opt').forEach(function(el) {
+      el.addEventListener('click', function() { applyNavBarStyleUI(el.getAttribute('data-value')); });
+    });
     function currentProfileStyleVal() {
       var r = document.querySelector('input[name="profileStyle"]:checked');
       return r ? r.value : 'midnight';
@@ -14154,6 +14170,7 @@ async function initWebsiteThemeEditor() {
       try { t.menu_card_style = currentMenuCardStyleVal(); } catch (e) {}
       try { t.home_card_style = currentHomeCardStyleVal(); } catch (e) {}
       try { t.profile_style = currentProfileStyleVal(); } catch (e) {}
+      try { t.nav_bar_style = currentNavBarStyleVal(); } catch (e) {}
       try { t.profile_opts = currentProfileOpts(); } catch (e) {}
       try { t.category_pic_style = currentCategoryPicStyleVal(); } catch (e) {}
       try { var hb = currentCategoryHeadingVal(); t.category_heading_bg = hb || null; } catch (e) {}
@@ -15161,6 +15178,7 @@ if (!window.customBgThemes) {
       applyMenuCardStyleUI(data.settings.menu_card_style || 'classic');
       applyHomeCardStyleUI(data.settings.home_card_style || 'classic');
       applyProfileStyleUI(data.settings.profile_style || 'midnight');
+      applyNavBarStyleUI(data.settings.nav_bar_style || 'classic');
       applyProfileOptsUI(data.settings.profile_opts || {});
       applyCategoryHeadingUI(data.settings.category_heading_bg || '');
       applyCategoryPicStyleUI(data.settings.category_pic_style || 'round');
@@ -15386,6 +15404,7 @@ if (!window.customBgThemes) {
             menu_card_style: currentMenuCardStyleVal(),
             home_card_style: currentHomeCardStyleVal(),
             profile_style: currentProfileStyleVal(),
+            nav_bar_style: currentNavBarStyleVal(),
             profile_opts: currentProfileOpts(),
             category_heading_bg: currentCategoryHeadingVal(),
             category_pic_style: currentCategoryPicStyleVal(),

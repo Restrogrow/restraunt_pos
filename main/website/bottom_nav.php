@@ -6,20 +6,25 @@ $bottomNavShowReservations = isset($conn, $restaurant_id) && reservationsFeature
 $navLabels = $navLabels ?? DEFAULT_NAV_LABELS;
 $navIcons = $navIcons ?? NAV_ICON_STYLES['classic'];
 $navIconOverrides = $navIconOverrides ?? [];
+$navBarStyle = in_array($nav_bar_style ?? 'classic', THEME_NAV_BAR_STYLES, true) ? $nav_bar_style : 'classic';
+// The page you're on (the file that included this one), for the highlighted tab
+$navFrom = basename((string)(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0]['file'] ?? ''), '.php');
+$navActive = ['index' => 'home', 'menu' => 'menu', 'cart' => 'cart', 'plans' => 'plans', 'reservations' => 'reservations'][$navFrom] ?? '';
+if (!function_exists('navActiveClass')) { function navActiveClass(string $key, string $active): string { return $key === $active ? ' active' : ''; } }
 
 // Each nav item is captured as a string (instead of echoed straight into the
 // page) so that when "Install App" is on, it can be spliced into the middle
 // of the row — rather than always landing right after Menu, which drifts
 // away from center as soon as Plans/Reservations are also enabled.
 ob_start(); ?>
-  <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'">
+  <div class="nav-item<?php echo navActiveClass('home', $navActive); ?>" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'">
     <?php echo renderNavIconTag('home', $navIcons, $navIconOverrides); ?>
     <span><?php echo htmlspecialchars($navLabels['home'], ENT_QUOTES, 'UTF-8'); ?></span>
   </div>
 <?php $navHomeHtml = ob_get_clean();
 
 ob_start(); ?>
-  <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'">
+  <div class="nav-item<?php echo navActiveClass('menu', $navActive); ?>" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'">
     <?php echo renderNavIconTag('menu', $navIcons, $navIconOverrides); ?>
     <span><?php echo htmlspecialchars($navLabels['menu'], ENT_QUOTES, 'UTF-8'); ?></span>
   </div>
@@ -40,21 +45,21 @@ ob_start(); ?>
 <?php $navInstallHtml = ob_get_clean();
 
 ob_start(); ?>
-  <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('plans'); ?>'">
+  <div class="nav-item<?php echo navActiveClass('plans', $navActive); ?>" onclick="window.location.href='<?php echo restaurantPageUrl('plans'); ?>'">
     <?php echo renderNavIconTag('plans', $navIcons, $navIconOverrides); ?>
     <span><?php echo htmlspecialchars($navLabels['plans'], ENT_QUOTES, 'UTF-8'); ?></span>
   </div>
 <?php $navPlansHtml = ob_get_clean();
 
 ob_start(); ?>
-  <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('reservations'); ?>'">
+  <div class="nav-item<?php echo navActiveClass('reservations', $navActive); ?>" onclick="window.location.href='<?php echo restaurantPageUrl('reservations'); ?>'">
     <?php echo renderNavIconTag('reservations', array_merge($navIcons, ['reservations' => 'calendar-check']), $navIconOverrides); ?>
     <span><?php echo htmlspecialchars($navLabels['reservations'], ENT_QUOTES, 'UTF-8'); ?></span>
   </div>
 <?php $navReservationsHtml = ob_get_clean();
 
 ob_start(); ?>
-  <div class="nav-item" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
+  <div class="nav-item<?php echo navActiveClass('cart', $navActive); ?>" id="navCartItem" onclick="window.location.href='<?php echo restaurantPageUrl('cart'); ?>'">
     <?php echo renderNavIconTag('cart', $navIcons, $navIconOverrides); ?>
     <span><?php echo htmlspecialchars($navLabels['cart'], ENT_QUOTES, 'UTF-8'); ?></span>
     <div class="cart-badge" id="navCartBadge">0</div>
@@ -79,7 +84,7 @@ if (!empty($show_install_app)) {
         . $navCartHtml;
 }
 ?>
-<div class="bottom-nav">
+<div class="bottom-nav bn-<?php echo $navBarStyle; ?>">
   <?php echo $navItemsHtml; ?>
   <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="<?php echo htmlspecialchars($navLabels['profile'], ENT_QUOTES, 'UTF-8'); ?>" style="font-size:16px;padding:6px 10px;"><?php echo renderNavIconTag('profile', $navIcons, $navIconOverrides, false); ?></button>
 </div>
@@ -93,7 +98,9 @@ if (!empty($show_install_app)) {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.12); }
 }
+
 </style>
+<?php require __DIR__ . '/bottom_nav_styles.php'; ?>
 <script>
 (function(){
   try {

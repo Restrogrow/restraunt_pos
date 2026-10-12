@@ -1627,7 +1627,47 @@ try {
                 <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #dc2626;">apps</span>
                 Bottom Navigation
               </div>
-              <p style="font-size: 0.82rem; color: #6b7280; margin-bottom: 0.7rem;">Pick an icon style, then rename any item (blank = default) or upload your own icon for it (PNG/JPG/SVG/WebP/GIF, max 1MB).</p>
+              <p style="font-size: 0.82rem; color: #6b7280; margin-bottom: 0.7rem;">Pick how the bar looks and an icon style, then rename any item (blank = default) or upload your own icon for it (PNG/JPG/SVG/WebP/GIF, max 1MB).</p>
+              <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">Bar style</div>
+              <style>
+                .nbs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-bottom: 14px; }
+                .nav-bar-style-opt { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 2px solid #e5e7eb; border-radius: 12px; background: #fff; cursor: pointer; transition: border-color .15s; }
+                .nav-bar-style-opt input { display: none; }
+                .nav-bar-style-opt b { font-size: 0.8rem; color: #111827; }
+                .nav-bar-style-opt small { font-size: 0.7rem; color: #6b7280; line-height: 1.3; }
+                .nbs-m { position: relative; height: 54px; border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #fde68a, #fca5a5 60%, #c4b5fd); }
+                .nbs-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; display: flex; align-items: center; justify-content: space-around; background: #fff; border-top: 1px solid #e5e7eb; }
+                .nbs-bar i { width: 8px; height: 8px; border-radius: 3px; background: #9ca3af; position: relative; }
+                .nbs-bar i.on { background: #e11d48; }
+                .nbs-floating .nbs-bar { left: 6px; right: 6px; bottom: 5px; border-radius: 10px; border: 0; box-shadow: 0 4px 10px rgba(0,0,0,.18); }
+                .nbs-glass .nbs-bar { background: rgba(255,255,255,.55); border-top-color: rgba(255,255,255,.8); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+                .nbs-dark .nbs-bar { background: #111827; border: 0; }
+                .nbs-dark .nbs-bar i { background: #6b7280; } .nbs-dark .nbs-bar i.on { background: #fff; }
+                .nbs-pill .nbs-bar i.on { width: 26px; border-radius: 999px; background: #fecdd3; box-shadow: inset 0 0 0 3px #fecdd3, inset 8px 0 0 0 #e11d48; }
+                .nbs-bubble .nbs-bar i.on { width: 16px; height: 16px; border-radius: 50%; margin-top: -14px; border: 2px solid #fff; }
+                .nbs-line .nbs-bar i.on::before { content: ""; position: absolute; top: -7px; left: -3px; width: 14px; height: 2px; border-radius: 2px; background: #e11d48; }
+                .nbs-fab .nbs-bar i.mid { width: 18px; height: 18px; border-radius: 50%; margin-top: -16px; background: #e11d48; border: 2px solid #fff; }
+                .nbs-minimal .nbs-bar i.on::after { content: ""; position: absolute; bottom: -5px; left: 2px; width: 4px; height: 4px; border-radius: 50%; background: #e11d48; }
+              </style>
+              <div class="nbs-grid">
+                <?php foreach ([
+                  'classic'  => ['Classic', 'Icons with labels'],
+                  'floating' => ['Floating', 'Rounded bar above the edge'],
+                  'glass'    => ['Glass', 'Frosted, see-through'],
+                  'dark'     => ['Dark', 'Dark bar, light icons'],
+                  'pill'     => ['Pill', 'Current tab in a pill'],
+                  'bubble'   => ['Bubble', 'Current tab pops up'],
+                  'line'     => ['Top line', 'Accent line on top'],
+                  'fab'      => ['Raised cart', 'Big round cart button'],
+                  'minimal'  => ['Icons only', 'No labels, a dot'],
+                ] as $nbsId => $nbs): ?>
+                <label class="nav-bar-style-opt" data-value="<?php echo $nbsId; ?>">
+                  <input type="radio" name="navBarStyle" value="<?php echo $nbsId; ?>"<?php echo $nbsId === 'classic' ? ' checked' : ''; ?>>
+                  <span class="nbs-m nbs-<?php echo $nbsId; ?>"><span class="nbs-bar"><i class="on"></i><i></i><i class="mid"></i><i></i><i></i></span></span>
+                  <b><?php echo $nbs[0]; ?></b><small><?php echo $nbs[1]; ?></small>
+                </label>
+                <?php endforeach; ?>
+              </div>
               <div style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">Icon style</div>
               <div id="navIconStyleGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px;"></div>
               <input type="hidden" id="navIconStyleInput" value="classic">

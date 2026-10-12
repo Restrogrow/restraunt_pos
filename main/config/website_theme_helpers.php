@@ -175,6 +175,8 @@ function ensureBannerPlacementColumn($conn) {
 // Home page dish list look (Website Appearance > Home Page Dishes)
 // Customer profile page look (Website Appearance > Profile Page)
 const THEME_PROFILE_STYLES = ['midnight', 'brand', 'soft', 'centered', 'cover', 'glass', 'aurora', 'minimal', 'banner', 'neon'];
+// Bottom navigation bar look (Website Appearance > Bottom Navigation > Bar style)
+const THEME_NAV_BAR_STYLES = ['classic', 'floating', 'glass', 'dark', 'pill', 'bubble', 'line', 'fab', 'minimal'];
 // Profile page options (website_settings.profile_opts JSON): [allowed values, default]
 const THEME_PROFILE_OPTS = [
     'details' => [['rows', 'tiles', 'compact'], 'rows'],
@@ -317,6 +319,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         'menu_card_style' => "VARCHAR(10) DEFAULT 'classic'",
         'home_card_style' => "VARCHAR(10) DEFAULT 'classic'",
         'profile_style' => "VARCHAR(10) DEFAULT 'midnight'",
+        'nav_bar_style' => "VARCHAR(10) DEFAULT 'classic'",
         'profile_opts' => 'TEXT NULL',
         'category_heading_bg' => "VARCHAR(20) DEFAULT NULL",
         'category_pic_style' => "VARCHAR(10) DEFAULT 'round'",
