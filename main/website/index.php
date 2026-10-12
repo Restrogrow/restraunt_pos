@@ -341,13 +341,6 @@ body {
 
 /* ── Today's Special (Offers > Today's Special): showcase card above Bestsellers ── */
 .tds { margin: 18px 0 6px; }
-.tds-top { display: flex; align-items: center; gap: 10px; margin: 0 16px 10px; }
-.tds-top .ic { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: linear-gradient(135deg, #fb923c, var(--primary-red, #e11d48)); color: #fff; box-shadow: 0 6px 14px rgba(225,29,72,.3); animation: tdsFlick 2.4s ease-in-out infinite; }
-.tds-top .ic svg { width: 20px; height: 20px; }
-@keyframes tdsFlick { 0%, 100% { transform: rotate(-3deg) scale(1); } 50% { transform: rotate(3deg) scale(1.06); } }
-.tds-top h3 { flex: 1; min-width: 0; margin: 0; font-size: 18px; font-weight: 800; color: #111827; line-height: 1.15; }
-.tds-top h3 small { display: block; font-size: 12px; font-weight: 600; color: #6b7280; }
-.tds-top .tds-timer { position: static; background: #111827; }
 .tds-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 16px 8px; scrollbar-width: none; }
 .tds-track::-webkit-scrollbar { display: none; }
 .tds-track > .tds-card { flex: 0 0 86%; scroll-snap-align: center; }
@@ -361,7 +354,7 @@ body {
   background: conic-gradient(from var(--tds-a, 0deg), var(--primary-red, #e11d48), var(--primary-yellow, #fbbf24), #fff, var(--primary-red, #e11d48)); animation: tdsRing 6s linear infinite; }
 @property --tds-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 @keyframes tdsRing { to { --tds-a: 360deg; } }
-.tds-inner { position: relative; border-radius: 22px; overflow: hidden; background: #fff; }
+.tds-inner { position: relative; border-radius: 22px; overflow: hidden; background: #fff; height: 100%; display: flex; flex-direction: column; }
 .tds-photo { position: relative; height: 190px; overflow: hidden; background: #f3f4f6; }
 .tds-photo img { width: 100%; height: 100%; object-fit: cover; animation: tdsZoom 12s ease-in-out infinite alternate; }
 @keyframes tdsZoom { from { transform: scale(1.02); } to { transform: scale(1.14) translate(-2%, -2%); } }
@@ -370,7 +363,10 @@ body {
 .tds-ribbon svg { width: 14px; height: 14px; }
 .tds-timer { position: absolute; top: 12px; right: 12px; z-index: 2; padding: 6px 10px; border-radius: 999px; background: rgba(0,0,0,.55); color: #fff; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .tds-name { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 2; color: #fff; font-size: 21px; font-weight: 800; line-height: 1.15; text-shadow: 0 2px 10px rgba(0,0,0,.4); }
-.tds-body { padding: 12px 14px 14px; }
+.tds-body { padding: 12px 14px 14px; flex: 1; display: flex; flex-direction: column; }
+.tds-body .tds-foot { margin-top: auto; padding-top: 10px; }
+.tds-head { padding-bottom: 12px; }
+.tds-head .tds-timer { position: static; display: inline-block; margin-top: 8px; background: #111827; }
 .tds-note { position: relative; margin: 0 0 12px; padding-left: 14px; font-size: 13.5px; font-style: italic; color: #4b5563; line-height: 1.45; }
 .tds-note::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; border-radius: 3px; background: var(--primary-yellow, #fbbf24); }
 .tds-left { margin-bottom: 12px; }
@@ -3285,7 +3281,7 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
     el.textContent = 'Ends in ' + pad(Math.floor(left / 3600)) + ':' + pad(Math.floor(left % 3600 / 60)) + ':' + pad(left % 60);
   }
   var FLAME = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 5.4 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5.5 1-8.5z"/></svg>';
-  function cardHtml(f, s, k) {
+  function cardHtml(f, s, k, n) {
     var it = f.item;
     var name = it.item_name_translated || it.item_name_en || it.name || '';
     var limit = s.daily_limit, left = limit ? Math.max(0, limit - s.sold_today) : null;
@@ -3295,7 +3291,7 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
     var priceWas = typeof itemWasPrice === 'function' ? itemWasPrice(it) : 0;
     return '<div class="tds-card' + (soldOut ? ' soldout' : '') + '" data-k="' + k + '"><div class="tds-inner">' +
       '<div class="tds-photo"><img src="' + getImageUrl(it.item_image || it.image) + '" alt="" loading="' + (k ? 'lazy' : 'eager') + '">' +
-        '<span class="tds-ribbon">' + FLAME + 'Special ' + (k + 1) + '</span>' +
+        '<span class="tds-ribbon">' + (n > 1 ? 'Special ' + (k + 1) : 'Today only') + '</span>' +
         (fast ? '<span class="tds-fast">Selling fast</span>' : '') +
         '<div class="tds-name">' + tdsEsc(name) + '</div></div>' +
       '<div class="tds-body">' +
@@ -3309,8 +3305,9 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
     endTs = data.ends_ts;
     var n = found.length;
     box.className = 'tds';
-    box.innerHTML = '<div class="tds-top"><span class="ic">' + FLAME + '</span><h3>Today\u2019s Special' + (n > 1 ? 's' : '') + '<small>' + tdsEsc(data.weekday_name) + ' only' + (n > 1 ? ' \u00b7 ' + n + ' dishes' : '') + '</small></h3><span class="tds-timer"></span></div>' +
-      '<div class="tds-track">' + found.map(function(f, k) { return cardHtml(f.f, f.s, k); }).join('') + '</div>' +
+    box.innerHTML = '<div class="bsl-head tds-head"><div class="bsl-eyebrow">' + tdsEsc(data.weekday_name) + ' only' + (n > 1 ? ' \u00b7 ' + n + ' dishes' : '') + '</div>' +
+      '<div class="bsl-title-row"><h3 class="bsl-title">Today\u2019s Special' + (n > 1 ? 's' : '') + '</h3></div><span class="tds-timer"></span></div>' +
+      '<div class="tds-track">' + found.map(function(f, k) { return cardHtml(f.f, f.s, k, n); }).join('') + '</div>' +
       (n > 1 ? '<div class="tds-dots">' + found.map(function(f, k) { return '<i' + (k ? '' : ' class="on"') + '></i>'; }).join('') + '</div>' : '');
     box.hidden = false;
     tick();
