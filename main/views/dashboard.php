@@ -2009,12 +2009,12 @@ try {
             </div>
 
             <!-- Profile page: how the customer's profile page looks -->
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+            <div id="profileDesignBox" style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
               <div style="font-weight: 700; color: #111827; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
                 <span class="material-symbols-rounded" style="font-size: 1.2rem; color: #7c3aed;">account_circle</span>
                 Profile Page
               </div>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How your customers' profile page looks (their details, orders and favourites). <b>Cover</b> uses your Background Image.</p>
+              <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.75rem;">How your customers' profile page looks: pick a top card, then how the sections below look. <b>Cover</b> uses your Background Image.</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px;">
                 <label class="profile-style-opt" data-value="midnight" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #7c3aed;border-radius:10px;background:#fff;">
                   <input type="radio" name="profileStyle" value="midnight" checked style="display:none;">
@@ -2041,6 +2041,73 @@ try {
                   <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:5px;right:5px;top:5px;height:28px;border-radius:6px;background:linear-gradient(180deg,#94a3b8,#334155);"></i><i style="position:absolute;left:9px;right:9px;top:16px;height:13px;border-radius:4px;background:rgba(255,255,255,.35);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:12px;top:15px;width:10px;height:10px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:26px;width:22px;top:20px;background:#fff;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
                   <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Cover</span>
                 </label>
+                <label class="profile-style-opt" data-value="glass" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="glass" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:5px;right:5px;top:5px;height:28px;border-radius:6px;background:radial-gradient(circle at 20% 20%,#ef4444,transparent 50%),radial-gradient(circle at 85% 85%,#f59e0b,transparent 50%),#1b1d24;"></i><i style="position:absolute;left:9px;right:9px;top:10px;height:18px;border-radius:5px;background:rgba(255,255,255,.18);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:12px;top:12px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:30px;width:20px;top:17px;background:#fff;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Glass</span>
+                </label>
+                <label class="profile-style-opt" data-value="aurora" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="aurora" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:5px;right:5px;top:5px;height:28px;border-radius:6px;background:linear-gradient(120deg,#ef4444,#7c3aed,#991b1b);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:9px;top:12px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:27px;width:24px;top:15px;background:#fff;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Aurora</span>
+                </label>
+                <label class="profile-style-opt" data-value="minimal" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="minimal" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:8px;top:8px;width:12px;height:12px;background:#ef4444;"></i><i style="position:absolute;height:3px;border-radius:2px;left:24px;width:26px;top:12px;background:#374151;"></i><i style="position:absolute;left:6px;right:6px;top:26px;height:1px;background:#d1d5db;"></i><i style="position:absolute;height:3px;border-radius:2px;left:8px;width:10px;top:30px;background:#9ca3af;"></i><i style="position:absolute;height:3px;border-radius:2px;left:30px;width:10px;top:30px;background:#9ca3af;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Minimal</span>
+                </label>
+                <label class="profile-style-opt" data-value="banner" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="banner" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:0;right:0;top:0;height:34px;border-radius:0 0 50% 50% / 0 0 10px 10px;background:linear-gradient(160deg,#ef4444,#991b1b);"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:9px;top:10px;background:#fff;"></i><i style="position:absolute;height:3px;border-radius:2px;left:27px;width:24px;top:14px;background:#fff;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Banner</span>
+                </label>
+                <label class="profile-style-opt" data-value="neon" style="display:flex;flex-direction:column;align-items:stretch;gap:6px;cursor:pointer;padding:6px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <input type="radio" name="profileStyle" value="neon" style="display:none;">
+                  <span aria-hidden="true" style="position:relative;display:block;height:56px;border-radius:7px;overflow:hidden;background:#f2f3f5;"><i style="position:absolute;left:5px;right:5px;top:5px;height:28px;border-radius:6px;background:#0a0a10;box-shadow:inset 0 0 0 1px #ef4444;"></i><i style="position:absolute;width:14px;height:14px;border-radius:50%;left:9px;top:12px;background:#0a0a10;box-shadow:0 0 0 1.5px #ef4444,0 0 6px #ef4444;"></i><i style="position:absolute;height:3px;border-radius:2px;left:27px;width:24px;top:15px;background:#fff;box-shadow:0 0 4px #ef4444;"></i><i style="position:absolute;left:5px;right:5px;bottom:4px;height:14px;border-radius:4px;background:#fff;"></i></span>
+                  <span style="font-weight:600;font-size:0.78rem;text-align:center;color:#374151;">Neon</span>
+                </label>
+              </div>
+              <div style="margin-top:14px;font-size:0.8rem;font-weight:700;color:#374151;">Sections below &amp; options</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px;margin-top:8px;">
+                <div><span style="display:block;font-size:0.75rem;font-weight:700;color:#6b7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Personal details</span>
+                <div style="display:flex;padding:3px;border-radius:10px;background:#eef0f4;gap:3px;">
+                  <label class="pf-opt" data-group="details" data-value="rows" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#7c3aed;box-shadow:0 1px 3px rgba(0,0,0,.12);"><input type="radio" name="pfOpt_details" value="rows" checked style="display:none;">Rows</label>
+                  <label class="pf-opt" data-group="details" data-value="tiles" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_details" value="tiles" style="display:none;">Tiles</label>
+                  <label class="pf-opt" data-group="details" data-value="compact" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_details" value="compact" style="display:none;">Compact</label>
+                </div></div>
+                <div><span style="display:block;font-size:0.75rem;font-weight:700;color:#6b7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Quick links</span>
+                <div style="display:flex;padding:3px;border-radius:10px;background:#eef0f4;gap:3px;">
+                  <label class="pf-opt" data-group="links" data-value="tiles" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#7c3aed;box-shadow:0 1px 3px rgba(0,0,0,.12);"><input type="radio" name="pfOpt_links" value="tiles" checked style="display:none;">Tiles</label>
+                  <label class="pf-opt" data-group="links" data-value="list" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_links" value="list" style="display:none;">List</label>
+                  <label class="pf-opt" data-group="links" data-value="icons" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_links" value="icons" style="display:none;">Icons</label>
+                  <label class="pf-opt" data-group="links" data-value="pills" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_links" value="pills" style="display:none;">Pills</label>
+                </div></div>
+                <div><span style="display:block;font-size:0.75rem;font-weight:700;color:#6b7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Order history</span>
+                <div style="display:flex;padding:3px;border-radius:10px;background:#eef0f4;gap:3px;">
+                  <label class="pf-opt" data-group="orders" data-value="cards" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#7c3aed;box-shadow:0 1px 3px rgba(0,0,0,.12);"><input type="radio" name="pfOpt_orders" value="cards" checked style="display:none;">Cards</label>
+                  <label class="pf-opt" data-group="orders" data-value="timeline" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_orders" value="timeline" style="display:none;">Timeline</label>
+                  <label class="pf-opt" data-group="orders" data-value="compact" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_orders" value="compact" style="display:none;">Compact</label>
+                </div></div>
+                <div><span style="display:block;font-size:0.75rem;font-weight:700;color:#6b7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Avatar shape</span>
+                <div style="display:flex;padding:3px;border-radius:10px;background:#eef0f4;gap:3px;">
+                  <label class="pf-opt" data-group="avatar" data-value="circle" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#7c3aed;box-shadow:0 1px 3px rgba(0,0,0,.12);"><input type="radio" name="pfOpt_avatar" value="circle" checked style="display:none;">Round</label>
+                  <label class="pf-opt" data-group="avatar" data-value="rounded" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_avatar" value="rounded" style="display:none;">Rounded</label>
+                  <label class="pf-opt" data-group="avatar" data-value="square" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_avatar" value="square" style="display:none;">Square</label>
+                </div></div>
+                <div><span style="display:block;font-size:0.75rem;font-weight:700;color:#6b7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Corners</span>
+                <div style="display:flex;padding:3px;border-radius:10px;background:#eef0f4;gap:3px;">
+                  <label class="pf-opt" data-group="corners" data-value="round" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#7c3aed;box-shadow:0 1px 3px rgba(0,0,0,.12);"><input type="radio" name="pfOpt_corners" value="round" checked style="display:none;">Round</label>
+                  <label class="pf-opt" data-group="corners" data-value="soft" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_corners" value="soft" style="display:none;">Soft</label>
+                  <label class="pf-opt" data-group="corners" data-value="sharp" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_corners" value="sharp" style="display:none;">Sharp</label>
+                </div></div>
+                <div><span style="display:block;font-size:0.75rem;font-weight:700;color:#6b7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Stats (orders, spent, member since)</span>
+                <div style="display:flex;padding:3px;border-radius:10px;background:#eef0f4;gap:3px;">
+                  <label class="pf-opt" data-group="stats" data-value="show" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#7c3aed;box-shadow:0 1px 3px rgba(0,0,0,.12);"><input type="radio" name="pfOpt_stats" value="show" checked style="display:none;">Show</label>
+                  <label class="pf-opt" data-group="stats" data-value="hide" style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#4b5563;"><input type="radio" name="pfOpt_stats" value="hide" style="display:none;">Hide</label>
+                </div></div>
+                <div><span style="display:block;font-size:0.75rem;font-weight:700;color:#6b7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Colour</span>
+                <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;"><input type="checkbox" id="pfAccentOn"> Own colour for this page <input type="color" id="pfAccent" value="#7c3aed" style="width:34px !important;height:28px !important;min-height:0 !important;padding:0 !important;border:0;border-radius:6px;background:none;cursor:pointer;flex:none;"></label>
+                <span style="font-size:0.75rem;color:#9ca3af;">Unticked: your brand colour.</span></div>
               </div>
             </div>
 

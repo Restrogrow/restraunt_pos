@@ -1084,17 +1084,93 @@ body { background: #e3e6ea; }
 .pf-centered .hero-edit-btn { position: absolute; top: 12px; right: 0; background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.25); }
 .pf-centered .stat-card { background: #f6f7f9; border: 0; }
 .pf-centered .stat-number { color: var(--pf-ink); }
-.pf-centered .quick-actions { grid-template-columns: 1fr; gap: 0; padding: 4px 0; border-radius: 26px; background: #fff; box-shadow: 0 2px 14px rgba(17,24,39,.05); overflow: hidden; }
-.pf-centered .quick-action-btn { border-radius: 0; box-shadow: none; padding: 13px 40px 13px 16px; border-bottom: 1px solid #f1f2f4; }
-.pf-centered .quick-action-btn:last-child { border-bottom: 0; }
-.pf-centered .quick-action-btn:hover { transform: none; box-shadow: none; background: #fafafa; }
-.pf-centered .quick-action-btn::after { right: 18px; }
 
 /* Cover: the restaurant's Background Image behind a frosted hero */
 .pf-cover .profile-hero { min-height: 230px; display: flex; flex-direction: column; justify-content: flex-end; background: linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.72)), var(--pf-photo, linear-gradient(135deg, #64748b, #1f2937)) center / cover; }
 .pf-cover .profile-hero-top { padding: 14px; border-radius: 20px; background: rgba(255,255,255,.12); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.18); }
 .pf-cover .hero-user-phone, .pf-cover .stat-label { color: rgba(255,255,255,.8); }
 .pf-cover .stat-card { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.16); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+/* ── 5 more top cards ── */
+/* Glass: frosted card over glowing blobs */
+.pf-glass .profile-hero { background: radial-gradient(circle at 15% 15%, var(--pf) 0, transparent 42%), radial-gradient(circle at 90% 85%, color-mix(in srgb, var(--pf) 55%, #fde047) 0, transparent 45%), #14151b; }
+.pf-glass .profile-hero-top, .pf-glass .stats-grid { position: relative; z-index: 1; }
+.pf-glass .profile-hero-top { padding: 12px; border-radius: 20px; background: rgba(255,255,255,.08); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.14); }
+.pf-glass .stat-card { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+/* Aurora: brand colours slowly flowing */
+.pf-aurora .profile-hero { background: linear-gradient(120deg, var(--pf), var(--pf-dark), color-mix(in srgb, var(--pf) 50%, #7c3aed), var(--pf)) 0 0 / 300% 300%; animation: pfAurora 12s ease-in-out infinite; }
+.pf-aurora .avatar-container { background: rgba(255,255,255,.95) !important; color: var(--pf) !important; }
+.pf-aurora .hero-user-phone, .pf-aurora .stat-label { color: rgba(255,255,255,.85); }
+.pf-aurora .stat-card { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.2); }
+@keyframes pfAurora { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@media (prefers-reduced-motion: reduce) { .pf-aurora .profile-hero { animation: none; } }
+/* Minimal: no card, a simple header */
+.pf-minimal .profile-hero { background: transparent; box-shadow: none; color: var(--pf-ink); padding: 6px 4px 10px; }
+.pf-minimal .avatar-container { width: 54px; height: 54px; font-size: 19px; box-shadow: none; }
+.pf-minimal .hero-user-name { color: var(--pf-ink); }
+.pf-minimal .hero-user-phone, .pf-minimal .stat-label { color: var(--pf-muted); }
+.pf-minimal .hero-edit-btn { background: #fff; border-color: #eceef1; color: var(--pf-ink); }
+.pf-minimal .stats-grid { gap: 0; padding: 12px 0 0; border-top: 1px solid #e9ebee; }
+.pf-minimal .stat-card { background: transparent; border: 0; border-right: 1px solid #e9ebee; border-radius: 0; padding: 4px; }
+.pf-minimal .stat-card:last-child { border-right: 0; }
+.pf-minimal .stat-number { color: var(--pf-ink); }
+/* Banner: edge-to-edge brand banner with a curved bottom */
+.pf-banner .profile-hero { margin: -8px -14px 16px; border-radius: 0 0 50% 50% / 0 0 34px 34px; padding: 20px 22px 30px; background: radial-gradient(circle at 85% 0%, rgba(255,255,255,.25), transparent 45%), linear-gradient(160deg, var(--pf), var(--pf-dark)); box-shadow: 0 14px 30px color-mix(in srgb, var(--pf) 30%, transparent); }
+.pf-banner .avatar-container { background: #fff !important; color: var(--pf) !important; }
+.pf-banner .hero-user-phone, .pf-banner .stat-label { color: rgba(255,255,255,.85); }
+.pf-banner .stat-card { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.2); }
+/* Neon: dark, glowing ring and name */
+.pf-neon .profile-hero { background: radial-gradient(circle at 50% -20%, color-mix(in srgb, var(--pf) 30%, transparent), transparent 60%), #0a0a10; border: 1px solid color-mix(in srgb, var(--pf) 45%, transparent); box-shadow: 0 0 0 1px rgba(255,255,255,.03), 0 0 30px color-mix(in srgb, var(--pf) 35%, transparent); }
+.pf-neon .avatar-container { background: #0a0a10 !important; color: #fff !important; box-shadow: 0 0 0 2px var(--pf), 0 0 18px var(--pf), inset 0 0 12px color-mix(in srgb, var(--pf) 40%, transparent); }
+.pf-neon .hero-user-name { text-shadow: 0 0 10px color-mix(in srgb, var(--pf) 80%, transparent); }
+.pf-neon .stat-card { background: transparent; border: 1px solid color-mix(in srgb, var(--pf) 45%, transparent); box-shadow: inset 0 0 12px color-mix(in srgb, var(--pf) 18%, transparent); }
+.pf-neon .stat-number { text-shadow: 0 0 8px color-mix(in srgb, var(--pf) 70%, transparent); }
+
+/* ── Personal details: Rows (default) / Tiles / Compact ── */
+.pfd-tiles #pfDetails { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pfd-tiles #pfDetails .section-header { grid-column: 1 / -1; }
+.pfd-tiles #pfDetails .profile-info-row { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; border: 0; border-radius: 16px; background: #f7f8fa; min-width: 0; }
+.pfd-tiles #pfDetails .profile-info-row:nth-last-child(-n+2) { grid-column: 1 / -1; } /* email + address: full width */
+.pfd-tiles #pfDetails .profile-value-text { word-break: break-word; }
+.pfd-compact #pfDetails .profile-label-text { display: none; }
+.pfd-compact #pfDetails .profile-info-row { padding: 6px 0; border: 0; }
+.pfd-compact #pfDetails .profile-icon { width: 30px; height: 30px; border-radius: 50%; font-size: 12px; }
+.pfd-compact #pfDetails .profile-value-text { font-size: 13.5px; }
+
+/* ── Quick links: Tiles (default) / List / Icons / Pills ── */
+.pfq-list .quick-actions { grid-template-columns: 1fr; gap: 0; padding: 4px 0; background: #fff; box-shadow: 0 2px 14px rgba(17,24,39,.05); overflow: hidden; }
+.pfq-list .quick-action-btn { border-radius: 0 !important; box-shadow: none; padding: 13px 40px 13px 16px; border-bottom: 1px solid #f1f2f4; }
+.pfq-list .quick-action-btn:last-child { border-bottom: 0; }
+.pfq-list .quick-action-btn:hover { transform: none; box-shadow: none; background: #fafafa; }
+.pfq-list .quick-action-btn::after { right: 18px; }
+.pfq-icons .quick-actions { grid-template-columns: repeat(4, 1fr); gap: 12px 6px; padding: 16px 10px; background: #fff; box-shadow: 0 2px 14px rgba(17,24,39,.05); }
+.pfq-icons .quick-action-btn { flex-direction: column; justify-content: flex-start; gap: 7px; padding: 0; background: none; box-shadow: none; text-align: center; }
+.pfq-icons .quick-action-btn::after, .pfq-icons .quick-action-sub { display: none; }
+.pfq-icons .quick-action-icon { width: 52px; height: 52px; border-radius: 50%; font-size: 19px; }
+.pfq-icons .quick-action-text { font-size: 11.5px; font-weight: 600; line-height: 1.2; }
+.pfq-icons .quick-action-btn:hover { transform: translateY(-2px); box-shadow: none; }
+.pfq-pills .quick-actions { display: flex; overflow-x: auto; gap: 8px; padding: 2px 2px 8px; scrollbar-width: none; }
+.pfq-pills .quick-actions::-webkit-scrollbar { display: none; }
+.pfq-pills .quick-action-btn { flex: 0 0 auto; padding: 8px 16px 8px 8px; border-radius: 999px !important; gap: 8px; }
+.pfq-pills .quick-action-btn::after, .pfq-pills .quick-action-sub { display: none; }
+.pfq-pills .quick-action-icon { width: 32px; height: 32px; border-radius: 50%; font-size: 13px; }
+.pfq-pills .quick-action-text { white-space: nowrap; }
+
+/* ── Order history: Cards (default) / Timeline / Compact ── */
+.pfo-timeline #orderHistory { position: relative; padding-left: 22px; }
+.pfo-timeline #orderHistory::before { content: ""; position: absolute; left: 7px; top: 10px; bottom: 10px; width: 2px; border-radius: 2px; background: #e5e7eb; }
+.pfo-timeline .order-card { position: relative; overflow: visible; }
+.pfo-timeline .order-card::before { content: ""; position: absolute; left: -20px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--pf); box-shadow: 0 0 0 4px var(--pf-soft); }
+.pfo-compact .order-card-items, .pfo-compact .order-card-note, .pfo-compact .order-card-divider { display: none; }
+.pfo-compact .order-card-top { padding-bottom: 4px; }
+.pfo-compact .order-card-bottom { padding-top: 4px; }
+
+/* ── Avatar shape, corners, stats ── */
+.pfa-rounded .avatar-container { border-radius: 22px !important; }
+.pfa-square .avatar-container { border-radius: 10px !important; }
+.pfc-soft .profile-hero, .pfc-soft .section-card, .pfc-soft .quick-actions, .pfc-soft .quick-action-btn, .pfc-soft .order-card, .pfc-soft .edit-form-card { border-radius: 16px; }
+.pfc-sharp .profile-hero, .pfc-sharp .section-card, .pfc-sharp .quick-actions, .pfc-sharp .quick-action-btn, .pfc-sharp .order-card, .pfc-sharp .edit-form-card, .pfc-sharp .stat-card { border-radius: 6px; }
+.pfc-sharp.pf-banner .profile-hero { border-radius: 0; }
+.pfs-hide .stats-grid { display: none; }
 </style>
 </head>
 <body>
@@ -1104,7 +1180,13 @@ body { background: #e3e6ea; }
 // nothing is read from or written to the visitor's saved details.
 $pf_demo = !empty($_GET['preview_demo']) && !empty($_GET['preview_theme']);
 ?>
-<div class="phone-frame pf-<?php echo htmlspecialchars($profile_style ?? 'midnight', ENT_QUOTES, 'UTF-8'); ?>"<?php if (!empty($background_theme)): ?> style="--pf-photo: url('<?php echo htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8'); ?>')"<?php endif; ?>>
+<?php
+$pfo = $profile_opts ?? cleanProfileOpts([]);
+$pfClasses = 'pf-' . ($profile_style ?? 'midnight') . ' pfd-' . $pfo['details'] . ' pfq-' . $pfo['links'] . ' pfo-' . $pfo['orders'] . ' pfa-' . $pfo['avatar'] . ' pfc-' . $pfo['corners'] . ' pfs-' . $pfo['stats'];
+$pfStyle = (!empty($background_theme) ? "--pf-photo: url('" . $background_theme . "');" : '')
+    . ($pfo['accent'] ? '--pf: ' . $pfo['accent'] . '; --pf-dark: color-mix(in srgb, ' . $pfo['accent'] . ' 70%, #000); --pf-soft: color-mix(in srgb, ' . $pfo['accent'] . ' 11%, #fff);' : '');
+?>
+<div class="phone-frame <?php echo htmlspecialchars($pfClasses, ENT_QUOTES, 'UTF-8'); ?>"<?php if ($pfStyle): ?> style="<?php echo htmlspecialchars($pfStyle, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>>
 <?php if ($pf_demo): ?><script>window.__pfDemo = { name: 'Aarav Sharma', phone: '9000012345', email: 'aarav@example.com', address: '12th Main Road, Indiranagar, Bengaluru' };</script><?php endif; ?>
   <div class="bg-wrapper">
     <!-- Header -->
@@ -1145,7 +1227,7 @@ $pf_demo = !empty($_GET['preview_demo']) && !empty($_GET['preview_theme']);
         </div>
 
         <!-- Personal Details -->
-        <div class="section-card fade-in" style="animation-delay:0.1s">
+        <div class="section-card fade-in" style="animation-delay:0.1s" id="pfDetails">
           <div class="section-header">
             <div class="section-title"><i class="fa fa-user"></i> Personal Details</div>
             <span class="section-badge"><i class="fa fa-check-circle"></i> Saved</span>

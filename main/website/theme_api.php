@@ -59,7 +59,7 @@ try {
   ensureOfferBannersTable($conn);
 
   if ($action === 'get') {
-    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, home_card_style, profile_style, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');
+    $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, home_card_style, profile_style, profile_opts, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');
     $stmt->execute([':rid' => $restaurant_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     $bestsellerStyle = getBestsellerStyle($row['bestseller_style'] ?? null);
@@ -77,6 +77,7 @@ try {
       if (!in_array($row['menu_card_style'] ?? '', THEME_MENU_CARD_STYLES, true)) { $row['menu_card_style'] = 'classic'; }
       if (!in_array($row['home_card_style'] ?? '', THEME_HOME_CARD_STYLES, true)) { $row['home_card_style'] = 'classic'; }
       if (!in_array($row['profile_style'] ?? '', THEME_PROFILE_STYLES, true)) { $row['profile_style'] = 'midnight'; }
+      $row['profile_opts'] = cleanProfileOpts(json_decode((string)($row['profile_opts'] ?? ''), true));
       // Ensure banner_image is null if empty string
       if (empty($row['banner_image']) || trim($row['banner_image']) === '') {
         $row['banner_image'] = null;
@@ -214,6 +215,10 @@ try {
     if (in_array($data['profile_style'] ?? '', THEME_PROFILE_STYLES, true)) {
       $conn->prepare('UPDATE website_settings SET profile_style = :s WHERE restaurant_id = :rid')
            ->execute([':s' => $data['profile_style'], ':rid' => $restaurant_id]);
+    }
+    if (isset($data['profile_opts']) && is_array($data['profile_opts'])) {
+      $conn->prepare('UPDATE website_settings SET profile_opts = :o WHERE restaurant_id = :rid')
+           ->execute([':o' => json_encode(cleanProfileOpts($data['profile_opts'])), ':rid' => $restaurant_id]);
     }
     // Bestsellers section look (Website Appearance > Bestsellers)
     if (isset($data['bestseller_style']) && is_array($data['bestseller_style'])) {

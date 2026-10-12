@@ -14065,6 +14065,33 @@ async function initWebsiteThemeEditor() {
         if (radio) radio.checked = active;
       });
     }
+    // Profile page options (sections below, avatar, corners, stats, colour)
+    function currentProfileOpts() {
+      var o = {};
+      document.querySelectorAll('#profileDesignBox input[type="radio"][name^="pfOpt_"]:checked').forEach(function(r) { o[r.name.slice(6)] = r.value; });
+      var on = document.getElementById('pfAccentOn'), col = document.getElementById('pfAccent');
+      o.accent = on && on.checked && col ? col.value : '';
+      return o;
+    }
+    function applyProfileOptsUI(o) {
+      o = o || {};
+      document.querySelectorAll('#profileDesignBox .pf-opt').forEach(function(el) {
+        var g = el.getAttribute('data-group');
+        var radio = el.querySelector('input');
+        var first = el.parentNode.querySelector('.pf-opt') === el;
+        var active = o[g] ? o[g] === el.getAttribute('data-value') : first;
+        if (radio) radio.checked = active;
+        el.style.background = active ? '#fff' : 'transparent';
+        el.style.color = active ? '#7c3aed' : '#4b5563';
+        el.style.boxShadow = active ? '0 1px 3px rgba(0,0,0,.12)' : 'none';
+      });
+      var on = document.getElementById('pfAccentOn'), col = document.getElementById('pfAccent');
+      if (on) on.checked = !!o.accent;
+      if (col && o.accent) col.value = o.accent;
+    }
+    document.querySelectorAll('#profileDesignBox .pf-opt').forEach(function(el) {
+      el.addEventListener('click', function() { var o = currentProfileOpts(); o[el.getAttribute('data-group')] = el.getAttribute('data-value'); applyProfileOptsUI(o); });
+    });
     function currentProfileStyleVal() {
       var r = document.querySelector('input[name="profileStyle"]:checked');
       return r ? r.value : 'midnight';
@@ -14098,6 +14125,7 @@ async function initWebsiteThemeEditor() {
       try { t.menu_card_style = currentMenuCardStyleVal(); } catch (e) {}
       try { t.home_card_style = currentHomeCardStyleVal(); } catch (e) {}
       try { t.profile_style = currentProfileStyleVal(); } catch (e) {}
+      try { t.profile_opts = currentProfileOpts(); } catch (e) {}
       try { t.category_pic_style = currentCategoryPicStyleVal(); } catch (e) {}
       try { var hb = currentCategoryHeadingVal(); t.category_heading_bg = hb || null; } catch (e) {}
       return t;
@@ -14152,7 +14180,7 @@ async function initWebsiteThemeEditor() {
         var home = (frame.getAttribute('data-base') || frame.src).split('?')[0].replace(/\/$/, '');
         var onProfile = false;
         try { onProfile = /\/profile(\?|$)/.test(frame.contentWindow.location.href); } catch (err) {}
-        if (opt.closest('.profile-style-opt')) {
+        if (opt.closest('#profileDesignBox')) {
           frame.setAttribute('data-want', home + '/profile?preview_demo=1');
           frame.setAttribute('data-want-until', Date.now() + 3000);
           if (window.previewMode === 'live') window.setPreviewMode('current');
@@ -15104,6 +15132,7 @@ if (!window.customBgThemes) {
       applyMenuCardStyleUI(data.settings.menu_card_style || 'classic');
       applyHomeCardStyleUI(data.settings.home_card_style || 'classic');
       applyProfileStyleUI(data.settings.profile_style || 'midnight');
+      applyProfileOptsUI(data.settings.profile_opts || {});
       applyCategoryHeadingUI(data.settings.category_heading_bg || '');
       applyCategoryPicStyleUI(data.settings.category_pic_style || 'round');
       var allPrev = document.getElementById('allCategoryIconPreview');
@@ -15328,6 +15357,7 @@ if (!window.customBgThemes) {
             menu_card_style: currentMenuCardStyleVal(),
             home_card_style: currentHomeCardStyleVal(),
             profile_style: currentProfileStyleVal(),
+            profile_opts: currentProfileOpts(),
             category_heading_bg: currentCategoryHeadingVal(),
             category_pic_style: currentCategoryPicStyleVal(),
             bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined

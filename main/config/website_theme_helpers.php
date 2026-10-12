@@ -174,7 +174,24 @@ function ensureBannerPlacementColumn($conn) {
 
 // Home page dish list look (Website Appearance > Home Page Dishes)
 // Customer profile page look (Website Appearance > Profile Page)
-const THEME_PROFILE_STYLES = ['midnight', 'brand', 'soft', 'centered', 'cover'];
+const THEME_PROFILE_STYLES = ['midnight', 'brand', 'soft', 'centered', 'cover', 'glass', 'aurora', 'minimal', 'banner', 'neon'];
+// Profile page options (website_settings.profile_opts JSON): [allowed values, default]
+const THEME_PROFILE_OPTS = [
+    'details' => [['rows', 'tiles', 'compact'], 'rows'],
+    'links'   => [['tiles', 'list', 'icons', 'pills'], 'tiles'],
+    'orders'  => [['cards', 'timeline', 'compact'], 'cards'],
+    'avatar'  => [['circle', 'rounded', 'square'], 'circle'],
+    'corners' => [['round', 'soft', 'sharp'], 'round'],
+    'stats'   => [['show', 'hide'], 'show'],
+];
+/** Profile options with every key present and valid; accent is a #hex or ''. */
+function cleanProfileOpts($in): array {
+    $in = is_array($in) ? $in : [];
+    $out = [];
+    foreach (THEME_PROFILE_OPTS as $k => [$allowed, $def]) $out[$k] = in_array($in[$k] ?? '', $allowed, true) ? $in[$k] : $def;
+    $out['accent'] = preg_match('/^#[0-9a-fA-F]{6}$/', (string)($in['accent'] ?? '')) ? $in['accent'] : '';
+    return $out;
+}
 const THEME_HOME_CARD_STYLES = ['classic', 'grid', 'big', 'compact', 'carousel', 'magazine', 'printed', 'tiles', 'delivery', 'dark'];
 const THEME_MENU_CARD_STYLES = ['classic', 'modern', 'minimal', 'photo', 'list', 'elegant', 'compact', 'midnight', 'showcase'];
 // Menu page category pictures: round photos, or cut-outs (whole picture, no crop,
@@ -300,6 +317,7 @@ function ensureWebsiteThemeSchema(PDO $conn): void {
         'menu_card_style' => "VARCHAR(10) DEFAULT 'classic'",
         'home_card_style' => "VARCHAR(10) DEFAULT 'classic'",
         'profile_style' => "VARCHAR(10) DEFAULT 'midnight'",
+        'profile_opts' => 'TEXT NULL',
         'category_heading_bg' => "VARCHAR(20) DEFAULT NULL",
         'category_pic_style' => "VARCHAR(10) DEFAULT 'round'",
         'all_category_icon' => "LONGTEXT DEFAULT NULL",
