@@ -804,6 +804,17 @@ try {
             }
             break;
 
+        case 'getTodaysSpecial':
+            // Offers > Today's Special: today's dish, note, limit and plates sold today
+            try {
+                require_once __DIR__ . '/../config/todays_special_helpers.php';
+                echo json_encode(['success' => true, 'special' => getTodaysSpecial($conn, $restaurantId)], JSON_UNESCAPED_UNICODE);
+            } catch (Throwable $e) {
+                error_log('Error in getTodaysSpecial: ' . $e->getMessage());
+                echo json_encode(['success' => true, 'special' => null]);
+            }
+            break;
+
         case 'getOfferFilters':
             // Offers > Offer Filters: the quick filters behind the Menu page's offers bubble
             try {

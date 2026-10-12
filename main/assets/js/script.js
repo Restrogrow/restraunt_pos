@@ -851,6 +851,10 @@ document.addEventListener("DOMContentLoaded", () => {
         window.loadBestsellersAdmin();
       }
 
+      // Offers > Today's Special (assets/js/todays-special-admin.js)
+      if (pageId === "todaysSpecialPage" && typeof window.loadTodaysSpecialAdmin === 'function') {
+        window.loadTodaysSpecialAdmin();
+      }
       // Offers > Offer Filters (assets/js/offer-filters-admin.js)
       if (pageId === "offerFiltersPage" && typeof window.loadOfferFiltersAdmin === 'function') {
         window.loadOfferFiltersAdmin();

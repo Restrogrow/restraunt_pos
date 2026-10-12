@@ -1227,6 +1227,12 @@ try {
               </a>
             </li>
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="todaysSpecialPage">
+                <span class="material-symbols-rounded">local_fire_department</span>
+                <span class="nav-label">Today's Special</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="offerFiltersPage">
                 <span class="material-symbols-rounded">filter_alt</span>
                 <span class="nav-label">Offer Filters</span>
@@ -4314,6 +4320,36 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Offer Filters Page (Offers > Offer Filters) -->
+    <div id="todaysSpecialPage" class="page">
+      <style>
+        .ts-wrap { max-width: 980px; }
+        .ts-now { display: flex; align-items: center; gap: 8px; padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: #fff7ed; color: #9a3412; font-size: 0.9rem; }
+        .ts-now .material-symbols-rounded { font-size: 20px; }
+        .ts-head, .ts-row { display: grid; grid-template-columns: 170px minmax(0, 1.2fr) minmax(0, 1.6fr) 110px; gap: 10px; align-items: center; }
+        .ts-head { padding: 0 12px 6px; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+        .ts-row { padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; margin-bottom: 8px; }
+        .ts-row.every { background: #faf5ff; border-color: #e9d5ff; margin-bottom: 14px; }
+        .ts-day b { display: block; font-size: 0.92rem; color: #111827; }
+        .ts-day small { display: block; font-size: 0.72rem; color: #6b7280; }
+        .ts-today { margin-left: 4px; padding: 2px 7px; border-radius: 999px; background: #16a34a; color: #fff; font-size: 0.65rem; font-weight: 700; vertical-align: middle; }
+        .ts-row select, .ts-row input { width: 100%; padding: 9px 10px; border: 1.5px solid #e5e7eb; border-radius: 9px; font: inherit; font-size: 0.88rem; background: #fff; }
+        .ts-empty { padding: 26px; text-align: center; color: #6b7280; border: 1px dashed #e5e7eb; border-radius: 12px; }
+        @media (max-width: 860px) { .ts-head { display: none; } .ts-row { grid-template-columns: 1fr 1fr; } .ts-day, .ts-note { grid-column: 1 / -1; } }
+      </style>
+      <div class="ts-wrap">
+        <div class="page-header" style="margin-bottom:14px;">
+          <h1 style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">local_fire_department</span> Today's Special</h1>
+          <p style="color:#6b7280;margin:4px 0 0;">A dish of the day for each weekday, shown on your home page above Bestsellers with your note and how many plates are left today.</p>
+        </div>
+        <div class="ts-now" id="tsTodayNow"></div>
+        <div class="ts-head"><span>Day</span><span>Dish</span><span>Chef's note (optional)</span><span>Plates / day</span></div>
+        <div id="tsSlots"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+          <button type="button" class="btn btn-primary" id="tsSave"><span class="material-symbols-rounded">save</span> Save specials</button>
+        </div>
+      </div>
+    </div>
+
     <div id="offerFiltersPage" class="page">
       <style>
         .of-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -7071,6 +7107,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/qr-standee.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/bestsellers-admin.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/offer-filters-admin.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/todays-special-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/todays-special-admin.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>

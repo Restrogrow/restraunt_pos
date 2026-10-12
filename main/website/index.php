@@ -339,6 +339,37 @@ body {
 .hx-stack .profile-img-wrap { width: 82px !important; height: 82px !important; border: 4px solid #f6f7fb; }
 .hx-stack .rest-name { margin-top: 10px; }
 
+/* ── Today's Special (Offers > Today's Special): showcase card above Bestsellers ── */
+.tds { margin: 18px 16px 6px; }
+.tds-card { position: relative; border-radius: 24px; padding: 2px; overflow: hidden; cursor: pointer;
+  background: conic-gradient(from var(--tds-a, 0deg), var(--primary-red, #e11d48), var(--primary-yellow, #fbbf24), #fff, var(--primary-red, #e11d48)); animation: tdsRing 6s linear infinite; }
+@property --tds-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes tdsRing { to { --tds-a: 360deg; } }
+.tds-inner { position: relative; border-radius: 22px; overflow: hidden; background: #fff; }
+.tds-photo { position: relative; height: 190px; overflow: hidden; background: #f3f4f6; }
+.tds-photo img { width: 100%; height: 100%; object-fit: cover; animation: tdsZoom 12s ease-in-out infinite alternate; }
+@keyframes tdsZoom { from { transform: scale(1.02); } to { transform: scale(1.14) translate(-2%, -2%); } }
+.tds-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35), transparent 35%, transparent 60%, rgba(0,0,0,.55)); }
+.tds-ribbon { position: absolute; top: 12px; left: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--primary-red, #e11d48); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: .02em; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+.tds-ribbon svg { width: 14px; height: 14px; }
+.tds-timer { position: absolute; top: 12px; right: 12px; z-index: 2; padding: 6px 10px; border-radius: 999px; background: rgba(0,0,0,.55); color: #fff; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.tds-name { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 2; color: #fff; font-size: 21px; font-weight: 800; line-height: 1.15; text-shadow: 0 2px 10px rgba(0,0,0,.4); }
+.tds-body { padding: 12px 14px 14px; }
+.tds-note { position: relative; margin: 0 0 12px; padding-left: 14px; font-size: 13.5px; font-style: italic; color: #4b5563; line-height: 1.45; }
+.tds-note::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; border-radius: 3px; background: var(--primary-yellow, #fbbf24); }
+.tds-left { margin-bottom: 12px; }
+.tds-left .bar { height: 7px; border-radius: 999px; background: #f3f4f6; overflow: hidden; }
+.tds-left .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f97316, var(--primary-red, #e11d48)); transition: width .8s ease; }
+.tds-left span { display: block; margin-top: 5px; font-size: 12px; font-weight: 700; color: #b45309; }
+.tds-left.low span { color: var(--primary-red, #e11d48); }
+.tds-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tds-add { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border: 0; border-radius: 999px; background: var(--primary-yellow, #fbbf24); color: #111827; font: 800 14px var(--site-font, Poppins), sans-serif; cursor: pointer; box-shadow: 0 6px 14px rgba(0,0,0,.12); transition: transform .15s; }
+.tds-add:active { transform: scale(.95); }
+.tds-add.added { background: #16a34a; color: #fff; }
+.tds.soldout .tds-add { background: #e5e7eb; color: #6b7280; cursor: default; }
+.tds.soldout .tds-photo img { filter: grayscale(.6); }
+@media (prefers-reduced-motion: reduce) { .tds-card, .tds-photo img { animation: none; } }
+
 /* Header variant: Minimal — compact single bar (logo + name + location)
    instead of a tall background-image hero. */
 .theme-bg.header-minimal {
@@ -2005,6 +2036,9 @@ window.socialLinks = {
     <div class="coupon-dots" id="couponDots"></div>
   </div>
 
+  <!-- Today's Special (Offers > Today's Special) -->
+  <section class="tds" id="todaySpecial" hidden aria-label="Today's special"></section>
+
   <section class="bsl" id="bestsellersSection" aria-labelledby="bestsellersTitle" hidden
            data-enabled="<?php echo $bestseller_style['show_section'] ? '1' : '0'; ?>"
            data-add-anim="<?php echo htmlspecialchars($bestseller_style['add_animation'], ENT_QUOTES, 'UTF-8'); ?>"
@@ -3205,6 +3239,76 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(ev) { head.addEventListener(ev, resume); });
   document.addEventListener('visibilitychange', function() { document.hidden ? pause() : resume(); });
   run();
+})();
+
+// ── Today's Special (Offers > Today's Special): above Bestsellers ──
+(function() {
+  var box = document.getElementById('todaySpecial');
+  var rid = (document.querySelector('meta[name="restaurant-id"]') || {}).content || '';
+  if (!box || !rid) return;
+  var data = null, endTs = 0;
+  function tdsEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function findItem(id) {
+    for (var ci = 0; ci < menuCategories.length; ci++) for (var ii = 0; ii < (menuCategories[ci].items || []).length; ii++) {
+      if (String(menuCategories[ci].items[ii].id) === String(id)) return { ci: ci, ii: ii, item: menuCategories[ci].items[ii] };
+    }
+    return null;
+  }
+  function tick() {
+    var el = box.querySelector('.tds-timer');
+    if (!el) return;
+    var left = Math.max(0, endTs - Math.floor(Date.now() / 1000));
+    el.textContent = 'Ends in ' + pad(Math.floor(left / 3600)) + ':' + pad(Math.floor(left % 3600 / 60)) + ':' + pad(left % 60);
+  }
+  function render(found) {
+    var it = found.item, s = data;
+    var name = it.item_name_translated || it.item_name_en || it.name || '';
+    var limit = s.daily_limit, left = limit ? Math.max(0, limit - s.sold_today) : null;
+    var soldOut = (left === 0) || it.is_available == 0;
+    var priceNow = typeof itemNowPrice === 'function' ? itemNowPrice(it) : parseFloat(it.base_price || 0);
+    var priceWas = typeof itemWasPrice === 'function' ? itemWasPrice(it) : 0;
+    endTs = s.ends_ts;
+    box.className = 'tds' + (soldOut ? ' soldout' : '');
+    box.innerHTML = '<div class="tds-card"><div class="tds-inner">' +
+      '<div class="tds-photo"><img src="' + getImageUrl(it.item_image || it.image) + '" alt="">' +
+        '<span class="tds-ribbon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 5.4 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5.5 1-8.5z"/></svg>' + tdsEsc(s.weekday_name) + "'s Special</span>" +
+        '<span class="tds-timer"></span>' +
+        '<div class="tds-name">' + tdsEsc(name) + '</div></div>' +
+      '<div class="tds-body">' +
+        (s.note ? '<p class="tds-note">' + tdsEsc(s.note) + '</p>' : '') +
+        (limit ? '<div class="tds-left' + (left <= Math.ceil(limit / 4) ? ' low' : '') + '"><div class="bar"><i style="width:' + Math.round(left / limit * 100) + '%"></i></div><span>' + (left ? left + ' of ' + limit + ' plates left today' : 'Sold out for today') + '</span></div>' : '') +
+        '<div class="tds-foot">' + mrpPriceHtml(priceNow, priceWas) +
+          '<button type="button" class="tds-add"' + (soldOut ? ' disabled' : '') + '>' + (soldOut ? 'Sold out' : 'Add <i class="fa fa-plus" style="font-size:11px"></i>') + '</button></div>' +
+      '</div></div></div>';
+    box.hidden = false;
+    tick();
+    box.onclick = function(e) {
+      var add = e.target.closest('.tds-add');
+      var hasVar = it.has_variations && it.variations && it.variations.length;
+      if (add && !soldOut && !hasVar) {
+        e.stopPropagation();
+        addToCart(it.id);
+        add.classList.add('added'); add.innerHTML = 'Added <i class="fa fa-check" style="font-size:11px"></i>';
+        setTimeout(function() { add.classList.remove('added'); add.innerHTML = 'Add <i class="fa fa-plus" style="font-size:11px"></i>'; }, 1600);
+        return;
+      }
+      if (soldOut && add) return;
+      showItemDetail(found.ci, found.ii); // dish details (sizes, add-ons, notes)
+    };
+  }
+  fetch('api.php?action=getTodaysSpecial&restaurant_id=' + encodeURIComponent(rid))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d || !d.special) return;
+      data = d.special;
+      // wait for the menu to load, then show it
+      var tries = 0, t = setInterval(function() {
+        var found = menuCategories.length ? findItem(data.menu_item_id) : null;
+        if (found || ++tries > 40) { clearInterval(t); if (found) { render(found); setInterval(tick, 1000); } }
+      }, 250);
+    })
+    .catch(function() {});
 })();
 
 function fitRestaurantName() {
