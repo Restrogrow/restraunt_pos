@@ -1,0 +1,437 @@
+<?php
+/**
+ * WhatsApp messages (Growth › WhatsApp), sent through RepeatGrow.
+ *
+ * Two ways to connect:
+ *   own       the restaurant's own RepeatGrow API key (their own WhatsApp number).
+ *             Every message type uses a template the owner approved in RepeatGrow;
+ *             the message they write here ({name}, {reward}…) becomes that template's
+ *             {{1}}, {{2}}… in order of appearance.
+ *   platform  RestroGrow's number (REPEATGROW_API_KEY in .env) with one ready-made
+ *             gift template (REPEATGROW_GIFT_TEMPLATE). Gift messages only; campaigns
+ *             need the restaurant's own connection.
+ *
+ * Every gift code the loyalty engine issues (loyalty_rewards_issued, notify_status
+ * 'pending') is picked up by waDispatch(): customers who opted in get it on
+ * WhatsApp, the rest are marked skipped. Campaigns go through the same outbox.
+ * waDispatch() runs from the dashboard (api/wa_dispatch.php, every minute while it
+ * is open) and from cron/whatsapp_dispatch.php.
+ *
+ * Never sends from a local computer: localhost requests and CLI runs on Windows
+ * are dry runs (logged as "test", nothing leaves the machine).
+ */
+require_once __DIR__ . '/env_loader.php';
+require_once __DIR__ . '/repeatgrow_whatsapp.php';
+require_once __DIR__ . '/loyalty_engine.php';
+require_once __DIR__ . '/loyalty_autopilot.php';
+
+if (!function_exists('ensureWhatsappSchema')) {
+
+    // kind => [label, icon, default message]
+    function waKinds(): array {
+        return [
+            'welcome'     => ['Welcome gift', 'waving_hand', 'Welcome to {restaurant}, {name}! Here is {reward} on your next order. Use code {code} before {valid_till}.'],
+            'birthday'    => ['Birthday treat', 'cake', 'Happy birthday, {name}! {restaurant} has a treat for you: {reward}. Use code {code} before {valid_till}.'],
+            'anniversary' => ['Anniversary', 'favorite', 'Happy anniversary, {name}! Celebrate with {reward} at {restaurant}. Use code {code} before {valid_till}.'],
+            'winback'     => ['We miss you', 'history', 'We miss you, {name}! Come back to {restaurant} for {reward}. Use code {code} before {valid_till}.'],
+            'tier_up'     => ['Level up', 'military_tech', 'You just reached {tier} at {restaurant}, {name}! Enjoy {reward}. Use code {code} before {valid_till}.'],
+            'milestone'   => ['Order milestone', 'emoji_events', 'Order number {count}! Thank you, {name}. Here is {reward} from {restaurant}. Use code {code} before {valid_till}.'],
+            'referral'    => ['Referral gift', 'group_add', 'Thanks for spreading the word, {name}! You get {reward} at {restaurant}. Use code {code} before {valid_till}.'],
+            'stamps'      => ['Full stamp card', 'approval', 'Your stamp card at {restaurant} is full, {name}! Enjoy {reward}. Use code {code} before {valid_till}.'],
+            'challenge'   => ['Challenge done', 'flag', 'Challenge complete, {name}! {restaurant} has {reward} for you. Use code {code} before {valid_till}.'],
+            'streak'      => ['Weekly streak', 'local_fire_department', 'What a streak, {name}! {restaurant} has {reward} for you. Use code {code} before {valid_till}.'],
+            'vip'         => ['Member welcome gift', 'diamond', 'Welcome to the club, {name}! Your member gift at {restaurant}: {reward}. Use code {code} before {valid_till}.'],
+        ];
+    }
+    // Variables a message can use, in the order the owner may write them
+    function waVars(): array {
+        return ['name' => 'Customer’s first name', 'reward' => 'The gift, e.g. ₹50 off', 'code' => 'The gift code', 'valid_till' => 'Last day to use it',
+                'restaurant' => 'Your restaurant name', 'min_order' => 'Minimum order for the gift', 'link' => 'Link to your rewards page',
+                'tier' => 'New level (Level up only)', 'count' => 'Order number (Milestone only)'];
+    }
+    function waAutopilotKinds(): array { return ['welcome', 'birthday', 'anniversary', 'winback', 'tier_up', 'milestone', 'referral']; }
+
+    function ensureWhatsappSchema(PDO $conn): void {
+        static $done = false;
+        if ($done || $conn->inTransaction()) return;
+        $done = true;
+        ensureLoyaltyEngineSchema($conn);
+        $conn->exec("CREATE TABLE IF NOT EXISTS wa_settings (
+            restaurant_id VARCHAR(50) PRIMARY KEY,
+            enabled TINYINT NOT NULL DEFAULT 0,
+            mode VARCHAR(10) NOT NULL DEFAULT 'platform',
+            api_key VARCHAR(200) NULL,
+            account_name VARCHAR(120) NULL,
+            quiet_start TINYINT NOT NULL DEFAULT 21,
+            quiet_end TINYINT NOT NULL DEFAULT 9,
+            weekly_cap TINYINT NOT NULL DEFAULT 2,
+            test_phone VARCHAR(20) NULL,
+            last_dispatch DATETIME NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+        $conn->exec("CREATE TABLE IF NOT EXISTS wa_auto (
+            restaurant_id VARCHAR(50) NOT NULL,
+            kind VARCHAR(20) NOT NULL,
+            enabled TINYINT NOT NULL DEFAULT 1,
+            template_name VARCHAR(100) NULL,
+            language VARCHAR(10) NOT NULL DEFAULT 'en',
+            message VARCHAR(700) NULL,
+            PRIMARY KEY (restaurant_id, kind)
+        )");
+        $conn->exec("CREATE TABLE IF NOT EXISTS wa_outbox (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            restaurant_id VARCHAR(50) NOT NULL,
+            kind VARCHAR(20) NOT NULL,
+            ref_type VARCHAR(10) NOT NULL,
+            ref_id INT NOT NULL,
+            customer_id INT NULL,
+            phone VARCHAR(20) NOT NULL,
+            name VARCHAR(100) NULL,
+            template_name VARCHAR(100) NULL,
+            language VARCHAR(10) NULL,
+            params TEXT NULL,
+            body VARCHAR(1000) NULL,
+            status VARCHAR(10) NOT NULL DEFAULT 'queued',
+            error VARCHAR(255) NULL,
+            attempts TINYINT NOT NULL DEFAULT 0,
+            send_after DATETIME NULL,
+            sent_at DATETIME NULL,
+            message_id VARCHAR(120) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_wa_ref (restaurant_id, ref_type, ref_id, phone),
+            INDEX idx_wa_queue (status, send_after),
+            INDEX idx_wa_rest (restaurant_id, created_at)
+        )");
+        $conn->exec("CREATE TABLE IF NOT EXISTS wa_campaigns (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            restaurant_id VARCHAR(50) NOT NULL,
+            name VARCHAR(80) NOT NULL,
+            audience VARCHAR(20) NOT NULL,
+            template_name VARCHAR(100) NOT NULL,
+            language VARCHAR(10) NOT NULL DEFAULT 'en',
+            message VARCHAR(700) NOT NULL,
+            gift_kind VARCHAR(10) NULL,
+            gift_value DECIMAL(10,2) NOT NULL DEFAULT 0,
+            gift_item_id INT NULL,
+            gift_min_order DECIMAL(10,2) NOT NULL DEFAULT 0,
+            gift_valid_days INT NOT NULL DEFAULT 14,
+            scheduled_at DATETIME NOT NULL,
+            status VARCHAR(10) NOT NULL DEFAULT 'scheduled',
+            audience_count INT NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_wc_due (status, scheduled_at)
+        )");
+    }
+
+    /** Local computer: never send for real. */
+    function waDryRun(): bool {
+        if (env('WA_DRY_RUN') === '1') return true;
+        if (PHP_SAPI === 'cli') return stripos(PHP_OS, 'WIN') === 0;
+        return isLocalDevRequest();
+    }
+
+    function waSettings(PDO $conn, string $rid): array {
+        $st = $conn->prepare('SELECT * FROM wa_settings WHERE restaurant_id = ?');
+        $st->execute([$rid]);
+        $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        return ['enabled' => (int)($r['enabled'] ?? 0), 'mode' => ($r['mode'] ?? '') === 'own' ? 'own' : 'platform',
+                'api_key' => (string)($r['api_key'] ?? ''), 'account_name' => (string)($r['account_name'] ?? ''),
+                'quiet_start' => (int)($r['quiet_start'] ?? 21), 'quiet_end' => (int)($r['quiet_end'] ?? 9),
+                'weekly_cap' => (int)($r['weekly_cap'] ?? 2), 'test_phone' => (string)($r['test_phone'] ?? ''),
+                'last_dispatch' => $r['last_dispatch'] ?? null];
+    }
+
+    /** RestroGrow's ready-made gift template (platform mode). */
+    function waPlatformTemplate(): array {
+        return ['name' => (string)env('REPEATGROW_GIFT_TEMPLATE', ''), 'language' => (string)env('REPEATGROW_GIFT_TEMPLATE_LANG', 'en'),
+                // {{1}} name, {{2}} restaurant, {{3}} reward, {{4}} code, {{5}} valid till
+                'vars' => ['name', 'restaurant', 'reward', 'code', 'valid_till'],
+                'text' => 'Hi {{1}}, {{2}} has a gift for you: {{3}}. Use code {{4}} on your next order before {{5}}.'];
+    }
+
+    /** API URL + key for this restaurant, or null when it cannot send. */
+    function waConnection(array $s): ?array {
+        $url = (string)env('REPEATGROW_API_URL', '');
+        if ($url === '') return null;
+        $key = $s['mode'] === 'own' ? $s['api_key'] : (string)env('REPEATGROW_API_KEY', '');
+        return $key === '' ? null : ['url' => $url, 'key' => $key];
+    }
+
+    /** The owner's setup for each message type, defaults filled in. */
+    function waAutoConfig(PDO $conn, string $rid): array {
+        $out = [];
+        foreach (waKinds() as $k => $d) $out[$k] = ['kind' => $k, 'label' => $d[0], 'icon' => $d[1], 'enabled' => 1, 'template_name' => '', 'language' => 'en', 'message' => $d[2]];
+        $st = $conn->prepare('SELECT * FROM wa_auto WHERE restaurant_id = ?');
+        $st->execute([$rid]);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            if (!isset($out[$r['kind']])) continue;
+            $out[$r['kind']]['enabled'] = (int)$r['enabled'];
+            $out[$r['kind']]['template_name'] = (string)$r['template_name'];
+            $out[$r['kind']]['language'] = $r['language'] ?: 'en';
+            if (!empty($r['message'])) $out[$r['kind']]['message'] = $r['message'];
+        }
+        // Autopilot gifts keep their message with the automation (Autopilot edits the same text)
+        foreach (loyaltyAutomations($conn, $rid) as $k => $a) {
+            if (isset($out[$k])) { $out[$k]['message'] = $a['message']; $out[$k]['autopilot_on'] = (int)$a['enabled']; }
+        }
+        return $out;
+    }
+
+    /** Save a message type's text: Autopilot gifts into their automation, the rest here. */
+    function waSaveMessage(PDO $conn, string $rid, string $kind, string $message): void {
+        if (in_array($kind, waAutopilotKinds(), true)) {
+            $d = loyaltyAutopilotDefaults()[$kind];
+            $conn->prepare('INSERT INTO loyalty_automations (restaurant_id, type, enabled, reward_kind, reward_value, param, min_order, valid_days, message)
+                VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE message = VALUES(message)')
+                 ->execute([$rid, $kind, $d[1], $d[2], $d[3], $d[4], $d[5], $message]);
+            return;
+        }
+        $conn->prepare('INSERT INTO wa_auto (restaurant_id, kind, message) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE message = VALUES(message)')->execute([$rid, $kind, $message]);
+    }
+
+    /** "Hi {name}, {reward}" → ["Hi {{1}}, {{2}}", ['name', 'reward']] */
+    function waTemplateFromMessage(string $msg): array {
+        $vars = [];
+        $known = array_keys(waVars());
+        $text = preg_replace_callback('/\{([a-z_]+)\}/', function ($m) use (&$vars, $known) {
+            if (!in_array($m[1], $known, true)) return $m[0];
+            $vars[] = $m[1];
+            return '{{' . count($vars) . '}}';
+        }, $msg);
+        return [$text, $vars];
+    }
+
+    function waFill(string $msg, array $v): string {
+        return preg_replace_callback('/\{([a-z_]+)\}/', function ($m) use ($v) { return array_key_exists($m[1], $v) ? (string)$v[$m[1]] : $m[0]; }, $msg);
+    }
+
+    function waRestaurant(PDO $conn, string $rid): array {
+        static $cache = [];
+        if (isset($cache[$rid])) return $cache[$rid];
+        $st = $conn->prepare('SELECT restaurant_name, currency_symbol FROM users WHERE restaurant_id = ? LIMIT 1');
+        $st->execute([$rid]);
+        $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        $base = rtrim((string)env('APP_URL', ''), '/');
+        return $cache[$rid] = ['name' => (string)($r['restaurant_name'] ?? ''), 'cur' => (string)($r['currency_symbol'] ?? '') ?: '₹',
+            'link' => ($base !== '' ? $base : 'https://restrogrow.com') . '/main/website/loyalty.php?restaurant_id=' . rawurlencode($rid)];
+    }
+
+    /** Values for one issued gift. */
+    function waGiftVars(PDO $conn, array $g, array $customer): array {
+        $r = waRestaurant($conn, $g['restaurant_id']);
+        $first = trim(explode(' ', trim((string)($customer['customer_name'] ?? '')))[0] ?? '');
+        $min = (float)($g['min_order'] ?? 0);
+        return ['name' => $first !== '' ? $first : 'there', 'reward' => $g['label'], 'code' => $g['coupon_code'],
+                'valid_till' => $g['expires_on'] ? date('j M', strtotime($g['expires_on'])) : 'soon',
+                'restaurant' => $r['name'], 'min_order' => $min > 0 ? $r['cur'] . rtrim(rtrim(number_format($min, 2, '.', ''), '0'), '.') : 'any order',
+                'link' => $r['link'],
+                'tier' => strpos((string)$g['period_key'], 'tier-') === 0 ? substr($g['period_key'], 5) : '',
+                'count' => strpos((string)$g['period_key'], 'order') === 0 ? substr($g['period_key'], 5) : ''];
+    }
+
+    /** What to send for a message: template name, language, params, readable body. */
+    function waBuild(array $s, ?array $auto, string $message, array $vars): ?array {
+        if ($s['mode'] === 'platform') {
+            $t = waPlatformTemplate();
+            if ($t['name'] === '') return null;
+            $params = array_map(function ($k) use ($vars) { return (string)($vars[$k] ?? ''); }, $t['vars']);
+            $body = $t['text'];
+            foreach ($params as $i => $p) $body = str_replace('{{' . ($i + 1) . '}}', $p, $body);
+            return ['template_name' => $t['name'], 'language' => $t['language'], 'params' => $params, 'body' => $body];
+        }
+        $name = trim((string)($auto['template_name'] ?? ''));
+        if ($name === '') return null;
+        [, $order] = waTemplateFromMessage($message);
+        return ['template_name' => $name, 'language' => $auto['language'] ?? 'en',
+                'params' => array_map(function ($k) use ($vars) { $v = (string)($vars[$k] ?? ''); return $v !== '' ? $v : '-'; }, $order),
+                'body' => waFill($message, $vars)];
+    }
+
+    /** POST one message to RepeatGrow. Returns [ok, message_id|null, error|null]. */
+    function waSend(array $s, string $phone, ?string $templateName, string $lang, array $params, string $text): array {
+        if (waDryRun()) return [true, 'test-' . substr(md5($phone . microtime(true)), 0, 10), null];
+        $c = waConnection($s);
+        if (!$c) return [false, null, 'WhatsApp is not connected'];
+        $payload = ['to' => normalizePhoneForWhatsapp($phone)];
+        if ($templateName) $payload += ['type' => 'template', 'template' => ['name' => $templateName, 'language' => $lang, 'params' => array_values($params)]];
+        else $payload += ['type' => 'text', 'text' => $text];
+        $ch = curl_init($c['url']);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_TIMEOUT => 12, CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $c['key']], CURLOPT_POSTFIELDS => json_encode($payload)]);
+        $res = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        if ($res === false) return [false, null, 'Could not reach WhatsApp: ' . $err];
+        $d = json_decode((string)$res, true);
+        if ($code >= 200 && $code < 300) return [true, $d['data']['whatsapp_message_id'] ?? $d['data']['message_id'] ?? null, null];
+        return [false, null, mb_substr((string)($d['error']['message'] ?? ('Error ' . $code)), 0, 250)];
+    }
+
+    /** Check an API key (GET …/me). Returns [ok, account name or error]. */
+    function waCheckKey(string $key): array {
+        if (waDryRun()) return [true, 'Local test account'];
+        $url = (string)env('REPEATGROW_API_URL', '');
+        if ($url === '') return [false, 'RepeatGrow is not set up on this server'];
+        $me = preg_replace('#/messages/?$#', '/me', $url);
+        $ch = curl_init($me);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10, CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $key]]);
+        $res = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $d = json_decode((string)$res, true);
+        if ($code === 200) {
+            $scopes = $d['data']['key']['scopes'] ?? [];
+            if ($scopes && !in_array('messages:send', $scopes, true)) return [false, 'This key cannot send messages. Give it the messages:send permission in RepeatGrow.'];
+            return [true, (string)($d['data']['account']['name'] ?? 'Connected')];
+        }
+        return [false, (string)($d['error']['message'] ?? 'The key was not accepted')];
+    }
+
+    function waInQuietHours(array $s): bool {
+        $h = (int)date('G');
+        $a = $s['quiet_start']; $b = $s['quiet_end'];
+        if ($a === $b) return false;
+        return $a > $b ? ($h >= $a || $h < $b) : ($h >= $a && $h < $b);
+    }
+
+    /** Campaign audiences: [key => [label, SQL condition on customers c]] */
+    function waAudiences(): array {
+        return [
+            'all'       => ['Everyone who opted in', '1 = 1'],
+            'recent'    => ['Ordered in the last 30 days', "EXISTS (SELECT 1 FROM orders o WHERE o.restaurant_id = c.restaurant_id AND o.customer_phone = c.phone AND o.order_status = 'Completed' AND o.created_at >= NOW() - INTERVAL 30 DAY)"],
+            'lapsed30'  => ['No order for 30+ days', "EXISTS (SELECT 1 FROM orders o WHERE o.restaurant_id = c.restaurant_id AND o.customer_phone = c.phone AND o.order_status = 'Completed') AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.restaurant_id = c.restaurant_id AND o.customer_phone = c.phone AND o.created_at >= NOW() - INTERVAL 30 DAY)"],
+            'lapsed60'  => ['No order for 60+ days', "EXISTS (SELECT 1 FROM orders o WHERE o.restaurant_id = c.restaurant_id AND o.customer_phone = c.phone AND o.order_status = 'Completed') AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.restaurant_id = c.restaurant_id AND o.customer_phone = c.phone AND o.created_at >= NOW() - INTERVAL 60 DAY)"],
+            'regulars'  => ['Regulars (5+ orders)', "(SELECT COUNT(*) FROM orders o WHERE o.restaurant_id = c.restaurant_id AND o.customer_phone = c.phone AND o.order_status = 'Completed') >= 5"],
+            'new'       => ['New customers (1 order)', "(SELECT COUNT(*) FROM orders o WHERE o.restaurant_id = c.restaurant_id AND o.customer_phone = c.phone AND o.order_status = 'Completed') = 1"],
+            'birthdays' => ['Birthday this month', 'MONTH(c.birthday) = MONTH(CURDATE())'],
+            'vip'       => ['VIP members', "EXISTS (SELECT 1 FROM vip_members m WHERE m.restaurant_id = c.restaurant_id AND m.phone = c.phone AND m.status = 'Active' AND m.ends_at > NOW())"],
+        ];
+    }
+
+    function waAudienceSql(string $key): string {
+        $a = waAudiences();
+        return "FROM customers c WHERE c.restaurant_id = ? AND c.whatsapp_optin = 1 AND c.phone <> '' AND (" . ($a[$key][1] ?? '1 = 0') . ')';
+    }
+
+    function waAudienceCount(PDO $conn, string $rid, string $key): int {
+        try { $st = $conn->prepare('SELECT COUNT(*) ' . waAudienceSql($key)); $st->execute([$rid]); return (int)$st->fetchColumn(); }
+        catch (PDOException $e) { return 0; }
+    }
+
+    /** Due campaigns → outbox rows (with a personal gift code each, if the campaign has one). */
+    function waStartCampaigns(PDO $conn, string $rid, array $s): void {
+        $st = $conn->prepare("SELECT * FROM wa_campaigns WHERE restaurant_id = ? AND status = 'scheduled' AND scheduled_at <= NOW()");
+        $st->execute([$rid]);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $c) {
+            $conn->prepare("UPDATE wa_campaigns SET status = 'sending' WHERE id = ? AND status = 'scheduled'")->execute([(int)$c['id']]);
+            $people = $conn->prepare('SELECT c.id, c.phone, c.customer_name ' . waAudienceSql($c['audience']) . ' LIMIT 5000');
+            $people->execute([$rid]);
+            $list = $people->fetchAll(PDO::FETCH_ASSOC);
+            $ins = $conn->prepare("INSERT IGNORE INTO wa_outbox (restaurant_id, kind, ref_type, ref_id, customer_id, phone, name, template_name, language, params, body, status, send_after)
+                VALUES (?, 'campaign', 'campaign', ?, ?, ?, ?, ?, ?, ?, ?, 'queued', NOW())");
+            [, $order] = waTemplateFromMessage($c['message']);
+            $r = waRestaurant($conn, $rid);
+            foreach ($list as $p) {
+                $vars = ['name' => trim(explode(' ', trim((string)$p['customer_name']))[0] ?? '') ?: 'there', 'restaurant' => $r['name'], 'link' => $r['link'],
+                         'reward' => '', 'code' => '', 'valid_till' => '', 'min_order' => '', 'tier' => '', 'count' => ''];
+                if ($c['gift_kind']) {
+                    $conn->beginTransaction();
+                    try {
+                        $g = loyaltyIssueReward($conn, $rid, (int)$p['id'], (string)$p['phone'], 'campaign', 'c' . $c['id'], $c['gift_kind'], (float)$c['gift_value'],
+                            (float)$c['gift_min_order'], (int)$c['gift_valid_days'], $c['gift_item_id'] ? (int)$c['gift_item_id'] : null);
+                        $conn->commit();
+                    } catch (Throwable $e) { $conn->rollBack(); $g = null; error_log('wa campaign gift: ' . $e->getMessage()); }
+                    if ($g) {
+                        // the campaign message carries this gift: don't send it twice
+                        $conn->prepare("UPDATE loyalty_rewards_issued SET notify_status = 'campaign' WHERE restaurant_id = ? AND coupon_code = ?")->execute([$rid, $g['code']]);
+                        $vars['reward'] = $g['label']; $vars['code'] = $g['code'];
+                        $vars['valid_till'] = date('j M', strtotime('+' . (int)$c['gift_valid_days'] . ' days'));
+                        $vars['min_order'] = $c['gift_min_order'] > 0 ? $r['cur'] . (float)$c['gift_min_order'] : 'any order';
+                    }
+                }
+                $params = array_map(function ($k) use ($vars) { $v = (string)($vars[$k] ?? ''); return $v !== '' ? $v : '-'; }, $order);
+                $ins->execute([$rid, (int)$c['id'], (int)$p['id'], $p['phone'], $p['customer_name'], $c['template_name'], $c['language'], json_encode($params, JSON_UNESCAPED_UNICODE), mb_substr(waFill($c['message'], $vars), 0, 1000)]);
+            }
+            $conn->prepare('UPDATE wa_campaigns SET audience_count = ? WHERE id = ?')->execute([count($list), (int)$c['id']]);
+        }
+    }
+
+    /** New gift codes → outbox (opted in and switched on) or skipped. */
+    function waQueueGifts(PDO $conn, string $rid, array $s): void {
+        $auto = waAutoConfig($conn, $rid);
+        $st = $conn->prepare("SELECT r.*, c.customer_name, c.whatsapp_optin FROM loyalty_rewards_issued r LEFT JOIN customers c ON c.id = r.customer_id
+            WHERE r.restaurant_id = ? AND r.notify_status = 'pending' ORDER BY r.id LIMIT 200");
+        $st->execute([$rid]);
+        $mark = $conn->prepare('UPDATE loyalty_rewards_issued SET notify_status = ? WHERE id = ?');
+        $ins = $conn->prepare("INSERT IGNORE INTO wa_outbox (restaurant_id, kind, ref_type, ref_id, customer_id, phone, name, template_name, language, params, body, status, error, send_after)
+            VALUES (?, ?, 'gift', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $g) {
+            $kind = $g['source'];
+            if (strtotime($g['created_at']) < time() - 3 * 86400) { $mark->execute(['skipped', $g['id']]); continue; }   // too old to announce
+            if (!isset($auto[$kind]) || !$auto[$kind]['enabled']) { $mark->execute(['off', $g['id']]); continue; }
+            if (empty($g['whatsapp_optin'])) { $mark->execute(['no_optin', $g['id']]); continue; }
+            $a = $auto[$kind];
+            $message = $a['message'];
+            $vars = waGiftVars($conn, $g, $g);
+            $b = waBuild($s, $a, $message, $vars);
+            if (!$b) {
+                $ins->execute([$rid, $kind, $g['id'], $g['customer_id'], $g['phone'], $g['customer_name'], null, null, null, mb_substr(waFill($message, $vars), 0, 1000), 'skipped', 'No approved template set for this message']);
+                $mark->execute(['no_template', $g['id']]);
+                continue;
+            }
+            $ins->execute([$rid, $kind, $g['id'], $g['customer_id'], $g['phone'], $g['customer_name'], $b['template_name'], $b['language'],
+                json_encode($b['params'], JSON_UNESCAPED_UNICODE), mb_substr($b['body'], 0, 1000), 'queued', null]);
+            $mark->execute(['queued', $g['id']]);
+        }
+    }
+
+    /**
+     * Queue new gifts, start due campaigns, and send up to $limit messages for
+     * one restaurant. Safe to call often (a lock stops two runs overlapping).
+     * Returns ['sent' => n, 'failed' => n].
+     */
+    function waDispatch(PDO $conn, string $rid, int $limit = 15): array {
+        ensureWhatsappSchema($conn);
+        $out = ['sent' => 0, 'failed' => 0];
+        $s = waSettings($conn, $rid);
+        if (!$s['enabled']) return $out;
+        $lock = $conn->query('SELECT GET_LOCK(' . $conn->quote('wa_' . $rid) . ', 0)')->fetchColumn();
+        if (!$lock) return $out;
+        try {
+            $conn->prepare('UPDATE wa_settings SET last_dispatch = NOW() WHERE restaurant_id = ?')->execute([$rid]);
+            waQueueGifts($conn, $rid, $s);
+            if ($s['mode'] === 'own') waStartCampaigns($conn, $rid, $s);
+            if (waInQuietHours($s)) return $out;
+            $st = $conn->prepare("SELECT * FROM wa_outbox WHERE restaurant_id = ? AND status = 'queued' AND (send_after IS NULL OR send_after <= NOW()) ORDER BY id LIMIT " . (int)$limit);
+            $st->execute([$rid]);
+            $cap = $conn->prepare("SELECT COUNT(*) FROM wa_outbox WHERE restaurant_id = ? AND phone = ? AND kind = 'campaign' AND status = 'sent' AND sent_at >= NOW() - INTERVAL 7 DAY");
+            $upd = $conn->prepare('UPDATE wa_outbox SET status = ?, error = ?, attempts = attempts + 1, sent_at = ?, message_id = ?, send_after = ? WHERE id = ?');
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $m) {
+                $retry = false;
+                if ($m['kind'] === 'campaign' && $s['weekly_cap'] > 0) {
+                    $cap->execute([$rid, $m['phone']]);
+                    if ((int)$cap->fetchColumn() >= $s['weekly_cap']) { $upd->execute(['skipped', 'Weekly limit for this customer', null, null, null, $m['id']]); continue; }
+                }
+                [$ok, $mid, $err] = waSend($s, $m['phone'], $m['template_name'] ?: null, $m['language'] ?: 'en', json_decode((string)$m['params'], true) ?: [], (string)$m['body']);
+                if ($ok) {
+                    $upd->execute(['sent', null, date('Y-m-d H:i:s'), $mid, null, $m['id']]);
+                    $out['sent']++;
+                } else {
+                    $retry = (int)$m['attempts'] + 1 < 3 && stripos((string)$err, 'reach') !== false;   // network trouble: try again later
+                    $upd->execute([$retry ? 'queued' : 'failed', $err, null, null, $retry ? date('Y-m-d H:i:s', time() + 600) : null, $m['id']]);
+                    if (!$retry) $out['failed']++;
+                }
+                if ($m['ref_type'] === 'gift' && !$retry) {
+                    $conn->prepare('UPDATE loyalty_rewards_issued SET notify_status = ? WHERE id = ?')->execute([$ok ? 'sent' : 'failed', (int)$m['ref_id']]);
+                }
+            }
+            // finished campaigns
+            $conn->prepare("UPDATE wa_campaigns c SET status = 'done' WHERE restaurant_id = ? AND status = 'sending'
+                AND NOT EXISTS (SELECT 1 FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.status = 'queued')")->execute([$rid]);
+        } finally {
+            $conn->query('SELECT RELEASE_LOCK(' . $conn->quote('wa_' . $rid) . ')');
+        }
+        return $out;
+    }
+}

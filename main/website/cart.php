@@ -1208,6 +1208,14 @@ if (!empty($restaurant_id) && function_exists('getConnection')) {
   } catch (Exception $e) {}
 }
 ?>
+<?php
+// Growth › WhatsApp: ask for WhatsApp consent at checkout when the restaurant sends messages
+$wa_optin_ask = false;
+if (!empty($restaurant_id) && isset($gwConn)) {
+  try { $waSt = $gwConn->prepare('SELECT enabled FROM wa_settings WHERE restaurant_id = ?'); $waSt->execute([$restaurant_id]); $wa_optin_ask = (bool)$waSt->fetchColumn(); } catch (Exception $e) {}
+}
+?>
+window.waOptinAsk = <?php echo json_encode($wa_optin_ask); ?>;
 window.phonepeConfigured = <?php echo json_encode($phonepe_configured, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.businessQrAvailable = <?php echo json_encode($business_qr_available, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.businessQrImageUrl = <?php echo json_encode($business_qr_image_url, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -2856,6 +2864,12 @@ function showCheckoutModal(cartData) {
   html += '<div id="contactFields" style="display:' + (hasContact ? 'none' : '') + '">';
   html += '<div class="form-group"><label>Full Name *</label><input type="text" id="chkName" required value="' + esc((cd && cd.name) || '') + '" placeholder="Your name"></div>';
   html += '<div class="form-group"><label>Phone Number *</label><div style="display:flex;align-items:center;gap:6px;"><span style="color:#666;font-size:14px;white-space:nowrap;">' + (window.restaurantDialCode || '+91') + '</span><input type="tel" id="chkPhone" required value="' + esc((cd && cd.phone) || '') + '" placeholder="Your phone" style="flex:1;"></div></div>';
+  if (window.waOptinAsk) {
+    var waSaved = false; try { waSaved = localStorage.getItem('rgWaOptin') === '1'; } catch (e) {}
+    html += '<label class="wa-optin" style="display:flex;gap:10px;align-items:flex-start;margin:-4px 0 14px;padding:10px 12px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;color:#374151;cursor:pointer;line-height:1.4">' +
+      '<input type="checkbox" id="chkWaOptin"' + (waSaved ? ' checked' : '') + ' style="width:17px;height:17px;margin-top:2px;accent-color:#16a34a;flex-shrink:0">' +
+      '<span><b style="display:block;color:#111827">Get my rewards and offers on WhatsApp</b>Gift codes, birthday treats and the odd special. Stop anytime.</span></label>';
+  }
   html += '<div class="form-group"><label>Email</label><input type="email" id="chkEmail" value="' + esc((cd && cd.email) || '') + '" placeholder="Your email (optional)"></div>';
   html += '</div>';
 
@@ -3281,6 +3295,7 @@ function processOrder(cartData) {
   var keys = cartData.keys;
   var name = document.getElementById('chkName').value.trim();
   var phone = document.getElementById('chkPhone').value.trim();
+  try { var waBox = document.getElementById('chkWaOptin'); if (waBox) localStorage.setItem('rgWaOptin', waBox.checked ? '1' : '0'); } catch (e) {}
   var email = document.getElementById('chkEmail').value.trim();
   var addressEl = document.getElementById('chkAddressFormatted');
   var address = addressEl ? addressEl.value.trim() : '';
@@ -3440,6 +3455,7 @@ function processOrder(cartData) {
     body: JSON.stringify({
       customer_name: name,
       customer_phone: phone,
+      whatsapp_optin: (document.getElementById('chkWaOptin') || {}).checked ? 1 : 0,
       customer_email: email,
       customer_address: address,
       landmark: document.getElementById('chkLandmark')?.value.trim() || '',

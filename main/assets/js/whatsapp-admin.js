@@ -1,0 +1,281 @@
+/*
+ * Growth › WhatsApp (api/whatsapp_admin.php).
+ *
+ * Tabs: Automatic messages (every gift code the loyalty engine issues, sent on
+ * WhatsApp to customers who opted in), Campaigns (one-off messages to an
+ * audience, optionally with a personal gift code each), Message log, Settings
+ * (connection, quiet hours, weekly limit, test number).
+ *
+ * Also the sender heartbeat: while any dashboard page is open, api/wa_dispatch.php
+ * is called once a minute so queued messages go out.
+ */
+(function () {
+  'use strict';
+
+  var API = '../api/whatsapp_admin.php';
+  var D = null, tab = 'auto', open = null, draft = null, logFilter = 'all';
+  var PRESETS = [
+    ['We miss you', 'lapsed30', 'Hi {name}, it has been a while! Come back to {restaurant} this week for {reward}. Use code {code} before {valid_till}.', 'flat', 75],
+    ['Weekend treat', 'recent', 'Hi {name}, your weekend treat from {restaurant}: {reward} on orders above {min_order}. Use code {code} before {valid_till}.', 'percent', 15],
+    ['New on the menu', 'all', 'Hi {name}, something new just landed at {restaurant}! Try it with {reward}. Use code {code} before {valid_till}. Order here: {link}', 'flat', 50],
+    ['Thank our regulars', 'regulars', 'Hi {name}, thank you for being one of our regulars at {restaurant}. Here is {reward} on us. Use code {code} before {valid_till}.', 'item', 0]
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function notify(m, t) { if (typeof window.showNotification === 'function') window.showNotification(m, t); }
+  function cur() { return (D && D.currency) || '₹'; }
+  function money(n) { return cur() + Math.round(n || 0).toLocaleString('en-IN'); }
+  function get(q) { return fetch(API + '?' + q, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }); }
+  function post(b) { return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
+  function slug() { return String(D.restaurant || 'shop').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 20) || 'shop'; }
+  function sample() {
+    return { name: 'Priya', reward: cur() + '50 off', code: 'GIFT7K2Q9M', valid_till: new Date(Date.now() + 14 * 864e5).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+      restaurant: D.restaurant, min_order: cur() + '199', link: 'restrogrow.com/r/' + slug(), tier: 'Gold', count: '10' };
+  }
+  function fill(msg, over) { var v = Object.assign(sample(), over || {}); return esc(msg).replace(/\{([a-z_]+)\}/g, function (m, k) { return v[k] != null ? '<b>' + esc(v[k]) + '</b>' : m; }); }
+  function toTemplate(msg) { var n = 0, vars = [], known = D.vars; var t = String(msg).replace(/\{([a-z_]+)\}/g, function (m, k) { if (!known[k]) return m; vars.push(k); return '{{' + (++n) + '}}'; }); return [t, vars]; }
+  function load() {
+    var el = $('waRoot'); if (!el) return;
+    if (!D) el.innerHTML = '<div class="up-empty">Loading…</div>';
+    get('view=all').then(function (d) { if (!d.success) { el.innerHTML = '<div class="up-empty">' + esc(d.message || 'Could not load') + '</div>'; return; } D = d; draw(); });
+  }
+
+  /* ── pieces ── */
+  function phone(msgHtml, title) {
+    var t = new Date(); var hh = t.getHours() % 12 || 12, mm = ('0' + t.getMinutes()).slice(-2);
+    return '<div class="wa-phone"><div class="wa-phone-top"><span class="wa-av">' + esc((D.restaurant || 'R').charAt(0)) + '</span><div><b>' + esc(title || D.restaurant) + '</b><small>Business account</small></div></div>' +
+      '<div class="wa-chat"><div class="wa-bubble">' + msgHtml.replace(/\n/g, '<br>') + '<span class="wa-time">' + hh + ':' + mm + (t.getHours() >= 12 ? ' pm' : ' am') + '</span></div></div></div>';
+  }
+  function pill(st) {
+    var m = { sent: ['ok', 'Sent'], queued: ['wait', 'Queued'], failed: ['bad', 'Failed'], skipped: ['muted', 'Skipped'], scheduled: ['wait', 'Scheduled'], sending: ['wait', 'Sending'], done: ['ok', 'Done'], cancelled: ['muted', 'Cancelled'] }[st] || ['muted', st];
+    return '<span class="wa-pill ' + m[0] + '">' + m[1] + '</span>';
+  }
+  function templateBox(name, msg) {
+    var tv = toTemplate(msg), v = sample();
+    return '<div class="wa-tpl"><div class="wa-tpl-h"><span class="material-symbols-rounded">description</span><b>Template to create in RepeatGrow</b><button type="button" class="lsa-edit" data-wa-copy="' + esc(tv[0]) + '">Copy text<span class="material-symbols-rounded">content_copy</span></button></div>' +
+      '<div class="wa-tpl-grid"><span>Name</span><code>' + esc(name) + '</code><span>Category</span><code>Marketing</code><span>Language</span><code>English</code></div>' +
+      '<pre>' + esc(tv[0]) + '</pre>' +
+      (tv[1].length ? '<div class="wa-tpl-vars">' + tv[1].map(function (k, i) { return '<span><b>{{' + (i + 1) + '}}</b> ' + esc(D.vars[k]) + ' <i>e.g. ' + esc(v[k]) + '</i></span>'; }).join('') + '</div>' : '') +
+      '<small>Create it in RepeatGrow › Templates with exactly this text. When Meta approves it (usually within minutes), type its name here.</small></div>';
+  }
+
+  /* ── automatic messages ── */
+  function autoSample(a) { return a.sample_reward ? { reward: a.sample_reward } : {}; }
+  function autoCard(a) {
+    var st = a.stats || {}, platform = D.settings.mode === 'platform';
+    var ready = platform ? D.platform.available : !!a.template_name;
+    var isOpen = open === a.kind;
+    var head = '<div class="wa-card' + (a.enabled ? ' on' : '') + (isOpen ? ' open' : '') + '" data-wa-kind="' + a.kind + '">' +
+      '<div class="wa-card-top"><span class="wa-ic material-symbols-rounded">' + a.icon + '</span><div class="wa-card-t"><b>' + esc(a.label) + '</b>' +
+        '<small>' + (ready ? '<span class="wa-chip ok"><span class="material-symbols-rounded">check_circle</span>' + (platform ? 'Ready-made template' : esc(a.template_name)) + '</span>'
+                           : '<span class="wa-chip warn"><span class="material-symbols-rounded">pending</span>Needs a template</span>') +
+        (a.autopilot_on === 0 ? ' <span class="wa-chip muted">Gift is off in Autopilot</span>' : '') + '</small></div>' +
+        '<label class="up-switch"><input type="checkbox" data-wa-auto-toggle="' + a.kind + '"' + (a.enabled ? ' checked' : '') + '><span></span></label></div>' +
+      '<p class="wa-card-msg">' + fill(a.message, autoSample(a)) + '</p>' +
+      '<div class="wa-nums"><div><b>' + (st.sent || 0) + '</b><span>Sent</span></div><div><b>' + (st.failed || 0) + '</b><span>Failed</span></div><div><b>' + a.orders.orders + '</b><span>Orders</span></div><div><b>' + money(a.orders.revenue) + '</b><span>Revenue</span></div>' +
+        '<button type="button" class="lsa-edit" data-wa-open="' + a.kind + '">' + (isOpen ? 'Close' : 'Edit') + '<span class="material-symbols-rounded">' + (isOpen ? 'expand_less' : 'tune') + '</span></button></div>';
+    if (!isOpen) return head + '</div>';
+    var tplName = a.template_name || (slug() + '_' + a.kind + '_gift');
+    return head + '<div class="wa-ed"><div class="wa-ed-l">' +
+      (platform ? '<div class="lsa-note" style="margin:0 0 12px">You are using RestroGrow’s number, so every gift uses one ready-made message. Connect your own number in Settings to write your own.</div>'
+        : '<label class="wa-lbl">Message<textarea data-wa-f="message" rows="4" maxlength="700">' + esc(a.message) + '</textarea></label>' +
+          '<div class="wa-varbar">' + Object.keys(D.vars).filter(function (k) { return (k !== 'tier' || a.kind === 'tier_up') && (k !== 'count' || a.kind === 'milestone'); }).map(function (k) { return '<button type="button" data-wa-var="{' + k + '}" title="' + esc(D.vars[k]) + '">{' + k + '}</button>'; }).join('') + '</div>' +
+          '<div class="ls-grid" style="margin-top:12px"><label>Approved template name<input data-wa-f="template_name" value="' + esc(a.template_name) + '" placeholder="' + esc(tplName) + '"></label>' +
+          '<label>Language<select data-wa-f="language">' + [['en', 'English'], ['en_US', 'English (US)'], ['hi', 'Hindi']].map(function (l) { return '<option value="' + l[0] + '"' + (a.language === l[0] ? ' selected' : '') + '>' + l[1] + '</option>'; }).join('') + '</select></label></div>' +
+          templateBox(tplName, a.message)) +
+      '</div><div class="wa-ed-r">' + phone(platform ? fill(D.platform.text.replace(/\{\{1\}\}/, '{name}').replace(/\{\{2\}\}/, '{restaurant}').replace(/\{\{3\}\}/, '{reward}').replace(/\{\{4\}\}/, '{code}').replace(/\{\{5\}\}/, '{valid_till}')) : fill(a.message, autoSample(a))) +
+        '<div class="wa-ed-acts"><button type="button" class="btn btn-secondary" data-wa-test="' + a.kind + '"><span class="material-symbols-rounded">send</span> Send me a test</button>' +
+        (platform ? '' : '<button type="button" class="btn btn-primary" data-wa-save="' + a.kind + '"><span class="material-symbols-rounded">save</span> Save</button>') + '</div></div></div></div>';
+  }
+  function autoTab() {
+    var A = D.auto, ready = A.filter(function (a) { return D.settings.mode === 'platform' ? D.platform.available : a.template_name; }).length;
+    return '<div class="wa-intro"><span class="material-symbols-rounded">bolt</span><div><b>Every gift code goes out on WhatsApp by itself.</b> Welcome, birthday, win-back, stamp cards, challenges and more: the moment a customer earns a gift, they get it on WhatsApp with their code. ' +
+      (D.settings.mode === 'own' ? ready + ' of ' + A.length + ' messages have an approved template.' : '') + '</div></div>' +
+      '<div class="wa-grid">' + A.map(autoCard).join('') + '</div>';
+  }
+
+  /* ── campaigns ── */
+  function giftSample(c) {
+    if (!c.gift_kind) return {};
+    var it = c.gift_kind === 'item' ? D.items.filter(function (i) { return i.id === +c.gift_item_id; })[0] : null;
+    return { reward: c.gift_kind === 'percent' ? (+c.gift_value || 0) + '% off' : c.gift_kind === 'item' ? 'Free ' + (it ? it.name : 'dish') : cur() + (+c.gift_value || 0) + ' off',
+      min_order: +c.gift_min_order > 0 ? cur() + (+c.gift_min_order) : 'any order',
+      valid_till: new Date(Date.now() + (+c.gift_valid_days || 14) * 864e5).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) };
+  }
+  function campaignForm() {
+    var c = draft, aud = D.audiences.filter(function (a) { return a.key === c.audience; })[0] || {};
+    var tplName = c.template_name || (slug() + '_' + String(c.name || 'campaign').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30));
+    var opt = '<option value="">Pick a dish</option>' + D.items.map(function (i) { return '<option value="' + i.id + '"' + (+c.gift_item_id === i.id ? ' selected' : '') + '>' + esc(i.name) + '</option>'; }).join('');
+    return '<div class="wa-compose"><div class="lsg-ed-h"><b>New campaign</b><button type="button" class="lsa-edit" data-wa-cancel-draft>Cancel</button></div>' +
+      '<div class="wa-presets"><span>Start from</span>' + PRESETS.map(function (p, i) { return '<button type="button" data-wa-preset="' + i + '">' + esc(p[0]) + '</button>'; }).join('') + '</div>' +
+      '<div class="wa-ed"><div class="wa-ed-l">' +
+        '<div class="ls-grid"><label>Campaign name<input data-wc="name" maxlength="80" value="' + esc(c.name) + '" placeholder="Weekend treat"></label></div>' +
+        '<label class="wa-lbl" style="margin-top:12px">Who gets it</label><div class="wa-aud">' + D.audiences.map(function (a) {
+          return '<button type="button" class="' + (a.key === c.audience ? 'on' : '') + '" data-wa-aud="' + a.key + '"><b>' + a.count + '</b><span>' + esc(a.label) + '</span></button>'; }).join('') + '</div>' +
+        '<label class="wa-lbl" style="margin-top:12px">Message<textarea data-wc="message" rows="4" maxlength="700">' + esc(c.message) + '</textarea></label>' +
+        '<div class="wa-varbar">' + ['name', 'restaurant', 'reward', 'code', 'valid_till', 'min_order', 'link'].map(function (k) { return '<button type="button" data-wa-var="{' + k + '}">{' + k + '}</button>'; }).join('') + '</div>' +
+        '<div class="ls-grid" style="margin-top:12px">' +
+          '<label>Gift for each customer<select data-wc="gift_kind"><option value="">No gift</option><option value="flat"' + (c.gift_kind === 'flat' ? ' selected' : '') + '>' + esc(cur()) + ' off</option><option value="percent"' + (c.gift_kind === 'percent' ? ' selected' : '') + '>% off</option><option value="item"' + (c.gift_kind === 'item' ? ' selected' : '') + '>A free dish</option></select></label>' +
+          (c.gift_kind === 'item' ? '<label>Dish<select data-wc="gift_item_id">' + opt + '</select></label>' : c.gift_kind ? '<label>' + (c.gift_kind === 'percent' ? 'Percent off' : 'Amount off') + '<input type="number" data-wc="gift_value" min="1" value="' + (c.gift_value || '') + '"></label>' : '') +
+          (c.gift_kind ? '<label>On orders above<input type="number" data-wc="gift_min_order" min="0" value="' + (c.gift_min_order || '') + '" placeholder="Any order"></label><label>Valid for<select data-wc="gift_valid_days">' + [3, 7, 14, 30].map(function (n) { return '<option value="' + n + '"' + (+c.gift_valid_days === n ? ' selected' : '') + '>' + n + ' days</option>'; }).join('') + '</select></label>' : '') +
+        '</div>' +
+        '<div class="ls-grid" style="margin-top:12px"><label>When<select data-wc="when"><option value="now"' + (c.when === 'now' ? ' selected' : '') + '>Send now</option><option value="later"' + (c.when === 'later' ? ' selected' : '') + '>Schedule</option></select></label>' +
+          (c.when === 'later' ? '<label>Date and time<input type="datetime-local" data-wc="scheduled_at" value="' + esc(c.scheduled_at || '') + '"></label>' : '') +
+          '<label>Approved template name<input data-wc="template_name" value="' + esc(c.template_name) + '" placeholder="' + esc(tplName) + '"></label></div>' +
+        templateBox(tplName, c.message) +
+      '</div><div class="wa-ed-r">' + phone(fill(c.message, giftSample(c))) +
+        '<div class="wa-reach"><b>' + (aud.count || 0) + '</b> customer' + (aud.count === 1 ? '' : 's') + ' will get this' + (c.gift_kind ? ', each with their own one-time code' : '') + '. Messages pause during quiet hours and each customer gets at most ' + D.settings.weekly_cap + ' campaign' + (D.settings.weekly_cap === 1 ? '' : 's') + ' a week.</div>' +
+        '<div class="wa-ed-acts"><button type="button" class="btn btn-secondary" data-wa-test-campaign><span class="material-symbols-rounded">send</span> Send me a test</button>' +
+        '<button type="button" class="btn btn-primary" data-wa-launch><span class="material-symbols-rounded">rocket_launch</span> ' + (c.when === 'later' ? 'Schedule' : 'Send to ' + (aud.count || 0)) + '</button></div></div></div></div>';
+  }
+  function campTab() {
+    if (D.settings.mode !== 'own') return '<div class="wa-lock"><span class="material-symbols-rounded">lock</span><b>Campaigns need your own WhatsApp number</b><p>Connect your RepeatGrow account in Settings. Then send offers to the customers you pick, with your own name and messages.</p><button type="button" class="btn btn-primary" data-wa-tab="settings">Open Settings</button></div>';
+    var C = D.campaigns;
+    return (draft ? campaignForm() : '<div class="wa-new"><div><b>Send a campaign</b><span>Pick who gets it, write the message, add a gift code if you like.</span></div><button type="button" class="btn btn-primary" data-wa-new><span class="material-symbols-rounded">add</span> New campaign</button></div>') +
+      (C.length ? '<div class="wa-camps">' + C.map(function (c) {
+        var aud = D.audiences.filter(function (a) { return a.key === c.audience; })[0];
+        return '<div class="wa-camp"><div class="wa-camp-h"><b>' + esc(c.name) + '</b>' + pill(c.status) + '</div><small>' + esc(aud ? aud.label : c.audience) + ' · ' + esc(String(c.scheduled_at).slice(0, 16).replace('T', ' ')) + (c.gift_kind ? ' · with gift' : '') + '</small>' +
+          '<div class="wa-nums"><div><b>' + c.audience_count + '</b><span>Reached</span></div><div><b>' + c.sent + '</b><span>Sent</span></div><div><b>' + c.orders + '</b><span>Orders</span></div><div><b>' + money(c.revenue) + '</b><span>Revenue</span></div>' +
+          (c.status === 'scheduled' || c.status === 'sending' ? '<button type="button" class="lsa-edit" data-wa-cancel="' + c.id + '">Stop</button>' : '') + '</div></div>';
+      }).join('') + '</div>' : (draft ? '' : '<div class="lsa-empty" style="margin-top:12px"><span class="material-symbols-rounded">campaign</span><b>No campaigns yet</b><span>Start from a ready idea: “We miss you” brings back quiet customers best.</span></div>'));
+  }
+
+  /* ── log ── */
+  function logTab() {
+    var L = D.log.filter(function (l) { return logFilter === 'all' || l.status === logFilter; });
+    var names = {}; D.auto.forEach(function (a) { names[a.kind] = a.label; }); names.campaign = 'Campaign';
+    return '<div class="wa-logbar"><div class="lsp-range">' + [['all', 'All'], ['sent', 'Sent'], ['queued', 'Queued'], ['failed', 'Failed'], ['skipped', 'Skipped']].map(function (f) { return '<button type="button" data-wa-filter="' + f[0] + '"' + (f[0] === logFilter ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>' +
+      '<div style="display:flex;gap:8px"><button type="button" class="btn btn-secondary" data-wa-dispatch><span class="material-symbols-rounded">sync</span> Send waiting now</button>' + (D.kpis.failed ? '<button type="button" class="btn btn-secondary" data-wa-retry><span class="material-symbols-rounded">replay</span> Retry failed</button>' : '') + '</div></div>' +
+      (L.length ? '<div class="wa-log">' + L.map(function (l) {
+        return '<div class="wa-log-row"><div class="wa-log-who"><b>' + esc(l.name || 'Customer') + '</b><small>' + esc(l.phone) + ' · ' + esc(names[l.kind] || l.kind) + '</small></div><p>' + esc(l.body || '') + (l.error ? '<em>' + esc(l.error) + '</em>' : '') + '</p>' +
+          '<div class="wa-log-st">' + pill(l.status) + '<small>' + esc(String(l.at || '').slice(5, 16)) + '</small></div></div>';
+      }).join('') + '</div>' : '<div class="lsa-empty"><span class="material-symbols-rounded">forum</span><b>No messages yet</b><span>Messages appear here as gifts are earned and campaigns go out.</span></div>');
+  }
+
+  /* ── settings ── */
+  function setTab() {
+    var s = D.settings, hours = []; for (var h = 0; h < 24; h++) hours.push(h);
+    var hl = function (h) { return (h % 12 || 12) + (h < 12 ? ' am' : ' pm'); };
+    return '<div class="wa-modes">' +
+      '<button type="button" class="wa-mode' + (s.mode === 'platform' ? ' on' : '') + '" data-wa-mode="platform"><span class="material-symbols-rounded">rocket_launch</span><b>Quick start</b><small>Gift messages from RestroGrow’s WhatsApp number with a ready-made template. Nothing to set up.</small>' + (D.platform.available ? '<i class="ok">Available</i>' : '<i>Coming soon</i>') + '</button>' +
+      '<button type="button" class="wa-mode' + (s.mode === 'own' ? ' on' : '') + '" data-wa-mode="own"><span class="material-symbols-rounded">verified</span><b>Your own number</b><small>Messages come from your restaurant’s WhatsApp through RepeatGrow. Your words, your campaigns.</small><i class="ok">Recommended</i></button></div>' +
+      (s.mode === 'own' ? '<div class="ls-box" style="margin-top:12px"><div class="ls-grid"><label style="grid-column:span 2">RepeatGrow API key' +
+        '<input type="password" id="waKey" autocomplete="off" placeholder="' + (s.key_last4 ? 'Saved: ••••' + esc(s.key_last4) + '. Paste a new key to replace it' : 'wacrm_live_...') + '"></label></div>' +
+        '<p class="lsa-fine" style="margin:8px 0 0">In RepeatGrow: Settings › API keys › New key with the “messages:send” permission.' + (s.account_name ? ' Connected to <b>' + esc(s.account_name) + '</b>.' : '') + '</p></div>' : '') +
+      '<div class="ls-box" style="margin-top:12px"><div class="ls-grid">' +
+        '<label>Don’t send after<select id="waQs">' + hours.map(function (h) { return '<option value="' + h + '"' + (h === s.quiet_start ? ' selected' : '') + '>' + hl(h) + '</option>'; }).join('') + '</select></label>' +
+        '<label>Start again at<select id="waQe">' + hours.map(function (h) { return '<option value="' + h + '"' + (h === s.quiet_end ? ' selected' : '') + '>' + hl(h) + '</option>'; }).join('') + '</select></label>' +
+        '<label>Campaigns per customer per week<select id="waCap">' + [1, 2, 3, 5, 0].map(function (n) { return '<option value="' + n + '"' + (n === s.weekly_cap ? ' selected' : '') + '>' + (n ? n : 'No limit') + '</option>'; }).join('') + '</select></label>' +
+        '<label>Your phone (for tests)<input id="waTest" inputmode="tel" value="' + esc(s.test_phone) + '" placeholder="98XXXXXXXX"></label></div>' +
+        '<p class="lsa-fine" style="margin:8px 0 0">Only customers who ticked “Send my rewards and offers on WhatsApp” get messages. Gifts earned at night wait for the morning.</p></div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button type="button" class="btn btn-primary" data-wa-save-settings><span class="material-symbols-rounded">save</span> Save settings</button></div>';
+  }
+
+  function draw() {
+    var el = $('waRoot'); if (!el || !D) return;
+    var s = D.settings, k = D.kpis, pct = k.customers ? Math.round(k.optin * 100 / k.customers) : 0;
+    var conn = s.mode === 'own' ? (s.key_last4 ? 'Your number' + (s.account_name ? ' (' + esc(s.account_name) + ')' : '') : 'Your number: not connected yet') : (D.platform.available ? 'RestroGrow’s number' : 'Not connected');
+    el.innerHTML =
+      (D.dry_run ? '<div class="wa-dry"><span class="material-symbols-rounded">science</span>Test mode on this computer: messages are prepared and logged, but nothing is sent to anyone.</div>' : '') +
+      '<div class="wa-hero"><div class="wa-hero-l"><label class="up-switch" style="margin:0"><input type="checkbox" id="waOn"' + (s.enabled ? ' checked' : '') + '><span></span> <b>WhatsApp messages are ' + (s.enabled ? 'on' : 'off') + '</b></label>' +
+        '<p><span class="material-symbols-rounded">link</span>' + conn + (s.last_dispatch ? ' · last checked ' + esc(String(s.last_dispatch).slice(11, 16)) : '') + '</p></div>' +
+        '<div class="wa-ring" style="--p:' + pct + '"><div><b>' + pct + '%</b><span>reachable</span></div></div>' +
+        '<div class="ls-kpis"><div><b>' + k.optin + '</b><span>Opted in of ' + k.customers + '</span></div><div><b>' + k.sent + '</b><span>Sent (30 days)</span></div><div><b>' + money(k.revenue) + '</b><span>Orders from messages</span></div></div></div>' +
+      '<div class="ls-tabs">' + [['auto', 'Automatic messages', 'bolt'], ['camp', 'Campaigns', 'campaign'], ['log', 'Message log', 'forum'], ['settings', 'Settings', 'settings']].map(function (t) {
+        return '<button type="button" class="ls-tab' + (t[0] === tab ? ' on' : '') + '" data-wa-tab="' + t[0] + '"><span class="material-symbols-rounded">' + t[2] + '</span>' + t[1] + (t[0] === 'log' && k.failed ? ' <em class="wa-badge">' + k.failed + '</em>' : '') + '</button>';
+      }).join('') + '</div>' +
+      '<div id="waTab">' + (tab === 'auto' ? autoTab() : tab === 'camp' ? campTab() : tab === 'log' ? logTab() : setTab()) + '</div>';
+  }
+
+  function readAuto(card) { var a = D.auto.filter(function (x) { return x.kind === card.getAttribute('data-wa-kind'); })[0]; card.querySelectorAll('[data-wa-f]').forEach(function (f) { a[f.getAttribute('data-wa-f')] = f.value; }); return a; }
+  function readDraft() { var box = document.querySelector('.wa-compose'); if (!box) return; box.querySelectorAll('[data-wc]').forEach(function (f) { draft[f.getAttribute('data-wc')] = f.value; }); }
+  function saveAuto(a, btn, extra) {
+    if (btn) btn.disabled = true;
+    var body = { action: 'auto', kind: a.kind, enabled: a.enabled, template_name: a.template_name, language: a.language };
+    if (extra) body.message = a.message;
+    return post(body).then(function (d) { if (btn) btn.disabled = false; notify(d.success ? a.label + ' saved' : (d.message || 'Could not save'), d.success ? 'success' : 'error'); return d.success; });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest || !e.target.closest('#waRoot') || !D) return;
+    var t;
+    if ((t = e.target.closest('[data-wa-tab]'))) { tab = t.getAttribute('data-wa-tab'); open = null; draw(); return; }
+    if ((t = e.target.closest('[data-wa-open]'))) { var k = t.getAttribute('data-wa-open'); open = open === k ? null : k; draw(); var c = document.querySelector('[data-wa-kind="' + k + '"]'); if (c && open) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if ((t = e.target.closest('[data-wa-var]'))) {
+      var ta = t.closest('.wa-ed-l').querySelector('textarea'), v = t.getAttribute('data-wa-var'), p = ta.selectionStart || ta.value.length;
+      ta.value = ta.value.slice(0, p) + v + ta.value.slice(ta.selectionEnd || p); ta.focus(); ta.selectionStart = ta.selectionEnd = p + v.length; ta.dispatchEvent(new Event('input', { bubbles: true })); return;
+    }
+    if ((t = e.target.closest('[data-wa-copy]'))) { var txt = t.getAttribute('data-wa-copy'); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { notify('Template text copied', 'success'); }, function () { notify('Select the text and copy it', 'info'); }); return; }
+    if ((t = e.target.closest('[data-wa-save]'))) { var a = readAuto(t.closest('[data-wa-kind]')); saveAuto(a, t, true).then(function (ok) { if (ok) { open = null; load(); } }); return; }
+    if ((t = e.target.closest('[data-wa-test]'))) {
+      var card = t.closest('[data-wa-kind]'); if (card.querySelector('[data-wa-f]')) { var a2 = readAuto(card); t.disabled = true; saveAuto(a2, null, true).then(function () { test({ action: 'test', kind: a2.kind }, t); }); } else test({ action: 'test', kind: card.getAttribute('data-wa-kind') }, t);
+      return;
+    }
+    if (e.target.closest('[data-wa-new]')) { draft = { name: '', audience: 'all', message: PRESETS[0][2], gift_kind: 'flat', gift_value: 75, gift_min_order: 299, gift_valid_days: 7, when: 'now', template_name: '' }; draw(); return; }
+    if (e.target.closest('[data-wa-cancel-draft]')) { draft = null; draw(); return; }
+    if ((t = e.target.closest('[data-wa-preset]'))) { var pr = PRESETS[+t.getAttribute('data-wa-preset')]; readDraft(); Object.assign(draft, { name: pr[0], audience: pr[1], message: pr[2], gift_kind: pr[3], gift_value: pr[4] }); draw(); return; }
+    if ((t = e.target.closest('[data-wa-aud]'))) { readDraft(); draft.audience = t.getAttribute('data-wa-aud'); draw(); return; }
+    if (e.target.closest('[data-wa-test-campaign]')) { readDraft(); test({ action: 'test', campaign: draft }, e.target.closest('button')); return; }
+    if ((t = e.target.closest('[data-wa-launch]'))) {
+      readDraft(); t.disabled = true;
+      post(Object.assign({ action: 'campaign', send_now: draft.when !== 'later' }, draft)).then(function (d) {
+        t.disabled = false;
+        if (!d.success) { notify(d.message || 'Could not start', 'error'); return; }
+        notify(draft.when === 'later' ? 'Campaign scheduled' : 'Campaign started' + (d.dispatched ? ': ' + d.dispatched.sent + ' sent so far' : ''), 'success');
+        draft = null; load();
+      });
+      return;
+    }
+    if ((t = e.target.closest('[data-wa-cancel]'))) { post({ action: 'cancel', id: +t.getAttribute('data-wa-cancel') }).then(function () { notify('Campaign stopped', 'success'); load(); }); return; }
+    if ((t = e.target.closest('[data-wa-filter]'))) { logFilter = t.getAttribute('data-wa-filter'); draw(); return; }
+    if ((t = e.target.closest('[data-wa-dispatch]'))) { t.disabled = true; post({ action: 'dispatch' }).then(function (d) { notify(d.success ? (d.dispatched.sent + ' sent' + (d.dispatched.failed ? ', ' + d.dispatched.failed + ' failed' : '')) : 'Could not send', d.success ? 'success' : 'error'); load(); }); return; }
+    if ((t = e.target.closest('[data-wa-retry]'))) { t.disabled = true; post({ action: 'retry' }).then(function (d) { notify(d.success ? d.requeued + ' queued again' : 'Could not retry', d.success ? 'success' : 'error'); load(); }); return; }
+    if ((t = e.target.closest('[data-wa-mode]'))) { D.settings.mode = t.getAttribute('data-wa-mode'); draw(); return; }
+    if ((t = e.target.closest('[data-wa-save-settings]'))) saveSettings(t);
+  });
+  function test(body, btn) {
+    if (btn) btn.disabled = true;
+    post(body).then(function (d) { if (btn) btn.disabled = false; notify(d.message || (d.success ? 'Sent' : 'Could not send'), d.success ? 'success' : 'error'); });
+  }
+  function saveSettings(btn, onlyToggle) {
+    var s = D.settings, v = function (id) { var x = $(id); return x ? x.value : null; };
+    var body = { action: 'settings', enabled: $('waOn') && $('waOn').checked ? 1 : 0, mode: s.mode,
+      quiet_start: v('waQs') != null ? +v('waQs') : s.quiet_start, quiet_end: v('waQe') != null ? +v('waQe') : s.quiet_end,
+      weekly_cap: v('waCap') != null ? +v('waCap') : s.weekly_cap, test_phone: v('waTest') != null ? v('waTest') : s.test_phone };
+    if (v('waKey')) body.api_key = v('waKey');
+    if (btn) btn.disabled = true;
+    post(body).then(function (d) {
+      if (btn) btn.disabled = false;
+      notify(d.success ? (onlyToggle ? (body.enabled ? 'WhatsApp messages are on' : 'WhatsApp messages are off') : 'Settings saved') : (d.message || 'Could not save'), d.success ? 'success' : 'error');
+      load();
+    });
+  }
+  document.addEventListener('change', function (e) {
+    if (!e.target.closest || !e.target.closest('#waRoot') || !D) return;
+    var t = e.target;
+    if (t.id === 'waOn') { saveSettings(null, true); return; }
+    if (t.hasAttribute('data-wa-auto-toggle')) {
+      var a = D.auto.filter(function (x) { return x.kind === t.getAttribute('data-wa-auto-toggle'); })[0]; a.enabled = t.checked ? 1 : 0;
+      saveAuto(a).then(function () { draw(); }); return;
+    }
+    if (t.closest('.wa-compose')) { readDraft(); draw(); }
+  });
+  document.addEventListener('input', function (e) {
+    if (!e.target.closest || !D) return;
+    var ed = e.target.closest('.wa-ed'); if (!ed || e.target.tagName !== 'TEXTAREA') return;
+    var b = ed.querySelector('.wa-bubble'); if (b) b.innerHTML = fill(e.target.value, draft && ed.closest('.wa-compose') ? giftSample(draft) : null).replace(/\n/g, '<br>') + b.querySelector('.wa-time').outerHTML;
+    var tpl = ed.querySelector('.wa-tpl pre'); if (tpl) tpl.textContent = toTemplate(e.target.value)[0];
+  });
+
+  window.loadWhatsappAdmin = function () { load(); };
+
+  // Sender heartbeat: queued gift messages and campaigns go out while the dashboard is open
+  var beatDelay = 60000;
+  function beat() {
+    fetch('../api/wa_dispatch.php', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); })
+      .then(function (d) { beatDelay = d && d.enabled ? 60000 : 600000; }).catch(function () {})
+      .then(function () { setTimeout(beat, beatDelay); });
+  }
+  setTimeout(beat, 15000);
+})();
