@@ -5275,446 +5275,313 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Settings Page -->
-    <div id="settingsPage" class="page">
+    <!-- Settings: sections listed on the left, one open at a time, one save bar for all of them.
+         Fields keep their ids: the save handlers (script.js, systemSettingsForm below, printer)
+         read them by id. data-st-form on each card says which save it belongs to.
+         Layout + save bar: assets/js/settings-studio.js, styles st-* in assets/css/studio-ui.css. -->
+    <div id="settingsPage" class="page sx">
       <div class="page-header">
         <h1>Settings</h1>
-        <p>Manage your restaurant settings and preferences</p>
+        <p>Your restaurant details, ordering rules, billing and devices.</p>
       </div>
-      <div class="page-content">
-        <div class="settings-container">
-          <!-- Restaurant Information Card -->
-          <div class="profile-card-modern">
-            <div class="profile-card-header">
-              <h3>
-                <span class="material-symbols-rounded">restaurant</span>
-                Restaurant Information
-              </h3>
-              <p class="card-description">Update your restaurant details and contact information</p>
-            </div>
-            <div class="profile-card-body">
-              <form id="restaurantSettingsForm">
-                <div class="form-group">
-                  <label for="restaurantNameSetting">
-                    <span class="material-symbols-rounded">store</span>
-                    Restaurant Name
-                  </label>
+      <div class="page-content st-wrap">
+        <!-- the four saves, kept as forms so their existing handlers run unchanged -->
+        <form id="restaurantSettingsForm" class="st-form-proxy"><button type="submit" class="btn-save" tabindex="-1">Save</button></form>
+        <form id="profileSettingsForm" class="st-form-proxy"><button type="submit" class="btn-save" tabindex="-1">Save</button></form>
+        <form id="systemSettingsForm" class="st-form-proxy"><button type="submit" class="btn-save" tabindex="-1">Save</button></form>
+        <form id="printerSettingsForm" class="st-form-proxy" onsubmit="return false;"></form>
+
+        <nav class="st-nav" aria-label="Settings sections">
+          <div class="st-nav-group"><small>Business</small>
+            <button type="button" data-st-go="profile" class="on"><span class="material-symbols-rounded">storefront</span><span><b>Restaurant profile</b><em>Name, tagline, contact</em></span></button>
+            <button type="button" data-st-go="location"><span class="material-symbols-rounded">location_on</span><span><b>Location</b><em>Address and map pin</em></span></button>
+            <button type="button" data-st-go="hours"><span class="material-symbols-rounded">schedule</span><span><b>Business hours</b><em>When you take orders</em></span></button>
+          </div>
+          <div class="st-nav-group"><small>Orders</small>
+            <button type="button" data-st-go="ordering"><span class="material-symbols-rounded">shopping_bag</span><span><b>Ordering</b><em>Order types, reservations</em></span></button>
+            <button type="button" data-st-go="delivery"><span class="material-symbols-rounded">local_shipping</span><span><b>Delivery</b><em>Radius and charges</em></span></button>
+            <button type="button" data-st-go="payments"><span class="material-symbols-rounded">payments</span><span><b>Payments</b><em>Cash and payment QR</em></span></button>
+            <button type="button" data-st-go="tax"><span class="material-symbols-rounded">receipt_long</span><span><b>Tax and bill</b><em>GST / VAT, business ID</em></span></button>
+          </div>
+          <div class="st-nav-group"><small>Website</small>
+            <button type="button" data-st-go="social"><span class="material-symbols-rounded">share</span><span><b>Social links</b><em>Instagram, Facebook…</em></span></button>
+            <button type="button" data-st-go="region"><span class="material-symbols-rounded">public</span><span><b>Region and language</b><em>Country, currency, time</em></span></button>
+          </div>
+          <div class="st-nav-group"><small>Devices and account</small>
+            <button type="button" data-st-go="printer"><span class="material-symbols-rounded">print</span><span><b>Printer</b><em>Receipts and KOTs</em></span></button>
+            <button type="button" data-st-go="account"><span class="material-symbols-rounded">account_circle</span><span><b>Account</b><em>Login, notifications, app</em></span></button>
+          </div>
+        </nav>
+
+        <div class="st-panes">
+
+          <!-- ── Restaurant profile ── -->
+          <section class="st-pane on" data-st-pane="profile">
+            <header class="st-pane-h"><span class="material-symbols-rounded">storefront</span><div><h2>Restaurant profile</h2><p>How your restaurant appears on your website, bills and policy pages.</p></div></header>
+            <div class="st-card" data-st-form="restaurant">
+              <div class="st-grid2">
+                <div class="st-field">
+                  <label for="restaurantNameSetting">Restaurant name</label>
                   <input type="text" id="restaurantNameSetting" placeholder="Enter restaurant name" required>
                 </div>
-
-                <div class="form-group">
-                  <label for="ownerName">
-                    <span class="material-symbols-rounded">person</span>
-                    Owner Name
-                  </label>
-                  <input type="text" id="ownerName" placeholder="Enter owner name (shown on policy pages)">
+                <div class="st-field">
+                  <label for="ownerName">Owner name</label>
+                  <input type="text" id="ownerName" placeholder="Shown on your policy pages">
                 </div>
-                
-                
-                <div class="form-group">
-                  <label for="restaurantIdSetting">
-                    <span class="material-symbols-rounded">badge</span>
-                    Restaurant ID
-                  </label>
-                  <input type="text" id="restaurantIdSetting" placeholder="Restaurant ID" readonly style="background: #f3f4f6; cursor: not-allowed;">
+              </div>
+              <div class="st-field">
+                <label for="restaurantDescription">Tagline / description</label>
+                <textarea id="restaurantDescription" rows="3" placeholder="e.g. Serving handcrafted pizzas, delicious pastas..."></textarea>
+                <div class="st-inline">
+                  <span class="st-help">Shown under your name on the website.</span>
+                  <button type="button" id="descFormatToggleSettings" class="desc-format-btn st-chipbtn" title="How new lines show on the website">
+                    <span class="material-symbols-rounded">format_align_left</span>
+                    <span id="descFormatLabelSettings">Paragraph</span>
+                  </button>
                 </div>
-                
-                <div class="form-group">
-                  <label for="restaurantAddress">
-                    <span class="material-symbols-rounded">location_on</span>
-                    Address
-                  </label>
-                  <input type="text" id="restaurantAddress" autocomplete="off" placeholder="Search your restaurant's address...">
-                  <button type="button" id="restaurantMapPickerBtn" style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border:2px solid #dc2626;border-radius:10px;background:#fff;color:#dc2626;font-size:13px;font-weight:600;cursor:pointer;">📍 Select Exact Location on Map</button>
-                  <div id="restaurantMapPreview" style="display:none;margin-top:10px;width:100%;height:180px;border-radius:10px;overflow:hidden;border:2px solid #e0e0e0;"></div>
-                  <input type="hidden" id="restaurantAddressLat" value="">
-                  <input type="hidden" id="restaurantAddressLng" value="">
-                  <p style="color:#6b7280;font-size:0.8rem;margin-top:6px;">Search your address, or use the map to drop a pin at your exact location — this improves delivery-radius accuracy.</p>
-                </div>
-
-                <div class="form-group">
-                  <label for="restaurantDescription">
-                    <span class="material-symbols-rounded">description</span>
-                    Tagline / Description
-                  </label>
-                  <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;">
-                    <textarea id="restaurantDescription" rows="2" placeholder="e.g. Serving handcrafted pizzas, delicious pastas..." style="resize:vertical;flex:1;"></textarea>
-                    <button type="button" id="descFormatToggleSettings" class="desc-format-btn" title="Toggle description format">
-                      <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">format_align_left</span>
-                      <span id="descFormatLabelSettings">Paragraph</span>
-                    </button>
-                  </div>
-                  <input type="hidden" id="descriptionFormatSettings" name="description_format" value="paragraph">
-                  <p style="color:#6b7280;font-size:0.85rem;margin-top:0.25rem;">Choose how the tagline appears: <strong>Paragraph</strong> (single block) or <strong>Line Break</strong> (preserves new lines).</p>
-                </div>
-
-                <div class="form-group">
-                  <label for="restaurantGoogleMapsLink">
-                    <span class="material-symbols-rounded">map</span>
-                    Google Maps Link (Optional)
-                  </label>
-                  <input type="url" id="restaurantGoogleMapsLink" placeholder="e.g. https://share.google/..., https://maps.app.goo.gl/..., or https://maps.google.com/?q=...">
-                  <p style="color:#6b7280;font-size:0.85rem;margin-top:0.25rem;">Paste your Google Maps location link here — a full link, a short share link (share.google, maps.app.goo.gl, goo.gl/maps), or an embed URL all work. If set, the "Open in Google Maps" button on the customer website will use this link. Leave empty to hide the map section if no address is set.</p>
-                </div>
-
-                <!-- Order Type Toggles -->
-                <div class="form-group" style="padding-top: 24px;">
-                  <label style="font-weight: 700; font-size: 1.1rem; color: #151A2D; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <span class="material-symbols-rounded" style="color: #2563eb;">switch_access_shortcut</span>
-                    Order Type Settings
-                  </label>
-                  <p style="color: #6b7280; font-size: 0.85rem; margin-bottom: 0.75rem;">Toggle which order types are available on your customer website. Unchecked types will be hidden.</p>
-
-                  <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 16px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 10px; transition: all 0.2s;" onmouseover="this.style.borderColor='#d1d5db'" onmouseout="this.style.borderColor='#e5e7eb'">
-                      <input type="checkbox" id="enableDeliveryToggle" <?php echo $enable_delivery ? 'checked' : ''; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
-                      <span style="font-weight: 600; font-size: 0.95rem;">🚚 Delivery</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 16px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 10px; transition: all 0.2s;" onmouseover="this.style.borderColor='#d1d5db'" onmouseout="this.style.borderColor='#e5e7eb'">
-                      <input type="checkbox" id="enableTakeawayToggle" <?php echo $enable_takeaway ? 'checked' : ''; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
-                      <span style="font-weight: 600; font-size: 0.95rem;">🥡 Take Away</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 16px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 10px; transition: all 0.2s;" onmouseover="this.style.borderColor='#d1d5db'" onmouseout="this.style.borderColor='#e5e7eb'">
-                      <input type="checkbox" id="enableDineinToggle" <?php echo $enable_dinein ? 'checked' : ''; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
-                      <span style="font-weight: 600; font-size: 0.95rem;">🍽️ Dine In</span>
-                    </label>
-                  </div>
-                  <p style="color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem;">All are enabled by default. At least one must remain enabled for customers to place orders.</p>
-                </div>
-
-                <!-- Table Reservations Toggle -->
-                <div class="form-group" style="padding-top: 8px;">
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 16px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 10px; transition: all 0.2s; max-width: fit-content;" onmouseover="this.style.borderColor='#d1d5db'" onmouseout="this.style.borderColor='#e5e7eb'">
-                    <input type="checkbox" id="enableReservationsToggle" style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
-                    <span style="font-weight: 600; font-size: 0.95rem;">🍽️ Table Reservations</span>
-                  </label>
-                  <p style="color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem;">Off by default. Turn on to show a "Reserve" section on your customer website where visitors can book a table for a date &amp; time — bookings land on the Reservations page for you to confirm.</p>
-                </div>
-
-                <div class="form-group">
-                  <label style="display:flex;align-items:center;gap:8px;">
-                    <span class="material-symbols-rounded">payments</span>
-                    Cash on Delivery / Pay at Counter
-                    <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
-                      <input type="checkbox" id="enableCodToggle" <?php echo $cod_enabled ? "checked" : ""; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
-                      <span style="font-size:13px;font-weight:500;color:#374151;" id="enableCodLabel"><?php echo $cod_enabled ? 'Enabled' : 'Disabled'; ?></span>
-                    </label>
-                  </label>
-                  <p style="font-size:12px;color:#6b7280;margin-top:4px;">Turn off to remove Cash as a payment option on the customer website — only online payment methods (UPI/QR) will be offered at checkout. If no online payment method is configured, Cash stays available automatically so customers can still order.</p>
-                </div>
-
-                <!-- Social Media Links Section -->
-                <div class="form-group" style="padding-top: 24px;">
-                  <label style="font-weight: 700; font-size: 1.1rem; color: #151A2D; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <span class="material-symbols-rounded" style="color: #2563eb;">share</span>
-                    Social Media Links (Optional)
-                  </label>
-                  <p style="color: #6b7280; font-size: 0.85rem; margin-bottom: 0.75rem;">Add your social media profile links. They will appear on your restaurant website. Leave empty to hide.</p>
-
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                      <label for="instagramLink" style="font-size: 0.85rem; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 4px;">
-                        <span style="color: #E4405F;">📷</span> Instagram
-                      </label>
-                      <input type="url" id="instagramLink" placeholder="https://instagram.com/yourpage" style="padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                      <label for="facebookLink" style="font-size: 0.85rem; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 4px;">
-                        <span style="color: #1877F2;">👍</span> Facebook
-                      </label>
-                      <input type="url" id="facebookLink" placeholder="https://facebook.com/yourpage" style="padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                      <label for="twitterLink" style="font-size: 0.85rem; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 4px;">
-                        <span style="color: #000;">𝕏</span> Twitter / X
-                      </label>
-                      <input type="url" id="twitterLink" placeholder="https://x.com/yourpage" style="padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                      <label for="youtubeLink" style="font-size: 0.85rem; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 4px;">
-                        <span style="color: #FF0000;">▶️</span> YouTube
-                      </label>
-                      <input type="url" id="youtubeLink" placeholder="https://youtube.com/@yourchannel" style="padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                      <label for="linkedinLink" style="font-size: 0.85rem; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 4px;">
-                        <span style="color: #0A66C2;">💼</span> LinkedIn
-                      </label>
-                      <input type="url" id="linkedinLink" placeholder="https://linkedin.com/company/yourpage" style="padding: 0.6rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
-                    </div>
-                  </div>
-                  <p style="color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem;">WhatsApp is already configured separately via your phone number.</p>
-                </div>
-
-                <div class="form-group opening-hours-group">
-                  <label style="font-weight: 700; font-size: 1.1rem; color: #151A2D; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <span class="material-symbols-rounded">schedule</span>
-                    Opening Hours
-                    <button type="button" class="btn-normal-hours" onclick="fillNormalHours()" title="Set all days to 9:00 AM - 10:00 PM">
-                      <span class="material-symbols-rounded" style="font-size: 1rem;">auto_schedule</span>
-                      Set Normal Hours
-                    </button>
-                  </label>
-                  <?php
-                  $days = ['monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday', 'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday', 'sunday' => 'Sunday'];
-                  $hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-                  $minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
-                  foreach ($days as $key => $label):
-                  ?>
-                  <div class="day-hours-row" data-day="<?= $key ?>">
-                    <label class="day-toggle-label">
-                      <input type="checkbox" class="day-toggle" id="day_<?= $key ?>_open" data-day="<?= $key ?>">
-                      <span><?= $label ?></span>
-                    </label>
-                    <div class="day-time-picker">
-                      <select class="hour-select" id="opening_hour_<?= $key ?>" data-day="<?= $key ?>" data-type="opening_hour">
-                        <?php foreach ($hours as $h): ?><option value="<?= $h ?>"><?= $h ?></option><?php endforeach; ?>
-                      </select>
-                      <span class="time-sep">:</span>
-                      <select class="min-select" id="opening_min_<?= $key ?>" data-day="<?= $key ?>" data-type="opening_min">
-                        <?php foreach ($minutes as $m): ?><option value="<?= $m ?>"><?= $m ?></option><?php endforeach; ?>
-                      </select>
-                      <select class="ampm-select" id="opening_ampm_<?= $key ?>" data-day="<?= $key ?>" data-type="opening_ampm">
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                      <span class="to-sep">to</span>
-                      <select class="hour-select" id="closing_hour_<?= $key ?>" data-day="<?= $key ?>" data-type="closing_hour">
-                        <?php foreach ($hours as $h): ?><option value="<?= $h ?>"><?= $h ?></option><?php endforeach; ?>
-                      </select>
-                      <span class="time-sep">:</span>
-                      <select class="min-select" id="closing_min_<?= $key ?>" data-day="<?= $key ?>" data-type="closing_min">
-                        <?php foreach ($minutes as $m): ?><option value="<?= $m ?>"><?= $m ?></option><?php endforeach; ?>
-                      </select>
-                      <select class="ampm-select" id="closing_ampm_<?= $key ?>" data-day="<?= $key ?>" data-type="closing_ampm">
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                    </div>
-                  </div>
-                  <?php endforeach; ?>
-                </div>
-
-                <div class="form-group">
-                  <label style="display:flex;align-items:center;gap:8px;">
-                    <span class="material-symbols-rounded">language</span>
-                    Language Support
-                    <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
-                      <input type="checkbox" id="enableLanguageToggle" <?php echo $enable_language ? "checked" : ""; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
-                      <span style="font-size:13px;font-weight:500;color:#374151;" id="enableLanguageLabel"><?php echo $enable_language ? 'Enabled' : 'Disabled'; ?></span>
-                    </label>
-                  </label>
-                  <p style="font-size:12px;color:#6b7280;margin-top:4px;">Turn on to allow language selection in system settings and auto-translate menu items.</p>
-                </div>
-
-                <div class="form-group">
-                  <label style="display:flex;align-items:center;gap:8px;">
-                    <span class="material-symbols-rounded">receipt_long</span>
-                    Enable Tax
-                    <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
-                      <input type="checkbox" id="enableGstToggle" <?php echo $enable_gst ? "checked" : ""; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
-                      <span style="font-size:13px;font-weight:500;color:#374151;" id="enableGstLabel">Enabled</span>
-                    </label>
-                  </label>
-                  <p style="font-size:12px;color:#6b7280;margin-top:4px;">Turn off to remove tax calculation on orders and the customer website.</p>
-                  <div class="row" style="display:flex;gap:12px;margin-top:10px;">
-                    <div class="form-group" style="flex:1;margin-bottom:0;">
-                      <label for="taxName" style="font-size:12px;color:#6b7280;">Tax Name</label>
-                      <input type="text" id="taxName" class="form-control" maxlength="50" placeholder="e.g. GST, VAT, Sales Tax" value="<?php echo htmlspecialchars($tax_name); ?>">
-                    </div>
-                    <div class="form-group" style="flex:1;margin-bottom:0;">
-                      <label for="taxPercentInput" style="font-size:12px;color:#6b7280;">Tax Percent (%)</label>
-                      <input type="number" id="taxPercentInput" class="form-control" step="0.01" min="0" max="100" placeholder="e.g. 5" value="<?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$tax_percent, 2), '0'), '.')); ?>">
-                    </div>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label style="display:flex;align-items:center;gap:8px;">
-                    <span class="material-symbols-rounded">badge</span>
-                    Show Business ID on Bill
-                    <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
-                      <input type="checkbox" id="showBusinessIdToggle" <?php echo $show_business_id ? "checked" : ""; ?> style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
-                      <span style="font-size:13px;font-weight:500;color:#374151;" id="showBusinessIdLabel"><?php echo $show_business_id ? 'Enabled' : 'Disabled'; ?></span>
-                    </label>
-                  </label>
-                  <p style="font-size:12px;color:#6b7280;margin-top:4px;">Turn on to print your business registration number on the customer bill — e.g. GSTIN in India, PAN No in Nepal. Rename the label to whatever your country calls it.</p>
-                  <div class="row" style="display:flex;gap:12px;margin-top:10px;">
-                    <div class="form-group" style="flex:1;margin-bottom:0;">
-                      <label for="businessIdLabelInput" style="font-size:12px;color:#6b7280;">Label</label>
-                      <input type="text" id="businessIdLabelInput" class="form-control" maxlength="30" placeholder="e.g. GSTIN, PAN No, VAT Number" value="<?php echo htmlspecialchars($business_id_label); ?>">
-                    </div>
-                    <div class="form-group" style="flex:1;margin-bottom:0;">
-                      <label for="businessIdNoInput" style="font-size:12px;color:#6b7280;">Number</label>
-                      <input type="text" id="businessIdNoInput" class="form-control" maxlength="20" placeholder="e.g. 22AAAAA0000A1Z5" value="<?php echo htmlspecialchars($business_id_no); ?>">
-                    </div>
-                  </div>
-                </div>
-
-                <div class="form-group" >
-                  <label for="minimumOrderValue">
-                    <span class="material-symbols-rounded">shopping_cart</span>
-                    Minimum Order Value
-                  </label>
-                  <input type="number" id="minimumOrderValue" min="0" step="0.01" placeholder="e.g. 350">
-                </div>
-            </div>
-            
-            <!-- Packaging Charge -->
-            <div class="form-group" >
-              <label for="packagingCharge">
-                <span class="material-symbols-rounded">inventory_2</span>
-                Packaging Charge (<?php echo htmlspecialchars($currency_symbol); ?>)
-              </label>
-              <p style="color:#666;font-size:0.85rem;margin-bottom:6px;">
-                A flat packaging fee applied to all delivery orders. Set to 0 to disable.
-              </p>
-              <input type="number" id="packagingCharge" class="form-control" step="0.50" min="0" placeholder="e.g. 10.00" style="max-width:200px">
-            </div>
-
-            <!-- Delivery Radius -->
-            <div class="form-group" >
-              <label for="deliveryRadius">
-                <span class="material-symbols-rounded">my_location</span>
-                Delivery Radius (km)
-              </label>
-              <p style="color:#666;font-size:0.85rem;margin-bottom:6px;">
-                Maximum distance in km for delivery. Set to 0 to disable radius check. Uses your restaurant's map location above to calculate distance.
-              </p>
-              <input type="number" id="deliveryRadius" class="form-control" step="0.5" min="0" placeholder="e.g. 10" style="max-width:200px">
-            </div>
-
-            <!-- KM-Based Delivery Charge -->
-            <div class="form-group">
-              <label style="display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-rounded">social_distance</span>
-                Distance-Based Delivery Charge
-                <label class="switch" style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;">
-                  <input type="checkbox" id="enableKmDeliveryToggle" style="width:18px;height:18px;accent-color:#dc2626;cursor:pointer;">
-                  <span style="font-size:13px;font-weight:500;color:#374151;" id="enableKmDeliveryLabel">Disabled</span>
-                </label>
-              </label>
-              <p style="font-size:12px;color:#6b7280;margin-top:4px;">
-                When on, the delivery charge is calculated automatically as distance (km) × rate — instead of a flat charge. Only applies to customers within your delivery radius above. You'll still confirm the exact amount when you accept each delivery order.
-              </p>
-              <div id="deliveryRatePerKmGroup" style="margin-top:10px;display:none;">
-                <label for="deliveryRatePerKm" style="font-size:12px;color:#6b7280;">Rate per km (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
-                <input type="number" id="deliveryRatePerKm" class="form-control" step="0.5" min="0" placeholder="e.g. 5" style="max-width:200px">
+                <input type="hidden" id="descriptionFormatSettings" name="description_format" value="paragraph">
+                <p class="st-help">Paragraph shows it as one block. Line Break keeps your new lines.</p>
               </div>
             </div>
+            <div class="st-card" data-st-form="restaurant">
+              <div class="st-card-h"><b>Contact</b><small>Customers see these on your website and bills.</small></div>
+              <div class="st-grid2">
+                <div class="st-field">
+                  <label for="restaurantPhone">Phone number</label>
+                  <input type="tel" id="restaurantPhone" placeholder="Enter phone number">
+                </div>
+                <div class="st-field">
+                  <label for="restaurantEmail">Email address</label>
+                  <input type="email" id="restaurantEmail" placeholder="Enter email address">
+                </div>
+              </div>
+            </div>
+            <div class="st-card st-card-muted">
+              <div class="st-field st-id">
+                <label for="restaurantIdSetting">Restaurant ID</label>
+                <div class="st-copy"><input type="text" id="restaurantIdSetting" placeholder="Restaurant ID" readonly><button type="button" class="sx-icon-btn" data-st-copy="restaurantIdSetting" title="Copy"><span class="material-symbols-rounded">content_copy</span></button></div>
+                <p class="st-help">Your account number. Support may ask for it.</p>
+              </div>
+            </div>
+          </section>
 
-                <div class="form-row" >
-                  <div class="form-group">
-                    <label for="restaurantPhone">
-                      <span class="material-symbols-rounded">phone</span>
-                      Phone Number
-                    </label>
-                    <input type="tel" id="restaurantPhone" placeholder="Enter phone number">
-                  </div>
-                  <div class="form-group">
-                    <label for="restaurantEmail">
-                      <span class="material-symbols-rounded">email</span>
-                      Email Address
-                    </label>
-                    <input type="email" id="restaurantEmail" placeholder="Enter email address">
-                  </div>
-                </div>
+          <!-- ── Location ── -->
+          <section class="st-pane" data-st-pane="location">
+            <header class="st-pane-h"><span class="material-symbols-rounded">location_on</span><div><h2>Location</h2><p>Used for directions on your website and to measure delivery distance.</p></div></header>
+            <div class="st-card" data-st-form="restaurant">
+              <div class="st-field">
+                <label for="restaurantAddress">Address</label>
+                <input type="text" id="restaurantAddress" autocomplete="off" placeholder="Search your restaurant's address...">
+                <button type="button" id="restaurantMapPickerBtn" class="btn btn-secondary st-mapbtn"><span class="material-symbols-rounded">pin_drop</span>Select exact location on map</button>
+                <div id="restaurantMapPreview" class="st-map" style="display:none;"></div>
+                <input type="hidden" id="restaurantAddressLat" value="">
+                <input type="hidden" id="restaurantAddressLng" value="">
+                <p class="st-help">Search your address, or drop a pin on the map at your exact spot. A pin makes the delivery radius accurate.</p>
+              </div>
+            </div>
+            <div class="st-card" data-st-form="restaurant">
+              <div class="st-field">
+                <label for="restaurantGoogleMapsLink">Google Maps link <em>Optional</em></label>
+                <input type="url" id="restaurantGoogleMapsLink" placeholder="e.g. https://maps.app.goo.gl/...">
+                <p class="st-help">Paste your Google Maps link (a full link, a share link like share.google or maps.app.goo.gl, or an embed link). The "Open in Google Maps" button on your website then uses it. Leave empty to use your address.</p>
+              </div>
+            </div>
+          </section>
 
-                <div class="form-actions">
-                  <button type="submit" class="btn btn-save">
-                    <span class="material-symbols-rounded">save</span>
-                    Save Changes
-                  </button>
+          <!-- ── Business hours ── -->
+          <section class="st-pane" data-st-pane="hours">
+            <header class="st-pane-h"><span class="material-symbols-rounded">schedule</span><div><h2>Business hours</h2><p>Customers can order only while you are open.</p></div>
+              <button type="button" class="btn btn-secondary btn-sm btn-normal-hours" onclick="fillNormalHours(); window.stMarkDirty && stMarkDirty('restaurant')" title="Set all days to 9:00 AM - 10:00 PM"><span class="material-symbols-rounded">auto_schedule</span>9 AM – 10 PM every day</button>
+            </header>
+            <div class="st-card st-hours" data-st-form="restaurant">
+              <?php
+              $days = ['monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday', 'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday', 'sunday' => 'Sunday'];
+              $hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+              $minutes = ['00','05','10','15','20','25','30','35','40','45','50','55','59']; // 59: "open till 11:59 PM"
+              foreach ($days as $key => $label):
+              ?>
+              <div class="st-day" data-day="<?= $key ?>">
+                <label class="st-day-name">
+                  <span class="st-switch"><input type="checkbox" class="day-toggle" id="day_<?= $key ?>_open" data-day="<?= $key ?>"><i></i></span>
+                  <b><?= $label ?></b>
+                </label>
+                <div class="day-time-picker st-times">
+                  <span class="st-time">
+                    <select class="hour-select" id="opening_hour_<?= $key ?>" data-day="<?= $key ?>" data-type="opening_hour" aria-label="<?= $label ?> opening hour">
+                      <?php foreach ($hours as $h): ?><option value="<?= $h ?>"><?= $h ?></option><?php endforeach; ?>
+                    </select><span class="time-sep">:</span><select class="min-select" id="opening_min_<?= $key ?>" data-day="<?= $key ?>" data-type="opening_min" aria-label="<?= $label ?> opening minute">
+                      <?php foreach ($minutes as $m): ?><option value="<?= $m ?>"><?= $m ?></option><?php endforeach; ?>
+                    </select><select class="ampm-select" id="opening_ampm_<?= $key ?>" data-day="<?= $key ?>" data-type="opening_ampm" aria-label="<?= $label ?> opening AM or PM">
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </span>
+                  <span class="to-sep">to</span>
+                  <span class="st-time">
+                    <select class="hour-select" id="closing_hour_<?= $key ?>" data-day="<?= $key ?>" data-type="closing_hour" aria-label="<?= $label ?> closing hour">
+                      <?php foreach ($hours as $h): ?><option value="<?= $h ?>"><?= $h ?></option><?php endforeach; ?>
+                    </select><span class="time-sep">:</span><select class="min-select" id="closing_min_<?= $key ?>" data-day="<?= $key ?>" data-type="closing_min" aria-label="<?= $label ?> closing minute">
+                      <?php foreach ($minutes as $m): ?><option value="<?= $m ?>"><?= $m ?></option><?php endforeach; ?>
+                    </select><select class="ampm-select" id="closing_ampm_<?= $key ?>" data-day="<?= $key ?>" data-type="closing_ampm" aria-label="<?= $label ?> closing AM or PM">
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </span>
                 </div>
-              </form>
+                <span class="st-closed">Closed</span>
+              </div>
+              <?php endforeach; ?>
             </div>
-          </div>
-          
-          <!-- Profile Settings Card -->
-          <div class="profile-card-modern">
-            <div class="profile-card-header">
-              <h3>
-                <span class="material-symbols-rounded">account_circle</span>
-                Profile Settings
-              </h3>
-              <p class="card-description">Manage your account username and email</p>
-            </div>
-            <div class="profile-card-body">
-              <form id="profileSettingsForm">
-                <div class="form-group">
-                  <label for="usernameSetting">
-                    <span class="material-symbols-rounded">badge</span>
-                    Username
-                  </label>
-                  <input type="text" id="usernameSetting" placeholder="Enter username" required>
-                </div>
-                
-                <div class="form-group">
-                  <label for="profileEmailSetting">
-                    <span class="material-symbols-rounded">email</span>
-                    Email Address
-                  </label>
-                  <input type="email" id="profileEmailSetting" placeholder="Enter email address" required>
-                </div>
-                
-                <div class="form-group">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="emailNotifications">
-                    <span class="checkmark"></span>
-                    <span>Enable Email Notifications</span>
-                  </label>
-                </div>
-                
-                <div class="form-group install-app-group" style="border-top:1px solid #e5e7eb;padding-top:1rem;margin-top:0.5rem;">
-                  <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:500;">
-                    <span class="material-symbols-rounded" style="color:#e17055;">download</span>
-                    Install App (PWA)
-                  </label>
-                  <p style="font-size:0.85rem;color:#6b7280;margin:0.25rem 0 0.75rem 0;">Install this admin panel as an app on your device for quick access.</p>
-                  <button type="button" class="btn btn-save" onclick="promptInstall()" style="background:#e17055;border-color:#e17055;">
-                    <span class="material-symbols-rounded">install_mobile</span>
-                    Install App
-                  </button>
-                </div>
+          </section>
 
-                <div class="form-actions">
-                  <button type="submit" class="btn btn-save">
-                    <span class="material-symbols-rounded">save</span>
-                    Save Changes
-                  </button>
+          <!-- ── Ordering ── -->
+          <section class="st-pane" data-st-pane="ordering">
+            <header class="st-pane-h"><span class="material-symbols-rounded">shopping_bag</span><div><h2>Ordering</h2><p>What customers can do on your website.</p></div></header>
+            <div class="st-card" data-st-form="restaurant">
+              <div class="st-card-h"><b>Order types</b><small>Switched-off types are hidden on your website. Keep at least one on so customers can order.</small></div>
+              <div class="st-types">
+                <label class="st-type"><input type="checkbox" id="enableDeliveryToggle" <?php echo $enable_delivery ? 'checked' : ''; ?>><span class="material-symbols-rounded">local_shipping</span><b>Delivery</b><small>To the customer's door</small><i class="st-tick material-symbols-rounded">check_circle</i></label>
+                <label class="st-type"><input type="checkbox" id="enableTakeawayToggle" <?php echo $enable_takeaway ? 'checked' : ''; ?>><span class="material-symbols-rounded">takeout_dining</span><b>Takeaway</b><small>Customer picks it up</small><i class="st-tick material-symbols-rounded">check_circle</i></label>
+                <label class="st-type"><input type="checkbox" id="enableDineinToggle" <?php echo $enable_dinein ? 'checked' : ''; ?>><span class="material-symbols-rounded">restaurant</span><b>Dine in</b><small>Ordered at the table</small><i class="st-tick material-symbols-rounded">check_circle</i></label>
+              </div>
+            </div>
+            <div class="st-card" data-st-form="restaurant">
+              <label class="st-toggle">
+                <span><b>Table reservations</b><small>Shows a "Reserve" section on your website where visitors book a table for a date and time. Bookings land on the Reservations page for you to confirm.</small></span>
+                <span class="st-switch"><input type="checkbox" id="enableReservationsToggle"><i></i></span>
+              </label>
+            </div>
+            <div class="st-card" data-st-form="restaurant">
+              <div class="st-field st-narrow">
+                <label for="minimumOrderValue">Minimum order value (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
+                <input type="number" id="minimumOrderValue" min="0" step="0.01" placeholder="e.g. 350">
+                <p class="st-help">Orders below this amount can't be placed.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── Delivery ── -->
+          <section class="st-pane" data-st-pane="delivery">
+            <header class="st-pane-h"><span class="material-symbols-rounded">local_shipping</span><div><h2>Delivery</h2><p>How far you deliver and what it costs.</p></div></header>
+            <div class="st-card" data-st-form="restaurant">
+              <div class="st-grid2">
+                <div class="st-field">
+                  <label for="deliveryRadius">Delivery radius (km)</label>
+                  <input type="number" id="deliveryRadius" class="form-control" step="0.5" min="0" placeholder="e.g. 10">
+                  <p class="st-help">Furthest distance you deliver to, measured from your map pin. 0 turns the check off.</p>
                 </div>
-              </form>
+                <div class="st-field">
+                  <label for="packagingCharge">Packaging charge (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
+                  <input type="number" id="packagingCharge" class="form-control" step="0.50" min="0" placeholder="e.g. 10.00">
+                  <p class="st-help">A flat fee added to every delivery order. 0 turns it off.</p>
+                </div>
+              </div>
             </div>
-          </div>
-          
-          <!-- System Settings Card -->
-          <div class="profile-card-modern">
-            <div class="profile-card-header">
-              <h3>
-                <span class="material-symbols-rounded">tune</span>
-                System Settings
-              </h3>
-              <p class="card-description">Configure system preferences and defaults</p>
+            <div class="st-card" data-st-form="restaurant">
+              <label class="st-toggle">
+                <span><b>Charge delivery by distance</b><small>Delivery charge = distance (km) × your rate, instead of a flat charge. Only for customers inside your radius. You still confirm the amount when you accept each order.</small></span>
+                <span class="st-switch"><input type="checkbox" id="enableKmDeliveryToggle"><i></i></span>
+              </label>
+              <span class="st-sr" id="enableKmDeliveryLabel">Disabled</span>
+              <div id="deliveryRatePerKmGroup" class="st-field st-narrow st-sub" style="display:none;">
+                <label for="deliveryRatePerKm">Rate per km (<?php echo htmlspecialchars($currency_symbol); ?>)</label>
+                <input type="number" id="deliveryRatePerKm" class="form-control" step="0.5" min="0" placeholder="e.g. 5">
+              </div>
             </div>
-            <div class="profile-card-body">
-              <form id="systemSettingsForm">
-                <div class="form-group">
-                  <label for="countrySelect">
-                    <span class="material-symbols-rounded">public</span>
-                    Country
-                  </label>
-                  <p style="color:#666;font-size:0.85rem;margin-bottom:0.75rem;">Sets the default currency below. Change the currency separately if needed.</p>
+          </section>
+
+          <!-- ── Payments ── -->
+          <section class="st-pane" data-st-pane="payments">
+            <header class="st-pane-h"><span class="material-symbols-rounded">payments</span><div><h2>Payments</h2><p>How customers can pay on your website.</p></div></header>
+            <div class="st-card" data-st-form="restaurant">
+              <label class="st-toggle">
+                <span><b>Cash on delivery / pay at counter</b><small>Turn off to offer only online payment (UPI / QR) at checkout. If no online payment is set up, cash stays on so customers can still order.</small></span>
+                <span class="st-switch"><input type="checkbox" id="enableCodToggle" <?php echo $cod_enabled ? "checked" : ""; ?>><i></i></span>
+              </label>
+              <span class="st-sr" id="enableCodLabel"><?php echo $cod_enabled ? 'Enabled' : 'Disabled'; ?></span>
+            </div>
+            <div class="st-card">
+              <div class="st-card-h"><b>Business payment QR code</b><small>Your UPI / Paytm QR, shown on your website. JPG, PNG, GIF or WEBP, up to 5 MB. Uploads straight away.</small></div>
+              <div class="st-qr">
+                <div id="businessQRPreview" class="st-qr-preview" style="display:none;">
+                  <img id="businessQRPreviewImg" src="" alt="Your payment QR code">
+                  <button type="button" class="btn btn-secondary btn-sm sx-danger-ghost" onclick="removeBusinessQR()"><span class="material-symbols-rounded">delete</span>Remove QR code</button>
+                </div>
+                <div class="st-qr-up">
+                  <label class="st-file"><span class="material-symbols-rounded">qr_code_2</span><span>Choose an image</span><input type="file" id="businessQRUpload" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"></label>
+                  <button type="button" class="btn btn-primary" id="uploadBusinessQRBtn"><span class="material-symbols-rounded">upload</span>Upload QR Code</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── Tax and bill ── -->
+          <section class="st-pane" data-st-pane="tax">
+            <header class="st-pane-h"><span class="material-symbols-rounded">receipt_long</span><div><h2>Tax and bill</h2><p>Tax on orders and what prints on the customer bill.</p></div></header>
+            <div class="st-card" data-st-form="restaurant">
+              <label class="st-toggle">
+                <span><b>Charge tax</b><small>Turn off to remove tax from orders and your website.</small></span>
+                <span class="st-switch"><input type="checkbox" id="enableGstToggle" <?php echo $enable_gst ? "checked" : ""; ?>><i></i></span>
+              </label>
+              <span class="st-sr" id="enableGstLabel">Enabled</span>
+              <div class="st-grid2 st-sub" data-st-when="enableGstToggle">
+                <div class="st-field">
+                  <label for="taxName">Tax name</label>
+                  <input type="text" id="taxName" class="form-control" maxlength="50" placeholder="e.g. GST, VAT, Sales Tax" value="<?php echo htmlspecialchars($tax_name); ?>">
+                </div>
+                <div class="st-field">
+                  <label for="taxPercentInput">Tax percent (%)</label>
+                  <input type="number" id="taxPercentInput" class="form-control" step="0.01" min="0" max="100" placeholder="e.g. 5" value="<?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$tax_percent, 2), '0'), '.')); ?>">
+                </div>
+              </div>
+            </div>
+            <div class="st-card" data-st-form="restaurant">
+              <label class="st-toggle">
+                <span><b>Show business ID on the bill</b><small>Prints your registration number on the customer bill, e.g. GSTIN in India or PAN No in Nepal. Name the label the way your country does.</small></span>
+                <span class="st-switch"><input type="checkbox" id="showBusinessIdToggle" <?php echo $show_business_id ? "checked" : ""; ?>><i></i></span>
+              </label>
+              <span class="st-sr" id="showBusinessIdLabel"><?php echo $show_business_id ? 'Enabled' : 'Disabled'; ?></span>
+              <div class="st-grid2 st-sub" data-st-when="showBusinessIdToggle">
+                <div class="st-field">
+                  <label for="businessIdLabelInput">Label</label>
+                  <input type="text" id="businessIdLabelInput" class="form-control" maxlength="30" placeholder="e.g. GSTIN, PAN No, VAT Number" value="<?php echo htmlspecialchars($business_id_label); ?>">
+                </div>
+                <div class="st-field">
+                  <label for="businessIdNoInput">Number</label>
+                  <input type="text" id="businessIdNoInput" class="form-control" maxlength="20" placeholder="e.g. 22AAAAA0000A1Z5" value="<?php echo htmlspecialchars($business_id_no); ?>">
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── Social links ── -->
+          <section class="st-pane" data-st-pane="social">
+            <header class="st-pane-h"><span class="material-symbols-rounded">share</span><div><h2>Social links</h2><p>Shown on your website. Leave a box empty to hide that one. WhatsApp uses your phone number.</p></div></header>
+            <div class="st-card st-socials" data-st-form="restaurant">
+              <div class="st-social"><span class="st-brand" style="--b:#E4405F">IG</span><div class="st-field"><label for="instagramLink">Instagram</label><input type="url" id="instagramLink" placeholder="https://instagram.com/yourpage"></div></div>
+              <div class="st-social"><span class="st-brand" style="--b:#1877F2">f</span><div class="st-field"><label for="facebookLink">Facebook</label><input type="url" id="facebookLink" placeholder="https://facebook.com/yourpage"></div></div>
+              <div class="st-social"><span class="st-brand" style="--b:#111827">X</span><div class="st-field"><label for="twitterLink">X (Twitter)</label><input type="url" id="twitterLink" placeholder="https://x.com/yourpage"></div></div>
+              <div class="st-social"><span class="st-brand" style="--b:#FF0000"><span class="material-symbols-rounded">play_arrow</span></span><div class="st-field"><label for="youtubeLink">YouTube</label><input type="url" id="youtubeLink" placeholder="https://youtube.com/@yourchannel"></div></div>
+              <div class="st-social"><span class="st-brand" style="--b:#0A66C2">in</span><div class="st-field"><label for="linkedinLink">LinkedIn</label><input type="url" id="linkedinLink" placeholder="https://linkedin.com/company/yourpage"></div></div>
+            </div>
+          </section>
+
+          <!-- ── Region and language ── -->
+          <section class="st-pane" data-st-pane="region">
+            <header class="st-pane-h"><span class="material-symbols-rounded">public</span><div><h2>Region and language</h2><p>Money, time and language across your dashboard and website.</p></div></header>
+            <div class="st-card" data-st-form="system">
+              <div class="st-grid2">
+                <div class="st-field">
+                  <label for="countrySelect">Country</label>
                   <select id="countrySelect">
                     <?php foreach (getCountryData() as $iso2 => $c): ?>
                     <option value="<?php echo htmlspecialchars($c['name']); ?>" data-currency="<?php echo htmlspecialchars($c['currency_symbol']); ?>" <?php echo $country === $c['name'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['name']); ?></option>
                     <?php endforeach; ?>
                   </select>
+                  <p class="st-help">Picks the usual currency for you. You can still change it.</p>
                 </div>
-
-                <div class="form-group">
-                  <label for="currencySymbolSelect">
-                    <span class="material-symbols-rounded">currency_exchange</span>
-                    Currency Symbol
-                  </label>
+                <div class="st-field">
+                  <label for="currencySymbolSelect">Currency</label>
                   <select id="currencySymbolSelect">
                     <?php
                     $majorCurrencies = [
@@ -5755,245 +5622,220 @@ function toggleGatewayMode() {
                   </select>
                   <input type="text" id="currencySymbol" value="<?php echo $isCustom ? htmlspecialchars($currency_symbol) : ''; ?>" maxlength="10" placeholder="Enter custom currency symbol" class="currency-custom-input" style="<?php echo $isCustom ? '' : 'display: none;'; ?>">
                 </div>
-                
-                <div class="form-group">
-                  <label for="businessQRUpload">
-                    <span class="material-symbols-rounded">qr_code</span>
-                    Business Payment QR Code
-                  </label>
-                  <p style="color:#666;font-size:0.85rem;margin-bottom:0.75rem;">Upload your business payment QR code (UPI, Paytm, etc.) to display on the website. Max size: 5MB</p>
-                  <div id="businessQRPreview" style="margin-bottom:0.75rem;display:none;">
-                    <img id="businessQRPreviewImg" src="" alt="QR Code Preview" style="max-width:200px;max-height:200px;border-radius:8px;border:2px solid #e5e7eb;padding:0.5rem;background:#f9fafb;">
-                    <button type="button" onclick="removeBusinessQR()" style="margin-top:0.5rem;padding:0.5rem 1rem;background:#fee2e2;color:#b91c1c;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85rem;">
-                      <span class="material-symbols-rounded" style="font-size:1rem;vertical-align:middle;">delete</span>
-                      Remove QR Code
-                    </button>
-                  </div>
-                  <input type="file" id="businessQRUpload" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" style="margin-bottom:0.5rem;">
-                  <button type="button" class="btn btn-primary" id="uploadBusinessQRBtn" style="margin-top:0.5rem;">
-                    <span class="material-symbols-rounded">upload</span>
-                    Upload QR Code
-                  </button>
-                </div>
-                
-                <div class="form-group">
-                  <label for="timezone">
-                    <span class="material-symbols-rounded">schedule</span>
-                    Timezone
-                  </label>
-                  <select id="timezone">
-                    <?php
-                    $timezoneOptions = [
-                      'UTC' => 'UTC',
-                      'Asia/Kolkata' => 'Asia/Kolkata (India, IST)',
-                      'Asia/Kathmandu' => 'Asia/Kathmandu (Nepal, NPT)',
-                      'Asia/Dhaka' => 'Asia/Dhaka (Bangladesh)',
-                      'Asia/Colombo' => 'Asia/Colombo (Sri Lanka)',
-                      'Asia/Karachi' => 'Asia/Karachi (Pakistan)',
-                      'Asia/Dubai' => 'Asia/Dubai (UAE)',
-                      'Asia/Riyadh' => 'Asia/Riyadh (Saudi Arabia)',
-                      'Asia/Qatar' => 'Asia/Qatar',
-                      'Asia/Kuwait' => 'Asia/Kuwait',
-                      'Asia/Bahrain' => 'Asia/Bahrain',
-                      'Asia/Muscat' => 'Asia/Muscat (Oman)',
-                      'Asia/Yangon' => 'Asia/Yangon (Myanmar)',
-                      'Asia/Bangkok' => 'Asia/Bangkok (Thailand)',
-                      'Asia/Jakarta' => 'Asia/Jakarta (Indonesia)',
-                      'Asia/Singapore' => 'Asia/Singapore',
-                      'Asia/Kuala_Lumpur' => 'Asia/Kuala_Lumpur (Malaysia)',
-                      'Asia/Manila' => 'Asia/Manila (Philippines)',
-                      'Asia/Ho_Chi_Minh' => 'Asia/Ho_Chi_Minh (Vietnam)',
-                      'Asia/Hong_Kong' => 'Asia/Hong_Kong',
-                      'Asia/Shanghai' => 'Asia/Shanghai (China)',
-                      'Asia/Taipei' => 'Asia/Taipei (Taiwan)',
-                      'Asia/Tokyo' => 'Asia/Tokyo (Japan)',
-                      'Asia/Seoul' => 'Asia/Seoul (South Korea)',
-                      'Asia/Jerusalem' => 'Asia/Jerusalem (Israel)',
-                      'Asia/Istanbul' => 'Asia/Istanbul (Turkey)',
-                      'Europe/London' => 'Europe/London (UK, GMT)',
-                      'Europe/Dublin' => 'Europe/Dublin (Ireland)',
-                      'Europe/Paris' => 'Europe/Paris (France)',
-                      'Europe/Berlin' => 'Europe/Berlin (Germany)',
-                      'Europe/Madrid' => 'Europe/Madrid (Spain)',
-                      'Europe/Rome' => 'Europe/Rome (Italy)',
-                      'Europe/Amsterdam' => 'Europe/Amsterdam (Netherlands)',
-                      'Europe/Lisbon' => 'Europe/Lisbon (Portugal)',
-                      'Europe/Moscow' => 'Europe/Moscow (Russia)',
-                      'Africa/Cairo' => 'Africa/Cairo (Egypt)',
-                      'Africa/Lagos' => 'Africa/Lagos (Nigeria)',
-                      'Africa/Nairobi' => 'Africa/Nairobi (Kenya)',
-                      'Africa/Johannesburg' => 'Africa/Johannesburg (South Africa)',
-                      'Africa/Casablanca' => 'Africa/Casablanca (Morocco)',
-                      'America/New_York' => 'America/New_York (US Eastern)',
-                      'America/Chicago' => 'America/Chicago (US Central)',
-                      'America/Denver' => 'America/Denver (US Mountain)',
-                      'America/Los_Angeles' => 'America/Los_Angeles (US Pacific)',
-                      'America/Toronto' => 'America/Toronto (Canada)',
-                      'America/Mexico_City' => 'America/Mexico_City (Mexico)',
-                      'America/Bogota' => 'America/Bogota (Colombia)',
-                      'America/Sao_Paulo' => 'America/Sao_Paulo (Brazil)',
-                      'America/Argentina/Buenos_Aires' => 'America/Buenos_Aires (Argentina)',
-                      'America/Santiago' => 'America/Santiago (Chile)',
-                      'America/Lima' => 'America/Lima (Peru)',
-                      'Australia/Sydney' => 'Australia/Sydney',
-                      'Australia/Perth' => 'Australia/Perth',
-                      'Pacific/Auckland' => 'Pacific/Auckland (New Zealand)',
-                      'Pacific/Fiji' => 'Pacific/Fiji',
-                    ];
-                    // If the restaurant's saved timezone isn't in the curated list above
-                    // (still a valid IANA zone), include it so the dropdown doesn't silently
-                    // fall back to something else on save.
-                    if (!empty($timezone) && !isset($timezoneOptions[$timezone])) {
-                      $timezoneOptions[$timezone] = $timezone;
-                    }
-                    foreach ($timezoneOptions as $tzValue => $tzLabel):
-                    ?>
-                    <option value="<?php echo htmlspecialchars($tzValue); ?>" <?php echo $timezone === $tzValue ? 'selected' : ''; ?>><?php echo htmlspecialchars($tzLabel); ?></option>
-                    <?php endforeach; ?>
-                  </select>
-                </div>
-
-                <?php if ($enable_language): ?>
-                <div class="form-group">
-                  <label for="language">
-                    <span class="material-symbols-rounded">language</span>
-                    Language
-                  </label>
-                  <select id="language">
-                    <?php
-                    $langs = [
-                      'en' => 'English',
-                      'hi' => 'हिन्दी (Hindi)',
-                      'bn' => 'বাংলা (Bengali)',
-                      'te' => 'తెలుగు (Telugu)',
-                      'mr' => 'मराठी (Marathi)',
-                      'ta' => 'தமிழ் (Tamil)',
-                      'ur' => 'اردو (Urdu)',
-                      'gu' => 'ગુજરાતી (Gujarati)',
-                      'kn' => 'ಕನ್ನಡ (Kannada)',
-                      'ml' => 'മലയാളം (Malayalam)',
-                      'pa' => 'ਪੰਜਾਬੀ (Punjabi)',
-                      'es' => 'Español (Spanish)',
-                      'fr' => 'Français (French)',
-                      'de' => 'Deutsch (German)',
-                      'zh' => '中文 (Chinese)',
-                      'ja' => '日本語 (Japanese)',
-                      'ar' => 'العربية (Arabic)',
-                      'pt' => 'Português (Portuguese)',
-                      'ru' => 'Русский (Russian)',
-                    ];
-                    foreach ($langs as $code => $name) {
-                      $selected = $language === $code ? 'selected' : '';
-                      echo '<option value="' . htmlspecialchars($code) . '" ' . $selected . '>' . htmlspecialchars($name) . '</option>';
-                    }
-                    ?>
-                  </select>
-                  <p style="color:#666;font-size:0.85rem;margin-top:0.5rem;">When changed to a non-English language, menu items will be auto-translated.</p>
-                </div>
-                <?php endif; ?>
-                
-                <div class="form-group">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="autoSync">
-                    <span class="checkmark"></span>
-                    <span>Enable Auto Sync</span>
-                  </label>
-                </div>
-
-                <div class="form-group">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="notifications">
-                    <span class="checkmark"></span>
-                    <span>Enable Push Notifications</span>
-                  </label>
-                </div>
-                
-                <div class="form-actions">
-                  <button type="submit" class="btn btn-save">
-                    <span class="material-symbols-rounded">save</span>
-                    Save Changes
-                  </button>
-                </div>
-              </form>
+              </div>
+              <div class="st-field">
+                <label for="timezone">Timezone</label>
+                <select id="timezone">
+                  <?php
+                  $timezoneOptions = [
+                    'UTC' => 'UTC',
+                    'Asia/Kolkata' => 'Asia/Kolkata (India, IST)',
+                    'Asia/Kathmandu' => 'Asia/Kathmandu (Nepal, NPT)',
+                    'Asia/Dhaka' => 'Asia/Dhaka (Bangladesh)',
+                    'Asia/Colombo' => 'Asia/Colombo (Sri Lanka)',
+                    'Asia/Karachi' => 'Asia/Karachi (Pakistan)',
+                    'Asia/Dubai' => 'Asia/Dubai (UAE)',
+                    'Asia/Riyadh' => 'Asia/Riyadh (Saudi Arabia)',
+                    'Asia/Qatar' => 'Asia/Qatar',
+                    'Asia/Kuwait' => 'Asia/Kuwait',
+                    'Asia/Bahrain' => 'Asia/Bahrain',
+                    'Asia/Muscat' => 'Asia/Muscat (Oman)',
+                    'Asia/Yangon' => 'Asia/Yangon (Myanmar)',
+                    'Asia/Bangkok' => 'Asia/Bangkok (Thailand)',
+                    'Asia/Jakarta' => 'Asia/Jakarta (Indonesia)',
+                    'Asia/Singapore' => 'Asia/Singapore',
+                    'Asia/Kuala_Lumpur' => 'Asia/Kuala_Lumpur (Malaysia)',
+                    'Asia/Manila' => 'Asia/Manila (Philippines)',
+                    'Asia/Ho_Chi_Minh' => 'Asia/Ho_Chi_Minh (Vietnam)',
+                    'Asia/Hong_Kong' => 'Asia/Hong_Kong',
+                    'Asia/Shanghai' => 'Asia/Shanghai (China)',
+                    'Asia/Taipei' => 'Asia/Taipei (Taiwan)',
+                    'Asia/Tokyo' => 'Asia/Tokyo (Japan)',
+                    'Asia/Seoul' => 'Asia/Seoul (South Korea)',
+                    'Asia/Jerusalem' => 'Asia/Jerusalem (Israel)',
+                    'Asia/Istanbul' => 'Asia/Istanbul (Turkey)',
+                    'Europe/London' => 'Europe/London (UK, GMT)',
+                    'Europe/Dublin' => 'Europe/Dublin (Ireland)',
+                    'Europe/Paris' => 'Europe/Paris (France)',
+                    'Europe/Berlin' => 'Europe/Berlin (Germany)',
+                    'Europe/Madrid' => 'Europe/Madrid (Spain)',
+                    'Europe/Rome' => 'Europe/Rome (Italy)',
+                    'Europe/Amsterdam' => 'Europe/Amsterdam (Netherlands)',
+                    'Europe/Lisbon' => 'Europe/Lisbon (Portugal)',
+                    'Europe/Moscow' => 'Europe/Moscow (Russia)',
+                    'Africa/Cairo' => 'Africa/Cairo (Egypt)',
+                    'Africa/Lagos' => 'Africa/Lagos (Nigeria)',
+                    'Africa/Nairobi' => 'Africa/Nairobi (Kenya)',
+                    'Africa/Johannesburg' => 'Africa/Johannesburg (South Africa)',
+                    'Africa/Casablanca' => 'Africa/Casablanca (Morocco)',
+                    'America/New_York' => 'America/New_York (US Eastern)',
+                    'America/Chicago' => 'America/Chicago (US Central)',
+                    'America/Denver' => 'America/Denver (US Mountain)',
+                    'America/Los_Angeles' => 'America/Los_Angeles (US Pacific)',
+                    'America/Toronto' => 'America/Toronto (Canada)',
+                    'America/Mexico_City' => 'America/Mexico_City (Mexico)',
+                    'America/Bogota' => 'America/Bogota (Colombia)',
+                    'America/Sao_Paulo' => 'America/Sao_Paulo (Brazil)',
+                    'America/Argentina/Buenos_Aires' => 'America/Buenos_Aires (Argentina)',
+                    'America/Santiago' => 'America/Santiago (Chile)',
+                    'America/Lima' => 'America/Lima (Peru)',
+                    'Australia/Sydney' => 'Australia/Sydney',
+                    'Australia/Perth' => 'Australia/Perth',
+                    'Pacific/Auckland' => 'Pacific/Auckland (New Zealand)',
+                    'Pacific/Fiji' => 'Pacific/Fiji',
+                  ];
+                  // If the restaurant's saved timezone isn't in the curated list above
+                  // (still a valid IANA zone), include it so the dropdown doesn't silently
+                  // fall back to something else on save.
+                  if (!empty($timezone) && !isset($timezoneOptions[$timezone])) {
+                    $timezoneOptions[$timezone] = $timezone;
+                  }
+                  foreach ($timezoneOptions as $tzValue => $tzLabel):
+                  ?>
+                  <option value="<?php echo htmlspecialchars($tzValue); ?>" <?php echo $timezone === $tzValue ? 'selected' : ''; ?>><?php echo htmlspecialchars($tzLabel); ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <p class="st-help">Order times, reports and opening hours follow this clock.</p>
+              </div>
             </div>
-          </div>
-
-          <!-- Printer Settings Card -->
-          <div class="profile-card-modern">
-            <div class="profile-card-header">
-              <h3>
-                <span class="material-symbols-rounded">print</span>
-                Printer Settings
-              </h3>
-              <p class="card-description">Configure your thermal receipt printer for KOTs, bills and invoices</p>
+            <div class="st-card" data-st-form="restaurant">
+              <label class="st-toggle">
+                <span><b>Language support</b><small>Lets you pick another language below and auto-translates your menu items.</small></span>
+                <span class="st-switch"><input type="checkbox" id="enableLanguageToggle" <?php echo $enable_language ? "checked" : ""; ?>><i></i></span>
+              </label>
+              <span class="st-sr" id="enableLanguageLabel"><?php echo $enable_language ? 'Enabled' : 'Disabled'; ?></span>
             </div>
-            <div class="profile-card-body">
-              <form id="printerSettingsForm" onsubmit="return false;">
-                <div class="form-group">
-                  <label for="printerWidthSelect">
-                    <span class="material-symbols-rounded">receipt_long</span>
-                    Paper Width
-                  </label>
-                  <select id="printerWidthSelect">
-                    <option value="58">58mm (small thermal printer)</option>
-                    <option value="80">80mm (standard thermal printer)</option>
-                  </select>
-                  <p style="color:#666;font-size:0.85rem;margin-top:0.5rem;">Check the paper roll width printed on the box, or measure the roll - this must match your printer exactly or receipts will print cut off or with wasted margin.</p>
-                </div>
+            <?php if ($enable_language): ?>
+            <div class="st-card" data-st-form="system">
+              <div class="st-field st-narrow">
+                <label for="language">Language</label>
+                <select id="language">
+                  <?php
+                  $langs = [
+                    'en' => 'English',
+                    'hi' => 'हिन्दी (Hindi)',
+                    'bn' => 'বাংলা (Bengali)',
+                    'te' => 'తెలుగు (Telugu)',
+                    'mr' => 'मराठी (Marathi)',
+                    'ta' => 'தமிழ் (Tamil)',
+                    'ur' => 'اردو (Urdu)',
+                    'gu' => 'ગુજરાતી (Gujarati)',
+                    'kn' => 'ಕನ್ನಡ (Kannada)',
+                    'ml' => 'മലയാളം (Malayalam)',
+                    'pa' => 'ਪੰਜਾਬੀ (Punjabi)',
+                    'es' => 'Español (Spanish)',
+                    'fr' => 'Français (French)',
+                    'de' => 'Deutsch (German)',
+                    'zh' => '中文 (Chinese)',
+                    'ja' => '日本語 (Japanese)',
+                    'ar' => 'العربية (Arabic)',
+                    'pt' => 'Português (Portuguese)',
+                    'ru' => 'Русский (Russian)',
+                  ];
+                  foreach ($langs as $code => $name) {
+                    $selected = $language === $code ? 'selected' : '';
+                    echo '<option value="' . htmlspecialchars($code) . '" ' . $selected . '>' . htmlspecialchars($name) . '</option>';
+                  }
+                  ?>
+                </select>
+                <p class="st-help">Picking a language other than English auto-translates your menu items.</p>
+              </div>
+            </div>
+            <?php endif; ?>
+          </section>
 
-                <div class="form-group">
-                  <label for="printerModeSelect">
-                    <span class="material-symbols-rounded">settings_ethernet</span>
-                    Connection Mode
-                  </label>
-                  <select id="printerModeSelect">
-                    <option value="browser">Browser / System Printer (recommended)</option>
-                    <option value="network">Network Printer (ESC/POS, direct - no print dialog)</option>
-                  </select>
-                  <p style="color:#666;font-size:0.85rem;margin-top:0.5rem;">
-                    <strong>Browser/System:</strong> works with any thermal printer that has a Windows/Android driver installed (USB, Bluetooth or network). Opens a print preview and uses your OS print dialog.<br>
-                    <strong>Network Printer:</strong> sends raw print commands straight to a LAN thermal printer's IP address - no driver needed, no dialog, prints instantly like a real POS terminal. Requires a network (Ethernet/Wi-Fi) thermal printer.
-                  </p>
+          <!-- ── Printer ── -->
+          <section class="st-pane" data-st-pane="printer">
+            <header class="st-pane-h"><span class="material-symbols-rounded">print</span><div><h2>Printer</h2><p>Your thermal printer for KOTs, bills and invoices. Saved on this device.</p></div>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="testPrintReceipt()"><span class="material-symbols-rounded">print</span>Test print</button>
+            </header>
+            <div class="st-card" data-st-form="printer">
+              <div class="st-field">
+                <label>Paper width</label>
+                <select id="printerWidthSelect" class="st-sr-select" aria-label="Paper width">
+                  <option value="58">58mm (small thermal printer)</option>
+                  <option value="80">80mm (standard thermal printer)</option>
+                </select>
+                <div class="st-choice" data-st-mirror="printerWidthSelect">
+                  <button type="button" data-v="58"><b>58 mm</b><small>Small thermal printer</small></button>
+                  <button type="button" data-v="80"><b>80 mm</b><small>Standard thermal printer</small></button>
                 </div>
-
-                <div id="printerNetworkFields" style="display:none;">
-                  <div class="form-group">
-                    <label for="printerNetworkIp">
-                      <span class="material-symbols-rounded">lan</span>
-                      Printer IP Address
-                    </label>
+                <p class="st-help">Check the roll width on the box, or measure the roll. It must match your printer, or receipts print cut off.</p>
+              </div>
+              <div class="st-field">
+                <label>Connection</label>
+                <select id="printerModeSelect" class="st-sr-select" aria-label="Connection mode">
+                  <option value="browser">Browser / System Printer (recommended)</option>
+                  <option value="network">Network Printer (ESC/POS, direct - no print dialog)</option>
+                </select>
+                <div class="st-choice" data-st-mirror="printerModeSelect">
+                  <button type="button" data-v="browser"><b>Browser / system printer</b><small>Recommended. Any printer with a driver (USB, Bluetooth or network). Uses the print dialog.</small></button>
+                  <button type="button" data-v="network"><b>Network printer</b><small>Prints straight to a Wi-Fi / LAN thermal printer by IP. No driver, no dialog.</small></button>
+                </div>
+              </div>
+              <div id="printerNetworkFields" style="display:none;">
+                <div class="st-grid2 st-sub">
+                  <div class="st-field">
+                    <label for="printerNetworkIp">Printer IP address</label>
                     <input type="text" id="printerNetworkIp" placeholder="e.g. 192.168.1.50">
                   </div>
-                  <div class="form-group">
-                    <label for="printerNetworkPort">
-                      <span class="material-symbols-rounded">settings_input_component</span>
-                      Port
-                    </label>
+                  <div class="st-field">
+                    <label for="printerNetworkPort">Port</label>
                     <input type="number" id="printerNetworkPort" value="9100" min="1" max="65535">
-                    <p style="color:#666;font-size:0.85rem;margin-top:0.5rem;">9100 is the standard raw ESC/POS port used by almost all network thermal printers.</p>
+                    <p class="st-help">9100 is the standard port for almost all network thermal printers.</p>
                   </div>
                 </div>
-
-                <div class="form-group" style="border-top:1px solid #e5e7eb;padding-top:1rem;margin-top:0.5rem;">
-                  <label style="display:flex;align-items:center;gap:0.5rem;font-weight:500;">
-                    <span class="material-symbols-rounded" style="color:#0066cc;">science</span>
-                    Don't have a printer yet?
-                  </label>
-                  <p style="font-size:0.85rem;color:#6b7280;margin:0.25rem 0 0.75rem 0;">Run the bundled virtual printer to test the full print flow (including Network mode) with no hardware: open a terminal in <code>main/tools</code> and run <code>php virtual_printer_server.php</code>, then set Connection Mode to Network Printer with address <code>127.0.0.1</code> and port <code>9100</code>. Every print job will show up in that terminal exactly as a real printer would receive it.</p>
-                </div>
-
-                <div class="form-actions">
-                  <button type="button" class="btn btn-save" onclick="savePrinterSettingsForm()">
-                    <span class="material-symbols-rounded">save</span>
-                    Save Printer Settings
-                  </button>
-                  <button type="button" class="btn btn-secondary" onclick="testPrintReceipt()" style="margin-left:0.5rem;">
-                    <span class="material-symbols-rounded">print</span>
-                    Test Print
-                  </button>
-                </div>
-              </form>
+              </div>
             </div>
+            <details class="st-card st-details">
+              <summary><span class="material-symbols-rounded">science</span>Don't have a printer yet?<span class="material-symbols-rounded st-chev">expand_more</span></summary>
+              <p class="st-help">Run the bundled virtual printer to test the full print flow (including Network mode) with no hardware: open a terminal in <code>main/tools</code> and run <code>php virtual_printer_server.php</code>, then choose Network printer with address <code>127.0.0.1</code> and port <code>9100</code>. Every print job shows up in that terminal exactly as a real printer would receive it.</p>
+            </details>
+          </section>
+
+          <!-- ── Account ── -->
+          <section class="st-pane" data-st-pane="account">
+            <header class="st-pane-h"><span class="material-symbols-rounded">account_circle</span><div><h2>Account</h2><p>Your login details and this device.</p></div></header>
+            <div class="st-card" data-st-form="profile">
+              <div class="st-card-h"><b>Login details</b></div>
+              <div class="st-grid2">
+                <div class="st-field">
+                  <label for="usernameSetting">Username</label>
+                  <input type="text" id="usernameSetting" placeholder="Enter username" required>
+                </div>
+                <div class="st-field">
+                  <label for="profileEmailSetting">Email address</label>
+                  <input type="email" id="profileEmailSetting" placeholder="Enter email address" required>
+                </div>
+              </div>
+              <label class="st-toggle st-toggle-flat">
+                <span><b>Email notifications</b></span>
+                <span class="st-switch"><input type="checkbox" id="emailNotifications"><i></i></span>
+              </label>
+            </div>
+            <div class="st-card" data-st-form="system">
+              <div class="st-card-h"><b>This device</b></div>
+              <label class="st-toggle st-toggle-flat">
+                <span><b>Auto sync</b></span>
+                <span class="st-switch"><input type="checkbox" id="autoSync"><i></i></span>
+              </label>
+              <label class="st-toggle st-toggle-flat">
+                <span><b>Push notifications</b></span>
+                <span class="st-switch"><input type="checkbox" id="notifications"><i></i></span>
+              </label>
+            </div>
+            <div class="st-card st-install install-app-group">
+              <span class="st-install-ic material-symbols-rounded">install_mobile</span>
+              <div><b>Install the app</b><small>Add this dashboard to your phone or computer for one-tap access.</small></div>
+              <button type="button" class="btn btn-secondary" onclick="promptInstall()"><span class="material-symbols-rounded">download</span>Install App</button>
+            </div>
+          </section>
+
+          <!-- one save bar for every section -->
+          <div class="st-savebar" id="stSavebar" hidden>
+            <span class="st-savebar-msg"><span class="material-symbols-rounded">edit_note</span><span id="stSaveMsg">You have unsaved changes</span></span>
+            <button type="button" class="btn btn-secondary" id="stDiscard">Discard</button>
+            <button type="button" class="btn btn-primary" id="stSave"><span class="material-symbols-rounded">save</span>Save changes</button>
           </div>
         </div>
       </div>
@@ -6045,11 +5887,11 @@ function toggleGatewayMode() {
               </div>
             </div>
             <div class="profile-actions-section">
-              <button class="btn btn-primary" id="editProfileBtn" onclick="showPage('settingsPage')">
+              <button class="btn btn-primary" id="editProfileBtn" onclick="showPage('settingsPage'); window.openSettingsSection && openSettingsSection('account')">
                 <span class="material-symbols-rounded">edit</span>
                 Edit Profile
               </button>
-              <button class="btn btn-secondary" type="button" onclick="showPage('settingsPage')">
+              <button class="btn btn-secondary" type="button" onclick="showPage('settingsPage'); window.openSettingsSection && openSettingsSection('account')">
                 <span class="material-symbols-rounded">workspace_premium</span>
                 Manage Subscription
               </button>
@@ -7829,6 +7671,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/areas-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/areas-studio.js'); ?>" defer></script>
   <script src="../assets/js/tables-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/tables-studio.js'); ?>" defer></script>
   <script src="../assets/js/custom-domain-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/custom-domain-studio.js'); ?>" defer></script>
+  <script src="../assets/js/settings-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/settings-studio.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>
@@ -8492,12 +8335,12 @@ document.getElementById('systemSettingsForm').addEventListener('submit', async f
     var res = await fetch('../admin/auth.php', { method: 'POST', body: formData });
     var data = await res.json();
     if (data.success) {
-      showNotification('success', data.message);
+      showNotification(data.message || 'Settings saved', 'success');
     } else {
-      showNotification('error', data.message || 'Failed to save settings');
+      showNotification(data.message || 'Failed to save settings', 'error');
     }
   } catch(err) {
-    showNotification('error', 'Network error');
+    showNotification('Network error', 'error');
   }
   btn.disabled = false;
   btn.innerHTML = '<span class="material-symbols-rounded">save</span> Save Changes';
