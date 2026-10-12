@@ -315,6 +315,15 @@ body { background: #eef0f4; }
         <div class="field"><i class="fa-solid fa-lock"></i>
           <input type="password" id="signupConfirmPassword" placeholder="Re-enter your password" autocomplete="new-password" required></div>
       </div>
+      <div class="form-group">
+        <label for="signupBirthday">Birthday <span style="font-weight:400;color:#9ca3af">(optional, for a birthday treat)</span></label>
+        <div class="field"><i class="fa-solid fa-cake-candles"></i>
+          <input type="date" id="signupBirthday" max="<?php echo date('Y-m-d'); ?>"></div>
+      </div>
+      <label class="optin-row" style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 12px;padding:10px 12px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;color:#374151;cursor:pointer;">
+        <input type="checkbox" id="signupOptin" style="width:17px;height:17px;margin-top:2px;accent-color:#16a34a;flex-shrink:0;">
+        <span><b style="display:block;color:#111827">Send my rewards and offers on WhatsApp</b>Gift codes, birthday treats and the odd special. Stop anytime.</span>
+      </label>
       <div class="remember-row">
         <label><input type="checkbox" id="signupRemember" checked> Remember me</label>
       </div>
@@ -734,6 +743,8 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
       fd.append('password', password);
       fd.append('confirmPassword', confirmPassword);
       fd.append('remember', document.getElementById('signupRemember').checked ? '1' : '');
+      fd.append('birthday', (document.getElementById('signupBirthday') || {}).value || '');
+      if ((document.getElementById('signupOptin') || {}).checked) fd.append('whatsapp_optin', '1');
       if (window.referralCode) fd.append('ref', window.referralCode);
 
       fetch('customer_auth.php', { method: 'POST', body: fd })

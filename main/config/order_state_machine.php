@@ -230,11 +230,22 @@ function validateAndUpdateOrderStatus(
                 $detailStmt->execute([$orderId]);
                 $detail = $detailStmt->fetch(PDO::FETCH_ASSOC);
                 if ($detail && !empty($detail['customer_phone'])) {
-                    require_once __DIR__ . '/growth_helpers.php';
-                    $customerId = findCustomerIdByPhone($conn, $orderRestaurantId, $detail['customer_phone']);
+                    // Loyalty on every channel (website, POS, table): a POS / waiter
+                    // order's phone gets a customer record the first time, so it earns too.
+                    // The program type decides what's earned (points here; stamps and
+                    // milestones in loyalty_engine.php; cashback via the wallet hook).
+                    require_once __DIR__ . '/loyalty_engine.php';
+                    $fullStmt = $conn->prepare('SELECT * FROM orders WHERE id = ?');
+                    $fullStmt->execute([$orderId]);
+                    $fullOrder = $fullStmt->fetch(PDO::FETCH_ASSOC);
+                    $customerId = $fullOrder ? loyaltyEnsureCustomerForOrder($conn, $fullOrder) : null;
                     if ($customerId) {
-                        awardLoyaltyPoints($conn, $orderRestaurantId, $customerId, $orderId, (float)$detail['total']);
+                        $growthSettingsNow = getGrowthSettings($conn, $orderRestaurantId);
+                        if (loyaltyProgramType($growthSettingsNow) === 'points') {
+                            awardLoyaltyPoints($conn, $orderRestaurantId, $customerId, $orderId, (float)$detail['total']);
+                        }
                         completeReferralIfPending($conn, $orderRestaurantId, $customerId);
+                        loyaltyOnOrderCompleted($conn, $orderId, $customerId);
                     }
                 }
             }

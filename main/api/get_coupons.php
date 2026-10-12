@@ -51,9 +51,16 @@ try {
         $stmt = $conn->prepare("SELECT id, coupon_code, discount_type, discount_value, minimum_order_amount, description, valid_from, valid_until, is_milestone FROM coupons WHERE $valid AND coupon_code = :code LIMIT 1");
         $stmt->execute([':rid' => $restaurant_id, ':code' => strtoupper(substr((string)$_GET['code'], 0, 50))]);
     } else {
-        // Private reward codes are never listed
-        $stmt = $conn->prepare("SELECT id, coupon_code, discount_type, discount_value, minimum_order_amount, description, valid_from, valid_until, is_milestone FROM coupons WHERE $valid AND owner_phone IS NULL ORDER BY discount_value DESC");
-        $stmt->execute([':rid' => $restaurant_id]);
+        // Private reward codes are listed only for their owner (the logged-in customer)
+        $myPhone = '';
+        try {
+            require_once __DIR__ . '/../website/customer_session.php';
+            require_once __DIR__ . '/../config/order_abuse_guard.php';
+            $me = getLoggedInCustomer($conn, $restaurant_id);
+            if ($me) $myPhone = orderAbuseNormalizePhone((string)$me['phone']) ?? (string)$me['phone'];
+        } catch (Throwable $e) {}
+        $stmt = $conn->prepare("SELECT id, coupon_code, discount_type, discount_value, minimum_order_amount, description, valid_from, valid_until, is_milestone, owner_phone IS NOT NULL AS is_personal FROM coupons WHERE $valid AND (owner_phone IS NULL OR (owner_phone = :me AND :me2 <> '')) ORDER BY owner_phone IS NULL, discount_value DESC");
+        $stmt->execute([':rid' => $restaurant_id, ':me' => $myPhone, ':me2' => $myPhone]);
     }
     $coupons = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

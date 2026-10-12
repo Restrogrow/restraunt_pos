@@ -28,6 +28,7 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/../config/growth_helpers.php';
 require_once __DIR__ . '/../config/order_abuse_guard.php';
 require_once __DIR__ . '/customer_session.php';
+require_once __DIR__ . '/../config/loyalty_engine.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -55,7 +56,7 @@ function loyaltyResolveCustomer(PDO $conn, string $rid, string $phone): ?array {
     if (!$who) return null;
     $raw = (string)$who['phone'];
     $norm = orderAbuseNormalizePhone($raw) ?? $raw;
-    $stmt = $conn->prepare("SELECT id, customer_name, phone, total_spent, total_visits, loyalty_points_balance, created_at
+    $stmt = $conn->prepare("SELECT id, customer_name, phone, total_spent, total_visits, loyalty_points_balance, created_at, stamps, birthday, anniversary, whatsapp_optin
         FROM customers WHERE restaurant_id = ? AND phone IN (?, ?) ORDER BY phone = ? DESC, total_spent DESC LIMIT 1");
     $stmt->execute([$rid, $norm, $raw, $norm]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -114,6 +115,10 @@ function loyaltyMember(PDO $conn, string $rid, array $customer, array $settings,
         'next_tier' => $nextTier,
         'referral_code' => $referralCode,
         'ledger' => $ledger,
+        'stamps' => (int)($customer['stamps'] ?? 0),
+        'gifts' => loyaltyCustomerGifts($conn, $rid, (int)$customer['id']),
+        'wallet_balance' => loyaltyProgramType($settings) === 'cashback' ? loyaltyWalletBalance($conn, $rid, (string)$customer['phone']) : null,
+        'details' => ['birthday' => $customer['birthday'] ?? null, 'anniversary' => $customer['anniversary'] ?? null, 'whatsapp_optin' => (int)($customer['whatsapp_optin'] ?? 0)],
         'pending_codes' => array_map(function ($l) use ($settings, $cur) {
             $label = !empty($l['redemption_item_name']) ? 'Free ' . $l['redemption_item_name']
                 : $cur . rtrim(rtrim(number_format(abs((int)$l['points_change']) * (float)$settings['redeem_value_per_point'], 2, '.', ''), '0'), '.') . ' off';
@@ -128,6 +133,7 @@ try {
     if (!$restaurantId) throw new Exception('Restaurant not identified');
 
     ensureGrowthSchema($conn);
+    ensureLoyaltyEngineSchema($conn);
 
     switch ($action) {
         case 'page':
@@ -143,6 +149,12 @@ try {
                 'referrer_reward_points' => (int)$settings['referrer_reward_points'],
                 'referred_reward_points' => (int)$settings['referred_reward_points'],
                 'points_expiry_days' => (int)($settings['points_expiry_days'] ?? 0),
+                'program_type' => loyaltyProgramType($settings),
+                'cashback_pct' => (float)($settings['cashback_pct'] ?? 0),
+                'cashback_max' => (float)($settings['cashback_max'] ?? 0),
+                'stamp_goal' => (int)($settings['stamp_goal'] ?? 6),
+                'stamp_min_order' => (float)($settings['stamp_min_order'] ?? 0),
+                'stamp_reward' => loyaltyProgramType($settings) === 'stamps' ? loyaltyStampRewardLabel($conn, $settings + ['restaurant_id' => $restaurantId]) : null,
                 'tiers' => $tiers,
                 'rewards' => $settings['loyalty_enabled'] ? loyaltyRewardsWithDish($conn, $restaurantId) : [],
             ];
@@ -150,6 +162,18 @@ try {
             $loggedIn = (bool)getLoggedInCustomer($conn, $restaurantId) || $customer;
             echo json_encode(['success' => true, 'program' => $program, 'logged_in' => (bool)$loggedIn,
                 'member' => $customer ? loyaltyMember($conn, $restaurantId, $customer, $settings, $tiers) : null], JSON_UNESCAPED_UNICODE);
+            break;
+
+        case 'save_details':
+            // Birthday / anniversary / WhatsApp opt-in, for the logged-in customer
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Exception('Invalid request method');
+            $customer = loyaltyResolveCustomer($conn, $restaurantId, $phone);
+            if (!$customer) throw new Exception('Please log in first.');
+            $date = function ($v) { $v = trim((string)$v); return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) && strtotime($v) && $v <= date('Y-m-d') && $v >= '1900-01-01' ? $v : null; };
+            $optin = !empty($_POST['whatsapp_optin']) ? 1 : 0;
+            $conn->prepare('UPDATE customers SET optin_at = IF(? = 1 AND whatsapp_optin = 0, NOW(), optin_at), birthday = COALESCE(?, birthday), anniversary = ?, whatsapp_optin = ? WHERE id = ?')
+                 ->execute([$optin, $date($_POST['birthday'] ?? ''), $date($_POST['anniversary'] ?? ''), $optin, (int)$customer['id']]);
+            echo json_encode(['success' => true]);
             break;
 
         case 'summary':

@@ -175,6 +175,35 @@ button { font-family: inherit; }
 .lx-act strong.out { color: #dc2626; }
 .lx-fine { margin-top: 18px; text-align: center; font-size: 11.5px; color: #9ca3af; line-height: 1.6; }
 
+/* stamp card, gifts, details */
+.lx-stamps { display: grid; grid-template-columns: repeat(var(--n, 6), 1fr); gap: 8px; margin-top: 16px; }
+.lx-st { aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%; border: 2px dashed rgba(255,255,255,.35); color: rgba(255,255,255,.55); font-size: 13px; font-weight: 800; }
+.lx-st.on { border: 0; background: linear-gradient(135deg, #ffe08a, var(--gold-deep)); color: #3b2604; box-shadow: 0 6px 14px -6px rgba(245,196,81,.8); animation: lxStamp .5s cubic-bezier(.2,1.6,.4,1) both; animation-delay: calc(var(--i) * 70ms); }
+.lx-st.on svg { width: 55%; height: 55%; }
+.lx-st.gift:not(.on) { border-style: solid; border-color: var(--gold); color: var(--gold); }
+@keyframes lxStamp { from { transform: scale(.3) rotate(-30deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.lx-gifts { display: grid; gap: 10px; }
+.lx-gift { padding: 14px; border-radius: 16px; background: linear-gradient(135deg, #fff7ed, #fdf2f8); border: 1px solid #fde4cf; }
+.lx-gift.dead { background: #f9fafb; border-color: var(--line); opacity: .7; }
+.lx-gift-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.lx-gift-src { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #b45309; }
+.lx-gift-state { font-size: 11.5px; color: var(--muted); }
+.lx-gift b { display: block; font-size: 17px; }
+.lx-gift small { font-size: 12px; color: var(--muted); }
+.lx-gift-code { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 8px 8px 12px; border-radius: 12px; background: #fff; border: 1.5px dashed #fdba74; }
+.lx-gift-code span { flex: 1; font-weight: 800; letter-spacing: .14em; }
+.lx-gift-code button { padding: 7px 11px; border: 0; border-radius: 9px; background: #f3f4f6; color: var(--ink); font-size: 12px; font-weight: 700; cursor: pointer; }
+.lx-gift-code button.use { background: var(--brand); color: #fff; }
+.lx-sec.lx-hl { box-shadow: 0 0 0 2px #fcd34d, 0 4px 16px -10px rgba(28,18,48,.2); }
+.lx-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lx-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.lx-form label em { font-style: normal; font-weight: 500; }
+.lx-form input { padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; font: inherit; font-size: 14px; color: var(--ink); background: #fff; }
+.lx-optin { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 12px; border-radius: 14px; background: #f0fdf4; border: 1px solid #bbf7d0; cursor: pointer; }
+.lx-optin input { width: 18px; height: 18px; margin-top: 2px; accent-color: #16a34a; flex-shrink: 0; }
+.lx-optin b { display: block; font-size: 13.5px; }
+.lx-optin span { font-size: 12px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .lx-st.on { animation: none; } }
 /* states */
 .lx-skel { margin: 18px 14px; height: 140px; border-radius: 22px; background: linear-gradient(90deg, #ececf2 25%, #f6f6fa 50%, #ececf2 75%); background-size: 200% 100%; animation: lxShim 1.4s infinite; }
 @keyframes lxShim { from { background-position: 200% 0; } to { background-position: -200% 0; } }
@@ -272,41 +301,104 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
   function refLink(code) { var b = window.lxMenuUrl, s = b.indexOf('?') === -1 ? '?' : '&'; return location.origin + (b.charAt(0) === '/' ? '' : '/') + b.replace(/^\//, '') + s + 'ref=' + encodeURIComponent(code); }
 
   /* ── hero ── */
+  function TYPE() { return P.program_type || 'points'; }
+  // The program's promise, in one line each way
+  function pitch() {
+    var t = TYPE();
+    if (t === 'cashback') return { title: 'Get <em>' + (+P.cashback_pct) + '% back</em> on every order',
+      sub: 'Join free and get ' + (+P.cashback_pct) + '% of every order back in your wallet' + (P.cashback_max > 0 ? ' (up to ' + money(P.cashback_max) + ' an order)' : '') + '. Spend it on your next meal.' };
+    if (t === 'stamps') return { title: 'Collect ' + P.stamp_goal + ' stamps, get <em>' + esc(P.stamp_reward || 'a treat') + '</em>',
+      sub: 'One stamp for every order' + (P.stamp_min_order > 0 ? ' above ' + money(P.stamp_min_order) : '') + '. Fill the card and your reward lands in your account.' };
+    return { title: 'Every order earns you <em>free food</em>',
+      sub: 'Join free and earn ' + esc(earnLine()) + '. Swap points for discounts' + (P.rewards.length ? ' and free dishes' : '') + (P.tiers.length ? ', and unlock bigger rewards as you level up.' : '.') };
+  }
   function heroGuest() {
+    var p = pitch();
     return '<div class="lx-kicker"><i class="fa fa-crown"></i> ' + (window.lxFromQr ? 'Welcome! You scanned our rewards card' : esc(window.restaurantName) + ' Rewards') + '</div>' +
-      '<h1 class="lx-title">Every order earns you <em>free food</em></h1>' +
-      '<p class="lx-sub">Join free and earn ' + esc(earnLine()) + '. Swap points for discounts' + (P.rewards.length ? ' and free dishes' : '') + (P.tiers.length ? ', and unlock bigger rewards as you level up.' : '.') + '</p>' +
+      '<h1 class="lx-title">' + p.title + '</h1><p class="lx-sub">' + p.sub + '</p>' +
       '<div class="lx-ctas"><a class="lx-btn gold" href="' + esc(window.lxLoginUrl) + '"><i class="fa fa-user-plus"></i> Join free in 30 seconds</a>' +
-      '<a class="lx-btn ghost" href="' + esc(window.lxLoginUrl) + '">I’m already a member, log in</a></div>';
+      '<a class="lx-btn ghost" href="' + esc(window.lxLoginUrl) + '">I\u2019m already a member, log in</a></div>';
+  }
+  var STAMP_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  function stampCard() {
+    var g = Math.max(2, P.stamp_goal), have = Math.min(M.stamps, g), html = '';
+    for (var i = 0; i < g; i++) {
+      var on = i < have, last = i === g - 1;
+      html += '<span class="lx-st' + (on ? ' on' : '') + (last ? ' gift' : '') + '" style="--i:' + i + '">' + (on ? STAMP_SVG : (last ? '<i class="fa fa-gift"></i>' : (i + 1))) + '</span>';
+    }
+    return '<div class="lx-stamps" style="--n:' + Math.min(g, 6) + '">' + html + '</div>' +
+      '<div class="lx-worth">' + (g - have <= 0 ? 'Card complete' : (g - have) + ' more ' + (g - have === 1 ? 'order' : 'orders') + ' for <b>' + esc(P.stamp_reward || 'your reward') + '</b>') + '</div>';
   }
   function heroMember() {
-    var t = M.tier, n = M.next_tier, pct = 100;
+    var t = M.tier, n = M.next_tier, pct = 100, type = TYPE();
     if (n) { var floor = t ? t.min_total_spent : 0; pct = Math.max(3, Math.min(100, (M.total_spent - floor) / Math.max(1, n.min_total_spent - floor) * 100)); }
     var first = (M.name || '').split(' ')[0] || 'there';
+    var main;
+    if (type === 'stamps') main = stampCard();
+    else if (type === 'cashback') main = '<div class="lx-pts"><b id="lxPts">' + money(0) + '</b><span>in your wallet</span></div><div class="lx-worth">' + (+P.cashback_pct) + '% of every order comes back here</div>';
+    else main = '<div class="lx-pts"><b id="lxPts">0</b><span>points</span></div><div class="lx-worth">Worth ' + money(M.points_balance * P.redeem_value_per_point) + ' off your next order</div>';
+    var third = type === 'stamps' ? ['' + M.stamps + '/' + P.stamp_goal, 'Stamps'] : type === 'cashback' ? [(+P.cashback_pct) + '%', 'Cashback'] : [(t && t.points_multiplier > 1 ? t.points_multiplier + 'x' : '1x'), 'Points rate'];
     return '<div class="lx-card">' +
       '<div class="lx-card-row"><div class="lx-hello">Welcome back<b>' + esc(first) + '</b></div>' +
         '<span class="lx-tier' + (t ? '' : ' none') + '"><i class="fa fa-' + (t ? tierIcon(P.tiers.filter(function (x) { return x.tier_name === t.tier_name; })[0] || t) : 'seedling') + '"></i> ' + esc(t ? t.tier_name : 'Member') + '</span></div>' +
-      '<div class="lx-pts"><b id="lxPts">0</b><span>points</span></div>' +
-      '<div class="lx-worth">Worth ' + money(M.points_balance * P.redeem_value_per_point) + ' off your next order</div>' +
-      (P.tiers.length ? '<div class="lx-prog"><div class="lx-prog-bar"><i id="lxProg" data-w="' + pct + '"></i></div>' +
-        '<p>' + (n ? 'Spend <b>' + money(n.amount_needed) + '</b> more to reach <b>' + esc(n.tier_name) + '</b>' + (n.points_multiplier > 1 ? ' and earn ' + n.points_multiplier + 'x points' : '') : 'You’re at the <b>top tier</b>. Enjoy the best rewards.') + '</p></div>' : '') +
-      '<div class="lx-mini"><div><b>' + num(M.visits) + '</b><span>Orders</span></div><div><b>' + money(M.total_spent) + '</b><span>Spent</span></div><div><b>' + (t && t.points_multiplier > 1 ? t.points_multiplier + 'x' : '1x') + '</b><span>Points rate</span></div></div>' +
+      main +
+      (P.tiers.length && type === 'points' ? '<div class="lx-prog"><div class="lx-prog-bar"><i id="lxProg" data-w="' + pct + '"></i></div>' +
+        '<p>' + (n ? 'Spend <b>' + money(n.amount_needed) + '</b> more to reach <b>' + esc(n.tier_name) + '</b>' + (n.points_multiplier > 1 ? ' and earn ' + n.points_multiplier + 'x points' : '') : 'You\u2019re at the <b>top tier</b>. Enjoy the best rewards.') + '</p></div>' : '') +
+      '<div class="lx-mini"><div><b>' + num(M.visits) + '</b><span>Orders</span></div><div><b>' + money(M.total_spent) + '</b><span>Spent</span></div><div><b>' + third[0] + '</b><span>' + third[1] + '</span></div></div>' +
     '</div>';
   }
 
   /* ── sections ── */
   function facts() {
-    var f = [['fa-coins', earnLine(), 'Earn on every order'], ['fa-tag', '1 point = ' + money(P.redeem_value_per_point), 'Use from ' + num(P.min_redeem_points) + ' points']];
+    var t = TYPE(), f;
+    if (t === 'cashback') f = [['fa-wallet', (+P.cashback_pct) + '% back', 'On every completed order'], ['fa-bolt', 'Spend it anytime', 'Pay from your wallet at checkout']];
+    else if (t === 'stamps') f = [['fa-stamp', P.stamp_goal + ' stamps', 'Fill the card for ' + (P.stamp_reward || 'a reward')], ['fa-receipt', '1 per order', P.stamp_min_order > 0 ? 'Orders above ' + money(P.stamp_min_order) : 'Every order counts']];
+    else f = [['fa-coins', earnLine(), 'Earn on every order'], ['fa-tag', '1 point = ' + money(P.redeem_value_per_point), 'Use from ' + num(P.min_redeem_points) + ' points']];
     if (P.referral_enabled) f.push(['fa-user-group', '+' + num(P.referrer_reward_points) + ' points', 'For every friend you invite']);
-    f.push(['fa-hourglass-half', P.points_expiry_days ? 'Valid ' + P.points_expiry_days + ' days' : 'Never expire', P.points_expiry_days ? 'Points last while you keep ordering' : 'Your points are safe']);
+    f.push(['fa-cake-candles', 'Birthday treat', 'A gift on your day']);
     return '<div class="lx-facts">' + f.map(function (x) { return '<div class="lx-fact"><i class="fa ' + x[0] + '"></i><div><b>' + esc(x[1]) + '</b>' + esc(x[2]) + '</div></div>'; }).join('') + '</div>';
   }
   function steps() {
+    var t = TYPE();
+    var two = t === 'cashback' ? ['fa-wallet', 'Get money back', (+P.cashback_pct) + '% of every order goes into your wallet.']
+            : t === 'stamps' ? ['fa-stamp', 'Collect stamps', 'One stamp per order. ' + P.stamp_goal + ' stamps fill the card.']
+            : ['fa-coins', 'Collect points', esc(earnLine()) + (P.tiers.length ? ', more as you move up tiers' : '') + '.'];
+    var three = t === 'cashback' ? ['fa-gift', 'Spend it', 'Pay for your next order from your wallet, fully or partly.']
+              : t === 'stamps' ? ['fa-gift', 'Enjoy your reward', esc(P.stamp_reward || 'Your reward') + ' appears in your account, ready to use.']
+              : ['fa-gift', 'Treat yourself', 'Swap points for money off' + (P.rewards.length ? ' or a free dish' : '') + ' whenever you like.'];
     return '<section class="lx-sec"><div class="lx-h"><h2>How it works</h2></div><div class="lx-steps">' +
       '<div class="lx-step"><i class="fa fa-bag-shopping" data-n="1"></i><div><b>Order as usual</b><span>Online or at the restaurant, using your phone number.</span></div></div>' +
-      '<div class="lx-step"><i class="fa fa-coins" data-n="2"></i><div><b>Collect points</b><span>' + esc(earnLine()) + (P.tiers.length ? ', more as you move up tiers' : '') + '.</span></div></div>' +
-      '<div class="lx-step"><i class="fa fa-gift" data-n="3"></i><div><b>Treat yourself</b><span>Swap points for money off' + (P.rewards.length ? ' or a free dish' : '') + ' whenever you like.</span></div></div>' +
+      '<div class="lx-step"><i class="fa ' + two[0] + '" data-n="2"></i><div><b>' + two[1] + '</b><span>' + two[2] + '</span></div></div>' +
+      '<div class="lx-step"><i class="fa ' + three[0] + '" data-n="3"></i><div><b>' + three[1] + '</b><span>' + three[2] + '</span></div></div>' +
     '</div></section>';
+  }
+  // Gifts: personal one-time codes (stamp cards, birthday, win-back…)
+  var GIFT_SRC = { stamps: 'Stamp card', birthday: 'Birthday gift', anniversary: 'Anniversary gift', welcome: 'Welcome gift', winback: 'We miss you', tier: 'Level up', milestone: 'Milestone', challenge: 'Challenge', streak: 'Streak', vip: 'VIP' };
+  function gifts() {
+    var G = (M && M.gifts) || [];
+    if (!G.length) return '';
+    var ready = G.filter(function (g) { return g.state === 'ready'; }), rest = G.filter(function (g) { return g.state !== 'ready'; });
+    return '<section class="lx-sec"><div class="lx-h"><h2>Your gifts</h2><small>' + (ready.length ? ready.length + ' ready to use' : 'All used') + '</small></div><div class="lx-gifts">' +
+      ready.concat(rest).slice(0, 8).map(function (g) {
+        var dead = g.state !== 'ready';
+        return '<div class="lx-gift' + (dead ? ' dead' : '') + '"><div class="lx-gift-top"><span class="lx-gift-src">' + esc(GIFT_SRC[g.source] || 'Gift') + '</span>' +
+          (dead ? '<span class="lx-gift-state">' + (g.state === 'used' ? 'Used' : 'Expired') + '</span>' : (g.expires_on ? '<span class="lx-gift-state">Till ' + fmtDay(g.expires_on) + '</span>' : '')) + '</div>' +
+          '<b>' + esc(g.label) + '</b>' + (g.min_order > 0 ? '<small>On orders above ' + money(g.min_order) + '</small>' : '') +
+          (dead ? '' : '<div class="lx-gift-code"><span>' + esc(g.code) + '</span><button type="button" data-gift-copy="' + esc(g.code) + '">Copy</button><button type="button" class="use" data-gift-use="' + esc(g.code) + '">Use now</button></div>') +
+        '</div>';
+      }).join('') + '</div></section>';
+  }
+  function fmtDay(d) { var x = new Date(String(d).replace(' ', 'T')); return isNaN(x) ? d : x.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }
+  // Birthday / anniversary / WhatsApp opt-in
+  function details() {
+    if (!M) return '';
+    var d = M.details || {}, need = !d.birthday;
+    return '<section class="lx-sec' + (need ? ' lx-hl' : '') + '"><div class="lx-h"><h2>' + (need ? 'Get a treat on your birthday' : 'Your special days') + '</h2></div>' +
+      (need ? '<p class="lx-note" style="margin:0 0 12px">Add your birthday and we\u2019ll have a gift waiting for you.</p>' : '') +
+      '<div class="lx-form"><label>Birthday<input type="date" id="lxBday" value="' + esc(d.birthday || '') + '" max="' + new Date().toISOString().slice(0, 10) + '"></label>' +
+      '<label>Anniversary <em>optional</em><input type="date" id="lxAnniv" value="' + esc(d.anniversary || '') + '" max="' + new Date().toISOString().slice(0, 10) + '"></label></div>' +
+      '<label class="lx-optin"><input type="checkbox" id="lxOptin"' + (d.whatsapp_optin ? ' checked' : '') + '><span><b>Send my rewards and offers on WhatsApp</b>Gift codes, birthday treats and the odd special. Stop anytime.</span></label>' +
+      '<button type="button" class="lx-btn brand" style="width:100%;margin-top:12px" data-act="save-details">Save</button></section>';
   }
   function rewards() {
     if (!P.rewards.length) return '';
@@ -377,8 +469,10 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     $('lxSkel').classList.add('hidden');
     if (!P.loyalty_enabled) { $('lxHeroBody').innerHTML = '<div class="lx-kicker"><i class="fa fa-crown"></i> Rewards</div><h1 class="lx-title">Something <em>tasty</em> is coming</h1>'; $('lxOff').classList.remove('hidden'); return; }
     if (!bodyOnly) $('lxHeroBody').innerHTML = M ? heroMember() : heroGuest();
-    $('lxBody').innerHTML = facts() + (M ? redeem() + rewards() + tiers() + referral() + activity() : steps() + rewards() + tiers() + referral()) +
-      '<p class="lx-fine">Points are added when your order is completed and come off if it’s cancelled.' + (P.points_expiry_days ? ' Points expire after ' + P.points_expiry_days + ' days without an order.' : '') + '</p>';
+    var isPts = TYPE() === 'points';
+    $('lxBody').innerHTML = facts() + (M ? gifts() + (isPts ? redeem() + rewards() : '') + details() + (isPts ? tiers() : '') + referral() + (isPts ? activity() : '')
+                                        : steps() + (isPts ? rewards() + tiers() : '') + referral()) +
+      '<p class="lx-fine">' + (TYPE() === 'cashback' ? 'Cashback lands in your wallet when your order is completed and comes off if it’s cancelled.' : TYPE() === 'stamps' ? 'A stamp is added when your order is completed. Cancelled orders don’t count.' : 'Points are added when your order is completed and come off if it’s cancelled.' + (P.points_expiry_days ? ' Points expire after ' + P.points_expiry_days + ' days without an order.' : '')) + '</p>';
     $('lxBody').classList.remove('hidden');
     $('lxSticky').innerHTML = M ? '<a class="lx-btn brand" href="' + esc(window.lxMenuUrl) + '"><i class="fa fa-utensils"></i> Order now and earn points</a>'
                                 : '<a class="lx-btn gold" href="' + esc(window.lxLoginUrl) + '"><i class="fa fa-user-plus"></i> Join free and start earning</a>';
@@ -388,11 +482,11 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
   }
 
   function countUp() {
-    var el = $('lxPts'), to = M.points_balance;
+    var el = $('lxPts'), cash = TYPE() === 'cashback', to = cash ? (+M.wallet_balance || 0) : M.points_balance, fmt = cash ? money : num;
     if (!el) return;
-    if (!to || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) { el.textContent = num(to); return; }
+    if (!to || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) { el.textContent = fmt(to); return; }
     var t0 = performance.now();
-    (function step(t) { var p = Math.min(1, (t - t0) / 1100), e = 1 - Math.pow(1 - p, 3); el.textContent = num(to * e); if (p < 1) requestAnimationFrame(step); })(t0);
+    (function step(t) { var p = Math.min(1, (t - t0) / 1100), e = 1 - Math.pow(1 - p, 3); el.textContent = fmt(to * e); if (p < 1) requestAnimationFrame(step); })(t0);
   }
   // Sections slide in as they come into view; the join / order button appears once the hero scrolls away
   function reveal() {
@@ -421,8 +515,25 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
   }
 
   document.addEventListener('click', function (e) {
+    var gc = e.target.closest('[data-gift-copy],[data-gift-use]');
+    if (gc) {
+      var code = gc.getAttribute('data-gift-copy') || gc.getAttribute('data-gift-use');
+      if (gc.hasAttribute('data-gift-use')) {
+        try { localStorage.setItem('rgRewardCode', JSON.stringify({ rid: window.restaurantId, code: code })); } catch (err) {}
+        location.href = window.lxMenuUrl; return;
+      }
+      (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject()).then(function () { toast('Code copied'); }, function () { toast(code); });
+      return;
+    }
     var t = e.target.closest('[data-pts],[data-act],[data-item]');
     if (!t) return;
+    if (t.getAttribute('data-act') === 'save-details') {
+      var fd0 = new FormData(); fd0.append('action', 'save_details'); fd0.append('restaurant_id', window.restaurantId); fd0.append('phone', storedPhone());
+      fd0.append('birthday', $('lxBday').value); fd0.append('anniversary', $('lxAnniv').value); if ($('lxOptin').checked) fd0.append('whatsapp_optin', '1');
+      t.disabled = true;
+      post(fd0).then(function (r) { t.disabled = false; if (!r.success) { toast(r.message || 'Could not save', 'error'); return; } toast('Saved'); load(); }).catch(function () { t.disabled = false; toast('Something went wrong', 'error'); });
+      return;
+    }
     if (t.hasAttribute('data-pts')) { pickPts = +t.getAttribute('data-pts'); render(true); return; }
     var a = t.getAttribute('data-act');
     if (a === 'act') { showAct = !showAct; render(true); return; }

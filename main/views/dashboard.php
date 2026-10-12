@@ -1281,9 +1281,9 @@ try {
           <span class="nav-tooltip">Growth</span>
           <ul class="submenu">
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="growthSettingsPage" onclick="setTimeout(loadGrowthSettings, 50)">
+              <a href="#" class="nav-link submenu-link" data-page="growthSettingsPage" onclick="setTimeout(function(){ loadGrowthSettings(); if (window.loadLoyaltyStudio) loadLoyaltyStudio(); }, 50)">
                 <span class="material-symbols-rounded">loyalty</span>
-                <span class="nav-label">Loyalty & Rewards</span>
+                <span class="nav-label">Loyalty Studio</span>
               </a>
             </li>
             <li class="nav-item">
@@ -3937,11 +3937,50 @@ function toggleGatewayMode() {
 
     <!-- ═══════ Growth Module: Loyalty Settings ═══════ -->
     <div id="growthSettingsPage" class="page">
-      <div class="page-header">
-        <h1>Loyalty & Rewards</h1>
-        <p>Configure points, tiers, and the referral program</p>
+      <style>
+        .ls-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 16px; padding: 5px; border-radius: 14px; background: #f3f4f6; scrollbar-width: none; }
+        .ls-tab { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 9px 14px; border: 0; border-radius: 10px; background: none; color: #4b5563; font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; }
+        .ls-tab .material-symbols-rounded { font-size: 19px; }
+        .ls-tab.on { background: #fff; color: #6d28d9; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+        .ls-hero { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; align-items: center; padding: 18px; border-radius: 18px; color: #fff; background: radial-gradient(90% 140% at 100% 0%, #6d28d9, transparent 60%), #1c1230; margin-bottom: 18px; }
+        .ls-hero p { margin: 6px 0 0; font-size: .84rem; color: rgba(255,255,255,.75); }
+        .ls-hero .up-switch b { color: #fff; }
+        .ls-kpis { display: flex; gap: 10px; }
+        .ls-kpis div { min-width: 92px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.1); text-align: center; }
+        .ls-kpis b { display: block; font-size: 1.3rem; }
+        .ls-kpis span { font-size: .72rem; color: rgba(255,255,255,.7); }
+        .ls-h { margin: 0 0 10px; font-size: 1rem; color: #111827; }
+        .ls-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+        .ls-type { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px; border: 2px solid #e5e7eb; border-radius: 16px; background: #fff; text-align: left; font: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+        .ls-type .material-symbols-rounded { font-size: 28px; color: #9ca3af; margin-bottom: 4px; }
+        .ls-type b { font-size: 1rem; color: #111827; }
+        .ls-type b em { margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: #ede9fe; color: #6d28d9; font-size: .65rem; font-style: normal; vertical-align: 2px; }
+        .ls-type small { font-size: .8rem; color: #374151; }
+        .ls-type i { font-size: .74rem; color: #6b7280; font-style: normal; }
+        .ls-type.on { border-color: #7c3aed; background: #faf5ff; box-shadow: 0 8px 20px -12px rgba(109,40,217,.5); }
+        .ls-type.on .material-symbols-rounded { color: #7c3aed; }
+        .ls-box { padding: 16px; border: 1px solid #e5e7eb; border-radius: 16px; background: #fff; }
+        .ls-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .ls-grid label { display: flex; flex-direction: column; gap: 5px; font-size: .78rem; font-weight: 700; color: #6b7280; }
+        #growthSettingsPage .ls-grid input, #growthSettingsPage .ls-grid select { padding: 9px 11px; border: 1.5px solid #e5e7eb; border-radius: 10px; font: inherit; font-size: .9rem; color: #111827; background: #fff; }
+        .ls-example { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: #f5f3ff; color: #3b0764; font-size: .86rem; line-height: 1.5; }
+        .ls-example .material-symbols-rounded { color: #7c3aed; }
+        .ls-stamp-preview { margin-bottom: 14px; padding: 14px; border-radius: 14px; background: #1c1230; }
+        .ls-stamp-preview small { display: block; margin-top: 8px; color: rgba(255,255,255,.6); font-size: .72rem; }
+        .ls-stamps { display: flex; flex-wrap: wrap; gap: 8px; }
+        .ls-st { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; border: 2px dashed rgba(255,255,255,.35); color: rgba(255,255,255,.6); font-weight: 800; font-size: .8rem; }
+        .ls-st.on { border: 0; background: linear-gradient(135deg, #ffe08a, #d99a1e); color: #3b2604; }
+        .ls-st.gift { border-style: solid; border-color: #f5c451; color: #f5c451; }
+        .ls-st .material-symbols-rounded { font-size: 20px; }
+        @media (max-width: 860px) { .ls-types { grid-template-columns: 1fr; } }
+      </style>      <div class="page-header">
+        <h1>Loyalty Studio</h1>
+        <p>Choose how customers earn, put rewards on autopilot, run games and a VIP membership, and see what it brings in.</p>
       </div>
       <div class="page-content">
+        <div id="lsTabs" class="ls-tabs"></div>
+        <div id="lsPanel"></div>
+        <div id="lsLegacy">
         <div class="analytics-stats" id="growthOverviewCards"></div>
         <div class="section-card">
           <div class="section-header">
@@ -4080,6 +4119,7 @@ function toggleGatewayMode() {
             <img id="loyaltyQrImage" src="" alt="Loyalty page QR code" width="180" height="180" style="border:1px solid #eee;border-radius:8px;">
             <p style="margin-top:10px;color:#666;font-size:13px;">Customers scan this to check their points balance and referral code.</p>
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -7386,6 +7426,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/upsell-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/upsell-admin.js'); ?>" defer></script>
   <script src="../assets/js/scratch-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/scratch-admin.js'); ?>" defer></script>
   <script src="../assets/js/wallet-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/wallet-admin.js'); ?>" defer></script>
+  <script src="../assets/js/loyalty-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
   <script src="../assets/js/story-photos-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/story-photos-admin.js'); ?>" defer></script>
