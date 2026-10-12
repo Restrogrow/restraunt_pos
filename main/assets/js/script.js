@@ -14116,6 +14116,11 @@ async function initWebsiteThemeEditor() {
       if (!frame) return;
       var cur = frame.getAttribute('data-base') || frame.src;
       try { if (frame.contentWindow && frame.contentWindow.location.href.indexOf('http') === 0) cur = frame.contentWindow.location.href; } catch (e) {}
+      // A choice for another page (e.g. Profile Page) asks for that page first
+      // (kept for a few seconds rather than used once: the settings screen can have more
+      // than one of these listeners, and a second reload must not undo the first)
+      var want = frame.getAttribute('data-want');
+      if (want && Date.now() < +(frame.getAttribute('data-want-until') || 0)) cur = want;
       frame.src = previewUrlFor(cur);
       var dot = document.getElementById('pvUnsavedDot');
       if (dot) dot.style.display = previewSaved !== null && JSON.stringify(collectPreviewTheme()) !== previewSaved ? 'inline-block' : 'none';
@@ -14138,7 +14143,25 @@ async function initWebsiteThemeEditor() {
     }
     // Any layout choice in Website Appearance refreshes the Current preview
     document.addEventListener('click', function(e) {
-      if (e.target.closest && e.target.closest('#websiteThemePage label[class$="-opt"], #websiteThemePage label[class*="-opt "], #websiteThemePage input[type="radio"]')) schedulePreviewReload();
+      var opt = e.target.closest && e.target.closest('#websiteThemePage label[class$="-opt"], #websiteThemePage label[class*="-opt "], #websiteThemePage input[type="radio"]');
+      if (!opt) return;
+      // Show the page the choice is for: Profile Page options open the profile (with a
+      // sample customer), everything else is about the home page
+      var frame = document.getElementById('livePreview');
+      if (frame) {
+        var home = (frame.getAttribute('data-base') || frame.src).split('?')[0].replace(/\/$/, '');
+        var onProfile = false;
+        try { onProfile = /\/profile(\?|$)/.test(frame.contentWindow.location.href); } catch (err) {}
+        if (opt.closest('.profile-style-opt')) {
+          frame.setAttribute('data-want', home + '/profile?preview_demo=1');
+          frame.setAttribute('data-want-until', Date.now() + 3000);
+          if (window.previewMode === 'live') window.setPreviewMode('current');
+        } else if (onProfile) {
+          frame.setAttribute('data-want', home);
+          frame.setAttribute('data-want-until', Date.now() + 3000);
+        }
+      }
+      schedulePreviewReload();
     });
     document.addEventListener('change', function(e) {
       if (e.target.closest && e.target.closest('#websiteThemePage') && (e.target.tagName === 'SELECT' || e.target.type === 'radio' || e.target.type === 'color')) schedulePreviewReload();
