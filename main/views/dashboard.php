@@ -3501,7 +3501,7 @@ function toggleGatewayMode() {
       <div class="page-header">
         <div>
           <h1>Campaign Calendar</h1>
-          <p>Occasions coming up in the next three months. Start a poster or caption for one, already filled in.</p>
+          <p>Festivals, national days and food days with an offer idea for each. Start a poster, caption or offer, already filled in.</p>
         </div>
       </div>
       <div class="page-content">

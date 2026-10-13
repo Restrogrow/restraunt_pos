@@ -2371,3 +2371,19 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 #ordersPage .ot-tab.on { border-color: #F97316; background: #F97316; color: #FFFFFF; box-shadow: 0 8px 18px -12px rgba(249,115,22,.9); }
 #ordersPage .ot-chip.on { background: #FFF7ED; color: #C2410C; box-shadow: inset 0 0 0 1.5px #FDBA74; }
 #ordersPage .ot-chip.on em { background: #F97316 !important; color: #FFFFFF !important; }
+
+/* Campaign calendar: range + type filter, month headings, offer idea (assets/js/campaign-calendar.js) */
+.campaign-cal-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.campaign-seg { display: inline-flex; gap: 3px; padding: 4px; border: 1px solid #E5E7EB; border-radius: 14px; background: #FFFFFF; overflow-x: auto; max-width: 100%; }
+.campaign-seg button { flex-shrink: 0; height: 36px; padding: 0 13px; border: 0; border-radius: 10px; background: none; color: #374151; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
+.campaign-seg button em { margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: #F3F4F6; font-style: normal; font-size: .72rem; }
+.campaign-seg button.on { background: #FFF7ED; color: #C2410C; box-shadow: inset 0 0 0 1.5px #FDBA74; }
+.campaign-seg button.on em { background: #F97316; color: #FFFFFF; }
+.campaign-month { grid-column: 1 / -1; margin: 10px 0 -2px; color: #111111; font-size: .95rem; font-weight: 800; }
+.campaign-month:first-child { margin-top: 0; }
+.campaign-card-idea { display: flex; gap: 6px; margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: #FFF7ED; color: #9A3412; font-size: .82rem; font-weight: 600; line-height: 1.4; }
+.campaign-card-idea .material-symbols-rounded { flex-shrink: 0; font-size: 17px; color: #F97316; }
+.mk .campaign-card.t-festival .campaign-card-ic { background: #FFEDD5; color: #EA580C; }
+.mk .campaign-card.t-food .campaign-card-ic { background: #DCFCE7; color: #15803D; }
+.mk .campaign-card.t-national .campaign-card-ic { background: #DBEAFE; color: #1D4ED8; }
+.mk .campaign-card .campaign-card-actions { flex-wrap: wrap; }

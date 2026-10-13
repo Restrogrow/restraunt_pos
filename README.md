@@ -40,6 +40,7 @@
 | **Blocked customers** | Redesigned | Numbers at a glance (blocked now, auto, by you, expired), a Mobile / IP switch, search and filters, and a clear Unblock confirm. |
 | **New-order popup** | Preparing + delivery time | **Ready in** has a Preparing time and, for delivery orders, a Delivery time: 5, 10, 15, 20, 30, 45 min, − / + buttons or any number. The customer's tracking page shows **Ready around 8:45 PM** or **Arrives around 9:10 PM**. |
 | **Analytics** | Rebuilt | “What to do now” tips worked out from your own orders (slowest day, busiest hour, combo ideas, dishes to push or drop, regulars who stopped coming), numbers compared with the period before, sales trend, busy-hours heatmap, menu analysis (Stars, Workhorses, Puzzles, Dogs), customers, website visitors to orders, reviews, why orders were lost, and a 7-day forecast. |
+| **Campaign calendar** | Every festival and day | 42 occasions month by month: the big festivals (Diwali, Dhanteras, Bhai Dooj, Chhath, Holi, Eid, Bakrid, Navratri, Dussehra, Karva Chauth, Raksha Bandhan, Janmashtami, Ganesh Chaturthi, Guru Nanak Jayanti, Christmas…), national days and food days. Each card has an offer idea, when to post, and Create Poster / Caption / **Offer**. Filters: next 30 days, 3 months or a year; festivals, days or food days. Festival dates come from the official holiday list (Eid and Bakrid marked as moon-dependent); next year's dates are added to `main/assets/js/campaign-calendar.js` each year. |
 | **Faster dashboards** | Smaller icon font | Dashboards download only the ~420 icons they use (41 KB instead of 373 KB) and the browser console stays quiet on the live site. |
 
 For the RestroGrow team: the **superadmin panel** gained a restaurant view, analytics, renewals, coupons, leads, support tickets, announcements, invoices with GST, security and activity, platform health and bulk actions (see [Staff apps and superadmin](#staff-apps-and-superadmin)); email can go out from a different address per kind of email; and there is a public health check for uptime monitors (see [Uptime monitoring](#uptime-monitoring)).
@@ -134,7 +135,7 @@ For the RestroGrow team: the **superadmin panel** gained a restaurant view, anal
   </tr>
   <tr>
     <td><img src="main/assets/guide/marketingPostersPage.jpg" alt="Posters"><br><b>Posters</b>: pick a dish from your menu, download</td>
-    <td><img src="main/assets/guide/marketingCalendarPage.jpg" alt="Campaign calendar"><br><b>Campaign calendar</b>: what to promote and when to post</td>
+    <td><img src="main/assets/guide/marketingCalendarPage.jpg" alt="Campaign calendar"><br><b>Campaign calendar</b>: every festival, an offer idea and when to post</td>
   </tr>
   <tr>
     <td><img src="main/assets/guide/embedPage.jpg" alt="Custom domain"><br><b>Custom domain</b>: DNS record and a real check</td>
@@ -180,7 +181,7 @@ For the RestroGrow team: the **superadmin panel** gained a restaurant view, anal
 - **POS** and **KOT** (kitchen tickets), with network or browser printing
 - **Orders**: online orders (accept / reject / status / route), all orders, blocked customers, customers, staff, waiter requests
 - **Payments**: transactions, PhonePe gateway*, sales reports with CSV, analytics
-- **Marketing**: posters, promo videos, social captions, campaign calendar
+- **Marketing**: posters, promo videos, social captions, campaign calendar (festivals, national days and food days with offer ideas)
 - **Offers**: All offers overview, coupons and milestone offers, offer filters, Combos & New, bestsellers, Today's Special, Complete your meal, scratch card, wallet, catering
 - **Growth**: Loyalty Studio (cashback / points / stamps, Autopilot gifts, games, VIP, phone card, performance) and WhatsApp (automatic gift messages and campaigns through RepeatGrow), referrals, segments, growth reports
 - **Delivery**: zones, live delivery map, feedback
