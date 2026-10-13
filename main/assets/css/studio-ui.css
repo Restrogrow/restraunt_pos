@@ -2360,4 +2360,10 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .kt-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 46px 16px; border: 1.5px dashed #E5E7EB; border-radius: 16px; background: #FFFFFF; color: #6B7280; text-align: center; }
 .kt-empty .material-symbols-rounded { font-size: 40px; color: #FDBA74; }
 .kt-empty b { color: #111111; }
-.kt-empty button { margin-top: 6px; padding: 8px 14px; border: 1.5px solid #FED7AA; border-radius: 10px; background: #FFF7ED; color: #C2410C; font: inherit; font-weight: 800; cursor: pointer; }
+.kt-empty button { margin-top: 6px; padding: 8px 14px; border: 1.5px solid #FED7AA; border-radius: 10px; background: #FFF7ED; color: #C2410C; font: inherit; font-weight: 800; cursor: pointer; }/* KOT: orange instead of black, no coloured top line */
+.page.lg .kot-order-card.kt, .page.lg .kot-order-card.kt[class*="kt-"] { border-top: 1px solid #E5E7EB; }
+.page.lg .kot-order-card.kt:hover { border-top-color: #FDBA74; }
+.kt-n { background: #FFF7ED; color: #EA580C; box-shadow: inset 0 0 0 1.5px #FED7AA; }
+.kt-q { background: #F97316; color: #FFFFFF; }
+.kt-main.done { background: #EA580C; box-shadow: 0 8px 16px -10px rgba(234,88,12,.9); }
+.kt-main.done:hover { background: #C2410C; }
