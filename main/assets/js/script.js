@@ -9955,6 +9955,7 @@ window.logout = logout;
 
 // Display KOT Orders
 function displayKOTOrders(kots) {
+  if (window.rgKotRender) return window.rgKotRender(kots);   // ticket cards (assets/js/kot-studio.js)
   const kotList = document.getElementById('kotList');
   
   if (!kots || kots.length === 0) {
