@@ -496,6 +496,34 @@ try {
         pfAudit($conn, 'bulk.' . $do, count($ids) . ' restaurants', ['ids' => implode(',', $names->fetchAll(PDO::FETCH_COLUMN)), 'feature' => $in['feature'] ?? null, 'on' => $in['on'] ?? null, 'days' => $in['days'] ?? null]);
         out(['message' => $msg . ' for ' . $st->rowCount() . ' of ' . count($ids) . ' restaurants', 'changed' => $st->rowCount()]);
 
+    /* ───────── email check: a fun "offer accepted" email sent with the live SMTP settings ───────── */
+    case 'testEmail':
+        needPost();
+        $to = trim((string)($in['to'] ?? ''));
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) throw new Exception('Enter a valid email address');
+        $recent = (int)$conn->query("SELECT COUNT(*) FROM sa_audit_log WHERE action = 'email.test' AND created_at >= NOW() - INTERVAL 10 MINUTE")->fetchColumn();
+        if ($recent >= 5) throw new Exception('Five test emails in 10 minutes is enough. Try again a little later.');
+        require_once __DIR__ . '/../config/email_config.php';
+        if (!SMTP_ENABLED) throw new Exception('Email is switched off: set SMTP_ENABLED=true in main/.env');
+        if (SMTP_PASSWORD === '') throw new Exception('SMTP_PASSWORD is empty in main/.env');
+        $li = function ($t) { return '<li style="margin:0 0 8px">' . $t . '</li>'; };
+        $html = '<div style="font-family:Arial,Helvetica,sans-serif;background:#f3f5fa;padding:24px 12px"><div style="max-width:560px;margin:auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb">'
+            . '<div style="background:linear-gradient(135deg,#16a34a,#0891b2);padding:28px 26px;color:#fff"><div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">RestroGrow · HR Department (of one)</div>'
+            . '<div style="font-size:26px;font-weight:800;margin-top:6px">Offer accepted! Welcome aboard 🥳</div><div style="font-size:15px;margin-top:6px;opacity:.95">Your Chief Everything Officer badge is now active.</div></div>'
+            . '<div style="padding:24px 26px;color:#374151;font-size:15px;line-height:1.6">'
+            . '<p style="margin:0 0 14px">We received your “I’m in”. The whole team (us) did a small dance next to the POS. Here is what happens next:</p><ol style="margin:0 0 16px;padding-left:20px">'
+            . $li('<b>Day 1:</b> collect your welcome kit: one Paneer Tikka, still the #1 Star dish')
+            . $li('<b>Day 2:</b> master the sacred art of tapping <i>Accept · 25 + 20 min</i>')
+            . $li('<b>Day 3:</b> make Thursday great again (the Analytics page is watching)')
+            . $li('<b>Every day:</b> answer the new-order ring, even from another tab') . '</ol>'
+            . '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;color:#14532d"><b>Good news:</b> if you are reading this, email from <b>' . htmlspecialchars(SMTP_FROM_EMAIL) . '</b> works on the live site. Setup complete ✅</div>'
+            . '<p style="margin:18px 0 0">See you at the next push to production,<br><b>Team RestroGrow</b></p></div>'
+            . '<div style="background:#f9fafb;padding:12px 26px;color:#9ca3af;font-size:12px">Sent from Superadmin › Settings › Send test email on ' . date('d M Y, g:i A') . '. Just for fun, not a contract. 😄</div></div></div>';
+        $r = sendSMTPEmail($to, 'Offer accepted! Welcome to RestroGrow 🥳', $html);
+        pfAudit($conn, 'email.test', $to, ['ok' => !empty($r['success']), 'host' => SMTP_HOST, 'from' => SMTP_FROM_EMAIL]);
+        if (empty($r['success'])) throw new Exception('Not sent: ' . trim(preg_replace('/\s+/', ' ', (string)($r['error'] ?? 'unknown error'))) . ' (server ' . SMTP_HOST . ':' . SMTP_PORT . ', login ' . SMTP_USERNAME . ')');
+        out(['message' => 'Sent to ' . $to . ' from ' . SMTP_FROM_EMAIL . ' via ' . SMTP_HOST . '. Check the inbox (and Spam / Promotions).']);
+
     case 'restaurantOptions':
         out(['rows' => $conn->query("SELECT id, restaurant_id, restaurant_name FROM users ORDER BY restaurant_name")->fetchAll(PDO::FETCH_ASSOC)]);
 

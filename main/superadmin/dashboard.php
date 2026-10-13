@@ -757,6 +757,16 @@ require_once __DIR__ . '/../config/countries.php';
           </div>
         </div>
         <div class="card">
+          <div class="card-header"><div class="card-title">Email check</div><small class="sp-muted">Sends a fun “Offer accepted” email using the email settings in main/.env</small></div>
+          <div class="card-body">
+            <div class="row" style="gap:8px">
+              <input type="email" id="spTestEmailTo" value="asfluencernandkishor@gmail.com" style="flex:1;min-width:240px;max-width:420px" aria-label="Send the test email to">
+              <button type="button" class="btn btn-primary" id="spTestEmailBtn"><span class="material-symbols-rounded">send</span>Send test email</button>
+            </div>
+            <div id="spTestEmailResult" class="sp-muted" style="margin-top:10px;font-size:.88rem"></div>
+          </div>
+        </div>
+        <div class="card">
           <div class="card-header">
             <div class="card-title">Password Reset Data</div>
           </div>

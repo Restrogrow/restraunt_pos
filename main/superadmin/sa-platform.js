@@ -579,6 +579,13 @@
     if ((m = t.closest('[data-sp-unblock]'))) { confirmIt('Unblock this IP address?', 'Unblock').then(function (ok) { if (ok) post('unblockIp', { id: +m.dataset.spUnblock }).then(function (d) { alertMsg(d.message); loadSecurity(); }).catch(fail); }); return; }
     if (t.closest('#spHealthRe')) { loadHealth(); return; }
     if (t.closest('#saveSettings')) { e.preventDefault(); e.stopImmediatePropagation(); saveSettings(t.closest('#saveSettings')); return; }
+    if ((m = t.closest('#spTestEmailBtn'))) {
+      var out = $('spTestEmailResult'), to = ($('spTestEmailTo') || {}).value || '';
+      m.disabled = true; out.style.color = ''; out.textContent = 'Sending…';
+      post('testEmail', { to: to.trim() }).then(function (d) { m.disabled = false; out.style.color = '#15803d'; out.textContent = '✓ ' + d.message; })
+        .catch(function (er) { m.disabled = false; out.style.color = '#dc2626'; out.textContent = er.message; });
+      return;
+    }
     if (t.closest('#spBulkGo')) { runBulk(); return; }
     if (t.closest('#spBulkClear')) { document.querySelectorAll('.sp-ck-row, #spCkAll').forEach(function (x) { x.checked = false; }); refreshBulk(); return; }
   }, true);
