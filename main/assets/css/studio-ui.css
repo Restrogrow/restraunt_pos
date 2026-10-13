@@ -787,8 +787,8 @@
 .dh-att-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px; border: 1px solid var(--sx-line); border-radius: 12px; background: #fff; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
 .dh-att-row:hover { border-color: #cbd5e1; background: var(--sx-soft); }
 .dh-att-row > span:nth-child(2) { flex: 1; min-width: 0; }
-.dh-att-row b { display: block; color: var(--sx-ink); font-size: .88rem; }
-.dh-att-row small { color: var(--sx-muted); font-size: .76rem; }
+.dh-att-row b { display: block; color: var(--sx-ink); font-size: .88rem; line-height: 1.35; }
+.dh-att-row small { display: block; margin-top: 2px; color: var(--sx-muted); font-size: .76rem; line-height: 1.4; }
 .dh-att-row > .material-symbols-rounded { color: var(--sx-faint); font-size: 20px; }
 .dh-att-ic { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; }
 .dh-att-ic .material-symbols-rounded { font-size: 19px; }
@@ -1411,3 +1411,9 @@ html:has(.page.mk.active), body:has(.page.mk.active), .main-content:has(.page.mk
   .iv-table tr.iv-out, .iv-table tr.iv-negative { box-shadow: inset 3px 0 0 var(--sx-bad); }
   .iv-table tr td:first-child { box-shadow: none !important; }
 }
+
+/* Icon tiles: the Material Symbols stylesheet loads after this file and sets every icon to
+   display: inline-block, which pinned the glyph to the tile's top-left. Same rule, stronger selector. */
+.material-symbols-rounded.sx-ic, .material-symbols-rounded.wt-ic, .material-symbols-rounded.wa-ic, .material-symbols-rounded.ar-ic,
+.material-symbols-rounded.lsa-ic, .material-symbols-rounded.lsa-ric, .material-symbols-rounded.campaign-card-ic, .material-symbols-rounded.st-install-ic,
+.material-symbols-rounded.lsg-prev-ic, .material-symbols-rounded.bs-thumb-empty { display: grid; place-items: center; line-height: 1; }
