@@ -758,8 +758,6 @@ require_once __DIR__ . '/../config/countries.php';
         </div>
       </div>
 
-    </div>
-
       <!-- ═══════════════════════════════════════════════════════════
            ERROR MONITOR PAGE
            ═══════════════════════════════════════════════════════════ -->
@@ -767,7 +765,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <div><h1>Error monitor <span id="saErrorNewBadge" class="badge-new" style="display:none;background:#ef4444;">New</span></h1><div class="sa-sub">Errors from every restaurant’s site and dashboard</div></div>
+            <div><h1>Error monitor <span id="saErrorNewBadge" class="sa-h-badge" style="display:none;">New</span></h1><div class="sa-sub">Errors from every restaurant’s site and dashboard</div></div>
           </div>
           <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
             <select id="saErrorSource" style="width:130px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);font-size:13px;">
@@ -822,6 +820,7 @@ require_once __DIR__ . '/../config/countries.php';
           </div>
         </div>
       </div>
+    </div>
 
   <!-- Create Restaurant Modal -->
   <div id="createModal" class="modal">
@@ -905,7 +904,7 @@ require_once __DIR__ . '/../config/countries.php';
             else { badge.style.display = 'none'; }
           }
           var nb = document.getElementById('saErrorNewBadge');
-          if (nb) nb.style.display = d.unread_count > 0 ? 'inline' : 'none';
+          if (nb) { nb.style.display = d.unread_count > 0 ? 'inline-flex' : 'none'; nb.textContent = (d.unread_count > 99 ? '99+' : d.unread_count) + ' new'; }
           
           if (d.errors.length === 0) {
             container.innerHTML = '<div class="empty-state"><div class="icon">✓</div><h3>All Clear!</h3></div>';
@@ -1006,7 +1005,7 @@ require_once __DIR__ . '/../config/countries.php';
             else { badge.style.display = 'none'; }
           }
           var pageBadge = document.getElementById('saErrorNewBadge');
-          if (pageBadge) pageBadge.style.display = d.unread_count > 0 ? 'inline' : 'none';
+          if (pageBadge) { pageBadge.style.display = d.unread_count > 0 ? 'inline-flex' : 'none'; pageBadge.textContent = (d.unread_count > 99 ? '99+' : d.unread_count) + ' new'; }
         })
         .catch(function() {});
     }

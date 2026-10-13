@@ -160,3 +160,11 @@ input:focus, select:focus, textarea:focus { border-color: #93c5fd; box-shadow: 0
 .card-body { overflow-x: auto; }
 #errorMonitorPage td, #settingsPage td { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .header-actions select, .header-actions input { height: 40px; min-height: 40px; border-radius: 12px !important; }
+/* badges next to titles and in the sidebar: aligned, not floating */
+.page-header h1 { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.sa-h-badge { align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-size: .75rem; font-weight: 800; letter-spacing: 0; line-height: 1; }
+.menu-item .text { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.menu-item .text .badge-new { margin-left: auto; flex-shrink: 0; height: 20px; min-width: 20px; padding: 0 7px; border-radius: 999px; line-height: 20px; text-align: center; font-size: .68rem; text-transform: none; letter-spacing: 0; vertical-align: baseline; }
+#saErrorBadge { font-size: .68rem !important; padding: 0 7px !important; border-radius: 999px !important; }
+#errorMonitorPage td { max-width: 220px; } #errorMonitorPage td:nth-child(5) { max-width: 170px; }
+#errorMonitorPage th, #errorMonitorPage td { padding-left: 10px; padding-right: 10px; }
