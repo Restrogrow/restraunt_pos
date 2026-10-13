@@ -1633,7 +1633,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Load analytics if it's the analytics page
       if (pageId === "analyticsPage") {
-        setTimeout(() => loadAnalytics(), 100);
+        setTimeout(() => (window.loadAnalytics || loadAnalytics)(), 100);   // analytics-studio.js replaces it
       }
 
       // Sections that used to load only from their menu link's onclick. Loading them here means
@@ -2438,7 +2438,7 @@ document.addEventListener("DOMContentLoaded", () => {
       container.innerHTML = '<div style="text-align:center;padding:60px 20px;"><span class="material-symbols-rounded" style="font-size:48px;color:#ef4444;margin-bottom:12px;display:block;">error_outline</span><h3 style="margin:0 0 8px;color:#1f2937;">Network Error</h3><p style="color:#9ca3af;margin:0;">Could not connect to the server. Please try again.</p></div>';
     }
   }
-  window.loadAnalytics = loadAnalytics;
+  if (!window.loadAnalytics) window.loadAnalytics = loadAnalytics;   // analytics-studio.js (loaded first) provides the new page
 
   // Render analytics HTML
   function renderAnalytics(container, data) {

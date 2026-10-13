@@ -7,8 +7,9 @@
  * The names are in config/icon_names.txt (comma separated, alphabetical).
  *
  * Adding a new icon? Put its name in icon_names.txt (keep the list alphabetical). On localhost the
- * console warns about any icon on the page that is missing from the list. Google accepts about 450
- * names in one link.
+ * console warns about any icon on the page that is missing from the list. Google only subsets when
+ * the link stays under about 4,200 characters (~425 names); past that it silently sends the full
+ * 373 KB font, so reuse an icon already in the list when you can.
  */
 function rgIconFontUrl(): string
 {
