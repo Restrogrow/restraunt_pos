@@ -2384,7 +2384,7 @@ try {
       </div>
     </div>
     <!-- Policy Pages -->
-    <div id="policyPagesPage" class="page">
+    <div id="policyPagesPage" class="page sx lg">
       <div class="page-header">
         <h1>Policy Pages</h1>
         <p>Customize the legal text shown on your public website. Leave a page blank to keep showing the default text.</p>
@@ -2738,7 +2738,7 @@ try {
       </div>
     </div>
     <!-- Category Management Page -->
-    <div id="menuPage" class="page">
+    <div id="menuPage" class="page sx lg">
       <div class="page-header">
         <h1>Category Management</h1>
         <p>Create, edit, and manage your menus</p>
@@ -2775,7 +2775,7 @@ try {
     </div>
 
     <!-- Menu Items Page -->
-    <div id="menuItemsPage" class="page">
+    <div id="menuItemsPage" class="page sx lg">
       <div class="page-header">
         <h1>Menu Items Management</h1>
         <p>Create, edit, and manage your menu items</p>
@@ -2833,7 +2833,7 @@ try {
     </div>
 
     <!-- Add-ons Page -->
-    <div id="addonsPage" class="page">
+    <div id="addonsPage" class="page sx lg">
       <div class="page-header">
         <h1>Add-ons Management</h1>
         <p>Manage your add-ons like extra cheese, ketchup, mayonnaise etc.</p>
@@ -2846,7 +2846,7 @@ try {
     </div>
 
     <!-- Blocked Customers (order abuse blocklist) Page -->
-    <div id="blocklistPage" class="page">
+    <div id="blocklistPage" class="page sx lg">
       <div class="page-header">
         <h1>Blocked Customers</h1>
         <p>Phones/IPs blocked from placing website orders — auto-blocked after 3 fake-order strikes, or blocked manually</p>
@@ -2860,7 +2860,7 @@ try {
 
     <?php if ($meal_subscriptions_enabled): ?>
     <!-- Meal Plans Page -->
-    <div id="mealPlansPage" class="page">
+    <div id="mealPlansPage" class="page sx lg">
       <div class="page-header">
         <h1>Meal Plans</h1>
         <p>Define tiffin/subscription bundles and their weekly menu</p>
@@ -2873,7 +2873,7 @@ try {
     </div>
 
     <!-- Meal Subscriptions (Subscribers) Page -->
-    <div id="mealSubscriptionsPage" class="page">
+    <div id="mealSubscriptionsPage" class="page sx lg">
       <div class="page-header">
         <h1>Subscribers</h1>
         <p>View and manage customer meal plan subscriptions</p>
@@ -2900,53 +2900,22 @@ try {
     </div>
 
     <!-- Inventory Page -->
-    <div id="inventoryPage" class="page">
+    <div id="inventoryPage" class="page sx lg">
       <div class="page-header">
         <h1>Inventory</h1>
         <p>Track stock levels and record purchases/wastage</p>
       </div>
       <div class="page-content">
-        <!-- Summary Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div style="width: 50px; height: 50px; background: #e5f3ff; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-symbols-rounded" style="color: #0066cc;">inventory_2</span>
-              </div>
-              <div>
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Total Items</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #0066cc;" id="invTotalItems">0</div>
-              </div>
-            </div>
-          </div>
-          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div style="width: 50px; height: 50px; background: #fdecea; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-symbols-rounded" style="color: #e74c3c;">warning</span>
-              </div>
-              <div>
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Low Stock Items</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #e74c3c;" id="invLowStockCount">0</div>
-              </div>
-            </div>
-          </div>
-          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div style="width: 50px; height: 50px; background: #e5f7e5; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-symbols-rounded" style="color: #28a745;">payments</span>
-              </div>
-              <div>
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Total Stock Value</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;" id="invTotalValue"><?php echo htmlspecialchars($currency_symbol); ?>0.00</div>
-              </div>
-            </div>
-          </div>
+        <div class="lg-stats">
+          <div class="lg-stat" style="--c:#2563eb"><span class="sx-ic material-symbols-rounded">inventory_2</span><div><small>Total items</small><b id="invTotalItems">0</b></div></div>
+          <div class="lg-stat" style="--c:#dc2626"><span class="sx-ic material-symbols-rounded">warning</span><div><small>Low on stock</small><b id="invLowStockCount">0</b></div></div>
+          <div class="lg-stat" style="--c:#16a34a"><span class="sx-ic material-symbols-rounded">payments</span><div><small>Stock value</small><b id="invTotalValue"><?php echo htmlspecialchars($currency_symbol); ?>0.00</b></div></div>
         </div>
 
         <div class="section-card" style="margin-bottom:20px;">
           <div class="section-header">
-            <div class="section-title">Stock Items</div>
-            <button class="btn btn-primary" id="btnNewInventoryItem" onclick="openInventoryModal()">+ New Item</button>
+            <div class="section-title">Stock items</div>
+            <button class="btn btn-primary" id="btnNewInventoryItem" onclick="openInventoryModal()"><span class="material-symbols-rounded">add</span>New item</button>
           </div>
           <div class="section-body" style="overflow-x:auto;">
             <table class="data-table" id="inventoryTable">
@@ -2964,7 +2933,7 @@ try {
 
         <div class="section-card">
           <div class="section-header">
-            <div class="section-title">Recent Stock Purchases &amp; Adjustments</div>
+            <div class="section-title">Recent purchases and adjustments</div>
           </div>
           <div class="section-body" style="overflow-x:auto;">
             <table class="data-table" id="inventoryHistoryTable">
@@ -3115,16 +3084,15 @@ try {
     </div>
 
     <!-- Payments Page -->
-    <div id="paymentsPage" class="page">
+    <div id="paymentsPage" class="page sx lg">
       <div class="page-header">
         <h1>Payment Transactions</h1>
         <p>View and manage all payment transactions</p>
       </div>
       <div class="page-content">
-        <!-- Filters -->
-        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
-          <input type="text" id="paymentSearch" placeholder="Search by order, amount..." style="flex: 1; min-width: 250px; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px;" />
-          <select id="paymentMethodFilter" style="padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px;">
+        <div class="sx-toolbar lg-toolbar">
+          <div class="sx-search"><span class="material-symbols-rounded">search</span><input type="text" id="paymentSearch" placeholder="Search by order or amount"></div>
+          <select id="paymentMethodFilter" class="filter-select">
             <option value="">All Methods</option>
             <option value="Cash">Cash</option>
             <option value="Card">Card</option>
@@ -3132,21 +3100,17 @@ try {
             <option value="Online">Online</option>
             <option value="Wallet">Wallet</option>
           </select>
-          <select id="paymentStatusFilter" style="padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px;">
+          <select id="paymentStatusFilter" class="filter-select">
             <option value="">All Status</option>
             <option value="Success">Success</option>
             <option value="Failed">Failed</option>
             <option value="Pending">Pending</option>
             <option value="Refunded">Refunded</option>
           </select>
-          <button onclick="exportPaymentsToCSV()" style="padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-            <span class="material-symbols-rounded" style="font-size: 1rem;">download</span>
-            Export CSV
-          </button>
+          <div class="sx-toolbar-r"><button type="button" class="btn btn-secondary" onclick="exportPaymentsToCSV()"><span class="material-symbols-rounded">download</span>Export CSV</button></div>
         </div>
 
-        <!-- Payments Table -->
-        <div class="card">
+        <div class="card lg-card lg-scroll">
           <table class="data-table">
             <thead>
               <tr>
@@ -3172,7 +3136,7 @@ try {
     </div>
 
     <!-- Gateway Page -->
-    <div id="gatewayPage" class="page">
+    <div id="gatewayPage" class="page sx lg">
       <div class="page-header">
         <h1>Payment Gateway Settings</h1>
         <p>Configure your payment gateways for online UPI / NetBanking payments</p>
@@ -3338,17 +3302,17 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Reports Page -->
-    <div id="reportsPage" class="page">
+    <div id="reportsPage" class="page sx lg">
       <div class="page-header">
         <h1>Sales Reports</h1>
         <p>View detailed sales reports and analytics</p>
       </div>
       <div class="page-content">
         <!-- Report Filter Controls -->
-        <div class="report-filters" style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          <div style="flex: 1; min-width: 200px;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Period</label>
-            <select id="reportPeriod" style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-gray); border-radius: 8px; font-size: 1rem;">
+        <div class="report-filters lg-filters">
+          <div class="lg-field">
+            <label>Period</label>
+            <select id="reportPeriod">
               <option value="today">Today</option>
               <option value="week">This Week</option>
               <option value="month">This Month</option>
@@ -3356,17 +3320,17 @@ function toggleGatewayMode() {
               <option value="custom">Custom Date Range</option>
             </select>
           </div>
-          <div id="customDateRange" style="display: none; flex: 1; min-width: 200px;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Start Date</label>
-            <input type="date" id="reportStartDate" style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-gray); border-radius: 8px; font-size: 1rem;">
+          <div id="customDateRange" class="lg-field" style="display: none;">
+            <label>Start Date</label>
+            <input type="date" id="reportStartDate">
           </div>
-          <div id="customDateRangeEnd" style="display: none; flex: 1; min-width: 200px;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">End Date</label>
-            <input type="date" id="reportEndDate" style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-gray); border-radius: 8px; font-size: 1rem;">
+          <div id="customDateRangeEnd" class="lg-field" style="display: none;">
+            <label>End Date</label>
+            <input type="date" id="reportEndDate">
           </div>
-          <div style="flex: 1; min-width: 200px;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Report Type</label>
-            <select id="reportType" style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-gray); border-radius: 8px; font-size: 1rem;">
+          <div class="lg-field">
+            <label>Report Type</label>
+            <select id="reportType">
               <option value="sales">Sales Report</option>
               <option value="customers">Customer Report</option>
               <option value="items">Top Items Report</option>
@@ -3375,118 +3339,44 @@ function toggleGatewayMode() {
               <option value="staff">Staff Performance Report</option>
             </select>
           </div>
-          <div id="paymentMethodFilterWrapper" style="flex: 1; min-width: 200px; display: none;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Payment Method</label>
-            <select id="filterPaymentMethod" style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-gray); border-radius: 8px; font-size: 1rem;">
+          <div id="paymentMethodFilterWrapper" class="lg-field" style="display: none;">
+            <label>Payment Method</label>
+            <select id="filterPaymentMethod">
               <option value="all">All Methods</option>
               <option value="Cash">Cash</option>
               <option value="Card">Card</option>
               <option value="UPI">UPI</option>
             </select>
           </div>
-          <div style="display: flex; align-items: flex-end; gap: 0.5rem;">
-            <button onclick="loadReports()" style="padding: 0.75rem 2rem; background: var(--primary-red); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-              <span class="material-symbols-rounded">refresh</span> Refresh
-            </button>
-            <button onclick="exportReportsToCSV()" style="padding: 0.75rem 2rem; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-              <span class="material-symbols-rounded">download</span> Export CSV
-            </button>
-            <button onclick="exportReportsToPDF()" style="padding: 0.75rem 2rem; background: #dc2626; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-              <span class="material-symbols-rounded">picture_as_pdf</span> Export PDF
-            </button>
+          <div class="lg-filter-acts">
+            <button type="button" class="btn btn-secondary" onclick="loadReports()" title="Refresh"><span class="material-symbols-rounded">refresh</span>Refresh</button>
+            <button type="button" class="btn btn-secondary" onclick="exportReportsToCSV()"><span class="material-symbols-rounded">download</span>CSV</button>
+            <button type="button" class="btn btn-secondary" onclick="exportReportsToPDF()"><span class="material-symbols-rounded">picture_as_pdf</span>PDF</button>
           </div>
         </div>
 
-        <!-- Sales Summary Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div style="width: 50px; height: 50px; background: #ffe5e5; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-symbols-rounded" style="color: var(--primary-red);">payments</span>
-              </div>
-              <div>
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Total Sales</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-red);" id="reportTotalSales"><?php echo htmlspecialchars($currency_symbol); ?>0.00</div>
-              </div>
-            </div>
-          </div>
-          
-          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div style="width: 50px; height: 50px; background: #e5f3ff; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-symbols-rounded" style="color: #0066cc;">receipt_long</span>
-              </div>
-              <div>
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Total Orders</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #0066cc;" id="reportTotalOrders">0</div>
-              </div>
-            </div>
-          </div>
-          
-          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div style="width: 50px; height: 50px; background: #e5f7e5; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-symbols-rounded" style="color: #28a745;">shopping_bag</span>
-              </div>
-              <div>
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Items Sold</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;" id="reportTotalItems">0</div>
-              </div>
-            </div>
-          </div>
-          
-          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div style="width: 50px; height: 50px; background: #fff3cd; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-symbols-rounded" style="color: #ffc107;">people</span>
-              </div>
-              <div>
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Customers</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #ffc107;" id="reportTotalCustomers">0</div>
-              </div>
-            </div>
-          </div>
-
-          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div style="width: 50px; height: 50px; background: #fdecea; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-symbols-rounded" style="color: #e74c3c;">trending_down</span>
-              </div>
-              <div>
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Total Expenses</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #e74c3c;" id="reportTotalExpenses"><?php echo htmlspecialchars($currency_symbol); ?>0.00</div>
-              </div>
-            </div>
-          </div>
-
-          <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div style="width: 50px; height: 50px; background: #e5f7e5; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-symbols-rounded" style="color: #28a745;">trending_up</span>
-              </div>
-              <div>
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.25rem;">Net Profit (Sales − Expenses)</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;" id="reportNetProfit"><?php echo htmlspecialchars($currency_symbol); ?>0.00</div>
-              </div>
-            </div>
-          </div>
+        <div class="lg-stats">
+          <div class="lg-stat" style="--c:#2563eb"><span class="sx-ic material-symbols-rounded">payments</span><div><small>Total sales</small><b id="reportTotalSales"><?php echo htmlspecialchars($currency_symbol); ?>0.00</b></div></div>
+          <div class="lg-stat" style="--c:#7c3aed"><span class="sx-ic material-symbols-rounded">receipt_long</span><div><small>Orders</small><b id="reportTotalOrders">0</b></div></div>
+          <div class="lg-stat" style="--c:#0891b2"><span class="sx-ic material-symbols-rounded">shopping_bag</span><div><small>Items sold</small><b id="reportTotalItems">0</b></div></div>
+          <div class="lg-stat" style="--c:#d97706"><span class="sx-ic material-symbols-rounded">group</span><div><small>Customers</small><b id="reportTotalCustomers">0</b></div></div>
+          <div class="lg-stat" style="--c:#dc2626"><span class="sx-ic material-symbols-rounded">trending_down</span><div><small>Expenses</small><b id="reportTotalExpenses"><?php echo htmlspecialchars($currency_symbol); ?>0.00</b></div></div>
+          <div class="lg-stat" style="--c:#16a34a"><span class="sx-ic material-symbols-rounded">trending_up</span><div><small>Net profit (sales − expenses)</small><b id="reportNetProfit"><?php echo htmlspecialchars($currency_symbol); ?>0.00</b></div></div>
         </div>
 
         <!-- Sales Data Table -->
-        <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          <div style="padding: 1.5rem; border-bottom: 2px solid var(--light-gray);">
-            <h2 style="margin: 0; font-size: 1.3rem; color: var(--primary-red);">Sales Details</h2>
-          </div>
-          <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse;">
+        <div class="lg-card">
+          <div class="lg-card-h"><h2>Sales details</h2></div>
+          <div class="lg-scroll">
+            <table class="data-table">
               <thead>
-                <tr style="background: var(--light-gray);">
-                  <th style="padding: 1rem; text-align: left; font-weight: 600;">Date</th>
-                  <th style="padding: 1rem; text-align: left; font-weight: 600;">Order #</th>
-                  <th style="padding: 1rem; text-align: left; font-weight: 600;">Customer</th>
-                  <th style="padding: 1rem; text-align: left; font-weight: 600;">Items</th>
-                  <th style="padding: 1rem; text-align: left; font-weight: 600;">Payment</th>
-                  <th style="padding: 1rem; text-align: right; font-weight: 600;">Amount</th>
+                <tr>
+                  <th>Date</th>
+                  <th>Order #</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Payment</th>
+                  <th style="text-align: right;">Amount</th>
                 </tr>
               </thead>
               <tbody id="reportSalesTable">
@@ -3499,20 +3389,16 @@ function toggleGatewayMode() {
         </div>
 
         <!-- Bottom Charts -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
-          <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="padding: 1.5rem; border-bottom: 2px solid var(--light-gray);">
-              <h2 style="margin: 0; font-size: 1.3rem; color: var(--primary-red);">Top Selling Items</h2>
-            </div>
+        <div class="lg-grid2">
+          <div class="lg-card">
+            <div class="lg-card-h"><h2>Top selling items</h2></div>
             <div id="reportTopItems" style="padding: 1rem;">
               <div style="text-align: center; padding: 2rem; color: #666;">Loading...</div>
             </div>
           </div>
           
-          <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="padding: 1.5rem; border-bottom: 2px solid var(--light-gray);">
-              <h2 style="margin: 0; font-size: 1.3rem; color: var(--primary-red);">Payment Methods</h2>
-            </div>
+          <div class="lg-card">
+            <div class="lg-card-h"><h2>Payment methods</h2></div>
             <div id="reportPaymentMethods" style="padding: 1rem;">
               <div style="text-align: center; padding: 2rem; color: #666;">Loading...</div>
             </div>
@@ -3522,7 +3408,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Analytics Page -->
-    <div id="analyticsPage" class="page">
+    <div id="analyticsPage" class="page sx lg">
       <div class="page-header">
         <div class="dashboard-header-row">
           <div>
@@ -3530,7 +3416,7 @@ function toggleGatewayMode() {
             <p>Track your restaurant's performance, traffic, and insights</p>
           </div>
           <div style="display:flex;align-items:center;gap:12px;">
-            <select id="analyticsPeriod" onchange="loadAnalytics()" style="padding:8px 14px;border-radius:8px;border:1.5px solid #d1d5db;font-size:13px;font-weight:500;background:#fff;cursor:pointer;outline:none;font-family:inherit;">
+            <select id="analyticsPeriod" onchange="loadAnalytics()">
               <option value="7">Last 7 Days</option>
               <option value="30" selected>Last 30 Days</option>
               <option value="90">Last 90 Days</option>
@@ -4236,7 +4122,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- ═══════ Growth Module: Customer Segments ═══════ -->
-    <div id="customerSegmentsPage" class="page">
+    <div id="customerSegmentsPage" class="page sx lg">
       <div class="page-header">
         <h1>Customer Segments</h1>
         <p>See who's new, repeat, high-spending, or lapsed</p>
@@ -4412,7 +4298,7 @@ function toggleGatewayMode() {
       <div class="page-content"><div id="waRoot"></div></div>
     </div>
 
-    <div id="referralsPage" class="page">
+    <div id="referralsPage" class="page sx lg">
       <div class="page-header">
         <h1>Referrals</h1>
         <p>Track referral signups and conversions</p>
@@ -4453,7 +4339,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- ═══════ Growth Module: Reports ═══════ -->
-    <div id="growthReportsPage" class="page">
+    <div id="growthReportsPage" class="page sx lg">
       <div class="page-header">
         <h1>Growth Reports</h1>
         <p>Revenue attributable to loyalty and referrals</p>
@@ -4919,7 +4805,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Delivery Page -->
-    <div id="deliveryPage" class="page">
+    <div id="deliveryPage" class="page sx lg">
       <div class="page-header">
         <h1>Delivery Zones</h1>
         <p>Manage pincode-based delivery zones, charges, and availability</p>
@@ -4997,18 +4883,18 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Delivery Map Page -->
-    <div id="deliveryMapPage" class="page">
+    <div id="deliveryMapPage" class="page sx lg">
       <div class="page-header">
         <h1>Delivery Map</h1>
         <p>Track active deliveries in real-time</p>
       </div>
       <div class="page-content">
-        <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <span style="font-size: 13px; color: #6b7280;">Auto-refreshes every 30s</span>
-          <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f59e0b;"></span> Preparing</span>
-          <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#3b82f6;"></span> Assigned</span>
-          <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#8b5cf6;"></span> Picked Up</span>
-          <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#059669;"></span> In Transit</span>
+        <div class="lg-legend">
+          <span class="lg-live">Updates every 30 seconds</span>
+          <span><i style="background:#f59e0b"></i>Preparing</span>
+          <span><i style="background:#3b82f6"></i>Assigned</span>
+          <span><i style="background:#8b5cf6"></i>Picked up</span>
+          <span><i style="background:#059669"></i>On the way</span>
         </div>
         <div class="section-card" style="padding: 0;">
           <div id="deliveryMap" style="height: 600px; border-radius: 8px;"></div>
@@ -5020,39 +4906,28 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Feedback Page -->
-    <div id="feedbackPage" class="page">
+    <div id="feedbackPage" class="page sx lg">
       <div class="page-header">
         <h1>Customer Feedback</h1>
         <p>Reviews and ratings from your customers</p>
       </div>
       <div class="page-content">
-        <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:160px;background:#f0fdf4;border-radius:12px;padding:16px;text-align:center;border:1px solid #bbf7d0;">
-            <div style="font-size:28px;font-weight:700;color:#16a34a;" id="fbTotal">0</div>
-            <div style="font-size:12px;color:#6b7280;margin-top:4px;">Total Reviews</div>
-          </div>
-          <div style="flex:1;min-width:160px;background:#fffbeb;border-radius:12px;padding:16px;text-align:center;border:1px solid #fde68a;">
-            <div style="font-size:28px;font-weight:700;color:#d97706;" id="fbAvg">0.0</div>
-            <div style="font-size:12px;color:#6b7280;margin-top:4px;">Average Rating</div>
-          </div>
-          <div style="flex:1;min-width:160px;background:#f0fdf4;border-radius:12px;padding:16px;text-align:center;border:1px solid #bbf7d0;">
-            <div style="font-size:28px;font-weight:700;color:#16a34a;" id="fbPositive">0</div>
-            <div style="font-size:12px;color:#6b7280;margin-top:4px;">Positive (4-5★)</div>
-          </div>
-          <div style="flex:1;min-width:160px;background:#fef2f2;border-radius:12px;padding:16px;text-align:center;border:1px solid #fecaca;">
-            <div style="font-size:28px;font-weight:700;color:#dc2626;" id="fbNegative">0</div>
-            <div style="font-size:12px;color:#6b7280;margin-top:4px;">Negative (1-2★)</div>
-          </div>
+        <div class="lg-stats">
+          <div class="lg-stat" style="--c:#2563eb"><span class="sx-ic material-symbols-rounded">reviews</span><div><small>Reviews</small><b id="fbTotal">0</b></div></div>
+          <div class="lg-stat" style="--c:#d97706"><span class="sx-ic material-symbols-rounded">star</span><div><small>Average rating</small><b id="fbAvg">0.0</b></div></div>
+          <div class="lg-stat" style="--c:#16a34a"><span class="sx-ic material-symbols-rounded">sentiment_satisfied</span><div><small>Positive (4–5 stars)</small><b id="fbPositive">0</b></div></div>
+          <div class="lg-stat" style="--c:#dc2626"><span class="sx-ic material-symbols-rounded">sentiment_dissatisfied</span><div><small>Negative (1–2 stars)</small><b id="fbNegative">0</b></div></div>
         </div>
         <div class="section-card">
-          <div>
-            <select id="fbFilter" onchange="renderFeedback()" style="border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px;">
+          <div class="section-header">
+            <div class="section-title">All reviews</div>
+            <select id="fbFilter" class="filter-select" onchange="renderFeedback()">
               <option value="all">All Ratings</option>
-              <option value="5">5 ★</option>
-              <option value="4">4 ★</option>
-              <option value="3">3 ★</option>
-              <option value="2">2 ★</option>
-              <option value="1">1 ★</option>
+              <option value="5">5 stars</option>
+              <option value="4">4 stars</option>
+              <option value="3">3 stars</option>
+              <option value="2">2 stars</option>
+              <option value="1">1 star</option>
             </select>
           </div>
           <div class="section-body" style="overflow-x:auto;">
@@ -5643,7 +5518,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Profile Page -->
-    <div id="profilePage" class="page">
+    <div id="profilePage" class="page sx lg">
       <div class="page-header">
         <h1>My Profile</h1>
         <p>Manage your account information and preferences</p>
@@ -5996,7 +5871,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- QR Codes Page -->
-    <div id="qrCodesPage" class="page">
+    <div id="qrCodesPage" class="page sx lg">
       <div class="page-header">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
           <div>
@@ -6017,7 +5892,7 @@ function toggleGatewayMode() {
 
     <?php if ($photo_gallery_enabled): ?>
     <!-- Photo Gallery Page -->
-    <div id="galleryPage" class="page">
+    <div id="galleryPage" class="page sx lg">
       <div class="page-header">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
           <div>
@@ -6092,51 +5967,33 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Reservations Management Page -->
-    <div id="reservationsPage" class="page">
+    <div id="reservationsPage" class="page sx lg">
       <div class="page-header">
         <h1>Reservations</h1>
         <p>View and manage customer reservations</p>
       </div>
       <div class="page-content">
-        <div class="page-toolbar reservation-toolbar" style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; align-items: center; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-left: 0; margin-right: 0;">
-          <div class="toolbar-left" style="display: flex; gap: 1rem; flex: 1; flex-wrap: wrap; align-items: center; min-width: 0;">
-            <div class="search-wrapper" style="flex: 1; min-width: 250px; max-width: 100%; position: relative; border: 2px solid #e5e7eb; border-radius: 10px; padding: 0 0.75rem 0 2.75rem; background: white;">
-              <span class="material-symbols-rounded" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 1.2rem; pointer-events: none; z-index: 1;">search</span>
-              <input type="text" id="reservationSearch" placeholder="Search by name, phone, email..." style="width: 100%; padding: 0.875rem 0; border: none; border-radius: 0; font-size: 0.95rem; transition: all 0.2s; outline: none; background: transparent;" onfocus="this.parentElement.style.borderColor='#f70000'; this.parentElement.style.boxShadow='0 0 0 3px rgba(247,0,0,0.1)'" onblur="this.parentElement.style.borderColor='#e5e7eb'; this.parentElement.style.boxShadow='none';">
-            </div>
-            <div class="date-range-wrapper" style="display: flex; gap: 0.75rem; align-items: center; background: #f9fafb; padding: 0.5rem; border-radius: 10px; border: 1px solid #e5e7eb; flex-wrap: wrap; flex: 1; min-width: 0;">
-              <div style="position: relative; flex: 1; min-width: 140px;">
-                <input type="date" id="reservationDateFrom" style="width: 100%; padding: 0.875rem 2.5rem 0.875rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; background: white; cursor: pointer; transition: all 0.2s; outline: none; box-sizing: border-box;" onfocus="this.style.borderColor='#f70000'; this.style.boxShadow='0 0 0 3px rgba(247,0,0,0.1)'" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'; this.style.outline='none';" onchange="this.blur();">
-                <span class="material-symbols-rounded" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #374151; font-size: 1.2rem; cursor: pointer; z-index: 1; pointer-events: auto; transition: color 0.2s;" onclick="const input = document.getElementById('reservationDateFrom'); input.showPicker(); setTimeout(() => input.blur(), 100);" onmouseover="this.style.color='#111827'" onmouseout="this.style.color='#374151'">calendar_today</span>
-              </div>
-              <span style="color: #6b7280; font-weight: 600; font-size: 0.9rem; padding: 0 0.25rem; white-space: nowrap;">to</span>
-              <div style="position: relative; flex: 1; min-width: 140px;">
-                <input type="date" id="reservationDateTo" style="width: 100%; padding: 0.875rem 2.5rem 0.875rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; background: white; cursor: pointer; transition: all 0.2s; outline: none; box-sizing: border-box;" onfocus="this.style.borderColor='#f70000'; this.style.boxShadow='0 0 0 3px rgba(247,0,0,0.1)'" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'; this.style.outline='none';" onchange="this.blur();">
-                <span class="material-symbols-rounded" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #374151; font-size: 1.2rem; cursor: pointer; z-index: 1; pointer-events: auto; transition: color 0.2s;" onclick="const input = document.getElementById('reservationDateTo'); input.showPicker(); setTimeout(() => input.blur(), 100);" onmouseover="this.style.color='#111827'" onmouseout="this.style.color='#374151'">calendar_today</span>
-              </div>
-              <button onclick="clearDateRange()" style="padding: 0.875rem; background: #ffffff; border: 2px solid #d1d5db; border-radius: 8px; cursor: pointer; color: #374151; display: flex; align-items: center; justify-content: center; transition: all 0.2s; min-width: 42px; height: 42px; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05); flex-shrink: 0;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#9ca3af'; this.style.color='#111827'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.background='#ffffff'; this.style.borderColor='#d1d5db'; this.style.color='#374151'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'" onfocus="this.style.outline='none';" onblur="this.style.outline='none';" title="Clear date range">
-                <span class="material-symbols-rounded" style="font-size: 1.3rem; font-weight: 500;">close</span>
-              </button>
-            </div>
+        <div class="sx-toolbar lg-toolbar lg-resv-toolbar">
+          <div class="sx-search"><span class="material-symbols-rounded">search</span><input type="text" id="reservationSearch" placeholder="Search by name, phone or email"></div>
+          <div class="lg-daterange">
+            <input type="date" id="reservationDateFrom" title="From" aria-label="From date">
+            <span>to</span>
+            <input type="date" id="reservationDateTo" title="To" aria-label="To date">
+            <button type="button" class="sx-icon-btn" onclick="clearDateRange()" title="Clear dates"><span class="material-symbols-rounded">close</span></button>
           </div>
-          <div class="toolbar-right" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; min-width: 0; width: 100%;">
-            <select id="reservationStatusFilter" class="filter-select" style="flex: 1; min-width: 160px; max-width: 100%; padding: 0.875rem 2.5rem 0.875rem 1rem; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 0.95rem; background: white; cursor: pointer; appearance: none; background-image: url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236b7280\' stroke-width=\'2\'><polyline points=\'6 9 12 15 18 9\'></polyline></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; transition: all 0.2s; outline: none; box-sizing: border-box;" onfocus="this.style.borderColor='#f70000'; this.style.boxShadow='0 0 0 3px rgba(247,0,0,0.1)'" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'; this.style.outline='none';" onchange="this.blur();">
-              <option value="">All Status</option>
-              <option value="Pending">Pending</option>
-              <option value="Confirmed">Confirmed</option>
-              <option value="Checked In">Checked In</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-              <option value="No Show">No Show</option>
-            </select>
-            <button class="btn btn-primary" id="addReservationBtn" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1rem; background: #f70000 !important; color: #ffffff !important; border: 2px solid #f70000 !important; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 1rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(247,0,0,0.3); letter-spacing: 0.3px; white-space: nowrap; flex-shrink: 0; width: auto; justify-content: center;" onmouseover="this.style.background='#d60000'; this.style.borderColor='#d60000'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(247,0,0,0.4)';" onmouseout="this.style.background='#f70000'; this.style.borderColor='#f70000'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(247,0,0,0.3)';">
-              <span class="material-symbols-rounded" style="font-size: 1.3rem; font-weight: 600; color: #ffffff !important;">add_circle</span>
-              <span style="color: #ffffff !important; font-weight: 700;">Add Reservation</span>
-            </button>
-          </div>
+          <select id="reservationStatusFilter" class="filter-select">
+            <option value="">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Checked In">Checked In</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="No Show">No Show</option>
+          </select>
+          <div class="sx-toolbar-r"><button type="button" class="btn btn-primary" id="addReservationBtn"><span class="material-symbols-rounded">add</span>Add reservation</button></div>
         </div>
-        
-        <div class="menu-list" id="reservationList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr)); gap: 1.5rem; max-width: 100%;">
+
+        <div class="menu-list lg-cards" id="reservationList">
           <!-- Reservations will be loaded here dynamically -->
           <div class="loading">Loading reservations...</div>
         </div>
@@ -6292,24 +6149,20 @@ function toggleGatewayMode() {
     </div>
 
     <!-- KOT Page -->
-    <div id="kotPage" class="page">
+    <div id="kotPage" class="page sx lg">
       <div class="page-header">
         <div>
           <h1>Kitchen Order Ticket (KOT)</h1>
           <p>View and manage kitchen orders</p>
         </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <span id="kotLastRefresh" style="color: #6b7280; font-size: 0.875rem;">Auto-refreshing every 5 seconds...</span>
-          <button class="btn" onclick="window.kotOrdersSoundEnabled = !window.kotOrdersSoundEnabled; this.style.background = window.kotOrdersSoundEnabled ? '#10b981' : '#6b7280'" style="background: #10b981; color: white; border: none; display: flex; align-items: center; gap: 4px;" title="Toggle KOT sound">
-            <span class="material-symbols-rounded" style="font-size: 1.1rem;">notifications</span>
-          </button>
-          <button class="btn btn-primary" onclick="loadKOTOrders()">
-            <span class="material-symbols-rounded" style="vertical-align: middle;">refresh</span> Refresh
-          </button>
+        <div class="lg-head-acts">
+          <span id="kotLastRefresh" class="lg-live">Updates every 5 seconds</span>
+          <button type="button" class="btn btn-secondary lg-sound on" onclick="window.kotOrdersSoundEnabled = !window.kotOrdersSoundEnabled; this.classList.toggle('on', !!window.kotOrdersSoundEnabled); this.querySelector('.material-symbols-rounded').textContent = window.kotOrdersSoundEnabled ? 'notifications_active' : 'notifications_off'" title="Turn the KOT sound on or off"><span class="material-symbols-rounded">notifications_active</span></button>
+          <button type="button" class="btn btn-secondary" onclick="loadKOTOrders()"><span class="material-symbols-rounded">refresh</span>Refresh</button>
         </div>
       </div>
       <div class="page-content">
-        <div class="kot-filters">
+        <div class="kot-filters sx-toolbar lg-toolbar">
           <select id="kotStatusFilter" class="filter-select" onchange="loadKOTOrders()">
             <option value="">All Status</option>
             <option value="Pending">Pending</option>
@@ -6328,28 +6181,21 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Online Orders Page -->
-    <div id="onlineOrdersPage" class="page">
+    <div id="onlineOrdersPage" class="page sx lg">
       <div class="page-header">
         <div>
           <h1>Online Orders</h1>
           <p>Orders placed from the customer website</p>
         </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <span id="onlineOrdersLastRefresh" style="color: #6b7280; font-size: 0.875rem;">Auto-refreshing every 15 seconds...</span>
-          <button class="btn" onclick="window.onlineOrdersSoundEnabled = !window.onlineOrdersSoundEnabled; this.style.background = window.onlineOrdersSoundEnabled ? '#10b981' : '#6b7280'" style="background: #10b981; color: white; border: none; display: flex; align-items: center; gap: 4px;" title="Toggle new-order sound">
-            <span class="material-symbols-rounded" style="font-size: 1.1rem;">notifications</span>
-          </button>
-          <button class="btn btn-primary" onclick="loadOnlineOrders()">
-            <span class="material-symbols-rounded" style="vertical-align: middle;">refresh</span> Refresh
-          </button>
+        <div class="lg-head-acts">
+          <span id="onlineOrdersLastRefresh" class="lg-live">Updates every 15 seconds</span>
+          <button type="button" class="btn btn-secondary lg-sound on" onclick="window.onlineOrdersSoundEnabled = !window.onlineOrdersSoundEnabled; this.classList.toggle('on', !!window.onlineOrdersSoundEnabled); this.querySelector('.material-symbols-rounded').textContent = window.onlineOrdersSoundEnabled ? 'notifications_active' : 'notifications_off'" title="Turn the new-order sound on or off"><span class="material-symbols-rounded">notifications_active</span></button>
+          <button type="button" class="btn btn-secondary" onclick="loadOnlineOrders()"><span class="material-symbols-rounded">refresh</span>Refresh</button>
         </div>
       </div>
       <div class="page-content">
-        <div class="orders-filters" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-          <div style="position: relative; flex: 1; min-width: 250px;">
-            <span class="material-symbols-rounded" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #666; font-size: 1.2rem; pointer-events: none;">search</span>
-            <input type="text" id="onlineOrdersSearch" placeholder="Search by order number or customer name..." style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
-          </div>
+        <div class="orders-filters sx-toolbar lg-toolbar">
+          <div class="sx-search"><span class="material-symbols-rounded">search</span><input type="text" id="onlineOrdersSearch" placeholder="Search by order number or customer"></div>
             <select id="onlineOrdersStatusFilter" class="filter-select" onchange="loadOnlineOrders()">
             <option value="">All Status</option>
             <option value="Pending">Pending</option>
@@ -6369,17 +6215,14 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Orders Page -->
-    <div id="ordersPage" class="page">
+    <div id="ordersPage" class="page sx lg">
       <div class="page-header">
         <h1>Orders Management</h1>
         <p>View and manage all orders</p>
       </div>
       <div class="page-content">
-        <div class="orders-filters" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-          <div style="position: relative; flex: 1; min-width: 250px;">
-            <span class="material-symbols-rounded" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #666; font-size: 1.2rem; pointer-events: none;">search</span>
-            <input type="text" id="ordersSearch" placeholder="Search by order number, customer name, or table..." style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
-          </div>
+        <div class="orders-filters sx-toolbar lg-toolbar">
+          <div class="sx-search"><span class="material-symbols-rounded">search</span><input type="text" id="ordersSearch" placeholder="Search by order number, customer or table"></div>
           <select id="ordersStatusFilter" class="filter-select">
             <option value="">All Status</option>
             <option value="Scheduled">Scheduled</option>
@@ -6403,11 +6246,8 @@ function toggleGatewayMode() {
             <option value="Takeaway">Takeaway</option>
             <option value="Delivery">Delivery</option>
           </select>
-          <input type="date" id="ordersDateFilter" class="filter-select" style="padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
-          <button onclick="exportOrdersToCSV()" style="padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-            <span class="material-symbols-rounded" style="font-size: 1rem;">download</span>
-            Export CSV
-          </button>
+          <input type="date" id="ordersDateFilter" class="filter-select" title="Order date">
+          <div class="sx-toolbar-r"><button type="button" class="btn btn-secondary" onclick="exportOrdersToCSV()"><span class="material-symbols-rounded">download</span>Export CSV</button></div>
         </div>
         <div class="orders-list" id="ordersList">
           <!-- Orders will be loaded here -->
@@ -6417,39 +6257,25 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Customers Page -->
-    <div id="customersPage" class="page">
+    <div id="customersPage" class="page sx lg">
       <div class="page-header">
         <h1>Customers</h1>
         <p>View and manage your customers</p>
       </div>
       <div class="page-content">
-        <div class="page-toolbar">
-          <div class="toolbar-left">
-            <div class="search-wrapper">
-              <span class="material-symbols-rounded">search</span>
-              <input type="text" id="customerSearch" placeholder="Search customers...">
-            </div>
-          </div>
-          <div class="toolbar-right">
-            <button onclick="exportCustomersToCSV()" style="padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-              <span class="material-symbols-rounded">download</span>
-              Export CSV
-            </button>
-          </div>
-            
-            <select id="customerSortBy" class="filter-select">
+        <div class="sx-toolbar lg-toolbar">
+          <div class="sx-search"><span class="material-symbols-rounded">search</span><input type="text" id="customerSearch" placeholder="Search by name, phone or email"></div>
+          <select id="customerSortBy" class="filter-select">
               <option value="name">Sort by Name</option>
               <option value="visits">Most Visits</option>
               <option value="recent">Most Recent</option>
-            </select>
+          </select>
+          <div class="sx-toolbar-r">
+            <button type="button" class="btn btn-secondary" onclick="exportCustomersToCSV()"><span class="material-symbols-rounded">download</span>Export CSV</button>
+            <button type="button" class="btn btn-primary" id="addCustomerBtn"><span class="material-symbols-rounded">add</span>Add Customer</button>
           </div>
-          
-          <button class="btn btn-primary" id="addCustomerBtn">
-            <span class="material-symbols-rounded">add</span>
-            Add Customer
-          </button>
         </div>
-        
+
         <div class="table-wrapper">
           <table class="data-table">
             <thead>
@@ -6475,38 +6301,24 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Staff Page -->
-    <div id="staffPage" class="page">
+    <div id="staffPage" class="page sx lg">
       <div class="page-header">
         <h1>Staff Management</h1>
         <p>Manage your restaurant staff</p>
       </div>
       <div class="page-content">
-        <div class="page-toolbar">
-          <div class="toolbar-left">
-            <div class="search-wrapper">
-              <span class="material-symbols-rounded">search</span>
-              <input type="text" id="staffSearch" placeholder="Search staff...">
-            </div>
-          </div>
-          <div class="toolbar-right">
-            <button onclick="exportStaffToCSV()" style="padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-              <span class="material-symbols-rounded">download</span>
-              Export CSV
-            </button>
-          </div>
-            
-            <select id="staffSortBy" class="filter-select">
+        <div class="sx-toolbar lg-toolbar">
+          <div class="sx-search"><span class="material-symbols-rounded">search</span><input type="text" id="staffSearch" placeholder="Search staff by name, email or phone"></div>
+          <select id="staffSortBy" class="filter-select">
               <option value="name">Sort by Name</option>
               <option value="role">Sort by Role</option>
-            </select>
+          </select>
+          <div class="sx-toolbar-r">
+            <button type="button" class="btn btn-secondary" onclick="exportStaffToCSV()"><span class="material-symbols-rounded">download</span>Export CSV</button>
+            <button type="button" class="btn btn-primary" id="addStaffBtn"><span class="material-symbols-rounded">add</span>Add Staff</button>
           </div>
-          
-          <button class="btn btn-primary" id="addStaffBtn">
-            <span class="material-symbols-rounded">add</span>
-            Add Staff
-          </button>
         </div>
-        
+
         <div class="table-wrapper">
           <table class="data-table">
             <thead>
@@ -6530,7 +6342,7 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Waiter Requests Page -->
-    <div id="waiterRequestsPage" class="page">
+    <div id="waiterRequestsPage" class="page sx lg">
       <div class="page-header">
         <h1>Waiter Requests</h1>
         <p>Manage service requests from tables</p>

@@ -6416,7 +6416,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const label = `${table.table_number} - ${table.area_name} (${table.capacity} seats)`;
             return `<button class="table-select-btn" data-table-number="${table.table_number}" data-table-id="${table.id}" style="width: 100%; padding: 16px; margin: 8px 0; border: 2px solid #e5e7eb; border-radius: 12px; background: white; cursor: pointer; transition: all 0.2s; text-align: left; font-size: 15px; font-weight: 600; color: #111827;">
               <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 24px;">🪑</span>
+                <span class="material-symbols-rounded" style="font-size: 24px; color: #6b7280;">table_restaurant</span>
                 <div>
                   <div style="font-weight: 700; color: #111827;">${table.table_number}</div>
                   <div style="font-size: 13px; color: #6b7280; font-weight: 400;">${table.area_name} • ${table.capacity} seats</div>
@@ -7482,7 +7482,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <tbody>
                       ${order.items.map(item => `
                         <tr style="border-bottom: 1px solid #eee;">
-                          <td style="padding: 0.75rem;">${escapeHtml(item.item_name)}${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px">📝 ${escapeHtml(item.notes)}</div>` : ''}</td>
+                          <td style="padding: 0.75rem;">${escapeHtml(item.item_name)}${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-3px;margin-right:3px">edit_note</span>${escapeHtml(item.notes)}</div>` : ''}</td>
                           <td style="padding: 0.75rem; text-align: center;">${item.quantity}</td>
                           <td style="padding: 0.75rem; text-align: right;">${formatCurrency(item.total_price)}</td>
                         </tr>
@@ -9818,8 +9818,8 @@ window.logout = logout;
             <div class="order-details">
               <p><strong>${order.order_type || 'N/A'}</strong> &middot; ${formatCurrency(order.total)}</p>
               <p><strong>${escapeHtml(order.customer_name || 'N/A')}</strong> &middot; ${order.customer_phone || ''}</p>
-              ${order.customer_address ? `<p style="color:#6b7280;font-size:0.85rem">📍 ${escapeHtml(order.customer_address)}</p>` : ''}
-              ${order.landmark ? `<p style="color:#6b7280;font-size:0.85rem">🏷️ Landmark: ${escapeHtml(order.landmark)}</p>` : ''}
+              ${order.customer_address ? `<p style="color:#6b7280;font-size:0.85rem"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-3px;margin-right:3px">location_on</span>${escapeHtml(order.customer_address)}</p>` : ''}
+              ${order.landmark ? `<p style="color:#6b7280;font-size:0.85rem"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-3px;margin-right:3px">signpost</span>Landmark: ${escapeHtml(order.landmark)}</p>` : ''}
               <p style="color:#6b7280;font-size:0.85rem">${new Date(order.created_at).toLocaleString()}</p>
             </div>
             ${buildDeliveryMapHtml(order)}
@@ -9838,7 +9838,7 @@ window.logout = logout;
               </button>
               ${window.whatsappEnabled && window.whatsappPhone ? `
                 <a href="https://wa.me/${window.whatsappPhone}?text=${encodeURIComponent('New Order #' + order.order_number + '\nCustomer: ' + order.customer_name + '\nPhone: ' + order.customer_phone + '\nType: ' + order.order_type + '\nTotal: ' + formatCurrency(order.total) + '\n\nCheck the admin panel for full details.')}" target="_blank" class="btn" style="background: #25D366; color: white; border: none; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; text-decoration: none;">
-                  <span style="font-weight:bold;font-size:1.1rem;">📱</span>
+                  <span class="material-symbols-rounded" style="font-size: 1.1rem;">chat</span>
                   WhatsApp
                 </a>
               ` : ''}
@@ -9895,7 +9895,7 @@ window.logout = logout;
                   <span class="item-name">${escapeHtml(item.item_name)}</span>
                   <span class="item-qty">x${item.quantity}</span>
                   <span class="item-price">${formatCurrency(item.total_price)}</span>
-                  ${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px">📝 ${escapeHtml(item.notes)}</div>` : ''}
+                  ${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-3px;margin-right:3px">edit_note</span>${escapeHtml(item.notes)}</div>` : ''}
                 </div>
               `).join('')}
             </div>
@@ -9915,7 +9915,7 @@ window.logout = logout;
               <button class="btn btn-danger" onclick="updateOrderStatus(${order.id}, 'Cancelled')">Cancel Order</button>
               ${window.whatsappEnabled && window.whatsappPhone ? `
                 <a href="https://wa.me/${window.whatsappPhone}?text=${encodeURIComponent('Order #' + order.order_number + '\nCustomer: ' + order.customer_name + '\nPhone: ' + order.customer_phone + '\nType: ' + order.order_type + '\nTotal: ' + formatCurrency(order.total))}" target="_blank" class="btn" style="background: #25D366; color: white; border: none; display: flex; align-items: center; gap: 4px; text-decoration: none;">
-                  <span style="font-weight:bold;font-size:1.1rem;">📱</span>
+                  <span class="material-symbols-rounded" style="font-size: 1.1rem;">chat</span>
                   WhatsApp
                 </a>
               ` : ''}
@@ -9961,7 +9961,7 @@ window.logout = logout;
                 <span class="item-name">${escapeHtml(item.item_name)}</span>
                 <span class="item-qty">x${item.quantity}</span>
                 <span class="item-price">${formatCurrency(item.total_price)}</span>
-                ${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px">📝 ${escapeHtml(item.notes)}</div>` : ''}
+                ${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-3px;margin-right:3px">edit_note</span>${escapeHtml(item.notes)}</div>` : ''}
               </div>
             `).join('')}
           </div>
@@ -9986,7 +9986,7 @@ window.logout = logout;
             ` : ''}
             ${window.whatsappEnabled && window.whatsappPhone ? `
               <a href="https://wa.me/${window.whatsappPhone}?text=${encodeURIComponent('Order #' + order.order_number + '\nCustomer: ' + order.customer_name + '\nPhone: ' + order.customer_phone + '\nType: ' + order.order_type + '\nTotal: ' + formatCurrency(order.total))}" target="_blank" class="btn" style="background: #25D366; color: white; border: none; display: flex; align-items: center; gap: 4px; text-decoration: none;">
-                <span style="font-weight:bold;font-size:1.1rem;">📱</span>
+                <span class="material-symbols-rounded" style="font-size: 1.1rem;">chat</span>
                 WhatsApp
               </a>
             ` : ''}
@@ -10169,9 +10169,9 @@ function displayKOTOrders(kots) {
           ${kot.customer_name && kot.customer_name !== 'Table Customer' && kot.customer_name !== 'Takeaway' ? `
             <div style="margin-top: 8px; padding: 8px; background: #f3f4f6; border-radius: 6px;">
               <p style="margin: 2px 0; color: #1f2937; font-size: 0.85rem; font-weight: 600;">Customer: ${escapeHtml(kot.customer_name)}</p>
-              ${kot.customer_phone ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;">📞 ${escapeHtml(kot.customer_phone)}</p>` : ''}
-              ${kot.customer_email ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;">✉️ ${escapeHtml(kot.customer_email)}</p>` : ''}
-              ${kot.customer_address ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;">📍 ${escapeHtml(kot.customer_address)}</p>` : ''}
+              ${kot.customer_phone ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:-3px;margin-right:3px">call</span>${escapeHtml(kot.customer_phone)}</p>` : ''}
+              ${kot.customer_email ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:-3px;margin-right:3px">mail</span>${escapeHtml(kot.customer_email)}</p>` : ''}
+              ${kot.customer_address ? `<p style="margin: 2px 0; color: #6b7280; font-size: 0.8rem;"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:-3px;margin-right:3px">location_on</span>${escapeHtml(kot.customer_address)}</p>` : ''}
             </div>
           ` : ''}
         </div>
@@ -10606,7 +10606,7 @@ function displayOrders(orders) {
             <span class="item-name">${escapeHtml(item.item_name)}</span>
             <span class="item-qty">x${item.quantity}</span>
             <span class="item-price">${formatCurrency(item.total_price)}</span>
-            ${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px">📝 ${escapeHtml(item.notes)}</div>` : ''}
+            ${item.notes ? `<div style="font-size:0.8rem;color:#92400e;margin-top:2px"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-3px;margin-right:3px">edit_note</span>${escapeHtml(item.notes)}</div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -16090,10 +16090,10 @@ async function loadInventory() {
           '<td>' + globalCurrencySymbol + value.toFixed(2) + '</td>' +
           '<td><span class="' + statusClass + '">' + statusText + '</span></td>' +
           '<td class="actions-cell">' +
-            '<button class="btn btn-sm btn-success" onclick="openRestockModal(' + item.id + ')" title="Restock">📥</button> ' +
-            '<button class="btn btn-sm btn-warning" onclick="openAdjustModal(' + item.id + ')" title="Adjust / Wastage">⚖️</button> ' +
-            '<button class="btn btn-sm btn-secondary" onclick="editInventoryItem(' + item.id + ')" title="Edit">✏️</button> ' +
-            '<button class="btn btn-sm btn-danger" onclick="deleteInventoryItem(' + item.id + ')" title="Delete">🗑️</button>' +
+            '<button class="btn-action-small" onclick="openRestockModal(' + item.id + ')" title="Add stock"><span class="material-symbols-rounded">add_box</span>Restock</button>' +
+            '<button class="btn-action-small" onclick="openAdjustModal(' + item.id + ')" title="Adjust or record wastage"><span class="material-symbols-rounded">tune</span>Adjust</button>' +
+            '<button class="btn-action-small" onclick="editInventoryItem(' + item.id + ')" title="Edit"><span class="material-symbols-rounded">edit</span></button>' +
+            '<button class="btn-action-small delete-btn" onclick="deleteInventoryItem(' + item.id + ')" title="Delete"><span class="material-symbols-rounded">delete</span></button>' +
           '</td>' +
           '</tr>';
       }).join('');
