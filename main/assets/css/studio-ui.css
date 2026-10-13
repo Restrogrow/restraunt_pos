@@ -2238,3 +2238,7 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
   .ot-type { flex: 0 0 auto; padding: 10px 12px; }
   .ot-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* Online Orders: stage chips share the full line */
+#onlineOrdersPage .ot-sub { display: flex; }
+#onlineOrdersPage .ot-chip { flex: 1 1 0; justify-content: center; min-width: max-content; }
+@media (max-width: 760px) { #onlineOrdersPage .ot-chip { flex: 0 0 auto; } }
