@@ -9815,6 +9815,7 @@ window.logout = logout;
   }
 
   function displayOnlineOrders(orders) {
+    if (window.rgOrderTabs) orders = window.rgOrderTabs('online', orders, displayOnlineOrders);   // Ongoing / Completed tabs (order-tabs.js)
     const container = document.getElementById('onlineOrdersList');
 
     if (orders.length === 0) {
@@ -10624,6 +10625,7 @@ function exportPaymentsToCSV() {
 
 // Display Orders
 function displayOrders(orders) {
+  if (window.rgOrderTabs) orders = window.rgOrderTabs('orders', orders, displayOrders);   // Ongoing / Completed tabs (order-tabs.js)
   const ordersList = document.getElementById('ordersList');
   
   if (!orders || orders.length === 0) {

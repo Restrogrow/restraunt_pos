@@ -1896,3 +1896,22 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
   .an-line { height: 170px; }
 }
 @media (max-width: 420px) { .an-kpis { grid-template-columns: 1fr; } }
+
+/* Orders / Online Orders: Ongoing · Completed · Cancelled · All (assets/js/order-tabs.js) */
+.ot-tabs { display: flex; gap: 8px; margin: 0 0 14px; overflow-x: auto; scrollbar-width: none; }
+.ot-tabs::-webkit-scrollbar { display: none; }
+.ot-tab { flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 16px; border: 1.5px solid var(--sx-line); border-radius: 14px; background: #fff; color: #374151; font: inherit; font-size: .92rem; font-weight: 800; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.ot-tab .material-symbols-rounded { font-size: 20px; color: var(--sx-faint); }
+.ot-tab em { min-width: 24px; padding: 2px 8px; border-radius: 999px; background: #f3f4f6; color: #4b5563; font-style: normal; font-size: .78rem; text-align: center; }
+.ot-tab:hover { border-color: #cbd5e1; }
+.ot-tab.on { border-color: #111827; background: #111827; color: #fff; }
+.ot-tab.on .material-symbols-rounded { color: #fff; }
+.ot-tab.on em { background: rgba(255,255,255,.2); color: #fff; }
+.ot-tab.ot-ongoing:not(.on) em { background: #fef3c7; color: #b45309; }
+.ot-tab.ot-completed:not(.on) em { background: #dcfce7; color: #15803d; }
+.ot-tab.ot-cancelled:not(.on) em { background: #fee2e2; color: #b91c1c; }
+.ot-tab.ot-cancelled, .ot-tab.ot-all { height: 40px; padding: 0 13px; font-size: .84rem; color: #6b7280; }
+.ot-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 16px; border: 1.5px dashed var(--sx-line); border-radius: 16px; color: var(--sx-muted); text-align: center; }
+.ot-empty .material-symbols-rounded { font-size: 34px; color: #cbd5e1; }
+.ot-empty b { color: #374151; font-size: .95rem; }
+.ot-empty button { padding: 8px 14px; border: 1.5px solid var(--sx-line); border-radius: 10px; background: #fff; color: #1d4ed8; font: inherit; font-size: .84rem; font-weight: 800; cursor: pointer; }
