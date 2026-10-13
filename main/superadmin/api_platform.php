@@ -519,10 +519,19 @@ try {
             . '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;color:#14532d"><b>Good news:</b> if you are reading this, email from <b>' . htmlspecialchars(SMTP_FROM_EMAIL) . '</b> works on the live site. Setup complete ✅</div>'
             . '<p style="margin:18px 0 0">See you at the next push to production,<br><b>Team RestroGrow</b></p></div>'
             . '<div style="background:#f9fafb;padding:12px 26px;color:#9ca3af;font-size:12px">Sent from Superadmin › Settings › Send test email on ' . date('d M Y, g:i A') . '. Just for fun, not a contract. 😄</div></div></div>';
-        $r = sendSMTPEmail($to, 'Offer accepted! Welcome to RestroGrow 🥳', $html);
-        pfAudit($conn, 'email.test', $to, ['ok' => !empty($r['success']), 'host' => SMTP_HOST, 'from' => SMTP_FROM_EMAIL]);
+        $purpose = isset(rgMailSenders()[$in['purpose'] ?? '']) ? $in['purpose'] : null;
+        $fromUsed = rgMailFrom($purpose);
+        $html = str_replace(htmlspecialchars(SMTP_FROM_EMAIL), htmlspecialchars($fromUsed), $html);
+        $r = sendSMTPEmail($to, 'Offer accepted! Welcome to RestroGrow 🥳', $html, '', $purpose);
+        pfAudit($conn, 'email.test', $to, ['ok' => !empty($r['success']), 'host' => SMTP_HOST, 'from' => $fromUsed]);
         if (empty($r['success'])) throw new Exception('Not sent: ' . trim(preg_replace('/\s+/', ' ', (string)($r['error'] ?? 'unknown error'))) . ' (server ' . SMTP_HOST . ':' . SMTP_PORT . ', login ' . SMTP_USERNAME . ')');
-        out(['message' => 'Sent to ' . $to . ' from ' . SMTP_FROM_EMAIL . ' via ' . SMTP_HOST . '. Check the inbox (and Spam / Promotions).']);
+        out(['message' => 'Sent to ' . $to . ' from ' . $fromUsed . ' via ' . SMTP_HOST . '. Check the inbox (and Spam / Promotions). If it shows ' . SMTP_USERNAME . ' as the sender instead, add ' . $fromUsed . ' under Gmail › Settings › Accounts › Send mail as.']);
+
+    case 'mailSenders':
+        require_once __DIR__ . '/../config/email_config.php';
+        $list = [];
+        foreach (rgMailSenders() as $k => $envKey) $list[] = ['purpose' => $k, 'env' => $envKey, 'from' => rgMailFrom($k), 'set' => trim((string)env($envKey, '')) !== ''];
+        out(['senders' => $list, 'default' => SMTP_FROM_EMAIL, 'login' => SMTP_USERNAME]);
 
     case 'restaurantOptions':
         out(['rows' => $conn->query("SELECT id, restaurant_id, restaurant_name FROM users ORDER BY restaurant_name")->fetchAll(PDO::FETCH_ASSOC)]);

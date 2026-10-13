@@ -447,10 +447,10 @@ if (!function_exists('sendOrderConfirmationEmails')) {
         </div>';
 
         if (!empty($customer_email)) {
-            sendEmail($customer_email, 'Order Confirmed - ' . $safeOrderNumber, $orderDetailsHtml);
+            sendEmail($customer_email, 'Order Confirmed - ' . $safeOrderNumber, $orderDetailsHtml, '', 'orders');
         }
         if (!empty($restaurantEmail)) {
-            sendEmail($restaurantEmail, 'New Order Received - ' . $safeOrderNumber, '<h2 style="color:#e74c3c;">New Order Alert</h2>' . $orderDetailsHtml);
+            sendEmail($restaurantEmail, 'New Order Received - ' . $safeOrderNumber, '<h2 style="color:#e74c3c;">New Order Alert</h2>' . $orderDetailsHtml, '', 'alerts');
         }
     }
 }

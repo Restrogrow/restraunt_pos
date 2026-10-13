@@ -57,9 +57,44 @@ if (!defined('SMTP_FROM_NAME')) {
 }
 
 /**
+ * Which address an automatic email is sent from. Google Workspace: every address must be added to the
+ * login account (SMTP_USERNAME) in Gmail › Settings › Accounts › "Send mail as", or Gmail sends it
+ * from the login address instead. Unset ones fall back to SMTP_FROM_EMAIL.
+ *   billing   MAIL_FROM_BILLING   invoices, renewals, payment links
+ *   alerts    MAIL_FROM_ALERTS    "new order" emails to restaurants, system alerts
+ *   orders    MAIL_FROM_ORDERS    order confirmations to customers
+ *   accounts  MAIL_FROM_ACCOUNTS  password resets and login emails
+ *   support   MAIL_FROM_SUPPORT   support replies
+ *   sales     MAIL_FROM_SALES     sales and offers
+ */
+function rgMailSenders(): array
+{
+    return ['billing' => 'MAIL_FROM_BILLING', 'alerts' => 'MAIL_FROM_ALERTS', 'orders' => 'MAIL_FROM_ORDERS',
+        'accounts' => 'MAIL_FROM_ACCOUNTS', 'support' => 'MAIL_FROM_SUPPORT', 'sales' => 'MAIL_FROM_SALES'];
+}
+function rgMailFrom(?string $purpose = null): string
+{
+    $keys = rgMailSenders();
+    if ($purpose && isset($keys[$purpose])) {
+        $v = trim((string)env($keys[$purpose], ''));
+        if ($v !== '' && filter_var($v, FILTER_VALIDATE_EMAIL)) return $v;
+    }
+    return SMTP_FROM_EMAIL;
+}
+/** "Name <address>" with the name encoded if it is not plain ASCII */
+function rgMailHeaderFrom(string $email): string
+{
+    $name = SMTP_FROM_NAME;
+    if (preg_match('/[^\x20-\x7E]/', $name)) $name = '=?UTF-8?B?' . base64_encode($name) . '?=';
+    else $name = '"' . str_replace('"', '', $name) . '"';
+    return $name . ' <' . $email . '>';
+}
+
+/**
  * Send email using SMTP
  */
-function sendSMTPEmail($to, $subject, $message, $headers = '') {
+function sendSMTPEmail($to, $subject, $message, $headers = '', $purpose = null) {
+    $fromEmail = rgMailFrom($purpose);
     if (!SMTP_ENABLED) {
         // Fallback to PHP mail() function
         return @mail($to, $subject, $message, $headers);
@@ -174,7 +209,7 @@ function sendSMTPEmail($to, $subject, $message, $headers = '') {
         }
         
         // Send email
-        fputs($smtp, "MAIL FROM: <" . SMTP_FROM_EMAIL . ">\r\n");
+        fputs($smtp, "MAIL FROM: <" . $fromEmail . ">\r\n");
         $response = fgets($smtp, 515);
         if (substr($response, 0, 3) != '250') {
             $errorMsg = "MAIL FROM failed: $response";
@@ -202,7 +237,8 @@ function sendSMTPEmail($to, $subject, $message, $headers = '') {
         }
         
         // Prepare email headers
-        $emailHeaders = "From: " . SMTP_FROM_NAME . " <" . SMTP_FROM_EMAIL . ">\r\n";
+        $emailHeaders = "From: " . rgMailHeaderFrom($fromEmail) . "\r\n";
+        if (stripos((string)$headers, 'Reply-To:') === false) $emailHeaders .= "Reply-To: <" . $fromEmail . ">\r\n";
         $emailHeaders .= "To: <" . $to . ">\r\n";
         $emailHeaders .= "Subject: " . $subject . "\r\n";
         $emailHeaders .= "MIME-Version: 1.0\r\n";
@@ -241,14 +277,15 @@ function sendSMTPEmail($to, $subject, $message, $headers = '') {
  * Send email (wrapper function that tries SMTP first, then falls back to mail())
  * Returns array with 'success' and optional 'error' keys
  */
-function sendEmail($to, $subject, $message, $headers = '') {
+function sendEmail($to, $subject, $message, $headers = '', $purpose = null) {
+    $fromEmail = rgMailFrom($purpose);
     // Development Mode: Only send emails on localhost
     if (DEVELOPMENT_MODE && !isLocalhost()) {
         // Log email instead of sending on production
         $logMessage = "=== EMAIL NOT SENT (Development Mode) ===\n";
         $logMessage .= "To: $to\n";
         $logMessage .= "Subject: $subject\n";
-        $logMessage .= "From: " . SMTP_FROM_NAME . " <" . SMTP_FROM_EMAIL . ">\n";
+        $logMessage .= "From: " . SMTP_FROM_NAME . " <" . $fromEmail . ">\n";
         $logMessage .= "Time: " . date('Y-m-d H:i:s') . "\n";
         $logMessage .= "Message Preview: " . substr(strip_tags($message), 0, 200) . "...\n";
         $logMessage .= "========================================\n\n";
@@ -270,7 +307,7 @@ function sendEmail($to, $subject, $message, $headers = '') {
     
     // Try SMTP first if enabled
     if (SMTP_ENABLED && !empty(SMTP_PASSWORD)) {
-        $result = sendSMTPEmail($to, $subject, $message, $headers);
+        $result = sendSMTPEmail($to, $subject, $message, $headers, $purpose);
         if (is_array($result)) {
             return $result; // Return the result array
         }
@@ -286,7 +323,7 @@ function sendEmail($to, $subject, $message, $headers = '') {
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $defaultHeaders = "MIME-Version: 1.0\r\n";
     $defaultHeaders .= "Content-type: text/html; charset=UTF-8\r\n";
-    $defaultHeaders .= "From: " . SMTP_FROM_NAME . " <" . SMTP_FROM_EMAIL . ">\r\n";
+    $defaultHeaders .= "From: " . rgMailHeaderFrom($fromEmail) . "\r\n";
     if ($headers) {
         $defaultHeaders .= $headers;
     }

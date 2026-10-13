@@ -312,7 +312,7 @@ function handleCustomerForgotPassword($pdo) {
 
     $mailSent = false;
     if (function_exists('sendEmail')) {
-        $result = sendEmail($email, $subject, $message);
+        $result = sendEmail($email, $subject, $message, '', 'accounts');
         $mailSent = is_array($result) ? ($result['success'] ?? false) : (bool)$result;
         if (!$mailSent) error_log('Customer password reset email failed for ' . $email);
     }

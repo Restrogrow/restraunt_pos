@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ";
                 
                 // Send email
-                $emailResult = sendEmail($to, $subject, $emailMessage);
+                $emailResult = sendEmail($to, $subject, $emailMessage, '', 'accounts');
                 
                 if (is_array($emailResult) && $emailResult['success']) {
                     $message = 'Password reset link has been sent to sujaysarraf55@gmail.com. Please check your email.';

@@ -760,6 +760,7 @@ require_once __DIR__ . '/../config/countries.php';
           <div class="card-header"><div class="card-title">Email check</div><small class="sp-muted">Sends a fun “Offer accepted” email using the email settings in main/.env</small></div>
           <div class="card-body">
             <div class="row" style="gap:8px">
+              <select id="spTestEmailFrom" aria-label="Send from" style="min-width:240px"><option value="">Default sender</option></select>
               <input type="email" id="spTestEmailTo" value="asfluencernandkishor@gmail.com" style="flex:1;min-width:240px;max-width:420px" aria-label="Send the test email to">
               <button type="button" class="btn btn-primary" id="spTestEmailBtn"><span class="material-symbols-rounded">send</span>Send test email</button>
             </div>

@@ -1903,7 +1903,7 @@ function handleForgotPassword() {
     
     if (function_exists('sendEmail')) {
         // Use SMTP email function
-        $emailResult = sendEmail($email, $subject, $message);
+        $emailResult = sendEmail($email, $subject, $message, '', 'accounts');
         if (is_array($emailResult)) {
             $mailSent = $emailResult['success'] ?? false;
             $mailError = $emailResult['error'] ?? '';

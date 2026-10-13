@@ -427,6 +427,14 @@
     bizName: 'biz_name', bizGstin: 'biz_gstin', bizEmail: 'biz_email', bizPhone: 'biz_phone', bizAddress: 'biz_address', gstPercent: 'gst_percent', pricesIncludeGst: 'prices_include_gst', invoicePrefix: 'invoice_prefix' };
   function loadSettings() {
     get('getSettings').then(function (d) { Object.keys(SET_MAP).forEach(function (id) { var el = $(id); if (el && d.settings[SET_MAP[id]] != null) el.value = d.settings[SET_MAP[id]]; }); }).catch(function () {});
+    // senders for the Email check (MAIL_FROM_* in main/.env)
+    var LABEL = { billing: 'Billing', alerts: 'Alerts (new orders)', orders: 'Order confirmations', accounts: 'Password resets', support: 'Support', sales: 'Sales' };
+    get('mailSenders').then(function (d) {
+      var sel = $('spTestEmailFrom'); if (!sel) return;
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">Default · ' + esc(d.default) + '</option>' + d.senders.map(function (x) { return '<option value="' + esc(x.purpose) + '">' + esc(LABEL[x.purpose] || x.purpose) + ' · ' + esc(x.from) + (x.set ? '' : ' (not set, uses default)') + '</option>'; }).join('');
+      sel.value = keep;
+    }).catch(function () {});
   }
   function saveSettings(btn) {
     var v = {};
@@ -582,7 +590,7 @@
     if ((m = t.closest('#spTestEmailBtn'))) {
       var out = $('spTestEmailResult'), to = ($('spTestEmailTo') || {}).value || '';
       m.disabled = true; out.style.color = ''; out.textContent = 'Sending…';
-      post('testEmail', { to: to.trim() }).then(function (d) { m.disabled = false; out.style.color = '#15803d'; out.textContent = '✓ ' + d.message; })
+      post('testEmail', { to: to.trim(), purpose: ($('spTestEmailFrom') || {}).value || '' }).then(function (d) { m.disabled = false; out.style.color = '#15803d'; out.textContent = '✓ ' + d.message; })
         .catch(function (er) { m.disabled = false; out.style.color = '#dc2626'; out.textContent = er.message; });
       return;
     }
