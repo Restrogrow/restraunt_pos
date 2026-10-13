@@ -352,6 +352,8 @@ docs/               RepeatGrow contract, audits, README screenshots
 
 ## Roadmap
 
+**AI to do** (researched, not built): smart upsell at checkout, WhatsApp ordering assistant, demand forecast for prep and stock, review replies, weekly owner summary, menu helpers, phone-order agent. Details, order and sources: [docs/AI_TODO.md](docs/AI_TODO.md).
+
 Ideas for next:
 - Birthday and welcome bonus points; WhatsApp points-balance messages
 - Time-of-day suggestions in Complete your meal
