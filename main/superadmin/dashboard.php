@@ -36,7 +36,7 @@ require_once __DIR__ . '/../config/countries.php';
 })();
 </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Superadmin Dashboard</title>
+  <title>RestroGrow · Superadmin</title>
   
   <!-- Resource Hints for Performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -174,29 +174,44 @@ require_once __DIR__ . '/../config/countries.php';
       border-radius: 6px;
     }
   </style>
+  <link rel="stylesheet" href="superadmin.css?v=<?php echo @filemtime(__DIR__ . '/superadmin.css'); ?>">
 </head>
 <body>
   <div class="layout">
     <!-- Sidebar -->
     <div class="sidebar">
       <div class="sidebar-header">
-        <h2>Superadmin</h2>
+        <span class="sa-logo">RG</span>
+        <h2>RestroGrow<small>Superadmin</small></h2>
       </div>
       <div class="sidebar-menu">
+        <div class="sa-nav-h">Overview</div>
         <div class="menu-item active" data-page="dashboard">
-          <span class="material-symbols-rounded icon">dashboard</span>
+          <span class="material-symbols-rounded icon">space_dashboard</span>
           <span class="text">Dashboard</span>
         </div>
+        <div class="menu-item" data-page="analytics">
+          <span class="material-symbols-rounded icon">monitoring</span>
+          <span class="text">Analytics</span>
+        </div>
+
+        <div class="sa-nav-h">Restaurants</div>
         <div class="menu-item" data-page="restaurants">
-          <span class="material-symbols-rounded icon">restaurant</span>
+          <span class="material-symbols-rounded icon">storefront</span>
           <span class="text">Restaurants</span>
         </div>
         <div class="menu-item" data-page="menus">
           <span class="material-symbols-rounded icon">menu_book</span>
-          <span class="text">Menus</span>
+          <span class="text">Menus from photos</span>
         </div>
+        <div class="menu-item" data-page="branchAdmins">
+          <span class="material-symbols-rounded icon">groups</span>
+          <span class="text">Branch admins</span>
+        </div>
+
+        <div class="sa-nav-h">Money</div>
         <div class="menu-item" data-page="subscriptions">
-          <span class="material-symbols-rounded icon">payments</span>
+          <span class="material-symbols-rounded icon">workspace_premium</span>
           <span class="text">Subscriptions</span>
         </div>
         <div class="menu-item" data-page="payments">
@@ -205,35 +220,26 @@ require_once __DIR__ . '/../config/countries.php';
         </div>
         <div class="menu-item" data-page="paymentLinks">
           <span class="material-symbols-rounded icon">link</span>
-          <span class="text">Payment Links</span>
+          <span class="text">Payment links</span>
         </div>
         <div class="menu-item" data-page="settlements">
           <span class="material-symbols-rounded icon">account_balance</span>
           <span class="text">Settlements</span>
         </div>
-        <div class="menu-item" data-page="analytics">
-          <span class="material-symbols-rounded icon">analytics</span>
-          <span class="text">Analytics <span class="badge-new">New</span></span>
-        </div>
-        <div class="menu-item" data-page="branchAdmins">
-          <span class="material-symbols-rounded icon">group</span>
-          <span class="text">Branch Admins</span>
-        </div>
+
+        <div class="sa-nav-h">System</div>
         <div class="menu-item" data-page="settings">
           <span class="material-symbols-rounded icon">settings</span>
           <span class="text">Settings</span>
         </div>
         <div class="menu-item" data-page="errorMonitor">
           <span class="material-symbols-rounded icon">bug_report</span>
-          <span class="text">Error Monitor <span id="saErrorBadge" class="badge-new" style="display:none;">0</span></span>
+          <span class="text">Error monitor <span id="saErrorBadge" class="badge-new" style="display:none;">0</span></span>
         </div>
       </div>
-      <div style="padding:20px;border-top:1px solid rgba(255,255,255,.1);margin-top:auto;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-          <span class="material-symbols-rounded">person</span>
-          <span style="flex:1;"><?php echo htmlspecialchars($_SESSION['superadmin_username'] ?? ''); ?></span>
-        </div>
-        <a href="logout.php" class="btn btn-outline" style="width:100%;background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2);">Logout</a>
+      <div class="sa-user">
+        <div class="sa-user-row"><span class="sa-avatar"><?php echo htmlspecialchars(strtoupper(substr($_SESSION['superadmin_username'] ?? 'S', 0, 1))); ?></span><span><?php echo htmlspecialchars($_SESSION['superadmin_username'] ?? ''); ?><small>Superadmin</small></span></div>
+        <a href="logout.php" class="sa-logout"><span class="material-symbols-rounded">logout</span>Log out</a>
       </div>
     </div>
     <div class="sidebar-overlay"></div>
@@ -245,36 +251,30 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Dashboard Overview</h1>
-          </div>
-          <div class="header-actions">
-            <span class="header-user">Welcome, <?php echo htmlspecialchars($_SESSION['superadmin_username'] ?? ''); ?></span>
+            <div><h1>Good to see you, <?php echo htmlspecialchars($_SESSION['superadmin_username'] ?? ''); ?></h1><div class="sa-sub">Everything across all restaurants, today</div></div>
           </div>
         </div>
         <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Total Restaurants</div>
-            <div class="stat-value" id="statRestaurants">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Active Restaurants</div>
-            <div class="stat-value" id="statActive">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Total Revenue (Today)</div>
-            <div class="stat-value" id="statRevenue">₹0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Total Orders (Today)</div>
-            <div class="stat-value" id="statOrders">0</div>
-          </div>
+          <div class="stat-card" data-icon="storefront" style="--c:#2563eb"><div class="stat-label">Restaurants</div><div class="stat-value" id="statRestaurants">0</div></div>
+          <div class="stat-card" data-icon="check_circle" style="--c:#16a34a"><div class="stat-label">Active</div><div class="stat-value" id="statActive">0</div></div>
+          <div class="stat-card" data-icon="payments" style="--c:#7c3aed"><div class="stat-label">Sales today (all restaurants)</div><div class="stat-value" id="statRevenue">₹0</div></div>
+          <div class="stat-card" data-icon="receipt_long" style="--c:#0891b2"><div class="stat-label">Orders today</div><div class="stat-value" id="statOrders">0</div></div>
+        </div>
+        <div class="sa-quick">
+          <button type="button" data-sa-quick="newRestaurant" style="--c:#2563eb"><span class="material-symbols-rounded">add_business</span>New restaurant</button>
+          <button type="button" data-sa-quick="paymentLink" style="--c:#7c3aed"><span class="material-symbols-rounded">add_link</span>New payment link</button>
+          <button type="button" data-sa-go="subscriptions" style="--c:#16a34a"><span class="material-symbols-rounded">workspace_premium</span>Subscriptions</button>
+          <button type="button" data-sa-go="settlements" style="--c:#0891b2"><span class="material-symbols-rounded">account_balance</span>Settle money</button>
+          <button type="button" data-sa-go="menus" style="--c:#d97706"><span class="material-symbols-rounded">photo_camera</span>Menu from photos</button>
+          <button type="button" data-sa-go="errorMonitor" style="--c:#dc2626"><span class="material-symbols-rounded">bug_report</span>Errors</button>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Recent Activity</div>
+            <div class="card-title">Newest restaurants</div>
+            <button type="button" class="btn btn-outline btn-sm" data-sa-go="restaurants">All restaurants</button>
           </div>
           <div class="card-body">
-            <div id="recentActivity">Loading...</div>
+            <div id="recentActivity" class="sa-recent">Loading…</div>
           </div>
         </div>
       </div>
@@ -284,33 +284,33 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Restaurant Management</h1>
+            <div><h1>Restaurants</h1><div class="sa-sub">Every restaurant on RestroGrow: open it, switch features, manage logins</div></div>
           </div>
           <div class="header-actions">
-            <button class="btn btn-outline" id="btnExport">Export CSV</button>
-            <button class="btn btn-primary" id="btnNew">New Restaurant</button>
+            <button class="btn btn-outline" id="btnExport"><span class="material-symbols-rounded">download</span>Export CSV</button>
+            <button class="btn btn-primary" id="btnNew"><span class="material-symbols-rounded">add</span>New restaurant</button>
           </div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">All Restaurants</div>
-            <input id="saSearch" placeholder="Search restaurants..." style="width:300px;">
+            <div class="sa-filters"><div class="sa-seg" id="saRestFilter"><button type="button" class="on" data-sa-rf="all">All</button><button type="button" data-sa-rf="active">Active</button><button type="button" data-sa-rf="inactive">Disabled</button><button type="button" data-sa-rf="trial">On trial</button><button type="button" data-sa-rf="expired">Trial expired</button></div></div>
+            <div class="sa-search"><span class="material-symbols-rounded">search</span><input id="saSearch" placeholder="Name, login or ID"></div>
           </div>
           <div class="card-body">
             <div style="overflow-x:auto;">
               <table id="restaurantsTable">
                 <thead>
                   <tr>
-                    <th>ID</th><th>Username</th><th>Restaurant ID</th><th>Name</th><th>Payment Gateway</th><th>Install App</th><th>WhatsApp Orders</th><th>Photo Gallery</th><th>Meal Subscriptions</th><th>Trial Status</th><th>Status</th><th>Created</th><th>Actions</th>
+                    <th>Restaurant</th><th>Features (click to switch)</th><th>Trial</th><th>Status</th><th></th>
                   </tr>
                 </thead>
                 <tbody id="restaurantsTbody"></tbody>
               </table>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
-              <button class="btn btn-outline" id="prevPage" disabled>Prev</button>
+            <div class="sa-pager">
+              <button class="btn btn-outline" id="prevPage" disabled><span class="material-symbols-rounded">chevron_left</span>Previous</button>
               <div id="pageInfo" style="color:var(--muted)">Page 1</div>
-              <button class="btn btn-outline" id="nextPage" disabled>Next</button>
+              <button class="btn btn-outline" id="nextPage" disabled>Next<span class="material-symbols-rounded">chevron_right</span></button>
             </div>
           </div>
         </div>
@@ -321,7 +321,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Menu Categories</h1>
+            <div><h1>Menu from photos</h1><div class="sa-sub">Turn photos of a printed menu into a restaurant’s categories and dishes</div></div>
           </div>
         </div>
         <div class="card">
@@ -388,7 +388,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Subscription Management</h1>
+            <div><h1>Subscriptions</h1><div class="sa-sub">Plans, trials and renewals for every restaurant</div></div>
           </div>
         </div>
         <div class="stats-grid">
@@ -434,7 +434,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Payment History</h1>
+            <div><h1>Payments</h1><div class="sa-sub">Every subscription payment received</div></div>
           </div>
         </div>
         <div class="card">
@@ -470,7 +470,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Payment Links</h1>
+            <div><h1>Payment links</h1><div class="sa-sub">Send a restaurant a link to pay for its plan</div></div>
           </div>
           <div class="header-actions" style="display:flex;gap:8px;align-items:center;">
             <span id="phonepeModeLabel" style="font-size:0.85rem;font-weight:600;padding:4px 12px;border-radius:20px;"></span>
@@ -542,7 +542,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Settlements</h1>
+            <div><h1>Settlements</h1><div class="sa-sub">Money paid out to restaurants</div></div>
           </div>
           <div class="header-actions">
             <span id="settlementModeLabel" style="font-size:0.85rem;font-weight:600;padding:4px 12px;border-radius:20px;"></span>
@@ -598,7 +598,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Analytics & Reports</h1>
+            <div><h1>Analytics</h1><div class="sa-sub">How the platform is doing</div></div>
           </div>
         </div>
         <div class="card">
@@ -615,7 +615,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Branch Admins</h1>
+            <div><h1>Branch admins</h1><div class="sa-sub">Owners who manage several outlets from one login</div></div>
           </div>
           <div class="header-actions">
             <button class="btn btn-primary" id="btnNewBranchAdmin">New Branch Admin</button>
@@ -678,7 +678,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Settings</h1>
+            <div><h1>Settings</h1><div class="sa-sub">Trial length, plan price, renewals and password resets</div></div>
           </div>
         </div>
         <div class="card">
@@ -767,7 +767,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <h1>Error Monitor <span id="saErrorNewBadge" class="badge-new" style="display:none;background:#ef4444;">New</span></h1>
+            <div><h1>Error monitor <span id="saErrorNewBadge" class="badge-new" style="display:none;background:#ef4444;">New</span></h1><div class="sa-sub">Errors from every restaurant’s site and dashboard</div></div>
           </div>
           <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
             <select id="saErrorSource" style="width:130px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);font-size:13px;">
@@ -1132,15 +1132,88 @@ require_once __DIR__ . '/../config/countries.php';
         const d = await res.json();
         if(d.success && d.restaurants){
           const html = d.restaurants.map(r => `
-            <div style="padding:12px;border-bottom:1px solid var(--border);">
-              <div style="font-weight:600;">${saEsc(r.restaurant_name)}</div>
-              <div style="color:var(--muted);font-size:0.875rem;">Created on ${r.created_at?.split(' ')[0]}</div>
+            <div class="sa-recent-row"><span class="sa-ini">${saEsc((r.restaurant_name || '?').trim().charAt(0).toUpperCase())}</span>
+              <div><b>${saEsc(r.restaurant_name)}</b><small>${saEsc(r.restaurant_id)} · added ${r.created_at?.split(' ')[0] || ''}</small></div>
+              ${Number(r.is_active) === 1 ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Disabled</span>'}
+              <button class="btn btn-outline btn-sm" onclick="openAdminPanel(${r.id})">Open</button>
             </div>
           `).join('');
           document.getElementById('recentActivity').innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--muted);">No recent activity</div>';
         }
       } catch(e) { console.error('Error loading activity:', e); }
     }
+
+    // Restaurants: rows drawn by saRenderRestaurants() (filter chips work on the loaded page)
+    let saLastRows = [], saRestFilter = 'all';
+    function saRenderRestaurants() {
+      const tbody = document.getElementById('restaurantsTbody');
+      const rows = saLastRows.filter(r => {
+        const active = Number(r.is_active) === 1;
+        if (saRestFilter === 'active') return active;
+        if (saRestFilter === 'inactive') return !active;
+        if (saRestFilter === 'trial') return r.trial_status === 'Active';
+        if (saRestFilter === 'expired') return r.trial_status === 'Expired';
+        return true;
+      });
+      if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="material-symbols-rounded icon">storefront</div>${saLastRows.length ? 'No restaurant on this page matches this filter.' : 'No restaurants found.'}</div></td></tr>`; return; }
+      const feat = (on, icon, label, call, title) => `<button type="button" class="sa-feat${on ? ' on' : ''}" onclick="${call}" title="${title} · click to switch ${on ? 'off' : 'on'}"><span class="material-symbols-rounded">${icon}</span>${label}</button>`;
+      tbody.innerHTML = rows.map(r => {
+        const isActive = Number(r.is_active) === 1;
+        const pgType = r.payment_gateway_type || 'cash_only';
+        const online = pgType !== 'cash_only';
+        const showInstall = Number(r.show_install_app) === 1;
+        const whatsappOn = Number(r.whatsapp_orders) === 1;
+        const galleryOn = Number(r.photo_gallery_enabled) === 1;
+        const mealSubsOn = Number(r.meal_subscriptions_enabled) === 1;
+        const trial = r.trial_status === 'Active' ? `<span class="badge ${Number(r.days_left) <= 7 ? 'badge-warning' : 'badge-success'}">${r.days_left} days left</span>`
+          : r.trial_status === 'Disabled' ? '<span class="badge badge-info">Paid / no trial</span>' : '<span class="badge badge-danger">Expired</span>';
+        const ini = (r.restaurant_name || '?').trim().charAt(0).toUpperCase();
+        return `
+          <tr>
+            <td><div class="sa-rest"><span class="sa-ini">${saEsc(ini)}</span><div><b>${saEsc(r.restaurant_name)}</b><small>${saEsc(r.username)} · <code>${saEsc(r.restaurant_id)}</code></small><small>Added ${r.created_at?.split(' ')[0] || ''}</small></div></div></td>
+            <td><div class="sa-feats">
+              ${feat(online, 'credit_card', online ? 'Online pay' : 'Cash only', `togglePaymentGateway(${r.id}, '${pgType}')`, 'Payment gateway')}
+              ${feat(showInstall, 'install_mobile', 'Install app', `toggleInstallApp(${r.id}, ${showInstall})`, 'Install app button')}
+              ${feat(whatsappOn, 'chat', 'WhatsApp orders', `toggleWhatsappOrders(${r.id}, ${whatsappOn})`, 'WhatsApp orders')}
+              ${feat(galleryOn, 'photo_library', 'Gallery', `toggleGalleryEnabled(${r.id}, ${galleryOn})`, 'Photo gallery')}
+              ${feat(mealSubsOn, 'lunch_dining', 'Meal plans', `toggleMealSubscriptionsEnabled(${r.id}, ${mealSubsOn})`, 'Meal subscriptions')}
+            </div></td>
+            <td>${trial}</td>
+            <td>${isActive ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Disabled</span>'}</td>
+            <td><div class="sa-acts">
+              <button class="sa-more-btn" onclick="openWebsite('${r.restaurant_id}')" title="Open the restaurant's website" aria-label="Website"><span class="material-symbols-rounded">language</span></button>
+              <button class="btn btn-primary btn-sm" onclick="openAdminPanel(${r.id})" title="Open its dashboard"><span class="material-symbols-rounded">dashboard</span>Admin</button>
+              <div class="sa-more"><button type="button" class="sa-more-btn" data-sa-more aria-label="More actions"><span class="material-symbols-rounded">more_vert</span></button>
+                <div class="sa-more-menu">
+                  ${isActive ? `<button type="button" class="danger" onclick="toggleRestaurant(${r.id}, 0)"><span class="material-symbols-rounded">block</span>Disable restaurant</button>` : `<button type="button" onclick="toggleRestaurant(${r.id}, 1)"><span class="material-symbols-rounded">check_circle</span>Enable restaurant</button>`}
+                  <button type="button" onclick="resetPassword(${r.id})"><span class="material-symbols-rounded">key</span>Reset password</button>
+                  <button type="button" onclick="unlockOtp(${r.id})" title="Clear OTP lockout and forget trusted devices"><span class="material-symbols-rounded">lock_open</span>Unlock OTP</button>
+                  <button type="button" onclick="sendWhatsappWelcome(${r.id})"><span class="material-symbols-rounded">chat</span>Send login on WhatsApp</button>
+                </div></div>
+            </div></td>
+          </tr>`;
+      }).join('');
+    }
+    // a fixed-position More menu would float away on scroll: close it
+    window.addEventListener('scroll', () => document.querySelectorAll('.sa-more.open').forEach(x => x.classList.remove('open')), true);
+    // filter chips, the More menus, dashboard shortcuts
+    document.addEventListener('click', function (e) {
+      const f = e.target.closest('[data-sa-rf]');
+      if (f) { saRestFilter = f.dataset.saRf; document.querySelectorAll('[data-sa-rf]').forEach(b => b.classList.toggle('on', b === f)); saRenderRestaurants(); return; }
+      const m = e.target.closest('[data-sa-more]');
+      document.querySelectorAll('.sa-more.open').forEach(x => { if (!m || x !== m.parentElement) x.classList.remove('open'); });
+      if (m) { const box = m.parentElement; box.classList.toggle('open'); if (box.classList.contains('open')) { const rc = m.getBoundingClientRect(), mn = box.querySelector('.sa-more-menu'); mn.style.top = Math.min(rc.bottom + 6, innerHeight - mn.offsetHeight - 8) + 'px'; mn.style.left = Math.max(8, rc.right - mn.offsetWidth) + 'px'; } return; }
+      if (e.target.closest('.sa-more-menu button')) { e.target.closest('.sa-more').classList.remove('open'); }
+      const go = e.target.closest('[data-sa-go]');
+      if (go) { const mi = document.querySelector(`.menu-item[data-page="${go.dataset.saGo}"]`); if (mi) mi.click(); return; }
+      const q = e.target.closest('[data-sa-quick]');
+      if (q) {
+        const page = q.dataset.saQuick === 'newRestaurant' ? 'restaurants' : 'paymentLinks';
+        const btn = q.dataset.saQuick === 'newRestaurant' ? 'btnNew' : 'btnCreatePaymentLink';
+        const mi = document.querySelector(`.menu-item[data-page="${page}"]`); if (mi) mi.click();
+        setTimeout(() => { const b = document.getElementById(btn); if (b) b.click(); }, 150);
+      }
+    });
 
     // Restaurants
     async function fetchRestaurants(){
@@ -1166,63 +1239,8 @@ require_once __DIR__ . '/../config/countries.php';
 
         (data.restaurants||[]).forEach(r => { saRestaurantsMap[r.id] = r; });
         const tbody = document.getElementById('restaurantsTbody');
-        tbody.innerHTML = (data.restaurants||[]).map(r => {
-          const isActive = Number(r.is_active) === 1;
-          const trialStatus = r.trial_status;
-          const pgType = r.payment_gateway_type || 'cash_only';
-          const isCashOnly = pgType === 'cash_only';
-          const showInstall = Number(r.show_install_app) === 1;
-          const whatsappOn = Number(r.whatsapp_orders) === 1;
-          const galleryOn = Number(r.photo_gallery_enabled) === 1;
-          const mealSubsOn = Number(r.meal_subscriptions_enabled) === 1;
-          return `
-            <tr>
-              <td>${r.id}</td>
-              <td>${saEsc(r.username)}</td>
-              <td><span class="badge badge-info">${r.restaurant_id}</span></td>
-              <td>${saEsc(r.restaurant_name)}</td>
-              <td>
-                <span class="badge ${isCashOnly ? 'badge-warning' : 'badge-success'}" style="cursor:pointer;font-size:0.75rem" onclick="togglePaymentGateway(${r.id}, '${pgType}')" title="Click to toggle">
-                  ${isCashOnly ? 'Cash' : 'Payment Gateway'}
-                </span>
-              </td>
-              <td>
-                <span class="badge ${showInstall ? 'badge-success' : 'badge-warning'}" style="cursor:pointer;font-size:0.75rem" onclick="toggleInstallApp(${r.id}, ${showInstall})" title="Click to toggle">
-                  ${showInstall ? 'Show' : 'Hide'}
-                </span>
-              </td>
-              <td>
-                <span class="badge ${whatsappOn ? 'badge-success' : 'badge-warning'}" style="cursor:pointer;font-size:0.75rem" onclick="toggleWhatsappOrders(${r.id}, ${whatsappOn})" title="Click to toggle">
-                  ${whatsappOn ? 'On' : 'Off'}
-                </span>
-              </td>
-              <td>
-                <span class="badge ${galleryOn ? 'badge-success' : 'badge-warning'}" style="cursor:pointer;font-size:0.75rem" onclick="toggleGalleryEnabled(${r.id}, ${galleryOn})" title="Click to toggle">
-                  ${galleryOn ? 'Allowed' : 'Blocked'}
-                </span>
-              </td>
-              <td>
-                <span class="badge ${mealSubsOn ? 'badge-success' : 'badge-warning'}" style="cursor:pointer;font-size:0.75rem" onclick="toggleMealSubscriptionsEnabled(${r.id}, ${mealSubsOn})" title="Click to toggle">
-                  ${mealSubsOn ? 'Allowed' : 'Blocked'}
-                </span>
-              </td>
-              <td>${trialStatus === 'Active' ? `<span class="badge badge-success">${r.days_left} days</span>` : 
-                  trialStatus === 'Disabled' ? `<span class="badge badge-warning">Disabled</span>` : 
-                  `<span class="badge badge-danger">Expired</span>`}</td>
-              <td>${isActive ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>'}</td>
-              <td>${r.created_at?.split(' ')[0] || ''}</td>
-              <td style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-outline" onclick="openWebsite('${r.restaurant_id}')">Website</button>
-                <button class="btn btn-outline" onclick="openAdminPanel(${r.id})">Admin</button>
-                <button class="btn btn-outline" onclick="toggleRestaurant(${r.id}, 1)" ${isActive ? 'disabled' : ''}>Enable</button>
-                <button class="btn btn-outline" onclick="toggleRestaurant(${r.id}, 0)" ${isActive ? '' : 'disabled'}>Disable</button>
-                <button class="btn btn-outline" onclick="resetPassword(${r.id})">Reset PW</button>
-                <button class="btn btn-outline" onclick="unlockOtp(${r.id})" title="Clear OTP lockout and forget trusted devices (for testing)">Unlock OTP</button>
-                <button class="btn btn-outline" onclick="sendWhatsappWelcome(${r.id})" title="Send login details on WhatsApp">WhatsApp</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
+        saLastRows = data.restaurants || [];
+        saRenderRestaurants();
         const total = data.total||0;
         const pages = Math.max(1, Math.ceil(total/saLimit));
         saPages = pages;
