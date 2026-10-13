@@ -52,6 +52,7 @@
     if (isTake && st === 'Served') S = ['Picked up', S[1]];
     var stopped = st === 'Cancelled' || st === 'Rejected', done = st === 'Completed';
     var id = parseInt(o.id, 10), num = esc(o.order_number || o.id);
+    (window._rgOrders = window._rgOrders || {})[id] = o;   // for the Update payment window
     var pay = payLabel(o), paid = (o.payment_status || '') === 'Paid';
     var items = Array.isArray(o.items) ? o.items : [];
     var name = o.customer_name || 'Customer';
@@ -113,7 +114,8 @@
     round += '<button type="button" class="o2-rb" title="Print" aria-label="Print" onclick="printOrder(' + id + ')">' + ic('print') + '</button>';
     round += '<button type="button" class="o2-rb" title="Details" aria-label="Details" onclick="showFullOrderDetails(' + id + ')">' + ic('visibility') + '</button>';
     var ps = o.payment_status || 'Pending';
-    if (ps !== 'Paid' && ps !== 'Refunded' && !stopped && st !== 'Pending') round += '<button type="button" class="o2-rb o2-paid" title="Mark paid" aria-label="Mark paid" onclick="markOrderPaid(' + id + ', this)">' + ic('payments') + '</button>';
+    // Update payment: method (Cash, UPI, Card...) and paid / part paid / refunded, in a modal
+    if (st !== 'Pending' && !(stopped && ps === 'Pending') && ps !== 'Refunded') round += '<button type="button" class="o2-rb o2-paid" title="Update payment" aria-label="Update payment" onclick="rgUpdatePayment(' + id + ')">' + ic('payments') + '</button>';
     if (!stopped && !done && st !== 'Pending') round += '<button type="button" class="o2-rb o2-cancel" title="Cancel order" aria-label="Cancel order" onclick="updateOrderStatus(' + id + ', \'Cancelled\')">' + ic('block') + '</button>';
 
     return '<div class="order-card oc o2 oc-' + S[1] + (stopped ? ' oc-stopped' : '') + '" data-status="' + esc(st) + '">' +

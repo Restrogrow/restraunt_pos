@@ -8647,7 +8647,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.resumeHeldOrder = resumeHeldOrder;
 
   async function discardHeldOrder(orderId) {
-    if (!window.confirm('Discard this held order? It will not be billed.')) return;
+    if (!(await (window.rgConfirm ? rgConfirm('It will not be billed.', { title: 'Discard this held order?', confirmText: 'Discard' }) : Promise.resolve(window.confirm('Discard this held order? It will not be billed.'))))) return;
     let d;
     try { d = await heldOrdersRequest('discard_held', orderId); } catch (e) { heldMsg('Network error. Please try again.', 'error'); return; }
     heldMsg(d && d.success ? 'Held order ' + d.order_number + ' discarded.' : ((d && d.message) || 'Could not discard.'), d && d.success ? 'success' : 'error');
@@ -11151,7 +11151,7 @@ function markPaidButtonHtml(order) {
 window.markPaidButtonHtml = markPaidButtonHtml;
 
 async function markOrderPaid(orderId, btn) {
-  if (!window.confirm('Mark this order as fully paid?')) return;
+  if (!(await (window.rgConfirm ? rgConfirm('The full amount has been received for this order.', { title: 'Mark as paid?', confirmText: 'Mark paid', icon: 'payments', danger: false }) : Promise.resolve(window.confirm('Mark this order as fully paid?'))))) return;
   if (btn) btn.disabled = true;
   const notify = (m, t) => (typeof showMessage === 'function' ? showMessage(m, t) : (window.showNotification || alert)(m, t));
   try {

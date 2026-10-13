@@ -40,6 +40,13 @@ try {
 
     $orderId = (int)($_POST['orderId'] ?? 0);
     $status = $_POST['status'] ?? null;
+    // optional: how it was paid (Update payment window); anything else is ignored
+    $method = trim((string)($_POST['payment_method'] ?? ''));
+    $methods = ['Cash', 'UPI', 'Card', 'Online', 'Wallet', 'Other'];
+    if ($method !== '' && !in_array($method, $methods, true)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid payment method']);
+        exit();
+    }
 
     if (!$orderId || !$status) {
         echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
@@ -63,6 +70,10 @@ try {
             $conn->rollBack();
             echo json_encode(['success' => false, 'message' => $result['message']]);
             exit();
+        }
+
+        if ($method !== '') {
+            $conn->prepare('UPDATE orders SET payment_method = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND restaurant_id = ?')->execute([$method, $orderId, $restaurant_id]);
         }
 
         $conn->commit();
