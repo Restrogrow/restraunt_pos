@@ -11728,48 +11728,45 @@ function renderPaymentMethods() {
   if (!listEl) return;
 
   if (!paymentMethodsCache.length) {
-    listEl.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;"><span class="material-symbols-rounded" style="font-size: 3rem; display: block; margin-bottom: 1rem; opacity: 0.5;">payment</span><p>No payment methods found. Click "Add Method" to create one.</p></div>';
+    listEl.innerHTML = '<div class="sx-empty"><span class="material-symbols-rounded">payments</span><b>No payment methods yet</b><span>Click “Add method” to add one.</span></div>';
     return;
   }
 
+  // an icon from the method's name (the emoji stays for the POS, which shows it at checkout)
+  const iconFor = (name) => {
+    const n = String(name || '').toLowerCase();
+    if (/cash/.test(n)) return ['payments', '#16a34a'];
+    if (/card|visa|master|rupay/.test(n)) return ['credit_card', '#2563eb'];
+    if (/upi|gpay|google pay|paytm|phonepe|bhim/.test(n)) return ['qr_code_2', '#7c3aed'];
+    if (/wallet/.test(n)) return ['account_balance_wallet', '#d97706'];
+    if (/bank|neft|imps|rtgs|transfer/.test(n)) return ['account_balance', '#0891b2'];
+    if (/cheque|check/.test(n)) return ['edit_note', '#6b7280'];
+    if (/online|net/.test(n)) return ['language', '#0891b2'];
+    if (/gift|voucher|coupon/.test(n)) return ['redeem', '#db2777'];
+    return ['payments', '#6b7280'];
+  };
+
   listEl.innerHTML = paymentMethodsCache.map(method => {
     const methodName = (method.method_name || 'Unnamed Method').trim();
-    const emoji = (method.emoji || '💳').trim();
-    const displayOrder = method.display_order ?? 0;
     const isActive = method.is_active == 1 || method.is_active === true;
     const isBuiltin = method.is_builtin == 1 || method.is_builtin === true;
     const qrUrl = method.qr_code_url || '';
-    
+    const ic = iconFor(methodName);
     return `
-    <div class="payment-method-card" style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem; background: white; display: flex; flex-direction: column; gap: 0.75rem; position: relative; box-shadow: 0 5px 15px rgba(15,23,42,0.08);">
-      <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <div style="font-size: 2rem;">${emoji}</div>
-        <div style="flex: 1;">
-          <div style="font-weight: 700; font-size: 1rem;">${escapeHtml(methodName)}</div>
-          <div style="font-size: 0.85rem; color: #6b7280;">Display order: ${displayOrder}</div>
-        </div>
+    <div class="payment-method-card gw-pm${isActive ? '' : ' off'}">
+      <div class="gw-pm-top">
+        <span class="sx-ic material-symbols-rounded" style="--c:${ic[1]}">${ic[0]}</span>
+        <div class="gw-pm-name"><b>${escapeHtml(methodName)}</b><small>${isBuiltin ? 'Built in' : 'Added by you'} · position ${escapeHtml(String(method.display_order ?? 0))}</small></div>
+        <span class="sx-pill ${isActive ? 'ok' : 'muted'}">${isActive ? 'On' : 'Off'}</span>
       </div>
-      ${qrUrl ? `
-        <div style="margin: 0.5rem 0; padding: 0.5rem; background: #f3f4f6; border-radius: 8px; text-align: center;">
-          <img src="${qrUrl}" alt="QR Code" style="max-width: 150px; max-height: 150px; border-radius: 4px;" onerror="this.style.display='none';" />
-          <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Payment QR Code</div>
-        </div>
-      ` : ''}
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: ${isActive ? '#d1fae5' : '#fee2e2'}; color: ${isActive ? '#065f46' : '#b91c1c'};">
-          ${isActive ? 'Active' : 'Inactive'}
-        </span>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button onclick="editPaymentMethodEntry(${method.id})" style="padding: 0.4rem 0.75rem; border-radius: 8px; border: none; background: #e5e7eb; cursor: pointer; font-weight: 600; color: #111827; font-size: 0.85rem;">Edit</button>
-          <button onclick="uploadPaymentMethodQR(${method.id})" style="padding: 0.4rem 0.75rem; border-radius: 8px; border: none; background: #dbeafe; cursor: pointer; font-weight: 600; color: #1e40af; font-size: 0.85rem;">${qrUrl ? 'Update QR' : 'Upload QR'}</button>
-          <button onclick="togglePaymentMethodStatus(${method.id})" style="padding: 0.4rem 0.75rem; border-radius: 8px; border: none; background: ${isActive ? '#fef3c7' : '#dcfce7'}; cursor: pointer; font-weight: 600; color: #92400e; font-size: 0.85rem;">
-            ${isActive ? 'Disable' : 'Enable'}
-          </button>
-          ${isBuiltin ? '' : `<button onclick="deletePaymentMethodEntry(${method.id})" style="padding: 0.4rem 0.75rem; border-radius: 8px; border: none; background: #fee2e2; cursor: pointer; font-weight: 600; color: #b91c1c; font-size: 0.85rem;">Delete</button>`}
-        </div>
+      ${qrUrl ? `<div class="gw-pm-qr"><img src="${escapeHtml(qrUrl)}" alt="Payment QR for ${escapeHtml(methodName)}" onerror="this.parentElement.style.display='none';"><small>Shown to the customer when they pay by ${escapeHtml(methodName)}</small></div>` : ''}
+      <div class="gw-pm-acts">
+        <button type="button" class="btn-action-small" onclick="editPaymentMethodEntry(${method.id})"><span class="material-symbols-rounded">edit</span>Edit</button>
+        <button type="button" class="btn-action-small" onclick="uploadPaymentMethodQR(${method.id})"><span class="material-symbols-rounded">qr_code_2</span>${qrUrl ? 'Change QR' : 'Add QR'}</button>
+        <button type="button" class="btn-action-small" onclick="togglePaymentMethodStatus(${method.id})"><span class="material-symbols-rounded">${isActive ? 'toggle_off' : 'toggle_on'}</span>${isActive ? 'Turn off' : 'Turn on'}</button>
+        ${isBuiltin ? '' : `<button type="button" class="btn-action-small delete-btn" onclick="deletePaymentMethodEntry(${method.id})" title="Delete"><span class="material-symbols-rounded">delete</span></button>`}
       </div>
-    </div>
-  `;
+    </div>`;
   }).join('');
 }
 

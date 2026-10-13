@@ -3097,116 +3097,94 @@ try {
     </div>
 
     <!-- Gateway Page -->
+    <!-- Payments › Payment Gateway: online payments (PhonePe) and the payment methods the POS offers.
+         Save: admin/auth.php action=updatePaymentGateway (unchanged). Methods: script.js loadPaymentMethods / renderPaymentMethods. Styles gw-* in studio-ui.css. -->
     <div id="gatewayPage" class="page sx lg">
       <div class="page-header">
-        <h1>Payment Gateway Settings</h1>
-        <p>Configure your payment gateways for online UPI / NetBanking payments</p>
+        <h1>Payment Gateway</h1>
+        <p>Online payments on your website, and the payment methods your POS offers</p>
       </div>
       <div class="page-content">
-        <?php if (($payment_gateway_type_db ?? 'cash_only') !== 'cash_only'): ?>
-        <form id="paymentGatewayForm">
-          <?php
-          $gwMode = $payment_gateway_mode ?? 'own';
-          ?>
-          <!-- Gateway Mode Selector -->
-          <div class="profile-card-modern" style="margin-bottom:1.5rem;">
-            <div class="profile-card-header">
-              <h3>
-                <span class="material-symbols-rounded">settings</span>
-                Gateway Mode
-              </h3>
-              <p class="card-description">Choose how you want to handle online payments</p>
-            </div>
-            <div class="profile-card-body">
-              <div style="display:flex;flex-direction:column;gap:1rem;">
-                <label style="display:flex;align-items:flex-start;gap:12px;padding:1rem;border:2px solid <?php echo $gwMode === 'own' ? '#dc2626' : '#e5e7eb'; ?>;border-radius:12px;cursor:pointer;background:<?php echo $gwMode === 'own' ? '#fff5f5' : 'white'; ?>;transition:all 0.2s;" onclick="document.getElementById('gwModeOwn').checked=true;toggleGatewayMode();">
-                  <input type="radio" name="payment_gateway_mode" id="gwModeOwn" value="own" <?php echo $gwMode === 'own' ? 'checked' : ''; ?> style="margin-top:3px;accent-color:#dc2626;" onchange="toggleGatewayMode()">
-                  <div>
-                    <div style="font-weight:600;color:#111827;">Use my own credentials</div>
-                    <div style="font-size:0.85rem;color:#6b7280;margin-top:4px;">Enter your own PhonePe API keys. Payments go directly to your account.</div>
-                  </div>
-                </label>
-                <label style="display:flex;align-items:flex-start;gap:12px;padding:1rem;border:2px solid <?php echo $gwMode === 'platform' ? '#dc2626' : '#e5e7eb'; ?>;border-radius:12px;cursor:pointer;background:<?php echo $gwMode === 'platform' ? '#fff5f5' : 'white'; ?>;transition:all 0.2s;" onclick="document.getElementById('gwModePlatform').checked=true;toggleGatewayMode();">
-                  <input type="radio" name="payment_gateway_mode" id="gwModePlatform" value="platform" <?php echo $gwMode === 'platform' ? 'checked' : ''; ?> style="margin-top:3px;accent-color:#dc2626;" onchange="toggleGatewayMode()">
-                  <div>
-                    <div style="font-weight:600;color:#111827;">Use Platform API</div>
-                    <div style="font-size:0.85rem;color:#6b7280;margin-top:4px;">Use our platform's payment gateway. No configuration needed. Settlement in 2 working days.</div>
-                  </div>
-                </label>
-              </div>
-            </div>
+        <?php
+        $gwOn = ($payment_gateway_type_db ?? 'cash_only') !== 'cash_only';
+        $gwMode = $payment_gateway_mode ?? 'own';
+        $gwLive = ($phonepe_environment ?? 'SANDBOX') === 'PRODUCTION';
+        $gwKeys = trim($phonepe_merchant_id ?? '') !== '' && trim($phonepe_salt_key ?? '') !== '';
+        if (!$gwOn) { $gwState = ['off', 'Online payments are off', 'Customers pay cash, or by UPI QR at the counter. Online payment (UPI, cards, net banking through PhonePe) is switched on for your restaurant by RestroGrow support.']; }
+        elseif ($gwMode === 'platform') { $gwState = ['ok', 'Online payments are on', 'Through the RestroGrow platform account. Nothing to set up; money reaches your bank in 2 working days.']; }
+        elseif (!$gwKeys) { $gwState = ['warn', 'Add your PhonePe keys', 'Online payments are allowed, but your own PhonePe Client ID and Secret aren’t saved yet, so customers can’t pay online.']; }
+        elseif (!$gwLive) { $gwState = ['warn', 'Test mode', 'Your PhonePe keys are saved in Sandbox. Payments are only tests; switch to Live when PhonePe approves your account.']; }
+        else { $gwState = ['ok', 'Online payments are live', 'Payments go straight to your own PhonePe account.']; }
+        ?>
+        <div class="gw-hero <?php echo $gwState[0]; ?>">
+          <span class="sx-ic material-symbols-rounded"><?php echo $gwState[0] === 'ok' ? 'verified' : ($gwState[0] === 'off' ? 'payments' : 'error'); ?></span>
+          <div>
+            <b><?php echo htmlspecialchars($gwState[1]); ?></b>
+            <span><?php echo htmlspecialchars($gwState[2]); ?></span>
           </div>
+          <?php if ($gwOn): ?>
+          <div class="gw-tags">
+            <span class="sx-pill <?php echo $gwMode === 'platform' ? 'ok' : 'muted'; ?>"><?php echo $gwMode === 'platform' ? 'Platform account' : 'Your PhonePe'; ?></span>
+            <?php if ($gwMode === 'own'): ?><span class="sx-pill <?php echo $gwLive ? 'ok' : 'warn'; ?>"><?php echo $gwLive ? 'Live' : 'Test (Sandbox)'; ?></span><?php endif; ?>
+          </div>
+          <?php endif; ?>
+        </div>
 
-          <!-- Own Credentials Section -->
-          <div id="ownCredentialsSection" style="display: <?php echo $gwMode === 'own' ? 'block' : 'none'; ?>;">
-          <div class="profile-card-modern">
-            <div class="profile-card-header">
-              <h3>
-                <span class="material-symbols-rounded">phone_android</span>
-                PhonePe
-              </h3>
+        <?php if ($gwOn): ?>
+        <form id="paymentGatewayForm" class="gw-form">
+          <section class="lg-card gw-card">
+            <div class="lg-card-h"><h2>How customers pay online</h2></div>
+            <div class="gw-modes">
+              <label class="gw-mode<?php echo $gwMode === 'platform' ? ' on' : ''; ?>">
+                <input type="radio" name="payment_gateway_mode" id="gwModePlatform" value="platform" <?php echo $gwMode === 'platform' ? 'checked' : ''; ?> onchange="toggleGatewayMode()">
+                <span class="sx-ic material-symbols-rounded" style="--c:#16a34a">bolt</span>
+                <span class="gw-mode-t"><b>RestroGrow platform account</b><small>No setup. We collect the payment and settle it to your bank in 2 working days.</small></span>
+                <span class="gw-radio"></span>
+              </label>
+              <label class="gw-mode<?php echo $gwMode === 'own' ? ' on' : ''; ?>">
+                <input type="radio" name="payment_gateway_mode" id="gwModeOwn" value="own" <?php echo $gwMode === 'own' ? 'checked' : ''; ?> onchange="toggleGatewayMode()">
+                <span class="sx-ic material-symbols-rounded" style="--c:#7c3aed">key</span>
+                <span class="gw-mode-t"><b>My own PhonePe account</b><small>Use your PhonePe business keys. Money goes straight to your account.</small></span>
+                <span class="gw-radio"></span>
+              </label>
             </div>
-            <div class="profile-card-body">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="phonepeMerchantId">
-                    <span class="material-symbols-rounded">key</span>
-                    Client ID
-                  </label>
-                  <input type="text" id="phonepeMerchantId" name="phonepe_merchant_id" placeholder="Enter PhonePe Client ID" value="<?php echo htmlspecialchars($phonepe_merchant_id ?? ''); ?>">
-                </div>
-                <div class="form-group">
-                  <label for="phonepeSaltKey">
-                    <span class="material-symbols-rounded">lock</span>
-                    Client Secret
-                  </label>
-                  <input type="password" id="phonepeSaltKey" name="phonepe_salt_key" placeholder="Enter PhonePe Client Secret" value="<?php echo htmlspecialchars($phonepe_salt_key ?? ''); ?>">
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="phonepeEnvironment">
-                  <span class="material-symbols-rounded">cloud</span>
-                  Environment
+
+            <div id="ownCredentialsSection" class="gw-keys" style="display: <?php echo $gwMode === 'own' ? 'block' : 'none'; ?>;">
+              <div class="gw-keys-h"><span class="material-symbols-rounded">phone_android</span><b>PhonePe keys</b><small>From the PhonePe Business dashboard › Developer settings</small></div>
+              <div class="gw-grid">
+                <label class="gw-field" for="phonepeMerchantId"><span>Client ID</span>
+                  <input type="text" id="phonepeMerchantId" name="phonepe_merchant_id" placeholder="e.g. M22ABCXYZ" autocomplete="off" value="<?php echo htmlspecialchars($phonepe_merchant_id ?? ''); ?>">
                 </label>
+                <label class="gw-field" for="phonepeSaltKey"><span>Client Secret</span>
+                  <span class="gw-secret">
+                    <input type="password" id="phonepeSaltKey" name="phonepe_salt_key" placeholder="Your PhonePe Client Secret" autocomplete="new-password" value="<?php echo htmlspecialchars($phonepe_salt_key ?? ''); ?>">
+                    <button type="button" class="sx-icon-btn" onclick="var i=document.getElementById('phonepeSaltKey');i.type=i.type==='password'?'text':'password';this.querySelector('span').textContent=i.type==='password'?'visibility':'visibility_off'" title="Show or hide"><span class="material-symbols-rounded">visibility</span></button>
+                  </span>
+                </label>
+              </div>
+              <div class="gw-env">
+                <span>Mode</span>
                 <select id="phonepeEnvironment" name="phonepe_environment">
-                  <option value="SANDBOX" <?php echo ($phonepe_environment ?? 'SANDBOX') === 'SANDBOX' ? 'selected' : ''; ?>>Sandbox (Test)</option>
-                  <option value="PRODUCTION" <?php echo ($phonepe_environment ?? '') === 'PRODUCTION' ? 'selected' : ''; ?>>Production (Live)</option>
+                  <option value="SANDBOX" <?php echo ($phonepe_environment ?? 'SANDBOX') === 'SANDBOX' ? 'selected' : ''; ?>>Sandbox (test payments)</option>
+                  <option value="PRODUCTION" <?php echo ($phonepe_environment ?? '') === 'PRODUCTION' ? 'selected' : ''; ?>>Production (live payments)</option>
                 </select>
-              </div>
-              <div class="form-actions" style="margin-top:1.5rem;">
-                <button type="submit" class="btn btn-save">
-                  <span class="material-symbols-rounded">save</span>
-                  Save Payment Gateways
-                </button>
+                <small>Use Sandbox until PhonePe has approved your account, then switch to Production.</small>
               </div>
             </div>
-          </div>
-          </div><!-- end ownCredentialsSection -->
 
-          <!-- Always-visible Save button for gateway mode -->
-          <div style="margin-top:1rem;text-align:center;">
-            <button type="submit" class="btn btn-save">
-              <span class="material-symbols-rounded">save</span>
-              Save Settings
-            </button>
-          </div>
+            <div class="gw-save">
+              <span class="sx-muted">Saved changes apply to your website straight away.</span>
+              <button type="submit" class="btn btn-primary"><span class="material-symbols-rounded">save</span>Save</button>
+            </div>
+          </section>
         </form>
 <script>
 function toggleGatewayMode() {
   var mode = document.querySelector('input[name="payment_gateway_mode"]:checked');
   if (!mode) return;
   var section = document.getElementById('ownCredentialsSection');
-  if (section) {
-    section.style.display = mode.value === 'own' ? 'block' : 'none';
-  }
-  // Update card highlight
-  document.querySelectorAll('label[onclick*="gwMode"]').forEach(function(l) {
-    var radio = l.querySelector('input[type="radio"]');
-    if (radio) {
-      l.style.borderColor = radio.checked ? '#dc2626' : '#e5e7eb';
-      l.style.background = radio.checked ? '#fff5f5' : 'white';
-    }
-  });
+  if (section) section.style.display = mode.value === 'own' ? 'block' : 'none';
+  document.querySelectorAll('#gatewayPage .gw-mode').forEach(function (l) { var r = l.querySelector('input[type="radio"]'); l.classList.toggle('on', !!(r && r.checked)); });
 }
 (function(){
   var f = document.getElementById('paymentGatewayForm');
@@ -3214,7 +3192,7 @@ function toggleGatewayMode() {
     f.dataset.gwHandler = '1';
     f.addEventListener('submit', async function(e) {
       e.preventDefault();
-      var btn = e.target.tagName === 'BUTTON' ? e.target : f.querySelector('button[type="submit"]');
+      var btn = f.querySelector('button[type="submit"]');
       var orig = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = '<span class="material-symbols-rounded">hourglass_empty</span> Saving...'; }
       try {
@@ -3237,28 +3215,17 @@ function toggleGatewayMode() {
   }
 })();
 </script>
-        <?php else: ?>
-        <div class="card" style="padding:2rem;text-align:center;color:#6b7280;">
-          <span class="material-symbols-rounded" style="font-size:3rem;color:#d1d5db;display:block;margin-bottom:1rem;">payments</span>
-          <h3 style="margin:0 0 0.5rem;">Payment Gateway Disabled</h3>
-          <p>Enable Payment Gateway from Superadmin to configure PhonePe.</p>
-        </div>
         <?php endif; ?>
 
-        <div class="card" style="margin-top:2rem;">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;">
-            <div>
-              <h2 style="margin:0;">Payment Methods</h2>
-              <p style="margin:4px 0 0;color:#6b7280;font-size:0.9rem;">Cash, Card and UPI are built in. Add extra methods your restaurant accepts at the counter (Wallet, Bank Transfer, etc.) — they'll show up at POS and in your reports automatically.</p>
-            </div>
-            <button type="button" class="btn btn-primary" onclick="openPaymentMethodModal()" style="white-space:nowrap;">
-              <span class="material-symbols-rounded">add</span> Add Method
-            </button>
+        <section class="lg-card gw-card">
+          <div class="lg-card-h gw-methods-h">
+            <div><h2>Payment methods</h2><p>Cash, Card and UPI are built in. Add others you accept at the counter (wallet, bank transfer…); they show up at the POS and in your reports. Upload a QR to show it when a customer pays by that method.</p></div>
+            <button type="button" class="btn btn-primary" onclick="openPaymentMethodModal()"><span class="material-symbols-rounded">add</span>Add method</button>
           </div>
-          <div id="paymentMethodsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
-            <div style="text-align:center;padding:2rem;color:#6b7280;grid-column:1/-1;">Loading payment methods...</div>
+          <div id="paymentMethodsList" class="gw-methods">
+            <div class="sx-loading"><span></span><span></span><span></span></div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
 
