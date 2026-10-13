@@ -1992,3 +1992,29 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .oc-wa { color: #15803d; } .oc-wa .material-symbols-rounded { color: #16a34a; }
 .oc-cancel { color: #dc2626; } .oc-cancel .material-symbols-rounded { color: #dc2626; } .oc-cancel:hover { background: #fef2f2; border-color: #fecaca; }
 .oc .loading-spinner { width: 14px; height: 14px; }
+
+/* ── orders: refined tabs, stage chips and calmer cards (overrides above) ── */
+.ot-tabs { gap: 6px; margin-bottom: 10px; }
+.ot-tab, .ot-tab.ot-cancelled, .ot-tab.ot-all { height: 38px; padding: 0 13px; border-radius: 12px; font-size: .84rem; color: #374151; }
+.ot-tab .material-symbols-rounded { font-size: 18px; }
+.ot-tab em { min-width: 22px; padding: 1px 7px; font-size: .72rem; }
+.ot-tab.on, .ot-tab.on.ot-cancelled, .ot-tab.on.ot-all { color: #fff; }
+/* stage chips: bigger, each with its own colour dot */
+.ot-sub { gap: 8px; margin: 0 0 16px; padding: 6px; border: 1px solid var(--sx-line); border-radius: 16px; background: #fff; }
+.ot-chip { --dot: #9ca3af; height: 42px; padding: 0 14px 0 12px; gap: 8px; border: 0; border-radius: 12px; background: transparent; color: #374151; font-size: .9rem; }
+.ot-chip::before { content: ''; width: 9px; height: 9px; flex-shrink: 0; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 18%, transparent); }
+.ot-chip:first-child::before { display: none; }
+.ot-chip:hover { background: #f3f4f6; }
+.ot-chip em { min-width: 24px; padding: 2px 8px; font-size: .78rem; background: #f3f4f6 !important; color: #374151 !important; }
+.ot-chip.st-pending { --dot: #f59e0b; } .ot-chip.st-scheduled { --dot: #8b5cf6; } .ot-chip.st-accepted { --dot: #3b82f6; }
+.ot-chip.st-preparing { --dot: #f97316; } .ot-chip.st-ready { --dot: #22c55e; } .ot-chip.st-served { --dot: #0ea5e9; }
+.ot-chip.zero { color: #9ca3af; } .ot-chip.zero::before { opacity: .45; box-shadow: none; }
+.ot-chip.on { background: #111827; color: #fff; }
+.ot-chip.on em { background: rgba(255,255,255,.2) !important; color: #fff !important; }
+.ot-chip.on::before { box-shadow: 0 0 0 3px rgba(255,255,255,.25); }
+/* cards: one calm border for all, status shown by the pill (with a dot) */
+.page.lg .order-card.oc, .page.lg .order-card.oc[class*="oc-"] { border: 1px solid var(--sx-line); border-left-width: 1px; border-left-color: var(--sx-line); }
+.page.lg .order-card.oc:hover { border-color: #cbd5e1; }
+.oc-st { gap: 6px; }
+.oc-st::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--oc); }
+@media (max-width: 600px) { .ot-chip { height: 38px; padding: 0 12px 0 10px; font-size: .84rem; } .ot-tab, .ot-tab.ot-cancelled, .ot-tab.ot-all { height: 36px; padding: 0 11px; } }
