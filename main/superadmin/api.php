@@ -14,6 +14,26 @@ require_once __DIR__ . '/../config/countries.php';
 require_once __DIR__ . '/auth.php';
 require_superadmin_api();
 
+// Activity log: every change made from the superadmin panel is recorded (Security & activity page)
+require_once __DIR__ . '/../config/platform_engine.php';
+$__saAction = $_GET['action'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' || preg_match('/^(create|update|toggle|delete|reset|unlock|save|set|refresh|generate)/', $__saAction)) {
+  ob_start();
+  register_shutdown_function(function () use ($__saAction) {
+    if (preg_match('/^(get|refresh)/', $__saAction)) return;
+    $out = ob_get_level() ? (string)ob_get_contents() : '';
+    if (strpos($out, '"success":true') === false) return;
+    $in = json_decode(file_get_contents('php://input') ?: '[]', true) ?: $_POST;
+    foreach (['password', 'pass', 'salt_key', 'phonepe_salt_key', 'images', 'menu', 'items'] as $k) if (isset($in[$k])) $in[$k] = '(hidden)';
+    $target = null;
+    $c = $GLOBALS['conn'] ?? null;
+    if ($c instanceof PDO && !empty($in['id']) && preg_match('/Restaurant|Subscription|Password|Otp|InstallApp|WhatsappOrders|PaymentGateway|PhotoGallery|MealSubscriptions|AutoLogin/', $__saAction)) {
+      try { $st = $c->prepare('SELECT CONCAT(restaurant_name, " (", restaurant_id, ")") FROM users WHERE id = ?'); $st->execute([(int)$in['id']]); $target = $st->fetchColumn() ?: null; } catch (Throwable $e) {}
+    }
+    if ($c instanceof PDO) pfAudit($c, $__saAction, $target ?? ($in['restaurant_id'] ?? null), $in);
+  });
+}
+
 // Get connection using getConnection() for lazy connection support
 if (function_exists('getConnection')) {
     $conn = getConnection();
@@ -233,6 +253,8 @@ try {
       $hash = password_hash($password, PASSWORD_DEFAULT);
       $stmt = $conn->prepare("INSERT INTO users (username, password, restaurant_id, restaurant_name, country, currency_symbol, email, is_active, payment_gateway_type) VALUES (:u, :p, :rid, :rname, :country, :currency, :email, 1, 'cash_only')");
       $stmt->execute([':u' => $username, ':p' => $hash, ':rid' => $restaurant_id, ':rname' => $restaurant_name, ':country' => $country, ':currency' => $currencySymbol, ':email' => ($email !== '' ? $email : null)]);
+      // free trial length comes from Settings (Trial period)
+      try { $td = (int)(pfSettings($conn)['trial_days'] ?? 30); $conn->prepare("UPDATE users SET subscription_status = 'trial', trial_end_date = DATE_ADD(CURDATE(), INTERVAL ? DAY) WHERE restaurant_id = ?")->execute([max(1, $td), $restaurant_id]); } catch (Throwable $e) { error_log('[superadmin] trial date: ' . $e->getMessage()); }
       echo json_encode(['success' => true, 'message' => 'Restaurant created', 'restaurant_id' => $restaurant_id]);
       break;
 

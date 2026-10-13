@@ -1401,6 +1401,13 @@ try {
           </a>
           <span class="nav-tooltip">How to use</span>
         </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" id="pnSupportLink" onclick="return rgOpenSupport(event)">
+            <span class="nav-icon material-symbols-rounded">support_agent</span>
+            <span class="nav-label">Help &amp; support</span>
+          </a>
+          <span class="nav-tooltip">Help &amp; support</span>
+        </li>
 
       </ul>
 
@@ -2694,6 +2701,7 @@ try {
           <p id="howToFrom">Start with the <b>Quick start checklist</b> to go live in ten steps.</p>
           <div class="howto-acts">
             <button type="button" class="btn btn-secondary" onclick="openHowTo(null, 'quick-start')"><span class="material-symbols-rounded">checklist</span> Quick start</button>
+            <button type="button" class="btn btn-secondary" onclick="rgOpenSupport(event)"><span class="material-symbols-rounded">support_agent</span> Contact support</button>
             <a class="btn btn-primary" id="howToNewTab" href="user-guide.html" target="_blank" rel="noopener"><span class="material-symbols-rounded">open_in_new</span> Open in a new tab</a>
           </div>
         </div>
@@ -7204,6 +7212,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/reservations-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/reservations-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-studio.js'); ?>" defer></script>
   <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
+  <script src="../assets/js/platform-notices.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/platform-notices.js'); ?>" defer></script>
   <script src="../assets/js/dashboard-home.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-home.js'); ?>" defer></script>
   <script src="../assets/js/marketing-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/marketing-studio.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>

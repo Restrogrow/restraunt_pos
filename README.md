@@ -33,6 +33,8 @@
 | | Change | What it means for a restaurant |
 |---|---|---|
 | **Inventory** | Rebuilt as a full stock system | **Recipes** per dish take stock out as orders are made (and put it back if an order is cancelled); cost per plate, food cost % and plates left; **reorder list** with how much to buy; **suppliers** and **purchase orders** (WhatsApp, print, receive into stock); **stock count** with differences; **activity log**; **reports** (bought, used, wasted, food cost vs sales). Purchases and wastage still go into expenses and Sales Reports. [More below](#inventory). |
+| **Help & support** | New, in every dashboard | **Help & support** in the sidebar (and on How to use): send a request to the RestroGrow team and read the replies there; a red count shows new replies. Notices from RestroGrow (new features, maintenance) show as a bar at the top of the dashboard. |
+| **Printing** | More reliable | Printing a KOT, bill or invoice retries when the server is briefly busy instead of failing with an error. |
 | **POS** | Category-wise and faster | Category chips with counts (Starters, Main Course…), Veg / Non-veg / Egg / Drinks chips, a big search, dishes grouped under their category, a count on dishes already in the cart, cleaner cart with a big Pay. Cart, payment, KOT and hold unchanged. |
 | **Reservations** | By day, one-tap actions | Day strip (today and the next days with counts, all upcoming, earlier, any date), bookings / guests / to confirm / next to arrive, status tabs, search; each booking with Confirm / Decline, Check in / No show, Complete, Assign table, Call, WhatsApp, Edit, and a Late flag. |
 | **New-order popup** | Redesigned | Dish photos, live “received … ago”, order type / table / scheduled time, new or returning customer, tap-to-call, a clear payment box (collect in cash, paid online, UPI QR to check, part paid from wallet), note, bill, **Ready in** time (10–45 min or a custom number, sent with Accept), **Later**, “+N more waiting”. **Reject and Cancel ask why**: 5 common reasons + your own; preset reasons are shown politely on the customer's tracking page; only “couldn't reach the customer” (or a custom reason marked fake) counts as a strike. |
@@ -164,7 +166,17 @@
 
 ### Staff apps and superadmin
 - Waiter, chef and manager dashboards with their own logins and push notifications; rider page (no login) with route and live location
-- Superadmin: restaurants, subscriptions and trials, payment links, feature switches, branch admins, menu import from photos
+- Superadmin: restaurants, subscriptions and trials, payment links, feature switches, branch admins, menu import from photos, plus:
+  - **Restaurant view**: click a restaurant for its plan, sales (today, month, all time), 14-day orders, payments with invoices, setup, WhatsApp status, support requests, errors and logins, with quick actions
+  - **Analytics**: monthly recurring revenue (estimate), paying vs trial, trial to paid, restaurants lost, 12-month charts, top restaurants and the ones that stopped taking orders
+  - **Renewals**: plans and trials ending soon or just ended, with Payment link, WhatsApp reminder (opens WhatsApp with the text ready) and Extend
+  - **Coupons** of every restaurant; **Leads** from the website contact form (stages, notes, follow-up dates, create restaurant); **Support** inbox; **Announcements** to all or chosen restaurants (scheduled, closable or not)
+  - **Invoices & GST**: an invoice per subscription payment (print / save as PDF) and a monthly CSV for the accountant; business details and GSTIN in Settings
+  - **Security & activity**: logins, wrong-password bursts, new devices, blocked IPs (unblock), and a log of every change made in the superadmin panel
+  - **Platform health**: database and uploads size, disk, errors, WhatsApp queue, push devices, backups
+  - **Bulk actions** on Restaurants: tick several, then switch a feature, extend, enable / disable, or send them an announcement
+  - Settings now save; new restaurants get the trial length set there
+  - New tables (sa_settings, sa_audit_log, sa_announcements, sa_announcement_dismiss, support_tickets, support_messages; extra columns on contact_queries) create themselves on first use
 
 | Feature a superadmin switches on | What the restaurant gets |
 |---|---|

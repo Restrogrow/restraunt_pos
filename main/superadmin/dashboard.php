@@ -175,6 +175,7 @@ require_once __DIR__ . '/../config/countries.php';
     }
   </style>
   <link rel="stylesheet" href="superadmin.css?v=<?php echo @filemtime(__DIR__ . '/superadmin.css'); ?>">
+  <script src="sa-platform.js?v=<?php echo @filemtime(__DIR__ . '/sa-platform.js'); ?>" defer></script>
 </head>
 <body>
   <div class="layout">
@@ -200,6 +201,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">storefront</span>
           <span class="text">Restaurants</span>
         </div>
+        <div class="menu-item" data-page="renewals">
+          <span class="material-symbols-rounded icon">event_repeat</span>
+          <span class="text">Renewals <span id="spRenewBadge" class="badge-new" style="display:none;">0</span></span>
+        </div>
         <div class="menu-item" data-page="menus">
           <span class="material-symbols-rounded icon">menu_book</span>
           <span class="text">Menus from photos</span>
@@ -207,6 +212,24 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="menu-item" data-page="branchAdmins">
           <span class="material-symbols-rounded icon">groups</span>
           <span class="text">Branch admins</span>
+        </div>
+        <div class="menu-item" data-page="coupons">
+          <span class="material-symbols-rounded icon">sell</span>
+          <span class="text">Coupons</span>
+        </div>
+
+        <div class="sa-nav-h">Growth</div>
+        <div class="menu-item" data-page="leads">
+          <span class="material-symbols-rounded icon">person_search</span>
+          <span class="text">Leads <span id="spLeadBadge" class="badge-new" style="display:none;">0</span></span>
+        </div>
+        <div class="menu-item" data-page="support">
+          <span class="material-symbols-rounded icon">support_agent</span>
+          <span class="text">Support <span id="spTicketBadge" class="badge-new" style="display:none;">0</span></span>
+        </div>
+        <div class="menu-item" data-page="announcements">
+          <span class="material-symbols-rounded icon">campaign</span>
+          <span class="text">Announcements</span>
         </div>
 
         <div class="sa-nav-h">Money</div>
@@ -226,8 +249,20 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">account_balance</span>
           <span class="text">Settlements</span>
         </div>
+        <div class="menu-item" data-page="invoices">
+          <span class="material-symbols-rounded icon">request_quote</span>
+          <span class="text">Invoices & GST</span>
+        </div>
 
         <div class="sa-nav-h">System</div>
+        <div class="menu-item" data-page="security">
+          <span class="material-symbols-rounded icon">shield_person</span>
+          <span class="text">Security & activity</span>
+        </div>
+        <div class="menu-item" data-page="health">
+          <span class="material-symbols-rounded icon">monitor_heart</span>
+          <span class="text">Platform health</span>
+        </div>
         <div class="menu-item" data-page="settings">
           <span class="material-symbols-rounded icon">settings</span>
           <span class="text">Settings</span>
@@ -297,11 +332,12 @@ require_once __DIR__ . '/../config/countries.php';
             <div class="sa-search"><span class="material-symbols-rounded">search</span><input id="saSearch" placeholder="Name, login or ID"></div>
           </div>
           <div class="card-body">
+            <div id="spBulk" class="sp-bulk" hidden></div>
             <div style="overflow-x:auto;">
               <table id="restaurantsTable">
                 <thead>
                   <tr>
-                    <th>Restaurant</th><th>Features (click to switch)</th><th>Trial</th><th>Status</th><th></th>
+                    <th class="sp-ck"><input type="checkbox" id="spCkAll" aria-label="Select all on this page"></th><th>Restaurant</th><th>Features (click to switch)</th><th>Trial</th><th>Status</th><th></th>
                   </tr>
                 </thead>
                 <tbody id="restaurantsTbody"></tbody>
@@ -598,16 +634,10 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <div><h1>Analytics</h1><div class="sa-sub">How the platform is doing</div></div>
+            <div><h1>Analytics</h1><div class="sa-sub">Revenue, growth, trials and which restaurants need attention</div></div>
           </div>
         </div>
-        <div class="card">
-          <div class="card-body" style="text-align:center;padding:60px 20px;">
-            <span class="material-symbols-rounded" style="font-size:64px;color:var(--muted);margin-bottom:16px;">analytics</span>
-            <h3 style="margin:0 0 8px;color:var(--text);">Coming Soon</h3>
-            <p style="color:var(--muted);margin:0;">Analytics and reporting features are under development.</p>
-          </div>
-        </div>
+        <div id="spAnalytics" class="sp-body"><div class="sp-loading">Loading…</div></div>
       </div>
 
       <!-- Branch Admins Page -->
@@ -701,6 +731,27 @@ require_once __DIR__ . '/../config/countries.php';
                 <option value="0">Disabled</option>
               </select>
             </div>
+            <div class="form-group">
+              <label>Yearly price (₹)</label>
+              <input type="number" id="subscriptionPriceYearly" value="9999" min="0">
+            </div>
+            <div class="form-group">
+              <label>Show in Renewals this many days before the end</label>
+              <input type="number" id="renewalNoticeDays" value="7" min="1" max="60">
+            </div>
+            <div class="sp-sep">Your business details (printed on invoices)</div>
+            <div class="sp-grid2">
+              <div class="form-group"><label>Business name</label><input id="bizName" maxlength="160"></div>
+              <div class="form-group"><label>GSTIN</label><input id="bizGstin" maxlength="15" placeholder="e.g. 29ABCDE1234F1Z5"></div>
+              <div class="form-group"><label>Email</label><input id="bizEmail" type="email" maxlength="160"></div>
+              <div class="form-group"><label>Phone</label><input id="bizPhone" maxlength="20"></div>
+            </div>
+            <div class="form-group"><label>Address</label><textarea id="bizAddress" rows="2" maxlength="500" style="width:100%"></textarea></div>
+            <div class="sp-grid2">
+              <div class="form-group"><label>GST %</label><input type="number" id="gstPercent" value="18" min="0" max="40" step="0.01"></div>
+              <div class="form-group"><label>Plan prices</label><select id="pricesIncludeGst"><option value="1">Include GST</option><option value="0">GST added on top</option></select></div>
+              <div class="form-group"><label>Invoice number prefix</label><input id="invoicePrefix" maxlength="10" value="RG"></div>
+            </div>
             <button class="btn btn-primary" id="saveSettings">Save Settings</button>
           </div>
         </div>
@@ -756,6 +807,94 @@ require_once __DIR__ . '/../config/countries.php';
             </div>
           </div>
         </div>
+      </div>
+
+      <div id="renewalsPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Renewals</h1><div class="sa-sub">Plans and trials ending soon: send a payment link, remind, or extend</div></div>
+          </div>
+          <div class="header-actions" id="spRenewalsActs"></div>
+        </div>
+        <div id="spRenewals" class="sp-body"><div class="sp-loading">Loading…</div></div>
+      </div>
+
+      <div id="couponsPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Coupons</h1><div class="sa-sub">Discount codes of every restaurant</div></div>
+          </div>
+          <div class="header-actions" id="spCouponsActs"></div>
+        </div>
+        <div id="spCoupons" class="sp-body"><div class="sp-loading">Loading…</div></div>
+      </div>
+
+      <div id="leadsPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Leads</h1><div class="sa-sub">Enquiries from the RestroGrow website and the ones you add</div></div>
+          </div>
+          <div class="header-actions" id="spLeadsActs"></div>
+        </div>
+        <div id="spLeads" class="sp-body"><div class="sp-loading">Loading…</div></div>
+      </div>
+
+      <div id="supportPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Support</h1><div class="sa-sub">Requests sent from restaurant dashboards</div></div>
+          </div>
+          <div class="header-actions" id="spSupportActs"></div>
+        </div>
+        <div id="spSupport" class="sp-body"><div class="sp-loading">Loading…</div></div>
+      </div>
+
+      <div id="announcementsPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Announcements</h1><div class="sa-sub">A notice shown at the top of restaurant dashboards</div></div>
+          </div>
+          <div class="header-actions" id="spAnnouncementsActs"></div>
+        </div>
+        <div id="spAnnouncements" class="sp-body"><div class="sp-loading">Loading…</div></div>
+      </div>
+
+      <div id="invoicesPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Invoices & GST</h1><div class="sa-sub">An invoice for every subscription payment, and a monthly export for your accountant</div></div>
+          </div>
+          <div class="header-actions" id="spInvoicesActs"></div>
+        </div>
+        <div id="spInvoices" class="sp-body"><div class="sp-loading">Loading…</div></div>
+      </div>
+
+      <div id="securityPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Security & activity</h1><div class="sa-sub">Logins, blocked IPs and everything done in this panel</div></div>
+          </div>
+          <div class="header-actions" id="spSecurityActs"></div>
+        </div>
+        <div id="spSecurity" class="sp-body"><div class="sp-loading">Loading…</div></div>
+      </div>
+
+      <div id="healthPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Platform health</h1><div class="sa-sub">Database, storage, WhatsApp queue, notifications and errors</div></div>
+          </div>
+          <div class="header-actions" id="spHealthActs"></div>
+        </div>
+        <div id="spHealth" class="sp-body"><div class="sp-loading">Loading…</div></div>
       </div>
 
       <!-- ═══════════════════════════════════════════════════════════
@@ -1154,7 +1293,7 @@ require_once __DIR__ . '/../config/countries.php';
         if (saRestFilter === 'expired') return r.trial_status === 'Expired';
         return true;
       });
-      if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="material-symbols-rounded icon">storefront</div>${saLastRows.length ? 'No restaurant on this page matches this filter.' : 'No restaurants found.'}</div></td></tr>`; return; }
+      if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="material-symbols-rounded icon">storefront</div>${saLastRows.length ? 'No restaurant on this page matches this filter.' : 'No restaurants found.'}</div></td></tr>`; return; }
       const feat = (on, icon, label, call, title) => `<button type="button" class="sa-feat${on ? ' on' : ''}" onclick="${call}" title="${title} · click to switch ${on ? 'off' : 'on'}"><span class="material-symbols-rounded">${icon}</span>${label}</button>`;
       tbody.innerHTML = rows.map(r => {
         const isActive = Number(r.is_active) === 1;
@@ -1169,7 +1308,8 @@ require_once __DIR__ . '/../config/countries.php';
         const ini = (r.restaurant_name || '?').trim().charAt(0).toUpperCase();
         return `
           <tr>
-            <td><div class="sa-rest"><span class="sa-ini">${saEsc(ini)}</span><div><b>${saEsc(r.restaurant_name)}</b><small>${saEsc(r.username)} · <code>${saEsc(r.restaurant_id)}</code></small><small>Added ${r.created_at?.split(' ')[0] || ''}</small></div></div></td>
+            <td class="sp-ck"><input type="checkbox" class="sp-ck-row" value="${r.id}" aria-label="Select ${saEsc(r.restaurant_name)}"></td>
+            <td><div class="sa-rest sp-open360" data-sp360="${r.id}" title="Open everything about this restaurant"><span class="sa-ini">${saEsc(ini)}</span><div><b>${saEsc(r.restaurant_name)}</b><small>${saEsc(r.username)} · <code>${saEsc(r.restaurant_id)}</code></small><small>Added ${r.created_at?.split(' ')[0] || ''}</small></div></div></td>
             <td><div class="sa-feats">
               ${feat(online, 'credit_card', online ? 'Online pay' : 'Cash only', `togglePaymentGateway(${r.id}, '${pgType}')`, 'Payment gateway')}
               ${feat(showInstall, 'install_mobile', 'Install app', `toggleInstallApp(${r.id}, ${showInstall})`, 'Install app button')}
@@ -1184,6 +1324,7 @@ require_once __DIR__ . '/../config/countries.php';
               <button class="btn btn-primary btn-sm" onclick="openAdminPanel(${r.id})" title="Open its dashboard"><span class="material-symbols-rounded">dashboard</span>Admin</button>
               <div class="sa-more"><button type="button" class="sa-more-btn" data-sa-more aria-label="More actions"><span class="material-symbols-rounded">more_vert</span></button>
                 <div class="sa-more-menu">
+                  <button type="button" data-sp360="${r.id}"><span class="material-symbols-rounded">info</span>View everything</button>
                   ${isActive ? `<button type="button" class="danger" onclick="toggleRestaurant(${r.id}, 0)"><span class="material-symbols-rounded">block</span>Disable restaurant</button>` : `<button type="button" onclick="toggleRestaurant(${r.id}, 1)"><span class="material-symbols-rounded">check_circle</span>Enable restaurant</button>`}
                   <button type="button" onclick="resetPassword(${r.id})"><span class="material-symbols-rounded">key</span>Reset password</button>
                   <button type="button" onclick="unlockOtp(${r.id})" title="Clear OTP lockout and forget trusted devices"><span class="material-symbols-rounded">lock_open</span>Unlock OTP</button>
