@@ -5997,6 +5997,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   // Load reservations
+  window.loadReservations = function () { return loadReservations(); };
   async function loadReservations() {
     const reservationList = document.getElementById("reservationList");
     reservationList.innerHTML = '<div class="loading">Loading reservations...</div>';
@@ -6023,6 +6024,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Store for filtering
     window.currentReservationsData = reservations;
+    if (window.RGResv) return window.RGResv.render(reservations);
     
     if (reservations.length === 0) {
       reservationList.innerHTML = '<div class="empty-state"><span class="material-symbols-rounded">inbox</span><h3>No reservations found</h3><p>Create your first reservation to get started.</p></div>';
@@ -6033,6 +6035,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   function refreshReservationList() {
+    // the redesigned list (day strip, timeline, one-tap actions): assets/js/reservations-studio.js
+    if (window.RGResv) return window.RGResv.render(window.currentReservationsData || []);
     const reservationList = document.getElementById("reservationList");
     const reservations = window.currentReservationsData || [];
     
@@ -7845,6 +7849,7 @@ document.addEventListener("DOMContentLoaded", () => {
            data-item-image="${escapeHtml(item.item_image || '')}"
            data-has-variations="${hasVariations ? '1' : '0'}"
            data-variations="${variationsJson}"
+           data-menu="${item.menu_id || ''}" data-menu-name="${escapeHtml(item.menu_name || '')}" data-type="${escapeHtml(item.item_type || '')}"
            style="cursor:pointer;">
         <div class="item-image">
           ${item.item_image ? `<img src="../api/image.php?path=${encodeURIComponent(item.item_image)}" alt="${escapeHtml(item.item_name_translated || item.item_name_en)}" loading="lazy">` : '<span class="material-symbols-rounded">restaurant</span>'}
@@ -8356,6 +8361,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     updatePOSCartSummary();
+    // the menu grid shows how many of each dish are in the cart (assets/js/pos-studio.js)
+    try { window.dispatchEvent(new CustomEvent('rg-pos-cart', { detail: posCart.map(function (i) { return { id: i.id, q: i.quantity }; }) })); } catch (e) {}
   }
   
   // Update cart quantity

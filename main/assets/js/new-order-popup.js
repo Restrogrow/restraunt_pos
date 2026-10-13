@@ -204,7 +204,9 @@
         (o.notes ? '<div class="no-note">' + ic('sticky_note_2') + '<span><b>Note from the customer</b>' + esc(o.notes) + '</span></div>' : '') +
         items(o) + bill(o) +
       '</div>' +
-      '<div class="no-prep"><span>' + ic('timer') + 'Ready in</span><div class="no-prep-opts">' + PREP.map(function (m) { return '<button type="button" class="' + (prep === m ? 'on' : '') + '" onclick="RGNewOrder.prep(' + m + ')">' + m + ' min</button>'; }).join('') + '</div>' +
+      '<div class="no-prep"><span>' + ic('timer') + 'Ready in</span><div class="no-prep-opts">' + PREP.map(function (m) { return '<button type="button" class="' + (prep === m ? 'on' : '') + '" onclick="RGNewOrder.prep(' + m + ')">' + m + ' min</button>'; }).join('') +
+        // any other time: type the minutes
+        '<label class="no-prep-custom' + (prep && PREP.indexOf(prep) < 0 ? ' on' : '') + '"><input type="number" id="noPrepCustom" min="1" max="300" step="1" inputmode="numeric" placeholder="Custom" value="' + (prep && PREP.indexOf(prep) < 0 ? prep : '') + '" oninput="RGNewOrder.prepCustom(this.value)" aria-label="Custom minutes"><em>min</em></label></div>' +
         (km ? '<small>You’ll confirm the delivery charge next.</small>' : '<small>Optional. The customer sees when it will be ready.</small>') + '</div>' +
       '<footer class="no-foot">' +
         '<button type="button" class="no-later" onclick="RGNewOrder.later()" title="Close and decide later; it waits in Online Orders">' + ic('schedule') + '<span>Later</span></button>' +
@@ -232,6 +234,15 @@
     if (b) b.innerHTML = '<span class="loading-spinner"></span>' + (which === 'accept' ? 'Accepting…' : 'Rejecting…');
   }
 
+  // only the chips and the Accept label change (a full repaint would reload the map)
+  function showPrep() {
+    document.querySelectorAll('#noCard .no-prep-opts button').forEach(function (b, i) { b.classList.toggle('on', PREP[i] === prep); });
+    var c = document.querySelector('#noCard .no-prep-custom');
+    if (c) c.classList.toggle('on', !!prep && PREP.indexOf(prep) < 0);
+    var a = document.getElementById('notifAcceptBtn');
+    if (a && !busy) a.innerHTML = ic('check_circle') + 'Accept' + (prep ? ' · ' + prep + ' min' : '');
+  }
+
   var RGNewOrder = {
     show: function (order) {
       if (!order) return;
@@ -250,10 +261,13 @@
     },
     prep: function (m) {
       prep = prep === m ? 0 : m;
-      // only the chips and the Accept label change (a full repaint would reload the map)
-      document.querySelectorAll('#noCard .no-prep-opts button').forEach(function (b, i) { b.classList.toggle('on', PREP[i] === prep); });
-      var a = document.getElementById('notifAcceptBtn');
-      if (a && !busy) a.innerHTML = ic('check_circle') + 'Accept' + (prep ? ' · ' + prep + ' min' : '');
+      var c = document.getElementById('noPrepCustom'); if (c) c.value = '';
+      showPrep();
+    },
+    prepCustom: function (v) {
+      var n = parseInt(v, 10);
+      prep = n > 0 ? Math.min(300, n) : 0;
+      showPrep();
     },
     later: function (page) {
       var num = O ? (O.order_number || O.id) : '';

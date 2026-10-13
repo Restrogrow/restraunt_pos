@@ -5896,31 +5896,15 @@ function toggleGatewayMode() {
 
     <!-- Reservations Management Page -->
     <div id="reservationsPage" class="page sx lg">
+      <!-- Reservations: day strip, timeline, one-tap actions (assets/js/reservations-studio.js, styles rv-*) -->
       <div class="page-header">
-        <h1>Reservations</h1>
-        <p>View and manage customer reservations</p>
+        <div>
+          <h1>Reservations</h1>
+          <p>Bookings by day: confirm, seat and finish them in one tap</p>
+        </div>
+        <div class="lg-head-acts"><button type="button" class="btn btn-primary" id="addReservationBtn"><span class="material-symbols-rounded">add</span>Add reservation</button></div>
       </div>
       <div class="page-content">
-        <div class="sx-toolbar lg-toolbar lg-resv-toolbar">
-          <div class="sx-search"><span class="material-symbols-rounded">search</span><input type="text" id="reservationSearch" placeholder="Search by name, phone or email"></div>
-          <div class="lg-daterange">
-            <input type="date" id="reservationDateFrom" title="From" aria-label="From date">
-            <span>to</span>
-            <input type="date" id="reservationDateTo" title="To" aria-label="To date">
-            <button type="button" class="sx-icon-btn" onclick="clearDateRange()" title="Clear dates"><span class="material-symbols-rounded">close</span></button>
-          </div>
-          <select id="reservationStatusFilter" class="filter-select">
-            <option value="">All Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Confirmed">Confirmed</option>
-            <option value="Checked In">Checked In</option>
-            <option value="Completed">Completed</option>
-            <option value="Cancelled">Cancelled</option>
-            <option value="No Show">No Show</option>
-          </select>
-          <div class="sx-toolbar-r"><button type="button" class="btn btn-primary" id="addReservationBtn"><span class="material-symbols-rounded">add</span>Add reservation</button></div>
-        </div>
-
         <div class="menu-list lg-cards" id="reservationList">
           <!-- Reservations will be loaded here dynamically -->
           <div class="loading">Loading reservations...</div>
@@ -7217,6 +7201,8 @@ function toggleGatewayMode() {
   <script src="../assets/js/inventory-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/inventory-studio.js'); ?>" defer></script>
   <script src="../assets/js/menu-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-studio.js'); ?>" defer></script>
   <script src="../assets/js/new-order-popup.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/new-order-popup.js'); ?>" defer></script>
+  <script src="../assets/js/reservations-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/reservations-studio.js'); ?>" defer></script>
+  <script src="../assets/js/pos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-studio.js'); ?>" defer></script>
   <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
   <script src="../assets/js/dashboard-home.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-home.js'); ?>" defer></script>
   <script src="../assets/js/marketing-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/marketing-studio.js'); ?>" defer></script>
