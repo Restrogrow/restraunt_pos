@@ -47,6 +47,7 @@ set_error_handler(function($severity, $message, $file, $line) use ($debugLog) {
 
 // Include secure session configuration
 require_once __DIR__ . '/../config/session_config.php';
+require_once __DIR__ . '/../config/inventory_engine.php';   // stock follows orders (invKick)
 startSecureSession();
 
 // Ensure no output before headers
@@ -342,6 +343,7 @@ function handleCreateKOT() {
         }
         
         $conn->commit();
+        invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
         
         echo json_encode([
             'success' => true,
@@ -437,6 +439,7 @@ function handleUpdateKOTStatus() {
             if (!empty($kot['order_id'])) {
                 // Order already exists, just update status if needed
                 $conn->commit();
+                invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
                 echo json_encode([
                     'success' => true,
                     'message' => 'KOT status updated. Order already exists.',
@@ -575,6 +578,7 @@ function handleUpdateKOTStatus() {
                 }
                 
                 $conn->commit();
+                invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
                 
                 echo json_encode([
                     'success' => true,
@@ -587,6 +591,7 @@ function handleUpdateKOTStatus() {
         }
         
         $conn->commit();
+        invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
         echo json_encode(['success' => true, 'message' => 'KOT status updated successfully'], JSON_UNESCAPED_UNICODE);
         
     } catch (PDOException $e) {
@@ -672,6 +677,7 @@ function handleCompleteKOT() {
             $update_kot_stmt->execute([$kot_id]);
 
             $conn->commit();
+            invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
 
             if ($stateResult['success']) {
                 require_once __DIR__ . '/../config/push_notification.php';
@@ -809,6 +815,7 @@ function handleCompleteKOT() {
         $update_kot_stmt->execute([$kot_id]);
         
         $conn->commit();
+        invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
         
         echo json_encode([
             'success' => true,

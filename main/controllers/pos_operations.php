@@ -85,6 +85,7 @@ try {
 // Include database connection
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
+    require_once __DIR__ . '/../config/inventory_engine.php';   // stock follows orders (invKick)
 } else {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database connection file not found'], JSON_UNESCAPED_UNICODE);
@@ -519,6 +520,7 @@ function handleCreateKOT($conn, $restaurant_id) {
 
         // Commit transaction
         $conn->commit();
+        invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
 
         // Redeem the coupon only after the KOT is safely committed — mirrors
         // process_website_order.php's redemption-after-persist ordering.
@@ -602,6 +604,7 @@ function handleRetireHeldOrder($conn, $restaurant_id, $resume) {
     $conn->prepare("UPDATE orders SET deleted_at = NOW(), deleted_by = ?, delete_reason = ? WHERE id = ?")
          ->execute([$who, $resume ? 'Held order resumed in POS' : 'Held order discarded in POS', $orderId]);
     $conn->commit();
+    invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
     echo json_encode(['success' => true, 'order_number' => $held['order_number'], 'table_id' => $held['table_id'], 'items' => $items], JSON_UNESCAPED_UNICODE);
 }
 
@@ -691,6 +694,7 @@ function handleHoldOrder($conn, $restaurant_id) {
         
         // Commit transaction
         $conn->commit();
+        invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
         
         echo json_encode([
             'success' => true, 

@@ -81,6 +81,8 @@ self.addEventListener('notificationclick', function(event) {
         var client = clientList[i];
         if (new URL(client.url).pathname === target.pathname && 'focus' in client) {
           if (d.orderId) client.postMessage({ type: 'rg-open-order', orderId: d.orderId });
+          var page = target.searchParams.get('page');   // e.g. a low-stock alert opens Inventory
+          if (page) client.postMessage({ type: 'rg-open-page', page: page });
           return client.focus();
         }
       }

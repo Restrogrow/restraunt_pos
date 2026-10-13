@@ -1167,6 +1167,8 @@ $conn->beginTransaction();
 
     // Commit transaction
     $conn->commit();
+    require_once __DIR__ . '/../config/inventory_engine.php';
+    invKick($conn, $restaurant_id);   // with "when the order is placed", stock goes out now
 
     // WhatsApp settings needed for the response payload below
     $waSettings = $restaurantRow;

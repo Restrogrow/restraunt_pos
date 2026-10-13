@@ -111,6 +111,8 @@ try {
         WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL
     ");
     $upd->execute([getActorName(), $reason !== '' ? $reason : null, $orderId, $restaurant_id]);
+    require_once __DIR__ . '/../config/inventory_engine.php';
+    invKick($conn, $restaurant_id);   // a deleted order's stock goes back
 
     if ($upd->rowCount() === 0) {
         // Lost a race with a concurrent delete (or vanished mid-request).

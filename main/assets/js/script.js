@@ -1678,7 +1678,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const forceDashboard = sessionStorage.getItem('forceDashboard');
-      if (forceDashboard) {
+      // ?page=inventoryPage (e.g. from a low-stock notification) opens that section
+      const askedPage = new URLSearchParams(window.location.search).get('page');
+      if (askedPage && /^[a-zA-Z]+Page$/.test(askedPage) && document.getElementById(askedPage)) {
+        showPage(askedPage);
+        try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
+      } else if (forceDashboard) {
         sessionStorage.removeItem('forceDashboard');
         try {
           localStorage.removeItem('admin_active_page');

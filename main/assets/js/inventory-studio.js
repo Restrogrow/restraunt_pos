@@ -47,6 +47,12 @@
     var pct = Math.max(0, Math.min(100, (it.quantity_in_stock / cap) * 100));
     return '<span class="iv-bar ' + it.status + '"><i style="width:' + pct.toFixed(1) + '%"></i>' + (it.low_stock_threshold > 0 ? '<em style="left:' + Math.min(100, it.low_stock_threshold / cap * 100).toFixed(1) + '%" title="Reorder level"></em>' : '') + '</span>';
   }
+  // dishes the stock just switched off / on (POS and website follow)
+  function soldNotice(av) {
+    if (!av) return;
+    if (av.off && av.off.length) SX.notify(av.off.join(', ') + (av.off.length === 1 ? ' is' : ' are') + ' now sold out on the POS and website (an ingredient ran out)', 'info');
+    if (av.on && av.on.length) SX.notify(av.on.join(', ') + (av.on.length === 1 ? ' is' : ' are') + ' back on sale', 'success');
+  }
   function emptyBox(icon, title, text, btn) { return '<div class="sx-empty">' + ic(icon) + '<b>' + title + '</b><span>' + text + '</span>' + (btn || '') + '</div>'; }
   function seg(name, cur, opts) { return '<div class="sx-seg" role="tablist">' + opts.map(function (o) { return '<button type="button" class="' + (cur === o[0] ? 'on' : '') + '" data-iv-seg="' + name + '" data-v="' + o[0] + '">' + o[1] + (o[2] != null ? ' <em>' + o[2] + '</em>' : '') + '</button>'; }).join('') + '</div>'; }
   function itemById(id) { return ((S.d && S.d.items) || []).filter(function (i) { return i.id === +id; })[0]; }
@@ -61,6 +67,7 @@
     return get(q).then(function (d) {
       if (!d.success) { r.querySelector('.iv-body').innerHTML = emptyBox('cloud_off', 'Could not load inventory', esc(d.message || ''), '<button type="button" class="btn btn-secondary" data-iv-reload>Try again</button>'); return; }
       S.d = d; S.cur = d.currency || '₹';
+      soldNotice(d.availability);
       paint();
     });
   }
@@ -96,7 +103,7 @@
     return '<div class="lg-stats iv-stats">' + tiles.map(function (t) { return '<div class="lg-stat" style="--c:' + t[1] + '"><span class="sx-ic material-symbols-rounded">' + t[0] + '</span><div><small>' + t[2] + '</small><b>' + t[3] + '</b><span class="iv-sub">' + t[4] + '</span></div></div>'; }).join('') + '</div>' +
       autoCard(set, s) +
       '<div class="iv-grid">' +
-        '<section class="iv-card"><header><h3>' + ic('shopping_cart_checkout') + 'Reorder now</h3>' + (reorder.length ? '<button type="button" class="btn btn-primary btn-sm" data-iv-po-suggest>' + ic('add') + 'Make purchase order</button>' : '') + '</header>' +
+        '<section class="iv-card"><header><h3>' + ic('shopping_cart_checkout') + 'Low stock: reorder now</h3>' + (reorder.length ? '<button type="button" class="btn btn-primary btn-sm" data-iv-po-suggest>' + ic('add') + 'Make purchase order</button>' : '') + '</header>' +
           (reorder.length ? '<div class="iv-list">' + reorder.map(function (i) {
             return '<div class="iv-row"><div class="iv-row-main"><b>' + esc(i.item_name) + '</b><small>' + esc(i.supplier_name || 'No supplier') + (i.days_left != null ? ' · about ' + i.days_left + ' day' + (i.days_left === 1 ? '' : 's') + ' left' : '') + '</small></div>' +
               '<div class="iv-row-num"><b>' + nice(i.quantity_in_stock, i.unit) + '</b>' + statusPill(i.status) + '</div>' +
@@ -116,13 +123,24 @@
           }).join('') + '</div>' : '<div class="iv-ok muted">' + ic('history') + 'No stock movements yet.</div>') + '</section>' +
       '</div>';
   };
+  // How stock follows orders from the POS, KOT, waiters and the website, sold-out dishes and low-stock notifications
   function autoCard(set, s) {
-    var on = !!+set.auto_deduct;
-    var line = !s.recipe_dishes ? 'Add a recipe to a dish and every order of it will take its ingredients out of stock.'
-      : (on ? s.recipe_dishes + ' of ' + s.dishes + ' dishes have a recipe. Orders take stock out once the kitchen starts them' + (set.track_from ? ' (counting since ' + day(set.track_from) + ')' : '') + '. Cancelled orders put it back.'
+    var on = !!+set.auto_deduct, placed = set.deduct_on === 'placed';
+    var line = !s.recipe_dishes ? 'Add a recipe to a dish and every order of it, from the POS, the kitchen or your website, takes its ingredients out of stock.'
+      : (on ? s.recipe_dishes + ' of ' + s.dishes + ' dishes have a recipe. Orders from the POS, waiters and your website take stock out ' + (placed ? 'as soon as they are placed' : 'once the kitchen starts them') + (set.track_from ? ' (counting since ' + day(set.track_from) + ')' : '') + '. Cancelled, rejected or deleted orders put it back.'
         : 'Switched off. Orders don’t change stock; restock and count it by hand.');
-    return '<label class="iv-auto' + (on ? ' on' : '') + '"><span class="sx-ic" style="--c:' + (on ? '#16a34a' : '#6b7280') + '">' + ic('sync') + '</span><span class="iv-auto-t"><b>Take stock out when orders are made</b><small>' + line + '</small></span>' +
-      '<span class="up-switch"><input type="checkbox" data-iv-auto' + (on ? ' checked' : '') + '><span></span></span></label>';
+    var row = function (key, icon, color, title, text, checked) {
+      return '<label class="iv-set-row"><span class="sx-ic" style="--c:' + color + '">' + ic(icon) + '</span><span class="iv-auto-t"><b>' + title + '</b><small>' + text + '</small></span>' +
+        '<span class="up-switch"><input type="checkbox" data-iv-set="' + key + '"' + (checked ? ' checked' : '') + '><span></span></span></label>';
+    };
+    return '<section class="iv-auto' + (on ? ' on' : '') + '">' +
+      row('auto_deduct', 'sync', on ? '#16a34a' : '#6b7280', 'Take stock out when orders are made', line, on) +
+      (on ? '<div class="iv-when"><span>Take it out when</span>' + seg('deduct', placed ? 'placed' : 'kitchen', [['kitchen', 'The kitchen starts the order'], ['placed', 'The order is placed']]) + '</div>' : '') +
+      row('auto_soldout', 'remove_shopping_cart', +set.auto_soldout ? '#dc2626' : '#6b7280', 'Sold out on POS and website when an ingredient runs out',
+        'A dish whose recipe can’t be made shows as unavailable on the POS and your website, and comes back by itself when you restock. Switch a dish back on by hand and it stays on.', +set.auto_soldout) +
+      row('low_alert', 'notifications_active', +set.low_alert ? '#d97706' : '#6b7280', 'Low-stock notifications',
+        'When an item drops to its “Reorder when below” level or runs out, you get a notification on your phone and computer (once, until it’s restocked). Low items also show on the Dashboard.', +set.low_alert) +
+    '</section>';
   }
 
   /* ── Stock ── */
@@ -153,7 +171,8 @@
             '<td data-l="Value"><b>' + money(i.stock_value) + '</b><small class="iv-cell-sub">' + money(i.cost_per_unit) + ' / ' + esc(i.unit) + '</small></td>' +
             '<td data-l="Lasts">' + (i.days_left != null ? i.days_left + ' day' + (i.days_left === 1 ? '' : 's') : '<span class="sx-muted">–</span>') + '</td>' +
             '<td class="iv-acts"><button type="button" class="btn btn-secondary btn-sm" data-iv-restock="' + i.id + '">' + ic('add') + 'Restock</button>' +
-              '<button type="button" class="sx-icon-btn" data-iv-waste="' + i.id + '" title="Wastage or correction">' + ic('remove_circle_outline') + '</button>' +
+              '<button type="button" class="sx-icon-btn" data-iv-setstock="' + i.id + '" title="Set stock to…">' + ic('edit_note') + '</button>' +
+              '<button type="button" class="sx-icon-btn" data-iv-waste="' + i.id + '" title="Record wastage">' + ic('delete_sweep') + '</button>' +
               '<button type="button" class="sx-icon-btn" data-iv-history="' + i.id + '" title="History">' + ic('history') + '</button>' +
               '<button type="button" class="sx-icon-btn" data-iv-item-edit="' + i.id + '" title="Edit">' + ic('edit') + '</button></td></tr>';
         }).join('') + '</tbody></table></div>' : emptyBox('search_off', 'Nothing matches', 'Try another search or filter.'));
@@ -191,6 +210,7 @@
               '<small>' + (x.lines.length ? x.lines.map(function (l) { return esc(l.item_name) + ' ' + qty(l.quantity, l.unit); }).join(' · ') : 'No recipe yet: tap to add') + '</small></span>' +
             '<span class="iv-dish-nums">' + (x.lines.length ? '<span><small>Cost</small><b>' + money(x.cost) + '</b></span><span><small>Price</small><b>' + money(x.price) + '</b></span>' +
               (x.food_cost_pct != null ? '<span class="sx-pill ' + cls + '">' + x.food_cost_pct + '%</span>' : '') +
+              (S.d.auto_off && S.d.auto_off.indexOf(x.id) > -1 ? '<span class="sx-pill bad">' + ic('remove_shopping_cart') + 'Sold out</span>' : (!x.available ? '<span class="sx-pill muted">Unavailable</span>' : '')) +
               '<span><small>Plates left</small><b' + (x.can_make === 0 ? ' class="neg"' : '') + '>' + (x.can_make != null ? x.can_make : '–') + '</b></span>' : '<span class="sx-link">' + ic('add') + 'Add recipe</span>') + '</span></button>';
         }).join('') + '</div></div>';
       }).join('') : emptyBox('search_off', 'Nothing matches', 'Try another search or filter.'));
@@ -351,7 +371,7 @@
         '<label class="sx-lbl">Category<input id="ivCat" list="ivCats" maxlength="100" value="' + esc(e.category || '') + '" placeholder="e.g. Dairy"><datalist id="ivCats">' + Object.keys(cats).sort().map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist></label></div>' +
       '<div class="iv-2"><label class="sx-lbl"><span>Cost per <span data-iv-u>' + esc(e.unit) + '</span></span><input id="ivCost" type="number" step="any" min="0" value="' + (e.cost_per_unit !== '' ? e.cost_per_unit : '') + '" placeholder="0"></label>' +
         (!id ? '<label class="sx-lbl">In stock now<input id="ivOpen" type="number" step="any" min="0" placeholder="0"></label>' : '<label class="sx-lbl">Supplier<select id="ivSup">' + supOpts(e.supplier_id) + '</select></label>') + '</div>' +
-      '<div class="iv-2"><label class="sx-lbl">Reorder when below<input id="ivLow" type="number" step="any" min="0" value="' + (e.low_stock_threshold || '') + '" placeholder="e.g. 2"></label>' +
+      '<div class="iv-2"><label class="sx-lbl"><span>Reorder when below <small class="iv-hint">low-stock alert</small></span><input id="ivLow" type="number" step="any" min="0" value="' + (e.low_stock_threshold || '') + '" placeholder="e.g. 2"></label>' +
         '<label class="sx-lbl">Order up to<input id="ivPar" type="number" step="any" min="0" value="' + (e.par_level || '') + '" placeholder="e.g. 10"></label></div>' +
       (!id ? '<label class="sx-lbl">Supplier<select id="ivSup">' + supOpts(e.supplier_id) + '</select></label>' : '') +
       '<details class="iv-more"' + (e.sku || e.expiry_date || e.notes ? ' open' : '') + '><summary>More details</summary><div class="iv-2"><label class="sx-lbl">Item code (SKU)<input id="ivSku" maxlength="60" value="' + esc(e.sku || '') + '"></label>' +
@@ -385,14 +405,16 @@
     paintWaste();
   }
   function paintWaste() {
-    var it = itemById(M.id), w = M.mode === 'wastage';
-    modal(sheet(it.item_name, 'Now ' + nice(it.quantity_in_stock, it.unit) + ' in stock', w ? '#d97706' : '#6b7280', w ? 'delete_sweep' : 'tune',
-      seg('wmode', M.mode, [['wastage', 'Wastage'], ['adjustment', 'Correction']]) +
+    var it = itemById(M.id), w = M.mode === 'wastage', set = M.mode === 'set';
+    var label = w ? 'How much was lost (' + esc(it.unit) + ')' : set ? 'How much you have now (' + esc(it.unit) + ')' : 'Change (' + esc(it.unit) + '): use a minus for less, e.g. −2';
+    var note = w ? 'Wastage lowers stock and is added to expenses as a loss.' : set ? 'The amount you type becomes the stock, whatever orders took out. The difference is kept in Activity as a correction (not an expense).' : 'A correction adds or removes an amount, e.g. +2 found or −1 miscounted. It isn’t an expense. For the whole shelf use the Stock count tab.';
+    modal(sheet(it.item_name, 'Now ' + nice(it.quantity_in_stock, it.unit) + ' in stock', w ? '#d97706' : '#6b7280', w ? 'delete_sweep' : set ? 'edit' : 'tune',
+      seg('wmode', M.mode, [['wastage', 'Wastage'], ['set', 'Set stock to'], ['adjustment', 'Add / remove']]) +
       (w ? '<div class="sx-lbl">Why</div><div class="sx-chips sx-chips-wrap">' + REASONS.map(function (r) { return '<button type="button" class="' + (M.reason === r ? 'on' : '') + '" data-iv-reason="' + esc(r) + '">' + esc(r) + '</button>'; }).join('') + '</div>' : '') +
-      '<label class="sx-lbl">' + (w ? 'How much was lost (' + esc(it.unit) + ')' : 'Change (' + esc(it.unit) + '): use a minus for less, e.g. −2') + '<input id="wsQty" type="number" step="any" ' + (w ? 'min="0" ' : '') + 'autofocus placeholder="0"></label>' +
+      '<label class="sx-lbl">' + label + '<input id="wsQty" type="number" step="any" ' + (w || set ? 'min="0" ' : '') + 'autofocus placeholder="' + (set ? esc(qty(Math.max(0, it.quantity_in_stock))) : '0') + '"></label>' +
       '<label class="sx-lbl">Note<input id="wsNote" maxlength="200"></label>' +
-      '<div class="sx-note' + (w ? ' warn' : '') + '">' + ic('info') + '<span>' + (w ? 'Wastage lowers stock and is added to expenses as a loss.' : 'A correction fixes a miscount. It isn’t an expense. For a full shelf count use the Stock count tab.') + '</span></div>',
-      '<button type="button" class="btn btn-secondary" data-iv-close>Cancel</button><button type="button" class="btn btn-primary" data-iv-waste-save>' + (w ? 'Record wastage' : 'Save correction') + '</button>'));
+      '<div class="sx-note' + (w ? ' warn' : '') + '">' + ic('info') + '<span>' + note + '</span></div>',
+      '<button type="button" class="btn btn-secondary" data-iv-close>Cancel</button><button type="button" class="btn btn-primary" data-iv-waste-save>' + (w ? 'Record wastage' : set ? 'Set stock' : 'Save') + '</button>'));
   }
 
   function recipeModal(id) {
@@ -518,7 +540,7 @@
   /* ── events ── */
   document.addEventListener('click', function (e) {
     if (!e.target.closest('#inventoryPage') && !e.target.closest('#ivModal')) return;
-    var t = e.target.closest('[data-iv-tab],[data-iv-seg],[data-iv-cat],[data-iv-ccat],[data-iv-reload],[data-iv-close],[data-iv-item-new],[data-iv-item-edit],[data-iv-item-save],[data-iv-item-del],[data-iv-restock],[data-iv-restock-save],[data-iv-waste],[data-iv-waste-save],[data-iv-reason],[data-iv-history],[data-iv-csv],[data-iv-act-csv],[data-iv-recipe],[data-iv-recipe-save],[data-iv-rl-add],[data-iv-rl-del],[data-iv-po-new],[data-iv-po-new-sup],[data-iv-po-edit],[data-iv-po-save],[data-iv-po-sent],[data-iv-po-cancel],[data-iv-po-receive],[data-iv-po-print],[data-iv-po-suggest],[data-iv-pl-add],[data-iv-pl-del],[data-iv-pl-low],[data-iv-rc-save],[data-iv-sup-new],[data-iv-sup-edit],[data-iv-sup-save],[data-iv-sup-del],[data-iv-count-save],[data-iv-count-clear],[data-iv-modal]');
+    var t = e.target.closest('[data-iv-tab],[data-iv-seg],[data-iv-cat],[data-iv-ccat],[data-iv-reload],[data-iv-close],[data-iv-item-new],[data-iv-item-edit],[data-iv-item-save],[data-iv-item-del],[data-iv-restock],[data-iv-restock-save],[data-iv-waste],[data-iv-setstock],[data-iv-waste-save],[data-iv-reason],[data-iv-history],[data-iv-csv],[data-iv-act-csv],[data-iv-recipe],[data-iv-recipe-save],[data-iv-rl-add],[data-iv-rl-del],[data-iv-po-new],[data-iv-po-new-sup],[data-iv-po-edit],[data-iv-po-save],[data-iv-po-sent],[data-iv-po-cancel],[data-iv-po-receive],[data-iv-po-print],[data-iv-po-suggest],[data-iv-pl-add],[data-iv-pl-del],[data-iv-pl-low],[data-iv-rc-save],[data-iv-sup-new],[data-iv-sup-edit],[data-iv-sup-save],[data-iv-sup-del],[data-iv-count-save],[data-iv-count-clear],[data-iv-modal]');
     if (!t) return;
     var a = t.dataset;
     if (a.ivModal !== undefined) { if (e.target === t) close(); return; }
@@ -533,6 +555,7 @@
       else if (a.ivSeg === 'act') { S.act.type = v; load(true); }
       else if (a.ivSeg === 'days') { S.days = +v; load(true); }
       else if (a.ivSeg === 'wmode') { M.mode = v; paintWaste(); }
+      else if (a.ivSeg === 'deduct') { post({ action: 'settings_save', deduct_on: v }).then(function (r) { if (r.success) { SX.notify(v === 'placed' ? 'Stock now goes out as soon as an order is placed' : 'Stock now goes out when the kitchen starts an order', 'success'); load(true); } }); }
       return;
     }
     if (a.ivCat !== undefined) { S.cat = a.ivCat; paint(); return; }
@@ -555,6 +578,7 @@
         expiry_date: document.getElementById('ivRsExp').value, notes: document.getElementById('ivRsNote').value }, t); return;
     }
     if (a.ivWaste) { need().then(function () { wasteModal(+a.ivWaste); }); return; }
+    if (a.ivSetstock) { need().then(function () { wasteModal(+a.ivSetstock); M.mode = 'set'; paintWaste(); }); return; }
     if (a.ivReason) { M.reason = M.reason === a.ivReason ? '' : a.ivReason; var keepQ = document.getElementById('wsQty').value, keepN = document.getElementById('wsNote').value; paintWaste(); document.getElementById('wsQty').value = keepQ; document.getElementById('wsNote').value = keepN; return; }
     if (a.ivWasteSave !== undefined) { save({ action: 'adjust', id: M.id, kind: M.mode, quantity: document.getElementById('wsQty').value, reason: M.mode === 'wastage' ? M.reason : '', notes: document.getElementById('wsNote').value }, t); return; }
     if (a.ivHistory) { S.act = { type: '', item: a.ivHistory, from: '', to: '' }; S.tab = 'activity'; store.set('iv-tab', S.tab); load(); return; }
@@ -623,7 +647,15 @@
   });
   document.addEventListener('change', function (e) {
     var t = e.target;
-    if (t.matches('[data-iv-auto]')) { post({ action: 'settings_save', auto_deduct: t.checked ? 1 : 0 }).then(function (r) { if (r.success) { SX.notify(t.checked ? 'Orders now take stock out' : 'Orders no longer change stock', 'success'); load(true); } }); return; }
+    if (t.matches('[data-iv-set]')) {
+      var key = t.dataset.ivSet, body = { action: 'settings_save' }; body[key] = t.checked ? 1 : 0;
+      var said = { auto_deduct: ['Orders now take stock out', 'Orders no longer change stock'], auto_soldout: ['Dishes now show sold out when an ingredient runs out', 'Dishes no longer go sold out by themselves'], low_alert: ['Low-stock notifications on', 'Low-stock notifications off'] }[key];
+      post(body).then(function (r) {
+        if (!r.success) { SX.notify(r.message || 'Could not save', 'error'); t.checked = !t.checked; return; }
+        SX.notify(said[t.checked ? 0 : 1], 'success'); soldNotice(r.availability); load(true);
+      });
+      return;
+    }
     if (t.matches('[data-iv-act-item]')) { S.act.item = t.value; load(true); return; }
     if (t.matches('[data-iv-act-from]')) { S.act.from = t.value; load(true); return; }
     if (t.matches('[data-iv-act-to]')) { S.act.to = t.value; load(true); return; }

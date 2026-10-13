@@ -92,7 +92,11 @@
 
   // clicking a notification: open Online Orders
   function openOrders() { if (typeof window.showPage === 'function') window.showPage('onlineOrdersPage'); }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.type === 'rg-open-order') { stopTitle(); openOrders(); } });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'rg-open-order') { stopTitle(); openOrders(); }
+    // other notifications open their own section (a low-stock alert opens Inventory)
+    if (e.data && e.data.type === 'rg-open-page' && /^[a-zA-Z]+Page$/.test(e.data.page || '') && document.getElementById(e.data.page) && typeof window.showPage === 'function') window.showPage(e.data.page);
+  });
   if (/[?&]open_order=/.test(location.search)) setTimeout(openOrders, 600);
 
   /* ── one-time setup chip: sound needs a click, notifications need permission ── */

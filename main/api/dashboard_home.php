@@ -67,11 +67,15 @@ try {
     $resvPending = count(array_filter($resv, function ($r) { return $r['status'] === 'Pending'; }));
     $catering = (int)dhTry(function () use ($q, $rid) { return $q("SELECT COUNT(*) FROM catering_requests WHERE restaurant_id = ? AND status = 'new'", [$rid])->fetchColumn(); }, 0);
     // stock items at or below their reorder level (after taking out what recent orders used)
-    $lowStock = (int)dhTry(function () use ($q, $rid, $conn) {
+    $lowNames = [];
+    $lowStock = (int)dhTry(function () use ($q, $rid, $conn, &$lowNames) {
         if (!$q("SHOW TABLES LIKE 'inventory_settings'")->fetchColumn()) return 0;
         require_once __DIR__ . '/../config/inventory_engine.php';
-        invSyncSales($conn, $rid, 100);
-        return $q("SELECT COUNT(*) FROM inventory_items WHERE restaurant_id = ? AND is_active = 1 AND (quantity_in_stock <= 0 OR (low_stock_threshold > 0 AND quantity_in_stock <= low_stock_threshold))", [$rid])->fetchColumn();
+        invRefresh($conn, $rid, 100);
+        $rows = $q("SELECT item_name FROM inventory_items WHERE restaurant_id = ? AND is_active = 1 AND (quantity_in_stock <= 0 OR (low_stock_threshold > 0 AND quantity_in_stock <= low_stock_threshold))
+            ORDER BY quantity_in_stock <= 0 DESC, quantity_in_stock / NULLIF(low_stock_threshold, 0)", [$rid])->fetchAll(PDO::FETCH_COLUMN);
+        $lowNames = array_slice($rows, 0, 3);
+        return count($rows);
     }, 0);
     $kot = (int)dhTry(function () use ($q, $rid) { return $q("SELECT COUNT(*) FROM kot WHERE restaurant_id = ? AND kot_status IN ('Pending', 'Preparing')", [$rid])->fetchColumn(); }, 0);
     $staleKot = (int)dhTry(function () use ($q, $rid) { return $q("SELECT COUNT(*) FROM kot WHERE restaurant_id = ? AND kot_status IN ('Pending', 'Preparing') AND created_at < NOW() - INTERVAL 6 HOUR", [$rid])->fetchColumn(); }, 0);
@@ -113,7 +117,7 @@ try {
         'live' => array_map(function ($o) { return ['id' => (int)$o['id'], 'number' => $o['order_number'], 'type' => $o['order_type'], 'status' => $o['order_status'], 'total' => (float)$o['total'],
             'customer' => (string)$o['customer_name'], 'table' => $o['table_number'], 'source' => $o['source'], 'at' => $o['created_at']]; }, $live),
         'live_count' => $liveCount,
-        'attention' => ['to_accept' => $toAccept, 'calls' => $calls, 'reservations_pending' => $resvPending, 'catering' => $catering, 'stale_kot' => $staleKot, 'low_stock' => $lowStock],
+        'attention' => ['to_accept' => $toAccept, 'calls' => $calls, 'reservations_pending' => $resvPending, 'catering' => $catering, 'stale_kot' => $staleKot, 'low_stock' => $lowStock, 'low_names' => $lowNames],
         'reservations' => array_map(function ($r) { return ['name' => $r['customer_name'], 'time' => $r['time_slot'], 'guests' => (int)$r['no_of_guests'], 'status' => $r['status']]; }, $resv),
         'tables' => ['total' => (int)$tables['total'], 'busy' => (int)$tables['busy']],
         'top' => array_map(function ($t) { return ['name' => $t['name'], 'qty' => (int)$t['qty'], 'sales' => (float)$t['sales']]; }, $top),

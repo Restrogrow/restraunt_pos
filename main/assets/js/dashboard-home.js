@@ -48,7 +48,7 @@
     if (a.calls) rows.push(['warn', 'notifications_active', a.calls + ' table' + (a.calls > 1 ? 's' : '') + ' calling a waiter', 'From the table QR codes', 'waiterRequestsPage']);
     if (a.reservations_pending) rows.push(['warn', 'event_seat', a.reservations_pending + ' reservation' + (a.reservations_pending > 1 ? 's' : '') + ' to confirm', 'For today', 'reservationsPage']);
     if (a.catering) rows.push(['warn', 'celebration', a.catering + ' catering request' + (a.catering > 1 ? 's' : ''), 'Waiting for a reply', 'cateringPage']);
-    if (a.low_stock) rows.push(['warn', 'inventory_2', a.low_stock + ' stock item' + (a.low_stock > 1 ? 's' : '') + ' running low', 'Reorder before service', 'inventoryPage']);
+    if (a.low_stock) rows.push(['warn', 'inventory_2', a.low_stock + ' stock item' + (a.low_stock > 1 ? 's' : '') + ' running low', (a.low_names && a.low_names.length ? a.low_names.join(', ') + (a.low_stock > a.low_names.length ? ' and ' + (a.low_stock - a.low_names.length) + ' more' : '') + '. ' : '') + 'Reorder before service', 'inventoryPage']);
     if (a.stale_kot) rows.push(['muted', 'schedule', a.stale_kot + ' kitchen ticket' + (a.stale_kot > 1 ? 's' : '') + ' open for over 6 hours', 'Close them so tables show as free', 'kotPage']);
     return '<section class="dh-card dh-att"><div class="dh-card-h"><b>Needs attention</b>' + (rows.length ? '<span class="sx-pill ' + (rows[0][0] === 'bad' ? 'bad' : 'warn') + '">' + rows.length + '</span>' : '') + '</div>' +
       (rows.length ? '<div class="dh-att-list">' + rows.map(function (r) {

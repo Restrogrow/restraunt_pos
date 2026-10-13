@@ -152,9 +152,15 @@ try {
         if ($action === 'adjust') {
             $id = (int)($in['id'] ?? 0);
             $it = $item($id);
-            $kind = ($in['kind'] ?? '') === 'wastage' ? 'wastage' : 'adjustment';
+            $kind = in_array($in['kind'] ?? '', ['wastage', 'set'], true) ? $in['kind'] : 'adjustment';
             $qty = ivNum($in['quantity'] ?? 0);
-            if ($qty == 0) ivFail('Enter a quantity.');
+            if ($kind === 'set') {
+                // "Set stock to": the typed amount becomes the stock; logged as a correction
+                if (!isset($in['quantity']) || $in['quantity'] === '' || $qty < 0) ivFail('Enter how much you have now (0 or more).');
+                $qty = round($qty - (float)$it['quantity_in_stock'], 3);
+                if (abs($qty) < 0.0005) ivOut(['success' => true, 'message' => 'Stock already shows that amount']);
+                $kind = 'adjustment';
+            } elseif ($qty == 0) ivFail('Enter a quantity.');
             $delta = $kind === 'wastage' ? -abs($qty) : $qty;
             if ($delta < 0 && (float)$it['quantity_in_stock'] + $delta < -0.0005) ivFail('That is more than you have in stock (' . $fmtQty(max(0, (float)$it['quantity_in_stock'])) . ' ' . $it['unit'] . '). For a full recount use Stock count.');
             $reason = trim((string)($in['reason'] ?? ''));
@@ -213,11 +219,17 @@ try {
         }
 
         if ($action === 'settings_save') {
-            $on = !empty($in['auto_deduct']) ? 1 : 0;
-            // turning it back on starts counting from now, so orders made while it was off aren't taken twice later
-            $q('INSERT INTO inventory_settings (restaurant_id, auto_deduct, track_from) VALUES (?, ?, IF(? = 1, NOW(), NULL))
-                ON DUPLICATE KEY UPDATE track_from = IF(? = 1 AND auto_deduct = 0, NOW(), track_from), auto_deduct = ?', [$rid, $on, $on, $on, $on]);
-            ivOut(['success' => true]);
+            $q('INSERT IGNORE INTO inventory_settings (restaurant_id, auto_deduct) VALUES (?, 1)', [$rid]);
+            if (array_key_exists('auto_deduct', $in)) {
+                $on = !empty($in['auto_deduct']) ? 1 : 0;
+                // turning it back on starts counting from now, so orders made while it was off aren't taken twice later
+                $q('UPDATE inventory_settings SET track_from = IF(? = 1 AND (auto_deduct = 0 OR track_from IS NULL), NOW(), track_from), auto_deduct = ? WHERE restaurant_id = ?', [$on, $on, $rid]);
+            }
+            if (array_key_exists('deduct_on', $in)) $q('UPDATE inventory_settings SET deduct_on = ? WHERE restaurant_id = ?', [$in['deduct_on'] === 'placed' ? 'placed' : 'kitchen', $rid]);
+            if (array_key_exists('auto_soldout', $in)) $q('UPDATE inventory_settings SET auto_soldout = ? WHERE restaurant_id = ?', [!empty($in['auto_soldout']) ? 1 : 0, $rid]);
+            if (array_key_exists('low_alert', $in)) $q('UPDATE inventory_settings SET low_alert = ? WHERE restaurant_id = ?', [!empty($in['low_alert']) ? 1 : 0, $rid]);
+            $r = invRefresh($conn, $rid);   // sold-out dishes follow the new setting straight away
+            ivOut(['success' => true, 'availability' => $r['availability']]);
         }
 
         if ($action === 'supplier_save') {
@@ -323,7 +335,8 @@ try {
     }
 
     /* ───────────── GET ───────────── */
-    $sync = invSyncSales($conn, $rid);
+    $ref = invRefresh($conn, $rid);   // orders, sold-out dishes and low-stock alerts
+    $sync = $ref['synced'];
     $view = $_GET['view'] ?? 'overview';
     $set = invSettings($conn, $rid);
 
@@ -359,7 +372,8 @@ try {
         return array_map(function ($s) { $s['id'] = (int)$s['id']; return $s; },
             $q('SELECT id, name, contact_person, phone, email, notes FROM inventory_suppliers WHERE restaurant_id = ? AND is_active = 1 ORDER BY name', [$rid])->fetchAll(PDO::FETCH_ASSOC));
     };
-    $base = ['success' => true, 'currency' => $cur, 'units' => $UNITS, 'settings' => $set, 'synced' => $sync];
+    $autoOff = $q('SELECT menu_item_id FROM inventory_auto_off WHERE restaurant_id = ? AND override = 0', [$rid])->fetchAll(PDO::FETCH_COLUMN);
+    $base = ['success' => true, 'currency' => $cur, 'units' => $UNITS, 'settings' => $set, 'synced' => $sync, 'availability' => $ref['availability'], 'auto_off' => array_map('intval', $autoOff)];
 
     if ($view === 'overview') {
         $items = $loadItems();

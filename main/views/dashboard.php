@@ -8507,7 +8507,7 @@ if ('serviceWorker' in navigator) {
   (function(){
     try {
       // Cache-busting version: bump this when sw.js changes
-      var SW_VERSION = 7;   // 7: notification click focuses the open dashboard
+      var SW_VERSION = 8;   // 8: a notification can open a section (low stock opens Inventory)
       var swUrl = '../website/sw.php?v=' + SW_VERSION;
       
       // Calculate proper scope from the service worker URL path

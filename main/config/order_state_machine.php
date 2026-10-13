@@ -311,6 +311,10 @@ function validateAndUpdateOrderStatus(
     // of this function AFTER they commit — see update_order_status.php and
     // kot_operations.php.
 
+    // stock follows the order once the caller has committed (taken out, or put back on cancel / reject)
+    require_once __DIR__ . '/inventory_engine.php';
+    invKick($conn, (string)$order['restaurant_id']);
+
     return [
         'success'       => true,
         'message'       => "Order status updated from {$currentStatus} to {$newStatus}",
