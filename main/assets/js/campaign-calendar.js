@@ -169,6 +169,13 @@
   function goToOffer() {
     if (window.showPage && document.getElementById('couponsPage')) window.showPage('couponsPage');
   }
+  // one campaign for the occasion: the poster, video and caption made next share its link and offer
+  function startCampaign(o, date) {
+    var name = o.recurring ? 'Weekend Special ' + date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : o.name.split(' / ')[0].replace(/ \(.*\)$/, '') + ' ' + date.getFullYear();
+    if (window.MK) MK.setCampaign({ name: name, idea: o.idea || '' });
+    goToPoster(o);
+    if (window.SX) SX.notify('Campaign “' + name + '” started. Attach an offer in step 3.', 'success');
+  }
 
   function makeCard(o, date, n) {
     var card = document.createElement('div');
@@ -199,14 +206,24 @@
 
     var actions = document.createElement('div');
     actions.className = 'campaign-card-actions';
-    [['imagesmode', 'Poster', function() { goToPoster(o); }], ['chat_bubble', 'Caption', function() { goToCaption(o); }], ['sell', 'Offer', goToOffer]].forEach(function(b) {
+    var main = document.createElement('button');
+    main.type = 'button';
+    main.className = 'mk-btn campaign-card-go';
+    main.innerHTML = '<span class="material-symbols-rounded">campaign</span>Create campaign';
+    main.title = 'Poster, caption and offer for ' + o.name + ', with one tracked link';
+    main.addEventListener('click', function() { startCampaign(o, date); });
+    actions.appendChild(main);
+    var more = document.createElement('div');
+    more.className = 'campaign-card-more';
+    [['imagesmode', 'Poster', function() { goToPoster(o); }], ['chat_bubble', 'Caption', function() { goToCaption(o); }], ['sell', 'Coupon', goToOffer]].forEach(function(b) {
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'btn btn-secondary btn-sm';
-      btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">' + b[0] + '</span> Create ' + b[1];
+      btn.className = 'mk-link';
+      btn.innerHTML = '<span class="material-symbols-rounded">' + b[0] + '</span>' + b[1];
       btn.addEventListener('click', b[2]);
-      actions.appendChild(btn);
+      more.appendChild(btn);
     });
+    actions.appendChild(more);
     card.appendChild(top); card.appendChild(dateEl);
     if (o.idea) card.appendChild(idea);
     card.appendChild(tip); card.appendChild(actions);
@@ -258,4 +275,16 @@
   });
 
   window.initCampaignCalendar = function() { render(); };
+  // the next occasions (not the weekly card), for the dashboard home: [{name, icon, idea, date, days, type}]
+  window.rgUpcomingOccasions = function(max, withinDays) {
+    var out = [];
+    OCCASIONS.forEach(function(o) { if (o.recurring) return; var d = dateOf(o); if (d) { var n = daysUntil(d); if (n <= (withinDays || 30)) out.push({ o: o, name: o.name, icon: o.icon, idea: o.idea, date: d, days: n, type: o.type }); } });
+    out.sort(function(a, b) { return a.days - b.days; });
+    return out.slice(0, max || 3);
+  };
+  window.rgStartCampaign = function(name) {
+    var hit = OCCASIONS.filter(function(o) { return o.name === name; })[0];
+    if (!hit) return;
+    startCampaign(hit, dateOf(hit));
+  };
 })();

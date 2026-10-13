@@ -1167,6 +1167,8 @@ $conn->beginTransaction();
 
     // Commit transaction
     $conn->commit();
+    // which campaign link (poster QR / caption link) brought this order, for Marketing › My campaigns
+    if (!empty($input['campaign_src'])) { require_once __DIR__ . '/../config/marketing_helpers.php'; mkRecordOrderSource($conn, (string)$restaurant_id, (int)$order_id, $input['campaign_src']); }
     require_once __DIR__ . '/../config/inventory_engine.php';
     invKick($conn, $restaurant_id);   // with "when the order is placed", stock goes out now
 

@@ -1209,6 +1209,13 @@ try {
               </a>
               <span class="nav-tooltip">Campaign Calendar</span>
             </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="marketingDesignsPage">
+                <span class="nav-icon material-symbols-rounded">folder</span>
+                <span class="nav-label">My campaigns</span>
+              </a>
+              <span class="nav-tooltip">My campaigns</span>
+            </li>
           </ul>
         </li>
         <li class="nav-item has-submenu">
@@ -3379,16 +3386,14 @@ function toggleGatewayMode() {
       <div class="page-header">
         <div>
           <h1>Posters</h1>
-          <p>Pick a design, choose a dish photo from your menu, write your offer, download. Ready for WhatsApp, Instagram and Facebook.</p>
+          <p>Pick a design and a dish, attach an offer, then download in every size with a caption ready to post.</p>
         </div>
       </div>
       <div class="page-content">
         <div class="poster-studio">
           <div class="poster-controls-panel">
-            <div class="poster-panel-title">1. Choose a template</div>
+            <div class="poster-panel-title">1. Pick a design</div>
             <div id="posterTemplateGrid" class="poster-template-grid"></div>
-
-            <div class="poster-panel-title" style="margin-top:24px;">2. Customize</div>
             <div id="posterFieldsContainer" class="poster-fields"></div>
           </div>
           <div class="poster-preview-panel">
@@ -3408,27 +3413,24 @@ function toggleGatewayMode() {
       <div class="page-header">
         <div>
           <h1>Videos</h1>
-          <p>Short animated promos for WhatsApp Status, Instagram Reels and Facebook. The preview plays on a loop; record it to download.</p>
+          <p>Short animated promos for WhatsApp Status, Instagram Reels and Facebook, square or upright.</p>
         </div>
       </div>
       <div class="page-content">
         <div class="poster-studio">
           <div class="poster-controls-panel">
-            <div class="poster-panel-title">1. Choose a template</div>
+            <div class="poster-panel-title">1. Pick an animation</div>
             <div id="videoTemplateGrid" class="poster-template-grid"></div>
-
-            <div class="poster-panel-title" style="margin-top:24px;">2. Customize</div>
             <div id="videoFieldsContainer" class="poster-fields"></div>
           </div>
           <div class="poster-preview-panel">
             <div class="poster-canvas-wrap">
               <canvas id="videoCanvas" width="1080" height="1080"></canvas>
             </div>
-            <button type="button" class="btn btn-primary mk-main" id="recordVideoBtn" onclick="recordVideo()">
+            <button type="button" class="btn btn-primary mk-main" id="recordVideoBtn">
               <span class="material-symbols-rounded" style="font-size:18px;">videocam</span>
               <span class="video-record-label">Record &amp; Download Video</span>
             </button>
-            <p style="color:#9ca3af;font-size:0.8rem;margin-top:8px;">Downloads as MP4 where supported, otherwise WebM. The preview above loops automatically — hit record to save it as a file.</p>
           </div>
         </div>
       </div>
@@ -3439,7 +3441,7 @@ function toggleGatewayMode() {
       <div class="page-header">
         <div>
           <h1>Social Captions</h1>
-          <p>Say what you are promoting and get ready-to-post captions with your link and hashtags.</p>
+          <p>Captions in English, Hinglish or Hindi with your tracked link and hashtags. Edit, copy and post.</p>
         </div>
       </div>
       <div class="page-content">
@@ -3480,19 +3482,32 @@ function toggleGatewayMode() {
               </div>
             </div>
             <div style="display:flex;gap:10px;margin-top:16px;">
-              <button type="button" class="btn btn-primary" style="flex:1;" onclick="generateCaptions()">
+              <button type="button" class="mk-btn big" style="flex:1;" onclick="generateCaptions(true)">
                 <span class="material-symbols-rounded" style="font-size:18px;">auto_awesome</span> Generate Captions
               </button>
-              <button type="button" class="btn btn-secondary" title="Get different phrasing for the same inputs" aria-label="Different wording" onclick="generateCaptions()">
+              <button type="button" class="mk-btn ghost big" title="Get different wording for the same inputs" aria-label="Different wording" onclick="generateCaptions(true)">
                 <span class="material-symbols-rounded" style="font-size:18px;">shuffle</span>
               </button>
             </div>
           </div>
           <div class="caption-results-panel">
-            <div class="poster-panel-title">2. Pick a caption to use</div>
+            <div class="poster-panel-title">2. Pick a caption, edit it, post it</div>
             <div id="captionResultsContainer" class="caption-results"></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Marketing > My campaigns: saved designs and their results (assets/js/marketing-studio.js) -->
+    <div id="marketingDesignsPage" class="page sx mk">
+      <div class="page-header">
+        <div>
+          <h1>My campaigns</h1>
+          <p>Every poster, video and caption you saved, with how many people opened it and the orders it brought in.</p>
+        </div>
+      </div>
+      <div class="page-content">
+        <div id="mkDesignsRoot"></div>
       </div>
     </div>
 
@@ -7181,6 +7196,7 @@ function toggleGatewayMode() {
   <!-- Currency utils (extracted from script.js) -->
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
   <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
+  <script src="../assets/libs/qrcode/qrcode.min.js" defer></script>
   <script src="../assets/js/poster-generator.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/video-generator.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/caption-generator.js?v=<?php echo time(); ?>" defer></script>

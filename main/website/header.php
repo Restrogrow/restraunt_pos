@@ -585,6 +585,15 @@ if ($restaurant_id) {
     echo '<script>(function(){var x=new XMLHttpRequest();x.open("GET","' . $website_base_href . 'track_visit.php?rid=' . urlencode($restaurant_id) . '&page=' . urlencode(substr($track_page, 0, 255)) . '&name=' . urlencode($track_name) . '&ip=' . urlencode($track_ip) . '&ref=' . urlencode($track_ref) . '&ua=' . urlencode(substr($track_ua, 0, 200)) . '",true);x.timeout=3000;x.send();})();</script>' . "\n";
 }
 
+// ── Marketing links: ?src=<campaign> and ?coupon=<code> from a poster / caption link ──
+// The campaign tag is kept for 7 days and sent with the order (cart.php -> campaign_src);
+// the coupon is applied in the cart automatically (cart.php applySavedReward, rgPromoCode).
+if ($restaurant_id && (isset($_GET['src']) || isset($_GET['coupon']))) {
+    echo '<script>(function(){try{var p=new URLSearchParams(location.search),s=(p.get("src")||"").toLowerCase(),c=(p.get("coupon")||"").toUpperCase(),r=' . json_encode((string)$restaurant_id, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';'
+       . 'if(/^[a-z0-9-]{1,60}$/.test(s))localStorage.setItem("rgCampaign",JSON.stringify({src:s,rid:r,at:Date.now()}));'
+       . 'if(/^[A-Z0-9_-]{2,50}$/.test(c))localStorage.setItem("rgPromoCode",JSON.stringify({code:c,rid:r}));}catch(e){}})();</script>' . "\n";
+}
+
 // ── PWA "Install App" support (shared across every page) ──
 // Registers the service worker + beforeinstallprompt/appinstalled listeners
 // and exposes a global promptInstall() so the bottom-nav "Install App"

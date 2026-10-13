@@ -101,6 +101,7 @@
     return maxLines ? lines.slice(0, maxLines) : lines;
   }
 
+  // Restaurant name (with the logo from the Brand kit), phone and offer code, and the QR code
   function drawFooterBar(ctx, state, assets, opts) {
     opts = opts || {};
     var barH = 130;
@@ -108,20 +109,45 @@
     ctx.fillStyle = opts.bg || '#ffffff';
     ctx.fillRect(0, y, CANVAS_SIZE, barH);
 
-    var padX = 60;
+    var padX = 60, tx = padX;
+    var showQR = state.showQR && assets.qrImg && !opts.hideQR;
+    var maxW = CANVAS_SIZE - padX * 2 - (showQR ? 130 : 0);
+    var logo = window.MK && window.MK.logo();
+    if (logo) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(padX + 42, y + barH / 2, 42, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.clip();
+      drawImageCoverRaw(ctx, logo, padX + 3, y + barH / 2 - 39, 78, 78);
+      ctx.restore();
+      tx = padX + 104; maxW -= 104;
+    }
     ctx.textAlign = 'left';
     ctx.fillStyle = opts.textColor || '#111827';
     ctx.font = "700 34px 'Poppins'";
-    ctx.fillText(window.restaurantName || 'Your Restaurant', padX, y + 54);
+    var name = window.restaurantName || 'Your Restaurant';
+    while (ctx.measureText(name).width > maxW && name.length > 4) name = name.slice(0, -2);
+    ctx.fillText(name, tx, y + 54);
 
+    var x2 = tx;
+    if (state.couponCode) {
+      ctx.font = "700 26px 'Poppins'";
+      var codeText = 'Code ' + state.couponCode;
+      var cw = ctx.measureText(codeText).width + 28;
+      roundRectPath(ctx, x2, y + 68, cw, 38, 10);
+      ctx.fillStyle = state.accentColor || '#F97316';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(codeText, x2 + 14, y + 96);
+      x2 += cw + 16;
+    }
     if (state.phone) {
       ctx.font = "500 26px 'Poppins'";
       ctx.fillStyle = opts.subTextColor || '#6b7280';
-      ctx.fillText('Call ' + state.phone, padX, y + 92);
+      ctx.fillText('Call ' + state.phone, x2, y + 96);
     }
 
-    if (state.showQR && assets.qrImg && !opts.hideQR) {
-      var qrSize = 92;
+    if (showQR) {
+      var qrSize = 100;
       var qrX = CANVAS_SIZE - padX - qrSize;
       var qrY = y + (barH - qrSize) / 2;
       ctx.fillStyle = '#ffffff';
@@ -951,6 +977,13 @@
     return null;
   }
 
+  // which caption fits each design (caption-generator.js post types)
+  var CAPTION_TYPE = { bold_discount: 'discount', new_item: 'new_item', combo: 'combo', happy_hour: 'happy_hour', order_direct: 'general', festive_special: 'festive',
+    now_open: 'now_open', we_deliver: 'we_deliver', testimonial: 'testimonial', flash_sale: 'discount', chefs_special: 'new_item', loyalty_rewards: 'general', reserve_table: 'general' };
+  // designs about one dish: picking a dish fills in its name (headline) and price
+  var DISH_HEADLINE = { new_item: 'subtext', chefs_special: 'badge' };
+  var DISH_SUBTEXT = { bold_discount: 1, flash_sale: 1 };
+
   // ---------- state ----------
   var posterState = {
     templateId: null,
@@ -961,21 +994,33 @@
     phone: '',
     showQR: true,
     photoImg: null,
-    photo2Img: null
+    photo2Img: null,
+    format: 'square',
+    coupon: null,          // {code, label, badge}
+    src: '',               // link tag, fixed once the poster is downloaded or saved
+    designId: null,
+    edited: {},            // fields the owner typed in (picking a dish won't overwrite them)
+    colorPicked: false,
+    caption: '', captionEdited: false, captionTurn: 0
   };
+  var square = document.createElement('canvas');
+  square.width = square.height = CANVAS_SIZE;
+  var renderToken = 0, firstPhoto = null, inputs = {};
 
-  var qrImageCache = {};
-  var renderToken = 0;
-
+  var fontsP = null, fontsDone = false;
   function waitForFonts() {
     if (!document.fonts) return Promise.resolve();
-    return Promise.all([
+    if (!fontsP) fontsP = Promise.all([
       document.fonts.load("800 60px 'Poppins'"),
       document.fonts.load("700 60px 'Poppins'"),
       document.fonts.load("500 30px 'Poppins'"),
       document.fonts.load("800 60px 'Playfair Display'"),
+      document.fonts.load("700 60px 'Playfair Display'"),
       document.fonts.load("60px 'Bebas Neue'")
     ]).catch(function() {});
+    // never wait more than 2.5s for Google Fonts: draw now, and again once they arrive
+    if (!fontsDone) { fontsDone = true; var all = fontsP; fontsP = Promise.race([all, new Promise(function(r) { setTimeout(r, 2500); })]); all.then(function() { if (posterState.templateId) { redrawThumbnails(); renderPoster(); } }); }
+    return fontsP;
   }
 
   function buildMenuUrl() {
@@ -997,40 +1042,53 @@
 
   window.getMarketingMenuUrl = buildMenuUrl;
 
-  function getMenuQRImage() {
-    var url = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(buildMenuUrl());
-    if (qrImageCache[url]) return Promise.resolve(qrImageCache[url]);
-    return loadImage(url, true).then(function(img) {
-      qrImageCache[url] = img;
-      return img;
-    });
+  function currentSrc() { return posterState.src || (window.MK ? MK.srcFor(posterState.headline) : ''); }
+  function posterLink() {
+    return window.MK ? MK.link({ src: currentSrc(), coupon: posterState.coupon && posterState.coupon.code }) : buildMenuUrl();
+  }
+
+  // the 1080 square design, then the chosen size around it
+  function drawSquare(fmt) {
+    var template = getTemplate(posterState.templateId);
+    var ctx = square.getContext('2d');
+    if (window.MK) MK.useBrandFont(ctx);
+    var needsQR = template.forceQR || (template.fields.indexOf('showQR') > -1 && posterState.showQR && fmt === 'square');
+    var st = Object.assign({}, posterState, { couponCode: posterState.coupon ? posterState.coupon.code : '', showQR: posterState.showQR && fmt === 'square' });
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    template.draw(ctx, st, { qrImg: needsQR && window.MK ? MK.qr(posterLink()) : null });
+  }
+  function drawFormat(canvas, fmt) {
+    var F = (window.MK && MK.FORMATS[fmt]) || { w: CANVAS_SIZE, h: CANVAS_SIZE };
+    if (canvas.width !== F.w) canvas.width = F.w;
+    if (canvas.height !== F.h) canvas.height = F.h;
+    drawSquare(fmt);
+    var ctx = canvas.getContext('2d');
+    if (!window.MK) { ctx.drawImage(square, 0, 0); return; }
+    MK.compose(ctx, square, fmt, { photo: posterState.photoImg, headline: posterState.headline, coupon: posterState.coupon, link: posterState.showQR || fmt !== 'square' ? posterLink() : '', color: posterState.accentColor });
   }
 
   function renderPoster() {
     var canvas = document.getElementById('posterCanvas');
     var template = getTemplate(posterState.templateId);
     if (!canvas || !template) return;
-    var ctx = canvas.getContext('2d');
     var myToken = ++renderToken;
-
-    var needsQR = template.forceQR || (template.fields.indexOf('showQR') > -1 && posterState.showQR);
-    var qrPromise = needsQR ? getMenuQRImage().catch(function() { return null; }) : Promise.resolve(null);
-
-    Promise.all([waitForFonts(), qrPromise]).then(function(results) {
-      if (myToken !== renderToken) return;
-      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-      template.draw(ctx, posterState, { qrImg: results[1] });
-    });
+    // draw straight away, and again once the fonts are in (first visit only)
+    drawFormat(canvas, posterState.format);
+    waitForFonts().then(function() { if (myToken === renderToken) drawFormat(canvas, posterState.format); });
+    refreshCaption();
   }
 
   function renderThumbnail(template, canvas) {
     var ctx = canvas.getContext('2d');
     var scale = canvas.width / CANVAS_SIZE;
+    var brand = window.MK ? MK.brandNow() : null;
     waitForFonts().then(function() {
+      if (window.MK) MK.useBrandFont(ctx);
       ctx.save();
+      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
       ctx.scale(scale, scale);
-      var sampleState = Object.assign({ accentColor: ACCENT_COLORS[0], phone: window.restaurantPhone || '', showQR: false, photoImg: null, photo2Img: null }, template.sample);
-      template.draw(ctx, sampleState, { qrImg: null });
+      var sampleState = Object.assign({ accentColor: brand ? brand.color1 : ACCENT_COLORS[0], phone: (brand && brand.phone) || window.restaurantPhone || '', showQR: false, photoImg: firstPhoto, photo2Img: firstPhoto }, template.sample);
+      template.draw(ctx, sampleState, { qrImg: window.MK ? MK.qr(buildMenuUrl()) : null });
       ctx.restore();
     });
   }
@@ -1041,7 +1099,8 @@
     if (!grid) return;
     grid.innerHTML = '';
     POSTER_TEMPLATES.forEach(function(t) {
-      var card = document.createElement('div');
+      var card = document.createElement('button');
+      card.type = 'button';
       card.className = 'poster-template-card';
       card.dataset.templateId = t.id;
       card.addEventListener('click', function() { selectTemplate(t.id); });
@@ -1059,28 +1118,61 @@
       grid.appendChild(card);
       renderThumbnail(t, canvas);
     });
+    markActive();
+  }
+  function redrawThumbnails() {
+    document.querySelectorAll('#posterTemplateGrid .poster-template-card').forEach(function(card) {
+      var t = getTemplate(card.dataset.templateId), c = card.querySelector('canvas');
+      if (t && c) renderThumbnail(t, c);
+    });
+  }
+  function markActive() {
+    document.querySelectorAll('#posterTemplateGrid .poster-template-card').forEach(function(c) {
+      c.classList.toggle('active', c.dataset.templateId === posterState.templateId);
+    });
   }
 
-  function selectTemplate(id) {
+  function selectTemplate(id, keep) {
     var template = getTemplate(id);
     if (!template) return;
+    var prev = getTemplate(posterState.templateId);
     posterState.templateId = id;
-    posterState.headline = template.sample.headline || '';
-    posterState.subtext = template.sample.subtext || '';
-    posterState.badge = template.sample.badge || '';
-    posterState.photoImg = null;
-    posterState.photo2Img = null;
-    posterState.showQR = true;
-
-    document.querySelectorAll('.poster-template-card').forEach(function(c) {
-      c.classList.toggle('active', c.dataset.templateId === id);
-    });
-
+    // keep what the owner typed when switching designs; otherwise show the design's example text
+    ['headline', 'subtext', 'badge'].forEach(function(k) { if (!keep && !posterState.edited[k]) posterState[k] = template.sample[k] || ''; });
+    if (!keep && posterState.coupon && template.fields.indexOf('badge') > -1 && !posterState.edited.badge && id !== 'chefs_special') posterState.badge = posterState.coupon.badge;
+    if (!keep && posterState.photoImg && posterState.photoImg._dish && !(prev && prev.id === id)) fillFromDish(posterState.photoImg._dish, true);
+    if (!keep && !posterState.photoImg && firstPhoto) posterState.photoImg = firstPhoto;
+    markActive();
     renderFields(template);
     renderPoster();
   }
 
-  function buildTextField(labelText, value, maxlength, onChange) {
+  function setField(k, v) {
+    posterState[k] = v;
+    if (inputs[k]) inputs[k].value = v;
+  }
+  // a dish was picked: fill its name and price in where the design is about one dish
+  function fillFromDish(dish, quiet) {
+    if (!dish) return;
+    var id = posterState.templateId, cur = window.globalCurrencySymbol || '₹', price = dish.price ? Math.round(dish.price) : 0;
+    if (DISH_HEADLINE[id]) {
+      if (!posterState.edited.headline) setField('headline', dish.name);
+      if (price && DISH_HEADLINE[id] === 'subtext' && !posterState.edited.subtext) setField('subtext', 'Starting at ' + cur + price);
+      if (price && DISH_HEADLINE[id] === 'badge' && !posterState.edited.badge) setField('badge', cur + price);
+    } else if (DISH_SUBTEXT[id] && !posterState.edited.subtext) {
+      setField('subtext', dish.name + (price ? ' · now ' + cur + price : ''));
+    }
+    if (!quiet) renderPoster();
+  }
+
+  function section(title, hint) {
+    var s = document.createElement('div');
+    s.className = 'mk-sec';
+    s.innerHTML = '<div class="poster-panel-title">' + title + '</div>' + (hint ? '<p class="mk-hint">' + hint + '</p>' : '');
+    return s;
+  }
+
+  function buildTextField(key, labelText, value, maxlength, onChange) {
     var wrap = document.createElement('div');
     wrap.className = 'poster-field';
     var label = document.createElement('label');
@@ -1089,37 +1181,35 @@
     input.type = 'text';
     input.value = value || '';
     input.maxLength = maxlength;
-    input.addEventListener('input', function() { onChange(input.value); });
+    input.addEventListener('input', function() { if (key) posterState.edited[key] = true; onChange(input.value); });
+    if (key) inputs[key] = input;
     wrap.appendChild(label);
     wrap.appendChild(input);
     return wrap;
   }
 
   function buildCheckboxField(labelText, checked, onChange) {
-    var wrap = document.createElement('div');
-    wrap.className = 'poster-field poster-field-checkbox';
+    var wrap = document.createElement('label');
+    wrap.className = 'mk-switch';
     var input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = !!checked;
-    input.id = 'posterShowQR';
     input.addEventListener('change', function() { onChange(input.checked); });
-    var label = document.createElement('label');
-    label.setAttribute('for', 'posterShowQR');
-    label.style.marginBottom = '0';
-    label.textContent = labelText;
     wrap.appendChild(input);
-    wrap.appendChild(label);
+    wrap.insertAdjacentHTML('beforeend', '<i></i><span>' + labelText + '</span>');
     return wrap;
   }
 
-  function buildPhotoField(labelText, onLoaded) {
-    // dish photos from the menu, or your own upload (marketing-studio.js)
-    if (window.MK) return window.MK.photoPicker({ label: labelText, onImage: onLoaded, onUseText: function (d) {
-      posterState.headline = d.name;
-      if (d.price) posterState.subtext = 'Now at ' + (window.globalCurrencySymbol || '₹') + Math.round(d.price);
-      renderFields(getTemplate(posterState.templateId));
-      renderPoster();
-    } });
+  function buildPhotoField(labelText, which) {
+    var img = posterState[which];
+    if (window.MK) return window.MK.photoPicker({ label: labelText, currentSrc: img ? img.src : '', selectedName: img && img._dish ? img._dish.name : '',
+      onImage: function(im, dish) { posterState[which] = im; if (dish && which === 'photoImg') fillFromDish(dish, true); renderPoster(); },
+      onUseText: function(d) {
+        posterState.edited.headline = posterState.edited.subtext = false;
+        setField('headline', d.name);
+        if (d.price) setField('subtext', 'Now at ' + (window.globalCurrencySymbol || '₹') + Math.round(d.price));
+        renderPoster();
+      } });
     var wrap = document.createElement('div');
     wrap.className = 'poster-field';
     var label = document.createElement('label');
@@ -1131,9 +1221,7 @@
       var file = input.files && input.files[0];
       if (!file) return;
       var reader = new FileReader();
-      reader.onload = function(e) {
-        loadImage(e.target.result, false).then(onLoaded);
-      };
+      reader.onload = function(e) { loadImage(e.target.result, false).then(function(im) { posterState[which] = im; renderPoster(); }); };
       reader.readAsDataURL(file);
     });
     wrap.appendChild(label);
@@ -1141,11 +1229,16 @@
     return wrap;
   }
 
+  function swatchColors() {
+    var b = window.MK ? MK.brandNow() : null, list = [];
+    (b ? [b.color1, b.color2] : []).concat(ACCENT_COLORS).forEach(function(c) { c = String(c).toLowerCase(); if (list.indexOf(c) < 0) list.push(c); });
+    return list.slice(0, 8);
+  }
   function buildColorField() {
     var wrap = document.createElement('div');
     wrap.className = 'poster-field';
     var label = document.createElement('label');
-    label.textContent = 'Accent Color';
+    label.textContent = 'Colour';
     var swatchRow = document.createElement('div');
     swatchRow.className = 'poster-color-swatches';
 
@@ -1153,14 +1246,16 @@
     picker.type = 'color';
     picker.className = 'poster-color-picker';
     picker.value = posterState.accentColor;
-    picker.title = 'Custom color';
+    picker.title = 'Any colour';
 
-    ACCENT_COLORS.forEach(function(color) {
-      var sw = document.createElement('div');
-      sw.className = 'poster-color-swatch' + (color === posterState.accentColor ? ' active' : '');
+    swatchColors().forEach(function(color, i) {
+      var sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'poster-color-swatch' + (color === String(posterState.accentColor).toLowerCase() ? ' active' : '');
       sw.style.background = color;
+      sw.title = i < 2 && window.MK && MK.brandNow().saved ? 'Brand colour' : color;
       sw.addEventListener('click', function() {
-        posterState.accentColor = color;
+        posterState.accentColor = color; posterState.colorPicked = true;
         picker.value = color;
         swatchRow.querySelectorAll('.poster-color-swatch').forEach(function(el) { el.classList.remove('active'); });
         sw.classList.add('active');
@@ -1170,7 +1265,7 @@
     });
 
     picker.addEventListener('input', function() {
-      posterState.accentColor = picker.value;
+      posterState.accentColor = picker.value; posterState.colorPicked = true;
       swatchRow.querySelectorAll('.poster-color-swatch').forEach(function(el) { el.classList.remove('active'); });
       renderPoster();
     });
@@ -1181,71 +1276,235 @@
     return wrap;
   }
 
+  function suggestCode() {
+    var c = window.MK && MK.campaign();
+    var words = String(c ? c.name : posterState.headline || 'OFFER').toUpperCase().replace(/[^A-Z ]/g, ' ').split(/s+/).filter(Boolean);
+    var base = (words[0] && words[0].length >= 4 ? words[0] : words.slice(0, 2).join('')).slice(0, 10) || 'OFFER';
+    return base + '20';
+  }
+
   function renderFields(template) {
     var container = document.getElementById('posterFieldsContainer');
     if (!container) return;
     container.innerHTML = '';
+    inputs = {};
 
-    if (template.fields.indexOf('headline') > -1) {
-      container.appendChild(buildTextField('Headline', posterState.headline, 40, function(v) { posterState.headline = v; renderPoster(); }));
-    }
-    if (template.fields.indexOf('subtext') > -1) {
-      container.appendChild(buildTextField('Subtext', posterState.subtext, 70, function(v) { posterState.subtext = v; renderPoster(); }));
-    }
-    if (template.fields.indexOf('badge') > -1) {
-      container.appendChild(buildTextField(template.badgeLabel || 'Badge Text', posterState.badge, 24, function(v) { posterState.badge = v; renderPoster(); }));
-    }
-    if (template.fields.indexOf('photo') > -1) {
-      container.appendChild(buildPhotoField('Photo', function(img) { posterState.photoImg = img; renderPoster(); }));
-    }
-    if (template.fields.indexOf('photo2') > -1) {
-      container.appendChild(buildPhotoField('Second Photo', function(img) { posterState.photo2Img = img; renderPoster(); }));
-    }
+    var s1 = section('2. Dish and words', 'Pick a dish and its name and price fill in by themselves. Change any text you like.');
+    if (template.fields.indexOf('photo') > -1) s1.appendChild(buildPhotoField('Photo', 'photoImg'));
+    if (template.fields.indexOf('photo2') > -1) s1.appendChild(buildPhotoField('Second photo', 'photo2Img'));
+    if (template.fields.indexOf('headline') > -1) s1.appendChild(buildTextField('headline', 'Headline', posterState.headline, 40, function(v) { posterState.headline = v; renderPoster(); }));
+    if (template.fields.indexOf('subtext') > -1) s1.appendChild(buildTextField('subtext', 'Second line', posterState.subtext, 70, function(v) { posterState.subtext = v; renderPoster(); }));
+    if (template.fields.indexOf('badge') > -1) s1.appendChild(buildTextField('badge', template.badgeLabel || 'Badge text', posterState.badge, 24, function(v) { posterState.badge = v; renderPoster(); }));
+    container.appendChild(s1);
 
-    container.appendChild(buildColorField());
-    container.appendChild(buildTextField('Phone Number', posterState.phone, 20, function(v) { posterState.phone = v; renderPoster(); }));
+    var s2 = section('3. Offer', 'Attach a coupon. The QR code and link open your menu with it already applied, and orders show in My campaigns.');
+    if (window.MK) s2.appendChild(MK.offerPicker({ current: posterState.coupon, suggestCode: suggestCode(), desc: posterState.headline, onChange: function(cp) {
+      posterState.coupon = cp;
+      if (cp && template.fields.indexOf('badge') > -1 && !posterState.edited.badge && posterState.templateId !== 'chefs_special') setField('badge', cp.badge);
+      if (window.MK && MK.campaign()) MK.setCampaignCoupon(cp);
+      renderPoster();
+    } }));
+    if (template.fields.indexOf('showQR') > -1) s2.appendChild(buildCheckboxField('Show a “Scan to order” QR code', posterState.showQR, function(v) { posterState.showQR = v; renderPoster(); }));
+    container.appendChild(s2);
 
-    if (template.fields.indexOf('showQR') > -1) {
-      container.appendChild(buildCheckboxField('Show "Scan to Order" QR code', posterState.showQR, function(v) { posterState.showQR = v; renderPoster(); }));
+    var s3 = section('4. Colour and contact');
+    s3.appendChild(buildColorField());
+    s3.appendChild(buildTextField('', 'Phone number', posterState.phone, 20, function(v) { posterState.phone = v; renderPoster(); }));
+    var kit = document.createElement('button');
+    kit.type = 'button'; kit.className = 'mk-link'; kit.setAttribute('data-mk-kit', '');
+    kit.innerHTML = '<span class="material-symbols-rounded">palette</span>Logo, colours and font are in your Brand kit';
+    s3.appendChild(kit);
+    container.appendChild(s3);
+  }
+
+  // ---------- preview panel: sizes, download, save, caption ----------
+  function buildPreviewPanel() {
+    var panel = document.querySelector('#marketingPostersPage .poster-preview-panel');
+    if (!panel || panel.querySelector('.mk-fmt')) return;
+    var F = window.MK ? MK.FORMATS : {};
+    panel.innerHTML =
+      '<div class="mk-fmt" role="tablist" aria-label="Size">' + Object.keys(F).map(function(k) {
+        return '<button type="button" data-pfmt="' + k + '"' + (k === posterState.format ? ' class="on"' : '') + '><i class="mk-ratio r-' + k + '"></i><span><b>' + F[k].label + '</b><small>' + F[k].hint + '</small></span></button>';
+      }).join('') + '</div>' +
+      '<div class="poster-canvas-wrap"><canvas id="posterCanvas" width="1080" height="1080"></canvas></div>' +
+      '<div class="mk-acts"><button type="button" class="mk-btn big" data-pact="download"><span class="material-symbols-rounded">download</span><span class="mk-dl-l">Download</span></button>' +
+      '<button type="button" class="mk-btn ghost" data-pact="all"><span class="material-symbols-rounded">photo_library</span>All 3 sizes</button>' +
+      '<button type="button" class="mk-btn ghost" data-pact="save"><span class="material-symbols-rounded">save</span><span class="mk-save-l">Save</span></button></div>' +
+      '<div class="mk-share"><div class="mk-share-h"><b>Caption to post with it</b><button type="button" class="mk-link" data-pact="reword"><span class="material-symbols-rounded">shuffle</span>New wording</button></div>' +
+      '<textarea class="mk-cap" rows="6" aria-label="Caption"></textarea>' +
+      '<div class="mk-share-a"><button type="button" class="mk-btn sm" data-pact="copy"><span class="material-symbols-rounded">content_copy</span>Copy caption</button>' +
+      '<button type="button" class="mk-btn sm wa" data-pact="wa"><span class="material-symbols-rounded">share</span>Share on WhatsApp</button>' +
+      '<button type="button" class="mk-btn sm ghost" data-pact="link"><span class="material-symbols-rounded">link</span>Copy link</button></div>' +
+      '<p class="mk-hint">Post the picture first, then paste this caption with it. The link is tracked in My campaigns.</p></div>';
+    panel.querySelector('.mk-cap').addEventListener('input', function() { posterState.caption = this.value; posterState.captionEdited = true; });
+    panel.addEventListener('click', function(e) {
+      var f = e.target.closest('[data-pfmt]');
+      if (f) {
+        posterState.format = f.dataset.pfmt;
+        panel.querySelectorAll('[data-pfmt]').forEach(function(b) { b.classList.toggle('on', b === f); });
+        updateDownloadLabel();
+        renderPoster();
+        return;
+      }
+      var a = e.target.closest('[data-pact]');
+      if (!a) return;
+      var act = a.dataset.pact;
+      if (act === 'download') window.downloadPoster();
+      else if (act === 'all') downloadAll(a);
+      else if (act === 'save') savePoster(a);
+      else if (act === 'reword') { posterState.captionEdited = false; posterState.captionTurn++; refreshCaption(); }
+      else if (act === 'copy' && window.MK) MK.copy(posterState.caption, a);
+      else if (act === 'wa' && window.MK) MK.whatsapp(posterState.caption);
+      else if (act === 'link' && window.MK) { lockSrc(); MK.copy(posterLink(), a); }
+    });
+    updateDownloadLabel();
+  }
+  function updateDownloadLabel() {
+    var l = document.querySelector('#marketingPostersPage .mk-dl-l');
+    if (l && window.MK) l.textContent = 'Download ' + MK.FORMATS[posterState.format].label.toLowerCase();
+  }
+
+  function refreshCaption() {
+    var box = document.querySelector('#marketingPostersPage .mk-cap');
+    if (!box || posterState.captionEdited || typeof window.mkCaptions !== 'function') return;
+    var t = getTemplate(posterState.templateId);
+    var dish = posterState.photoImg && posterState.photoImg._dish ? posterState.photoImg._dish.name : '';
+    var subject = posterState.templateId === 'festive_special' ? (window.MK && MK.campaign() ? MK.campaign().name.replace(/\s*\d{4}$/, '') : posterState.headline.replace(/^happy\s+/i, '')) : (DISH_HEADLINE[posterState.templateId] ? posterState.headline : (posterState.headline || dish));
+    var detail = [posterState.subtext, !posterState.coupon && /%|off|free|flat/i.test(posterState.badge) ? posterState.badge : ''].filter(Boolean).join('. ');
+    var list = window.mkCaptions({ type: CAPTION_TYPE[t.id] || 'general', subject: subject, detail: detail, coupon: posterState.coupon, link: posterLink() });
+    posterState.caption = list[posterState.captionTurn % list.length] || '';
+    box.value = posterState.caption;
+  }
+
+  function lockSrc() { if (!posterState.src) posterState.src = currentSrc(); }
+  function fileBase() { return (window.MK ? MK.fileName : function(s) { return s; })(posterState.headline || 'poster'); }
+
+  window.downloadPoster = function() {
+    var canvas = document.getElementById('posterCanvas');
+    if (!canvas) return;
+    lockSrc();
+    renderPoster();
+    var name = fileBase() + (posterState.format === 'square' ? '' : '-' + posterState.format);
+    if (window.MK) { MK.download(canvas, name); return; }
+    try {
+      var a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = name + '.png';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } catch (e) {
+      if (window.showMessage) window.showMessage('Could not export the poster. Try again.', 'error');
     }
+  };
+  function downloadAll(btn) {
+    if (!window.MK) return;
+    lockSrc();
+    btn.disabled = true;
+    var c = document.createElement('canvas'), fmts = Object.keys(MK.FORMATS), i = 0;
+    (function next() {
+      if (i >= fmts.length) { btn.disabled = false; if (window.SX) SX.notify('Downloaded 3 sizes: square, story and wide', 'success'); renderPoster(); return; }
+      var f = fmts[i++];
+      drawFormat(c, f);
+      MK.download(c, fileBase() + '-' + f).then(function() { setTimeout(next, 250); });
+    })();
+  }
+
+  function stateForSave() {
+    return {
+      templateId: posterState.templateId, headline: posterState.headline, subtext: posterState.subtext, badge: posterState.badge,
+      accentColor: posterState.accentColor, phone: posterState.phone, showQR: posterState.showQR, format: posterState.format, coupon: posterState.coupon,
+      photo: window.MK ? MK.imgRef(posterState.photoImg) : null, photo2: window.MK ? MK.imgRef(posterState.photo2Img) : null,
+      dish: posterState.photoImg && posterState.photoImg._dish ? posterState.photoImg._dish : null,
+      caption: posterState.caption, captionEdited: posterState.captionEdited, edited: posterState.edited
+    };
+  }
+  function savePoster(btn) {
+    if (!window.MK) return;
+    lockSrc();
+    var camp = MK.campaign(), t = getTemplate(posterState.templateId);
+    btn.disabled = true;
+    MK.saveDesign({ id: posterState.designId, kind: 'poster', name: (camp ? camp.name + ' · ' : '') + (posterState.headline || t.name), src: posterState.src,
+      coupon_code: posterState.coupon ? posterState.coupon.code : '', state: stateForSave(), thumb: MK.thumb(document.getElementById('posterCanvas')) }).then(function(id) {
+      btn.disabled = false;
+      if (id) { posterState.designId = id; var l = btn.querySelector('.mk-save-l'); if (l) l.textContent = 'Saved'; }
+    });
+  }
+
+  function init() {
+    posterState.phone = window.restaurantPhone || '';
+    buildPreviewPanel();
+    renderTemplateGrid();
+    selectTemplate(POSTER_TEMPLATES[0].id);
+    if (!window.MK) return;
+    // brand colours and phone, and a real dish photo, instead of an empty box
+    MK.brand().then(function(b) {
+      if (!posterState.colorPicked) posterState.accentColor = b.color1;
+      if (b.phone) posterState.phone = b.phone;
+      renderFields(getTemplate(posterState.templateId));
+      renderPoster(); redrawThumbnails();
+    });
+    MK.firstPhoto().then(function(r) {
+      if (!r) return;
+      firstPhoto = r.img;
+      if (!posterState.photoImg) { posterState.photoImg = r.img; renderFields(getTemplate(posterState.templateId)); renderPoster(); }
+      redrawThumbnails();
+    });
+    var c = MK.campaign();
+    if (c && c.coupon && !posterState.coupon) posterState.coupon = c.coupon;
+    document.addEventListener('mk:brand', function(e) {
+      if (!posterState.colorPicked) posterState.accentColor = e.detail.color1;
+      if (e.detail.phone) posterState.phone = e.detail.phone;
+      renderFields(getTemplate(posterState.templateId)); renderPoster(); redrawThumbnails();
+    });
+    document.addEventListener('mk:campaign', function(e) {
+      if (e.detail && e.detail.coupon && (!posterState.coupon || posterState.coupon.code !== e.detail.coupon.code)) { posterState.coupon = e.detail.coupon; renderFields(getTemplate(posterState.templateId)); }
+      if (!posterState.designId) posterState.src = '';
+      renderPoster();
+    });
   }
 
   window.initPosterStudio = function() {
     if (window._posterStudioInited) return;
     window._posterStudioInited = true;
-    posterState.phone = window.restaurantPhone || '';
-    renderTemplateGrid();
-    selectTemplate(POSTER_TEMPLATES[0].id);
-    // start with a real dish photo instead of an empty box
-    if (window.MK) window.MK.firstPhoto().then(function (r) { if (r && !posterState.photoImg) { posterState.photoImg = r.img; renderPoster(); } });
+    init();
   };
 
   window.prefillPoster = function(templateId, fields) {
     var template = getTemplate(templateId);
     if (!template) return;
-    selectTemplate(templateId);
+    window.initPosterStudio();
     fields = fields || {};
+    posterState.edited = {}; posterState.designId = null; posterState.src = ''; posterState.captionEdited = false;
+    var c = window.MK && MK.campaign();
+    posterState.coupon = c && c.coupon ? c.coupon : null;
+    selectTemplate(templateId);
     if (fields.headline !== undefined) posterState.headline = fields.headline;
     if (fields.subtext !== undefined) posterState.subtext = fields.subtext;
-    if (fields.badge !== undefined) posterState.badge = fields.badge;
+    if (fields.badge !== undefined) posterState.badge = posterState.coupon ? posterState.coupon.badge : fields.badge;
     renderFields(template);
     renderPoster();
   };
 
-  window.downloadPoster = function() {
-    var canvas = document.getElementById('posterCanvas');
-    if (!canvas) return;
-    try {
-      var url = canvas.toDataURL('image/png');
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = (posterState.headline || 'poster').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.png';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (e) {
-      if (window.showMessage) window.showMessage('Could not export the poster. Try again.', 'error');
-      else alert('Could not export the poster. Try again.');
-    }
+  // open a saved design from My campaigns
+  window.openPosterDesign = function(design) {
+    window.initPosterStudio();
+    var s = design.state || {};
+    var template = getTemplate(s.templateId) || POSTER_TEMPLATES[0];
+    Object.assign(posterState, {
+      templateId: template.id, headline: s.headline || '', subtext: s.subtext || '', badge: s.badge || '', accentColor: s.accentColor || posterState.accentColor,
+      phone: s.phone != null ? s.phone : posterState.phone, showQR: s.showQR !== false, format: s.format || 'square', coupon: s.coupon || null,
+      src: design.src || '', designId: design.id, edited: s.edited || { headline: true, subtext: true, badge: true }, colorPicked: true,
+      caption: s.caption || '', captionEdited: !!s.captionEdited, photoImg: null, photo2Img: null
+    });
+    document.querySelectorAll('#marketingPostersPage [data-pfmt]').forEach(function(b) { b.classList.toggle('on', b.dataset.pfmt === posterState.format); });
+    var l = document.querySelector('#marketingPostersPage .mk-save-l'); if (l) l.textContent = 'Saved';
+    updateDownloadLabel();
+    var box = document.querySelector('#marketingPostersPage .mk-cap'); if (box && posterState.captionEdited) box.value = posterState.caption;
+    markActive(); renderFields(template); renderPoster();
+    Promise.all([MK.imgFromRef(s.photo), MK.imgFromRef(s.photo2)]).then(function(r) {
+      if (r[0] && s.dish) r[0]._dish = s.dish;
+      posterState.photoImg = r[0]; posterState.photo2Img = r[1];
+      if (s.dish && s.dish.name) MK.lastPicked.Photo = s.dish.name;
+      renderFields(template); renderPoster();
+    });
   };
 })();

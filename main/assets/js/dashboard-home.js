@@ -107,6 +107,18 @@
     return floor + resv + top;
   }
 
+  // festivals and days coming up in the next 30 days, each a tap away from a ready campaign (campaign-calendar.js)
+  function upcoming() {
+    if (typeof window.rgUpcomingOccasions !== 'function') return '';
+    var list = window.rgUpcomingOccasions(3, 30);
+    if (!list.length) return '';
+    return '<section class="dh-card dh-soon"><div class="dh-card-h"><b>Coming up</b><button type="button" class="sx-link" data-dh-go="marketingCalendarPage">Calendar' + ic('arrow_forward') + '</button></div><ul class="dh-list">' +
+      list.map(function (x) {
+        return '<li><span class="dh-soon-ic t-' + esc(x.type) + '">' + ic(x.icon || 'event') + '</span><span class="dh-li-main">' + esc(x.name) + '<small>' + (x.days === 0 ? 'Today' : x.days === 1 ? 'Tomorrow' : 'In ' + x.days + ' days') + ' · ' + esc(x.idea || '') + '</small></span>' +
+          '<button type="button" class="dh-soon-go" data-dh-camp="' + esc(x.name) + '">' + ic('campaign') + 'Plan it</button></li>';
+      }).join('') + '</ul></section>';
+  }
+
   var SHORTCUTS = [['posPage', 'point_of_sale', 'POS'], ['kotPage', 'skillet', 'Kitchen'], ['menuItemsPage', 'restaurant_menu', 'Menu'], ['tablesPage', 'table_restaurant', 'Tables'],
     ['customersPage', 'group', 'Customers'], ['offersHomePage', 'sell', 'Offers'], ['reportsPage', 'monitoring', 'Reports'], ['settingsPage', 'settings', 'Settings']];
 
@@ -114,7 +126,7 @@
     var root = document.getElementById('dhRoot');
     if (!root || !D) return;
     root.innerHTML = kpis() +
-      '<div class="dh-grid">' + '<div class="dh-col">' + chart() + liveOrders() + '</div>' + '<div class="dh-col">' + attention() + side() + '</div>' + '</div>' +
+      '<div class="dh-grid">' + '<div class="dh-col">' + chart() + liveOrders() + '</div>' + '<div class="dh-col">' + upcoming() + attention() + side() + '</div>' + '</div>' +
       '<nav class="dh-shortcuts" aria-label="Shortcuts">' + SHORTCUTS.map(function (s) { return '<button type="button" data-dh-go="' + s[0] + '">' + ic(s[1]) + s[2] + '</button>'; }).join('') + '</nav>';
     // header
     var h = new Date().getHours();
@@ -147,6 +159,8 @@
   };
 
   document.addEventListener('click', function (e) {
+    var c = e.target.closest('[data-dh-camp]');
+    if (c && c.closest('#dashboardPage')) { if (window.rgStartCampaign) window.rgStartCampaign(c.getAttribute('data-dh-camp')); return; }
     var t = e.target.closest('[data-dh-go], [data-dh-metric]');
     if (!t || !t.closest('#dashboardPage')) return;
     if (t.hasAttribute('data-dh-metric')) { metric = t.getAttribute('data-dh-metric'); draw(); return; }

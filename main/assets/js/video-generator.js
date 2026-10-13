@@ -2,7 +2,8 @@
 // Renders short animated promo videos entirely client-side (HTML5 canvas +
 // MediaRecorder) - no server/ffmpeg cost per video. New templates only need
 // an entry pushed onto VIDEO_TEMPLATES; the picker grid, editor fields and
-// preview all pick it up automatically. Mirrors poster-generator.js.
+// preview all pick it up automatically. Mirrors poster-generator.js; sizes, brand kit,
+// QR codes, saving and the dish picker come from marketing-studio.js (window.MK).
 (function() {
   'use strict';
 
@@ -166,16 +167,25 @@
     ctx.fillStyle = opts.bg || '#ffffff';
     ctx.fillRect(0, y, CANVAS_SIZE, barH);
 
-    var padX = 60;
+    var padX = 60, tx = padX;
+    var logo = window.MK && window.MK.logo();   // logo from the Brand kit
+    if (logo) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(padX + 42, y + barH / 2, 42, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.clip();
+      drawImageCoverRaw(ctx, logo, padX + 3, y + barH / 2 - 39, 78, 78);
+      ctx.restore();
+      tx = padX + 104;
+    }
     ctx.textAlign = 'left';
     ctx.fillStyle = opts.textColor || '#111827';
     ctx.font = "700 34px 'Poppins'";
-    ctx.fillText(window.restaurantName || 'Your Restaurant', padX, y + 54);
+    ctx.fillText(window.restaurantName || 'Your Restaurant', tx, y + 54);
 
     if (state.phone) {
       ctx.font = "500 26px 'Poppins'";
       ctx.fillStyle = opts.subTextColor || '#6b7280';
-      ctx.fillText('Call ' + state.phone, padX, y + 92);
+      ctx.fillText('Call ' + state.phone, tx, y + 92);
     }
 
     if (assets.qrImg) {
@@ -830,40 +840,67 @@
     phone: '',
     showQR: true,
     photoImg: null,
-    photo2Img: null
+    photo2Img: null,
+    format: 'square',
+    src: '',
+    designId: null,
+    edited: {},
+    colorPicked: false
   };
   var videoAssets = { qrImg: null };
-  var qrImageCache = {};
   var loopStartTime = null;
   var loopRunning = false;
+  var square = document.createElement('canvas');
+  square.width = square.height = CANVAS_SIZE;
+  var firstPhoto = null, inputs = {};
+  var VIDEO_FORMATS = ['square', 'story'];   // Status and Reels are upright
 
+  var fontsP = null;
   function waitForFonts() {
     if (!document.fonts) return Promise.resolve();
-    return Promise.all([
+    if (fontsP) return fontsP;
+    var all = Promise.all([
       document.fonts.load("800 60px 'Poppins'"),
       document.fonts.load("700 60px 'Poppins'"),
       document.fonts.load("500 30px 'Poppins'"),
       document.fonts.load("60px 'Bebas Neue'"),
+      document.fonts.load("700 60px 'Playfair Display'"),
       document.fonts.load("160px 'Material Symbols Rounded'")
     ]).catch(function() {});
+    // never wait more than 2.5s for Google Fonts: draw now, and again once they arrive
+    all.then(function() { if (videoState.templateId) redrawThumbnails(); });
+    fontsP = Promise.race([all, new Promise(function(r) { setTimeout(r, 2500); })]);
+    return fontsP;
   }
 
-  function getMenuQRImage() {
-    var url = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(
-      window.getMarketingMenuUrl ? window.getMarketingMenuUrl() : window.location.href
-    );
-    if (qrImageCache[url]) return Promise.resolve(qrImageCache[url]);
-    return loadImage(url, true).then(function(img) {
-      qrImageCache[url] = img;
-      return img;
-    });
+  function campaignCoupon() { var c = window.MK && MK.campaign(); return c && c.coupon ? c.coupon : null; }
+  function currentSrc() { return videoState.src || (window.MK ? MK.srcFor(videoState.headline) : ''); }
+  function videoLink() {
+    var cp = campaignCoupon();
+    return window.MK ? MK.link({ src: currentSrc(), coupon: cp && cp.code }) : (window.getMarketingMenuUrl ? window.getMarketingMenuUrl() : location.href);
   }
 
   function refreshVideoQR() {
     var template = getTemplate(videoState.templateId);
-    var needsQR = template && template.fields.indexOf('showQR') > -1 && videoState.showQR;
-    if (!needsQR) { videoAssets.qrImg = null; return; }
-    getMenuQRImage().then(function(img) { videoAssets.qrImg = img; }).catch(function() {});
+    var needsQR = template && template.fields.indexOf('showQR') > -1 && videoState.showQR && videoState.format === 'square';
+    videoAssets.qrImg = needsQR && window.MK ? MK.qr(videoLink()) : null;
+  }
+
+  // one frame: the template on the square, then the chosen size around it
+  function drawFrame(canvas, t) {
+    var template = getTemplate(videoState.templateId);
+    var sctx = square.getContext('2d');
+    if (window.MK) MK.useBrandFont(sctx);
+    sctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    template.animate(sctx, videoState, videoAssets, t);
+    var ctx = canvas.getContext('2d');
+    if (videoState.format === 'square' || !window.MK) { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(square, 0, 0, canvas.width, canvas.height); return; }
+    MK.compose(ctx, square, videoState.format, { photo: videoState.photoImg, headline: videoState.headline, coupon: campaignCoupon(), link: videoLink(), color: videoState.accentColor });
+  }
+  function sizeCanvas(canvas) {
+    var F = window.MK ? MK.FORMATS[videoState.format] : { w: CANVAS_SIZE, h: CANVAS_SIZE };
+    if (canvas.width !== F.w) canvas.width = F.w;
+    if (canvas.height !== F.h) canvas.height = F.h;
   }
 
   // ---------- render loop ----------
@@ -876,9 +913,8 @@
     if (loopStartTime === null) loopStartTime = now;
     var duration = template.duration || DEFAULT_DURATION;
     var t = ((now - loopStartTime) % duration) / duration;
-    var ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    template.animate(ctx, videoState, videoAssets, t);
+    sizeCanvas(canvas);
+    drawFrame(canvas, t);
   }
 
   function ensureLoopStarted() {
@@ -890,11 +926,14 @@
   function renderThumbnail(template, canvas) {
     var ctx = canvas.getContext('2d');
     var scale = canvas.width / CANVAS_SIZE;
+    var brand = window.MK ? MK.brandNow() : null;
     waitForFonts().then(function() {
+      if (window.MK) MK.useBrandFont(ctx);
       ctx.save();
+      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
       ctx.scale(scale, scale);
-      var sampleState = Object.assign({ accentColor: ACCENT_COLORS[0], phone: window.restaurantPhone || '', showQR: false, photoImg: null, photo2Img: null }, template.sample);
-      template.animate(ctx, sampleState, { qrImg: null }, 0.32);
+      var sampleState = Object.assign({ accentColor: brand ? brand.color1 : ACCENT_COLORS[0], phone: (brand && brand.phone) || window.restaurantPhone || '', showQR: false, photoImg: firstPhoto, photo2Img: firstPhoto }, template.sample);
+      template.animate(ctx, sampleState, { qrImg: null }, 0.62);
       ctx.restore();
     });
   }
@@ -905,7 +944,8 @@
     if (!grid) return;
     grid.innerHTML = '';
     VIDEO_TEMPLATES.forEach(function(t) {
-      var card = document.createElement('div');
+      var card = document.createElement('button');
+      card.type = 'button';
       card.className = 'poster-template-card';
       card.dataset.templateId = t.id;
       card.addEventListener('click', function() { selectTemplate(t.id); });
@@ -923,29 +963,44 @@
       grid.appendChild(card);
       renderThumbnail(t, canvas);
     });
+    markActive();
+  }
+  function redrawThumbnails() {
+    document.querySelectorAll('#videoTemplateGrid .poster-template-card').forEach(function(card) {
+      var t = getTemplate(card.dataset.templateId), c = card.querySelector('canvas');
+      if (t && c) renderThumbnail(t, c);
+    });
+  }
+  function markActive() {
+    document.querySelectorAll('#videoTemplateGrid .poster-template-card').forEach(function(c) {
+      c.classList.toggle('active', c.dataset.templateId === videoState.templateId);
+    });
   }
 
   function selectTemplate(id) {
     var template = getTemplate(id);
     if (!template) return;
     videoState.templateId = id;
-    videoState.headline = template.sample.headline || '';
-    videoState.subtext = template.sample.subtext || '';
-    videoState.badge = template.sample.badge || '';
-    videoState.photoImg = null;
-    videoState.photo2Img = null;
-    videoState.showQR = true;
+    ['headline', 'subtext', 'badge'].forEach(function(k) { if (!videoState.edited[k]) videoState[k] = template.sample[k] || ''; });
+    var cp = campaignCoupon();
+    if (cp && template.fields.indexOf('badge') > -1 && !videoState.edited.badge) videoState.badge = cp.badge;
+    if (!videoState.photoImg && firstPhoto) videoState.photoImg = firstPhoto;
     loopStartTime = null;
-
-    document.querySelectorAll('#videoTemplateGrid .poster-template-card').forEach(function(c) {
-      c.classList.toggle('active', c.dataset.templateId === id);
-    });
-
+    markActive();
     renderFields(template);
     refreshVideoQR();
   }
 
-  function buildTextField(labelText, value, maxlength, onChange) {
+  function setField(k, v) { videoState[k] = v; if (inputs[k]) inputs[k].value = v; }
+
+  function section(title, hint) {
+    var s = document.createElement('div');
+    s.className = 'mk-sec';
+    s.innerHTML = '<div class="poster-panel-title">' + title + '</div>' + (hint ? '<p class="mk-hint">' + hint + '</p>' : '');
+    return s;
+  }
+
+  function buildTextField(key, labelText, value, maxlength, onChange) {
     var wrap = document.createElement('div');
     wrap.className = 'poster-field';
     var label = document.createElement('label');
@@ -954,36 +1009,39 @@
     input.type = 'text';
     input.value = value || '';
     input.maxLength = maxlength;
-    input.addEventListener('input', function() { onChange(input.value); });
+    input.addEventListener('input', function() { if (key) videoState.edited[key] = true; onChange(input.value); });
+    if (key) inputs[key] = input;
     wrap.appendChild(label);
     wrap.appendChild(input);
     return wrap;
   }
 
   function buildCheckboxField(labelText, checked, onChange) {
-    var wrap = document.createElement('div');
-    wrap.className = 'poster-field poster-field-checkbox';
+    var wrap = document.createElement('label');
+    wrap.className = 'mk-switch';
     var input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = !!checked;
-    input.id = 'videoShowQR';
     input.addEventListener('change', function() { onChange(input.checked); });
-    var label = document.createElement('label');
-    label.setAttribute('for', 'videoShowQR');
-    label.style.marginBottom = '0';
-    label.textContent = labelText;
     wrap.appendChild(input);
-    wrap.appendChild(label);
+    wrap.insertAdjacentHTML('beforeend', '<i></i><span>' + labelText + '</span>');
     return wrap;
   }
 
-  function buildPhotoField(labelText, onLoaded) {
-    // dish photos from the menu, or your own upload (marketing-studio.js)
-    if (window.MK) return window.MK.photoPicker({ label: labelText, onImage: onLoaded, onUseText: function (d) {
-      videoState.headline = d.name;
-      if (d.price) videoState.subtext = 'Now at ' + (window.globalCurrencySymbol || '₹') + Math.round(d.price);
-      renderFields(getTemplate(videoState.templateId));
-    } });
+  function buildPhotoField(labelText, which) {
+    var img = videoState[which];
+    if (window.MK) return window.MK.photoPicker({ label: labelText, currentSrc: img ? img.src : '', selectedName: img && img._dish ? img._dish.name : '',
+      onImage: function(im, dish) {
+        videoState[which] = im;
+        if (dish && which === 'photoImg' && !videoState.edited.subtext && (videoState.templateId === 'zoom_reveal' || videoState.templateId === 'chefs_reveal')) {
+          setField('subtext', dish.name + (dish.price ? ' · now ' + MK.cur() + Math.round(dish.price) : ''));
+        }
+      },
+      onUseText: function(d) {
+        videoState.edited.headline = videoState.edited.subtext = false;
+        setField('headline', d.name);
+        if (d.price) setField('subtext', 'Now at ' + (window.globalCurrencySymbol || '₹') + Math.round(d.price));
+      } });
     var wrap = document.createElement('div');
     wrap.className = 'poster-field';
     var label = document.createElement('label');
@@ -995,9 +1053,7 @@
       var file = input.files && input.files[0];
       if (!file) return;
       var reader = new FileReader();
-      reader.onload = function(e) {
-        loadImage(e.target.result, false).then(onLoaded);
-      };
+      reader.onload = function(e) { loadImage(e.target.result, false).then(function(im) { videoState[which] = im; }); };
       reader.readAsDataURL(file);
     });
     wrap.appendChild(label);
@@ -1005,11 +1061,16 @@
     return wrap;
   }
 
+  function swatchColors() {
+    var b = window.MK ? MK.brandNow() : null, list = [];
+    (b ? [b.color1, b.color2] : []).concat(ACCENT_COLORS).forEach(function(c) { c = String(c).toLowerCase(); if (list.indexOf(c) < 0) list.push(c); });
+    return list.slice(0, 8);
+  }
   function buildColorField() {
     var wrap = document.createElement('div');
     wrap.className = 'poster-field';
     var label = document.createElement('label');
-    label.textContent = 'Accent Color';
+    label.textContent = 'Colour';
     var swatchRow = document.createElement('div');
     swatchRow.className = 'poster-color-swatches';
 
@@ -1017,14 +1078,15 @@
     picker.type = 'color';
     picker.className = 'poster-color-picker';
     picker.value = videoState.accentColor;
-    picker.title = 'Custom color';
+    picker.title = 'Any colour';
 
-    ACCENT_COLORS.forEach(function(color) {
-      var sw = document.createElement('div');
-      sw.className = 'poster-color-swatch' + (color === videoState.accentColor ? ' active' : '');
+    swatchColors().forEach(function(color) {
+      var sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'poster-color-swatch' + (color === String(videoState.accentColor).toLowerCase() ? ' active' : '');
       sw.style.background = color;
       sw.addEventListener('click', function() {
-        videoState.accentColor = color;
+        videoState.accentColor = color; videoState.colorPicked = true;
         picker.value = color;
         swatchRow.querySelectorAll('.poster-color-swatch').forEach(function(el) { el.classList.remove('active'); });
         sw.classList.add('active');
@@ -1033,7 +1095,7 @@
     });
 
     picker.addEventListener('input', function() {
-      videoState.accentColor = picker.value;
+      videoState.accentColor = picker.value; videoState.colorPicked = true;
       swatchRow.querySelectorAll('.poster-color-swatch').forEach(function(el) { el.classList.remove('active'); });
     });
     swatchRow.appendChild(picker);
@@ -1047,29 +1109,85 @@
     var container = document.getElementById('videoFieldsContainer');
     if (!container) return;
     container.innerHTML = '';
+    inputs = {};
 
-    if (template.fields.indexOf('headline') > -1) {
-      container.appendChild(buildTextField(template.headlineLabel || 'Headline', videoState.headline, 70, function(v) { videoState.headline = v; }));
-    }
-    if (template.fields.indexOf('subtext') > -1) {
-      container.appendChild(buildTextField(template.subtextLabel || 'Subtext', videoState.subtext, 70, function(v) { videoState.subtext = v; }));
-    }
-    if (template.fields.indexOf('badge') > -1) {
-      container.appendChild(buildTextField(template.badgeLabel || 'Badge Text', videoState.badge, 24, function(v) { videoState.badge = v; }));
-    }
-    if (template.fields.indexOf('photo') > -1) {
-      container.appendChild(buildPhotoField(template.photoLabel || 'Photo', function(img) { videoState.photoImg = img; }));
-    }
-    if (template.fields.indexOf('photo2') > -1) {
-      container.appendChild(buildPhotoField('Second Photo', function(img) { videoState.photo2Img = img; }));
-    }
+    var s1 = section('2. Dish and words', 'The preview updates as you type.');
+    if (template.fields.indexOf('photo') > -1) s1.appendChild(buildPhotoField(template.photoLabel || 'Photo', 'photoImg'));
+    if (template.fields.indexOf('photo2') > -1) s1.appendChild(buildPhotoField('Second photo', 'photo2Img'));
+    if (template.fields.indexOf('headline') > -1) s1.appendChild(buildTextField('headline', template.headlineLabel || 'Headline', videoState.headline, 70, function(v) { videoState.headline = v; }));
+    if (template.fields.indexOf('subtext') > -1) s1.appendChild(buildTextField('subtext', template.subtextLabel || 'Second line', videoState.subtext, 70, function(v) { videoState.subtext = v; }));
+    if (template.fields.indexOf('badge') > -1) s1.appendChild(buildTextField('badge', template.badgeLabel || 'Badge text', videoState.badge, 24, function(v) { videoState.badge = v; }));
+    container.appendChild(s1);
 
-    container.appendChild(buildColorField());
-    container.appendChild(buildTextField('Phone Number', videoState.phone, 20, function(v) { videoState.phone = v; }));
+    var s3 = section('3. Colour and contact');
+    s3.appendChild(buildColorField());
+    s3.appendChild(buildTextField('', 'Phone number', videoState.phone, 20, function(v) { videoState.phone = v; }));
+    if (template.fields.indexOf('showQR') > -1) s3.appendChild(buildCheckboxField('Show a “Scan to order” QR code', videoState.showQR, function(v) { videoState.showQR = v; refreshVideoQR(); }));
+    var cp = campaignCoupon();
+    var note = document.createElement('p');
+    note.className = 'mk-hint';
+    note.innerHTML = cp ? 'The Story size shows your offer code <b>' + MK.esc(cp.code) + '</b> and a QR code that applies it.' : 'Attach an offer from the Posters page, or start a campaign, and the Story size shows the code.';
+    s3.appendChild(note);
+    container.appendChild(s3);
+  }
 
-    if (template.fields.indexOf('showQR') > -1) {
-      container.appendChild(buildCheckboxField('Show "Scan to Order" QR code', videoState.showQR, function(v) { videoState.showQR = v; refreshVideoQR(); }));
-    }
+  function buildPreviewPanel() {
+    var panel = document.querySelector('#marketingVideosPage .poster-preview-panel');
+    if (!panel || panel.querySelector('.mk-fmt') || !window.MK) return;
+    panel.innerHTML =
+      '<div class="mk-fmt two" role="tablist" aria-label="Size">' + VIDEO_FORMATS.map(function(k) {
+        var F = MK.FORMATS[k];
+        return '<button type="button" data-vfmt="' + k + '"' + (k === videoState.format ? ' class="on"' : '') + '><i class="mk-ratio r-' + k + '"></i><span><b>' + F.label + '</b><small>' + F.hint + '</small></span></button>';
+      }).join('') + '</div>' +
+      '<div class="poster-canvas-wrap"><canvas id="videoCanvas" width="1080" height="1080"></canvas></div>' +
+      '<div class="mk-acts"><button type="button" class="mk-btn big" id="recordVideoBtn"><span class="material-symbols-rounded">videocam</span><span class="video-record-label">Record and download video</span></button>' +
+      '<button type="button" class="mk-btn ghost" data-vact="still"><span class="material-symbols-rounded">imagesmode</span>Save as picture</button>' +
+      '<button type="button" class="mk-btn ghost" data-vact="save"><span class="material-symbols-rounded">save</span><span class="mk-save-l">Save</span></button></div>' +
+      '<div class="mk-rec" hidden><div class="mk-rec-bar"><i></i></div><span class="mk-rec-t">Recording…</span></div>' +
+      '<p class="mk-hint">The preview loops. Recording plays it once from the start (about 6 seconds) and downloads an MP4 where your browser supports it, otherwise WebM.</p>';
+    panel.querySelector('#recordVideoBtn').addEventListener('click', function() { window.recordVideo(); });
+    panel.addEventListener('click', function(e) {
+      var f = e.target.closest('[data-vfmt]');
+      if (f) {
+        if (window._videoRecording) return;
+        videoState.format = f.dataset.vfmt;
+        panel.querySelectorAll('[data-vfmt]').forEach(function(b) { b.classList.toggle('on', b === f); });
+        refreshVideoQR(); loopStartTime = null;
+        return;
+      }
+      var a = e.target.closest('[data-vact]');
+      if (!a) return;
+      if (a.dataset.vact === 'still') saveStill();
+      else if (a.dataset.vact === 'save') saveVideo(a);
+    });
+  }
+
+  function fileBase() { return window.MK ? MK.fileName(videoState.headline || 'promo-video') : 'promo-video'; }
+  function lockSrc() { if (!videoState.src) videoState.src = currentSrc(); }
+
+  // the finished frame (everything on screen) as a picture
+  function saveStill() {
+    if (!window.MK) return;
+    lockSrc(); refreshVideoQR();
+    var c = document.createElement('canvas'), F = MK.FORMATS[videoState.format];
+    c.width = F.w; c.height = F.h;
+    drawFrame(c, 0.7);
+    MK.download(c, fileBase() + (videoState.format === 'square' ? '' : '-story'));
+  }
+
+  function saveVideo(btn) {
+    if (!window.MK) return;
+    lockSrc();
+    var c = document.createElement('canvas'), F = MK.FORMATS[videoState.format], cp = campaignCoupon(), camp = MK.campaign();
+    c.width = F.w; c.height = F.h; drawFrame(c, 0.7);
+    btn.disabled = true;
+    MK.saveDesign({ id: videoState.designId, kind: 'video', name: (camp ? camp.name + ' · ' : '') + (videoState.headline || getTemplate(videoState.templateId).name), src: videoState.src, coupon_code: cp ? cp.code : '',
+      state: { templateId: videoState.templateId, headline: videoState.headline, subtext: videoState.subtext, badge: videoState.badge, accentColor: videoState.accentColor, phone: videoState.phone,
+        showQR: videoState.showQR, format: videoState.format, photo: MK.imgRef(videoState.photoImg), photo2: MK.imgRef(videoState.photo2Img), dish: videoState.photoImg && videoState.photoImg._dish || null },
+      thumb: MK.thumb(c) }).then(function(id) {
+      btn.disabled = false;
+      if (id) { videoState.designId = id; var l = btn.querySelector('.mk-save-l'); if (l) l.textContent = 'Saved'; }
+    });
   }
 
   window.initVideoStudio = function() {
@@ -1077,10 +1195,50 @@
     if (window._videoStudioInited) return;
     window._videoStudioInited = true;
     videoState.phone = window.restaurantPhone || '';
+    buildPreviewPanel();
     renderTemplateGrid();
     selectTemplate(VIDEO_TEMPLATES[0].id);
+    if (!window.MK) return;
+    MK.brand().then(function(b) {
+      if (!videoState.colorPicked) videoState.accentColor = b.color1;
+      if (b.phone) videoState.phone = b.phone;
+      renderFields(getTemplate(videoState.templateId)); redrawThumbnails();
+    });
     // start with a real dish photo instead of an empty box
-    if (window.MK) window.MK.firstPhoto().then(function (r) { if (r && !videoState.photoImg) videoState.photoImg = r.img; });
+    MK.firstPhoto().then(function(r) {
+      if (!r) return;
+      firstPhoto = r.img;
+      if (!videoState.photoImg) { videoState.photoImg = r.img; renderFields(getTemplate(videoState.templateId)); }
+      redrawThumbnails();
+    });
+    document.addEventListener('mk:brand', function(e) {
+      if (!videoState.colorPicked) videoState.accentColor = e.detail.color1;
+      if (e.detail.phone) videoState.phone = e.detail.phone;
+      renderFields(getTemplate(videoState.templateId)); redrawThumbnails();
+    });
+    document.addEventListener('mk:campaign', function() {
+      if (!videoState.designId) videoState.src = '';
+      var cp = campaignCoupon(), t = getTemplate(videoState.templateId);
+      if (cp && t.fields.indexOf('badge') > -1 && !videoState.edited.badge) videoState.badge = cp.badge;
+      renderFields(t); refreshVideoQR();
+    });
+  };
+
+  window.openVideoDesign = function(design) {
+    window.initVideoStudio();
+    var s = design.state || {};
+    var template = getTemplate(s.templateId) || VIDEO_TEMPLATES[0];
+    Object.assign(videoState, { templateId: template.id, headline: s.headline || '', subtext: s.subtext || '', badge: s.badge || '', accentColor: s.accentColor || videoState.accentColor,
+      phone: s.phone != null ? s.phone : videoState.phone, showQR: s.showQR !== false, format: s.format === 'story' ? 'story' : 'square', src: design.src || '', designId: design.id,
+      edited: { headline: true, subtext: true, badge: true }, colorPicked: true, photoImg: null, photo2Img: null });
+    document.querySelectorAll('#marketingVideosPage [data-vfmt]').forEach(function(b) { b.classList.toggle('on', b.dataset.vfmt === videoState.format); });
+    var l = document.querySelector('#marketingVideosPage .mk-save-l'); if (l) l.textContent = 'Saved';
+    loopStartTime = null; markActive(); renderFields(template); refreshVideoQR();
+    Promise.all([MK.imgFromRef(s.photo), MK.imgFromRef(s.photo2)]).then(function(r) {
+      if (r[0] && s.dish) r[0]._dish = s.dish;
+      videoState.photoImg = r[0]; videoState.photo2Img = r[1];
+      renderFields(template);
+    });
   };
 
   // ---------- record & download ----------
@@ -1091,57 +1249,54 @@
     var labelEl = btn ? btn.querySelector('.video-record-label') : null;
     var template = getTemplate(videoState.templateId);
     if (!canvas || !template) return;
+    var say = function(m) { if (window.SX) SX.notify(m, 'error'); else alert(m); };
 
-    if (!canvas.captureStream || !window.MediaRecorder) {
-      (window.showMessage || alert)('Video recording isn\'t supported in this browser. Try Chrome or Edge.', 'error');
-      return;
-    }
+    if (!canvas.captureStream || !window.MediaRecorder) { say('Video recording isn\'t supported in this browser. Try Chrome or Edge.'); return; }
 
     var mimeCandidates = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
     var mimeType = null;
     for (var i = 0; i < mimeCandidates.length; i++) {
       if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mimeCandidates[i])) { mimeType = mimeCandidates[i]; break; }
     }
-    if (!mimeType) {
-      (window.showMessage || alert)('Video recording isn\'t supported in this browser. Try Chrome or Edge.', 'error');
-      return;
-    }
+    if (!mimeType) { say('Video recording isn\'t supported in this browser. Try Chrome or Edge.'); return; }
 
+    lockSrc(); refreshVideoQR();
     var duration = template.duration || DEFAULT_DURATION;
     var stream = canvas.captureStream(30);
     var recorder;
     try {
       recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: 6000000 });
-    } catch (e) {
-      (window.showMessage || alert)('Could not start recording. Try a different browser.', 'error');
-      return;
-    }
+    } catch (e) { say('Could not start recording. Try a different browser.'); return; }
 
     var chunks = [];
     recorder.ondataavailable = function(e) { if (e.data && e.data.size) chunks.push(e.data); };
 
+    var rec = document.querySelector('#marketingVideosPage .mk-rec'), bar = rec ? rec.querySelector('i') : null, recT = rec ? rec.querySelector('.mk-rec-t') : null;
     window._videoRecording = true;
     loopStartTime = null; // restart template from t=0 so the recorded clip is a clean full loop
     if (btn) btn.disabled = true;
+    if (rec) rec.hidden = false;
     var startedAt = Date.now();
     var progressTimer = setInterval(function() {
-      if (!labelEl) return;
       var elapsed = Math.min(duration, Date.now() - startedAt);
-      labelEl.textContent = 'Recording... ' + (elapsed / 1000).toFixed(1) + 's / ' + (duration / 1000).toFixed(1) + 's';
+      if (bar) bar.style.width = Math.round(elapsed * 100 / duration) + '%';
+      if (recT) recT.textContent = 'Recording… ' + (elapsed / 1000).toFixed(1) + ' of ' + (duration / 1000).toFixed(0) + ' seconds. Keep this tab open.';
+      if (labelEl) labelEl.textContent = 'Recording… ' + Math.round(elapsed * 100 / duration) + '%';
     }, 100);
 
     recorder.onstop = function() {
       clearInterval(progressTimer);
       window._videoRecording = false;
       if (btn) btn.disabled = false;
-      if (labelEl) labelEl.textContent = 'Record & Download Video';
+      if (labelEl) labelEl.textContent = 'Record and download video';
+      if (rec) { if (bar) bar.style.width = '100%'; if (recT) recT.textContent = 'Done. Your video is downloading.'; setTimeout(function() { rec.hidden = true; if (bar) bar.style.width = '0'; }, 2500); }
       if (!chunks.length) return;
       var ext = mimeType.indexOf('mp4') > -1 ? 'mp4' : 'webm';
       var blob = new Blob(chunks, { type: mimeType });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
       a.href = url;
-      a.download = (videoState.headline || 'promo-video').toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 60) + '.' + ext;
+      a.download = fileBase() + (videoState.format === 'story' ? '-story' : '') + '.' + ext;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

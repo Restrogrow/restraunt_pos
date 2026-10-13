@@ -1381,6 +1381,8 @@ function loadMenuItems() {
           itemsById = {};
           cleanCart();
           renderCart();
+          // a saved reward / poster offer whose minimum depends on the cart total: check again now the prices are known
+          if (availableCoupons.length) applySavedReward();
         });
     })
     .catch(function(err) { console.error('Failed to load menu items:', err); document.getElementById('cartContent').innerHTML = '<div class="card card-pad" style="text-align:center;padding:40px 20px;color:#e74c3c"><p>Failed to load menu. Please refresh.</p></div>'; });
@@ -2392,23 +2394,36 @@ function applyCoupon(codeArg) {
   }, 0);
 }
 
-// A scratch card reward saved on the tracking page ("Use on my next order")
+// A scratch card reward saved on the tracking page ("Use on my next order"), or the offer code
+// from a poster / campaign link (?coupon=CODE, saved by header.php as rgPromoCode)
 function applySavedReward() {
+  applySavedCode('rgRewardCode', 'Your scratch card reward ');
+  applySavedCode('rgPromoCode', 'Offer ');
+}
+function campaignSource() {
+  try {
+    var c = JSON.parse(localStorage.getItem('rgCampaign') || 'null');
+    var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
+    if (c && c.src && c.rid === rid && Date.now() - (c.at || 0) < 7 * 86400000) return c.src;
+  } catch (e) {}
+  return '';
+}
+function applySavedCode(key, label) {
   var saved = null;
-  try { saved = JSON.parse(localStorage.getItem('rgRewardCode') || 'null'); } catch (e) {}
+  try { saved = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
   var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
   if (!saved || !saved.code || saved.rid !== rid) return;
   if (appliedCoupon && appliedCoupon.code === saved.code) return;
   lookupCoupon(saved.code, function() {
     var c = null;
     for (var i = 0; i < availableCoupons.length; i++) if (availableCoupons[i].code === saved.code) c = availableCoupons[i];
-    if (!c) { try { localStorage.removeItem('rgRewardCode'); } catch (e) {} return; }   // used or expired
+    if (!c) { try { localStorage.removeItem(key); } catch (e) {} return; }   // used or expired
     var cart = getCartTotal();
     if (appliedCoupon && couponSaving(appliedCoupon, cart.totalPrice) >= couponSaving(c, cart.totalPrice)) return;
     if (c.minOrder > 0 && cart.totalPrice < c.minOrder) return;
     appliedCoupon = c; couponError = ''; couponUserChoice = true;
     renderCart();
-    if (typeof showToast === 'function') showToast('Your scratch card reward ' + c.code + ' is applied', 'success');
+    if (typeof showToast === 'function') showToast(label + c.code + ' is applied', 'success');
   });
 }
 
@@ -3474,6 +3489,7 @@ function processOrder(cartData) {
       payment_method: payment,
       payment_proof_base64: (payment === 'QR Payment' && window.__paymentProofBase64) ? window.__paymentProofBase64 : '',
       coupon_code: appliedCoupon ? appliedCoupon.code : '',
+      campaign_src: campaignSource(),
       discount_amount: cartData.discountAmount || 0,
       redeem_points: cartData.loyaltyPointsRedeemed || 0,
       use_wallet: !!(document.getElementById('chkUseWallet') || {}).checked,

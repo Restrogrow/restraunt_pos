@@ -1648,6 +1648,7 @@ document.addEventListener("DOMContentLoaded", () => {
         marketingVideosPage: ['initVideoStudio'],
         marketingCaptionsPage: ['initCaptionStudio'],
         marketingCalendarPage: ['initCampaignCalendar'],
+        marketingDesignsPage: ['initMarketingDesigns'],
         growthSettingsPage: ['loadGrowthSettings', 'loadLoyaltyStudio'],
         whatsappPage: ['loadWhatsappAdmin'],
         customerSegmentsPage: ['loadCustomerSegments'],
