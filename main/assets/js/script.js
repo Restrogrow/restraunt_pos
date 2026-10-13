@@ -1602,6 +1602,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (pageId === "reportsPage") {
         setTimeout(() => {
           setupReportsAutoReload();
+          // load here too, so the report also fills after a browser refresh (not only from a menu click)
+          const p = document.getElementById('reportPeriod');
+          if (!p || p.value !== 'custom') loadReports();
         }, 100);
         loadPaymentMethods().then(() => {
           updatePaymentMethodFilterOptions(document.getElementById('filterPaymentMethod'), 'All Methods', 'all');
@@ -13844,8 +13847,7 @@ document.addEventListener('DOMContentLoaded', function() {
     reportsLink.addEventListener('click', function() {
       setTimeout(() => {
         if (document.getElementById('reportsPage')?.classList.contains('active')) {
-          setupReportsAutoReload();
-          loadReports();
+          setupReportsAutoReload();   // showPage() loads the report
         }
       }, 100);
     });
@@ -13870,9 +13872,27 @@ function setupReportsAutoReload() {
   // Add event listeners if elements exist and don't already have listeners
   if (reportPeriod && !reportPeriod.dataset.autoReloadAttached) {
     reportPeriod.dataset.autoReloadAttached = 'true';
+    // "Custom Date Range" shows the two date boxes; the report loads once both are picked
+    const syncCustom = function () {
+      const custom = reportPeriod.value === 'custom';
+      ['customDateRange', 'customDateRangeEnd'].forEach(function (id) { const el = document.getElementById(id); if (el) el.style.display = custom ? '' : 'none'; });
+      return custom;
+    };
     reportPeriod.addEventListener('change', function() {
+      if (syncCustom()) {
+        const s = document.getElementById('reportStartDate'), e = document.getElementById('reportEndDate');
+        if (!s || !e || !s.value || !e.value) return;
+      }
       loadReports();
     });
+    ['reportStartDate', 'reportEndDate'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', function () {
+        const s = document.getElementById('reportStartDate'), e = document.getElementById('reportEndDate');
+        if (reportPeriod.value === 'custom' && s.value && e.value) loadReports();
+      });
+    });
+    syncCustom();
   }
   
   if (reportType && !reportType.dataset.autoReloadAttached) {

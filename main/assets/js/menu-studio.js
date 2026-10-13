@@ -117,7 +117,7 @@
     addTabs();
     itemsBar();
     // the lists re-render after any add / edit / delete: refresh the counts with them
-    watch('menuList', function () { fetchItems(true).then(decorateCategories); });
+    watch('menuList', function () { var l = document.getElementById('menuList'); fetchItems(!(l && l.classList.contains('sort-mode'))).then(decorateCategories); });   // sorting only moves cards: no new fetch
     watch('menuItemsList', function () { fetchItems(true).then(paintStats); applySearch(); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

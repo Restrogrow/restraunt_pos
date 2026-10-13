@@ -14,7 +14,7 @@
  */
 require_once __DIR__ . '/inventory_tables.php';
 
-const INV_SCHEMA = 2;
+const INV_SCHEMA = 3;
 const INV_USED_STATUSES = ['Preparing', 'Ready', 'Served', 'Completed'];
 const INV_RETURN_STATUSES = ['Cancelled', 'Rejected'];
 
@@ -115,6 +115,10 @@ function invEnsure(PDO $conn): void
     $conn->exec("ALTER TABLE inventory_items MODIFY quantity_in_stock DECIMAL(12,3) NOT NULL DEFAULT 0, MODIFY low_stock_threshold DECIMAL(12,3) NOT NULL DEFAULT 0, MODIFY par_level DECIMAL(12,3) NOT NULL DEFAULT 0");
     $conn->exec("ALTER TABLE inventory_transactions MODIFY quantity DECIMAL(12,3) NOT NULL");
     $conn->exec("ALTER TABLE inventory_po_lines MODIFY quantity DECIMAL(12,3) NOT NULL DEFAULT 0, MODIFY received_qty DECIMAL(12,3) NOT NULL DEFAULT 0");
+    // 3: four decimals on cost, so ₹7 a kg is still right per gram
+    $conn->exec("ALTER TABLE inventory_items MODIFY cost_per_unit DECIMAL(12,4) NOT NULL DEFAULT 0");
+    $conn->exec("ALTER TABLE inventory_transactions MODIFY cost_per_unit DECIMAL(12,4) NOT NULL DEFAULT 0");
+    $conn->exec("ALTER TABLE inventory_po_lines MODIFY cost_per_unit DECIMAL(12,4) NOT NULL DEFAULT 0");
     $conn->prepare("REPLACE INTO inventory_meta (k, v) VALUES ('schema', ?)")->execute([(string)INV_SCHEMA]);
 }
 
@@ -172,22 +176,29 @@ function invSyncSales(PDO $conn, string $rid, int $limit = 300): array
     $st->execute(array_merge([$rid, $set['track_from']], INV_USED_STATUSES));
     $orders = $st->fetchAll(PDO::FETCH_ASSOC);
     $itemsSt = $conn->prepare('SELECT menu_item_id, quantity FROM order_items WHERE order_id = ?');
-    $claim = $conn->prepare("INSERT IGNORE INTO inventory_order_usage (order_id, restaurant_id, status) VALUES (?, ?, 'used')");
-    // dated at the order, so daily reports show when stock was really used
-    $tx = $conn->prepare("INSERT INTO inventory_transactions (restaurant_id, inventory_item_id, type, quantity, cost_per_unit, total_cost, notes, reference_type, reference_id, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'order', ?, ?)");
-    $upd = $conn->prepare('UPDATE inventory_items SET quantity_in_stock = quantity_in_stock + ? WHERE id = ? AND restaurant_id = ?');
-    foreach ($orders as $o) {
-        $itemsSt->execute([$o['id']]);
+    // what one order should have taken out: item id => ['q' => quantity in stock units, 'c' => cost]
+    $need = function (int $orderId) use ($itemsSt, $recipes) {
+        $itemsSt->execute([$orderId]);
         $use = [];
         foreach ($itemsSt->fetchAll(PDO::FETCH_ASSOC) as $li) {
             foreach ($recipes[(int)$li['menu_item_id']] ?? [] as $r) {
-                $q = invConvert((float)$r['quantity'], (string)$r['unit'], (string)$r['stock_unit']) * (int)$li['quantity'];
                 $k = (int)$r['inventory_item_id'];
                 if (!isset($use[$k])) $use[$k] = ['q' => 0, 'c' => (float)$r['cost_per_unit']];
-                $use[$k]['q'] += $q;
+                $use[$k]['q'] += invConvert((float)$r['quantity'], (string)$r['unit'], (string)$r['stock_unit']) * (int)$li['quantity'];
             }
         }
+        return $use;
+    };
+    $claim = $conn->prepare("INSERT IGNORE INTO inventory_order_usage (order_id, restaurant_id, status) VALUES (?, ?, 'used')");
+    // first use is dated at the order, so daily reports show when stock was really used
+    $tx = $conn->prepare("INSERT INTO inventory_transactions (restaurant_id, inventory_item_id, type, quantity, cost_per_unit, total_cost, notes, reference_type, reference_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'order', ?, ?)");
+    // later changes (dishes added, order cancelled) are dated now, by the database clock
+    $txNow = $conn->prepare("INSERT INTO inventory_transactions (restaurant_id, inventory_item_id, type, quantity, cost_per_unit, total_cost, notes, reference_type, reference_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'order', ?)");
+    $upd = $conn->prepare('UPDATE inventory_items SET quantity_in_stock = quantity_in_stock + ? WHERE id = ? AND restaurant_id = ?');
+    foreach ($orders as $o) {
+        $use = $need((int)$o['id']);
         $conn->beginTransaction();
         try {
             $claim->execute([$o['id'], $rid]);
@@ -207,24 +218,54 @@ function invSyncSales(PDO $conn, string $rid, int $limit = 300): array
         }
     }
 
-    // 2. orders that used stock and were then cancelled, rejected or deleted: put the stock back
+    // 2. orders changed after they used stock (a table adds dishes, a dish is removed):
+    //    take out or put back only the difference
+    $st = $conn->prepare("SELECT o.id, o.order_number, u.used_at FROM inventory_order_usage u JOIN orders o ON o.id = u.order_id
+        WHERE u.restaurant_id = ? AND u.status = 'used' AND o.updated_at > u.used_at AND o.order_status IN ($in) AND o.deleted_at IS NULL LIMIT " . (int)$limit);
+    $st->execute(array_merge([$rid], INV_USED_STATUSES));
+    $net = $conn->prepare("SELECT inventory_item_id, -SUM(quantity) q, MAX(cost_per_unit) c FROM inventory_transactions
+        WHERE restaurant_id = ? AND reference_type = 'order' AND reference_id = ? AND type IN ('sale', 'return') GROUP BY inventory_item_id");
+    $touch = $conn->prepare('UPDATE inventory_order_usage SET used_at = NOW() WHERE order_id = ? AND used_at = ?');
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $o) {
+        $want = $need((int)$o['id']);
+        $conn->beginTransaction();
+        try {
+            $touch->execute([$o['id'], $o['used_at']]);
+            if ($touch->rowCount() === 1) {   // nobody else is checking this order right now
+                $net->execute([$rid, $o['id']]);
+                $have = [];
+                foreach ($net->fetchAll(PDO::FETCH_ASSOC) as $h) $have[(int)$h['inventory_item_id']] = ['q' => (float)$h['q'], 'c' => (float)$h['c']];
+                foreach (array_unique(array_merge(array_keys($want), array_keys($have))) as $iid) {
+                    $d = round(($want[$iid]['q'] ?? 0) - ($have[$iid]['q'] ?? 0), 3);
+                    if (abs($d) < 0.001) continue;
+                    $c = $want[$iid]['c'] ?? $have[$iid]['c'];
+                    $txNow->execute([$rid, $iid, $d > 0 ? 'sale' : 'return', -$d, $c, round(abs($d) * $c, 2), 'Order #' . $o['order_number'] . ($d > 0 ? ' (dishes added)' : ' (dishes removed)'), $o['id']]);
+                    $upd->execute([-$d, $iid, $rid]);
+                }
+            }
+            $conn->commit();
+        } catch (Throwable $e) {
+            $conn->rollBack();
+            error_log('invSyncSales change ' . $o['id'] . ': ' . $e->getMessage());
+        }
+    }
+
+    // 3. orders that used stock and were then cancelled, rejected or deleted: put the stock back
     $in = implode(',', array_fill(0, count(INV_RETURN_STATUSES), '?'));
     $st = $conn->prepare("SELECT o.id, o.order_number FROM inventory_order_usage u JOIN orders o ON o.id = u.order_id
         WHERE u.restaurant_id = ? AND u.status = 'used' AND (o.order_status IN ($in) OR o.deleted_at IS NOT NULL) LIMIT " . (int)$limit);
     $st->execute(array_merge([$rid], INV_RETURN_STATUSES));
-    $back = $conn->prepare("SELECT inventory_item_id, SUM(quantity) q, MAX(cost_per_unit) c FROM inventory_transactions
-        WHERE restaurant_id = ? AND reference_type = 'order' AND reference_id = ? AND type IN ('sale', 'return') GROUP BY inventory_item_id");
     $mark = $conn->prepare("UPDATE inventory_order_usage SET status = 'returned', returned_at = NOW() WHERE order_id = ? AND status = 'used'");
     foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $o) {
         $conn->beginTransaction();
         try {
             $mark->execute([$o['id']]);
             if ($mark->rowCount() === 1) {
-                $back->execute([$rid, $o['id']]);
-                foreach ($back->fetchAll(PDO::FETCH_ASSOC) as $b) {
-                    $q = -(float)$b['q'];          // what's still out for this order
+                $net->execute([$rid, $o['id']]);
+                foreach ($net->fetchAll(PDO::FETCH_ASSOC) as $b) {
+                    $q = round((float)$b['q'], 3);   // what's still out for this order
                     if ($q <= 0) continue;
-                    $tx->execute([$rid, (int)$b['inventory_item_id'], 'return', $q, (float)$b['c'], round($q * (float)$b['c'], 2), 'Order #' . $o['order_number'] . ' cancelled', $o['id'], date('Y-m-d H:i:s')]);
+                    $txNow->execute([$rid, (int)$b['inventory_item_id'], 'return', $q, (float)$b['c'], round($q * (float)$b['c'], 2), 'Order #' . $o['order_number'] . ' cancelled', $o['id']]);
                     $upd->execute([$q, (int)$b['inventory_item_id'], $rid]);
                 }
                 $out['returned']++;
@@ -235,5 +276,6 @@ function invSyncSales(PDO $conn, string $rid, int $limit = 300): array
             error_log('invSyncSales return ' . $o['id'] . ': ' . $e->getMessage());
         }
     }
+
     return $out;
 }

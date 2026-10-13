@@ -92,10 +92,25 @@ try {
             if ($q('SELECT id FROM inventory_items WHERE restaurant_id = ? AND item_name = ? AND is_active = 1 AND id != ?', [$rid, $name, $id])->fetchColumn()) ivFail('You already have a stock item with this name.');
             if ($id) {
                 $old = $item($id);
-                // if the unit changes, recipe amounts stay in their own units, so nothing else to update
+                $msg = 'Saved';
+                if ($unit !== $old['unit']) {
+                    [$fa, $fm] = invUnitBase($old['unit']);
+                    [$ta, $tm] = invUnitBase($unit);
+                    if ($fa === $ta) {
+                        // same kind (kg ↔ g, L ↔ ml): stock, reorder levels and cost all move to the new unit
+                        $f = $fm / $tm;
+                        $q('UPDATE inventory_items SET quantity_in_stock = quantity_in_stock * ? WHERE id = ? AND restaurant_id = ?', [$f, $id, $rid]);
+                        $low = (float)$old['low_stock_threshold'] * $f;
+                        $par = (float)$old['par_level'] * $f;
+                        $cost = round((float)$old['cost_per_unit'] / $f, 4);
+                        $msg = 'Saved. Stock, levels and cost converted to ' . $unit . '.';
+                    } elseif ($q('SELECT COUNT(*) FROM inventory_recipes WHERE inventory_item_id = ? AND restaurant_id = ?', [$id, $rid])->fetchColumn()) {
+                        ivFail('Recipes measure this item in ' . $old['unit'] . '. Remove it from those recipes before changing it to ' . $unit . '.');
+                    }
+                }
                 $q('UPDATE inventory_items SET item_name=?, unit=?, category=?, low_stock_threshold=?, par_level=?, cost_per_unit=?, sku=?, notes=?, supplier_id=?, expiry_date=? WHERE id=? AND restaurant_id=?',
                     [$name, $unit, $cat, $low, $par, $cost, $sku, $notes, $sup, $exp, $id, $rid]);
-                ivOut(['success' => true, 'id' => $id, 'message' => 'Saved']);
+                ivOut(['success' => true, 'id' => $id, 'message' => $msg]);
             }
             $conn->beginTransaction();
             $q('INSERT INTO inventory_items (restaurant_id, item_name, unit, category, quantity_in_stock, low_stock_threshold, par_level, cost_per_unit, sku, notes, supplier_id, expiry_date) VALUES (?,?,?,?,0,?,?,?,?,?,?,?)',
@@ -141,7 +156,7 @@ try {
             $qty = ivNum($in['quantity'] ?? 0);
             if ($qty == 0) ivFail('Enter a quantity.');
             $delta = $kind === 'wastage' ? -abs($qty) : $qty;
-            if ((float)$it['quantity_in_stock'] + $delta < 0 && $kind === 'wastage' && (float)$it['quantity_in_stock'] >= 0) ivFail('That is more than you have in stock (' . $fmtQty($it['quantity_in_stock']) . ' ' . $it['unit'] . ').');
+            if ($delta < 0 && (float)$it['quantity_in_stock'] + $delta < -0.0005) ivFail('That is more than you have in stock (' . $fmtQty(max(0, (float)$it['quantity_in_stock'])) . ' ' . $it['unit'] . '). For a full recount use Stock count.');
             $reason = trim((string)($in['reason'] ?? ''));
             $notes = trim((string)($in['notes'] ?? ''));
             $label = trim($reason . ($reason && $notes ? ': ' : '') . $notes);
@@ -287,7 +302,8 @@ try {
             $date = ivDate($in['date'] ?? '') ?: date('Y-m-d');
             $conn->beginTransaction();
             $total = 0.0;
-            foreach ($q('SELECT l.*, i.item_name, i.unit FROM inventory_po_lines l JOIN inventory_items i ON i.id = l.inventory_item_id WHERE l.po_id = ?', [$id])->fetchAll(PDO::FETCH_ASSOC) as $l) {
+            // items removed since the order was made are skipped
+            foreach ($q('SELECT l.*, i.item_name, i.unit FROM inventory_po_lines l JOIN inventory_items i ON i.id = l.inventory_item_id AND i.is_active = 1 WHERE l.po_id = ?', [$id])->fetchAll(PDO::FETCH_ASSOC) as $l) {
                 $g = $got[(int)$l['id']] ?? null;
                 $qty = $g !== null ? max(0, ivNum($g['received_qty'] ?? 0)) : (float)$l['quantity'];
                 $cost = $g !== null && isset($g['cost_per_unit']) && $g['cost_per_unit'] !== '' ? max(0, ivNum($g['cost_per_unit'])) : (float)$l['cost_per_unit'];
@@ -447,7 +463,7 @@ try {
 
     if ($view === 'reports') {
         $days = max(1, min(365, (int)($_GET['days'] ?? 30)));
-        $since = date('Y-m-d H:i:s', strtotime("-$days days"));
+        $since = (string)$q('SELECT NOW() - INTERVAL ' . $days . ' DAY')->fetchColumn();
         $by = function (string $types) use ($q, $rid, $since) {
             $t = explode(',', $types);
             return $q('SELECT i.id, i.item_name, i.unit, -SUM(t.quantity) qty, -SUM(t.quantity * t.cost_per_unit) value FROM inventory_transactions t JOIN inventory_items i ON i.id = t.inventory_item_id
