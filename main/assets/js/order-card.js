@@ -47,6 +47,9 @@
   function premium(o) {
     var st = o.order_status || 'Pending', S = STATUS[st] || [st, 'muted'];
     var type = o.order_type || 'Order', tKey = type.toLowerCase(), isDel = tKey.indexOf('deliver') >= 0;
+    var isTake = tKey.indexOf('take') >= 0 || tKey.indexOf('pick') >= 0;
+    if ((isTake || isDel) && st === 'Ready') S = ['Ready for pickup', S[1]];
+    if (isTake && st === 'Served') S = ['Picked up', S[1]];
     var stopped = st === 'Cancelled' || st === 'Rejected', done = st === 'Completed';
     var id = parseInt(o.id, 10), num = esc(o.order_number || o.id);
     var pay = payLabel(o), paid = (o.payment_status || '') === 'Paid';
@@ -57,8 +60,8 @@
     var head = '<div class="o2-head"><span class="o2-av">' + esc(name.trim().charAt(0).toUpperCase() || 'C') + '</span><div class="o2-who"><b title="' + esc(name) + '">' + esc(name) + '</b><small>' +
       (o.customer_email ? '<span>' + ic('mail') + esc(o.customer_email) + '</span>' : '') +
       (o.customer_phone ? '<a href="tel:' + esc(tel) + '">' + ic('call') + esc(o.customer_phone) + '</a>' : '') + '</small></div></div>';
-    var strips = '<div class="o2-strip">Order No : <b>#' + num + '</b></div><div class="o2-strip o2-type">Order Type : <b>' + esc(type) + '</b></div>';
-    var badges = '<div class="o2-badges"><span class="oc-st">' + esc(S[0]) + '</span><span class="oc-pay ' + pay[1] + '">' + esc(pay[0]) + '</span>' +
+    var strips = '<div class="o2-idrow"><div class="o2-no"><small>Order</small><b>#' + num + '</b></div><span class="o2-typechip t-' + (isDel ? 'del' : tKey.indexOf('take') >= 0 ? 'take' : 'dine') + '">' + ic(TYPE_ICON[tKey] || 'receipt_long') + esc(type) + '</span></div>';
+    var badges = '<div class="o2-badges"><span class="oc-st">' + esc(S[0]) + '</span>' +
       (o.table_number ? '<span class="o2-tag">' + ic('table_restaurant') + 'Table ' + esc(o.table_number) + '</span>' : '') +
       (+o.is_scheduled === 1 && o.scheduled_at ? '<span class="o2-sched">' + ic('event') + esc(when(o.scheduled_at).split(' · ')[0]) + '</span>' : '') + '</div>';
 
@@ -81,8 +84,14 @@
       if (isDel && typeof window.buildDeliveryMapHtml === 'function') extra += window.buildDeliveryMapHtml(o);
       if (typeof window.buildPaymentProofHtml === 'function') extra += window.buildPaymentProofHtml(o);
     }
+    // payment, next to the total: paid (green tick) or still to collect (orange)
+    var pm = o.payment_method ? esc(o.payment_method) : '', psx = o.payment_status || 'Pending';
+    var payTag = paid ? '<span class="o2-paytag ok">' + ic('check_circle') + 'Paid' + (pm ? ' · ' + pm : '') + '</span>'
+      : psx === 'Refunded' ? '<span class="o2-paytag muted">' + ic('undo') + 'Refunded</span>'
+      : stopped ? '<span class="o2-paytag muted">Not charged</span>'
+      : '<span class="o2-paytag due">' + ic('schedule') + (psx === 'Partially Paid' ? 'Part paid' : 'To collect') + (pm ? ' · ' + pm : '') + '</span>';
     var t = new Date(String(o.created_at || '').replace(' ', 'T'));
-    var placed = isNaN(t) ? esc(o.created_at || '') : t.toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    var placed = isNaN(t) ? esc(o.created_at || '') : t.toLocaleString([], Object.assign({ day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }, t.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}));
 
     // actions: same functions as before; main one as a pill, the rest as round buttons
     var main = '';
@@ -90,7 +99,8 @@
       main = '<button type="button" class="o2-pill o2-ok" onclick="handleAcceptOrderClick(' + id + ', \'' + esc(type) + '\', this, ' + (o.address_lat != null ? +o.address_lat : 'null') + ', ' + (o.address_lng != null ? +o.address_lng : 'null') + ')">' + ic('check') + 'Accept<span class="loading-spinner" style="display:none"></span></button>' +
         '<button type="button" class="o2-pill o2-no" onclick="rejectOnlineOrder(' + id + ', \'' + num + '\', this)">' + ic('close') + 'Reject<span class="loading-spinner" style="display:none"></span></button>';
     } else if (NEXT[st]) {
-      main = '<button type="button" class="o2-pill" onclick="updateOrderStatus(' + id + ', \'' + NEXT[st][0] + '\')">' + ic(NEXT[st][2]) + NEXT[st][1] + '</button>';
+      var nextLabel = isTake && st === 'Ready' ? 'Mark as picked up' : NEXT[st][1];
+      main = '<button type="button" class="o2-pill" onclick="updateOrderStatus(' + id + ', \'' + NEXT[st][0] + '\')">' + ic(isTake && st === 'Ready' ? 'shopping_bag' : NEXT[st][2]) + nextLabel + '</button>';
     } else {
       main = '<span class="o2-pill o2-flat">' + ic(stopped ? 'block' : 'task_alt') + esc(S[0]) + '</span>';
     }
@@ -107,9 +117,8 @@
     if (!stopped && !done && st !== 'Pending') round += '<button type="button" class="o2-rb o2-cancel" title="Cancel order" aria-label="Cancel order" onclick="updateOrderStatus(' + id + ', \'Cancelled\')">' + ic('block') + '</button>';
 
     return '<div class="order-card oc o2 oc-' + S[1] + (stopped ? ' oc-stopped' : '') + '" data-status="' + esc(st) + '">' +
-      (paid ? '<span class="o2-stamp" aria-hidden="true">PAID</span>' : '') +
       head + strips + badges + itemsHtml + (info ? '<div class="o2-info">' + info + '</div>' : '') + extra +
-      '<div class="o2-sum"><span>Order placed on ' + placed + '</span><b>' + money(o.total) + '</b></div>' +
+      '<div class="o2-sum"><span class="o2-when" title="Order placed">' + ic('schedule') + placed + '</span><div class="o2-amt">' + payTag + '<b>' + money(o.total) + '</b></div></div>' +
       '<div class="o2-foot"><div class="o2-main">' + main + '</div><div class="o2-round">' + round + '</div></div></div>';
   }
 

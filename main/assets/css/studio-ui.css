@@ -2175,3 +2175,66 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .o2-rb.o2-cancel:hover { background: #FEF2F2; border-color: #FECACA; }
 .o2-stamp { top: auto; bottom: 64px; right: 14px; border-color: rgba(249,115,22,.3); color: rgba(249,115,22,.32); }
 @media (prefers-reduced-motion: no-preference) { .page.lg .order-card.o2 { transition: border-color .15s, box-shadow .15s; } }
+/* online card: payment shown next to the total (no stamp) */
+.o2-stamp { display: none; }
+.o2-sum { align-items: center; }
+.o2-sum > span { min-width: 0; }
+.o2-amt { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.o2-paytag { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px 0 8px; border-radius: 999px; font-size: .74rem; font-weight: 800; white-space: nowrap; }
+.o2-paytag .material-symbols-rounded { font-size: 16px; }
+.o2-paytag.ok { background: #DCFCE7; color: #166534; }
+.o2-paytag.ok .material-symbols-rounded { color: #16A34A; }
+.o2-paytag.due { background: #FFF7ED; color: #C2410C; box-shadow: inset 0 0 0 1px #FED7AA; }
+.o2-paytag.due .material-symbols-rounded { color: #F97316; }
+.o2-paytag.muted { background: #F3F4F6; color: #6B7280; }
+@media (max-width: 420px) { .o2-sum { flex-wrap: wrap; } .o2-amt { margin-left: auto; } }
+.o2-when { display: inline-flex; align-items: center; gap: 4px; color: #6B7280; font-size: .78rem; white-space: nowrap; }
+.o2-when .material-symbols-rounded { font-size: 15px; color: #9CA3AF; }
+
+/* ── Online Orders: order type selector + summary, softer stage chips, new order header ── */
+.ot-types { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.ot-type-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.ot-type { position: relative; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 12px 14px; border: 1.5px solid #E5E7EB; border-radius: 16px; background: #FFFFFF; color: #111111; font: inherit; text-align: left; cursor: pointer; transition: border-color .18s, box-shadow .18s, background .18s; }
+.ot-type:hover { border-color: #FDBA74; }
+.ot-type-ic { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: #F3F4F6; color: #6B7280; transition: background .18s, color .18s, transform .25s; }
+.ot-type-ic .material-symbols-rounded { font-size: 23px; }
+.ot-type-l { display: flex; flex-direction: column; min-width: 0; font-size: .98rem; font-weight: 800; line-height: 1.2; }
+.ot-type-l small { color: #6B7280; font-size: .76rem; font-weight: 600; }
+.ot-type.on { border-color: #F97316; background: #FFF7ED; box-shadow: 0 10px 22px -16px rgba(249,115,22,.9); }
+.ot-type.on .ot-type-ic { background: #F97316; color: #FFFFFF; }
+.ot-type.on .ot-type-l small { color: #C2410C; }
+.ot-type.on::after { content: ''; position: absolute; left: 18px; right: 18px; bottom: -1.5px; height: 3px; border-radius: 3px 3px 0 0; background: #F97316; }
+@media (prefers-reduced-motion: no-preference) { .ot-type.on .ot-type-ic { animation: otPop .35s ease; } }
+@keyframes otPop { 0% { transform: scale(.85); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.ot-stats { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+.ot-stat { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 9px 10px; border: 1px solid #E5E7EB; border-radius: 12px; background: #FFFFFF; }
+.ot-stat > .material-symbols-rounded { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 9px; background: #F3F4F6; color: #6B7280; font-size: 17px; }
+.ot-stat > div { min-width: 0; }
+.ot-stat small { display: block; overflow: hidden; color: #6B7280; font-size: .7rem; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+.ot-stat b { display: block; overflow: hidden; color: #111111; font-size: 1rem; font-weight: 800; white-space: nowrap; text-overflow: ellipsis; }
+.ot-stat.amber > .material-symbols-rounded { background: #FEF3C7; color: #B45309; }
+.ot-stat.orange > .material-symbols-rounded { background: #FFEDD5; color: #EA580C; }
+.ot-stat.green > .material-symbols-rounded { background: #DCFCE7; color: #15803D; }
+.ot-stat.done > .material-symbols-rounded { background: #F1F5F9; color: #475569; }
+.ot-stat.red > .material-symbols-rounded { background: #FEE2E2; color: #DC2626; }
+.ot-stat.value > .material-symbols-rounded { background: #FFF7ED; color: #F97316; }
+.ot-stat.value b { color: #EA580C; }
+/* stage chips: selected = soft orange, not black */
+#onlineOrdersPage .ot-chip.on { background: #FFF7ED; color: #C2410C; box-shadow: inset 0 0 0 1.5px #FDBA74; }
+#onlineOrdersPage .ot-chip.on em { background: #F97316 !important; color: #FFFFFF !important; }
+#onlineOrdersPage .ot-chip.on::before { box-shadow: 0 0 0 3px rgba(249,115,22,.2); }
+/* card header: order number box + type chip (replaces the two bars) */
+.o2-strip { display: none; }
+.o2-idrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid #FED7AA; border-radius: 12px; background: #FFF7ED; }
+.o2-no { min-width: 0; display: flex; flex-direction: column; }
+.o2-no small { color: #C2410C; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.o2-no b { overflow: hidden; color: #111111; font-size: .92rem; font-weight: 800; letter-spacing: .01em; white-space: nowrap; text-overflow: ellipsis; }
+.o2-typechip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px 0 9px; border-radius: 999px; background: #FFFFFF; border: 1.5px solid #F97316; color: #C2410C; font-size: .78rem; font-weight: 800; }
+.o2-typechip .material-symbols-rounded { font-size: 17px; color: #F97316; }
+@media (max-width: 1200px) { .ot-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .ot-type-row { display: flex; overflow-x: auto; scrollbar-width: none; }
+  .ot-type-row::-webkit-scrollbar { display: none; }
+  .ot-type { flex: 0 0 auto; padding: 10px 12px; }
+  .ot-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
