@@ -83,6 +83,7 @@ try {
                    o.order_type, o.customer_name, o.customer_phone, o.customer_email,
                    o.customer_address, o.landmark, o.address_lat, o.address_lng, o.created_at, o.subtotal, o.tax, o.total, o.notes,
                    pp.status as payment_proof_status,
+                   (SELECT t.table_number FROM `tables` t WHERE t.id = o.table_id) as table_number,
                    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
             FROM orders o
             LEFT JOIN payment_proofs pp ON pp.order_id = o.id
@@ -111,11 +112,24 @@ try {
 
     $orders = [];
     foreach ($result as $row) {
-        $items_sql = "SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes
-                      FROM order_items oi WHERE oi.order_id = ? ORDER BY oi.id";
-        $items_stmt = $conn->prepare($items_sql);
-        $items_stmt->execute([$row['id']]);
-        $row['items'] = $items_stmt->fetchAll();
+        // items with the dish photo, size and add-on names (read-only extras for the order cards)
+        try {
+            $items_stmt = $conn->prepare("SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes, oi.variation_name, oi.addons, m.item_image, m.item_type
+                FROM order_items oi LEFT JOIN menu_items m ON m.id = oi.menu_item_id WHERE oi.order_id = ? ORDER BY oi.id");
+            $items_stmt->execute([$row['id']]);
+        } catch (PDOException $e) {
+            $items_stmt = $conn->prepare("SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes FROM order_items oi WHERE oi.order_id = ? ORDER BY oi.id");
+            $items_stmt->execute([$row['id']]);
+        }
+        $row['items'] = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($row['items'] as &$it) {
+            $names = [];
+            $raw = isset($it['addons']) ? json_decode((string)$it['addons'], true) : null;
+            if (is_array($raw)) foreach ($raw as $a) { $n = is_array($a) ? ($a['name'] ?? $a['addon_name'] ?? '') : (string)$a; if ($n !== '') $names[] = $n; }
+            $it['addon_names'] = $names;
+            unset($it['addons']);
+        }
+        unset($it);
         $orders[] = $row;
     }
 

@@ -35,7 +35,94 @@
     return ['Unpaid' + (pm ? ' · ' + pm : ''), 'warn'];
   }
 
+  /* ── Online Orders: premium card (teal order strips, dish photos, PAID stamp, round action buttons) ── */
+  function thumb(it, cls) {
+    return '<span class="' + cls + '">' + (it && it.item_image ? '<img alt="" loading="lazy" src="../api/image.php?path=' + encodeURIComponent(it.item_image) + '" onerror="this.remove()">' : '') + ic('image') + '</span>';
+  }
+  function vegDot(it) {
+    var t = String((it && it.item_type) || '').toLowerCase();
+    if (!t) return '';
+    return '<i class="o2-veg ' + (t.indexOf('non') >= 0 ? 'nv' : t.indexOf('egg') >= 0 ? 'egg' : 'v') + '" title="' + esc(it.item_type) + '"></i>';
+  }
+  function premium(o) {
+    var st = o.order_status || 'Pending', S = STATUS[st] || [st, 'muted'];
+    var type = o.order_type || 'Order', tKey = type.toLowerCase(), isDel = tKey.indexOf('deliver') >= 0;
+    var stopped = st === 'Cancelled' || st === 'Rejected', done = st === 'Completed';
+    var id = parseInt(o.id, 10), num = esc(o.order_number || o.id);
+    var pay = payLabel(o), paid = (o.payment_status || '') === 'Paid';
+    var items = Array.isArray(o.items) ? o.items : [];
+    var name = o.customer_name || 'Customer';
+    var tel = o.customer_phone ? String(o.customer_phone).replace(/[^0-9+]/g, '') : '';
+
+    var head = '<div class="o2-head"><span class="o2-av">' + esc(name.trim().charAt(0).toUpperCase() || 'C') + '</span><div class="o2-who"><b title="' + esc(name) + '">' + esc(name) + '</b><small>' +
+      (o.customer_email ? '<span>' + ic('mail') + esc(o.customer_email) + '</span>' : '') +
+      (o.customer_phone ? '<a href="tel:' + esc(tel) + '">' + ic('call') + esc(o.customer_phone) + '</a>' : '') + '</small></div></div>';
+    var strips = '<div class="o2-strip">Order No : <b>#' + num + '</b></div><div class="o2-strip o2-type">Order Type : <b>' + esc(type) + '</b></div>';
+    var badges = '<div class="o2-badges"><span class="oc-st">' + esc(S[0]) + '</span><span class="oc-pay ' + pay[1] + '">' + esc(pay[0]) + '</span>' +
+      (+o.is_scheduled === 1 && o.scheduled_at ? '<span class="o2-sched">' + ic('event') + esc(when(o.scheduled_at).split(' · ')[0]) + '</span>' : '') + '</div>';
+
+    var lead = '';
+    if (items.length) {
+      var f = items[0];
+      lead = '<div class="o2-lead">' + thumb(f, 'o2-img') + '<div class="o2-lead-t"><b>' + vegDot(f) + esc(f.item_name) + '</b>' +
+        (f.variation_name ? '<small>' + esc(f.variation_name) + '</small>' : '') +
+        (f.addon_names && f.addon_names.length ? '<small><em>Add-ons:</em> ' + esc(f.addon_names.join(', ')) + '</small>' : '') +
+        (f.notes ? '<small class="o2-in">' + ic('edit_note') + esc(f.notes) + '</small>' : '') +
+        '<span class="o2-qp"><span>QTY: ' + (+f.quantity || 1) + '</span><b>' + money(f.total_price) + '</b></span>' +
+        '<span class="o2-chips"><span>' + ic(TYPE_ICON[tKey] || 'receipt_long') + esc(type) + '</span>' + (o.table_number ? '<span>' + ic('table_restaurant') + 'Table ' + esc(o.table_number) + '</span>' : '') + '</span></div></div>';
+    }
+    var rest = items.slice(1);
+    var restHtml = '';
+    if (rest.length) {
+      restHtml = '<div class="o2-more">' + rest.slice(0, 6).map(function (it) {
+        return '<span class="o2-mini" title="' + esc((+it.quantity || 1) + ' × ' + it.item_name + ' · ' + money(it.total_price)) + '">' + thumb(it, 'o2-mimg') + '<em>' + (+it.quantity || 1) + '</em></span>';
+      }).join('') + (rest.length > 6 ? '<button type="button" class="o2-plus" onclick="showFullOrderDetails(' + id + ')">+' + (rest.length - 6) + '</button>' : '') +
+        '</div><div class="o2-list">' + rest.slice(0, 3).map(function (it) {
+          return '<div class="o2-li"><span>' + (+it.quantity || 1) + '×</span><span>' + vegDot(it) + esc(it.item_name) + (it.variation_name ? ' <small>' + esc(it.variation_name) + '</small>' : '') + '</span><b>' + money(it.total_price) + '</b></div>';
+        }).join('') + (rest.length > 3 ? '<button type="button" class="o2-all" onclick="showFullOrderDetails(' + id + ')">See all ' + items.length + ' items</button>' : '') + '</div>';
+    }
+    var info = '';
+    if (o.customer_address && isDel) info += '<div class="oc-row">' + ic('location_on') + '<span>' + esc(o.customer_address) + (o.landmark ? '<small>Landmark: ' + esc(o.landmark) + '</small>' : '') + '</span></div>';
+    if (o.notes) info += '<div class="oc-note">' + ic('sticky_note_2') + '<span>' + esc(o.notes) + '</span></div>';
+    var extra = '';
+    if (!stopped && !done) {
+      if (isDel && typeof window.buildDeliveryMapHtml === 'function') extra += window.buildDeliveryMapHtml(o);
+      if (typeof window.buildPaymentProofHtml === 'function') extra += window.buildPaymentProofHtml(o);
+    }
+    var t = new Date(String(o.created_at || '').replace(' ', 'T'));
+    var placed = isNaN(t) ? esc(o.created_at || '') : t.toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+    // actions: same functions as before; main one as a pill, the rest as round buttons
+    var main = '';
+    if (st === 'Pending') {
+      main = '<button type="button" class="o2-pill o2-ok" onclick="handleAcceptOrderClick(' + id + ', \'' + esc(type) + '\', this, ' + (o.address_lat != null ? +o.address_lat : 'null') + ', ' + (o.address_lng != null ? +o.address_lng : 'null') + ')">' + ic('check') + 'Accept<span class="loading-spinner" style="display:none"></span></button>' +
+        '<button type="button" class="o2-pill o2-no" onclick="rejectOnlineOrder(' + id + ', \'' + num + '\', this)">' + ic('close') + 'Reject<span class="loading-spinner" style="display:none"></span></button>';
+    } else if (NEXT[st]) {
+      main = '<button type="button" class="o2-pill" onclick="updateOrderStatus(' + id + ', \'' + NEXT[st][0] + '\')">' + ic(NEXT[st][2]) + NEXT[st][1] + '</button>';
+    } else {
+      main = '<span class="o2-pill o2-flat">' + ic(stopped ? 'block' : 'task_alt') + esc(S[0]) + '</span>';
+    }
+    var round = '';
+    if (window.whatsappEnabled && window.whatsappPhone) {
+      var txt = (st === 'Pending' ? 'New ' : '') + 'Order #' + (o.order_number || id) + '\nCustomer: ' + (o.customer_name || '') + '\nPhone: ' + (o.customer_phone || '') + '\nType: ' + type + '\nTotal: ' + money(o.total);
+      round += '<a class="o2-rb o2-wa" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp" href="https://wa.me/' + esc(window.whatsappPhone) + '?text=' + encodeURIComponent(txt) + '">' + ic('chat') + '</a>';
+    }
+    if (tel) round += '<a class="o2-rb" title="Call ' + esc(o.customer_phone) + '" aria-label="Call customer" href="tel:' + esc(tel) + '">' + ic('call') + '</a>';
+    round += '<button type="button" class="o2-rb" title="Print" aria-label="Print" onclick="printOrder(' + id + ')">' + ic('print') + '</button>';
+    round += '<button type="button" class="o2-rb" title="Details" aria-label="Details" onclick="showFullOrderDetails(' + id + ')">' + ic('visibility') + '</button>';
+    var ps = o.payment_status || 'Pending';
+    if (ps !== 'Paid' && ps !== 'Refunded' && !stopped && st !== 'Pending') round += '<button type="button" class="o2-rb o2-paid" title="Mark paid" aria-label="Mark paid" onclick="markOrderPaid(' + id + ', this)">' + ic('payments') + '</button>';
+    if (!stopped && !done && st !== 'Pending') round += '<button type="button" class="o2-rb o2-cancel" title="Cancel order" aria-label="Cancel order" onclick="updateOrderStatus(' + id + ', \'Cancelled\')">' + ic('block') + '</button>';
+
+    return '<div class="order-card oc o2 oc-' + S[1] + (stopped ? ' oc-stopped' : '') + '" data-status="' + esc(st) + '">' +
+      (paid ? '<span class="o2-stamp" aria-hidden="true">PAID</span>' : '') +
+      head + strips + badges + lead + restHtml + (info ? '<div class="o2-info">' + info + '</div>' : '') + extra +
+      '<div class="o2-sum"><span>Order placed on ' + placed + '</span><b>' + money(o.total) + '</b></div>' +
+      '<div class="o2-foot"><div class="o2-main">' + main + '</div><div class="o2-round">' + round + '</div></div></div>';
+  }
+
   window.rgOrderCard = function (o, page) {
+    if (page === 'online') return premium(o);
     var st = o.order_status || 'Pending', S = STATUS[st] || [st, 'muted'];
     var type = o.order_type || '', tKey = type.toLowerCase();
     var isDel = tKey.indexOf('deliver') >= 0, online = page === 'online';
