@@ -132,7 +132,7 @@ try {
     if ($kotIdFilter && !empty($kots)) {
         $response['kot'] = $kots[0];
     }
-    echo json_encode($response);
+    echo json_encode($response, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);   // never an empty reply over one bad character
     
 } catch (PDOException $e) {
     error_log("PDO Error in get_kot.php: " . $e->getMessage());

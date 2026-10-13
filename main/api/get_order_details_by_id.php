@@ -110,7 +110,7 @@ try {
     echo json_encode([
         'success' => true,
         'order' => $order
-    ]);
+    ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);   // never an empty reply over one bad character
     
 } catch (PDOException $e) {
     error_log("PDO Error in get_order_details_by_id.php: " . $e->getMessage());

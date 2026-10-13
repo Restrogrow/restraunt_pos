@@ -212,7 +212,7 @@ try {
     echo json_encode([
         'success' => true,
         'data' => $responseData
-    ]);
+    ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);   // a stray bad byte in an address must not blank the whole reply (print then failed with "Unexpected end of JSON input")
 
 } catch (PDOException $e) {
     error_log("PDO Error in get_session.php: " . $e->getMessage());
