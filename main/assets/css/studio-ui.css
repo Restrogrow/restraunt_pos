@@ -2367,3 +2367,7 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .kt-q { background: #F97316; color: #FFFFFF; }
 .kt-main.done { background: #EA580C; box-shadow: 0 8px 16px -10px rgba(234,88,12,.9); }
 .kt-main.done:hover { background: #C2410C; }
+/* Orders page: same orange selection as Online Orders (no black) */
+#ordersPage .ot-tab.on { border-color: #F97316; background: #F97316; color: #FFFFFF; box-shadow: 0 8px 18px -12px rgba(249,115,22,.9); }
+#ordersPage .ot-chip.on { background: #FFF7ED; color: #C2410C; box-shadow: inset 0 0 0 1.5px #FDBA74; }
+#ordersPage .ot-chip.on em { background: #F97316 !important; color: #FFFFFF !important; }

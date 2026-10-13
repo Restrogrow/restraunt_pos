@@ -20,13 +20,29 @@
 - [Guides and documents](#guides-and-documents)
 - [Running it locally](#running-it-locally-xampp)
 - [Configuration (.env)](#configuration-env)
-- [Deploying, cron jobs and WhatsApp templates](#deploying)
+- [Deploying, uptime monitoring, cron jobs and WhatsApp templates](#deploying)
 - [Project structure and tech stack](#project-structure)
 - [Roadmap and known limitations](#roadmap)
 
 ---
 
 ## What's new
+
+### 14 October 2026
+
+| | Change | What it means for a restaurant |
+|---|---|---|
+| **Online Orders** | Redesigned, in RestroGrow orange | **Delivery / Dine-in / Takeaway** selector with counts, and a summary for the chosen type (orders, new, preparing, ready, completed, cancelled, total value, done value). Then **Ongoing / Completed / Cancelled / All** tabs and stage chips (New, Scheduled, Accepted, Preparing, Ready, Served) with counts. Every card has the same layout: customer, order number with a type chip, status, one row per dish with photo, size, add-ons, quantity and price, the time, and payment next to the total (green **Paid · UPI** or orange **To collect · Cash**). One main button (Accept + Reject, Start cooking, Mark as ready / served / completed) and round buttons for WhatsApp, Call, Print, Details, Update payment and Cancel. Takeaway shows **Ready for pickup** and **Picked up**, as on the tracking page. |
+| **Orders** | Ongoing / Completed tabs | The same tabs and stage chips on the Orders page, with one consistent card per order. |
+| **Update payment** | New | From an order card: how it was paid (Cash, UPI, Card, Online, Wallet) and Paid / Part paid / Not paid yet / Refunded. Only changes the payment rules allow can be picked. |
+| **Pop-ups** | RestroGrow modals | Every confirm and message on the dashboard opens in one styled window (cancel order, mark paid, discard held order, saved / error messages) instead of the browser's alert box. |
+| **Kitchen tickets (KOT)** | Redesigned | Ticket cards with a live **waiting time** (amber after 10 min, red after 20), table or takeaway, payment, big quantity squares the kitchen can read, notes, and one button: Start cooking → Mark as ready → Complete order. Stage chips: All, New, In kitchen, Ready. |
+| **Blocked customers** | Redesigned | Numbers at a glance (blocked now, auto, by you, expired), a Mobile / IP switch, search and filters, and a clear Unblock confirm. |
+| **New-order popup** | Preparing + delivery time | **Ready in** has a Preparing time and, for delivery orders, a Delivery time: 5, 10, 15, 20, 30, 45 min, − / + buttons or any number. The customer's tracking page shows **Ready around 8:45 PM** or **Arrives around 9:10 PM**. |
+| **Analytics** | Rebuilt | “What to do now” tips worked out from your own orders (slowest day, busiest hour, combo ideas, dishes to push or drop, regulars who stopped coming), numbers compared with the period before, sales trend, busy-hours heatmap, menu analysis (Stars, Workhorses, Puzzles, Dogs), customers, website visitors to orders, reviews, why orders were lost, and a 7-day forecast. |
+| **Faster dashboards** | Smaller icon font | Dashboards download only the ~420 icons they use (41 KB instead of 373 KB) and the browser console stays quiet on the live site. |
+
+For the RestroGrow team: the **superadmin panel** gained a restaurant view, analytics, renewals, coupons, leads, support tickets, announcements, invoices with GST, security and activity, platform health and bulk actions (see [Staff apps and superadmin](#staff-apps-and-superadmin)); email can go out from a different address per kind of email; and there is a public health check for uptime monitors (see [Uptime monitoring](#uptime-monitoring)).
 
 ### 13 October 2026
 
@@ -81,6 +97,14 @@
 
 <table>
   <tr>
+    <td width="50%"><img src="main/assets/guide/onlineOrdersPage.jpg" alt="Online orders"><br><b>Online orders</b>: Delivery / Dine-in / Takeaway, numbers, one card per order</td>
+    <td width="50%"><img src="main/assets/guide/kotPage.jpg" alt="Kitchen tickets"><br><b>Kitchen tickets</b>: waiting time, big quantities, one button</td>
+  </tr>
+  <tr>
+    <td><img src="main/assets/guide/analyticsPage.jpg" alt="Analytics"><br><b>Analytics</b>: what to do now, worked out from your orders</td>
+    <td><img src="main/assets/guide/blocklistPage.jpg" alt="Blocked customers"><br><b>Blocked customers</b>: numbers, search, clear unblock</td>
+  </tr>
+  <tr>
     <td width="50%"><img src="main/assets/guide/dashboardPage.jpg" alt="Dashboard"><br><b>Dashboard</b>: today at a glance and what needs attention</td>
     <td width="50%"><img src="docs/screenshots/new-order-popup.jpg" alt="New order popup"><br><b>New order</b>: photos, payment, bill, ready-in time, reasons</td>
   </tr>
@@ -94,7 +118,7 @@
   </tr>
   <tr>
     <td><img src="main/assets/guide/menuItemsPage.jpg" alt="Menu items"><br><b>Menu items</b>: numbers, search, cleaner dish cards</td>
-    <td><img src="main/assets/guide/ordersPage.jpg" alt="Orders"><br><b>Orders</b> and the other older pages in the new look</td>
+    <td><img src="main/assets/guide/ordersPage.jpg" alt="Orders"><br><b>Orders</b>: Ongoing / Completed tabs and one card per order</td>
   </tr>
   <tr>
     <td><img src="main/assets/guide/offersHomePage.jpg" alt="All offers"><br><b>All offers</b>: every offer tool and whether it's on</td>
@@ -282,6 +306,9 @@ The full list with comments is in [`main/.env.example`](main/.env.example). The 
 | `REPEATGROW_API_URL`, `REPEATGROW_API_KEY`, `REPEATGROW_GIFT_TEMPLATE` | WhatsApp OTP and RestroGrow's shared number |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional: push keys (generated automatically if missing) |
 | `CRON_SECRET_KEY` | Running cron jobs by URL |
+| `SMTP_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME` | Sending email. With Google Workspace: `smtp.gmail.com`, port `587`, `tls`, the mailbox as username and a Google **app password** (not the normal password). |
+| `MAIL_FROM_BILLING`, `MAIL_FROM_ALERTS`, `MAIL_FROM_ORDERS`, `MAIL_FROM_ACCOUNTS`, `MAIL_FROM_SUPPORT`, `MAIL_FROM_SALES` | Optional: which address each kind of email comes from (billing, new-order alerts to restaurants, order confirmations, password resets, support, sales). Each must be a *Send mail as* address of the SMTP login in Gmail. Unset ones use `SMTP_FROM_EMAIL`. Test them in Superadmin › Settings › Email check. |
+| `HEALTH_CHECK_KEY` | Optional: unlocks the detailed diagnostic page `main/admin/health_check.php` (`?key=…`). Not needed for the public health check. |
 | Apple / Google Wallet keys | The phone wallet card |
 
 ---
@@ -289,6 +316,12 @@ The full list with comments is in [`main/.env.example`](main/.env.example). The 
 ## Deploying
 
 Pushing to `main` deploys to restrogrow.com automatically. The code detects the Hostinger server and connects through the local MySQL socket. New tables and columns create themselves on first use (each feature has an `ensure…` function), so no manual migration is needed.
+
+### Uptime monitoring
+
+`https://restrogrow.com/main/api/health.php` is a public health check for UptimeRobot or any monitor. It answers **200** with `{"status":"ok"}` when the database answers, logins can be saved and the disk is fine, and **503** with `{"status":"down"}` and a short reason when something critical fails. It shows no passwords, host names, versions or paths, and accepts GET or HEAD. Add `?check=orders` to also read the orders table.
+
+In UptimeRobot: **New monitor › Keyword**, URL `https://restrogrow.com/main/api/health.php?check=orders`, keyword `"status":"ok"`, alert when the keyword **does not exist**, every 5 minutes. Add plain HTTP(s) monitors for `https://restrogrow.com` and `https://restrogrow.com/main/admin/login.php` too.
 
 ### Cron jobs (Hostinger)
 
