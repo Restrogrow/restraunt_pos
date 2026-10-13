@@ -9572,7 +9572,8 @@ window.logout = logout;
       }
       const audio = window._newOrderRingAudio;
       audio.currentTime = 0;
-      audio.play().catch(() => {});
+      // blocked until the first click after a page load (browser rule): order-alerts.js starts it on that click
+      audio.play().then(() => { window._ringBlocked = false; }).catch(() => { window._ringBlocked = true; });
 
       if (window._newOrderRingTimeout) clearTimeout(window._newOrderRingTimeout);
       window._newOrderRingTimeout = setTimeout(stopNewOrderRing, NEW_ORDER_RING_MAX_MS);

@@ -100,13 +100,23 @@
   if (/[?&]open_order=/.test(location.search)) setTimeout(openOrders, 600);
 
   /* ── one-time setup chip: sound needs a click, notifications need permission ── */
-  var soundReady = false;
-  ['click', 'keydown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, function () { soundReady = true; refreshChip(); }, { once: true, capture: true }); });
+  // Remembered per device (localStorage): once the owner clicks "Turn on" (or closes the bar), it stays gone
+  // after every reload. Browsers still need one click per page load before sound can play, so a ring that
+  // was blocked (an order came in before any click) starts on the first click / key press instead.
+  var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  ['click', 'keydown', 'touchstart'].forEach(function (ev) {
+    document.addEventListener(ev, function () {
+      var ov = document.getElementById('newOrderOverlay');
+      if (window._ringBlocked && ov && ov.classList.contains('show') && typeof window.startNewOrderRing === 'function') { window._ringBlocked = false; window.startNewOrderRing(); }
+    }, { capture: true });
+  });
   var chip = null;
   function refreshChip() {
-    var needPerm = supported && Notification.permission === 'default';
-    var show = !soundReady || needPerm;
-    try { if (localStorage.getItem('rg_alerts_chip_closed') === '1' && !needPerm) show = false; } catch (e) {}
+    var perm = supported ? Notification.permission : 'unsupported';
+    if (perm === 'granted') store.set('rg_alerts_on', '1');   // already allowed on this device: nothing to ask
+    var decided = store.get('rg_alerts_on') === '1' || store.get('rg_alerts_chip_closed') === '1';
+    // ask once per device; ask again only if the browser forgot the permission it was given
+    var show = !decided || (store.get('rg_alerts_on') === '1' && perm === 'default' && store.get('rg_alerts_chip_closed') !== '1');
     if (!show) { if (chip) { chip.remove(); chip = null; } return; }
     if (chip) return;
     chip = document.createElement('div');
@@ -116,7 +126,7 @@
       '<button type="button" class="rg-alert-on">Turn on</button><button type="button" class="rg-alert-x" aria-label="Not now"><span class="material-symbols-rounded">close</span></button>';
     document.body.appendChild(chip);
     chip.querySelector('.rg-alert-on').addEventListener('click', function () {
-      soundReady = true;
+      store.set('rg_alerts_on', '1');   // saved: the bar doesn't come back on this device
       window.rgEnablePush().then(function (ok) {
         if (typeof window.showNotification === 'function') window.showNotification(ok ? 'Order alerts are on for this device' : 'Sound is on. Notifications were not allowed; you can allow them in the browser’s site settings.', ok ? 'success' : 'info');
         var t = document.getElementById('notifications'); if (t && ok) t.checked = true;
@@ -124,7 +134,7 @@
       });
     });
     chip.querySelector('.rg-alert-x').addEventListener('click', function () {
-      try { localStorage.setItem('rg_alerts_chip_closed', '1'); } catch (e) {}
+      store.set('rg_alerts_chip_closed', '1');
       if (chip) { chip.remove(); chip = null; }
     });
   }
