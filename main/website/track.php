@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/order_abuse_guard.php';
 require_once __DIR__ . '/../config/order_reasons.php';   // why an order was rejected / cancelled, in customer words
+require_once __DIR__ . '/../config/order_eta.php';       // "Ready around" / "Arrives around" from the times the restaurant chose
 
 $orderNumber = $_POST['order_number'] ?? $_GET['order_number'] ?? '';
 $customerPhone = $_POST['customer_phone'] ?? $_GET['customer_phone'] ?? '';
@@ -38,6 +39,7 @@ if ($orderNumber && $customerPhone) {
             $trackStmt = $conn->prepare("SELECT * FROM delivery_tracking WHERE order_id = ? AND restaurant_id = ? LIMIT 1");
             $trackStmt->execute([$order['id'], $order['restaurant_id']]);
             $tracking = $trackStmt->fetch(PDO::FETCH_ASSOC);
+            $etaText = orderEtaText(orderEta($conn, (int)$order['id']), (string)$order['order_status'], (string)$order['order_type'], $tracking['delivery_status'] ?? null);
         }
     } catch (Exception $e) {
         $error = 'Something went wrong. Please try again.';
@@ -434,6 +436,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         'restaurant' => '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 0-3 2.5-3 6h3v12"/>',
         'check_circle' => '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/>',
         'check' => '<path d="M20 6L9 17l-5-5"/>',
+        'schedule' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
         'cancel' => '<circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>',
         'sparkle' => '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>',
     ];
@@ -476,6 +479,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         <div class="tk-status-text">
           <b id="tkStatusTitle">We've got your order</b>
           <p id="tkStatusText">The restaurant will confirm it shortly.</p>
+          <span class="tk-eta" id="tkEta" style="display:<?php echo !empty($etaText) ? 'inline-flex' : 'none'; ?>;align-items:center;gap:6px;margin:6px 0 2px;padding:5px 12px;border-radius:999px;background:rgba(22,163,74,.1);color:#15803d;font-weight:700;font-size:.9rem"><?php echo str_replace('<svg ', '<svg width="18" height="18" ', $tkIcon('schedule')); ?><span id="tkEtaText"><?php echo htmlspecialchars($etaText ?? '', ENT_QUOTES, 'UTF-8'); ?></span></span>
           <span class="tk-tip" id="tkTip"><?php echo $tkIcon('sparkle'); ?><span id="tkTipText">Sending your order to the kitchen</span></span>
         </div>
         <div class="tk-steps" role="progressbar" aria-valuemin="1" aria-valuemax="4" id="tkTrack">
@@ -848,6 +852,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
             .then(function(d) {
                 if (!d.success) return;
                 if (typeof d.stop_reason === 'string') stopReason = d.stop_reason;
+                if (typeof d.eta_text === 'string') { var etaEl = document.getElementById('tkEta'), etaT = document.getElementById('tkEtaText'); if (etaEl && etaT) { etaT.textContent = d.eta_text; etaEl.style.display = d.eta_text ? 'inline-flex' : 'none'; } }
                 consecutivePollFailures = 0;
                 var newDelivery = d.tracking ? (d.tracking.delivery_status || null) : null;
                 if (d.tracking && d.tracking.rider_name) { riderName = d.tracking.rider_name; setRider(d.tracking.rider_name, d.tracking.rider_phone); }

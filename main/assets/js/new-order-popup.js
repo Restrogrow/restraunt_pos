@@ -137,8 +137,29 @@
   window.RGReason = RGReason;
 
   /* ───────────── the new-order popup ───────────── */
-  var O = null, prep = 0, tick = null, busy = false;
-  var PREP = [10, 15, 20, 30, 45];
+  var O = null, prep = 0, dlv = 0, tick = null, busy = false;
+  var PREP = [5, 10, 15, 20, 30, 45];
+  var T_MAX = 300, T_STEP = 5;
+  // "Ready in": preparing time for every order, plus delivery time for delivery orders.
+  // Chips pick a time, − / + move it by 5 minutes, the box takes any number.
+  function isDelivery(o) { return /deliver/i.test((o && o.order_type) || ''); }
+  function clockIn(min) { var d = new Date(Date.now() + min * 60000); return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  function timeRow(k, label, icon, val) {
+    return '<div class="no-trow" data-k="' + k + '"><span class="no-tl">' + ic(icon) + label + '</span>' +
+      '<div class="no-prep-opts">' + PREP.map(function (m) { return '<button type="button" data-m="' + m + '" class="' + (val === m ? 'on' : '') + '" onclick="RGNewOrder.setT(\'' + k + '\',' + m + ')">' + m + '</button>'; }).join('') + '</div>' +
+      '<div class="no-step"><button type="button" aria-label="5 minutes less" onclick="RGNewOrder.stepT(\'' + k + '\',-1)">' + ic('remove') + '</button>' +
+      '<input type="number" min="0" max="' + T_MAX + '" step="1" inputmode="numeric" value="' + (val || '') + '" placeholder="0" oninput="RGNewOrder.typeT(\'' + k + '\',this.value)" aria-label="' + label + ' in minutes"><em>min</em>' +
+      '<button type="button" aria-label="5 minutes more" onclick="RGNewOrder.stepT(\'' + k + '\',1)">' + ic('add') + '</button></div></div>';
+  }
+  function timeSummary(o) {
+    if (!prep && !dlv) return 'Optional. The customer sees the time on their tracking page.';
+    if (!isDelivery(o)) return 'Ready around <b>' + clockIn(prep) + '</b>. The customer sees this on their tracking page.';
+    return (prep ? 'Ready around <b>' + clockIn(prep) + '</b> · ' : '') + 'at the customer around <b>' + clockIn(prep + dlv) + '</b> (' + (prep + dlv) + ' min).';
+  }
+  function acceptLabel() {
+    var t = prep && dlv ? prep + ' + ' + dlv + ' min' : (prep || dlv) ? (prep || dlv) + ' min' : '';
+    return ic('check_circle') + 'Accept' + (t ? ' · ' + t : '');
+  }
   function payBlock(o) {
     var pm = o.payment_method || '', ps = String(o.payment_status || ''), total = +o.total || +o.subtotal || 0, wallet = +o.wallet_paid || 0, due = Math.max(0, total - wallet);
     var type = (o.order_type || '').toLowerCase(), where = /deliver/.test(type) ? 'on delivery' : /take|pick/.test(type) ? 'at pickup' : 'at the table';
@@ -204,14 +225,14 @@
         (o.notes ? '<div class="no-note">' + ic('sticky_note_2') + '<span><b>Note from the customer</b>' + esc(o.notes) + '</span></div>' : '') +
         items(o) + bill(o) +
       '</div>' +
-      '<div class="no-prep"><span>' + ic('timer') + 'Ready in</span><div class="no-prep-opts">' + PREP.map(function (m) { return '<button type="button" class="' + (prep === m ? 'on' : '') + '" onclick="RGNewOrder.prep(' + m + ')">' + m + ' min</button>'; }).join('') +
-        // any other time: type the minutes
-        '<label class="no-prep-custom' + (prep && PREP.indexOf(prep) < 0 ? ' on' : '') + '"><input type="number" id="noPrepCustom" min="1" max="300" step="1" inputmode="numeric" placeholder="Custom" value="' + (prep && PREP.indexOf(prep) < 0 ? prep : '') + '" oninput="RGNewOrder.prepCustom(this.value)" aria-label="Custom minutes"><em>min</em></label></div>' +
-        (km ? '<small>You’ll confirm the delivery charge next.</small>' : '<small>Optional. The customer sees when it will be ready.</small>') + '</div>' +
+      '<div class="no-prep no-times"><div class="no-th">' + ic('timer') + 'Ready in <em>minutes</em></div>' +
+        timeRow('prep', 'Preparing', 'skillet', prep) +
+        (isDelivery(o) ? timeRow('dlv', 'Delivery', 'two_wheeler', dlv) : '') +
+        '<small id="noTimeSum">' + timeSummary(o) + (km ? ' You’ll confirm the delivery charge next.' : '') + '</small></div>' +
       '<footer class="no-foot">' +
         '<button type="button" class="no-later" onclick="RGNewOrder.later()" title="Close and decide later; it waits in Online Orders">' + ic('schedule') + '<span>Later</span></button>' +
         '<button type="button" class="no-reject" id="notifRejectBtn" onclick="RGNewOrder.reject()">' + ic('block') + 'Reject</button>' +
-        '<button type="button" class="no-accept" id="notifAcceptBtn" onclick="RGNewOrder.accept()">' + ic('check_circle') + 'Accept' + (prep ? ' · ' + prep + ' min' : '') + '</button>' +
+        '<button type="button" class="no-accept" id="notifAcceptBtn" onclick="RGNewOrder.accept()">' + acceptLabel() + '</button>' +
       '</footer>';
     var map = document.getElementById('notifMapContainer');
     if (map) map.innerHTML = isDel && typeof window.buildDeliveryMapHtml === 'function' ? window.buildDeliveryMapHtml(o) : '';
@@ -235,20 +256,29 @@
   }
 
   // only the chips and the Accept label change (a full repaint would reload the map)
-  function showPrep() {
-    document.querySelectorAll('#noCard .no-prep-opts button').forEach(function (b, i) { b.classList.toggle('on', PREP[i] === prep); });
-    var c = document.querySelector('#noCard .no-prep-custom');
-    if (c) c.classList.toggle('on', !!prep && PREP.indexOf(prep) < 0);
+  function showPrep(typing) {
+    [['prep', prep], ['dlv', dlv]].forEach(function (x) {
+      var row = document.querySelector('#noCard .no-trow[data-k="' + x[0] + '"]');
+      if (!row) return;
+      row.querySelectorAll('.no-prep-opts button').forEach(function (b) { b.classList.toggle('on', +b.dataset.m === x[1]); });
+      var inp = row.querySelector('input');
+      if (inp && typing !== x[0]) inp.value = x[1] || '';
+      row.classList.toggle('set', x[1] > 0);
+    });
+    var sum = document.getElementById('noTimeSum');
+    var km = O && isDelivery(O) && (window.enableKmDelivery == 1 || window.enableKmDelivery === true);
+    if (sum && O) sum.innerHTML = timeSummary(O) + (km ? ' You’ll confirm the delivery charge next.' : '');
     var a = document.getElementById('notifAcceptBtn');
-    if (a && !busy) a.innerHTML = ic('check_circle') + 'Accept' + (prep ? ' · ' + prep + ' min' : '');
+    if (a && !busy) a.innerHTML = acceptLabel();
   }
+  function clampT(n) { n = Math.round(+n || 0); return Math.max(0, Math.min(T_MAX, n)); }
 
   var RGNewOrder = {
     show: function (order) {
       if (!order) return;
       var ov = document.getElementById('newOrderOverlay');
       if (!ov) return;
-      O = order; prep = 0; busy = false;
+      O = order; prep = 0; dlv = 0; busy = false;
       window._currentNotifOrder = order;
       window._currentNotifOrderId = parseInt(order.id, 10) || null;
       if (typeof window.startNewOrderRing === 'function') window.startNewOrderRing();
@@ -259,16 +289,27 @@
       clearInterval(tick);
       tick = setInterval(function () { var a = document.getElementById('noAgo'); if (a && O) a.textContent = ago(when(O.created_at)); }, 30000);
     },
-    prep: function (m) {
-      prep = prep === m ? 0 : m;
-      var c = document.getElementById('noPrepCustom'); if (c) c.value = '';
+    // k = 'prep' (preparing) or 'dlv' (delivery)
+    setT: function (k, m) {
+      if (k === 'dlv') dlv = dlv === m ? 0 : m; else prep = prep === m ? 0 : m;
       showPrep();
     },
-    prepCustom: function (v) {
-      var n = parseInt(v, 10);
-      prep = n > 0 ? Math.min(300, n) : 0;
+    stepT: function (k, dir) {
+      var cur = k === 'dlv' ? dlv : prep;
+      // from an odd number, the first step lands on a multiple of 5
+      var next = dir > 0 ? (Math.floor(cur / T_STEP) + 1) * T_STEP : (Math.ceil(cur / T_STEP) - 1) * T_STEP;
+      next = clampT(next);
+      if (k === 'dlv') dlv = next; else prep = next;
       showPrep();
     },
+    typeT: function (k, v) {
+      var n = clampT(v);
+      if (k === 'dlv') dlv = n; else prep = n;
+      showPrep(k);
+    },
+    // kept for anything still calling the old names
+    prep: function (m) { RGNewOrder.setT('prep', m); },
+    prepCustom: function (v) { RGNewOrder.typeT('prep', v); },
     later: function (page) {
       var num = O ? (O.order_number || O.id) : '';
       close();
@@ -277,24 +318,25 @@
     },
     accept: function () {
       if (!O || busy) return;
-      var o = O, id = parseInt(o.id, 10), minutes = prep;
+      var o = O, id = parseInt(o.id, 10), minutes = prep, dmin = isDelivery(o) ? dlv : 0;
       window._overlayProcessing = true;
       var km = /deliver/i.test(o.order_type || '') && (window.enableKmDelivery == 1 || window.enableKmDelivery === true);
       var done = function (d) {
         window._overlayProcessing = false;
         if (d && d.cancelled) return;
-        notify(d && d.success ? 'Order #' + (o.order_number || id) + ' accepted' + (minutes ? ' · ready in ' + minutes + ' min' : '') : ((d && d.message) || 'Could not accept the order'), d && d.success ? 'success' : 'error');
+        notify(d && d.success ? 'Order #' + (o.order_number || id) + ' accepted' + (minutes ? ' · ready in ' + minutes + ' min' : '') + (dmin ? ' · delivery ' + dmin + ' min' : '') : ((d && d.message) || 'Could not accept the order'), d && d.success ? 'success' : 'error');
         if (d && d.success) { reloadLists(); go('onlineOrdersPage'); }
       };
       if (km && typeof window.acceptOrderWithDeliveryCharge === 'function') {
         // the delivery-charge prompt needs the popup out of the way
         close();
-        window.acceptOrderWithDeliveryCharge(id, o.order_type, o.address_lat, o.address_lng, minutes).then(done).catch(function () { done({ success: false, message: 'No connection. Please try again.' }); });
+        window.acceptOrderWithDeliveryCharge(id, o.order_type, o.address_lat, o.address_lng, minutes, dmin).then(done).catch(function () { done({ success: false, message: 'No connection. Please try again.' }); });
         return;
       }
       setBusy('accept');
       var body = { orderId: id, status: 'Accepted' };
       if (minutes) body.prep_minutes = minutes;
+      if (dmin) body.delivery_minutes = dmin;
       post(body).then(function (d) {
         if (d.success) close();
         else { setBusy(false); paint(); }

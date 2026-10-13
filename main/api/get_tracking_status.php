@@ -24,6 +24,7 @@ try {
     $conn = function_exists('getConnection') ? getConnection() : ($pdo ?? null);
     if (!$conn) throw new Exception('No connection');
     require_once __DIR__ . '/../config/order_reasons.php';
+    require_once __DIR__ . '/../config/order_eta.php';
 
     $stmt = $conn->prepare("SELECT o.id, o.order_status, o.order_type, o.total, o.delivery_charge, o.source, o.loyalty_points_earned, o.notes
         FROM orders o WHERE o.order_number = ? AND o.customer_phone = ? AND o.source = 'website' LIMIT 1");
@@ -58,6 +59,7 @@ try {
         'loyalty_points_earned' => (int)($order['loyalty_points_earned'] ?? 0),
         'tracking' => $tracking,
         // why it was rejected / cancelled, in customer words (preset reasons only)
+        'eta_text' => orderEtaText(orderEta($conn, (int)$order['id']), (string)$order['order_status'], (string)$order['order_type'], $tracking['delivery_status'] ?? null),
         'stop_reason' => in_array($order['order_status'], ['Rejected', 'Cancelled'], true) ? orderStopMessage($order['notes'] ?? '') : ''
     ]);
 } catch (Exception $e) {

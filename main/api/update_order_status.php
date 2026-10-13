@@ -57,6 +57,10 @@ try {
     // expects it to take, used to compute estimated_ready_at for the
     // customer-facing order tracking page.
     $prepMinutes = (isset($_POST['prep_minutes']) && $_POST['prep_minutes'] !== '') ? (int)$_POST['prep_minutes'] : null;
+    // Optional (delivery orders): minutes from ready to the customer's door; with prep_minutes it gives
+    // estimated_delivery_at, which the tracking page shows as "Arrives around …".
+    $deliveryMinutes = (isset($_POST['delivery_minutes']) && $_POST['delivery_minutes'] !== '') ? max(0, min(300, (int)$_POST['delivery_minutes'])) : null;
+    if ($prepMinutes !== null) $prepMinutes = max(0, min(300, $prepMinutes));
 
     if (!$orderId || !$status) {
         echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
@@ -70,6 +74,18 @@ try {
         exit();
     }
     
+    // delivery time columns are added on first use, outside the transaction (ALTER TABLE would commit it)
+    $hasDeliveryCols = false;
+    if ($status === 'Accepted' && $deliveryMinutes) {
+        try {
+            if (!$conn->query("SHOW COLUMNS FROM orders LIKE 'delivery_minutes'")->fetch()) $conn->exec("ALTER TABLE orders ADD COLUMN delivery_minutes INT NULL DEFAULT NULL AFTER estimated_ready_at");
+            if (!$conn->query("SHOW COLUMNS FROM orders LIKE 'estimated_delivery_at'")->fetch()) $conn->exec("ALTER TABLE orders ADD COLUMN estimated_delivery_at DATETIME NULL DEFAULT NULL AFTER delivery_minutes");
+            $hasDeliveryCols = true;
+        } catch (Throwable $e) {
+            error_log('[orders] delivery time columns: ' . $e->getMessage());
+        }
+    }
+
     // Begin transaction and use atomic state-machine update with row locking
     $conn->beginTransaction();
     
@@ -98,6 +114,14 @@ try {
             $extraParams[] = $prepMinutes;
             $extraSet[] = 'estimated_ready_at = DATE_ADD(NOW(), INTERVAL ? MINUTE)';
             $extraParams[] = $prepMinutes;
+        }
+        if ($status === 'Accepted' && $deliveryMinutes !== null && $deliveryMinutes > 0) {
+            if ($hasDeliveryCols) {
+                $extraSet[] = 'delivery_minutes = ?';
+                $extraParams[] = $deliveryMinutes;
+                $extraSet[] = 'estimated_delivery_at = DATE_ADD(NOW(), INTERVAL ? MINUTE)';
+                $extraParams[] = (int)$prepMinutes + $deliveryMinutes;
+            }
         }
 
         // A soft-deleted order is a closed book — nobody (not even an

@@ -9670,9 +9670,10 @@ window.logout = logout;
   // other case this just accepts immediately, unchanged from before.
   // Returns a Promise resolving to the API response, or {cancelled: true} if
   // the admin dismissed the prompt without confirming.
-  function acceptOrderWithDeliveryCharge(orderId, orderType, addressLat, addressLng, prepMinutes) {
+  function acceptOrderWithDeliveryCharge(orderId, orderType, addressLat, addressLng, prepMinutes, deliveryMinutes) {
     const isKmDelivery = orderType === 'Delivery' && (window.enableKmDelivery == 1 || window.enableKmDelivery === true);
-    const prepPart = prepMinutes > 0 ? '&prep_minutes=' + encodeURIComponent(prepMinutes) : '';   // optional "ready in" from the new-order popup
+    const prepPart = (prepMinutes > 0 ? '&prep_minutes=' + encodeURIComponent(prepMinutes) : '')   // optional "ready in" from the new-order popup
+      + (deliveryMinutes > 0 ? '&delivery_minutes=' + encodeURIComponent(deliveryMinutes) : '');
     if (!isKmDelivery) {
       return fetch('../api/update_order_status.php', {
         method: 'POST',
