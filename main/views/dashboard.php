@@ -409,7 +409,7 @@ try {
       var container = document.getElementById('addonsList');
       if (!container) return;
       if (!container.querySelector('iframe')) {
-        container.innerHTML = '<iframe src="../admin/addons.php" style="width:100%;height:700px;border:none;border-radius:8px;overflow:auto;"></iframe>';
+        container.innerHTML = '<iframe src="../admin/addons.php?embed=1" style="width:100%;height:700px;border:none;border-radius:8px;overflow:auto;"></iframe>';
       }
     }
 
@@ -2900,54 +2900,15 @@ try {
     </div>
 
     <!-- Inventory Page -->
+    <!-- Menu › Inventory: stock, recipes, purchase orders, suppliers, stock count, activity, reports
+         (assets/js/inventory-studio.js, data api/inventory_studio.php, styles iv-* in studio-ui.css) -->
     <div id="inventoryPage" class="page sx lg">
       <div class="page-header">
         <h1>Inventory</h1>
-        <p>Track stock levels and record purchases/wastage</p>
+        <p>Stock, recipes and purchases. Orders take stock out by themselves.</p>
       </div>
       <div class="page-content">
-        <div class="lg-stats">
-          <div class="lg-stat" style="--c:#2563eb"><span class="sx-ic material-symbols-rounded">inventory_2</span><div><small>Total items</small><b id="invTotalItems">0</b></div></div>
-          <div class="lg-stat" style="--c:#dc2626"><span class="sx-ic material-symbols-rounded">warning</span><div><small>Low on stock</small><b id="invLowStockCount">0</b></div></div>
-          <div class="lg-stat" style="--c:#16a34a"><span class="sx-ic material-symbols-rounded">payments</span><div><small>Stock value</small><b id="invTotalValue"><?php echo htmlspecialchars($currency_symbol); ?>0.00</b></div></div>
-        </div>
-
-        <div class="section-card" style="margin-bottom:20px;">
-          <div class="section-header">
-            <div class="section-title">Stock items</div>
-            <button class="btn btn-primary" id="btnNewInventoryItem" onclick="openInventoryModal()"><span class="material-symbols-rounded">add</span>New item</button>
-          </div>
-          <div class="section-body" style="overflow-x:auto;">
-            <table class="data-table" id="inventoryTable">
-              <thead>
-                <tr>
-                  <th>Item</th><th>Category</th><th>Unit</th><th>In Stock</th><th>Low Stock At</th><th>Cost/Unit</th><th>Stock Value</th><th>Status</th><th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="inventoryTbody">
-                <tr><td colspan="9" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="section-card">
-          <div class="section-header">
-            <div class="section-title">Recent purchases and adjustments</div>
-          </div>
-          <div class="section-body" style="overflow-x:auto;">
-            <table class="data-table" id="inventoryHistoryTable">
-              <thead>
-                <tr>
-                  <th>Date</th><th>Item</th><th>Type</th><th>Quantity</th><th>Cost/Unit</th><th>Total Cost</th><th>Notes</th>
-                </tr>
-              </thead>
-              <tbody id="inventoryHistoryTbody">
-                <tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">Loading...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <div id="invRoot" class="iv"></div>
       </div>
     </div>
 
@@ -7286,6 +7247,8 @@ function toggleGatewayMode() {
   <script src="../assets/js/custom-domain-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/custom-domain-studio.js'); ?>" defer></script>
   <script src="../assets/js/settings-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/settings-studio.js'); ?>" defer></script>
   <script src="../assets/js/offers-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offers-studio.js'); ?>" defer></script>
+  <script src="../assets/js/inventory-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/inventory-studio.js'); ?>" defer></script>
+  <script src="../assets/js/menu-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-studio.js'); ?>" defer></script>
   <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
   <script src="../assets/js/dashboard-home.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-home.js'); ?>" defer></script>
   <script src="../assets/js/marketing-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/marketing-studio.js'); ?>" defer></script>

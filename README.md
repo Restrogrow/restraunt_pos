@@ -15,6 +15,7 @@
 - [What's new](#whats-new)
 - [Screenshots](#screenshots)
 - [Features](#features)
+- [Inventory: stock, recipes, purchase orders](#inventory)
 - [New-order alerts and push notifications](#new-order-alerts-and-push-notifications)
 - [Guides and documents](#guides-and-documents)
 - [Running it locally](#running-it-locally-xampp)
@@ -31,6 +32,9 @@
 
 | | Change | What it means for a restaurant |
 |---|---|---|
+| **Inventory** | Rebuilt as a full stock system | **Recipes** per dish take stock out as orders are made (and put it back if an order is cancelled); cost per plate, food cost % and plates left; **reorder list** with how much to buy; **suppliers** and **purchase orders** (WhatsApp, print, receive into stock); **stock count** with differences; **activity log**; **reports** (bought, used, wasted, food cost vs sales). Purchases and wastage still go into expenses and Sales Reports. [More below](#inventory). |
+| **Menu pages** | Same menu, cleaner pages | Tabs across Categories, Menu items, Add-ons and Inventory; dish counts on categories; numbers and a search box on Menu items; tidier dish cards; Add-ons in the same style. Nothing about how menus or dishes are saved changed. |
+| **Every older page** | Same look as the new ones | Orders, Online orders, KOT, Customers, Staff, Reservations, Waiter requests, Reports, Payments, Feedback, Delivery zones and map, Profile, Analytics, Segments, Referrals, QR codes and more: light tables, one toolbar style, stat tiles, calmer order and kitchen cards, icons instead of emojis, aligned icons, and every old pop-up form with the new header. Features unchanged. |
 | **Dashboard** | Redesigned home screen | Sales, orders and average order vs this time yesterday; open / closed now; **Needs attention** (website orders to accept, tables calling a waiter, reservations to confirm, catering requests, old kitchen tickets); orders in progress; last 7 days; busy tables; today's reservations; best sellers. Refreshes every minute. |
 | **Order alerts** | Work in the background | The new-order check no longer stops when the tab is hidden. A system notification appears and the tab title flashes; clicking it opens Online Orders. One click on **Turn on order alerts** unlocks the ring and notifications on each device. |
 | **Push notifications** | Actually sent now | They needed a Composer library that was never installed, so nothing was ever delivered. Now sent with PHP's own OpenSSL (VAPID + aes128gcm); keys are created automatically if `.env` has none. Tested end to end with Google's push service and Chrome. |
@@ -74,6 +78,18 @@
     <td width="50%"><img src="docs/screenshots/new-order-popup.jpg" alt="New order popup"><br><b>New order</b>: rings, pops up, Accept or Reject</td>
   </tr>
   <tr>
+    <td><img src="main/assets/guide/inventoryPage.jpg" alt="Inventory overview"><br><b>Inventory</b>: stock value, what to reorder, what orders use</td>
+    <td><img src="main/assets/guide/iv_recipes.jpg" alt="Recipes"><br><b>Recipes</b>: cost per plate, food cost %, plates left</td>
+  </tr>
+  <tr>
+    <td><img src="main/assets/guide/iv_orders.jpg" alt="Purchase orders"><br><b>Purchase orders</b>: send on WhatsApp, receive into stock</td>
+    <td><img src="main/assets/guide/iv_reports.jpg" alt="Inventory reports"><br><b>Inventory reports</b>: bought, used, wasted, food cost</td>
+  </tr>
+  <tr>
+    <td><img src="main/assets/guide/menuItemsPage.jpg" alt="Menu items"><br><b>Menu items</b>: numbers, search, cleaner dish cards</td>
+    <td><img src="main/assets/guide/ordersPage.jpg" alt="Orders"><br><b>Orders</b> and the other older pages in the new look</td>
+  </tr>
+  <tr>
     <td><img src="main/assets/guide/offersHomePage.jpg" alt="All offers"><br><b>All offers</b>: every offer tool and whether it's on</td>
     <td><img src="main/assets/guide/couponsPage.jpg" alt="Coupons"><br><b>Coupons</b>: what each code brought in</td>
   </tr>
@@ -102,8 +118,10 @@
 <p align="center">
   <img src="docs/screenshots/dashboard-phone.jpg" alt="Dashboard on a phone" width="260">
   &nbsp;&nbsp;
+  <img src="docs/screenshots/inventory-phone.jpg" alt="Inventory on a phone" width="260">
+  &nbsp;&nbsp;
   <img src="docs/screenshots/order-alerts-chip.jpg" alt="Turn on order alerts" width="560">
-  <br><sub>The dashboard on a phone, and the one-click “Turn on order alerts” bar</sub>
+  <br><sub>The dashboard and Inventory on a phone, and the one-click “Turn on order alerts” bar</sub>
 </p>
 
 ---
@@ -125,7 +143,8 @@
 ### Admin dashboard
 - **Dashboard**: today vs yesterday, needs attention, orders in progress, 7-day chart, floor, reservations, best sellers
 - **New-order alerts**: ring, popup, background notifications on computer and phone
-- **Menu**: categories, dishes (variations, add-ons, ingredients, nutrition, health tags), add-ons, inventory, photo gallery*
+- **Menu**: categories, dishes (variations, add-ons, ingredients, nutrition, health tags), add-ons, photo gallery*
+- **Inventory**: stock with reorder levels and use-by dates, recipes that take stock out as orders are made, food cost per dish, suppliers, purchase orders (WhatsApp / print / receive), stock count, activity log, reports
 - **Tables**: areas, tables, QR codes, live table map, reservations
 - **POS** and **KOT** (kitchen tickets), with network or browser printing
 - **Orders**: online orders (accept / reject / status / route), all orders, blocked customers, customers, staff, waiter requests
@@ -152,6 +171,26 @@
 | Branches | Several outlets under one owner, with branch admins |
 | Menu from photos | Menu imported from photos of the printed menu |
 | Subscription / trial | Whether the site accepts orders |
+
+---
+
+## Inventory
+
+Menu › Inventory has eight tabs: **Overview, Stock, Recipes, Purchase orders, Suppliers, Stock count, Activity, Reports**.
+
+| Tab | What the restaurant does there |
+|---|---|
+| Overview | Stock value, items to reorder, money spent and wasted this month, stock used by orders in 30 days; the reorder list, use-by dates, what orders use most, latest movements; the switch **Take stock out when orders are made**. |
+| Stock | Items with category, supplier, code and use-by date; a level bar against the reorder level; **Restock** (adds an *Inventory Purchase* expense), **Wastage** with a reason (adds an *Inventory Wastage* expense) or **Correction**; search, filters, CSV export. |
+| Recipes | Per dish: how much of each item one plate uses (g / kg, ml / L, pieces). Shows cost per plate, food cost %, what you keep and plates you can still make. |
+| Purchase orders | Drafts made from the reorder list (one per supplier, up to each item's *Order up to* level), WhatsApp link with the order typed in, print, **Receive** (stock + expense for what actually came). |
+| Suppliers | Contacts, the items bought from each, open orders, spend in 90 days. |
+| Stock count | Type what's on the shelf; the difference is logged per item and the stock set to the count. |
+| Activity / Reports | Every movement with filters and export; bought, used, wasted, count differences and food cost (stock used ÷ sales) for 7 / 30 / 90 days, used per day, top items and suppliers. |
+
+**How orders use stock** (`main/config/inventory_engine.php`): once an order is being made (*Preparing, Ready, Served* or *Completed*), each dish's recipe × quantity is taken out of stock, once per order (`inventory_order_usage`). If the order is later *Cancelled*, *Rejected* or deleted, the stock goes back. Only orders placed after the first recipe was saved count, and turning the switch back on starts counting from that moment, so old orders are never taken twice. This runs whenever Inventory is opened; the movement is dated at the order.
+
+**Tables** (created by themselves): `inventory_items` (+ supplier, reorder-up-to level, code, use-by), `inventory_transactions` (+ kinds sale / return / count / opening and what caused them), `inventory_recipes`, `inventory_suppliers`, `inventory_purchase_orders`, `inventory_po_lines`, `inventory_order_usage`, `inventory_settings`. API: `main/api/inventory_studio.php`; screen: `main/assets/js/inventory-studio.js`.
 
 ---
 
@@ -257,15 +296,16 @@ WhatsApp messages go through **RepeatGrow** ([repeatgrow.com](https://repeatgrow
 ```
 main/
 ├── admin/          Login, auth, admin service worker, catering page
-├── api/            JSON endpoints (orders, menu, payments, offers, wallet, dashboard_home, offers_studio…)
+├── api/            JSON endpoints (orders, menu, payments, offers, wallet, dashboard_home, offers_studio, inventory_studio…)
 ├── assets/
 │   ├── css/        style.css, studio-ui.css (the shared look of the redesigned screens)
 │   ├── js/         script.js plus one file per redesigned screen: dashboard-home, order-alerts,
 │   │               offers-studio, settings-studio, tables-studio, areas-studio, custom-domain-studio,
+│               inventory-studio, menu-studio, marketing-studio,
 │   │               loyalty-studio-*, whatsapp-admin…
 │   └── guide/      Screenshots used by the user guide and this README
 ├── config/         DB, session, env and one helper per feature (web_push.php, whatsapp_engine.php,
-│                   repeatgrow_connect.php, loyalty_engine.php…)
+│                   repeatgrow_connect.php, loyalty_engine.php, inventory_engine.php…)
 ├── controllers/    Business logic (menu, orders, staff, POS, KOT, coupons)
 ├── cron/           Timed jobs (WhatsApp, loyalty, scheduled orders, subscriptions)
 ├── database/       SQL schemas, migrations, demo seeds, full_database_dump.sql

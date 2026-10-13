@@ -146,9 +146,38 @@ try {
         .stat-card .stat-value { font-size: 22px; font-weight: 700; color: #1a1b1f; }
         
         .loading { text-align: center; padding: 40px; color: #999; }
+
+        /* Inside the dashboard (Menu › Add-ons, ?embed=1): no second title or back link, and the dashboard's look */
+        body.embedded { background: transparent; padding: 2px 2px 20px; }
+        body.embedded .back-link, body.embedded .header > div:first-child { display: none; }
+        body.embedded .header { justify-content: flex-end; margin-bottom: 14px; }
+        body.embedded .btn { height: 42px; padding: 0 16px; border-radius: 12px; justify-content: center; }
+        body.embedded .btn-primary { background: #2563eb; box-shadow: 0 6px 14px -8px rgba(37,99,235,.7); }
+        body.embedded .btn-primary:hover { background: #1d4ed8; transform: none; box-shadow: none; }
+        body.embedded .btn-secondary { background: #fff; border: 1.5px solid #e5e7eb; color: #111827; }
+        body.embedded .stats-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+        body.embedded .stat-card { border: 1px solid #e5e7eb; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); padding: 14px 16px; }
+        body.embedded .stat-card i { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #eff6ff; color: #2563eb; font-size: 18px; }
+        body.embedded .stat-card .stat-label { color: #6b7280; font-weight: 700; }
+        body.embedded .stat-card .stat-value { color: #111827 !important; font-size: 1.35rem; }
+        body.embedded .card { padding: 0; background: none; box-shadow: none; }
+        body.embedded .addons-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 0; }
+        body.embedded .addon-card { border: 1px solid #e5e7eb; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+        body.embedded .addon-card:hover { border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 16px 30px -22px rgba(17,24,39,.5); }
+        body.embedded .addon-img { height: 120px; }
+        body.embedded .addon-name { font-size: 15px; font-weight: 700; color: #111827; }
+        body.embedded .addon-price { color: #111827; font-size: 16px; font-weight: 800; }
+        body.embedded .addon-actions .btn { height: 34px; padding: 0 10px; border-radius: 10px; background: #fff; border: 1px solid #e5e7eb; color: #374151; font-size: 13px; }
+        body.embedded .addon-actions .btn-delete { color: #dc2626; }
+        body.embedded .addon-actions .btn:hover { background: #f9fafb; }
+        body.embedded .empty-state { border: 1.5px dashed #d1d5db; border-radius: 18px; background: #fff; }
+        body.embedded .modal-box { border-radius: 22px; }
+        body.embedded .form-group input[type="text"], body.embedded .form-group input[type="number"] { border: 1.5px solid #e5e7eb; border-radius: 10px; }
+        body.embedded .form-group input:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
+        @media (max-width: 600px) { body.embedded .stats-bar { grid-template-columns: 1fr 1fr 1fr; gap: 6px; } body.embedded .stat-card { padding: 10px; } body.embedded .stat-card i { display: none; } }
     </style>
 </head>
-<body>
+<body<?php echo !empty($_GET['embed']) ? ' class="embedded"' : ''; ?>>
     <div class="container">
         <a href="index.php" class="back-link"><i class="fa fa-arrow-left"></i> Back to Dashboard</a>
         
