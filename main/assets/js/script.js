@@ -7313,7 +7313,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Show full order details in modal (from Orders page)
   window.showFullOrderDetails = async function(orderId) {
     try {
-      const response = await fetch(`../api/get_order_details_by_id.php?id=${orderId}`);
+      const response = await rgFetchRetry(`../api/get_order_details_by_id.php?id=${orderId}`);
       const data = await response.json();
       
       if (data.success && data.order) {
@@ -8870,7 +8870,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, kotNumber) {
     let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', user_id: '', showBusinessId: false, businessIdLabel: '', businessIdNo: '' };
     try {
-      const infoRes = await fetch('../admin/get_session.php');
+      const infoRes = await rgFetchRetry('../admin/get_session.php');
       const infoData = await infoRes.json();
       if (infoData.success && infoData.data) {
         restaurantInfo.name = infoData.data.restaurant_name || restaurantInfo.name;
@@ -9198,7 +9198,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Fetch restaurant info for the receipt header (best-effort)
     let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', user_id: '' };
     try {
-      const infoRes = await fetch('../admin/get_session.php');
+      const infoRes = await rgFetchRetry('../admin/get_session.php');
       const infoData = await infoRes.json();
       if (infoData.success && infoData.data) {
         restaurantInfo.name = infoData.data.restaurant_name || restaurantInfo.name;
@@ -10364,6 +10364,35 @@ window.getThermalReceiptCSS = function (widthMMOverride) {
 // Sends raw ESC/POS bytes to a LAN thermal printer via the server-side
 // relay (browsers can't open raw TCP sockets themselves). Returns true on
 // success so callers can fall back to the browser print preview on failure.
+/**
+ * Fetch for printing: the live host sometimes answers a busy moment with an empty 503 / 502 / 429,
+ * which used to end in "Unexpected end of JSON input" and no print. Retries up to 3 times, and keeps
+ * the restaurant details (get_session.php) for 3 minutes so a print needs one request, not two.
+ * Returns a normal Response (so .json() / .ok / .status work as before).
+ */
+window.rgFetchRetry = async function (url, opts) {
+  const isSession = String(url).indexOf("get_session.php") !== -1;
+  const c = window._rgSessionCache;
+  if (isSession && c && Date.now() - c.at < 180000) return new Response(c.text, { status: 200, headers: { "Content-Type": "application/json" } });
+  let last = null;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await fetch(url, Object.assign({ cache: "no-store" }, opts || {}));
+      const text = await res.text();
+      const busy = res.status === 429 || res.status >= 500 || !text.trim();
+      if (!busy) {
+        if (isSession && res.ok) { try { if (JSON.parse(text).success) window._rgSessionCache = { at: Date.now(), text: text }; } catch (e) {} }
+        return new Response(text, { status: res.status, headers: { "Content-Type": "application/json" } });
+      }
+      last = new Error("Server busy (" + res.status + ")");
+    } catch (e) { last = e; }
+    await new Promise(r => setTimeout(r, 700 * (i + 1)));
+  }
+  // nothing came back: an old copy of the restaurant details is still better than a failed print
+  if (isSession && c) return new Response(c.text, { status: 200, headers: { "Content-Type": "application/json" } });
+  throw last || new Error("Request failed");
+};
+
 window.printViaNetwork = async function (escPosBuilder) {
   var settings = window.getPrinterSettings();
   if (!settings.networkIp) {
@@ -10799,7 +10828,7 @@ window.cancelKOT = cancelKOT;
 window.printKOT = async function(kotId, onClose) {
   try {
     // Fetch KOT data for specific KOT
-    const res = await fetch('../api/get_kot.php' + (kotId ? '?kot_id=' + kotId : ''));
+    const res = await rgFetchRetry('../api/get_kot.php' + (kotId ? '?kot_id=' + kotId : ''));
     const data = await res.json();
     if (!data.success) { showSweetAlert('Unable to load KOT'); return; }
     const kot = data.kot || (data.kots || []).find(k => String(k.id) === String(kotId));
@@ -10815,7 +10844,7 @@ window.printKOT = async function(kotId, onClose) {
     };
     
     try {
-      const infoRes = await fetch('../admin/get_session.php');
+      const infoRes = await rgFetchRetry('../admin/get_session.php');
       const infoData = await infoRes.json();
       if (infoData.success && infoData.data) {
         restaurantInfo.name = infoData.data.restaurant_name || restaurantInfo.name;
@@ -11081,7 +11110,7 @@ window.printKOT = async function(kotId, onClose) {
 window.printOrder = async function(orderId) {
   try {
     // Fetch order details
-    const response = await fetch(`../api/get_order_details_by_id.php?id=${orderId}`);
+    const response = await rgFetchRetry(`../api/get_order_details_by_id.php?id=${orderId}`);
     const data = await response.json();
     
     if (!data.success || !data.order) {
@@ -11104,7 +11133,7 @@ window.printOrder = async function(orderId) {
     };
     
     try {
-      const infoRes = await fetch('../admin/get_session.php');
+      const infoRes = await rgFetchRetry('../admin/get_session.php');
       const infoData = await infoRes.json();
       
       if (checkSessionExpired(infoRes, infoData)) return;
