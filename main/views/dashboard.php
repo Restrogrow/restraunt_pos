@@ -6224,6 +6224,7 @@ function toggleGatewayMode() {
                 <th>Address</th>
                 <th>Total Visits</th>
                 <th>Total Spent</th>
+                <th>Points</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -7229,6 +7230,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/new-order-popup.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/new-order-popup.js'); ?>" defer></script>
   <script src="../assets/js/reservations-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/reservations-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-studio.js'); ?>" defer></script>
+  <script src="../assets/js/pos-customer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-customer.js'); ?>" defer></script>
   <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
   <script src="../assets/js/rg-modal.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rg-modal.js'); ?>" defer></script>
   <script src="../assets/js/kot-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/kot-studio.js'); ?>" defer></script>

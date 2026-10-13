@@ -317,6 +317,32 @@ function handleCreateKOT($conn, $restaurant_id) {
     $posPaidAmount = isset($_POST['paidAmount']) && is_numeric($_POST['paidAmount']) ? (float)$_POST['paidAmount'] : null;
     $couponCode = strtoupper(trim($_POST['couponCode'] ?? ''));
 
+    // The customer picked in the POS (assets/js/pos-customer.js): their saved name / phone go on
+    // the order, and they can use points and their wallet on a paid bill (config/pos_loyalty.php)
+    $customerId = (int)($_POST['customerId'] ?? 0);
+    $redeemPoints = max(0, (int)($_POST['redeemPoints'] ?? 0));
+    $walletRequested = max(0, round((float)($_POST['walletAmount'] ?? 0), 2));
+    $posCustomer = null;
+    $isPaidUpFront = !empty($paymentMethod) && $paymentMethod !== 'Due';
+    if ($customerId > 0) {
+        require_once __DIR__ . '/../config/pos_loyalty.php';
+        posEnsureSchema($conn);   // before the transaction: it may create tables
+        $cst = $conn->prepare('SELECT * FROM customers WHERE id = ? AND restaurant_id = ?');
+        $cst->execute([$customerId, $restaurant_id]);
+        $posCustomer = $cst->fetch(PDO::FETCH_ASSOC) ?: null;
+        if (!$posCustomer) {
+            echo json_encode(['success' => false, 'message' => 'That customer was not found. Pick them again.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $customerName = (string)$posCustomer['customer_name'];
+        $customerPhone = (string)$posCustomer['phone'];
+        if ($customerEmail === '') $customerEmail = (string)($posCustomer['email'] ?? '');
+    }
+    if (($redeemPoints > 0 || $walletRequested > 0) && (!$posCustomer || !$isPaidUpFront)) {
+        echo json_encode(['success' => false, 'message' => 'Points and wallet can be used only for a customer, on a paid bill.'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
     // Validation
     if (empty($cartItems) || !is_array($cartItems)) {
         echo json_encode(['success' => false, 'message' => 'Cart is empty or invalid'], JSON_UNESCAPED_UNICODE);
@@ -343,6 +369,14 @@ function handleCreateKOT($conn, $restaurant_id) {
             echo json_encode(['success' => false, 'message' => 'Invalid or expired coupon code'], JSON_UNESCAPED_UNICODE);
             return;
         }
+        if (!empty($coupon['owner_phone'])) {
+            require_once __DIR__ . '/../config/order_abuse_guard.php';
+            $ownerOk = $customerPhone !== '' && (orderAbuseNormalizePhone($customerPhone) ?? $customerPhone) === (orderAbuseNormalizePhone((string)$coupon['owner_phone']) ?? $coupon['owner_phone']);
+            if (!$ownerOk) {
+                echo json_encode(['success' => false, 'message' => 'This code belongs to another customer. Pick the right customer first.'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        }
         if ((float)$coupon['minimum_order_amount'] > 0 && $subtotal < (float)$coupon['minimum_order_amount']) {
             echo json_encode(['success' => false, 'message' => 'Minimum order of ' . number_format((float)$coupon['minimum_order_amount'], 2) . ' required for this coupon'], JSON_UNESCAPED_UNICODE);
             return;
@@ -352,7 +386,25 @@ function handleCreateKOT($conn, $restaurant_id) {
             : (float)$coupon['discount_value'];
         if ($discountAmount > $subtotal) $discountAmount = $subtotal;
     }
-    $taxableAmount = max(0, round($subtotal - $discountAmount, 2));
+    $loyaltyPoints = 0;
+    $loyaltyDiscount = 0.0;
+    if ($redeemPoints > 0) {
+        $gs = getGrowthSettings($conn, $restaurant_id);
+        if (empty($gs['loyalty_enabled']) || loyaltyProgramType($gs) !== 'points') {
+            echo json_encode(['success' => false, 'message' => 'Points can’t be used: the points program is off.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $rate = (float)$gs['redeem_value_per_point'];
+        $maxUseful = $rate > 0 ? (int)floor(max(0, $subtotal - $discountAmount) / $rate) : 0;
+        $pts = min($redeemPoints, (int)$posCustomer['loyalty_points_balance'], $maxUseful);
+        if ($pts !== $redeemPoints || $pts < (int)$gs['min_redeem_points']) {
+            echo json_encode(['success' => false, 'message' => 'The points to use changed (balance ' . (int)$posCustomer['loyalty_points_balance'] . ', at least ' . (int)$gs['min_redeem_points'] . '). Pick the customer again.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $loyaltyPoints = $pts;
+        $loyaltyDiscount = round($pts * $rate, 2);
+    }
+    $taxableAmount = max(0, round($subtotal - $discountAmount - $loyaltyDiscount, 2));
 
     // Server-side tax validation
     $expectedTotal = round($taxableAmount + $tax, 2);
@@ -370,6 +422,18 @@ function handleCreateKOT($conn, $restaurant_id) {
     if (abs($tax - $expectedTax) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'Tax mismatch: calculated tax does not match expected value'], JSON_UNESCAPED_UNICODE);
         return;
+    }
+
+    $walletPaid = 0.0;
+    $cashMethod = $paymentMethod;
+    if ($walletRequested > 0) {
+        $wset = getWalletSettings($conn, $restaurant_id);
+        $walletPaid = round(min($walletRequested, loyaltyWalletBalance($conn, $restaurant_id, $customerPhone), $total), 2);
+        if (!$wset['enabled'] || abs($walletPaid - $walletRequested) > 0.01) {
+            echo json_encode(['success' => false, 'message' => 'The wallet balance changed. Pick the customer again.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        if ($paymentMethod !== 'Wallet') $paymentMethod .= '+Wallet';
     }
 
     // Generate unique KOT number with collision check
@@ -400,6 +464,8 @@ function handleCreateKOT($conn, $restaurant_id) {
             $couponNote = "[Coupon: " . $couponCode . " -" . number_format($discountAmount, 2) . "]";
             $kotNotes = !empty($kotNotes) ? ($kotNotes . "\n" . $couponNote) : $couponNote;
         }
+        if ($loyaltyPoints > 0) $kotNotes = trim($kotNotes . "\n[Points: " . $loyaltyPoints . " -" . number_format($loyaltyDiscount, 2) . "]");
+        if ($walletPaid > 0) $kotNotes = trim($kotNotes . "\n[Wallet: " . number_format($walletPaid, 2) . "]");
         
         // Check if customer columns exist in kot table
         $checkKotCols = $conn->query("SHOW COLUMNS FROM kot LIKE 'customer_phone'");
@@ -478,7 +544,6 @@ function handleCreateKOT($conn, $restaurant_id) {
         // forever whenever the ticket was never advanced. Same shape as
         // kot_operations.php's Ready handler: order 'Paid' + 'Ready', linked
         // back to the ticket via kot.order_id, payment row recorded.
-        $isPaidUpFront = !empty($paymentMethod) && $paymentMethod !== 'Due';
         if ($isPaidUpFront) {
             $orderNumber = generateOrderNumber($conn, $restaurant_id);
             $orderNotes = trim($kotNotes . (!empty($kotNotes) ? "\n" : '') . "[KOT: " . $kotNumber . "]");
@@ -506,7 +571,20 @@ function handleCreateKOT($conn, $restaurant_id) {
             if ($posPaymentStatus === 'Partially Paid' && $posPaidAmount !== null) {
                 $received = max(0, min($posPaidAmount, $total));
             }
-            $payStmt->execute([$restaurant_id, $orderId, $received, $paymentMethod]);
+            if ($walletPaid > 0) $payStmt->execute([$restaurant_id, $orderId, $walletPaid, 'Wallet']);
+            $restPaid = round($received - $walletPaid, 2);
+            if ($restPaid > 0 || $walletPaid <= 0) $payStmt->execute([$restaurant_id, $orderId, max(0, $restPaid), $cashMethod]);
+
+            if ($discountAmount > 0 || $walletPaid > 0) {
+                $conn->prepare('UPDATE orders SET coupon_code = ?, discount_amount = ?, wallet_paid = ? WHERE id = ?')
+                     ->execute([$discountAmount > 0 ? $couponCode : null, $discountAmount, $walletPaid, $orderId]);
+            }
+            if ($posCustomer) {
+                if ($loyaltyPoints > 0) redeemLoyaltyPoints($conn, $restaurant_id, $customerId, $loyaltyPoints, $orderId);
+                if ($walletPaid > 0) walletApply($conn, $restaurant_id, $customerPhone, -$walletPaid, 'spend', 'Paid at the counter, order ' . $orderNumber, $orderId);
+                $conn->prepare('UPDATE customers SET total_visits = total_visits + 1, total_spent = total_spent + ?, last_visit_date = CURDATE() WHERE id = ?')
+                     ->execute([$total, $customerId]);
+            }
 
             // Link the ticket to the order it produced, so the kitchen's later
             // Ready→order-creation step sees an order already exists and skips
@@ -532,6 +610,14 @@ function handleCreateKOT($conn, $restaurant_id) {
             }
         }
 
+        $loyaltyOut = null;
+        if ($posCustomer && $isPaidUpFront) {
+            $earned = $posPaymentStatus === 'Paid' ? posCreditOnPayment($conn, $restaurant_id, $orderId) : null;
+            $cst->execute([$customerId, $restaurant_id]);
+            $loyaltyOut = ['earned' => $earned, 'redeemed_points' => $loyaltyPoints, 'points_discount' => $loyaltyDiscount, 'wallet_paid' => $walletPaid,
+                'customer' => posCustomerSummary($conn, $restaurant_id, $cst->fetch(PDO::FETCH_ASSOC))];
+        }
+
         $resp = [
             'success' => true,
             'message' => $isPaidUpFront
@@ -540,6 +626,7 @@ function handleCreateKOT($conn, $restaurant_id) {
             'kot_number' => $kotNumber,
             'kot_id' => $kotId,
             'discount_amount' => $discountAmount,
+            'loyalty' => $loyaltyOut,
         ];
         if ($isPaidUpFront) {
             $resp['order_id'] = $orderId;

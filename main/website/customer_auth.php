@@ -40,6 +40,7 @@ try {
             case 'resetPassword': applyAuthRateLimit('resetPwd'); break;
             case 'forgotPasswordOtp': applyAuthRateLimit('forgotPwd'); break;
             case 'resetPasswordOtp': applyAuthRateLimit('resetPwd'); break;
+            case 'claimInfo': case 'claim': applyAuthRateLimit('signup'); break;
         }
     }
 
@@ -54,6 +55,8 @@ try {
         case 'resetPassword': handleCustomerResetPassword($pdo); break;
         case 'forgotPasswordOtp': handleCustomerForgotPasswordOtp($pdo); break;
         case 'resetPasswordOtp': handleCustomerResetPasswordOtp($pdo); break;
+        case 'claimInfo': handleCustomerClaimInfo($pdo); break;
+        case 'claim': handleCustomerClaim($pdo); break;
         default: throw new Exception('Unknown action');
     }
 } catch (Exception $e) {
@@ -155,6 +158,46 @@ function handleCustomerSignup($pdo) {
         'message' => 'Account created!',
         'customer' => ['name' => $name, 'phone' => $phone, 'email' => $email]
     ]);
+}
+
+// ── Complete an account from the restaurant's QR code ──
+// The restaurant made a customer at the counter (POS) or in Customers and showed a QR code with a
+// one-time code (config/pos_loyalty.php). Scanning it opens login?claim=CODE: the customer sees
+// their name and points, sets an email and password, and is logged in with their history and points.
+function claimLoad($pdo) {
+    require_once __DIR__ . '/../config/pos_loyalty.php';
+    posEnsureSchema($pdo);
+    $c = posFindClaim($pdo, requireRestaurantId(), strtolower(trim((string)($_POST['code'] ?? ''))));
+    if (!$c) throw new Exception('This link has expired or was already used. Ask the restaurant for a new QR code, or sign up with your phone number.');
+    return $c;
+}
+function handleCustomerClaimInfo($pdo) {
+    $c = claimLoad($pdo);
+    $phone = (string)$c['phone'];
+    $masked = strlen($phone) > 4 ? str_repeat('•', strlen($phone) - 4) . substr($phone, -4) : $phone;
+    $s = getGrowthSettings($pdo, (string)$c['restaurant_id']);
+    echo json_encode(['success' => true, 'name' => $c['customer_name'], 'phone' => $masked, 'email' => (string)($c['email'] ?? ''),
+        'has_account' => !empty($c['password_hash']), 'points' => (int)$c['loyalty_points_balance'], 'stamps' => (int)($c['stamps'] ?? 0),
+        'program' => !empty($s['loyalty_enabled']) ? loyaltyProgramType($s) : '', 'visits' => (int)$c['total_visits']]);
+}
+function handleCustomerClaim($pdo) {
+    startSecureSession();
+    $c = claimLoad($pdo);
+    if (!empty($c['password_hash'])) throw new Exception('You already have an account. Log in with your phone number and password.');
+    $email = trim((string)($_POST['email'] ?? ''));
+    $password = (string)($_POST['password'] ?? '');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new Exception('Enter a valid email (used to reset your password).');
+    if (strlen($password) < 6) throw new Exception('Password must be at least 6 characters long');
+    if ($password !== (string)($_POST['confirmPassword'] ?? '')) throw new Exception('Passwords do not match');
+    $pdo->beginTransaction();
+    $used = $pdo->prepare('UPDATE customer_claim_codes SET used_at = NOW() WHERE id = ? AND used_at IS NULL');
+    $used->execute([(int)$c['claim_id']]);
+    if (!$used->rowCount()) { $pdo->rollBack(); throw new Exception('This link was already used.'); }
+    $pdo->prepare('UPDATE customers SET email = ?, password_hash = ?, updated_at = NOW() WHERE id = ? AND password_hash IS NULL')
+        ->execute([$email, password_hash($password, PASSWORD_DEFAULT), (int)$c['id']]);
+    $pdo->commit();
+    startCustomerSession($pdo, ['id' => (int)$c['id'], 'restaurant_id' => $c['restaurant_id']], !empty($_POST['remember']));
+    echo json_encode(['success' => true, 'message' => 'Your account is ready!', 'customer' => ['name' => $c['customer_name'], 'phone' => $c['phone'], 'email' => $email]]);
 }
 
 function handleCustomerLogin($pdo) {

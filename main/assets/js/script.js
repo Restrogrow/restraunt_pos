@@ -7092,13 +7092,18 @@ document.addEventListener("DOMContentLoaded", () => {
           <td class="avatar-cell">
             <div class="avatar-small">${initials(customer.customer_name)}</div>
           </td>
-          <td>${escapeHtml(customer.customer_name)}</td>
+          <td>${escapeHtml(customer.customer_name)}${customer.has_account ? ' <span class="pc-tag" title="Has a website account">Online</span>' : ''}</td>
           <td>${escapeHtml(customer.phone || '-')}</td>
           <td>${escapeHtml(customer.email || '-')}</td>
           <td>${escapeHtml(customer.address || '-')}</td>
           <td>${customer.total_visits || 0}</td>
           <td>${totalSpent}</td>
+          <td>${parseInt(customer.loyalty_points_balance, 10) > 0 ? parseInt(customer.loyalty_points_balance, 10).toLocaleString('en-IN') : '-'}</td>
           <td class="action-cell">
+            ${customer.id && /^\d+$/.test(String(customer.id)) && !customer.has_account && customer.phone ? `<button class="btn-action-small" title="Show a QR code: the customer scans it to make their website account with these points" onclick="rgCustomerAccountQR(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/"/g, '&quot;')})">
+              <span class="material-symbols-rounded">qr_code_2</span>
+              <span>Account QR</span>
+            </button>` : ''}
             <button class="btn-action-small edit-btn" onclick="editCustomer(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/"/g, '&quot;')}, ${JSON.stringify(customer.phone || '').replace(/"/g, '&quot;')}, ${JSON.stringify(customer.email || '').replace(/"/g, '&quot;')})">
               <span class="material-symbols-rounded">edit</span>
               <span>Update</span>
@@ -8385,8 +8390,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function updatePOSCartSummary() {
     const subtotal = posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
-    const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
-    const total = showGst ? (subtotal + tax) : subtotal;
+    // the customer's reward code and points come off before tax (assets/js/pos-customer.js)
+    const pcPrice = window.rgPosCustomer ? window.rgPosCustomer.pricing(subtotal) : null;
+    const taxable = Math.max(0, subtotal - (pcPrice ? pcPrice.coupon + pcPrice.pointsDiscount : 0));
+    const tax = showGst ? taxable * ((window.taxPercent || 5) / 100) : 0;
+    const total = taxable + tax;
+    if (window.rgPosCustomer) window.rgPosCustomer.paintSummary(pcPrice, total);
 
     // Update desktop cart summary
     const cartSubtotalEl = document.getElementById("cartSubtotal");
@@ -8414,6 +8423,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (mobilePosBillTotalEl) mobilePosBillTotalEl.textContent = formatCurrency(total);
   }
   
+  window.updatePOSCartSummaryHook = updatePOSCartSummary;
+
   // Toggle mobile bill details (POS page)
   window.toggleMobileBillDetails = function() {
     const details = document.getElementById('mobilePosBillDetails');
@@ -8447,6 +8458,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const updateCartFn = typeof updatePOSCart !== 'undefined' ? updatePOSCart : (window.updateWaiterPOSCart || window.updatePOSCart || (() => {}));
       
       if (cart.length > 0 && await showSweetConfirm("Are you sure you want to clear the cart?", 'Clear Cart')) {
+        if (window.rgPosCustomer) window.rgPosCustomer.reset();
         // Clear cart - support both local and window.posCart
         if (typeof posCart !== 'undefined') {
           posCart = [];
@@ -8526,6 +8538,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
           showMsg(result.message + " - Order #" + result.order_number, "success");
           if (window.refreshHeldCount) window.refreshHeldCount();
+          if (window.rgPosCustomer) window.rgPosCustomer.reset();
           // Clear cart - support both local and window.posCart
           if (typeof posCart !== 'undefined') {
             posCart = [];
@@ -8868,6 +8881,19 @@ document.addEventListener("DOMContentLoaded", () => {
   // just using the new split-payment (Cash/UPI/Card) modal to pick the method.
 
   // Builds the customer-facing bill receipt HTML from cart + payment breakdown
+  // "You earned 120 points · Balance 1,340" for the bill (POS sales with a customer)
+  function billLoyaltyLine(payResult) {
+    const L = payResult && payResult.loyalty;
+    if (!L || !L.customer) return '';
+    const e = L.earned || {}, c = L.customer, bits = [];
+    if (e.points) bits.push('You earned ' + e.points + ' points');
+    if (e.stamp) bits.push('Stamp added: ' + c.loyalty.stamps + ' of ' + c.loyalty.stamp_goal);
+    if (e.cashback) bits.push('Cashback ' + (window.globalCurrencySymbol || '') + Number(e.cashback).toFixed(2));
+    if (e.reward) bits.push('Reward: ' + e.reward.label + ' (code ' + e.reward.code + ')');
+    if (c.loyalty.enabled && c.loyalty.type === 'points') bits.push('Balance ' + c.loyalty.points + ' points');
+    return bits.join(' · ');
+  }
+
   async function buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, kotNumber) {
     let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', user_id: '', showBusinessId: false, businessIdLabel: '', businessIdNo: '' };
     try {
@@ -8959,6 +8985,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="info-grid">
           <div class="info-item"><span class="info-label">TABLE</span><span class="info-value">${escapeHtml(tableLabel)}</span></div>
           <div class="info-item"><span class="info-label">STATUS</span><span class="info-value">${escapeHtml(payResult.paymentStatus)}</span></div>
+          ${payResult.customer ? `<div class="info-item" style="grid-column:1/-1;"><span class="info-label">CUSTOMER</span><span class="info-value">${escapeHtml(payResult.customer.name)} · ${escapeHtml(payResult.customer.phone)}</span></div>` : ''}
         </div>
       </div>
 
@@ -8969,8 +8996,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       <div class="totals">
         <div><span>Subtotal</span><span>${currency}${subtotal.toFixed(2)}</span></div>
-        ${showGst ? `<div><span>Tax (5%)</span><span>${currency}${tax.toFixed(2)}</span></div>` : ''}
+        ${(payResult.discounts || []).map(([l, a]) => `<div><span>${escapeHtml(l)}</span><span>-${currency}${a.toFixed(2)}</span></div>`).join('')}
+        ${showGst ? `<div><span>${escapeHtml(window.taxName || 'Tax')} (${window.taxPercent || 5}%)</span><span>${currency}${tax.toFixed(2)}</span></div>` : ''}
         <div class="grand"><span>Total</span><span>${currency}${total.toFixed(2)}</span></div>
+        ${payResult.walletPaid > 0 ? `<div><span>Paid from wallet</span><span>-${currency}${payResult.walletPaid.toFixed(2)}</span></div>` : ''}
       </div>
 
       <div class="pay-box">
@@ -8979,6 +9008,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ${payResult.dueAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;color:#b45309;font-weight:700;"><span>Due</span><span>${currency}${payResult.dueAmount.toFixed(2)}</span></div>` : ''}
       </div>
 
+      ${billLoyaltyLine(payResult) ? `<div style="margin-top:10px;padding:8px;border:1px dashed #059669;text-align:center;font-size:12px;font-weight:700;color:#065f46;">${escapeHtml(billLoyaltyLine(payResult))}</div>` : ''}
       <div class="footer">
         <div class="footer-text">Thank you!</div>
         <div class="footer-text">Powered by Restro Grow</div>
@@ -8988,8 +9018,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const billPrinterSettings = window.getPrinterSettings();
     if (billPrinterSettings.mode === 'network') {
       const escTotals = [['Subtotal', currency + subtotal.toFixed(2)]];
-      if (showGst) escTotals.push(['Tax (5%)', currency + tax.toFixed(2)]);
+      (payResult.discounts || []).forEach(([l, a]) => escTotals.push([l, '-' + currency + a.toFixed(2)]));
+      if (showGst) escTotals.push([(window.taxName || 'Tax') + ' (' + (window.taxPercent || 5) + '%)', currency + tax.toFixed(2)]);
       escTotals.push(['TOTAL', currency + total.toFixed(2), true]);
+      if (payResult.walletPaid > 0) escTotals.push(['Paid from wallet', '-' + currency + payResult.walletPaid.toFixed(2)]);
 
       const escBuilder = window.buildReceiptEscPos({
         charWidth: window.getPrinterCharWidth(billPrinterSettings.widthMM),
@@ -9008,7 +9040,7 @@ document.addEventListener("DOMContentLoaded", () => {
           amount: currency + (parseFloat(it.price) * it.quantity).toFixed(2)
         })),
         totals: escTotals,
-        footerLines: ['Thank you!', 'Powered by Restro Grow']
+        footerLines: (billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : []).concat(['Thank you!', 'Powered by Restro Grow'])
       });
       const sent = await window.printViaNetwork(escBuilder);
       if (sent) return null;
@@ -9030,8 +9062,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
-    const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
-    const total = subtotal + tax;
+    // customer picked in the cart: reward code + points off before tax, wallet as part of the payment
+    const pcPrice = window.rgPosCustomer ? window.rgPosCustomer.pricing(subtotal) : null;
+    const taxable = Math.max(0, subtotal - (pcPrice ? pcPrice.coupon + pcPrice.pointsDiscount : 0));
+    const tax = showGst ? taxable * ((window.taxPercent || 5) / 100) : 0;
+    const total = taxable + tax;
+    const pcf = window.rgPosCustomer ? window.rgPosCustomer.fields(subtotal, total) : null;
+    const walletPart = pcf ? pcf.walletAmount : 0;
     const selectPosTable = document.getElementById("selectPosTable");
     const selectedTable = selectPosTable ? selectPosTable.value : '';
     const isTakeaway = !selectedTable;
@@ -9039,8 +9076,11 @@ document.addEventListener("DOMContentLoaded", () => {
       ? selectPosTable.options[selectPosTable.selectedIndex].text
       : 'Takeaway';
 
-    // Show the split pay-method modal directly - no customer details prompt
-    const payResult = await showSplitPaymentModal(total);
+    // The wallet pays first; the payment window takes the rest (nothing left: no window)
+    const toCollect = Math.round((total - walletPart) * 100) / 100;
+    const payResult = toCollect <= 0.004
+      ? { paymentMethod: 'Wallet', paymentStatus: 'Paid', amounts: {}, dueAmount: 0, cash: 0, upi: 0, card: 0, returnAmount: 0 }
+      : await showSplitPaymentModal(toCollect);
     if (!payResult) {
       return; // User cancelled - cart untouched
     }
@@ -9050,16 +9090,23 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append('action', 'create_kot');
     formData.append('tableId', selectedTable || '');
     formData.append('orderType', isTakeaway ? 'Takeaway' : 'Dine-in');
-    formData.append('customerName', isTakeaway ? 'Takeaway' : 'Table Customer');
+    formData.append('customerName', pcf ? pcf.customerName : (isTakeaway ? 'Takeaway' : 'Table Customer'));
+    if (pcf) {
+      formData.append('customerId', pcf.customerId);
+      formData.append('customerPhone', pcf.customerPhone);
+      if (pcf.couponCode) formData.append('couponCode', pcf.couponCode);
+      if (pcf.redeemPoints) formData.append('redeemPoints', pcf.redeemPoints);
+      if (walletPart > 0) formData.append('walletAmount', walletPart.toFixed(2));
+    }
     formData.append('paymentMethod', payResult.paymentMethod);
     formData.append('paymentStatus', payResult.paymentStatus || 'Paid');
     formData.append('paidAmount', Math.max(0, total - (parseFloat(payResult.dueAmount) || 0)).toFixed(2));
     // Built from whichever payment methods were actually used (built-in or
     // custom) instead of a hardcoded Cash/UPI/Card list, so a custom method
     // like "Wallet" shows up correctly in the KOT/bill notes too.
-    const paidBreakdown = Object.keys(payResult.amounts || {})
+    const paidBreakdown = (walletPart > 0 ? [`Wallet: ${currency}${walletPart.toFixed(2)}`] : []).concat(Object.keys(payResult.amounts || {})
       .filter(name => payResult.amounts[name] > 0)
-      .map(name => `${name}: ${currency}${payResult.amounts[name].toFixed(2)}`)
+      .map(name => `${name}: ${currency}${payResult.amounts[name].toFixed(2)}`))
       .join(', ');
     formData.append('notes', `${paidBreakdown}${payResult.dueAmount > 0 ? `${paidBreakdown ? ', ' : ''}Due: ${currency}${payResult.dueAmount.toFixed(2)}` : ''}`);
     formData.append('cartItems', JSON.stringify(cart));
@@ -9106,6 +9153,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (result.success) {
         // Snapshot the cart for the bill preview before clearing it
         const cartSnapshot = cart.slice();
+        // what the bill shows about the customer, discounts and loyalty
+        payResult.discounts = [];
+        if (pcPrice && pcPrice.coupon > 0) payResult.discounts.push(['Reward ' + pcPrice.couponCode, pcPrice.coupon]);
+        if (pcPrice && pcPrice.pointsDiscount > 0) payResult.discounts.push([pcPrice.points + ' points', pcPrice.pointsDiscount]);
+        payResult.walletPaid = walletPart;
+        payResult.customer = pcf ? { name: pcf.customerName, phone: pcf.customerPhone } : null;
+        payResult.loyalty = result.loyalty || null;
+        if (window.rgPosCustomer) window.rgPosCustomer.afterSale(result.loyalty);
         const kotWasAlreadySent = !!window._kotSentForCurrentOrder;
 
         // Clear cart - support both local and window.posCart

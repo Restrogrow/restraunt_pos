@@ -230,6 +230,13 @@ try {
         }
     }
 
+    // never send password hashes (or remember tokens) to the browser: just whether there's a website account
+    foreach ($allCustomers as &$row) {
+        $row['has_account'] = !empty($row['password_hash']);
+        unset($row['password_hash'], $row['remember_token'], $row['signup_ip']);
+    }
+    unset($row);
+
     echo json_encode(['success' => true, 'data' => $allCustomers, 'total_count' => $totalCount, 'total_pages' => $totalPages, 'page' => $page, 'limit' => $limit]);
 } catch (PDOException $e) {
     error_log("PDO Error in get_customers.php: " . $e->getMessage());

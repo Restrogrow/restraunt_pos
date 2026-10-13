@@ -232,7 +232,13 @@ body { background: #eef0f4; }
 .auth-perk { padding: 12px 6px; border-radius: 14px; background: #f9fafb; text-align: center; font-size: 11px; font-weight: 600; color: #4b5563; line-height: 1.3; }
 .auth-perk i { display: block; margin-bottom: 6px; font-size: 16px; color: var(--primary-red); }
 .auth-form-error { border-radius: 12px; }
-#loginForm, #signupForm { animation: authFade 0.35s ease; }
+#loginForm, #signupForm, #claimForm { animation: authFade 0.35s ease; }
+.claim-card { margin-bottom: 18px; padding: 16px; border-radius: 16px; background: #fff7ed; border: 1px solid #fed7aa; color: #7c2d12; font-size: 14px; line-height: 1.5; }
+.claim-card b { color: #111827; }
+.claim-card .claim-pts { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px; border-radius: 999px; background: #fff; color: #c2410c; font-weight: 700; font-size: 13px; }
+.claim-card.bad { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.claim-note { margin-top: 14px; color: #6b7280; font-size: 12px; text-align: center; line-height: 1.5; }
+body.claim-mode #authTabs, body.claim-mode #loginForm, body.claim-mode #signupForm, body.claim-mode .auth-divider, body.claim-mode .btn-guest, body.claim-mode .auth-perks { display: none !important; }
 @keyframes authUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes authFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes authFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
@@ -257,6 +263,32 @@ body { background: #eef0f4; }
     </div>
 
     <div class="auth-form-error" id="authError"></div>
+
+    <!-- Complete your account (QR from the restaurant: ?claim=CODE) -->
+    <form id="claimForm" class="hidden">
+      <div class="claim-card" id="claimCard"><i class="fa-solid fa-spinner fa-spin"></i> Checking your link…</div>
+      <div id="claimFields" class="hidden">
+        <div class="form-group">
+          <label for="claimEmail">Email address</label>
+          <div class="field"><i class="fa-regular fa-envelope"></i>
+            <input type="email" id="claimEmail" placeholder="your@email.com" autocomplete="email" required></div>
+        </div>
+        <div class="form-group">
+          <label for="claimPassword">Choose a password</label>
+          <div class="field"><i class="fa-solid fa-lock"></i>
+            <input type="password" id="claimPassword" placeholder="At least 6 characters" autocomplete="new-password" required>
+            <button type="button" class="eye" onclick="togglePw('claimPassword', this)" aria-label="Show password"><i class="fa-regular fa-eye"></i></button></div>
+        </div>
+        <div class="form-group">
+          <label for="claimConfirm">Confirm password</label>
+          <div class="field"><i class="fa-solid fa-lock"></i>
+            <input type="password" id="claimConfirm" placeholder="Re-enter your password" autocomplete="new-password" required></div>
+        </div>
+        <div class="remember-row"><label><input type="checkbox" id="claimRemember" checked> Remember me</label></div>
+        <button type="submit" class="btn-auth-submit" id="claimSubmitBtn">Finish my account <i class="fa fa-arrow-right"></i></button>
+      </div>
+      <p class="claim-note">You’ll log in with your phone number and this password. Your points and order history stay with you.</p>
+    </form>
 
     <!-- Login Form -->
     <form id="loginForm">
@@ -369,6 +401,45 @@ if (!empty($_GET['table'])) {
 ?>
 window.redirectUrl = <?php echo json_encode($redirectTargetUrl, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.alreadyLoggedIn = <?php echo $logged_in_customer ? 'true' : 'false'; ?>;
+window.claimCode = <?php echo json_encode(preg_match('/^[a-f0-9]{32}$/', strtolower((string)($_GET['claim'] ?? ''))) ? strtolower($_GET['claim']) : '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.claimRedirect = <?php echo json_encode(restaurantPageUrl('loyalty'), JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+
+// The restaurant's QR code: show who this is, then set an email and password
+if (window.claimCode && !window.alreadyLoggedIn) (function () {
+  document.body.classList.add('claim-mode');
+  document.getElementById('claimForm').classList.remove('hidden');
+  document.getElementById('authTitle').textContent = 'Finish your account';
+  document.getElementById('authSub').textContent = 'Your points and visits are already saved. Add an email and password to use them online.';
+  var card = document.getElementById('claimCard');
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var fd = new FormData(); fd.append('action', 'claimInfo'); fd.append('restaurant_id', window.restaurantId); fd.append('code', window.claimCode);
+  fetch('customer_auth.php', { method: 'POST', body: fd }).then(function (r) { return r.json(); }).then(function (d) {
+    if (!d.success) { card.className = 'claim-card bad'; card.textContent = d.message || 'This link does not work any more.'; return; }
+    if (d.has_account) { card.innerHTML = 'You already have an account, <b>' + esc(d.name) + '</b>. Log in with your phone number.'; document.body.classList.remove('claim-mode'); return; }
+    var perk = d.program === 'points' ? d.points.toLocaleString() + ' points waiting' : d.program === 'stamps' ? d.stamps + ' stamps on your card' : d.visits + ' visit' + (d.visits === 1 ? '' : 's') + ' saved';
+    card.innerHTML = 'Hi <b>' + esc(d.name) + '</b>! This account is for <b>' + esc(d.phone) + '</b>.<br><span class="claim-pts"><i class="fa-solid fa-gift"></i>' + esc(perk) + '</span>';
+    if (d.email) document.getElementById('claimEmail').value = d.email;
+    document.getElementById('claimFields').classList.remove('hidden');
+  }).catch(function () { card.className = 'claim-card bad'; card.textContent = 'Could not check the link. Please try again.'; });
+  document.getElementById('claimForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var btn = document.getElementById('claimSubmitBtn'), pw = document.getElementById('claimPassword').value;
+    if (pw.length < 6) { showAuthError('Password must be at least 6 characters'); return; }
+    if (pw !== document.getElementById('claimConfirm').value) { showAuthError('Passwords do not match'); return; }
+    var f = new FormData(); f.append('action', 'claim'); f.append('restaurant_id', window.restaurantId); f.append('code', window.claimCode);
+    f.append('email', document.getElementById('claimEmail').value.trim()); f.append('password', pw); f.append('confirmPassword', document.getElementById('claimConfirm').value);
+    if (document.getElementById('claimRemember').checked) f.append('remember', '1');
+    btn.disabled = true;
+    fetch('customer_auth.php', { method: 'POST', body: f }).then(function (r) { return r.json(); }).then(function (d) {
+      btn.disabled = false;
+      if (!d.success) { showAuthError(d.message || 'Could not finish the account.'); return; }
+      try { if (d.customer) localStorage.setItem('customerDetails', JSON.stringify({ name: d.customer.name, phone: d.customer.phone, email: d.customer.email })); } catch (er) {}
+      card.className = 'claim-card'; card.innerHTML = '<b>All set!</b> Taking you to your rewards…';
+      document.getElementById('claimFields').classList.add('hidden');
+      setTimeout(function () { window.location.href = window.claimRedirect; }, 700);
+    }).catch(function () { btn.disabled = false; showAuthError('Network error. Please try again.'); });
+  });
+})();
 
 if (window.alreadyLoggedIn) {
   window.location.href = window.redirectUrl;
