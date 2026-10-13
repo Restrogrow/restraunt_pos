@@ -1087,3 +1087,34 @@ html:has(.page.mk.active), body:has(.page.mk.active), .main-content:has(.page.mk
 .page.lg .profile-header-card { background: radial-gradient(600px 220px at 100% 0, rgba(37,99,235,.35), transparent 70%), linear-gradient(135deg, #111827, #1f2937); border-radius: var(--sx-r-lg); box-shadow: 0 18px 40px -28px rgba(17,24,39,.8); }
 .page.lg .profile-highlight-card, .page.lg .profile-card-modern { border: 1px solid var(--sx-line); border-radius: var(--sx-r-lg); box-shadow: var(--sx-shadow); }
 .page.lg .profile-card-modern .material-symbols-rounded { color: var(--sx-accent); }
+
+/* ── alignment polish ── */
+/* profile: icon beside each password label, not above it */
+.page.lg #changePasswordForm .form-group > label { display: flex; align-items: center; gap: 6px; }
+.page.lg #changePasswordForm .form-group > label .material-symbols-rounded { font-size: 18px; }
+/* orders / KOT: short cards keep their own height; title on its own line, badges under it */
+.page.lg .orders-list, .page.lg .kot-list { align-items: start; }
+.page.lg .order-header { flex-direction: column; align-items: flex-start; }
+.page.lg .order-header h3 { overflow-wrap: anywhere; }
+.page.lg .order-badges { justify-content: flex-start; }
+.page.lg .kot-items { margin: 12px 0 0 !important; }
+.page.lg .kot-items h4 { margin: 0 0 8px !important; color: var(--sx-muted) !important; font-size: .72rem !important; letter-spacing: .04em; }
+.page.lg .kot-item { padding: 10px 12px !important; }
+/* reservations: icon beside its text on every screen size */
+.page.lg .reservation-card > div:nth-child(2), .page.lg .reservation-card > div:nth-child(3) > div { flex-direction: row !important; align-items: center !important; }
+.page.lg .reservation-card > div:last-child { flex-direction: row !important; align-items: center; }
+.page.lg .reservation-card > div:last-child select { flex: 1; min-width: 0; }
+.page.lg .reservation-card > div:last-child button { flex: 0 0 auto; width: auto !important; }
+/* menu items: buttons at the bottom of every card */
+.page.lg .menu-item-card { display: flex; flex-direction: column; }
+.page.lg .menu-item-card .item-details { flex: 1; }
+/* marketing calendar: both buttons fit */
+.mk .campaign-card-actions { flex-wrap: wrap; }
+.mk .campaign-card-actions .btn { flex: 1 1 130px; min-width: 0; padding: 0 10px; font-size: .84rem; white-space: nowrap; }
+/* POS cart header buttons on one line */
+.btn-clear-cart, #holdOrderBtn, .pos-cart-header .btn { white-space: nowrap; }
+/* notes with an icon: icon on the first line of the text */
+#policyStatusLabel { display: inline-flex; align-items: flex-start; gap: 6px; }
+#policyStatusLabel .material-symbols-rounded { margin-top: 1px; }
+.page.lg .reservation-card > div:nth-child(2), .page.lg .reservation-card > div:nth-child(3) > div { flex-wrap: nowrap !important; }
+.page.lg .reservation-card > div:nth-child(2) > div, .page.lg .reservation-card > div:nth-child(3) > div > div { flex: 1 1 auto !important; min-width: 0; overflow-wrap: anywhere; }

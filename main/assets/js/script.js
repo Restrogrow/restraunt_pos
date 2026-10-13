@@ -10165,7 +10165,7 @@ function displayKOTOrders(kots) {
             ${kotPaymentMethod}
           </span>
           <p style="margin: 5px 0; color: #6b7280; font-size: 0.9rem;">${kot.item_count || (kot.items?.length || 0)} Item(s)</p>
-          <p style="margin: 5px 0; color: #6b7280; font-size: 0.85rem;">Table: ${kot.table_number || 'Takeaway'} | ${kot.area_name || ''}</p>
+          <p style="margin: 5px 0; color: #6b7280; font-size: 0.85rem;">Table: ${kot.table_number || 'Takeaway'}${kot.area_name ? ' · ' + escapeHtml(kot.area_name) : ''}</p>
           ${kot.customer_name && kot.customer_name !== 'Table Customer' && kot.customer_name !== 'Takeaway' ? `
             <div style="margin-top: 8px; padding: 8px; background: #f3f4f6; border-radius: 6px;">
               <p style="margin: 2px 0; color: #1f2937; font-size: 0.85rem; font-weight: 600;">Customer: ${escapeHtml(kot.customer_name)}</p>
