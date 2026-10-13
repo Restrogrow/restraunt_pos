@@ -182,7 +182,7 @@ function renderTiersTable(tiers) {
     <tr>
       <td>${escapeHtml(t.tier_name)}</td>
       <td>${cur}${Number(t.min_total_spent).toFixed(2)}</td>
-      <td><span class="material-symbols-rounded" style="font-size:18px;vertical-align:middle;color:#d97706;">${escapeHtml(t.icon || 'star')}</span></td>
+      <td><span class="material-symbols-rounded" style="font-size:18px;vertical-align:middle;color:#d97706;">${escapeHtml(({ medal: 'military_tech', gem: 'diamond', award: 'workspace_premium', fire: 'local_fire_department', heart: 'favorite' })[t.icon] || t.icon || 'star')}</span></td>
       <td>${t.sort_order ?? 0}</td>
       <td>${Number(t.points_multiplier ?? 1).toFixed(2)}x</td>
       <td>

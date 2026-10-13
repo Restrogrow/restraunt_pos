@@ -97,12 +97,13 @@ function money($n, $c) { return $c . number_format($n, $n == floor($n) ? 0 : 2);
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+  <script src="../assets/js/quiet-console.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/quiet-console.js'); ?>"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>All Branches — RestroGrow</title>
 <link rel="icon" type="image/png" href="../assets/images/logo-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0">
+<link rel="stylesheet" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>">
 <style>
   :root {
     --brand: #ff5a1f; --brand-soft: #fff1ea; --ink: #1f2937; --muted: #6b7280;

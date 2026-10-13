@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+  <script src="../assets/js/quiet-console.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/quiet-console.js'); ?>"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reset Password - Restro Grow | Restaurant Management System</title>
     <meta name="description" content="Reset your Restro Grow account password. Enter your new password to regain access to your restaurant management dashboard.">
@@ -10,7 +11,7 @@
     <link rel="icon" type="image/png" href="../assets/images/logo-192.png">
     <link rel="apple-touch-icon" href="../assets/images/logo-192.png">
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0">
+    <link rel="stylesheet" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>">
     <style>
         * {
             box-sizing: border-box;
