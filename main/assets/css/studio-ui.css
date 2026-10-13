@@ -1931,3 +1931,64 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ot-chip.zero em { background: #f3f4f6 !important; color: #9ca3af !important; }
 .ot-chip.on { border-color: #111827; background: #111827; color: #fff; }
 .ot-chip.on em { background: rgba(255,255,255,.22) !important; color: #fff !important; }
+
+/* ── one order card (assets/js/order-card.js): same parts in the same places, buttons at the bottom ── */
+.page.lg .orders-list { align-items: stretch; }
+.page.lg .order-card.oc { --oc: #9ca3af; --oc-bg: #f3f4f6; --oc-fg: #374151; gap: 10px; padding: 14px 16px; border-left: 4px solid var(--oc); }
+.page.lg .order-card.oc.oc-amber { --oc: #f59e0b; --oc-bg: #fef3c7; --oc-fg: #92400e; }
+.page.lg .order-card.oc.oc-violet { --oc: #8b5cf6; --oc-bg: #ede9fe; --oc-fg: #5b21b6; }
+.page.lg .order-card.oc.oc-blue { --oc: #3b82f6; --oc-bg: #dbeafe; --oc-fg: #1e40af; }
+.page.lg .order-card.oc.oc-orange { --oc: #f97316; --oc-bg: #ffedd5; --oc-fg: #9a3412; }
+.page.lg .order-card.oc.oc-green { --oc: #22c55e; --oc-bg: #dcfce7; --oc-fg: #166534; }
+.page.lg .order-card.oc.oc-sky { --oc: #0ea5e9; --oc-bg: #e0f2fe; --oc-fg: #075985; }
+.page.lg .order-card.oc.oc-done { --oc: #94a3b8; --oc-bg: #f1f5f9; --oc-fg: #334155; }
+.page.lg .order-card.oc.oc-red { --oc: #ef4444; --oc-bg: #fee2e2; --oc-fg: #991b1b; }
+.oc.oc-stopped { background: #fcfcfd !important; }
+.oc.oc-stopped .oc-total { color: #9ca3af; text-decoration: line-through; }
+.oc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.oc-id { min-width: 0; }
+.oc-id b { display: block; color: var(--sx-ink); font-size: 1rem; font-weight: 800; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.oc-id small { display: flex; align-items: center; gap: 4px; margin-top: 2px; color: var(--sx-muted); font-size: .78rem; font-weight: 600; }
+.oc-id small .material-symbols-rounded { font-size: 16px; color: var(--sx-faint); }
+.oc-total { flex-shrink: 0; color: var(--sx-ink); font-size: 1.15rem; font-weight: 800; }
+.oc-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.oc-st, .oc-pay { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: .72rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+.oc-st { background: var(--oc-bg); color: var(--oc-fg); }
+.oc-pay { background: #f3f4f6; color: #4b5563; }
+.oc-pay.ok { background: #dcfce7; color: #166534; } .oc-pay.warn { background: #fff7ed; color: #9a3412; }
+.oc-rows { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; }
+.oc-row { display: flex; align-items: flex-start; gap: 8px; color: #374151; font-size: .86rem; line-height: 1.4; }
+.oc-row > .material-symbols-rounded { flex-shrink: 0; margin-top: 1px; font-size: 18px; color: var(--sx-faint); }
+.oc-row span { min-width: 0; overflow-wrap: anywhere; } .oc-row a { color: #1d4ed8; font-weight: 700; text-decoration: none; }
+.oc-row small { display: block; color: var(--sx-muted); font-size: .78rem; }
+.oc-sched { color: #5b21b6; } .oc-sched > .material-symbols-rounded { color: #8b5cf6; }
+.oc-note { display: flex; gap: 8px; padding: 8px 10px; border-radius: 10px; background: #fefce8; color: #854d0e; font-size: .84rem; line-height: 1.4; }
+.oc-note .material-symbols-rounded { flex-shrink: 0; font-size: 18px; color: #ca8a04; }
+.oc-note span { min-width: 0; overflow-wrap: anywhere; }
+.oc-items { display: flex; flex-direction: column; }
+.oc-items-h { margin-bottom: 4px; color: var(--sx-muted); font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.oc-item { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: baseline; gap: 6px; padding: 5px 0; border-bottom: 1px dashed #f1f2f4; font-size: .86rem; }
+.oc-item:last-of-type { border-bottom: 0; }
+.oc-q { color: var(--sx-muted); font-weight: 800; }
+.oc-n { color: var(--sx-ink); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.oc-n small { color: var(--sx-muted); font-weight: 500; }
+.oc-n .oc-in { display: flex; align-items: center; gap: 3px; color: #92400e; font-size: .76rem; }
+.oc-n .oc-in .material-symbols-rounded { font-size: 15px; }
+.oc-p { color: #374151; font-weight: 700; white-space: nowrap; }
+.oc-more { align-self: flex-start; margin-top: 4px; padding: 0; border: 0; background: none; color: #1d4ed8; font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; }
+.oc-foot { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 4px; }
+.oc-main { display: flex; gap: 8px; }
+.oc-btn { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 42px; padding: 0 12px; border: 1.5px solid transparent; border-radius: 12px; font: inherit; font-size: .9rem; font-weight: 800; cursor: pointer; }
+.oc-btn .material-symbols-rounded { font-size: 19px; }
+.oc-btn:disabled { opacity: .6; cursor: default; }
+.oc-accept { background: #16a34a; color: #fff; } .oc-accept:hover { background: #15803d; }
+.oc-reject { background: #fff; border-color: #fecaca; color: #dc2626; } .oc-reject:hover { background: #fef2f2; }
+.oc-next { background: var(--sx-accent, #2563eb); color: #fff; } .oc-next:hover { filter: brightness(.95); }
+.oc-small { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px; }
+.oc-sbtn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 34px; padding: 0 8px; border: 1px solid var(--sx-line); border-radius: 10px; background: #fff; color: #374151; font: inherit; font-size: .78rem; font-weight: 700; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.oc-sbtn .material-symbols-rounded { font-size: 16px; color: var(--sx-muted); }
+.oc-sbtn:hover { background: var(--sx-soft, #f9fafb); border-color: #cbd5e1; }
+.oc-paid { color: #15803d; } .oc-paid .material-symbols-rounded { color: #16a34a; }
+.oc-wa { color: #15803d; } .oc-wa .material-symbols-rounded { color: #16a34a; }
+.oc-cancel { color: #dc2626; } .oc-cancel .material-symbols-rounded { color: #dc2626; } .oc-cancel:hover { background: #fef2f2; border-color: #fecaca; }
+.oc .loading-spinner { width: 14px; height: 14px; }
