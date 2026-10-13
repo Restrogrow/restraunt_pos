@@ -1915,3 +1915,19 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ot-empty .material-symbols-rounded { font-size: 34px; color: #cbd5e1; }
 .ot-empty b { color: #374151; font-size: .95rem; }
 .ot-empty button { padding: 8px 14px; border: 1.5px solid var(--sx-line); border-radius: 10px; background: #fff; color: #1d4ed8; font: inherit; font-size: .84rem; font-weight: 800; cursor: pointer; }
+/* Ongoing › stage chips */
+.ot-sub { display: flex; gap: 6px; margin: -4px 0 14px; padding: 8px; border-radius: 14px; background: #f9fafb; overflow-x: auto; scrollbar-width: none; }
+.ot-sub[hidden] { display: none; }
+.ot-sub::-webkit-scrollbar { display: none; }
+.ot-chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1.5px solid var(--sx-line); border-radius: 999px; background: #fff; color: #374151; font: inherit; font-size: .82rem; font-weight: 800; cursor: pointer; }
+.ot-chip em { min-width: 20px; padding: 1px 7px; border-radius: 999px; background: #f3f4f6; color: #4b5563; font-style: normal; font-size: .74rem; text-align: center; }
+.ot-chip.zero { color: #9ca3af; } .ot-chip.zero em { color: #9ca3af; }
+.ot-chip.st-pending em { background: #fef3c7; color: #b45309; }
+.ot-chip.st-scheduled em { background: #ede9fe; color: #6d28d9; }
+.ot-chip.st-accepted em { background: #dbeafe; color: #1d4ed8; }
+.ot-chip.st-preparing em { background: #ffedd5; color: #c2410c; }
+.ot-chip.st-ready em { background: #dcfce7; color: #15803d; }
+.ot-chip.st-served em { background: #e0f2fe; color: #0369a1; }
+.ot-chip.zero em { background: #f3f4f6 !important; color: #9ca3af !important; }
+.ot-chip.on { border-color: #111827; background: #111827; color: #fff; }
+.ot-chip.on em { background: rgba(255,255,255,.22) !important; color: #fff !important; }
