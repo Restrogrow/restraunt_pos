@@ -2124,3 +2124,54 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .o2-rb { width: 31px; height: 31px; }
 .o2-rb .material-symbols-rounded { font-size: 17px; }
 @media (max-width: 420px) { .o2-foot { flex-wrap: wrap; } .o2-round { margin-left: 0; } }
+
+/* ══ Online Orders in RestroGrow brand colours (orange #F97316, black #111111, white) ══ */
+#onlineOrdersPage { --o2: #F97316; --o2-d: #EA580C; --o2-l: #FFF7ED; --o2-line: #E5E7EB; --o2-ink: #111111; }
+#onlineOrdersPage .page-content { background: #F8FAFC; border-color: #E5E7EB; }
+#onlineOrdersPage .ot-tab { border-color: #E5E7EB; color: #111111; }
+#onlineOrdersPage .ot-tab .material-symbols-rounded { color: #9CA3AF; }
+#onlineOrdersPage .ot-tab em { background: #F3F4F6 !important; color: #374151 !important; }
+#onlineOrdersPage .ot-tab:hover { border-color: #FDBA74; }
+#onlineOrdersPage .ot-tab.on { background: #F97316; box-shadow: 0 8px 18px -12px rgba(249,115,22,.9); }
+#onlineOrdersPage .ot-sub { border-color: #E5E7EB; }
+#onlineOrdersPage .ot-chip.on { background: #111111; }
+.page.lg .order-card.o2, .page.lg .order-card.o2[class*="oc-"] { border: 1px solid #E5E7EB; background: #FFFFFF; box-shadow: 0 1px 2px rgba(17,17,17,.04), 0 8px 20px -18px rgba(17,17,17,.35); }
+.page.lg .order-card.o2:hover { border-color: #FDBA74; box-shadow: 0 14px 28px -18px rgba(249,115,22,.55); }
+.o2-av { border-color: #FED7AA; background: #FFF7ED; color: #EA580C; }
+.o2-strip { background: #111111; color: #D1D5DB; border-radius: 8px; }
+.o2-strip b { color: #FFFFFF; }
+.o2-strip.o2-type { background: #F97316; color: #FFF7ED; }
+.o2-strip.o2-type b { color: #FFFFFF; }
+.o2-tag { display: inline-flex; align-items: center; gap: 3px; height: 24px; padding: 0 9px; border-radius: 999px; background: #FFF7ED; color: #C2410C; font-size: .72rem; font-weight: 800; }
+.o2-tag .material-symbols-rounded { font-size: 14px; }
+/* items: one row each */
+.o2-items { display: flex; flex-direction: column; }
+.o2-items-h { margin-bottom: 2px; color: #6B7280; font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.o2-it { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px dashed #EEF0F3; }
+.o2-it:last-of-type { border-bottom: 0; }
+.o2-t { position: relative; width: 44px; height: 44px; display: grid; place-items: center; overflow: hidden; border-radius: 10px; background: #F3F4F6; color: #9CA3AF; }
+.o2-t img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.o2-t .material-symbols-rounded { font-size: 19px; }
+.o2-it-n { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.o2-it-n b { display: flex; align-items: center; gap: 6px; min-width: 0; color: #111111; font-size: .88rem; font-weight: 700; }
+.o2-it-n b span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.o2-it-n small { color: #6B7280; font-size: .75rem; overflow-wrap: anywhere; }
+.o2-it-q { min-width: 32px; padding: 2px 7px; border-radius: 999px; background: #F3F4F6; color: #111111; font-size: .78rem; font-weight: 800; text-align: center; }
+.o2-it-p { min-width: 64px; color: #111111; font-size: .86rem; font-weight: 800; text-align: right; white-space: nowrap; }
+.o2-all { color: #EA580C; }
+/* totals, buttons, stamp */
+.o2-sum { border-top-color: #EEF0F3; }
+.o2-sum b { color: #111111; }
+.o2-pill { background: #F97316; box-shadow: 0 6px 14px -8px rgba(249,115,22,.85); }
+.o2-pill:hover { background: #EA580C; filter: none; }
+.o2-pill.o2-ok { background: #16A34A; box-shadow: 0 6px 14px -8px rgba(22,163,74,.8); }
+.o2-pill.o2-ok:hover { background: #15803D; }
+.o2-pill.o2-no { background: #FFFFFF; color: #DC2626; box-shadow: inset 0 0 0 1.5px #FECACA; }
+.o2-pill.o2-flat { background: #F3F4F6; color: #4B5563; box-shadow: none; }
+.o2-rb { border-color: #E5E7EB; background: #FFFFFF; color: #374151; }
+.o2-rb:hover { border-color: #FDBA74; background: #FFF7ED; color: #EA580C; }
+.o2-rb.o2-wa { color: #16A34A; background: #FFFFFF; border-color: #E5E7EB; }
+.o2-rb.o2-cancel { color: #DC2626; background: #FFFFFF; border-color: #E5E7EB; }
+.o2-rb.o2-cancel:hover { background: #FEF2F2; border-color: #FECACA; }
+.o2-stamp { top: auto; bottom: 64px; right: 14px; border-color: rgba(249,115,22,.3); color: rgba(249,115,22,.32); }
+@media (prefers-reduced-motion: no-preference) { .page.lg .order-card.o2 { transition: border-color .15s, box-shadow .15s; } }

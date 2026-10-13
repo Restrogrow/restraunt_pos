@@ -59,28 +59,20 @@
       (o.customer_phone ? '<a href="tel:' + esc(tel) + '">' + ic('call') + esc(o.customer_phone) + '</a>' : '') + '</small></div></div>';
     var strips = '<div class="o2-strip">Order No : <b>#' + num + '</b></div><div class="o2-strip o2-type">Order Type : <b>' + esc(type) + '</b></div>';
     var badges = '<div class="o2-badges"><span class="oc-st">' + esc(S[0]) + '</span><span class="oc-pay ' + pay[1] + '">' + esc(pay[0]) + '</span>' +
+      (o.table_number ? '<span class="o2-tag">' + ic('table_restaurant') + 'Table ' + esc(o.table_number) + '</span>' : '') +
       (+o.is_scheduled === 1 && o.scheduled_at ? '<span class="o2-sched">' + ic('event') + esc(when(o.scheduled_at).split(' · ')[0]) + '</span>' : '') + '</div>';
 
-    var lead = '';
-    if (items.length) {
-      var f = items[0];
-      lead = '<div class="o2-lead">' + thumb(f, 'o2-img') + '<div class="o2-lead-t"><b>' + vegDot(f) + esc(f.item_name) + '</b>' +
-        (f.variation_name ? '<small>' + esc(f.variation_name) + '</small>' : '') +
-        (f.addon_names && f.addon_names.length ? '<small><em>Add-ons:</em> ' + esc(f.addon_names.join(', ')) + '</small>' : '') +
-        (f.notes ? '<small class="o2-in">' + ic('edit_note') + esc(f.notes) + '</small>' : '') +
-        '<span class="o2-qp"><span>QTY: ' + (+f.quantity || 1) + '</span><b>' + money(f.total_price) + '</b></span>' +
-        '<span class="o2-chips"><span>' + ic(TYPE_ICON[tKey] || 'receipt_long') + esc(type) + '</span>' + (o.table_number ? '<span>' + ic('table_restaurant') + 'Table ' + esc(o.table_number) + '</span>' : '') + '</span></div></div>';
-    }
-    var rest = items.slice(1);
-    var restHtml = '';
-    if (rest.length) {
-      restHtml = '<div class="o2-more">' + rest.slice(0, 6).map(function (it) {
-        return '<span class="o2-mini" title="' + esc((+it.quantity || 1) + ' × ' + it.item_name + ' · ' + money(it.total_price)) + '">' + thumb(it, 'o2-mimg') + '<em>' + (+it.quantity || 1) + '</em></span>';
-      }).join('') + (rest.length > 6 ? '<button type="button" class="o2-plus" onclick="showFullOrderDetails(' + id + ')">+' + (rest.length - 6) + '</button>' : '') +
-        '</div><div class="o2-list">' + rest.slice(0, 3).map(function (it) {
-          return '<div class="o2-li"><span>' + (+it.quantity || 1) + '×</span><span>' + vegDot(it) + esc(it.item_name) + (it.variation_name ? ' <small>' + esc(it.variation_name) + '</small>' : '') + '</span><b>' + money(it.total_price) + '</b></div>';
-        }).join('') + (rest.length > 3 ? '<button type="button" class="o2-all" onclick="showFullOrderDetails(' + id + ')">See all ' + items.length + ' items</button>' : '') + '</div>';
-    }
+    // every dish in the same row: photo, name (size, add-ons, note), quantity, price
+    var MAXI = 4;
+    var itemRow = function (it) {
+      var sub = [it.variation_name ? esc(it.variation_name) : "", it.addon_names && it.addon_names.length ? "+ " + esc(it.addon_names.join(", ")) : ""].filter(Boolean).join(" · ");
+      return "<div class=\"o2-it\">" + thumb(it, "o2-t") + "<div class=\"o2-it-n\"><b>" + vegDot(it) + "<span>" + esc(it.item_name) + "</span></b>" + (sub ? "<small>" + sub + "</small>" : "") +
+        (it.notes ? "<small class=\"o2-in\">" + ic("edit_note") + esc(it.notes) + "</small>" : "") + "</div><span class=\"o2-it-q\">×" + (+it.quantity || 1) + "</span><b class=\"o2-it-p\">" + money(it.total_price) + "</b></div>";
+    };
+    var qtyAll = items.reduce(function (a, it) { return a + (+it.quantity || 0); }, 0);
+    var itemsHtml = items.length ? "<div class=\"o2-items\"><div class=\"o2-items-h\">" + items.length + " dish" + (items.length === 1 ? "" : "es") + " · " + qtyAll + " item" + (qtyAll === 1 ? "" : "s") + "</div>" +
+      items.slice(0, MAXI).map(itemRow).join("") +
+      (items.length > MAXI ? "<button type=\"button\" class=\"o2-all\" onclick=\"showFullOrderDetails(" + id + ")\">+" + (items.length - MAXI) + " more dish" + (items.length - MAXI === 1 ? "" : "es") + "</button>" : "") + "</div>" : "";
     var info = '';
     if (o.customer_address && isDel) info += '<div class="oc-row">' + ic('location_on') + '<span>' + esc(o.customer_address) + (o.landmark ? '<small>Landmark: ' + esc(o.landmark) + '</small>' : '') + '</span></div>';
     if (o.notes) info += '<div class="oc-note">' + ic('sticky_note_2') + '<span>' + esc(o.notes) + '</span></div>';
@@ -116,7 +108,7 @@
 
     return '<div class="order-card oc o2 oc-' + S[1] + (stopped ? ' oc-stopped' : '') + '" data-status="' + esc(st) + '">' +
       (paid ? '<span class="o2-stamp" aria-hidden="true">PAID</span>' : '') +
-      head + strips + badges + lead + restHtml + (info ? '<div class="o2-info">' + info + '</div>' : '') + extra +
+      head + strips + badges + itemsHtml + (info ? '<div class="o2-info">' + info + '</div>' : '') + extra +
       '<div class="o2-sum"><span>Order placed on ' + placed + '</span><b>' + money(o.total) + '</b></div>' +
       '<div class="o2-foot"><div class="o2-main">' + main + '</div><div class="o2-round">' + round + '</div></div></div>';
   }
