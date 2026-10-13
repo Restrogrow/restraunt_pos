@@ -23,8 +23,9 @@ if (!$orderNumber || !$customerPhone) {
 try {
     $conn = function_exists('getConnection') ? getConnection() : ($pdo ?? null);
     if (!$conn) throw new Exception('No connection');
+    require_once __DIR__ . '/../config/order_reasons.php';
 
-    $stmt = $conn->prepare("SELECT o.id, o.order_status, o.order_type, o.total, o.delivery_charge, o.source, o.loyalty_points_earned
+    $stmt = $conn->prepare("SELECT o.id, o.order_status, o.order_type, o.total, o.delivery_charge, o.source, o.loyalty_points_earned, o.notes
         FROM orders o WHERE o.order_number = ? AND o.customer_phone = ? AND o.source = 'website' LIMIT 1");
     $stmt->execute([$orderNumber, $customerPhone]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -55,7 +56,9 @@ try {
         'total' => $order['total'],
         'delivery_charge' => $order['delivery_charge'],
         'loyalty_points_earned' => (int)($order['loyalty_points_earned'] ?? 0),
-        'tracking' => $tracking
+        'tracking' => $tracking,
+        // why it was rejected / cancelled, in customer words (preset reasons only)
+        'stop_reason' => in_array($order['order_status'], ['Rejected', 'Cancelled'], true) ? orderStopMessage($order['notes'] ?? '') : ''
     ]);
 } catch (Exception $e) {
     echo json_encode(['success' => false]);

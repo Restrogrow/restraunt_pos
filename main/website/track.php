@@ -2,6 +2,7 @@
 <?php
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/order_abuse_guard.php';
+require_once __DIR__ . '/../config/order_reasons.php';   // why an order was rejected / cancelled, in customer words
 
 $orderNumber = $_POST['order_number'] ?? $_GET['order_number'] ?? '';
 $customerPhone = $_POST['customer_phone'] ?? $_GET['customer_phone'] ?? '';
@@ -694,6 +695,8 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
     function setIcon(id, k) { var el = document.getElementById(id); if (el && el.getAttribute('data-k') !== k) { el.setAttribute('data-k', k); el.innerHTML = svgIcon(k); } }
     var nextLabels = Array.prototype.map.call(document.querySelectorAll('#tkTrack .tk-step span'), function(d) { return d.textContent.trim(); });
     var lastStage = '';
+    // why the restaurant rejected / cancelled it (preset reasons only; updated by the poll)
+    var stopReason = <?php echo json_encode(orderStopMessage($order['notes'] ?? ''), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
 
     function renderStage(status, delivery) {
         var st = stageOf(status, delivery);
@@ -706,7 +709,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
             setIcon('tkStatusIcon', 'cancel');
             document.getElementById('tkTrack').style.display = 'none';
             set('tkStatusTitle', status === 'Rejected' ? 'The restaurant could not take this order' : 'This order was cancelled');
-            set('tkStatusText', 'If you paid online, the refund goes back to your payment method.');
+            set('tkStatusText', (stopReason ? stopReason + ' ' : '') + 'If you paid online, the refund goes back to your payment method.');
             setScene('stop'); setTips('');
             return;
         }
@@ -844,6 +847,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (!d.success) return;
+                if (typeof d.stop_reason === 'string') stopReason = d.stop_reason;
                 consecutivePollFailures = 0;
                 var newDelivery = d.tracking ? (d.tracking.delivery_status || null) : null;
                 if (d.tracking && d.tracking.rider_name) { riderName = d.tracking.rider_name; setRider(d.tracking.rider_name, d.tracking.rider_phone); }

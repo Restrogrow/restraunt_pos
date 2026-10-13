@@ -33,6 +33,7 @@
 | | Change | What it means for a restaurant |
 |---|---|---|
 | **Inventory** | Rebuilt as a full stock system | **Recipes** per dish take stock out as orders are made (and put it back if an order is cancelled); cost per plate, food cost % and plates left; **reorder list** with how much to buy; **suppliers** and **purchase orders** (WhatsApp, print, receive into stock); **stock count** with differences; **activity log**; **reports** (bought, used, wasted, food cost vs sales). Purchases and wastage still go into expenses and Sales Reports. [More below](#inventory). |
+| **New-order popup** | Redesigned | Dish photos, live “received … ago”, order type / table / scheduled time, new or returning customer, tap-to-call, a clear payment box (collect in cash, paid online, UPI QR to check, part paid from wallet), note, bill, **Ready in** time (sent with Accept), **Later**, “+N more waiting”. **Reject and Cancel ask why**: 5 common reasons + your own; preset reasons are shown politely on the customer's tracking page; only “couldn't reach the customer” (or a custom reason marked fake) counts as a strike. |
 | **Live stock** | POS, KOT and website orders change stock straight away | Choose whether stock goes out when the kitchen starts an order or as soon as it's placed. Optional **sold out on POS and website** when an ingredient runs out (back on restock). **Low-stock push notifications** at each item's reorder level, and low items named on the Dashboard. **Set stock to** by hand. |
 | **Payment gateway** | Redesigned | A banner says whether online payments are live, in test or missing keys; two clear choices (platform account / own PhonePe); show/hide secret; one Save; payment-method cards with icons and QR codes. |
 | **Menu pages** | Same menu, cleaner pages | Tabs across Categories, Menu items, Add-ons and Inventory; dish counts on categories; numbers and a search box on Menu items; tidier dish cards; Add-ons in the same style. Nothing about how menus or dishes are saved changed. |
@@ -77,7 +78,7 @@
 <table>
   <tr>
     <td width="50%"><img src="main/assets/guide/dashboardPage.jpg" alt="Dashboard"><br><b>Dashboard</b>: today at a glance and what needs attention</td>
-    <td width="50%"><img src="docs/screenshots/new-order-popup.jpg" alt="New order popup"><br><b>New order</b>: rings, pops up, Accept or Reject</td>
+    <td width="50%"><img src="docs/screenshots/new-order-popup.jpg" alt="New order popup"><br><b>New order</b>: photos, payment, bill, ready-in time, reasons</td>
   </tr>
   <tr>
     <td><img src="main/assets/guide/inventoryPage.jpg" alt="Inventory overview"><br><b>Inventory</b>: stock value, what to reorder, what orders use</td>

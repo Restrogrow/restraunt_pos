@@ -7216,6 +7216,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/offers-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offers-studio.js'); ?>" defer></script>
   <script src="../assets/js/inventory-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/inventory-studio.js'); ?>" defer></script>
   <script src="../assets/js/menu-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-studio.js'); ?>" defer></script>
+  <script src="../assets/js/new-order-popup.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/new-order-popup.js'); ?>" defer></script>
   <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
   <script src="../assets/js/dashboard-home.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-home.js'); ?>" defer></script>
   <script src="../assets/js/marketing-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/marketing-studio.js'); ?>" defer></script>
@@ -8705,69 +8706,9 @@ async function testPushNotification(btn) {
 window.testPushNotification = testPushNotification;
 </script>
 
-<!-- New Order Notification Overlay -->
-<div id="newOrderOverlay">
-  <div class="new-order-card">
-    <div class="new-order-header">
-      <div class="bell-icon">
-        <span class="material-symbols-rounded">notifications_active</span>
-      </div>
-      <div>
-        <h2 id="notifOrderTitle">New Order Received!</h2>
-        <div class="sub-text" id="notifOrderNumber">Order #---</div>
-      </div>
-      <button class="close-overlay" onclick="closeNewOrderOverlay()" title="Dismiss">
-        <span class="material-symbols-rounded" style="font-size:18px;">close</span>
-      </button>
-    </div>
-    <div class="new-order-body">
-      <div class="order-detail-row">
-        <span class="label">Customer</span>
-        <span class="value" id="notifCustomerName">---</span>
-      </div>
-      <div class="order-detail-row">
-        <span class="label">Phone</span>
-        <span class="value" id="notifCustomerPhone">---</span>
-      </div>
-      <div class="order-detail-row" id="notifAddressRow">
-        <span class="label">Address</span>
-        <span class="value" id="notifCustomerAddress">---</span>
-      </div>
-      <div class="order-detail-row" id="notifLandmarkRow" style="display:none;">
-        <span class="label">Landmark</span>
-        <span class="value" id="notifLandmark">---</span>
-      </div>
-      <div id="notifMapContainer"></div>
-      <div class="order-detail-row">
-        <span class="label">Order Type</span>
-        <span class="value" id="notifOrderType">---</span>
-      </div>
-      <div class="order-detail-row">
-        <span class="label">Payment</span>
-        <span class="value" id="notifPaymentInfo">---</span>
-      </div>
-      <div id="notifPaymentProofContainer"></div>
-      <div id="notifItemsContainer" class="order-items-list">
-        <div class="items-title">Order Items</div>
-        <div id="notifItemsList"></div>
-      </div>
-      <div class="order-detail-row">
-        <span class="label">Total Amount</span>
-        <span class="value highlight" id="notifTotalAmount">---</span>
-      </div>
-      <div class="new-order-time" id="notifOrderTime"></div>
-    </div>
-    <div class="new-order-footer">
-      <button class="btn-accept-order" id="notifAcceptBtn" onclick="acceptNewOrder()">
-        <span class="material-symbols-rounded" style="font-size:18px;">check_circle</span>
-        Accept
-      </button>
-      <button class="btn-reject-order" id="notifRejectBtn" onclick="rejectNewOrder()">
-        <span class="material-symbols-rounded" style="font-size:18px;">cancel</span>
-        Reject
-      </button>
-    </div>
-  </div>
+<!-- New Order popup: filled by assets/js/new-order-popup.js (RGNewOrder.show), styles no-* in studio-ui.css -->
+<div id="newOrderOverlay" role="dialog" aria-modal="true" aria-label="New order">
+  <div class="no-card" id="noCard"></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════

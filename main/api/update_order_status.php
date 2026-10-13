@@ -43,7 +43,12 @@ try {
     // Get order ID and new status
     $orderId = (int)($_POST['orderId'] ?? 0);
     $status = $_POST['status'] ?? null;
-    $reason = $_POST['reason'] ?? '';
+    $reason = trim(mb_substr((string)($_POST['reason'] ?? ''), 0, 200));
+    // Why an order was rejected / cancelled (assets/js/new-order-popup.js). The code decides what the
+    // customer is told on the tracking page and whether it counts as a strike against their number:
+    // only "couldn't reach the customer", or a custom reason the owner marks as fake, does.
+    $reasonCode = preg_replace('/[^a-z_]/', '', (string)($_POST['reason_code'] ?? ''));
+    $customerFault = in_array($reasonCode, ['no_answer'], true) || !empty($_POST['strike']);
     // Optional: set when accepting a delivery order priced via the KM-based
     // delivery system — the admin confirms/edits the auto-calculated charge
     // at accept time, since it's only an estimate until then.
@@ -71,8 +76,9 @@ try {
     try {
         // Build cancellation note if reason provided
         $appendNotes = null;
-        if ($status === 'Cancelled' && $reason) {
-            $appendNotes = '[Cancelled: ' . $reason . ']';
+        if (($status === 'Cancelled' || $status === 'Rejected') && $reason !== '') {
+            // e.g. "[Rejected (out_of_stock): Items out of stock]"; the code lets the tracking page explain it
+            $appendNotes = '[' . $status . ($reasonCode !== '' ? ' (' . $reasonCode . ')' : '') . ': ' . str_replace(['[', ']'], ['(', ')'], $reason) . ']';
         }
 
         // When accepting with a delivery charge, update delivery_charge and
@@ -150,7 +156,9 @@ try {
         // only for source='website' orders (POS/staff-created orders have a
         // known, logged-in author) and only while payment is still Pending —
         // a paid order being cancelled is a refund situation, not abuse.
-        if (($status === 'Rejected' || $status === 'Cancelled') && $result['success']) {
+        // With a reason code (new popup) only a customer-side reason counts; without one (older
+        // screens, other apps) every unpaid reject / cancel counts, as before.
+        if (($status === 'Rejected' || $status === 'Cancelled') && $result['success'] && ($reasonCode === '' || $customerFault)) {
             try {
                 $srcStmt = $conn->prepare("SELECT source, payment_status, customer_phone, customer_name FROM orders WHERE id = ? AND restaurant_id = ?");
                 $srcStmt->execute([$orderId, $restaurant_id]);

@@ -1251,6 +1251,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       function showNewOrderPopup(order) {
+        // the redesigned popup (photos, payment, bill, ready-in time, reasons): assets/js/new-order-popup.js
+        if (window.RGNewOrder) return window.RGNewOrder.show(order);
         var overlay = document.getElementById('newOrderOverlay');
         if (!overlay) return;
 
@@ -1354,6 +1356,7 @@ document.addEventListener("DOMContentLoaded", () => {
       window.showNewOrderPopup = showNewOrderPopup;
 
             window.closeNewOrderOverlay = function() {
+        if (window.RGNewOrder) return window.RGNewOrder.close();
         var overlay = document.getElementById('newOrderOverlay');
         if (overlay) {
           overlay.classList.remove('show');
@@ -1364,6 +1367,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       window.acceptNewOrder = async function() {
+        if (window.RGNewOrder) return window.RGNewOrder.accept();
         var orderId = window._currentNotifOrderId;
         var order = window._currentNotifOrder;
         if (!orderId) return;
@@ -1408,6 +1412,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       window.rejectNewOrder = async function() {
+        if (window.RGNewOrder) return window.RGNewOrder.reject();
         var orderId = window._currentNotifOrderId;
         if (!orderId) return;
 
@@ -9580,6 +9585,7 @@ window.logout = logout;
     } catch(e) {}
   }
   window.stopNewOrderRing = stopNewOrderRing;
+  window.startNewOrderRing = startNewOrderRing;
 
   // Browsers refuse to autoplay audio until the page has seen a real user
   // gesture. playClickSound() always fires from an actual click so it's
@@ -9656,13 +9662,14 @@ window.logout = logout;
   // other case this just accepts immediately, unchanged from before.
   // Returns a Promise resolving to the API response, or {cancelled: true} if
   // the admin dismissed the prompt without confirming.
-  function acceptOrderWithDeliveryCharge(orderId, orderType, addressLat, addressLng) {
+  function acceptOrderWithDeliveryCharge(orderId, orderType, addressLat, addressLng, prepMinutes) {
     const isKmDelivery = orderType === 'Delivery' && (window.enableKmDelivery == 1 || window.enableKmDelivery === true);
+    const prepPart = prepMinutes > 0 ? '&prep_minutes=' + encodeURIComponent(prepMinutes) : '';   // optional "ready in" from the new-order popup
     if (!isKmDelivery) {
       return fetch('../api/update_order_status.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'orderId=' + orderId + '&status=Accepted'
+        body: 'orderId=' + orderId + '&status=Accepted' + prepPart
       }).then(r => r.json());
     }
 
@@ -9701,7 +9708,7 @@ window.logout = logout;
       return fetch('../api/update_order_status.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'orderId=' + orderId + '&status=Accepted&delivery_charge=' + encodeURIComponent(result.value)
+        body: 'orderId=' + orderId + '&status=Accepted&delivery_charge=' + encodeURIComponent(result.value) + prepPart
       }).then(r => r.json());
     });
   }

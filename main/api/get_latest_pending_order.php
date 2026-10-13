@@ -113,11 +113,42 @@ try {
 
     if ($order) {
         // Get order items
-        $items_sql = "SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes
-                      FROM order_items oi WHERE oi.order_id = ? ORDER BY oi.id";
-        $items_stmt = $conn->prepare($items_sql);
-        $items_stmt->execute([$order['id']]);
-        $order['items'] = $items_stmt->fetchAll();
+        // Get order items (with the dish photo, size and add-ons for the popup)
+        try {
+            $items_stmt = $conn->prepare("SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes, oi.variation_name, oi.addons, m.item_image, m.item_type
+                FROM order_items oi LEFT JOIN menu_items m ON m.id = oi.menu_item_id WHERE oi.order_id = ? ORDER BY oi.id");
+            $items_stmt->execute([$order['id']]);
+        } catch (PDOException $e) {
+            $items_stmt = $conn->prepare("SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes FROM order_items oi WHERE oi.order_id = ? ORDER BY oi.id");
+            $items_stmt->execute([$order['id']]);
+        }
+        $order['items'] = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($order['items'] as &$it) {
+            // add-ons are stored as JSON [{name, price, qty}…]; send just the names
+            $names = [];
+            $raw = isset($it['addons']) ? json_decode((string)$it['addons'], true) : null;
+            if (is_array($raw)) foreach ($raw as $a) { $n = is_array($a) ? ($a['name'] ?? $a['addon_name'] ?? '') : (string)$a; if ($n !== '') $names[] = $n; }
+            $it['addon_names'] = $names;
+            unset($it['addons']);
+        }
+        unset($it);
+
+        // Extras for the popup; each one is optional so an older database still gets the popup
+        $extra = function (string $sql, array $args) use ($conn) { try { $st = $conn->prepare($sql); $st->execute($args); return $st->fetch(PDO::FETCH_ASSOC) ?: []; } catch (PDOException $e) { return []; } };
+        $order += $extra("SELECT delivery_charge, discount_amount, coupon_code, wallet_paid, loyalty_discount_amount, vip_discount, scheduled_at, is_scheduled, table_id FROM orders WHERE id = ?", [$order['id']]);
+        if (!empty($order['table_id'])) {
+            $t = $extra("SELECT table_number FROM `tables` WHERE id = ?", [$order['table_id']]);
+            $order['table_number'] = $t['table_number'] ?? null;
+        }
+        // first order from this phone, or how many before
+        if (!empty($order['customer_phone'])) {
+            $c = $extra("SELECT COUNT(*) n FROM orders WHERE restaurant_id = ? AND customer_phone = ? AND id <> ? AND deleted_at IS NULL AND order_status NOT IN ('Cancelled', 'Rejected')", [$restaurant_id, $order['customer_phone'], $order['id']]);
+            $order['previous_orders'] = (int)($c['n'] ?? 0);
+        }
+        // other website orders still waiting for an answer
+        $w = $extra("SELECT COUNT(*) n FROM orders WHERE restaurant_id = ? AND source = 'website' AND order_status = 'Pending' AND deleted_at IS NULL AND id <> ?
+            AND (payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR payment_status = 'Paid')", [$restaurant_id, $order['id']]);
+        $order['others_waiting'] = (int)($w['n'] ?? 0);
 
         echo json_encode([
             'success' => true,
