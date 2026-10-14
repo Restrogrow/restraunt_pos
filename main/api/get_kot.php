@@ -58,6 +58,10 @@ try {
     $tableFilter = $_GET['table'] ?? '';
     $kotIdFilter = $_GET['kot_id'] ?? '';
     $customerFields = $hasCustomerCols ? ', k.customer_phone, k.customer_email, k.customer_address' : '';
+    // add-on columns arrived with the add-ons update; a database without them still prints its tickets
+    $itemCols = $conn->query("SHOW COLUMNS FROM kot_items")->fetchAll(PDO::FETCH_COLUMN);
+    $addonsField = in_array('addons', $itemCols, true) ? 'ki.addons' : 'NULL AS addons';
+    $addonNameField = in_array('addon_name', $itemCols, true) ? 'ki.addon_name' : 'NULL AS addon_name';
     
     $whereClause = "k.restaurant_id = ?";
     $params = [$restaurant_id];
@@ -114,8 +118,8 @@ try {
                         ki.unit_price,
                         ki.total_price,
                         ki.notes,
-                        ki.addons,
-                        ki.addon_name
+                        $addonsField,
+                        $addonNameField
                       FROM kot_items ki
                       WHERE ki.kot_id = ?
                       ORDER BY ki.id";

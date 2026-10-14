@@ -352,6 +352,8 @@ function posEnsureKotAddonLines($conn): void {
     try {
         $nullable = $conn->query("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kot_items' AND COLUMN_NAME = 'menu_item_id'")->fetchColumn();
         if ($nullable === 'NO') $conn->exec('ALTER TABLE kot_items MODIFY menu_item_id INT NULL');
+        // the line's add-on name (only admin/run_addons_table.php used to add it)
+        if (!$conn->query("SHOW COLUMNS FROM kot_items LIKE 'addon_name'")->fetch()) $conn->exec('ALTER TABLE kot_items ADD COLUMN addon_name VARCHAR(500) DEFAULT NULL AFTER item_name');
     } catch (Throwable $e) { error_log('posEnsureKotAddonLines: ' . $e->getMessage()); }
 }
 
