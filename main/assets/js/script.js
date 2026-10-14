@@ -7093,7 +7093,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     
-    const initials = (name) => name.split(' ').map(w => w.charAt(0).toUpperCase()).join('').substring(0, 2);
+    // "Neha (Koramangala)" -> "NE": leave out the branch in brackets and stray symbols
+    const initials = (name) => { const w = String(name || '').replace(/\(.*?\)/g, ' ').replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).filter(Boolean); return w.length ? (w.length > 1 ? w[0].charAt(0) + w[1].charAt(0) : w[0].slice(0, 2)).toUpperCase() : '?'; };
     
     customerList.innerHTML = customers.map(customer => {
       const totalSpent = customer.total_spent ? formatCurrency(customer.total_spent) : formatCurrency(0);
@@ -7685,7 +7686,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     
-    const initials = (name) => name.split(' ').map(w => w.charAt(0).toUpperCase()).join('').substring(0, 2);
+    // "Neha (Koramangala)" -> "NE": leave out the branch in brackets and stray symbols
+    const initials = (name) => { const w = String(name || '').replace(/\(.*?\)/g, ' ').replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).filter(Boolean); return w.length ? (w.length > 1 ? w[0].charAt(0) + w[1].charAt(0) : w[0].slice(0, 2)).toUpperCase() : '?'; };
     
     staffList.innerHTML = staff.map(member => {
       return `

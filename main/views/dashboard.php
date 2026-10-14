@@ -1125,7 +1125,7 @@ try {
         <li class="nav-item">
           <a href="#" class="nav-link" data-page="staffPage">
             <span class="nav-icon material-symbols-rounded">person</span>
-            <span class="nav-label">Staff <span class="badge-old">Old</span></span>
+            <span class="nav-label">Staff</span>
           </a>
           <span class="nav-tooltip">Staff</span>
         </li>
@@ -1139,7 +1139,7 @@ try {
         <li class="nav-item has-submenu">
           <a href="#" class="nav-link submenu-toggle">
             <span class="nav-icon material-symbols-rounded">payments</span>
-            <span class="nav-label">Payments <span class="badge-old">Old</span></span>
+            <span class="nav-label">Payments</span>
             <span class="submenu-arrow material-symbols-rounded">chevron_right</span>
           </a>
           <span class="nav-tooltip">Payments</span>
@@ -1147,14 +1147,14 @@ try {
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="paymentsPage">
                 <span class="nav-icon material-symbols-rounded">receipt_long</span>
-                <span class="nav-label">Payments <span class="badge-old">Old</span></span>
+                <span class="nav-label">Payments</span>
               </a>
               <span class="nav-tooltip">Payments</span>
             </li>
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="gatewayPage">
                 <span class="nav-icon material-symbols-rounded">credit_card</span>
-                <span class="nav-label">Gateway <span class="badge-old">Old</span></span>
+                <span class="nav-label">Gateway</span>
               </a>
               <span class="nav-tooltip">Gateway</span>
             </li>
@@ -7296,6 +7296,8 @@ function toggleGatewayMode() {
   <script src="../assets/js/offers-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offers-studio.js'); ?>" defer></script>
   <script src="../assets/js/combos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/combos-studio.js'); ?>" defer></script>
   <script src="../assets/js/gbp-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/gbp-studio.js'); ?>" defer></script>
+  <script src="../assets/js/staff-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/staff-studio.js'); ?>" defer></script>
+  <script src="../assets/js/payments-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/payments-studio.js'); ?>" defer></script>
   <script src="../assets/js/inventory-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/inventory-studio.js'); ?>" defer></script>
   <script src="../assets/js/menu-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-studio.js'); ?>" defer></script>
   <script src="../assets/js/new-order-popup.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/new-order-popup.js'); ?>" defer></script>
