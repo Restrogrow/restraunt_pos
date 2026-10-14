@@ -128,7 +128,7 @@ try {
         $hits = [];
         foreach ($q('SELECT source, COUNT(*) n FROM gbp_link_hits WHERE restaurant_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY source', [$rid])->fetchAll(PDO::FETCH_ASSOC) as $h) $hits[$h['source']] = (int)$h['n'];
         gOut(['success' => true, 'can_edit' => $canEdit,
-            'setup' => ['oauth' => gbpOAuthReady(), 'places' => gbpPlacesKey() !== '', 'ai' => gbpEnv('GEMINI_API_KEY') !== '', 'redirect_uri' => gbpRedirectUri()],
+            'setup' => ['oauth' => gbpOAuthReady(), 'places' => gbpEnv('GOOGLE_PLACES_API_KEY') !== '', /* the old Maps key alone doesn't switch this on */ 'ai' => gbpEnv('GEMINI_API_KEY') !== '', 'redirect_uri' => gbpRedirectUri()],
             'connected' => $connected, 'google_email' => $row['google_email'] ?? null, 'location' => !empty($row['location_name']) ? ['name' => $row['location_name'], 'title' => $row['location_title']] : null,
             'place' => !empty($row['place_id']) ? ['id' => $row['place_id'], 'name' => $row['place_name']] : null,
             'rating' => isset($row['rating']) ? (float)$row['rating'] : null, 'rating_count' => isset($row['rating_count']) ? (int)$row['rating_count'] : null,

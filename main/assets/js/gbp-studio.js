@@ -56,6 +56,9 @@
   function draw() {
     var root = document.getElementById('gbpRoot');
     if (!root || !S) return;
+    // Google keys not on the server yet (docs/GOOGLE_BUSINESS_TODO.md): show what's coming;
+    // everything below switches on by itself once the keys are in .env
+    if (!S.setup.oauth && !S.setup.places) { root.innerHTML = comingSoon(); return; }
     var has = S.rating != null;
     root.innerHTML =
       '<div class="gbx-hero"><div class="gbx-hero-l">' + GLOGO + '<div><h2>' + esc(S.location ? S.location.title : (S.place ? S.place.name : S.restaurant.name)) + '</h2>' +
@@ -71,14 +74,23 @@
     drawTab();
   }
 
+  function comingSoon() {
+    var f = [['star', 'Your Google rating', 'Your stars and newest reviews, right on your dashboard.'], ['reviews', 'Reply to reviews', 'Answer every Google review from here, with AI-written replies.'],
+      ['campaign', 'Post to Google', 'Share offers, combos and updates on your Google listing.'], ['schedule', 'Hours and info', 'Keep your phone, website and opening hours right on Google.'],
+      ['insights', 'Insights', 'See how many people view, call and get directions to you.'], ['qr_code_2', 'Get more reviews', 'Review QR for tables, WhatsApp links and printable cards.']];
+    return '<div class="gbx-soon"><div class="gbx-soon-h">' + GLOGO + '<span class="gbx-soon-tag">' + ic('bolt') + 'Coming soon</span><h2>Google Business, right inside RestroGrow</h2>' +
+      '<p>We’re finishing the connection with Google. Soon you’ll manage your Google listing and reviews from this page.</p></div>' +
+      '<div class="gbx-soon-grid">' + f.map(function (x, i) { return '<div style="--d:' + i * 70 + 'ms">' + ic(x[0]) + '<b>' + x[1] + '</b><small>' + x[2] + '</small></div>'; }).join('') + '</div></div>';
+  }
+
   // what's left to do: find the place (rating), connect Google (everything else), pick the location
   function setupCard() {
     if (S.connected && S.location && S.place) return '';
     var steps = [];
     steps.push('<div class="gbx-step' + (S.place ? ' done' : '') + '"><span class="gbx-num">' + (S.place ? ic('check') : '1') + '</span><div><b>Show your Google rating</b><small>Find your restaurant on Google. Works right away: rating, newest reviews and a review link.</small>' +
-      (S.place ? '<small class="ok">' + esc(S.place.name) + ' · <a href="#" data-gbx-findplace>change</a></small>' : (S.setup.places ? '<div class="gbx-find"><input type="search" id="gbxPlaceQ" value="' + esc((S.restaurant.name + ' ' + S.restaurant.address).trim()) + '" placeholder="Restaurant name and area"><button type="button" class="btn btn-primary btn-sm" data-gbx-search>' + ic('search') + 'Find</button></div><div id="gbxPlaces"></div>' : '<small class="bad">Needs GOOGLE_PLACES_API_KEY in the server’s .env.</small>')) + '</div></div>');
+      (S.place ? '<small class="ok">' + esc(S.place.name) + ' · <a href="#" data-gbx-findplace>change</a></small>' : (S.setup.places ? '<div class="gbx-find"><input type="search" id="gbxPlaceQ" value="' + esc((S.restaurant.name + ' ' + S.restaurant.address).trim()) + '" placeholder="Restaurant name and area"><button type="button" class="btn btn-primary btn-sm" data-gbx-search>' + ic('search') + 'Find</button></div><div id="gbxPlaces"></div>' : '<small class="bad">Coming soon.</small>')) + '</div></div>');
     steps.push('<div class="gbx-step' + (S.connected ? ' done' : '') + '"><span class="gbx-num">' + (S.connected ? ic('check') : '2') + '</span><div><b>Connect Google Business Profile</b><small>Reply to every review, post offers, keep hours and phone right on Google, and see views and calls.</small>' +
-      (S.connected ? '' : (S.setup.oauth ? '<button type="button" class="gbx-connect" data-gbx-connect>' + GLOGO + 'Connect Google</button>' : '<small class="bad">Needs GOOGLE_GBP_CLIENT_ID and GOOGLE_GBP_CLIENT_SECRET in the server’s .env (Google Cloud project restrogrow-gmb). Redirect URI: <code>' + esc(S.setup.redirect_uri) + '</code></small>')) + '</div></div>');
+      (S.connected ? '' : (S.setup.oauth ? '<button type="button" class="gbx-connect" data-gbx-connect>' + GLOGO + 'Connect Google</button>' : '<small class="bad">Coming soon.</small>')) + '</div></div>');
     if (S.connected) steps.push('<div class="gbx-step' + (S.location ? ' done' : '') + '"><span class="gbx-num">' + (S.location ? ic('check') : '3') + '</span><div><b>Pick your location</b><small>The Google listing for this restaurant.</small>' +
       (S.location ? '<small class="ok">' + esc(S.location.title) + '</small>' : '<button type="button" class="btn btn-primary btn-sm" data-gbx-locations>' + ic('location_on') + 'Choose location</button>') + '</div></div>');
     return '<div class="gbx-setup">' + steps.join('') + '</div>';

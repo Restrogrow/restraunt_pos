@@ -1177,7 +1177,7 @@ try {
         <li class="nav-item">
           <a href="#" class="nav-link" data-page="googleBusinessPage">
             <span class="nav-icon material-symbols-rounded">storefront</span>
-            <span class="nav-label">Google Business <span class="badge-new">New</span></span>
+            <span class="nav-label">Google Business <span class="badge-soon">Soon</span></span>
           </a>
           <span class="nav-tooltip">Google Business</span>
         </li>
@@ -7052,6 +7052,7 @@ function toggleGatewayMode() {
     }
     .badge-new{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#10b981;color:#fff;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle;margin-left:4px;}
     .badge-old{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#f59e0b;color:#fff;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle;margin-left:4px;}   /* pages still in the old look */
+    .badge-soon{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#7c3aed;color:#fff;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle;margin-left:4px;}   /* built, switching on soon */
   </style>
 
   <!-- POS Clear Cart Confirmation Modal -->
