@@ -1132,7 +1132,7 @@ try {
         <li class="nav-item">
           <a href="#" class="nav-link" data-page="waiterRequestsPage">
             <span class="nav-icon material-symbols-rounded">notifications_active</span>
-            <span class="nav-label">Waiter Requests <span class="badge-old">Old</span></span>
+            <span class="nav-label">Waiter Requests</span>
           </a>
           <span class="nav-tooltip">Waiter Requests</span>
         </li>
@@ -1400,7 +1400,7 @@ try {
         <li class="nav-item">
           <a href="#" class="nav-link" data-page="policyPagesPage">
             <span class="nav-icon material-symbols-rounded">gavel</span>
-            <span class="nav-label">Policy Pages <span class="badge-old">Old</span></span>
+            <span class="nav-label">Policy Pages</span>
           </a>
           <span class="nav-tooltip">Policy Pages</span>
         </li>
@@ -2414,40 +2414,27 @@ try {
         <p>Customize the legal text shown on your public website. Leave a page blank to keep showing the default text.</p>
       </div>
       <div class="page-content">
-        <div class="settings-grid">
-          <div class="settings-section" style="grid-column: 1 / -1;">
-            <h2 class="settings-section-title">
-              <span class="material-symbols-rounded">gavel</span>
-              Edit Policy Content
-            </h2>
-            <p style="color:#666;font-size:0.9rem;margin-bottom:16px;line-height:1.6;">
-              Pick a page below, then edit its content. Customers will see whatever is saved here instead of the default text.
-              Leave the box empty and save (or click <strong>Reset to Default</strong>) to go back to the built-in wording.
-            </p>
-
-            <div id="policyTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;"></div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-              <span id="policyStatusLabel" style="font-size:0.85rem;font-weight:600;color:#6b7280;display:flex;align-items:center;gap:6px;"></span>
-              <a href="#" id="policyViewLiveLink" target="_blank" class="btn btn-outline" style="padding:6px 12px;font-size:0.85rem;display:flex;align-items:center;gap:4px;">
-                <span class="material-symbols-rounded" style="font-size:16px;">open_in_new</span>
-                View Live Page
-              </a>
+        <!-- a list of the pages on the left, the editor on the right (pol-* in studio-ui.css) -->
+        <div class="pol-layout">
+          <aside class="pol-side">
+            <div class="pol-side-h"><span class="material-symbols-rounded">gavel</span><div><b>Your legal pages</b><small>Linked in your website’s footer</small></div></div>
+            <div id="policyTabs" class="pol-tabs"></div>
+            <p class="pol-hint"><span class="material-symbols-rounded">info</span><span>Every page starts with ready-made text that already has your restaurant’s name and contact details. Change only what you need.</span></p>
+          </aside>
+          <section class="pol-main">
+            <div class="pol-head">
+              <div><h2 id="policyTitle">Privacy Policy</h2><span id="policyStatusLabel" class="pol-status"></span></div>
+              <a href="#" id="policyViewLiveLink" target="_blank" rel="noopener" class="btn btn-secondary btn-sm"><span class="material-symbols-rounded">open_in_new</span>View on website</a>
             </div>
-
-            <div id="policyEditorWrapper" style="border:2px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#fff;">
-              <div id="policyContentEditor" style="min-height:380px;"></div>
+            <div id="policyEditorWrapper" class="pol-editor">
+              <div id="policyContentEditor" style="min-height:420px;"></div>
             </div>
-            <p style="margin-top:8px;color:#9ca3af;font-size:0.8rem;">Type and format like a normal document — use the toolbar for headings, bold, lists and links. No HTML knowledge needed.</p>
-
-            <div class="form-actions" style="margin-top:16px;">
-              <button type="button" class="btn btn-save" id="savePolicyBtn">Save Changes</button>
-              <button type="button" class="btn btn-outline" id="resetPolicyBtn" style="display:flex;align-items:center;gap:6px;">
-                <span class="material-symbols-rounded" style="font-size:18px;">restart_alt</span>
-                Reset to Default
-              </button>
+            <div class="pol-foot">
+              <small><span class="material-symbols-rounded">edit_note</span>Type like a normal document: headings, bold, lists and links from the toolbar.</small>
+              <button type="button" class="btn btn-secondary" id="resetPolicyBtn"><span class="material-symbols-rounded">restart_alt</span>Use default text</button>
+              <button type="button" class="btn btn-primary" id="savePolicyBtn"><span class="material-symbols-rounded">check</span>Save page</button>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>
@@ -2506,9 +2493,11 @@ try {
         ensurePolicyEditorLibLoaded().then(function() {
           if (!policyEditorInitialized) {
             policyEditorInitialized = true;
+            var POLICY_LOOK = { privacy: ['shield', 'What you collect and why'], terms: ['description', 'Rules for ordering'], refund: ['currency_rupee', 'Cancellations and refunds'], shipping: ['local_shipping', 'Delivery areas and times'], cookie: ['cookie', 'Cookies on your website'] };
             tabsContainer.innerHTML = POLICY_TYPES.map(function(p) {
-              return '<button type="button" class="policy-tab-btn" data-policy="' + p.key + '" style="padding:8px 16px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;color:#374151;font-weight:600;font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;">' +
-                '<span class="policy-tab-dot" data-dot="' + p.key + '" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;display:inline-block;"></span>' + p.label + '</button>';
+              var lk = POLICY_LOOK[p.key] || ['description', ''];
+              return '<button type="button" class="policy-tab-btn" data-policy="' + p.key + '"><span class="pol-ic material-symbols-rounded">' + lk[0] + '</span>' +
+                '<span class="pol-tx"><b>' + p.label + '</b><small>' + lk[1] + '</small></span><span class="policy-tab-dot" data-dot="' + p.key + '">Default</span></button>';
             }).join('');
 
             tabsContainer.querySelectorAll('.policy-tab-btn').forEach(function(btn) {
@@ -2565,17 +2554,16 @@ try {
       function updatePolicyTabDots() {
         POLICY_TYPES.forEach(function(p) {
           var dot = document.querySelector('.policy-tab-dot[data-dot="' + p.key + '"]');
-          if (dot) dot.style.background = policyStatuses[p.key] ? '#10b981' : '#d1d5db';
+          if (dot) { dot.classList.toggle('custom', !!policyStatuses[p.key]); dot.textContent = policyStatuses[p.key] ? 'Custom' : 'Default'; }
         });
       }
 
       function updatePolicyTabActiveState(key) {
         document.querySelectorAll('.policy-tab-btn').forEach(function(btn) {
-          var isActive = btn.getAttribute('data-policy') === key;
-          btn.style.borderColor = isActive ? '#dc2626' : '#e5e7eb';
-          btn.style.background = isActive ? '#dc2626' : '#fff';
-          btn.style.color = isActive ? '#fff' : '#374151';
+          btn.classList.toggle('on', btn.getAttribute('data-policy') === key);
         });
+        var title = document.getElementById('policyTitle');
+        if (title) title.textContent = getPolicyByKey(key).label;
       }
 
       function selectPolicyTab(key) {
@@ -2606,9 +2594,10 @@ try {
             policyStatuses[key] = hasCustom;
             updatePolicyTabDots();
             if (statusLabel) {
+              statusLabel.className = 'pol-status ' + (hasCustom ? 'custom' : 'default');
               statusLabel.innerHTML = hasCustom
-                ? '<span class="material-symbols-rounded" style="font-size:16px;color:#10b981;vertical-align:middle;">check_circle</span> Custom content active'
-                : '<span class="material-symbols-rounded" style="font-size:16px;color:#9ca3af;vertical-align:middle;">info</span> Showing default text below — edit any part and click Save to customize it';
+                ? '<span class="material-symbols-rounded">check_circle</span>Your own text is live on the website'
+                : '<span class="material-symbols-rounded">info</span>Showing the default text: edit any part and save to make it yours';
             }
           })
           .catch(function() {
@@ -7298,6 +7287,8 @@ function toggleGatewayMode() {
   <script src="../assets/js/gbp-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/gbp-studio.js'); ?>" defer></script>
   <script src="../assets/js/staff-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/staff-studio.js'); ?>" defer></script>
   <script src="../assets/js/payments-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/payments-studio.js'); ?>" defer></script>
+  <script src="../assets/js/waiter-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/waiter-studio.js'); ?>" defer></script>
+  <script src="../assets/js/profile-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/profile-studio.js'); ?>" defer></script>
   <script src="../assets/js/inventory-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/inventory-studio.js'); ?>" defer></script>
   <script src="../assets/js/menu-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-studio.js'); ?>" defer></script>
   <script src="../assets/js/new-order-popup.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/new-order-popup.js'); ?>" defer></script>
