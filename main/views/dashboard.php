@@ -1125,21 +1125,21 @@ try {
         <li class="nav-item">
           <a href="#" class="nav-link" data-page="staffPage">
             <span class="nav-icon material-symbols-rounded">person</span>
-            <span class="nav-label">Staff</span>
+            <span class="nav-label">Staff <span class="badge-old">Old</span></span>
           </a>
           <span class="nav-tooltip">Staff</span>
         </li>
         <li class="nav-item">
           <a href="#" class="nav-link" data-page="waiterRequestsPage">
             <span class="nav-icon material-symbols-rounded">notifications_active</span>
-            <span class="nav-label">Waiter Requests</span>
+            <span class="nav-label">Waiter Requests <span class="badge-old">Old</span></span>
           </a>
           <span class="nav-tooltip">Waiter Requests</span>
         </li>
         <li class="nav-item has-submenu">
           <a href="#" class="nav-link submenu-toggle">
             <span class="nav-icon material-symbols-rounded">payments</span>
-            <span class="nav-label">Payments</span>
+            <span class="nav-label">Payments <span class="badge-old">Old</span></span>
             <span class="submenu-arrow material-symbols-rounded">chevron_right</span>
           </a>
           <span class="nav-tooltip">Payments</span>
@@ -1147,14 +1147,14 @@ try {
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="paymentsPage">
                 <span class="nav-icon material-symbols-rounded">receipt_long</span>
-                <span class="nav-label">Payments</span>
+                <span class="nav-label">Payments <span class="badge-old">Old</span></span>
               </a>
               <span class="nav-tooltip">Payments</span>
             </li>
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="gatewayPage">
                 <span class="nav-icon material-symbols-rounded">credit_card</span>
-                <span class="nav-label">Gateway</span>
+                <span class="nav-label">Gateway <span class="badge-old">Old</span></span>
               </a>
               <span class="nav-tooltip">Gateway</span>
             </li>
@@ -1393,7 +1393,7 @@ try {
         <li class="nav-item">
           <a href="#" class="nav-link" data-page="policyPagesPage">
             <span class="nav-icon material-symbols-rounded">gavel</span>
-            <span class="nav-label">Policy Pages</span>
+            <span class="nav-label">Policy Pages <span class="badge-old">Old</span></span>
           </a>
           <span class="nav-tooltip">Policy Pages</span>
         </li>
@@ -7032,6 +7032,7 @@ function toggleGatewayMode() {
       to { transform: translateY(0); opacity: 1; }
     }
     .badge-new{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#10b981;color:#fff;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle;margin-left:4px;}
+    .badge-old{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#f59e0b;color:#fff;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle;margin-left:4px;}   /* pages still in the old look */
   </style>
 
   <!-- POS Clear Cart Confirmation Modal -->
