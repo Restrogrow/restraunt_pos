@@ -110,9 +110,9 @@
       '<section class="gbx-card"><h4>' + ic('star') + 'Ratings</h4>' + (S.rating == null ? '<p class="sx-muted">No rating yet. Find your restaurant on Google above.</p>' :
         '<div class="gbx-dist"><div class="gbx-big"><b>' + S.rating.toFixed(1) + '</b>' + stars(S.rating) + '<small>' + (S.rating_count || 0).toLocaleString('en-IN') + ' on Google</small></div><div class="gbx-bars">' +
         [5, 4, 3, 2, 1].map(function (n, i) { var p = Math.round(d[n] / total * 100); return '<div><span>' + n + '</span><i><b style="--w:' + p + '%;--d:' + (i * 80) + 'ms"></b></i><em>' + d[n] + '</em></div>'; }).join('') + '</div></div>' +
-        (S.source === 'places' ? '<p class="sx-muted gbx-mini">Bars show the newest reviews Google shares without connecting. Connect Google to see all of them.</p>' : '')) + '</section>' +
+        (S.source === 'places' ? '<p class="sx-muted gbx-mini">Bars show the newest reviews Google shares' + (S.setup.oauth ? ' without connecting. Connect Google to see all of them.' : '. All reviews: coming soon.') + '</p>' : '')) + '</section>' +
       '<section class="gbx-card"><h4>' + ic('reviews') + 'To do</h4><div class="gbx-todo">' +
-        todo(S.unanswered, 'reviews waiting for a reply', 'Reply now', 'reviews', S.unanswered ? 'warn' : 'ok', S.connected ? null : 'Connect Google to reply from here') +
+        todo(S.unanswered, 'reviews waiting for a reply', 'Reply now', 'reviews', S.unanswered ? 'warn' : 'ok', S.connected ? null : (S.setup.oauth ? 'Connect Google to reply from here' : 'Replying from here: coming soon')) +
         todo(scans, 'review link scans in 30 days', 'Get more reviews', 'get', scans ? 'ok' : 'muted') +
         todo(null, 'Post an offer or a combo on Google', 'New post', 'posts', 'muted') + '</div></section>' +
       '<section class="gbx-card gbx-span"><h4>' + ic('auto_awesome') + 'Tips to rank higher on Google Maps</h4><ul class="gbx-tips">' +
@@ -138,7 +138,7 @@
     var box = document.getElementById('gbxRevs');
     if (!box) return;
     if (!reviews.list.length) { box.innerHTML = '<div class="cbx-empty"><div class="cbx-empty-art">' + ic('reviews') + '</div><h3>' + (reviews.filter === 'all' ? 'No reviews here yet' : 'Nothing in this list') + '</h3><p>' + (S.place || S.connected ? 'Share your review link to get more.' : 'Find your restaurant on Google above to see its reviews.') + '</p></div>'; return; }
-    box.innerHTML = (reviews.source === 'places' ? '<div class="sx-note">' + ic('info') + '<span>These are the newest reviews Google shares publicly. <b>Connect Google</b> to see all reviews and reply from here.</span></div>' : '') +
+    box.innerHTML = (reviews.source === 'places' ? '<div class="sx-note">' + ic('info') + '<span>These are the newest reviews Google shares publicly.' + (S.setup.oauth ? ' <b>Connect Google</b> to see all reviews and reply from here.' : ' Seeing every review and replying from here: <b>coming soon</b>.') + '</span></div>' : '') +
       reviews.list.map(function (r, i) {
         var bad = r.rating && r.rating <= 3;
         return '<article class="gbx-rev' + (bad ? ' bad' : '') + (!r.reply && reviews.source === 'gbp' ? ' open' : '') + '" style="--d:' + Math.min(i, 12) * 40 + 'ms" data-rid="' + esc(r.review_id) + '">' +
@@ -254,7 +254,11 @@
     }
   }
 
-  function need(t, s) { return '<div class="cbx-empty"><div class="cbx-empty-art">' + GLOGO + '</div><h3>' + t + '</h3><p>' + s + '</p>' + (!S.connected && S.setup.oauth ? '<button type="button" class="gbx-connect" data-gbx-connect>' + GLOGO + 'Connect Google</button>' : '') + '</div>'; }
+  function need(t, s) {
+    // without the sign-in keys on the server, this part isn't available yet: say so plainly
+    if (!S.setup.oauth) return '<div class="cbx-empty"><div class="cbx-empty-art">' + GLOGO + '</div><span class="gbx-soon-tag">' + ic('bolt') + 'Coming soon</span><h3>' + t + '</h3><p>This part is on its way. Your rating, reviews and review QR already work.</p></div>';
+    return '<div class="cbx-empty"><div class="cbx-empty-art">' + GLOGO + '</div><h3>' + t + '</h3><p>' + s + '</p>' + (!S.connected ? '<button type="button" class="gbx-connect" data-gbx-connect>' + GLOGO + 'Connect Google</button>' : '') + '</div>';
+  }
 
   function pickLocation() {
     var ov = document.createElement('div'); ov.className = 'cbx-ov in'; ov.id = 'gbxLoc';
