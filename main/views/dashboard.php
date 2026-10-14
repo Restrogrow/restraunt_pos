@@ -5426,6 +5426,11 @@ function toggleGatewayMode() {
                   <p class="st-help">Only matters for USB. If the receipt comes out as random symbols, try 115200. Bluetooth printers paired in Windows ignore this.</p>
                 </div>
                 <p class="st-help">The printer is remembered on this device and reconnects by itself when you open the dashboard. The POS shows a printer button beside "Point of Sale": green means ready, tap it if it's off.</p>
+                <details class="st-details st-printer-log" id="printerLogBox">
+                  <summary><span class="material-symbols-rounded">description</span>Printer log<span class="material-symbols-rounded st-chev">expand_more</span></summary>
+                  <pre id="printerLog">Nothing yet. Connect the printer and tap Test print.</pre>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyPrinterLog(this)"><span class="material-symbols-rounded">content_copy</span>Copy log</button>
+                </details>
               </div>
               <div id="printerNetworkFields" style="display:none;">
                 <div class="st-grid2 st-sub">

@@ -523,6 +523,8 @@
 .st-printer-txt b { color: var(--sx-ink); font-size: .92rem; }
 .st-printer-txt small { color: var(--sx-muted); font-size: .78rem; line-height: 1.4; }
 .st-printer-acts { display: flex; gap: 8px; }
+.st-printer-log { margin-top: 12px; }
+.st-printer-log pre { max-height: 220px; overflow: auto; margin: 0 0 8px; padding: 10px; border-radius: 10px; background: #0f172a; color: #e2e8f0; font: 11px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
 
 /* account */
 .st-install { display: flex; align-items: center; gap: 14px; }

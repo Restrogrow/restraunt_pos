@@ -36,7 +36,7 @@
 
   var state = 'idle';          // idle | connecting | connected | disconnected
   var kind = null;             // which transport is open: 'bluetooth' | 'serial'
-  var device = null, channel = null, chunk = 180;
+  var device = null, channel = null, routes = [], routeIdx = 0;
   var port = null;
   var listeners = [];
   var queue = Promise.resolve();
@@ -44,7 +44,16 @@
   var lastError = '';
 
   // every step goes to the console as [printer] ..., so a printer that won't print can be traced
-  function log() { console.info.apply(console, ['[printer]'].concat([].slice.call(arguments))); }
+  // ...and onto Settings > Printer > Printer log, so it can be read without the console
+  var logLines = [];
+  function log() {
+    var parts = [].slice.call(arguments).map(function (x) { return typeof x === 'string' ? x : String(x); });
+    console.info.apply(console, ['[printer]'].concat(parts));
+    logLines.push(new Date().toTimeString().slice(0, 8) + '  ' + parts.join(' '));
+    if (logLines.length > 80) logLines.shift();
+    var el = document.getElementById('printerLog');
+    if (el) { el.textContent = logLines.join('\n'); el.scrollTop = el.scrollHeight; }
+  }
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function withTimeout(p, ms, msg) {
@@ -60,6 +69,9 @@
   function setState(s) { state = s; listeners.forEach(function (fn) { try { fn(api.info()); } catch (e) {} }); }
 
   /* ── Bluetooth (BLE) ── */
+  // A "route" is one way of sending: which channel, with or without the printer's answer per
+  // piece, and how big a piece. Printers differ, so each one is tried until one prints; the one
+  // that works is remembered for this printer.
   async function bleOpen(dev) {
     log('connecting to', dev.name || dev.id);
     var server = await withTimeout(dev.gatt.connect(), 8000, 'The printer did not answer. Is it on, close by, and not connected to another phone?');
@@ -71,19 +83,34 @@
       var ia = BLE_SERVICES.indexOf(a.uuid), ib = BLE_SERVICES.indexOf(b.uuid);
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
     });
+    var list = [];
     for (var i = 0; i < services.length; i++) {
       var chars = [];
       try { chars = await services[i].getCharacteristics(); } catch (e) { continue; }
-      var c = chars.find(function (ch) { return ch.properties.write; }) || chars.find(function (ch) { return ch.properties.writeWithoutResponse; });
-      log('  ' + services[i].uuid + ':', chars.map(function (ch) { return String(ch.uuid || '?').slice(4, 8) + (ch.properties.write ? ' w' : '') + (ch.properties.writeWithoutResponse ? ' wnr' : ''); }).join(', '));
-      if (c) { log('printing through', services[i].uuid, '/', c.uuid, c.properties.write ? '(write)' : '(write without response)'); return c; }
+      log('  ' + services[i].uuid + ':', chars.map(function (ch) { return String(ch.uuid || '?').slice(4, 8) + (ch.properties.write ? ' w' : '') + (ch.properties.writeWithoutResponse ? ' wnr' : ''); }).join(', ') || 'nothing');
+      chars.forEach(function (ch) {
+        var id = String(ch.uuid || i);
+        if (ch.properties.write) { list.push({ ch: ch, key: id + '|wr|100', resp: true, size: 100 }); list.push({ ch: ch, key: id + '|wr|20', resp: true, size: 20 }); }
+        if (ch.properties.writeWithoutResponse) list.push({ ch: ch, key: id + '|wnr|20', resp: false, size: 20 });
+      });
     }
-    try { dev.gatt.disconnect(); } catch (e) {}
-    throw new Error('Connected to ' + (dev.name || 'the device') + ', but it has no print channel this website knows. Is it the receipt printer?');
+    if (!list.length) {
+      try { dev.gatt.disconnect(); } catch (e) {}
+      throw new Error('Connected to ' + (dev.name || 'the device') + ', but it has no print channel this website knows. Is it the receipt printer?');
+    }
+    return list;
   }
 
-  function bleAttach(dev, ch) {
-    device = dev; channel = ch; kind = 'bluetooth'; chunk = 180;
+  function useRoute(i) {
+    routeIdx = Math.max(0, Math.min(i, routes.length - 1));
+    channel = routes[routeIdx].ch;
+    var s = saved();
+    if (s && s.kind === 'bluetooth') { s.route = routes[routeIdx].key; remember(s); }
+    log('sending through', routes[routeIdx].key, '(way ' + (routeIdx + 1) + ' of ' + routes.length + ')');
+  }
+
+  function bleAttach(dev, list) {
+    device = dev; routes = list; kind = 'bluetooth';
     if (!dev._rgWatched) {
       dev._rgWatched = true;
       dev.addEventListener('gattserverdisconnected', function () {
@@ -94,7 +121,11 @@
         setTimeout(function () { if (device === dev && state === 'disconnected') api.reconnect(); }, 2000);
       });
     }
-    remember({ kind: 'bluetooth', id: dev.id, name: dev.name || 'Bluetooth printer' });
+    var prev = saved();
+    var keep = prev && prev.kind === 'bluetooth' && prev.id === dev.id ? prev.route : null;
+    remember({ kind: 'bluetooth', id: dev.id, name: dev.name || 'Bluetooth printer', route: keep || null });
+    var at = keep ? list.findIndex(function (r) { return r.key === keep; }) : -1;
+    useRoute(at < 0 ? 0 : at);
     setState('connected');
   }
 
@@ -110,7 +141,7 @@
       var list = await navigator.bluetooth.getDevices();
       dev = list.find(function (d) { return d.id === info.id; }) || list.find(function (d) { return d.name && d.name === info.name; });
     }
-    if (!dev) return false;  // this browser can't reopen it without a tap
+    if (!dev) return false;  // this browser can only reopen it after a tap
     if (!dev.gatt.connected && dev.watchAdvertisements) {
       // wait until the printer is in range before connecting
       try {
@@ -124,22 +155,42 @@
     return true;
   }
 
+  async function bleSend(bytes, r) {
+    for (var i = 0; i < bytes.length; i += r.size) {
+      var part = bytes.slice(i, i + r.size);
+      var w = r.resp ? (r.ch.writeValueWithResponse ? r.ch.writeValueWithResponse(part) : r.ch.writeValue(part)) : r.ch.writeValueWithoutResponse(part);
+      // a printer that stops answering must not hold every later print
+      await withTimeout(w, 3000, 'The printer stopped answering');
+      if (!r.resp) await sleep(20);
+    }
+  }
+
   async function bleWrite(bytes) {
     log('sending', bytes.length, 'bytes over Bluetooth');
-    var withResp = channel.properties.write;
-    var size = withResp ? chunk : 20;
-    for (var i = 0; i < bytes.length;) {
-      var part = bytes.slice(i, i + size);
-      try {
-        if (withResp) await (channel.writeValueWithResponse ? channel.writeValueWithResponse(part) : channel.writeValue(part));
-        else { await channel.writeValueWithoutResponse(part); await sleep(8); }
-        i += part.length;
-      } catch (e) {
-        // some printers only take 20 bytes per write
-        if (size > 20) { size = chunk = 20; continue; }
-        throw e;
+    var tried = 0;
+    for (;;) {
+      try { await bleSend(bytes, routes[routeIdx]); return; }
+      catch (e) {
+        log('way', routes[routeIdx].key, 'failed:', e && e.message);
+        if (++tried >= routes.length) throw e;
+        // start clean (a stuck write blocks the next one), then the next way; a channel that
+        // stopped answering won't answer smaller pieces either, so skip to its no-answer way
+        var cur = routes[routeIdx], next = (routeIdx + 1) % routes.length;
+        if (/stopped answering/.test(e && e.message)) {
+          while (next !== routeIdx && routes[next].ch === cur.ch && routes[next].resp) { next = (next + 1) % routes.length; tried++; }
+          if (next === routeIdx || tried >= routes.length) throw e;
+        }
+        await bleRestart();
+        useRoute(next);
       }
     }
+  }
+
+  async function bleRestart() {
+    var dev = device;
+    try { dev.gatt.disconnect(); } catch (x) {}
+    await sleep(300);
+    bleAttach(dev, await bleOpen(dev));
   }
 
   /* ── USB / COM port ── */
@@ -173,9 +224,19 @@
   }
 
   async function serialWrite(bytes) {
-    log('sending', bytes.length, 'bytes over USB / COM');
+    log('sending', bytes.length, 'bytes over USB / COM at', port._rgBaud);
     var w = port.writable.getWriter();
-    try { await w.write(bytes); } finally { w.releaseLock(); }
+    try {
+      await withTimeout(w.write(bytes), 8000, 'The printer did not take the data. Check the cable / pairing and the Speed setting');
+    } catch (e) {
+      try { await w.abort(); } catch (x) {}
+      try { w.releaseLock(); } catch (x) {}
+      var p = port; port = null;
+      try { await p.close(); } catch (x) {}
+      setState('disconnected');
+      throw e;
+    }
+    w.releaseLock();
   }
 
   if (supported.serial) {
@@ -252,6 +313,20 @@
       setState('idle');
     },
 
+    logText: function () { return logLines.join('\n'); },
+
+    // How many ways of sending this printer has, and which one is in use (Test print steps through them).
+    route: function () { return kind === 'bluetooth' && routes.length ? { at: routeIdx + 1, of: routes.length, key: routes[routeIdx].key } : null; },
+    nextRoute: async function () {
+      if (kind !== 'bluetooth' || routes.length < 2 || !device) return false;
+      var next = routeIdx + 1;
+      if (next >= routes.length) return false;
+      try { if (!device.gatt.connected) await bleRestart(); } catch (e) { log('reconnect failed:', e && e.message); return false; }
+      useRoute(next);
+      return true;
+    },
+    firstRoute: function () { if (kind === 'bluetooth' && routes.length) useRoute(0); },
+
     // Sends bytes; jobs wait their turn so a KOT and a bill never mix on paper.
     write: function (bytes) {
       var job = queue.then(async function () {
@@ -281,7 +356,7 @@
   // on its way (it's sent in the background, so the POS never waits for the paper), false when
   // the caller should show the normal print preview instead. If sending fails later, onFail runs
   // (callers pass "show the preview").
-  global.printDirect = async function (builder, onFail) {
+  global.printDirect = async function (builder, onFail, opts) {
     var mode = settings().mode;
     if (mode === 'network') return global.printViaNetwork(builder);
     if (mode !== 'bluetooth' && mode !== 'serial') return false;
@@ -294,14 +369,15 @@
       if (!ok) ok = (await askToConnect(mode)) && (await api.pick(mode));
       if (!ok) return false;
     }
-    api.write(bytes).then(function () { log('sent', bytes.length, 'bytes'); }).catch(function (e) {
+    var job = api.write(bytes).then(function () { log('sent', bytes.length, 'bytes'); return true; }).catch(function (e) {
       log('send failed:', e && e.name, e && e.message);
       lastError = 'Printing failed: ' + (e && e.message ? e.message : 'printer did not respond');
       if (state === 'connected') setState('disconnected'); else setState(state);
       say('Printing failed: ' + (e && e.message ? e.message : 'printer did not respond') + '.' + (onFail ? ' Showing preview instead.' : ''), 'error');
       if (typeof onFail === 'function') onFail();
+      return false;
     });
-    return true;
+    return opts && opts.wait ? job : true;
   };
 
   // A connect that went wrong gets a window that stays until it's read, with what to try next.

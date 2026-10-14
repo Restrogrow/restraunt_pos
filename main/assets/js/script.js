@@ -10346,6 +10346,13 @@ window.connectPrinterFromSettings = async function () {
   window.paintPrinterDeviceCard();
 };
 
+window.copyPrinterLog = function (btn) {
+  var text = window.rgPrinter ? window.rgPrinter.logText() : '';
+  if (!text) return;
+  var done = function () { var i = btn.querySelector('.material-symbols-rounded'); if (i) { i.textContent = 'check'; setTimeout(function () { i.textContent = 'content_copy'; }, 1400); } };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done);
+};
+
 window.forgetPrinterFromSettings = async function () {
   if (!window.rgPrinter) return;
   await window.rgPrinter.forget();
@@ -10428,20 +10435,9 @@ window.testPrintReceipt = async function () {
   };
 
   var builder = window.buildReceiptEscPos(sampleData);
+  var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
 
-  if (window.isDirectPrintMode(settings.mode)) {
-    const sent = await window.printDirect(builder);
-    if (sent) {
-      var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
-      showMsg(settings.mode === 'network'
-        ? 'Test print sent to ' + settings.networkIp + ':' + settings.networkPort + '. Check your printer (or the virtual printer terminal).'
-        : 'Test print sent to ' + ((window.rgPrinter && window.rgPrinter.info().name) || 'your printer') + '.', 'success');
-    }
-    if (window.paintPrinterDeviceCard) window.paintPrinterDeviceCard();
-    return;
-  }
-
-  // Browser mode: render the exact bytes a real printer would receive as
+  // The preview renders the exact bytes a real printer would receive as
   // monospace text, at the configured paper width - the most accurate
   // preview possible without physical hardware.
   var plainText = builder.toPlainText();
@@ -10449,8 +10445,57 @@ window.testPrintReceipt = async function () {
     window.getThermalReceiptCSS(settings.widthMM) +
     'pre { font-family:"Courier New",Courier,monospace; white-space:pre-wrap; word-break:break-word; }' +
     '</style></head><body><pre>' + escapeHtml(plainText) + '</pre></body></html>';
-  showPrintPreview('Test Print (' + settings.widthMM + 'mm)', html);
+  var preview = function () { showPrintPreview('Test Print (' + settings.widthMM + 'mm)', html); };
+
+  if (settings.mode === 'network') {
+    const sent = await window.printDirect(builder);
+    if (sent) showMsg('Test print sent to ' + settings.networkIp + ':' + settings.networkPort + '. Check your printer (or the virtual printer terminal).', 'success');
+    else preview();
+    return;
+  }
+
+  if (settings.mode === 'bluetooth' || settings.mode === 'serial') {
+    await testPrintDirect(builder, preview);
+    if (window.paintPrinterDeviceCard) window.paintPrinterDeviceCard();
+    return;
+  }
+
+  preview();
 };
+
+// Bluetooth / USB test print: waits for the bytes to go out, then asks whether paper came out.
+// "No" sends it again another way (printers differ in how they take data); the way that
+// prints is remembered for this printer.
+async function testPrintDirect(builder, preview) {
+  var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
+  var logBox = document.getElementById('printerLogBox');
+  for (;;) {
+    var ok = await window.printDirect(builder, null, { wait: true });
+    if (!ok) { if (logBox) logBox.open = true; preview(); return; }
+    var p = window.rgPrinter, r = p.route(), name = p.info().name || 'your printer';
+    var more = !!(r && r.at < r.of);
+    if (!window.Swal) { if (!confirm('Sent to ' + name + '. Did the test receipt print?') && more && await p.nextRoute()) continue; return; }
+    var ans = await Swal.fire({
+      title: 'Did the test receipt print?',
+      html: 'Sent to <b>' + escapeHtml(name) + '</b>' + (r ? '<br><small style="color:#64748b;">Way ' + r.at + ' of ' + r.of + '</small>' : ''),
+      icon: 'question', showDenyButton: true, showCancelButton: true,
+      confirmButtonText: 'Yes, it printed', denyButtonText: more ? 'No, try another way' : 'No',
+      cancelButtonText: 'Show preview', confirmButtonColor: '#16a34a', denyButtonColor: '#2563eb'
+    });
+    if (ans.isConfirmed) { showMsg('Printer ready. Bills and KOTs will print on ' + name + '.', 'success'); return; }
+    if (ans.isDenied && more && await p.nextRoute()) continue;
+    if (ans.isDenied) {
+      if (r) p.firstRoute();
+      if (logBox) { logBox.open = true; logBox.scrollIntoView({ block: 'center' }); }
+      await Swal.fire({
+        title: 'No way worked yet', icon: 'info', confirmButtonText: 'OK',
+        html: 'The printer took the data but printed nothing.<br>Check the paper roll (shiny side towards the print head) and that the printer is not in setup mode.<br><br>If it still doesn\'t print, tap <b>Copy log</b> under Printer log and send it to support.'
+      });
+    }
+    preview();
+    return;
+  }
+}
 
 // Export Orders to CSV
 function exportOrdersToCSV() {
