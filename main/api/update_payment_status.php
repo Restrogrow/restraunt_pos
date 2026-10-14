@@ -78,6 +78,12 @@ try {
 
         $conn->commit();
 
+        require_once __DIR__ . '/../config/activity_log.php';
+        $on = $conn->prepare('SELECT order_number, total FROM orders WHERE id = ?'); $on->execute([$orderId]); $onRow = $on->fetch(PDO::FETCH_ASSOC) ?: [];
+        logActivity($conn, $restaurant_id, $status === 'Refunded' ? 'payment.refund' : 'payment.update',
+            'Payment of order ' . ($onRow['order_number'] ?? '#' . $orderId) . ' set to ' . $status . ($method !== '' ? ' (' . $method . ')' : ''),
+            array_filter(['status' => $status, 'method' => $method, 'total' => $onRow['total'] ?? null]), 'order', $orderId);
+
         echo json_encode([
             'success' => true,
             'message' => $result['message'],

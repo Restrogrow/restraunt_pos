@@ -2451,6 +2451,11 @@ function getQty(itemId) {
   return getItemTotalQty(itemId);
 }
 
+// A dish that can't be added says why: "Served 7–11 am" (menus by time of day, website/api.php) or out of stock
+function oosLabel(item, fallback) {
+  var t = item && item.hours_label ? item.hours_label : (fallback || 'Out of Stock');
+  return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+}
 function renderQtyControl(itemId, item) {
   if (item && item.is_available == 0) return '';
   var hasVar = item && item.has_variations && item.variations && item.variations.length > 0;
@@ -2585,7 +2590,7 @@ function renderMenu() {
           '<div class="menu-item-footer">' +
             '<div class="menu-item-price">' + displayPrice + '</div>' +
             '<div style="display:flex;align-items:center;gap:6px">' +
-              (oos ? '<span class="menu-item-oos-badge">Out of Stock</span>' : '') +
+              (oos ? '<span class="menu-item-oos-badge">' + oosLabel(item) + '</span>' : '') +
               (!oos && item.has_variations ? '<span class="menu-item-variant">Variants</span>' : '') +
               (!oos ? '<span id="qty-' + item.id + '">' + renderQtyControl(item.id, item) + '</span>' : '') +
             '</div>' +
@@ -2958,7 +2963,7 @@ function showItemDetail(ci, ii) {
   html += '<div class="product-sheet-footer">';
   var oos = item.is_available == 0;
   if (oos) {
-    html += '<div style="width:100%;padding:14px 0;text-align:center;color:#e74c3c;font-weight:600;font-size:14px">Currently Out of Stock</div>';
+    html += '<div style="width:100%;padding:14px 0;text-align:center;color:#e74c3c;font-weight:600;font-size:14px">' + oosLabel(item, 'Currently Out of Stock') + '</div>';
   } else {
     var existingQty = getItemTotalQty(item.id);
     if (existingQty > 0) {

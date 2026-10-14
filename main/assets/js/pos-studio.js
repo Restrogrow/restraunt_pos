@@ -171,7 +171,10 @@
       order.sort(function (a, b) { return (pos[a] != null ? pos[a] : 999) - (pos[b] != null ? pos[b] : 999); });
       order.forEach(function (k) {
         var h = document.createElement('div'); h.className = 'ps-group-h'; h.setAttribute('data-group', k);
-        h.innerHTML = '<b>' + esc(by[k][0].getAttribute('data-menu-name') || 'Other') + '</b><small>' + by[k].length + ' dish' + (by[k].length === 1 ? '' : 'es') + '</small>';
+        // menus by time of day: when the category is served (the POS can still sell it)
+        var opt = sel ? [].filter.call(sel.options, function (o) { return o.value === k; })[0] : null, hrs = opt && opt.getAttribute('data-hours');
+        h.innerHTML = '<b>' + esc(by[k][0].getAttribute('data-menu-name') || 'Other') + '</b><small>' + by[k].length + ' dish' + (by[k].length === 1 ? '' : 'es') + '</small>' +
+          (hrs ? '<span class="ps-hours' + (opt.getAttribute('data-served') === '0' ? ' off' : '') + '" title="' + (opt.getAttribute('data-served') === '0' ? 'Not served right now. You can still bill it here.' : 'Served now') + '">' + ic('schedule') + esc(hrs.replace(/^Served /, '')) + '</span>' : '');
         grid.appendChild(h);
         by[k].forEach(function (t) { grid.appendChild(t); });
       });
@@ -275,7 +278,8 @@
     gridObs.observe(grid, { childList: true });
     // the category list fills in once the POS opens: draw the chips then
     var sel = el('posMenuFilter');
-    if (sel) new MutationObserver(paintBar).observe(sel, { childList: true });
+    // (and the headings again: they show each category's serving hours from the list)
+    if (sel) new MutationObserver(function () { paintBar(); if (!grouping && el('posMenuItems').querySelector('.ps-group-h')) group(); }).observe(sel, { childList: true });
     paintBar();
     var sec = page.querySelector('.pos-menu-section');
     var onScroll = function () { if (!spyTick) spyTick = requestAnimationFrame(function () { spyTick = 0; spy(); }); };

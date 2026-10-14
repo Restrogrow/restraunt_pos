@@ -325,6 +325,8 @@ function handleLogin() {
         
         // Regenerate session ID after successful login for security
         regenerateSessionAfterLogin();
+        require_once __DIR__ . '/../config/activity_log.php';
+        logActivity($pdo, $user['restaurant_id'], 'login.owner', 'Logged in', [], null, null, ['name' => (string)$user['username'], 'role' => 'Owner', 'staff_id' => null]);
         
         // Clear any output before JSON
         ob_clean();
@@ -393,6 +395,8 @@ function handleLogin() {
         
         // Regenerate session ID after successful login for security
         regenerateSessionAfterLogin();
+        require_once __DIR__ . '/../config/activity_log.php';
+        logActivity($pdo, $staff['restaurant_id'], 'login.staff', 'Logged in', [], 'staff', $staff['id'], ['name' => (string)$staff['member_name'], 'role' => (string)$staff['role'], 'staff_id' => (int)$staff['id']]);
         
         // Redirect based on role to appropriate dashboard
         $role = $staff['role'];
@@ -913,6 +917,7 @@ function handleChangePassword() {
     } else {
         $updateStmt = $pdo->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
         $result = $updateStmt->execute([$hashedPassword, $userId]);
+        if ($result) { require_once __DIR__ . '/../config/activity_log.php'; logActivity($pdo, ($_SESSION['restaurant_id'] ?? null), 'settings.password', 'Changed the owner password'); }
     }
     
     if ($result) {
@@ -1046,8 +1051,10 @@ function handleUpdateRestaurantSettings() {
         ensurePanColumns($pdo);
         ensureGstinColumns($pdo);
         ensureBusinessIdColumns($pdo);
+        require_once __DIR__ . '/../config/activity_log.php'; $__before = activityUserRow($pdo, $userId);
         $updateStmt = $pdo->prepare("UPDATE users SET restaurant_name = ?, email = ?, phone = ?, address = ?, description = ?, description_format = ?, opening_hours = ?, phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, minimum_order_value = ?, google_maps_link = ?, owner_name = ?, enable_gst = ?, tax_name = ?, tax_percent = ?, instagram_link = ?, facebook_link = ?, twitter_link = ?, youtube_link = ?, linkedin_link = ?, enable_delivery = ?, enable_takeaway = ?, enable_dinein = ?, enable_reservations = ?, cod_enabled = ?, enable_language = ?, packaging_charge = ?, delivery_radius_km = ?, enable_km_delivery = ?, delivery_rate_per_km = ?, show_business_id = ?, business_id_label = ?, business_id_no = ?, updated_at = NOW() WHERE id = ?");
         $result = $updateStmt->execute([$restaurantName, $email, $phone, $address, $description, $descriptionFormat, $openingHours, $phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $minimumOrderValue, $googleMapsLink, $ownerName, $enableGst, $taxName, $taxPercent, $instagramLink, $facebookLink, $twitterLink, $youtubeLink, $linkedinLink, $enableDelivery, $enableTakeaway, $enableDinein, $enableReservations, $codEnabled, $enableLanguage, $packagingCharge, $deliveryRadius, $enableKmDelivery, $deliveryRatePerKm, $showBusinessId, $businessIdLabel, $businessIdNo, $userId]);
+        if ($result) { $__chg = activitySettingsChanged($__before, activityUserRow($pdo, $userId)); if ($__chg) logActivity($pdo, ($_SESSION['restaurant_id'] ?? null), 'settings.restaurant', 'Changed settings: ' . implode(', ', $__chg)); }
     } catch (PDOException $e) {
         $msg = $e->getMessage();
         if (strpos($msg, 'minimum_order_value') !== false || strpos($msg, 'Unknown column') !== false) {
@@ -1250,6 +1257,8 @@ function handleToggleOrderType() {
 
     $updateStmt = $pdo->prepare("UPDATE users SET {$column} = ?, updated_at = NOW() WHERE id = ?");
     $updateStmt->execute([$enabled, $userId]);
+    require_once __DIR__ . '/../config/activity_log.php';
+    logActivity($pdo, ($_SESSION['restaurant_id'] ?? null), 'settings.order_type', 'Turned ' . ($enabled ? 'on ' : 'off ') . str_replace(['enable_', '_'], ['', ' '], $column) . ' orders');
 
     echo json_encode([
         'success' => true,
@@ -1297,8 +1306,10 @@ function handleUpdatePaymentGateway() {
     }
 
     try {
+        require_once __DIR__ . '/../config/activity_log.php'; $__before = activityUserRow($pdo, $userId);
         $updateStmt = $pdo->prepare("UPDATE users SET phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, payment_gateway_mode = ?, updated_at = NOW() WHERE id = ?");
         $result = $updateStmt->execute([$phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $gatewayMode, $userId]);
+        if ($result) { $__chg = activitySettingsChanged($__before, activityUserRow($pdo, $userId)); if ($__chg) logActivity($pdo, ($_SESSION['restaurant_id'] ?? null), 'settings.payment_gateway', 'Changed payment gateway: ' . implode(', ', $__chg)); }
     } catch (PDOException $e) {
         $msg = $e->getMessage();
         if (strpos($msg, 'Unknown column') !== false) {
@@ -1400,8 +1411,10 @@ function handleUpdateSystemSettings() {
     // Update system settings - handle column existence gracefully
     try {
         // Try to update with all fields
+        require_once __DIR__ . '/../config/activity_log.php'; $__before = activityUserRow($pdo, $userId);
         $updateStmt = $pdo->prepare("UPDATE users SET currency_symbol = ?, country = ?, timezone = ?, language = ?, show_install_app = ?, updated_at = NOW() WHERE id = ?");
         $result = $updateStmt->execute([$currencySymbol, $country, $timezone, $language, $showInstallApp, $userId]);
+        if ($result) { $__after = activityUserRow($pdo, $userId); $__chg = activitySettingsChanged($__before, $__after); if ($__chg) logActivity($pdo, ($_SESSION['restaurant_id'] ?? null), 'settings.system', 'Changed settings: ' . implode(', ', $__chg)); }
     } catch (PDOException $e) {
         // If columns don't exist, try without them
         if (strpos($e->getMessage(), 'currency_symbol') !== false ||

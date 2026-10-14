@@ -139,6 +139,8 @@ function handleAddStaff($conn, $restaurant_id) {
     $stmt = $conn->prepare("INSERT INTO staff (restaurant_id, member_name, email, phone, password, role) VALUES (?, ?, ?, ?, ?, ?)");
     $stmt->execute([$restaurant_id, $memberName, $email, $fullPhone, $hashedPassword, $role]);
     
+    require_once __DIR__ . '/../config/activity_log.php';
+    logActivity($conn, $restaurant_id, 'staff.add', 'Added staff member ' . $memberName . ' as ' . $role, ['role' => $role], 'staff', $conn->lastInsertId());
     echo json_encode(['success' => true, 'message' => 'Staff member added successfully'], JSON_UNESCAPED_UNICODE);
 }
 
@@ -214,6 +216,8 @@ function handleUpdateStaff($conn, $restaurant_id) {
         $stmt->execute([$memberName, $email, $fullPhone, $role, $staffId, $restaurant_id]);
     }
     
+    require_once __DIR__ . '/../config/activity_log.php';
+    logActivity($conn, $restaurant_id, 'staff.edit', 'Edited staff member ' . $memberName . ' (' . $role . ')' . (!empty($password) ? ', password changed' : ''), ['role' => $role], 'staff', $staffId);
     echo json_encode(['success' => true, 'message' => 'Staff member updated successfully'], JSON_UNESCAPED_UNICODE);
 }
 
@@ -227,10 +231,11 @@ function handleDeleteStaff($conn, $restaurant_id) {
     }
     
     // Check if staff exists and belongs to restaurant
-    $checkStmt = $conn->prepare("SELECT id FROM staff WHERE id = ? AND restaurant_id = ?");
+    $checkStmt = $conn->prepare("SELECT id, member_name, role FROM staff WHERE id = ? AND restaurant_id = ?");
     $checkStmt->execute([$staffId, $restaurant_id]);
     
-    if (!$checkStmt->fetch()) {
+    $delStaff = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$delStaff) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Staff member not found'], JSON_UNESCAPED_UNICODE);
         return;
@@ -240,6 +245,8 @@ function handleDeleteStaff($conn, $restaurant_id) {
     $stmt = $conn->prepare("DELETE FROM staff WHERE id = ? AND restaurant_id = ?");
     $stmt->execute([$staffId, $restaurant_id]);
     
+    require_once __DIR__ . '/../config/activity_log.php';
+    logActivity($conn, $restaurant_id, 'staff.delete', 'Removed staff member ' . $delStaff['member_name'] . ' (' . $delStaff['role'] . ')', [], 'staff', $staffId);
     echo json_encode(['success' => true, 'message' => 'Staff member deleted successfully'], JSON_UNESCAPED_UNICODE);
 }
 ?>

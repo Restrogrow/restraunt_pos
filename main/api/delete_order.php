@@ -129,6 +129,10 @@ try {
         $reason !== '' ? ' — reason: ' . $reason : ''
     ));
 
+    require_once __DIR__ . '/../config/activity_log.php';
+    logActivity($conn, $restaurant_id, 'order.delete', 'Deleted order ' . $order['order_number'] . ' (' . $order['order_status'] . ', ' . $order['payment_status'] . ')' . ($reason !== '' ? ': ' . $reason : ''),
+        array_filter(['reason' => $reason, 'total' => $order['total'], 'status' => $order['order_status'], 'payment' => $order['payment_status']]), 'order', $orderId);
+
     echo json_encode([
         'success' => true,
         'message' => 'Order deleted. Find it anytime in the Deleted tab.',

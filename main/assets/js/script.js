@@ -2613,6 +2613,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  window.loadMenus = loadMenus;
   function displayMenus(menus) {
     const menuList = document.getElementById("menuList");
 
@@ -2661,12 +2662,22 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>`;
       }
 
+      // menus by time of day (assets/js/menu-hours.js)
+      const hoursData = escapeHtml(JSON.stringify({ id: menu.id, menu_name: menu.menu_name, avail_days: menu.avail_days || '', avail_from: menu.avail_from || '', avail_to: menu.avail_to || '' })).replace(/"/g, '&quot;');   // this escapeHtml leaves quotes
+      const hoursChip = menu.hours_label
+        ? `<div class="mh-chip${menu.served_now === false ? ' off' : ''}"><span class="material-symbols-rounded">schedule</span>${escapeHtml(menu.hours_label)}${menu.served_now === false ? ' · not now' : ''}</div>`
+        : '';
       return `
       <div class="menu-card" data-menu-id="${menu.id}">
         ${imageHtml}
         <h3>${escapeHtml(menu.menu_name)}</h3>
         <div class="menu-date">Created: ${formatDate(menu.created_at)}</div>
+        ${hoursChip}
         <div class="menu-actions-card">
+          <button class="btn-edit mh-btn" type="button" data-menu-hours="${hoursData}" title="When this category is served">
+            <span class="material-symbols-rounded">schedule</span>
+            Hours
+          </button>
           <button class="btn-edit" onclick="editMenu(${menu.id}, '${escapeHtml(menu.menu_name)}', '${menuImageUrl || ''}')">
             <span class="material-symbols-rounded">edit</span>
             Edit
@@ -8192,7 +8203,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (result.success && posMenuFilter) {
         posMenuFilter.innerHTML = '<option value="">All Menus</option>' + 
           result.data.map(menu => 
-            `<option value="${menu.id}">${escapeHtml(menu.menu_name)}</option>`
+            `<option value="${menu.id}" data-hours="${escapeHtml(menu.hours_label || '')}" data-served="${menu.served_now === false ? '0' : '1'}">${escapeHtml(menu.menu_name)}</option>`
           ).join('');
       }
     } catch (error) {
@@ -9164,40 +9175,8 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append('total', total.toFixed(2));
 
     try {
-      const response = await fetch("../controllers/pos_operations.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData
-      });
-
-      // Get response text first
-      const responseText = await response.text();
-      console.log('Response status:', response.status);
-      console.log('Response text:', responseText.substring(0, 500)); // First 500 chars
-
-      // Check if response is ok
-      if (!response.ok) {
-        console.error('Server error response (full):', responseText);
-        // Try to parse as JSON for error message
-        try {
-          const errorResult = JSON.parse(responseText);
-          throw new Error(errorResult.message || `Server error: ${response.status} ${response.statusText}`);
-        } catch (e) {
-          // Not JSON, show raw error
-          throw new Error(`Server error (${response.status}): ${responseText.substring(0, 200)}`);
-        }
-      }
-
-      // Parse JSON response
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (e) {
-        console.error('Invalid JSON response:', responseText);
-        throw new Error('Invalid response from server. Response: ' + responseText.substring(0, 200));
-      }
+      // online: straight to the server; no internet: kept on this device and synced later (pos-offline.js)
+      const result = await window.rgPosSend('pay', formData, { total, tableLabel, cart: cart.slice() });
 
       if (result.success) {
         // Snapshot the cart for the bill preview before clearing it
@@ -9225,7 +9204,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
         const billNo = result.kot_number || result.order_number;
-        showMsg(`Payment saved (${payResult.paymentStatus}) - ${result.kot_number ? 'KOT #' + result.kot_number : 'Bill ' + result.order_number}`, "success");
+        if (result.offline) showMsg(`Saved offline as bill ${result.order_number}. It syncs when the internet is back.`, "info");
+        else showMsg(`Payment saved (${payResult.paymentStatus}) - ${result.kot_number ? 'KOT #' + result.kot_number : 'Bill ' + result.order_number}`, "success");
         window.posResetBill();
 
         const showBill = async () => {
@@ -9237,6 +9217,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // a new kitchen ticket (dishes not sent before): its preview first, then the bill
         if (result.kot_id && window.printKOT) {
           window.printKOT(result.kot_id, showBill);
+        } else if (result.offline && result.localKot && result.localKot.length && window.rgPosOffline) {
+          window.rgPosOffline.printLocalKot(result.localKot, result.order_number, tableLabel, showBill);
         } else {
           showBill();
         }
@@ -9253,7 +9235,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       console.error("Error:", error);
       const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
-      showMsg("Network error. Please check your connection and try again.", "error");
+      showMsg(error && error.message ? error.message : "Network error. Please check your connection and try again.", "error");
     }
   }
   
@@ -9336,14 +9318,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const btns = [document.getElementById('sendKotBtn'), document.getElementById('mobileSendKotBtn')].filter(Boolean);
     btns.forEach(b => b.disabled = true);
     try {
-      const response = await fetch("../controllers/pos_operations.php", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData });
-      const result = await response.json();
+      const tableLabel = selectedTable && selectPosTable.selectedIndex >= 0 ? selectPosTable.options[selectPosTable.selectedIndex].text : 'Takeaway';
+      const result = await window.rgPosSend('kot', formData, { total, tableLabel, cart: cart.slice() });
       if (!result.success) { showMsg(result.message || "Could not send to the kitchen.", "error"); if (/already paid or cancelled/.test(result.message || '')) { window.posResetBill(); updateCartFn(); } return; }
       window.posOpenBill = { id: result.order_id, number: result.order_number };
       window.posMarkAllSent(cart);
       window._kotSentForCurrentOrder = true;
       updateCartFn();
-      showMsg(`Sent to the kitchen (KOT #${result.kot_number}). Bill ${result.order_number} stays open until it's paid.`, "success");
+      if (result.offline) {
+        showMsg(`Offline: kitchen ticket printed here. Bill ${result.order_number} stays open and syncs when the internet is back.`, "info");
+        if (window.rgPosOffline) window.rgPosOffline.printLocalKot(result.localKot, result.order_number, tableLabel);
+      } else showMsg(`Sent to the kitchen (KOT #${result.kot_number}). Bill ${result.order_number} stays open until it's paid.`, "success");
       if (result.kot_id && window.printKOT) window.printKOT(result.kot_id);
       const ordersPage = document.getElementById('ordersPage');
       if (ordersPage && ordersPage.classList.contains('active') && typeof loadOrders !== 'undefined') loadOrders();
@@ -9502,7 +9487,9 @@ async function initiateRenewal() {
 window.initiateRenewal = initiateRenewal;
 
 async function logout() {
-  if (await showSweetConfirm("Are you sure you want to logout?", 'Logout')) {
+  // offline POS bills not synced yet stay on this device (pos-offline.js) and sync at the next login here
+  const unsynced = window.rgPosOffline ? window.rgPosOffline.queue().length : 0;
+  if (await showSweetConfirm(unsynced ? `${unsynced} offline bill${unsynced === 1 ? ' has' : 's have'} not synced yet. They stay on this device and sync the next time you log in here. Log out anyway?` : "Are you sure you want to logout?", 'Logout')) {
     try {
       const response = await fetch("../admin/auth.php", {
         method: "POST",
@@ -9515,6 +9502,8 @@ async function logout() {
       const result = await response.json();
       
       if (result.success) {
+        // the dashboard kept for opening offline (website/sw.js) goes with the login
+        try { if (window.caches) await caches.delete('rg-shell'); } catch (e) {}
         // Redirect to login page (correct path from views/ folder)
         window.location.href = "../admin/login.php";
       } else {

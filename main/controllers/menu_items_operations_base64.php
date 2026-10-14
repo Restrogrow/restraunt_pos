@@ -193,9 +193,11 @@ function handleToggleMenuItemHidden($conn, $restaurant_id, $menuItemId) {
     $stmt->execute([$menuItemId, $restaurant_id]);
 
     if ($stmt->rowCount() > 0) {
-        $fetchStmt = $conn->prepare("SELECT is_hidden FROM menu_items WHERE id = ?");
+        $fetchStmt = $conn->prepare("SELECT is_hidden, item_name_en FROM menu_items WHERE id = ?");
         $fetchStmt->execute([$menuItemId]);
         $row = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+        require_once __DIR__ . '/../config/activity_log.php';
+        if ($row) logActivity($conn, $restaurant_id, 'menu.hide', ((int)$row['is_hidden'] === 1 ? 'Hid ' : 'Unhid ') . $row['item_name_en'] . ' (POS and website)', [], 'menu_item', $menuItemId);
 
         echo json_encode([
             'success' => true,
@@ -418,6 +420,18 @@ function handleUpdateMenuItemBase64($conn, $restaurant_id, $menuItemId, $menuId,
         require_once __DIR__ . '/../config/ingredient_helpers.php';
         saveMenuItemIngredients($conn, $menuItemId, $restaurant_id);
         saveMenuItemNutrition($conn, $menuItemId, $restaurant_id);
+
+        // owner's activity log: what changed that matters (price, availability, name)
+        require_once __DIR__ . '/../config/activity_log.php';
+        $chg = [];
+        if (abs((float)$existingItem['base_price'] - (float)$basePrice) > 0.004) $chg['price'] = [(float)$existingItem['base_price'], (float)$basePrice];
+        if ((int)$existingItem['is_available'] !== (int)$isAvailable) $chg['available'] = [(int)$existingItem['is_available'], (int)$isAvailable];
+        if ((string)$existingItem['item_name_en'] !== (string)$itemNameEn) $chg['name'] = [$existingItem['item_name_en'], $itemNameEn];
+        $bits = [];
+        if (isset($chg['price'])) $bits[] = 'price ' . number_format($chg['price'][0], 2) . ' to ' . number_format($chg['price'][1], 2);
+        if (isset($chg['available'])) $bits[] = $chg['available'][1] ? 'back in stock' : 'marked out of stock';
+        if (isset($chg['name'])) $bits[] = 'renamed from ' . $chg['name'][0];
+        logActivity($conn, $restaurant_id, isset($chg['price']) ? 'menu.price' : 'menu.edit', 'Edited ' . $itemNameEn . ($bits ? ': ' . implode(', ', $bits) : ''), $chg, 'menu_item', $menuItemId);
         
         echo json_encode([
             'success' => true,
@@ -453,6 +467,8 @@ function handleDeleteMenuItemBase64($conn, $restaurant_id, $menuItemId) {
     $result = $deleteStmt->execute([$menuItemId, $restaurant_id]);
     
     if ($result) {
+        require_once __DIR__ . '/../config/activity_log.php';
+        logActivity($conn, $restaurant_id, 'menu.delete', 'Deleted dish ' . $menuItem['item_name_en'] . ' (price ' . number_format((float)$menuItem['base_price'], 2) . ')', ['price' => (float)$menuItem['base_price']], 'menu_item', $menuItemId);
         echo json_encode([
             'success' => true,
             'message' => 'Menu item deleted successfully',

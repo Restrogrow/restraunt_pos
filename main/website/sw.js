@@ -1,6 +1,11 @@
 // Service Worker for PWA Install Support
 // Version bump on each deploy to bust all caches
-const CACHE_NAME = 'restaurant-cache-v11';
+const CACHE_NAME = 'restaurant-cache-v12';
+// The owner dashboard, kept so the POS opens with no internet (offline billing, assets/js/pos-offline.js).
+// Cleared on logout (script.js logout()).
+const SHELL_CACHE = 'rg-shell';
+// fonts and pinned library files from these hosts are kept too, so icons and text look right offline
+const KEEP_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'unpkg.com'];
 
 // Install immediately — no heavy precaching (avoids slow PHP page fetches)
 self.addEventListener('install', function(event) {
@@ -14,7 +19,7 @@ self.addEventListener('activate', function(event) {
     caches.keys().then(function(cacheNames) {
       return Promise.all(
         cacheNames.map(function(name) {
-          // Delete ALL old caches so fresh content is always served
+          // Delete ALL old caches so fresh content is always served (the dashboard copy is refreshed on its next load)
           return caches.delete(name);
         })
       );
@@ -34,6 +39,25 @@ self.addEventListener('fetch', function(event) {
 
   // Navigation requests: network first, fallback to offline page
   if (event.request.mode === 'navigate') {
+    // the dashboard: network first, the last copy when offline
+    var nav = new URL(event.request.url);
+    if (/\/views\/dashboard\.php$/.test(nav.pathname)) {
+      var key = nav.origin + nav.pathname;
+      event.respondWith(
+        fetch(event.request).then(function(response) {
+          if (response.status === 200 && !response.redirected) {
+            var copy = response.clone();
+            caches.open(SHELL_CACHE).then(function(c) { return c.put(key, copy); }).catch(function() {});
+          }
+          return response;
+        }).catch(function() {
+          return caches.open(SHELL_CACHE).then(function(c) { return c.match(key); }).then(function(hit) {
+            return hit || new Response('You are offline. Open the dashboard once while online so it can work offline.', { status: 200, headers: { 'Content-Type': 'text/html; charset=UTF-8' } });
+          });
+        })
+      );
+      return;
+    }
     event.respondWith(
       fetch(event.request).catch(function() {
         return new Response('You are offline. Please check your connection.', {
@@ -52,7 +76,8 @@ self.addEventListener('fetch', function(event) {
   // Cross-origin requests (Google Maps, QR service, CDNs, fonts) go straight
   // to the network: intercepting them turned any failure into a fake
   // "Offline" 503 and hid the real error.
-  if (new URL(reqUrl).origin !== self.location.origin) { return; }
+  var reqHost = new URL(reqUrl);
+  if (reqHost.origin !== self.location.origin && KEEP_HOSTS.indexOf(reqHost.hostname) === -1) { return; }
   // Range requests (audio/video streaming) return 206 partial responses,
   // which the Cache API rejects — let the browser handle them natively.
   if (event.request.headers.has('range')) { return; }

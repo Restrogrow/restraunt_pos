@@ -24,6 +24,7 @@ require_once __DIR__ . '/../config/session_config.php';
 // Skip timeout validation for public customer website API - sessions are just for restaurant context
 startSecureSession(true);
 require_once 'db_config.php';
+require_once __DIR__ . '/../config/menu_hours.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -278,6 +279,19 @@ try {
                 }
                 unset($menu);
             }
+            // menus by time of day: when each category is served, and whether it is now
+            if (menuHoursEnsure($conn)) {
+                $hrs = $conn->prepare('SELECT id, avail_days, avail_from, avail_to FROM menu WHERE restaurant_id = ?');
+                $hrs->execute([$restaurantId]);
+                $hrsById = []; foreach ($hrs->fetchAll(PDO::FETCH_ASSOC) as $h) $hrsById[(int)$h['id']] = $h;
+                $closedNow = menuHoursClosedMap($conn, $restaurantId);
+                foreach ($menus as &$menu) {
+                    $h = $hrsById[(int)$menu['id']] ?? [];
+                    $menu['hours_label'] = $h ? menuHoursLabel($h) : '';
+                    $menu['served_now'] = !isset($closedNow[(int)$menu['id']]);
+                }
+                unset($menu);
+            }
             
             echo json_encode($menus);
             break;
@@ -418,6 +432,7 @@ try {
                 // Bestsellers: flag them and serve any offer price as the price
                 require_once __DIR__ . '/../config/bestseller_helpers.php';
                 applyBestsellersToItems($conn, $restaurantId, $items);
+                $items = menuHoursMarkItems($items, menuHoursClosedMap($conn, $restaurantId));   // menus by time of day
                 echo json_encode($items);
             } catch (PDOException $e) {
                 // If columns don't exist, try with basic columns only
@@ -468,6 +483,7 @@ try {
                     // Bestsellers: flag them and serve any offer price as the price
                     require_once __DIR__ . '/../config/bestseller_helpers.php';
                     applyBestsellersToItems($conn, $restaurantId, $items);
+                    $items = menuHoursMarkItems($items, menuHoursClosedMap($conn, $restaurantId));   // menus by time of day
                     echo json_encode($items);
                 } else {
                     throw $e;
@@ -684,6 +700,7 @@ try {
                 // used to show the regular price while checkout charged the offer
                 require_once __DIR__ . '/../config/bestseller_helpers.php';
                 applyBestsellersToItems($conn, $restaurantId, $items);
+                $items = menuHoursMarkItems($items, menuHoursClosedMap($conn, $restaurantId));   // menus by time of day
                 echo json_encode($items);
             } catch (PDOException $e) {
                 // If columns don't exist, try with basic columns
@@ -734,6 +751,7 @@ try {
                         }
                     }
                     unset($item);
+                    $items = menuHoursMarkItems($items, menuHoursClosedMap($conn, $restaurantId));   // menus by time of day
                     echo json_encode($items);
                 } else {
                     error_log("Search error: " . $e->getMessage());

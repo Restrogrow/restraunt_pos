@@ -165,10 +165,11 @@ function handleDeleteCustomer($conn, $restaurant_id) {
     }
     
     // Check if customer exists and belongs to restaurant
-    $checkStmt = $conn->prepare("SELECT id FROM customers WHERE id = ? AND restaurant_id = ?");
+    $checkStmt = $conn->prepare("SELECT id, customer_name, phone FROM customers WHERE id = ? AND restaurant_id = ?");
     $checkStmt->execute([$customerId, $restaurant_id]);
     
-    if (!$checkStmt->fetch()) {
+    $delCust = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$delCust) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Customer not found'], JSON_UNESCAPED_UNICODE);
         return;
@@ -178,6 +179,9 @@ function handleDeleteCustomer($conn, $restaurant_id) {
     $stmt = $conn->prepare("DELETE FROM customers WHERE id = ? AND restaurant_id = ?");
     $stmt->execute([$customerId, $restaurant_id]);
     
+    require_once __DIR__ . '/../config/activity_log.php';
+    $ph = (string)($delCust['phone'] ?? '');
+    logActivity($conn, $restaurant_id, 'customer.delete', 'Deleted customer ' . ($delCust['customer_name'] ?: 'without a name') . ($ph !== '' ? ' (…' . substr($ph, -4) . ')' : ''), [], 'customer', $customerId);
     echo json_encode(['success' => true, 'message' => 'Customer deleted successfully'], JSON_UNESCAPED_UNICODE);
 }
 ?>

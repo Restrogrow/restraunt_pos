@@ -160,6 +160,10 @@ try {
     $hasImageColumns = $checkCol->rowCount() > 0;
     
     $menuSelectCols = "id, menu_name, is_active, created_at, updated_at";
+    // menus by time of day (config/menu_hours.php)
+    require_once __DIR__ . '/../config/menu_hours.php';
+    $hasHours = menuHoursEnsure($conn);
+    if ($hasHours) $menuSelectCols .= ", avail_days, avail_from, avail_to";
     if ($hasMenuTranslations) {
         $menuSelectCols .= ", translations";
     }
@@ -188,8 +192,11 @@ try {
     }
     
     // Attach subcategories to each menu
+    $closedNow = $hasHours ? menuHoursClosedMap($conn, $restaurant_id) : [];
     foreach ($menus as &$menu) {
         $menu['subcategories'] = $subcategoriesByMenu[$menu['id']] ?? [];
+        $menu['hours_label'] = $hasHours ? menuHoursLabel($menu) : '';
+        $menu['served_now'] = !isset($closedNow[(int)$menu['id']]);
         // Decode translations
         if ($hasMenuTranslations && !empty($menu['translations'])) {
             $menu['translations'] = json_decode($menu['translations'], true);

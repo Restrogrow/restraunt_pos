@@ -26,6 +26,8 @@
   function refresh() { if (typeof window.updatePOSCartSummaryHook === 'function') window.updatePOSCartSummaryHook(); paint(); }
 
   /* ── pricing ── */
+  // no internet (pos-offline.js): points, wallet and rewards can't be checked, so none are taken off
+  function offline() { return !!(window.rgPosOffline && window.rgPosOffline.isOffline()); }
   function giftDiscount(sub) {
     if (!gift || sub <= 0 || sub < gift.min_order) return 0;
     var d = gift.type === 'percent' ? Math.round(sub * gift.value) / 100 : gift.value;
@@ -43,7 +45,7 @@
   function pricing(sub) {
     lastSubtotal = sub;
     var out = { coupon: 0, couponCode: '', points: 0, pointsDiscount: 0 };
-    if (!cust) return out;
+    if (!cust || offline()) return out;
     out.coupon = giftDiscount(sub);
     if (out.coupon > 0) out.couponCode = gift.code;
     var L = pointsRule();
@@ -53,7 +55,7 @@
     }
     return out;
   }
-  function walletFor(total) { return cust && walletOn && cust.wallet.enabled ? Math.round(Math.min(cust.wallet.balance, total) * 100) / 100 : 0; }
+  function walletFor(total) { return cust && !offline() && walletOn && cust.wallet.enabled ? Math.round(Math.min(cust.wallet.balance, total) * 100) / 100 : 0; }
 
   /* ── the box in the cart ── */
   function box() {
@@ -74,6 +76,11 @@
       return;
     }
     var L = cust.loyalty, sub = lastSubtotal, html = '';
+    if (offline()) {
+      b.innerHTML = '<div class="pc-card"><div class="pc-top"><span class="pc-av">' + esc(initials(cust.name)) + '</span><span class="pc-who"><b>' + esc(cust.name) + '</b><small>' + esc(cust.phone) + '</small></span>' +
+        '<button type="button" class="pc-ib" data-pc="clear" title="Remove customer">' + ic('close') + '</button></div><p class="pc-hint">' + ic('cloud_off') + ' Offline: points, wallet and rewards need the internet. The bill is still on their name and earns when it syncs.</p></div>';
+      return;
+    }
     html += '<div class="pc-card"><div class="pc-top"><span class="pc-av">' + esc(initials(cust.name)) + '</span><span class="pc-who"><b>' + esc(cust.name) + '</b><small>' + esc(cust.phone) + ' · ' + cust.visits + ' visit' + (cust.visits === 1 ? '' : 's') + (L.tier ? ' · ' + esc(L.tier) : '') + '</small></span>' +
       '<button type="button" class="pc-ib" data-pc="open" title="Change customer">' + ic('swap_horiz') + '</button><button type="button" class="pc-ib" data-pc="clear" title="Remove customer">' + ic('close') + '</button></div>';
     if (L.enabled && L.type === 'points') {

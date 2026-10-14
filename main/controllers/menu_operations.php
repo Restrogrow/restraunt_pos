@@ -117,6 +117,32 @@ try {
     }
     
     switch ($action) {
+        // menus by time of day (config/menu_hours.php): the days and times a category is served
+        case 'set_hours':
+            require_once __DIR__ . '/../config/menu_hours.php';
+            if ($menuId <= 0) throw new Exception('Invalid menu ID');
+            if (!menuHoursEnsure($conn)) throw new Exception('Could not save the hours. Please try again.');
+            $days = count_chars(preg_replace('/[^1-7]/', '', (string)($_POST['days'] ?? '')), 3);
+            if ($days === '1234567') $days = '';
+            $tm = function ($v) { $v = trim((string)$v); return preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $v) ? $v . ':00' : null; };
+            $from = $tm($_POST['from'] ?? ''); $to = $tm($_POST['to'] ?? '');
+            if (!empty($_POST['always'])) { $days = ''; $from = $to = null; }   // served whenever the restaurant is open
+            if (($from === null) !== ($to === null)) throw new Exception('Pick both a start and an end time, or neither for all day.');
+            if ($from !== null && $from === $to) throw new Exception('The start and end times are the same.');
+            $up = $conn->prepare('UPDATE menu SET avail_days = ?, avail_from = ?, avail_to = ?, updated_at = NOW() WHERE id = ? AND restaurant_id = ?');
+            $up->execute([$days === '' ? null : $days, $from, $to, $menuId, $restaurant_id]);
+            if ($up->rowCount() === 0) {
+                $chk = $conn->prepare('SELECT COUNT(*) FROM menu WHERE id = ? AND restaurant_id = ?'); $chk->execute([$menuId, $restaurant_id]);
+                if (!$chk->fetchColumn()) throw new Exception('Menu not found');
+            }
+            $row = ['avail_days' => $days, 'avail_from' => $from, 'avail_to' => $to];
+            require_once __DIR__ . '/../config/activity_log.php';
+            $cn = $conn->prepare('SELECT menu_name FROM menu WHERE id = ?'); $cn->execute([$menuId]);
+            logActivity($conn, $restaurant_id, 'menu.hours', 'Set hours of ' . ($cn->fetchColumn() ?: 'a category') . ': ' . (menuHoursLabel($row) ?: 'served all the time'), [], 'menu', $menuId);
+            echo json_encode(['success' => true, 'message' => 'Hours saved', 'hours_label' => menuHoursLabel($row),
+                'served_now' => !isset(menuHoursClosedMap($conn, $restaurant_id)[$menuId])], JSON_UNESCAPED_UNICODE);
+            break;
+
         case 'add_subcategory':
         case 'update_subcategory':
         case 'delete_subcategory':
@@ -227,6 +253,8 @@ try {
             $result = $deleteStmt->execute([$menuId, $restaurant_id]);
             
             if ($result) {
+                require_once __DIR__ . '/../config/activity_log.php';
+                logActivity($conn, $restaurant_id, 'menu.category_delete', 'Deleted category ' . $menu['menu_name'], [], 'menu', $menuId);
                 // Return success response
                 echo json_encode([
                     'success' => true,

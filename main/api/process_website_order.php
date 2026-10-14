@@ -547,7 +547,7 @@ $conn->beginTransaction();
         $placeholders = implode(',', array_fill(0, count($menuItemIds), '?'));
         // Scope to this restaurant — without this filter a menu_item id belonging
         // to a different restaurant could be used to bill an unrelated price.
-        $menuStmt = $conn->prepare("SELECT id, item_name_en, base_price, is_available FROM menu_items WHERE id IN ($placeholders) AND restaurant_id = ?");
+        $menuStmt = $conn->prepare("SELECT id, menu_id, item_name_en, base_price, is_available FROM menu_items WHERE id IN ($placeholders) AND restaurant_id = ?");
         $menuStmt->execute(array_merge($menuItemIds, [$restaurant_id]));
         foreach ($menuStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $menuItemsById[(int)$row['id']] = $row;
@@ -615,6 +615,21 @@ $conn->beginTransaction();
     // website menu shows them, so charge them too (see bestseller_helpers.php).
     require_once __DIR__ . '/../config/bestseller_helpers.php';
     $bestsellerMap = getBestsellerMap($conn, $restaurant_id);
+    // menus by time of day (config/menu_hours.php): a dish whose category isn't served at the order
+    // time (or the scheduled time) is refused with its hours, not dropped quietly
+    require_once __DIR__ . '/../config/menu_hours.php';
+    $closedCats = menuHoursClosedMap($conn, $restaurant_id, $is_scheduled_order && $scheduledDT ? $scheduledDT : null);
+    if ($closedCats) {
+        foreach ($items as $item) {
+            $row = $menuItemsById[(int)($item['id'] ?? 0)] ?? null;
+            if ($row && isset($closedCats[(int)$row['menu_id']])) {
+                if ($conn->inTransaction()) $conn->rollBack();
+                ob_end_clean();
+                echo json_encode(['success' => false, 'code' => 'not_served_now', 'message' => $row['item_name_en'] . ' is ' . lcfirst($closedCats[(int)$row['menu_id']]) . '. Please remove it from the cart' . ($is_scheduled_order ? ' or pick another time.' : '.')], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+        }
+    }
     foreach ($items as $item) {
         $menuItemId = (int)($item['id'] ?? 0);
         $quantity = (int)($item['quantity'] ?? 0);

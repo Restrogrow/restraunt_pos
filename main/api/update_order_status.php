@@ -165,6 +165,15 @@ try {
         
         $conn->commit();
 
+        // owner's activity log: cancellations and rejections, with the reason
+        if ($status === 'Cancelled' || $status === 'Rejected') {
+            require_once __DIR__ . '/../config/activity_log.php';
+            $on = $conn->prepare('SELECT order_number, total FROM orders WHERE id = ?'); $on->execute([$orderId]); $onRow = $on->fetch(PDO::FETCH_ASSOC) ?: [];
+            logActivity($conn, $restaurant_id, $status === 'Cancelled' ? 'order.cancel' : 'order.reject',
+                ($status === 'Cancelled' ? 'Cancelled' : 'Rejected') . ' order ' . ($onRow['order_number'] ?? '#' . $orderId) . ($reason !== '' ? ': ' . $reason : ''),
+                array_filter(['reason' => $reason, 'total' => $onRow['total'] ?? null]), 'order', $orderId);
+        }
+
         // Post-commit side effects live OUTSIDE the transaction try/catch —
         // a push-notification failure here must never turn a committed
         // status change into an error response. (Previously the catch below

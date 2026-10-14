@@ -6252,6 +6252,7 @@ function toggleGatewayMode() {
               <option value="role">Sort by Role</option>
           </select>
           <div class="sx-toolbar-r">
+            <button type="button" class="btn btn-secondary" onclick="showPage('activityPage')" title="Who did what: cancellations, discounts, price changes, logins"><span class="material-symbols-rounded">history</span>Activity log</button>
             <button type="button" class="btn btn-secondary" onclick="exportStaffToCSV()"><span class="material-symbols-rounded">download</span>Export CSV</button>
             <button type="button" class="btn btn-primary" id="addStaffBtn"><span class="material-symbols-rounded">add</span>Add Staff</button>
           </div>
@@ -6277,6 +6278,15 @@ function toggleGatewayMode() {
           </table>
         </div>
       </div>
+    </div>
+
+    <!-- Activity log for the owner: who did what (assets/js/activity-log.js, api/activity_log.php, styles al-* in studio-ui.css) -->
+    <div id="activityPage" class="page sx lg">
+      <div class="page-header">
+        <h1>Activity log</h1>
+        <p>Who cancelled, deleted, discounted or changed what, and when</p>
+      </div>
+      <div class="page-content"><div id="alRoot"></div></div>
     </div>
 
     <!-- Waiter Requests Page -->
@@ -7232,6 +7242,9 @@ function toggleGatewayMode() {
   <script src="../assets/js/pos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-customer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-customer.js'); ?>" defer></script>
   <script src="../assets/js/pos-addons.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-addons.js'); ?>" defer></script>
+  <script src="../assets/js/pos-offline.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-offline.js'); ?>" defer></script>
+  <script src="../assets/js/menu-hours.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-hours.js'); ?>" defer></script>
+  <script src="../assets/js/activity-log.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/activity-log.js'); ?>" defer></script>
   <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
   <script src="../assets/js/rg-modal.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rg-modal.js'); ?>" defer></script>
   <script src="../assets/js/kot-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/kot-studio.js'); ?>" defer></script>
@@ -8496,7 +8509,7 @@ if ('serviceWorker' in navigator) {
   (function(){
     try {
       // Cache-busting version: bump this when sw.js changes
-      var SW_VERSION = 8;   // 8: a notification can open a section (low stock opens Inventory)
+      var SW_VERSION = 9;   // 9: the dashboard opens offline (POS offline billing); 8: a notification can open a section
       var swUrl = '../website/sw.php?v=' + SW_VERSION;
       
       // Calculate proper scope from the service worker URL path

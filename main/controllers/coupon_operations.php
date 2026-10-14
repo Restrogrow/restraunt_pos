@@ -76,6 +76,8 @@ try {
 
             $stmt = $conn->prepare("INSERT INTO coupons (restaurant_id, coupon_code, discount_type, discount_value, minimum_order_amount, max_uses, valid_from, valid_until, description, is_milestone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$restaurant_id, $code, $type, $value, $minOrder, $maxUses, $validFrom, $validUntil, $desc, $isMilestone]);
+            require_once __DIR__ . '/../config/activity_log.php';
+            logActivity($conn, $restaurant_id, 'coupon.add', 'Created coupon ' . $code . ' (' . ($type === 'percentage' || $type === 'percent' ? $value . '%' : number_format($value, 2)) . ' off)', ['type' => $type, 'value' => $value, 'min_order' => $minOrder], 'coupon', $conn->lastInsertId());
             echo json_encode(['success' => true, 'message' => 'Coupon created']);
             break;
 
@@ -107,14 +109,18 @@ try {
 
             $stmt = $conn->prepare("UPDATE coupons SET coupon_code=?, discount_type=?, discount_value=?, minimum_order_amount=?, max_uses=?, valid_from=?, valid_until=?, description=?, is_milestone=? WHERE id=? AND restaurant_id=?");
             $stmt->execute([$code, $type, $value, $minOrder, $maxUses, $validFrom, $validUntil, $desc, $isMilestone, $id, $restaurant_id]);
+            require_once __DIR__ . '/../config/activity_log.php';
+            logActivity($conn, $restaurant_id, 'coupon.edit', 'Edited coupon ' . $code . ' (' . ($type === 'percentage' || $type === 'percent' ? $value . '%' : number_format($value, 2)) . ' off)', ['type' => $type, 'value' => $value, 'min_order' => $minOrder], 'coupon', $id);
             echo json_encode(['success' => true, 'message' => 'Coupon updated']);
             break;
 
         case 'delete':
             $id = (int)($_POST['id'] ?? 0);
             if ($id <= 0) throw new Exception('Invalid coupon id');
+            $cc = $conn->prepare('SELECT coupon_code FROM coupons WHERE id = ? AND restaurant_id = ?'); $cc->execute([$id, $restaurant_id]); $ccode = $cc->fetchColumn();
             $stmt = $conn->prepare("DELETE FROM coupons WHERE id = ? AND restaurant_id = ?");
             $stmt->execute([$id, $restaurant_id]);
+            if ($stmt->rowCount()) { require_once __DIR__ . '/../config/activity_log.php'; logActivity($conn, $restaurant_id, 'coupon.delete', 'Deleted coupon ' . ($ccode ?: '#' . $id), [], 'coupon', $id); }
             echo json_encode(['success' => true, 'message' => 'Coupon deleted']);
             break;
 
@@ -124,6 +130,11 @@ try {
             if ($id <= 0) throw new Exception('Invalid coupon id');
             $stmt = $conn->prepare("UPDATE coupons SET is_active = ? WHERE id = ? AND restaurant_id = ?");
             $stmt->execute([$active, $id, $restaurant_id]);
+            if ($stmt->rowCount()) {
+                require_once __DIR__ . '/../config/activity_log.php';
+                $cc = $conn->prepare('SELECT coupon_code FROM coupons WHERE id = ?'); $cc->execute([$id]);
+                logActivity($conn, $restaurant_id, 'coupon.toggle', ($active ? 'Turned on' : 'Turned off') . ' coupon ' . ($cc->fetchColumn() ?: '#' . $id), [], 'coupon', $id);
+            }
             echo json_encode(['success' => true, 'message' => 'Coupon status updated']);
             break;
 

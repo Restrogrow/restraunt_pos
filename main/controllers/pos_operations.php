@@ -355,7 +355,45 @@ function posEnsureKotAddonLines($conn): void {
     } catch (Throwable $e) { error_log('posEnsureKotAddonLines: ' . $e->getMessage()); }
 }
 
+/**
+ * Offline POS bills (assets/js/pos-offline.js) are sent later with a unique pos_ref. A ref that was
+ * already saved returns its first result instead of saving the bill again (sync can run twice).
+ */
+function posEnsureSyncLog($conn): void {
+    static $done = false;
+    if ($done || $conn->inTransaction()) return;
+    $done = true;
+    $conn->exec("CREATE TABLE IF NOT EXISTS pos_sync_log (
+        pos_ref VARCHAR(40) NOT NULL PRIMARY KEY,
+        restaurant_id VARCHAR(50) NOT NULL,
+        order_id INT NULL,
+        response MEDIUMTEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_psl_rest (restaurant_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
 function handleCreateKOT($conn, $restaurant_id) {
+    // a bill made offline: once only, at the time it was made
+    $posRef = preg_match('/^[A-Za-z0-9-]{8,40}$/', (string)($_POST['pos_ref'] ?? '')) ? (string)$_POST['pos_ref'] : '';
+    $offlineAt = null;
+    if ($posRef !== '') {
+        posEnsureSyncLog($conn);
+        $seen = $conn->prepare('SELECT order_id, response FROM pos_sync_log WHERE pos_ref = ? AND restaurant_id = ?');
+        $seen->execute([$posRef, $restaurant_id]);
+        if ($row = $seen->fetch(PDO::FETCH_ASSOC)) {
+            $prev = $row['response'] ? json_decode($row['response'], true) : null;
+            if (!$prev) {
+                $on = $conn->prepare('SELECT order_number FROM orders WHERE id = ?'); $on->execute([(int)$row['order_id']]);
+                $prev = ['success' => true, 'order_id' => (int)$row['order_id'], 'order_number' => $on->fetchColumn() ?: null, 'kot_id' => null, 'kot_number' => null];
+            }
+            $prev['already_synced'] = true;
+            echo json_encode($prev, JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $ts = strtotime((string)($_POST['offline_at'] ?? ''));
+        if ($ts && $ts <= time() + 120 && $ts >= time() - 7 * 86400) $offlineAt = date('Y-m-d H:i:s', $ts);
+    }
     $tableId = $_POST['tableId'] ?? null;
     $tableIdParam = $tableId ? $tableId : null;
     $orderType = $_POST['orderType'] ?? 'Dine-in';
@@ -679,6 +717,13 @@ function handleCreateKOT($conn, $restaurant_id) {
         if ($kotId) {
             $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$orderId, $kotId]);
         }
+        if ($posRef !== '') {
+            if ($offlineAt && !$openOrder) {   // a new bill made offline keeps its time
+                $conn->prepare("UPDATE orders SET created_at = ?, notes = TRIM(CONCAT(IFNULL(notes, ''), '\n[Offline bill]')) WHERE id = ?")->execute([$offlineAt, $orderId]);
+                if ($kotId) $conn->prepare('UPDATE kot SET created_at = ? WHERE id = ?')->execute([$offlineAt, $kotId]);
+            }
+            $conn->prepare('INSERT INTO pos_sync_log (pos_ref, restaurant_id, order_id) VALUES (?, ?, ?)')->execute([$posRef, $restaurant_id, $orderId]);
+        }
 
         // Commit transaction
         $conn->commit();
@@ -715,6 +760,18 @@ function handleCreateKOT($conn, $restaurant_id) {
             'order_number' => $orderNumber,
             'open_bill' => !$isPaidUpFront,
         ];
+        // owner's activity log: discounts given at the POS, and bills made offline
+        if ($discountAmount > 0 || $loyaltyPoints > 0 || $posRef !== '') {
+            require_once __DIR__ . '/../config/activity_log.php';
+            $bits = [];
+            if ($discountAmount > 0) $bits[] = 'reward ' . $couponCode . ' (' . number_format($discountAmount, 2) . ' off)';
+            if ($loyaltyPoints > 0) $bits[] = $loyaltyPoints . ' points (' . number_format((float)($loyaltyDiscount ?? 0), 2) . ' off)';
+            if ($bits) logActivity($conn, $restaurant_id, 'pos.discount', 'Bill ' . $orderNumber . ': ' . implode(', ', $bits), array_filter(['coupon' => $couponCode, 'coupon_off' => $discountAmount, 'points' => $loyaltyPoints, 'total' => $total]), 'order', $orderId);
+            if ($posRef !== '' && !$openOrder) logActivity($conn, $restaurant_id, 'pos.offline', 'Bill ' . $orderNumber . ' made offline' . ($offlineAt ? ' at ' . date('j M, g:i a', strtotime($offlineAt)) : '') . ', synced now', ['total' => $total], 'order', $orderId);
+        }
+        if ($posRef !== '') {
+            try { $conn->prepare('UPDATE pos_sync_log SET response = ? WHERE pos_ref = ?')->execute([json_encode($resp, JSON_UNESCAPED_UNICODE), $posRef]); } catch (Throwable $e) {}
+        }
         echo json_encode($resp, JSON_UNESCAPED_UNICODE);
     } catch (Exception $e) {
         // Rollback transaction on error

@@ -1699,7 +1699,7 @@ function modernCardHtml(item) {
       getTypeIcon(item.item_type) +
       '<button type="button" class="mc-fav' + (fav ? ' on' : '') + '" aria-label="Favourite" aria-pressed="' + fav + '" onclick="event.stopPropagation();toggleFavItem(' + item.id + ', this)"><i class="fa-' + (fav ? 'solid' : 'regular') + ' fa-heart"></i></button>' +
       cardBadgesHtml(item) +
-      (oos ? '<span class="img-oos">Out of Stock</span>' : '') +
+      (oos ? '<span class="img-oos">' + oosLabel(item) + '</span>' : '') +
     '</div>' +
     '<div class="card-body">' +
       '<div class="mc-name">' + name + '</div>' +
@@ -1772,6 +1772,11 @@ function favHeartHtml(item) {
 // ── Menu card designs beyond Classic / Modern (Website Appearance > Menu Card Design)
 var DESIGN_CARD_STYLES = { minimal: 1, photo: 1, list: 1, elegant: 1, compact: 1, midnight: 1, showcase: 1 };
 function isDesignCardStyle() { return !!DESIGN_CARD_STYLES[window.menuCardStyle]; }
+// A dish that can't be added says why: "Served 7–11 am" (menus by time of day, website/api.php) or out of stock
+function oosLabel(item, fallback) {
+  var t = item && item.hours_label ? item.hours_label : (fallback || 'Out of Stock');
+  return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+}
 function dcVegHtml(item) {
   var t = String(item.item_type || '').toLowerCase();
   if (!t || t === 'drink' || t === 'beverage') return '';
@@ -1804,7 +1809,7 @@ function designCardHtml(item) {
   var price = '<div class="dc-price">' + f(now) + (was ? '<s>' + f(was) + '</s>' : '') + '</div>';
   var img = '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + name + '" loading="lazy">';
   var ctrl = '<span class="dc-ctrl" id="btn-' + item.id + '">' + (oos ? '' : designAddCtrl(item.id, item)) + '</span>';
-  var oosTag = oos ? '<span class="img-oos">Out of Stock</span>' : '';
+  var oosTag = oos ? '<span class="img-oos">' + oosLabel(item) + '</span>' : '';
   var open = ' data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')"';
   var cls = 'card dc-card dc-' + style + (oos ? ' oos' : '');
   var desc = escapeHtml(item.item_description_translated || item.item_description_en || item.desc || '');
@@ -2250,7 +2255,7 @@ function renderProducts(menuIdx) {
       '<div class="card-img-wrap">' +
         '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + (item.item_name_translated || item.item_name_en || item.name) + '" loading="lazy">' +
         getTypeIcon(item.item_type) + cardBadgesHtml(item) + favHeartHtml(item) +
-        (oos ? '<span class="img-oos">Out of Stock</span>' : '') +
+        (oos ? '<span class="img-oos">' + oosLabel(item) + '</span>' : '') +
       '</div>' +
       '<div class="card-body">' +
         '<div class="card-name">' + (item.item_name_translated || item.item_name_en || item.name) + '</div>' +
@@ -2517,7 +2522,7 @@ function sheetChangeQty(itemId, delta) {
 // ADD next to the price. Tapping it slides up the bar below:
 // [ − qty + ]  [ Add item · ₹total ]   (dishes with sizes go to the size step first)
 function sheetAddControlHtml(item) {
-  if (item.is_available == 0) return '<button type="button" class="sheet-add sold" disabled>Sold out</button>';
+  if (item.is_available == 0) return '<button type="button" class="sheet-add sold" disabled>' + oosLabel(item, 'Sold out') + '</button>';
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
   var inCart = getItemTotalQty(item.id);
   var note = inCart > 0 ? inCart + ' in cart' : (hasVar ? 'Customisable' : '');
@@ -3559,7 +3564,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.menuCardStyle === 'modern') { html += modernCardHtml(item); continue; }
                 html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
                   '<div class="card-img-wrap"><img src="' + getImageUrl(item.item_image) + '" alt="' + escapeHtml(item.item_name_translated || item.item_name_en) + '" loading="lazy">' +
-                  getTypeIcon(item.item_type) + cardBadgesHtml(item) + favHeartHtml(item) + (oos ? '<span class="img-oos">Out of Stock</span>' : '') + '</div>' +
+                  getTypeIcon(item.item_type) + cardBadgesHtml(item) + favHeartHtml(item) + (oos ? '<span class="img-oos">' + oosLabel(item) + '</span>' : '') + '</div>' +
                   '<div class="card-body">' +
                   '<div class="card-name">' + escapeHtml(item.item_name_translated || item.item_name_en) + '</div>' +
                   '<div class="card-price">' + cardPriceHtml(item) + '</div>' +

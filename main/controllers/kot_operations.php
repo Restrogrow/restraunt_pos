@@ -592,6 +592,10 @@ function handleUpdateKOTStatus() {
         
         $conn->commit();
         invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
+        if ($status === 'Cancelled') {
+            require_once __DIR__ . '/../config/activity_log.php';
+            logActivity($conn, $restaurant_id, 'kot.cancel', 'Cancelled kitchen ticket ' . ($kot['kot_number'] ?? '#' . $kot_id), [], 'kot', $kot_id);
+        }
         echo json_encode(['success' => true, 'message' => 'KOT status updated successfully'], JSON_UNESCAPED_UNICODE);
         
     } catch (PDOException $e) {
