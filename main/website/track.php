@@ -590,7 +590,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         if (status === 'Cancelled' || status === 'Rejected') return { stop: true };
         if (orderType === 'Delivery') {
             if (delivery === 'Delivered' || status === 'Completed') return { i: 3, k: 'delivered' };
-            if (delivery === 'Picked_Up' || delivery === 'In_Transit') return { i: 2, k: 'onway' };
+            if (delivery === 'Picked_Up' || delivery === 'In_Transit' || status === 'Served') return { i: 2, k: 'onway' };   // Served = sent out for delivery
             if (status === 'Ready' || delivery === 'Assigned') return { i: 1, k: 'packed' };
             if (status === 'Preparing') return { i: 1, k: 'preparing' };
             return { i: 0, k: status === 'Accepted' ? 'accepted' : 'placed' };

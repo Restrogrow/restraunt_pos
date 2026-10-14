@@ -8352,7 +8352,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const cartItemsContainer = document.getElementById("posCartItems");
 
     if (posCart.length === 0) {
-      window._kotSentForCurrentOrder = false;
+      if (window.posResetBill) window.posResetBill(); else window._kotSentForCurrentOrder = false;   // an open bill stays in Orders; new dishes start a new one
       cartItemsContainer.innerHTML = `
         <div class="empty-cart">
           <span class="material-symbols-rounded">shopping_cart</span>
@@ -8361,12 +8361,15 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       `;
     } else {
-      cartItemsContainer.innerHTML = posCart.map(item => {
+      const unsent = window.posKitchenDelta ? window.posKitchenDelta(posCart) : { items: [], addons: false };
+      const banner = window.posOpenBill ? `<div class="pk-bill"><span class="material-symbols-rounded">soup_kitchen</span><span><b>Bill ${escapeHtml(window.posOpenBill.number)}</b> is open: sent to the kitchen, not paid yet.${unsent.items.length || unsent.addons ? ' <em>New dishes: press KOT to send them.</em>' : ''}</span></div>` : '';
+      cartItemsContainer.innerHTML = banner + posCart.map(item => {
         const key = item.cartKey || item.id.toString();
+        const sentQ = window.posSentQty ? window.posSentQty(key) : 0;
         return `
         <div class="cart-item">
           <div class="cart-item-info">
-            <div class="cart-item-name">${escapeHtml(item.name)}${item.isAddon ? ' <span class="pa-tag">Add-on</span>' : ''}</div>
+            <div class="cart-item-name">${escapeHtml(item.name)}${item.isAddon ? ' <span class="pa-tag">Add-on</span>' : ''}${sentQ > 0 ? ` <span class="pk-sent" title="Already sent to the kitchen">${sentQ >= item.quantity ? 'In kitchen' : sentQ + ' in kitchen'}</span>` : ''}</div>
             <div class="cart-item-price">${formatCurrency(item.price)} each</div>
             ${window.rgPosAddons ? window.rgPosAddons.lineHtml(item, key) : ''}
           </div>
@@ -8473,8 +8476,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const cart = typeof posCart !== 'undefined' ? posCart : (window.posCart || []);
       const updateCartFn = typeof updatePOSCart !== 'undefined' ? updatePOSCart : (window.updateWaiterPOSCart || window.updatePOSCart || (() => {}));
       
-      if (cart.length > 0 && await showSweetConfirm("Are you sure you want to clear the cart?", 'Clear Cart')) {
+      const clearMsg = window.posOpenBill
+        ? 'Bill ' + window.posOpenBill.number + ' is already in the kitchen. Clearing only empties this screen: the bill stays open (unpaid) in Orders, where you can mark it paid.'
+        : "Are you sure you want to clear the cart?";
+      if (cart.length > 0 && await showSweetConfirm(clearMsg, 'Clear Cart')) {
         if (window.rgPosCustomer) window.rgPosCustomer.reset();
+        window.posResetBill();
         // Clear cart - support both local and window.posCart
         if (typeof posCart !== 'undefined') {
           posCart = [];
@@ -8491,6 +8498,11 @@ document.addEventListener("DOMContentLoaded", () => {
   async function holdOrder() {
     // Support both posCart (admin) and window.posCart (waiter/chef/manager)
     const cart = typeof posCart !== 'undefined' ? posCart : (window.posCart || []);
+    if (window.posOpenBill) {
+      const say = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
+      say('Bill ' + window.posOpenBill.number + ' is already saved and in the kitchen. Use KOT for new dishes and Pay when the guest leaves.', 'info');
+      return;
+    }
     const updateCartFn = typeof updatePOSCart !== 'undefined' ? updatePOSCart : (window.updateWaiterPOSCart || window.updatePOSCart || (() => {}));
     
     if (cart.length === 0) {
@@ -8512,6 +8524,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const payload = window.posCartPayload(cart);
       formData.append('cartItems', JSON.stringify(payload.items));
       formData.append('globalAddons', JSON.stringify(payload.globalAddons));
+      const holdCust = window.rgPosCustomer ? window.rgPosCustomer.get() : null;
+      if (holdCust) formData.append('customerId', holdCust.id);
       formData.append('subtotal', subtotal.toFixed(2));
       formData.append('tax', tax.toFixed(2));
       formData.append('total', total.toFixed(2));
@@ -8680,6 +8694,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const sel = document.getElementById('selectPosTable');
     if (sel) sel.value = d.table_id ? String(d.table_id) : '';
     updateCartFn();
+    if (d.customer_id && window.rgPosCustomer && window.rgPosCustomer.load) window.rgPosCustomer.load(d.customer_id);
     closeHeldOrders();
     refreshHeldCount();
     heldMsg('Order ' + d.order_number + ' is back in the cart.', 'success');
@@ -9138,6 +9153,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const payload = window.posCartPayload(cart);
     formData.append('cartItems', JSON.stringify(payload.items));
     formData.append('globalAddons', JSON.stringify(payload.globalAddons));
+    if (window.posOpenBill) {   // already sent with KOT: settle that bill, and send the kitchen only what's new
+      const delta = window.posKitchenDelta(cart);
+      formData.append('openOrderId', window.posOpenBill.id);
+      formData.append('kitchenItems', JSON.stringify(delta.items));
+      if (delta.addons) formData.append('kitchenAddons', '1');
+    }
     formData.append('subtotal', subtotal.toFixed(2));
     formData.append('tax', tax.toFixed(2));
     formData.append('total', total.toFixed(2));
@@ -9189,7 +9210,6 @@ document.addEventListener("DOMContentLoaded", () => {
         payResult.customer = pcf ? { name: pcf.customerName, phone: pcf.customerPhone } : null;
         payResult.loyalty = result.loyalty || null;
         if (window.rgPosCustomer) window.rgPosCustomer.afterSale(result.loyalty);
-        const kotWasAlreadySent = !!window._kotSentForCurrentOrder;
 
         // Clear cart - support both local and window.posCart
         if (typeof posCart !== 'undefined') {
@@ -9204,25 +9224,21 @@ document.addEventListener("DOMContentLoaded", () => {
         window._kotSentForCurrentOrder = false;
 
         const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
-        showMsg(`Payment saved (${payResult.paymentStatus}) - KOT #${result.kot_number}`, "success");
+        const billNo = result.kot_number || result.order_number;
+        showMsg(`Payment saved (${payResult.paymentStatus}) - ${result.kot_number ? 'KOT #' + result.kot_number : 'Bill ' + result.order_number}`, "success");
+        window.posResetBill();
 
         const showBill = async () => {
-          const billHtml = await buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, result.kot_number);
+          const billHtml = await buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, billNo);
           if (billHtml === null) return; // already sent straight to the network printer
-          showPrintPreview('Bill #' + result.kot_number, billHtml);
+          showPrintPreview('Bill #' + billNo, billHtml);
         };
 
-        if (kotWasAlreadySent) {
-          // Kitchen already saw the KOT (via the KOT button) - just show the bill
-          showBill();
+        // a new kitchen ticket (dishes not sent before): its preview first, then the bill
+        if (result.kot_id && window.printKOT) {
+          window.printKOT(result.kot_id, showBill);
         } else {
-          // Pay clicked directly - kitchen hasn't seen this order yet, so show
-          // the KOT preview first, then the bill preview once it's closed
-          if (window.printKOT) {
-            window.printKOT(result.kot_id, showBill);
-          } else {
-            showBill();
-          }
+          showBill();
         }
 
         // Reload orders if on the orders page
@@ -9259,138 +9275,84 @@ document.addEventListener("DOMContentLoaded", () => {
   // Send to kitchen (KOT only, no payment collected)
   // KOT button: preview-only for now. Nothing is sent to the server and the
   // cart is left untouched (whether the user prints or just closes the preview).
+  // KOT button: send the dishes not sent yet to the kitchen, and keep the bill open (unpaid) until Pay.
+  // The first KOT makes the order (marked [POS open bill] on the server); later KOTs add to it; Pay
+  // settles it (controllers/pos_operations.php, openOrderId / kitchenItems).
+  //   window.posOpenBill = { id, number }   the open bill for this cart (null when there isn't one)
+  //   posSent[cartKey] = how many of that line the kitchen already has
+  window.posOpenBill = null;
+  let posSent = {};
+  // what the kitchen doesn't have yet: dishes (by line) and whether order add-ons changed
+  window.posKitchenDelta = function (cart) {
+    const items = [];
+    let addons = false;
+    cart.forEach(it => {
+      const key = it.cartKey || String(it.id);
+      const d = it.quantity - (posSent[key] || 0);
+      if (d <= 0) return;
+      if (it.isAddon) { addons = true; return; }
+      items.push({ id: it.id, name: it.name, quantity: d, addons: (it.addons || []).map(a => ({ id: a.id })) });
+    });
+    return { items, addons };
+  };
+  window.posMarkAllSent = function (cart) { posSent = {}; cart.forEach(it => { posSent[it.cartKey || String(it.id)] = it.quantity; }); };
+  window.posResetBill = function () { window.posOpenBill = null; posSent = {}; window._kotSentForCurrentOrder = false; };
+  window.posSentQty = function (key) { return posSent[key] || 0; };
+
   async function sendToKitchen() {
-    // Support both posCart (admin) and window.posCart (waiter/chef/manager)
     const cart = typeof posCart !== 'undefined' ? posCart : (window.posCart || []);
+    const updateCartFn = typeof updatePOSCart !== 'undefined' ? updatePOSCart : (window.updateWaiterPOSCart || window.updatePOSCart || (() => {}));
+    const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
+    if (cart.length === 0) { showMsg("Cart is empty", "error"); return; }
 
-    if (cart.length === 0) {
-      const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
-      showMsg("Cart is empty", "error");
-      return;
-    }
+    const delta = window.posKitchenDelta(cart);
+    if (!delta.items.length && !delta.addons) { showMsg("Everything on this bill is already in the kitchen.", "info"); return; }
 
-    // Mark that the kitchen has already seen this order, so Pay (afterwards)
-    // won't show the KOT preview again - just the bill.
-    window._kotSentForCurrentOrder = true;
-
+    const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
+    const showGst = window.enableGst == 1 || window.enableGst === true;
+    const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
+    const total = subtotal + tax;
     const selectPosTable = document.getElementById("selectPosTable");
     const selectedTable = selectPosTable ? selectPosTable.value : '';
-    const tableLabel = (selectPosTable && selectedTable && selectPosTable.selectedIndex >= 0)
-      ? selectPosTable.options[selectPosTable.selectedIndex].text
-      : 'Takeaway';
+    const pcust = window.rgPosCustomer ? window.rgPosCustomer.get() : null;
 
-    // Fetch restaurant info for the receipt header (best-effort)
-    let restaurantInfo = { name: 'Restaurant Name', logo: '', address: '', phone: '', user_id: '' };
+    const formData = new URLSearchParams();
+    formData.append('action', 'create_kot');
+    formData.append('tableId', selectedTable || '');
+    formData.append('orderType', selectedTable ? 'Dine-in' : 'Takeaway');
+    formData.append('customerName', pcust ? pcust.name : (selectedTable ? 'Table Customer' : 'Takeaway'));
+    if (pcust) { formData.append('customerId', pcust.id); formData.append('customerPhone', pcust.phone); }
+    formData.append('paymentMethod', 'Due');
+    const payload = window.posCartPayload(cart);
+    formData.append('cartItems', JSON.stringify(payload.items));
+    formData.append('globalAddons', JSON.stringify(payload.globalAddons));
+    formData.append('kitchenItems', JSON.stringify(delta.items));
+    if (delta.addons) formData.append('kitchenAddons', '1');
+    if (window.posOpenBill) formData.append('openOrderId', window.posOpenBill.id);
+    formData.append('subtotal', subtotal.toFixed(2));
+    formData.append('tax', tax.toFixed(2));
+    formData.append('total', total.toFixed(2));
+
+    const btns = [document.getElementById('sendKotBtn'), document.getElementById('mobileSendKotBtn')].filter(Boolean);
+    btns.forEach(b => b.disabled = true);
     try {
-      const infoRes = await rgFetchRetry('../admin/get_session.php');
-      const infoData = await infoRes.json();
-      if (infoData.success && infoData.data) {
-        restaurantInfo.name = infoData.data.restaurant_name || restaurantInfo.name;
-        restaurantInfo.logo = infoData.data.restaurant_logo || '';
-        restaurantInfo.user_id = infoData.data.user_id || infoData.data.id || '';
-        restaurantInfo.address = infoData.data.address || '';
-        restaurantInfo.phone = infoData.data.phone || '';
-      }
+      const response = await fetch("../controllers/pos_operations.php", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData });
+      const result = await response.json();
+      if (!result.success) { showMsg(result.message || "Could not send to the kitchen.", "error"); if (/already paid or cancelled/.test(result.message || '')) { window.posResetBill(); updateCartFn(); } return; }
+      window.posOpenBill = { id: result.order_id, number: result.order_number };
+      window.posMarkAllSent(cart);
+      window._kotSentForCurrentOrder = true;
+      updateCartFn();
+      showMsg(`Sent to the kitchen (KOT #${result.kot_number}). Bill ${result.order_number} stays open until it's paid.`, "success");
+      if (result.kot_id && window.printKOT) window.printKOT(result.kot_id);
+      const ordersPage = document.getElementById('ordersPage');
+      if (ordersPage && ordersPage.classList.contains('active') && typeof loadOrders !== 'undefined') loadOrders();
     } catch (e) {
-      console.warn('Could not load restaurant info:', e);
+      console.error('KOT error:', e);
+      showMsg("Network error. Please check your connection and try again.", "error");
+    } finally {
+      btns.forEach(b => b.disabled = false);
     }
-
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-    const itemsHtml = cart.map((it) => `
-      <tr>
-        <td style="padding: 6px 0; border-bottom: 1px dashed #d1d5db; font-size: 13px;">
-          <table style="width:100%;"><tr>
-            <td style="width:40px; text-align:center; font-weight:700; font-size:14px;">${it.quantity}</td>
-            <td style="padding-left:6px;">
-              <div style="font-weight:600; font-size:14px; color:#111827;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280; font-weight:400;">(${escapeHtml(it.variationName)})</span>` : ''}</div>
-              ${(it.addons || []).length ? `<div style="font-size:12px; color:#b45309; font-weight:700;">+ ${it.addons.map(a => escapeHtml(a.name)).join(', ')}</div>` : ''}
-            </td>
-          </tr></table>
-        </td>
-      </tr>
-    `).join('');
-
-    let logoHtml = '';
-    if (restaurantInfo.logo) {
-      let logoPath;
-      if (restaurantInfo.logo.startsWith('db:')) {
-        logoPath = `../api/image.php?type=logo&id=${restaurantInfo.user_id}`;
-      } else if (restaurantInfo.logo.startsWith('http')) {
-        logoPath = restaurantInfo.logo;
-      } else if (restaurantInfo.logo.startsWith('uploads/')) {
-        logoPath = '../' + restaurantInfo.logo;
-      } else {
-        logoPath = '../uploads/' + restaurantInfo.logo;
-      }
-      logoHtml = `<img src="${logoPath}" alt="Logo" style="max-width:70px; max-height:70px; object-fit:contain; margin-bottom:6px;" onerror="this.style.display='none';">`;
-    }
-
-    const itemsCount = cart.length;
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT Preview</title>
-      <style>
-        ${window.getThermalReceiptCSS()}
-        .header { text-align:center; border-bottom:3px double #dc2626; padding-bottom:10px; margin-bottom:12px; }
-        .logo { margin-bottom:6px; }
-        .restaurant-name { font-size:18px; font-weight:800; color:#dc2626; text-transform:uppercase; letter-spacing:0.5px; font-family:'Segoe UI',Tahoma,sans-serif; }
-        .restaurant-details { font-size:10px; color:#6b7280; line-height:1.4; margin-top:4px; font-family:'Segoe UI',Tahoma,sans-serif; }
-        .kot-banner h2 { font-size:28px; font-weight:900; color:#dc2626; letter-spacing:3px; margin-bottom:2px; font-family:'Segoe UI',Tahoma,sans-serif; }
-        .kot-number { font-size:14px; font-weight:700; color:#b45309; }
-        .info-box { background:#f9fafb; padding:10px; margin-bottom:12px; border-left:4px solid #dc2626; font-size:12px; }
-        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; }
-        .info-item { display:flex; justify-content:space-between; }
-        .info-label { color:#6b7280; font-weight:600; }
-        .info-value { color:#111827; font-weight:700; text-align:right; }
-        .items-section { margin:12px 0; }
-        .items-header { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; padding:6px 0; border-bottom:2px solid #111827; margin-bottom:4px; display:flex; justify-content:space-between; }
-        table { width:100%; border-collapse:collapse; }
-        .divider { border:none; border-top:2px dashed #d1d5db; margin:10px 0; }
-        .footer { text-align:center; margin-top:14px; padding-top:10px; border-top:2px dashed #e5e7eb; }
-        .footer-text { font-size:10px; color:#6b7280; margin-bottom:2px; }
-        .total-items { font-size:12px; font-weight:700; color:#111827; margin-top:6px; }
-        .sep-line { border:none; border-top:1px dashed #d1d5db; margin:6px 0; }
-      </style>
-    </head><body>
-      <div class="header">
-        ${logoHtml}
-        <div class="restaurant-name">${escapeHtml(restaurantInfo.name)}</div>
-        ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
-        ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
-      </div>
-        <h2>KOT</h2>
-        <div class="kot-number">PREVIEW - NOT SENT</div>
-        <hr class="sep-line">
-        <div style="font-size:11px; color:#6b7280;">${dateStr} | ${timeStr}</div>
-      </div>
-
-      <div class="info-box">
-        <div class="info-grid">
-          <div class="info-item"><span class="info-label">TABLE</span><span class="info-value">${escapeHtml(tableLabel)}</span></div>
-          <div class="info-item"><span class="info-label">STATUS</span><span class="info-value">Preview</span></div>
-        </div>
-      </div>
-
-      <div class="items-section">
-        <div class="items-header">
-          <span>QTY</span>
-          <span>ITEM</span>
-        </div>
-        <table>${itemsHtml}</table>
-      </div>
-
-      <hr class="divider">
-
-      <div class="footer">
-        <div style="font-size:11px; font-weight:600; margin-bottom:4px;">Total Items: ${itemsCount}</div>
-        <div class="footer-text">Thank you!</div>
-        <div class="footer-text">Powered by Restro Grow</div>
-      </div>
-    </body></html>`;
-
-    showPrintPreview('KOT Preview', html);
   }
 
   // Make sendToKitchen globally available
@@ -10727,7 +10689,7 @@ window.printKOT = async function(kotId, onClose) {
           <table style="width:100%;"><tr>
             <td style="width:40px; text-align:center; font-weight:700; font-size:14px;">${it.quantity}</td>
             <td style="padding-left:6px;">
-              <div style="font-weight:600; font-size:14px; color:#111827;">${escapeHtml(it.item_name || it.name)}</div>
+              <div style="font-weight:600; font-size:14px; color:#111827;">${escapeHtml(it.item_name || it.name)}${it.addon_name ? ' <span style="font-size:11px; color:#b45309;">(add-on)</span>' : ''}</div>
               ${(it.addons || []).length ? `<div style="color:#b45309; font-size:12px; font-weight:700; margin-top:2px;">+ ${it.addons.map(a => escapeHtml(a.name)).join(', ')}</div>` : ''}
               ${(it.notes || it.special_instructions) ? `<div style="color:#b45309; font-size:11px; font-style:italic; margin-top:2px;">* ${escapeHtml(it.notes || it.special_instructions)}</div>` : ''}
             </td>

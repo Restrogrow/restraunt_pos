@@ -2879,3 +2879,26 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .kt-item .kt-add { display: block; margin-top: 2px; color: #B45309; font-size: .8rem; font-weight: 700; font-style: normal; }
 .kt-item.kt-extra { border-top: 1px dashed #FDBA74; }
 .kt-item.kt-extra .kt-q .material-symbols-rounded { font-size: 18px; color: #F97316; }
+/* POS open bill (KOT sent, not paid): banner and "in kitchen" on lines */
+.pk-bill { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 8px; padding: 10px 12px; border-radius: 12px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: .8rem; line-height: 1.4; }
+.pk-bill .material-symbols-rounded { color: #059669; font-size: 20px; }
+.pk-bill b { color: #064E3B; }
+.pk-bill em { display: block; color: #B45309; font-style: normal; font-weight: 700; }
+.pk-sent { display: inline-block; padding: 0 6px; border-radius: 999px; background: #DCFCE7; color: #15803D; font-size: .66rem; font-weight: 800; vertical-align: 2px; }
+.kt-item .kt-tag { margin-left: 4px; padding: 0 6px; border-radius: 999px; background: #FFEDD5; color: #C2410C; font-size: .66rem; font-weight: 800; font-style: normal; vertical-align: 2px; }
+
+/* ═══ POS on phones: bottom bar and bill summary in the POS colours (green Pay, white Hold, dark KOT, orange Add) ═══ */
+@media (max-width: 768px) {
+  #posPage .mobile-pos-bottom-actions { gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #EEF0F3; box-shadow: 0 -8px 24px -14px rgba(17,24,39,.35); }
+  #posPage .mobile-pos-btn { height: 50px; padding: 0 12px; border-radius: 14px; font-weight: 800; font-size: .92rem; }
+  #posPage .mobile-pos-btn-bill { background: #16a34a; color: #fff; border: 0; box-shadow: 0 10px 20px -12px rgba(22,163,74,.8); }
+  #posPage .mobile-pos-btn-bill:active { background: #15803d; }
+  #posPage .mobile-pos-btn-hold { background: #fff; color: #374151; border: 1.5px solid #E5E7EB; }
+  #posPage .mobile-pos-btn-hold:active { background: #F9FAFB; }
+  #posPage .mobile-pos-btn-kot { background: #111827; color: #fff; border: 0; }
+  #posPage .mobile-pos-btn-kot:active { background: #000; }
+  #posPage .mobile-pos-btn:disabled { opacity: .6; }
+  #posPage .mobile-bill-summary-card { border: 1px solid #EEF0F3; border-radius: 16px; background: #fff; box-shadow: 0 10px 24px -16px rgba(17,24,39,.45); }
+  #posPage .mobile-add-item-btn { background: #F97316; box-shadow: 0 10px 20px -10px rgba(249,115,22,.9); border-radius: 14px; font-weight: 800; }
+  #posPage .mobile-add-item-btn:hover, #posPage .mobile-add-item-btn:active { background: #EA580C; }
+}

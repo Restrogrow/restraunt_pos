@@ -258,7 +258,8 @@
       cust = null; ptsOn = false; walletOn = false; gift = null; pts = 0;
       paint();
     },
-    reset: function () { cust = null; ptsOn = false; walletOn = false; gift = null; pts = 0; paint(); }
+    reset: function () { cust = null; ptsOn = false; walletOn = false; gift = null; pts = 0; paint(); },
+    load: load   // pick a customer by id (resuming a held order)
   };
 
   function init() { paint(); }

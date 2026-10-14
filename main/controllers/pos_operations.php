@@ -344,6 +344,17 @@ function posSaveOrderAddons($conn, int $orderId, array $orderItemIds, array $car
     }
 }
 
+/** Kitchen ticket lines for order add-ons have no dish: kot_items.menu_item_id must allow NULL (once, outside any transaction). */
+function posEnsureKotAddonLines($conn): void {
+    static $done = false;
+    if ($done || $conn->inTransaction()) return;
+    $done = true;
+    try {
+        $nullable = $conn->query("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kot_items' AND COLUMN_NAME = 'menu_item_id'")->fetchColumn();
+        if ($nullable === 'NO') $conn->exec('ALTER TABLE kot_items MODIFY menu_item_id INT NULL');
+    } catch (Throwable $e) { error_log('posEnsureKotAddonLines: ' . $e->getMessage()); }
+}
+
 function handleCreateKOT($conn, $restaurant_id) {
     $tableId = $_POST['tableId'] ?? null;
     $tableIdParam = $tableId ? $tableId : null;
@@ -500,17 +511,51 @@ function handleCreateKOT($conn, $restaurant_id) {
         if ($paymentMethod !== 'Wallet') $paymentMethod .= '+Wallet';
     }
 
+    // What goes to the kitchen now. The POS "KOT" button sends only dishes not sent before
+    // (kitchenItems); Pay without it sends the whole cart, as before. An empty list = no new ticket.
+    $kitchenItems = $cartItems;
+    if (isset($_POST['kitchenItems'])) {
+        $kitchenItems = [];
+        $byId = [];
+        foreach ($cartItems as $ci) $byId[(int)$ci['id']][] = $ci;
+        foreach ((array)json_decode((string)$_POST['kitchenItems'], true) as $k) {
+            $mid = (int)($k['id'] ?? 0); $q = (int)($k['quantity'] ?? 0);
+            if ($q <= 0 || empty($byId[$mid])) continue;   // only dishes that are on this bill
+            $base = $byId[$mid][0];
+            $kitchenItems[] = ['id' => $mid, 'name' => (string)($k['name'] ?? $base['name']), 'price' => (float)$base['price'], 'quantity' => $q,
+                'addons' => array_values(array_filter((array)($k['addons'] ?? []), function ($a) { return (int)($a['id'] ?? 0) > 0; }))];
+        }
+    }
+    // order add-ons go to the kitchen with the first ticket that carries them (kitchenAddons = 1)
+    $addonsToKitchen = $globalAddons && (!isset($_POST['kitchenItems']) || !empty($_POST['kitchenAddons']));
+    $sendTicket = !empty($kitchenItems) || $addonsToKitchen;
+
+    // An open bill (sent to the kitchen with the KOT button, not paid yet) that this request adds to or settles
+    $openOrderId = (int)($_POST['openOrderId'] ?? 0);
+
+    if ($addonsToKitchen) posEnsureKotAddonLines($conn);
+
     // Generate unique KOT number with collision check
-    $kotNumber = generateKOTNumber($conn, $restaurant_id);
-    
+    $kotNumber = $sendTicket ? generateKOTNumber($conn, $restaurant_id) : null;
+
     // Begin transaction
     $conn->beginTransaction();
-    
+
     try {
-        // Both Dine-in and Takeaway orders go through KOT first
-        // Order will be created when KOT is marked as Ready in the KOT page
         $kotId = null;
-        
+        $openOrder = null;
+        if ($openOrderId > 0) {
+            $oo = $conn->prepare("SELECT id, order_number, order_status, notes FROM orders WHERE id = ? AND restaurant_id = ? AND payment_status = 'Pending'
+                AND order_status NOT IN ('Cancelled','Rejected') AND deleted_at IS NULL AND notes LIKE '%[POS open bill]%' FOR UPDATE");
+            $oo->execute([$openOrderId, $restaurant_id]);
+            $openOrder = $oo->fetch(PDO::FETCH_ASSOC) ?: null;
+            if (!$openOrder) {
+                $conn->rollBack();
+                echo json_encode(['success' => false, 'message' => 'This bill was already paid or cancelled in Orders. Clear the cart and start again.'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        }
+
         // Append payment method to notes if not Cash
         $kotNotes = $notes;
         if (!empty($paymentMethod) && $paymentMethod !== 'Cash' && $paymentMethod !== 'Due') { // 'Due' = nothing collected: no paid marker
@@ -531,110 +576,83 @@ function handleCreateKOT($conn, $restaurant_id) {
         if ($loyaltyPoints > 0) $kotNotes = trim($kotNotes . "\n[Points: " . $loyaltyPoints . " -" . number_format($loyaltyDiscount, 2) . "]");
         if ($walletPaid > 0) $kotNotes = trim($kotNotes . "\n[Wallet: " . number_format($walletPaid, 2) . "]");
         // order add-ons (not tied to a dish): the kitchen reads them on the ticket's note
-        if ($globalAddons) $kotNotes = trim($kotNotes . "\n[Add-ons: " . implode(', ', array_map(function ($g) { return $g['name'] . ' x' . $g['quantity']; }, $globalAddons)) . "]");
-        
-        // Check if customer columns exist in kot table
-        $checkKotCols = $conn->query("SHOW COLUMNS FROM kot LIKE 'customer_phone'");
-        if ($checkKotCols->rowCount() > 0) {
-            $stmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, customer_phone, customer_email, customer_address, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$restaurant_id, $kotNumber, $tableIdParam, $orderType, $customerName, $customerPhone, $customerEmail, $customerAddress, $subtotal, $tax, $total, $kotNotes]);
-        } else {
-            $stmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$restaurant_id, $kotNumber, $tableIdParam, $orderType, $customerName, $subtotal, $tax, $total, $kotNotes]);
-        }
-        $kotId = $conn->lastInsertId();
-        
-        // Check if addons column exists in kot_items
-        $kotItemsHasAddons = false;
-        try {
-            $checkAddonsCol = $conn->query("SHOW COLUMNS FROM kot_items LIKE 'addons'");
-            $kotItemsHasAddons = $checkAddonsCol && $checkAddonsCol->rowCount() > 0;
-        } catch (Exception $e) {}
-        
-        foreach ($cartItems as $item) {
-            // Validate item structure
-            if (!isset($item['id']) || !isset($item['name']) || !isset($item['price']) || !isset($item['quantity'])) {
-                error_log("Invalid cart item structure: " . json_encode($item));
-                throw new Exception("Invalid cart item structure. Missing required fields.");
+        $ticketNotes = $kotNotes;
+
+        if ($sendTicket) {
+            // the ticket's own amounts: just the dishes on it
+            $kotSub = 0.0;
+            foreach ($kitchenItems as $ki) $kotSub += (float)$ki['price'] * (int)$ki['quantity'];
+            $kotTax = $gstEnabled ? round($kotSub * ($taxPercent / 100), 2) : 0;
+            $checkKotCols = $conn->query("SHOW COLUMNS FROM kot LIKE 'customer_phone'");
+            if ($checkKotCols->rowCount() > 0) {
+                $stmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, customer_phone, customer_email, customer_address, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$restaurant_id, $kotNumber, $tableIdParam, $orderType, $customerName, $customerPhone, $customerEmail, $customerAddress, $kotSub, $kotTax, $kotSub + $kotTax, $ticketNotes]);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$restaurant_id, $kotNumber, $tableIdParam, $orderType, $customerName, $kotSub, $kotTax, $kotSub + $kotTax, $ticketNotes]);
             }
-            
-            if ($kotItemsHasAddons && !empty($item['addons']) && is_array($item['addons'])) {
-                $verifiedAddons = [];
-                foreach ($item['addons'] as $addon) {
-                    $addonId = (int)($addon['id'] ?? 0);
-                    if ($addonId <= 0) continue;
-                    $addonStmt = $conn->prepare("SELECT id, addon_name, addon_price, is_available FROM meal_addons WHERE id = ? AND restaurant_id = ? AND is_available = 1");
-                    $addonStmt->execute([$addonId, $restaurant_id]);
-                    $dbAddon = $addonStmt->fetch(PDO::FETCH_ASSOC);
-                    if ($dbAddon) {
-                        $verifiedAddons[] = [
-                            'id'    => (int)$dbAddon['id'],
-                            'name'  => $dbAddon['addon_name'],
-                            'price' => (float)$dbAddon['addon_price'],
-                        ];
-                    }
+            $kotId = $conn->lastInsertId();
+
+            // dish add-ons on the ticket, checked against the menu
+            $addonLookup = $conn->prepare("SELECT id, addon_name, addon_price FROM meal_addons WHERE id = ? AND restaurant_id = ? AND is_available = 1");
+            $itemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            foreach ($kitchenItems as $item) {
+                if (!isset($item['id']) || !isset($item['name']) || !isset($item['price']) || !isset($item['quantity'])) {
+                    error_log("Invalid cart item structure: " . json_encode($item));
+                    throw new Exception("Invalid cart item structure. Missing required fields.");
                 }
-                $addonsJson = !empty($verifiedAddons) ? json_encode($verifiedAddons, JSON_UNESCAPED_UNICODE) : null;
-                $itemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $itemStmt->execute([
-                    $kotId,
-                    (int)$item['id'],
-                    (string)$item['name'],
-                    (int)$item['quantity'],
-                    (float)$item['price'],
-                    (float)($item['price'] * $item['quantity']),
-                    $addonsJson
-                ]);
-            } else {
-                $itemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
-                $itemStmt->execute([
-                    $kotId,
-                    (int)$item['id'],
-                    (string)$item['name'],
-                    (int)$item['quantity'],
-                    (float)$item['price'],
-                    (float)($item['price'] * $item['quantity'])
-                ]);
+                $verifiedAddons = [];
+                foreach ((array)($item['addons'] ?? []) as $addon) {
+                    $addonLookup->execute([(int)($addon['id'] ?? 0), $restaurant_id]);
+                    if ($a = $addonLookup->fetch(PDO::FETCH_ASSOC)) $verifiedAddons[] = ['id' => (int)$a['id'], 'name' => $a['addon_name'], 'price' => (float)$a['addon_price']];
+                }
+                $itemStmt->execute([$kotId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'], (float)$item['price'], (float)($item['price'] * $item['quantity']),
+                    $verifiedAddons ? json_encode($verifiedAddons, JSON_UNESCAPED_UNICODE) : null]);
+            }
+            // order add-ons: their own ticket lines (no dish), marked by addon_name
+            if ($addonsToKitchen) {
+                $aStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, addon_name, quantity, unit_price, total_price) VALUES (?, NULL, ?, ?, ?, ?, ?)");
+                foreach ($globalAddons as $g) $aStmt->execute([$kotId, $g['name'], $g['name'], $g['quantity'], $g['price'], $g['price'] * $g['quantity']]);
             }
         }
-        
 
-        // Paid-up-front tickets (the POS "Pay" button: the cashier enters the
-        // amount received per method — Cash, Card, UPI or a split like
-        // "Cash+UPI" — so money was already collected) must land in `orders`
-        // IMMEDIATELY. Cash used to be left out here, so counter cash sales
-        // only reached Reports if/when the kitchen marked the ticket Ready.
-        // "Due" (nothing collected) is the one method that is not paid.
-        // `orders` is what every sales report sums (get_sales_report.php), so
-        // deferring the order row until the kitchen marks the KOT Ready made
-        // paid counter sales invisible in Reports — sometimes for hours, and
-        // forever whenever the ticket was never advanced. Same shape as
-        // kot_operations.php's Ready handler: order 'Paid' + 'Ready', linked
-        // back to the ticket via kot.order_id, payment row recorded.
-        if ($isPaidUpFront) {
+        // Every POS bill is an order straight away, so it shows in Orders and Reports even if the
+        // kitchen never advances the ticket:
+        //  - Pay: a paid order ('Ready'), or the open bill it settles;
+        //  - KOT / Due: an unpaid open bill ('Pending'), marked [POS open bill], that later KOTs add to
+        //    and Pay settles. kot.order_id links each ticket, so the kitchen's Ready step never makes
+        //    a second order (kot_operations.php) and moves this one along instead.
+        $billPaymentStatus = $isPaidUpFront ? $posPaymentStatus : 'Pending';
+        $billMethod = $isPaidUpFront ? $paymentMethod : 'Due';
+        $kotTag = $kotNumber ? "[KOT: " . $kotNumber . "]" : '';
+        if ($openOrder) {
+            $orderId = (int)$openOrder['id'];
+            $orderNumber = $openOrder['order_number'];
+            $orderNotes = trim(preg_replace('/\[POS open bill\]\s*/', '', (string)$openOrder['notes']) . "\n" . $kotNotes . "\n" . $kotTag);
+            if (!$isPaidUpFront) $orderNotes = trim($orderNotes . "\n[POS open bill]");
+            $conn->prepare("UPDATE orders SET table_id = ?, customer_name = ?, customer_phone = ?, customer_email = ?, customer_address = ?, order_type = ?, payment_method = ?, payment_status = ?,
+                    subtotal = ?, tax = ?, total = ?, notes = ? WHERE id = ?")
+                 ->execute([$tableIdParam, $customerName, $customerPhone, $customerEmail, $customerAddress, $orderType, $billMethod, $billPaymentStatus, $subtotal, $tax, $total, $orderNotes, $orderId]);
+            // the bill's lines are whatever the cart is now
+            $conn->prepare('DELETE a FROM order_item_addons a JOIN order_items i ON i.id = a.order_item_id WHERE i.order_id = ?')->execute([$orderId]);
+            $conn->prepare('DELETE FROM order_items WHERE order_id = ?')->execute([$orderId]);
+        } else {
             $orderNumber = generateOrderNumber($conn, $restaurant_id);
-            $orderNotes = trim($kotNotes . (!empty($kotNotes) ? "\n" : '') . "[KOT: " . $kotNumber . "]");
-
-            $checkOrderCols = $conn->query("SHOW COLUMNS FROM orders LIKE 'customer_phone'");
-            $hasOrderCustomerCols = $checkOrderCols && $checkOrderCols->rowCount() > 0;
-
-            if ($hasOrderCustomerCols) {
-                $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '" . $posPaymentStatus . "', 'Ready', ?, ?, ?, ?)");
-                $orderStmt->execute([$restaurant_id, $tableIdParam, $orderNumber, $customerName, $customerPhone, $customerEmail, $customerAddress, $orderType, $paymentMethod, $subtotal, $tax, $total, $orderNotes]);
-            } else {
-                $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, '" . $posPaymentStatus . "', 'Ready', ?, ?, ?, ?)");
-                $orderStmt->execute([$restaurant_id, $tableIdParam, $orderNumber, $customerName, $orderType, $paymentMethod, $subtotal, $tax, $total, $orderNotes]);
-            }
+            $orderNotes = trim($kotNotes . "\n" . $kotTag . ($isPaidUpFront ? '' : "\n[POS open bill]"));
+            $orderStmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, customer_address, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $orderStmt->execute([$restaurant_id, $tableIdParam, $orderNumber, $customerName, $customerPhone, $customerEmail, $customerAddress, $orderType, $billMethod, $billPaymentStatus, $isPaidUpFront ? 'Ready' : 'Pending', $subtotal, $tax, $total, $orderNotes]);
             $orderId = (int)$conn->lastInsertId();
+        }
 
-            $orderItemIds = [];
-            foreach ($cartItems as $i => $item) {
-                $oiStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
-                $oiStmt->execute([$orderId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'], (float)$item['price'], (float)($item['price'] * $item['quantity'])]);
-                $orderItemIds[$i] = (int)$conn->lastInsertId();
-            }
-            posSaveOrderAddons($conn, $orderId, $orderItemIds, $cartItems, $globalAddons);
+        $orderItemIds = [];
+        foreach ($cartItems as $i => $item) {
+            $oiStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
+            $oiStmt->execute([$orderId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'], (float)$item['price'], (float)($item['price'] * $item['quantity'])]);
+            $orderItemIds[$i] = (int)$conn->lastInsertId();
+        }
+        posSaveOrderAddons($conn, $orderId, $orderItemIds, $cartItems, $globalAddons);
 
+        if ($isPaidUpFront) {
             $payStmt = $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')");
             // Record the money actually received (part payments leave the rest due)
             $received = $total;
@@ -655,15 +673,11 @@ function handleCreateKOT($conn, $restaurant_id) {
                 $conn->prepare('UPDATE customers SET total_visits = total_visits + 1, total_spent = total_spent + ?, last_visit_date = CURDATE() WHERE id = ?')
                      ->execute([$total, $customerId]);
             }
+        }
 
-            // Link the ticket to the order it produced, so the kitchen's later
-            // Ready→order-creation step sees an order already exists and skips
-            // creating a duplicate.
-            try {
-                $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$orderId, $kotId]);
-            } catch (Exception $e) {
-                error_log("Could not link KOT " . $kotId . " to its paid order " . $orderId . ": " . $e->getMessage());
-            }
+        // Link the ticket to its order
+        if ($kotId) {
+            $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$orderId, $kotId]);
         }
 
         // Commit transaction
@@ -691,17 +705,16 @@ function handleCreateKOT($conn, $restaurant_id) {
         $resp = [
             'success' => true,
             'message' => $isPaidUpFront
-                ? 'KOT sent to kitchen. Payment recorded — order is in sales now.'
-                : 'KOT created successfully. Order will be created when KOT is marked as Ready.',
+                ? ($kotId ? 'KOT sent to kitchen. Payment recorded — order is in sales now.' : 'Payment recorded — order is in sales now.')
+                : 'Sent to the kitchen. The bill stays open until it is paid.',
             'kot_number' => $kotNumber,
             'kot_id' => $kotId,
             'discount_amount' => $discountAmount,
             'loyalty' => $loyaltyOut,
+            'order_id' => $orderId,
+            'order_number' => $orderNumber,
+            'open_bill' => !$isPaidUpFront,
         ];
-        if ($isPaidUpFront) {
-            $resp['order_id'] = $orderId;
-            $resp['order_number'] = $orderNumber;
-        }
         echo json_encode($resp, JSON_UNESCAPED_UNICODE);
     } catch (Exception $e) {
         // Rollback transaction on error
@@ -764,7 +777,14 @@ function handleRetireHeldOrder($conn, $restaurant_id, $resume) {
          ->execute([$who, $resume ? 'Held order resumed in POS' : 'Held order discarded in POS', $orderId]);
     $conn->commit();
     invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
-    echo json_encode(['success' => true, 'order_number' => $held['order_number'], 'table_id' => $held['table_id'], 'items' => $items], JSON_UNESCAPED_UNICODE);
+    // the held order's customer, so the POS can pick them again
+    $custId = null;
+    if ($resume) {
+        $hc = $conn->prepare("SELECT c.id FROM orders o JOIN customers c ON c.restaurant_id = o.restaurant_id AND c.phone = o.customer_phone WHERE o.id = ? AND o.customer_phone <> '' LIMIT 1");
+        $hc->execute([$orderId]);
+        $custId = $hc->fetchColumn() ?: null;
+    }
+    echo json_encode(['success' => true, 'order_number' => $held['order_number'], 'table_id' => $held['table_id'], 'items' => $items, 'customer_id' => $custId ? (int)$custId : null], JSON_UNESCAPED_UNICODE);
 }
 
 function handleHoldOrder($conn, $restaurant_id) {
@@ -831,8 +851,15 @@ function handleHoldOrder($conn, $restaurant_id) {
     try {
         // Insert order with "Pending" payment status
         $orderType = empty($tableId) ? 'Takeaway' : 'Dine-in';
-        $stmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, 'Cash', 'Pending', 'Pending', ?, ?, ?, 'Order on hold')");
-        $stmt->execute([$restaurant_id, $tableId ?: null, $orderNumber, $orderType, $subtotal, $tax, $total]);
+        // the customer picked in the POS stays with the held order (pos-customer.js)
+        $holdCust = null;
+        if ((int)($_POST['customerId'] ?? 0) > 0) {
+            $hc = $conn->prepare('SELECT customer_name, phone, email FROM customers WHERE id = ? AND restaurant_id = ?');
+            $hc->execute([(int)$_POST['customerId'], $restaurant_id]);
+            $holdCust = $hc->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+        $stmt = $conn->prepare("INSERT INTO orders (restaurant_id, table_id, order_number, customer_name, customer_phone, customer_email, order_type, payment_method, payment_status, order_status, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, 'Cash', 'Pending', 'Pending', ?, ?, ?, 'Order on hold')");
+        $stmt->execute([$restaurant_id, $tableId ?: null, $orderNumber, $holdCust['customer_name'] ?? '', $holdCust['phone'] ?? null, $holdCust['email'] ?? null, $orderType, $subtotal, $tax, $total]);
         
         $orderId = $conn->lastInsertId();
         

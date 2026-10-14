@@ -114,7 +114,8 @@ try {
                         ki.unit_price,
                         ki.total_price,
                         ki.notes,
-                        ki.addons
+                        ki.addons,
+                        ki.addon_name
                       FROM kot_items ki
                       WHERE ki.kot_id = ?
                       ORDER BY ki.id";

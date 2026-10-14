@@ -88,7 +88,7 @@
     sub.hidden = false;
     var ongoing = st.orders.filter(function (o) { return GROUPS.ongoing.test(statusOf(o)); });
     var chip = function (v, label, n) { var on = (st.sub || '') === v; return '<button type="button" class="ot-chip' + (on ? ' on' : '') + (n ? '' : ' zero') + (v ? ' st-' + v.toLowerCase() : '') + '" data-ot-key="' + key + '" data-ot-sub="' + v + '" aria-pressed="' + on + '">' + label + '<em>' + n + '</em></button>'; };
-    sub.innerHTML = chip('', 'All ongoing', ongoing.length) + STAGES.map(function (x) { var lb = st.type === 'takeaway' && x[0] === 'Served' ? 'Picked up' : (st.type === 'takeaway' || st.type === 'delivery') && x[0] === 'Ready' ? 'Ready for pickup' : x[1]; return chip(x[0], lb, ongoing.filter(function (o) { return statusOf(o) === x[0]; }).length); }).join('');
+    sub.innerHTML = chip('', 'All ongoing', ongoing.length) + STAGES.map(function (x) { var lb = st.type === 'takeaway' && x[0] === 'Served' ? 'Picked up' : st.type === 'delivery' && x[0] === 'Served' ? 'Out for delivery' : (st.type === 'takeaway' || st.type === 'delivery') && x[0] === 'Ready' ? 'Ready for pickup' : x[1]; return chip(x[0], lb, ongoing.filter(function (o) { return statusOf(o) === x[0]; }).length); }).join('');
   }
 
   /** called by displayOrders / displayOnlineOrders with the full list; returns the orders to show */

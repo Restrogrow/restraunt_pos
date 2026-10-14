@@ -16,6 +16,24 @@
     Ready: ['Ready', 'green'], Served: ['Served', 'sky'], Completed: ['Completed', 'done'], Cancelled: ['Cancelled', 'red'], Rejected: ['Rejected', 'red']
   };
   var NEXT = { Accepted: ['Preparing', 'Start cooking', 'skillet'], Preparing: ['Ready', 'Mark as ready', 'check_circle'], Ready: ['Served', 'Mark as served', 'room_service'], Served: ['Completed', 'Mark as completed', 'task_alt'] };
+  // Takeaway and delivery use the same statuses with their own words (no extra database status):
+  //   takeaway: Ready = Ready for pickup, Served = Picked up
+  //   delivery: Ready = Ready for pickup (by the rider), Served = Out for delivery, Completed = Delivered
+  function kindOf(type) { var t = String(type || '').toLowerCase(); return t.indexOf('deliver') >= 0 ? 'del' : (t.indexOf('take') >= 0 || t.indexOf('pick') >= 0) ? 'take' : ''; }
+  function stageWord(st, kind) {
+    if (kind && st === 'Ready') return 'Ready for pickup';
+    if (kind === 'take' && st === 'Served') return 'Picked up';
+    if (kind === 'del' && st === 'Served') return 'Out for delivery';
+    if (kind === 'del' && st === 'Completed') return 'Delivered';
+    return null;
+  }
+  function nextStep(st, kind) {
+    if (kind === 'take' && st === 'Ready') return ['Served', 'Mark as picked up', 'shopping_bag'];
+    if (kind === 'del' && st === 'Ready') return ['Served', 'Send out for delivery', 'two_wheeler'];
+    if (kind === 'del' && st === 'Served') return ['Completed', 'Mark as delivered', 'where_to_vote'];
+    return NEXT[st] || null;
+  }
+  window.rgStageWord = stageWord;
 
   function when(d) {
     if (!d) return '';
@@ -48,8 +66,8 @@
     var st = o.order_status || 'Pending', S = STATUS[st] || [st, 'muted'];
     var type = o.order_type || 'Order', tKey = type.toLowerCase(), isDel = tKey.indexOf('deliver') >= 0;
     var isTake = tKey.indexOf('take') >= 0 || tKey.indexOf('pick') >= 0;
-    if ((isTake || isDel) && st === 'Ready') S = ['Ready for pickup', S[1]];
-    if (isTake && st === 'Served') S = ['Picked up', S[1]];
+    var kind = kindOf(type);
+    if (stageWord(st, kind)) S = [stageWord(st, kind), S[1]];
     var stopped = st === 'Cancelled' || st === 'Rejected', done = st === 'Completed';
     var id = parseInt(o.id, 10), num = esc(o.order_number || o.id);
     (window._rgOrders = window._rgOrders || {})[id] = o;   // for the Update payment window
@@ -99,9 +117,9 @@
     if (st === 'Pending') {
       main = '<button type="button" class="o2-pill o2-ok" onclick="handleAcceptOrderClick(' + id + ', \'' + esc(type) + '\', this, ' + (o.address_lat != null ? +o.address_lat : 'null') + ', ' + (o.address_lng != null ? +o.address_lng : 'null') + ')">' + ic('check') + 'Accept<span class="loading-spinner" style="display:none"></span></button>' +
         '<button type="button" class="o2-pill o2-no" onclick="rejectOnlineOrder(' + id + ', \'' + num + '\', this)">' + ic('close') + 'Reject<span class="loading-spinner" style="display:none"></span></button>';
-    } else if (NEXT[st]) {
-      var nextLabel = isTake && st === 'Ready' ? 'Mark as picked up' : NEXT[st][1];
-      main = '<button type="button" class="o2-pill" onclick="updateOrderStatus(' + id + ', \'' + NEXT[st][0] + '\')">' + ic(isTake && st === 'Ready' ? 'shopping_bag' : NEXT[st][2]) + nextLabel + '</button>';
+    } else if (nextStep(st, kind)) {
+      var nx = nextStep(st, kind);
+      main = '<button type="button" class="o2-pill" onclick="updateOrderStatus(' + id + ', \'' + nx[0] + '\')">' + ic(nx[2]) + nx[1] + '</button>';
     } else {
       main = '<span class="o2-pill o2-flat">' + ic(stopped ? 'block' : 'task_alt') + esc(S[0]) + '</span>';
     }
@@ -129,6 +147,7 @@
     var st = o.order_status || 'Pending', S = STATUS[st] || [st, 'muted'];
     var type = o.order_type || '', tKey = type.toLowerCase();
     var isDel = tKey.indexOf('deliver') >= 0, online = page === 'online';
+    if (stageWord(st, kindOf(type))) S = [stageWord(st, kindOf(type)), S[1]];
     var stopped = st === 'Cancelled' || st === 'Rejected', done = st === 'Completed';
     var id = parseInt(o.id, 10), num = esc(o.order_number || o.id);
     var pay = payLabel(o);
@@ -166,8 +185,9 @@
     if (online && st === 'Pending') {
       main = '<div class="oc-main two"><button type="button" class="oc-btn oc-accept" onclick="handleAcceptOrderClick(' + id + ', \'' + esc(type) + '\', this, ' + (o.address_lat != null ? +o.address_lat : 'null') + ', ' + (o.address_lng != null ? +o.address_lng : 'null') + ')">' + ic('check') + 'Accept<span class="loading-spinner" style="display:none"></span></button>' +
         '<button type="button" class="oc-btn oc-reject" onclick="rejectOnlineOrder(' + id + ', \'' + num + '\', this)">' + ic('close') + 'Reject<span class="loading-spinner" style="display:none"></span></button></div>';
-    } else if (online && NEXT[st]) {
-      main = '<div class="oc-main"><button type="button" class="oc-btn oc-next" onclick="updateOrderStatus(' + id + ', \'' + NEXT[st][0] + '\')">' + ic(NEXT[st][2]) + NEXT[st][1] + '</button></div>';
+    } else if (online && nextStep(st, kindOf(type))) {
+      var nx2 = nextStep(st, kindOf(type));
+      main = '<div class="oc-main"><button type="button" class="oc-btn oc-next" onclick="updateOrderStatus(' + id + ', \'' + nx2[0] + '\')">' + ic(nx2[2]) + nx2[1] + '</button></div>';
     }
     var small = '<button type="button" class="oc-sbtn" onclick="showFullOrderDetails(' + id + ')">' + ic('visibility') + 'Details</button>' +
       '<button type="button" class="oc-sbtn" onclick="printOrder(' + id + ')">' + ic('print') + 'Print</button>';

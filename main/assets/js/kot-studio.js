@@ -50,7 +50,7 @@
       items.map(function (it) {
         var note = it.notes || it.special_instructions;
         var adds = Array.isArray(it.addons) ? it.addons : [];
-        return '<div class="kt-item"><span class="kt-q">' + (+it.quantity || 1) + '</span><div><b>' + esc(it.item_name || it.name) + '</b>' +
+        return '<div class="kt-item' + (it.addon_name ? ' kt-extra' : '') + '"><span class="kt-q">' + (+it.quantity || 1) + '</span><div><b>' + esc(it.item_name || it.name) + (it.addon_name ? ' <em class="kt-tag">Add-on</em>' : '') + '</b>' +
           (adds.length ? '<em class="kt-add">+ ' + adds.map(function (a) { return esc(a.name); }).join(', ') + '</em>' : '') +
           (note ? '<small>' + ic('edit_note') + esc(note) + '</small>' : '') + '</div></div>';
       }).join('') + (orderAddons(k) ? '<div class="kt-item kt-extra"><span class="kt-q">' + ic('add_circle') + '</span><div><b>Add-ons</b><em class="kt-add">' + esc(orderAddons(k)) + '</em></div></div>' : '') + '</div>' +
