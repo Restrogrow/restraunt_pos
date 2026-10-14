@@ -70,10 +70,10 @@
 
   /* ── Bluetooth (BLE) ── */
   // channels thermal printers print through, best first (PT-210 / MTP-II style printers offer
-  // several; bef8d6c9 is the usual one). Anything else that takes writes is tried last.
+  // several; on a PT-210 only 49535343-8841 printed). Anything else that takes writes is tried last.
   var PRINT_CHARS = [
-    'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f',
     '49535343-8841-43f4-a8d4-ecbe34729bb3',
+    'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f',
     '00002af1-0000-1000-8000-00805f9b34fb',
     '0000ff02-0000-1000-8000-00805f9b34fb',
     '0000fff2-0000-1000-8000-00805f9b34fb',
@@ -107,7 +107,7 @@
     for (var i = 0; i < services.length; i++) {
       var chars = [];
       try { chars = await services[i].getCharacteristics(); } catch (e) { continue; }
-      log('  ' + services[i].uuid + ':', chars.map(function (ch) { return String(ch.uuid || '?').slice(0, 8) + (ch.properties.write ? ' w' : '') + (ch.properties.writeWithoutResponse ? ' wnr' : ''); }).join(', ') || 'nothing');
+      log('  ' + services[i].uuid + ':', chars.map(function (ch) { var u = String(ch.uuid || '?'); return (/^0000....-0000-1000-8000-00805f9b34fb$/.test(u) ? u.slice(4, 8) : u) + (ch.properties.write ? ' w' : '') + (ch.properties.writeWithoutResponse ? ' wnr' : ''); }).join(', ') || 'nothing');
       if (SKIP_SERVICES.indexOf(services[i].uuid) !== -1) continue;
       chars.forEach(function (ch) {
         if ((ch.properties.write || ch.properties.writeWithoutResponse) && SKIP_CHARS.indexOf(ch.uuid) === -1) found.push(ch);
