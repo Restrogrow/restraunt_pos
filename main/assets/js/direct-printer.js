@@ -356,6 +356,8 @@
   // on its way (it's sent in the background, so the POS never waits for the paper), false when
   // the caller should show the normal print preview instead. If sending fails later, onFail runs
   // (callers pass "show the preview").
+  // Bills and KOTs never open the browser's pairing window: not connected means the preview
+  // straight away. Only Test print (opts.interactive) may open it.
   global.printDirect = async function (builder, onFail, opts) {
     var mode = settings().mode;
     if (mode === 'network') return global.printViaNetwork(builder);
@@ -363,11 +365,16 @@
     var bytes = builder.toUint8Array();
     if (!api.isConnected(mode)) {
       var ok = await quickReconnect();
-      // still a click going on (Test print): the printer list can open straight away
-      if (!ok && navigator.userActivation && navigator.userActivation.isActive) ok = await api.pick(mode);
-      // otherwise ask; the "Connect and print" tap opens the browser's printer list
-      if (!ok) ok = (await askToConnect(mode)) && (await api.pick(mode));
-      if (!ok) return false;
+      if (!ok && opts && opts.interactive) {
+        // still a click going on: the printer list can open straight away; otherwise ask first
+        ok = navigator.userActivation && navigator.userActivation.isActive ? await api.pick(mode) : false;
+        if (!ok) ok = (await askToConnect(mode)) && (await api.pick(mode));
+      }
+      if (!ok) {
+        log('not connected: showing the preview');
+        if (!(opts && opts.interactive)) say('Printer not connected, so here is the preview. Tap the printer button on the POS to connect it.', 'info');
+        return false;
+      }
     }
     var job = api.write(bytes).then(function () { log('sent', bytes.length, 'bytes'); return true; }).catch(function (e) {
       log('send failed:', e && e.name, e && e.message);

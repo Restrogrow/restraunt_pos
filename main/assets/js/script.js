@@ -10470,7 +10470,7 @@ async function testPrintDirect(builder, preview) {
   var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
   var logBox = document.getElementById('printerLogBox');
   for (;;) {
-    var ok = await window.printDirect(builder, null, { wait: true });
+    var ok = await window.printDirect(builder, null, { wait: true, interactive: true });
     if (!ok) { if (logBox) logBox.open = true; preview(); return; }
     var p = window.rgPrinter, r = p.route(), name = p.info().name || 'your printer';
     var more = !!(r && r.at < r.of);
