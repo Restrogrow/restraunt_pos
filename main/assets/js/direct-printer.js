@@ -406,6 +406,8 @@
         return false;
       }
     }
+    // bills and KOTs say which printer they went to (Test print has its own message)
+    if (!(opts && opts.wait)) say('Printing on ' + (api.info().name || 'your printer'), 'success');
     var job = api.write(bytes).then(function () { log('sent', bytes.length, 'bytes'); return true; }).catch(function (e) {
       log('send failed:', e && e.name, e && e.message);
       lastError = 'Printing failed: ' + (e && e.message ? e.message : 'printer did not respond');
@@ -460,7 +462,7 @@
     var cls = info.state === 'connected' ? 'on' : info.state === 'connecting' ? 'sync' : 'off';
     p.className = 'po-pill rg-printer-pill ' + cls;
     p.innerHTML = '<span class="material-symbols-rounded">' + (info.state === 'connecting' ? 'sync' : 'print') + '</span>' +
-      (info.state === 'connected' ? 'Printer ready' : info.state === 'connecting' ? 'Connecting printer…' : info.name ? 'Printer off · tap to connect' : 'Connect printer');
+      (info.state === 'connected' ? (info.name || 'Printer') + ' ready' : info.state === 'connecting' ? 'Connecting ' + (info.name || 'printer') + '…' : info.name ? info.name + ' off · tap to connect' : 'Connect printer');
     p.title = info.name ? info.name : 'Connect your receipt printer';
   }
 
