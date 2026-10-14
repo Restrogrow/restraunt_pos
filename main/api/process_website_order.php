@@ -55,6 +55,8 @@ $table_id = $input['table_id'] ?? null;
 // Ensure table_id is null if it's an empty string (e.g. for Delivery or non-Dine-in orders)
 if ($table_id === '' || $table_id === 0) $table_id = null;
 $items = $input['items'] ?? [];
+// Offers > Combos & Deals: [{id, quantity, picks: {slot id: choice id}}], priced on the server (config/combo_helpers.php)
+$combos_in = is_array($input['combos'] ?? null) ? array_slice($input['combos'], 0, 20) : [];
 $global_addons = $input['global_addons'] ?? [];
 $total = $input['total'] ?? 0;
 $total_payable = $input['total_payable'] ?? $total;
@@ -97,7 +99,7 @@ if (empty($customer_name) || empty($customer_phone)) {
     exit();
 }
 
-if (empty($items)) {
+if (empty($items) && empty($combos_in)) {
     ob_end_clean();
     echo json_encode([
         'success' => false,
@@ -696,7 +698,36 @@ $conn->beginTransaction();
         ];
         $calculatedSubtotal += $unitPrice * $quantity;
     }
-    
+
+    // --- Combos: checked and priced here (on sale now, each choice allowed and available) ---
+    // One priced line for the combo (no dish), then each dish at 0 marked with the combo in its
+    // note, so the bill shows the combo price, the kitchen gets every dish and stock follows it.
+    $comboSales = [];
+    if (!empty($combos_in)) {
+        require_once __DIR__ . '/../config/combo_helpers.php';
+        $liveCombos = [];
+        try { foreach (getCombos($conn, (string)$restaurant_id, true) as $lc) $liveCombos[$lc['id']] = $lc; } catch (Throwable $e) { error_log('combos at checkout: ' . $e->getMessage()); }
+        foreach ($combos_in as $ci) {
+            $cQty = max(0, min(50, (int)($ci['quantity'] ?? 0)));
+            if ($cQty === 0) continue;
+            $v = comboVerify($liveCombos, (int)($ci['id'] ?? 0), is_array($ci['picks'] ?? null) ? $ci['picks'] : []);
+            if (!$v['ok']) {
+                if ($conn->inTransaction()) $conn->rollBack();
+                ob_end_clean();
+                echo json_encode(['success' => false, 'code' => 'combo_unavailable', 'message' => $v['message']], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+            $verifiedItems[] = ['id' => null, 'name' => $v['name'], 'variation_name' => 'Combo', 'quantity' => $cQty,
+                'price' => $v['unit_price'], 'addons' => [], 'notes' => ''];
+            foreach ($v['lines'] as $ln) {
+                $verifiedItems[] = ['id' => $ln['menu_item_id'], 'name' => $ln['name'], 'variation_name' => $ln['variation'] ?: '',
+                    'quantity' => $ln['qty'] * $cQty, 'price' => 0, 'addons' => [], 'notes' => mb_substr('Combo: ' . $v['name'], 0, 150)];
+            }
+            $calculatedSubtotal += $v['unit_price'] * $cQty;
+            $comboSales[] = [(int)$ci['id'], $cQty, round($v['unit_price'] * $cQty, 2)];
+        }
+    }
+
     $items = $verifiedItems;
     // Include addon costs in the total so the final order amount reflects
     // both item prices and verified addon prices.
@@ -1064,6 +1095,11 @@ $conn->beginTransaction();
         $itemSql = "INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price, addons, notes) VALUES " . implode(', ', $itemRows);
         $conn->prepare($itemSql)->execute($itemParams);
         $firstOrderItemId = (int)$conn->lastInsertId();
+    }
+    // how many of each combo sold (Offers > Combos & Deals)
+    if (!empty($comboSales)) {
+        $csSt = $conn->prepare('INSERT INTO combo_sales (restaurant_id, combo_id, order_id, qty, revenue) VALUES (?, ?, ?, ?, ?)');
+        foreach ($comboSales as $cs) $csSt->execute([$restaurant_id, $cs[0], $order_id, $cs[1], $cs[2]]);
     }
 
     // Also store per-item and global addons in order_item_addons for

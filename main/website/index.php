@@ -2080,6 +2080,9 @@ window.socialLinks = {
     </div>
   </section>
 
+  <!-- Combos & Deals (rg-combos.js; dashboard: Offers › Combos & Deals) -->
+  <section class="rgc" id="rgCombos" data-variant="home" hidden></section>
+
   <!-- Banners: Home page — above the menu -->
   <div class="rg-banners" data-placement="home_menu"></div>
   <div class="menu-list<?php echo ($home_card_style ?? 'classic') !== 'classic' ? ' hc-' . htmlspecialchars($home_card_style, ENT_QUOTES, 'UTF-8') : ''; ?>" id="menuList" data-price-style="<?php echo htmlspecialchars($bestseller_style['price_style'], ENT_QUOTES, 'UTF-8'); ?>">
@@ -2528,6 +2531,8 @@ function removeFromCart(itemId, varIdx) {
 function saveCart() {
   try { localStorage.setItem('dvaniCart', JSON.stringify(cartItems)); } catch(e) {}
 }
+// combos (rg-combos.js) add to this page's cart through here
+window.rgCart = { get: function () { return cartItems; }, save: saveCart, refresh: function () { if (typeof updateCartBadge === 'function') updateCartBadge(); } };
 
 function loadCart() {
   try {
@@ -3832,6 +3837,7 @@ function showToast(msg, type) {
 </script>
 <script>window.RG_MENU_URL = <?php echo json_encode(restaurantPageUrl('menu')); ?>;</script>
 <script src="rg-nutrition.js?v=<?php echo @filemtime(__DIR__ . '/rg-nutrition.js'); ?>" defer></script>
+<script src="rg-combos.js?v=<?php echo @filemtime(__DIR__ . '/rg-combos.js'); ?>" defer></script>
 <script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 <script src="rg-drag-scroll.js?v=<?php echo @filemtime(__DIR__ . '/rg-drag-scroll.js'); ?>" defer></script>
 </body>

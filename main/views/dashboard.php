@@ -1248,7 +1248,7 @@ try {
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="dealsPage">
                 <span class="material-symbols-rounded">sell</span>
-                <span class="nav-label">Combos &amp; New</span>
+                <span class="nav-label">Combos &amp; Deals</span>
               </a>
             </li>
             <li class="nav-item">
@@ -4370,14 +4370,19 @@ function toggleGatewayMode() {
     </div>
 
     <!-- Deals Page -->
-    <!-- Offers › Combos & New: which category the Menu page's "Combos" / "New" filters show (offers-studio.js) -->
+    <!-- Offers › Combos & Deals: real combos at one price (assets/js/combos-studio.js, api/combos_admin.php);
+         the Menu page's old "Combos" / "New" category filters stay below (offers-studio.js) -->
     <div id="dealsPage" class="page sx">
       <div class="page-header">
-        <h1>Combos &amp; New</h1>
-        <p>Filter buttons on your Menu page: one category for your combos and one for new dishes.</p>
+        <h1>Combos &amp; Deals</h1>
+        <p>Bundle dishes at one price. They show at the top of your website, customers pick their choices, and the price is checked at checkout.</p>
       </div>
       <div class="page-content">
-        <div id="dealsRoot"></div>
+        <div id="combosRoot"></div>
+        <details class="sx-card cbx-filters">
+          <summary class="cbx-sec-h"><b><span class="material-symbols-rounded">tune</span>Menu filter buttons</b><small>Optional: a “Combos” and a “New” button on your Menu page that jump to a category.</small></summary>
+          <div id="dealsRoot"></div>
+        </details>
       </div>
     </div>
     <!-- Bestsellers Page (Offers > Bestsellers) -->
@@ -7268,6 +7273,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/custom-domain-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/custom-domain-studio.js'); ?>" defer></script>
   <script src="../assets/js/settings-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/settings-studio.js'); ?>" defer></script>
   <script src="../assets/js/offers-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offers-studio.js'); ?>" defer></script>
+  <script src="../assets/js/combos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/combos-studio.js'); ?>" defer></script>
   <script src="../assets/js/inventory-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/inventory-studio.js'); ?>" defer></script>
   <script src="../assets/js/menu-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-studio.js'); ?>" defer></script>
   <script src="../assets/js/new-order-popup.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/new-order-popup.js'); ?>" defer></script>

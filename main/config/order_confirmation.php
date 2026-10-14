@@ -344,16 +344,34 @@ if (!function_exists('createDineInKOT')) {
         } catch (Exception $e) {}
 
         foreach ($items as $item) {
+            // Lines without a dish: a combo's priced line stays off the ticket (its dishes follow, each
+            // noted "Combo: ..."); an order add-on goes on with no dish link (kot_items.menu_item_id
+            // points at menu_items, so 0 would break the whole ticket).
+            $menuItemId = (int)($item['id'] ?? 0);
+            if ($menuItemId <= 0) {
+                if (($item['variation_name'] ?? '') === 'Combo') continue;
+                $menuItemId = null;
+            }
             $addonsJson = null;
             if (!empty($item['addons']) && $kotItemsHasAddons) {
                 $addonsJson = json_encode($item['addons'], JSON_UNESCAPED_UNICODE);
+            }
+
+            // a no-dish line on a database where menu_item_id can't be empty: skip it, keep the ticket
+            if ($menuItemId === null) {
+                static $kotDishOptional = null;
+                if ($kotDishOptional === null) {
+                    try { $kotDishOptional = $conn->query("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kot_items' AND COLUMN_NAME = 'menu_item_id'")->fetchColumn() === 'YES'; }
+                    catch (Exception $e) { $kotDishOptional = false; }
+                }
+                if (!$kotDishOptional) continue;
             }
 
             if ($kotItemsHasAddons) {
                 $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
                 $kotItemStmt->execute([
                     $kotId,
-                    (int)$item['id'],
+                    $menuItemId,
                     (string)$item['name'],
                     (int)$item['quantity'],
                     (float)$item['price'],
@@ -365,7 +383,7 @@ if (!function_exists('createDineInKOT')) {
                 $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 $kotItemStmt->execute([
                     $kotId,
-                    (int)$item['id'],
+                    $menuItemId,
                     (string)$item['name'],
                     (int)$item['quantity'],
                     (float)$item['price'],

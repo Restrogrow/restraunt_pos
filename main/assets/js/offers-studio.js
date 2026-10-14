@@ -25,7 +25,7 @@
     ['Discounts customers use', 'Money off, so more people order.', [
       ['coupons', 'couponsPage', 'confirmation_number', '#2563eb', 'Coupons', 'Codes customers type at checkout, like WELCOME50.', 'Checkout'],
       ['filters', 'offerFiltersPage', 'filter_alt', '#7c3aed', 'Offer filters', 'Quick chips like “Under ₹99” or “50% off” in the offers bubble.', 'Menu page'],
-      ['tags', 'dealsPage', 'sell', '#0891b2', 'Combos & New', 'Mark one category as Combos and one as New, so customers can filter by them.', 'Menu page'],
+      ['tags', 'dealsPage', 'sell', '#0891b2', 'Combos & Deals', 'Meal deals at one price, with choices. They show at the top of your website.', 'Website'],
     ]],
     ['Put dishes in the spotlight', 'Show the dishes you most want to sell.', [
       ['bestsellers', 'bestsellersPage', 'star', '#f59e0b', 'Bestsellers', 'A row of your best dishes, with an offer price if you like.', 'Home page'],

@@ -105,9 +105,12 @@ try {
             WHERE o.restaurant_id = ? AND o.deleted_at IS NULL AND o.order_status NOT IN ('Cancelled', 'Rejected') AND o.created_at >= NOW() - INTERVAL 30 DAY", [$rid])->fetch(PDO::FETCH_ASSOC); }) ?: ['n' => 0, 's' => 0];
     $tools['coupons'] = ['on' => (int)$c['live'] > 0, 'summary' => (int)$c['live'] . ' live of ' . (int)$c['total'] . ' · ' . (int)$cu['n'] . ' orders in 30 days',
                          'attention' => (int)$c['total'] > 0 && !(int)$c['live'] ? 'None of your coupons can be used right now (paused, expired or used up).' : null];
-    // Menu tags (Combos / New)
-    $tags = osTry(function () use ($q, $rid) { return $q('SELECT d.deal_type, m.menu_name FROM deals d JOIN menu m ON m.id = d.menu_id WHERE d.restaurant_id = ? AND d.is_active = 1', [$rid])->fetchAll(PDO::FETCH_KEY_PAIR); }) ?: [];
-    $tools['tags'] = ['on' => (bool)$tags, 'summary' => $tags ? implode(' · ', array_map(function ($t, $n) { return ($t === 'combo' ? 'Combos: ' : 'New: ') . $n; }, array_keys($tags), $tags)) : 'No category tagged'];
+    // Combos & Deals (config/combo_helpers.php)
+    $cb = osTry(function () use ($conn, $rid) { require_once __DIR__ . '/../config/combo_helpers.php'; return getCombos($conn, $rid, false); }) ?: [];
+    $cbLive = count(array_filter($cb, function ($c) { return $c['live']; }));
+    $cbSold = (int)(osTry(function () use ($q, $rid) { return $q('SELECT COALESCE(SUM(qty), 0) FROM combo_sales WHERE restaurant_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)', [$rid])->fetchColumn(); }) ?: 0);
+    $tools['tags'] = ['on' => $cbLive > 0, 'summary' => $cb ? $cbLive . ' live of ' . count($cb) . ' · ' . $cbSold . ' sold in 30 days' : 'No combos yet',
+                      'attention' => $cb && !$cbLive ? 'None of your combos is on sale right now (off, or outside its days and hours).' : null];
     // Offer filters
     $of = (int)(osTry(function () use ($q, $rid) { return $q('SELECT COUNT(*) FROM offer_filters WHERE restaurant_id = ? AND is_active = 1', [$rid])->fetchColumn(); }) ?? 0);
     $tools['filters'] = ['on' => $of > 0, 'summary' => $of ? $of . ' filter' . ($of > 1 ? 's' : '') . ' in the offers bubble' : 'Off: the offers bubble is hidden'];

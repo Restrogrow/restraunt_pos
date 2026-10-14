@@ -199,6 +199,9 @@ body {
 .order-del:hover, .order-del:active { background: #fef2f2; color: #dc2626; }
 .order-size { margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--primary-red, #e53935); }
 .order-addon { margin-top: 2px; font-size: 11.5px; color: #6b7280; }
+/* a combo line (Offers > Combos & Deals) */
+.order-combo .combo-tag { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--primary-red, #e53935) 12%, #fff); color: var(--primary-red, #e53935); font-size: 10.5px; font-weight: 800; }
+.order-combo .order-addon { line-height: 1.4; }
 .order-note { margin-top: 3px; font-size: 11.5px; color: #b45309; line-height: 1.35; }
 .order-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }
 .qty-pill { display: inline-flex; align-items: center; height: 30px; border: 1.5px solid color-mix(in srgb, var(--primary-red, #e53935) 35%, #fff); border-radius: 10px; background: #fff; overflow: hidden; }
@@ -1498,9 +1501,9 @@ function cleanCart() {
   var changed = false;
   var removedNames = [];
   for (var k in cartItems) {
-    if (k.indexOf('addon_') === 0) continue;
+    if (k.indexOf('addon_') === 0 || k.indexOf('combo_') === 0) continue;   // combos are checked at checkout
     var raw = cartItems[k];
-    if (typeof raw !== 'number' && (!raw || typeof raw !== 'object' || raw.isAddon)) continue;
+    if (typeof raw !== 'number' && (!raw || typeof raw !== 'object' || raw.isAddon || raw.isCombo)) continue;
     var item = getItemByKey(k);
     if (!item) {
       var removedLabel = (raw && typeof raw === 'object' && raw.varName) ? ('item #' + k.split('_v')[0]) : ('item #' + k);
@@ -1689,7 +1692,37 @@ function renderCart() {
       addonPrice += (raw.addonPrice || 0) * qty;
       continue;
     }
-    
+
+    // a combo (Offers > Combos & Deals, rg-combos.js): its name, what's in it, one price
+    if (raw && typeof raw === 'object' && raw.isCombo) {
+      var cPrice = parseFloat(raw.varPrice || 0);
+      regQty += qty;
+      regPrice += cPrice * qty;
+      var cName = escapeHtml(raw.name || 'Combo');
+      orderRows +=
+        '<div class="order-row order-combo" id="cartCard-' + key.replace(/[^A-Za-z0-9_-]/g, '_') + '">' +
+          '<img src="' + getImageUrl(raw.image || '') + '" alt="' + cName + '" loading="lazy">' +
+          '<div class="order-main">' +
+            '<div class="order-name-row">' +
+              '<span class="combo-tag"><i class="fa-solid fa-fire-flame-curved"></i> Combo</span>' +
+              '<div class="order-name">' + cName + '</div>' +
+              '<button type="button" class="order-del" onclick="deleteItem(\'' + key + '\')" title="Remove" aria-label="Remove ' + cName + '"><i class="fa-regular fa-trash-can"></i></button>' +
+            '</div>' +
+            (raw.varName ? '<div class="order-addon">' + escapeHtml(raw.varName) + '</div>' : '') +
+            '<div class="order-bottom">' +
+              '<div class="qty-pill">' +
+                '<button type="button" onclick="changeQty(\'' + key + '\', -1)" aria-label="One less">−</button>' +
+                '<span>' + qty + '</span>' +
+                '<button type="button" onclick="changeQty(\'' + key + '\', 1)" aria-label="One more">+</button>' +
+              '</div>' +
+              '<div class="order-price"><b>' + getCurrency() + (cPrice * qty).toFixed(2) + '</b>' +
+                (qty > 1 ? '<small>' + getCurrency() + cPrice.toFixed(2) + ' each</small>' : '') + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      continue;
+    }
+
     var info = getItemByKey(key);
     if (!info) continue;
     var price = getCartPrice(key);
@@ -2561,6 +2594,11 @@ function getCartTotal() {
       totalPrice += (raw.addonPrice || 0) * (raw.qty || 0);
       continue;
     }
+    if (raw && typeof raw === 'object' && raw.isCombo) {
+      totalQty += raw.qty || 0;
+      totalPrice += parseFloat(raw.varPrice || 0) * (raw.qty || 0);
+      continue;
+    }
     var item = getItemByKey(key);
     if (item) {
       var qty = getCartQty(key);
@@ -3414,9 +3452,14 @@ function processOrder(cartData) {
 
   var items = [];
   var globalAddons = [];
+  var combos = [];   // Offers > Combos & Deals: id, how many and the choices; the server sets the price
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
     var raw = cartItems[key];
+    if (raw && typeof raw === 'object' && raw.isCombo) {
+      if (raw.comboId && raw.qty > 0) combos.push({ id: raw.comboId, quantity: raw.qty, picks: raw.picks || {} });
+      continue;
+    }
     // Handle standalone add-on items — collect into separate global_addons array
     if (raw && typeof raw === 'object' && raw.isAddon) {
       var addonId = parseInt(key.replace('addon_', ''));
@@ -3483,6 +3526,7 @@ function processOrder(cartData) {
       order_type: orderType,
       table_id: tableId,
       items: items,
+      combos: combos,
       global_addons: globalAddons.length > 0 ? globalAddons : [],
       total: cartData.totalPrice,
       total_payable: total,

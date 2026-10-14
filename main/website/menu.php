@@ -1414,6 +1414,8 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
       <div class="main-content">
         <!-- Banners: Menu page — above the dishes -->
         <div class="rg-banners" data-placement="menu_top" style="padding:10px 4px 12px"></div>
+        <!-- Combos & Deals (rg-combos.js; dashboard: Offers › Combos & Deals) -->
+        <section class="rgc" id="rgCombos" data-variant="menu" hidden></section>
         <div class="category-overview">
           <h2 id="categoryTitle"><span class="skel-title-bar skeleton"></span></h2>
           <div class="subcategory-tabs" id="subcategoryTabs" style="display:none"></div>
@@ -1921,6 +1923,8 @@ function removeFromCart(itemId, varIdx) {
 function saveCart() {
   try { localStorage.setItem('dvaniCart', JSON.stringify(cartItems)); } catch(e) {}
 }
+// combos (rg-combos.js) add to this page's cart through here
+window.rgCart = { get: function () { return cartItems; }, save: saveCart, refresh: function () { if (typeof updateCheckoutBar === 'function') updateCheckoutBar(); } };
 
 function loadCart() {
   try {
@@ -1933,9 +1937,9 @@ function cleanCart() {
   // Remove cart entries for items that no longer exist in the loaded menu
   var changed = false;
   for (var k in cartItems) {
-    if (k.indexOf('addon_') === 0) continue;
+    if (k.indexOf('addon_') === 0 || k.indexOf('combo_') === 0) continue;   // combos are checked at checkout
     var raw = cartItems[k];
-    if (typeof raw !== 'number' && (!raw || typeof raw !== 'object' || raw.isAddon)) continue;
+    if (typeof raw !== 'number' && (!raw || typeof raw !== 'object' || raw.isAddon || raw.isCombo)) continue;
     var item = getItemByKey(k);
     if (!item) {
       delete cartItems[k];
@@ -3609,6 +3613,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script>window.RG_MENU_URL = <?php echo json_encode(restaurantPageUrl('menu')); ?>;</script>
 <script src="rg-nutrition.js?v=<?php echo @filemtime(__DIR__ . '/rg-nutrition.js'); ?>" defer></script>
+<script src="rg-combos.js?v=<?php echo @filemtime(__DIR__ . '/rg-combos.js'); ?>" defer></script>
 <script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 <script src="rg-drag-scroll.js?v=<?php echo @filemtime(__DIR__ . '/rg-drag-scroll.js'); ?>" defer></script>
 </body>

@@ -822,6 +822,20 @@ try {
             }
             break;
 
+        case 'getCombos':
+            // Offers > Combos & Deals: combos on sale right now, with their choices (config/combo_helpers.php)
+            try {
+                require_once __DIR__ . '/../config/combo_helpers.php';
+                $combos = getCombos($conn, (string)$restaurantId, true);
+                foreach ($combos as &$c) unset($c['is_active'], $c['sort_order'], $c['valid_from'], $c['days']);
+                unset($c);
+                echo json_encode(['success' => true, 'combos' => $combos], JSON_UNESCAPED_UNICODE);
+            } catch (Throwable $e) {
+                error_log('Error in getCombos: ' . $e->getMessage());
+                echo json_encode(['success' => true, 'combos' => []]);
+            }
+            break;
+
         case 'getTodaysSpecial':
             // Offers > Today's Special: today's dish, note, limit and plates sold today
             try {
