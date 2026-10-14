@@ -8368,7 +8368,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     updatePOSCartSummary();
     // the menu grid shows how many of each dish are in the cart (assets/js/pos-studio.js)
-    try { window.dispatchEvent(new CustomEvent('rg-pos-cart', { detail: posCart.map(function (i) { return { id: i.id, q: i.quantity }; }) })); } catch (e) {}
+    try { window.dispatchEvent(new CustomEvent('rg-pos-cart', { detail: posCart.map(function (i) { return { id: i.id, q: i.quantity, k: i.cartKey || String(i.id) }; }) })); } catch (e) {}
   }
   
   // Update cart quantity
