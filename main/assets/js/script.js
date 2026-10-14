@@ -8334,6 +8334,19 @@ document.addEventListener("DOMContentLoaded", () => {
     updatePOSCart();
   };
   
+  // A cart line's total: the dish plus its add-ons, per unit (assets/js/pos-addons.js)
+  window.posLineTotal = function (it) {
+    const extra = (it.addons || []).reduce((s, a) => s + (parseFloat(a.price) || 0), 0);
+    return (parseFloat(it.price) + extra) * it.quantity;
+  };
+  // What the server gets: dishes (with their add-on ids) and order add-ons, separately
+  window.posCartPayload = function (cart) {
+    return {
+      items: cart.filter(i => !i.isAddon).map(i => Object.assign({}, i, { addons: (i.addons || []).map(a => ({ id: a.id })) })),
+      globalAddons: cart.filter(i => i.isAddon).map(i => ({ id: i.addonId, quantity: i.quantity }))
+    };
+  };
+
   // Update POS cart display
   function updatePOSCart() {
     const cartItemsContainer = document.getElementById("posCartItems");
@@ -8353,15 +8366,16 @@ document.addEventListener("DOMContentLoaded", () => {
         return `
         <div class="cart-item">
           <div class="cart-item-info">
-            <div class="cart-item-name">${escapeHtml(item.name)}</div>
+            <div class="cart-item-name">${escapeHtml(item.name)}${item.isAddon ? ' <span class="pa-tag">Add-on</span>' : ''}</div>
             <div class="cart-item-price">${formatCurrency(item.price)} each</div>
+            ${window.rgPosAddons ? window.rgPosAddons.lineHtml(item, key) : ''}
           </div>
           <div class="cart-item-controls">
             <button class="cart-qty-btn" onclick="updatePOSCartQty('${key.replace(/'/g, "\\'")}', -1)">-</button>
             <span class="cart-qty-value">${item.quantity}</span>
             <button class="cart-qty-btn" onclick="updatePOSCartQty('${key.replace(/'/g, "\\'")}', 1)">+</button>
           </div>
-          <div class="cart-item-total">${formatCurrency(parseFloat(item.price) * item.quantity)}</div>
+          <div class="cart-item-total">${formatCurrency(window.posLineTotal(item))}</div>
         </div>`;
       }).join('');
     }
@@ -8388,7 +8402,7 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Update cart summary
   function updatePOSCartSummary() {
-    const subtotal = posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+    const subtotal = posCart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
     // the customer's reward code and points come off before tax (assets/js/pos-customer.js)
     const pcPrice = window.rgPosCustomer ? window.rgPosCustomer.pricing(subtotal) : null;
@@ -8424,6 +8438,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   window.updatePOSCartSummaryHook = updatePOSCartSummary;
+  // the cart for pos-addons.js (add-ons on a line, order add-ons)
+  window.rgPosCartApi = { get: function () { return posCart; }, set: function (c) { posCart = c; updatePOSCart(); }, refresh: function () { updatePOSCart(); } };
 
   // Toggle mobile bill details (POS page)
   window.toggleMobileBillDetails = function() {
@@ -8483,7 +8499,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     
-      const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+      const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
       const showGst = window.enableGst == 1 || window.enableGst === true;
       const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
       const total = subtotal + tax;
@@ -8493,7 +8509,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const formData = new URLSearchParams();
       formData.append('action', 'hold_order');
       formData.append('tableId', selectedTable || '');
-      formData.append('cartItems', JSON.stringify(cart));
+      const payload = window.posCartPayload(cart);
+      formData.append('cartItems', JSON.stringify(payload.items));
+      formData.append('globalAddons', JSON.stringify(payload.globalAddons));
       formData.append('subtotal', subtotal.toFixed(2));
       formData.append('tax', tax.toFixed(2));
       formData.append('total', total.toFixed(2));
@@ -8638,6 +8656,11 @@ document.addEventListener("DOMContentLoaded", () => {
     try { d = await heldOrdersRequest('resume_held', orderId); } catch (e) { heldMsg('Network error. Please try again.', 'error'); return; }
     if (!d || !d.success) { heldMsg((d && d.message) || 'Could not resume this order.', 'error'); openHeldOrders(); return; }
     (d.items || []).forEach(it => {
+      if (!it.menu_item_id && it.variation_name === 'Add-on') {   // an order add-on line
+        const aid = parseInt(it.addon_id, 10) || 0;
+        cart.push({ id: 'addon-' + aid, isAddon: true, addonId: aid, cartKey: 'addon_' + aid, name: it.item_name, originalName: it.item_name, price: parseFloat(it.unit_price), image: null, quantity: parseInt(it.quantity, 10) || 1 });
+        return;
+      }
       const v = it.variation_name || null;
       const baseName = String(it.item_name || '');
       cart.push({
@@ -8648,8 +8671,11 @@ document.addEventListener("DOMContentLoaded", () => {
         price: parseFloat(it.unit_price),
         image: null,
         variationName: v,
+        addons: (it.addons || []).map(a => ({ id: a.id, name: a.name, price: parseFloat(a.price) || 0 })),
         quantity: parseInt(it.quantity, 10) || 1
       });
+      const last = cart[cart.length - 1];
+      if (last.addons.length) last.cartKey += '_a' + last.addons.map(a => a.id).sort().join('-');
     });
     const sel = document.getElementById('selectPosTable');
     if (sel) sel.value = d.table_id ? String(d.table_id) : '';
@@ -8920,9 +8946,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const itemsHtml = cartSnapshot.map((it) => `
       <tr>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
         <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:center;">${it.quantity}</td>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:right;">${currency}${(parseFloat(it.price) * it.quantity).toFixed(2)}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:right;">${currency}${window.posLineTotal(it).toFixed(2)}</td>
       </tr>
     `).join('');
 
@@ -9035,9 +9061,9 @@ document.addEventListener("DOMContentLoaded", () => {
           ...(restaurantInfo.showBusinessId && restaurantInfo.businessIdNo ? [[restaurantInfo.businessIdLabel || 'PAN', restaurantInfo.businessIdNo]] : [])
         ],
         items: cartSnapshot.map(it => ({
-          name: it.name + (it.variationName ? ' (' + it.variationName + ')' : ''),
-          qtyRate: it.quantity + ' x ' + currency + parseFloat(it.price).toFixed(2),
-          amount: currency + (parseFloat(it.price) * it.quantity).toFixed(2)
+          name: it.name + (it.variationName ? ' (' + it.variationName + ')' : '') + ((it.addons || []).length ? ' + ' + it.addons.map(a => a.name).join(', ') : ''),
+          qtyRate: it.quantity + ' x ' + currency + (window.posLineTotal(it) / it.quantity).toFixed(2),
+          amount: currency + window.posLineTotal(it).toFixed(2)
         })),
         totals: escTotals,
         footerLines: (billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : []).concat(['Thank you!', 'Powered by Restro Grow'])
@@ -9060,7 +9086,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+    const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
     // customer picked in the cart: reward code + points off before tax, wallet as part of the payment
     const pcPrice = window.rgPosCustomer ? window.rgPosCustomer.pricing(subtotal) : null;
@@ -9109,7 +9135,9 @@ document.addEventListener("DOMContentLoaded", () => {
       .map(name => `${name}: ${currency}${payResult.amounts[name].toFixed(2)}`))
       .join(', ');
     formData.append('notes', `${paidBreakdown}${payResult.dueAmount > 0 ? `${paidBreakdown ? ', ' : ''}Due: ${currency}${payResult.dueAmount.toFixed(2)}` : ''}`);
-    formData.append('cartItems', JSON.stringify(cart));
+    const payload = window.posCartPayload(cart);
+    formData.append('cartItems', JSON.stringify(payload.items));
+    formData.append('globalAddons', JSON.stringify(payload.globalAddons));
     formData.append('subtotal', subtotal.toFixed(2));
     formData.append('tax', tax.toFixed(2));
     formData.append('total', total.toFixed(2));
@@ -9278,6 +9306,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <td style="width:40px; text-align:center; font-weight:700; font-size:14px;">${it.quantity}</td>
             <td style="padding-left:6px;">
               <div style="font-weight:600; font-size:14px; color:#111827;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280; font-weight:400;">(${escapeHtml(it.variationName)})</span>` : ''}</div>
+              ${(it.addons || []).length ? `<div style="font-size:12px; color:#b45309; font-weight:700;">+ ${it.addons.map(a => escapeHtml(a.name)).join(', ')}</div>` : ''}
             </td>
           </tr></table>
         </td>
@@ -10647,6 +10676,12 @@ async function cancelKOT(kotId) {
 window.cancelKOT = cancelKOT;
 
 // Print KOT
+// add-ons for the whole order (not on a dish) travel in the ticket note: [Add-ons: Raita x2, ...]
+function kotOrderAddons(kot) {
+  const m = String((kot && kot.notes) || '').match(/\[Add-ons:\s*([^\]]+)\]/);
+  return m ? m[1].trim() : '';
+}
+
 window.printKOT = async function(kotId, onClose) {
   try {
     // Fetch KOT data for specific KOT
@@ -10693,6 +10728,7 @@ window.printKOT = async function(kotId, onClose) {
             <td style="width:40px; text-align:center; font-weight:700; font-size:14px;">${it.quantity}</td>
             <td style="padding-left:6px;">
               <div style="font-weight:600; font-size:14px; color:#111827;">${escapeHtml(it.item_name || it.name)}</div>
+              ${(it.addons || []).length ? `<div style="color:#b45309; font-size:12px; font-weight:700; margin-top:2px;">+ ${it.addons.map(a => escapeHtml(a.name)).join(', ')}</div>` : ''}
               ${(it.notes || it.special_instructions) ? `<div style="color:#b45309; font-size:11px; font-style:italic; margin-top:2px;">* ${escapeHtml(it.notes || it.special_instructions)}</div>` : ''}
             </td>
           </tr></table>
@@ -10773,6 +10809,7 @@ window.printKOT = async function(kotId, onClose) {
           <span>ITEM</span>
         </div>
         <table>${itemsHtml}</table>
+        ${kotOrderAddons(kot) ? `<div style="margin:6px 0; padding:6px 8px; border:1px dashed #b45309; font-size:13px; font-weight:700; color:#b45309;">Add-ons: ${escapeHtml(kotOrderAddons(kot))}</div>` : ''}
       </div>
       
       <hr class="divider">
@@ -10799,8 +10836,8 @@ window.printKOT = async function(kotId, onClose) {
         ],
         items: (kot.items || []).map(it => ({
           name: (it.quantity ? it.quantity + 'x ' : '') + (it.item_name || it.name || ''),
-          sub: (it.notes || it.special_instructions) ? '* ' + (it.notes || it.special_instructions) : ''
-        })),
+          sub: [((it.addons || []).length ? '+ ' + it.addons.map(a => a.name).join(', ') : ''), ((it.notes || it.special_instructions) ? '* ' + (it.notes || it.special_instructions) : '')].filter(Boolean).join(' ')
+        })).concat(kotOrderAddons(kot) ? [{ name: 'Add-ons: ' + kotOrderAddons(kot), sub: '' }] : []),
         totals: [['Total Items', String(itemsCount), true]],
         footerLines: ['Thank you!', 'Powered by Restro Grow']
       });

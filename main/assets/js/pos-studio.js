@@ -17,6 +17,7 @@
   'use strict';
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var ic = function (n) { return '<span class="material-symbols-rounded">' + n + '</span>'; };
+  var pendingJump = '';
   var counts = {}, total = 0, inCart = {}, grouping = false, gridObs = null, spyTick = 0, activeGroup = '';
   var TYPES = [['', 'All'], ['Veg', 'Veg'], ['Non Veg', 'Non-veg'], ['Egg', 'Egg'], ['Drink', 'Drinks']];
   var TINTS = [['#FFEDD5', '#C2410C'], ['#DCFCE7', '#15803D'], ['#DBEAFE', '#1D4ED8'], ['#FCE7F3', '#BE185D'], ['#EDE9FE', '#6D28D9'], ['#FEF9C3', '#A16207'], ['#CFFAFE', '#0E7490']];
@@ -81,7 +82,8 @@
     var opts = menuSel ? [].slice.call(menuSel.options).filter(function (o) { return o.value; }) : [];
     var on = sel || activeGroup;
     bar.querySelector('.ps-cats').innerHTML = '<button type="button" class="' + (!on ? 'on' : '') + '" data-ps-menu="">' + ic('apps') + 'All' + (total ? ' <em>' + total + '</em>' : '') + '</button>' +
-      opts.map(function (o) { return '<button type="button" class="' + (on === o.value ? 'on' : '') + '" data-ps-menu="' + esc(o.value) + '">' + esc(o.textContent) + (counts[o.value] ? ' <em>' + counts[o.value] + '</em>' : '') + '</button>'; }).join('');
+      opts.map(function (o) { return '<button type="button" class="' + (on === o.value ? 'on' : '') + '" data-ps-menu="' + esc(o.value) + '">' + esc(o.textContent) + (counts[o.value] ? ' <em>' + counts[o.value] + '</em>' : '') + '</button>'; }).join('') +
+      (window.rgPosAddons && window.rgPosAddons.list().length ? '<button type="button" class="' + (on === '__addons' ? 'on' : '') + '" data-ps-menu="__addons">' + ic('add_circle') + 'Add-ons <em>' + window.rgPosAddons.list().length + '</em></button>' : '');
     var t = (el('posTypeFilter') || {}).value || '';
     bar.querySelector('.ps-types').innerHTML = TYPES.map(function (x) {
       return '<button type="button" class="' + (t === x[0] ? 'on' : '') + '" data-ps-type="' + esc(x[0]) + '">' + (x[0] ? '<i class="ps-dot ' + x[0].toLowerCase().replace(' ', '-') + '"></i>' : '') + x[1] + '</button>';
@@ -158,7 +160,7 @@
     var q = ((el('posSearchInput') || {}).value || '').trim(), menu = (el('posMenuFilter') || {}).value || '';
     grouping = true;
     if (gridObs) gridObs.disconnect();   // moving tiles is itself a change: don't react to our own moves
-    grid.querySelectorAll('.ps-group-h').forEach(function (h) { h.remove(); });
+    grid.querySelectorAll('.ps-group-h, .pa-tile').forEach(function (h) { h.remove(); });
     var grouped = !!(tiles.length && !q && !menu);
     if (grouped) {
       var order = [], by = {};
@@ -176,6 +178,9 @@
     }
     grid.classList.toggle('ps-grouped', grouped);
     tilesUp();
+    // order add-ons after the dishes (pos-addons.js)
+    if (window.rgPosAddons) window.rgPosAddons.renderTiles(grid, q, grouped || (!tiles.length && !menu && !q), (el('posTypeFilter') || {}).value || '');
+    if (pendingJump) { var pj = pendingJump; pendingJump = ''; setTimeout(function () { jumpTo(pj); }, 30); }
     if (gridObs) gridObs.takeRecords();
     grouping = false;
     if (gridObs) gridObs.observe(grid, { childList: true });
@@ -212,6 +217,7 @@
     return true;
   }
 
+  window.rgPosRegroup = function () { paintBar(); group(); };
   window.addEventListener('rg-pos-cart', function (e) {
     inCart = {};
     (e.detail || []).forEach(function (i) {
@@ -237,6 +243,12 @@
         activeGroup = k;
         b.parentNode.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
         return;
+      }
+      if (k === '__addons') {   // not a real category: show All, then jump to the add-ons
+        pendingJump = k; activeGroup = k;
+        if (q && s) { s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true })); }
+        if ((el('posMenuFilter') || {}).value) setSelect('posMenuFilter', ''); else if (!q) { pendingJump = ''; jumpTo(k); }
+        paintBar(); return;
       }
       if (q && s) { s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true })); }
       activeGroup = '';

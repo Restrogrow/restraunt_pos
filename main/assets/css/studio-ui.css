@@ -2843,3 +2843,39 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ps-row2 .ps-cats { flex: 1 1 auto; min-width: 0; }
 .ps-row .ps-types { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .ps-row .ps-types::-webkit-scrollbar { display: none; }
+
+/* ═══ POS add-ons (assets/js/pos-addons.js): chips under cart lines, picker, "Add-ons" tiles ═══ */
+.pa-line { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.pa-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border-radius: 999px; background: #FFF7ED; color: #9A3412; font-size: .72rem; font-weight: 600; }
+.pa-chip b { font-weight: 800; }
+.pa-chip button { width: 18px; height: 18px; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: #C2410C; cursor: pointer; }
+.pa-chip button:hover { background: #FED7AA; }
+.pa-chip button .material-symbols-rounded { font-size: 14px; }
+.pa-add { display: inline-flex; align-items: center; gap: 2px; height: 22px; padding: 0 8px 0 4px; border: 1px dashed #FDBA74; border-radius: 999px; background: #fff; color: #C2410C; font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; }
+.pa-add:hover { background: #FFF7ED; border-style: solid; }
+.pa-add .material-symbols-rounded { font-size: 15px; }
+.pa-tag { display: inline-block; padding: 0 6px; border-radius: 999px; background: #FFEDD5; color: #C2410C; font-size: .66rem; font-weight: 800; vertical-align: 2px; }
+.pa-pick { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; text-align: left; }
+.pa-opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1.5px solid #E5E7EB; border-radius: 12px; cursor: pointer; }
+.pa-opt:has(input:checked) { border-color: #F97316; background: #FFF7ED; }
+.pa-opt input { width: 18px; height: 18px; accent-color: #F97316; }
+.pa-opt span { flex: 1; color: #111827; font-weight: 600; }
+.pa-opt b { color: #C2410C; }
+.pa-scope { display: flex; gap: 8px; margin-top: 10px; }
+.pa-scope label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; border: 1.5px solid #E5E7EB; border-radius: 10px; font-weight: 700; cursor: pointer; }
+.pa-scope label:has(input:checked) { border-color: #F97316; background: #FFF7ED; color: #C2410C; }
+.pa-scope input { accent-color: #F97316; }
+.pa-note { margin: 8px 0 0; color: #6B7280; font-size: .8rem; }
+.ps .pa-tile { position: relative; display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 10px 12px; border: 1px dashed #FDBA74; border-radius: 14px; background: #FFFBF7; font: inherit; text-align: left; cursor: pointer; transition: border-color .12s, background .12s; }
+.ps .pa-tile:hover { border-style: solid; border-color: #F97316; background: #FFF7ED; }
+.ps .pa-tile.on { border: 1.5px solid #16a34a; background: #F0FDF4; }
+.pa-tile .pa-ic { color: #F97316; } .pa-tile .pa-ic .material-symbols-rounded { font-size: 24px; }
+.pa-tile .pa-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pa-tile .pa-t b { color: #111827; font-size: .86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pa-tile .pa-t small { color: #9CA3AF; font-size: .7rem; font-weight: 700; }
+.pa-tile .pa-p { color: #111827; font-weight: 800; font-size: .9rem; }
+.pa-tile .pa-n:not(:empty) { position: absolute; top: -8px; right: -6px; min-width: 26px; height: 22px; padding: 0 6px; display: grid; place-items: center; border-radius: 999px; background: #16a34a; color: #fff; font-size: .74rem; font-weight: 800; }
+/* KOT: add-ons under a dish, and the order's add-ons */
+.kt-item .kt-add { display: block; margin-top: 2px; color: #B45309; font-size: .8rem; font-weight: 700; font-style: normal; }
+.kt-item.kt-extra { border-top: 1px dashed #FDBA74; }
+.kt-item.kt-extra .kt-q .material-symbols-rounded { font-size: 18px; color: #F97316; }

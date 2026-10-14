@@ -25,6 +25,8 @@
     var m = (Date.now() - t) / 60000;
     return m >= 20 ? 'late' : m >= 10 ? 'warn' : 'ok';
   }
+  // add-ons for the whole order (not on a dish) travel in the ticket note: [Add-ons: Raita x2, ...]
+  function orderAddons(k) { var m = (k.notes || '').match(/\[Add-ons:\s*([^\]]+)\]/); return m ? m[1].trim() : ''; }
   function pay(k) { var m = (k.notes || '').match(/\[Payment:\s*([^\]]+)\]/); return m ? m[1].trim() : 'Cash'; }
 
   function card(k, n) {
@@ -47,8 +49,11 @@
       '<div class="kt-items"><div class="kt-items-h">' + items.length + ' dish' + (items.length === 1 ? '' : 'es') + ' · ' + qty + ' item' + (qty === 1 ? '' : 's') + '</div>' +
       items.map(function (it) {
         var note = it.notes || it.special_instructions;
-        return '<div class="kt-item"><span class="kt-q">' + (+it.quantity || 1) + '</span><div><b>' + esc(it.item_name || it.name) + '</b>' + (note ? '<small>' + ic('edit_note') + esc(note) + '</small>' : '') + '</div></div>';
-      }).join('') + '</div>' +
+        var adds = Array.isArray(it.addons) ? it.addons : [];
+        return '<div class="kt-item"><span class="kt-q">' + (+it.quantity || 1) + '</span><div><b>' + esc(it.item_name || it.name) + '</b>' +
+          (adds.length ? '<em class="kt-add">+ ' + adds.map(function (a) { return esc(a.name); }).join(', ') + '</em>' : '') +
+          (note ? '<small>' + ic('edit_note') + esc(note) + '</small>' : '') + '</div></div>';
+      }).join('') + (orderAddons(k) ? '<div class="kt-item kt-extra"><span class="kt-q">' + ic('add_circle') + '</span><div><b>Add-ons</b><em class="kt-add">' + esc(orderAddons(k)) + '</em></div></div>' : '') + '</div>' +
       '<div class="kt-foot">' + main + '<button type="button" class="kt-rb" title="Print KOT" aria-label="Print KOT" onclick="printKOT(' + id + ')">' + ic('print') + '</button>' +
       (st !== 'Completed' && st !== 'Cancelled' ? '<button type="button" class="kt-rb red" title="Cancel KOT" aria-label="Cancel KOT" onclick="cancelKOT(' + id + ')">' + ic('block') + '</button>' : '') + '</div></div>';
   }

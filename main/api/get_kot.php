@@ -113,7 +113,8 @@ try {
                         ki.quantity,
                         ki.unit_price,
                         ki.total_price,
-                        ki.notes
+                        ki.notes,
+                        ki.addons
                       FROM kot_items ki
                       WHERE ki.kot_id = ?
                       ORDER BY ki.id";
@@ -121,6 +122,9 @@ try {
         $items_stmt = $conn->prepare($items_sql);
         $items_stmt->execute([$row['id']]);
         $items = $items_stmt->fetchAll();
+        // a dish's add-ons (JSON [{id, name, price}]) as a list the screens can show
+        foreach ($items as &$it) { $it['addons'] = !empty($it['addons']) ? (json_decode($it['addons'], true) ?: []) : []; }
+        unset($it);
         
         $row['items'] = $items;
         $row['table_name'] = $row['table_number'] ? $row['table_number'] . ' - ' . $row['area_name'] : null;

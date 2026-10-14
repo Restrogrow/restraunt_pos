@@ -287,6 +287,63 @@ function verifyPosCartItemPrices($conn, $restaurant_id, array $cartItems): ?stri
     return null;
 }
 
+/**
+ * Add-ons in a POS cart (assets/js/pos-addons.js), checked against meal_addons like the website does:
+ *  - a dish's add-ons (cartItems[i].addons = [{id}]) are charged once per unit of that dish;
+ *  - order add-ons (POST globalAddons = [{id, quantity}]) are their own lines.
+ * Unknown or switched-off add-ons are dropped. Each cart item's addons are replaced with the DB
+ * names and prices. Returns ['global' => [...verified], 'subtotal' => what the cart adds up to].
+ */
+function posVerifyAddons($conn, $restaurant_id, array &$cartItems, $globalRaw): array {
+    $ids = [];
+    foreach ($cartItems as $ci) foreach ((array)($ci['addons'] ?? []) as $a) if ((int)($a['id'] ?? 0) > 0) $ids[] = (int)$a['id'];
+    $globalRaw = is_array($globalRaw) ? $globalRaw : [];
+    foreach ($globalRaw as $g) if ((int)($g['id'] ?? 0) > 0) $ids[] = (int)$g['id'];
+    $byId = [];
+    if ($ids) {
+        $ids = array_values(array_unique($ids));
+        $st = $conn->prepare('SELECT id, addon_name, addon_price FROM meal_addons WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ') AND restaurant_id = ? AND is_available = 1');
+        $st->execute(array_merge($ids, [$restaurant_id]));
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $byId[(int)$r['id']] = ['id' => (int)$r['id'], 'name' => $r['addon_name'], 'price' => (float)$r['addon_price']];
+    }
+    $sub = 0.0;
+    foreach ($cartItems as &$ci) {
+        $v = [];
+        foreach ((array)($ci['addons'] ?? []) as $a) { $id = (int)($a['id'] ?? 0); if (isset($byId[$id])) $v[] = $byId[$id]; }
+        $ci['addons'] = $v;
+        $sub += ((float)($ci['price'] ?? 0) + array_sum(array_column($v, 'price'))) * (int)($ci['quantity'] ?? 0);
+    }
+    unset($ci);
+    $global = [];
+    foreach ($globalRaw as $g) {
+        $id = (int)($g['id'] ?? 0); $q = max(0, (int)($g['quantity'] ?? 0));
+        if (!isset($byId[$id]) || $q <= 0) continue;
+        $global[] = $byId[$id] + ['quantity' => $q];
+        $sub += $byId[$id]['price'] * $q;
+    }
+    return ['global' => $global, 'subtotal' => round($sub, 2)];
+}
+
+/** Save a cart's add-ons on an order: JSON on the dish's line, order add-ons as their own lines (like the website). */
+function posSaveOrderAddons($conn, int $orderId, array $orderItemIds, array $cartItems, array $global): void {
+    try {
+        $aStmt = $conn->prepare('INSERT INTO order_item_addons (order_item_id, addon_id, addon_name, addon_price, quantity) VALUES (?, ?, ?, ?, ?)');
+        foreach ($cartItems as $i => $ci) {
+            if (empty($ci['addons']) || empty($orderItemIds[$i])) continue;
+            $conn->prepare('UPDATE order_items SET addons = ? WHERE id = ?')->execute([json_encode($ci['addons'], JSON_UNESCAPED_UNICODE), $orderItemIds[$i]]);
+            foreach ($ci['addons'] as $a) $aStmt->execute([$orderItemIds[$i], $a['id'], $a['name'], $a['price'], 1]);
+        }
+        $gStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price) VALUES (?, NULL, ?, 'Add-on', ?, ?, ?)");
+        foreach ($global as $g) {
+            $gStmt->execute([$orderId, $g['name'], $g['quantity'], $g['price'], $g['price'] * $g['quantity']]);
+            $aStmt->execute([(int)$conn->lastInsertId(), $g['id'], $g['name'], $g['price'], $g['quantity']]);
+        }
+    } catch (PDOException $e) {
+        error_log('posSaveOrderAddons order ' . $orderId . ': ' . $e->getMessage());
+        throw $e;
+    }
+}
+
 function handleCreateKOT($conn, $restaurant_id) {
     $tableId = $_POST['tableId'] ?? null;
     $tableIdParam = $tableId ? $tableId : null;
@@ -352,6 +409,13 @@ function handleCreateKOT($conn, $restaurant_id) {
     $priceError = verifyPosCartItemPrices($conn, $restaurant_id, $cartItems);
     if ($priceError !== null) {
         echo json_encode(['success' => false, 'message' => $priceError], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+    // add-ons from the DB, and the subtotal must be what the cart adds up to
+    $addonCheck = posVerifyAddons($conn, $restaurant_id, $cartItems, json_decode($_POST['globalAddons'] ?? '[]', true));
+    $globalAddons = $addonCheck['global'];
+    if (abs($subtotal - $addonCheck['subtotal']) > 0.01) {
+        echo json_encode(['success' => false, 'message' => 'The bill total changed (a price or add-on was updated). Refresh the menu and try again.'], JSON_UNESCAPED_UNICODE);
         return;
     }
 
@@ -466,6 +530,8 @@ function handleCreateKOT($conn, $restaurant_id) {
         }
         if ($loyaltyPoints > 0) $kotNotes = trim($kotNotes . "\n[Points: " . $loyaltyPoints . " -" . number_format($loyaltyDiscount, 2) . "]");
         if ($walletPaid > 0) $kotNotes = trim($kotNotes . "\n[Wallet: " . number_format($walletPaid, 2) . "]");
+        // order add-ons (not tied to a dish): the kitchen reads them on the ticket's note
+        if ($globalAddons) $kotNotes = trim($kotNotes . "\n[Add-ons: " . implode(', ', array_map(function ($g) { return $g['name'] . ' x' . $g['quantity']; }, $globalAddons)) . "]");
         
         // Check if customer columns exist in kot table
         $checkKotCols = $conn->query("SHOW COLUMNS FROM kot LIKE 'customer_phone'");
@@ -532,6 +598,7 @@ function handleCreateKOT($conn, $restaurant_id) {
             }
         }
         
+
         // Paid-up-front tickets (the POS "Pay" button: the cashier enters the
         // amount received per method — Cash, Card, UPI or a split like
         // "Cash+UPI" — so money was already collected) must land in `orders`
@@ -560,10 +627,13 @@ function handleCreateKOT($conn, $restaurant_id) {
             }
             $orderId = (int)$conn->lastInsertId();
 
-            foreach ($cartItems as $item) {
+            $orderItemIds = [];
+            foreach ($cartItems as $i => $item) {
                 $oiStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
                 $oiStmt->execute([$orderId, (int)$item['id'], (string)$item['name'], (int)$item['quantity'], (float)$item['price'], (float)($item['price'] * $item['quantity'])]);
+                $orderItemIds[$i] = (int)$conn->lastInsertId();
             }
+            posSaveOrderAddons($conn, $orderId, $orderItemIds, $cartItems, $globalAddons);
 
             $payStmt = $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')");
             // Record the money actually received (part payments leave the rest due)
@@ -683,9 +753,11 @@ function handleRetireHeldOrder($conn, $restaurant_id, $resume) {
     }
     $items = [];
     if ($resume) {
-        $st = $conn->prepare("SELECT menu_item_id, item_name, variation_name, quantity, unit_price FROM order_items WHERE order_id = ? ORDER BY id");
+        $st = $conn->prepare("SELECT oi.menu_item_id, oi.item_name, oi.variation_name, oi.quantity, oi.unit_price, oi.addons,
+                (SELECT a.addon_id FROM order_item_addons a WHERE a.order_item_id = oi.id LIMIT 1) addon_id
+            FROM order_items oi WHERE oi.order_id = ? ORDER BY oi.id");
         $st->execute([$orderId]);
-        $items = $st->fetchAll(PDO::FETCH_ASSOC);
+        $items = array_map(function ($r) { $r['addons'] = $r['addons'] ? (json_decode($r['addons'], true) ?: []) : []; return $r; }, $st->fetchAll(PDO::FETCH_ASSOC));
     }
     $who = $_SESSION['username'] ?? ($_SESSION['staff_name'] ?? 'POS');
     $conn->prepare("UPDATE orders SET deleted_at = NOW(), deleted_by = ?, delete_reason = ? WHERE id = ?")
@@ -711,6 +783,12 @@ function handleHoldOrder($conn, $restaurant_id) {
     $priceError = verifyPosCartItemPrices($conn, $restaurant_id, $cartItems);
     if ($priceError !== null) {
         echo json_encode(['success' => false, 'message' => $priceError], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+    $addonCheck = posVerifyAddons($conn, $restaurant_id, $cartItems, json_decode($_POST['globalAddons'] ?? '[]', true));
+    $globalAddons = $addonCheck['global'];
+    if (abs($subtotal - $addonCheck['subtotal']) > 0.01) {
+        echo json_encode(['success' => false, 'message' => 'The bill total changed (a price or add-on was updated). Refresh the menu and try again.'], JSON_UNESCAPED_UNICODE);
         return;
     }
 
@@ -761,7 +839,8 @@ function handleHoldOrder($conn, $restaurant_id) {
         // Insert order items
         $itemStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
         
-        foreach ($cartItems as $item) {
+        $orderItemIds = [];
+        foreach ($cartItems as $i => $item) {
             // Validate item structure
             if (!isset($item['id']) || !isset($item['name']) || !isset($item['price']) || !isset($item['quantity'])) {
                 error_log("Invalid cart item structure: " . json_encode($item));
@@ -777,7 +856,9 @@ function handleHoldOrder($conn, $restaurant_id) {
                 (float)$item['price'],
                 (float)($item['price'] * $item['quantity'])
             ]);
+            $orderItemIds[$i] = (int)$conn->lastInsertId();
         }
+        posSaveOrderAddons($conn, (int)$orderId, $orderItemIds, $cartItems, $globalAddons);
         
         // Commit transaction
         $conn->commit();
