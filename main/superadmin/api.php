@@ -714,6 +714,24 @@ try {
 
 break;
 
+    // Sentry (config/sentry.php): is it on, and a test error that is sent right away
+    case 'sentryStatus':
+      $d = function_exists('rgSentryDsn') ? rgSentryDsn() : null;
+      echo json_encode(['success' => true, 'on' => (bool)$d, 'environment' => function_exists('rgSentryEnvironment') ? rgSentryEnvironment() : '',
+        'host' => $d ? parse_url($d['dsn'], PHP_URL_HOST) : null]);
+      break;
+
+    case 'sentryTest':
+      if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') throw new Exception('This action requires POST');
+      if (!function_exists('rgSentryDsn') || !rgSentryDsn()) throw new Exception('Sentry is off (no SENTRY_DSN).');
+      $ids = [rgSentryCaptureMessage('RestroGrow Sentry test from superadmin (safe to ignore)', 'error', ['sent_at' => date('c')], ['test' => 'yes'])];
+      try { throw new RuntimeException('RestroGrow Sentry test exception from superadmin (safe to ignore)'); }
+      catch (Throwable $e) { $ids[] = rgSentryCaptureException($e, ['sent_at' => date('c')]); }
+      $sent = rgSentryFlush(false);   // keep the request open: this reply comes after
+      echo json_encode(['success' => $sent > 0, 'sent' => $sent, 'event_ids' => array_values(array_filter($ids)),
+        'message' => $sent > 0 ? $sent . ' test errors sent to Sentry' : 'Sentry did not accept the test (see the PHP error log)']);
+      break;
+
     case 'getPhonePeMode':
       $mode = $_SESSION['phonepe_mode'] ?? 'demo';
       echo json_encode(['success' => true, 'mode' => $mode]);

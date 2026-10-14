@@ -69,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+<?php require_once __DIR__ . '/../config/sentry_browser.php'; echo rgSentryBrowserTag('superadmin-login'); ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Superadmin Login</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">

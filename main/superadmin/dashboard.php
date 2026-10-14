@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/countries.php';
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+<?php require_once __DIR__ . '/../config/sentry_browser.php'; echo rgSentryBrowserTag('superadmin'); ?>
   <script src="../assets/js/quiet-console.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/quiet-console.js'); ?>"></script>
   <script>
 (function(){
@@ -941,6 +942,19 @@ require_once __DIR__ . '/../config/countries.php';
             <button class="btn btn-outline btn-sm" onclick="saMarkAllRead()">Mark Read</button>
           </div>
         </div>
+        <!-- Sentry (config/sentry.php + config/sentry_browser.php) -->
+        <div class="stat-card" id="saSentryCard" style="padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <span class="material-symbols-rounded" style="font-size:28px;color:#7c3aed;">monitoring</span>
+          <div style="flex:1 1 240px;min-width:0;">
+            <div style="font-weight:700;">Sentry error monitoring <span id="saSentryState" class="badge" style="margin-left:6px;">Checking…</span></div>
+            <div class="sa-sub" id="saSentryInfo" style="margin-top:2px;">Server errors, failed requests (500) and dashboard JavaScript errors from every restaurant go to Sentry.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="saSentryTest()">Send server test error</button>
+            <button class="btn btn-outline btn-sm" onclick="saSentryBrowserTest()">Send browser test error</button>
+            <a class="btn btn-outline btn-sm" href="https://sentry.io/issues/" target="_blank" rel="noopener">Open Sentry</a>
+          </div>
+        </div>
         <!-- Summary cards -->
         <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
           <div class="stat-card" style="padding:14px;">
@@ -1017,7 +1031,38 @@ require_once __DIR__ . '/../config/countries.php';
     // ── Error Monitor Functions ────────────────────────────────────────────
     var saErrorPollTimer = null;
     
+    // ── Sentry card on the Error monitor page ──
+    function saSentrySay(text, ok) {
+      var s = document.getElementById('saSentryInfo');
+      if (s) { s.textContent = text; s.style.color = ok === false ? '#dc2626' : ok ? '#047857' : ''; }
+    }
+    async function saSentryStatus() {
+      var b = document.getElementById('saSentryState');
+      try {
+        var d = await (await fetch('api.php?action=sentryStatus')).json();
+        if (b) { b.textContent = d.on ? 'On · ' + d.environment : 'Off'; b.style.background = d.on ? '#dcfce7' : '#fee2e2'; b.style.color = d.on ? '#047857' : '#b91c1c'; }
+      } catch (e) { if (b) b.textContent = 'Unknown'; }
+    }
+    async function saSentryTest() {
+      saSentrySay('Sending a test error from the server…');
+      try {
+        var d = await (await fetch('api.php?action=sentryTest', { method: 'POST' })).json();
+        saSentrySay(d.success ? d.message + '. Check Sentry → Issues for "RestroGrow Sentry test".' : (d.message || 'Sending failed'), !!d.success);
+      } catch (e) { saSentrySay('Sending failed: ' + e.message, false); }
+    }
+    function saSentryBrowserTest() {
+      if (!window.Sentry || !Sentry.onLoad) { saSentrySay('Sentry script did not load in this browser (an ad blocker can stop it).', false); return; }
+      saSentrySay('Sending a test error from this browser…');
+      Sentry.onLoad(function () {
+        Sentry.captureException(new Error('RestroGrow Sentry test from the superadmin browser (safe to ignore)'));
+        Sentry.flush(5000).then(function (ok) {
+          saSentrySay(ok ? 'Browser test error sent. Check Sentry → Issues for "RestroGrow Sentry test".' : 'Sentry did not confirm the browser test.', ok);
+        });
+      });
+    }
+
     function saLoadErrorLogs() {
+      saSentryStatus();
       var container = document.getElementById('saErrorList');
       if (!container) return;
       container.innerHTML = '<div class="loading">Loading...</div>';

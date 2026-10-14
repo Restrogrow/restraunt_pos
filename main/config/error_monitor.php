@@ -52,6 +52,13 @@ function logErrorToDB(PDO $conn, string $source, string $severity, string $messa
     if (!in_array($source, $allowedSources, true)) $source = 'custom';
     if (!in_array($severity, $allowedSeverities, true)) $severity = 'error';
 
+    // errors also go to Sentry (config/sentry.php)
+    if (($severity === 'error' || $severity === 'critical') && function_exists('rgSentryCaptureMessage')) {
+        rgSentryCaptureMessage('[' . $source . '] ' . $message, $severity,
+            array_filter(['file' => isset($context['file']) ? basename((string)$context['file']) . ':' . ($context['line'] ?? '') : null, 'trace' => isset($context['trace']) ? mb_substr((string)$context['trace'], 0, 3000) : null, 'context' => $context['extra'] ?? null]),
+            ['source' => $source]);
+    }
+
     // Build context
     $restaurantId = $context['restaurant_id']
         ?? ($_SESSION['restaurant_id'] ?? null);

@@ -84,6 +84,7 @@ applyRestaurantTimezone($timezone, $conn);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<?php require_once __DIR__ . '/../config/sentry_browser.php'; echo rgSentryBrowserTag('waiter'); ?>
   <script src="../assets/js/quiet-console.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/quiet-console.js'); ?>"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Waiter Dashboard - <?php echo htmlspecialchars($_SESSION['restaurant_name'] ?? 'Restaurant'); ?></title>

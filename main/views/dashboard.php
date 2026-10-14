@@ -281,6 +281,7 @@ try {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+<?php require_once __DIR__ . '/../config/sentry_browser.php'; echo rgSentryBrowserTag('dashboard'); ?>
   <script src="../assets/js/quiet-console.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/quiet-console.js'); ?>"></script>
   <?php if ($googleMapsApiKey): ?>
   <!-- Google Maps Places Autocomplete (Restaurant address setup) -->

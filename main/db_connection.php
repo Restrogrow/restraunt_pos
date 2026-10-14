@@ -32,6 +32,9 @@ require_once __DIR__ . '/config/env_loader.php';
 // Load error handler (file-based fallback logging)
 require_once __DIR__ . '/config/error_handler.php';
 
+// Sentry error monitoring (errors and 500 replies go to sentry.io)
+require_once __DIR__ . '/config/sentry.php';
+
 // ============================================================
 // DATABASE CONFIGURATION - READ FROM ENVIRONMENT VARIABLES
 // ============================================================
