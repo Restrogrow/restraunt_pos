@@ -8345,6 +8345,15 @@ document.addEventListener("DOMContentLoaded", () => {
     updatePOSCart();
   };
   
+  // A combo from the POS combos strip (assets/js/pos-combos.js): one line per combo + choices
+  //   { isCombo, comboId, cartKey 'combo_<id>_<choice ids>', name, price (one combo), quantity, picks, summary }
+  window.addComboToPOSCart = function (line) {
+    const existing = posCart.find(item => item.cartKey === line.cartKey);
+    if (existing) existing.quantity += line.quantity || 1;
+    else posCart.push(Object.assign({ id: 'c' + line.comboId, quantity: 1 }, line, { isCombo: true }));
+    updatePOSCart();
+  };
+
   // A cart line's total: the dish plus its add-ons, per unit (assets/js/pos-addons.js)
   window.posLineTotal = function (it) {
     const extra = (it.addons || []).reduce((s, a) => s + (parseFloat(a.price) || 0), 0);
@@ -8353,8 +8362,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // What the server gets: dishes (with their add-on ids) and order add-ons, separately
   window.posCartPayload = function (cart) {
     return {
-      items: cart.filter(i => !i.isAddon).map(i => Object.assign({}, i, { addons: (i.addons || []).map(a => ({ id: a.id })) })),
-      globalAddons: cart.filter(i => i.isAddon).map(i => ({ id: i.addonId, quantity: i.quantity }))
+      items: cart.filter(i => !i.isAddon && !i.isCombo).map(i => Object.assign({}, i, { addons: (i.addons || []).map(a => ({ id: a.id })) })),
+      globalAddons: cart.filter(i => i.isAddon).map(i => ({ id: i.addonId, quantity: i.quantity })),
+      combos: cart.filter(i => i.isCombo).map(i => ({ id: i.comboId, quantity: i.quantity, picks: i.picks || {} }))
     };
   };
 
@@ -8373,16 +8383,16 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     } else {
       const unsent = window.posKitchenDelta ? window.posKitchenDelta(posCart) : { items: [], addons: false };
-      const banner = window.posOpenBill ? `<div class="pk-bill"><span class="material-symbols-rounded">soup_kitchen</span><span><b>Bill ${escapeHtml(window.posOpenBill.number)}</b> is open: sent to the kitchen, not paid yet.${unsent.items.length || unsent.addons ? ' <em>New dishes: press KOT to send them.</em>' : ''}</span></div>` : '';
+      const banner = window.posOpenBill ? `<div class="pk-bill"><span class="material-symbols-rounded">soup_kitchen</span><span><b>Bill ${escapeHtml(window.posOpenBill.number)}</b> is open: sent to the kitchen, not paid yet.${unsent.items.length || unsent.addons || (unsent.combos || []).length ? ' <em>New dishes: press KOT to send them.</em>' : ''}</span></div>` : '';
       cartItemsContainer.innerHTML = banner + posCart.map(item => {
         const key = item.cartKey || item.id.toString();
         const sentQ = window.posSentQty ? window.posSentQty(key) : 0;
         return `
         <div class="cart-item">
           <div class="cart-item-info">
-            <div class="cart-item-name">${escapeHtml(item.name)}${item.isAddon ? ' <span class="pa-tag">Add-on</span>' : ''}${sentQ > 0 ? ` <span class="pk-sent" title="Already sent to the kitchen">${sentQ >= item.quantity ? 'In kitchen' : sentQ + ' in kitchen'}</span>` : ''}</div>
+            <div class="cart-item-name">${escapeHtml(item.name)}${item.isAddon ? ' <span class="pa-tag">Add-on</span>' : ''}${item.isCombo ? ' <span class="pa-tag pc-tag">Combo</span>' : ''}${sentQ > 0 ? ` <span class="pk-sent" title="Already sent to the kitchen">${sentQ >= item.quantity ? 'In kitchen' : sentQ + ' in kitchen'}</span>` : ''}</div>
             <div class="cart-item-price">${formatCurrency(item.price)} each</div>
-            ${window.rgPosAddons ? window.rgPosAddons.lineHtml(item, key) : ''}
+            ${item.isCombo ? '<div class="pc-what">' + escapeHtml(item.summary || '') + '</div>' : (window.rgPosAddons ? window.rgPosAddons.lineHtml(item, key) : '')}
           </div>
           <div class="cart-item-controls">
             <button class="cart-qty-btn" onclick="updatePOSCartQty('${key.replace(/'/g, "\\'")}', -1)">-</button>
@@ -8530,6 +8540,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const selectedTable = selectPosTable ? selectPosTable.value : '';
 
       const formData = new URLSearchParams();
+      if (cart.some(i => i.isCombo)) {
+        const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
+        showMsg("Bills with a combo can't go on hold yet. Press KOT instead: the bill stays open until Pay.", "info");
+        return;
+      }
       formData.append('action', 'hold_order');
       formData.append('tableId', selectedTable || '');
       const payload = window.posCartPayload(cart);
@@ -8972,7 +8987,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const itemsHtml = cartSnapshot.map((it) => `
       <tr>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${it.isCombo && it.summary ? `<div style="font-size:11px;color:#6b7280;">${escapeHtml(it.summary)}</div>` : ""}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
         <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:center;">${it.quantity}</td>
         <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:right;">${currency}${window.posLineTotal(it).toFixed(2)}</td>
       </tr>
@@ -9086,7 +9101,7 @@ document.addEventListener("DOMContentLoaded", () => {
         billTo: payResult.customer ? payResult.customer.name : tableLabel,
         items: cartSnapshot.map(it => ({
           name: it.name + (it.variationName ? ' (' + it.variationName + ')' : ''),
-          sub: (it.addons || []).length ? '+ ' + it.addons.map(a => a.name).join(', ') : '',
+          sub: it.isCombo ? (it.summary || '') : ((it.addons || []).length ? '+ ' + it.addons.map(a => a.name).join(', ') : ''),
           quantity: it.quantity,
           rate: window.posLineTotal(it) / it.quantity,
           amount: window.posLineTotal(it)
@@ -9170,11 +9185,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const payload = window.posCartPayload(cart);
     formData.append('cartItems', JSON.stringify(payload.items));
     formData.append('globalAddons', JSON.stringify(payload.globalAddons));
+    if (payload.combos.length) formData.append('combos', JSON.stringify(payload.combos));
     if (window.posOpenBill) {   // already sent with KOT: settle that bill, and send the kitchen only what's new
       const delta = window.posKitchenDelta(cart);
       formData.append('openOrderId', window.posOpenBill.id);
       formData.append('kitchenItems', JSON.stringify(delta.items));
       if (delta.addons) formData.append('kitchenAddons', '1');
+      if (delta.combos.length) formData.append('kitchenCombos', JSON.stringify(delta.combos));
     }
     formData.append('subtotal', subtotal.toFixed(2));
     formData.append('tax', tax.toFixed(2));
@@ -9273,15 +9290,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // what the kitchen doesn't have yet: dishes (by line) and whether order add-ons changed
   window.posKitchenDelta = function (cart) {
     const items = [];
+    const combos = [];
     let addons = false;
     cart.forEach(it => {
       const key = it.cartKey || String(it.id);
       const d = it.quantity - (posSent[key] || 0);
       if (d <= 0) return;
       if (it.isAddon) { addons = true; return; }
+      if (it.isCombo) { combos.push({ id: it.comboId, quantity: d, picks: it.picks || {} }); return; }
       items.push({ id: it.id, name: it.name, quantity: d, addons: (it.addons || []).map(a => ({ id: a.id })) });
     });
-    return { items, addons };
+    return { items, addons, combos };
   };
   window.posMarkAllSent = function (cart) { posSent = {}; cart.forEach(it => { posSent[it.cartKey || String(it.id)] = it.quantity; }); };
   window.posResetBill = function () { window.posOpenBill = null; posSent = {}; window._kotSentForCurrentOrder = false; };
@@ -9294,7 +9313,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cart.length === 0) { showMsg("Cart is empty", "error"); return; }
 
     const delta = window.posKitchenDelta(cart);
-    if (!delta.items.length && !delta.addons) { showMsg("Everything on this bill is already in the kitchen.", "info"); return; }
+    if (!delta.items.length && !delta.addons && !delta.combos.length) { showMsg("Everything on this bill is already in the kitchen.", "info"); return; }
 
     const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
@@ -9316,6 +9335,8 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append('globalAddons', JSON.stringify(payload.globalAddons));
     formData.append('kitchenItems', JSON.stringify(delta.items));
     if (delta.addons) formData.append('kitchenAddons', '1');
+    if (payload.combos.length) formData.append('combos', JSON.stringify(payload.combos));
+    if (delta.combos.length) formData.append('kitchenCombos', JSON.stringify(delta.combos));
     if (window.posOpenBill) formData.append('openOrderId', window.posOpenBill.id);
     formData.append('subtotal', subtotal.toFixed(2));
     formData.append('tax', tax.toFixed(2));

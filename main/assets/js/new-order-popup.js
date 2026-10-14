@@ -187,10 +187,20 @@
       (wallet > 0 ? '<div><span>Paid from wallet</span><span>−' + money(wallet) + '</span></div>' + (unpaid ? '<div class="no-due"><span>To collect</span><b>' + money(Math.max(0, grand - wallet)) + '</b></div>' : '') : '') +
     '</div>';
   }
+  // a combo is one priced line (variation 'Combo') followed by its dishes at 0 noted "Combo: <name>"
+  function inCombo(i) { return /^Combo: /.test(i.notes || '') && !(+i.total_price); }
   function items(o) {
     if (!o.items || !o.items.length) return '<div class="no-items-none">' + (+o.item_count || 0) + ' item(s)</div>';
-    var count = o.items.reduce(function (a, i) { return a + (+i.quantity || 1); }, 0);
+    var count = o.items.reduce(function (a, i) { return a + (inCombo(i) ? 0 : (+i.quantity || 1)); }, 0);
     return '<div class="no-sec-h">' + count + ' item' + (count === 1 ? '' : 's') + '</div><div class="no-items">' + o.items.map(function (i) {
+      if (inCombo(i)) {
+        return '<div class="no-item no-sub"><span class="no-item-main"><b>' + esc(i.item_name) + '</b>' + (i.variation_name ? '<small>' + esc(i.variation_name) + '</small>' : '') + '</span><span class="no-qty">× ' + (+i.quantity || 1) + '</span></div>';
+      }
+      if (i.variation_name === 'Combo') {
+        return '<div class="no-item no-combo"><span class="no-thumb">' + ic('fastfood') + '</span>' +
+          '<span class="no-item-main"><b>' + esc(i.item_name) + '</b><small class="no-combo-tag">Combo</small></span>' +
+          '<span class="no-qty">× ' + (+i.quantity || 1) + '</span><span class="no-price">' + money(i.total_price) + '</span></div>';
+      }
       var t = String(i.item_type || '').toLowerCase().replace(' ', '-');
       var extras = [i.variation_name].concat(i.addon_names || []).filter(Boolean).join(' · ');
       return '<div class="no-item"><span class="no-thumb">' + (i.item_image ? '<img alt="" loading="lazy" src="../api/image.php?path=' + encodeURIComponent(i.item_image) + '" onerror="this.remove()">' : '') + ic('restaurant') + '</span>' +

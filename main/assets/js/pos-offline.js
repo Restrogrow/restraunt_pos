@@ -99,11 +99,20 @@
     var kitchen = null;
     try { kitchen = body.has('kitchenItems') ? JSON.parse(body.get('kitchenItems') || '[]') : null; } catch (e) {}
     var addonsToo = !body.has('kitchenItems') || body.get('kitchenAddons') === '1';
-    if (!kitchen) kitchen = (meta.cart || []).filter(function (i) { return !i.isAddon; }).map(function (i) { return { name: i.name, quantity: i.quantity, addons: i.addons || [] }; });
+    // combos for this ticket: the ones the kitchen doesn't have yet (kitchenCombos), or all of them
+    var kCombos = null;
+    try { kCombos = body.has('kitchenItems') ? JSON.parse(body.get('kitchenCombos') || '[]') : null; } catch (e) { kCombos = []; }
+    var comboLines = (meta.cart || []).filter(function (i) { return i.isCombo; });
+    if (kCombos) comboLines = kCombos.map(function (kc) {
+      var c = comboLines.filter(function (i) { return i.comboId === kc.id && JSON.stringify(i.picks || {}) === JSON.stringify(kc.picks || {}); })[0];
+      return c ? Object.assign({}, c, { quantity: kc.quantity }) : null;
+    }).filter(Boolean);
+    if (!kitchen) kitchen = (meta.cart || []).filter(function (i) { return !i.isAddon && !i.isCombo; }).map(function (i) { return { name: i.name, quantity: i.quantity, addons: i.addons || [] }; });
     var names = {}; (meta.cart || []).forEach(function (c) { names[c.id] = c; });
     kitchen = kitchen.map(function (k) { var c = names[k.id] || {}; return { name: k.name || c.name || 'Item', quantity: k.quantity, addons: (k.addons || []).map(function (a) { return { name: a.name || ((c.addons || []).filter(function (x) { return String(x.id) === String(a.id); })[0] || {}).name || '' }; }) }; });
     if (addonsToo) (meta.cart || []).filter(function (i) { return i.isAddon; }).forEach(function (i) { kitchen.push({ name: i.name, quantity: i.quantity, extra: true }); });
-    body.set('kitchenItems', '[]'); body.delete('kitchenAddons');
+    comboLines.forEach(function (i) { kitchen.push({ name: i.name + ' (combo)', quantity: i.quantity, addons: i.summary ? [{ name: i.summary }] : [] }); });
+    body.set('kitchenItems', '[]'); body.delete('kitchenAddons'); body.delete('kitchenCombos');
     body.set('pos_ref', ref);
     body.set('offline_at', new Date(entry.at).toISOString());
     entry.body = body.toString();

@@ -451,13 +451,33 @@ function handleCreateKOT($conn, $restaurant_id) {
         return;
     }
 
+    // Combos (Offers > Combos & Deals): [{id, quantity, picks}], priced here from the database
+    $combosIn = json_decode((string)($_POST['combos'] ?? '[]'), true);
+    $combosIn = is_array($combosIn) ? array_slice($combosIn, 0, 20) : [];
+    if (!is_array($cartItems)) $cartItems = [];
+
     // Validation
-    if (empty($cartItems) || !is_array($cartItems)) {
+    if (empty($cartItems) && empty($combosIn)) {
         echo json_encode(['success' => false, 'message' => 'Cart is empty or invalid'], JSON_UNESCAPED_UNICODE);
         return;
     }
+    $posCombos = [];      // [id, qty, name, unit, lines] on this bill
+    $comboTotal = 0.0;
+    $liveCombos = [];
+    if ($combosIn) {
+        require_once __DIR__ . '/../config/combo_helpers.php';
+        foreach (getCombos($conn, (string)$restaurant_id, true) as $lc) $liveCombos[$lc['id']] = $lc;
+        foreach ($combosIn as $ci) {
+            $cq = max(0, min(50, (int)($ci['quantity'] ?? 0)));
+            if (!$cq) continue;
+            $v = comboVerify($liveCombos, (int)($ci['id'] ?? 0), is_array($ci['picks'] ?? null) ? $ci['picks'] : []);
+            if (!$v['ok']) { echo json_encode(['success' => false, 'message' => $v['message']], JSON_UNESCAPED_UNICODE); return; }
+            $posCombos[] = ['id' => (int)$ci['id'], 'qty' => $cq, 'name' => $v['name'], 'unit' => $v['unit_price'], 'lines' => $v['lines']];
+            $comboTotal += $v['unit_price'] * $cq;
+        }
+    }
 
-    $priceError = verifyPosCartItemPrices($conn, $restaurant_id, $cartItems);
+    $priceError = $cartItems ? verifyPosCartItemPrices($conn, $restaurant_id, $cartItems) : null;   // a bill of only combos has no dishes to check
     if ($priceError !== null) {
         echo json_encode(['success' => false, 'message' => $priceError], JSON_UNESCAPED_UNICODE);
         return;
@@ -465,7 +485,7 @@ function handleCreateKOT($conn, $restaurant_id) {
     // add-ons from the DB, and the subtotal must be what the cart adds up to
     $addonCheck = posVerifyAddons($conn, $restaurant_id, $cartItems, json_decode($_POST['globalAddons'] ?? '[]', true));
     $globalAddons = $addonCheck['global'];
-    if (abs($subtotal - $addonCheck['subtotal']) > 0.01) {
+    if (abs($subtotal - ($addonCheck['subtotal'] + $comboTotal)) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'The bill total changed (a price or add-on was updated). Refresh the menu and try again.'], JSON_UNESCAPED_UNICODE);
         return;
     }
@@ -568,7 +588,17 @@ function handleCreateKOT($conn, $restaurant_id) {
     }
     // order add-ons go to the kitchen with the first ticket that carries them (kitchenAddons = 1)
     $addonsToKitchen = $globalAddons && (!isset($_POST['kitchenItems']) || !empty($_POST['kitchenAddons']));
-    $sendTicket = !empty($kitchenItems) || $addonsToKitchen;
+    // combos for the kitchen: all of them (Pay), or the ones not sent before (KOT: kitchenCombos)
+    $kitchenCombos = $posCombos;
+    if (isset($_POST['kitchenItems'])) {
+        $kitchenCombos = [];
+        foreach ((array)json_decode((string)($_POST['kitchenCombos'] ?? '[]'), true) as $kc) {
+            $q = max(0, min(50, (int)($kc['quantity'] ?? 0)));
+            $v = $q ? comboVerify($liveCombos, (int)($kc['id'] ?? 0), is_array($kc['picks'] ?? null) ? $kc['picks'] : []) : ['ok' => false];
+            if ($v['ok']) $kitchenCombos[] = ['id' => (int)$kc['id'], 'qty' => $q, 'name' => $v['name'], 'unit' => $v['unit_price'], 'lines' => $v['lines']];
+        }
+    }
+    $sendTicket = !empty($kitchenItems) || $addonsToKitchen || !empty($kitchenCombos);
 
     // An open bill (sent to the kitchen with the KOT button, not paid yet) that this request adds to or settles
     $openOrderId = (int)($_POST['openOrderId'] ?? 0);
@@ -622,6 +652,7 @@ function handleCreateKOT($conn, $restaurant_id) {
             // the ticket's own amounts: just the dishes on it
             $kotSub = 0.0;
             foreach ($kitchenItems as $ki) $kotSub += (float)$ki['price'] * (int)$ki['quantity'];
+            foreach ($kitchenCombos as $kc) $kotSub += $kc['unit'] * $kc['qty'];
             $kotTax = $gstEnabled ? round($kotSub * ($taxPercent / 100), 2) : 0;
             $checkKotCols = $conn->query("SHOW COLUMNS FROM kot LIKE 'customer_phone'");
             if ($checkKotCols->rowCount() > 0) {
@@ -653,6 +684,13 @@ function handleCreateKOT($conn, $restaurant_id) {
             if ($addonsToKitchen) {
                 $aStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, addon_name, quantity, unit_price, total_price) VALUES (?, NULL, ?, ?, ?, ?, ?)");
                 foreach ($globalAddons as $g) $aStmt->execute([$kotId, $g['name'], $g['name'], $g['quantity'], $g['price'], $g['price'] * $g['quantity']]);
+            }
+            // a combo's dishes, each noted with the combo (the price is on the bill)
+            if ($kitchenCombos) {
+                $cStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, notes) VALUES (?, ?, ?, ?, 0, 0, ?)");
+                foreach ($kitchenCombos as $kc) foreach ($kc['lines'] as $ln) {
+                    $cStmt->execute([$kotId, $ln['menu_item_id'], $ln['name'] . ($ln['variation'] ? ' (' . $ln['variation'] . ')' : ''), $ln['qty'] * $kc['qty'], mb_substr('Combo: ' . $kc['name'], 0, 150)]);
+                }
             }
         }
 
@@ -691,6 +729,25 @@ function handleCreateKOT($conn, $restaurant_id) {
             $orderItemIds[$i] = (int)$conn->lastInsertId();
         }
         posSaveOrderAddons($conn, $orderId, $orderItemIds, $cartItems, $globalAddons);
+        // combos: one priced line, then each dish at 0 noted "Combo: <name>" (same as website orders)
+        if ($posCombos) {
+            $hStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price) VALUES (?, NULL, ?, 'Combo', ?, ?, ?)");
+            $dStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price, notes) VALUES (?, ?, ?, ?, ?, 0, 0, ?)");
+            foreach ($posCombos as $pc) {
+                $hStmt->execute([$orderId, $pc['name'], $pc['qty'], $pc['unit'], round($pc['unit'] * $pc['qty'], 2)]);
+                foreach ($pc['lines'] as $ln) $dStmt->execute([$orderId, $ln['menu_item_id'], $ln['name'], $ln['variation'] ?: null, $ln['qty'] * $pc['qty'], mb_substr('Combo: ' . $pc['name'], 0, 150)]);
+            }
+        }
+        // combos sold, counted once: when the bill is paid
+        if ($isPaidUpFront) {
+            try {
+                $conn->prepare('DELETE FROM combo_sales WHERE order_id = ?')->execute([$orderId]);
+                if ($posCombos) {
+                    $csSt = $conn->prepare('INSERT INTO combo_sales (restaurant_id, combo_id, order_id, qty, revenue) VALUES (?, ?, ?, ?, ?)');
+                    foreach ($posCombos as $pc) $csSt->execute([$restaurant_id, $pc['id'], $orderId, $pc['qty'], round($pc['unit'] * $pc['qty'], 2)]);
+                }
+            } catch (PDOException $e) { if ($posCombos) throw $e; }   // no combo tables yet and no combos: nothing to count
+        }
 
         if ($isPaidUpFront) {
             $payStmt = $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')");

@@ -7282,6 +7282,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/pos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-customer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-customer.js'); ?>" defer></script>
   <script src="../assets/js/pos-addons.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-addons.js'); ?>" defer></script>
+  <script src="../assets/js/pos-combos.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-combos.js'); ?>" defer></script>
   <script src="../assets/js/pos-offline.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-offline.js'); ?>" defer></script>
   <script src="../assets/js/menu-hours.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-hours.js'); ?>" defer></script>
   <script src="../assets/js/activity-log.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/activity-log.js'); ?>" defer></script>

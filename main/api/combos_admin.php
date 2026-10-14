@@ -107,6 +107,14 @@ try {
         cbOut(['success' => false, 'message' => 'Unknown action'], 400);
     }
 
+    // ── GET ?view=pos: combos on sale right now, for the POS (any logged-in staff) ──
+    if (($_GET['view'] ?? '') === 'pos') {
+        $live = getCombos($conn, $rid, true);
+        foreach ($live as &$c) unset($c['valid_from'], $c['valid_until'], $c['days'], $c['sort_order']);
+        unset($c);
+        cbOut(['success' => true, 'combos' => $live]);
+    }
+
     // ── GET: combos, how they did, and the menu for the picker ──
     $combos = getCombos($conn, $rid, false);
     $sales = [];
