@@ -197,16 +197,17 @@
     var preview = function () { if (window.showPrintPreview) window.showPrintPreview('KOT ' + number, html, then); else if (then) then(); };
     // a Bluetooth / USB printer needs no internet, so it still prints straight away
     var mode = window.getPrinterSettings ? window.getPrinterSettings().mode : 'browser';
-    if ((mode === 'bluetooth' || mode === 'serial') && window.printDirect && window.buildReceiptEscPos) {
-      var b = window.buildReceiptEscPos({
+    if ((mode === 'bluetooth' || mode === 'serial') && window.printDirect && window.buildKotEscPos) {
+      // the phone app's KOT layout (escpos.js buildKotEscPos)
+      var b = window.buildKotEscPos({
         charWidth: window.getPrinterCharWidth(window.getPrinterSettings().widthMM),
-        title: 'KOT ' + number,
-        subtitle: (table || 'Takeaway') + ' | ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        metaLines: [['Made offline', 'syncs later']],
+        kotNumber: number,
+        createdAt: new Date(),
+        table: table || 'Takeaway',
         items: (items || []).map(function (it) {
-          return { name: (it.quantity || 1) + 'x ' + (it.name || '') + (it.extra ? ' (add-on)' : ''), sub: (it.addons || []).length ? '+ ' + it.addons.map(function (a) { return a.name || ''; }).join(', ') : '' };
+          return { name: (it.name || '') + (it.extra ? ' (add-on)' : ''), quantity: it.quantity || 1, sub: (it.addons || []).length ? '+ ' + it.addons.map(function (a) { return a.name || ''; }).join(', ') : '' };
         }),
-        footerLines: ['']
+        notes: ['Made offline: syncs later']
       });
       window.printDirect(b, function () { if (window.showPrintPreview) window.showPrintPreview('KOT ' + number, html); })
         .then(function (sent) { if (sent) { if (then) then(); } else preview(); });

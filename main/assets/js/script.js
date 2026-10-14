@@ -9069,30 +9069,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const billPrinterSettings = window.getPrinterSettings();
     if (window.isDirectPrintMode(billPrinterSettings.mode)) {
-      const escTotals = [['Subtotal', currency + subtotal.toFixed(2)]];
-      (payResult.discounts || []).forEach(([l, a]) => escTotals.push([l, '-' + currency + a.toFixed(2)]));
-      if (showGst) escTotals.push([(window.taxName || 'Tax') + ' (' + (window.taxPercent || 5) + '%)', currency + tax.toFixed(2)]);
-      escTotals.push(['TOTAL', currency + total.toFixed(2), true]);
-      if (payResult.walletPaid > 0) escTotals.push(['Paid from wallet', '-' + currency + payResult.walletPaid.toFixed(2)]);
-
-      const escBuilder = window.buildReceiptEscPos({
+      // the phone app's bill layout (escpos.js buildBillEscPos)
+      const afterTotal = [];
+      if (payResult.walletPaid > 0) afterTotal.push(['Paid from wallet', '-' + payResult.walletPaid.toFixed(2)]);
+      if (payResult.dueAmount > 0) afterTotal.push(['Due', payResult.dueAmount.toFixed(2)]);
+      if (payResult.returnAmount > 0) afterTotal.push(['Return', payResult.returnAmount.toFixed(2)]);
+      const escBuilder = window.buildBillEscPos({
         charWidth: window.getPrinterCharWidth(billPrinterSettings.widthMM),
         restaurantName: restaurantInfo.name,
         address: restaurantInfo.address,
         phone: restaurantInfo.phone,
-        title: 'BILL #' + kotNumber,
-        metaLines: [
-          ['Table', tableLabel],
-          ['Status', payResult.paymentStatus],
-          ...(restaurantInfo.showBusinessId && restaurantInfo.businessIdNo ? [[restaurantInfo.businessIdLabel || 'PAN', restaurantInfo.businessIdNo]] : [])
-        ],
+        businessIdLabel: restaurantInfo.businessIdLabel,
+        businessIdNo: restaurantInfo.showBusinessId ? restaurantInfo.businessIdNo : '',
+        billNo: kotNumber,
+        createdAt: now,
+        billTo: payResult.customer ? payResult.customer.name : tableLabel,
         items: cartSnapshot.map(it => ({
-          name: it.name + (it.variationName ? ' (' + it.variationName + ')' : '') + ((it.addons || []).length ? ' + ' + it.addons.map(a => a.name).join(', ') : ''),
-          qtyRate: it.quantity + ' x ' + currency + (window.posLineTotal(it) / it.quantity).toFixed(2),
-          amount: currency + window.posLineTotal(it).toFixed(2)
+          name: it.name + (it.variationName ? ' (' + it.variationName + ')' : ''),
+          sub: (it.addons || []).length ? '+ ' + it.addons.map(a => a.name).join(', ') : '',
+          quantity: it.quantity,
+          rate: window.posLineTotal(it) / it.quantity,
+          amount: window.posLineTotal(it)
         })),
-        totals: escTotals,
-        footerLines: (billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : []).concat(['Thank you!', 'Powered by Restro Grow'])
+        subtotal: subtotal,
+        discounts: payResult.discounts || [],
+        taxLabel: (window.taxName || 'Tax') + ' (' + (window.taxPercent || 5) + '%)',
+        tax: showGst ? tax : 0,
+        total: total,
+        afterTotal: afterTotal,
+        paymentMethod: payResult.paymentMethod,
+        notes: billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : []
       });
       const sent = await window.printDirect(escBuilder, () => showPrintPreview('Bill #' + kotNumber, billHtml));
       if (sent) return null;
@@ -10416,26 +10422,24 @@ window.testPrintReceipt = async function () {
     ? restaurantNameEl.textContent
     : 'Your Restaurant';
 
-  var sampleData = {
+  // a sample bill in the same layout real bills print in (the phone app's)
+  var builder = window.buildBillEscPos({
     charWidth: window.getPrinterCharWidth(settings.widthMM),
     restaurantName: restaurantName,
     address: '123 Sample Street, City',
     phone: '+91 98765 43210',
-    title: 'TEST PRINT',
-    subtitle: new Date().toLocaleString('en-IN'),
-    metaLines: [
-      ['Paper', settings.widthMM + 'mm'],
-      ['Mode', window.printerModeLabel(settings.mode)]
-    ],
+    billNo: 'TEST',
+    createdAt: new Date(),
+    billTo: 'Test print (' + settings.widthMM + 'mm, ' + window.printerModeLabel(settings.mode) + ')',
     items: [
-      { name: 'Sample Item 1', qtyRate: '2 x ' + currency + '100.00', amount: currency + '200.00' },
-      { name: 'Sample Item 2', qtyRate: '1 x ' + currency + '50.00', amount: currency + '50.00' }
+      { name: 'Paneer Butter Masala', quantity: 2, rate: 100 },
+      { name: 'Butter Naan', quantity: 1, rate: 50 }
     ],
-    totals: [['Total', currency + '250.00', true]],
-    footerLines: ['This is a test receipt', 'If this lines up correctly, you are ready to print!', 'Powered by Restro Grow']
-  };
-
-  var builder = window.buildReceiptEscPos(sampleData);
+    subtotal: 250,
+    total: 250,
+    paymentMethod: 'Cash',
+    notes: ['If this lines up, you are ready to print!']
+  });
   var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
 
   // The preview renders the exact bytes a real printer would receive as
@@ -10888,23 +10892,18 @@ window.printKOT = async function(kotId, onClose) {
 
     const kotPrinterSettings = window.getPrinterSettings();
     if (window.isDirectPrintMode(kotPrinterSettings.mode)) {
-      const escBuilder = window.buildReceiptEscPos({
+      // the phone app's KOT layout (escpos.js buildKotEscPos)
+      const escBuilder = window.buildKotEscPos({
         charWidth: window.getPrinterCharWidth(kotPrinterSettings.widthMM),
-        restaurantName: restaurantInfo.name,
-        address: restaurantInfo.address,
-        phone: restaurantInfo.phone,
-        title: 'KOT #' + (kot.kot_number || kot.id),
-        subtitle: dateStr + ' | ' + timeStr,
-        metaLines: [
-          ['Table', tableOrType],
-          ['Status', kot.kot_status || kot.status || 'Pending']
-        ],
+        kotNumber: kot.kot_number || kot.id,
+        createdAt: kot.created_at,
+        table: kot.table_number ? 'Table ' + kot.table_number + (kot.area_name ? ' - ' + kot.area_name : '') : (kot.order_type || 'Takeaway'),
         items: (kot.items || []).map(it => ({
-          name: (it.quantity ? it.quantity + 'x ' : '') + (it.item_name || it.name || ''),
+          name: (it.item_name || it.name || '') + (it.addon_name ? ' (add-on)' : ''),
+          quantity: it.quantity,
           sub: [((it.addons || []).length ? '+ ' + it.addons.map(a => a.name).join(', ') : ''), ((it.notes || it.special_instructions) ? '* ' + (it.notes || it.special_instructions) : '')].filter(Boolean).join(' ')
-        })).concat(kotOrderAddons(kot) ? [{ name: 'Add-ons: ' + kotOrderAddons(kot), sub: '' }] : []),
-        totals: [['Total Items', String(itemsCount), true]],
-        footerLines: ['Thank you!', 'Powered by Restro Grow']
+        })),
+        notes: kotOrderAddons(kot) ? ['Add-ons: ' + kotOrderAddons(kot)] : []
       });
       const sent = await window.printDirect(escBuilder, () => showPrintPreview('KOT #' + kot.kot_number, html));
       if (sent) {
@@ -11252,31 +11251,28 @@ window.printOrder = async function(orderId) {
 
     const orderPrinterSettings = window.getPrinterSettings();
     if (window.isDirectPrintMode(orderPrinterSettings.mode)) {
-      const escWidth = window.getPrinterCharWidth(orderPrinterSettings.widthMM);
-      const escTotals = [['Gross Amount', formatCurrency(subtotal + tax)]];
-      if (discount > 0) escTotals.push(['Discount', '-' + formatCurrency(discount)]);
-      escTotals.push(['TOTAL', formatCurrency(total), true]);
-
-      const escBuilder = window.buildReceiptEscPos({
-        charWidth: escWidth,
+      // the phone app's bill layout (escpos.js buildBillEscPos)
+      const escBuilder = window.buildBillEscPos({
+        charWidth: window.getPrinterCharWidth(orderPrinterSettings.widthMM),
         restaurantName: restaurantInfo.name,
         address: restaurantInfo.address,
         phone: restaurantInfo.phone,
-        title: 'INVOICE',
-        subtitle: '#' + (order.order_number || order.id),
-        metaLines: [
-          [tableOrType.includes('Table') ? 'DineIn' : 'Order', tableOrType],
-          ['Date', dateStr + ' ' + timeStr]
-        ],
+        email: restaurantInfo.email,
+        billNo: order.order_number || order.id,
+        createdAt: order.created_at,
+        billTo: order.customer_name || (order.table_name || order.table_number ? 'Table ' + (order.table_name || order.table_number) + (order.area_name ? ' - ' + order.area_name : '') : (order.order_type || 'Walk-in')),
         items: items.map(it => ({
-          name: (it.item_name || it.name || ''),
-          qtyRate: (it.quantity || 1) + ' x ' + formatCurrency(parseFloat(it.price) || 0),
-          amount: formatCurrency(parseFloat(it.total_price) || 0)
+          name: (it.item_name || it.name || '') + (it.variation_name ? ' (' + it.variation_name + ')' : ''),
+          quantity: it.quantity || 1,
+          rate: parseFloat(it.price) || 0,
+          amount: parseFloat(it.total_price) || 0
         })),
-        totals: escTotals,
-        footerLines: restaurantInfo.phone
-          ? ['Thank you for visiting', 'Contact: ' + restaurantInfo.phone, 'Powered by Restro Grow']
-          : ['Thank you for visiting', 'Powered by Restro Grow']
+        subtotal: subtotal,
+        discounts: discount > 0 ? [['Discount', discount]] : [],
+        taxLabel: window.taxName || 'Tax',
+        tax: tax,
+        total: total,
+        paymentMethod: paymentMethod
       });
       const sent = await window.printDirect(escBuilder, () => showPrintPreview('Invoice #' + order.order_number, html));
       if (sent) return;
