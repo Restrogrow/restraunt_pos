@@ -5412,6 +5412,7 @@ function toggleGatewayMode() {
                   <div class="st-printer-txt"><b id="printerDevName">No printer connected yet</b><small id="printerDevState"></small></div>
                   <div class="st-printer-acts">
                     <button type="button" class="btn btn-primary btn-sm" id="printerConnectBtn" onclick="connectPrinterFromSettings()"><span class="material-symbols-rounded">link</span>Connect printer</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="printerNextWayBtn" onclick="tryNextPrinterWay()" style="display:none;" title="The test went out but nothing printed? Send it another way."><span class="material-symbols-rounded">sync</span>Try another way</button>
                     <button type="button" class="btn btn-secondary btn-sm" id="printerForgetBtn" onclick="forgetPrinterFromSettings()" style="display:none;">Forget</button>
                   </div>
                 </div>

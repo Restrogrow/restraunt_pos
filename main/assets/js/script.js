@@ -10321,7 +10321,7 @@ window.paintPrinterDeviceCard = function () {
   set('printerDevState', function (el) {
     el.textContent = !p.supported[mode]
       ? (bt ? 'This browser can\'t reach Bluetooth printers. Open the dashboard in Chrome or Edge (Android, Windows, Mac). Not on iPhone / iPad.' : 'Needs Chrome or Edge on a computer.')
-      : on ? 'Connected. Bills and KOTs print straight away.'
+      : on ? 'Connected. Bills and KOTs print straight away.' + (p.route() && p.route().of > 1 ? ' (Way ' + p.route().at + ' of ' + p.route().of + ')' : '')
       : info.lastError ? 'Last try: ' + info.lastError
       : mine && info.state === 'connecting' ? 'Connecting…'
       : mine ? 'Saved, but not connected right now. Turn the printer on, then tap Reconnect.'
@@ -10332,6 +10332,7 @@ window.paintPrinterDeviceCard = function () {
     el.innerHTML = '<span class="material-symbols-rounded">' + (on ? 'swap_horiz' : 'link') + '</span>' + (on ? 'Change printer' : mine ? 'Reconnect' : 'Connect printer');
   });
   set('printerForgetBtn', function (el) { el.style.display = mine ? '' : 'none'; });
+  set('printerNextWayBtn', function (el) { el.style.display = on && p.route() && p.route().of > 1 ? '' : 'none'; });
   set('printerBaudField', function (el) { el.style.display = bt ? 'none' : ''; });
 };
 
@@ -10341,8 +10342,8 @@ window.connectPrinterFromSettings = async function () {
   var mode = modeSel.value, p = window.rgPrinter;
   // the printer is picked for the mode on screen, so keep that mode
   window.savePrinterSettings(getLivePrinterSettings());
-  var ok = p.info().savedKind === mode && !p.isConnected(mode) ? await p.reconnect() : false;
-  if (!ok) await p.pick(mode);
+  // straight to the browser's list: it only opens right after the tap, so nothing may come first
+  await p.pick(mode);
   window.paintPrinterDeviceCard();
 };
 
@@ -10454,48 +10455,45 @@ window.testPrintReceipt = async function () {
     return;
   }
 
+  // Bluetooth / USB: the preview opens at once; the test also goes to the printer when it's
+  // connected. Test print never opens the pairing window (that's the Connect printer button).
   if (settings.mode === 'bluetooth' || settings.mode === 'serial') {
-    await testPrintDirect(builder, preview);
-    if (window.paintPrinterDeviceCard) window.paintPrinterDeviceCard();
+    preview();
+    var p = window.rgPrinter;
+    if (p && p.isConnected(settings.mode)) {
+      window.printDirect(builder, null, { wait: true }).then(function (ok) {
+        var r = p.route();
+        if (ok) showMsg('Test sent to ' + (p.info().name || 'your printer') + (r && r.of > 1 ? '. Nothing came out? Tap "Try another way".' : '.'), 'success');
+        else { var box = document.getElementById('printerLogBox'); if (box) box.open = true; }
+        if (window.paintPrinterDeviceCard) window.paintPrinterDeviceCard();
+      });
+    } else {
+      showMsg('Printer not connected. Tap "Connect printer" first, then Test print.', 'info');
+      if (p) p.reconnect();
+    }
     return;
   }
 
   preview();
 };
 
-// Bluetooth / USB test print: waits for the bytes to go out, then asks whether paper came out.
-// "No" sends it again another way (printers differ in how they take data); the way that
-// prints is remembered for this printer.
-async function testPrintDirect(builder, preview) {
+// "Try another way": the test went out but nothing printed. Printers differ in how they take
+// data, so send it the next way; the way that prints is remembered for this printer.
+window.tryNextPrinterWay = async function () {
+  var p = window.rgPrinter;
+  if (!p) return;
   var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
-  var logBox = document.getElementById('printerLogBox');
-  for (;;) {
-    var ok = await window.printDirect(builder, null, { wait: true, interactive: true });
-    if (!ok) { if (logBox) logBox.open = true; preview(); return; }
-    var p = window.rgPrinter, r = p.route(), name = p.info().name || 'your printer';
-    var more = !!(r && r.at < r.of);
-    if (!window.Swal) { if (!confirm('Sent to ' + name + '. Did the test receipt print?') && more && await p.nextRoute()) continue; return; }
-    var ans = await Swal.fire({
-      title: 'Did the test receipt print?',
-      html: 'Sent to <b>' + escapeHtml(name) + '</b>' + (r ? '<br><small style="color:#64748b;">Way ' + r.at + ' of ' + r.of + '</small>' : ''),
-      icon: 'question', showDenyButton: true, showCancelButton: true,
-      confirmButtonText: 'Yes, it printed', denyButtonText: more ? 'No, try another way' : 'No',
-      cancelButtonText: 'Show preview', confirmButtonColor: '#16a34a', denyButtonColor: '#2563eb'
-    });
-    if (ans.isConfirmed) { showMsg('Printer ready. Bills and KOTs will print on ' + name + '.', 'success'); return; }
-    if (ans.isDenied && more && await p.nextRoute()) continue;
-    if (ans.isDenied) {
-      if (r) p.firstRoute();
-      if (logBox) { logBox.open = true; logBox.scrollIntoView({ block: 'center' }); }
-      await Swal.fire({
-        title: 'No way worked yet', icon: 'info', confirmButtonText: 'OK',
-        html: 'The printer took the data but printed nothing.<br>Check the paper roll (shiny side towards the print head) and that the printer is not in setup mode.<br><br>If it still doesn\'t print, tap <b>Copy log</b> under Printer log and send it to support.'
-      });
-    }
-    preview();
+  if (!(await p.nextRoute())) {
+    p.firstRoute();
+    var box = document.getElementById('printerLogBox');
+    if (box) { box.open = true; box.scrollIntoView({ block: 'center' }); }
+    showMsg('Tried every way this printer offers. Check the paper roll (shiny side to the print head), then tap Copy log under Printer log and send it to support.', 'error');
+    window.paintPrinterDeviceCard();
     return;
   }
-}
+  window.paintPrinterDeviceCard();
+  window.testPrintReceipt();
+};
 
 // Export Orders to CSV
 function exportOrdersToCSV() {
