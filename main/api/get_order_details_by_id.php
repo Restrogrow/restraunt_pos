@@ -93,6 +93,9 @@ try {
     $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
     
     $order['items'] = $items;
+    // bill number that counts up per restaurant (config/bill_numbers.php)
+    require_once __DIR__ . '/../config/bill_numbers.php';
+    $order['bill_no'] = rgBillNo($conn, $order['restaurant_id'], (int)$order['id']);
 
     // Payment proof status (screenshot itself is served separately via
     // image.php?type=payment_proof — never inline it here as a BLOB, since

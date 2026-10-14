@@ -762,6 +762,9 @@ function handleCreateKOT($conn, $restaurant_id) {
             'order_number' => $orderNumber,
             'open_bill' => !$isPaidUpFront,
         ];
+        // the bill number that counts up per restaurant (config/bill_numbers.php)
+        require_once __DIR__ . '/../config/bill_numbers.php';
+        $resp['bill_no'] = rgBillNo($conn, $restaurant_id, (int)$orderId);
         // owner's activity log: discounts given at the POS, and bills made offline
         if ($discountAmount > 0 || $loyaltyPoints > 0 || $posRef !== '') {
             require_once __DIR__ . '/../config/activity_log.php';

@@ -9209,7 +9209,7 @@ document.addEventListener("DOMContentLoaded", () => {
         window._kotSentForCurrentOrder = false;
 
         const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
-        const billNo = result.kot_number || result.order_number;
+        const billNo = result.bill_no || result.kot_number || result.order_number;   // bill_no counts up 1, 2, 3 per restaurant
         if (result.offline) showMsg(`Saved offline as bill ${result.order_number}. It syncs when the internet is back.`, "info");
         else showMsg(`Payment saved (${payResult.paymentStatus}) - ${result.kot_number ? 'KOT #' + result.kot_number : 'Bill ' + result.order_number}`, "success");
         window.posResetBill();
@@ -11192,7 +11192,7 @@ window.printOrder = async function(orderId) {
       <div class="bill-meta">
         <div class="info-line"><span class="label">${tableOrType.includes('Table') ? 'DineIn' : 'Order'}</span><span class="value">${escapeHtml(tableOrType)}</span></div>
         <div class="info-line"><span class="label">Date</span><span class="value">${dateStr} | ${timeStr}</span></div>
-        <div class="info-line"><span class="label">Bill</span><span class="value">#${escapeHtml(order.order_number || order.id)}</span></div>
+        <div class="info-line"><span class="label">Bill</span><span class="value">#${escapeHtml(order.bill_no || order.order_number || order.id)}</span></div>
         <div class="info-line"><span class="label">Invoice</span><span class="value">#INV-${new Date(order.created_at).toISOString().split("T")[0].replace(/-/g, "")}-${escapeHtml(String(order.order_number || order.id))}</span></div>
         <div class="info-line"><span class="label">Order No</span><span class="value">#${escapeHtml(order.id || order.order_number)}</span></div>
       </div>
@@ -11258,7 +11258,7 @@ window.printOrder = async function(orderId) {
         address: restaurantInfo.address,
         phone: restaurantInfo.phone,
         email: restaurantInfo.email,
-        billNo: order.order_number || order.id,
+        billNo: order.bill_no || order.order_number || order.id,
         createdAt: order.created_at,
         billTo: order.customer_name || (order.table_name || order.table_number ? 'Table ' + (order.table_name || order.table_number) + (order.area_name ? ' - ' + order.area_name : '') : (order.order_type || 'Walk-in')),
         items: items.map(it => ({
