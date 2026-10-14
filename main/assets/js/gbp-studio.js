@@ -142,9 +142,9 @@
       reviews.list.map(function (r, i) {
         var bad = r.rating && r.rating <= 3;
         return '<article class="gbx-rev' + (bad ? ' bad' : '') + (!r.reply && reviews.source === 'gbp' ? ' open' : '') + '" style="--d:' + Math.min(i, 12) * 40 + 'ms" data-rid="' + esc(r.review_id) + '">' +
-          '<div class="gbx-rev-h">' + (r.reviewer_photo ? '<img src="' + esc(r.reviewer_photo) + '" alt="" referrerpolicy="no-referrer">' : '<span class="gbx-av">' + esc((r.reviewer_name || '?').charAt(0)) + '</span>') +
+          '<div class="gbx-rev-h">' + '<span class="gbx-av">' + esc((r.reviewer_name || '?').charAt(0)) + (r.reviewer_photo ? '<img src="' + esc(r.reviewer_photo) + '" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()">' : '') + '</span>' +
             '<div><b>' + esc(r.reviewer_name || 'Google user') + '</b><span>' + stars(r.rating) + '<small>' + ago(r.created_at) + '</small></span></div>' + (bad ? '<span class="sx-pill bad">Needs care</span>' : '') + '</div>' +
-          (r.comment ? '<p class="gbx-rev-t">' + esc(r.comment) + '</p>' : '<p class="gbx-rev-t sx-muted">Rating only, no text.</p>') +
+          (r.comment ? '<p class="gbx-rev-t">' + esc(r.comment) + '</p>' + (r.comment.length > 360 ? '<button type="button" class="gbx-more" data-gbx-more>Read more</button>' : '') : '<p class="gbx-rev-t sx-muted">Rating only, no text.</p>') +
           (r.reply ? '<div class="gbx-reply"><b>' + ic('reply') + 'Your reply</b><p>' + esc(r.reply) + '</p>' + (reviews.canReply ? '<div><button type="button" class="btn btn-secondary btn-sm" data-gbx-edit="' + i + '">' + ic('edit') + 'Edit</button><button type="button" class="btn btn-secondary btn-sm" data-gbx-unreply="' + i + '">' + ic('delete') + 'Remove</button></div>' : '') + '</div>' :
             (reviews.canReply ? replyBox(i, '') : '')) +
         '</article>';
@@ -275,6 +275,8 @@
 
   /* ───────── events ───────── */
   document.addEventListener('click', function (e) {
+    var more = e.target.closest('[data-gbx-more]');
+    if (more) { var p = more.previousElementSibling; var open = p.classList.toggle('full'); more.textContent = open ? 'Show less' : 'Read more'; return; }
     var t = e.target.closest('[data-gbx-tab],[data-gbx-refresh],[data-gbx-connect],[data-gbx-search],[data-gbx-place],[data-gbx-findplace],[data-gbx-locations],[data-gbx-loc],[data-gbx-closeloc],[data-gbx-filter],[data-gbx-ai],[data-gbx-send],[data-gbx-edit],[data-gbx-unreply],[data-gbx-topic],[data-gbx-post],[data-gbx-delpost],[data-gbx-combo],[data-gbx-useweb],[data-gbx-saveinfo],[data-gbx-savehours],[data-gbx-copymon],[data-gbx-days],[data-gbx-copy],[data-gbx-qrpng],[data-gbx-print],[data-gbx-disconnect]');
     if (!t) return;
     var a = function (n) { return t.getAttribute(n); };
