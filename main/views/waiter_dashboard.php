@@ -115,6 +115,7 @@ applyRestaurantTimezone($timezone, $conn);
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
     <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
+    <script src="../assets/js/direct-printer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/direct-printer.js'); ?>" defer></script>
     <script src="../assets/js/script.js" defer></script>
     <style>
         /* SweetAlert2 defaults to z-index:1060, which can render behind this

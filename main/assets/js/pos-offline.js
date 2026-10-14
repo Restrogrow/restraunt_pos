@@ -194,7 +194,25 @@
       ' table{width:100%;border-collapse:collapse}td{border-bottom:1px dashed #ccc}</style></head><body><div style="text-align:center;font-weight:900;font-size:22px;">KOT</div>' +
       '<div style="text-align:center;font-size:12px;">' + esc(number) + ' · ' + esc(table || 'Takeaway') + ' · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</div>' +
       '<div style="text-align:center;font-size:11px;margin:4px 0 8px;padding:3px;border:1px dashed #000;">Made offline. It shows in the system once synced.</div><table>' + rows + '</table></body></html>';
-    if (window.showPrintPreview) window.showPrintPreview('KOT ' + number, html, then); else if (then) then();
+    var preview = function () { if (window.showPrintPreview) window.showPrintPreview('KOT ' + number, html, then); else if (then) then(); };
+    // a Bluetooth / USB printer needs no internet, so it still prints straight away
+    var mode = window.getPrinterSettings ? window.getPrinterSettings().mode : 'browser';
+    if ((mode === 'bluetooth' || mode === 'serial') && window.printDirect && window.buildReceiptEscPos) {
+      var b = window.buildReceiptEscPos({
+        charWidth: window.getPrinterCharWidth(window.getPrinterSettings().widthMM),
+        title: 'KOT ' + number,
+        subtitle: (table || 'Takeaway') + ' | ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        metaLines: [['Made offline', 'syncs later']],
+        items: (items || []).map(function (it) {
+          return { name: (it.quantity || 1) + 'x ' + (it.name || '') + (it.extra ? ' (add-on)' : ''), sub: (it.addons || []).length ? '+ ' + it.addons.map(function (a) { return a.name || ''; }).join(', ') : '' };
+        }),
+        footerLines: ['']
+      });
+      window.printDirect(b, function () { if (window.showPrintPreview) window.showPrintPreview('KOT ' + number, html); })
+        .then(function (sent) { if (sent) { if (then) then(); } else preview(); });
+      return;
+    }
+    preview();
   }
 
   /* ── status pill and panel ── */

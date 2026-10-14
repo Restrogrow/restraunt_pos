@@ -5396,11 +5396,36 @@ function toggleGatewayMode() {
                 <select id="printerModeSelect" class="st-sr-select" aria-label="Connection mode">
                   <option value="browser">Browser / System Printer (recommended)</option>
                   <option value="network">Network Printer (ESC/POS, direct - no print dialog)</option>
+                  <option value="bluetooth">Bluetooth Printer (direct - no print dialog)</option>
+                  <option value="serial">USB Printer (direct - no print dialog)</option>
                 </select>
                 <div class="st-choice" data-st-mirror="printerModeSelect">
-                  <button type="button" data-v="browser"><b>Browser / system printer</b><small>Recommended. Any printer with a driver (USB, Bluetooth or network). Uses the print dialog.</small></button>
+                  <button type="button" data-v="browser"><b>Browser / system printer</b><small>Any printer with a driver (USB, Bluetooth or network). Uses the print dialog.</small></button>
+                  <button type="button" data-v="bluetooth"><b>Bluetooth printer</b><small>Connect once from here; bills and KOTs then print straight away. Chrome / Edge on Android, Windows, Mac.</small></button>
+                  <button type="button" data-v="serial"><b>USB printer</b><small>Plugged in by USB, or a Bluetooth printer paired in Windows (COM port). Chrome / Edge on a computer.</small></button>
                   <button type="button" data-v="network"><b>Network printer</b><small>Prints straight to a Wi-Fi / LAN thermal printer by IP. No driver, no dialog.</small></button>
                 </div>
+              </div>
+              <div id="printerDeviceFields" class="st-sub" style="display:none;">
+                <div class="st-printer-dev">
+                  <span class="st-printer-ic"><span class="material-symbols-rounded" id="printerDevIcon">bluetooth</span></span>
+                  <div class="st-printer-txt"><b id="printerDevName">No printer connected yet</b><small id="printerDevState"></small></div>
+                  <div class="st-printer-acts">
+                    <button type="button" class="btn btn-primary btn-sm" id="printerConnectBtn" onclick="connectPrinterFromSettings()"><span class="material-symbols-rounded">link</span>Connect printer</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="printerForgetBtn" onclick="forgetPrinterFromSettings()" style="display:none;">Forget</button>
+                  </div>
+                </div>
+                <div class="st-field" id="printerBaudField" style="margin-top:14px;">
+                  <label for="printerSerialBaud">Speed (baud rate)</label>
+                  <select id="printerSerialBaud">
+                    <option value="9600">9600 (most printers)</option>
+                    <option value="19200">19200</option>
+                    <option value="38400">38400</option>
+                    <option value="115200">115200</option>
+                  </select>
+                  <p class="st-help">Only matters for USB. If the receipt comes out as random symbols, try 115200. Bluetooth printers paired in Windows ignore this.</p>
+                </div>
+                <p class="st-help">The printer is remembered on this device and reconnects by itself when you open the dashboard. The POS shows a printer button beside "Point of Sale": green means ready, tap it if it's off.</p>
               </div>
               <div id="printerNetworkFields" style="display:none;">
                 <div class="st-grid2 st-sub">
@@ -7207,6 +7232,7 @@ function toggleGatewayMode() {
   <!-- Currency utils (extracted from script.js) -->
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
   <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
+  <script src="../assets/js/direct-printer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/direct-printer.js'); ?>" defer></script>
   <script src="../assets/libs/qrcode/qrcode.min.js" defer></script>
   <script src="../assets/js/poster-generator.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/video-generator.js?v=<?php echo time(); ?>" defer></script>

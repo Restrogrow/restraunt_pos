@@ -515,6 +515,15 @@
 .st-details[open] .st-chev { transform: rotate(180deg); }
 .st-details[open] summary { margin-bottom: 10px; }
 
+/* printer: Bluetooth / USB connect card (assets/js/direct-printer.js) */
+.st-printer-dev { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.st-printer-ic { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 13px; background: #f1f5f9; color: #64748b; }
+.st-printer-ic.on { background: #ecfdf5; color: #047857; }
+.st-printer-txt { flex: 1 1 200px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-printer-txt b { color: var(--sx-ink); font-size: .92rem; }
+.st-printer-txt small { color: var(--sx-muted); font-size: .78rem; line-height: 1.4; }
+.st-printer-acts { display: flex; gap: 8px; }
+
 /* account */
 .st-install { display: flex; align-items: center; gap: 14px; }
 .st-install-ic { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 13px; background: #fff7ed; color: #ea580c; font-size: 24px; }
@@ -2913,6 +2922,7 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .po-pill.wait, .po-pill.sync { background: #FFF7ED; border-color: #FED7AA; color: #C2410C; }
 .po-pill.sync .material-symbols-rounded { animation: po-spin 1s linear infinite; }
 .po-pill.bad { background: #B91C1C; border-color: #B91C1C; color: #fff; }
+.rg-printer-pill { margin-left: 6px; }
 @keyframes po-spin { to { transform: rotate(-360deg); } }
 .po-bar { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); z-index: 9000; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 9px 10px 9px 14px; border-radius: 14px; background: #1F2937; color: #F9FAFB; font-size: .8rem; line-height: 1.35; box-shadow: 0 14px 30px -12px rgba(0,0,0,.5); }
 .po-bar .material-symbols-rounded { color: #FCA5A5; font-size: 20px; }

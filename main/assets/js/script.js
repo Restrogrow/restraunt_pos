@@ -9068,7 +9068,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </body></html>`;
 
     const billPrinterSettings = window.getPrinterSettings();
-    if (billPrinterSettings.mode === 'network') {
+    if (window.isDirectPrintMode(billPrinterSettings.mode)) {
       const escTotals = [['Subtotal', currency + subtotal.toFixed(2)]];
       (payResult.discounts || []).forEach(([l, a]) => escTotals.push([l, '-' + currency + a.toFixed(2)]));
       if (showGst) escTotals.push([(window.taxName || 'Tax') + ' (' + (window.taxPercent || 5) + '%)', currency + tax.toFixed(2)]);
@@ -9094,7 +9094,7 @@ document.addEventListener("DOMContentLoaded", () => {
         totals: escTotals,
         footerLines: (billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : []).concat(['Thank you!', 'Powered by Restro Grow'])
       });
-      const sent = await window.printViaNetwork(escBuilder);
+      const sent = await window.printDirect(escBuilder, () => showPrintPreview('Bill #' + kotNumber, billHtml));
       if (sent) return null;
     }
 
@@ -10161,12 +10161,14 @@ function escapeHtml(str) {
 // printer wired to this PC/browser, not to the restaurant account, so it's
 // kept in localStorage rather than the database.
 window.getPrinterSettings = function () {
-  var defaults = { widthMM: 80, mode: 'browser', networkIp: '', networkPort: 9100 };
+  var defaults = { widthMM: 80, mode: 'browser', networkIp: '', networkPort: 9100, serialBaud: 9600 };
   try {
     var saved = JSON.parse(localStorage.getItem('printerSettings') || '{}');
     var merged = Object.assign({}, defaults, saved);
     merged.widthMM = (parseInt(merged.widthMM, 10) === 58) ? 58 : 80;
+    merged.mode = window.normalizePrinterMode(merged.mode);
     merged.networkPort = parseInt(merged.networkPort, 10) || 9100;
+    merged.serialBaud = parseInt(merged.serialBaud, 10) || 9600;
     return merged;
   } catch (e) {
     return defaults;
@@ -10175,6 +10177,14 @@ window.getPrinterSettings = function () {
 
 window.savePrinterSettings = function (settings) {
   localStorage.setItem('printerSettings', JSON.stringify(settings));
+};
+
+// browser = print dialog; network / bluetooth / serial (USB) print straight away
+window.normalizePrinterMode = function (mode) {
+  return ['network', 'bluetooth', 'serial'].indexOf(mode) !== -1 ? mode : 'browser';
+};
+window.printerModeLabel = function (mode) {
+  return { network: 'Network Printer', bluetooth: 'Bluetooth Printer', serial: 'USB Printer' }[mode] || 'Browser / System';
 };
 
 // Character width of a monospace thermal font per paper size (Font A, the
@@ -10276,6 +10286,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var ipInput = document.getElementById('printerNetworkIp');
   var portInput = document.getElementById('printerNetworkPort');
   var networkFields = document.getElementById('printerNetworkFields');
+  var deviceFields = document.getElementById('printerDeviceFields');
+  var baudSel = document.getElementById('printerSerialBaud');
   if (!widthSel || !modeSel || !ipInput || !portInput || !networkFields) return;
 
   var settings = window.getPrinterSettings();
@@ -10283,26 +10295,80 @@ document.addEventListener('DOMContentLoaded', function () {
   modeSel.value = settings.mode;
   ipInput.value = settings.networkIp || '';
   portInput.value = settings.networkPort || 9100;
-  networkFields.style.display = settings.mode === 'network' ? 'block' : 'none';
+  if (baudSel) baudSel.value = String(settings.serialBaud);
 
-  modeSel.addEventListener('change', function () {
-    networkFields.style.display = modeSel.value === 'network' ? 'block' : 'none';
-  });
+  var showFields = function () {
+    var m = modeSel.value;
+    networkFields.style.display = m === 'network' ? 'block' : 'none';
+    if (deviceFields) deviceFields.style.display = (m === 'bluetooth' || m === 'serial') ? 'block' : 'none';
+    window.paintPrinterDeviceCard();
+  };
+  showFields();
+  modeSel.addEventListener('change', showFields);
+  if (window.rgPrinter) window.rgPrinter.onChange(window.paintPrinterDeviceCard);
 });
+
+// The "Connect printer" card for Bluetooth / USB on the Printer settings pane.
+window.paintPrinterDeviceCard = function () {
+  var modeSel = document.getElementById('printerModeSelect');
+  var card = document.getElementById('printerDeviceFields');
+  if (!modeSel || !card || !window.rgPrinter) return;
+  var mode = modeSel.value, bt = mode === 'bluetooth', p = window.rgPrinter, info = p.info();
+  var mine = info.savedKind === mode, on = mine && p.isConnected(mode);
+  var set = function (id, fn) { var el = document.getElementById(id); if (el) fn(el); };
+  set('printerDevIcon', function (el) { el.textContent = bt ? 'bluetooth' : 'usb'; el.parentNode.classList.toggle('on', on); });
+  set('printerDevName', function (el) { el.textContent = mine && info.name ? info.name : 'No printer connected yet'; });
+  set('printerDevState', function (el) {
+    el.textContent = !p.supported[mode]
+      ? (bt ? 'This browser can\'t reach Bluetooth printers. Open the dashboard in Chrome or Edge (Android, Windows, Mac). Not on iPhone / iPad.' : 'Needs Chrome or Edge on a computer.')
+      : on ? 'Connected. Bills and KOTs print straight away.'
+      : info.lastError ? 'Last try: ' + info.lastError
+      : mine && info.state === 'connecting' ? 'Connecting…'
+      : mine ? 'Saved, but not connected right now. Turn the printer on, then tap Reconnect.'
+      : (bt ? 'Turn the printer on, tap Connect and pick it from the list.' : 'Plug the printer in (or pair it in Windows Bluetooth settings), tap Connect and pick its port.');
+  });
+  set('printerConnectBtn', function (el) {
+    el.disabled = !p.supported[mode];
+    el.innerHTML = '<span class="material-symbols-rounded">' + (on ? 'swap_horiz' : 'link') + '</span>' + (on ? 'Change printer' : mine ? 'Reconnect' : 'Connect printer');
+  });
+  set('printerForgetBtn', function (el) { el.style.display = mine ? '' : 'none'; });
+  set('printerBaudField', function (el) { el.style.display = bt ? 'none' : ''; });
+};
+
+window.connectPrinterFromSettings = async function () {
+  var modeSel = document.getElementById('printerModeSelect');
+  if (!modeSel || !window.rgPrinter) return;
+  var mode = modeSel.value, p = window.rgPrinter;
+  // the printer is picked for the mode on screen, so keep that mode
+  window.savePrinterSettings(getLivePrinterSettings());
+  var ok = p.info().savedKind === mode && !p.isConnected(mode) ? await p.reconnect() : false;
+  if (!ok) await p.pick(mode);
+  window.paintPrinterDeviceCard();
+};
+
+window.forgetPrinterFromSettings = async function () {
+  if (!window.rgPrinter) return;
+  await window.rgPrinter.forget();
+  window.paintPrinterDeviceCard();
+};
 
 window.savePrinterSettingsForm = function () {
   var widthSel = document.getElementById('printerWidthSelect');
   var modeSel = document.getElementById('printerModeSelect');
   var ipInput = document.getElementById('printerNetworkIp');
   var portInput = document.getElementById('printerNetworkPort');
+  var baudSel = document.getElementById('printerSerialBaud');
   if (!widthSel || !modeSel) return;
 
   window.savePrinterSettings({
     widthMM: parseInt(widthSel.value, 10) === 58 ? 58 : 80,
-    mode: modeSel.value === 'network' ? 'network' : 'browser',
+    mode: window.normalizePrinterMode(modeSel.value),
     networkIp: ipInput.value.trim(),
-    networkPort: parseInt(portInput.value, 10) || 9100
+    networkPort: parseInt(portInput.value, 10) || 9100,
+    serialBaud: (baudSel && parseInt(baudSel.value, 10)) || 9600
   });
+  // a Bluetooth / USB printer picked before: open it now rather than at the first bill
+  if (window.rgPrinter) window.rgPrinter.reconnect();
 
   var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
   showMsg('Printer settings saved', 'success');
@@ -10319,11 +10385,13 @@ function getLivePrinterSettings() {
 
   var ipInput = document.getElementById('printerNetworkIp');
   var portInput = document.getElementById('printerNetworkPort');
+  var baudSel = document.getElementById('printerSerialBaud');
   return {
     widthMM: parseInt(widthSel.value, 10) === 58 ? 58 : 80,
-    mode: modeSel.value === 'network' ? 'network' : 'browser',
+    mode: window.normalizePrinterMode(modeSel.value),
     networkIp: ipInput ? ipInput.value.trim() : '',
-    networkPort: (portInput && parseInt(portInput.value, 10)) || 9100
+    networkPort: (portInput && parseInt(portInput.value, 10)) || 9100,
+    serialBaud: (baudSel && parseInt(baudSel.value, 10)) || 9600
   };
 }
 
@@ -10349,7 +10417,7 @@ window.testPrintReceipt = async function () {
     subtitle: new Date().toLocaleString('en-IN'),
     metaLines: [
       ['Paper', settings.widthMM + 'mm'],
-      ['Mode', settings.mode === 'network' ? 'Network Printer' : 'Browser / System']
+      ['Mode', window.printerModeLabel(settings.mode)]
     ],
     items: [
       { name: 'Sample Item 1', qtyRate: '2 x ' + currency + '100.00', amount: currency + '200.00' },
@@ -10361,12 +10429,15 @@ window.testPrintReceipt = async function () {
 
   var builder = window.buildReceiptEscPos(sampleData);
 
-  if (settings.mode === 'network') {
-    const sent = await window.printViaNetwork(builder);
+  if (window.isDirectPrintMode(settings.mode)) {
+    const sent = await window.printDirect(builder);
     if (sent) {
       var showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
-      showMsg('Test print sent to ' + settings.networkIp + ':' + settings.networkPort + '. Check your printer (or the virtual printer terminal).', 'success');
+      showMsg(settings.mode === 'network'
+        ? 'Test print sent to ' + settings.networkIp + ':' + settings.networkPort + '. Check your printer (or the virtual printer terminal).'
+        : 'Test print sent to ' + ((window.rgPrinter && window.rgPrinter.info().name) || 'your printer') + '.', 'success');
     }
+    if (window.paintPrinterDeviceCard) window.paintPrinterDeviceCard();
     return;
   }
 
@@ -10773,7 +10844,7 @@ window.printKOT = async function(kotId, onClose) {
     </body></html>`;
 
     const kotPrinterSettings = window.getPrinterSettings();
-    if (kotPrinterSettings.mode === 'network') {
+    if (window.isDirectPrintMode(kotPrinterSettings.mode)) {
       const escBuilder = window.buildReceiptEscPos({
         charWidth: window.getPrinterCharWidth(kotPrinterSettings.widthMM),
         restaurantName: restaurantInfo.name,
@@ -10792,7 +10863,7 @@ window.printKOT = async function(kotId, onClose) {
         totals: [['Total Items', String(itemsCount), true]],
         footerLines: ['Thank you!', 'Powered by Restro Grow']
       });
-      const sent = await window.printViaNetwork(escBuilder);
+      const sent = await window.printDirect(escBuilder, () => showPrintPreview('KOT #' + kot.kot_number, html));
       if (sent) {
         if (typeof onClose === 'function') onClose();
         return;
@@ -11137,7 +11208,7 @@ window.printOrder = async function(orderId) {
     </body></html>`
 
     const orderPrinterSettings = window.getPrinterSettings();
-    if (orderPrinterSettings.mode === 'network') {
+    if (window.isDirectPrintMode(orderPrinterSettings.mode)) {
       const escWidth = window.getPrinterCharWidth(orderPrinterSettings.widthMM);
       const escTotals = [['Gross Amount', formatCurrency(subtotal + tax)]];
       if (discount > 0) escTotals.push(['Discount', '-' + formatCurrency(discount)]);
@@ -11164,7 +11235,7 @@ window.printOrder = async function(orderId) {
           ? ['Thank you for visiting', 'Contact: ' + restaurantInfo.phone, 'Powered by Restro Grow']
           : ['Thank you for visiting', 'Powered by Restro Grow']
       });
-      const sent = await window.printViaNetwork(escBuilder);
+      const sent = await window.printDirect(escBuilder, () => showPrintPreview('Invoice #' + order.order_number, html));
       if (sent) return;
     }
 
