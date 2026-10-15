@@ -2755,7 +2755,7 @@ try {
         <p>Put your ordering website on your own web address, or add your menu to a website you already have.</p>
       </div>
       <div class="page-content">
-        <div id="cdRoot"></div>
+        <div id="cdRoot"><div class="loading" data-loading-fallback>Loading...</div></div>
       </div>
     </div>
     <!-- Category Management Page -->
@@ -2778,7 +2778,7 @@ try {
         
         <div class="menu-list" id="menuList">
           <!-- Menus will be loaded here dynamically -->
-          <div class="loading">Loading menus...</div>
+          <div class="loading" data-loading-fallback>Loading menus...</div>
         </div>
 
         <!-- Sort mode bottom bar for categories -->
@@ -2836,7 +2836,7 @@ try {
         
         <div class="menu-items-list" id="menuItemsList">
           <!-- Menu items will be loaded here dynamically -->
-          <div class="loading">Loading menu items...</div>
+          <div class="loading" data-loading-fallback>Loading menu items...</div>
         </div>
 
         <!-- Sort mode bottom bar for menu items -->
@@ -2861,7 +2861,7 @@ try {
       </div>
       <div class="page-content">
         <div id="addonsList" style="min-height:400px;">
-          <div class="loading">Loading add-ons management...</div>
+          <div class="loading" data-loading-fallback>Loading add-ons management...</div>
         </div>
       </div>
     </div>
@@ -2874,7 +2874,7 @@ try {
       </div>
       <div class="page-content">
         <div id="blocklistContainer" style="min-height:400px;">
-          <div class="loading">Loading blocked customers...</div>
+          <div class="loading" data-loading-fallback>Loading blocked customers...</div>
         </div>
       </div>
     </div>
@@ -2888,7 +2888,7 @@ try {
       </div>
       <div class="page-content">
         <div id="mealPlansList" style="min-height:400px;">
-          <div class="loading">Loading meal plans management...</div>
+          <div class="loading" data-loading-fallback>Loading meal plans management...</div>
         </div>
       </div>
     </div>
@@ -2901,7 +2901,7 @@ try {
       </div>
       <div class="page-content">
         <div id="mealSubscriptionsList" style="min-height:400px;">
-          <div class="loading">Loading subscribers...</div>
+          <div class="loading" data-loading-fallback>Loading subscribers...</div>
         </div>
       </div>
     </div>
@@ -2915,7 +2915,7 @@ try {
       </div>
       <div class="page-content">
         <div id="cateringList" style="min-height:400px;">
-          <div class="loading">Loading catering management...</div>
+          <div class="loading" data-loading-fallback>Loading catering management...</div>
         </div>
       </div>
     </div>
@@ -3585,7 +3585,7 @@ function toggleGatewayMode() {
         <p>Codes customers type at checkout for money off. See which ones bring orders, pause or edit them anytime.</p>
       </div>
       <div class="page-content">
-        <div id="couponsRoot"></div>
+        <div id="couponsRoot"><div class="loading" data-loading-fallback>Loading coupons...</div></div>
       </div>
     </div>
     <!-- ═══════ Growth Module: Loyalty Settings ═══════ -->
@@ -4380,7 +4380,7 @@ function toggleGatewayMode() {
         <p>Your Google rating and reviews, replies, posts, hours and how people find you on Google Search and Maps.</p>
       </div>
       <div class="page-content">
-        <div id="gbpRoot"></div>
+        <div id="gbpRoot"><div class="loading" data-loading-fallback>Loading Google Business...</div></div>
       </div>
     </div>
 
@@ -4392,7 +4392,7 @@ function toggleGatewayMode() {
         <p>Get found on Google: how your website shows in search results and when it’s shared.</p>
       </div>
       <div class="page-content">
-        <div id="seoRoot"></div>
+        <div id="seoRoot"><div class="loading" data-loading-fallback>Loading SEO...</div></div>
       </div>
     </div>
 
@@ -4433,7 +4433,7 @@ function toggleGatewayMode() {
             </div>
             <div class="section-body">
               <ol class="bs-selected" id="bsSelected">
-                <li class="bs-empty">Loading…</li>
+                <li class="bs-empty" data-loading-fallback>Loading…</li>
               </ol>
               <p class="bs-note">Offer prices apply to the website menu, cart and checkout. For dishes with sizes, choose one discount for every size or a separate offer price for each size.</p>
             </div>

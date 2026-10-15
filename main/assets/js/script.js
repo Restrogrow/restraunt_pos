@@ -1658,10 +1658,40 @@ document.addEventListener("DOMContentLoaded", () => {
         offersHomePage: ['loadOffersHome'],
       };
       if (sectionLoaders[pageId]) {
-        setTimeout(() => sectionLoaders[pageId].forEach((f) => {
-          const [name, ...args] = Array.isArray(f) ? f : [f];
-          if (typeof window[name] === 'function') window[name](...args);
-        }), 50);
+        const pageEl = document.getElementById(pageId);
+        const loaderFns = sectionLoaders[pageId];
+        setTimeout(() => {
+          let completed = 0;
+          const total = loaderFns.length;
+          const markDone = () => { completed++; };
+          loaderFns.forEach((f) => {
+            const [name, ...args] = Array.isArray(f) ? f : [f];
+            try {
+              if (typeof window[name] === 'function') {
+                const result = window[name](...args);
+                if (result && typeof result.then === 'function') {
+                  result.catch(function (err) {
+                    console.error('[showPage] Loader failed:', name, err);
+                    showPageError(pageId, name, err);
+                  });
+                }
+              }
+            } catch (err) {
+              console.error('[showPage] Loader threw:', name, err);
+              showPageError(pageId, name, err);
+            }
+            markDone();
+          });
+          // If no content appeared after 8 seconds, show error
+          setTimeout(function () {
+            if (pageEl && pageEl.querySelector('.page-content')) {
+              var content = pageEl.querySelector('.page-content');
+              if (!content.children.length || content.textContent.trim() === '' || content.innerHTML.indexOf('Loading') > -1) {
+                showPageError(pageId, 'timeout', new Error('Content did not load within 8 seconds'));
+              }
+            }
+          }, 8000);
+        }, 50);
       }
       // How to use: its menu link opens the guide for the page you came from; after a refresh, open it plainly
       if (pageId === "howToPage") {
@@ -1673,6 +1703,26 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Make showPage globally accessible for onclick handlers
   window.showPage = showPage;
+
+  // Show a friendly error message when a page's content fails to load
+  function showPageError(pageId, loaderName, err) {
+    var pageEl = document.getElementById(pageId);
+    if (!pageEl) return;
+    var content = pageEl.querySelector('.page-content');
+    if (!content) return;
+    // Don't replace if there's already meaningful content
+    if (content.children.length > 1 || (content.textContent.trim() && content.textContent.trim().length > 50 && content.textContent.trim().indexOf('Loading') === -1)) return;
+    var msg = 'This page could not load. ';
+    if (err && err.message) msg += err.message + ' ';
+    msg += 'Try refreshing, or contact support if it keeps happening.';
+    content.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;padding:2rem;text-align:center;">' +
+      '<span class="material-symbols-rounded" style="font-size:48px;color:#ef4444;margin-bottom:16px;">error_outline</span>' +
+      '<h3 style="margin:0 0 8px;color:#1f2937;font-size:1.1rem;">Couldn\u2019t load ' + (pageId.replace('Page', '')) + '</h3>' +
+      '<p style="margin:0 0 16px;color:#6b7280;max-width:400px;">' + msg + '</p>' +
+      '<button type="button" class="btn btn-primary" onclick="showPage(\'' + pageId + '\')"><span class="material-symbols-rounded" style="font-size:16px;">refresh</span>Try again</button>' +
+      '</div>';
+    console.error('[showPage] Error on page', pageId, 'loader:', loaderName, err);
+  }
 
   // Initialize page restoration after DOM is fully loaded and all functions are defined
   function initializePageRestoration() {
@@ -1718,6 +1768,25 @@ document.addEventListener("DOMContentLoaded", () => {
     // DOM already loaded, run immediately
     setTimeout(initializePageRestoration, 0);
   }
+
+  // Global loading timeout: if any [data-loading-fallback] element is still
+  // showing loading text after 10 seconds, replace it with a helpful error
+  // message and a retry button instead of leaving a blank screen.
+  setTimeout(function () {
+    document.querySelectorAll('[data-loading-fallback]').forEach(function (el) {
+      var text = el.textContent.trim();
+      if (!text || text.indexOf('Loading') === -1) return;
+      var pageEl = el.closest('.page');
+      var pageId = pageEl ? pageEl.id : '';
+      var label = text.replace(/Loading[.\s]*/i, '').replace(/\.\.\./g, '').trim();
+      el.outerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;padding:2rem;text-align:center;">' +
+        '<span class="material-symbols-rounded" style="font-size:48px;color:#f59e0b;margin-bottom:16px;">hourglass_empty</span>' +
+        '<h3 style="margin:0 0 8px;color:#1f2937;font-size:1.1rem;">Still loading' + (label ? ' ' + label : '') + '…</h3>' +
+        '<p style="margin:0 0 16px;color:#6b7280;max-width:400px;">This is taking longer than expected. Check your internet connection, then try again.</p>' +
+        (pageId ? '<button type="button" class="btn btn-primary" onclick="showPage(\'' + pageId + '\')"><span class="material-symbols-rounded" style="font-size:16px;">refresh</span> Try again</button>' : '') +
+        '</div>';
+    });
+  }, 10000);
 
   // Modal functionality
   const menuModal = document.getElementById("menuModal");
