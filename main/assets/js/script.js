@@ -9126,7 +9126,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function processPayment() {
-    if (window.rgDbg) window.rgDbg("Pay: started");
     // Support both posCart (admin) and window.posCart (waiter/chef/manager)
     const cart = typeof posCart !== 'undefined' ? posCart : (window.posCart || []);
     const updateCartFn = typeof updatePOSCart !== 'undefined' ? updatePOSCart : (window.updateWaiterPOSCart || window.updatePOSCart || (() => {}));
@@ -9144,8 +9143,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const taxable = Math.max(0, subtotal - (pcPrice ? pcPrice.coupon + pcPrice.pointsDiscount : 0));
     const tax = showGst ? taxable * ((window.taxPercent ?? 5) / 100) : 0;
     const total = taxable + tax;
-    const dbg = window.rgDbg || function () {};   // pos-debug.js
-    dbg('Pay: totals', { items: cart.length, subtotal, showGst, taxPercent: window.taxPercent, tax, total });
     const pcf = window.rgPosCustomer ? window.rgPosCustomer.fields(subtotal, total) : null;
     const walletPart = pcf ? pcf.walletAmount : 0;
     const selectPosTable = document.getElementById("selectPosTable");
@@ -9160,7 +9157,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const payResult = toCollect <= 0.004
       ? { paymentMethod: 'Wallet', paymentStatus: 'Paid', amounts: {}, dueAmount: 0, cash: 0, upi: 0, card: 0, returnAmount: 0 }
       : await showSplitPaymentModal(toCollect);
-    dbg('Pay: payment window', payResult);
     if (!payResult) {
       return; // User cancelled - cart untouched
     }
@@ -9206,9 +9202,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       // online: straight to the server; no internet: kept on this device and synced later (pos-offline.js)
-      dbg('Pay: sending', { rgPosSend: typeof window.rgPosSend });
       const result = await window.rgPosSend('pay', formData, { total, tableLabel, cart: cart.slice() });
-      dbg('Pay: server said', result, result && result.success ? 'ok' : 'error');
 
       if (result.success) {
         // Snapshot the cart for the bill preview before clearing it
@@ -9241,15 +9235,10 @@ document.addEventListener("DOMContentLoaded", () => {
         window.posResetBill();
 
         const showBill = async () => {
-          dbg('Pay: building bill', { billNo });
-          try {
-            const billHtml = await buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, billNo);
-            dbg('Pay: bill built', billHtml === null ? 'sent to printer / preview shown' : (billHtml.length + ' chars, opening preview'));
-            if (billHtml === null) return; // already sent straight to the network printer
-            showPrintPreview('Bill #' + billNo, billHtml);
-          } catch (err) { dbg('Pay: bill FAILED', err, 'error'); throw err; }
+          const billHtml = await buildBillPreviewHtml(cartSnapshot, subtotal, tax, showGst, total, payResult, tableLabel, billNo);
+          if (billHtml === null) return; // already sent straight to the network printer
+          showPrintPreview('Bill #' + billNo, billHtml);
         };
-        dbg('Pay: next', result.kot_id && window.printKOT ? 'KOT preview, then bill' : 'bill');
 
         // a new kitchen ticket (dishes not sent before): its preview first, then the bill
         if (result.kot_id && window.printKOT) {
@@ -9271,7 +9260,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (error) {
       console.error("Error:", error);
-      dbg('Pay: FAILED', error, 'error');
       const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
       showMsg(error && error.message ? error.message : "Network error. Please check your connection and try again.", "error");
     }

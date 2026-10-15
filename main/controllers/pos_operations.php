@@ -915,8 +915,7 @@ function handleCreateKOT($conn, $restaurant_id) {
         if (ob_get_level()) {
             ob_clean();
         }
-        // debug: the real reason, so the POS debug panel shows it
-        echo json_encode(['success' => false, 'message' => 'Error creating KOT: ' . $e->getMessage(), 'debug' => basename($e->getFile()) . ':' . $e->getLine()], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['success' => false, 'message' => 'Error creating KOT. Please try again.'], JSON_UNESCAPED_UNICODE);
     }
 }
 

@@ -114,7 +114,6 @@ applyRestaurantTimezone($timezone, $conn);
     
     <!-- Scripts - Defer non-critical -->
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>
-  <script src="../assets/js/pos-debug.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-debug.js'); ?>"></script>
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
     <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
     <script src="../assets/js/direct-printer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/direct-printer.js'); ?>" defer></script>
