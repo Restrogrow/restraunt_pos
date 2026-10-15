@@ -34,11 +34,15 @@
   }
 
   /* ───────── load ───────── */
+  var loading = false;   // stops a second fetch while the first is still running
   window.loadGoogleBusiness = function () {
     var root = document.getElementById('gbpRoot');
     if (!root) return;
+    if (loading) return;
+    loading = true;
     if (!S) root.innerHTML = '<div class="cbx-loading"><span></span><span></span><span></span></div>';
     get('').then(function (d) {
+      loading = false;
       if (!d.success) { root.innerHTML = '<div class="sx-note warn">' + ic('warning') + '<span>' + esc(d.message || 'Could not load') + '</span></div>'; return; }
       S = d; draw();
       // straight back from Google sign-in
@@ -426,9 +430,9 @@
     (function step() { k = Math.min(text.length, k + 3); ta.value = text.slice(0, k); if (k < text.length) setTimeout(step, 12); else ta.focus(); })();
   }
 
-  // the page loader: script.js shows pages by id; load when ours opens (and when the URL asks for it)
-  document.addEventListener('click', function (e) { if (e.target.closest('.nav-link[data-page="googleBusinessPage"]')) setTimeout(window.loadGoogleBusiness, 50); });
+  // The dashboard's page loader (script.js › sectionLoaders) opens Google Business whenever the page is
+  // shown, so a browser refresh or a button loads it too. Here we only handle coming back from Google.
   document.addEventListener('DOMContentLoaded', function () {
-    if (/[?&]gbp=/.test(location.search) || location.hash === '#googleBusinessPage') setTimeout(function () { if (window.SX) SX.goTo('googleBusinessPage'); window.loadGoogleBusiness(); }, 400);
+    if (/[?&]gbp=/.test(location.search) || location.hash === '#googleBusinessPage') setTimeout(function () { if (window.SX) SX.goTo('googleBusinessPage'); }, 400);
   });
 })();

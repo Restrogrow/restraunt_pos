@@ -1657,6 +1657,7 @@ document.addEventListener("DOMContentLoaded", () => {
         policyPagesPage: ['initPolicyPagesEditor'],
         offersHomePage: ['loadOffersHome'],
         seoPage: ['loadSeo'],                          // dashboard › SEO (seo-studio.js)
+        googleBusinessPage: ['loadGoogleBusiness'],    // dashboard › Google Business (gbp-studio.js)
       };
       if (sectionLoaders[pageId]) {
         const pageEl = document.getElementById(pageId);
