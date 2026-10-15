@@ -9092,8 +9092,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const itemsHtml = cartSnapshot.map((it) => `
       <tr>
         <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;word-break:break-word;overflow-wrap:anywhere;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:center;">${it.quantity}</td>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:right;">${currency}${window.posLineTotal(it).toFixed(2)}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:center;width:40px;">${it.quantity}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:right;width:70px;">${currency}${window.posLineTotal(it).toFixed(2)}</td>
       </tr>
     `).join('');
 
@@ -9154,14 +9154,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       <div class="info-box">
         <div class="info-grid">
-          <div class="info-item"><span class="info-label">TABLE</span><span class="info-value">${escapeHtml(tableLabel)}</span></div>
-          <div class="info-item"><span class="info-label">STATUS</span><span class="info-value">${escapeHtml(payResult.paymentStatus)}</span></div>
-          ${payResult.customer ? `<div class="info-item" style="grid-column:1/-1;"><span class="info-label">CUSTOMER</span><span class="info-value">${escapeHtml(payResult.customer.name)} · ${escapeHtml(payResult.customer.phone)}</span></div>` : ''}
+          <div class="info-item" style="grid-column:1/-1;"><span class="info-label">TABLE</span><span class="info-value">${escapeHtml(tableLabel)}</span></div>
+          <div class="info-item" style="grid-column:1/-1;"><span class="info-label">STATUS</span><span class="info-value">${escapeHtml(payResult.paymentStatus)}</span></div>
+          ${payResult.customer ? `<div class="info-item" style="grid-column:1/-1;"><span class="info-label">CUSTOMER</span><span class="info-value">${escapeHtml(payResult.customer.name)}<br>${escapeHtml(payResult.customer.phone)}</span></div>` : ''}
         </div>
       </div>
 
       <table>
-        <thead><tr><th>Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Amt</th></tr></thead>
+        <thead><tr><th style="text-align:left;">Item</th><th style="text-align:center; width:40px;">Qty</th><th style="text-align:right; width:70px;">Amt</th></tr></thead>
         <tbody>${itemsHtml}</tbody>
       </table>
 
