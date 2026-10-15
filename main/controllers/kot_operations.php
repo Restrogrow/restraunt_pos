@@ -374,8 +374,8 @@ function handleUpdateKOTStatus() {
     }
     ensureKotSchema($conn);
 
-    $kot_id = intval($_POST['kotId']);
-    $status = $_POST['status'];
+    $kot_id = intval($_POST['kotId'] ?? 0);
+    $status = $_POST['status'] ?? '';
     $restaurant_id = $_SESSION['restaurant_id'] ?? $_GET['restaurant_id'] ?? null;
 
     if (!$restaurant_id) {
@@ -629,9 +629,9 @@ function handleCompleteKOT() {
             throw new Exception('Database connection not available');
         }
     }
-    $kot_id = intval($_POST['kotId']);
+    $kot_id = intval($_POST['kotId'] ?? 0);
     $restaurant_id = $_SESSION['restaurant_id'] ?? $_GET['restaurant_id'] ?? null;
-    
+
     if (!$restaurant_id) {
         // Check session for staff_id
         if (isset($_SESSION['staff_id'])) {

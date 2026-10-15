@@ -532,10 +532,10 @@ if (!function_exists('ensureWhatsappSchema')) {
         foreach (waAutoConfig($conn, $rid) as $kind => $a) {
             if ($kinds !== null && !in_array($kind, $kinds, true)) continue;
             [$text, $vars] = waTemplateFromMessage($a['message']);
-            if ($text === ($a['template_text'] ?? null) && in_array($a['template_status'], ['approved', 'pending'], true)) { $out['unchanged']++; continue; }
+            if ($text === ($a['template_text'] ?? null) && in_array($a['template_status'] ?? null, ['approved', 'pending'], true)) { $out['unchanged']++; continue; }
             if ($text === ($a['pending_text'] ?? null)) { $out['unchanged']++; continue; }   // in review, or turned down: change the wording first
-            $isUpdate = $a['template_status'] === 'approved' && !empty($a['template_name']);
-            $version = $isUpdate ? (int)$a['template_version'] + 1 : (int)$a['template_version'];
+            $isUpdate = ($a['template_status'] ?? null) === 'approved' && !empty($a['template_name']);
+            $version = $isUpdate ? (int)($a['template_version'] ?? 0) + 1 : (int)($a['template_version'] ?? 0);
             $name = $slug . '_' . $kind . '_gift' . ($version > 0 ? '_v' . ($version + 1) : '');
             $sampleVals = array_map(function ($k) use ($samples) { return (string)$samples[$k]; }, $vars);
             [$ok, $res, $http] = rgcCreateTemplate($s['api_key'], $name, $a['language'] ?: 'en', $text, $sampleVals);

@@ -45,8 +45,14 @@
   if (local) {
     var warned = {};
     var scan = function () { window.rgCheckIcons().forEach(function (n) { if (!warned[n]) { warned[n] = 1; console.warn('[icons] "' + n + '" is not in the icon font. Add it to main/config/icon_names.txt'); } }); };
-    window.addEventListener('load', function () { setTimeout(scan, 3000); });
-    document.addEventListener('click', function () { setTimeout(scan, 1500); }, true);
+    // Measure only once the font is ready: a scan while the webfont is still
+    // loading reads the fallback text (wide) and reports a false "missing icon".
+    var waitReady = function () {
+      if (document.documentElement.classList.contains('ms-ready')) scan();
+      else setTimeout(waitReady, 300);
+    };
+    window.addEventListener('load', function () { setTimeout(waitReady, 500); });
+    document.addEventListener('click', function () { setTimeout(waitReady, 500); }, true);
   }
   setTimeout(ready, 4000);   // never hide icons for long, even if the font check fails
   // the stylesheet itself loads async, so keep asking until the font face exists and has loaded

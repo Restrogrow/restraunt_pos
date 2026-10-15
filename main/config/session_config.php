@@ -31,15 +31,21 @@ if (!function_exists('isSecureRequest')) {
     }
 }
 
-ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', isSecureRequest() ? 1 : 0);
-ini_set('session.cookie_samesite', 'Lax');
-ini_set('session.use_strict_mode', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_lifetime', 86400); // 24 hours - re-login after inactivity
-ini_set('session.gc_maxlifetime', 86400); // 24 hours - clean stale session files
-ini_set('session.gc_probability', 1);
-ini_set('session.gc_divisor', 100);
+// Session ini settings can only be changed before any output is sent. Some
+// entry points (an API that has already echoed, an include after a redirect)
+// hit this file with headers already sent — guard so those don't flood the
+// error monitor with warnings that can't be acted on.
+if (!headers_sent()) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.cookie_secure', isSecureRequest() ? 1 : 0);
+    ini_set('session.cookie_samesite', 'Lax');
+    ini_set('session.use_strict_mode', 1);
+    ini_set('session.use_only_cookies', 1);
+    ini_set('session.cookie_lifetime', 86400); // 24 hours - re-login after inactivity
+    ini_set('session.gc_maxlifetime', 86400); // 24 hours - clean stale session files
+    ini_set('session.gc_probability', 1);
+    ini_set('session.gc_divisor', 100);
+}
 
 $sessionPath = __DIR__ . '/../sessions';
 if (!is_dir($sessionPath)) {
@@ -48,12 +54,18 @@ if (!is_dir($sessionPath)) {
     // ever needs to read/write it.
     @mkdir($sessionPath, 0700, true);
 }
-if (is_dir($sessionPath) && is_writable($sessionPath)) {
+if (is_dir($sessionPath) && is_writable($sessionPath) && !headers_sent()) {
     session_save_path($sessionPath);
 }
 
 function startSecureSession($skipTimeoutValidation = false) {
     if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+    // Output already started (an API echoed first, an include after a redirect):
+    // session_start() would only warn. Skip it rather than log a warning the
+    // caller can't act on.
+    if (headers_sent()) {
         return;
     }
     session_start();
