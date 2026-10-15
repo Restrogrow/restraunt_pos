@@ -259,6 +259,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">request_quote</span>
           <span class="text">Invoices & GST</span>
         </div>
+        <div class="menu-item" data-page="invoiceGen">
+          <span class="material-symbols-rounded icon">post_add</span>
+          <span class="text">Invoice generator</span>
+        </div>
 
         <div class="sa-nav-h">System</div>
         <div class="menu-item" data-page="security">
@@ -902,6 +906,17 @@ require_once __DIR__ . '/../config/countries.php';
           <div class="header-actions" id="spInvoicesActs"></div>
         </div>
         <div id="spInvoices" class="sp-body"><div class="sp-loading">Loading…</div></div>
+      </div>
+
+      <div id="invoiceGenPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Invoice generator</h1><div class="sa-sub">Pick a restaurant, adjust the lines and totals, then print or save it as a PDF</div></div>
+          </div>
+          <div class="header-actions" id="spInvoiceGenActs"></div>
+        </div>
+        <div id="spInvoiceGen" class="sp-body"><div class="sp-loading">Loading…</div></div>
       </div>
 
       <div id="securityPage" class="page">

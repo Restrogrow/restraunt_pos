@@ -16,7 +16,7 @@ if (!$conn instanceof PDO) { http_response_code(500); header('Content-Type: appl
 $action = $_GET['action'] ?? '';
 $in = json_decode(file_get_contents('php://input') ?: '[]', true) ?: [];
 $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
-if (!in_array($action, ['invoice', 'exportInvoices'], true)) header('Content-Type: application/json');
+if (!in_array($action, ['invoice', 'invoiceGen', 'exportInvoices'], true)) header('Content-Type: application/json');
 
 function out(array $a): void { echo json_encode(['success' => true] + $a, JSON_UNESCAPED_UNICODE); exit; }
 function needPost(): void { global $isPost; if (!$isPost) throw new Exception('POST required'); }
@@ -515,6 +515,87 @@ try {
             <div class="foot">' . ($set['biz_gstin'] ? 'CGST + SGST shown for supply within the state; for other states read as IGST ' . $h($g['rate']) . '%.' : 'Add your GSTIN in Superadmin › Settings to issue tax invoices.') . ' This is a computer-generated invoice.</div></div></body></html>';
         exit;
 
+    /* 12b. invoice generator: pick a restaurant, tweak the lines, print / save as PDF */
+    case 'invoiceGen':
+        needPost();
+        $raw = $_POST['payload'] ?? (file_get_contents('php://input') ?: '');
+        $p = json_decode((string)$raw, true);
+        header('Content-Type: text/html; charset=utf-8');
+        if (!is_array($p)) { http_response_code(400); echo 'Invalid invoice data'; exit; }
+        $rst = $conn->prepare("SELECT id, restaurant_id, restaurant_name, owner_name, address, email, phone, gstin_no FROM users WHERE id = ?");
+        $rst->execute([(int)($p['id'] ?? 0)]);
+        $r = $rst->fetch(PDO::FETCH_ASSOC);
+        if (!$r) { http_response_code(404); echo 'Restaurant not found'; exit; }
+        $h = function ($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); };
+        $money = function ($n) { return '₹' . number_format((float)$n, 2); };
+        $qtyFmt = function ($n) { $n = (float)$n; return $n == (int)$n ? (string)(int)$n : rtrim(rtrim(number_format($n, 2, '.', ''), '0'), '.'); };
+
+        // line items (description, SAC, qty, rate) -> amount
+        $items = [];
+        foreach ((array)($p['items'] ?? []) as $it) {
+            $desc = trim((string)($it['desc'] ?? ''));
+            $qty = (float)($it['qty'] ?? 0);
+            $rate = (float)($it['rate'] ?? 0);
+            if ($desc === '' && $qty == 0 && $rate == 0) continue;
+            $items[] = ['desc' => $desc !== '' ? $desc : 'Item', 'sac' => trim((string)($it['sac'] ?? '')), 'qty' => $qty, 'rate' => $rate, 'amount' => round($qty * $rate, 2)];
+        }
+        if (!$items) $items[] = ['desc' => 'RestroGrow restaurant software subscription', 'sac' => '998314', 'qty' => 1, 'rate' => (float)$set['plan_price'], 'amount' => (float)$set['plan_price']];
+
+        $subtotal = 0.0; foreach ($items as $it) $subtotal += $it['amount'];
+        $discount = max(0, min((float)($p['discount'] ?? 0), $subtotal));
+        $net = round($subtotal - $discount, 2);
+        $rate = isset($p['tax_rate']) && is_numeric($p['tax_rate']) ? max(0, min(40, (float)$p['tax_rate'])) : (float)$set['gst_percent'];
+        $inc = (string)($p['prices_include_gst'] ?? $set['prices_include_gst']) === '1';
+        if ($inc) { $base = $rate > 0 ? round($net * 100 / (100 + $rate), 2) : $net; $tax = round($net - $base, 2); $total = $net; }
+        else { $base = $net; $tax = round($net * $rate / 100, 2); $total = round($net + $tax, 2); }
+        $cgst = round($tax / 2, 2); $sgst = round($tax - $cgst, 2);
+
+        $no = trim((string)($p['invoice_no'] ?? '')) ?: pfNextManualInvoiceNo($conn, $set);
+        $dt = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($p['date'] ?? '')) ? $p['date'] : date('Y-m-d');
+        $due = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($p['due_date'] ?? '')) ? $p['due_date'] : '';
+        $status = trim((string)($p['status'] ?? 'Paid')) ?: 'Paid';
+        $notes = trim((string)($p['notes'] ?? ''));
+        $terms = trim((string)($p['terms'] ?? ''));
+        $paid = strtolower($status) === 'paid';
+
+        $rowsHtml = '';
+        foreach ($items as $it) {
+            $rowsHtml .= '<tr><td>' . $h($it['desc']) . '</td><td>' . $h($it['sac']) . '</td><td class="c">' . $h($qtyFmt($it['qty'])) . '</td><td class="r">' . $money($it['rate']) . '</td><td class="r">' . $money($it['amount']) . '</td></tr>';
+        }
+
+        echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice ' . $h($no) . '</title><style>
+            *{box-sizing:border-box}body{margin:0;background:#f3f5fa;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#111827}
+            .bar{max-width:800px;margin:16px auto 0;padding:0 16px;display:flex;justify-content:flex-end;gap:8px}
+            .bar button{height:40px;padding:0 16px;border:0;border-radius:12px;background:#2563eb;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+            .inv{max-width:800px;margin:12px auto 24px;padding:36px;background:#fff;border:1px solid #e5e7eb;border-radius:18px}
+            .top{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.top h1{margin:0 0 4px;font-size:1.6rem}.muted{color:#6b7280;font-size:.88rem;line-height:1.55}
+            .tag{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;background:' . ($paid ? '#ecfdf5;color:#047857' : '#fffbeb;color:#b45309') . ';font-size:.78rem;font-weight:800}
+            .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:28px 0}.grid h3{margin:0 0 6px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af}
+            table{width:100%;border-collapse:collapse;font-size:.92rem}th{text-align:left;font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;color:#6b7280;background:#f9fafb}
+            th,td{padding:10px 12px;border-bottom:1px solid #eef0f3}td.r,th.r{text-align:right}td.c,th.c{text-align:center}.tot td{border:0;padding:6px 12px}.tot .big td{font-size:1.1rem;font-weight:800;border-top:2px solid #111827;padding-top:10px}
+            .note{margin-top:20px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;font-size:.85rem;color:#374151;line-height:1.6}
+            .note b{display:block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:4px}
+            .foot{margin-top:28px;font-size:.8rem;color:#9ca3af}@media print{body{background:#fff}.bar{display:none}.inv{border:0;margin:0;padding:0}}
+            @media(max-width:600px){.inv{padding:20px}.grid{grid-template-columns:1fr}}</style></head><body>
+            <div class="bar"><button onclick="window.print()">Print / Save as PDF</button></div><div class="inv">
+            <div class="top"><div><h1>' . $h($set['biz_name'] ?: 'RestroGrow') . '</h1><div class="muted">' . nl2br($h($set['biz_address'])) .
+            ($set['biz_gstin'] ? '<br>GSTIN: ' . $h($set['biz_gstin']) : '') . ($set['biz_email'] ? '<br>' . $h($set['biz_email']) : '') . ($set['biz_phone'] ? ' · ' . $h($set['biz_phone']) : '') . '</div></div>
+            <div style="text-align:right"><h1 style="font-size:1.2rem">' . ($set['biz_gstin'] ? 'Tax invoice' : 'Invoice') . '</h1><div class="muted">No. <b>' . $h($no) . '</b><br>Date ' . $h(date('d M Y', strtotime($dt))) . ($due ? '<br>Due ' . $h(date('d M Y', strtotime($due))) : '') . '</div><span class="tag">' . $h($status) . '</span></div></div>
+            <div class="grid"><div><h3>Billed to</h3><b>' . $h($r['restaurant_name']) . '</b><div class="muted">' . ($r['owner_name'] ? $h($r['owner_name']) . '<br>' : '') . nl2br($h($r['address'])) .
+            ($r['gstin_no'] ? '<br>GSTIN: ' . $h($r['gstin_no']) : '') . ($r['email'] ? '<br>' . $h($r['email']) : '') . ($r['phone'] ? '<br>' . $h($r['phone']) : '') . '<br>Restaurant ID: ' . $h($r['restaurant_id']) . '</div></div>
+            <div><h3>Payment</h3><div class="muted">Method: Manual<br>Status: ' . $h($status) . '</div></div></div>
+            <table><thead><tr><th>Description</th><th>SAC</th><th class="c">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead><tbody>' . $rowsHtml . '</tbody></table>
+            <table class="tot" style="max-width:340px;margin-left:auto;margin-top:10px">' .
+            ($discount > 0 ? '<tr><td>Subtotal</td><td class="r">' . $money($subtotal) . '</td></tr><tr><td>Discount</td><td class="r">-' . $money($discount) . '</td></tr>' : '') .
+            '<tr><td>Taxable value</td><td class="r">' . $money($base) . '</td></tr>' .
+            ($rate > 0 ? '<tr><td>CGST ' . $h($rate / 2) . '%</td><td class="r">' . $money($cgst) . '</td></tr><tr><td>SGST ' . $h($rate / 2) . '%</td><td class="r">' . $money($sgst) . '</td></tr>' : '') .
+            '<tr class="big"><td>Total</td><td class="r">' . $money($total) . '</td></tr></table>' .
+            ($notes ? '<div class="note"><b>Notes</b>' . nl2br($h($notes)) . '</div>' : '') .
+            ($terms ? '<div class="note"><b>Terms</b>' . nl2br($h($terms)) . '</div>' : '') .
+            '<div class="foot">' . ($set['biz_gstin'] ? 'CGST + SGST shown for supply within the state; for other states read as IGST ' . $h($rate) . '%.' : 'Add your GSTIN in Superadmin › Settings to issue tax invoices.') . ' This is a computer-generated invoice.</div></div></body></html>';
+        pfAudit($conn, 'invoice.generate', $r['restaurant_id'], ['invoice_no' => $no, 'total' => $total, 'items' => count($items)]);
+        exit;
+
     /* ───────── 13. bulk actions ───────── */
     case 'bulk':
         needPost();
@@ -590,6 +671,22 @@ try {
         $list = [];
         foreach (rgMailSenders() as $k => $envKey) $list[] = ['purpose' => $k, 'env' => $envKey, 'from' => rgMailFrom($k), 'set' => trim((string)env($envKey, '')) !== ''];
         out(['senders' => $list, 'default' => SMTP_FROM_EMAIL, 'login' => SMTP_USERNAME]);
+
+    case 'invoiceData':
+        $st = $conn->prepare("SELECT id, restaurant_id, restaurant_name, owner_name, email, phone, address, gstin_no, subscription_status, renewal_date FROM users WHERE id = ?");
+        $st->execute([(int)($_GET['id'] ?? 0)]);
+        $r = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$r) throw new Exception('Restaurant not found');
+        $lp = $conn->prepare("SELECT subscription_type, duration_months, amount, payment_method, created_at FROM subscription_payments WHERE restaurant_id = ? AND payment_status = 'success' ORDER BY id DESC LIMIT 1");
+        $lp->execute([$r['restaurant_id']]);
+        $last = $lp->fetch(PDO::FETCH_ASSOC) ?: null;
+        $months = max(1, (int)($last['duration_months'] ?? 1));
+        $amount = (float)($last['amount'] ?? $set['plan_price']);
+        $unitRate = $months > 0 ? round($amount / $months, 2) : $amount;
+        $planName = ucfirst((string)($last['subscription_type'] ?? 'standard')) . ' plan';
+        out(['restaurant' => $r, 'last_payment' => $last, 'invoice_no' => pfNextManualInvoiceNo($conn, $set), 'today' => date('Y-m-d'),
+            'settings' => ['gst_percent' => $set['gst_percent'], 'prices_include_gst' => $set['prices_include_gst'], 'biz_gstin' => $set['biz_gstin'], 'plan_price' => $set['plan_price']],
+            'suggested_items' => [['desc' => 'RestroGrow restaurant software subscription · ' . $planName, 'sac' => '998314', 'qty' => $months, 'rate' => $unitRate]]]);
 
     case 'restaurantOptions':
         out(['rows' => $conn->query("SELECT id, restaurant_id, restaurant_name FROM users ORDER BY restaurant_name")->fetchAll(PDO::FETCH_ASSOC)]);

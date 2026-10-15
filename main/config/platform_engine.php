@@ -153,6 +153,17 @@ function pfInvoiceNo(array $set, array $pay): string
     return $prefix . '/' . $fy . '/' . str_pad((string)(int)$pay['id'], 5, '0', STR_PAD_LEFT);
 }
 
+/** Suggested number for a hand-made invoice, e.g. RG/2026-27/00042 (Indian financial year, next after paid ones). */
+function pfNextManualInvoiceNo(PDO $conn, array $set): string
+{
+    $seq = (int)$conn->query("SELECT COALESCE(MAX(id), 0) + 1 FROM subscription_payments")->fetchColumn();
+    $t = time();
+    $y = (int)date('Y', $t);
+    $fy = (int)date('n', $t) >= 4 ? $y . '-' . substr((string)($y + 1), 2) : ($y - 1) . '-' . substr((string)$y, 2);
+    $prefix = preg_replace('/[^A-Za-z0-9-]/', '', $set['invoice_prefix'] ?? 'RG') ?: 'RG';
+    return $prefix . '/' . $fy . '/' . str_pad((string)$seq, 5, '0', STR_PAD_LEFT);
+}
+
 /** GST split of an amount according to the settings (inclusive or on top). */
 function pfGst(array $set, float $amount): array
 {
