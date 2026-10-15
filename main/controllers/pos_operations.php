@@ -786,7 +786,8 @@ function handleCreateKOT($conn, $restaurant_id) {
 
         // Commit transaction
         $conn->commit();
-        invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
+        try { invKick($conn, $restaurant_id); }   // stock, sold-out dishes, low-stock alerts
+        catch (Throwable $e) { error_log('handleCreateKOT invKick: ' . $e->getMessage()); }
 
         // Redeem the coupon only after the KOT is safely committed — mirrors
         // process_website_order.php's redemption-after-persist ordering.
@@ -800,10 +801,12 @@ function handleCreateKOT($conn, $restaurant_id) {
 
         $loyaltyOut = null;
         if ($posCustomer && $isPaidUpFront) {
-            $earned = $posPaymentStatus === 'Paid' ? posCreditOnPayment($conn, $restaurant_id, $orderId) : null;
-            $cst->execute([$customerId, $restaurant_id]);
-            $loyaltyOut = ['earned' => $earned, 'redeemed_points' => $loyaltyPoints, 'points_discount' => $loyaltyDiscount, 'wallet_paid' => $walletPaid,
-                'customer' => posCustomerSummary($conn, $restaurant_id, $cst->fetch(PDO::FETCH_ASSOC))];
+            try {   // the bill is saved: loyalty trouble must not hide it
+                $earned = $posPaymentStatus === 'Paid' ? posCreditOnPayment($conn, $restaurant_id, $orderId) : null;
+                $cst->execute([$customerId, $restaurant_id]);
+                $loyaltyOut = ['earned' => $earned, 'redeemed_points' => $loyaltyPoints, 'points_discount' => $loyaltyDiscount, 'wallet_paid' => $walletPaid,
+                    'customer' => posCustomerSummary($conn, $restaurant_id, $cst->fetch(PDO::FETCH_ASSOC))];
+            } catch (Throwable $e) { error_log('handleCreateKOT loyalty: ' . $e->getMessage()); }
         }
 
         $resp = [
@@ -823,21 +826,21 @@ function handleCreateKOT($conn, $restaurant_id) {
         require_once __DIR__ . '/../config/bill_numbers.php';
         $resp['bill_no'] = rgBillNo($conn, $restaurant_id, (int)$orderId);
         // owner's activity log: discounts given at the POS, and bills made offline
-        if ($discountAmount > 0 || $loyaltyPoints > 0 || $posRef !== '') {
+        if ($discountAmount > 0 || $loyaltyPoints > 0 || $posRef !== '') try {
             require_once __DIR__ . '/../config/activity_log.php';
             $bits = [];
             if ($discountAmount > 0) $bits[] = 'reward ' . $couponCode . ' (' . number_format($discountAmount, 2) . ' off)';
             if ($loyaltyPoints > 0) $bits[] = $loyaltyPoints . ' points (' . number_format((float)($loyaltyDiscount ?? 0), 2) . ' off)';
             if ($bits) logActivity($conn, $restaurant_id, 'pos.discount', 'Bill ' . $orderNumber . ': ' . implode(', ', $bits), array_filter(['coupon' => $couponCode, 'coupon_off' => $discountAmount, 'points' => $loyaltyPoints, 'total' => $total]), 'order', $orderId);
             if ($posRef !== '' && !$openOrder) logActivity($conn, $restaurant_id, 'pos.offline', 'Bill ' . $orderNumber . ' made offline' . ($offlineAt ? ' at ' . date('j M, g:i a', strtotime($offlineAt)) : '') . ', synced now', ['total' => $total], 'order', $orderId);
-        }
+        } catch (Throwable $e) { error_log('handleCreateKOT activity log: ' . $e->getMessage()); }
         if ($posRef !== '') {
             try { $conn->prepare('UPDATE pos_sync_log SET response = ? WHERE pos_ref = ?')->execute([json_encode($resp, JSON_UNESCAPED_UNICODE), $posRef]); } catch (Throwable $e) {}
         }
         echo json_encode($resp, JSON_UNESCAPED_UNICODE);
-    } catch (Exception $e) {
-        // Rollback transaction on error
-        $conn->rollBack();
+    } catch (Throwable $e) {
+        // Rollback transaction on error (only while it's still open: after commit the bill is saved)
+        if ($conn->inTransaction()) $conn->rollBack();
         error_log("Error in handleCreateKOT: " . $e->getMessage());
         error_log("Stack trace: " . $e->getTraceAsString());
         if (ob_get_level()) {
@@ -1008,7 +1011,8 @@ function handleHoldOrder($conn, $restaurant_id) {
         
         // Commit transaction
         $conn->commit();
-        invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
+        try { invKick($conn, $restaurant_id); }   // stock, sold-out dishes, low-stock alerts
+        catch (Throwable $e) { error_log('handleHoldOrder invKick: ' . $e->getMessage()); }
         
         echo json_encode([
             'success' => true, 

@@ -8433,7 +8433,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // the customer's reward code and points come off before tax (assets/js/pos-customer.js)
     const pcPrice = window.rgPosCustomer ? window.rgPosCustomer.pricing(subtotal) : null;
     const taxable = Math.max(0, subtotal - (pcPrice ? pcPrice.coupon + pcPrice.pointsDiscount : 0));
-    const tax = showGst ? taxable * ((window.taxPercent || 5) / 100) : 0;
+    const tax = showGst ? taxable * ((window.taxPercent ?? 5) / 100) : 0;
     const total = taxable + tax;
     if (window.rgPosCustomer) window.rgPosCustomer.paintSummary(pcPrice, total);
 
@@ -8536,7 +8536,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
       const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
       const showGst = window.enableGst == 1 || window.enableGst === true;
-      const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
+      const tax = showGst ? subtotal * ((window.taxPercent ?? 5) / 100) : 0;
       const total = subtotal + tax;
       const selectPosTable = document.getElementById("selectPosTable");
       const selectedTable = selectPosTable ? selectPosTable.value : '';
@@ -9066,7 +9066,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="totals">
         <div><span>Subtotal</span><span>${currency}${subtotal.toFixed(2)}</span></div>
         ${(payResult.discounts || []).map(([l, a]) => `<div><span>${escapeHtml(l)}</span><span>-${currency}${a.toFixed(2)}</span></div>`).join('')}
-        ${showGst ? `<div><span>${escapeHtml(window.taxName || 'Tax')} (${window.taxPercent || 5}%)</span><span>${currency}${tax.toFixed(2)}</span></div>` : ''}
+        ${showGst ? `<div><span>${escapeHtml(window.taxName || 'Tax')} (${window.taxPercent ?? 5}%)</span><span>${currency}${tax.toFixed(2)}</span></div>` : ''}
         <div class="grand"><span>Total</span><span>${currency}${total.toFixed(2)}</span></div>
         ${payResult.walletPaid > 0 ? `<div><span>Paid from wallet</span><span>-${currency}${payResult.walletPaid.toFixed(2)}</span></div>` : ''}
       </div>
@@ -9110,7 +9110,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })),
         subtotal: subtotal,
         discounts: payResult.discounts || [],
-        taxLabel: (window.taxName || 'Tax') + ' (' + (window.taxPercent || 5) + '%)',
+        taxLabel: (window.taxName || 'Tax') + ' (' + (window.taxPercent ?? 5) + '%)',
         tax: showGst ? tax : 0,
         total: total,
         afterTotal: afterTotal,
@@ -9141,7 +9141,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // customer picked in the cart: reward code + points off before tax, wallet as part of the payment
     const pcPrice = window.rgPosCustomer ? window.rgPosCustomer.pricing(subtotal) : null;
     const taxable = Math.max(0, subtotal - (pcPrice ? pcPrice.coupon + pcPrice.pointsDiscount : 0));
-    const tax = showGst ? taxable * ((window.taxPercent || 5) / 100) : 0;
+    const tax = showGst ? taxable * ((window.taxPercent ?? 5) / 100) : 0;
     const total = taxable + tax;
     const pcf = window.rgPosCustomer ? window.rgPosCustomer.fields(subtotal, total) : null;
     const walletPart = pcf ? pcf.walletAmount : 0;
@@ -9320,7 +9320,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
-    const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
+    const tax = showGst ? subtotal * ((window.taxPercent ?? 5) / 100) : 0;
     const total = subtotal + tax;
     const selectPosTable = document.getElementById("selectPosTable");
     const selectedTable = selectPosTable ? selectPosTable.value : '';
