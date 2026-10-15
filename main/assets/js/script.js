@@ -9091,7 +9091,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const itemsHtml = cartSnapshot.map((it) => `
       <tr>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;word-break:break-word;overflow-wrap:anywhere;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${it.isCombo && it.summary ? `<div style="font-size:11px;color:#6b7280;word-break:break-word;overflow-wrap:anywhere;">${escapeHtml(it.summary)}</div>` : ""}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;word-break:break-word;overflow-wrap:anywhere;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
         <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:center;">${it.quantity}</td>
         <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:right;">${currency}${window.posLineTotal(it).toFixed(2)}</td>
       </tr>
@@ -9205,7 +9205,7 @@ document.addEventListener("DOMContentLoaded", () => {
         billTo: payResult.customer ? payResult.customer.name : tableLabel,
         items: cartSnapshot.map(it => ({
           name: it.name + (it.variationName ? ' (' + it.variationName + ')' : ''),
-          sub: it.isCombo ? (it.summary || '') : ((it.addons || []).length ? '+ ' + it.addons.map(a => a.name).join(', ') : ''),
+          sub: it.isCombo ? '' : ((it.addons || []).length ? '+ ' + it.addons.map(a => a.name).join(', ') : ''),
           quantity: it.quantity,
           rate: window.posLineTotal(it) / it.quantity,
           amount: window.posLineTotal(it)
@@ -11174,7 +11174,11 @@ window.printOrder = async function(orderId) {
     }
     
     const order = data.order;
-    const items = Array.isArray(order.items) ? order.items : [];
+    // Combos are stored as one priced line ("Family Combo") plus a 0-price line per
+    // dish that makes it up, noted "Combo: <name>". On the bill we show only the combo
+    // name, so drop those ingredient lines (the kitchen ticket still lists them).
+    const items = (Array.isArray(order.items) ? order.items : []).filter(it =>
+      !(/^Combo:\s/i.test(String(it.notes || '')) && !(parseFloat(it.total_price) || 0)));
 
     // Fetch restaurant info with GST settings
     let restaurantInfo = {
@@ -11394,7 +11398,9 @@ window.printOrder = async function(orderId) {
         createdAt: order.created_at,
         billTo: order.customer_name || (order.table_name || order.table_number ? 'Table ' + (order.table_name || order.table_number) + (order.area_name ? ' - ' + order.area_name : '') : (order.order_type || 'Walk-in')),
         items: items.map(it => ({
-          name: (it.item_name || it.name || '') + (it.variation_name ? ' (' + it.variation_name + ')' : ''),
+          // A combo header line carries variation_name 'Combo' (an internal marker);
+          // print just the combo name, not "Family Combo (Combo)".
+          name: (it.item_name || it.name || '') + (it.variation_name && it.variation_name !== 'Combo' ? ' (' + it.variation_name + ')' : ''),
           quantity: it.quantity || 1,
           rate: parseFloat(it.price) || 0,
           amount: parseFloat(it.total_price) || 0
