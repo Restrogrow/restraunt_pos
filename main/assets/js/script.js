@@ -11004,10 +11004,12 @@ window.printKOT = async function(kotId, onClose) {
       </div>
       
       <div class="items-section">
-        <div class="items-header">
-          <span>QTY</span>
-          <span>ITEM</span>
-        </div>
+        <table style="width:100%; border-collapse:collapse;">
+          <tr>
+            <td style="width:40px; text-align:center; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; padding:6px 0 4px; border-bottom:2px solid #111827; color:#111827;">QTY</td>
+            <td style="padding-left:6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; padding-top:6px; border-bottom:2px solid #111827; color:#111827;">ITEM</td>
+          </tr>
+        </table>
         <table>${itemsHtml}</table>
         ${kotOrderAddons(kot) ? `<div style="margin:6px 0; padding:6px 8px; border:1px dashed #b45309; font-size:13px; font-weight:700; color:#b45309;">Add-ons: ${escapeHtml(kotOrderAddons(kot))}</div>` : ''}
       </div>
@@ -11292,17 +11294,15 @@ window.printOrder = async function(orderId) {
         .pay-to .label { color:#6b7280; font-size:9px; }
         .pay-to .name { font-weight:700; font-size:12px; color:#111827; }
         .items-section { margin:8px 0; }
-        .items-header { display:flex; font-size:9px; font-weight:700; text-transform:uppercase; padding:4px 0; border-bottom:2px solid #111827; color:#111827; letter-spacing:0.5px; }
-        .items-header .col-item { flex:1; min-width:0; }
-        .items-header .col-qty-rate { width:11ch; flex-shrink:0; text-align:center; }
-        .items-header .col-disc { width:6ch; flex-shrink:0; text-align:center; }
-        .items-header .col-total { width:8ch; flex-shrink:0; text-align:right; }
-        .item-row { display:flex; font-size:10px; padding:4px 0; border-bottom:1px dashed #d1d5db; }
-        .item-row .col-item { flex:1; min-width:0; overflow-wrap:break-word; }
-        .item-row .col-item .item-name { font-weight:600; font-size:11px; }
-        .item-row .col-qty-rate { width:11ch; flex-shrink:0; text-align:center; font-size:9px; color:#6b7280; }
-        .item-row .col-disc { width:6ch; flex-shrink:0; text-align:center; font-size:9px; color:#6b7280; }
-        .item-row .col-total { width:8ch; flex-shrink:0; text-align:right; font-weight:600; font-size:11px; }
+        .items-tbl { width:100%; border-collapse:collapse; }
+        .items-tbl th { font-size:9px; font-weight:700; text-transform:uppercase; padding:4px 2px; border-bottom:2px solid #111827; color:#111827; letter-spacing:0.5px; white-space:nowrap; }
+        .items-tbl th.col-idx { width:18px; text-align:center; color:#6b7280; }
+        .items-tbl th.col-item { text-align:left; }
+        .items-tbl th.col-qty { width:26px; text-align:center; }
+        .items-tbl th.col-rate { width:55px; text-align:right; }
+        .items-tbl th.col-total { width:60px; text-align:right; }
+        .items-tbl td { vertical-align:top; overflow-wrap:break-word; }
+        .items-tbl tbody tr:last-child td { border-bottom:1px dashed #d1d5db; }
         .sep-line { border:none; border-top:1px dashed #9ca3af; margin:4px 0; }
         .divider { border:none; border-top:2px dashed #9ca3af; margin:8px 0; }
         .totals { margin-top:4px; }
@@ -11341,13 +11341,18 @@ window.printOrder = async function(orderId) {
       <hr class="sep-line">
 
       <div class="items-section">
-        <div class="items-header">
-          <span class="col-item">Items</span>
-          <span class="col-qty-rate">Qty &amp; (Rate)</span>
-          <span class="col-disc">Disc</span>
-          <span class="col-total">Total</span>
-        </div>
-        ${itemsHtml}
+        <table class="items-tbl">
+          <thead>
+            <tr>
+              <th class="col-idx">#</th>
+              <th class="col-item">Items</th>
+              <th class="col-qty">Qty</th>
+              <th class="col-rate">Rate</th>
+              <th class="col-total">Amount</th>
+            </tr>
+          </thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
       </div>
 
       <hr class="sep-line">
