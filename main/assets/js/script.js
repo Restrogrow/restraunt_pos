@@ -9117,8 +9117,9 @@ document.addEventListener("DOMContentLoaded", () => {
         paymentMethod: payResult.paymentMethod,
         notes: billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : []
       });
-      const sent = await window.printDirect(escBuilder, () => showPrintPreview('Bill #' + kotNumber, billHtml));
-      if (sent) return null;
+      // printed, or printDirect's onFail already showed the preview: either way nothing more to show
+      await window.printDirect(escBuilder, () => showPrintPreview('Bill #' + kotNumber, billHtml));
+      return null;
     }
 
     return billHtml;
@@ -10928,11 +10929,12 @@ window.printKOT = async function(kotId, onClose) {
         })),
         notes: kotOrderAddons(kot) ? ['Add-ons: ' + kotOrderAddons(kot)] : []
       });
-      const sent = await window.printDirect(escBuilder, () => showPrintPreview('KOT #' + kot.kot_number, html));
-      if (sent) {
-        if (typeof onClose === 'function') onClose();
-      }
-      return; // printDirect's onFail already showed the preview when sent is false
+      // onFail shows the preview (and the bill after it, via onClose) when the printer isn't reachable
+      let next = typeof onClose === 'function' ? onClose : null;
+      const once = () => { const f = next; next = null; if (f) f(); };
+      const sent = await window.printDirect(escBuilder, () => showPrintPreview('KOT #' + kot.kot_number, html, once));
+      if (sent) once();
+      return;
     }
 
     showPrintPreview('KOT #' + kot.kot_number, html, onClose);

@@ -218,8 +218,11 @@
         }),
         notes: ['Made offline: syncs later']
       });
-      window.printDirect(b, function () { if (window.showPrintPreview) window.showPrintPreview('KOT ' + number, html); })
-        .then(function (sent) { if (sent) { if (then) then(); } else preview(); });
+      // onFail shows the preview (then the bill); a sent KOT goes straight to the bill
+      var next = then;
+      var once = function () { var f = next; next = null; if (f) f(); };
+      then = once;
+      window.printDirect(b, preview).then(function (sent) { if (sent) once(); });
       return;
     }
     preview();
