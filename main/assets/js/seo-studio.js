@@ -2,7 +2,7 @@
  * SEO (sidebar › SEO): health score with one-tap fixes, a title + description per website page with a live
  * Google result and WhatsApp share preview (AI can write them), cuisine / price range / keywords, the share
  * picture, Search Console / Analytics / Meta Pixel IDs, sitemap and what Google reads from the site.
- * Search performance (needs Google Search Console access) shows as Coming soon.
+ * Search performance reads the owner's Google Search Console (Connect Google in the card).
  * Data: api/seo.php (config/seo_helpers.php puts it all in the website's <head>). Styles: seo-* in studio-ui.css.
  */
 (function () {
@@ -23,12 +23,16 @@
   function get() { return fetch(API, { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return { success: false, message: 'No connection. Please try again.' }; }); }
   function post(body) { return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json(); }).catch(function () { return { success: false, message: 'No connection. Please try again.' }; }); }
 
+  var loading = false;    // guards against a second fetch while the first is still running
   window.loadSeo = function () {
     var root = document.getElementById('seoRoot');
     if (!root) return;
     if (dirty && S) return draw();
+    if (loading) return;
+    loading = true;
     if (!S) root.innerHTML = '<div class="cbx-loading"><span></span><span></span><span></span></div>';
     get().then(function (d) {
+      loading = false;
       if (!d.success) { root.innerHTML = '<div class="sx-note warn">' + ic('warning') + '<span>' + esc(d.message || 'Could not load') + '</span></div>'; return; }
       S = d;
       var st = d.settings;
@@ -344,7 +348,7 @@
   });
   document.addEventListener('click', function (e) {
     var t = e.target.closest && e.target.closest('#seoRoot [data-seo-page], #seoRoot [data-seo-ai], #seoRoot [data-seo-default], #seoRoot [data-seo-save], #seoRoot [data-seo-undo], #seoRoot [data-seo-fix], #seoRoot [data-seo-cuisine], #seoRoot [data-seo-price], #seoRoot [data-seo-copy], #seoRoot [data-seo-rmimg], #seoRoot [data-seo-sc], #seoRoot [data-seo-sc-site]');
-    if (!t) { if (e.target.closest && e.target.closest('.nav-link[data-page="seoPage"]')) setTimeout(window.loadSeo, 30); return; }
+    if (!t) return;   // the page loader in script.js (sectionLoaders) opens SEO on every entry, including a refresh
     e.preventDefault();
     if (t.hasAttribute('data-seo-page')) { readInputs(); cur = t.getAttribute('data-seo-page'); draw(); return; }
     if (t.hasAttribute('data-seo-ai')) return aiWrite(t.getAttribute('data-seo-ai'), t);
@@ -414,5 +418,24 @@
     }
   });
   window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
-  document.addEventListener('DOMContentLoaded', function () { if (window.SX && SX.isActive('seoPage')) window.loadSeo(); });
+  // The page loader (script.js › sectionLoaders) opens SEO whenever the page is shown, so a browser
+  // refresh or a button now loads it too. Here we only handle coming back from Google's sign-in.
+  document.addEventListener('DOMContentLoaded', function () {
+    var q = location.search, h = location.hash;
+    var m = q.match(/[?&]seo_sc=([^&]+)/);
+    if (m || h === '#seoPage') setTimeout(function () {
+      var nav = document.querySelector('.nav-link[data-page="seoPage"]');
+      if (nav) nav.click(); else window.loadSeo();   // showPage › sectionLoaders › loadSeo
+    }, 400);
+    if (m) {
+      var r = decodeURIComponent(m[1]);
+      var msg = r === 'connected' ? 'Google connected. Pick your website to see search data.'
+        : r === 'cancelled' ? 'Google sign-in was cancelled.'
+        : r === 'no_refresh' ? 'Google didn’t return permission to read your Search Console. Try connecting again.'
+        : r === 'expired' ? 'That sign-in link expired. Please try again.'
+        : 'Google could not be connected. Please try again.';
+      notify(msg, r === 'connected' ? 'success' : 'error');
+      try { history.replaceState(null, '', location.pathname + (h || '')); } catch (e) {}
+    }
+  });
 })();

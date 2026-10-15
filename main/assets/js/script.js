@@ -1656,6 +1656,7 @@ document.addEventListener("DOMContentLoaded", () => {
         growthReportsPage: ['loadGrowthReports', ['loadClvReport', '']],
         policyPagesPage: ['initPolicyPagesEditor'],
         offersHomePage: ['loadOffersHome'],
+        seoPage: ['loadSeo'],                          // dashboard › SEO (seo-studio.js)
       };
       if (sectionLoaders[pageId]) {
         const pageEl = document.getElementById(pageId);
