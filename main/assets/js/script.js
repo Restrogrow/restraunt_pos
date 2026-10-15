@@ -8441,12 +8441,43 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   };
 
+  // One place where a POS bill's money is worked out, so the cart summary, the
+  // Pay window and the printed bill can never disagree. Every discount — the
+  // cashier's manual discount (assets/js/pos-discount.js), the customer's reward
+  // code and their points (assets/js/pos-customer.js) — comes off the subtotal
+  // BEFORE tax, and the bill can never fall below zero.
+  window.posComputeTotals = function (cart) {
+    cart = Array.isArray(cart) ? cart : (cart ? [].slice.call(cart) : []);
+    const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
+    const showGst = window.enableGst == 1 || window.enableGst === true;
+    const pcPrice = window.rgPosCustomer ? window.rgPosCustomer.pricing(subtotal) : null;
+    const taken = pcPrice ? (pcPrice.coupon + pcPrice.pointsDiscount) : 0;   // customer's reward + points first
+    const manual = window.rgPosDiscount ? window.rgPosDiscount.pricing(subtotal, taken) : null;   // then the cashier's own
+    const taxable = Math.max(0, subtotal - taken - (manual ? manual.amount : 0));
+    const tax = showGst ? taxable * ((window.taxPercent ?? 5) / 100) : 0;
+    const total = taxable + tax;
+    return {
+      subtotal, showGst, pcPrice, manual,
+      coupon: pcPrice ? pcPrice.coupon : 0,
+      couponCode: pcPrice ? pcPrice.couponCode : '',
+      points: pcPrice ? pcPrice.points : 0,
+      pointsDiscount: pcPrice ? pcPrice.pointsDiscount : 0,
+      taken,
+      manualAmount: manual ? manual.amount : 0,
+      manualType: manual ? manual.type : 'amount',
+      manualValue: manual ? manual.value : 0,
+      manualLabel: manual ? manual.label : '',
+      taxable, tax, total
+    };
+  };
+
   // Update POS cart display
   function updatePOSCart() {
     const cartItemsContainer = document.getElementById("posCartItems");
 
     if (posCart.length === 0) {
       if (window.posResetBill) window.posResetBill(); else window._kotSentForCurrentOrder = false;   // an open bill stays in Orders; new dishes start a new one
+      if (window.rgPosDiscount) window.rgPosDiscount.reset();   // a manual discount belongs to one bill
       cartItemsContainer.innerHTML = `
         <div class="empty-cart">
           <span class="material-symbols-rounded">shopping_cart</span>
@@ -8499,14 +8530,12 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Update cart summary
   function updatePOSCartSummary() {
-    const subtotal = posCart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
-    const showGst = window.enableGst == 1 || window.enableGst === true;
-    // the customer's reward code and points come off before tax (assets/js/pos-customer.js)
-    const pcPrice = window.rgPosCustomer ? window.rgPosCustomer.pricing(subtotal) : null;
-    const taxable = Math.max(0, subtotal - (pcPrice ? pcPrice.coupon + pcPrice.pointsDiscount : 0));
-    const tax = showGst ? taxable * ((window.taxPercent ?? 5) / 100) : 0;
-    const total = taxable + tax;
-    if (window.rgPosCustomer) window.rgPosCustomer.paintSummary(pcPrice, total);
+    // the shared money function: manual discount + reward code + points, all before tax
+    const T = window.posComputeTotals(posCart);
+    const subtotal = T.subtotal, showGst = T.showGst, tax = T.tax, total = T.total;
+    // the customer rows go in first, then the manual discount lands directly under the subtotal
+    if (window.rgPosCustomer) window.rgPosCustomer.paintSummary(T.pcPrice, total);
+    if (window.rgPosDiscount) window.rgPosDiscount.paintSummary(subtotal, T.taken);
 
     // Update desktop cart summary
     const cartSubtotalEl = document.getElementById("cartSubtotal");
@@ -8575,6 +8604,7 @@ document.addEventListener("DOMContentLoaded", () => {
         : "Are you sure you want to clear the cart?";
       if (cart.length > 0 && await showSweetConfirm(clearMsg, 'Clear Cart')) {
         if (window.rgPosCustomer) window.rgPosCustomer.reset();
+        if (window.rgPosDiscount) window.rgPosDiscount.reset();
         window.posResetBill();
         // Clear cart - support both local and window.posCart
         if (typeof posCart !== 'undefined') {
@@ -8670,6 +8700,7 @@ document.addEventListener("DOMContentLoaded", () => {
           showMsg(result.message + " - Order #" + result.order_number, "success");
           if (window.refreshHeldCount) window.refreshHeldCount();
           if (window.rgPosCustomer) window.rgPosCustomer.reset();
+          if (window.rgPosDiscount) window.rgPosDiscount.reset();   // a discount is not held with the order
           // Clear cart - support both local and window.posCart
           if (typeof posCart !== 'undefined') {
             posCart = [];
@@ -9207,13 +9238,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
-    const showGst = window.enableGst == 1 || window.enableGst === true;
-    // customer picked in the cart: reward code + points off before tax, wallet as part of the payment
-    const pcPrice = window.rgPosCustomer ? window.rgPosCustomer.pricing(subtotal) : null;
-    const taxable = Math.max(0, subtotal - (pcPrice ? pcPrice.coupon + pcPrice.pointsDiscount : 0));
-    const tax = showGst ? taxable * ((window.taxPercent ?? 5) / 100) : 0;
-    const total = taxable + tax;
+    // the shared money function: subtotal, then manual discount + reward code + points off before tax
+    const T = window.posComputeTotals(cart);
+    const subtotal = T.subtotal, showGst = T.showGst, tax = T.tax, total = T.total;
+    const pcPrice = T.pcPrice;
     const pcf = window.rgPosCustomer ? window.rgPosCustomer.fields(subtotal, total) : null;
     const walletPart = pcf ? pcf.walletAmount : 0;
     const selectPosTable = document.getElementById("selectPosTable");
@@ -9244,6 +9272,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (pcf.couponCode) formData.append('couponCode', pcf.couponCode);
       if (pcf.redeemPoints) formData.append('redeemPoints', pcf.redeemPoints);
       if (walletPart > 0) formData.append('walletAmount', walletPart.toFixed(2));
+    }
+    // the cashier's manual discount, separate from the customer's reward code / points
+    if (T.manualAmount > 0) {
+      formData.append('manualDiscount', T.manualAmount.toFixed(2));
+      formData.append('manualDiscountType', T.manualType);
+      formData.append('manualDiscountValue', String(T.manualValue));
     }
     formData.append('paymentMethod', payResult.paymentMethod);
     formData.append('paymentStatus', payResult.paymentStatus || 'Paid');
@@ -9280,12 +9314,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const cartSnapshot = cart.slice();
         // what the bill shows about the customer, discounts and loyalty
         payResult.discounts = [];
+        if (T.manualAmount > 0) payResult.discounts.push([T.manualLabel, T.manualAmount]);
         if (pcPrice && pcPrice.coupon > 0) payResult.discounts.push(['Reward ' + pcPrice.couponCode, pcPrice.coupon]);
         if (pcPrice && pcPrice.pointsDiscount > 0) payResult.discounts.push([pcPrice.points + ' points', pcPrice.pointsDiscount]);
         payResult.walletPaid = walletPart;
         payResult.customer = pcf ? { name: pcf.customerName, phone: pcf.customerPhone } : null;
         payResult.loyalty = result.loyalty || null;
         if (window.rgPosCustomer) window.rgPosCustomer.afterSale(result.loyalty);
+        if (window.rgPosDiscount) window.rgPosDiscount.reset();   // the discount was for this bill only
 
         // Clear cart - support both local and window.posCart
         if (typeof posCart !== 'undefined') {

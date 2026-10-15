@@ -607,7 +607,15 @@ function handleCreateKOT($conn, $restaurant_id) {
         $loyaltyPoints = $pts;
         $loyaltyDiscount = round($pts * $rate, 2);
     }
-    $taxableAmount = max(0, round($subtotal - $discountAmount - $loyaltyDiscount, 2));
+    // The cashier's manual discount (assets/js/pos-discount.js): taken off BEFORE tax, after the
+    // customer's coupon and points. Unlike a coupon the amount is a staff action, so it is used as
+    // sent — but bounded here so the bill can never go below zero, and it is written into the KOT
+    // notes / activity log so the owner sees who gave what.
+    $manualDiscountType = (($_POST['manualDiscountType'] ?? '') === 'percent') ? 'percent' : 'amount';
+    $manualDiscountValue = max(0, round((float)($_POST['manualDiscountValue'] ?? 0), 2));
+    $manualDiscount = max(0, round((float)($_POST['manualDiscount'] ?? 0), 2));
+    $manualDiscount = min($manualDiscount, max(0, round($subtotal - $discountAmount - $loyaltyDiscount, 2)));
+    $taxableAmount = max(0, round($subtotal - $discountAmount - $loyaltyDiscount - $manualDiscount, 2));
 
     // Server-side tax validation
     $expectedTotal = round($taxableAmount + $tax, 2);
@@ -713,6 +721,7 @@ function handleCreateKOT($conn, $restaurant_id) {
             $kotNotes = !empty($kotNotes) ? ($kotNotes . "\n" . $couponNote) : $couponNote;
         }
         if ($loyaltyPoints > 0) $kotNotes = trim($kotNotes . "\n[Points: " . $loyaltyPoints . " -" . number_format($loyaltyDiscount, 2) . "]");
+        if ($manualDiscount > 0) $kotNotes = trim($kotNotes . "\n[Discount" . ($manualDiscountType === 'percent' ? ' ' . rtrim(rtrim(number_format($manualDiscountValue, 2), '0'), '.') . '%' : '') . ": -" . number_format($manualDiscount, 2) . "]");
         if ($walletPaid > 0) $kotNotes = trim($kotNotes . "\n[Wallet: " . number_format($walletPaid, 2) . "]");
         // order add-ons (not tied to a dish): the kitchen reads them on the ticket's note
         $ticketNotes = $kotNotes;
@@ -829,9 +838,12 @@ function handleCreateKOT($conn, $restaurant_id) {
             $restPaid = round($received - $walletPaid, 2);
             if ($restPaid > 0 || $walletPaid <= 0) $payStmt->execute([$restaurant_id, $orderId, max(0, $restPaid), $cashMethod]);
 
-            if ($discountAmount > 0 || $walletPaid > 0) {
+            // coupon + the cashier's manual discount both land in discount_amount (the
+            // order's discount); coupon_code stays just the coupon so it can still be shown
+            $orderDiscount = round($discountAmount + $manualDiscount, 2);
+            if ($orderDiscount > 0 || $walletPaid > 0) {
                 $conn->prepare('UPDATE orders SET coupon_code = ?, discount_amount = ?, wallet_paid = ? WHERE id = ?')
-                     ->execute([$discountAmount > 0 ? $couponCode : null, $discountAmount, $walletPaid, $orderId]);
+                     ->execute([$discountAmount > 0 ? $couponCode : null, $orderDiscount, $walletPaid, $orderId]);
             }
             if ($posCustomer) {
                 if ($loyaltyPoints > 0) redeemLoyaltyPoints($conn, $restaurant_id, $customerId, $loyaltyPoints, $orderId);
@@ -885,7 +897,8 @@ function handleCreateKOT($conn, $restaurant_id) {
                 : 'Sent to the kitchen. The bill stays open until it is paid.',
             'kot_number' => $kotNumber,
             'kot_id' => $kotId,
-            'discount_amount' => $discountAmount,
+            'discount_amount' => round($discountAmount + $manualDiscount, 2),
+            'manual_discount' => $manualDiscount,
             'loyalty' => $loyaltyOut,
             'order_id' => $orderId,
             'order_number' => $orderNumber,
@@ -895,12 +908,13 @@ function handleCreateKOT($conn, $restaurant_id) {
         require_once __DIR__ . '/../config/bill_numbers.php';
         $resp['bill_no'] = rgBillNo($conn, $restaurant_id, (int)$orderId);
         // owner's activity log: discounts given at the POS, and bills made offline
-        if ($discountAmount > 0 || $loyaltyPoints > 0 || $posRef !== '') try {
+        if ($discountAmount > 0 || $manualDiscount > 0 || $loyaltyPoints > 0 || $posRef !== '') try {
             require_once __DIR__ . '/../config/activity_log.php';
             $bits = [];
             if ($discountAmount > 0) $bits[] = 'reward ' . $couponCode . ' (' . number_format($discountAmount, 2) . ' off)';
+            if ($manualDiscount > 0) $bits[] = 'manual discount ' . ($manualDiscountType === 'percent' ? rtrim(rtrim(number_format($manualDiscountValue, 2), '0'), '.') . '%' : '') . ' (' . number_format($manualDiscount, 2) . ' off)';
             if ($loyaltyPoints > 0) $bits[] = $loyaltyPoints . ' points (' . number_format((float)($loyaltyDiscount ?? 0), 2) . ' off)';
-            if ($bits) logActivity($conn, $restaurant_id, 'pos.discount', 'Bill ' . $orderNumber . ': ' . implode(', ', $bits), array_filter(['coupon' => $couponCode, 'coupon_off' => $discountAmount, 'points' => $loyaltyPoints, 'total' => $total]), 'order', $orderId);
+            if ($bits) logActivity($conn, $restaurant_id, 'pos.discount', 'Bill ' . $orderNumber . ': ' . implode(', ', $bits), array_filter(['coupon' => $couponCode, 'coupon_off' => $discountAmount, 'manual_discount' => $manualDiscount, 'points' => $loyaltyPoints, 'total' => $total]), 'order', $orderId);
             if ($posRef !== '' && !$openOrder) logActivity($conn, $restaurant_id, 'pos.offline', 'Bill ' . $orderNumber . ' made offline' . ($offlineAt ? ' at ' . date('j M, g:i a', strtotime($offlineAt)) : '') . ', synced now', ['total' => $total], 'order', $orderId);
         } catch (Throwable $e) { error_log('handleCreateKOT activity log: ' . $e->getMessage()); }
         if ($posRef !== '') {

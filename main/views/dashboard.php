@@ -7315,6 +7315,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/reservations-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/reservations-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-studio.js'); ?>" defer></script>
   <script src="../assets/js/pos-customer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-customer.js'); ?>" defer></script>
+  <script src="../assets/js/pos-discount.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-discount.js'); ?>" defer></script>
   <script src="../assets/js/pos-addons.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-addons.js'); ?>" defer></script>
   <script src="../assets/js/pos-combos.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-combos.js'); ?>" defer></script>
   <script src="../assets/js/pos-offline.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-offline.js'); ?>" defer></script>
@@ -8588,7 +8589,7 @@ if ('serviceWorker' in navigator) {
   (function(){
     try {
       // Cache-busting version: bump this when sw.js changes
-      var SW_VERSION = 16;   // 16: bill prints Total Items/Quantity aligned under the QTY column and prints combo "×"/"·" (was "?"); 15: Google Business page loads on every open (refresh included) like other sections; 14: the bill/receipt preview starts at the left (no centred blank space); 13: SEO loads on every page open (refresh included) like other sections; 12: Search Console site-picking fix in SEO; 11: KOT preview leads on to the bill again; 10: force cache refresh after POS print preview fix; 9: the dashboard opens offline (POS offline billing)
+      var SW_VERSION = 17;   // 17: POS manual discount (cashier's own % or flat, before tax, on the bill + orders); 16: bill prints Total Items/Quantity aligned under the QTY column and prints combo "×"/"·" (was "?"); 15: Google Business page loads on every open (refresh included) like other sections; 14: the bill/receipt preview starts at the left (no centred blank space); 13: SEO loads on every page open (refresh included) like other sections; 12: Search Console site-picking fix in SEO; 11: KOT preview leads on to the bill again; 10: force cache refresh after POS print preview fix; 9: the dashboard opens offline (POS offline billing)
       var swUrl = '../website/sw.php?v=' + SW_VERSION;
       
       // Calculate proper scope from the service worker URL path

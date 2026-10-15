@@ -118,6 +118,7 @@ applyRestaurantTimezone($timezone, $conn);
     <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
     <script src="../assets/js/direct-printer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/direct-printer.js'); ?>" defer></script>
     <script src="../assets/js/script.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/script.js'); ?>" defer></script>
+    <script src="../assets/js/pos-discount.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-discount.js'); ?>" defer></script>
     <style>
         /* SweetAlert2 defaults to z-index:1060, which can render behind this
            page's own full-screen overlays/modals (up to z-index:10001) -
@@ -1207,10 +1208,13 @@ applyRestaurantTimezone($timezone, $conn);
         
         function updateWaiterPOSCartSummary() {
             if (!window.posCart) return;
-            const subtotal = window.posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-            const showGst = window.enableGst == 1 || window.enableGst === true;
-            const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
-            const total = showGst ? (subtotal + tax) : subtotal;
+            // Use the same money maths as the main POS, so a manual discount / GST line up
+            const T = window.posComputeTotals ? window.posComputeTotals(window.posCart) : null;
+            const subtotal = T ? T.subtotal : window.posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+            const showGst = T ? T.showGst : (window.enableGst == 1 || window.enableGst === true);
+            const tax = T ? T.tax : (showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0);
+            const total = T ? T.total : (showGst ? (subtotal + tax) : subtotal);
+            if (window.rgPosDiscount) window.rgPosDiscount.paintSummary(subtotal, T ? T.taken : 0);
 
             const subtotalEl = document.getElementById('cartSubtotal');
             const taxEl = document.getElementById('cartTax');

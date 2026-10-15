@@ -176,7 +176,7 @@
     var rows = [], n = function (v) { return +v || 0; };
     var sub = n(o.subtotal), tax = n(o.tax), total = n(o.total);
     if (sub) rows.push(['Items', money(sub)]);
-    if (n(o.discount_amount)) rows.push(['Coupon' + (o.coupon_code ? ' ' + o.coupon_code : ''), '−' + money(o.discount_amount)]);
+    if (n(o.discount_amount)) rows.push([(o.coupon_code ? 'Coupon ' + o.coupon_code : 'Discount'), '−' + money(o.discount_amount)]);
     if (n(o.loyalty_discount_amount)) rows.push(['Rewards', '−' + money(o.loyalty_discount_amount)]);
     if (n(o.vip_discount)) rows.push(['VIP discount', '−' + money(o.vip_discount)]);
     if (n(o.delivery_charge)) rows.push(['Delivery', money(o.delivery_charge)]);
