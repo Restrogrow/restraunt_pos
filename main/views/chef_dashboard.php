@@ -725,7 +725,7 @@ $restaurant_id = $_SESSION['restaurant_id'];
                     return;
                 }
 
-                var reg = await navigator.serviceWorker.register('../website/sw.php?v=7', { scope: '../' });
+                var reg = await navigator.serviceWorker.register('../website/sw.php?v=10', { scope: '../' });
                 reg = await navigator.serviceWorker.ready;
                 var sub = await reg.pushManager.getSubscription();
                 if (!sub) {

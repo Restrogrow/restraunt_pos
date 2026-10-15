@@ -8588,7 +8588,7 @@ if ('serviceWorker' in navigator) {
   (function(){
     try {
       // Cache-busting version: bump this when sw.js changes
-      var SW_VERSION = 9;   // 9: the dashboard opens offline (POS offline billing); 8: a notification can open a section
+      var SW_VERSION = 10;   // 10: force cache refresh after POS print preview fix; 9: the dashboard opens offline (POS offline billing)
       var swUrl = '../website/sw.php?v=' + SW_VERSION;
       
       // Calculate proper scope from the service worker URL path
