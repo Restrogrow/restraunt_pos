@@ -187,7 +187,17 @@ function seoScQuery(PDO $conn, string $rid, ?string $siteUrl = null, int $days =
 {
     $row = seoScRow($conn, $rid);
     $site = $siteUrl ?: ($row['site_url'] ?? '');
-    if ($site === '') return ['ok' => false, 'error' => 'Choose your website in Google Search Console first.'];
+    if ($site === '') {
+        // Auto-select if the user has only 1 verified Search Console site
+        $sitesResult = seoScSites($conn, $rid);
+        if ($sitesResult['ok'] && !empty($sitesResult['sites'])) {
+            if (count($sitesResult['sites']) === 1) {
+                $site = $sitesResult['sites'][0]['url'];
+                seoScSave($conn, $rid, ['site_url' => $site]);
+            }
+        }
+    }
+    if ($site === '') return ['ok' => false, 'need_site' => true, 'error' => 'Choose your website in Google Search Console first.'];
     $enc = rawurlencode($site);
     $end = date('Y-m-d', strtotime('-2 days'));
     $start = date('Y-m-d', strtotime('-' . ($days + 1) . ' days'));

@@ -58,7 +58,11 @@ try {
         if ($connected) {
             $m = seoScQuery($conn, $rid);
             if ($m['ok']) { $data['metrics'] = $m; $data['last_error'] = null; }
-            else { $data['metrics'] = null; $data['last_error'] = $m['error']; }
+            else { 
+                $data['metrics'] = null; 
+                $data['need_site'] = !empty($m['need_site']);
+                $data['last_error'] = empty($m['need_site']) ? $m['error'] : null; 
+            }
         }
         scOut($data);
     }
@@ -71,7 +75,7 @@ try {
     if ($action === 'set_site') {
         if (!$connected) scFail('Connect Google first.');
         $site = rtrim(trim((string)($in['site'] ?? '')), '/');
-        if (!preg_match('#^https?://#', $site)) scFail('Choose your website from the list.');
+        if (!preg_match('#^(https?://|sc-domain:)#i', $site)) scFail('Choose your website from the list.');
         $s = seoScSites($conn, $rid);
         if (!$s['ok']) scFail($s['error']);
         $urls = array_column($s['sites'], 'url');

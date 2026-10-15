@@ -222,9 +222,9 @@
     if (d.last_error) {
       return '<div class="sx-note warn">' + ic('warning') + '<span>' + esc(d.last_error) + '</span></div>';
     }
-    if (!d.metrics) {
+    if (!d.metrics || d.need_site) {
       // connected, but no site picked yet
-      return '<p class="seo-sub">Pick the website you want to see search data for.</p><div class="seo-sc-sites" id="seoScSites"><div class="cbx-loading"><span></span><span></span><span></span></div></div>';
+      return '<p class="seo-sub">Pick the website you want to see search data for:</p><div class="seo-sc-sites" id="seoScSites"><div class="cbx-loading"><span></span><span></span><span></span></div></div>';
     }
     var m = d.metrics;
     return scStats(m) +
@@ -240,7 +240,7 @@
       if (!body.isConnected) return;
       if (!d.success) { body.innerHTML = '<div class="sx-note warn">' + ic('warning') + '<span>' + esc(d.message || 'Could not load') + '</span></div>'; return; }
       body.innerHTML = scBody(d);
-      if (d.metrics === null && !d.last_error) loadScSites();
+      if (d.metrics === null || d.need_site) loadScSites();
     });
   }
 
