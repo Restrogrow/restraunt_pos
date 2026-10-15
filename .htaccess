@@ -4,6 +4,15 @@ RewriteEngine On
 # Allow direct access to admin/api scripts (main/ directory)
 RewriteRule ^main/ - [L]
 
+# Restaurant own-domain robots.txt / sitemap.xml (these exist as files for restrogrow.com itself)
+RewriteCond %{HTTP_HOST} !^localhost(:\d+)?$ [NC]
+RewriteCond %{HTTP_HOST} !^127\.0\.0\.1(:\d+)?$ [NC]
+RewriteCond %{HTTP_HOST} !^restrogrow\.com$ [NC]
+RewriteCond %{HTTP_HOST} !^www\.restrogrow\.com$ [NC]
+RewriteCond %{HTTP_HOST} !hstgr\.io$ [NC]
+RewriteCond %{HTTP_HOST} !\.ngrok-free\.(app|dev)$ [NC]
+RewriteRule ^(robots\.txt|sitemap\.xml)$ main/website/custom-domain.php [L]
+
 # Custom domain handling — route non-main-domain requests to front controller
 RewriteCond %{HTTP_HOST} !^localhost(:\d+)?$ [NC]
 RewriteCond %{HTTP_HOST} !^127\.0\.0\.1(:\d+)?$ [NC]
@@ -33,6 +42,10 @@ RewriteRule ^faq/?$ faq/index.html [L]
 RewriteRule ^privacy-policy/?$ privacy-policy/index.html [L]
 RewriteRule ^terms-of-service/?$ terms-of-service/index.html [L]
 RewriteRule ^cookie-policy/?$ cookie-policy/index.html [L]
+
+# SEO sitemaps (main/website/sitemap.php)
+RewriteRule ^sitemap-restaurants\.xml$ main/website/sitemap.php?index=1 [L]
+RewriteRule ^([a-z0-9-]+)/sitemap\.xml$ main/website/sitemap.php?restaurant=$1 [L,QSA]
 
 # Restaurant short URLs (e.g., /restaurant-name)
 RewriteCond %{REQUEST_FILENAME} !-f

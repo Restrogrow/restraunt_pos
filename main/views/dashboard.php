@@ -1181,6 +1181,13 @@ try {
           </a>
           <span class="nav-tooltip">Google Business</span>
         </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="seoPage">
+            <span class="nav-icon material-symbols-rounded">search</span>
+            <span class="nav-label">SEO <span class="badge-new">New</span></span>
+          </a>
+          <span class="nav-tooltip">SEO</span>
+        </li>
         <li class="nav-item has-submenu">
           <a href="#" class="nav-link submenu-toggle">
             <span class="nav-icon material-symbols-rounded">campaign</span>
@@ -4377,6 +4384,18 @@ function toggleGatewayMode() {
       </div>
     </div>
 
+    <!-- SEO: titles, descriptions, share picture, tracking IDs and health score for the customer website
+         (assets/js/seo-studio.js, api/seo.php, config/seo_helpers.php, website/sitemap.php) -->
+    <div id="seoPage" class="page sx">
+      <div class="page-header">
+        <h1>SEO</h1>
+        <p>Get found on Google: how your website shows in search results and when it’s shared.</p>
+      </div>
+      <div class="page-content">
+        <div id="seoRoot"></div>
+      </div>
+    </div>
+
     <!-- Deals Page -->
     <!-- Offers › Combos & Deals: real combos at one price (assets/js/combos-studio.js, api/combos_admin.php);
          the Menu page's old "Combos" / "New" category filters stay below (offers-studio.js) -->
@@ -7285,6 +7304,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/offers-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offers-studio.js'); ?>" defer></script>
   <script src="../assets/js/combos-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/combos-studio.js'); ?>" defer></script>
   <script src="../assets/js/gbp-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/gbp-studio.js'); ?>" defer></script>
+  <script src="../assets/js/seo-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/seo-studio.js'); ?>" defer></script>
   <script src="../assets/js/staff-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/staff-studio.js'); ?>" defer></script>
   <script src="../assets/js/payments-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/payments-studio.js'); ?>" defer></script>
   <script src="../assets/js/waiter-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/waiter-studio.js'); ?>" defer></script>

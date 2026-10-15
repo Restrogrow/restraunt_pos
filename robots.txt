@@ -8,6 +8,15 @@ Disallow: /main/controllers/
 Disallow: /main/config/
 Disallow: /main/database/
 Disallow: /main/uploads/
+# restaurant photos stay findable in Google Images (other uploads stay blocked)
+Allow: /main/uploads/menu_items/
+Allow: /main/uploads/logos/
+Allow: /main/uploads/banners/
+Allow: /main/uploads/seo/
+Disallow: /*/cart$
+Disallow: /*/profile$
+Disallow: /*/login$
+Disallow: /*/reset-password$
 Disallow: /main/views/
 Disallow: /main/docs/
 Disallow: /*.php$
@@ -18,4 +27,5 @@ Allow: /assets/
 
 # Sitemap
 Sitemap: https://restrogrow.com/sitemap.xml
+Sitemap: https://restrogrow.com/sitemap-restaurants.xml
 

@@ -49,6 +49,15 @@ if ($customDomainRow) {
     $parsedUrl = parse_url($_SERVER['REQUEST_URI']);
     $path = isset($parsedUrl['path']) ? trim($parsedUrl['path'], '/') : '';
 
+    // the restaurant's own sitemap and robots.txt (dashboard › SEO)
+    if (preg_match('#(^|/)sitemap\.xml$#', $path)) { include __DIR__ . '/sitemap.php'; exit; }
+    if (preg_match('#(^|/)robots\.txt$#', $path)) {
+        header('Content-Type: text/plain; charset=UTF-8');
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        echo "User-agent: *\nAllow: /\nDisallow: /cart\nDisallow: /profile\nDisallow: /login\nDisallow: /reset-password\nDisallow: /track\nDisallow: /main/api/\n\nSitemap: " . $scheme . '://' . $_SERVER['HTTP_HOST'] . "/sitemap.xml\n";
+        exit;
+    }
+
     $staticExts = ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'ico', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'webp', 'pdf', 'zip', 'mp4', 'webm', 'json'];
     if (in_array(pathinfo($path, PATHINFO_EXTENSION), $staticExts)) return false;
 

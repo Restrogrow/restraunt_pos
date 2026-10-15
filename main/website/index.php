@@ -76,7 +76,9 @@ if (isset($_GET['table']) && trim($_GET['table']) !== '') {
 <link rel="manifest" href="manifest.php<?php echo $restaurant_id ? '?restaurant_id=' . urlencode($restaurant_id) : ''; ?>">
 <link rel="apple-touch-icon" href="<?php echo htmlspecialchars($restaurant_logo ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>">
 <link rel="icon" href="<?php echo htmlspecialchars($favicon_href ?? $local_favicon_svg, ENT_QUOTES, 'UTF-8'); ?>">
-<title><?php echo htmlspecialchars($restaurant_name ?? 'Dvani Cafe & Grill', ENT_QUOTES, 'UTF-8'); ?></title>
+<?php require_once __DIR__ . '/../config/seo_helpers.php'; ?>
+<title><?php echo htmlspecialchars(seoTitle('home', (string)($restaurant_name ?? '')), ENT_QUOTES, 'UTF-8'); ?></title>
+<?php echo seoHeadTags('home'); ?>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <?php
 // Fonts and icons are served from our own server (see font_links.php): they
