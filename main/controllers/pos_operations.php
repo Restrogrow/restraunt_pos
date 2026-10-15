@@ -365,7 +365,44 @@ function posEnsureBillColumns($conn): void {
     static $done = false;
     if ($done || $conn->inTransaction()) return;
     $done = true;
+    // the add-on tables (admin/run_addons_migration.php, never run on some databases)
+    $tables = [
+        'meal_addons' => "CREATE TABLE IF NOT EXISTS meal_addons (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            restaurant_id VARCHAR(50) NOT NULL,
+            addon_name VARCHAR(255) NOT NULL,
+            addon_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+            addon_image VARCHAR(500) DEFAULT NULL,
+            image_data LONGBLOB DEFAULT NULL,
+            image_mime_type VARCHAR(50) DEFAULT NULL,
+            is_available TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_addon_restaurant (restaurant_id),
+            INDEX idx_addon_available (restaurant_id, is_available)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        'order_item_addons' => "CREATE TABLE IF NOT EXISTS order_item_addons (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_item_id INT NOT NULL,
+            addon_id INT DEFAULT NULL,
+            addon_name VARCHAR(255) NOT NULL,
+            addon_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+            quantity INT NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_order_item (order_item_id)%FK%
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    ];
+    foreach ($tables as $table => $sql) {
+        try {
+            if ($conn->query("SHOW TABLES LIKE '$table'")->fetch()) continue;
+            try { $conn->exec(str_replace('%FK%', ",
+            FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE", $sql)); }
+            catch (Throwable $e) { $conn->exec(str_replace('%FK%', '', $sql)); }   // without the foreign key if order_items can't take one
+            error_log("posEnsureBillColumns: created $table");
+        } catch (Throwable $e) { error_log("posEnsureBillColumns $table: " . $e->getMessage()); }
+    }
     $cols = [
+        ['order_items', 'addons', 'TEXT DEFAULT NULL'],
         ['kot_items', 'addons', 'TEXT DEFAULT NULL'],
         ['kot', 'order_id', 'INT(11) DEFAULT NULL'],
         ['order_items', 'variation_name', 'VARCHAR(100) DEFAULT NULL'],
