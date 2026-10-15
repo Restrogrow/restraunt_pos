@@ -847,50 +847,104 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet">
     <script src="script.js?v=3.0"></script>
 
-    <!-- AI Chatbot Floating Widget -->
+    <!-- RestroGrow help widget -->
     <div id="ai-chatbot-widget">
-      <button id="ai-chatbot-fab" aria-label="Chat with us">
-        <span class="ai-chatbot-fab-icon material-symbols-rounded">smart_toy</span>
-        <span class="ai-chatbot-fab-close material-symbols-rounded" style="display:none">close</span>
+      <section id="ai-chatbot-panel" role="dialog" aria-labelledby="ai-chatbot-heading" aria-modal="false" hidden>
+        <header class="ai-chatbot-header">
+          <div class="ai-chatbot-avatar" aria-hidden="true"><span class="material-symbols-rounded">support_agent</span></div>
+          <div class="ai-chatbot-heading-wrap">
+            <h2 class="ai-chatbot-title" id="ai-chatbot-heading">RestroGrow help</h2>
+            <span class="ai-chatbot-status" id="ai-chatbot-status">A helpful guide to RestroGrow</span>
+          </div>
+          <button class="ai-chatbot-minimize" type="button" aria-label="Close chat"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+        </header>
+        <div id="ai-chatbot-messages" class="ai-chatbot-messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
+        <div id="ai-chatbot-capture">
+          <p class="ai-chatbot-capture-intro">Tell us a little about your restaurant so our team can follow up. Your information is only used to respond to your enquiry.</p>
+          <form id="ai-chatbot-capture-form">
+            <label for="ai-chatbot-name">Your name</label>
+            <input id="ai-chatbot-name" name="name" type="text" autocomplete="name" maxlength="120" required>
+            <label for="ai-chatbot-restaurant">Restaurant name</label>
+            <input id="ai-chatbot-restaurant" name="restaurant_name" type="text" autocomplete="organization" maxlength="160" required>
+            <div class="ai-chatbot-capture-grid">
+              <div><label for="ai-chatbot-email">Email address</label><input id="ai-chatbot-email" name="email" type="email" autocomplete="email" maxlength="254" required></div>
+              <div><label for="ai-chatbot-phone">Phone number</label><input id="ai-chatbot-phone" name="phone" type="tel" autocomplete="tel" maxlength="30" required></div>
+            </div>
+            <label class="ai-chatbot-consent"><input id="ai-chatbot-consent" type="checkbox" required><span>I agree that RestroGrow may contact me about my enquiry. See our <a href="privacy-policy/" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+            <p id="ai-chatbot-capture-error" role="alert" hidden></p>
+            <button id="ai-chatbot-start" type="submit">Start chatting <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></button>
+          </form>
+        </div>
+        <form class="ai-chatbot-input-row" id="ai-chatbot-form" hidden>
+          <label class="ai-chatbot-sr-only" for="ai-chatbot-input">Type your question</label>
+          <input type="text" id="ai-chatbot-input" placeholder="Ask about RestroGrow..." autocomplete="off" maxlength="500">
+          <button id="ai-chatbot-send" type="submit" aria-label="Send message"><span class="material-symbols-rounded" aria-hidden="true">arrow_upward</span></button>
+        </form>
+        <p class="ai-chatbot-footnote" id="ai-chatbot-footnote">Share your details to start a conversation</p>
+      </section>
+      <button id="ai-chatbot-fab" type="button" aria-label="Open RestroGrow help" aria-controls="ai-chatbot-panel" aria-expanded="false">
+        <span class="ai-chatbot-fab-icon material-symbols-rounded" aria-hidden="true">chat</span>
+        <span class="ai-chatbot-fab-close material-symbols-rounded" aria-hidden="true">close</span>
       </button>
-      <div id="ai-chatbot-panel" style="display:none">
-        <div class="ai-chatbot-header">
-          <div class="ai-chatbot-avatar"><span class="material-symbols-rounded">smart_toy</span></div>
-          <div class="ai-chatbot-title">AI Assistant</div>
-          <button class="ai-chatbot-minimize" aria-label="Minimize">&minus;</button>
-        </div>
-        <div id="ai-chatbot-messages" class="ai-chatbot-messages"></div>
-        <div class="ai-chatbot-input-row">
-          <input type="text" id="ai-chatbot-input" placeholder="Ask me anything..." autocomplete="off">
-          <button id="ai-chatbot-send" aria-label="Send">&#x27A4;</button>
-        </div>
-      </div>
     </div>
     <style>
-    #ai-chatbot-widget { position: fixed; bottom: 24px; right: 24px; z-index: 99999; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    #ai-chatbot-fab { width: 56px; height: 56px; border-radius: 50%; border: none; background: #059669; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(5,150,105,0.4); transition: transform 0.2s, box-shadow 0.2s; }
-    #ai-chatbot-fab:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(5,150,105,0.5); }
-    #ai-chatbot-fab .material-symbols-rounded { font-size: 28px; }
-    .ai-chatbot-fab-close { font-size: 22px; }
-    #ai-chatbot-panel { position: absolute; bottom: 70px; right: 0; width: 340px; max-width: calc(100vw - 48px); height: 440px; max-height: calc(100vh - 120px); background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
-    .ai-chatbot-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #059669; color: #fff; }
-    .ai-chatbot-avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .ai-chatbot-title { flex: 1; font-weight: 600; font-size: 14px; }
-    .ai-chatbot-minimize { width: 28px; height: 28px; border: none; border-radius: 6px; background: rgba(255,255,255,0.2); color: #fff; font-size: 16px; cursor: pointer; }
-    .ai-chatbot-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-    .ai-chatbot-msg { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; }
-    .ai-chatbot-msg.bot { background: #f3f4f6; color: #1f2937; align-self: flex-start; border-bottom-left-radius: 4px; }
-    .ai-chatbot-msg.user { background: #059669; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
-    .ai-chatbot-msg.typing { display: flex; gap: 4px; padding: 12px; }
-    .ai-chatbot-msg.typing span { width: 6px; height: 6px; border-radius: 50%; background: #9ca3af; animation: ai-chatbot-bounce 1.4s infinite ease-in-out; }
-    .ai-chatbot-msg.typing span:nth-child(2) { animation-delay: 0.2s; }
-    .ai-chatbot-msg.typing span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes ai-chatbot-bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-    .ai-chatbot-input-row { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #e5e7eb; }
-    #ai-chatbot-input { flex: 1; padding: 8px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 13px; outline: none; }
-    #ai-chatbot-input:focus { border-color: #059669; }
-    #ai-chatbot-send { width: 40px; height: 40px; border: none; border-radius: 8px; background: #059669; color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    @media (max-width: 480px) { #ai-chatbot-widget { bottom: 16px; right: 16px; } #ai-chatbot-panel { width: calc(100vw - 32px); right: -8px; } }
+    #ai-chatbot-widget { --chat-accent: #b94318; --chat-accent-dark: #963514; --chat-ink: #241d16; --chat-muted: #766b60; --chat-line: #eadfce; position: fixed; right: 24px; bottom: 24px; z-index: 99999; font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #ai-chatbot-fab { width: 60px; height: 60px; border: 0; border-radius: 50%; background: var(--chat-accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(119, 48, 18, .3); transition: transform .2s ease, background .2s ease, box-shadow .2s ease; }
+    #ai-chatbot-fab:hover { transform: translateY(-3px); background: var(--chat-accent-dark); box-shadow: 0 12px 28px rgba(119, 48, 18, .36); }
+    #ai-chatbot-fab .material-symbols-rounded { font-size: 27px; }
+    .ai-chatbot-fab-close { display: none; }
+    #ai-chatbot-fab[aria-expanded="true"] .ai-chatbot-fab-icon { display: none; }
+    #ai-chatbot-fab[aria-expanded="true"] .ai-chatbot-fab-close { display: block; }
+    #ai-chatbot-panel { position: absolute; right: 0; bottom: 76px; width: 380px; height: min(540px, calc(100dvh - 120px)); min-height: 380px; max-width: calc(100vw - 32px); background: #fffdf9; border: 1px solid rgba(36, 29, 22, .1); border-radius: 18px; box-shadow: 0 20px 60px rgba(36, 29, 22, .2); display: flex; flex-direction: column; overflow: hidden; transform-origin: bottom right; animation: ai-chatbot-open .18s ease-out; }
+    #ai-chatbot-panel[hidden] { display: none; }
+    @keyframes ai-chatbot-open { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .ai-chatbot-header { display: flex; align-items: center; gap: 11px; padding: 16px 17px; color: #fff; background: linear-gradient(120deg, #9e3815, #c45121); }
+    .ai-chatbot-avatar { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 12px; background: rgba(255,255,255,.16); display: grid; place-items: center; }
+    .ai-chatbot-avatar .material-symbols-rounded { font-size: 23px; }
+    .ai-chatbot-heading-wrap { flex: 1; min-width: 0; }
+    .ai-chatbot-title { margin: 0; color: inherit; font-size: 14px; line-height: 1.4; font-weight: 700; }
+    .ai-chatbot-status { display: block; margin-top: 2px; color: rgba(255,255,255,.8); font-size: 11px; }
+    .ai-chatbot-minimize { width: 34px; height: 34px; border: 0; border-radius: 9px; background: rgba(255,255,255,.14); color: #fff; cursor: pointer; display: grid; place-items: center; }
+    .ai-chatbot-minimize:hover { background: rgba(255,255,255,.25); }
+    .ai-chatbot-minimize .material-symbols-rounded { font-size: 20px; }
+    .ai-chatbot-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 15px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; overscroll-behavior: contain; }
+    .ai-chatbot-messages:empty { display: none; }
+    .ai-chatbot-msg { max-width: 88%; padding: 11px 13px; border-radius: 14px; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+    .ai-chatbot-msg.bot { color: var(--chat-ink); background: #f4eee5; border: 1px solid #eee5d9; border-bottom-left-radius: 5px; }
+    .ai-chatbot-msg.user { align-self: flex-end; color: #fff; background: var(--chat-accent); border-bottom-right-radius: 5px; }
+    #ai-chatbot-capture { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-start; padding: 15px; }
+    #ai-chatbot-capture[hidden] { display: none; }
+    .ai-chatbot-capture-intro { margin: 0 0 10px; color: var(--chat-muted); font-size: 11px; line-height: 1.45; }
+    #ai-chatbot-capture-form { display: grid; grid-template-columns: 1fr; gap: 5px; }
+    #ai-chatbot-capture-form > label:not(.ai-chatbot-consent), .ai-chatbot-capture-grid label { color: var(--chat-ink); font-size: 10px; font-weight: 700; }
+    #ai-chatbot-capture-form input:not([type="checkbox"]) { width: 100%; min-width: 0; height: 35px; padding: 0 10px; border: 1px solid #e4d9ca; border-radius: 8px; color: var(--chat-ink); background: #fff; font: inherit; font-size: 12px; outline: none; }
+    #ai-chatbot-capture-form input:focus { border-color: var(--chat-accent); box-shadow: 0 0 0 2px rgba(185,67,24,.1); }
+    .ai-chatbot-capture-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ai-chatbot-capture-grid > div { display: grid; gap: 5px; min-width: 0; }
+    .ai-chatbot-consent { display: flex; align-items: flex-start; gap: 7px; margin: 5px 0; color: var(--chat-muted); font-size: 10px; line-height: 1.4; }
+    .ai-chatbot-consent input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--chat-accent); }
+    .ai-chatbot-consent a { color: var(--chat-accent-dark); }
+    #ai-chatbot-capture-error { margin: 0; color: #a32916; font-size: 11px; }
+    #ai-chatbot-capture-error[hidden] { display: none; }
+    #ai-chatbot-start { min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 10px; background: var(--chat-accent); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+    #ai-chatbot-start:hover { background: var(--chat-accent-dark); }
+    #ai-chatbot-start:disabled { opacity: .65; cursor: wait; }
+    .ai-chatbot-suggestions { display: flex; flex-wrap: wrap; gap: 7px; max-width: 100%; margin: 1px 0 4px; }
+    .ai-chatbot-suggestion { padding: 8px 10px; border: 1px solid #e6cbb9; border-radius: 999px; color: var(--chat-accent-dark); background: #fffaf4; font: inherit; font-size: 11px; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+    .ai-chatbot-suggestion:hover { background: #f8e9dc; border-color: #d9aa8c; }
+    .ai-chatbot-input-row { display: flex; gap: 9px; padding: 12px 13px 8px; border-top: 1px solid var(--chat-line); background: #fffdf9; }
+    .ai-chatbot-input-row[hidden] { display: none; }
+    #ai-chatbot-input { flex: 1; min-width: 0; height: 44px; padding: 0 13px; border: 1px solid #e4d9ca; border-radius: 11px; color: var(--chat-ink); background: #fff; font: inherit; font-size: 13px; outline: none; transition: border-color .15s ease, box-shadow .15s ease; }
+    #ai-chatbot-input::placeholder { color: #958a7d; }
+    #ai-chatbot-input:focus { border-color: var(--chat-accent); box-shadow: 0 0 0 3px rgba(185,67,24,.12); }
+    #ai-chatbot-send { width: 44px; height: 44px; flex: 0 0 44px; border: 0; border-radius: 11px; color: #fff; background: var(--chat-accent); cursor: pointer; display: grid; place-items: center; transition: background .15s ease, transform .15s ease; }
+    #ai-chatbot-send:hover { background: var(--chat-accent-dark); transform: translateY(-1px); }
+    #ai-chatbot-send .material-symbols-rounded { font-size: 21px; }
+    .ai-chatbot-footnote { margin: 0; padding: 0 14px 11px; color: var(--chat-muted); background: #fffdf9; font-size: 10px; text-align: center; }
+    .ai-chatbot-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    #ai-chatbot-widget button:focus-visible { outline: 3px solid #e8a47d; outline-offset: 3px; }
+    @media (max-width: 480px) { #ai-chatbot-widget { right: 16px; bottom: 16px; } #ai-chatbot-panel { right: 0; bottom: 72px; width: min(380px, calc(100vw - 32px)); height: min(620px, calc(100dvh - 104px)); min-height: 320px; border-radius: 16px; } #ai-chatbot-fab { width: 56px; height: 56px; } }
+    @media (prefers-reduced-motion: reduce) { #ai-chatbot-panel, #ai-chatbot-fab, #ai-chatbot-send, .ai-chatbot-suggestion { animation: none; transition: none; } }
     </style>
     <script>
     (function() {
@@ -898,65 +952,156 @@
       var panel = document.getElementById('ai-chatbot-panel');
       var messages = document.getElementById('ai-chatbot-messages');
       var input = document.getElementById('ai-chatbot-input');
-      var send = document.getElementById('ai-chatbot-send');
-      var fabIcon = fab.querySelector('.ai-chatbot-fab-icon');
-      var fabClose = fab.querySelector('.ai-chatbot-fab-close');
-      var isOpen = false;
+      var form = document.getElementById('ai-chatbot-form');
+      var capture = document.getElementById('ai-chatbot-capture');
+      var captureForm = document.getElementById('ai-chatbot-capture-form');
+      var captureError = document.getElementById('ai-chatbot-capture-error');
+      var startButton = document.getElementById('ai-chatbot-start');
+      var sendButton = document.getElementById('ai-chatbot-send');
+      var status = document.getElementById('ai-chatbot-status');
+      var footnote = document.getElementById('ai-chatbot-footnote');
+      var storageKey = 'restrogrow_chat_session';
+      var token = '';
+      try { token = sessionStorage.getItem(storageKey) || ''; } catch (e) {}
 
-      fab.addEventListener('click', function() {
-        isOpen = !isOpen;
-        panel.style.display = isOpen ? 'flex' : 'none';
-        fabIcon.style.display = isOpen ? 'none' : '';
-        fabClose.style.display = isOpen ? '' : 'none';
-        if (isOpen && !messages.children.length) {
-          addBotMessage('Hi! I\'m your AI assistant. How can I help you today?');
-          input.focus();
-        }
-      });
-
-      document.querySelector('.ai-chatbot-minimize').addEventListener('click', function() {
-        isOpen = false;
-        panel.style.display = 'none';
-        fabIcon.style.display = '';
-        fabClose.style.display = 'none';
-      });
-
-      function addBotMessage(text) {
+      function addMessage(text, sender) {
         var div = document.createElement('div');
-        div.className = 'ai-chatbot-msg bot';
+        div.className = 'ai-chatbot-msg ' + sender;
         div.textContent = text;
-        messages.appendChild(div);
-        messages.scrollTop = messages.scrollHeight;
-      }
-
-      function showTyping() {
-        var div = document.createElement('div');
-        div.className = 'ai-chatbot-msg bot typing';
-        div.innerHTML = '<span></span><span></span><span></span>';
         messages.appendChild(div);
         messages.scrollTop = messages.scrollHeight;
         return div;
       }
 
-      function sendMessage() {
-        var text = input.value.trim();
-        if (!text) return;
-        var userDiv = document.createElement('div');
-        userDiv.className = 'ai-chatbot-msg user';
-        userDiv.textContent = text;
-        messages.appendChild(userDiv);
-        input.value = '';
-        messages.scrollTop = messages.scrollHeight;
-        var typing = showTyping();
-        // Simple bot response - replace with real AI API later
-        setTimeout(function() {
-          typing.remove();
-          addBotMessage('Thanks for your message! I\'m a simple demo bot. I can help with menu info, hours, orders, and more. What would you like to know?');
-        }, 1000 + Math.random() * 500);
+      function request(action, data) {
+        return fetch('main/api/chatbot.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.assign({ action: action }, data || {}))
+        }).then(function(response) {
+          return response.json().catch(function() { throw new Error('Unexpected reply from the server.'); }).then(function(result) {
+            if (!response.ok || !result.success) throw new Error(result.message || 'The request could not be completed.');
+            return result;
+          });
+        });
       }
 
-      send.addEventListener('click', sendMessage);
-      input.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
+      function showCapture() {
+        capture.hidden = false;
+        form.hidden = true;
+        status.textContent = 'Start with your contact details';
+        footnote.textContent = 'Your details are stored so our team can follow up';
+      }
+
+      function showChatInput() {
+        capture.hidden = true;
+        form.hidden = false;
+        status.textContent = 'Ask us anything about RestroGrow';
+        footnote.textContent = 'AI answers by Google Gemini · Your conversation is saved';
+      }
+
+      function resumeChat() {
+        messages.replaceChildren();
+        capture.hidden = true;
+        form.hidden = true;
+        status.textContent = 'Loading your conversation…';
+        request('resume', { token: token }).then(function(result) {
+          result.messages.forEach(function(item) {
+            addMessage(item.message, item.sender === 'visitor' ? 'user' : 'bot');
+          });
+          showChatInput();
+          input.focus();
+        }).catch(function() {
+          token = '';
+          try { sessionStorage.removeItem(storageKey); } catch (e) {}
+          messages.replaceChildren();
+          showCapture();
+        });
+      }
+
+      function startConversation(event) {
+        event.preventDefault();
+        captureError.hidden = true;
+        captureError.textContent = '';
+        startButton.disabled = true;
+        startButton.textContent = 'Starting…';
+        var data = new FormData(captureForm);
+        request('start', {
+          name: data.get('name'),
+          restaurant_name: data.get('restaurant_name'),
+          email: data.get('email'),
+          phone: data.get('phone'),
+          consent: document.getElementById('ai-chatbot-consent').checked
+        }).then(function(result) {
+          token = result.token;
+          try { sessionStorage.setItem(storageKey, token); } catch (e) {}
+          showChatInput();
+          addMessage(result.reply, 'bot');
+          input.focus();
+        }).catch(function(error) {
+          captureError.textContent = error.message;
+          captureError.hidden = false;
+        }).finally(function() {
+          startButton.disabled = false;
+          startButton.innerHTML = 'Start chatting <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span>';
+        });
+      }
+
+      function sendMessage(event) {
+        event.preventDefault();
+        var text = input.value.trim();
+        if (!text || !token || sendButton.disabled) return;
+        addMessage(text, 'user');
+        input.value = '';
+        input.disabled = true;
+        sendButton.disabled = true;
+        status.textContent = 'RestroGrow is thinking…';
+        request('message', { token: token, message: text }).then(function(result) {
+          addMessage(result.reply, 'bot');
+          status.textContent = 'Ask us anything about RestroGrow';
+        }).catch(function(error) {
+          addMessage(error.message, 'bot');
+          status.textContent = 'We’re here to help';
+          if (error.message.indexOf('Chat session') === 0) {
+            token = '';
+            try { sessionStorage.removeItem(storageKey); } catch (e) {}
+            showCapture();
+          }
+        }).finally(function() {
+          input.disabled = false;
+          sendButton.disabled = false;
+          if (!form.hidden) input.focus();
+        });
+      }
+
+      function openChat() {
+        panel.hidden = false;
+        fab.setAttribute('aria-expanded', 'true');
+        fab.setAttribute('aria-label', 'Close RestroGrow help');
+        if (token) {
+          resumeChat();
+        } else {
+          showCapture();
+        }
+      }
+
+      function closeChat() {
+        panel.hidden = true;
+        fab.setAttribute('aria-expanded', 'false');
+        fab.setAttribute('aria-label', 'Open RestroGrow help');
+        fab.focus();
+      }
+
+      fab.addEventListener('click', function() {
+        if (panel.hidden) openChat();
+        else closeChat();
+      });
+      panel.querySelector('.ai-chatbot-minimize').addEventListener('click', closeChat);
+      captureForm.addEventListener('submit', startConversation);
+      form.addEventListener('submit', sendMessage);
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && !panel.hidden) closeChat();
+      });
     })();
     </script>
 </body>

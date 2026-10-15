@@ -189,6 +189,64 @@ try {
         $counts = $conn->query("SELECT stage, COUNT(*) n FROM contact_queries GROUP BY stage")->fetchAll(PDO::FETCH_KEY_PAIR);
         out(['rows' => $st->fetchAll(PDO::FETCH_ASSOC), 'counts' => $counts]);
 
+    /* ───────── chatbot leads ───────── */
+    case 'chatLeads':
+        require_once __DIR__ . '/../config/chatbot_store.php';
+        rgEnsureChatbotTables($conn);
+        $q = trim((string)($_GET['q'] ?? ''));
+        $status = (string)($_GET['status'] ?? 'all');
+        $allowedStatuses = ['new', 'contacted', 'qualified', 'closed'];
+        $where = [];
+        $params = [];
+        if ($q !== '') {
+            $where[] = '(l.name LIKE ? OR l.restaurant_name LIKE ? OR l.email LIKE ? OR l.phone LIKE ?)';
+            $like = '%' . $q . '%';
+            array_push($params, $like, $like, $like, $like);
+        }
+        if ($status !== 'all' && in_array($status, $allowedStatuses, true)) {
+            $where[] = 'l.status = ?';
+            $params[] = $status;
+        }
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+        $stmt = $conn->prepare("SELECT l.id, l.name, l.restaurant_name, l.email, l.phone, l.status, l.created_at, l.updated_at,
+                (SELECT COUNT(*) FROM chatbot_messages m WHERE m.lead_id = l.id) AS message_count,
+                (SELECT m.message FROM chatbot_messages m WHERE m.lead_id = l.id ORDER BY m.id DESC LIMIT 1) AS last_message
+            FROM chatbot_leads l $whereSql ORDER BY l.updated_at DESC, l.id DESC LIMIT 300");
+        $stmt->execute($params);
+        $counts = $conn->query("SELECT status, COUNT(*) AS n FROM chatbot_leads GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
+        out(['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'counts' => $counts]);
+
+    case 'chatConversation':
+        require_once __DIR__ . '/../config/chatbot_store.php';
+        rgEnsureChatbotTables($conn);
+        $id = (int)($_GET['id'] ?? 0);
+        $stmt = $conn->prepare('SELECT id, name, restaurant_name, email, phone, status, consent_at, created_at, updated_at FROM chatbot_leads WHERE id = ?');
+        $stmt->execute([$id]);
+        $lead = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$lead) throw new Exception('Chat lead not found');
+        $stmt = $conn->prepare('SELECT sender, message, created_at FROM chatbot_messages WHERE lead_id = ? ORDER BY id ASC');
+        $stmt->execute([$id]);
+        out(['lead' => $lead, 'messages' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+
+    case 'updateChatLead':
+        needPost();
+        require_once __DIR__ . '/../config/chatbot_store.php';
+        rgEnsureChatbotTables($conn);
+        $id = (int)($in['id'] ?? 0);
+        $status = (string)($in['status'] ?? '');
+        if ($id < 1 || !in_array($status, ['new', 'contacted', 'qualified', 'closed'], true)) {
+            throw new Exception('Choose a valid chat lead and status');
+        }
+        $stmt = $conn->prepare('UPDATE chatbot_leads SET status = ? WHERE id = ?');
+        $stmt->execute([$status, $id]);
+        if ($stmt->rowCount() === 0) {
+            $check = $conn->prepare('SELECT id FROM chatbot_leads WHERE id = ?');
+            $check->execute([$id]);
+            if (!$check->fetchColumn()) throw new Exception('Chat lead not found');
+        }
+        pfAudit($conn, 'chat_lead.status', 'Chat lead #' . $id, ['status' => $status]);
+        out(['message' => 'Chat lead status updated']);
+
     case 'saveLead':
         needPost();
         $stages = ['new', 'contacted', 'demo', 'won', 'lost'];

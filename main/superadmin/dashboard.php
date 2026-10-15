@@ -225,6 +225,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">person_search</span>
           <span class="text">Leads <span id="spLeadBadge" class="badge-new" style="display:none;">0</span></span>
         </div>
+        <div class="menu-item" data-page="chatLeads">
+          <span class="material-symbols-rounded icon">forum</span>
+          <span class="text">Chat leads <span id="spChatLeadBadge" class="badge-new" style="display:none;">0</span></span>
+        </div>
         <div class="menu-item" data-page="support">
           <span class="material-symbols-rounded icon">support_agent</span>
           <span class="text">Support <span id="spTicketBadge" class="badge-new" style="display:none;">0</span></span>
@@ -853,6 +857,18 @@ require_once __DIR__ . '/../config/countries.php';
           <div class="header-actions" id="spLeadsActs"></div>
         </div>
         <div id="spLeads" class="sp-body"><div class="sp-loading">Loading…</div></div>
+      </div>
+
+      <div id="chatLeadsPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Chat leads</h1><div class="sa-sub">Contact details and complete conversations from the website chatbot</div></div>
+          </div>
+          <div class="header-actions" id="spChatLeadsActs"></div>
+        </div>
+        <div id="spChatLeads" class="sp-body"><div class="sp-loading">Loading…</div></div>
+        <div id="spChatConversation" class="sp-body"></div>
       </div>
 
       <div id="supportPage" class="page">

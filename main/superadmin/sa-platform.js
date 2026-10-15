@@ -251,6 +251,63 @@
     }, 250);
   }
 
+  /* ════════ 6. Website chatbot leads ════════ */
+  var chatLeadStatus = 'all', chatLeadQuery = '', selectedChatLead = 0, chatLeadSearchTimer = 0;
+  var CHAT_STATUSES = [['new', 'New'], ['contacted', 'Contacted'], ['qualified', 'Qualified'], ['closed', 'Closed']];
+  function chatStatusName(status) {
+    var row = CHAT_STATUSES.filter(function (x) { return x[0] === status; })[0];
+    return row ? row[1] : status;
+  }
+  function loadChatLeads() {
+    var box = $('spChatLeads');
+    if (!box) return;
+    if (!$('spChatLeadSearch')) {
+      $('spChatLeadsActs').innerHTML = '<input id="spChatLeadSearch" type="search" placeholder="Search name, restaurant, email or phone" value="' + esc(chatLeadQuery) + '" aria-label="Search chat leads"><button class="btn btn-outline" id="spChatLeadRefresh" type="button"><span class="material-symbols-rounded">refresh</span>Refresh</button>';
+    }
+    box.innerHTML = '<div class="sp-loading">Loading chat leads…</div>';
+    $('spChatConversation').innerHTML = '';
+    selectedChatLead = 0;
+    get('chatLeads', '&status=' + encodeURIComponent(chatLeadStatus) + '&q=' + encodeURIComponent(chatLeadQuery)).then(function (d) {
+      var total = 0;
+      Object.keys(d.counts || {}).forEach(function (key) { total += +d.counts[key]; });
+      setBadge('spChatLeadBadge', +(d.counts.new || 0));
+      var filters = [['all', 'All', total]].concat(CHAT_STATUSES.map(function (s) { return [s[0], s[1], +(d.counts[s[0]] || 0)]; }));
+      box.innerHTML = '<div class="card"><div class="card-header">' + seg('spChatLeadSeg', filters, chatLeadStatus) + '</div><div class="card-body">' +
+        (d.rows.length ? '<div class="sp-list">' + d.rows.map(function (r) {
+          var badge = { new: 'badge-info', contacted: 'badge-warning', qualified: 'badge-success', closed: 'badge-danger' }[r.status] || 'badge-info';
+          return '<div class="sp-li sp-lead sp-chat-lead"><span class="sa-ini">' + esc((r.name || '?').charAt(0).toUpperCase()) + '</span><div><b>' + esc(r.name) + ' <span class="sp-muted">· ' + esc(r.restaurant_name) + '</span></b>' +
+            '<small>' + esc(r.phone) + ' · ' + esc(r.email) + ' · ' + when(r.updated_at) + '</small><p class="sp-chat-preview">' + esc(r.last_message || 'No messages yet') + '</p></div>' +
+            '<div class="sp-lead-r"><span class="badge ' + badge + '">' + esc(chatStatusName(r.status)) + '</span><small>' + num(r.message_count) + ' messages</small>' +
+            '<button class="btn btn-outline btn-sm" type="button" data-sp-chat-open="' + (+r.id) + '">View conversation</button></div></div>';
+        }).join('') + '</div>' : empty('forum', chatLeadQuery ? 'No chat leads match your search' : 'No website chat leads yet')) + '</div></div>';
+      var search = $('spChatLeadSearch');
+      search.addEventListener('input', function () {
+        chatLeadQuery = search.value.trim();
+        window.clearTimeout(chatLeadSearchTimer);
+        chatLeadSearchTimer = window.setTimeout(loadChatLeads, 300);
+      });
+    }).catch(function (e) { box.innerHTML = empty('error', esc(e.message)); });
+  }
+  function showChatConversation(id) {
+    var box = $('spChatConversation');
+    selectedChatLead = id;
+    box.innerHTML = '<div class="card"><div class="card-body"><div class="sp-loading">Loading conversation…</div></div></div>';
+    get('chatConversation', '&id=' + encodeURIComponent(id)).then(function (d) {
+      var lead = d.lead;
+      var options = CHAT_STATUSES.map(function (s) {
+        return '<option value="' + s[0] + '"' + (s[0] === lead.status ? ' selected' : '') + '>' + s[1] + '</option>';
+      }).join('');
+      var transcript = d.messages.length ? d.messages.map(function (m) {
+        return '<div class="sp-chat-message ' + (m.sender === 'visitor' ? 'visitor' : 'assistant') + '"><span>' + (m.sender === 'visitor' ? 'Visitor' : 'RestroGrow') + '</span><p>' + esc(m.message) + '</p><small>' + when(m.created_at) + '</small></div>';
+      }).join('') : empty('chat', 'This conversation has no messages');
+      box.innerHTML = '<div class="card sp-chat-detail"><div class="card-header"><div><div class="card-title">' + esc(lead.name) + ' · ' + esc(lead.restaurant_name) + '</div><small class="sp-muted">Lead #' + (+lead.id) + ' · Started ' + when(lead.created_at) + '</small></div>' +
+        '<label class="sp-chat-status">Lead status <select id="spChatLeadStatus" data-chat-lead="' + (+lead.id) + '">' + options + '</select></label></div>' +
+        '<div class="card-body"><div class="sp-kv sp-chat-contact"><span>Email</span><b><a href="mailto:' + encodeURIComponent(lead.email) + '">' + esc(lead.email) + '</a></b><span>Phone</span><b><a href="tel:' + encodeURIComponent(lead.phone) + '">' + esc(lead.phone) + '</a></b><span>Follow-up consent</span><b>Given · ' + when(lead.consent_at) + '</b></div>' +
+        '<div class="sp-chat-transcript" aria-label="Chat transcript">' + transcript + '</div></div></div>';
+      box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }).catch(function (e) { box.innerHTML = empty('error', esc(e.message)); });
+  }
+
   /* ════════ 10. Support ════════ */
   var ticketStatus = 'active', openTicket = 0;
   var TSTAT = { open: ['Needs reply', 'badge-danger'], waiting: ['Waiting on us', 'badge-warning'], answered: ['Replied', 'badge-success'], closed: ['Closed', 'badge-info'] };
@@ -538,7 +595,7 @@
       inputAttributes: { min: 1, max: 365 }, showCancelButton: true, confirmButtonColor: '#2563eb', inputValidator: function (x) { return !(+x >= 1 && +x <= 365) ? 'Enter 1 to 365' : null; } })
       .then(function (r) { if (r.isConfirmed) post('extendRenewal', { id: id, days: +r.value }).then(function (d) { alertMsg(d.message); reloadActive(); if (drawer && drawer.classList.contains('show')) open360(id); }).catch(fail); });
   }
-  var LOADERS = { analytics: loadAnalytics, renewals: loadRenewals, coupons: loadCoupons, leads: loadLeads, support: loadSupport, announcements: loadAnnouncements, invoices: loadInvoices, security: loadSecurity, health: loadHealth, settings: loadSettings };
+  var LOADERS = { analytics: loadAnalytics, renewals: loadRenewals, coupons: loadCoupons, leads: loadLeads, chatLeads: loadChatLeads, support: loadSupport, announcements: loadAnnouncements, invoices: loadInvoices, security: loadSecurity, health: loadHealth, settings: loadSettings };
   function reloadActive() { var a = document.querySelector('.menu-item.active'); if (a && LOADERS[a.dataset.page]) LOADERS[a.dataset.page](); }
 
   document.addEventListener('click', function (e) {
@@ -566,6 +623,9 @@
     if ((m = t.closest('[data-sp-ctoggle]'))) { var c = spCouponRows[m.dataset.spCtoggle]; fetch('api.php?action=toggleCoupon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, is_active: +c.is_active ? 0 : 1 }) }).then(res).then(loadCoupons).catch(fail); return; }
     if ((m = t.closest('[data-sp-cdel]'))) { var cd = spCouponRows[m.dataset.spCdel]; confirmIt('Delete coupon ' + cd.coupon_code + '? Customers can no longer use it.', 'Delete').then(function (ok) { if (ok) fetch('api.php?action=deleteCoupon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cd.id }) }).then(res).then(loadCoupons).catch(fail); }); return; }
     if ((m = t.closest('#spLeadSeg button'))) { leadStage = m.dataset.v; loadLeads(); return; }
+    if ((m = t.closest('#spChatLeadSeg button'))) { chatLeadStatus = m.dataset.v; loadChatLeads(); return; }
+    if (t.closest('#spChatLeadRefresh')) { loadChatLeads(); return; }
+    if ((m = t.closest('[data-sp-chat-open]'))) { showChatConversation(+m.dataset.spChatOpen); return; }
     if (t.closest('#spLeadNew')) { leadForm(null); return; }
     if ((m = t.closest('[data-sp-lead]'))) { leadForm(spLeadRows[m.dataset.spLead]); return; }
     if ((m = t.closest('[data-sp-convert]'))) { convertLead(spLeadRows[m.dataset.spConvert]); return; }
@@ -605,6 +665,15 @@
     else if (t.id === 'spCouponRest') { couponRid = t.value; loadCoupons(); }
     else if (t.id === 'spInvMonth') { invMonth = t.value || invMonth; loadInvoices(); }
     else if (t.id === 'spSecOutcome') { secOutcome = t.value; loadSecurity(); }
+    else if (t.id === 'spChatLeadStatus') {
+      var chatId = +t.dataset.chatLead, nextStatus = t.value;
+      t.disabled = true;
+      post('updateChatLead', { id: chatId, status: nextStatus }).then(function (d) {
+        alertMsg(d.message);
+        loadChatLeads();
+        showChatConversation(chatId);
+      }).catch(function (er) { t.disabled = false; fail(er); });
+    }
     else if (t.id === 'spTicketStatus' && openTicket) { post('replyTicket', { id: openTicket, body: '', status: t.value }).then(function () { loadSupport(); }).catch(fail); }
   });
   var qTimer = 0;
