@@ -390,8 +390,16 @@
   // straight away. Only Test print (opts.interactive) may open it.
   global.printDirect = async function (builder, onFail, opts) {
     var mode = settings().mode;
-    if (mode === 'network') return global.printViaNetwork(builder);
-    if (mode !== 'bluetooth' && mode !== 'serial') return false;
+    if (mode === 'network') {
+      var netOk = await global.printViaNetwork(builder);
+      if (!netOk && typeof onFail === 'function') onFail();
+      return netOk;
+    }
+    if (mode !== 'bluetooth' && mode !== 'serial') {
+      // browser mode: always show the preview
+      if (typeof onFail === 'function') onFail();
+      return false;
+    }
     var bytes = builder.toUint8Array();
     if (!api.isConnected(mode)) {
       var ok = await quickReconnect();
@@ -403,6 +411,7 @@
       if (!ok) {
         log('not connected: showing the preview');
         if (!(opts && opts.interactive)) say('Printer not connected, so here is the preview. Tap the printer button on the POS to connect it.', 'info');
+        if (typeof onFail === 'function') onFail();
         return false;
       }
     }

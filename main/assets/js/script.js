@@ -10931,8 +10931,8 @@ window.printKOT = async function(kotId, onClose) {
       const sent = await window.printDirect(escBuilder, () => showPrintPreview('KOT #' + kot.kot_number, html));
       if (sent) {
         if (typeof onClose === 'function') onClose();
-        return;
       }
+      return; // printDirect's onFail already showed the preview when sent is false
     }
 
     showPrintPreview('KOT #' + kot.kot_number, html, onClose);
@@ -11298,7 +11298,7 @@ window.printOrder = async function(orderId) {
         paymentMethod: paymentMethod
       });
       const sent = await window.printDirect(escBuilder, () => showPrintPreview('Invoice #' + order.order_number, html));
-      if (sent) return;
+      return; // printDirect's onFail already showed the preview when sent is false
     }
 
     showPrintPreview('Invoice #' + order.order_number, html);
