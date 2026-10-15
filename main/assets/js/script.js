@@ -9060,7 +9060,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const itemsHtml = cartSnapshot.map((it) => `
       <tr>
-        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${it.isCombo && it.summary ? `<div style="font-size:11px;color:#6b7280;">${escapeHtml(it.summary)}</div>` : ""}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
+        <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;word-break:break-word;overflow-wrap:anywhere;">${escapeHtml(it.name)}${it.variationName ? ` <span style="color:#6b7280;">(${escapeHtml(it.variationName)})</span>` : ''}${it.isCombo && it.summary ? `<div style="font-size:11px;color:#6b7280;word-break:break-word;overflow-wrap:anywhere;">${escapeHtml(it.summary)}</div>` : ""}${(it.addons || []).length ? `<div style="font-size:11px;color:#6b7280;">+ ${it.addons.map(a => escapeHtml(a.name) + ' ' + currency + parseFloat(a.price).toFixed(2)).join(', ')}</div>` : ''}</td>
         <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:center;">${it.quantity}</td>
         <td style="padding:6px 0;border-bottom:1px dashed #d1d5db;font-size:13px;text-align:right;">${currency}${window.posLineTotal(it).toFixed(2)}</td>
       </tr>

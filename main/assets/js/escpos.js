@@ -7,6 +7,24 @@
   const ESC = 0x1B;
   const GS = 0x1D;
 
+  // Thermal printers speak a single-byte Latin code page, so anything outside
+  // ASCII is unprintable. Map the punctuation our own data actually contains
+  // (combo summaries use "×" and "·", prices the Rupee sign, names smart
+  // quotes and dashes) to safe ASCII, drop accents from Latin letters (Café →
+  // Cafe) and only fall back to "?" for scripts with no Latin stand-in
+  // (e.g. Hindi/Tamil).
+  const ASCII_FALLBACK = {
+    '₹': 'Rs.', '×': 'x', '·': '-', '•': '*', '–': '-', '—': '-', '−': '-',
+    '’': "'", '‘': "'", '“': '"', '”': '"', '…': '...', '→': '->', '←': '<-',
+    '≥': '>=', '≤': '<=', '\u00A0': ' ', '€': 'EUR', '£': 'GBP'
+  };
+  function toAscii(str) {
+    var s = String(str == null ? '' : str)
+      .replace(/[₹×·•–—−’‘“”…→←≥≤\u00A0€£]/g, function (ch) { return ASCII_FALLBACK[ch]; });
+    if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Café → Cafe
+    return s.replace(/[^\x00-\x7E]/g, '?');
+  }
+
   function EscPosBuilder() {
     this.bytes = [];
   }
@@ -16,13 +34,9 @@
     return this;
   };
 
-  // Thermal printers commonly speak CP437/CP1252, not Unicode. Currency
-  // symbols like Rupee (₹) have no byte representation on most printers,
-  // so they're swapped for "Rs." before encoding.
+  // See toAscii(): common symbols get an ASCII stand-in before encoding.
   EscPosBuilder.prototype.text = function (str) {
-    const clean = String(str == null ? '' : str)
-      .replace(/₹/g, 'Rs.')
-      .replace(/[^\x00-\x7E]/g, '?');
+    const clean = toAscii(str);
     for (let i = 0; i < clean.length; i++) this.bytes.push(clean.charCodeAt(i) & 0xFF);
     return this;
   };
@@ -176,7 +190,7 @@
   };
 
   function wrapText(str, width) {
-    var clean = String(str == null ? '' : str).replace(/₹/g, 'Rs.').replace(/[^\x00-\x7E]/g, '?');
+    var clean = toAscii(str);
     if (clean.length <= width) return [clean];
     var lines = [], cur = '';
     clean.split(' ').forEach(function (w) {
@@ -204,26 +218,37 @@
     return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(-2) + ' ' + h + ':' + pad(d.getMinutes()) + ' ' + ampm;
   }
 
-  // ITEM NAME | QTY | RATE | TOTAL, amounts on the first line of a wrapped name only
+  // ITEM NAME | QTY | RATE | TOTAL, amounts on the first line of a wrapped name
+  // only. Returns the lines plus the column widths, so the totals rows can line
+  // their figures up under the QTY column.
   function itemTableLines(items, width) {
     var rows = (items || []).map(function (it) {
       var q = Number(it.quantity) || 0, rate = Number(it.rate) || 0;
       return { label: it.name || '', quantity: q, rate: rate, amount: it.amount != null ? Number(it.amount) : rate * q, sub: it.sub || '' };
     });
-    if (!rows.length) return [];
-    var qtyW = 3;
+    // QTY widens for bills with 3+ digit quantities so the column (and the
+    // totals that align to it) never overruns on a big catering/combo bill.
+    var qtyW = Math.max(3, Math.max.apply(null, [3].concat(rows.map(function (r) { return String(r.quantity).length; }))));
+    if (!rows.length) return { lines: [], nameW: Math.max(8, width - qtyW - 12), qtyW: qtyW };
     var rateW = Math.max(4, Math.max.apply(null, rows.map(function (r) { return fmtAmount(r.rate).length; })));
     var totW = Math.max(5, Math.max.apply(null, rows.map(function (r) { return fmtAmount(r.amount).length; })));
     var nameW = Math.max(8, width - qtyW - rateW - totW - 3);
     var cell = function (v, w) { return String(v).padStart(w); };
     var lines = [['ITEM NAME'.padEnd(nameW), cell('QTY', qtyW), cell('RATE', rateW), cell('TOTAL', totW)].join(' ')];
+    // never let a row run past the paper: a very wide amount (or a cramped name
+    // column on a long bill) would otherwise push the columns off the right edge
+    var pushRow = function (row) {
+      while (row.length > width) { lines.push(row.slice(0, width)); row = row.slice(width); }
+      lines.push(row);
+    };
     rows.forEach(function (r) {
       wrapText(r.label, nameW).forEach(function (nl, i) {
-        lines.push(i === 0 ? nl.padEnd(nameW) + ' ' + cell(r.quantity, qtyW) + ' ' + cell(fmtAmount(r.rate), rateW) + ' ' + cell(fmtAmount(r.amount), totW) : nl);
+        if (i === 0) pushRow(nl.padEnd(nameW) + ' ' + cell(r.quantity, qtyW) + ' ' + cell(fmtAmount(r.rate), rateW) + ' ' + cell(fmtAmount(r.amount), totW));
+        else lines.push(nl);
       });
-      if (r.sub) wrapText('  ' + r.sub, width).forEach(function (l) { lines.push(l); });
+      if (r.sub) wrapText(r.sub, width - 2).forEach(function (l) { lines.push('  ' + l); });
     });
-    return lines;
+    return { lines: lines, nameW: nameW, qtyW: qtyW };
   }
 
   function padLine(left, right, width) {
@@ -256,11 +281,18 @@
     p.line('Created On: ' + fmtBillDateTime(o.createdAt));
     wrapText('Bill To: ' + (o.billTo || 'Cash Sale'), width).forEach(function (l) { p.line(l); });
     dash();
-    itemTableLines(o.items, width).forEach(function (l) { p.line(l); });
+    var table = itemTableLines(o.items, width);
+    table.lines.forEach(function (l) { p.line(l); });
     dash();
+    // the counts line up under the QTY column above, so the bill reads as a table
+    var qtyRow = function (label, value) {
+      var l = String(label);
+      if (l.length > table.nameW) l = l.slice(0, table.nameW);
+      return l.padEnd(table.nameW) + ' ' + String(value).padStart(table.qtyW);
+    };
     var totalQty = (o.items || []).reduce(function (s, it) { return s + (Number(it.quantity) || 0); }, 0);
-    p.line('Total Items: ' + (o.items || []).length);
-    p.line('Total Quantity: ' + totalQty);
+    p.line(qtyRow('Total Items', (o.items || []).length));
+    p.line(qtyRow('Total Quantity', totalQty));
     p.bold(true).line(padLine('  Sub Total', fmtAmount(o.subtotal), width)).bold(false);
     (o.discounts || []).forEach(function (d) { if (Number(d[1]) > 0) p.line(padLine('  ' + d[0], '-' + fmtAmount(d[1]), width)); });
     if (Number(o.tax) > 0) p.line(padLine('  ' + (o.taxLabel || 'Tax'), fmtAmount(o.tax), width));
