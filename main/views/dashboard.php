@@ -8588,7 +8588,7 @@ if ('serviceWorker' in navigator) {
   (function(){
     try {
       // Cache-busting version: bump this when sw.js changes
-      var SW_VERSION = 13;   // 13: SEO loads on every page open (refresh included) like other sections; 12: Search Console site-picking fix in SEO; 11: KOT preview leads on to the bill again; 10: force cache refresh after POS print preview fix; 9: the dashboard opens offline (POS offline billing)
+      var SW_VERSION = 14;   // 14: the bill/receipt preview starts at the left (no centred blank space); 13: SEO loads on every page open (refresh included) like other sections; 12: Search Console site-picking fix in SEO; 11: KOT preview leads on to the bill again; 10: force cache refresh after POS print preview fix; 9: the dashboard opens offline (POS offline billing)
       var swUrl = '../website/sw.php?v=' + SW_VERSION;
       
       // Calculate proper scope from the service worker URL path

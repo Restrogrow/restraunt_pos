@@ -10308,7 +10308,7 @@ window.getThermalReceiptCSS = function (widthMMOverride) {
     '@media print { @page { size: ' + widthMM + 'mm auto; margin: 0; } body { margin:0; padding:0; } }' +
     '* { margin:0; padding:0; box-sizing:border-box; }' +
     'html, body { background:#fff; }' +
-    'body { font-family: "Courier New", Courier, monospace; width:' + contentMM + 'mm; max-width:' + contentMM + 'mm; margin:0 auto; padding:2mm; color:#111827; font-size:' + baseFontPx + 'px; }' +
+    'body { font-family: "Courier New", Courier, monospace; width:' + contentMM + 'mm; max-width:' + contentMM + 'mm; margin:0; padding:2mm; color:#111827; font-size:' + baseFontPx + 'px; }' +
     // Thermal heads reproduce solid black reliably but wash out light
     // greys/tints, so force pure black text and flat white fills when the
     // job actually goes to a printer (on-screen preview keeps its colors).
@@ -11054,7 +11054,7 @@ window.printKOT = async function(kotId, onClose) {
 
     // Content area with iframe
     var content = document.createElement('div');
-    content.style.cssText = 'flex:1;overflow:auto;padding:20px;background:#f3f4f6;display:flex;align-items:flex-start;justify-content:center;';
+    content.style.cssText = 'flex:1;overflow:auto;padding:16px;background:#f3f4f6;display:flex;align-items:flex-start;justify-content:flex-start;';
 
     var iframe = document.createElement('iframe');
     iframe.style.cssText = 'width:100%;height:100%;border:none;border-radius:8px;background:#fff;display:block;';
@@ -11117,7 +11117,7 @@ window.printKOT = async function(kotId, onClose) {
           zoom = Math.max(0.6, Math.min(zoom, 2.0));
           
           var ps = iframeDoc.createElement('style');
-          ps.textContent = 'body { zoom: ' + zoom + '; margin:8px auto; border:1px solid #d1d5db; box-shadow:0 4px 24px rgba(0,0,0,0.12); } @media print { body { zoom:1; border:none; box-shadow:none; margin:0 auto; } }';
+          ps.textContent = 'body { zoom: ' + zoom + '; margin:8px; border:1px solid #d1d5db; box-shadow:0 4px 24px rgba(0,0,0,0.12); } @media print { body { zoom:1; border:none; box-shadow:none; margin:0; } }';
           iframeDoc.head.appendChild(ps);
         }
       } catch(e) { /* ignore if iframe not ready */ }
