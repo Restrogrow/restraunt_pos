@@ -26,6 +26,7 @@ session_write_close();
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/seo_helpers.php';
 require_once __DIR__ . '/../config/gbp_helpers.php';
+require_once __DIR__ . '/../config/seo_search_console.php';
 
 function sOut(array $d, int $code = 200) { http_response_code($code); echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
 function sFail(string $m, int $code = 400) { sOut(['success' => false, 'message' => $m], $code); }
@@ -131,7 +132,12 @@ try {
             'restaurant' => ['name' => $r['name'], 'address' => $r['address'], 'phone' => $r['phone'], 'logo' => $logoUrl, 'site' => $site, 'host' => preg_replace('#^https?://#', '', $site), 'own_domain' => $ownDomain,
                 'rating' => $g && $g['rating'] ? (float)$g['rating'] : null, 'rating_count' => $g ? (int)$g['rating_count'] : 0, 'dishes' => $nd, 'photos' => $photos],
             'sitemap' => $site . '/sitemap.xml', 'checks' => $checks, 'score' => $score, 'ai' => gbpEnv('GEMINI_API_KEY') !== '',
-            'search_console' => ['available' => false]]);
+            'search_console' => [
+                'available' => seoScOAuthReady(),
+                'connected' => !empty(seoScRow($conn, $rid)['refresh_token']),
+                'site' => seoScRow($conn, $rid)['site_url'] ?? null,
+                'redirect_uri' => seoScRedirectUri(),
+            ]]);
     }
 
     // ── POST ──

@@ -8,6 +8,7 @@
 (function () {
   'use strict';
   var API = '../api/seo.php';
+  var SC_API = '../api/seo_sc.php';   // Google Search Console (Search performance card)
   var S = null;           // GET result
   var F = null;           // the form being edited
   var cur = 'home';       // page being edited
@@ -61,10 +62,13 @@
         shareCard(ro) +
         trackingCard(ro) +
         googleCard() +
-        soonCard() +
+        searchConsoleCard() +
       '</div>' +
       (ro ? '' : '<div class="seo-bar' + (dirty ? ' show' : '') + '" id="seoBar"><span>' + ic('edit_note') + 'You have unsaved changes</span><button type="button" class="btn btn-secondary btn-sm" data-seo-undo>Discard</button><button type="button" class="btn btn-primary btn-sm" data-seo-save>' + ic('check') + 'Save</button></div>');
     paintPreviews();
+    // Search performance fills itself in (only when the server has the OAuth client)
+    var sc = S.search_console;
+    if (sc && sc.available) loadSearchConsole();
   }
 
   function head() {
@@ -165,12 +169,97 @@
     '</section>';
   }
 
+  /* ───────── Search performance (Google Search Console) ───────── */
   function soonCard() {
+    // Server has no OAuth client yet — keep the placeholder
     return '<section class="seo-card seo-soon"><span class="gbx-soon-tag">' + ic('bolt') + 'Coming soon</span><h3>' + ic('trending_up') + 'Search performance</h3>' +
       '<p class="seo-sub">See how many people found you on Google, what they searched, and which dishes bring the most clicks, straight from Google Search Console.</p>' +
       '<div class="seo-soon-demo" aria-hidden="true"><div><b>—</b><small>Searches showing you</small></div><div><b>—</b><small>Clicks to your site</small></div><div><b>—</b><small>Average position</small></div></div>' +
       '<div class="seo-soon-q" aria-hidden="true"><span>biryani near me</span><span>' + esc((S.restaurant.name || '').toLowerCase()) + '</span><span>best restaurant ' + esc((S.restaurant.address.split(',').slice(-2, -1)[0] || '').trim().toLowerCase() || 'nearby') + '</span></div>' +
     '</section>';
+  }
+
+  function searchConsoleCard() {
+    var sc = S.search_console || { available: false };
+    if (!sc.available) return soonCard();
+    if (!sc.connected) {
+      return '<section class="seo-card seo-sc" id="seoSc"><span class="gbx-soon-tag">' + ic('bolt') + 'New</span>' +
+        '<h3>' + ic('trending_up') + 'Search performance</h3>' +
+        '<p class="seo-sub">See how many people found you on Google, what they searched, and which searches bring the most clicks. Connect your Google account — we only read your Search Console, nothing is ever changed.</p>' +
+        (S.can_edit ? '<div class="seo-row"><button type="button" class="btn btn-primary" data-seo-sc="connect">' + ic('link') + 'Connect Google</button></div>' : '') +
+      '</section>';
+    }
+    return '<section class="seo-card seo-sc" id="seoSc">' +
+      '<div class="seo-sc-h"><div><h3>' + ic('trending_up') + 'Search performance</h3>' +
+      '<small>' + ic('account_circle') + esc(sc.google_email || 'Google connected') + '</small></div>' +
+      (S.can_edit ? '<div class="seo-sc-acts">' +
+        '<button type="button" class="btn btn-secondary btn-sm" data-seo-sc="refresh">' + ic('refresh') + 'Refresh</button>' +
+        '<button type="button" class="btn btn-secondary btn-sm" data-seo-sc="site">' + ic('language') + 'Change site</button>' +
+        '<button type="button" class="sx-link sx-link-danger" data-seo-sc="disconnect">' + ic('link_off') + 'Disconnect</button></div>' : '') +
+      '</div><div id="seoScBody" class="seo-sc-body"><div class="cbx-loading"><span></span><span></span><span></span></div></div></section>';
+  }
+
+  function scStats(m) {
+    var t = m.totals || {};
+    var tile = function (label, val, sub) { return '<div class="seo-sc-t"><b>' + val + '</b><small>' + label + '</small>' + (sub ? '<em>' + sub + '</em>' : '') + '</div>'; };
+    return '<div class="seo-sc-stats">' +
+      tile('Clicks to your site', (t.clicks || 0).toLocaleString('en-IN')) +
+      tile('Searches showing you', (t.impressions || 0).toLocaleString('en-IN')) +
+      tile('Click-through rate', (t.ctr || 0) + '%') +
+      tile('Average position', t.position != null ? '#' + t.position : '—') +
+    '</div>';
+  }
+
+  function scQueries(m) {
+    var rows = (m.queries || []).map(function (q) {
+      return '<tr><td>' + esc(q.query) + '</td><td class="num">' + (q.clicks || 0).toLocaleString('en-IN') + '</td><td class="num">' + (q.impressions || 0).toLocaleString('en-IN') + '</td><td class="num">' + (q.ctr || 0) + '%</td><td class="num">' + (q.position != null ? '#' + q.position : '—') + '</td></tr>';
+    }).join('');
+    if (!rows) return '<p class="seo-sub">No searches recorded yet. Google usually has data from the last ' + (m.days || 28) + ' days — check back after a few days.</p>';
+    return '<table class="seo-sc-q"><thead><tr><th>What people searched</th><th class="num">Clicks</th><th class="num">Searches</th><th class="num">CTR</th><th class="num">Position</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function scBody(d) {
+    if (d.last_error) {
+      return '<div class="sx-note warn">' + ic('warning') + '<span>' + esc(d.last_error) + '</span></div>';
+    }
+    if (!d.metrics) {
+      // connected, but no site picked yet
+      return '<p class="seo-sub">Pick the website you want to see search data for.</p><div class="seo-sc-sites" id="seoScSites"><div class="cbx-loading"><span></span><span></span><span></span></div></div>';
+    }
+    var m = d.metrics;
+    return scStats(m) +
+      '<p class="seo-sc-note">' + ic('info') + 'Last ' + m.days + ' days · ' + esc(m.start) + ' to ' + esc(m.end) + ' · ' + esc(m.site) + '. Google’s data is about 2 days behind.</p>' +
+      '<h4 class="seo-sc-h4">' + ic('manage_search') + 'Top searches</h4>' + scQueries(m);
+  }
+
+  function loadSearchConsole() {
+    var body = document.getElementById('seoScBody');
+    if (!body) return;
+    body.innerHTML = '<div class="cbx-loading"><span></span><span></span><span></span></div>';
+    fetch(SC_API + '?view=status', { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return { success: false, message: 'No connection. Please try again.' }; }).then(function (d) {
+      if (!body.isConnected) return;
+      if (!d.success) { body.innerHTML = '<div class="sx-note warn">' + ic('warning') + '<span>' + esc(d.message || 'Could not load') + '</span></div>'; return; }
+      body.innerHTML = scBody(d);
+      if (d.metrics === null && !d.last_error) loadScSites();
+    });
+  }
+
+  function loadScSites() {
+    var box = document.getElementById('seoScSites');
+    if (!box) return;
+    fetch(SC_API + '?view=sites', { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return { success: false, message: 'Could not load your sites.' }; }).then(function (d) {
+      if (!box.isConnected) return;
+      if (!d.success) { box.innerHTML = '<div class="sx-note warn">' + ic('warning') + '<span>' + esc(d.message || 'Could not load your sites.') + '</span></div>'; return; }
+      if (!d.sites.length) { box.innerHTML = '<p class="seo-sub">No websites found. Verify your site in Google Search Console first, then refresh.</p>'; return; }
+      box.innerHTML = d.sites.map(function (s) {
+        return '<button type="button" class="seo-sc-site" data-seo-sc-site="' + esc(s.url) + '">' + ic('language') + '<span>' + esc(s.url) + '</span><em>' + esc(s.permission || '') + '</em></button>';
+      }).join('');
+    });
+  }
+
+  function scPost(body, then) {
+    return fetch(SC_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); }).catch(function () { return { success: false, message: 'No connection. Please try again.' }; }).then(then);
   }
 
   /* ───────── events ───────── */
@@ -254,7 +343,7 @@
     }
   });
   document.addEventListener('click', function (e) {
-    var t = e.target.closest && e.target.closest('#seoRoot [data-seo-page], #seoRoot [data-seo-ai], #seoRoot [data-seo-default], #seoRoot [data-seo-save], #seoRoot [data-seo-undo], #seoRoot [data-seo-fix], #seoRoot [data-seo-cuisine], #seoRoot [data-seo-price], #seoRoot [data-seo-copy], #seoRoot [data-seo-rmimg]');
+    var t = e.target.closest && e.target.closest('#seoRoot [data-seo-page], #seoRoot [data-seo-ai], #seoRoot [data-seo-default], #seoRoot [data-seo-save], #seoRoot [data-seo-undo], #seoRoot [data-seo-fix], #seoRoot [data-seo-cuisine], #seoRoot [data-seo-price], #seoRoot [data-seo-copy], #seoRoot [data-seo-rmimg], #seoRoot [data-seo-sc], #seoRoot [data-seo-sc-site]');
     if (!t) { if (e.target.closest && e.target.closest('.nav-link[data-page="seoPage"]')) setTimeout(window.loadSeo, 30); return; }
     e.preventDefault();
     if (t.hasAttribute('data-seo-page')) { readInputs(); cur = t.getAttribute('data-seo-page'); draw(); return; }
@@ -284,6 +373,44 @@
         S.checks.forEach(function (c) { if (c.id === 'share' && c.ok) { c.ok = false; S.score -= c.w; } });
         readInputs(); draw();
       });
+      return;
+    }
+    // ── Search performance (Google Search Console) ──
+    if (t.hasAttribute('data-seo-sc-site')) {
+      var site = t.getAttribute('data-seo-sc-site');
+      t.disabled = true;
+      scPost({ action: 'set_site', site: site }, function (d) {
+        if (!d.success) return notify(d.message || 'Could not save', 'error');
+        S.search_console.site = site;
+        notify('Saved. Showing search data for ' + site, 'success');
+        var body = document.getElementById('seoScBody'); if (body) body.innerHTML = scBody({ metrics: d.metrics, last_error: null });
+      });
+      return;
+    }
+    if (t.hasAttribute('data-seo-sc')) {
+      var act = t.getAttribute('data-seo-sc');
+      if (act === 'connect') {
+        fetch(SC_API + '?view=connect', { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return { success: false, message: 'Could not start sign-in.' }; }).then(function (d) {
+          if (!d.success) return notify(d.message || 'Could not start sign-in', 'error');
+          window.location.href = d.url;
+        });
+        return;
+      }
+      if (act === 'refresh') { loadSearchConsole(); return; }
+      if (act === 'site') {
+        var b2 = document.getElementById('seoScBody');
+        if (b2) { b2.innerHTML = '<p class="seo-sub">Pick the website you want to see search data for.</p><div class="seo-sc-sites" id="seoScSites"><div class="cbx-loading"><span></span><span></span><span></span></div></div>'; loadScSites(); }
+        return;
+      }
+      if (act === 'disconnect') {
+        scPost({ action: 'disconnect' }, function (d) {
+          if (!d.success) return notify(d.message || 'Could not disconnect', 'error');
+          S.search_console.connected = false; S.search_console.site = null;
+          notify('Disconnected from Google Search Console', 'success');
+          draw();
+        });
+        return;
+      }
     }
   });
   window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
