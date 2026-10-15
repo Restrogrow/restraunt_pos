@@ -358,6 +358,37 @@ function posEnsureKotAddonLines($conn): void {
 }
 
 /**
+ * Columns a POS bill writes that older databases (the live one) may not have yet: added once,
+ * outside any transaction (database/local_schema_upgrade.sql adds the same ones locally).
+ */
+function posEnsureBillColumns($conn): void {
+    static $done = false;
+    if ($done || $conn->inTransaction()) return;
+    $done = true;
+    $cols = [
+        ['kot_items', 'addons', 'TEXT DEFAULT NULL'],
+        ['kot', 'order_id', 'INT(11) DEFAULT NULL'],
+        ['order_items', 'variation_name', 'VARCHAR(100) DEFAULT NULL'],
+        ['order_items', 'notes', 'TEXT DEFAULT NULL'],
+        ['orders', 'customer_phone', 'VARCHAR(20) DEFAULT NULL'],
+        ['orders', 'customer_email', 'VARCHAR(100) DEFAULT NULL'],
+        ['orders', 'customer_address', 'TEXT DEFAULT NULL'],
+        ['orders', 'coupon_code', 'VARCHAR(50) DEFAULT NULL'],
+        ['orders', 'discount_amount', 'DECIMAL(10,2) DEFAULT 0.00'],
+        ['orders', 'wallet_paid', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00'],
+        ['orders', 'deleted_at', 'DATETIME DEFAULT NULL'],
+    ];
+    foreach ($cols as [$table, $col, $def]) {
+        try {
+            if (!$conn->query("SHOW COLUMNS FROM `$table` LIKE '$col'")->fetch()) {
+                $conn->exec("ALTER TABLE `$table` ADD COLUMN `$col` $def");
+                error_log("posEnsureBillColumns: added $table.$col");
+            }
+        } catch (Throwable $e) { error_log("posEnsureBillColumns $table.$col: " . $e->getMessage()); }
+    }
+}
+
+/**
  * Offline POS bills (assets/js/pos-offline.js) are sent later with a unique pos_ref. A ref that was
  * already saved returns its first result instead of saving the bill again (sync can run twice).
  */
@@ -604,6 +635,7 @@ function handleCreateKOT($conn, $restaurant_id) {
     $openOrderId = (int)($_POST['openOrderId'] ?? 0);
 
     if ($addonsToKitchen) posEnsureKotAddonLines($conn);
+    posEnsureBillColumns($conn);
 
     // Generate unique KOT number with collision check
     $kotNumber = $sendTicket ? generateKOTNumber($conn, $restaurant_id) : null;
@@ -968,6 +1000,7 @@ function handleHoldOrder($conn, $restaurant_id) {
         }
     } while ($exists);
     
+    posEnsureBillColumns($conn);
     // Begin transaction
     $conn->beginTransaction();
     
