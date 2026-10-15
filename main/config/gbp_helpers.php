@@ -301,7 +301,7 @@ function gbpAiReply(string $restaurant, int $stars, string $name, string $commen
 {
     $key = gbpEnv('GEMINI_API_KEY');
     if ($key === '') return null;
-    $model = gbpEnv('GEMINI_MODEL', 'gemini-2.5-flash');
+    $model = gbpEnv('GEMINI_MODEL', 'gemini-3.5-flash');
     $first = trim(explode(' ', trim($name))[0] ?? '');
     $prompt = "You are the owner of the restaurant \"$restaurant\" replying publicly to a Google review.\n"
         . "Review: $stars star(s) by $first. Text: \"" . ($comment !== '' ? $comment : '(no text, rating only)') . "\"\n"
@@ -309,7 +309,7 @@ function gbpAiReply(string $restaurant, int $stars, string $name, string $commen
         . ($stars <= 3 ? 'Apologise sincerely without excuses, and invite them to contact the restaurant so you can make it right. ' : 'Invite them back. ')
         . "No hashtags, no emojis, no placeholders, no quotes around the reply. Reply in the same language as the review.";
     $r = gbpHttp('POST', 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent', ['x-goog-api-key: ' . $key],
-        ['contents' => [['parts' => [['text' => $prompt]]]], 'generationConfig' => ['temperature' => 0.7, 'maxOutputTokens' => 300]], 30);
+        ['contents' => [['parts' => [['text' => $prompt]]]], 'generationConfig' => ['temperature' => 0.7, 'maxOutputTokens' => 1024, 'thinkingConfig' => ['thinkingBudget' => 0]]], 30);
     $txt = $r['json']['candidates'][0]['content']['parts'][0]['text'] ?? '';
     $txt = trim(trim($txt), "\"“” \n");
     return $txt !== '' ? mb_substr($txt, 0, 1000) : null;

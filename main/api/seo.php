@@ -179,8 +179,8 @@ try {
                 . "Pages: home, menu, about, contact. For each: title 40-60 characters with the restaurant name and the area, description 130-155 characters, "
                 . "specific (cuisine, dishes, area), with a call to action (order online, book a table, see the menu, call or visit). Plain English, no emojis, no ALL CAPS, no quotes, no made-up facts (no awards, no years). "
                 . "Reply with JSON only: {\"home\":{\"title\":\"\",\"description\":\"\"},\"menu\":{...},\"about\":{...},\"contact\":{...}}";
-            $res = gbpHttp('POST', 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode(gbpEnv('GEMINI_MODEL', 'gemini-2.5-flash')) . ':generateContent', ['x-goog-api-key: ' . $key],
-                ['contents' => [['parts' => [['text' => $prompt]]]], 'generationConfig' => ['temperature' => 0.6, 'maxOutputTokens' => 1200, 'responseMimeType' => 'application/json']], 30);
+            $res = gbpHttp('POST', 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode(gbpEnv('GEMINI_MODEL', 'gemini-3.5-flash')) . ':generateContent', ['x-goog-api-key: ' . $key],
+                ['contents' => [['parts' => [['text' => $prompt]]]], 'generationConfig' => ['temperature' => 0.6, 'maxOutputTokens' => 4096, 'responseMimeType' => 'application/json', 'thinkingConfig' => ['thinkingBudget' => 0]]], 30);
             $txt = $res['json']['candidates'][0]['content']['parts'][0]['text'] ?? '';
             $j = json_decode(trim(preg_replace('/^```(json)?|```$/m', '', $txt)), true);
             if (is_array($j) && isset($j['home']['title'])) {
