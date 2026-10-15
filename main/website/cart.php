@@ -4464,7 +4464,8 @@ if ('serviceWorker' in navigator) {
 }
 
 window.addEventListener('beforeinstallprompt', function(e) {
-  e.preventDefault();
+  // Don't preventDefault here — Chrome warns if preventDefault is called but
+  // prompt() never fires. Save the event; prompt() is called only on user action.
   deferredPrompt = e;
 });
 

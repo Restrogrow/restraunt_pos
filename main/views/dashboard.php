@@ -8016,10 +8016,13 @@ function showInstallMsg(msg, icon, title) {
   }
 }
 
-// Capture the beforeinstallprompt event when the browser fires it
+// Capture the beforeinstallprompt event when the browser fires it.
+// Don't call preventDefault() here — Chrome warns if preventDefault is called
+// but prompt() never fires. We save the event and call prompt() only when the
+// user clicks "Install App".
 var _promptTriggered = false;
 window.addEventListener('beforeinstallprompt', function(e) {
-  e.preventDefault();
+  if (deferredPrompt) return; // already captured one
   deferredPrompt = e;
   _promptTriggered = false;
   pwaDiagnostics.deferredPromptReady = true;
@@ -8491,6 +8494,7 @@ window._promptInstallFn = function() {
   if (deferredPrompt) {
     console.log('%c🎯 Triggering native install prompt...', 'background:#059669;color:#fff;padding:4px 8px;border-radius:4px;font-size:13px;');
     _promptTriggered = true;
+    deferredPrompt.preventDefault();
     deferredPrompt.prompt();
     deferredPrompt.userChoice.then(function(result) {
       console.log('%c   User ' + (result.outcome === 'accepted' ? 'accepted' : 'dismissed') + ' install prompt', 'font-size:12px;color:' + (result.outcome === 'accepted' ? '#10b981' : '#f59e0b'));
