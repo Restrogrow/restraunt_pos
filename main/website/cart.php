@@ -1264,6 +1264,8 @@ function appendTableParam(url) {
   }
   return url;
 }</script>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
+<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
 <div class="phone-frame">
@@ -2088,6 +2090,7 @@ function vipFreeDelivery(itemsTotal) { var v = window.cartVip; return !!(v && v.
 function changeQty(key, delta) {
   if (!cartItems[key]) return;
   var raw = cartItems[key];
+  var snap = snapshotLine(key);
   if (typeof raw === 'number') {
     cartItems[key] = Math.max(0, raw + delta);
     if (cartItems[key] === 0) delete cartItems[key];
@@ -2095,17 +2098,39 @@ function changeQty(key, delta) {
     raw.qty = Math.max(0, (raw.qty || 0) + delta);
     if (raw.qty === 0) delete cartItems[key];
   }
-  if (!cartItems[key]) clearItemNote(key);
+  if (!cartItems[key]) { clearItemNote(key); offerUndo(snap); }
   saveCart();
   renderCart();
 }
 
 function deleteItem(key) {
+  if (!cartItems[key]) return;
+  var snap = snapshotLine(key);
   clearAddonsForItem(key);
   clearItemNote(key);
   delete cartItems[key];
   saveCart();
   renderCart();
+  offerUndo(snap);
+}
+
+// A removed dish shows "… removed · UNDO" (rg-notify.js); Undo puts back the line, its add-ons and its note.
+function snapshotLine(key) {
+  var get = function (k) { try { return (JSON.parse(localStorage.getItem(k) || '{}') || {})[key]; } catch (e) { return null; } };
+  var btn = document.querySelector('.order-del[onclick*="\'' + key + '\'"]');
+  var name = btn ? (btn.getAttribute('aria-label') || '').replace(/^Remove /, '') : '';
+  return { key: key, raw: JSON.parse(JSON.stringify(cartItems[key])), addons: get('_itemAddons'), note: get('_itemNotes'), name: name || 'Item' };
+}
+function offerUndo(snap) {
+  if (!window.RGNotify || !snap) return;
+  RGNotify.snack(snap.name + ' removed', { action: 'Undo', onAction: function () {
+    var put = function (k, v) { if (v == null) return; try { var all = JSON.parse(localStorage.getItem(k) || '{}') || {}; all[snap.key] = v; localStorage.setItem(k, JSON.stringify(all)); } catch (e) {} };
+    cartItems[snap.key] = snap.raw;
+    put('_itemAddons', snap.addons); put('_itemNotes', snap.note);
+    saveCart();
+    renderCart();
+    RGNotify.island(snap.name + ' is back in your cart', 'success');
+  } });
 }
 
 var savedInstruction = '';
@@ -2167,6 +2192,7 @@ function loadInstruction() {
 }
 
 function showToast(msg, type) {
+  if (window.RGNotify) return RGNotify.toast(msg, type || 'success', { html: true });
   type = type || 'success';
   var existing = document.querySelector('.toast-notification');
   if (existing) existing.remove();

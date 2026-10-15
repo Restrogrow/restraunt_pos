@@ -1172,6 +1172,8 @@ body { background: #e3e6ea; }
 .pfc-sharp.pf-banner .profile-hero { border-radius: 0; }
 .pfs-hide .stats-grid { display: none; }
 </style>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
+<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
 <?php
@@ -2204,6 +2206,7 @@ function escapeHtml(str) {
 }
 
 function showToast(msg, type) {
+  if (window.RGNotify) return RGNotify.toast(msg, type || 'success', { html: true });
   type = type || 'success';
   var existing = document.querySelector('.toast-notification');
   if (existing) existing.remove();

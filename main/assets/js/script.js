@@ -38,6 +38,7 @@ let menuItemSortData = [];
 
 // Toast fallback when Swal is not available
 function showToastFallback(msg, type) {
+  if (window.RGNotify) return RGNotify.toast(msg, type);
   var existing = document.querySelector('.toast-fallback');
   if (existing) existing.remove();
   var icons = { success: '✓', error: '✕', info: 'ℹ', warning: '⚠' };
@@ -2333,8 +2334,9 @@ document.addEventListener("DOMContentLoaded", () => {
     messageDiv.className = `message ${type}`;
     messageDiv.textContent = message;
 
-    // Insert message after form group
+    // Insert message after form group; if that form is hidden the message would never be seen, so toast it
     const formGroup = document.querySelector(".form-group");
+    if (window.RGNotify && (!formGroup || !formGroup.offsetParent)) return RGNotify.toast(message, type);
     if (formGroup) {
       formGroup.insertAdjacentElement("afterend", messageDiv);
     }
@@ -2890,6 +2892,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showNotification(message, type) {
+    if (window.RGNotify) return RGNotify.toast(message, type);
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;

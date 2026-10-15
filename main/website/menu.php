@@ -1364,6 +1364,8 @@ window.packagingCharge = <?php echo json_encode((float)$packaging_charge, JSON_H
 window.showInstallApp = <?php echo json_encode($show_install_app, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minutes ?? 330, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 </script>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
+<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
 <div class="phone-frame">
@@ -3460,6 +3462,7 @@ function shareRestaurant() {
 }
 
 function showToast(msg, type) {
+  if (window.RGNotify) return RGNotify.toast(msg, type || 'success', { html: true });
   type = type || 'success';
   var existing = document.querySelector('.toast-notification');
   if (existing) existing.remove();

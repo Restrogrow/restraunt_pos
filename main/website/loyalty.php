@@ -301,6 +301,8 @@ button { font-family: inherit; }
 .cart-badge { position: absolute; top: -5px; right: 50%; transform: translateX(17px); background: #ff4444; color: #fff; font-size: 10px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; }
 .login-btn { background: linear-gradient(135deg, #e17055, #d63031); color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 11px; font-family: 'Poppins', sans-serif; cursor: pointer; font-weight: 500; }
 </style>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
+<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
 <div class="phone-frame">
@@ -354,6 +356,7 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
     return 'image.php?id=' + encodeURIComponent(src.indexOf('db:') === 0 ? src.substring(3) : src);
   }
   function toast(msg, type) {
+    if (window.RGNotify) return RGNotify.toast(msg, type || 'success');
     var t = document.querySelector('.lx-toast'); if (t) t.remove();
     t = document.createElement('div'); t.className = 'lx-toast' + (type === 'error' ? ' error' : ''); t.textContent = msg;
     document.body.appendChild(t);

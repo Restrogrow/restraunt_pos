@@ -114,6 +114,8 @@ applyRestaurantTimezone($timezone, $conn);
     
     <!-- Scripts - Defer non-critical -->
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>
+    <script src="../website/rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-notify.js'); ?>"></script>
+    <script>RGNotify.setup({ toast: 'card', watchSaves: true });</script>
   <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
     <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
     <script src="../assets/js/direct-printer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/direct-printer.js'); ?>" defer></script>
@@ -805,6 +807,7 @@ applyRestaurantTimezone($timezone, $conn);
         
         // Enhanced Notification system
         function showNotification(message, type = 'info', duration = 4000) {
+            if (window.RGNotify) return RGNotify.toast(message, type, { html: true, duration: duration });
             const notification = document.createElement('div');
             const icons = {
                 success: '✅',
@@ -853,6 +856,11 @@ applyRestaurantTimezone($timezone, $conn);
         
         // Confirmation Modal
         function showConfirmModal(message, onConfirm, onCancel = null) {
+            if (window.RGNotify) {
+                RGNotify.confirm(message, { title: 'Confirm action', html: true, confirmText: 'Confirm', cancelText: 'Cancel' })
+                    .then(ok => { if (ok) { if (onConfirm) onConfirm(); } else if (onCancel) onCancel(); });
+                return;
+            }
             // Remove existing modal if any
             const existing = document.getElementById('waiterConfirmModal');
             if (existing) existing.remove();

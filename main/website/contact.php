@@ -221,6 +221,8 @@ body {
   cursor: pointer; font-weight: 500;
 }
 </style>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
+<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
 <div class="phone-frame">
@@ -294,6 +296,7 @@ function goBack() {
 }
 
 function showToast(msg, type) {
+  if (window.RGNotify) return RGNotify.toast(msg, type || 'success', { html: true });
   type = type || 'success';
   var existing = document.querySelector('.toast-notification');
   if (existing) existing.remove();

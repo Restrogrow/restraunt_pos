@@ -510,6 +510,7 @@
     });
   }, 1000);
   function toast(msg) {
+    if (window.RGNotify) return RGNotify.toast(msg, 'success');
     var t = document.createElement('div');
     t.className = 'rg-bn-toast';
     t.textContent = msg;

@@ -18,6 +18,7 @@
   function money(n) { n = Math.round(n * 100) / 100; return CUR + (n % 1 ? n.toFixed(2) : n.toLocaleString('en-IN')); }
   function day(d) { var x = new Date(String(d).replace(' ', 'T')); return isNaN(x) ? d : x.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
   function toast(msg, type) {
+    if (window.RGNotify) return RGNotify.toast(msg, type || 'success');
     var t = document.querySelector('.lx-toast'); if (t) t.remove();
     t = document.createElement('div'); t.className = 'lx-toast' + (type === 'error' ? ' error' : ''); t.textContent = msg;
     document.body.appendChild(t);

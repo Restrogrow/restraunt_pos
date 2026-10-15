@@ -79,6 +79,8 @@ body { font-family: var(--site-font); background: #e8ecf2; color: #1a1b1f; min-h
 .toast-notification.success { background: #10b981; color: #fff; }
 .toast-notification.error { background: #ef4444; color: #fff; }
 </style>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
+<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
 <div class="phone-frame">
@@ -103,6 +105,7 @@ function escapeHtml(str) {
 }
 
 function showToast(msg, type) {
+  if (window.RGNotify) return RGNotify.toast(msg, type || 'success', { html: true });
   var existing = document.querySelector('.toast-notification');
   if (existing) existing.remove();
   var toast = document.createElement('div');

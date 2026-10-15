@@ -355,6 +355,9 @@ try {
   
   <!-- Scripts - Defer non-critical -->
   <script src="../assets/js/sweetalert2.all.min.js" defer></script>
+  <!-- toasts, "Saving…" → ✓, popups: website/rg-notify.js (shared with the waiter screen and the customer website) -->
+  <script src="../website/rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-notify.js'); ?>"></script>
+  <script>RGNotify.setup({ toast: 'card', watchSaves: true });</script>
   <script src="../assets/libs/cropperjs/cropper.min.js" defer></script>
   <!-- jsPDF for client-side PDF report export (local files, same reasoning as Cropper.js above) -->
   <script src="../assets/libs/jspdf/jspdf.umd.min.js" defer></script>

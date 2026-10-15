@@ -244,6 +244,8 @@ body.claim-mode #authTabs, body.claim-mode #loginForm, body.claim-mode #signupFo
 @keyframes authFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 @media (prefers-reduced-motion: reduce) { .auth-sheet, .auth-logo, #loginForm, #signupForm { animation: none; } .auth-ind { transition: none; } }
 </style>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
+<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
 <div class="phone-frame">
@@ -486,6 +488,7 @@ function hideAuthError() {
 }
 
 function showToast(msg, type) {
+  if (window.RGNotify) return RGNotify.toast(msg, type || 'success', { html: true });
   var existing = document.querySelector('.toast-notification');
   if (existing) existing.remove();
   var toast = document.createElement('div');
