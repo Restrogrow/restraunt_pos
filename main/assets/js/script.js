@@ -9079,6 +9079,7 @@ document.addEventListener("DOMContentLoaded", () => {
         restaurantInfo.showBusinessId = infoData.data.show_business_id == 1 || infoData.data.show_business_id === '1';
         restaurantInfo.businessIdLabel = infoData.data.business_id_label || '';
         restaurantInfo.businessIdNo = infoData.data.business_id_no || '';
+        restaurantInfo.business_qr_code_path = infoData.data.business_qr_code_path || '';
       }
     } catch (e) {
       console.warn('Could not load restaurant info:', e);
@@ -9180,6 +9181,7 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
 
       ${billLoyaltyLine(payResult) ? `<div style="margin-top:10px;padding:8px;border:1px dashed #059669;text-align:center;font-size:12px;font-weight:700;color:#065f46;">${escapeHtml(billLoyaltyLine(payResult))}</div>` : ''}
+      ${restaurantInfo.business_qr_code_path ? `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed #d1d5db;text-align:center;"><div style="font-size:9px;color:#6b7280;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Scan to Pay</div><img src="../api/image.php?type=business_qr&id=${encodeURIComponent(restaurantInfo.user_id || '')}" alt="Payment QR" style="max-width:100px;max-height:100px;object-fit:contain;border:1px solid #e5e7eb;padding:4px;background:#fff;" onerror="this.style.display='none';"></div>` : ''}
       <div class="footer">
         <div class="footer-text">Thank you!</div>
         <div class="footer-text">Powered by Restro Grow</div>
@@ -9189,6 +9191,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const billPrinterSettings = window.getPrinterSettings();
     if (window.isDirectPrintMode(billPrinterSettings.mode)) {
       // the phone app's bill layout (escpos.js buildBillEscPos)
+      const billImages = await window.rgReceiptImages(restaurantInfo, billPrinterSettings.widthMM);
       const afterTotal = [];
       if (payResult.walletPaid > 0) afterTotal.push(['Paid from wallet', '-' + payResult.walletPaid.toFixed(2)]);
       if (payResult.dueAmount > 0) afterTotal.push(['Due', payResult.dueAmount.toFixed(2)]);
@@ -9217,7 +9220,10 @@ document.addEventListener("DOMContentLoaded", () => {
         total: total,
         afterTotal: afterTotal,
         paymentMethod: payResult.paymentMethod,
-        notes: billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : []
+        notes: billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : [],
+        logoRaster: billImages.logoRaster,
+        qrRaster: billImages.qrRaster,
+        qrLabel: 'Scan to Pay'
       });
       // printed, or printDirect's onFail already showed the preview: either way nothing more to show
       await window.printDirect(escBuilder, () => showPrintPreview('Bill #' + kotNumber, billHtml));
@@ -10353,6 +10359,35 @@ window.getThermalReceiptCSS = function (widthMMOverride) {
   );
 };
 
+// Loads the restaurant logo and payment QR as ESC/POS raster commands so the
+// direct print modes (network / Bluetooth / USB) can print them - thermal text
+// mode has no way to draw either. Returns { logoRaster, qrRaster }; a value is
+// null when that image is absent or fails to load, and the builder simply skips
+// it. Pass { qr: false } for documents that don't show a QR.
+window.rgReceiptImages = async function (restaurantInfo, widthMM, opts) {
+  opts = opts || {};
+  var dotWidth = widthMM === 58 ? 384 : 576;
+  var out = { logoRaster: null, qrRaster: null };
+  try {
+    var lp = restaurantInfo && restaurantInfo.logo;
+    if (lp) {
+      var logoUrl;
+      if (lp.indexOf('db:') === 0) logoUrl = '../api/image.php?type=logo&id=' + (restaurantInfo.user_id || restaurantInfo.id || '');
+      else if (lp.indexOf('http') === 0) logoUrl = lp;
+      else if (lp.indexOf('uploads/') === 0) logoUrl = '../' + lp;
+      else logoUrl = '../uploads/' + lp;
+      out.logoRaster = await window.rgImageUrlToRaster(logoUrl, Math.round(dotWidth * 0.42), 200);
+    }
+  } catch (e) { /* logo is optional */ }
+  try {
+    if (opts.qr !== false && restaurantInfo && restaurantInfo.business_qr_code_path) {
+      var uid = restaurantInfo.user_id || restaurantInfo.id || '';
+      out.qrRaster = await window.rgImageUrlToRaster('../api/image.php?type=business_qr&id=' + uid, 192, 190);
+    }
+  } catch (e) { /* QR is optional */ }
+  return out;
+};
+
 // Sends raw ESC/POS bytes to a LAN thermal printer via the server-side
 // relay (browsers can't open raw TCP sockets themselves). Returns true on
 // success so callers can fall back to the browser print preview on failure.
@@ -10398,7 +10433,7 @@ window.printViaNetwork = async function (escPosBuilder) {
       body: JSON.stringify({
         ip: settings.networkIp,
         port: settings.networkPort,
-        data: escPosBuilder.toBase64()
+        data: window.rgEscPosBase64(escPosBuilder)
       })
     });
     const data = await res.json();
@@ -11134,10 +11169,14 @@ window.printKOT = async function(kotId, onClose) {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
     
-    // Write HTML to iframe and inject preview-friendly CSS
+    // Write HTML to iframe and inject preview-friendly CSS.
+    // The receipt templates only turn monochrome/paper-sized inside
+    // "@media print"; the preview should show the bill exactly as it will
+    // come off the printer, so those rules are re-pointed at "all" here
+    // (the actual print popup still gets the untouched HTML).
     var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
     iframeDoc.open();
-    iframeDoc.write(htmlContent);
+    iframeDoc.write(String(htmlContent).replace(/@media\s+print/g, '@media all'));
     iframeDoc.close();
     
     // Fit receipt into preview at optimum zoom (no scrolling needed)
@@ -11393,6 +11432,7 @@ window.printOrder = async function(orderId) {
     const orderPrinterSettings = window.getPrinterSettings();
     if (window.isDirectPrintMode(orderPrinterSettings.mode)) {
       // the phone app's bill layout (escpos.js buildBillEscPos)
+      const orderImages = await window.rgReceiptImages(restaurantInfo, orderPrinterSettings.widthMM);
       const escBuilder = window.buildBillEscPos({
         charWidth: window.getPrinterCharWidth(orderPrinterSettings.widthMM),
         restaurantName: restaurantInfo.name,
@@ -11415,7 +11455,10 @@ window.printOrder = async function(orderId) {
         taxLabel: window.taxName || 'Tax',
         tax: tax,
         total: total,
-        paymentMethod: paymentMethod
+        paymentMethod: paymentMethod,
+        logoRaster: orderImages.logoRaster,
+        qrRaster: orderImages.qrRaster,
+        qrLabel: 'Scan to Pay'
       });
       const sent = await window.printDirect(escBuilder, () => showPrintPreview('Invoice #' + order.order_number, html));
       return; // printDirect's onFail already showed the preview when sent is false

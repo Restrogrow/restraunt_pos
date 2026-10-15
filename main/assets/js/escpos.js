@@ -18,10 +18,14 @@
     '’': "'", '‘': "'", '“': '"', '”': '"', '…': '...', '→': '->', '←': '<-',
     '≥': '>=', '≤': '<=', '\u00A0': ' ', '€': 'EUR', '£': 'GBP'
   };
+  var sawUnprintable = false;
   function toAscii(str) {
     var s = String(str == null ? '' : str)
       .replace(/[₹×·•–—−’‘“”…→←≥≤\u00A0€£]/g, function (ch) { return ASCII_FALLBACK[ch]; });
     if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Café → Cafe
+    // Anything still outside ASCII has no Latin stand-in (Hindi/Tamil/...):
+    // remember it, so the receipt can be sent as an image instead of "?".
+    if (/[^\x00-\x7E]/.test(s)) sawUnprintable = true;
     return s.replace(/[^\x00-\x7E]/g, '?');
   }
 
@@ -34,8 +38,27 @@
     return this;
   };
 
+  // Appends a ready-built ESC/POS raster command (see rgImageUrlToRaster), so a
+  // logo or payment QR can be printed alongside the text.
+  EscPosBuilder.prototype.raster = function (bytes) {
+    if (!bytes) return this;
+    for (let i = 0; i < bytes.length; i++) this.bytes.push(bytes[i] & 0xFF);
+    return this;
+  };
+
+  // True when toAscii() would have to emit "?" for this string - i.e. it holds
+  // a script with no Latin stand-in (Hindi, Tamil, ...). That's the signal that
+  // the text path cannot represent it and the receipt must go out as an image.
+  function hasUnprintable(str) {
+    var t = String(str == null ? '' : str)
+      .replace(/[₹×·•–—−’‘“”…→←≥≤\u00A0€£]/g, '');
+    if (t.normalize) t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return /[^\x00-\x7E]/.test(t);
+  }
+
   // See toAscii(): common symbols get an ASCII stand-in before encoding.
   EscPosBuilder.prototype.text = function (str) {
+    if (!this.hadUnprintable && hasUnprintable(str)) this.hadUnprintable = true;
     const clean = toAscii(str);
     for (let i = 0; i < clean.length; i++) this.bytes.push(clean.charCodeAt(i) & 0xFF);
     return this;
@@ -118,6 +141,12 @@
         if (b === 0x1B && next === 0x45) { i += 2; continue; } // ESC E n
         if (b === 0x1B && next === 0x64) { i += 2; continue; } // ESC d n
         if (b === 0x1D && next === 0x21) { i += 2; continue; } // GS ! n
+        if (b === 0x1D && next === 0x76 && bytes[i + 2] === 0x30) { // GS v 0 - raster image
+          const bytesPerRow = bytes[i + 4] + (bytes[i + 5] << 8);
+          const rows = bytes[i + 6] + (bytes[i + 7] << 8);
+          i += 7 + bytesPerRow * rows; // skip the header + the packed pixels
+          continue;
+        }
         if (b === 0x1D && next === 0x56) { i += 2; continue; } // GS V n
         continue;
       }
@@ -130,6 +159,7 @@
   // charWidth: 32 for 58mm paper, 48 for 80mm paper (standard Font A widths).
   function buildReceiptEscPos(opts) {
     const width = opts.charWidth || 32;
+    sawUnprintable = false;
     const p = new EscPosBuilder();
     p.init();
     p.align('center');
@@ -180,6 +210,7 @@
 
     p.feed(3);
     p.cut();
+    p.hadUnprintable = p.hadUnprintable || sawUnprintable;
     return p;
   }
 
@@ -260,12 +291,14 @@
   // o: { charWidth, restaurantName, address, phone, email, website, businessIdLabel, businessIdNo,
   //      billNo, createdAt, billTo, items: [{ name, quantity, rate, amount?, sub? }], subtotal,
   //      discounts: [[label, amount]], taxLabel, tax, total, afterTotal: [[label, value]],
-  //      paymentMethod, notes: [line] }
+  //      paymentMethod, notes: [line], logoRaster, qrRaster, qrLabel }
   function buildBillEscPos(o) {
     var width = o.charWidth || 32;
+    sawUnprintable = false;
     var p = new EscPosBuilder();
     var dash = function () { p.line('-'.repeat(width)); };
     p.init().align('center');
+    if (o.logoRaster) p.raster(o.logoRaster);
     // restaurant name: big and bold, wrapped for the double-width font
     p.bold(true).size(true);
     wrapText(o.restaurantName || 'Receipt', Math.max(8, Math.floor(width / 2))).forEach(function (l) { p.line(l); });
@@ -299,18 +332,26 @@
     p.bold(true).line(padLine('  Total', fmtAmount(o.total), width)).bold(false);
     (o.afterTotal || []).forEach(function (t) { p.line(padLine('  ' + t[0], t[1], width)); });
     if (o.paymentMethod) { dash(); p.line(padLine('Mode of Payment', o.paymentMethod, width)); }
+    if (o.qrRaster) {
+      p.align('center');
+      p.raster(o.qrRaster);
+      p.line(o.qrLabel || 'Scan to Pay');
+      p.align('left');
+    }
     dash();
     p.align('center');
     (o.notes || []).forEach(function (n) { wrapText(n, width).forEach(function (l) { p.line(l); }); });
     p.line('Thank You! Visit Again!');
     p.line('Powered by RestroGrow');
     p.feed(3).cut();
+    p.hadUnprintable = p.hadUnprintable || sawUnprintable;
     return p;
   }
 
   // o: { charWidth, kotNumber, createdAt, billNo, table, items: [{ name, quantity, sub? }], notes: [line] }
   function buildKotEscPos(o) {
     var width = o.charWidth || 32;
+    sawUnprintable = false;
     var p = new EscPosBuilder();
     var dash = function () { p.line('-'.repeat(width)); };
     p.init().align('left');
@@ -332,6 +373,7 @@
     dash();
     p.align('center').line('Thank you!');
     p.feed(3).cut();
+    p.hadUnprintable = p.hadUnprintable || sawUnprintable;
     return p;
   }
 
@@ -339,4 +381,134 @@
   global.buildReceiptEscPos = buildReceiptEscPos;
   global.buildBillEscPos = buildBillEscPos;
   global.buildKotEscPos = buildKotEscPos;
+
+  /* ── Raster helpers ──────────────────────────────────────────────────────
+     Thermal printers' built-in text mode only speaks a single-byte Latin
+     code page, so a script with no Latin stand-in (Hindi/Tamil/...) can only
+     come out as "?" - and a logo or a payment QR cannot come out at all.
+     Both are solved by sending a picture: the text (or the logo/QR) is drawn
+     onto a canvas and packed as an ESC/POS GS v 0 raster image. */
+
+  // Packs a canvas into ESC/POS raster bytes: 1 bit per pixel, MSB first, each
+  // row padded to a whole byte. Threshold leans dark so anti-aliased strokes
+  // survive the low-resolution thermal output.
+  function canvasToRaster(canvas, threshold) {
+    var w = canvas.width, h = canvas.height;
+    var data = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+    var bytesPerRow = Math.ceil(w / 8);
+    var out = new Uint8Array(bytesPerRow * h);
+    var t = threshold == null ? 180 : threshold;
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        var lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        if (lum < t) out[y * bytesPerRow + (x >> 3)] |= (1 << (7 - (x & 7)));
+      }
+    }
+    return out;
+  }
+
+  // Wraps raster bytes in a GS v 0 command; the caller aligns it.
+  function rasterCommand(w, h, raster) {
+    var bytesPerRow = Math.ceil(w / 8);
+    var cmd = [GS, 0x76, 0x30, 0x00, bytesPerRow & 0xFF, (bytesPerRow >> 8) & 0xFF, h & 0xFF, (h >> 8) & 0xFF];
+    var out = new Uint8Array(cmd.length + raster.length);
+    out.set(cmd, 0);
+    out.set(raster, cmd.length);
+    return out;
+  }
+
+  // Loads an image URL and returns a ready-to-append GS v 0 command (or null on
+  // any failure, so a missing/unreachable image never blocks a print).
+  function imageUrlToRaster(url, dotWidth, threshold) {
+    return new Promise(function (resolve) {
+      if (!url || typeof document === 'undefined') return resolve(null);
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function () {
+        try {
+          var w = dotWidth || 256;
+          var iw = img.naturalWidth || img.width || w;
+          var ih = img.naturalHeight || img.height || w;
+          var h = Math.max(1, Math.round(ih * (w / iw)));
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          var ctx = c.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(rasterCommand(w, h, canvasToRaster(c, threshold)));
+        } catch (e) { resolve(null); }
+      };
+      img.onerror = function () { resolve(null); };
+      img.src = url;
+    });
+  }
+
+  // Renders the builder's plain text (exactly what the text path would print)
+  // as one raster image. The widest line is scaled to the paper width, so the
+  // columns (which are just padded spaces) stay aligned.
+  function rasterizePlainText(text, widthMM) {
+    if (typeof document === 'undefined') throw new Error('no canvas');
+    var dotWidth = widthMM === 58 ? 384 : 576;
+    var lines = String(text == null ? '' : text).replace(/\n+$/, '').split('\n');
+    if (!lines.length) lines = [''];
+    var fam = '"Courier New", Courier, monospace';
+    var c = document.createElement('canvas');
+    var ctx = c.getContext('2d');
+    ctx.font = '600 20px ' + fam;
+    var maxW = 1;
+    for (var i = 0; i < lines.length; i++) {
+      maxW = Math.max(maxW, ctx.measureText(lines[i]).width);
+    }
+    var fontPx = Math.max(9, Math.round(20 * Math.min(1, dotWidth / maxW)));
+    var lineH = Math.round(fontPx * 1.35);
+    c.width = dotWidth;
+    c.height = Math.max(1, lines.length * lineH);
+    ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#000';
+    ctx.font = '600 ' + fontPx + 'px ' + fam;
+    ctx.textBaseline = 'top';
+    for (var j = 0; j < lines.length; j++) ctx.fillText(lines[j], 0, j * lineH);
+    var raster = canvasToRaster(c, 170);
+    var head = [ESC, 0x40, ESC, 0x61, 0x00]; // init + left align
+    var body = rasterCommand(dotWidth, c.height, raster);
+    var tail = [ESC, 0x64, 0x03, GS, 0x56, 0x00]; // feed 3 + full cut
+    var out = new Uint8Array(head.length + body.length + tail.length);
+    out.set(head, 0);
+    out.set(body, head.length);
+    out.set(tail, head.length + body.length);
+    return out;
+  }
+
+  function settingsWidth() {
+    try { return global.getPrinterSettings ? global.getPrinterSettings().widthMM : 80; } catch (e) { return 80; }
+  }
+
+  function bytesToBase64(bytes) {
+    var binary = '';
+    for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  // The bytes to actually send: normally the ESC/POS text stream, but when the
+  // receipt holds a script the text mode cannot render it is sent as a single
+  // raster image instead, so nothing comes out as "?".
+  global.rgEscPosBytes = function (builder, opts) {
+    opts = opts || {};
+    var widthMM = opts.widthMM == null ? settingsWidth() : opts.widthMM;
+    if (builder && builder.hadUnprintable) {
+      try { return rasterizePlainText(builder.toPlainText(), widthMM); } catch (e) { /* fall back to text */ }
+    }
+    return builder.toUint8Array();
+  };
+
+  global.rgEscPosBase64 = function (builder, opts) {
+    return bytesToBase64(global.rgEscPosBytes(builder, opts));
+  };
+
+  // Turns an image URL into a ready-to-append GS v 0 raster command (or null).
+  global.rgImageUrlToRaster = function (url, dotWidth, threshold) {
+    return imageUrlToRaster(url, dotWidth, threshold);
+  };
 })(window);

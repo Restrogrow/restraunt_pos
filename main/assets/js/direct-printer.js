@@ -400,7 +400,7 @@
       if (typeof onFail === 'function') onFail();
       return false;
     }
-    var bytes = builder.toUint8Array();
+    var bytes = global.rgEscPosBytes ? global.rgEscPosBytes(builder) : builder.toUint8Array();
     if (!api.isConnected(mode)) {
       var ok = await quickReconnect();
       if (!ok && opts && opts.interactive) {
