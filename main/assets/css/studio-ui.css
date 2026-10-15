@@ -1773,6 +1773,26 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 @media (max-width: 1024px) { .ps .pos-container { grid-template-columns: minmax(0, 1fr); } }
 .ps .pos-menu-section, .ps .pos-cart-section { min-width: 0; }
 
+/* ── POS cart: keep the totals + Pay/Hold/KOT pinned; only the item list scrolls ── */
+.ps .pos-cart-section { min-height: 0; overflow: hidden; }
+.ps .pos-cart-items { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.ps .pos-cart-header, .ps .pos-table-select, .ps .pos-cart-summary, .ps .pos-cart-actions { flex: 0 0 auto; }
+
+/* Fit the POS to the viewport on desktop so the page itself never scrolls:
+   the menu grid and the cart item list are the only things that move. */
+@media (min-width: 1025px) {
+  .main-content:has(#posPage.ps.active) { height: 100vh; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .main-content:has(#posPage.ps.active) #posPage.ps.active { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .main-content:has(#posPage.ps.active) #posPage.ps.active .page-header { flex: 0 0 auto; }
+  .main-content:has(#posPage.ps.active) #posPage.ps.active .page-content { flex: 1 1 auto; min-height: 0; display: flex; }
+  .main-content:has(#posPage.ps.active) #posPage.ps.active .pos-container { flex: 1 1 auto; min-height: 0; height: auto; }
+}
+
+/* Tablet (menu stacked above cart): cap the item list so the totals + buttons stay on screen */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .ps .pos-cart-items { max-height: 46vh; }
+}
+
 /* new-order popup: Ready in = preparing (+ delivery) time rows with chips and a − / + stepper */
 .no-times { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .no-th { display: inline-flex; align-items: center; gap: 5px; color: #374151; font-size: .82rem; font-weight: 800; }
