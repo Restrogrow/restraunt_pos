@@ -86,7 +86,9 @@
           '<span class="sx-pill ' + st[0] + '">' + st[1] + '</span>' +
           '<span class="dh-o-amt">' + money(o.total) + '</span><span class="dh-o-ago">' + ago(o.at) + '</span></button>';
       }).join('') + '</div>' + (D.live_count > D.live.length ? '<p class="dh-more">+ ' + (D.live_count - D.live.length) + ' more in Orders</p>' : '')
-        : '<div class="dh-empty">' + ic('receipt_long') + '<span>No orders in progress. New ones show up here and ring.</span></div>') +
+        : '<div class="dh-empty big">' + ic('receipt_long') + '<b>No orders in progress</b><span>New orders show up here and ring.</span>' +
+          '<div class="dh-empty-actions"><button type="button" class="btn btn-primary" data-dh-go="posPage">' + ic('point_of_sale') + 'Take an order</button>' +
+          '<button type="button" class="btn btn-secondary" data-dh-go="onlineOrdersPage">' + ic('language') + 'Online orders</button></div></div>') +
       '</section>';
   }
 
@@ -122,12 +124,42 @@
   var SHORTCUTS = [['posPage', 'point_of_sale', 'POS'], ['kotPage', 'skillet', 'Kitchen'], ['menuItemsPage', 'restaurant_menu', 'Menu'], ['tablesPage', 'table_restaurant', 'Tables'],
     ['customersPage', 'group', 'Customers'], ['offersHomePage', 'sell', 'Offers'], ['reportsPage', 'monitoring', 'Reports'], ['settingsPage', 'settings', 'Settings']];
 
+  // the shortcuts sit under Orders in progress, so the left column doesn't end in a gap
+  function quick() {
+    return '<section class="dh-card dh-quick"><div class="dh-card-h"><b>Quick actions</b></div><nav class="dh-shortcuts" aria-label="Shortcuts">' +
+      SHORTCUTS.map(function (s) { return '<button type="button" data-dh-go="' + s[0] + '">' + ic(s[1]) + '<span>' + s[2] + '</span></button>'; }).join('') + '</nav></section>';
+  }
+
+  // Two columns end at about the same height: while the right one is taller by more than its last
+  // card, that card moves under the left column (Best sellers, then Reservations, then Floor).
+  // Only on wide screens; phones show one column anyway.
+  function balance(root) {
+    if (window.innerWidth <= 1100) return;
+    var cols = root.querySelectorAll('.dh-grid > .dh-col');
+    if (cols.length < 2) return;
+    var left = cols[0], right = cols[1];
+    for (var i = 0; i < 3; i++) {
+      var last = right.lastElementChild;
+      if (!last || right.children.length < 3) break;
+      if (right.offsetHeight - left.offsetHeight <= last.offsetHeight) break;
+      left.appendChild(last);
+    }
+  }
+  var lastWide = window.innerWidth > 1100, resizeT = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(function () {
+      var wide = window.innerWidth > 1100;
+      if (wide !== lastWide) { lastWide = wide; draw(); }   // crossing to one or two columns: lay out again
+    }, 200);
+  });
+
   function draw() {
     var root = document.getElementById('dhRoot');
     if (!root || !D) return;
     root.innerHTML = kpis() +
-      '<div class="dh-grid">' + '<div class="dh-col">' + chart() + liveOrders() + '</div>' + '<div class="dh-col">' + upcoming() + attention() + side() + '</div>' + '</div>' +
-      '<nav class="dh-shortcuts" aria-label="Shortcuts">' + SHORTCUTS.map(function (s) { return '<button type="button" data-dh-go="' + s[0] + '">' + ic(s[1]) + s[2] + '</button>'; }).join('') + '</nav>';
+      '<div class="dh-grid">' + '<div class="dh-col">' + chart() + liveOrders() + quick() + '</div>' + '<div class="dh-col">' + upcoming() + attention() + side() + '</div>' + '</div>';
+    balance(root);
     // header
     var h = new Date().getHours();
     var hello = document.getElementById('dhHello'); if (hello) hello.textContent = h < 5 ? 'Working late' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';

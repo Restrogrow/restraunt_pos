@@ -793,6 +793,13 @@
 .dh-empty { display: flex; align-items: center; gap: 10px; padding: 18px 4px; color: var(--sx-muted); font-size: .86rem; }
 .dh-empty .material-symbols-rounded { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 11px; background: #f3f4f6; color: var(--sx-faint); font-size: 21px; }
 .dh-empty.sm { padding: 6px 0; }
+/* nothing in progress: a proper empty state, centred in the card */
+.dh-empty.big { flex: 1; flex-direction: column; justify-content: center; gap: 4px; padding: 26px 12px; text-align: center; }
+.dh-empty.big .material-symbols-rounded { width: 56px; height: 56px; margin-bottom: 6px; border-radius: 18px; background: rgba(37,99,235,.08); color: var(--sx-accent); font-size: 28px; }
+.dh-empty.big b { color: var(--sx-ink); font-size: 1rem; }
+.dh-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; }
+.dh-empty-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.dh-empty-actions .btn .material-symbols-rounded { width: auto; height: auto; margin: 0; background: none; color: inherit; font-size: 18px; border-radius: 0; }
 
 .dh-att-list { display: flex; flex-direction: column; gap: 6px; }
 .dh-att-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px; border: 1px solid var(--sx-line); border-radius: 12px; background: #fff; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
@@ -829,9 +836,18 @@
 .dh-mini i { display: block; height: 100%; border-radius: inherit; background: #fbbf24; }
 .dh-qty { color: var(--sx-muted); font-size: .78rem; font-weight: 700; white-space: nowrap; }
 
-.dh-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.dh-shortcuts button { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px 0 11px; border: 1px solid var(--sx-line); border-radius: 11px; background: #fff; color: #374151; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; transition: border-color .15s, background .15s; }
-.dh-shortcuts button .material-symbols-rounded { font-size: 19px; color: var(--sx-faint); }
+/* Quick actions: tiles in their own card under Orders in progress */
+.dh-shortcuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.dh-shortcuts button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 76px; padding: 12px 6px; border: 1px solid var(--sx-line); border-radius: 14px; background: #fff; color: #374151; font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+.dh-shortcuts button:active { transform: scale(.97); }
+.dh-shortcuts button span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.dh-shortcuts button .material-symbols-rounded { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: rgba(37,99,235,.08); font-size: 20px; color: var(--sx-accent); }
+@media (max-width: 420px) {
+  .dh-shortcuts { gap: 6px; }
+  .dh-shortcuts button { min-height: 68px; padding: 10px 2px; font-size: .7rem; letter-spacing: -.01em; }
+  .dh-shortcuts button span:last-child { white-space: normal; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
+  .dh-shortcuts button .material-symbols-rounded { width: 32px; height: 32px; font-size: 18px; }
+}
 .dh-shortcuts button:hover { border-color: #cbd5e1; background: var(--sx-soft); }
 .dh-shortcuts button:hover .material-symbols-rounded { color: var(--sx-accent); }
 
