@@ -290,6 +290,11 @@ require_once __DIR__ . '/../config/countries.php';
         </div>
 
         <div class="sa-nav-h">Tools</div>
+        <?php $saTodoOpen = 0; try { require_once __DIR__ . '/../db_connection.php'; $saTodoOpen = (int)getConnection()->query("SELECT COUNT(*) FROM sa_todos WHERE done = 0")->fetchColumn(); } catch (Throwable $e) { $saTodoOpen = 0; } ?>
+        <a class="menu-link" href="todo.php">
+          <span class="material-symbols-rounded icon">task_alt</span>
+          <span class="text">My to-do<?php if ($saTodoOpen): ?> <span class="badge-new" style="background:#f97316"><?php echo $saTodoOpen; ?></span><?php endif; ?></span>
+        </a>
         <a class="menu-link" href="handbook.php">
           <span class="material-symbols-rounded icon">menu_book</span>
           <span class="text">Admin handbook</span>
