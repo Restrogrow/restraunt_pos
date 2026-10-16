@@ -155,4 +155,6 @@
   }
   /* the page behind doesn't scroll while the menu is open */
   body:has(.sidebar.menu-active) { overflow: hidden; }
+  /* the alerts bar waits behind the open menu instead of covering it */
+  body:has(.sidebar.menu-active) .rg-alert-chip { display: none; }
 }
