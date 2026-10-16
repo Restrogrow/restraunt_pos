@@ -77,3 +77,6 @@ test_*.php
 
 nul
 composer.phar
+
+# The browser app demo's fonts and icons live in a folder named node_modules inside its web build
+!app-demo/app/assets/node_modules/
