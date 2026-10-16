@@ -344,6 +344,25 @@ function handle(path, method, q, f) {
   }
   if (!loggedIn) return no('Session expired. Please login again.');
 
+  // ── restaurant settings: kept in the demo session so changes show up straight away ──
+  if (path === '/api/app_settings.php') {
+    const S = db.session;
+    const keys = ['restaurant_name', 'owner_name', 'description', 'phone', 'email', 'address', 'google_maps_link', 'opening_hours', 'enable_delivery', 'enable_takeaway', 'enable_dinein', 'enable_reservations', 'cod_enabled', 'minimum_order_value', 'packaging_charge', 'delivery_radius_km', 'enable_km_delivery', 'delivery_rate_per_km', 'enable_gst', 'tax_name', 'tax_percent', 'show_business_id', 'business_id_label', 'business_id_no', 'instagram_link', 'facebook_link', 'twitter_link', 'youtube_link', 'linkedin_link'];
+    if (method === 'POST') {
+      Object.keys(f).forEach((k) => {
+        if (!keys.includes(k)) return;
+        S[k] = k === 'opening_hours' ? JSON.parse(f[k]) : f[k];
+      });
+    }
+    const out = {};
+    keys.forEach((k) => {
+      let v = S[k] ?? null;
+      if (k === 'opening_hours' && typeof v === 'string') v = v ? JSON.parse(v) : null;
+      out[k] = v;
+    });
+    return ok({ settings: clone(out) });
+  }
+
   // ── reads ──
   if (method === 'GET') {
     switch (path) {

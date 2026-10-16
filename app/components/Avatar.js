@@ -4,7 +4,9 @@ import { font } from '../theme';
 
 function initials(name) {
   if (!name) return '?';
-  const parts = name.trim().split(/\s+/);
+  // letters/digits only, so "Spice Garden (Demo)" gives "SG" and not "S("
+  const parts = String(name).replace(/\(.*?\)/g, ' ').split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  if (!parts.length) return '?';
   const first = parts[0]?.[0] || '';
   const second = parts.length > 1 ? parts[parts.length - 1][0] : '';
   return (first + second).toUpperCase();

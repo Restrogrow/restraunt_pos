@@ -6,7 +6,6 @@ import { colors, font, radius, shadow, spacing } from '../theme';
 import { getPrinterSettings, savePrinterSettings } from '../config/printerSettings';
 import {
   connectToPrinter,
-  disconnectPrinter,
   isPrinterConnected,
   listPairedPrinters,
   writeToPrinter,
@@ -161,22 +160,15 @@ export default function BillPreviewModal({ visible, onClose, data }) {
         await printToNetworkPrinter({ ip: cfg.ip, port: cfg.port, bytes });
       }
       setStatus('printed');
-      setTimeout(() => {
-        if (cfg.type === 'bluetooth') disconnectPrinter(cfg.btAddress);
-        onClose();
-      }, 900);
+      // the printer stays connected for the next bill
+      setTimeout(onClose, 900);
     } catch (e) {
       setStatus('error');
       setStatusMessage(e.message);
     }
   };
 
-  const handleClose = () => {
-    if (settings?.type === 'bluetooth' && settings?.btAddress && status === 'connected') {
-      disconnectPrinter(settings.btAddress);
-    }
-    onClose();
-  };
+  const handleClose = () => onClose();
 
   const busy = status === 'connecting' || status === 'printing';
   const meta = STATUS_META[status] || STATUS_META.idle;

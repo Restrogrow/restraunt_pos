@@ -128,23 +128,68 @@ export async function disconnectPrinter(address) {
   await bt().disconnectFromDevice(address).catch(() => {});
 }
 
-// Assumes the device is already connected (via connectToPrinter) — does not
-// disconnect afterwards, so the same connection can be reused.
+// Writes to the printer, connecting first if needed. If the write fails because the link
+// dropped (printer switched off and on, phone walked out of range), it reconnects once and
+// tries again, so a stale connection never costs a print.
 export async function writeToPrinter(address, bytes) {
   if (!address) throw new Error('No Bluetooth printer selected — pick one first');
+  const data = Buffer.from(bytes);
   try {
-    await bt().writeToDevice(address, Buffer.from(bytes));
-  } catch (e) {
-    throw new Error(friendlyBluetoothError(e));
+    await connectToPrinter(address);
+    await bt().writeToDevice(address, data);
+  } catch (first) {
+    try {
+      await bt().disconnectFromDevice(address).catch(() => {});
+      await connectToPrinter(address);
+      await bt().writeToDevice(address, data);
+    } catch (e) {
+      throw new Error(friendlyBluetoothError(e));
+    }
   }
 }
 
+// The connection is left open after printing so the next bill or ticket goes out at once.
 export async function printToBluetoothPrinter({ address, bytes }) {
   if (!address) throw new Error('No Bluetooth printer selected — pick one in Settings first');
+  await writeToPrinter(address, bytes);
+}
+
+// Keeps the saved Bluetooth printer connected while the app is open: connects at start,
+// reconnects when the printer drops or the app comes back to the front, and checks every
+// 30 seconds. Quiet on failure — the printer may simply be switched off.
+let keepAlive = null;
+export function keepPrinterConnected(getAddress) {
+  stopKeepingPrinterConnected();
+  const { AppState } = require('react-native');
+  let busy = false;
+  const check = async () => {
+    if (busy || AppState.currentState !== 'active') return;
+    busy = true;
+    try {
+      const address = await getAddress();
+      if (address && !(await isPrinterConnected(address))) await connectToPrinter(address);
+    } catch (e) {
+      // printer off or out of range: try again on the next tick
+    } finally {
+      busy = false;
+    }
+  };
+  const timer = setInterval(check, 30000);
+  const appSub = AppState.addEventListener('change', (st) => st === 'active' && check());
+  let dropSub = null;
   try {
-    await connectToPrinter(address);
-    await writeToPrinter(address, bytes);
-  } finally {
-    disconnectPrinter(address);
+    dropSub = bt().onDeviceDisconnected(() => setTimeout(check, 2000));
+  } catch (e) {
+    // no Bluetooth module (Expo Go): the timer still covers it
   }
+  check();
+  keepAlive = { timer, appSub, dropSub };
+}
+
+export function stopKeepingPrinterConnected() {
+  if (!keepAlive) return;
+  clearInterval(keepAlive.timer);
+  keepAlive.appSub?.remove?.();
+  keepAlive.dropSub?.remove?.();
+  keepAlive = null;
 }

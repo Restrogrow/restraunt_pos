@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BillPreviewModal from '../components/BillPreviewModal';
 import ScreenHeader from '../components/ScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
+import SearchField from '../components/SearchField';
 import SelectField from '../components/SelectField';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import AppImage from '../components/ui/AppImage';
@@ -457,6 +458,9 @@ export default function POSScreen({ route }) {
     ...tables.map((t) => ({ label: `${t.table_number} · seats ${t.capacity}`, value: String(t.id) })),
   ];
 
+  // dish photos on the tiles only when the menu has some — a menu with none gets compact tiles
+  const withPhotos = useMemo(() => menuItems.some((it) => !!it.item_image), [menuItems]);
+
   // 2 columns on phones (even small ones), more on tablets.
   const gridCols = columns(140, 6);
   const tileW = Math.floor((contentWidth - gutter * 2 - spacing.sm * (gridCols - 1)) / gridCols);
@@ -465,25 +469,9 @@ export default function POSScreen({ route }) {
     <View style={styles.fill}>
       <ScreenHeader eyebrow="Counter orders" title="POS">
         <View style={styles.headRow}>
-          <View style={styles.searchWrap}>
-            <Ionicons name="search" size={16} color={colors.muted} />
-            <TextInput
-              ref={searchRef}
-              style={styles.searchInput}
-              placeholder="Search dishes"
-              placeholderTextColor={colors.muted}
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-            />
-            {search ? (
-              <PressableScale onPress={() => setSearch('')} hitSlop={8} accessibilityLabel="Clear search">
-                <Ionicons name="close-circle" size={18} color={colors.muted} />
-              </PressableScale>
-            ) : null}
-          </View>
+          <SearchField ref={searchRef} style={{ flex: 1 }} value={search} onChangeText={setSearch} placeholder="Search dishes" />
           <View style={styles.tablePick}>
-            <SelectField placeholder="Walk-in" title="Order for" value={tableId} onChange={setTableId} options={tableOptions} />
+            <SelectField compact icon={tableId ? 'restaurant' : 'walk'} placeholder="Walk-in" title="Order for" value={tableId} onChange={setTableId} options={tableOptions} />
           </View>
         </View>
       </ScreenHeader>
@@ -545,37 +533,50 @@ export default function POSScreen({ route }) {
                   feedback="none"
                   accessibilityLabel={`${item.item_name_en}, ${priceLabelFor(item)}${qtyInCart ? `, ${qtyInCart} in cart` : ''}`}
                 >
-                  <View style={styles.tileTop}>
-                    {thumb ? <AppImage uri={thumb} style={styles.tileThumb} /> : null}
-                    <View style={{ flex: 1 }}>
-                      <View style={styles.tileNameRow}>
-                        {veg ? (
-                          <View style={[styles.vegMark, { borderColor: veg }]}>
-                            <View style={[styles.vegMarkDot, { backgroundColor: veg }]} />
-                          </View>
-                        ) : null}
-                        <Text style={styles.itemName} numberOfLines={2}>{item.item_name_en}</Text>
-                      </View>
-                      {item.has_variations == 1 ? <Text style={styles.itemVariationHint}>Choose size</Text> : null}
+                  {withPhotos ? (
+                    <View style={[styles.tilePhoto, { height: Math.round(tileW * 0.5) }]}>
+                      {thumb ? (
+                        <AppImage uri={thumb} style={StyleSheet.absoluteFill} />
+                      ) : (
+                        <Text style={styles.tileInitial}>{String(item.item_name_en || '?').trim().charAt(0).toUpperCase()}</Text>
+                      )}
+                      {veg ? (
+                        <View style={[styles.vegMark, styles.vegMarkOnPhoto, { borderColor: veg }]}>
+                          <View style={[styles.vegMarkDot, { backgroundColor: veg }]} />
+                        </View>
+                      ) : null}
                     </View>
-                  </View>
-                  <View style={styles.tileBottom}>
-                    <Text style={styles.itemPriceText} numberOfLines={1}>{priceLabelFor(item)}</Text>
-                    {qtyInCart > 0 ? (
-                      <View style={styles.tileStepper}>
-                        <PressableScale style={styles.tileStepBtn} onPress={() => decItem(item)} hitSlop={6} feedback="none" accessibilityLabel={`One less ${item.item_name_en}`}>
-                          <Ionicons name="remove" size={16} color="#fff" />
-                        </PressableScale>
-                        <Text style={styles.tileQty}>{qtyInCart}</Text>
-                        <PressableScale style={styles.tileStepBtn} onPress={() => onPressItem(item)} hitSlop={6} feedback="none" accessibilityLabel={`One more ${item.item_name_en}`}>
-                          <Ionicons name="add" size={16} color="#fff" />
-                        </PressableScale>
+                  ) : null}
+                  <View style={styles.tileBody}>
+                    <View style={styles.tileNameRow}>
+                      {veg && !withPhotos ? (
+                        <View style={[styles.vegMark, { borderColor: veg }]}>
+                          <View style={[styles.vegMarkDot, { backgroundColor: veg }]} />
+                        </View>
+                      ) : null}
+                      <Text style={styles.itemName} numberOfLines={2}>{item.item_name_en}</Text>
+                    </View>
+                    <View style={styles.tileBottom}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.itemPriceText} numberOfLines={1}>{priceLabelFor(item)}</Text>
+                        {item.has_variations == 1 ? <Text style={styles.itemVariationHint}>Choose size</Text> : null}
                       </View>
-                    ) : (
-                      <View style={styles.tileAdd}>
-                        <Ionicons name="add" size={18} color={colors.primary} />
-                      </View>
-                    )}
+                      {qtyInCart > 0 ? (
+                        <View style={styles.tileStepper}>
+                          <PressableScale style={styles.tileStepBtn} onPress={() => decItem(item)} hitSlop={6} feedback="none" accessibilityLabel={`One less ${item.item_name_en}`}>
+                            <Ionicons name="remove" size={15} color="#fff" />
+                          </PressableScale>
+                          <Text style={styles.tileQty}>{qtyInCart}</Text>
+                          <PressableScale style={styles.tileStepBtn} onPress={() => onPressItem(item)} hitSlop={6} feedback="none" accessibilityLabel={`One more ${item.item_name_en}`}>
+                            <Ionicons name="add" size={15} color="#fff" />
+                          </PressableScale>
+                        </View>
+                      ) : (
+                        <View style={styles.tileAdd}>
+                          <Text style={styles.tileAddText}>ADD</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </PressableScale>
               );
@@ -904,17 +905,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   tablePick: {
-    width: 130,
-  },
-  searchWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-    minHeight: 46,
+    width: 124,
   },
   vegChip: {
     flexDirection: 'row',
@@ -933,10 +924,8 @@ const styles = StyleSheet.create({
   },
   tile: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: 10,
-    minHeight: 96,
-    justifyContent: 'space-between',
+    borderRadius: 14,
+    overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
@@ -944,14 +933,29 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: '#FFF8F5',
   },
-  tileTop: {
-    flexDirection: 'row',
-    gap: 8,
+  tilePhoto: {
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tileThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+  tileInitial: {
+    fontFamily: font.bold,
+    fontSize: 26,
+    color: colors.primary,
+    opacity: 0.55,
+  },
+  vegMarkOnPhoto: {
+    position: 'absolute',
+    top: 7,
+    left: 7,
+    marginTop: 0,
+    backgroundColor: '#fff',
+  },
+  tileBody: {
+    flex: 1,
+    padding: 10,
+    justifyContent: 'space-between',
+    minHeight: 84,
   },
   tileNameRow: {
     flexDirection: 'row',
@@ -974,18 +978,26 @@ const styles = StyleSheet.create({
   },
   tileBottom: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 6,
     gap: 6,
   },
   tileAdd: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+    borderWidth: 1.2,
+    borderColor: colors.primary,
+    backgroundColor: '#FFF6F3',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tileAddText: {
+    fontFamily: font.bold,
+    fontSize: 11.5,
+    letterSpacing: 0.6,
+    color: colors.primary,
   },
   tileStepper: {
     flexDirection: 'row',
@@ -994,8 +1006,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   tileStepBtn: {
-    width: 30,
-    height: 32,
+    width: 28,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1023,13 +1035,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.muted,
     marginTop: 1,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontFamily: font.medium,
-    fontSize: 14,
-    color: colors.ink,
   },
   grid: {
     paddingHorizontal: spacing.xl,
@@ -1081,7 +1086,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: font.semiBold,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 17,
+    minHeight: 34,
     color: colors.ink,
   },
   itemCategory: {
@@ -1100,8 +1106,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   itemPriceText: {
-    fontFamily: font.semiBold,
-    fontSize: 12.5,
+    fontFamily: font.bold,
+    fontSize: 13,
     color: colors.ink,
   },
   itemVariationHint: {

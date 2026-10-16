@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Linking, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Avatar from '../components/Avatar';
 import ScreenHeader from '../components/ScreenHeader';
+import SearchField from '../components/SearchField';
 import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
 import FadeIn from '../components/ui/FadeIn';
 import PressableScale from '../components/ui/PressableScale';
@@ -53,15 +54,7 @@ export default function CustomersScreen({ navigation }) {
   return (
     <View style={styles.fill}>
       <ScreenHeader eyebrow={`${all.length} customers`} title="Customers" onBack={() => navigation.goBack()}>
-        <View style={styles.search}>
-          <Ionicons name="search" size={16} color={colors.muted} />
-          <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Name or phone" placeholderTextColor={colors.muted} returnKeyType="search" />
-          {q ? (
-            <PressableScale onPress={() => setQ('')} hitSlop={8} accessibilityLabel="Clear search">
-              <Ionicons name="close-circle" size={18} color={colors.muted} />
-            </PressableScale>
-          ) : null}
-        </View>
+        <SearchField style={{ marginTop: spacing.md }} value={q} onChangeText={setQ} placeholder="Name or phone" />
       </ScreenHeader>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sortScroll} contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: gutter, paddingVertical: spacing.sm }}>
@@ -144,22 +137,6 @@ export default function CustomersScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontFamily: font.medium,
-    fontSize: 14,
-    color: colors.ink,
-  },
   sortScroll: {
     flexGrow: 0,
     flexShrink: 0,

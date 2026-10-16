@@ -27,3 +27,7 @@ export async function writeToPrinter() {
 export async function printToBluetoothPrinter() {
   throw new Error('Bluetooth printing is only available in the native app, not the web preview.');
 }
+
+export function keepPrinterConnected() {}
+
+export function stopKeepingPrinterConnected() {}

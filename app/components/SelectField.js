@@ -7,14 +7,15 @@ import Sheet from './ui/Sheet';
 
 // A tap-to-open dropdown: looks like a form field and opens its options in a bottom sheet —
 // the app's version of the website's <select> fields.
-export default function SelectField({ options, value, onChange, placeholder = 'Select', title }) {
+export default function SelectField({ options, value, onChange, placeholder = 'Select', title, icon, compact, style }) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => String(o.value) === String(value));
 
   return (
     <>
-      <PressableScale style={styles.field} onPress={() => setOpen(true)} scale={0.98} accessibilityLabel={title || placeholder}>
-        <Text style={[styles.fieldText, !selected && styles.placeholder]} numberOfLines={1}>
+      <PressableScale style={[styles.field, compact && styles.compact, style]} onPress={() => setOpen(true)} scale={0.98} accessibilityLabel={title || placeholder}>
+        {icon ? <Ionicons name={icon} size={15} color={colors.primary} style={{ marginRight: 6 }} /> : null}
+        <Text style={[styles.fieldText, compact && styles.compactText, !selected && !compact && styles.placeholder]} numberOfLines={1}>
           {selected ? selected.label : placeholder}
         </Text>
         <Ionicons name="chevron-down" size={16} color={colors.muted} />
@@ -49,6 +50,20 @@ export default function SelectField({ options, value, onChange, placeholder = 'S
 }
 
 const styles = StyleSheet.create({
+  compact: {
+    height: 42,
+    minHeight: 42,
+    paddingVertical: 0,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 0,
+  },
+  compactText: {
+    flex: 1,
+    fontFamily: font.semiBold,
+    fontSize: 13,
+    color: colors.ink,
+  },
   field: {
     flexDirection: 'row',
     alignItems: 'center',

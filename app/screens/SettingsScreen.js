@@ -7,6 +7,7 @@ import { captureRef } from 'react-native-view-shot';
 import Avatar from '../components/Avatar';
 import CouponsModal from '../components/CouponsModal';
 import { feedback } from '../components/ui/Feedback';
+import RestaurantSettings from '../components/RestaurantSettings';
 import ScreenHeader from '../components/ScreenHeader';
 import { getBiometricLockEnabled, setBiometricLockEnabled } from '../config/biometricSettings';
 import { getOrderSoundEnabled, setOrderSoundEnabled } from '../config/notificationSettings';
@@ -15,35 +16,8 @@ import { getPrinterSettings, savePrinterSettings } from '../config/printerSettin
 import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { isBiometricSupported, authenticate } from '../utils/biometricAuth';
-import { listPairedPrinters, printToBluetoothPrinter } from '../utils/bluetoothPrinter';
+import { connectToPrinter, isPrinterConnected, listPairedPrinters, printToBluetoothPrinter } from '../utils/bluetoothPrinter';
 import { buildReceiptLines, convertReceiptImageToEscPos, printToNetworkPrinter } from '../utils/receiptPrinter';
-
-function Row({ icon, label, value }) {
-  return (
-    <View style={styles.row}>
-      <View style={styles.rowIconWrap}>
-        <Ionicons name={icon} size={16} color={colors.primary} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.value}>{value || '—'}</Text>
-      </View>
-    </View>
-  );
-}
-
-function StatusPill({ label, on }) {
-  return (
-    <View style={[styles.statusPill, { backgroundColor: on ? colors.successBg : colors.dangerBg }]}>
-      <Ionicons
-        name={on ? 'checkmark-circle' : 'close-circle'}
-        size={13}
-        color={on ? colors.success : colors.danger}
-      />
-      <Text style={[styles.statusPillText, { color: on ? colors.success : colors.danger }]}>{label}</Text>
-    </View>
-  );
-}
 
 function ChangePasswordCard() {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -141,6 +115,41 @@ function PrinterSettingsCard() {
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState(null); // { text, isError }
   const testReceiptRef = useRef(null);
+  const [linked, setLinked] = useState(null); // Bluetooth link: null = checking
+  const [linking, setLinking] = useState(false);
+
+  // live connection state for the chosen Bluetooth printer
+  useEffect(() => {
+    if (type !== 'bluetooth' || !btAddress) {
+      setLinked(null);
+      return undefined;
+    }
+    let alive = true;
+    const check = () => isPrinterConnected(btAddress).then((on) => alive && setLinked(on));
+    check();
+    const t = setInterval(check, 4000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [type, btAddress]);
+
+  const connectNow = async (address = btAddress, name = btName) => {
+    if (!address) return;
+    setLinking(true);
+    setMessage(null);
+    try {
+      await savePrinterSettings({ ...currentSettings(), type: 'bluetooth', btAddress: address, btName: name });
+      await connectToPrinter(address);
+      setLinked(true);
+      feedback.success('Printer connected');
+    } catch (e) {
+      setLinked(false);
+      setMessage({ text: e.message, isError: true });
+    } finally {
+      setLinking(false);
+    }
+  };
 
   useEffect(() => {
     getPrinterSettings().then((s) => {
@@ -324,8 +333,18 @@ function PrinterSettingsCard() {
             <View style={styles.couponAppliedRowLike}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.printerSelectedName}>{btName || btAddress}</Text>
-                <Text style={styles.printerSelectedAddress}>{btAddress}</Text>
+                <View style={styles.linkRow}>
+                  <View style={[styles.linkDot, { backgroundColor: linked ? colors.success : linked === false ? colors.danger : colors.muted }]} />
+                  <Text style={[styles.printerSelectedAddress, { marginTop: 0 }]}>
+                    {linked ? 'Connected · stays connected' : linked === false ? 'Not connected' : 'Checking…'}
+                  </Text>
+                </View>
               </View>
+              {linked === false ? (
+                <Pressable style={styles.linkButton} onPress={() => connectNow()} disabled={linking} hitSlop={6}>
+                  {linking ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.linkButtonText}>Connect</Text>}
+                </Pressable>
+              ) : null}
               <Pressable onPress={() => { setBtAddress(''); setBtName(''); }} hitSlop={8}>
                 <Ionicons name="close-circle" size={22} color={colors.danger} />
               </Pressable>
@@ -349,7 +368,7 @@ function PrinterSettingsCard() {
             <Pressable
               key={d.address}
               style={styles.deviceRow}
-              onPress={() => { setBtAddress(d.address); setBtName(d.name); }}
+              onPress={() => { setBtAddress(d.address); setBtName(d.name); setPairedDevices([]); connectNow(d.address, d.name); }}
             >
               <Ionicons name="print-outline" size={16} color={colors.inkSoft} />
               <Text style={styles.deviceRowText} numberOfLines={1}>{d.name}</Text>
@@ -573,8 +592,16 @@ const SECTIONS = [
   {
     title: 'Restaurant',
     items: [
-      { key: 'details', icon: 'storefront', tint: '#FF5A3C', label: 'Restaurant details', sub: 'Name, owner, phone, address' },
-      { key: 'orderTypes', icon: 'bag-handle', tint: '#22A06B', label: 'Order types', sub: 'Delivery, takeaway, dine-in' },
+      { key: 'details', icon: 'storefront', tint: '#FF5A3C', label: 'Restaurant details', sub: 'Name, phone, email, address' },
+      { key: 'hours', icon: 'time', tint: '#0EA5A5', label: 'Business hours', sub: 'When you take orders each day' },
+      { key: 'social', icon: 'share-social', tint: '#D946EF', label: 'Social links', sub: 'Instagram, Facebook and more' },
+    ],
+  },
+  {
+    title: 'Orders and billing',
+    items: [
+      { key: 'ordering', icon: 'bag-handle', tint: '#22A06B', label: 'Ordering', sub: 'Order types, bookings, minimum order' },
+      { key: 'delivery', icon: 'bicycle', tint: '#F97316', label: 'Delivery', sub: 'Distance and delivery charge' },
       { key: 'tax', icon: 'receipt', tint: '#3D7BF0', label: 'Tax and bill', sub: 'GST and business ID on the bill' },
       { key: 'coupons', icon: 'pricetag', tint: '#8B5CF6', label: 'Coupons', sub: 'Discount codes for customers' },
     ],
@@ -744,50 +771,27 @@ export function SettingsSectionScreen({ route, navigation }) {
   const ownerOnly = user?.user_type === 'admin' || user?.user_type === 'branch_admin';
   let body = null;
   let hint = null;
+  const lockedHint = 'Only the restaurant owner or branch admin can change these.';
   if (section === 'details') {
-    hint = 'These come from your restaurant profile. To change them, open Settings on the RestroGrow website.';
-    body = (
-      <View style={[styles.card, shadow.sm]}>
-        <Row icon="storefront-outline" label="Restaurant name" value={user?.restaurant_name} />
-        <View style={styles.divider} />
-        <Row icon="person-circle-outline" label="Owner" value={user?.owner_name} />
-        <View style={styles.divider} />
-        <Row icon="call-outline" label="Phone" value={user?.phone} />
-        <View style={styles.divider} />
-        <Row icon="mail-outline" label="Email" value={user?.email} />
-        <View style={styles.divider} />
-        <Row icon="location-outline" label="Address" value={user?.address} />
-        <View style={styles.divider} />
-        <Row icon="person-outline" label="Your login" value={`${user?.username || ''}${user?.role ? ` · ${user.role}` : ''}`} />
-      </View>
-    );
-  } else if (section === 'orderTypes') {
-    hint = ownerOnly
-      ? 'Dine-in and delivery can be switched on or off at any time from the switches at the top of the Orders tab. Other changes are made on the website.'
-      : 'Which kinds of orders your restaurant takes right now.';
-    body = (
-      <View style={[styles.card, shadow.sm, { gap: 2 }]}>
-        {[
-          ['Delivery', user?.enable_delivery == 1, 'bicycle-outline'],
-          ['Takeaway', user?.enable_takeaway == 1, 'bag-handle-outline'],
-          ['Dine-in', user?.enable_dinein == 1, 'restaurant-outline'],
-          ['Cash on delivery', user?.cod_enabled == 1, 'cash-outline'],
-        ].map(([label, on, icon], i) => (
-          <View key={label} style={[styles.menuRow, i > 0 && styles.menuRowLine, { paddingHorizontal: 0 }]}>
-            <Ionicons name={icon} size={19} color={colors.inkSoft} />
-            <Text style={[styles.menuLabel, { flex: 1 }]}>{label}</Text>
-            <StatusPill label={on ? 'On' : 'Off'} on={on} />
-          </View>
-        ))}
-      </View>
-    );
+    hint = ownerOnly ? 'Shown on your website, bills and the order page your customers see.' : lockedHint;
+    body = <RestaurantSettings section="details" editable={ownerOnly} />;
+  } else if (section === 'hours') {
+    hint = ownerOnly ? 'Customers can only order online during these hours.' : lockedHint;
+    body = <RestaurantSettings section="hours" editable={ownerOnly} />;
+  } else if (section === 'ordering') {
+    hint = ownerOnly ? 'What your customers can order on your website. Dine-in and delivery also switch from the top of the Orders tab.' : lockedHint;
+    body = <RestaurantSettings section="ordering" editable={ownerOnly} />;
+  } else if (section === 'delivery') {
+    hint = ownerOnly ? 'How far you deliver and what delivery costs the customer.' : lockedHint;
+    body = <RestaurantSettings section="delivery" editable={ownerOnly} />;
+  } else if (section === 'social') {
+    hint = ownerOnly ? 'Shown as icons on your website.' : lockedHint;
+    body = <RestaurantSettings section="social" editable={ownerOnly} />;
   } else if (section === 'tax') {
     hint = 'Tax is added to every bill. The business ID (for example your GSTIN) can be printed at the top of the bill.';
     body = (
       <>
-        <View style={[styles.card, shadow.sm]}>
-          <Row icon="pricetag-outline" label={user?.tax_name || 'GST'} value={user?.enable_gst == 1 ? `${user?.tax_percent ?? 0}% added to bills` : 'Not added to bills'} />
-        </View>
+        <RestaurantSettings section="tax" editable={ownerOnly} />
         <Text style={styles.sectionTitle}>Business ID on the bill</Text>
         <BusinessIdCard />
       </>
@@ -825,6 +829,10 @@ export function SettingsSectionScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
+  linkDot: { width: 8, height: 8, borderRadius: 4 },
+  linkButton: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: 14, height: 32, minWidth: 82, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  linkButtonText: { color: '#fff', fontFamily: font.semiBold, fontSize: 12.5 },
   fill: { flex: 1, backgroundColor: colors.bg },
   hiddenTestReceipt: {
     position: 'absolute',

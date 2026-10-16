@@ -29,22 +29,31 @@ export default function MoreScreen({ navigation }) {
         { key: 'Kitchen', icon: 'flame', label: 'Kitchen', sub: 'Tickets to cook', tint: colors.primary, bg: colors.primaryLight },
         { key: 'Tables', icon: 'grid', label: 'Tables', sub: 'Live floor', tint: colors.success, bg: colors.successBg },
         { key: 'WaiterCalls', icon: 'hand-left', label: 'Waiter calls', sub: calls ? `${calls} waiting` : 'From table QR', tint: colors.warning, bg: colors.warningBg, badge: calls },
-        { key: 'Reservations', icon: 'calendar', label: 'Bookings', sub: 'Table reservations', tint: colors.purple, bg: colors.purpleBg },
+        { key: 'Reservations', icon: 'calendar', label: 'Bookings', sub: 'Reservations', tint: colors.purple, bg: colors.purpleBg },
       ],
     },
     {
       title: 'Business',
       items: [
         { key: 'Customers', icon: 'people', label: 'Customers', sub: 'Visits and spend', tint: colors.info, bg: colors.infoBg },
-        { key: 'Reports', icon: 'bar-chart', label: 'Reports', sub: 'Sales and top dishes', tint: colors.teal, bg: colors.tealBg },
-        isOwnerish ? { key: 'Logs', icon: 'shield-checkmark', label: 'Security', sub: 'Logins and devices', tint: colors.inkSoft, bg: colors.border } : null,
-        { key: 'Settings', icon: 'settings', label: 'Settings', sub: 'Profile, printer, app', tint: colors.inkSoft, bg: colors.border },
+        { key: 'Reports', icon: 'bar-chart', label: 'Reports', sub: 'Sales, top dishes', tint: colors.teal, bg: colors.tealBg },
+        isOwnerish ? { key: 'Logs', icon: 'shield-checkmark', label: 'Security', sub: 'Logins, devices', tint: colors.inkSoft, bg: colors.border } : null,
+      ].filter(Boolean),
+    },
+    {
+      title: 'Settings',
+      items: [
+        { key: 'printer', section: true, icon: 'print', label: 'Printer', sub: 'Bills, KOT', tint: colors.teal, bg: colors.tealBg },
+        isOwnerish ? { key: 'hours', section: true, icon: 'time', label: 'Hours', sub: 'Open times', tint: colors.info, bg: colors.infoBg } : null,
+        isOwnerish ? { key: 'ordering', section: true, icon: 'bag-handle', label: 'Ordering', sub: 'Order types', tint: colors.success, bg: colors.successBg } : null,
+        isOwnerish ? { key: 'tax', section: true, icon: 'receipt', label: 'Tax and bill', sub: 'GST, bill', tint: colors.purple, bg: colors.purpleBg } : null,
+        { key: 'Settings', icon: 'settings', label: 'All settings', sub: 'Everything else', tint: colors.inkSoft, bg: colors.border },
       ].filter(Boolean),
     },
   ];
 
-  const cols = columns(150, 4);
-  const tileW = Math.floor((contentWidth - gutter * 2 - spacing.md * (cols - 1)) / cols);
+  const cols = columns(160, 4);
+  const tileW = Math.floor((contentWidth - gutter * 2 - spacing.sm * (cols - 1)) / cols);
 
   const doLogout = async () => {
     const ok = await feedback.confirm({ title: 'Log out?', message: 'You will need your username and password to log in again.', confirmText: 'Log out', danger: true });
@@ -54,7 +63,7 @@ export default function MoreScreen({ navigation }) {
   return (
     <View style={styles.fill}>
       <ScreenHeader eyebrow="Everything else" title="More" />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabBarHeight + spacing.xxl, gap: spacing.lg }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabBarHeight + spacing.xxl, gap: spacing.md }} showsVerticalScrollIndicator={false}>
         <FadeIn>
           <PressableScale style={[styles.profile, shadow.sm]} onPress={() => navigation.navigate('Settings')} scale={0.99}>
             <Avatar name={user?.restaurant_name || user?.username} uri={restaurantLogoUrl(user)} size={48} bg={colors.primaryLight} color={colors.primary} />
@@ -71,31 +80,33 @@ export default function MoreScreen({ navigation }) {
         {groups.map((g, gi) => (
           <FadeIn key={g.title} index={gi + 1}>
             <Text style={styles.groupTitle}>{g.title}</Text>
-            <View style={[styles.grid, { gap: spacing.md }]}>
+            <View style={[styles.grid, { gap: spacing.sm }]}>
               {g.items.map((it) => (
                 <PressableScale
                   key={it.key}
                   style={[styles.tile, shadow.sm, { width: tileW }]}
-                  onPress={() => navigation.navigate(it.key)}
+                  onPress={() => (it.section ? navigation.navigate('SettingsSection', { section: it.key }) : navigation.navigate(it.key))}
                   accessibilityLabel={it.label}
                 >
                   <View style={[styles.tileIcon, { backgroundColor: it.bg }]}>
-                    <Ionicons name={it.icon} size={21} color={it.tint} />
+                    <Ionicons name={it.icon} size={19} color={it.tint} />
                     {it.badge ? (
                       <View style={styles.badge}>
                         <Text style={styles.badgeText}>{it.badge}</Text>
                       </View>
                     ) : null}
                   </View>
-                  <Text style={styles.tileLabel} numberOfLines={1}>{it.label}</Text>
-                  <Text style={styles.tileSub} numberOfLines={1}>{it.sub}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.tileLabel} numberOfLines={1}>{it.label}</Text>
+                    <Text style={styles.tileSub} numberOfLines={1}>{it.sub}</Text>
+                  </View>
                 </PressableScale>
               ))}
             </View>
           </FadeIn>
         ))}
 
-        <FadeIn index={4}>
+        <FadeIn index={5}>
           <PressableScale style={[styles.logout, shadow.sm]} onPress={doLogout} feedback="warning">
             <Ionicons name="log-out-outline" size={19} color={colors.danger} />
             <Text style={styles.logoutText}>Log out</Text>
@@ -142,29 +153,32 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   tile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.md,
-    minHeight: 112,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    minHeight: 64,
   },
   tileIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
   },
   tileLabel: {
     fontFamily: font.semiBold,
-    fontSize: 14.5,
+    fontSize: 13.5,
     color: colors.ink,
   },
   tileSub: {
     fontFamily: font.regular,
-    fontSize: 12,
+    fontSize: 11.5,
     color: colors.muted,
-    marginTop: 2,
+    marginTop: 1,
   },
   badge: {
     position: 'absolute',

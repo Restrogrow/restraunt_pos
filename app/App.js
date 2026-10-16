@@ -29,6 +29,8 @@ import { getBiometricLockEnabled } from './config/biometricSettings';
 import { navigationRef } from './navigationRef';
 import { colors, font } from './theme';
 import { authenticate, isBiometricSupported } from './utils/biometricAuth';
+import { keepPrinterConnected, stopKeepingPrinterConnected } from './utils/bluetoothPrinter';
+import { getPrinterSettings } from './config/printerSettings';
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
 import OrdersScreen from './screens/OrdersScreen';
@@ -361,6 +363,17 @@ const lockStyles = StyleSheet.create({
 function RootNavigator() {
   const { user, checkingSession } = useAuth();
   const { locked, checking: checkingLock, retry, retrying } = useAppLock(!checkingSession && !!user);
+  const signedIn = !checkingSession && !!user;
+
+  // keep the saved Bluetooth printer connected while someone is signed in
+  useEffect(() => {
+    if (!signedIn) return undefined;
+    keepPrinterConnected(async () => {
+      const p = await getPrinterSettings();
+      return p.type === 'bluetooth' ? p.btAddress : '';
+    });
+    return stopKeepingPrinterConnected;
+  }, [signedIn]);
 
   if (checkingSession) {
     return (

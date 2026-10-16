@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
+import SearchField from '../components/SearchField';
 import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
 import AppImage from '../components/ui/AppImage';
 import { feedback } from '../components/ui/Feedback';
-import FadeIn from '../components/ui/FadeIn';
 import PressableScale from '../components/ui/PressableScale';
 import { apiGet, apiPostForm, imageUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
@@ -48,12 +48,16 @@ async function setAvailable(item, on) {
   if (!res2?.success) throw new Error(res2?.message || 'Could not update the dish');
 }
 
-const MenuRow = memo(function MenuRow({ item, currency, onOpen, onToggle, busy }) {
+const MenuRow = memo(function MenuRow({ item, currency, onOpen, onToggle, busy, first, last }) {
   const available = item.is_available == 1;
   const hidden = item.is_hidden == 1;
   return (
-    <PressableScale style={[styles.card, shadow.sm, !available && styles.cardOff]} onPress={() => onOpen(item)} scale={0.985}>
-      <AppImage uri={imageUrl(item.item_image)} style={styles.thumb} icon="fast-food-outline" iconColor={colors.primary} />
+    <PressableScale
+      style={[styles.row, first && styles.rowFirst, last && styles.rowLast, !first && styles.rowLine]}
+      onPress={() => onOpen(item)}
+      scale={0.99}
+    >
+      <AppImage uri={imageUrl(item.item_image)} style={[styles.thumb, !available && { opacity: 0.45 }]} icon="fast-food-outline" iconColor={colors.primary} />
       <View style={{ flex: 1 }}>
         <View style={styles.nameRow}>
           {VEG[item.item_type] ? (
@@ -64,28 +68,25 @@ const MenuRow = memo(function MenuRow({ item, currency, onOpen, onToggle, busy }
           <Text style={[styles.name, !available && { color: colors.muted }]} numberOfLines={1}>{item.item_name_en}</Text>
         </View>
         <Text style={styles.meta} numberOfLines={1}>
-          {money(item.base_price, currency)}
+          <Text style={styles.price}>{money(item.base_price, currency)}</Text>
           {item.has_variations == 1 ? ' · sizes' : ''}
           {item.menu_name ? ` · ${item.menu_name}` : ''}
         </Text>
-        {hidden ? (
-          <View style={styles.hidden}>
-            <Ionicons name="eye-off-outline" size={11} color={colors.inkSoft} />
-            <Text style={styles.hiddenText}>Hidden</Text>
+        {!available || hidden ? (
+          <View style={styles.tags}>
+            {!available ? <Text style={[styles.tag, styles.tagOut]}>Sold out</Text> : null}
+            {hidden ? <Text style={styles.tag}>Hidden</Text> : null}
           </View>
         ) : null}
       </View>
-      <View style={styles.stock}>
-        <Switch
-          value={available}
-          onValueChange={(v) => onToggle(item, v)}
-          disabled={busy}
-          trackColor={{ false: colors.border, true: '#9BE3BF' }}
-          thumbColor={available ? colors.success : '#fff'}
-          accessibilityLabel={available ? `${item.item_name_en} in stock` : `${item.item_name_en} out of stock`}
-        />
-        <Text style={[styles.stockText, { color: available ? colors.success : colors.muted }]}>{available ? 'In stock' : 'Sold out'}</Text>
-      </View>
+      <Switch
+        value={available}
+        onValueChange={(v) => onToggle(item, v)}
+        disabled={busy}
+        trackColor={{ false: colors.border, true: '#9BE3BF' }}
+        thumbColor={available ? colors.success : '#fff'}
+        accessibilityLabel={available ? `${item.item_name_en} in stock` : `${item.item_name_en} out of stock`}
+      />
     </PressableScale>
   );
 });
@@ -182,15 +183,7 @@ export default function MenuScreen({ navigation }) {
           </PressableScale>
         }
       >
-        <View style={styles.search}>
-          <Ionicons name="search" size={16} color={colors.muted} />
-          <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Search dishes" placeholderTextColor={colors.muted} returnKeyType="search" />
-          {q ? (
-            <PressableScale onPress={() => setQ('')} hitSlop={8} accessibilityLabel="Clear search">
-              <Ionicons name="close-circle" size={18} color={colors.muted} />
-            </PressableScale>
-          ) : null}
-        </View>
+        <SearchField style={{ marginTop: spacing.md }} value={q} onChangeText={setQ} placeholder="Search dishes" />
       </ScreenHeader>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: gutter, paddingVertical: spacing.sm }}>
@@ -226,13 +219,11 @@ export default function MenuScreen({ navigation }) {
               <EmptyState icon="restaurant-outline" title="No dishes yet" subtitle="Add your first dish and it appears on the POS and your website." action="Add a dish" onAction={() => navigation.navigate('MenuItem', {})} />
             )
           }
-          contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabBarHeight + spacing.xxl, gap: spacing.sm, flexGrow: 1 }}
+          contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabBarHeight + spacing.xxl, flexGrow: 1 }}
           initialNumToRender={12}
           windowSize={9}
           renderItem={({ item, index }) => (
-            <FadeIn index={index}>
-              <MenuRow item={item} currency={currency} onOpen={open} onToggle={toggle} busy={busyId === item.id} />
-            </FadeIn>
+            <MenuRow item={item} currency={currency} onOpen={open} onToggle={toggle} busy={busyId === item.id} first={index === 0} last={index === visible.length - 1} />
           )}
         />
       )}
@@ -249,22 +240,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontFamily: font.medium,
-    fontSize: 14,
-    color: colors.ink,
   },
   // a horizontal ScrollView needs a fixed height or it can collapse under the list below
   chipScroll: {
@@ -296,21 +271,30 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: colors.inkSoft,
   },
-  card: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
     gap: spacing.md,
   },
-  cardOff: {
-    backgroundColor: '#FBF9F8',
+  rowFirst: {
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+  },
+  rowLast: {
+    borderBottomLeftRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+  },
+  rowLine: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   thumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 12,
     backgroundColor: colors.primaryLight,
   },
   nameRow: {
@@ -334,38 +318,37 @@ const styles = StyleSheet.create({
   name: {
     flex: 1,
     fontFamily: font.semiBold,
-    fontSize: 14.5,
+    fontSize: 14,
     color: colors.ink,
   },
+  price: {
+    fontFamily: font.semiBold,
+    fontSize: 12.5,
+    color: colors.inkSoft,
+  },
   meta: {
+    marginTop: 2,
     fontFamily: font.regular,
     fontSize: 12.5,
     color: colors.muted,
-    marginTop: 2,
   },
-  hidden: {
+  tags: {
     flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 3,
+    gap: 4,
+    marginTop: 4,
+  },
+  tag: {
+    fontFamily: font.semiBold,
+    fontSize: 10,
+    color: colors.inkSoft,
     backgroundColor: colors.border,
     borderRadius: radius.pill,
     paddingHorizontal: 7,
     paddingVertical: 1,
-    marginTop: 4,
+    overflow: 'hidden',
   },
-  hiddenText: {
-    fontFamily: font.semiBold,
-    fontSize: 10,
-    color: colors.inkSoft,
-  },
-  stock: {
-    alignItems: 'center',
-    minWidth: 64,
-  },
-  stockText: {
-    fontFamily: font.semiBold,
-    fontSize: 10.5,
-    marginTop: -2,
+  tagOut: {
+    color: colors.danger,
+    backgroundColor: colors.dangerBg,
   },
 });

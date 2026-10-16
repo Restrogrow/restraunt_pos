@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, LayoutAnimation, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, UIManager, View } from 'react-native';
+import { FlatList, LayoutAnimation, Platform, RefreshControl, ScrollView, StyleSheet, Text, UIManager, View } from 'react-native';
 import DatePickerModal from '../components/DatePickerModal';
 import OrderCard from '../components/OrderCard';
 import OrderTypeToggles from '../components/OrderTypeToggles';
 import ScreenHeader from '../components/ScreenHeader';
+import SearchField from '../components/SearchField';
 import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
 import { feedback } from '../components/ui/Feedback';
 import FadeIn from '../components/ui/FadeIn';
@@ -259,18 +260,7 @@ export default function OrdersScreen({ navigation, route }) {
       }
     >
       {searchOpen ? (
-        <View style={styles.searchBox}>
-          <Ionicons name="search" size={16} color={colors.muted} />
-          <TextInput
-            style={styles.searchInput}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Order no., name, phone or table"
-            placeholderTextColor={colors.muted}
-            autoFocus
-            returnKeyType="search"
-          />
-        </View>
+        <SearchField style={{ marginTop: spacing.md }} value={query} onChangeText={setQuery} placeholder="Order no., name, phone or table" autoFocus />
       ) : null}
     </ScreenHeader>
   );
@@ -420,22 +410,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontFamily: font.medium,
-    fontSize: 14,
-    color: colors.ink,
   },
   tabScroll: {
     flexGrow: 0,
