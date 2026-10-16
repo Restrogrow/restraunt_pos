@@ -1,6 +1,6 @@
 # Important to-do: the next-level features (planned 16 October 2026)
 
-Status: **1 built (16 Oct 2026), 2 being built, 4 later.** These three change what RestroGrow is: from billing software to the
+Status: **1 and 2 built (16 Oct 2026), 4 later.** These three change what RestroGrow is: from billing software to the
 restaurant's own ordering channel, manager and single screen for every order. Order of work:
 
 | # | Feature | What it means for a restaurant | Rough size |
@@ -115,6 +115,28 @@ POS/Kitchen with a KOT; prices always match the POS; the owner can switch it off
 ---
 
 ## 2. AI manager for the owner
+
+### Status: built (16 October 2026)
+- Owner screen: Dashboard › Growth › **AI manager** (switch, send time, language English/Hinglish/Hindi, number;
+  today's report with Do it / Skip buttons, "send to my WhatsApp now", ask-me-anything, earlier reports).
+- Files: `main/config/owner_manager.php` (facts, rules, actions, Gemini wording with a number check, questions),
+  `main/api/owner_manager_admin.php`, `main/assets/js/owner-manager-studio.js`, `main/cron/owner_brief.php`.
+  The owner's WhatsApp replies reach it through `api/wa_webhook.php` (owner's phone → `ownerMgrHandleMessage`).
+- Report: yesterday's sales vs the same weekday last week, average bill, counter/website/WhatsApp split, top dishes,
+  a dish selling much less this week, cancellations, new vs returning customers, low stock, month so far, and the
+  result of earlier actions. Actions (reply 1 / 2): switch on the loyalty "We miss you" gift for lapsed regulars,
+  switch a dish that was selling back on. Gemini only re-words the plain report; any number not in the data → the
+  plain report is sent. Questions: Gemini picks one of 9 fixed reports + a period; PHP runs it.
+- Tested locally: English, Hinglish and Hindi reports; "aaj kitna bika", "kal ke top dishes", "whatsapp vs website
+  this month"; reply 1 ran the action; cron sends once a day after the chosen time; cron refuses web access.
+
+**Still needs the user:**
+1. Hostinger cron every 15 minutes: `/usr/bin/php /home/<user>/public_html/main/cron/owner_brief.php`
+   (without it the report is sent when the owner opens the AI manager page after the chosen time).
+2. A WhatsApp "daily report" utility template approved by Meta, so the morning message arrives even when the owner
+   hasn't messaged in the last 24 hours (until then it is sent as text).
+3. Same WhatsApp setup as feature 1 for the owner's replies (webhook).
+4. Not yet: a card on the Partner app's Home screen.
 
 ### What the owner sees
 Every morning at a time they pick, on WhatsApp (and in the app's Home):

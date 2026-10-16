@@ -20,7 +20,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Delivery | 6 |
 | Customers, loyalty & rewards | 20 |
 | Offers | 13 |
-| Marketing & WhatsApp | 16 |
+| Marketing & WhatsApp | 17 |
 | Reports & analytics | 10 |
 | Inventory | 9 |
 | Payments & billing | 11 |
@@ -30,8 +30,8 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Apps | 18 |
 | Super Admin (platform) | 29 |
 | Demo & sales tools | 10 |
-| **Total built** | **261** |
-| Planned, not built | 20 |
+| **Total built** | **262** |
+| Planned, not built | 19 |
 
 ## Orders & POS
 
@@ -198,6 +198,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 
 | Feature | What it does | Where | Who | Needs setup? |
 |---|---|---|---|---|
+| AI manager (morning report) | Every morning on WhatsApp: yesterday's sales and what changed, top and falling dishes, low stock, plus one-tap fixes ("reply 1 to switch Amritsari Fish back on"); ask it "aaj kitna bika?" any time. English, Hinglish or Hindi; numbers always from your data. | Dashboard › Growth › AI manager | owner | Cron every 15 min (cron/owner_brief.php); WhatsApp template for messages outside 24h; GEMINI_API_KEY |
 | WhatsApp ordering (AI) | Customers order in a WhatsApp chat in English, Hindi or Hinglish; they get the bill, reply 1 to confirm, and the order lands in Orders with a KOT. They get "accepted / being made / ready" messages. Includes a test chat, table QR codes and a reply box for chats that need a person. | Dashboard › Growth › WhatsApp ordering | owner, customer | RepeatGrow must allow webhooks + contacts, then REPEATGROW_CONNECT_ORDERING=1; GEMINI_API_KEY for AI understanding |
 | Brand kit | Save logo, colours, font, phone, tagline and hashtags once; every design uses them. | Dashboard › Marketing (Brand kit) | owner | — |
 | Posters | 12 ready poster designs with coupon and QR in Square, Story and Wide sizes. | Dashboard › Marketing › Posters | owner | — |
@@ -390,7 +391,6 @@ These are ideas and plans written in the docs. **None of these exist in the prod
 
 | Feature | What it does | Where | Who | Needs setup? |
 |---|---|---|---|---|
-| AI manager for the owner | Planned, not built: morning WhatsApp report with one-tap YES actions. | docs/IMPORTANT_TODO.md #2 | owner | Planned, not built |
 | Voice ordering for waiters | Planned, not built (parked). | docs/IMPORTANT_TODO.md #3 | staff | Parked |
 | Swiggy / Zomato / ONDC orders in POS | Planned, not built: aggregator orders arrive in the POS. | docs/IMPORTANT_TODO.md #4 | owner | Planned, not built; needs partner/approval |
 | Smart upsell (AI) | Planned, not built: AI suggestions at checkout and POS. | docs/AI_TODO.md #1 | customer, staff | Planned, not built |

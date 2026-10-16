@@ -1653,6 +1653,7 @@ document.addEventListener("DOMContentLoaded", () => {
         growthSettingsPage: ['loadGrowthSettings', 'loadLoyaltyStudio'],
         whatsappPage: ['loadWhatsappAdmin'],
         waOrderPage: ['loadWaOrderStudio'],          // Growth › WhatsApp ordering (wa-order-studio.js)
+        ownerManagerPage: ['loadOwnerManagerStudio'], // Growth › AI manager (owner-manager-studio.js)
         customerSegmentsPage: ['loadCustomerSegments'],
         referralsPage: ['loadReferrals'],
         growthReportsPage: ['loadGrowthReports', ['loadClvReport', '']],
