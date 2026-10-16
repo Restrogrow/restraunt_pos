@@ -41,6 +41,7 @@ if (isset($_SESSION['staff_id']) && isset($_SESSION['role'])) {
             header('Location: chef_dashboard.php');
             exit();
         case 'Manager':
+        case 'Cashier':
             header('Location: manager_dashboard.php');
             exit();
         // Admin staff can access main dashboard, so no redirect needed
@@ -7035,6 +7036,7 @@ function toggleGatewayMode() {
               <option value="Manager">Manager</option>
               <option value="Waiter">Waiter</option>
               <option value="Chef">Chef</option>
+              <option value="Cashier">Cashier</option>
               <option value="Delivery">Delivery rider</option>
             </select>
           </div>

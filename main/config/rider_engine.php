@@ -46,14 +46,9 @@ if (!function_exists('riderEnsure')) {
         if (!in_array('rider_staff_id', $have, true)) {
             try { $conn->exec('ALTER TABLE delivery_tracking ADD INDEX idx_rider (rider_staff_id)'); } catch (PDOException $e) { /* already there */ }
         }
-        // staff.role gets "Delivery"
-        try {
-            $type = (string)$conn->query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'staff' AND COLUMN_NAME = 'role'")->fetchColumn();
-            if (stripos($type, 'enum(') === 0 && stripos($type, "'Delivery'") === false) {
-                $vals = substr($type, 5, -1) . ",'Delivery'";
-                $conn->exec("ALTER TABLE staff MODIFY COLUMN role ENUM($vals) DEFAULT 'Waiter'");
-            }
-        } catch (PDOException $e) { error_log('riderEnsure staff role: ' . $e->getMessage()); }
+        // staff.role gets "Delivery" (and "Cashier")
+        require_once __DIR__ . '/staff_roles.php';
+        staffRolesEnsure($conn);
         $conn->exec("CREATE TABLE IF NOT EXISTS rider_settings (
             restaurant_id VARCHAR(10) PRIMARY KEY,
             self_pick TINYINT NOT NULL DEFAULT 1,
@@ -78,7 +73,7 @@ if (!function_exists('riderEnsure')) {
     function riderCanDispatch(): bool
     {
         $t = $_SESSION['user_type'] ?? '';
-        return $t === 'admin' || $t === 'branch_admin' || ($t === 'staff' && in_array($_SESSION['role'] ?? '', ['Manager', 'Admin'], true));
+        return $t === 'admin' || $t === 'branch_admin' || ($t === 'staff' && in_array($_SESSION['role'] ?? '', ['Manager', 'Admin', 'Cashier'], true));
     }
 
     /** The restaurant's active riders with what they have on now. */

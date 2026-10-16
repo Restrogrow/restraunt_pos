@@ -10,8 +10,8 @@ require_once __DIR__ . '/../config/authorization_config.php';
 requireLogin();
 requirePermission(PERMISSION_VIEW_DASHBOARD);
 
-// Verify user is a Manager
-if (!isset($_SESSION['staff_id']) || !isset($_SESSION['restaurant_id']) || $_SESSION['role'] !== ROLE_MANAGER) {
+// Verify user is a Manager or a Cashier (the same screen without reports and the 7-day sales)
+if (!isset($_SESSION['staff_id']) || !isset($_SESSION['restaurant_id']) || !in_array($_SESSION['role'], [ROLE_MANAGER, ROLE_CASHIER], true)) {
     header('Location: ../admin/login.php');
     exit();
 }
@@ -74,7 +74,9 @@ require_once __DIR__ . '/../config/timezone_utils.php';
 applyRestaurantTimezone($timezone, $conn);
 
 $restaurant_name = $_SESSION['restaurant_name'] ?? 'Restaurant';
-$staff_name = $_SESSION['username'] ?? 'Manager';
+$isCashier = $_SESSION['role'] === ROLE_CASHIER;
+$roleLabel = $isCashier ? 'Cashier' : 'Manager';
+$staff_name = $_SESSION['username'] ?? $roleLabel;
 $name_parts = preg_split('/\s+/', trim($staff_name));
 $first_name = $name_parts[0] ?? 'there';
 $initials = strtoupper(mb_substr($name_parts[0] ?? 'M', 0, 1) . (count($name_parts) > 1 ? mb_substr(end($name_parts), 0, 1) : ''));
@@ -89,7 +91,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
   <script src="../assets/js/quiet-console.js?v=<?php echo $v('js/quiet-console.js'); ?>"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
-    <title>Manager – <?php echo htmlspecialchars($restaurant_name); ?></title>
+    <title><?php echo $roleLabel; ?> – <?php echo htmlspecialchars($restaurant_name); ?></title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -107,7 +109,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
         window.taxPercent = <?php echo json_encode((float)$tax_percent, JSON_HEX_TAG); ?>;
         window.restaurant_id = <?php echo json_encode($restaurant_id); ?>;
         window.STAFF = {
-            role: 'Manager',
+            role: <?php echo json_encode($roleLabel); ?>,
             restaurantId: <?php echo json_encode($restaurant_id); ?>,
             serverNow: <?php echo json_encode(date('Y-m-d H:i:s')); ?>,
             currency: window.globalCurrencySymbol
@@ -133,7 +135,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
                 <span class="st-logo mgr" aria-hidden="true"><span class="material-symbols-rounded">storefront</span></span>
                 <div class="st-brand-t">
                     <b><?php echo htmlspecialchars($restaurant_name); ?></b>
-                    <small>Manager · <?php echo htmlspecialchars($first_name); ?></small>
+                    <small><?php echo $roleLabel; ?> · <?php echo htmlspecialchars($first_name); ?></small>
                 </div>
             </div>
             <div class="st-top-r">
@@ -142,7 +144,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
                 <button type="button" class="st-alerts" id="enableAlertsBtn"><span class="material-symbols-rounded">notifications</span><span class="st-alerts-l">Turn on alerts</span></button>
                 <div class="st-user">
                     <span class="st-av" aria-hidden="true"><?php echo htmlspecialchars($initials); ?></span>
-                    <div class="st-user-t"><b><?php echo htmlspecialchars($staff_name); ?></b><small>Manager</small></div>
+                    <div class="st-user-t"><b><?php echo htmlspecialchars($staff_name); ?></b><small><?php echo $roleLabel; ?></small></div>
                 </div>
                 <a class="st-ibtn" id="stLogout" href="../controllers/staff_logout.php" aria-label="Log out" title="Log out"><span class="material-symbols-rounded">logout</span></a>
             </div>
@@ -150,7 +152,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
     </header>
 
     <main class="st-wrap">
-        <nav class="st-tabs" role="tablist" aria-label="Manager screens">
+        <nav class="st-tabs" role="tablist" aria-label="<?php echo $roleLabel; ?> screens">
             <button type="button" class="st-tab" role="tab" data-tab="home"><span class="material-symbols-rounded">space_dashboard</span>Overview</button>
             <button type="button" class="st-tab" role="tab" data-tab="orders"><span class="material-symbols-rounded">receipt_long</span>Orders<em data-badge="orders"></em></button>
             <button type="button" class="st-tab" role="tab" data-tab="kitchen"><span class="material-symbols-rounded">skillet</span>Kitchen<em data-badge="kitchen"></em></button>
@@ -159,7 +161,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
             <button type="button" class="st-tab" role="tab" data-tab="pos"><span class="material-symbols-rounded">point_of_sale</span>POS</button>
             <button type="button" class="st-tab" role="tab" data-tab="customers"><span class="material-symbols-rounded">group</span>Customers</button>
             <button type="button" class="st-tab" role="tab" data-tab="payments"><span class="material-symbols-rounded">payments</span>Payments</button>
-            <button type="button" class="st-tab" role="tab" data-tab="reports"><span class="material-symbols-rounded">bar_chart</span>Reports</button>
+            <?php if (!$isCashier): ?><button type="button" class="st-tab" role="tab" data-tab="reports"><span class="material-symbols-rounded">bar_chart</span>Reports</button><?php endif; ?>
         </nav>
 
         <!-- Overview -->
@@ -172,7 +174,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
                 <div class="st-head-r"><button type="button" class="st-btn ghost" data-refresh><span class="material-symbols-rounded">refresh</span>Refresh</button></div>
             </div>
             <div class="st-stats">
-                <button type="button" class="st-stat" data-tab="reports"><span class="st-ic" style="--c:#2563eb"><span class="material-symbols-rounded">payments</span></span><b id="todayRevenue"><?php echo htmlspecialchars($currency_symbol); ?>0</b><small>Today's sales</small><span class="st-delta" id="revDelta">&nbsp;</span></button>
+                <button type="button" class="st-stat" data-tab="<?php echo $isCashier ? 'payments' : 'reports'; ?>"><span class="st-ic" style="--c:#2563eb"><span class="material-symbols-rounded">payments</span></span><b id="todayRevenue"><?php echo htmlspecialchars($currency_symbol); ?>0</b><small>Today's sales</small><span class="st-delta" id="revDelta">&nbsp;</span></button>
                 <button type="button" class="st-stat" data-tab="orders"><span class="st-ic" style="--c:#7c3aed"><span class="material-symbols-rounded">receipt_long</span></span><b id="todayOrders">0</b><small>Today's orders</small></button>
                 <button type="button" class="st-stat" data-tab="orders"><span class="st-ic" style="--c:#f59e0b"><span class="material-symbols-rounded">hourglass_top</span></span><b id="inProgress">0</b><small>In progress</small></button>
                 <button type="button" class="st-stat" data-tab="kitchen"><span class="st-ic" style="--c:#f97316"><span class="material-symbols-rounded">skillet</span></span><b id="activeKot">0</b><small>Kitchen tickets</small></button>
@@ -185,7 +187,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
                         <div class="st-card-h"><div><b>Orders in progress</b><small>Still being cooked, served or paid</small></div><button type="button" class="st-link" data-tab="orders">All orders<span class="material-symbols-rounded">chevron_right</span></button></div>
                         <div id="mgLive"><div class="st-skel h-row"></div><br><div class="st-skel h-row"></div></div>
                     </div>
-                    <div class="st-card">
+                    <div class="st-card"<?php echo $isCashier ? ' hidden' : ''; ?>>
                         <div class="st-card-h"><div><b>Last 7 days</b><small>Sales <span id="mgWeekTotal"></span></small></div><button type="button" class="st-link" data-tab="reports">Reports<span class="material-symbols-rounded">chevron_right</span></button></div>
                         <div class="mg-bars" id="mgBars"></div>
                     </div>
@@ -196,7 +198,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
                         <div id="mgAttention"><div class="st-skel h-row"></div></div>
                     </div>
                     <div class="st-card">
-                        <div class="st-card-h"><div><b>Quick links</b><small>Everything a manager can do</small></div></div>
+                        <div class="st-card-h"><div><b>Quick links</b><small><?php echo $isCashier ? 'Everything at the counter' : 'Everything a manager can do'; ?></small></div></div>
                         <div class="mg-links">
                             <button type="button" data-tab="orders"><span class="st-ic" style="--c:#7c3aed"><span class="material-symbols-rounded">receipt_long</span></span>Orders<em data-badge="orders"></em></button>
                             <button type="button" data-tab="kitchen"><span class="st-ic" style="--c:#f97316"><span class="material-symbols-rounded">skillet</span></span>Kitchen<em data-badge="kitchen"></em></button>
@@ -205,7 +207,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
                             <button type="button" data-tab="pos"><span class="st-ic" style="--c:#2563eb"><span class="material-symbols-rounded">point_of_sale</span></span>POS</button>
                             <button type="button" data-tab="customers"><span class="st-ic" style="--c:#db2777"><span class="material-symbols-rounded">group</span></span>Customers</button>
                             <button type="button" data-tab="payments"><span class="st-ic" style="--c:#16a34a"><span class="material-symbols-rounded">payments</span></span>Payments</button>
-                            <button type="button" data-tab="reports"><span class="st-ic" style="--c:#0891b2"><span class="material-symbols-rounded">bar_chart</span></span>Reports</button>
+                            <?php if (!$isCashier): ?><button type="button" data-tab="reports"><span class="st-ic" style="--c:#0891b2"><span class="material-symbols-rounded">bar_chart</span></span>Reports</button><?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -474,7 +476,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
     </main>
 
     <!-- phones: bottom tab bar + "More" sheet -->
-    <nav class="st-tabbar" aria-label="Manager screens">
+    <nav class="st-tabbar" aria-label="<?php echo $roleLabel; ?> screens">
         <button type="button" class="st-tb" data-tab="home"><span class="material-symbols-rounded">space_dashboard</span>Home</button>
         <button type="button" class="st-tb" data-tab="orders"><span class="material-symbols-rounded">receipt_long</span>Orders<em data-badge="orders"></em></button>
         <button type="button" class="st-tb" data-tab="kitchen"><span class="material-symbols-rounded">skillet</span>Kitchen<em data-badge="kitchen"></em></button>
@@ -489,7 +491,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
                 <button type="button" data-tab="pos"><span class="st-ic" style="--c:#2563eb"><span class="material-symbols-rounded">point_of_sale</span></span><span>POS<small>Take an order or a payment</small></span></button>
                 <button type="button" data-tab="customers"><span class="st-ic" style="--c:#db2777"><span class="material-symbols-rounded">group</span></span><span>Customers<small>Regulars and recent guests</small></span></button>
                 <button type="button" data-tab="payments"><span class="st-ic" style="--c:#16a34a"><span class="material-symbols-rounded">payments</span></span><span>Payments<small>Money taken today</small></span></button>
-                <button type="button" data-tab="reports"><span class="st-ic" style="--c:#0891b2"><span class="material-symbols-rounded">bar_chart</span></span><span>Reports<small>Today's sales report</small></span></button>
+                <?php if (!$isCashier): ?><button type="button" data-tab="reports"><span class="st-ic" style="--c:#0891b2"><span class="material-symbols-rounded">bar_chart</span></span><span>Reports<small>Today's sales report</small></span></button><?php endif; ?>
             </div>
         </div>
     </div>

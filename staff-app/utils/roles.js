@@ -3,12 +3,14 @@
 //   waiter  -> the floor: tables, new orders, waiter calls, bookings
 //   manager -> everything a manager can do (also owners and branch admins who log in here)
 //   rider   -> delivery riders: their own deliveries only (RiderHomeScreen)
+//   cashier -> the billing counter: orders (incl. accepting online orders), POS, tables, payments
 export function staffRole(user) {
   const role = String(user?.role || '').toLowerCase();
   const type = String(user?.user_type || '').toLowerCase();
   if (type === 'admin' || type === 'branch_admin') return 'manager';
   if (role === 'chef') return 'chef';
   if (role === 'delivery') return 'rider';
+  if (role === 'cashier') return 'cashier';
   if (role === 'waiter' || role === 'staff') return 'waiter';
   return 'manager';
 }
@@ -18,6 +20,7 @@ export const ROLE_INFO = {
   waiter: { label: 'Waiter', icon: 'restaurant', tagline: 'Floor' },
   manager: { label: 'Manager', icon: 'briefcase', tagline: 'Manager' },
   rider: { label: 'Delivery rider', icon: 'bicycle', tagline: 'Deliveries' },
+  cashier: { label: 'Cashier', icon: 'cash', tagline: 'Counter' },
 };
 
 // first name for greetings, never a business-sounding name

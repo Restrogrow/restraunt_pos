@@ -13,7 +13,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Category | Features |
 |---|---|
 | Orders & POS | 18 |
-| Kitchen & staff | 13 |
+| Kitchen & staff | 14 |
 | Tables & dine-in | 10 |
 | Menu | 13 |
 | Customer website & online ordering | 28 |
@@ -31,7 +31,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Apps | 18 |
 | Super Admin (platform) | 29 |
 | Demo & sales tools | 10 |
-| **Total built** | **275** |
+| **Total built** | **276** |
 | Planned, not built | 19 |
 
 ## Orders & POS
@@ -74,6 +74,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Continue with Google (staff/owner) | Log in to the dashboard with a Google account. | Login page › Continue with Google | owner, staff | Google login keys |
 | Branch switcher | For owners with several branches: compare today's numbers per branch and jump into any branch. | Dashboard › sidebar top › All branches | owner (multi-branch) | Branch login made in Super Admin › Branch admins |
 | Help & support | Send a question to the RestroGrow team and read replies inside the dashboard. | Dashboard › Help & support | owner | — |
+| Cashier role | A staff role for the billing counter: orders (including accepting online orders), POS billing, payments, customers, tables, kitchen tickets, assigning riders and settling their cash. No reports, menu editing, staff or settings. | Staff › add member (role Cashier); Staff app or the website | staff (cashier) | — |
 
 ## Tables & dine-in
 

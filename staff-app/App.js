@@ -235,6 +235,7 @@ const LAYOUT = {
   waiter: { tabs: ['Home', 'Tables', 'POS', 'Orders', 'More'], more: ['Kitchen', 'WaiterCalls', 'Reservations', 'Customers'] },
   manager: { tabs: ['Home', 'Orders', 'POS', 'Menu', 'More'], more: ['Kitchen', 'Tables', 'WaiterCalls', 'Reservations', 'Customers', 'Riders', 'Reports', 'Logs'] },
   rider: { tabs: ['Home', 'More'], more: [] },
+  cashier: { tabs: ['Home', 'Orders', 'POS', 'Tables', 'More'], more: ['Kitchen', 'WaiterCalls', 'Reservations', 'Customers', 'Riders'] },
 };
 
 const MORE_SCREENS = {

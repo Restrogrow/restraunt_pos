@@ -339,7 +339,7 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         $staffHash = password_hash(DEMO_STAFF_PASSWORD, PASSWORD_DEFAULT);
         foreach ([['Neha Kapoor', 'manager', 'Manager'], ['Ravi Kumar', 'waiter', 'Waiter'], ['Imran Khan', 'waiter2', 'Waiter'],
                   ['Suresh Gowda', 'chef', 'Chef'], ['Lakshmi Iyer', 'chef2', 'Chef'],
-                  ['Arjun Singh', 'rider', 'Delivery'], ['Faisal Ahmed', 'rider2', 'Delivery']] as $i => [$sname, $key, $role]) {
+                  ['Arjun Singh', 'rider', 'Delivery'], ['Faisal Ahmed', 'rider2', 'Delivery'], ['Kavita Rao', 'cashier', 'Cashier']] as $i => [$sname, $key, $role]) {
             demoInsert($pdo, 'staff', ['restaurant_id' => $rid, 'member_name' => $sname, 'email' => "$key.demo@spicegarden.test",
                                        'phone' => '97000000' . str_pad((string)($i + 1), 2, '0', STR_PAD_LEFT),
                                        'password' => $staffHash, 'role' => $role, 'is_active' => 1]);

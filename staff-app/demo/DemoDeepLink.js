@@ -13,6 +13,7 @@ export const DEMO_STAFF = {
   waiter: 'waiter.demo@spicegarden.test',
   chef: 'chef.demo@spicegarden.test',
   rider: 'rider.demo@spicegarden.test',
+  cashier: 'cashier.demo@spicegarden.test',
 };
 export const DEMO_STAFF_PASSWORD = 'demo';
 

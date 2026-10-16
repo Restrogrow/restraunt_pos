@@ -25,7 +25,8 @@ define('ROLE_MANAGER', 'Manager');
 define('ROLE_WAITER', 'Waiter');
 define('ROLE_CHEF', 'Chef');
 define('ROLE_STAFF', 'Staff');
-define('ROLE_DELIVERY', 'Delivery');   // delivery rider: only their own deliveries (config/rider_engine.php, api/rider_app.php)
+define('ROLE_DELIVERY', 'Delivery');
+define('ROLE_CASHIER', 'Cashier');     // billing counter: POS, payments, orders (incl. online), customers, tables; no reports, menu, staff or settings   // delivery rider: only their own deliveries (config/rider_engine.php, api/rider_app.php)
 
 /**
  * Permission definitions
@@ -88,6 +89,14 @@ function getRolePermissions($role) {
             PERMISSION_MANAGE_TABLES,
             PERMISSION_MANAGE_CUSTOMERS,
             PERMISSION_MANAGE_RESERVATIONS,
+            PERMISSION_VIEW_KOT,
+        ],
+        ROLE_CASHIER => [
+            PERMISSION_VIEW_DASHBOARD,
+            PERMISSION_MANAGE_ORDERS,
+            PERMISSION_MANAGE_PAYMENTS,
+            PERMISSION_MANAGE_CUSTOMERS,
+            PERMISSION_MANAGE_TABLES,
             PERMISSION_VIEW_KOT,
         ],
         ROLE_CHEF => [

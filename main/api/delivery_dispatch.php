@@ -22,7 +22,7 @@ function dispatchOut(array $d, int $code = 200): void { http_response_code($code
 
 require_once __DIR__ . '/../config/rider_engine.php';
 if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) dispatchOut(['success' => false, 'message' => 'Please log in again.'], 401);
-if (!riderCanDispatch()) dispatchOut(['success' => false, 'message' => 'Only the owner or a manager can assign riders.'], 403);
+if (!riderCanDispatch()) dispatchOut(['success' => false, 'message' => 'Only the owner, a manager or the cashier can assign riders.'], 403);
 $rid = (string)$_SESSION['restaurant_id'];
 $by = (string)($_SESSION['username'] ?? 'Owner');
 session_write_close();
