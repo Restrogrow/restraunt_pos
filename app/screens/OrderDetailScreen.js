@@ -1,9 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, Linking, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Badge from '../components/Badge';
 import BillPreviewModal from '../components/BillPreviewModal';
+import { feedback } from '../components/ui/Feedback';
+import PressableScale from '../components/ui/PressableScale';
+import Sheet from '../components/ui/Sheet';
+import { SkeletonBlock } from '../components/ui/Skeleton';
+import { useLayout } from '../hooks/useLayout';
+import { haptic } from '../utils/haptics';
+import { money, realName, splitNotes, timeAgo } from '../utils/format';
 import { apiGet, apiPostForm } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
@@ -132,6 +139,9 @@ function Row({ label, value }) {
 export default function OrderDetailScreen({ route, navigation }) {
   const { order: initialOrder } = route.params;
   const [order, setOrder] = useState(initialOrder);
+  // Opened from a short summary (Home's live list, a notification): show placeholders for the
+  // dishes and payment until the full order arrives, never "no items / ₹0 / not paid".
+  const [hydrated, setHydrated] = useState(Array.isArray(initialOrder.items) && initialOrder.items.length > 0 && !!initialOrder.payment_status);
   const [updatingTo, setUpdatingTo] = useState(null);
   const [paymentPickerOpen, setPaymentPickerOpen] = useState(false);
   const [prepMinutes, setPrepMinutes] = useState(DEFAULT_PREP_MINUTES);
@@ -208,6 +218,7 @@ export default function OrderDetailScreen({ route, navigation }) {
       const res = await apiGet(`/api/get_order_details_by_id.php?id=${order.id}`);
       if (res?.success && res.order) {
         setOrder((prev) => ({ ...prev, ...res.order }));
+        setHydrated(true);
       }
     } catch (e) {
       // silent — refresh is best-effort; the current snapshot stays usable
@@ -256,7 +267,7 @@ export default function OrderDetailScreen({ route, navigation }) {
     if (!address) return;
     const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(address);
     Linking.openURL(url).catch(() => {
-      Alert.alert('Could not open Maps', 'Please check the address manually.');
+      feedback.error('Could not open Maps. Please check the address manually.');
     });
   };
 
@@ -277,7 +288,7 @@ export default function OrderDetailScreen({ route, navigation }) {
       if (!res.success) throw new Error(res.message || 'Could not generate QR');
       setRiderQr({ url: res.qr_url, expiresAt: res.expires_at });
     } catch (e) {
-      Alert.alert('Could not generate QR', e.message);
+      feedback.errorFrom(e, 'Could not make the rider QR');
     } finally {
       setGeneratingQr(false);
     }
@@ -288,7 +299,25 @@ export default function OrderDetailScreen({ route, navigation }) {
     Share.share({ message: riderQr.url }).catch(() => {});
   };
 
+  const DONE_MESSAGE = {
+    Accepted: 'Order accepted',
+    Preparing: 'Kitchen is preparing it',
+    Ready: 'Marked ready',
+    Served: 'Marked served',
+    Completed: 'Order completed',
+    Rejected: 'Order rejected',
+    Cancelled: 'Order cancelled',
+    Pending: 'Order is live now',
+  };
+
   const updateStatus = async (to, extraFields = {}) => {
+    // Rejecting or cancelling always asks why (like the website) and is never one stray tap.
+    if (to === 'Rejected' || to === 'Cancelled') {
+      const picked = await feedback.reason({ mode: to === 'Cancelled' ? 'cancel' : 'reject', delivery: isDelivery });
+      if (!picked) return;
+      extraFields = { ...extraFields, reason: picked.text, reason_code: picked.code };
+      if (picked.strike) extraFields.strike = 1;
+    }
     setUpdatingTo(to);
     try {
       const res = await apiPostForm('/api/update_order_status.php', {
@@ -322,16 +351,12 @@ export default function OrderDetailScreen({ route, navigation }) {
       }
       setOrder(next);
       navigation.setParams({ order: next });
+      if (to === 'Rejected' || to === 'Cancelled') feedback.info(DONE_MESSAGE[to]);
+      else feedback.success(DONE_MESSAGE[to] || `Marked ${to.toLowerCase()}`);
     } catch (e) {
-      // Network-level failures come through as generic fetch errors — give
-      // them a message a busy counter worker can act on. Server-sent
-      // messages (e.g. "Order is already Completed") pass through as-is.
-      Alert.alert(
-        'Could not update order',
-        /fetch|network|reach the server/i.test(e.message)
-          ? "Couldn't reach the server — check the connection and try again. The order is safe."
-          : e.message
-      );
+      // Network failures get a message a busy counter worker can act on; server messages
+      // (e.g. "Order is already Completed") pass through as-is.
+      feedback.errorFrom(e, 'Could not update the order');
     } finally {
       setUpdatingTo(null);
     }
@@ -361,13 +386,9 @@ export default function OrderDetailScreen({ route, navigation }) {
       setOrder(next);
       navigation.setParams({ order: next });
       setPaymentPickerOpen(false);
+      feedback.success(`Payment: ${paymentLabel(to)}`);
     } catch (e) {
-      Alert.alert(
-        'Could not update payment',
-        /fetch|network|reach the server/i.test(e.message)
-          ? "Couldn't reach the server — check the connection and try again."
-          : e.message
-      );
+      feedback.errorFrom(e, 'Could not update the payment');
     } finally {
       setUpdatingPayment(false);
     }
@@ -407,11 +428,13 @@ export default function OrderDetailScreen({ route, navigation }) {
   };
 
   const dateTime = useMemo(() => formatOrderDateTime(order.created_at), [order.created_at]);
+  const notes = useMemo(() => splitNotes(order.notes), [order.notes]);
+  const { gutter } = useLayout();
   const paid = order.payment_status === 'Paid';
   return (
     <View style={styles.fill}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable style={styles.headerIconButton} onPress={() => navigation.goBack()} hitSlop={8}>
+        <Pressable style={styles.headerIconButton} onPress={() => navigation.goBack()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Back">
           <Ionicons name="arrow-back" size={20} color={colors.ink} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>
@@ -442,7 +465,7 @@ export default function OrderDetailScreen({ route, navigation }) {
             <Text style={styles.orderNumber} numberOfLines={1}>Order No: {order.order_number || `#${order.id}`}</Text>
             <Badge label={order.order_status} />
           </View>
-          {dateTime ? <Text style={styles.orderDate}>{dateTime}</Text> : null}
+          {dateTime ? <Text style={styles.orderDate}>{dateTime} · {timeAgo(order.created_at)}</Text> : null}
           {order.prep_minutes ? (
             <View style={styles.prepTimeRow}>
               <Ionicons name="time-outline" size={14} color={colors.primary} />
@@ -459,7 +482,9 @@ export default function OrderDetailScreen({ route, navigation }) {
             <View style={styles.customerIconWrap}>
               <Ionicons name="person" size={16} color={colors.primary} />
             </View>
-            <Text style={styles.customerName} numberOfLines={1}>{order.customer_name || 'Walk-in'}</Text>
+            <Text style={styles.customerName} numberOfLines={1}>
+              {realName(order.customer_name) || (order.order_type === 'Dine-in' ? 'Dine-in guest' : 'Walk-in customer')}
+            </Text>
             {order.customer_phone ? (
               <Pressable style={styles.callButton} onPress={callCustomer} hitSlop={8}>
                 <Ionicons name="call" size={15} color={colors.primary} />
@@ -507,7 +532,24 @@ export default function OrderDetailScreen({ route, navigation }) {
               ) : null}
             </>
           ) : null}
-          {order.notes ? <Row label="Notes" value={order.notes} /> : null}
+          {notes.text ? (
+            <View style={styles.noteBox}>
+              <Ionicons name="document-text-outline" size={15} color="#92400E" />
+              <Text style={styles.noteText}>{notes.text}</Text>
+            </View>
+          ) : null}
+          {notes.stopReason ? (
+            <View style={[styles.noteBox, { backgroundColor: colors.dangerBg }]}>
+              <Ionicons name="close-circle-outline" size={15} color={colors.danger} />
+              <Text style={[styles.noteText, { color: colors.danger }]}>Reason: {notes.stopReason}</Text>
+            </View>
+          ) : null}
+          {notes.kot ? (
+            <View style={styles.kotChip}>
+              <Ionicons name="flame-outline" size={13} color={colors.primary} />
+              <Text style={styles.kotChipText}>Kitchen ticket {notes.kot}</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={[styles.card, shadow.sm]}>
@@ -518,7 +560,13 @@ export default function OrderDetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          {items.length === 0 ? (
+          {!hydrated ? (
+            <View style={{ gap: 12, paddingVertical: 6 }}>
+              <SkeletonBlock width="70%" height={14} />
+              <SkeletonBlock width="55%" height={14} />
+              <SkeletonBlock width="40%" height={14} />
+            </View>
+          ) : items.length === 0 ? (
             <Text style={styles.emptyItems}>No item details available</Text>
           ) : (
             items.map((item, i) => (
@@ -533,16 +581,18 @@ export default function OrderDetailScreen({ route, navigation }) {
                   ) : null}
                   {item.notes ? <Text style={styles.itemNotes}>{item.notes}</Text> : null}
                 </View>
-                <Text style={styles.itemPrice}>{currency}{item.total_price ?? 0}</Text>
+                <Text style={styles.itemPrice}>{money(item.total_price, currency)}</Text>
               </View>
             ))
           )}
 
           <View style={styles.divider} />
-          <Row label="Subtotal" value={`${currency}${order.subtotal ?? 0}`} />
-          {order.tax > 0 ? <Row label="Tax" value={`${currency}${order.tax}`} /> : null}
+          {hydrated ? <Row label="Subtotal" value={money(order.subtotal, currency)} /> : null}
+          {Number(order.discount_amount) > 0 ? <Row label={`Discount${order.coupon_code ? ` (${order.coupon_code})` : ''}`} value={`-${money(order.discount_amount, currency)}`} /> : null}
+          {order.tax > 0 ? <Row label="Tax" value={money(order.tax, currency)} /> : null}
 
           <View style={styles.paymentFooter}>
+            {!hydrated ? <SkeletonBlock width={80} height={28} r={14} /> : (
             <Pressable
               style={[styles.paymentBadge, { backgroundColor: paid ? colors.successBg : colors.warningBg }]}
               onPress={() => paymentOptions.length > 0 && setPaymentPickerOpen(true)}
@@ -555,7 +605,8 @@ export default function OrderDetailScreen({ route, navigation }) {
                 <Ionicons name="chevron-down" size={12} color={paid ? colors.success : colors.warning} />
               ) : null}
             </Pressable>
-            <Text style={styles.totalValue}>{currency}{order.total ?? 0}</Text>
+            )}
+            <Text style={styles.totalValue}>{money(order.total, currency)}</Text>
           </View>
         </View>
 
@@ -600,64 +651,60 @@ export default function OrderDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {(actions.primary?.length || actions.secondary?.length) ? (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + spacing.xs, spacing.lg) }]}>
+        <View style={[styles.footer, { paddingHorizontal: gutter, paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm }]}>
           {actions.secondary?.length ? (
             <View style={styles.secondaryRow}>
               {actions.secondary.map((a) => (
-                <Pressable
+                <PressableScale
                   key={a.to}
                   style={styles.secondaryButton}
                   onPress={() => updateStatus(a.to)}
                   disabled={!!updatingTo}
                 >
                   <Text style={styles.secondaryButtonText}>{a.label}</Text>
-                </Pressable>
+                </PressableScale>
               ))}
             </View>
           ) : null}
           <View style={styles.primaryRow}>
-            {actions.primary?.map((a) => (
-              <Pressable
-                key={a.to}
-                style={[
-                  styles.primaryButton,
-                  a.full && { flex: 1 },
-                  { backgroundColor: a.tone === 'danger' ? colors.danger : colors.success },
-                ]}
-                onPress={() => updateStatus(a.to, a.to === 'Accepted' ? { prep_minutes: prepMinutes } : {})}
-                disabled={!!updatingTo}
-              >
-                {updatingTo === a.to ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.primaryButtonText}>{a.label.toUpperCase()}</Text>
-                )}
-              </Pressable>
-            ))}
+            {actions.primary?.map((a) => {
+              const danger = a.tone === 'danger';
+              return (
+                <PressableScale
+                  key={a.to}
+                  style={[styles.primaryButton, danger ? styles.dangerButton : styles.goButton, a.full && { flex: 1 }]}
+                  feedback={danger ? 'warning' : 'press'}
+                  onPress={() => updateStatus(a.to, a.to === 'Accepted' ? { prep_minutes: prepMinutes } : {})}
+                  disabled={!!updatingTo}
+                  accessibilityLabel={a.label}
+                >
+                  {updatingTo === a.to ? (
+                    <ActivityIndicator color={danger ? colors.danger : '#fff'} size="small" />
+                  ) : (
+                    <Text style={[styles.primaryButtonText, danger && { color: colors.danger }]}>{a.label}</Text>
+                  )}
+                </PressableScale>
+              );
+            })}
           </View>
         </View>
       ) : null}
 
-      <Modal visible={paymentPickerOpen} transparent animationType="fade" onRequestClose={() => setPaymentPickerOpen(false)}>
-        <Pressable style={styles.pickerBackdrop} onPress={() => setPaymentPickerOpen(false)}>
-          <Pressable style={[styles.pickerSheet, shadow.lg]} onPress={() => {}}>
-            <Text style={styles.pickerTitle}>Update Payment Status</Text>
-            {paymentOptions.map((status) => (
-              <Pressable
-                key={status}
-                style={styles.pickerOption}
-                onPress={() => updatePayment(status)}
-                disabled={updatingPayment}
-              >
-                <Text style={styles.pickerOptionText}>{paymentLabel(status)}</Text>
-                {updatingPayment ? <ActivityIndicator size="small" color={colors.primary} /> : (
-                  <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-                )}
-              </Pressable>
-            ))}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <Sheet visible={paymentPickerOpen} onClose={() => setPaymentPickerOpen(false)} title="Payment" subtitle={`Now: ${paymentLabel(order.payment_status)} · ${money(order.total, currency)}`}>
+        <View style={{ gap: 8 }}>
+          {paymentOptions.map((status) => (
+            <PressableScale key={status} style={styles.pickerOption} onPress={() => updatePayment(status)} disabled={updatingPayment}>
+              <Ionicons
+                name={status === 'Paid' ? 'checkmark-circle' : status === 'Refunded' ? 'arrow-undo' : 'time'}
+                size={20}
+                color={status === 'Paid' ? colors.success : status === 'Refunded' ? colors.danger : colors.warning}
+              />
+              <Text style={styles.pickerOptionText}>Mark as {paymentLabel(status).toLowerCase()}</Text>
+              {updatingPayment ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="chevron-forward" size={16} color={colors.muted} />}
+            </PressableScale>
+          ))}
+        </View>
+      </Sheet>
 
       <BillPreviewModal
         visible={!!billPreview}
@@ -996,17 +1043,60 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   primaryButton: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 15,
-    borderRadius: radius.pill,
+    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+  },
+  goButton: {
+    flex: 1,
+    backgroundColor: colors.success,
+  },
+  // Reject / Cancel: outlined and narrower than the main action, so the safe choice is the
+  // big obvious one and the destructive one is never hit by accident.
+  dangerButton: {
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    backgroundColor: colors.surface,
+    minWidth: 110,
   },
   primaryButtonText: {
     color: '#fff',
     fontFamily: font.bold,
-    fontSize: 14.5,
-    letterSpacing: 0.3,
+    fontSize: 15,
+  },
+  noteBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FEF7E6',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+  },
+  noteText: {
+    flex: 1,
+    fontFamily: font.medium,
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 19,
+  },
+  kotChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginTop: spacing.sm,
+  },
+  kotChipText: {
+    fontFamily: font.semiBold,
+    fontSize: 11.5,
+    color: colors.primary,
   },
   pickerBackdrop: {
     flex: 1,
@@ -1031,13 +1121,14 @@ const styles = StyleSheet.create({
   pickerOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 13,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
   },
   pickerOptionText: {
-    fontFamily: font.medium,
+    flex: 1,
+    fontFamily: font.semiBold,
     fontSize: 14.5,
     color: colors.ink,
   },

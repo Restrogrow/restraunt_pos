@@ -1,72 +1,39 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, LayoutAnimation, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, UIManager, View } from 'react-native';
 import DatePickerModal from '../components/DatePickerModal';
+import OrderCard from '../components/OrderCard';
 import OrderTypeToggles from '../components/OrderTypeToggles';
 import ScreenHeader from '../components/ScreenHeader';
-import { ErrorState, LoadingState } from '../components/ScreenState';
+import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
+import { feedback } from '../components/ui/Feedback';
+import FadeIn from '../components/ui/FadeIn';
+import PressableScale from '../components/ui/PressableScale';
 import { apiGet, apiPostForm } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { useApiData } from '../hooks/useApiData';
-import { colors, font, radius, shadow, spacing, statusStyles } from '../theme';
+import { useLayout } from '../hooks/useLayout';
+import { colors, font, radius, shadow, spacing } from '../theme';
+import { haptic } from '../utils/haptics';
 
-const NEXT_STATUS = {
-  Pending: 'Accepted',
-  Accepted: 'Preparing',
-  Preparing: 'Ready',
-  Ready: 'Served',
-  Served: 'Completed',
-};
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
-// Three tabs instead of a horizontal Kanban board — mirrors the simple
-// Preparing / Ready / Picked-up flow of a delivery-partner app (Swiggy's
-// restaurant app), adapted to this app's own richer status set.
+// Live tabs come from one request (every open order, whatever day it was placed); Done is
+// looked up by day; Deleted is the audit view.
 const TABS = [
-  {
-    key: 'preparing',
-    label: 'Preparing',
-    statuses: ['Scheduled', 'Pending', 'Accepted', 'Preparing'],
-    emptyTitle: 'No Orders!',
-    emptySubtitle: 'Orders that are getting prepared will be shown here',
-  },
-  {
-    key: 'ready',
-    label: 'Ready',
-    statuses: ['Ready', 'Served'],
-    emptyTitle: 'Nothing ready yet',
-    emptySubtitle: 'Orders ready to serve or hand over will be shown here',
-  },
-  {
-    key: 'completed',
-    label: 'Completed',
-    statuses: ['Completed', 'Cancelled', 'Rejected'],
-    emptyTitle: 'No completed orders',
-    emptySubtitle: 'Finished, cancelled or rejected orders will be shown here',
-  },
-  {
-    // Audit view, not a workflow step — shows soft-deleted orders only
-    // (deleted_at IS NOT NULL from the API). Fetch ignores the selected
-    // date so the badge count (total deleted) matches the list.
-    key: 'deleted',
-    label: 'Deleted',
-    deletedOnly: true,
-    emptyIcon: 'trash-outline',
-    emptyTitle: 'No deleted orders',
-    emptySubtitle: 'Orders deleted by Admin or Manager will be shown here for record',
-  },
+  { key: 'new', label: 'New', icon: 'notifications-outline', statuses: ['Pending', 'Scheduled'], emptyTitle: 'No new orders', emptySubtitle: 'New website orders appear here to accept or reject. You will hear a ring.' },
+  { key: 'cooking', label: 'Cooking', icon: 'flame-outline', statuses: ['Accepted', 'Preparing'], emptyTitle: 'Nothing cooking', emptySubtitle: 'Accepted orders show here while the kitchen makes them.' },
+  { key: 'ready', label: 'Ready', icon: 'checkmark-done-outline', statuses: ['Ready', 'Served'], emptyTitle: 'Nothing ready yet', emptySubtitle: 'Orders ready to serve or hand over show here.' },
+  { key: 'done', label: 'Done', icon: 'archive-outline', statuses: ['Completed', 'Cancelled', 'Rejected'], byDate: true, emptyTitle: 'No finished orders', emptySubtitle: 'Completed, cancelled and rejected orders for this day show here.' },
+  { key: 'deleted', label: 'Deleted', icon: 'trash-outline', deletedOnly: true, emptyTitle: 'No deleted orders', emptySubtitle: 'Orders deleted by the owner or manager are kept here for record.' },
 ];
+const LIVE_STATUSES = ['Pending', 'Scheduled', 'Accepted', 'Preparing', 'Ready', 'Served'];
 
-// Who sees the trash action on a live order card. Must stay in sync with
-// delete_order.php's canDeleteOrders() — the server is the real gatekeeper,
-// this only avoids showing a button that would 403. Case-insensitive
-// because the role string comes from either the users row or the session
-// ('Administrator' vs 'Admin' vs 'Branch Admin').
 const CAN_DELETE_ROLES = ['admin', 'administrator', 'manager', 'branch admin'];
-const CAN_DELETE = (role) => CAN_DELETE_ROLES.includes(String(role || '').toLowerCase());
-
-// Labels shown on the "deleted by" line of a deleted card.
-const DELETED_REASON_LABEL = 'Reason';
+const canDeleteRole = (role) => CAN_DELETE_ROLES.includes(String(role || '').toLowerCase());
 
 function toDateKey(date) {
   const y = date.getFullYear();
@@ -74,911 +41,523 @@ function toDateKey(date) {
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
-
 function addDays(date, days) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
   return next;
 }
+const animate = () => LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
 
-function formatDisplayDate(date, isToday, isYesterday) {
-  if (isToday) return 'Today';
-  if (isYesterday) return 'Yesterday';
-  return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
-export default function OrdersScreen({ navigation }) {
+export default function OrdersScreen({ navigation, route }) {
   const { user } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [activeTab, setActiveTab] = useState('preparing');
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  // Bulk selection mode: Admin/Manager can tick multiple live orders and
-  // delete them in one go (the fake-order-flood case). Scoped to the
-  // current tab + date; resets when either changes.
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const [bulkArmed, setBulkArmed] = useState(false);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
   const currency = user?.currency_symbol || '₹';
-  // The floating tab bar overlays screen content instead of react-navigation
-  // reserving docked space for it, so list items would otherwise render (and
-  // be un-tappable/un-scrollable-into) underneath it once there are enough
-  // orders to reach that strip — most visible on tabs that accumulate more
-  // orders through the day, like Completed.
   const tabBarHeight = useBottomTabBarHeight();
+  const { gutter } = useLayout();
+  const [activeTab, setActiveTab] = useState(route?.params?.tab || 'new');
+  const autoPicked = useRef(!!route?.params?.tab);
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerViewDate, setPickerViewDate] = useState(null);
+  const [updatingId, setUpdatingId] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const canDelete = canDeleteRole(user?.role);
 
+  // Home's "needs attention" can send us straight to a tab.
+  useEffect(() => {
+    if (route?.params?.tab) {
+      setActiveTab(route.params.tab);
+      autoPicked.current = true;
+    }
+  }, [route?.params?.tab]);
+
+  const tab = TABS.find((t) => t.key === activeTab) || TABS[0];
   const todayKey = toDateKey(new Date());
   const dateKey = toDateKey(selectedDate);
   const isToday = dateKey === todayKey;
-  const isYesterday = dateKey === toDateKey(addDays(new Date(), -1));
-  const isFutureBlocked = dateKey > todayKey;
 
-  const currentTab = TABS.find((t) => t.key === activeTab) || TABS[0];
+  // ── live (New / Cooking / Ready): one shared list ──
+  const liveFetcher = useCallback(() => apiGet(`/api/get_orders.php?limit=100&active=1&date=${toDateKey(new Date())}`), []);
+  const live = useApiData(liveFetcher, { pollInterval: 10000, cacheKey: 'orders:live', refetchOnFocus: true });
 
-  const fetcher = useCallback(
-    () =>
-      apiGet(
-        '/api/get_orders.php?limit=50' +
-          // The Deleted tab is a full audit view: it ignores the selected
-          // date (so its total-count badge matches the list) and fetches
-          // deleted orders ONLY. Every other tab must never mix deleted
-          // orders into the live list.
-          (currentTab.deletedOnly ? '&include_deleted=1' : '&date=' + encodeURIComponent(dateKey))
-      ),
-    [dateKey, currentTab.deletedOnly]
+  // ── Done (by day) / Deleted ──
+  const otherKey = tab.deletedOnly ? 'orders:deleted' : tab.byDate ? `orders:day:${dateKey}` : null;
+  const otherFetcher = useCallback(() => {
+    if (tab.deletedOnly) return apiGet('/api/get_orders.php?limit=100&include_deleted=1');
+    if (tab.byDate) return apiGet(`/api/get_orders.php?limit=100&date=${dateKey}`);
+    return Promise.resolve(null);
+  }, [tab.deletedOnly, tab.byDate, dateKey]);
+  const other = useApiData(otherFetcher, { pollInterval: tab.byDate && isToday ? 20000 : 0, cacheKey: otherKey, refetchOnFocus: true });
+
+  // ── search (all days) ──
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(query.trim()), 350);
+    return () => clearTimeout(id);
+  }, [query]);
+  const searchFetcher = useCallback(
+    () => (debounced.length >= 2 ? apiGet(`/api/get_orders.php?limit=50&any_date=1&search=${encodeURIComponent(debounced)}`) : Promise.resolve(null)),
+    [debounced]
   );
-  // Only poll when looking at today (or on the Deleted tab, where new
-  // deletions by Admin/Manager should surface without a manual refresh).
-  const { data, loading, refreshing, error, refresh, reload, setData } = useApiData(fetcher, {
-    pollInterval: isToday || currentTab.deletedOnly ? 10000 : 0,
-  });
-  const [updatingId, setUpdatingId] = useState(null);
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerViewDate, setPickerViewDate] = useState(null);
+  const search = useApiData(searchFetcher, { cacheKey: debounced.length >= 2 ? `orders:search:${debounced}` : null });
 
-  const goToPreviousDay = () => setSelectedDate((d) => addDays(d, -1));
-  const goToNextDay = () => setSelectedDate((d) => (isFutureBlocked ? d : addDays(d, 1)));
-  const goToToday = () => setSelectedDate(new Date());
+  const liveOrders = useMemo(() => (live.data?.orders || []).filter((o) => LIVE_STATUSES.includes(o.order_status)), [live.data]);
+  const counts = useMemo(() => {
+    const c = { new: 0, cooking: 0, ready: 0 };
+    liveOrders.forEach((o) => {
+      const t = TABS.find((x) => x.statuses?.includes(o.order_status));
+      if (t && c[t.key] !== undefined) c[t.key] += 1;
+    });
+    return c;
+  }, [liveOrders]);
 
-  const openPicker = () => {
-    setPickerViewDate(selectedDate);
-    setPickerVisible(true);
+  // Open on the tab that has work: New if anything is waiting, else Cooking, else Ready.
+  useEffect(() => {
+    if (autoPicked.current || !live.data) return;
+    autoPicked.current = true;
+    setActiveTab(counts.new ? 'new' : counts.cooking ? 'cooking' : counts.ready ? 'ready' : 'new');
+  }, [live.data, counts]);
+
+  const source = tab.deletedOnly || tab.byDate ? other : live;
+  const visible = useMemo(() => {
+    if (tab.deletedOnly) return other.data?.orders || [];
+    if (tab.byDate) return (other.data?.orders || []).filter((o) => tab.statuses.includes(o.order_status));
+    return liveOrders.filter((o) => tab.statuses.includes(o.order_status));
+  }, [tab, other.data, liveOrders]);
+
+  useEffect(() => {
+    setSelecting(false);
+    setSelectedIds(new Set());
+  }, [activeTab, dateKey]);
+
+  const openOrder = useCallback((order) => navigation.navigate('OrderDetail', { order }), [navigation]);
+
+  const advance = useCallback(
+    async (order, to) => {
+      setUpdatingId(order.id);
+      try {
+        const res = await apiPostForm('/api/update_order_status.php', { orderId: order.id, status: to });
+        if (!res.success) throw new Error(res.message || 'Update failed');
+        animate();
+        live.setData((prev) => (prev ? { ...prev, orders: (prev.orders || []).map((o) => (o.id === order.id ? { ...o, order_status: to } : o)) } : prev));
+        feedback.success(`${order.order_number} is ${to.toLowerCase()}`);
+        live.reload('background');
+      } catch (e) {
+        feedback.errorFrom(e, 'Could not update the order');
+        live.reload('background');
+      } finally {
+        setUpdatingId(null);
+      }
+    },
+    [live]
+  );
+
+  const deleteOne = useCallback(
+    async (order) => {
+      const ok = await feedback.confirm({
+        title: `Delete ${order.order_number}?`,
+        message: 'It disappears from orders and reports. A copy stays under Deleted for your records.',
+        confirmText: 'Delete',
+        danger: true,
+      });
+      if (!ok) return;
+      try {
+        const res = await apiPostForm('/api/delete_order.php', { orderId: order.id, reason: 'Deleted from app' });
+        if (!res.success) throw new Error(res.message || 'Delete failed');
+        animate();
+        const drop = (prev) => (prev ? { ...prev, orders: (prev.orders || []).filter((o) => o.id !== order.id) } : prev);
+        live.setData(drop);
+        other.setData(drop);
+        feedback.success('Order deleted');
+      } catch (e) {
+        feedback.errorFrom(e, 'Could not delete the order');
+      }
+    },
+    [live, other]
+  );
+
+  const deletableOrder = (o) => canDelete && !tab.deletedOnly && o.payment_status !== 'Paid' && o.order_status !== 'Completed';
+
+  const bulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    const ok = await feedback.confirm({
+      title: `Delete ${ids.length} order${ids.length > 1 ? 's' : ''}?`,
+      message: 'Paid and completed orders are skipped. Deleted orders stay under Deleted for your records.',
+      confirmText: `Delete ${ids.length}`,
+      danger: true,
+    });
+    if (!ok) return;
+    let done = 0;
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += 5) {
+      const results = await Promise.allSettled(ids.slice(i, i + 5).map((id) => apiPostForm('/api/delete_order.php', { orderId: id, reason: 'Bulk delete via app' })));
+      results.forEach((r) => (r.status === 'fulfilled' && r.value?.success ? (done += 1) : (failed += 1)));
+    }
+    setSelecting(false);
+    setSelectedIds(new Set());
+    animate();
+    if (failed) feedback.info(`${done} deleted, ${failed} skipped (paid or completed orders are protected)`);
+    else feedback.success(`${done} order${done > 1 ? 's' : ''} deleted`);
+    live.reload('background');
+    other.reload('background');
   };
-  const changePickerMonth = (delta) => {
-    setPickerViewDate((d) => {
-      const next = new Date(d || selectedDate);
-      next.setDate(1);
-      next.setMonth(next.getMonth() + delta);
+
+  const toggleSelect = (id) => {
+    haptic.select();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
-  const selectPickerDay = (day) => {
-    setSelectedDate(day);
-    setPickerVisible(false);
+
+  const renderOrder = ({ item, index }) => {
+    const deletable = deletableOrder(item);
+    return (
+      <FadeIn index={index}>
+        <OrderCard
+          order={item}
+          currency={currency}
+          busy={updatingId === item.id}
+          deleted={tab.deletedOnly}
+          showStatus={tab.byDate || tab.deletedOnly || searchOpen || item.order_status === 'Scheduled' || item.order_status === 'Accepted' || item.order_status === 'Served'}
+          selecting={selecting && deletable}
+          selected={selectedIds.has(item.id)}
+          onPress={() => (selecting ? deletable && toggleSelect(item.id) : openOrder(item))}
+          onLongPress={deletable && !selecting ? () => { haptic.press(); setSelecting(true); setSelectedIds(new Set([item.id])); } : undefined}
+          onAction={advance}
+          onDelete={deletable && !selecting ? () => deleteOne(item) : undefined}
+        />
+      </FadeIn>
+    );
   };
 
-  // Two-step inline confirm on the card itself — Alert.alert() is a no-op
-  // on react-native-web (OrderTypeToggles learned this the hard way), so a
-  // native confirm dialog would silently swallow every delete on web. First
-  // tap arms the card, second tap (within the arm) deletes; tapping anything
-  // else or waiting resets it.
-  const requestDelete = (order) => {
-    if (confirmDeleteId === order.id) {
-      setConfirmDeleteId(null);
-      deleteOrder(order);
-    } else {
-      setConfirmDeleteId(order.id);
-    }
-  };
+  const listPad = { paddingHorizontal: gutter, paddingTop: spacing.md, paddingBottom: tabBarHeight + spacing.xxl, gap: spacing.md, flexGrow: 1 };
 
-  const deleteOrder = async (order) => {
-    setUpdatingId(order.id);
-    try {
-      const res = await apiPostForm('/api/delete_order.php', { orderId: order.id });
-      if (!res.success) throw new Error(res.message || 'Delete failed');
-      // Drop the card from the current view immediately, then reconcile
-      // with the server silently — mirrors advanceOrder's optimistic flow.
-      setData((prev) => (prev ? { ...prev, orders: (prev.orders || []).filter((o) => o.id !== order.id) } : prev));
-      reload('background');
-    } catch (e) {
-      Alert.alert('Could not delete order', e.message);
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const advanceOrder = async (order) => {
-    const next = NEXT_STATUS[order.order_status];
-    if (!next) return;
-    setUpdatingId(order.id);
-    try {
-      const res = await apiPostForm('/api/update_order_status.php', {
-        orderId: order.id,
-        status: next,
-      });
-      if (!res.success) throw new Error(res.message || 'Update failed');
-      // Move the card to its next tab immediately instead of waiting on a
-      // refetch — then reconcile with the server silently in the background.
-      setData((prev) => (prev ? { ...prev, orders: (prev.orders || []).map((o) => (o.id === order.id ? { ...o, order_status: next } : o)) } : prev));
-      reload('background');
-    } catch (e) {
-      Alert.alert('Could not update order', e.message);
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const orders = data?.orders || [];
-
-  const tabCounts = useMemo(() => {
-    const counts = {};
-    TABS.forEach((t) => { counts[t.key] = 0; });
-    orders.forEach((o) => {
-      const tab = TABS.find((t) => t.statuses.includes(o.order_status));
-      if (tab) counts[tab.key] += 1;
-    });
-    // The Deleted tab badge always shows the restaurant's TOTAL deleted
-    // count from the server, not just the selected date's — deleted orders
-    // are an audit record, the count is the point.
-    counts.deleted = data?.deleted_count ?? counts.deleted;
-    return counts;
-  }, [orders, data]);
-
-  const visibleOrders = useMemo(
-    () => (currentTab.deletedOnly ? orders : orders.filter((o) => currentTab.statuses.includes(o.order_status))),
-    [orders, currentTab]
-  );
-
-  // ── Bulk selection / delete ──
-  // Same eligibility rules as the per-card delete (and as delete_order.php,
-  // which stays the real gatekeeper): live orders only, not Paid, not
-  // Completed. Paid/completed orders inside a selection are skipped by the
-  // server and reported in the summary.
-  const deletableVisible = useMemo(
-    () => visibleOrders.filter((o) => CAN_DELETE(user?.role) && o.payment_status !== 'Paid' && o.order_status !== 'Completed'),
-    [visibleOrders, user?.role]
-  );
-  const allSelected = deletableVisible.length > 0 && deletableVisible.every((o) => selectedIds.has(o.id));
-
-  const enterSelection = () => {
-    setSelectionMode(true);
-    setSelectedIds(new Set());
-    setBulkArmed(false);
-  };
-  const exitSelection = () => {
-    setSelectionMode(false);
-    setSelectedIds(new Set());
-    setBulkArmed(false);
-  };
-  const toggleSelect = (id) => {
-    setBulkArmed(false);
-    setSelectedIds((prev) => {
-      const nextSet = new Set(prev);
-      if (nextSet.has(id)) {
-        nextSet.delete(id);
-      } else {
-        nextSet.add(id);
+  const header = (
+    <ScreenHeader
+      eyebrow={searchOpen ? 'Search all days' : 'Live'}
+      title="Orders"
+      right={
+        <View style={styles.headerRight}>
+          {!searchOpen ? <OrderTypeToggles /> : null}
+          <PressableScale
+            style={styles.headerBtn}
+            onPress={() => {
+              setSearchOpen((s) => !s);
+              setQuery('');
+            }}
+            accessibilityLabel={searchOpen ? 'Close search' : 'Search orders'}
+          >
+            <Ionicons name={searchOpen ? 'close' : 'search'} size={19} color="#fff" />
+          </PressableScale>
+        </View>
       }
-      return nextSet;
-    });
-  };
-  const toggleSelectAll = () => {
-    setBulkArmed(false);
-    setSelectedIds(allSelected ? new Set() : new Set(deletableVisible.map((o) => o.id)));
-  };
-
-  // Leaving the tab or changing the date clears selection so stale ids
-  // can't ride along into a different day's list.
-  useEffect(() => {
-    setSelectionMode(false);
-    setSelectedIds(new Set());
-    setBulkArmed(false);
-  }, [activeTab, dateKey]);
-
-  const bulkDeleteSelected = async () => {
-    const ids = [...selectedIds];
-    if (ids.length === 0) return;
-    setBulkDeleting(true);
-    setBulkProgress({ done: 0, total: ids.length });
-    let ok = 0;
-    let failed = 0;
-    // Small concurrent batches keep this usable for a few dozen junk
-    // orders without firing hundreds of parallel requests.
-    const BATCH = 5;
-    for (let i = 0; i < ids.length; i += BATCH) {
-      const slice = ids.slice(i, i + BATCH);
-      const results = await Promise.allSettled(
-        slice.map((id) => apiPostForm('/api/delete_order.php', { orderId: id, reason: 'Bulk delete via app' }))
-      );
-      results.forEach((r) => {
-        if (r.status === 'fulfilled' && r.value?.success) ok += 1;
-        else failed += 1;
-      });
-      setBulkProgress({ done: Math.min(i + BATCH, ids.length), total: ids.length });
-    }
-    setBulkDeleting(false);
-    setBulkArmed(false);
-    setSelectionMode(false);
-    setSelectedIds(new Set());
-    if (failed > 0) {
-      Alert.alert('Bulk delete finished', `${ok} deleted, ${failed} skipped (paid or completed orders are protected).`);
-    }
-    reload('background');
-  };
-
-  // Same two-tap inline confirm as the per-card delete — Alert.alert() is
-  // a no-op on react-native-web, so arming replaces a native dialog.
-  const requestBulkDelete = () => {
-    if (bulkArmed) {
-      bulkDeleteSelected();
-    } else {
-      setBulkArmed(true);
-    }
-  };
-
-  const dateLabel = useMemo(
-    () => formatDisplayDate(selectedDate, isToday, isYesterday),
-    [selectedDate, isToday, isYesterday]
+    >
+      {searchOpen ? (
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={16} color={colors.muted} />
+          <TextInput
+            style={styles.searchInput}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Order no., name, phone or table"
+            placeholderTextColor={colors.muted}
+            autoFocus
+            returnKeyType="search"
+          />
+        </View>
+      ) : null}
+    </ScreenHeader>
   );
+
+  if (searchOpen) {
+    const results = search.data?.orders || [];
+    return (
+      <View style={styles.fill}>
+        {header}
+        {debounced.length < 2 ? (
+          <EmptyState icon="search-outline" title="Find any order" subtitle="Type at least 2 letters or digits of the order number, customer name, phone or table." />
+        ) : search.loading ? (
+          <LoadingState gutter={gutter} />
+        ) : (
+          <FlatList
+            data={results}
+            keyExtractor={(o) => String(o.id)}
+            renderItem={renderOrder}
+            contentContainerStyle={listPad}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={<EmptyState icon="search-outline" title="No matching orders" subtitle={`Nothing found for "${debounced}".`} />}
+          />
+        )}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader eyebrow="Live" title="Orders" right={<OrderTypeToggles />} />
+      {header}
 
-      <View style={styles.dateNav}>
-        <Pressable style={styles.dateNavButton} onPress={goToPreviousDay} hitSlop={8}>
-          <Ionicons name="chevron-back" size={18} color={colors.ink} />
-        </Pressable>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={[styles.tabRow, { paddingHorizontal: gutter }]}>
+        {TABS.map((t) => {
+          const on = t.key === activeTab;
+          const n = counts[t.key] || 0;
+          return (
+            <PressableScale key={t.key} feedback="select" style={[styles.tab, shadow.sm, on && styles.tabOn]} onPress={() => setActiveTab(t.key)}>
+              <Ionicons name={t.icon} size={15} color={on ? '#fff' : colors.inkSoft} />
+              <Text style={[styles.tabText, on && styles.tabTextOn]}>{t.label}</Text>
+              {n > 0 ? (
+                <View style={[styles.count, on && styles.countOn, t.key === 'new' && !on && styles.countHot]}>
+                  <Text style={[styles.countText, (on || t.key === 'new') && { color: on ? colors.primary : '#fff' }]}>{n}</Text>
+                </View>
+              ) : null}
+            </PressableScale>
+          );
+        })}
+      </ScrollView>
 
-        <Pressable style={styles.dateNavCenter} onPress={openPicker} hitSlop={6}>
-          <View style={styles.dateNavLabelRow}>
-            <Text style={styles.dateNavLabel}>{dateLabel}</Text>
-            <Ionicons name="calendar-outline" size={14} color={colors.muted} style={{ marginLeft: 6 }} />
-          </View>
-          {!isToday ? (
-            <Pressable onPress={goToToday} hitSlop={6}>
-              <Text style={styles.todayLink}>Jump to Today</Text>
-            </Pressable>
-          ) : null}
-        </Pressable>
+      {tab.byDate ? (
+        <View style={[styles.dateNav, { marginHorizontal: gutter }]}>
+          <PressableScale style={styles.dateBtn} onPress={() => setSelectedDate((d) => addDays(d, -1))} hitSlop={8} accessibilityLabel="Previous day">
+            <Ionicons name="chevron-back" size={18} color={colors.ink} />
+          </PressableScale>
+          <PressableScale
+            style={styles.dateCenter}
+            onPress={() => {
+              setPickerViewDate(selectedDate);
+              setPickerVisible(true);
+            }}
+          >
+            <Text style={styles.dateLabel}>
+              {isToday ? 'Today' : dateKey === toDateKey(addDays(new Date(), -1)) ? 'Yesterday' : selectedDate.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+            </Text>
+            <Ionicons name="calendar-outline" size={14} color={colors.muted} />
+          </PressableScale>
+          <PressableScale
+            style={styles.dateBtn}
+            onPress={() => setSelectedDate((d) => (isToday ? d : addDays(d, 1)))}
+            disabled={isToday}
+            hitSlop={8}
+            accessibilityLabel="Next day"
+          >
+            <Ionicons name="chevron-forward" size={18} color={colors.ink} />
+          </PressableScale>
+        </View>
+      ) : null}
 
-        <Pressable
-          style={[styles.dateNavButton, isFutureBlocked && styles.dateNavButtonDisabled]}
-          onPress={goToNextDay}
-          disabled={isFutureBlocked}
-          hitSlop={8}
-        >
-          <Ionicons name="chevron-forward" size={18} color={isFutureBlocked ? colors.border : colors.ink} />
-        </Pressable>
-      </View>
+      {selecting ? (
+        <View style={[styles.selectBar, { marginHorizontal: gutter }]}>
+          <Text style={styles.selectText}>{selectedIds.size} selected</Text>
+          <PressableScale style={styles.selectGhost} onPress={() => setSelectedIds(new Set(visible.filter(deletableOrder).map((o) => o.id)))}>
+            <Text style={styles.selectGhostText}>All</Text>
+          </PressableScale>
+          <PressableScale style={styles.selectGhost} onPress={() => { setSelecting(false); setSelectedIds(new Set()); }}>
+            <Text style={styles.selectGhostText}>Cancel</Text>
+          </PressableScale>
+          <PressableScale style={styles.selectDelete} onPress={bulkDelete} disabled={!selectedIds.size} feedback="warning">
+            <Ionicons name="trash-outline" size={14} color="#fff" />
+            <Text style={styles.selectDeleteText}>Delete</Text>
+          </PressableScale>
+        </View>
+      ) : null}
+
+      {source.loading && !source.data ? (
+        <LoadingState gutter={gutter} />
+      ) : source.error && !source.data ? (
+        <ErrorState message={source.error} onRetry={source.refresh} />
+      ) : (
+        <FlatList
+          data={visible}
+          keyExtractor={(o) => String(o.id)}
+          renderItem={renderOrder}
+          contentContainerStyle={listPad}
+          refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          ListEmptyComponent={<EmptyState icon={tab.icon} title={tab.emptyTitle} subtitle={tab.emptySubtitle} />}
+          initialNumToRender={8}
+          windowSize={7}
+          removeClippedSubviews={Platform.OS === 'android'}
+        />
+      )}
 
       <DatePickerModal
         visible={pickerVisible}
         viewDate={pickerViewDate}
         selectedDate={selectedDate}
-        onChangeMonth={changePickerMonth}
-        onSelectDay={selectPickerDay}
+        onChangeMonth={(delta) =>
+          setPickerViewDate((d) => {
+            const next = new Date(d || selectedDate);
+            next.setDate(1);
+            next.setMonth(next.getMonth() + delta);
+            return next;
+          })
+        }
+        onSelectDay={(day) => {
+          setSelectedDate(day);
+          setPickerVisible(false);
+        }}
         onClose={() => setPickerVisible(false)}
         maxDate={new Date()}
       />
-
-      <View style={styles.tabRow}>
-        {TABS.map((tab) => {
-          const selected = tab.key === activeTab;
-          return (
-            <Pressable key={tab.key} style={styles.tab} onPress={() => setActiveTab(tab.key)}>
-              <View style={styles.tabLabelRow}>
-                {/* adjustsFontSizeToFit keeps 4 labels + badges on one line
-                    on narrow phones instead of clipping. */}
-                <Text
-                  style={[styles.tabText, selected && styles.tabTextActive]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.8}
-                >
-                  {tab.label}
-                </Text>
-                {tabCounts[tab.key] > 0 ? (
-                  <View style={[styles.tabBadge, selected && styles.tabBadgeActive]}>
-                    <Text style={[styles.tabBadgeText, selected && styles.tabBadgeTextActive]}>{tabCounts[tab.key]}</Text>
-                  </View>
-                ) : null}
-              </View>
-              <View style={[styles.tabUnderline, selected && styles.tabUnderlineActive]} />
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* Entry point for bulk selection — only where it can do something
-          (live tabs, Admin/Manager, at least one deletable order on screen). */}
-      {!currentTab.deletedOnly && CAN_DELETE(user?.role) && !selectionMode && !loading && !error && deletableVisible.length > 0 ? (
-        <Pressable style={styles.selectModeEntry} onPress={enterSelection} hitSlop={8}>
-          <Ionicons name="checkmark-circle-outline" size={14} color={colors.primary} />
-          <Text style={styles.selectModeEntryText}>Select</Text>
-        </Pressable>
-      ) : null}
-
-      {/* Selection toolbar — shown only in selection mode. "Select all"
-          ticks every deletable card in the current tab (the eligible-set,
-          not the raw list). */}
-      {selectionMode ? (
-        <View style={styles.selectionBar}>
-          <Pressable
-            style={[styles.selectionBarButton, !deletableVisible.length && styles.selectionBarButtonDisabled]}
-            onPress={toggleSelectAll}
-            disabled={deletableVisible.length === 0 || bulkDeleting}
-          >
-            <Ionicons
-              name={allSelected ? 'checkbox' : 'square-outline'}
-              size={16}
-              color={allSelected ? colors.primary : colors.muted}
-            />
-            <Text style={styles.selectionBarButtonText}>
-              {allSelected ? 'Deselect all' : 'Select all'}
-            </Text>
-          </Pressable>
-
-          {bulkDeleting ? (
-            <View style={styles.bulkProgressWrap}>
-              <ActivityIndicator size="small" color={colors.danger} />
-              <Text style={styles.bulkProgressText}>
-                Deleting {bulkProgress.done}/{bulkProgress.total}…
-              </Text>
-            </View>
-          ) : selectedIds.size > 0 ? (
-            bulkArmed ? (
-              <Pressable
-                style={({ pressed }) => [styles.bulkDeleteButton, pressed && { opacity: 0.9 }]}
-                onPress={requestBulkDelete}
-              >
-                <Ionicons name="trash-outline" size={14} color="#fff" />
-                <Text style={styles.bulkDeleteButtonText}>Tap to delete {selectedIds.size}</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                style={({ pressed }) => [styles.bulkDeleteButton, styles.bulkDeleteButtonArmed, pressed && { opacity: 0.9 }]}
-                onPress={requestBulkDelete}
-              >
-                <Ionicons name="trash-outline" size={14} color="#fff" />
-                <Text style={styles.bulkDeleteButtonText}>Delete {selectedIds.size}</Text>
-              </Pressable>
-            )
-          ) : (
-            <Text style={styles.selectionHint}>Tap orders to select</Text>
-          )}
-
-          <Pressable
-            style={styles.selectionBarButton}
-            onPress={exitSelection}
-            disabled={bulkDeleting}
-          >
-            <Ionicons name="close-circle-outline" size={16} color={colors.muted} />
-            <Text style={styles.selectionBarButtonText}>Cancel</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {loading ? (
-        <LoadingState />
-      ) : error ? (
-        <ErrorState message={error} onRetry={refresh} />
-      ) : visibleOrders.length === 0 ? (
-        <ScrollView
-          contentContainerStyle={[styles.emptyScroll, { paddingBottom: tabBarHeight + spacing.xxl }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-        >
-          <View style={styles.emptyIllustration}>
-            <Ionicons name={currentTab.emptyIcon || 'restaurant-outline'} size={48} color={colors.muted} />
-          </View>
-          <Text style={styles.emptyTitle}>{currentTab.emptyTitle}</Text>
-          <Text style={styles.emptySubtitle}>{currentTab.emptySubtitle}</Text>
-        </ScrollView>
-      ) : (
-        <ScrollView
-          style={styles.fill}
-          contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + spacing.xxl }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-        >
-          {visibleOrders.map((item) => {
-            const next = isToday ? NEXT_STATUS[item.order_status] : null;
-            const statusStyle = statusStyles[item.order_status] || {};
-            const isDeleted = currentTab.deletedOnly;
-            // Delete shows whenever the role/server would allow it — including
-            // today, next to "Mark {next}" (a spam order is exactly what you
-            // want gone on the day it arrives).
-            const canDelete = !isDeleted && CAN_DELETE(user?.role) && item.payment_status !== 'Paid' && item.order_status !== 'Completed';
-            const selectable = selectionMode && canDelete;
-            const checked = selectedIds.has(item.id);
-            const armed = confirmDeleteId === item.id;
-            return (
-              <Pressable
-                key={item.id}
-                style={({ pressed }) => [styles.card, shadow.sm, isDeleted && styles.cardDeleted, checked && styles.cardSelected, pressed && { opacity: 0.97 }]}
-                onPress={() => (selectable ? toggleSelect(item.id) : navigation.navigate('OrderDetail', { order: item }))}
-              >
-                <View style={styles.cardTop}>
-                  {selectionMode ? (
-                    <View style={styles.checkboxWrap}>
-                      {canDelete ? (
-                        <Ionicons
-                          name={checked ? 'checkbox' : 'square-outline'}
-                          size={20}
-                          color={checked ? colors.primary : colors.muted}
-                        />
-                      ) : (
-                        <Ionicons name="remove-circle-outline" size={20} color={colors.border} />
-                      )}
-                    </View>
-                  ) : null}
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={[styles.orderNumber, isDeleted && styles.orderNumberDeleted]} numberOfLines={1}>{item.order_number || `#${item.id}`}</Text>
-                      {item.source === 'pos' ? (
-                        <View style={styles.posChip}>
-                          <Text style={styles.posChipText}>POS</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <Text style={styles.meta} numberOfLines={1}>
-                      {item.customer_name || 'Walk-in'} · {item.order_type}
-                    </Text>
-                  </View>
-                  {isDeleted ? (
-                    <View style={[styles.statusChip, styles.statusChipDeleted]}>
-                      <Ionicons name="trash-outline" size={11} color={colors.danger} />
-                      <Text style={[styles.statusChipText, styles.statusChipTextDeleted]}>Deleted</Text>
-                    </View>
-                  ) : (
-                    <View style={[styles.statusChip, { backgroundColor: statusStyle.bg || colors.border }]}>
-                      <Text style={[styles.statusChipText, { color: statusStyle.fg || colors.inkSoft }]}>
-                        {item.order_status}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {isDeleted ? (
-                  <>
-                    {item.delete_reason ? (
-                      <Text style={styles.deletedLine} numberOfLines={2}>
-                        {DELETED_REASON_LABEL}: {item.delete_reason}
-                      </Text>
-                    ) : null}
-                    {item.deleted_by || item.deleted_at ? (
-                      <Text style={styles.deletedLine} numberOfLines={1}>
-                        Deleted by {item.deleted_by || '—'}
-                        {item.deleted_at ? ` · ${new Date(item.deleted_at.replace(' ', 'T')).toLocaleString()}` : ''}
-                      </Text>
-                    ) : null}
-                    <View style={[styles.cardBottom, styles.cardBottomDeleted]}>
-                      <Text style={[styles.total, styles.totalDeleted]}>{currency}{item.total ?? 0}</Text>
-                      <View style={styles.doneChip}>
-                        <Ionicons name="archive-outline" size={13} color={colors.muted} />
-                        <Text style={styles.doneTextMuted}>On record</Text>
-                      </View>
-                    </View>
-                  </>
-                ) : (
-                  <View style={styles.cardBottom}>
-                    <Text style={styles.total}>{currency}{item.total ?? 0}</Text>
-                    {selectionMode ? (
-                      <Text style={styles.selectionHint}>
-                        {canDelete ? (checked ? 'Selected' : 'Tap card to select') : 'Not deletable'}
-                      </Text>
-                    ) : (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                        {next ? (
-                          <Pressable
-                            style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.9 }]}
-                            disabled={updatingId === item.id}
-                            onPress={() => advanceOrder(item)}
-                          >
-                            {updatingId === item.id ? (
-                              <ActivityIndicator color="#fff" size="small" />
-                            ) : (
-                              <>
-                                <Text style={styles.actionButtonText}>Mark {next}</Text>
-                                <Ionicons name="arrow-forward" size={13} color="#fff" />
-                              </>
-                            )}
-                          </Pressable>
-                        ) : (
-                          <View style={styles.doneChip}>
-                            <Ionicons name="checkmark-circle" size={13} color={colors.success} />
-                            <Text style={styles.doneText}>{isToday ? 'Done' : item.order_status}</Text>
-                          </View>
-                        )}
-                        {canDelete ? (
-                          armed ? (
-                            <Pressable
-                              style={({ pressed }) => [styles.deleteConfirmButton, pressed && { opacity: 0.9 }]}
-                              disabled={updatingId === item.id}
-                              onPress={() => requestDelete(item)}
-                            >
-                              {updatingId === item.id ? (
-                                <ActivityIndicator color="#fff" size="small" />
-                              ) : (
-                                <>
-                                  <Ionicons name="trash-outline" size={13} color="#fff" />
-                                  <Text style={styles.actionButtonText}>Tap to delete</Text>
-                                </>
-                              )}
-                            </Pressable>
-                          ) : (
-                            <Pressable style={styles.deleteIcon} onPress={() => requestDelete(item)} hitSlop={8}>
-                              <Ionicons name="trash-outline" size={16} color={colors.danger} />
-                            </Pressable>
-                          )
-                        ) : null}
-                      </View>
-                    )}
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  headerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontFamily: font.medium,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  tabScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+    height: 48,
+    marginTop: -spacing.lg,
+  },
+  tabRow: {
+    gap: spacing.sm,
+    paddingVertical: 4,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  tabOn: {
+    backgroundColor: colors.ink,
+  },
+  tabText: {
+    fontFamily: font.semiBold,
+    fontSize: 13,
+    color: colors.inkSoft,
+  },
+  tabTextOn: {
+    color: '#fff',
+  },
+  count: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.border,
+  },
+  countOn: {
+    backgroundColor: '#fff',
+  },
+  countHot: {
+    backgroundColor: colors.danger,
+  },
+  countText: {
+    fontFamily: font.bold,
+    fontSize: 11,
+    color: colors.inkSoft,
+  },
   dateNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.surface,
-    marginHorizontal: spacing.xl,
-    marginTop: -spacing.lg,
-    marginBottom: spacing.sm,
     borderRadius: radius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    ...shadow.sm,
+    padding: 6,
+    marginTop: spacing.md,
   },
-  dateNavButton: {
-    width: 34,
-    height: 34,
+  dateBtn: {
+    width: 38,
+    height: 38,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.bg,
   },
-  dateNavButtonDisabled: {
-    opacity: 0.5,
-  },
-  dateNavCenter: {
-    alignItems: 'center',
-  },
-  dateNavLabelRow: {
+  dateCenter: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 8,
   },
-  dateNavLabel: {
+  dateLabel: {
     fontFamily: font.semiBold,
     fontSize: 14.5,
     color: colors.ink,
   },
-  todayLink: {
-    fontFamily: font.medium,
-    fontSize: 11.5,
-    color: colors.primary,
-    marginTop: 2,
-  },
-  // Segmented status tabs — Preparing / Ready / Completed — with an
-  // orange underline on the active tab, mirroring the delivery-partner
-  // app reference (Preparing / Ready / Picked up).
-  tabRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.md,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: spacing.sm,
-  },
-  tabLabelRow: {
+  selectBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingBottom: spacing.sm,
-  },
-  tabText: {
-    fontFamily: font.semiBold,
-    fontSize: 13.5,
-    color: colors.muted,
-  },
-  tabTextActive: {
-    color: colors.primary,
-  },
-  tabBadge: {
-    backgroundColor: colors.border,
-    borderRadius: radius.pill,
-    minWidth: 18,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-  },
-  tabBadgeActive: {
-    backgroundColor: colors.primaryLight,
-  },
-  tabBadgeText: {
-    fontFamily: font.semiBold,
-    fontSize: 10.5,
-    color: colors.inkSoft,
-  },
-  tabBadgeTextActive: {
-    color: colors.primary,
-  },
-  tabUnderline: {
-    height: 3,
-    width: '100%',
-    borderRadius: 2,
-    backgroundColor: 'transparent',
-  },
-  tabUnderlineActive: {
-    backgroundColor: colors.primary,
-  },
-  // Big centered illustration-style empty state, one per tab.
-  emptyScroll: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.xxl,
-  },
-  emptyIllustration: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  emptyTitle: {
-    fontFamily: font.bold,
-    fontSize: 19,
-    color: colors.ink,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    fontFamily: font.regular,
-    fontSize: 13.5,
-    color: colors.muted,
-    textAlign: 'center',
-    lineHeight: 19,
-  },
-  list: {
-    padding: spacing.xl,
-    paddingTop: spacing.lg,
-    gap: spacing.md,
-  },
-  card: {
+    gap: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  posChip: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-  },
-  posChipText: {
-    fontFamily: font.bold,
-    fontSize: 9,
-    color: colors.primary,
-    letterSpacing: 0.5,
-  },
-  orderNumber: {
-    fontFamily: font.semiBold,
-    fontSize: 14.5,
-    color: colors.ink,
-  },
-  meta: {
-    fontFamily: font.regular,
-    fontSize: 12,
-    color: colors.muted,
-    marginTop: 2,
-  },
-  statusChip: {
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  statusChipText: {
-    fontFamily: font.semiBold,
-    fontSize: 11,
-  },
-  cardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  total: {
-    fontFamily: font.bold,
-    fontSize: 15,
-    color: colors.ink,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontFamily: font.semiBold,
-    fontSize: 12,
-  },
-  doneChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  doneText: {
-    fontFamily: font.medium,
-    fontSize: 12,
-    color: colors.success,
-  },
-  // ── Delete action + Deleted tab ──
-  deleteIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.dangerBg,
-  },  deleteConfirmButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: colors.danger,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-  },
-  cardDeleted: {
-    backgroundColor: colors.bg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  orderNumberDeleted: {
-    color: colors.muted,
-    textDecorationLine: 'line-through',
-  },
-  statusChipDeleted: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.dangerBg,
-  },
-  statusChipTextDeleted: {
-    color: colors.danger,
-  },
-  deletedLine: {
-    fontFamily: font.regular,
-    fontSize: 12,
-    color: colors.muted,
-    lineHeight: 17,
-  },
-  cardBottomDeleted: {
-    borderTopColor: colors.border,
-  },
-  totalDeleted: {
-    color: colors.muted,
-  },
-  doneTextMuted: {
-    fontFamily: font.medium,
-    fontSize: 12,
-    color: colors.muted,
-  },
-  // ── Bulk selection mode ──
-  selectModeEntry: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  selectModeEntryText: {
-    fontFamily: font.semiBold,
-    fontSize: 12,
-    color: colors.primary,
-  },
-  selectionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.sm,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    padding: 8,
+    paddingLeft: spacing.lg,
+    marginTop: spacing.md,
     ...shadow.sm,
   },
-  selectionBarButton: {
+  selectText: {
+    flex: 1,
+    fontFamily: font.semiBold,
+    fontSize: 13.5,
+    color: colors.ink,
+  },
+  selectGhost: {
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 11,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectGhostText: {
+    fontFamily: font.semiBold,
+    fontSize: 12.5,
+    color: colors.inkSoft,
+  },
+  selectDelete: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.xs,
-  },
-  selectionBarButtonDisabled: {
-    opacity: 0.4,
-  },
-  selectionBarButtonText: {
-    fontFamily: font.semiBold,
-    fontSize: 12,
-    color: colors.ink,
-  },
-  selectionHint: {
-    fontFamily: font.regular,
-    fontSize: 11.5,
-    color: colors.muted,
-  },
-  bulkProgressWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  bulkProgressText: {
-    fontFamily: font.semiBold,
-    fontSize: 12,
-    color: colors.danger,
-  },
-  bulkDeleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 11,
     backgroundColor: colors.danger,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
   },
-  bulkDeleteButtonArmed: {
-    opacity: 0.75,
-  },
-  bulkDeleteButtonText: {
-    color: '#fff',
+  selectDeleteText: {
     fontFamily: font.semiBold,
-    fontSize: 12,
-  },
-  checkboxWrap: {
-    justifyContent: 'center',
-    paddingTop: 2,
-  },
-  cardSelected: {
-    borderWidth: 1.5,
-    borderColor: colors.primary,
+    fontSize: 12.5,
+    color: '#fff',
   },
 });

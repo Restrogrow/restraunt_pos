@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, font, radius, shadow, spacing } from '../theme';
+import Sheet from './ui/Sheet';
 
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -57,11 +58,9 @@ export default function SplitPaymentModal({ visible, onClose, onConfirm, total, 
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, shadow.lg]} onPress={() => {}}>
-          <Text style={styles.title}>Collect Payment</Text>
+    <Sheet visible={visible} onClose={() => !submitting && onClose()} dismissable={!submitting}>
+        <View>
+          <Text style={styles.title}>Collect payment</Text>
           <Text style={styles.totalDue}>{currency}{total.toFixed(2)}</Text>
 
           <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
@@ -128,14 +127,12 @@ export default function SplitPaymentModal({ visible, onClose, onConfirm, total, 
               {submitting ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.confirmButtonText}>Confirm Payment</Text>
+                <Text style={styles.confirmButtonText}>Confirm payment</Text>
               )}
             </Pressable>
           </View>
-        </Pressable>
-      </Pressable>
-      </KeyboardAvoidingView>
-    </Modal>
+        </View>
+    </Sheet>
   );
 }
 

@@ -85,8 +85,17 @@ try {
     // exempt: they're filtered/sorted by scheduled_at instead (see below), so
     // a "today" created_at filter would hide an order placed yesterday for a
     // slot three days from now.
-    if ($statusFilter === 'Scheduled') {
-        // no date constraint — show every still-scheduled order
+    // active=1 (app Orders / alert poll): every order still being worked on, whatever day it
+    // was placed (a website order from 11:58 pm must not vanish at midnight). The last 7 days
+    // only, so long-forgotten open orders don't flood the list.
+    $activeOnly = ($_GET['active'] ?? '') === '1';
+    // any_date=1 (app order search): look across all days instead of one.
+    $anyDate = ($_GET['any_date'] ?? '') === '1';
+    if ($activeOnly) {
+        $whereConditions[] = "o.order_status IN ('Scheduled','Pending','Accepted','Preparing','Ready','Served')";
+        $whereConditions[] = 'o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
+    } elseif ($statusFilter === 'Scheduled' || $anyDate) {
+        // no date constraint — show every still-scheduled order / search all days
     } elseif ($dateFilter) {
         // Filter by specific date
         $whereConditions[] = 'DATE(o.created_at) = ?';
@@ -114,8 +123,9 @@ try {
     }
     
     if ($searchTerm) {
-        $whereConditions[] = '(o.order_number LIKE ? OR o.customer_name LIKE ? OR t.table_number LIKE ?)';
+        $whereConditions[] = '(o.order_number LIKE ? OR o.customer_name LIKE ? OR o.customer_phone LIKE ? OR t.table_number LIKE ?)';
         $searchPattern = '%' . $searchTerm . '%';
+        $params[] = $searchPattern;
         $params[] = $searchPattern;
         $params[] = $searchPattern;
         $params[] = $searchPattern;

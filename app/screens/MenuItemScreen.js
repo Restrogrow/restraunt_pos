@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SelectField from '../components/SelectField';
+import { feedback } from '../components/ui/Feedback';
 import { apiGet, apiPostForm, imageUrl as resolveImageUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
@@ -41,7 +42,7 @@ function Row({ label, value }) {
 function Header({ title, onBack, right, insets }) {
   return (
     <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-      <Pressable style={styles.iconButton} onPress={onBack} hitSlop={8}>
+      <Pressable style={styles.iconButton} onPress={onBack} hitSlop={8} accessibilityRole="button" accessibilityLabel="Back">
         <Ionicons name="arrow-back" size={20} color={colors.ink} />
       </Pressable>
       <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
@@ -60,6 +61,14 @@ export default function MenuItemScreen({ route, navigation }) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const currency = user?.currency_symbol || '₹';
+
+  // Full-height editor: the floating tab bar would otherwise sit over the Save button and
+  // the keyboard. It comes back when you leave.
+  useEffect(() => {
+    const parent = navigation.getParent();
+    parent?.setOptions({ tabBarStyle: { display: 'none' } });
+    return () => parent?.setOptions({ tabBarStyle: undefined });
+  }, [navigation]);
 
   const [item, setItem] = useState(initialItem);
   const [editing, setEditing] = useState(isCreate);
@@ -150,7 +159,7 @@ export default function MenuItemScreen({ route, navigation }) {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (perm.status !== 'granted' && perm.granted !== true) {
-        Alert.alert('Permission needed', 'Allow photo access to choose an image.');
+        feedback.error('Allow photo access to choose an image.');
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -164,7 +173,7 @@ export default function MenuItemScreen({ route, navigation }) {
       setImageAsset({ uri: asset.uri, base64: asset.base64, mimeType: asset.mimeType || 'image/jpeg' });
       setImageUrl('');
     } catch (e) {
-      Alert.alert('Could not open photo library', e.message);
+      feedback.errorFrom(e, 'Could not open the photo library');
     }
   };
 
@@ -268,6 +277,7 @@ export default function MenuItemScreen({ route, navigation }) {
         emitMenuChange('update', { id: item.id, ...optimisticFields });
       }
 
+      feedback.success(isCreate ? `${name.trim()} added to the menu` : 'Dish saved');
       navigation.goBack();
     } catch (e) {
       setFormError(e.message);
@@ -276,15 +286,14 @@ export default function MenuItemScreen({ route, navigation }) {
     }
   };
 
-  const confirmDelete = () => {
-    Alert.alert(
-      'Delete this item?',
-      `"${item.item_name_en}" will be removed from your menu. This can't be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: doDelete },
-      ]
-    );
+  const confirmDelete = async () => {
+    const ok = await feedback.confirm({
+      title: `Delete ${item.item_name_en}?`,
+      message: "It's removed from your POS and website. This can't be undone. To stop selling it for a while, switch it to sold out or hide it instead.",
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (ok) doDelete();
   };
 
   const doDelete = async () => {
@@ -296,9 +305,10 @@ export default function MenuItemScreen({ route, navigation }) {
       });
       if (!res.success) throw new Error(res.message || 'Could not delete item');
       emitMenuChange('delete', { id: item.id });
+      feedback.info(`${item.item_name_en} deleted`);
       navigation.goBack();
     } catch (e) {
-      Alert.alert('Could not delete item', e.message);
+      feedback.errorFrom(e, 'Could not delete the dish');
     } finally {
       setDeleting(false);
     }
@@ -314,8 +324,9 @@ export default function MenuItemScreen({ route, navigation }) {
       if (!res.success) throw new Error(res.message || 'Could not update item');
       setItem((it) => ({ ...it, is_hidden: res.is_hidden }));
       emitMenuChange('update', { id: item.id, is_hidden: res.is_hidden });
+      feedback.success(res.is_hidden ? 'Hidden from POS and website' : 'Visible again');
     } catch (e) {
-      Alert.alert('Could not update item', e.message);
+      feedback.errorFrom(e, 'Could not update the dish');
     } finally {
       setTogglingHidden(false);
     }
@@ -333,7 +344,7 @@ export default function MenuItemScreen({ route, navigation }) {
           right={<View style={{ width: 36 }} />}
         />
         <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView style={styles.fill} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.fill} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.fieldLabel}>Item name</Text>
           <TextInput
             style={styles.input}
@@ -542,7 +553,7 @@ export default function MenuItemScreen({ route, navigation }) {
         }
       />
 
-      <ScrollView style={styles.fill} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.fill} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false}>
         <View style={[styles.heroCard, shadow.sm]}>
           {heroImage ? (
             <Image source={{ uri: heroImage }} style={styles.heroImage} />

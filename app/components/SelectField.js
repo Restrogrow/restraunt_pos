@@ -1,51 +1,49 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, font, radius, shadow, spacing } from '../theme';
+import { ScrollView, StyleSheet, Text } from 'react-native';
+import { colors, font, radius, spacing } from '../theme';
+import PressableScale from './ui/PressableScale';
+import Sheet from './ui/Sheet';
 
-// A tap-to-open dropdown: looks like a form field, opens a modal list of
-// options — the RN equivalent of the website admin's <select> fields
-// (Choose Menu, Subcategory, Item Type, Stock Status).
-export default function SelectField({ options, value, onChange, placeholder = 'Select' }) {
+// A tap-to-open dropdown: looks like a form field and opens its options in a bottom sheet —
+// the app's version of the website's <select> fields.
+export default function SelectField({ options, value, onChange, placeholder = 'Select', title }) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => String(o.value) === String(value));
 
   return (
     <>
-      <Pressable style={styles.field} onPress={() => setOpen(true)}>
+      <PressableScale style={styles.field} onPress={() => setOpen(true)} scale={0.98} accessibilityLabel={title || placeholder}>
         <Text style={[styles.fieldText, !selected && styles.placeholder]} numberOfLines={1}>
           {selected ? selected.label : placeholder}
         </Text>
         <Ionicons name="chevron-down" size={16} color={colors.muted} />
-      </Pressable>
+      </PressableScale>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={[styles.sheet, shadow.lg]} onPress={() => {}}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-              {options.map((o) => {
-                const isSelected = String(o.value) === String(value);
-                return (
-                  <Pressable
-                    key={String(o.value)}
-                    style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}
-                    onPress={() => {
-                      onChange(o.value);
-                      setOpen(false);
-                    }}
-                  >
-                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]} numberOfLines={1}>
-                      {o.label}
-                    </Text>
-                    {isSelected ? <Ionicons name="checkmark" size={18} color={colors.primary} /> : null}
-                  </Pressable>
-                );
-              })}
-              {options.length === 0 ? <Text style={styles.emptyText}>No options</Text> : null}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <Sheet visible={open} onClose={() => setOpen(false)} title={title || placeholder}>
+        <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+          {options.map((o) => {
+            const isSelected = String(o.value) === String(value);
+            return (
+              <PressableScale
+                key={String(o.value)}
+                feedback="select"
+                style={[styles.option, isSelected && styles.optionOn]}
+                onPress={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+              >
+                <Text style={[styles.optionText, isSelected && styles.optionTextSelected]} numberOfLines={1}>
+                  {o.label}
+                </Text>
+                {isSelected ? <Ionicons name="checkmark-circle" size={20} color={colors.primary} /> : null}
+              </PressableScale>
+            );
+          })}
+          {options.length === 0 ? <Text style={styles.emptyText}>No options</Text> : null}
+        </ScrollView>
+      </Sheet>
     </>
   );
 }
@@ -60,7 +58,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+    minHeight: 46,
   },
   fieldText: {
     flex: 1,
@@ -72,35 +70,22 @@ const styles = StyleSheet.create({
   placeholder: {
     color: colors.muted,
   },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(29,27,38,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  sheet: {
-    width: '100%',
-    maxWidth: 360,
-    maxHeight: '70%',
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-  },
   list: {
-    padding: spacing.sm,
+    gap: 6,
+    paddingBottom: 4,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: 13,
+    minHeight: 50,
     borderRadius: radius.md,
+    backgroundColor: colors.bg,
     gap: spacing.sm,
   },
-  optionPressed: {
-    backgroundColor: colors.bg,
+  optionOn: {
+    backgroundColor: colors.primaryLight,
   },
   optionText: {
     flex: 1,

@@ -8,6 +8,7 @@ import { colors, font, radius, shadow, spacing } from '../theme';
 import DatePickerModal from './DatePickerModal';
 import SelectField from './SelectField';
 import { EmptyState, ErrorState, LoadingState } from './ScreenState';
+import { FeedbackHost, feedback } from './ui/Feedback';
 
 const DISCOUNT_TYPES = [
   { value: 'percent', label: 'Percent off (%)' },
@@ -101,7 +102,7 @@ export default function CouponsModal({ visible, onClose }) {
 
   const saveCoupon = async () => {
     if (!code.trim() || !discountValue.trim()) {
-      Alert.alert('Missing info', 'Coupon code and discount value are required');
+      feedback.error('Add a coupon code and a discount value');
       return;
     }
     setSaving(true);
@@ -121,31 +122,26 @@ export default function CouponsModal({ visible, onClose }) {
       const res = await apiPostForm('/controllers/coupon_operations.php', payload);
       if (!res.success) throw new Error(res.message || 'Could not save coupon');
       setFormOpen(false);
+      feedback.success(editingId ? 'Coupon saved' : `${code.trim().toUpperCase()} created`);
       load();
     } catch (e) {
-      Alert.alert('Could not save coupon', e.message);
+      feedback.errorFrom(e, 'Could not save the coupon');
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteCoupon = (c) => {
-    Alert.alert('Delete coupon', `Delete ${c.coupon_code}? This can't be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const res = await apiPostForm('/controllers/coupon_operations.php', { action: 'delete', id: c.id });
-            if (!res.success) throw new Error(res.message || 'Could not delete coupon');
-            load();
-          } catch (e) {
-            Alert.alert('Could not delete coupon', e.message);
-          }
-        },
-      },
-    ]);
+  const deleteCoupon = async (c) => {
+    const ok = await feedback.confirm({ title: `Delete ${c.coupon_code}?`, message: "Customers won't be able to use it any more. This can't be undone.", confirmText: 'Delete', danger: true });
+    if (!ok) return;
+    try {
+      const res = await apiPostForm('/controllers/coupon_operations.php', { action: 'delete', id: c.id });
+      if (!res.success) throw new Error(res.message || 'Could not delete coupon');
+      feedback.info(`${c.coupon_code} deleted`);
+      load();
+    } catch (e) {
+      feedback.errorFrom(e, 'Could not delete the coupon');
+    }
   };
 
   const toggleActive = async (c) => {
@@ -156,12 +152,12 @@ export default function CouponsModal({ visible, onClose }) {
       if (!res.success) throw new Error(res.message || 'Could not update coupon');
     } catch (e) {
       setCoupons((prev) => prev.map((x) => (x.id === c.id ? { ...x, is_active: c.is_active } : x)));
-      Alert.alert('Could not update coupon', e.message);
+      feedback.errorFrom(e, 'Could not update the coupon');
     }
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={Platform.OS === 'web'} onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent={Platform.OS === 'web'} statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={[styles.panel, { paddingTop: insets.top }]}>
           <View style={styles.header}>
@@ -181,7 +177,7 @@ export default function CouponsModal({ visible, onClose }) {
           ) : coupons.length === 0 ? (
             <EmptyState icon="pricetag-outline" title="No coupons yet" subtitle="Tap + to create your first coupon" />
           ) : (
-            <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
               {coupons.map((c) => {
                 const usesLabel = Number(c.max_uses) > 0 ? `${c.current_uses}/${c.max_uses} used` : `${c.current_uses} used`;
                 const discountLabel = c.discount_type === 'percent' ? `${c.discount_value}% off` : `${currency}${c.discount_value} off`;
@@ -223,7 +219,8 @@ export default function CouponsModal({ visible, onClose }) {
       </View>
 
       {/* Add/Edit form */}
-      <Modal visible={formOpen} animationType="slide" transparent onRequestClose={() => setFormOpen(false)}>
+      {!formOpen ? <FeedbackHost /> : null}
+      <Modal visible={formOpen} animationType="slide" transparent statusBarTranslucent navigationBarTranslucent onRequestClose={() => setFormOpen(false)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={styles.formBackdrop} onPress={() => setFormOpen(false)}>
           <Pressable style={[styles.formSheet, shadow.lg]} onPress={() => {}}>
@@ -326,6 +323,7 @@ export default function CouponsModal({ visible, onClose }) {
           </Pressable>
         </Pressable>
         </KeyboardAvoidingView>
+        <FeedbackHost />
       </Modal>
 
       <DatePickerModal

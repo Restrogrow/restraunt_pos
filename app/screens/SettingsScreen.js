@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Platfor
 import { captureRef } from 'react-native-view-shot';
 import Avatar from '../components/Avatar';
 import CouponsModal from '../components/CouponsModal';
+import { feedback } from '../components/ui/Feedback';
 import ScreenHeader from '../components/ScreenHeader';
 import { getBiometricLockEnabled, setBiometricLockEnabled } from '../config/biometricSettings';
 import { getOrderSoundEnabled, setOrderSoundEnabled } from '../config/notificationSettings';
@@ -566,7 +567,7 @@ function BusinessIdCard() {
   );
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }) {
   const { user, logout, refresh } = useAuth();
   const [couponsOpen, setCouponsOpen] = useState(false);
   const [pendingAsset, setPendingAsset] = useState(null); // picked photo awaiting explicit Save
@@ -584,7 +585,7 @@ export default function SettingsScreen() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (perm.status !== 'granted' && perm.granted !== true) {
-        Alert.alert('Permission needed', 'Allow photo access to change your profile picture.');
+        feedback.error('Allow photo access to change your profile picture.');
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -597,12 +598,12 @@ export default function SettingsScreen() {
       if (result.canceled) return;
       const asset = result.assets?.[0];
       if (!asset?.base64) {
-        Alert.alert('Could not read that photo', 'Please try a different image.');
+        feedback.error('Could not read that photo. Please try a different image.');
         return;
       }
       setPendingAsset(asset);
     } catch (e) {
-      Alert.alert('Could not open photo library', e.message);
+      feedback.errorFrom(e, 'Could not open the photo library');
     }
   };
 
@@ -620,8 +621,9 @@ export default function SettingsScreen() {
       await refresh();
       setPhotoVersion((v) => v + 1);
       setPendingAsset(null);
+      feedback.success('Photo saved');
     } catch (e) {
-      Alert.alert('Could not save photo', e.message);
+      feedback.errorFrom(e, 'Could not save the photo');
     } finally {
       setUploadingPhoto(false);
     }
@@ -629,11 +631,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader
-        eyebrow="Account"
-        title="Settings"
-        right={<Avatar name={user?.username || user?.restaurant_name} uri={displayPhotoUri} />}
-      />
+      <ScreenHeader eyebrow="Account" title="Settings" onBack={navigation?.canGoBack() ? () => navigation.goBack() : undefined} />
 
       <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
@@ -763,7 +761,10 @@ export default function SettingsScreen() {
 
         <Pressable
           style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.9 }]}
-          onPress={logout}
+          onPress={async () => {
+            const ok = await feedback.confirm({ title: 'Log out?', message: 'You will need your username and password to log in again.', confirmText: 'Log out', danger: true });
+            if (ok) logout();
+          }}
         >
           <Ionicons name="log-out-outline" size={18} color={colors.danger} />
           <Text style={styles.logoutText}>Log Out</Text>

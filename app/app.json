@@ -2,8 +2,8 @@
   "expo": {
     "name": "Restrogrow Partner",
     "slug": "restrogrow",
-    "version": "1.0.5",
-    "orientation": "portrait",
+    "version": "1.1.0",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
@@ -16,6 +16,8 @@
     },
     "android": {
       "package": "com.restrogrow.app",
+      "versionCode": 10,
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#FA5502",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -43,7 +45,8 @@
         }
       ],
       "expo-notifications",
-      "./plugins/withRemovePermissions.js"
+      "./plugins/withRemovePermissions.js",
+      "expo-image"
     ]
   }
 }

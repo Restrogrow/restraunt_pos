@@ -94,7 +94,7 @@ try {
     }
     
     // Validate menu item ID for update, delete, and toggle_hidden actions
-    if (in_array($action, ['update', 'delete', 'toggle_hidden']) && $menuItemId <= 0) {
+    if (in_array($action, ['update', 'delete', 'toggle_hidden', 'set_available']) && $menuItemId <= 0) {
         throw new Exception('Invalid menu item ID');
     }
     
@@ -142,6 +142,22 @@ try {
 
         case 'toggle_hidden':
             handleToggleMenuItemHidden($conn, $restaurant_id, $menuItemId);
+            break;
+
+        // In stock / out of stock from the app's menu list, without resending the whole dish.
+        case 'set_available':
+            $on = (int)($_POST['isAvailable'] ?? 1) === 1 ? 1 : 0;
+            $stmt = $conn->prepare("UPDATE menu_items SET is_available = ?, updated_at = NOW() WHERE id = ? AND restaurant_id = ?");
+            $stmt->execute([$on, $menuItemId, $restaurant_id]);
+            $nameStmt = $conn->prepare("SELECT item_name_en FROM menu_items WHERE id = ? AND restaurant_id = ?");
+            $nameStmt->execute([$menuItemId, $restaurant_id]);
+            $itemName = $nameStmt->fetchColumn();
+            if ($itemName === false) {
+                throw new Exception('Menu item not found');
+            }
+            require_once __DIR__ . '/../config/activity_log.php';
+            logActivity($conn, $restaurant_id, 'menu.update', ($on ? 'In stock: ' : 'Out of stock: ') . $itemName, ['available' => [1 - $on, $on]], 'menu_item', $menuItemId);
+            echo json_encode(['success' => true, 'message' => $on ? 'In stock' : 'Out of stock', 'is_available' => $on], JSON_UNESCAPED_UNICODE);
             break;
 
         default:

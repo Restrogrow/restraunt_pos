@@ -1,46 +1,52 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors, font, radius, spacing } from '../theme';
+import FadeIn from './ui/FadeIn';
+import PressableScale from './ui/PressableScale';
+import { SkeletonGrid, SkeletonList } from './ui/Skeleton';
 
-export function LoadingState() {
+// While a screen's first data loads: placeholder cards in the screen's own shape
+// (`variant="grid"` for tile screens), not a spinner on a blank page.
+export function LoadingState({ variant = 'list', rows, columns, gutter }) {
   return (
-    <View style={styles.center}>
-      <ActivityIndicator size="large" color={colors.primary} />
+    <View style={{ flex: 1 }} accessibilityLabel="Loading" accessibilityRole="progressbar">
+      {variant === 'grid' ? <SkeletonGrid columns={columns || 2} rows={rows || 3} gutter={gutter} /> : <SkeletonList rows={rows || 5} gutter={gutter} />}
     </View>
   );
 }
 
 export function ErrorState({ message, onRetry }) {
   return (
-    <View style={styles.center}>
+    <FadeIn style={styles.center}>
       <View style={styles.errorIconWrap}>
         <Ionicons name="cloud-offline-outline" size={28} color={colors.danger} />
       </View>
       <Text style={styles.errorTitle}>Couldn't load this</Text>
       <Text style={styles.errorMessage}>{message}</Text>
       {onRetry ? (
-        <Pressable
-          onPress={onRetry}
-          style={({ pressed }) => [styles.retryButton, pressed && styles.retryPressed]}
-          hitSlop={8}
-        >
+        <PressableScale onPress={onRetry} style={styles.retryButton} hitSlop={8}>
           <Ionicons name="refresh" size={15} color={colors.onPrimary} />
-          <Text style={styles.retryText}>Retry</Text>
-        </Pressable>
+          <Text style={styles.retryText}>Try again</Text>
+        </PressableScale>
       ) : null}
-    </View>
+    </FadeIn>
   );
 }
 
-export function EmptyState({ icon = 'file-tray-outline', title, subtitle }) {
+export function EmptyState({ icon = 'file-tray-outline', title, subtitle, action, onAction }) {
   return (
-    <View style={styles.center}>
+    <FadeIn style={styles.center}>
       <View style={styles.emptyIconWrap}>
-        <Ionicons name={icon} size={26} color={colors.muted} />
+        <Ionicons name={icon} size={30} color={colors.primary} />
       </View>
       <Text style={styles.emptyTitle}>{title}</Text>
       {subtitle ? <Text style={styles.emptySubtitle}>{subtitle}</Text> : null}
-    </View>
+      {action && onAction ? (
+        <PressableScale onPress={onAction} style={[styles.retryButton, { marginTop: spacing.lg }]}>
+          <Text style={styles.retryText}>{action}</Text>
+        </PressableScale>
+      ) : null}
+    </FadeIn>
   );
 }
 
@@ -53,9 +59,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxl,
   },
   errorIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.dangerBg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -72,19 +78,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.muted,
     textAlign: 'center',
+    lineHeight: 19,
   },
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginTop: spacing.md,
-    paddingVertical: 9,
-    paddingHorizontal: 22,
-    borderRadius: radius.md,
+    paddingVertical: 11,
+    paddingHorizontal: 24,
+    borderRadius: radius.pill,
     backgroundColor: colors.primary,
-  },
-  retryPressed: {
-    opacity: 0.75,
   },
   retryText: {
     fontFamily: font.semiBold,
@@ -92,24 +96,27 @@ const styles = StyleSheet.create({
     color: colors.onPrimary,
   },
   emptyIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.border,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontFamily: font.semiBold,
-    fontSize: 15,
-    color: colors.inkSoft,
-    marginBottom: 2,
+    fontFamily: font.bold,
+    fontSize: 17,
+    color: colors.ink,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   emptySubtitle: {
     fontFamily: font.regular,
-    fontSize: 13,
+    fontSize: 13.5,
     color: colors.muted,
     textAlign: 'center',
+    lineHeight: 19,
+    maxWidth: 320,
   },
 });

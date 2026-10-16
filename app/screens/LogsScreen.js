@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
 import { ErrorState, LoadingState } from '../components/ScreenState';
+import { feedback } from '../components/ui/Feedback';
 import { apiGet, apiPostForm } from '../config/api';
 import { useApiData } from '../hooks/useApiData';
 import { useAuth } from '../context/AuthContext';
@@ -38,6 +39,12 @@ function formatTime(ts) {
   return `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} ${time}`;
 }
 
+// "::1" / "127.0.0.1" mean the request came from the server's own machine — say so in words.
+function ipLabel(ip) {
+  if (ip === '::1' || ip === '127.0.0.1') return 'this computer';
+  return `IP ${ip}`;
+}
+
 function LogRow({ log, canBlock, armed, onArm, onBlock, busy }) {
   const s = OUTCOME_STYLES[log.outcome] || OUTCOME_STYLES.failed;
   const who = log.actor_name || log.username_tried || 'Unknown';
@@ -60,7 +67,7 @@ function LogRow({ log, canBlock, armed, onArm, onBlock, busy }) {
         </View>
         <Text style={styles.meta} numberOfLines={1}>
           {s.label} · {log.device_label || 'Unknown device'}
-          {log.ip_address ? ` · IP ${log.ip_address}` : ''}
+          {log.ip_address ? ` · ${ipLabel(log.ip_address)}` : ''}
         </Text>
         {blockable && log.ip_address ? (
           armed ? (
@@ -87,7 +94,7 @@ function LogRow({ log, canBlock, armed, onArm, onBlock, busy }) {
   );
 }
 
-export default function LogsScreen() {
+export default function LogsScreen({ navigation }) {
   const { user } = useAuth();
   const isAdmin = String(user?.role || '').toLowerCase() === 'admin' || String(user?.user_type || '') === 'admin' || String(user?.user_type || '') === 'branch_admin';
   const [filter, setFilter] = useState('');
@@ -101,6 +108,7 @@ export default function LogsScreen() {
   );
   const { data, loading, refreshing, error, refresh, reload } = useApiData(fetcher, {
     pollInterval: 30000,
+    cacheKey: `logs:${filter}:${days}`,
   });
 
   const logs = data?.logs || [];
@@ -118,9 +126,10 @@ export default function LogsScreen() {
       });
       if (!res.success) throw new Error(res.message || 'Request failed');
       setArmedIp(null);
+      feedback.success(isBlocked ? `${ipLabel(ip)} unblocked` : `${ipLabel(ip)} blocked`);
       reload('background');
     } catch (e) {
-      console.warn('block/unblock failed:', e.message);
+      feedback.errorFrom(e, 'Could not change the block');
     } finally {
       setBusyIp(null);
     }
@@ -132,7 +141,7 @@ export default function LogsScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader eyebrow="Security" title="Logs" />
+      <ScreenHeader eyebrow="Logins and devices" title="Security" onBack={() => navigation.goBack()} />
 
       <ScrollView
         contentContainerStyle={styles.list}

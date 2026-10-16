@@ -5,7 +5,13 @@
 // thermal receipt printers use, isn't reachable from a browser regardless.
 import { Buffer } from 'buffer';
 import { PermissionsAndroid, Platform } from 'react-native';
-import RNBluetoothClassic from 'react-native-bluetooth-classic';
+// Loaded on first use, not at import: Expo Go has no Bluetooth native module, and loading it
+// at startup would stop the app opening there at all.
+let btModule = null;
+function bt() {
+  if (!btModule) btModule = require('react-native-bluetooth-classic').default;
+  return btModule;
+}
 
 // Android 12+ (API 31+) reclassified classic Bluetooth as a runtime-dangerous
 // permission — BLUETOOTH_CONNECT in the manifest alone isn't enough, the app
@@ -62,7 +68,7 @@ function friendlyBluetoothError(e) {
 export async function isBluetoothSupported() {
   try {
     await ensureBluetoothPermissions();
-    return await RNBluetoothClassic.isBluetoothAvailable();
+    return await bt().isBluetoothAvailable();
   } catch (e) {
     return false;
   }
@@ -77,7 +83,7 @@ export async function listPairedPrinters() {
     throw new Error('Bluetooth permission denied — enable it in phone Settings > Apps > Restrogrow Partner > Permissions.');
   }
   try {
-    const devices = await RNBluetoothClassic.getBondedDevices();
+    const devices = await bt().getBondedDevices();
     return (devices || []).map((d) => ({ address: d.address, name: d.name || d.address }));
   } catch (e) {
     throw new Error(friendlyBluetoothError(e));
@@ -87,7 +93,7 @@ export async function listPairedPrinters() {
 export async function isPrinterConnected(address) {
   if (!address) return false;
   try {
-    return await RNBluetoothClassic.isDeviceConnected(address);
+    return await bt().isDeviceConnected(address);
   } catch (e) {
     return false;
   }
@@ -104,7 +110,7 @@ export async function connectToPrinter(address) {
   const alreadyConnected = await isPrinterConnected(address);
   if (alreadyConnected) return true;
   try {
-    await RNBluetoothClassic.connectToDevice(address);
+    await bt().connectToDevice(address);
   } catch (e) {
     throw new Error(friendlyBluetoothError(e));
   }
@@ -119,7 +125,7 @@ export async function connectToPrinter(address) {
 
 export async function disconnectPrinter(address) {
   if (!address) return;
-  await RNBluetoothClassic.disconnectFromDevice(address).catch(() => {});
+  await bt().disconnectFromDevice(address).catch(() => {});
 }
 
 // Assumes the device is already connected (via connectToPrinter) — does not
@@ -127,7 +133,7 @@ export async function disconnectPrinter(address) {
 export async function writeToPrinter(address, bytes) {
   if (!address) throw new Error('No Bluetooth printer selected — pick one first');
   try {
-    await RNBluetoothClassic.writeToDevice(address, Buffer.from(bytes));
+    await bt().writeToDevice(address, Buffer.from(bytes));
   } catch (e) {
     throw new Error(friendlyBluetoothError(e));
   }

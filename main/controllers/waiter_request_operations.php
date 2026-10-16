@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin(); // the companion app's dev web preview (logged-in requests)
 // Suppress error display, log errors instead
 error_reporting(E_ALL);
 ini_set('display_errors', 0);

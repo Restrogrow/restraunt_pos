@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin(); // the companion app's dev web preview (logged-in requests)
 /**
  * Dashboard home: everything the first screen shows, in one call.
  *

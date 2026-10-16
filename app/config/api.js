@@ -1,7 +1,14 @@
 // In dev (Expo web on this machine), talk to the local XAMPP backend — it
 // already has the CORS allow-list for this dev origin and needs no deploy.
 // Production/native builds keep hitting the live site.
-export const BASE_URL = __DEV__ ? 'http://localhost/menuwebsite/main' : 'https://restrogrow.com/main';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+// On a phone (Expo Go / dev build), localhost is the phone itself. Instead the app calls the
+// same address it loaded from (LAN IP:8081 or the --tunnel host), and metro.config.js forwards
+// /menuwebsite/* to XAMPP on this PC. Works on any Wi-Fi, even ones that block device-to-device.
+const devHost = Platform.OS === 'web' ? 'localhost' : ((Constants.expoConfig && Constants.expoConfig.hostUri) || 'localhost:8081');
+export const BASE_URL = __DEV__ ? 'http://' + devHost + '/menuwebsite/main' : 'https://restrogrow.com/main';
 
 // Maps a bad HTTP status to something a restaurant staff member can
 // actually act on — "Request failed (500)" doesn't tell them anything.

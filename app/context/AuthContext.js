@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { AppState, Platform } from 'react-native';
 import { apiGet, apiPostForm } from '../config/api';
 import { getDeviceId } from '../config/deviceId';
+import { clearApiCache } from '../hooks/useApiData';
 
 const AuthContext = createContext(null);
 
@@ -68,6 +69,8 @@ export function AuthProvider({ children }) {
     if (!res.success) {
       throw new Error(res.message || 'Incorrect username or password');
     }
+    // never show the previous account's cached screens to this one
+    clearApiCache();
     // The login response's `data` is a minimal shape (username, role, ...) —
     // not the full restaurant-settings object get_session.php returns. Every
     // field this app reads from `user` elsewhere (enable_delivery,
@@ -86,6 +89,7 @@ export function AuthProvider({ children }) {
     } catch (e) {
       // ignore network errors on logout — clear local state regardless
     }
+    clearApiCache();
     setUser(null);
   }, []);
 

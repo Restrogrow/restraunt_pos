@@ -190,7 +190,7 @@ export default function BillPreviewModal({ visible, onClose, data }) {
   else if (status !== 'connected') printButtonText = 'Connect & Print';
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={handleClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Pressable style={styles.backdrop} onPress={handleClose}>
         <Pressable style={[styles.sheet, shadow.lg]} onPress={() => {}}>

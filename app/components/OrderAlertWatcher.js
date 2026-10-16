@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { apiGet } from '../config/api';
 import { getOrderSoundEnabled } from '../config/notificationSettings';
 import { navigationRef } from '../navigationRef';
+import { setLiveCount } from '../utils/liveCounts';
 import { playNewOrderSound } from '../utils/orderAlerts';
 import { ensureNotificationPermission, notifyNewOrder } from '../utils/notifications';
 
@@ -32,9 +33,12 @@ export default function OrderAlertWatcher() {
     const poll = async () => {
       if (AppState.currentState !== 'active') return;
       try {
-        const res = await apiGet(`/api/get_orders.php?limit=50&date=${todayKey()}`);
+        // active=1: every still-open order whatever day it was placed (a website order from
+        // just before midnight must still ring). Servers without it fall back to today's.
+        const res = await apiGet(`/api/get_orders.php?limit=50&active=1&date=${todayKey()}`);
         if (cancelled || !res?.success) return;
         const orders = res.orders || [];
+        setLiveCount('newOrders', orders.filter((o) => o.order_status === 'Pending' && o.source !== 'pos').length);
         const currentIds = new Set(orders.map((o) => o.id));
 
         if (seenIds.current === null) {

@@ -4,9 +4,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -22,13 +20,22 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BillPreviewModal from '../components/BillPreviewModal';
 import ScreenHeader from '../components/ScreenHeader';
-import { ErrorState, LoadingState } from '../components/ScreenState';
+import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
 import SelectField from '../components/SelectField';
 import SplitPaymentModal from '../components/SplitPaymentModal';
+import AppImage from '../components/ui/AppImage';
+import { FeedbackHost, feedback } from '../components/ui/Feedback';
+import PressableScale from '../components/ui/PressableScale';
+import Sheet from '../components/ui/Sheet';
 import { apiGet, apiPostForm, imageUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
+import { useLayout } from '../hooks/useLayout';
 import { colors, font, radius, shadow, spacing } from '../theme';
+import { money } from '../utils/format';
+import { haptic } from '../utils/haptics';
 import { playClickSound } from '../utils/orderAlerts';
+
+const VEG = { Veg: colors.success, 'Non Veg': colors.danger, Egg: colors.warning };
 
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -38,11 +45,12 @@ function cartKeyFor(id, variationName) {
   return `${id}_${variationName || ''}`;
 }
 
-export default function POSScreen() {
+export default function POSScreen({ route }) {
   const { user } = useAuth();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const { gutter, columns, contentWidth } = useLayout();
   const currency = user?.currency_symbol || '₹';
 
   const [loading, setLoading] = useState(true);
@@ -62,6 +70,16 @@ export default function POSScreen() {
   const [cartOpen, setCartOpen] = useState(false);
 
   const [tableId, setTableId] = useState('');
+
+  // Arriving from Tables ("start an order for T4") preselects that table.
+  useEffect(() => {
+    const t = route?.params?.tableId;
+    if (t) {
+      setTableId(String(t));
+      feedback.info(`New order for table ${route.params.tableLabel || ''}`.trim());
+      navigation.setParams({ tableId: undefined, tableLabel: undefined });
+    }
+  }, [route?.params?.tableId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null); // matched row from `coupons`
   const [couponError, setCouponError] = useState('');
@@ -172,10 +190,10 @@ export default function POSScreen() {
       if (prices.length > 0) {
         const min = Math.min(...prices);
         const max = Math.max(...prices);
-        return min === max ? `${currency}${min}` : `${currency}${min} - ${currency}${max}`;
+        return min === max ? money(min, currency) : `${money(min, currency)}–${money(max, currency).replace(currency, '')}`;
       }
     }
-    return `${currency}${item.base_price ?? 0}`;
+    return money(item.base_price, currency);
   };
 
   const addToCart = (item, variation) => {
@@ -200,7 +218,19 @@ export default function POSScreen() {
     }
   };
 
+  // − on a tile takes one off that dish's most recent cart line.
+  const decItem = (item) => {
+    haptic.tap();
+    setCart((prev) => {
+      const lines = prev.filter((c) => c.id === item.id);
+      if (!lines.length) return prev;
+      const key = lines[lines.length - 1].key;
+      return prev.map((c) => (c.key === key ? { ...c, quantity: c.quantity - 1 } : c)).filter((c) => c.quantity > 0);
+    });
+  };
+
   const changeQty = (key, delta) => {
+    haptic.tap();
     setCart((prev) =>
       prev
         .map((c) => (c.key === key ? { ...c, quantity: c.quantity + delta } : c))
@@ -261,12 +291,10 @@ export default function POSScreen() {
     setCartOpen(false);
   };
 
-  const clearCart = () => {
+  const clearCart = async () => {
     if (cart.length === 0) return;
-    Alert.alert('Clear Cart', 'Are you sure you want to clear the cart?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: resetCart },
-    ]);
+    const ok = await feedback.confirm({ title: 'Clear the cart?', message: `${itemCount} item${itemCount > 1 ? 's' : ''} will be removed.`, confirmText: 'Clear', danger: true });
+    if (ok) resetCart();
   };
 
   // Shows what's about to be printed before it hits the printer — mirrors
@@ -276,7 +304,8 @@ export default function POSScreen() {
   // while the preview is open — can never change what's on the receipt.
   // opts.afterClose chains a second preview (Pay flow: KOT first, then the
   // bill) once this one is dismissed or printed.
-  const offerPrint = (title, kotNumber, paymentMethod, type, opts = {}) => {
+  const offerPrint = (...args) => setBillPreview(buildPreview(...args));
+  function buildPreview(title, kotNumber, paymentMethod, type, opts = {}) {
     const cartSnapshot = [...cart];
     const tableIdSnapshot = tableId;
     const subtotalSnapshot = subtotal;
@@ -285,7 +314,7 @@ export default function POSScreen() {
     const totalSnapshot = total;
     const couponSnapshot = appliedCoupon?.coupon_code;
     const tableName = tables.find((t) => String(t.id) === String(tableIdSnapshot))?.table_number;
-    setBillPreview({
+    return {
       type,
       title,
       restaurantName: user?.restaurant_name || 'Receipt',
@@ -311,8 +340,8 @@ export default function POSScreen() {
       paymentMethod,
       currency,
       afterClose: opts.afterClose,
-    });
-  };
+    };
+  }
 
   // Mirrors the website POS, which has no customer-details form at all — a
   // generic placeholder name is sent along with the table/order type instead.
@@ -339,10 +368,10 @@ export default function POSScreen() {
         ...buildCartPayload(),
       });
       if (!res.success) throw new Error(res.message || 'Could not hold order');
-      Alert.alert('Order held', `Held as ${res.order_number}. Resume it from the Orders tab.`);
+      feedback.success(`Held as ${res.order_number}. Find it in Orders.`);
       resetCart();
     } catch (e) {
-      Alert.alert('Could not hold order', e.message);
+      feedback.errorFrom(e, 'Could not hold the order');
     } finally {
       setHolding(false);
     }
@@ -361,16 +390,16 @@ export default function POSScreen() {
         paymentMethod: 'Cash',
       });
       if (!res.success) throw new Error(res.message || 'Could not send to kitchen');
-      Alert.alert(
-        'Sent to kitchen',
-        `Ticket ${res.kot_number} is with the kitchen. Cart kept — tap Pay to confirm the order.`,
-        [
-          { text: 'Print KOT', onPress: () => offerPrint('KOT sent to kitchen', res.kot_number, null, 'kot') },
-          { text: 'OK' },
-        ]
-      );
+      haptic.success();
+      const pick = await feedback.choose({
+        title: 'Sent to the kitchen',
+        message: `Ticket ${res.kot_number}. The cart is kept, tap Pay when the guest pays.`,
+        options: [{ label: 'Print KOT', value: 'kot', icon: 'print-outline' }],
+        cancelText: 'Done',
+      });
+      if (pick === 'kot') offerPrint('KOT sent to kitchen', res.kot_number, null, 'kot');
     } catch (e) {
-      Alert.alert('Could not send to kitchen', e.message);
+      feedback.errorFrom(e, 'Could not send to the kitchen');
     } finally {
       setSendingKot(false);
     }
@@ -398,27 +427,25 @@ export default function POSScreen() {
       // Snapshot BEFORE resetCart — offerPrint reads live discount/tax/total
       // state, which resetCart would zero out.
       const billSnapshot = { kotNumber: res.kot_number, paymentMethod, orderNumber: res.order_number || null };
+      // Both previews snapshot the cart and totals, so build them before the cart is cleared.
+      const totalPaid = total;
+      const kotPreview = buildPreview('KOT', res.kot_number, null, 'kot', { orderNumber: billSnapshot.orderNumber });
+      const billPreviewData = buildPreview('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill', { orderNumber: billSnapshot.orderNumber });
       resetCart();
-      // Order confirmed: KOT first, then the bill — each printable, and the
-      // bill offer appears once the KOT dialog is dismissed.
-      Alert.alert(
-        'Order confirmed',
-        res.order_number
-          ? `${res.order_number} is in the Orders tab (marked POS) and counted in sales.`
-          : 'Sent to kitchen.',
-        [
-          {
-            text: 'Print KOT + Bill',
-            onPress: () => {
-              offerPrint('KOT', res.kot_number, null, 'kot', { orderNumber: billSnapshot.orderNumber, afterClose: () => offerPrint('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill', { orderNumber: billSnapshot.orderNumber }) });
-            },
-          },
-          { text: 'Print Bill', onPress: () => offerPrint('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill', { orderNumber: billSnapshot.orderNumber }) },
-          { text: 'Done' },
-        ]
-      );
+      haptic.success();
+      const pick = await feedback.choose({
+        title: `Paid ${money(totalPaid, currency)}`,
+        message: res.order_number ? `${res.order_number} is in Orders and counted in today's sales.` : 'Sent to the kitchen.',
+        options: [
+          { label: 'Print KOT and bill', value: 'both', icon: 'print-outline' },
+          { label: 'Print bill only', value: 'bill', icon: 'receipt-outline' },
+        ],
+        cancelText: 'Done',
+      });
+      if (pick === 'both') setBillPreview({ ...kotPreview, afterClose: () => setBillPreview(billPreviewData) });
+      else if (pick === 'bill') setBillPreview(billPreviewData);
     } catch (e) {
-      Alert.alert('Could not process payment', e.message);
+      feedback.errorFrom(e, 'Could not take the payment');
     } finally {
       setPaying(false);
     }
@@ -429,176 +456,195 @@ export default function POSScreen() {
     ...tables.map((t) => ({ label: `${t.table_number} · seats ${t.capacity}`, value: String(t.id) })),
   ];
 
+  // 2 columns on phones (even small ones), more on tablets.
+  const gridCols = columns(140, 6);
+  const tileW = Math.floor((contentWidth - gutter * 2 - spacing.sm * (gridCols - 1)) / gridCols);
+
   return (
     <View style={styles.fill}>
-      <ScreenHeader eyebrow="Counter orders" title="POS" />
+      <ScreenHeader eyebrow="Counter orders" title="POS">
+        <View style={styles.headRow}>
+          <View style={styles.searchWrap}>
+            <Ionicons name="search" size={16} color={colors.muted} />
+            <TextInput
+              ref={searchRef}
+              style={styles.searchInput}
+              placeholder="Search dishes"
+              placeholderTextColor={colors.muted}
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+            />
+            {search ? (
+              <PressableScale onPress={() => setSearch('')} hitSlop={8} accessibilityLabel="Clear search">
+                <Ionicons name="close-circle" size={18} color={colors.muted} />
+              </PressableScale>
+            ) : null}
+          </View>
+          <View style={styles.tablePick}>
+            <SelectField placeholder="Walk-in" title="Order for" value={tableId} onChange={setTableId} options={tableOptions} />
+          </View>
+        </View>
+      </ScreenHeader>
 
       {loading ? (
-        <LoadingState />
+        <LoadingState variant="grid" columns={gridCols} gutter={gutter} rows={4} />
       ) : error ? (
         <ErrorState message={error} onRetry={() => load()} />
       ) : (
         <>
-          {/* Filter grid — mirrors the website's mobile POS: search + Menu
-              on one row, Category + Type on the next, all as dropdowns
-              instead of scrolling chip rows. */}
-          <View style={[styles.filterRow, styles.filterRowFirst]}>
-            <View style={[styles.searchWrap, styles.filterHalf]}>
-              <Ionicons name="search" size={16} color={colors.muted} />
-              <TextInput
-                ref={searchRef}
-                style={styles.searchInput}
-                placeholder="Search items..."
-                placeholderTextColor={colors.muted}
-                value={search}
-                onChangeText={setSearch}
-              />
-            </View>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.menuChipScroll}
-            contentContainerStyle={styles.menuChipRow}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.menuChipScroll} contentContainerStyle={[styles.menuChipRow, { paddingHorizontal: gutter }]}>
+            <PressableScale feedback="select" style={[styles.vegChip, vegOnly && styles.vegChipOn]} onPress={() => setVegOnly((v) => !v)} accessibilityLabel="Veg only">
+              <View style={[styles.vegDotOutline, vegOnly && { borderColor: '#fff' }]}>
+                <View style={[styles.vegDotInner, vegOnly && { backgroundColor: '#fff' }]} />
+              </View>
+              <Text style={[styles.menuChipText, vegOnly && styles.menuChipTextActive]}>Veg</Text>
+            </PressableScale>
             {menuOptions.map((opt) => {
               const active = menuFilter === opt.value;
               return (
-                <Pressable
-                  key={opt.value}
-                  style={[styles.menuChip, shadow.sm, active && styles.menuChipActive]}
-                  onPress={() => setMenuFilter(opt.value)}
-                >
-                  <Text
-                    style={[styles.menuChipText, active && styles.menuChipTextActive]}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
+                <PressableScale key={opt.value} feedback="select" style={[styles.menuChip, active && styles.menuChipActive]} onPress={() => setMenuFilter(opt.value)}>
+                  <Text style={[styles.menuChipText, active && styles.menuChipTextActive]} numberOfLines={1}>
                     {opt.label}
                   </Text>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </ScrollView>
-          <View style={[styles.filterRow, styles.filterRowSecond, styles.vegRow]}>
-            <View style={styles.vegDotOutline}>
-              <View style={styles.vegDotInner} />
-            </View>
-            <Text style={styles.vegLabel}>Veg Only</Text>
-            <Switch
-              value={vegOnly}
-              onValueChange={setVegOnly}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={vegOnly ? colors.primary : '#fff'}
-            />
-          </View>
 
           <FlatList
+            key={gridCols}
             ref={listRef}
             style={styles.fill}
             data={visibleItems}
             keyExtractor={(item, i) => String(item.id ?? i)}
-            numColumns={2}
-            columnWrapperStyle={{ gap: spacing.md }}
-            contentContainerStyle={[styles.grid, { paddingBottom: 160 + tabBarHeight }]}
+            numColumns={gridCols}
+            columnWrapperStyle={gridCols > 1 ? { gap: spacing.sm } : undefined}
+            contentContainerStyle={{ paddingHorizontal: gutter, paddingTop: spacing.xs, paddingBottom: tabBarHeight + (itemCount > 0 ? 96 : 24), gap: spacing.sm, flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />
+            keyboardShouldPersistTaps="handled"
+            initialNumToRender={16}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} />}
+            ListEmptyComponent={
+              <EmptyState
+                icon="search-outline"
+                title={menuItems.length ? 'No dishes match' : 'No dishes yet'}
+                subtitle={menuItems.length ? 'Try another word, menu or switch off Veg.' : 'Add dishes in the Menu tab and they appear here.'}
+              />
             }
             renderItem={({ item }) => {
               const qtyInCart = cart.filter((c) => c.id === item.id).reduce((s, c) => s + c.quantity, 0);
               const thumb = imageUrl(item.item_image);
+              const veg = VEG[item.item_type];
               return (
-                <Pressable
-                  style={({ pressed }) => [styles.itemCard, shadow.sm, pressed && { opacity: 0.85 }]}
+                <PressableScale
+                  style={[styles.tile, shadow.sm, { width: tileW }, qtyInCart > 0 && styles.tileOn]}
                   onPress={() => onPressItem(item)}
+                  scale={0.96}
+                  feedback="none"
+                  accessibilityLabel={`${item.item_name_en}, ${priceLabelFor(item)}${qtyInCart ? `, ${qtyInCart} in cart` : ''}`}
                 >
-                  <View style={styles.itemThumb}>
-                    {thumb ? <ItemImage uri={thumb} /> : <Ionicons name="restaurant-outline" size={26} color={colors.muted} />}
-                    {qtyInCart > 0 ? (
-                      <View style={styles.qtyBadge}>
-                        <Text style={styles.qtyBadgeText}>{qtyInCart}</Text>
+                  <View style={styles.tileTop}>
+                    {thumb ? <AppImage uri={thumb} style={styles.tileThumb} /> : null}
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.tileNameRow}>
+                        {veg ? (
+                          <View style={[styles.vegMark, { borderColor: veg }]}>
+                            <View style={[styles.vegMarkDot, { backgroundColor: veg }]} />
+                          </View>
+                        ) : null}
+                        <Text style={styles.itemName} numberOfLines={2}>{item.item_name_en}</Text>
                       </View>
-                    ) : null}
-                  </View>
-                  <View style={styles.itemCardBody}>
-                    <Text style={styles.itemName} numberOfLines={2}>{item.item_name_en}</Text>
-                    {item.item_category ? (
-                      <Text style={styles.itemCategory} numberOfLines={1}>{item.item_category}</Text>
-                    ) : null}
-                    <View style={styles.itemPriceBadge}>
-                      <Text style={styles.itemPriceText} numberOfLines={1}>{priceLabelFor(item)}</Text>
+                      {item.has_variations == 1 ? <Text style={styles.itemVariationHint}>Choose size</Text> : null}
                     </View>
-                    {item.has_variations == 1 ? <Text style={styles.itemVariationHint}>(Variations)</Text> : null}
                   </View>
-                </Pressable>
+                  <View style={styles.tileBottom}>
+                    <Text style={styles.itemPriceText} numberOfLines={1}>{priceLabelFor(item)}</Text>
+                    {qtyInCart > 0 ? (
+                      <View style={styles.tileStepper}>
+                        <PressableScale style={styles.tileStepBtn} onPress={() => decItem(item)} hitSlop={6} feedback="none" accessibilityLabel={`One less ${item.item_name_en}`}>
+                          <Ionicons name="remove" size={16} color="#fff" />
+                        </PressableScale>
+                        <Text style={styles.tileQty}>{qtyInCart}</Text>
+                        <PressableScale style={styles.tileStepBtn} onPress={() => onPressItem(item)} hitSlop={6} feedback="none" accessibilityLabel={`One more ${item.item_name_en}`}>
+                          <Ionicons name="add" size={16} color="#fff" />
+                        </PressableScale>
+                      </View>
+                    ) : (
+                      <View style={styles.tileAdd}>
+                        <Ionicons name="add" size={18} color={colors.primary} />
+                      </View>
+                    )}
+                  </View>
+                </PressableScale>
               );
             }}
           />
 
-          {/* A single "View Cart" trigger instead of a persistent bar of
-              Pay/Hold/KOT/Add Item — those all still live inside the cart
-              sheet below, one tap away, instead of cluttering the main
-              screen at all times. */}
           {itemCount > 0 ? (
-            <Pressable
-              style={({ pressed }) => [styles.viewCartBar, shadow.md, { bottom: tabBarHeight + spacing.sm }, pressed && { opacity: 0.92 }]}
-              onPress={() => setCartOpen(true)}
-            >
-              <View style={styles.viewCartBadge}>
-                <Text style={styles.viewCartBadgeText}>{itemCount}</Text>
-              </View>
-              <Text style={styles.viewCartText}>View Cart</Text>
-              <Text style={styles.viewCartTotal}>{currency}{total.toFixed(2)}</Text>
-              <Ionicons name="chevron-forward" size={18} color="#fff" />
-            </Pressable>
+            <View style={[styles.viewCartWrap, { bottom: tabBarHeight + spacing.sm, paddingHorizontal: gutter }]} pointerEvents="box-none">
+              <PressableScale style={[styles.viewCartBar, shadow.md]} onPress={() => setCartOpen(true)} feedback="press" scale={0.98}>
+                <View style={styles.viewCartBadge}>
+                  <Text style={styles.viewCartBadgeText}>{itemCount}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.viewCartText}>View cart</Text>
+                  <Text style={styles.viewCartSub} numberOfLines={1}>
+                    {tableId ? `Table ${tables.find((t) => String(t.id) === String(tableId))?.table_number || ''}` : 'Walk-in / takeaway'}
+                  </Text>
+                </View>
+                <Text style={styles.viewCartTotal}>{money(total, currency)}</Text>
+                <Ionicons name="chevron-forward" size={18} color="#fff" />
+              </PressableScale>
+            </View>
           ) : null}
         </>
       )}
 
-      {/* Variation picker */}
-      <Modal visible={!!variationItem} transparent animationType="fade" onRequestClose={() => setVariationItem(null)}>
-        <Pressable style={styles.backdrop} onPress={() => setVariationItem(null)}>
-          <Pressable style={[styles.variationSheet, shadow.lg]} onPress={() => {}}>
-            <Text style={styles.variationTitle}>{variationItem?.item_name_en}</Text>
-            <Text style={styles.variationSubtitle}>Choose a size</Text>
-            {(variationItem?.variations || []).map((v) => (
-              <Pressable
-                key={v.id}
-                style={styles.variationOption}
-                onPress={() => {
-                  addToCart(variationItem, v);
-                  setVariationItem(null);
-                }}
-              >
-                <Text style={styles.variationOptionText}>{v.variation_name}</Text>
-                <Text style={styles.variationOptionPrice}>{currency}{v.price}</Text>
-              </Pressable>
-            ))}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      {/* size picker */}
+      <Sheet visible={!!variationItem} onClose={() => setVariationItem(null)} title={variationItem?.item_name_en} subtitle="Choose a size">
+        <View style={{ gap: 8 }}>
+          {(variationItem?.variations || []).map((v) => (
+            <PressableScale
+              key={v.id}
+              style={styles.variationOption}
+              onPress={() => {
+                addToCart(variationItem, v);
+                setVariationItem(null);
+              }}
+            >
+              <Text style={styles.variationOptionText}>{v.variation_name}</Text>
+              <Text style={styles.variationOptionPrice}>{money(v.price, currency)}</Text>
+            </PressableScale>
+          ))}
+        </View>
+      </Sheet>
 
       {/* Cart / checkout sheet */}
       <Modal
         visible={cartOpen}
         animationType="slide"
         transparent={Platform.OS === 'web'}
+        statusBarTranslucent
+        navigationBarTranslucent
         onRequestClose={() => setCartOpen(false)}
       >
         <View style={styles.cartModalBackdrop}>
         <KeyboardAvoidingView
-          style={[styles.fill, styles.cartModalPanel, { paddingTop: insets.top }]}
+          style={[styles.fill, styles.cartModalPanel, { paddingTop: insets.top + spacing.sm }]}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={styles.cartHeader}>
-            <Pressable style={styles.iconButton} onPress={() => setCartOpen(false)} hitSlop={8}>
-              <Ionicons name="close" size={20} color={colors.ink} />
-            </Pressable>
-            <Text style={styles.cartHeaderTitle}>Current Order</Text>
-            <Pressable style={styles.iconButton} onPress={clearCart} hitSlop={8}>
+            <PressableScale style={styles.iconButton} onPress={() => setCartOpen(false)} hitSlop={8} accessibilityLabel="Close cart">
+              <Ionicons name="chevron-down" size={22} color={colors.ink} />
+            </PressableScale>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={styles.cartHeaderTitle}>Current order</Text>
+              <Text style={styles.cartHeaderSub}>{itemCount} item{itemCount === 1 ? '' : 's'} · {money(total, currency)}</Text>
+            </View>
+            <PressableScale style={styles.iconButton} onPress={clearCart} hitSlop={8} accessibilityLabel="Clear cart" feedback="warning">
               <Ionicons name="trash-outline" size={18} color={colors.danger} />
-            </Pressable>
+            </PressableScale>
           </View>
 
           <ScrollView style={styles.fill} contentContainerStyle={styles.cartContent} showsVerticalScrollIndicator={false}>
@@ -700,45 +746,34 @@ export default function POSScreen() {
             </View>
           </ScrollView>
 
-          <View style={[styles.cartFooter, styles.cartFooterPinned, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-            <Pressable
-              style={({ pressed }) => [styles.payButton, pressed && { opacity: 0.9 }]}
-              onPress={payNow}
-              disabled={holding || sendingKot || paying || cart.length === 0}
-            >
-              <Ionicons name="card" size={15} color="#fff" />
-              <Text style={styles.payButtonText}>Pay</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.holdButton, pressed && { opacity: 0.9 }]}
-              onPress={holdOrder}
-              disabled={holding || sendingKot || paying || cart.length === 0}
-            >
+          <View style={[styles.cartFooter, styles.cartFooterPinned, { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.xs }]}>
+            <PressableScale style={styles.holdButton} onPress={holdOrder} disabled={holding || sendingKot || paying || cart.length === 0} accessibilityLabel="Hold order">
               {holding ? (
-                <ActivityIndicator color={colors.info} size="small" />
+                <ActivityIndicator color={colors.inkSoft} size="small" />
               ) : (
                 <>
-                  <Ionicons name="pause" size={15} color={colors.info} />
+                  <Ionicons name="pause" size={16} color={colors.inkSoft} />
                   <Text style={styles.holdButtonText}>Hold</Text>
                 </>
               )}
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.kotButton, pressed && { opacity: 0.9 }]}
-              onPress={sendKOT}
-              disabled={holding || sendingKot || paying || cart.length === 0}
-            >
+            </PressableScale>
+            <PressableScale style={styles.kotButton} onPress={sendKOT} disabled={holding || sendingKot || paying || cart.length === 0} feedback="press" accessibilityLabel="Send to kitchen">
               {sendingKot ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
-                  <Ionicons name="restaurant" size={15} color="#fff" />
+                  <Ionicons name="flame" size={16} color="#fff" />
                   <Text style={styles.kotButtonText}>KOT</Text>
                 </>
               )}
-            </Pressable>
+            </PressableScale>
+            <PressableScale style={styles.payButton} onPress={payNow} disabled={holding || sendingKot || paying || cart.length === 0} feedback="press" accessibilityLabel={`Pay ${money(total, currency)}`}>
+              <Ionicons name="card" size={17} color="#fff" />
+              <Text style={styles.payButtonText} numberOfLines={1}>Pay {money(total, currency)}</Text>
+            </PressableScale>
           </View>
         </KeyboardAvoidingView>
+        <FeedbackHost />
         </View>
       </Modal>
 
@@ -763,12 +798,6 @@ export default function POSScreen() {
       />
     </View>
   );
-}
-
-function ItemImage({ uri }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return <Ionicons name="restaurant-outline" size={26} color={colors.muted} />;
-  return <Image source={{ uri }} style={styles.itemThumbImage} onError={() => setFailed(true)} />;
 }
 
 const styles = StyleSheet.create({
@@ -868,15 +897,131 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     color: colors.ink,
   },
+  headRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  tablePick: {
+    width: 130,
+  },
   searchWrap: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
+    minHeight: 46,
+  },
+  vegChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  vegChipOn: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  tile: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: 10,
+    minHeight: 96,
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  tileOn: {
+    borderColor: colors.primary,
+    backgroundColor: '#FFF8F5',
+  },
+  tileTop: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tileThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+  },
+  tileNameRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 5,
+  },
+  vegMark: {
+    width: 12,
+    height: 12,
+    borderWidth: 1.5,
+    borderRadius: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 3,
+  },
+  vegMarkDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+  },
+  tileBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    gap: 6,
+  },
+  tileAdd: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+  },
+  tileStepBtn: {
+    width: 30,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileQty: {
+    minWidth: 16,
+    textAlign: 'center',
+    fontFamily: font.bold,
+    fontSize: 13.5,
+    color: '#fff',
+  },
+  viewCartWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    elevation: 20,
+  },
+  viewCartSub: {
+    fontFamily: font.medium,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  cartHeaderSub: {
+    fontFamily: font.medium,
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 1,
   },
   searchInput: {
     flex: 1,
@@ -932,10 +1077,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   itemName: {
+    flex: 1,
     fontFamily: font.semiBold,
     fontSize: 13,
+    lineHeight: 18,
     color: colors.ink,
-    marginBottom: 2,
   },
   itemCategory: {
     fontFamily: font.regular,
@@ -964,18 +1110,14 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   viewCartBar: {
-    position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
     backgroundColor: colors.primary,
-    borderRadius: radius.pill,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    zIndex: 20,
-    elevation: 20,
+    paddingVertical: 10,
+    minHeight: 58,
   },
   viewCartBadge: {
     minWidth: 22,
@@ -992,7 +1134,6 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   viewCartText: {
-    flex: 1,
     fontFamily: font.semiBold,
     fontSize: 14.5,
     color: '#fff',
@@ -1031,9 +1172,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 13,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    minHeight: 54,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
   },
   variationOptionText: {
     fontFamily: font.medium,
@@ -1261,35 +1403,31 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 20,
   },
-  // Pay/Hold/KOT colors mirror the website's mobile POS action bar (blue
-  // Pay, blue-outline Hold, amber KOT) rather than the app's own orange
-  // brand color, since matching that site is the point here.
+  // Pay is the big main action; KOT and Hold sit beside it, smaller.
   holdButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.info,
+    gap: 5,
+    height: 52,
+    paddingHorizontal: 14,
+    backgroundColor: colors.bg,
     borderRadius: radius.md,
-    paddingVertical: 12,
   },
   holdButtonText: {
     fontFamily: font.semiBold,
     fontSize: 13.5,
-    color: colors.info,
+    color: colors.inkSoft,
   },
   kotButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: colors.warning,
+    gap: 5,
+    height: 52,
+    paddingHorizontal: 16,
+    backgroundColor: colors.ink,
     borderRadius: radius.md,
-    paddingVertical: 14,
   },
   kotButtonText: {
     fontFamily: font.semiBold,
@@ -1302,9 +1440,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: colors.info,
+    height: 52,
+    paddingHorizontal: 10,
+    backgroundColor: colors.success,
     borderRadius: radius.md,
-    paddingVertical: 14,
   },
   payButtonText: {
     fontFamily: font.semiBold,

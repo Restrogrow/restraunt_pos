@@ -94,7 +94,7 @@ try {
 ob_clean();
 
 header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Origin: *');
+require_once __DIR__ . '/../config/cors_helper.php'; allowAppOrigin(true); // app dev preview gets credentials, everyone else keeps *
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 

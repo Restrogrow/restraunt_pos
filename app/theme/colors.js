@@ -25,9 +25,13 @@ export const colors = {
   dangerBg: '#FCE6E6',
 
   white: '#FFFFFF',
+  onPrimary: '#FFFFFF',
+  overlay: 'rgba(29,27,38,0.5)',
+  skeleton: '#EFEAE6',
 };
 
 export const statusStyles = {
+  Scheduled: { fg: colors.purple, bg: colors.purpleBg },
   Pending: { fg: colors.warning, bg: colors.warningBg },
   Accepted: { fg: colors.info, bg: colors.infoBg },
   Preparing: { fg: colors.purple, bg: colors.purpleBg },

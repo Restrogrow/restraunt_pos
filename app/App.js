@@ -5,8 +5,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { Component, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Dimensions, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import {
   useFonts,
   Poppins_400Regular,
@@ -21,16 +22,26 @@ import TabBar from './components/TabBar';
 import OrderAlertWatcher from './components/OrderAlertWatcher';
 import OrderWatchBridge from './components/OrderWatchBridge';
 import WebAudioUnlockBanner from './components/WebAudioUnlockBanner';
+import WaiterCallWatcher from './components/WaiterCallWatcher';
+import { FeedbackHost } from './components/ui/Feedback';
+import { CONTENT_MAX } from './hooks/useLayout';
 import { getBiometricLockEnabled } from './config/biometricSettings';
 import { navigationRef } from './navigationRef';
 import { colors, font } from './theme';
 import { authenticate, isBiometricSupported } from './utils/biometricAuth';
 import LoginScreen from './screens/LoginScreen';
+import HomeScreen from './screens/HomeScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import OrderDetailScreen from './screens/OrderDetailScreen';
 import POSScreen from './screens/POSScreen';
 import MenuScreen from './screens/MenuScreen';
 import MenuItemScreen from './screens/MenuItemScreen';
+import MoreScreen from './screens/MoreScreen';
+import KitchenScreen from './screens/KitchenScreen';
+import TablesScreen from './screens/TablesScreen';
+import WaiterCallsScreen from './screens/WaiterCallsScreen';
+import ReservationsScreen from './screens/ReservationsScreen';
+import CustomersScreen from './screens/CustomersScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import LogsScreen from './screens/LogsScreen';
@@ -131,13 +142,12 @@ const APP_NAME = 'Restrogrow Partner';
 // Cold start now always lands on the Orders tab, which is what counter
 // staff expect.
 
-// This is a phone-shaped app — on native it always gets the full device
-// width anyway, but on web (a desktop browser window) that same layout was
-// stretching edge-to-edge and breaking (absolute-positioned bars spanning
-// the whole window, grids over-widening, etc). Cap it to a phone-sized,
-// centered column on web only; native is untouched.
+// Wide screens (a desktop browser, a big tablet in landscape) get the app as a centred
+// column (CONTENT_MAX) instead of stretching cards, grids and the floating bars edge to
+// edge. Phones are untouched — they're always narrower than the cap.
 function WebFrame({ children }) {
-  if (Platform.OS !== 'web') {
+  const { width } = useWindowDimensions();
+  if (width <= CONTENT_MAX) {
     return children;
   }
   return (
@@ -156,21 +166,39 @@ const webFrameStyles = StyleSheet.create({
   frame: {
     flex: 1,
     width: '100%',
-    maxWidth: 480,
-    boxShadow: '0 0 40px rgba(0,0,0,0.35)',
+    maxWidth: CONTENT_MAX,
+    overflow: 'hidden',
+    ...Platform.select({ web: { boxShadow: '0 0 40px rgba(0,0,0,0.35)' }, default: {} }),
   },
 });
+
+// Phones stay upright (the layouts are built for portrait); tablets may rotate freely.
+function useOrientationPolicy() {
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const { width, height } = Dimensions.get('screen');
+    const tablet = Math.min(width, height) >= 600;
+    (tablet
+      ? ScreenOrientation.unlockAsync()
+      : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)
+    ).catch(() => {});
+  }, []);
+}
 
 const Tab = createBottomTabNavigator();
 const OrdersStackNav = createNativeStackNavigator();
 const MenuStackNav = createNativeStackNavigator();
+const MoreStackNav = createNativeStackNavigator();
+
+// Pushed screens slide in from the side, like any native app.
+const stackOptions = { headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colors.bg } };
 
 // Orders tab is its own stack so tapping an order card can push a detail
 // screen (with a real back button/gesture) instead of the tab just
 // re-rendering in place.
 function OrdersStack() {
   return (
-    <OrdersStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <OrdersStackNav.Navigator screenOptions={stackOptions}>
       <OrdersStackNav.Screen name="OrdersList" component={OrdersScreen} />
       <OrdersStackNav.Screen name="OrderDetail" component={OrderDetailScreen} />
     </OrdersStackNav.Navigator>
@@ -181,10 +209,27 @@ function OrdersStack() {
 // header "+" pushes the same screen in create mode.
 function MenuStack() {
   return (
-    <MenuStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <MenuStackNav.Navigator screenOptions={stackOptions}>
       <MenuStackNav.Screen name="MenuList" component={MenuScreen} />
       <MenuStackNav.Screen name="MenuItem" component={MenuItemScreen} />
     </MenuStackNav.Navigator>
+  );
+}
+
+// "More": everything beyond the four everyday tabs, one tap from a tidy grid.
+function MoreStack() {
+  return (
+    <MoreStackNav.Navigator screenOptions={stackOptions}>
+      <MoreStackNav.Screen name="MoreHome" component={MoreScreen} />
+      <MoreStackNav.Screen name="Kitchen" component={KitchenScreen} />
+      <MoreStackNav.Screen name="Tables" component={TablesScreen} />
+      <MoreStackNav.Screen name="WaiterCalls" component={WaiterCallsScreen} />
+      <MoreStackNav.Screen name="Reservations" component={ReservationsScreen} />
+      <MoreStackNav.Screen name="Customers" component={CustomersScreen} />
+      <MoreStackNav.Screen name="Reports" component={ReportsScreen} />
+      <MoreStackNav.Screen name="Logs" component={LogsScreen} />
+      <MoreStackNav.Screen name="Settings" component={SettingsScreen} />
+    </MoreStackNav.Navigator>
   );
 }
 
@@ -316,12 +361,6 @@ function RootNavigator() {
   const { user, checkingSession } = useAuth();
   const { locked, checking: checkingLock, retry, retrying } = useAppLock(!checkingSession && !!user);
 
-  // Security Logs tab is for eyes that need it — owner/admin and manager.
-  // Staff (waiter/chef) sessions never see it.
-  const canViewLogs = ['admin', 'administrator', 'manager', 'branch admin'].includes(
-    String(user?.role || '').toLowerCase()
-  ) || ['admin', 'branch_admin'].includes(String(user?.user_type || ''));
-
   if (checkingSession) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
@@ -341,6 +380,7 @@ function RootNavigator() {
     <>
       <OrderAlertWatcher />
       <OrderWatchBridge />
+      <WaiterCallWatcher />
       <WebAudioUnlockBanner />
       {checkingLock ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
@@ -356,12 +396,11 @@ function RootNavigator() {
             sceneStyle: { backgroundColor: colors.bg },
           }}
         >
+          <Tab.Screen name="Home" component={HomeScreen} />
           <Tab.Screen name="Orders" component={OrdersStack} />
           <Tab.Screen name="POS" component={POSScreen} />
           <Tab.Screen name="Menu" component={MenuStack} />
-          <Tab.Screen name="Reports" component={ReportsScreen} />
-          {canViewLogs ? <Tab.Screen name="Logs" component={LogsScreen} /> : null}
-          <Tab.Screen name="Settings" component={SettingsScreen} />
+          <Tab.Screen name="More" component={MoreStack} />
         </Tab.Navigator>
       )}
     </>
@@ -386,6 +425,7 @@ function useRemoveWebInputOutline() {
 
 export default function App() {
   useRemoveWebInputOutline();
+  useOrientationPolicy();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -431,6 +471,7 @@ export default function App() {
             <ErrorBoundary>
               <RootNavigator />
             </ErrorBoundary>
+            <FeedbackHost />
           </NavigationContainer>
         </AuthProvider>
       </SafeAreaProvider>
