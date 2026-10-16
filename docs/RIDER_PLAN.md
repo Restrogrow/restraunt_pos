@@ -1,6 +1,6 @@
 # Delivery rider role (17 October 2026)
 
-**Status: built (17 October 2026).** Server: `main/config/rider_engine.php`, `main/api/rider_app.php`, `main/api/delivery_dispatch.php`.
+**Status: built (17 October 2026).** On/off per restaurant: Settings › Delivery › "We deliver with our own riders" (`rider_settings.own_riders`, off by default; the demo has it on). Server: `main/config/rider_engine.php`, `main/api/rider_app.php`, `main/api/delivery_dispatch.php`.
 Web: `main/assets/js/riders-board.js` (Delivery › Riders + Assign in order details), `main/views/rider_dashboard.php`.
 Apps: Staff app `screens/RiderHomeScreen.js` (rider layout, location with expo-location), `RidersScreen.js` and
 `components/RiderAssign.js` in both the Partner app and the Staff app. Demo riders: `rider.demo@spicegarden.test`,

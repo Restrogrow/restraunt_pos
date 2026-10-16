@@ -42,7 +42,7 @@ export default function MoreScreen({ navigation }) {
 
   const groups = [
     { title: role === 'chef' ? 'Kitchen' : 'Service', items: pick('Kitchen', 'Tables', 'WaiterCalls', 'Reservations') },
-    { title: 'Business', items: [...pick('Customers', 'Riders', 'Reports'), isOwnerish ? { key: 'Logs', icon: 'shield-checkmark', label: 'Security', sub: 'Logins, devices', tint: colors.inkSoft, bg: colors.border } : null].filter(Boolean) },
+    { title: 'Business', items: [...pick('Customers', ...(user?.own_riders ? ['Riders'] : []), 'Reports'), isOwnerish ? { key: 'Logs', icon: 'shield-checkmark', label: 'Security', sub: 'Logins, devices', tint: colors.inkSoft, bg: colors.border } : null].filter(Boolean) },
     {
       title: 'Settings',
       items: [

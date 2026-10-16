@@ -48,6 +48,14 @@ if (isset($_SESSION['staff_id']) && isset($_SESSION['role'])) {
     }
 }
 
+// "We deliver with our own riders" (Settings › Delivery): Riders, the rider staff role and Assign rider only show when on
+$ownRiders = false;
+try {
+    require_once __DIR__ . '/../db_connection.php';
+    require_once __DIR__ . '/../config/rider_engine.php';
+    $ownRiders = riderOwnRidersOn(getConnection(), (string)($_SESSION['restaurant_id'] ?? ''));
+} catch (Throwable $e) { $ownRiders = false; }
+
 // Load restaurant info from database to prevent flash of default content
 $restaurant_name = $_SESSION['restaurant_name'] ?? 'Restaurant Name';
 $restaurant_id = $_SESSION['restaurant_id'] ?? 'RES001';
@@ -1388,7 +1396,7 @@ try {
                 <span class="nav-label">Map View</span>
               </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" id="ridersNavItem"<?php echo $ownRiders ? '' : ' style="display:none"'; ?>>
               <a href="#" class="nav-link submenu-link" data-page="ridersPage">
                 <span class="material-symbols-rounded">two_wheeler</span>
                 <span class="nav-label">Riders</span>
@@ -5197,6 +5205,12 @@ function toggleGatewayMode() {
                 </div>
               </div>
             </div>
+            <div class="st-card">
+              <label class="st-toggle">
+                <span><b>We deliver with our own riders</b><small>Turn on if your own staff deliver the orders. You get Delivery › Riders, the staff role "Delivery rider", and "Assign rider" on delivery orders; riders use the RestroGrow Staff app and the customer can follow them live. Leave off if you use Swiggy, Zomato, Dunzo or other outside riders (the QR link for outside riders always works). Saved straight away.</small></span>
+                <span class="st-switch"><input type="checkbox" id="ownRidersToggle"<?php echo $ownRiders ? ' checked' : ''; ?>><i></i></span>
+              </label>
+            </div>
             <div class="st-card" data-st-form="restaurant">
               <label class="st-toggle">
                 <span><b>Charge delivery by distance</b><small>Delivery charge = distance (km) × your rate, instead of a flat charge. Only for customers inside your radius. You still confirm the amount when you accept each order.</small></span>
@@ -7037,7 +7051,7 @@ function toggleGatewayMode() {
               <option value="Waiter">Waiter</option>
               <option value="Chef">Chef</option>
               <option value="Cashier">Cashier</option>
-              <option value="Delivery">Delivery rider</option>
+              <option value="Delivery" id="memberRoleDelivery"<?php echo $ownRiders ? '' : ' hidden disabled'; ?>>Delivery rider</option>
             </select>
           </div>
           <div class="form-actions">

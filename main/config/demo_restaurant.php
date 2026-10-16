@@ -345,6 +345,11 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
                                        'password' => $staffHash, 'role' => $role, 'is_active' => 1]);
         }
 
+        // the demo delivers with its own riders (Settings › Delivery)
+        if (function_exists('riderSaveSettings')) {
+            try { riderSaveSettings($pdo, $rid, ['own_riders' => 1]); } catch (Throwable $e) { /* optional feature */ }
+        }
+
         // ── Customers ──
         $names = ['Aarav Sharma', 'Diya Patel', 'Rohan Iyer', 'Ananya Reddy', 'Kabir Mehta', 'Isha Nair', 'Vivaan Gupta', 'Meera Joshi',
                   'Arjun Rao', 'Saanvi Kulkarni', 'Aditya Menon', 'Priya Das', 'Karthik Subramanian', 'Nisha Hegde', 'Rahul Verma',

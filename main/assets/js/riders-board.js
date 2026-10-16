@@ -66,6 +66,12 @@
   function draw() {
     var root = $('rbRoot');
     if (!root || !D) return;
+    if (D.enabled === false) {
+      root.innerHTML = '<div class="rb-card"><div class="rb-empty" style="display:grid;gap:12px;justify-items:center"><b style="font-size:1rem;color:#111827">Own riders are switched off</b>' +
+        'Turn on "We deliver with our own riders" to add riders, assign deliveries and settle their cash.' +
+        (D.can_change ? '<button class="rb-btn pri" type="button" data-rb-own="1">' + ic('two_wheeler') + 'Turn on own riders</button>' : '') + '</div></div>';
+      return;
+    }
     var riders = D.riders || [], dels = D.deliveries || [];
     var html = '<div class="rb-top"><p class="rb-help">Riders log in to the RestroGrow Staff app (or this website) with the email and password you set in Staff. Give each delivery to a rider, and settle the cash they collected at the end of the shift.</p>' +
       '<label class="rb-sw"><input type="checkbox" id="rbSelf"' + (D.settings && D.settings.self_pick ? ' checked' : '') + '>Riders can pick open deliveries themselves</label></div>';
@@ -104,8 +110,27 @@
     }, 20000);
   };
 
+  // Settings › Delivery › "We deliver with our own riders": saved straight away, and the rider menus follow it
+  function setOwn(on, el) {
+    if (el) el.disabled = true;
+    return post({ action: 'settings', own_riders: on ? 1 : 0 }).then(function (d) {
+      notify(d.message, d.success ? 'success' : 'error');
+      if (!d.success) { if (el) el.checked = !on; return; }
+      var nav = $('ridersNavItem'); if (nav) nav.style.display = on ? '' : 'none';
+      var opt = $('memberRoleDelivery'); if (opt) { opt.hidden = !on; opt.disabled = !on; }
+      var tg = $('ownRidersToggle'); if (tg) tg.checked = on;
+      D = null;
+      if ($('rbRoot')) load();
+    }).finally(function () { if (el) el.disabled = false; });
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-rb-own]');
+    if (b) setOwn(true, b);
+  });
+
   document.addEventListener('change', function (e) {
     var t = e.target;
+    if (t.id === 'ownRidersToggle') { setOwn(t.checked, t); return; }
     if (t.id === 'rbSelf') post({ action: 'settings', self_pick: t.checked ? 1 : 0 }).then(function (d) { notify(d.message, d.success ? 'success' : 'error'); });
     if (t.dataset && t.dataset.rbAssign && t.value !== '') {
       t.disabled = true;
@@ -134,7 +159,7 @@
     var id = +box.getAttribute('data-order');
     box.innerHTML = '<div class="rb-now">Loading riders…</div>';
     get('?order_id=' + id).then(function (d) {
-      if (!d.success) { box.innerHTML = ''; return; }
+      if (!d.success || d.enabled === false) { box.innerHTML = ''; box.style.display = 'none'; return; }
       var del = d.delivery || {}, riders = d.riders || [];
       if (!riders.length) { box.innerHTML = '<div class="rb-now" style="color:#6b7280">Add riders in Staff (role: Delivery rider) to assign this delivery, or use the QR link below for an outside rider.</div>'; return; }
       var moving = ['Picked_Up', 'In_Transit'].indexOf(del.delivery_status) !== -1;

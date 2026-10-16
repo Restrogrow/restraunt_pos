@@ -233,6 +233,8 @@ export default function RiderHomeScreen() {
 
       {!data ? (
         <SkeletonBlock height={220} style={{ borderRadius: radius.lg }} />
+      ) : data.enabled === false ? (
+        <View style={styles.empty}><Text style={styles.emptyText}>{data.message || 'Your restaurant is not using its own riders right now.'}</Text></View>
       ) : (
         <FadeIn style={{ gap: spacing.md }}>
           <Text style={styles.h2}>Your deliveries <Text style={styles.h2n}>{data.mine.length}</Text></Text>

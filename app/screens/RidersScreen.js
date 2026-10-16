@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, S
 import ScreenHeader from '../components/ScreenHeader';
 import { feedback } from '../components/ui/Feedback';
 import { apiGet, apiPostJson } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
 
 // More › Riders (data: api/delivery_dispatch.php), the same board as the website's Delivery › Riders:
@@ -25,6 +26,7 @@ export default function RidersScreen({ navigation }) {
   const [d, setD] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(null);
+  const { refresh } = useAuth();
 
   const load = useCallback(async () => {
     try {
@@ -44,6 +46,7 @@ export default function RidersScreen({ navigation }) {
     try {
       const r = await apiPostJson('/api/delivery_dispatch.php', body);
       feedback.success(r.message || 'Done');
+      if (body.action === 'settings' && refresh) refresh(true); // the More tile follows the switch
       await load();
     } catch (e) {
       feedback.errorFrom(e);
@@ -69,11 +72,30 @@ export default function RidersScreen({ navigation }) {
       <ScreenHeader eyebrow="Delivery" title="Riders" onBack={navigation?.canGoBack() ? () => navigation.goBack() : undefined} />
       {!d ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+      ) : d.enabled === false ? (
+        <View style={{ padding: spacing.lg }}>
+          <View style={[styles.card, shadow.sm, { alignItems: 'center', gap: spacing.md }]}>
+            <Ionicons name="bicycle" size={34} color={colors.muted} />
+            <Text style={[styles.name, { textAlign: 'center' }]}>Own riders are switched off</Text>
+            <Text style={[styles.sub, { textAlign: 'center' }]}>Turn on "We deliver with our own riders" to add riders, assign deliveries and settle their cash.</Text>
+            {d.can_change ? (
+              <Pressable style={[styles.btn, { alignSelf: 'stretch' }]} onPress={() => post('own', { action: 'settings', own_riders: 1 })} disabled={busy === 'own'}>
+                {busy === 'own' ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.btnText}>Turn on own riders</Text>}
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: 60 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={colors.primary} />}
         >
+          {d.can_change ? (
+            <View style={[styles.card, styles.rowCard, shadow.sm]}>
+              <Text style={[styles.text, { flex: 1 }]}>We deliver with our own riders</Text>
+              <Switch value onValueChange={(v) => !v && post('own', { action: 'settings', own_riders: 0 })} trackColor={{ true: colors.primary }} />
+            </View>
+          ) : null}
           <View style={[styles.card, styles.rowCard, shadow.sm]}>
             <Text style={[styles.text, { flex: 1 }]}>Riders can pick open deliveries themselves</Text>
             <Switch value={!!d.settings?.self_pick} onValueChange={(v) => post('self', { action: 'settings', self_pick: v ? 1 : 0 })} trackColor={{ true: colors.primary }} />

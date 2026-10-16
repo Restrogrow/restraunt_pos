@@ -68,7 +68,7 @@ const db = (() => {
   const today = dayKey(now);
   const tomorrow = dayKey(new Date(now.getTime() + 86400000));
   return {
-    session: f.session.data,
+    session: { ...f.session.data, own_riders: true },
     orders,
     menuItems: f.menuItems,
     menus: f.menus,
@@ -525,8 +525,8 @@ function riderBoard(q) {
       rider_staff_id: t.rider_staff_id || null, rider_name: t.rider_name || null, via_qr: false };
   });
   r.list.forEach((x) => { x.active = dels.filter((d) => d.rider_staff_id === x.id).length; });
-  if (q.order_id) return ok({ riders: clone(r.list), delivery: dels.find((d) => String(d.id) === String(q.order_id)) || null });
-  return ok({ riders: clone(r.list), deliveries: dels, settings: { self_pick: r.selfPick }, waiting: dels.filter((d) => !d.rider_staff_id).length });
+  if (q.order_id) return ok({ enabled: true, riders: clone(r.list), delivery: dels.find((d) => String(d.id) === String(q.order_id)) || null });
+  return ok({ enabled: true, can_change: true, riders: clone(r.list), deliveries: dels, settings: { own_riders: true, self_pick: r.selfPick }, waiting: dels.filter((d) => !d.rider_staff_id).length });
 }
 
 function parseQuery(path) {

@@ -33,13 +33,19 @@ try {
     riderEnsure($conn);
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $settings = riderSettings($conn, $rid);
+        $canSet = ($_SESSION['user_type'] ?? '') !== 'staff' || in_array($_SESSION['role'] ?? '', ['Manager', 'Admin'], true);
+        if (!$settings['own_riders']) {
+            // own riders switched off: nothing to show but the switch (Settings › Delivery)
+            dispatchOut(['success' => true, 'enabled' => false, 'can_change' => $canSet, 'settings' => $settings, 'riders' => [], 'deliveries' => [], 'delivery' => null, 'waiting' => 0]);
+        }
         $riders = riderList($conn, $rid);
         if (isset($_GET['order_id'])) {
             $one = riderDeliveries($conn, $rid, ['order' => (int)$_GET['order_id']]);
-            dispatchOut(['success' => true, 'riders' => $riders, 'delivery' => $one[0] ?? null]);
+            dispatchOut(['success' => true, 'enabled' => true, 'riders' => $riders, 'delivery' => $one[0] ?? null]);
         }
         $active = riderDeliveries($conn, $rid, ['active' => true]);
-        dispatchOut(['success' => true, 'riders' => $riders, 'deliveries' => $active, 'settings' => riderSettings($conn, $rid),
+        dispatchOut(['success' => true, 'enabled' => true, 'can_change' => $canSet, 'riders' => $riders, 'deliveries' => $active, 'settings' => $settings,
             'waiting' => count(array_filter($active, fn($d) => !$d['rider_staff_id'] && !$d['via_qr']))]);
     }
 
@@ -61,8 +67,13 @@ try {
         dispatchOut(['success' => true, 'message' => 'Settled ' . number_format($sum, 2) . ' from ' . $n . ' deliver' . ($n > 1 ? 'ies' : 'y')]);
     }
     if ($action === 'settings') {
-        $conn->prepare('INSERT INTO rider_settings (restaurant_id, self_pick) VALUES (?, ?) ON DUPLICATE KEY UPDATE self_pick = VALUES(self_pick)')
-            ->execute([$rid, empty($in['self_pick']) ? 0 : 1]);
+        if (($_SESSION['user_type'] ?? '') === 'staff' && !in_array($_SESSION['role'] ?? '', ['Manager', 'Admin'], true)) {
+            dispatchOut(['success' => false, 'message' => 'Only the owner or a manager can change this.'], 403);
+        }
+        riderSaveSettings($conn, $rid, $in);
+        if (array_key_exists('own_riders', $in)) {
+            dispatchOut(['success' => true, 'message' => empty($in['own_riders']) ? 'Own riders switched off. Riders, rider staff and Assign rider are hidden.' : 'Own riders switched on. Add riders in Staff with the role Delivery rider.']);
+        }
         dispatchOut(['success' => true, 'message' => empty($in['self_pick']) ? 'Only you and managers assign deliveries now' : 'Riders can pick open deliveries themselves']);
     }
     dispatchOut(['success' => false, 'message' => 'Unknown action'], 400);

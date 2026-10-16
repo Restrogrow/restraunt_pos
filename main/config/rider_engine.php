@@ -51,17 +51,42 @@ if (!function_exists('riderEnsure')) {
         staffRolesEnsure($conn);
         $conn->exec("CREATE TABLE IF NOT EXISTS rider_settings (
             restaurant_id VARCHAR(10) PRIMARY KEY,
+            own_riders TINYINT NOT NULL DEFAULT 0,
             self_pick TINYINT NOT NULL DEFAULT 1,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // the restaurant's switch "We deliver with our own riders" (Settings › Delivery); off by default
+        try { $conn->exec('ALTER TABLE rider_settings ADD COLUMN own_riders TINYINT NOT NULL DEFAULT 0 AFTER restaurant_id'); } catch (PDOException $e) { /* already there */ }
     }
 
+    /** own_riders: the restaurant delivers with its own riders (everything here is off without it). */
     function riderSettings(PDO $conn, string $rid): array
     {
-        $st = $conn->prepare('SELECT self_pick FROM rider_settings WHERE restaurant_id = ?');
+        $st = $conn->prepare('SELECT own_riders, self_pick FROM rider_settings WHERE restaurant_id = ?');
         $st->execute([$rid]);
-        $v = $st->fetchColumn();
-        return ['self_pick' => $v === false ? true : (int)$v === 1];
+        $r = $st->fetch(PDO::FETCH_ASSOC);
+        return ['own_riders' => $r ? (int)$r['own_riders'] === 1 : false, 'self_pick' => $r ? (int)$r['self_pick'] === 1 : true];
+    }
+
+    /** Light check for screens that only need to know whether to show rider things (no table changes). */
+    function riderOwnRidersOn(PDO $conn, string $rid): bool
+    {
+        try {
+            $st = $conn->prepare('SELECT own_riders FROM rider_settings WHERE restaurant_id = ?');
+            $st->execute([$rid]);
+            return (int)$st->fetchColumn() === 1;
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    function riderSaveSettings(PDO $conn, string $rid, array $in): void
+    {
+        $cur = riderSettings($conn, $rid);
+        $own = array_key_exists('own_riders', $in) ? (empty($in['own_riders']) ? 0 : 1) : (int)$cur['own_riders'];
+        $self = array_key_exists('self_pick', $in) ? (empty($in['self_pick']) ? 0 : 1) : (int)$cur['self_pick'];
+        $conn->prepare('INSERT INTO rider_settings (restaurant_id, own_riders, self_pick) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE own_riders = VALUES(own_riders), self_pick = VALUES(self_pick)')
+            ->execute([$rid, $own, $self]);
     }
 
     function riderIsSession(): bool
@@ -176,6 +201,7 @@ if (!function_exists('riderEnsure')) {
                 $conn->commit();
                 return 'Rider removed from ' . $order['order_number'];
             }
+            if (!riderSettings($conn, $rid)['own_riders']) throw new Exception('Turn on "We deliver with our own riders" in Settings › Delivery first.');
             $s = $conn->prepare("SELECT id, member_name, phone FROM staff WHERE id = ? AND restaurant_id = ? AND role = 'Delivery' AND is_active = 1");
             $s->execute([$staffId, $rid]);
             $rider = $s->fetch(PDO::FETCH_ASSOC);
@@ -259,7 +285,9 @@ if (!function_exists('riderEnsure')) {
     /** A rider takes an open delivery themselves (when the restaurant allows it). */
     function riderClaim(PDO $conn, string $rid, int $orderId, int $staffId): string
     {
-        if (!riderSettings($conn, $rid)['self_pick']) throw new Exception('Your manager assigns the deliveries here.');
+        $set = riderSettings($conn, $rid);
+        if (!$set['own_riders']) throw new Exception('Your restaurant is not using its own riders right now.');
+        if (!$set['self_pick']) throw new Exception('Your manager assigns the deliveries here.');
         $open = array_filter(riderDeliveries($conn, $rid, ['open' => true, 'active' => true]), fn($d) => $d['id'] === $orderId);
         if (!$open) throw new Exception('Someone already took this delivery.');
         riderAssign($conn, $rid, $orderId, $staffId);

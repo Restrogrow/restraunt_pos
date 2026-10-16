@@ -86,6 +86,14 @@ function handleAddStaff($conn, $restaurant_id) {
         require_once __DIR__ . '/../config/staff_roles.php';
         staffRolesEnsure($conn);
     }
+    if ($role === 'Delivery') {
+        require_once __DIR__ . '/../config/rider_engine.php';
+        if (!riderOwnRidersOn($conn, (string)$restaurant_id)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Turn on "We deliver with our own riders" in Settings › Delivery first.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+    }
     
     // Validation
     if (empty($memberName)) {
@@ -161,6 +169,14 @@ function handleUpdateStaff($conn, $restaurant_id) {
         // these roles are added to the staff table the first time they're used (config/staff_roles.php)
         require_once __DIR__ . '/../config/staff_roles.php';
         staffRolesEnsure($conn);
+    }
+    if ($role === 'Delivery') {
+        require_once __DIR__ . '/../config/rider_engine.php';
+        if (!riderOwnRidersOn($conn, (string)$restaurant_id)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Turn on "We deliver with our own riders" in Settings › Delivery first.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
     }
     
     // Validation

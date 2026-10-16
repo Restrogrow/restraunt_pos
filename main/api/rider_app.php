@@ -32,7 +32,13 @@ require_once __DIR__ . '/../config/rider_engine.php';
 try {
     $conn = getConnection();
     riderEnsure($conn);
+    $ownOn = riderSettings($conn, $rid)['own_riders'];
 
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && !$ownOn) {
+        riderOut(['success' => true, 'enabled' => false, 'message' => 'Your restaurant is not using its own riders right now. Ask your manager.',
+            'me' => ['id' => $me, 'name' => $myName], 'self_pick' => false, 'restaurant' => ['name' => '', 'phone' => '', 'address' => '', 'currency' => '₹'],
+            'mine' => [], 'open' => [], 'done_today' => [], 'cash_in_hand' => 0, 'delivered_today' => 0]);
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $mine = riderDeliveries($conn, $rid, ['rider' => $me, 'active' => true]);
         $done = riderDeliveries($conn, $rid, ['rider' => $me, 'done_today' => true]);
@@ -43,7 +49,7 @@ try {
         $u = $conn->prepare('SELECT restaurant_name, phone, address, currency_symbol FROM users WHERE restaurant_id = ? LIMIT 1');
         $u->execute([$rid]);
         $rest = $u->fetch(PDO::FETCH_ASSOC) ?: [];
-        riderOut(['success' => true, 'me' => ['id' => $me, 'name' => $myName], 'self_pick' => $settings['self_pick'],
+        riderOut(['success' => true, 'enabled' => true, 'me' => ['id' => $me, 'name' => $myName], 'self_pick' => $settings['self_pick'],
             'restaurant' => ['name' => $rest['restaurant_name'] ?? '', 'phone' => $rest['phone'] ?? '', 'address' => $rest['address'] ?? '', 'currency' => ($rest['currency_symbol'] ?? '') ?: '₹'],
             'mine' => $mine, 'open' => $open, 'done_today' => $done, 'cash_in_hand' => round((float)$cash->fetchColumn(), 2),
             'delivered_today' => count($done)]);
@@ -53,6 +59,8 @@ try {
     if (!is_array($in)) $in = $_POST;
     $action = (string)($in['action'] ?? '');
     $orderId = (int)($in['order_id'] ?? 0);
+    // a delivery already under way can still be finished after the switch goes off
+    if (!$ownOn && $action !== 'step') riderOut(['success' => false, 'message' => 'Your restaurant is not using its own riders right now.'], 403);
 
     if ($action === 'step') {
         $st = $conn->prepare('SELECT * FROM delivery_tracking WHERE order_id = ? AND restaurant_id = ? AND rider_staff_id = ?');

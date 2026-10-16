@@ -165,6 +165,10 @@ try {
         'restaurant_logo' => $row['restaurant_logo'] ?? null,
         'business_qr_code_path' => $row['business_qr_code_path'] ?? null,
         'role' => $row['role'] ?? $_SESSION['role'] ?? 'Administrator',
+        'own_riders' => (function () use ($conn) {
+            require_once __DIR__ . '/../config/rider_engine.php';
+            return riderOwnRidersOn($conn, (string)$_SESSION['restaurant_id']);
+        })(),
         
         'subscription_status' => $row['subscription_status'] ?? null,
         'trial_end_date' => $row['trial_end_date'] ?? null,
