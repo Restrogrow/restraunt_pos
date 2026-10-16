@@ -144,15 +144,28 @@ try {
 
       $where = '';
       $params = [];
+      $conds = [];
       if ($q !== '') {
         // Native prepared statements (PDO::ATTR_EMULATE_PREPARES is false)
         // don't allow the same named placeholder to repeat, so each LIKE
         // needs its own :qN bound to the same value.
-        $where = "WHERE username LIKE :q1 OR restaurant_name LIKE :q2 OR restaurant_id LIKE :q3";
+        $conds[] = "(username LIKE :q1 OR restaurant_name LIKE :q2 OR restaurant_id LIKE :q3)";
         $params[':q1'] = "%$q%";
         $params[':q2'] = "%$q%";
         $params[':q3'] = "%$q%";
       }
+      // Optional plan filter (Super Admin app): paying, trial, ending (within 7 days), expired, disabled
+      $planEnd = "COALESCE(renewal_date, trial_end_date, DATE_ADD(DATE(created_at), INTERVAL 30 DAY))";
+      $statusSql = [
+        'paying'   => "is_active = 1 AND subscription_status = 'active' AND $planEnd >= CURDATE()",
+        'trial'    => "is_active = 1 AND subscription_status = 'trial' AND $planEnd >= CURDATE()",
+        'ending'   => "is_active = 1 AND subscription_status <> 'disabled' AND $planEnd BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
+        'expired'  => "is_active = 1 AND subscription_status <> 'disabled' AND (subscription_status = 'expired' OR $planEnd < CURDATE())",
+        'disabled' => "(is_active = 0 OR subscription_status = 'disabled')",
+      ];
+      $status = $_GET['status'] ?? '';
+      if (isset($statusSql[$status])) $conds[] = '(' . $statusSql[$status] . ')';
+      if ($conds) $where = 'WHERE ' . implode(' AND ', $conds);
 
 
 
@@ -211,7 +224,13 @@ try {
       }
       unset($row);
 
-      echo json_encode(['success' => true, 'restaurants' => $restaurants, 'total' => $total, 'page' => $page, 'limit' => $limit]);
+      $out = ['success' => true, 'restaurants' => $restaurants, 'total' => $total, 'page' => $page, 'limit' => $limit];
+      if (!empty($_GET['with_counts'])) {
+        $sel = ['COUNT(*) AS `all`'];
+        foreach ($statusSql as $k => $sql) $sel[] = "COALESCE(SUM($sql), 0) AS `$k`";
+        $out['status_counts'] = array_map('intval', $conn->query('SELECT ' . implode(', ', $sel) . ' FROM users')->fetch(PDO::FETCH_ASSOC));
+      }
+      echo json_encode($out);
       break;
 
     case 'createRestaurant':

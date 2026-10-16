@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "RestroGrow Super Admin",
+    "slug": "restrogrow-superadmin",
+    "scheme": "restrogrowadmin",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.restrogrow.superadmin",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Used to unlock the Super Admin app when App Lock is on."
+      }
+    },
+    "android": {
+      "package": "com.restrogrow.superadmin",
+      "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "backgroundColor": "#1D1B26",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1D1B33",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 150
+        }
+      ],
+      "expo-web-browser",
+      "expo-local-authentication"
+    ]
+  }
+}
