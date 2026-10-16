@@ -109,6 +109,20 @@ try {
         }
     }
     
+    // The public demo restaurant (login demo / demo, /demo): visitors can try everything, but not
+    // lock others out, swap payment keys, upload files or rename it (the website URL comes from the
+    // name). Everything else they change is undone by the next demo reset.
+    require_once __DIR__ . '/../config/demo_restaurant.php';
+    if (isDemoRestaurantSession()) {
+        $demoBlocked = ['updateProfile', 'changePassword', 'updatePaymentGateway', 'updateSystemSettings',
+                        'uploadRestaurantLogo', 'uploadBusinessQR', 'removeBusinessQR'];
+        if (in_array($action, $demoBlocked, true)) {
+            echo json_encode(['success' => false, 'message' => 'This is turned off in the demo restaurant.']);
+            exit();
+        }
+        if ($action === 'updateRestaurantSettings') $_POST['restaurant_name'] = DEMO_RESTAURANT_NAME;
+    }
+
     switch ($action) {
         case 'login':
             handleLogin();

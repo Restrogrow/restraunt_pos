@@ -2,6 +2,8 @@
 
 **Restaurant ordering, POS and growth platform.** Every restaurant gets its own ordering website and an admin dashboard for the menu, orders, POS, kitchen, tables, delivery, offers, loyalty, WhatsApp and marketing, plus apps for waiters, chefs, managers and riders. Many restaurants run on one installation; a superadmin manages them.
 
+> **Team only.** This README and everything in `docs/` are private: the repository is private and the live website refuses to serve `.md` files and the `docs/` folder. Credentials, emails and setup status are in the **[admin handbook](docs/ADMIN_HANDBOOK.md)** (also at Super Admin › Tools › Admin handbook).
+
 **Live:** [restrogrow.com](https://restrogrow.com) · **User guide:** [restrogrow.com/main/views/user-guide.html](https://restrogrow.com/main/views/user-guide.html) · **WhatsApp partner:** [repeatgrow.com](https://repeatgrow.com)
 
 <p align="center">
@@ -13,6 +15,7 @@
 ## Contents
 
 - [What's new](#whats-new)
+- [Demo restaurant (team only)](#demo-restaurant-team-only)
 - [Screenshots](#screenshots)
 - [Features](#features)
 - [Inventory: stock, recipes, purchase orders](#inventory)
@@ -27,6 +30,17 @@
 ---
 
 ## What's new
+
+### 16 October 2026
+
+| | Change | What it means |
+|---|---|---|
+| **Demo restaurant** | Rebuilt from scratch | **Spice Garden Indiranagar** (`RESSGI002`, login `demo` / `demo`) is a full, realistic restaurant: 54 dishes in 9 menus with photos, descriptions, sizes and veg / non-veg subcategories, breakfast and thali hours, bestsellers, today's specials, 15 tables in 3 areas, 5 staff, 40 customers, about 1,200 orders over six weeks, live orders waiting / cooking / ready, waiter calls, bookings and coupons. One builder for local, live and the reset cron: `main/config/demo_restaurant.php`. [More below](#demo-restaurant-team-only). |
+| **`/demo`** | One-tap demo page | Private page (not linked anywhere public, `noindex`) with buttons for the owner dashboard, manager / waiter / kitchen screens, the customer website and the app demo. `/demo?go=admin` logs straight in. |
+| **Demo safety** | The shared account can't break things | No password / login / email change, payment keys, currency, uploads or rename for the demo account; WhatsApp never sends from it. Super Admin › Tools › Demo restaurant resets it; `main/cron/reset_demo_restaurant.php` does it every 3 hours. |
+| **Super Admin** | New **Tools** group | **Admin handbook** (reads `docs/ADMIN_HANDBOOK.md` and every other doc) and **Demo restaurant** (create, reset, remove, logins and links). |
+| **Private docs** | `.htaccess` | `README.md`, `docs/`, every `.md`, `.sql` and `.log` file, `package.json` and the test setup are no longer served by the website (they were public at restrogrow.com/README.md). |
+| **Partner app 1.1.3** | Cleaner and complete | POS with photo dish tiles and ADD buttons, compact search everywhere, Menu as one tidy list, compact More screen with quick links to settings; the **Bluetooth printer stays connected** (reconnects when it drops or the app comes back, retries a failed print, shows Connected / Not connected); restaurant **details, business hours, ordering, delivery, tax and social links** are editable in the app (`main/api/app_settings.php` saves only the fields sent, owner or branch admin only). |
 
 ### 14 October 2026
 
@@ -261,10 +275,26 @@ Menu › Inventory has eight tabs: **Overview, Stock, Recipes, Purchase orders, 
 
 ---
 
+## Demo restaurant (team only)
+
+**Spice Garden Indiranagar** is the restaurant we show to people. Everything about it, including the logins, what's switched off and how it's reset, is in the [admin handbook](docs/ADMIN_HANDBOOK.md#2-the-demo-restaurant).
+
+| | |
+|---|---|
+| One-tap page | `https://restrogrow.com/demo` (private link, share only when pitching) · local `http://localhost/menuwebsite/demo/` |
+| Owner login | `demo` / `demo` |
+| Staff logins | `manager.demo@`, `waiter.demo@`, `waiter2.demo@`, `chef.demo@`, `chef2.demo@spicegarden.test`, password `demo` |
+| Customer website | `/spice-garden-indiranagar` (coupons `WELCOME50`, `SPICE20`, `FEAST100`, `WEEKEND15`) |
+| Build or reset | Live: Super Admin › Tools › Demo restaurant › **Create / Reset demo**. Local: `php main/database/seed_demo_restaurant.php`. Cron: `main/cron/reset_demo_restaurant.php` every 3 hours. |
+| Code and data | `main/config/demo_restaurant.php`; photos in `main/assets/demo_restaurant/` (credits: `demo-credits.txt`, must stay public) |
+
+---
+
 ## Guides and documents
 
 | Page | What it shows |
 |---|---|
+| **[Admin handbook](docs/ADMIN_HANDBOOK.md)** (team only) | Links, the demo restaurant, accounts and roles, our email addresses, the Super Admin panel, every integration with what's set up and what's missing, deploy and cron jobs, feature status, the Partner app and open items. |
 | **[User guide](https://restrogrow.com/main/views/user-guide.html)** ([source](main/views/user-guide.html)) | Every feature with screenshots and steps, a **What's new** section and a quick-start checklist. Start here. |
 | [Website layout gallery](https://restrogrow.com/main/views/layout-gallery.html) | All customer-website designs side by side. |
 | [Table map preview](https://restrogrow.com/table-map-preview.html) | The live floor-plan view. |
@@ -296,7 +326,10 @@ No Composer step is needed. On a local computer, by design:
 - WhatsApp messages are prepared and logged but never sent, and RepeatGrow is only called if it runs on localhost;
 - the map falls back to OpenStreetMap without a Google key.
 
-Demo data for the loyalty features: `php main/database/seed_loyalty_demo.php [RESTAURANT_ID]` (default `RESSGI002`).
+Demo data:
+- `php main/database/seed_demo_restaurant.php`: the demo restaurant **Spice Garden Indiranagar** (`demo` / `demo`, one-tap at `/demo/`).
+- `php main/database/seed_multibranch_demo.php`: the Spice Garden chain (owner `sg_owner` / `Owner@123`, branches Koramangala and HSR Layout, plus the demo restaurant as its Indiranagar branch).
+- `php main/database/seed_loyalty_demo.php [RESTAURANT_ID]` (default `RESSGI002`): loyalty, VIP, games and phone card on top.
 
 ---
 
@@ -340,6 +373,7 @@ hPanel › **Advanced › Cron Jobs** › type **Custom**. `<HOME>` is the folde
 | Gifts for restaurants without WhatsApp | `/usr/bin/php <HOME>/main/cron/loyalty_autopilot.php` | Daily, e.g. 9 am (`0 9 * * *`) |
 | Scheduled website orders | `/usr/bin/php <HOME>/main/cron/activate_scheduled_orders.php` | Every 5 minutes |
 | Meal-subscription deliveries | `/usr/bin/php <HOME>/main/cron/generate_subscription_deliveries.php` | Daily, e.g. 5 am (`0 5 * * *`) |
+| Rebuild the demo restaurant (undo visitors' changes, fresh live orders) | `/usr/bin/php <HOME>/main/cron/reset_demo_restaurant.php` | Every 3 hours (`0 */3 * * *`) |
 
 Each run writes one line, which hPanel shows under the job's output. They can also run as a URL (`…/whatsapp_dispatch.php?key=…`) once `CRON_SECRET_KEY` is set.
 

@@ -71,6 +71,11 @@ require_once __DIR__ . '/../config/countries.php';
     .menu-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green);border-radius:0 3px 3px 0;}
     .menu-item .icon{font-size:20px;flex-shrink:0;}
     .menu-item .text{flex:1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    /* plain links to separate pages (not in-page tabs, so the tab switcher ignores them) */
+    .menu-link{padding:12px 20px;display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none;transition:background .2s;}
+    .menu-link:hover{background:rgba(255,255,255,.1);}
+    .menu-link .icon{font-size:20px;flex-shrink:0;}
+    .menu-link .text{flex:1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .sidebar-footer{padding:20px;border-top:1px solid rgba(255,255,255,.1);margin-top:auto;}
     .badge-new{display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:#10b981;color:#fff;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle;margin-left:4px;}
     .main-content{flex:1;margin-left:260px;padding:24px;min-height:100vh;transition:margin-left .3s ease;}
@@ -281,6 +286,16 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">bug_report</span>
           <span class="text">Error monitor <span id="saErrorBadge" class="badge-new" style="display:none;">0</span></span>
         </div>
+
+        <div class="sa-nav-h">Tools</div>
+        <a class="menu-link" href="handbook.php">
+          <span class="material-symbols-rounded icon">menu_book</span>
+          <span class="text">Admin handbook</span>
+        </a>
+        <a class="menu-link" href="demo_restaurant.php">
+          <span class="material-symbols-rounded icon">storefront</span>
+          <span class="text">Demo restaurant</span>
+        </a>
       </div>
       <div class="sa-user">
         <div class="sa-user-row"><span class="sa-avatar"><?php echo htmlspecialchars(strtoupper(substr($_SESSION['superadmin_username'] ?? 'S', 0, 1))); ?></span><span><?php echo htmlspecialchars($_SESSION['superadmin_username'] ?? ''); ?><small>Superadmin</small></span></div>

@@ -1,6 +1,16 @@
 # Basic Configuration
 RewriteEngine On
 
+# Internal files are for the team, not the public website: README, docs and notes (the admin
+# handbook lists emails and setup details), database dumps, logs and the test setup.
+<FilesMatch "\.(md|sql|log)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "^(package(-lock)?\.json|playwright\.config\.js)$">
+    Require all denied
+</FilesMatch>
+RewriteRule ^(docs|tests|scripts)(/|$) - [F,L]
+
 # Allow direct access to admin/api scripts (main/ directory)
 RewriteRule ^main/ - [L]
 

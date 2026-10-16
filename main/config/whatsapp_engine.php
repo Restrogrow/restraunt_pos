@@ -37,6 +37,7 @@ require_once __DIR__ . '/repeatgrow_whatsapp.php';
 require_once __DIR__ . '/loyalty_engine.php';
 require_once __DIR__ . '/loyalty_autopilot.php';
 require_once __DIR__ . '/repeatgrow_connect.php';
+require_once __DIR__ . '/demo_restaurant.php';
 
 if (!function_exists('ensureWhatsappSchema')) {
 
@@ -193,7 +194,8 @@ if (!function_exists('ensureWhatsappSchema')) {
                 'last_dispatch' => $r['last_dispatch'] ?? null,
                 'connected_via' => (string)($r['connected_via'] ?? ''), 'rg_phone' => (string)($r['rg_phone'] ?? ''),
                 'connected_at' => $r['connected_at'] ?? null, 'templates_synced_at' => $r['templates_synced_at'] ?? null,
-                'lost_at' => $r['lost_at'] ?? null, 'templates_retry' => (int)($r['templates_retry'] ?? 0)];
+                'lost_at' => $r['lost_at'] ?? null, 'templates_retry' => (int)($r['templates_retry'] ?? 0),
+                'is_demo' => $rid === DEMO_RESTAURANT_ID];
     }
 
     /** Template statuses are checked at most every 10 minutes (and right away after a rate limit cleared them). */
@@ -359,6 +361,8 @@ if (!function_exists('ensureWhatsappSchema')) {
      * reason is 'unauthorized' (401), 'rate_limited' (429), 'opted_out' (customer replied STOP) or 'network'.
      */
     function waSend(array $s, string $phone, ?string $templateName, string $lang, array $params, string $text): array {
+        // the public demo restaurant never sends real messages (anyone can log in to it)
+        if (!empty($s['is_demo'])) return [true, 'demo-' . substr(md5($phone . microtime(true)), 0, 10), null, null];
         $c = waConnection($s);
         // local computer: nothing is sent, except to a local stand-in RepeatGrow
         if (waDryRun() && !($c && waLocalUrl($c['url']))) return [true, 'test-' . substr(md5($phone . microtime(true)), 0, 10), null, null];

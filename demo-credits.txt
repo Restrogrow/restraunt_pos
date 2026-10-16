@@ -1,4 +1,4 @@
-RestroGrow demo restaurant ("Spice Garden Demo") - photo credits
+RestroGrow demo restaurant ("Spice Garden Indiranagar") - photo credits
 All photos are from Wikimedia Commons, resized for the web (files in /main/assets/demo_restaurant/). Licences as listed.
 
 paneer-tikka.jpg
@@ -121,3 +121,163 @@ logo.png
 
 cat-starters.webp, cat-main-course.webp, cat-breads.webp, cat-beverages.webp, cat-desserts.webp
   Category icons drawn for RestroGrow (original artwork, no third-party content).
+
+buttermilk.jpg
+  "Masala Buttermilk.JPG" by Amarnujju
+  Licence: CC BY 3.0 (https://creativecommons.org/licenses/by/3.0)
+  Source: https://commons.wikimedia.org/wiki/File:Masala_Buttermilk.JPG
+
+cheese-naan.jpg
+  "Cheese naan 20260427 - 01.jpg" by Wiki Asmah
+  Licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Cheese_naan_20260427_-_01.jpg
+
+chicken-tikka.jpg
+  "Chicken tikka in Araku Valley, Andhra Pradesh 01.jpg" by Satdeep Gill
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Chicken_tikka_in_Araku_Valley,_Andhra_Pradesh_01.jpg
+
+chicken-tikka-masala.jpg
+  "Chicken Tikka Masala on White Plate with Spoon.jpg" by Lance Vanlewen
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Chicken_Tikka_Masala_on_White_Plate_with_Spoon.jpg
+
+chilli-paneer.jpg
+  "Paneer Chilli, Bengaluru (2026) 02.jpg" by Gpkp
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Paneer_Chilli,_Bengaluru_(2026)_02.jpg
+
+chole.jpg
+  "Chana masala gravy.JPG" by Seena.ge
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Chana_masala_gravy.JPG
+
+curd-rice.jpg
+  "Curd Rice.jpg" by Sudharshan Shanmugasundaram
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Curd_Rice.jpg
+
+dal-tadka.jpg
+  "Dal Tadka-Delhi.jpg" by AugustineKajur
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Dal_Tadka-Delhi.jpg
+
+egg-curry.jpg
+  "Spicy Anda Curry.jpg" by https://onlybestrecipes.com/egg-curry-recipeegg-curry-recipe/
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Spicy_Anda_Curry.jpg
+
+filter-coffee.jpg
+  "Masala Tea and South Indian Filter Coffee.jpg" by Alpha from Melbourne, Australia
+  Licence: CC BY-SA 2.0 (https://creativecommons.org/licenses/by-sa/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Masala_Tea_and_South_Indian_Filter_Coffee.jpg
+
+fish-amritsari.jpg
+  "Fish Pakora - Kolkata 2013-10-11 3292.JPG" by Biswarup Ganguly
+  Licence: CC BY 3.0 (https://creativecommons.org/licenses/by/3.0)
+  Source: https://commons.wikimedia.org/wiki/File:Fish_Pakora_-_Kolkata_2013-10-11_3292.JPG
+
+fish-curry.jpg
+  "Meen curry 2.JPG" by Kalakki at Malayalam Wikipedia
+  Licence: CC BY-SA 2.5 (https://creativecommons.org/licenses/by-sa/2.5)
+  Source: https://commons.wikimedia.org/wiki/File:Meen_curry_2.JPG
+
+gajar-halwa.jpg
+  "Gajjar ka halwa (carrot halwa).JPG" by Prerna Jaddwani
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Gajjar_ka_halwa_(carrot_halwa).JPG
+
+hara-bhara-kebab.jpg
+  "Hara bhara kabab-.JPG" by Kanikatwl
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Hara_bhara_kabab-.JPG
+
+idli-vada.jpg
+  "South Indian Breakast Idli Vada Sambar Chutney.JPG" by Saind147
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:South_Indian_Breakast_Idli_Vada_Sambar_Chutney.JPG
+
+jeera-rice.jpg
+  "Jeera Rice (only).jpg" by JVRKPRASAD
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Jeera_Rice_(only).jpg
+
+kadai-chicken.jpg
+  "Chicken Karahi in Pakistan.jpg" by Kskhh
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Chicken_Karahi_in_Pakistan.jpg
+
+kadai-paneer.jpg
+  "Kadai Paneer (15913018051).jpg" by Yummy O Yummy
+  Licence: CC BY 2.0 (https://creativecommons.org/licenses/by/2.0)
+  Source: https://commons.wikimedia.org/wiki/File:Kadai_Paneer_(15913018051).jpg
+
+kulcha.jpg
+  "Amritsari Kulcha served with chhole.jpg" by Ravi Dwivedi
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Amritsari_Kulcha_served_with_chhole.jpg
+
+malai-kofta.jpg
+  "MalaiKofta.jpg" by Monali.mishra
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:MalaiKofta.jpg
+
+masala-dosa.jpg
+  "Masala dosa 01.jpg" by Marajozkee
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Masala_dosa_01.jpg
+
+chicken-clear-soup.jpg
+  "Chicken Soup With Kreplach.jpg" by Yoninah
+  Licence: CC BY 2.5 (https://creativecommons.org/licenses/by/2.5)
+  Source: https://commons.wikimedia.org/wiki/File:Chicken_Soup_With_Kreplach.jpg
+
+mutton-biryani.jpg
+  "A home made plate of mutton biryani served with chicken kassa cooked in the bengali style.jpg" by Subhrajyoti07
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:A_home_made_plate_of_mutton_biryani_served_with_chicken_kassa_cooked_in_the_bengali_style.jpg
+
+nonveg-thali.jpg
+  "Non Veg Thali - Gandhi Nagar Jammu - Jammu & Kashmir - 01.jpg" by Krrisd
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Non_Veg_Thali_-_Gandhi_Nagar_Jammu_-_Jammu_%26_Kashmir_-_01.jpg
+
+palak-paneer.jpg
+  "Palak Paneer (Cottage cheese in spinach gravy).jpg" by DreamyFlutura11
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Palak_Paneer_(Cottage_cheese_in_spinach_gravy).jpg
+
+phirni.jpg
+  "Phirni at Cool Point, Chandni Chawk.jpg" by Anwesha394
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Phirni_at_Cool_Point,_Chandni_Chawk.jpg
+
+poha.jpg
+  "Poha - Great Indian Breakfast.JPG" by Darshandkt
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Poha_-_Great_Indian_Breakfast.JPG
+
+rajma-chawal.jpg
+  "Rajma Chawal from India(1).jpg" by Barthateslisa
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Rajma_Chawal_from_India(1).jpg
+
+samosa.jpg
+  "Vegetarian Samosa.jpg" by Ralbahitha
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Vegetarian_Samosa.jpg
+
+seekh-kebab.jpg
+  "Seekh Kabab 2.JPG" by Miansari66
+  Licence: CC0 (http://creativecommons.org/publicdomain/zero/1.0/deed.en)
+  Source: https://commons.wikimedia.org/wiki/File:Seekh_Kabab_2.JPG
+
+tomato-shorba.jpg
+  "Tomato soup, Turkish style.jpg" by E4024
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Tomato_soup,_Turkish_style.jpg
+
+veg-thali.jpg
+  "Vegetarian thali-MB47.jpg" by Rajeeb Dutta
+  Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)
+  Source: https://commons.wikimedia.org/wiki/File:Vegetarian_thali-MB47.jpg

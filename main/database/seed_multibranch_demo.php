@@ -7,6 +7,8 @@
  * Creates a 3-branch chain ("Spice Garden") with menus, tables, staff,
  * customers and ~2 weeks of orders, plus a multi-branch owner login that
  * lands on views/branches.php and can switch between the branches.
+ * The Indiranagar branch is the public demo restaurant (login demo / demo),
+ * built by config/demo_restaurant.php and linked to the chain here.
  *
  * Re-runnable: it first removes only the demo rows it created (the fixed
  * restaurant IDs / usernames below), then inserts fresh data.
@@ -14,10 +16,11 @@
  * Logins (all created by this script):
  *   Multi-branch owner : sg_owner        / Owner@123
  *   Branch admins      : sg_koramangala  / Branch@123
- *                        sg_indiranagar  / Branch@123
+ *                        demo            / demo   (Indiranagar, the demo restaurant)
  *                        sg_hsr          / Branch@123
  *   Staff (per branch) : <role>.<code>@spicegarden.test / Staff@123
- *                        role = manager | waiter | chef, code = kor | ind | hsr
+ *                        role = manager | waiter | chef, code = kor | hsr
+ *                        Indiranagar staff: <role>.demo@spicegarden.test / demo
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -40,8 +43,6 @@ $OWNER = ['username' => 'sg_owner', 'password' => 'Owner@123', 'display' => 'Spi
 $BRANCHES = [
     ['id' => 'RESSGK001', 'code' => 'kor', 'user' => 'sg_koramangala', 'name' => 'Spice Garden Koramangala',
      'label' => 'Koramangala', 'phone' => '9800000001', 'address' => '80 Feet Rd, Koramangala, Bengaluru', 'scale' => 1.3],
-    ['id' => 'RESSGI002', 'code' => 'ind', 'user' => 'sg_indiranagar', 'name' => 'Spice Garden Indiranagar',
-     'label' => 'Indiranagar', 'phone' => '9800000002', 'address' => '100 Feet Rd, Indiranagar, Bengaluru', 'scale' => 1.0],
     ['id' => 'RESSGH003', 'code' => 'hsr', 'user' => 'sg_hsr', 'name' => 'Spice Garden HSR Layout',
      'label' => 'HSR Layout', 'phone' => '9800000003', 'address' => '27th Main, HSR Layout, Bengaluru', 'scale' => 0.7],
 ];
@@ -306,12 +307,25 @@ try {
     exit(1);
 }
 
+// Indiranagar: the full demo restaurant (config/demo_restaurant.php), linked to the chain owner
+require_once __DIR__ . '/../config/demo_restaurant.php';
+try {
+    $demo = resetDemoRestaurant($pdo, __DIR__ . '/../assets/demo_restaurant', 'http://localhost/menuwebsite/main');
+    $pdo->prepare('DELETE FROM branch_restaurant_links WHERE restaurant_id = ?')->execute([DEMO_RESTAURANT_ID]);
+    $pdo->prepare('INSERT INTO branch_restaurant_links (branch_admin_id, restaurant_id, label) VALUES (?, ?, ?)')
+        ->execute([$ownerId, DEMO_RESTAURANT_ID, 'Indiranagar']);
+    $summary[] = sprintf("  %-26s %s  %3d orders, today ₹%s  (demo restaurant)", DEMO_RESTAURANT_NAME, DEMO_RESTAURANT_ID, $demo['orders'], number_format($demo['today_sales'], 2));
+} catch (Throwable $e) {
+    fwrite(STDERR, 'Demo restaurant (Indiranagar) failed: ' . $e->getMessage() . "\n");
+}
+
 echo "Multi-branch demo data created:\n" . implode("\n", $summary) . "\n\n";
 echo "Logins (http://localhost/menuwebsite/main/admin/login.php):\n";
 echo "  Multi-branch owner : {$OWNER['username']} / {$OWNER['password']}\n";
 foreach ($BRANCHES as $b) {
     echo "  Branch admin       : {$b['user']} / $BRANCH_PASSWORD   ({$b['name']})\n";
 }
+echo "  Branch admin       : " . DEMO_USERNAME . ' / ' . DEMO_PASSWORD . "   (" . DEMO_RESTAURANT_NAME . ", the demo restaurant)\n";
 foreach ($BRANCHES as $b) {
     foreach (['manager', 'waiter', 'chef'] as $r) {
         echo "  Staff              : $r.{$b['code']}@spicegarden.test / $STAFF_PASSWORD\n";

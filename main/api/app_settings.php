@@ -133,6 +133,10 @@ try {
         exit;
     }
 
+    // the demo restaurant's name is its website address, so visitors can't change it
+    require_once __DIR__ . '/../config/demo_restaurant.php';
+    if (isDemoRestaurantSession()) unset($_POST['restaurant_name']);
+
     $sets = [];
     $vals = [];
     foreach ($fields as $f => $type) {

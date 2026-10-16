@@ -34,18 +34,25 @@
 
 ```bash
 # 1. Clone to XAMPP htdocs
-# 2. Import main/database/full_database_dump.sql into MySQL
-# 3. Install PHP deps
-php composer.phar install
-# 4. Configure
+# 2. Import main/database/full_database_dump.sql into MySQL (UTF-16: convert to UTF-8 first),
+#    then run main/database/local_schema_upgrade.sql
+# 3. Configure (no Composer: there are no PHP dependencies to install)
 cp main/.env.example main/.env
-# 5. Generate VAPID keys (for push notifications)
-php main/admin/generate_vapid.php
+# 4. Demo data
+php main/database/seed_demo_restaurant.php      # Spice Garden Indiranagar, demo / demo
+php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner / Owner@123)
 ```
 
 - **Local URLs**: Customer: `http://localhost/menuwebsite/{restaurant-slug}` — Admin: `http://localhost/menuwebsite/main/admin/login.php`
 - `.env` is loaded by `main/config/env_loader.php`. `.env.local` overrides `.env` (both gitignored).
 - Required env vars: DB credentials, PhonePe config, Google Maps API key, Google Gemini API key, SMTP config.
+- Team handbook (accounts, emails, integrations status, crons): `docs/ADMIN_HANDBOOK.md`. README and `docs/` are private: the root `.htaccess` refuses `.md` files and `docs/`.
+
+## Demo restaurant
+
+- **Spice Garden Indiranagar** (`RESSGI002`, login `demo` / `demo`, one-tap at `/demo/`). One builder for everything: `main/config/demo_restaurant.php` (`resetDemoRestaurant()`), used by `main/database/seed_demo_restaurant.php`, Super Admin › Tools › Demo restaurant and `main/cron/reset_demo_restaurant.php`.
+- `isDemoRestaurantSession()` guards the shared account: `admin/auth.php` blocks password / profile / payment-gateway / system-settings / upload actions and keeps the name (it's the website slug); `api/app_settings.php` ignores renames; `waSend()` never sends for it.
+- New features that send messages, charge money or upload files should check `isDemoRestaurantSession()` too.
 
 ## Auth
 
@@ -69,7 +76,7 @@ php main/admin/generate_vapid.php
 
 ## Push notifications
 
-- VAPID-based via `minishlink/web-push` Composer package.
+- VAPID-based, sent with PHP's own OpenSSL (`main/config/web_push.php`); keys are created into `push_vapid` when `.env` has none.
 - Requires HTTPS for service worker registration.
 - Subscriptions stored in `push_subscriptions` table.
 - Admin opt-in prompt shown on login.
