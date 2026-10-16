@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRef, useState } from 'react';
-import { Animated, FlatList, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PressableScale from '../components/ui/PressableScale';
 import { colors, font, radius, shadow, spacing } from '../theme';
@@ -91,12 +91,7 @@ export default function WelcomeScreen({ onDone }) {
   return (
     <View style={[styles.fill, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.top}>
-        <View style={styles.brand}>
-          <View style={styles.brandMark}>
-            <Ionicons name="restaurant" size={15} color="#fff" />
-          </View>
-          <Text style={styles.brandText}>Restrogrow</Text>
-        </View>
+        <Image source={require('../assets/logo-wordmark.png')} style={styles.logo} resizeMode="contain" accessibilityLabel="RestroGrow" />
         {!last ? (
           <PressableScale onPress={finish} hitSlop={12} accessibilityLabel="Skip">
             <Text style={styles.skip}>Skip</Text>
@@ -156,16 +151,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandMark: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandText: { fontFamily: font.bold, fontSize: 17, color: colors.ink },
+  logo: { width: 130, height: 24 }, // the wordmark is 1000 × 184
   skip: { fontFamily: font.semiBold, fontSize: 14.5, color: colors.muted, paddingHorizontal: 4 },
   slide: {
     flex: 1,

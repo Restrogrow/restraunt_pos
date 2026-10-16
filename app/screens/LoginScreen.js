@@ -3,6 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,12 +13,16 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { DEMO } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
 
 const RESEND_COOLDOWN_SECONDS = 60;
+const LOGO = require('../assets/logo-wordmark.png'); // 1000 × 184
+const PREVIEW = require('../assets/login-preview.jpg'); // the app's Home screen, 780 × 1100
+const NATIVE_DRIVER = Platform.OS !== 'web';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -36,6 +42,18 @@ export default function LoginScreen() {
   const [otpCode, setOtpCode] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownTimer = useRef(null);
+
+  // the app preview only where there's room for it above the form
+  const { height } = useWindowDimensions();
+  const showPreview = height >= 700;
+
+  // gentle entrance: logo and preview fade in, the form slides up
+  const enter = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enter, { toValue: 1, duration: 650, useNativeDriver: NATIVE_DRIVER }).start();
+  }, [enter]);
+  const heroAnim = { opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] };
+  const cardAnim = { transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [60, 0] }) }] };
 
   useEffect(() => {
     return () => {
@@ -124,19 +142,23 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.hero}>
-            <View style={styles.logoMark}>
-              <Ionicons name="restaurant" size={26} color="#fff" />
+          <Animated.View style={[styles.hero, heroAnim]}>
+            <View style={[styles.logoPill, shadow.md]}>
+              <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="RestroGrow" />
             </View>
-            <Text style={styles.brand}>Restrogrow</Text>
             <Text style={styles.tagline}>Run your restaurant from anywhere</Text>
-          </View>
+            {showPreview ? (
+              <View style={[styles.preview, shadow.lg]}>
+                <Image source={PREVIEW} style={styles.previewImage} resizeMode="cover" />
+              </View>
+            ) : null}
+          </Animated.View>
 
-          <View style={[styles.card, shadow.lg]}>
+          <Animated.View style={[styles.card, shadow.lg, cardAnim, showPreview && styles.cardOverPreview]}>
             {!otpRequired ? (
               <>
-                <Text style={styles.welcome}>{DEMO ? 'Try the app' : 'Welcome back'}</Text>
-                <Text style={styles.subtitle}>{DEMO ? 'A sample restaurant with real-looking orders' : "Log in to manage today's orders"}</Text>
+                <Text style={styles.welcome}>{DEMO ? 'Try the app' : 'Log in'}</Text>
+                <Text style={styles.subtitle}>{DEMO ? 'A sample restaurant with real-looking orders' : 'Use the same login as your RestroGrow dashboard'}</Text>
                 {DEMO ? (
                   <View style={styles.demoNote}>
                     <Ionicons name="sparkles" size={16} color={colors.primary} />
@@ -242,7 +264,7 @@ export default function LoginScreen() {
                 </>
               )}
             </Pressable>
-          </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -261,25 +283,42 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     paddingHorizontal: spacing.xl,
   },
-  logoMark: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
+  logoPill: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
   },
-  brand: {
-    fontFamily: font.bold,
-    fontSize: 26,
-    color: '#fff',
+  logo: {
+    width: 156,
+    height: 29, // keeps the wordmark's 1000 × 184 shape
   },
   tagline: {
-    fontFamily: font.regular,
+    fontFamily: font.medium,
     fontSize: 13.5,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 4,
+    color: 'rgba(255,255,255,0.92)',
+    marginTop: spacing.md,
+  },
+  // the Home screen in a phone-like frame, tucked behind the top of the login card
+  preview: {
+    width: 210,
+    height: 270,
+    marginTop: spacing.xl,
+    marginBottom: -84,
+    padding: 6,
+    borderRadius: 30,
+    backgroundColor: '#1D1B26',
+    overflow: 'hidden',
+  },
+  previewImage: {
+    width: 198,
+    height: 279, // 780 × 1100 scaled to the frame's inner width
+    borderRadius: 24,
+  },
+  cardOverPreview: {
+    paddingTop: spacing.xl,
+    zIndex: 2,
+    elevation: 24, // above the preview's shadow on Android
   },
   card: {
     backgroundColor: colors.surface,

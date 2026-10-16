@@ -2,7 +2,7 @@
   "expo": {
     "name": "Restrogrow Partner",
     "slug": "restrogrow",
-    "version": "1.1.4",
+    "version": "1.1.5",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.restrogrow.app",
-      "versionCode": 14,
+      "versionCode": 15,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#FA5502",
