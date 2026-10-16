@@ -194,7 +194,7 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 - Inventory Studio, Marketing Studio (posters, videos, captions, calendar), referrals, customer segments, reports.
 - Browser push alerts, multi-branch, SEO page.
 - Super Admin panel.
-- **Partner app 1.1.3** (Android, `com.restrogrow.app`, built locally as an APK) and its browser demo.
+- **Partner app 1.1.4** (Android, `com.restrogrow.app`, built locally as an APK) and its browser demo.
 
 **⏳ Built, waiting on setup:**
 
@@ -217,7 +217,7 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 ## 9. Partner app (Expo, `app/`)
 
 - Expo SDK 57. The release APK is built locally (JDK 17 and Android SDK in `C:\Users\INDIA\dev`): run `./gradlew assembleRelease` in `app/android`. Copies are kept on the Desktop as `RestroGrow-Partner-<version>.apk`.
-- Version is in `app/app.json` and `app/android/app/build.gradle` (now 1.1.3, versionCode 13).
+- Version is in `app/app.json` and `app/android/app/build.gradle` (now 1.1.4, versionCode 14).
 - **Browser demo:** `app/demo/mockApi.js` and `app/demo/fixtures.json`. Rebuild with `EXPO_PUBLIC_DEMO=1 EXPO_BASE_URL=/app-demo/app npx expo export --platform web --output-dir ../app-demo/app` (in Git Bash also add `MSYS_NO_PATHCONV=1`).
 - Restaurant settings the app can edit are saved through `main/api/app_settings.php`. It saves only the fields it's sent; only the owner or a branch admin can use it.
 

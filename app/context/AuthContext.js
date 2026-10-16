@@ -1,19 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { AppState, Platform } from 'react-native';
 import { apiGet, apiPostForm } from '../config/api';
 import { getDeviceId } from '../config/deviceId';
 import { clearApiCache } from '../hooks/useApiData';
+import { isForeground, onAppForeground } from '../utils/foreground';
 
 const AuthContext = createContext(null);
 
 const SESSION_POLL_MS = 20000;
 
-function isForeground() {
-  if (Platform.OS === 'web') {
-    return typeof document === 'undefined' || document.visibilityState !== 'hidden';
-  }
-  return AppState.currentState === 'active';
-}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -44,7 +38,11 @@ export function AuthProvider({ children }) {
     const id = setInterval(() => {
       if (isForeground()) checkSession(true);
     }, SESSION_POLL_MS);
-    return () => clearInterval(id);
+    const off = onAppForeground(() => checkSession(true));
+    return () => {
+      clearInterval(id);
+      off();
+    };
   }, [checkSession]);
 
   // otpCode is omitted on the first attempt. If the account is logging in

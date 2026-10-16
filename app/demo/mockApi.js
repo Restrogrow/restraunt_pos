@@ -46,6 +46,11 @@ function imageBase() {
 
 const db = (() => {
   const f = clone(fixtures);
+  // business hours, so Home can show "Open now · till 11 PM"
+  const day = { open: true, opening: '08:00 AM', closing: '11:30 PM' };
+  f.session.data.opening_hours = f.session.data.opening_hours || JSON.stringify(
+    Object.fromEntries(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((d) => [d, day]))
+  );
   const latest = Math.max(...f.orders.map((o) => parse(o.created_at).getTime()));
   const ms = Date.now() - 12 * 60000 - latest; // latest sample order: 12 minutes ago
   const days = Math.round(ms / 86400000);

@@ -33,7 +33,7 @@ export default function CustomersScreen({ navigation }) {
   const [open, setOpen] = useState(null);
 
   const fetcher = useCallback(() => apiGet('/api/get_customers.php?limit=200'), []);
-  const { data, loading, refreshing, error, refresh } = useApiData(fetcher, { cacheKey: 'customers', refetchOnFocus: true });
+  const { data, loading, refreshing, error, refresh } = useApiData(fetcher, { pollInterval: 60000, cacheKey: 'customers', refetchOnFocus: true });
   const all = data?.data || [];
 
   const list = useMemo(() => {

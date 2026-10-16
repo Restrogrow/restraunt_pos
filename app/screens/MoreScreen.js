@@ -63,7 +63,7 @@ export default function MoreScreen({ navigation }) {
   return (
     <View style={styles.fill}>
       <ScreenHeader eyebrow="Everything else" title="More" />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabBarHeight + spacing.xxl, gap: spacing.md }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingTop: spacing.lg, paddingBottom: tabBarHeight + spacing.xxl, gap: spacing.md }} showsVerticalScrollIndicator={false}>
         <FadeIn>
           <PressableScale style={[styles.profile, shadow.sm]} onPress={() => navigation.navigate('Settings')} scale={0.99}>
             <Avatar name={user?.restaurant_name || user?.username} uri={restaurantLogoUrl(user)} size={48} bg={colors.primaryLight} color={colors.primary} />
@@ -126,7 +126,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.md,
-    marginTop: -spacing.lg,
   },
   profileName: {
     fontFamily: font.semiBold,

@@ -1,14 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
-
-function isForeground() {
-  if (Platform.OS === 'web') {
-    return typeof document === 'undefined' || document.visibilityState !== 'hidden';
-  }
-  return AppState.currentState === 'active';
-}
+import { isForeground, onAppForeground } from '../utils/foreground';
 
 // Last good response per screen, kept in memory (instant when switching tabs) and on disk
 // (instant on the next app start). The screen shows it straight away and refreshes quietly,
@@ -111,6 +104,12 @@ export function useApiData(fetcher, { pollInterval = 0, cacheKey = null, refetch
     }, pollInterval);
     return () => clearInterval(id);
   }, [pollInterval, load]);
+
+  // Back from another app or tab: catch up straight away instead of waiting for the next poll.
+  useEffect(() => {
+    if (!pollInterval && !refetchOnFocus) return undefined;
+    return onAppForeground(() => load('background'));
+  }, [pollInterval, refetchOnFocus, load]);
 
   const firstFocus = useRef(true);
   useFocusEffect(

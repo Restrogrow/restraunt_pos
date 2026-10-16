@@ -33,6 +33,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLayout } from '../hooks/useLayout';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { money } from '../utils/format';
+import { isForeground, onAppForeground } from '../utils/foreground';
 import { haptic } from '../utils/haptics';
 import { playClickSound } from '../utils/orderAlerts';
 
@@ -140,6 +141,14 @@ export default function POSScreen({ route }) {
       } else {
         load(true);
       }
+      // while POS is open: dishes switched off or changed on the website show up within a minute,
+      // and straight away when the app comes back to the front
+      const id = setInterval(() => isForeground() && load(true), 60000);
+      const off = onAppForeground(() => load(true));
+      return () => {
+        clearInterval(id);
+        off();
+      };
     }, [load])
   );
 

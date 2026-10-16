@@ -883,7 +883,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    marginTop: -spacing.xl,
+    marginTop: -spacing.sm,
     marginBottom: spacing.lg,
   },
   avatarPressable: {

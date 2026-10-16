@@ -32,6 +32,8 @@ import { authenticate, isBiometricSupported } from './utils/biometricAuth';
 import { keepPrinterConnected, stopKeepingPrinterConnected } from './utils/bluetoothPrinter';
 import { getPrinterSettings } from './config/printerSettings';
 import LoginScreen from './screens/LoginScreen';
+import WelcomeScreen from './screens/WelcomeScreen';
+import { DEMO } from './config/api';
 import HomeScreen from './screens/HomeScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import OrderDetailScreen from './screens/OrderDetailScreen';
@@ -364,6 +366,10 @@ function RootNavigator() {
   const { user, checkingSession } = useAuth();
   const { locked, checking: checkingLock, retry, retrying } = useAppLock(!checkingSession && !!user);
   const signedIn = !checkingSession && !!user;
+  const [welcomeSeen, setWelcomeSeen] = useState(null);
+  useEffect(() => {
+    WelcomeScreen.seen().then(setWelcomeSeen);
+  }, []);
 
   // keep the saved Bluetooth printer connected while someone is signed in
   useEffect(() => {
@@ -375,7 +381,7 @@ function RootNavigator() {
     return stopKeepingPrinterConnected;
   }, [signedIn]);
 
-  if (checkingSession) {
+  if (checkingSession || welcomeSeen === null) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -384,6 +390,8 @@ function RootNavigator() {
   }
 
   if (!user) {
+    // first launch: the welcome slides, then login (the browser demo goes straight to login)
+    if (!welcomeSeen && !DEMO) return <WelcomeScreen onDone={() => setWelcomeSeen(true)} />;
     return <LoginScreen />;
   }
 
