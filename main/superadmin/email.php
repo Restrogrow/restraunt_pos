@@ -209,7 +209,7 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
 <main>
   <a class="back" href="dashboard.php">← Back to dashboard</a>
   <h1>Email</h1>
-  <p class="sub">Every email RestroGrow sends: how it looks, who gets it and when, what was sent, and the jobs that send them.</p>
+  <p class="sub">Every email RestroGrow sends: how it looks, who gets it and when, what was sent, and the jobs that send them. <a href="email_book.php" style="color:var(--accent);font-weight:700">Open the Email book →</a> (all emails full size, easy to read or show someone)</p>
 
   <?php if ($sink !== ''): ?>
     <div class="warn"><b>Test mode:</b> MAIL_SINK_DIR is set, so emails are saved as files in <?php echo $h($sink); ?> instead of being sent.</div>

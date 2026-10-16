@@ -36,6 +36,7 @@
 | | Change | What it means |
 |---|---|---|
 | **Emails** | Every automatic email, branded and logged | 21 kinds of email in one design: RestroGrow's for owners, the restaurant's own name, logo and phone for customers ("Spice Garden via RestroGrow", replies go to the restaurant). **Owners:** welcome, trial ending / ended, renewal, plan expired, payment received, invoices (mail button in the Invoice generator), new-device login, support replies, password resets, AI manager report by email. **Team:** new signups, contact-form and chatbot leads (+ "we got your message"). **Customers:** order confirmed, updates (takeaway / delivery), e-bill, table bookings + reminder, account welcome, password reset, loyalty gifts for customers without WhatsApp. **Restaurants:** "new order" email. Everything is queued in `email_outbox`, sent after the page answers (checkout never waits), retried 3 times. Code: `main/config/mail_engine.php`, `main/config/mail_catalog.php`, `main/cron/email_dispatch.php`. Plan and hooks: [docs/EMAIL_PLAN.md](docs/EMAIL_PLAN.md). |
+| **Super Admin › Tools › Email book** | Every email in one place | All emails full size, grouped by owners / team / customers, with when and why each is sent and a checklist of what's left to switch sending on. Live from the sending code (`main/superadmin/email_book.php`). |
 | **Super Admin › Tools › Email** | See and manage every email | **All emails:** each email as it looks (32 previews from sample data), who gets it, when and what starts it, and *Send me a test*. **Sent log:** sent / failed / waiting, view, send again. **Settings & jobs:** sending account, test email, each email on/off, and whether the cron jobs are running. |
 
 ### 16 October 2026
@@ -308,7 +309,7 @@ Menu › Inventory has eight tabs: **Overview, Stock, Recipes, Purchase orders, 
 | **[User guide](https://restrogrow.com/main/views/user-guide.html)** ([source](main/views/user-guide.html)) | Every feature with screenshots and steps, a **What's new** section and a quick-start checklist. Start here. |
 | [Website layout gallery](https://restrogrow.com/main/views/layout-gallery.html) | All customer-website designs side by side. |
 | [Table map preview](https://restrogrow.com/table-map-preview.html) | The live floor-plan view. |
-| [Email plan](docs/EMAIL_PLAN.md) (team only) | Every email, when it is sent, where it is hooked in, and what is needed to switch it on. Live previews: Super Admin › Tools › Email. |
+| [Email plan](docs/EMAIL_PLAN.md) (team only) | Every email, when it is sent, where it is hooked in, and what is needed to switch it on. See them all: Super Admin › Tools › **Email book**. |
 | [Feature list](docs/FEATURES.md) (team only) | Every built feature, where to find it and what it needs (also at Super Admin › Tools › Features). |
 | [AGENTS.md](AGENTS.md) | Architecture, routing and conventions for developers. |
 | [Connect RepeatGrow](docs/REPEATGROW_CONNECT.md) | How RestroGrow and RepeatGrow link up, which errors are handled and how. |

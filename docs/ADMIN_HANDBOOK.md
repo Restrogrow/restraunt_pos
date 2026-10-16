@@ -102,6 +102,8 @@ Re-create everything with `php main/database/seed_multibranch_demo.php` (this al
 | demo@restrogrow.invalid | Email of the demo restaurant (a deliberately undeliverable address) |
 | Phone on the website | +91 63775 68749 |
 
+**See every email: Super Admin › Tools › Email book** (`main/superadmin/email_book.php`). All emails full size, grouped by who gets them, with when and why each is sent, and what's still needed to switch sending on (green when done). It is made live from the sending code, so it is always up to date.
+
 **Manage everything in Super Admin › Tools › Email:**
 - **All emails:** every email (32 previews of 21 types) as it really looks, who gets it, when and what starts it, how many went out in 30 days, and **Send me a test** for any of them. Type your address once at the top.
 - **Sent log:** every email sent, failed or waiting, with View and Send again (reset links are never kept).
@@ -147,6 +149,7 @@ Sidebar groups, and what each page does:
   - Error monitor.
 - **Tools:**
   - My to-do: the jobs only you can do (keys, approvals, cron, DNS).
+  - Email book: every email full size, who gets it, when and why.
   - Email: every email with previews and test sends, the sent log, on/off per email, cron status.
   - Admin handbook: this file, plus every other doc in the repo.
   - Features: every feature, where it is and what it needs.

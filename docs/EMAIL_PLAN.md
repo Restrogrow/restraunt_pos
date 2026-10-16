@@ -20,6 +20,7 @@ Sending stays on Google Workspace SMTP (2,000 emails a day per user, plenty for 
   and invoice email (superadmin/api_platform.php), order confirmation (config/order_confirmation.php), order status
   (config/order_state_machine.php), bookings (api/create_reservation.php, controllers/reservation_operations.php),
   customer signup + reset (website/customer_auth.php), Super Admin reset, AI manager report (config/owner_manager.php).
+- Super Admin › Tools › **Email book** (`superadmin/email_book.php`): every email full size with when / why, and the setup checklist.
 - Super Admin › Tools › Email:
   - **All emails**: every email (21 types, 32 previews with sample data from `config/mail_catalog.php`), who gets it,
     when and what starts it, and "Send me a test" for each.
