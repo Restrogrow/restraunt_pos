@@ -29,11 +29,49 @@ $links = [
 if (empty($_SESSION['demo_setup_csrf'])) $_SESSION['demo_setup_csrf'] = bin2hex(random_bytes(16));
 $csrf = $_SESSION['demo_setup_csrf'];
 
+/** Another restaurant that already uses the demo's login username, if any. */
+function demoUsernameOwner(PDO $conn): ?array {
+    $st = $conn->prepare('SELECT id, restaurant_id, restaurant_name, email, phone, created_at FROM users WHERE username = ? AND restaurant_id <> ? LIMIT 1');
+    $st->execute([DEMO_USERNAME, DEMO_RESTAURANT_ID]);
+    $r = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$r) return null;
+    $c = $conn->prepare('SELECT COUNT(*) FROM orders WHERE restaurant_id = ?');
+    $c->execute([$r['restaurant_id']]);
+    $r['orders'] = (int)$c->fetchColumn();
+    return $r;
+}
+
 $message = ''; $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
     if (!hash_equals($csrf, (string)($_POST['csrf'] ?? ''))) {
         $error = 'Your session changed. Please try again.';
+    } elseif (in_array($action, ['free_username', 'delete_owner'], true)) {
+        // The demo's username belongs to another restaurant: rename that login (its data stays)
+        // or delete that restaurant, then build the demo. The restaurant ID must match the one shown.
+        $owner = demoUsernameOwner($conn);
+        if (!$owner || $owner['restaurant_id'] !== (string)($_POST['owner_rid'] ?? '')) {
+            $error = 'That restaurant changed in the meantime. Look at it again below.';
+        } else {
+            try {
+                if ($action === 'free_username') {
+                    $newName = 'demo_old_' . $owner['restaurant_id'];
+                    $conn->prepare('UPDATE users SET username = ? WHERE id = ?')->execute([$newName, $owner['id']]);
+                    $done = "{$owner['restaurant_id']} now logs in as \"$newName\" (its password and data are unchanged).";
+                } else {
+                    $conn->exec('SET FOREIGN_KEY_CHECKS=0');
+                    demoRemoveRestaurant($conn, $owner['restaurant_id']);
+                    $conn->exec('SET FOREIGN_KEY_CHECKS=1');
+                    $done = "{$owner['restaurant_id']} ({$owner['restaurant_name']}) was deleted.";
+                }
+                @set_time_limit(180);
+                resetDemoRestaurant($conn, $assetDir, $mainUrl);
+                $message = "$done Demo restaurant is ready.";
+            } catch (Throwable $e) {
+                error_log('Demo restaurant username fix failed: ' . $e->getMessage());
+                $error = 'Could not finish: ' . $e->getMessage();
+            }
+        }
     } elseif ($action === 'reset') {
         if (!$assetDir || !is_file("$assetDir/hero.jpg")) {
             $error = 'Demo photos are missing on the server (main/assets/demo_restaurant). Deploy them and try again.';
@@ -44,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = 'Demo restaurant is ready.';
             } catch (Throwable $e) {
                 error_log('Demo restaurant reset failed: ' . $e->getMessage());
-                $error = 'Could not build the demo restaurant: ' . $e->getMessage() . ' (nothing was changed).';
+                $error = 'Could not build the demo restaurant: ' . $e->getMessage();
             }
         }
     } elseif ($action === 'remove') {
@@ -61,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$owner = demoUsernameOwner($conn);
 $st = $conn->prepare('SELECT username, created_at FROM users WHERE restaurant_id = ? LIMIT 1');
 $st->execute([DEMO_RESTAURANT_ID]);
 $row = $st->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -89,6 +128,7 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   p, li, td { font-size: 14px; line-height: 1.55; color: #374151; }
   .msg { padding: 12px 14px; border-radius: 10px; margin: 14px 0; font-size: 14px; }
   .ok { background: #ecfdf5; color: #065f46; } .err { background: #fef2f2; color: #991b1b; }
+  .warn { background: #fffbeb; border: 1px solid #fcd34d; color: #78350f; } .warn td { color: #78350f; border-color: #fde68a; }
   code { background: #f3f4f6; padding: 2px 6px; border-radius: 5px; font-size: 13px; }
   table { border-collapse: collapse; width: 100%; }
   td { padding: 6px 0; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
@@ -122,6 +162,34 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     <p>Status: <b>not created on this server yet.</b> Press <b>Create demo</b> to build it.</p>
   <?php endif; ?>
 
+  <?php if ($owner): ?>
+  <div class="msg warn">
+    <b>The login name "<?php echo $h(DEMO_USERNAME); ?>" is already used by another restaurant</b>, so the demo can't use it yet:
+    <table style="margin:10px 0">
+      <tr><td>Restaurant</td><td><b><?php echo $h($owner['restaurant_name']); ?></b> (<?php echo $h($owner['restaurant_id']); ?>)</td></tr>
+      <tr><td>Email / phone</td><td><?php echo $h($owner['email'] ?: '—'); ?> · <?php echo $h($owner['phone'] ?: '—'); ?></td></tr>
+      <tr><td>Created</td><td><?php echo $h($owner['created_at'] ? date('j M Y', strtotime($owner['created_at'])) : '—'); ?></td></tr>
+      <tr><td>Orders</td><td><?php echo number_format($owner['orders']); ?></td></tr>
+    </table>
+    <div class="row" style="margin-top:6px">
+      <form method="post">
+        <input type="hidden" name="csrf" value="<?php echo $h($csrf); ?>">
+        <input type="hidden" name="action" value="free_username">
+        <input type="hidden" name="owner_rid" value="<?php echo $h($owner['restaurant_id']); ?>">
+        <button class="btn primary" type="submit">Rename its login and build the demo</button>
+      </form>
+      <form method="post" onsubmit="return confirm('Delete <?php echo $h(addslashes($owner['restaurant_name'])); ?> (<?php echo $h($owner['restaurant_id']); ?>) and everything in it? This cannot be undone.');">
+        <input type="hidden" name="csrf" value="<?php echo $h($csrf); ?>">
+        <input type="hidden" name="action" value="delete_owner">
+        <input type="hidden" name="owner_rid" value="<?php echo $h($owner['restaurant_id']); ?>">
+        <button class="btn danger" type="submit">Delete that restaurant and build the demo</button>
+      </form>
+    </div>
+    <p style="margin:10px 0 0;font-size:13px">Rename keeps everything: that restaurant then logs in as <code>demo_old_<?php echo $h($owner['restaurant_id']); ?></code> with its old password.
+       Delete is for an old test account you don't need.</p>
+  </div>
+  <?php endif; ?>
+
   <h2>Logins (password for all: <code><?php echo $h(DEMO_PASSWORD); ?></code>)</h2>
   <table>
     <tr><td>Owner</td><td><code><?php echo $h(DEMO_USERNAME); ?></code></td></tr>
@@ -140,11 +208,13 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   <p>The one-tap page isn't linked from the public website. Share it only with people you're showing the product to.</p>
 
   <div class="row">
+    <?php if (!$owner): ?>
     <form method="post" onsubmit="this.querySelector('button').textContent='Building… (up to a minute)';">
       <input type="hidden" name="csrf" value="<?php echo $h($csrf); ?>">
       <input type="hidden" name="action" value="reset">
       <button class="btn primary" type="submit"><?php echo $row ? 'Reset demo' : 'Create demo'; ?></button>
     </form>
+    <?php endif; ?>
     <?php if ($row): ?>
     <form method="post" onsubmit="return confirm('Remove the demo restaurant and everything on it?');">
       <input type="hidden" name="csrf" value="<?php echo $h($csrf); ?>">
