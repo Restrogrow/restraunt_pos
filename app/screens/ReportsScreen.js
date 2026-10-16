@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import DateRangeSheet, { dateKey, fromKey, rangeLabel } from '../components/DateRangeSheet';
 import MiniBars from '../components/MiniBars';
 import ScreenHeader from '../components/ScreenHeader';
-import SelectField from '../components/SelectField';
 import { EmptyState, ErrorState, LoadingState } from '../components/ScreenState';
 import FadeIn from '../components/ui/FadeIn';
 import PressableScale from '../components/ui/PressableScale';
@@ -17,193 +18,227 @@ import { dayLabel, money, moneyShort } from '../utils/format';
 
 const PERIODS = [
   { key: 'today', label: 'Today' },
+  { key: 'yesterday', label: 'Yesterday' },
   { key: 'week', label: '7 days' },
   { key: 'month', label: '30 days' },
-  { key: 'year', label: '12 months' },
+  { key: 'thisMonth', label: 'This month' },
 ];
 
-// Mirrors the website's Reports > Report Type dropdown — the API returns every dataset in
-// one response, so switching type just picks which section to list.
-const REPORT_TYPES = [
-  { value: 'sales', label: 'Orders' },
-  { value: 'items', label: 'Top dishes' },
-  { value: 'customers', label: 'Top customers' },
-  { value: 'payment', label: 'Payment methods' },
-  { value: 'hourly', label: 'Sales by hour' },
-  { value: 'staff', label: 'Staff' },
+const BREAKDOWNS = [
+  { key: 'items', label: 'Dishes', icon: 'fast-food-outline' },
+  { key: 'payment', label: 'Payments', icon: 'card-outline' },
+  { key: 'customers', label: 'Customers', icon: 'people-outline' },
+  { key: 'sales', label: 'Orders', icon: 'receipt-outline' },
+  { key: 'staff', label: 'Staff', icon: 'person-outline' },
 ];
 
-function hourLabel(hour) {
-  const h = Number(hour);
-  if (h === 0) return '12 AM';
-  if (h < 12) return `${h} AM`;
-  if (h === 12) return '12 PM';
-  return `${h - 12} PM`;
+function addDays(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+function today0() {
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  return t;
+}
+const daysBetween = (a, b) => Math.round((fromKey(b) - fromKey(a)) / 86400000) + 1;
+
+// The period as dates, plus the equally long period just before it for the comparison.
+function resolve(period, custom) {
+  const t = today0();
+  let start;
+  let end = dateKey(t);
+  if (period === 'today') start = end;
+  else if (period === 'yesterday') start = end = dateKey(addDays(t, -1));
+  else if (period === 'week') start = dateKey(addDays(t, -6));
+  else if (period === 'month') start = dateKey(addDays(t, -29));
+  else if (period === 'thisMonth') start = dateKey(new Date(t.getFullYear(), t.getMonth(), 1));
+  else {
+    start = custom.start;
+    end = custom.end;
+  }
+  const len = daysBetween(start, end);
+  let prevStart;
+  let prevEnd;
+  if (period === 'thisMonth') {
+    const lmStart = new Date(t.getFullYear(), t.getMonth() - 1, 1);
+    const lmLast = new Date(t.getFullYear(), t.getMonth(), 0);
+    prevStart = dateKey(lmStart);
+    prevEnd = dateKey(new Date(lmStart.getFullYear(), lmStart.getMonth(), Math.min(t.getDate(), lmLast.getDate())));
+  } else {
+    prevEnd = dateKey(addDays(fromKey(start), -1));
+    prevStart = dateKey(addDays(fromKey(start), -len));
+  }
+  return { start, end, len, prevStart, prevEnd };
 }
 
-function getReportRows(reportType, data, currency) {
-  const m = (v) => money(v, currency);
-  switch (reportType) {
-    case 'customers':
-      return {
-        emptyTitle: 'No customers yet',
-        emptySubtitle: 'Customer spending will show up here',
-        rows: (data?.top_customers || []).map((c, i) => ({
-          id: `${c.customer_name}_${c.phone}_${i}`,
-          title: c.customer_name || 'No name',
-          subtitle: `${c.phone || 'No phone'} · ${c.total_orders} orders`,
-          value: m(c.total_spent),
-          meta: c.last_order_date ? `Last ${dayLabel(c.last_order_date)}` : '',
-        })),
-      };
-    case 'items':
-      return {
-        emptyTitle: 'No dishes sold yet',
-        emptySubtitle: 'Best sellers will show up here',
-        rows: (data?.top_items || []).map((it, i) => ({
-          id: `${it.item_name}_${i}`,
-          title: it.item_name || 'Unnamed dish',
-          subtitle: `${it.total_quantity} sold`,
-          value: m(it.total_revenue),
-        })),
-      };
-    case 'payment':
-      return {
-        emptyTitle: 'No payments yet',
-        emptySubtitle: 'Payment method totals will show up here',
-        rows: (data?.payment_methods || []).map((p, i) => ({
-          id: `${p.payment_method}_${i}`,
-          title: p.payment_method || 'Unknown',
-          subtitle: `${p.count} orders`,
-          value: m(p.amount),
-        })),
-      };
-    case 'hourly':
-      return {
-        emptyTitle: 'No hourly data',
-        emptySubtitle: 'Sales by hour are shown for Today',
-        rows: (data?.hourly_sales || []).map((h, i) => ({
-          id: `${h.hour}_${i}`,
-          title: hourLabel(h.hour),
-          subtitle: `${h.order_count} orders`,
-          value: m(h.total_sales),
-        })),
-      };
-    case 'staff':
-      return {
-        emptyTitle: 'No staff sales yet',
-        emptySubtitle: 'Sales per staff member will show up here',
-        rows: (data?.staff_performance || []).map((s, i) => ({
-          id: `${s.staff_name}_${i}`,
-          title: s.staff_name || 'Unknown',
-          subtitle: `${s.total_orders} orders`,
-          value: m(s.total_sales),
-        })),
-      };
-    case 'sales':
-    default:
-      return {
-        emptyTitle: 'No sales yet',
-        emptySubtitle: 'Orders in this period will show up here',
-        rows: (data?.sales_details || []).map((o) => ({
-          id: o.id,
-          title: o.order_number,
-          subtitle: `${o.customer_name || 'Guest'} · ${o.payment_method || ''}`,
-          value: m(o.total),
-          meta: dayLabel(o.created_at),
-        })),
-      };
-  }
+const query = (r, type, isToday) =>
+  isToday ? `/api/get_sales_report.php?period=today&type=${type}` : `/api/get_sales_report.php?period=custom&start_date=${r.start}&end_date=${r.end}&type=${type}`;
+
+function hourText(h) {
+  const n = Number(h);
+  const f = (x) => (x === 0 ? '12 AM' : x < 12 ? `${x} AM` : x === 12 ? '12 PM' : `${x - 12} PM`);
+  return `${f(n)}–${f((n + 1) % 24)}`;
 }
 
-// Bars for the period: by hour today, by day for 7/30 days, by month for 12 months.
-function buildBars(period, data) {
-  if (period === 'today') {
-    const byHour = new Map((data?.hourly_sales || []).map((h) => [Number(h.hour), Number(h.total_sales) || 0]));
-    const nowH = new Date().getHours();
-    const from = Math.max(0, Math.min(10, nowH - 11));
-    return Array.from({ length: Math.max(1, nowH - from + 1) }, (_, i) => ({ key: from + i, value: byHour.get(from + i) || 0, hour: from + i }));
+// Chart bars: by hour for one day, by day up to ~2 months, by month beyond.
+function buildBars(r, data) {
+  const daily = data?.daily_sales;
+  const hourly = data?.hourly_all || data?.hourly_sales;
+  if (r.len === 1) {
+    const map = new Map((hourly || []).map((h) => [Number(h.hour), Number(h.total_sales) || 0]));
+    const hours = [...map.keys()];
+    if (!hours.length) return [];
+    const from = Math.max(0, Math.min(...hours) - 1);
+    const to = Math.min(23, Math.max(...hours, from + 7));
+    return Array.from({ length: to - from + 1 }, (_, i) => ({ key: from + i, value: map.get(from + i) || 0, hour: from + i }));
   }
-  const rows = data?.sales_details || [];
-  if (period === 'year') {
-    const out = [];
-    const d = new Date();
-    for (let i = 11; i >= 0; i -= 1) {
-      const m = new Date(d.getFullYear(), d.getMonth() - i, 1);
-      out.push({ key: `${m.getFullYear()}-${m.getMonth()}`, value: 0, month: m });
-    }
-    rows.forEach((o) => {
-      const t = new Date(String(o.created_at).replace(' ', 'T'));
-      const hit = out.find((b) => b.month.getFullYear() === t.getFullYear() && b.month.getMonth() === t.getMonth());
-      if (hit) hit.value += Number(o.total) || 0;
-    });
-    return out;
-  }
-  const n = period === 'week' ? 7 : 30;
-  const out = [];
-  for (let i = n - 1; i >= 0; i -= 1) {
-    const day = new Date();
-    day.setDate(day.getDate() - i);
-    const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-    out.push({ key, value: 0, day });
-  }
-  rows.forEach((o) => {
+  // per-day totals (server series; older servers: summed from the order list)
+  const perDay = new Map();
+  if (Array.isArray(daily)) daily.forEach((d) => perDay.set(String(d.day).slice(0, 10), Number(d.total_sales) || 0));
+  else (data?.sales_details || []).forEach((o) => {
     const k = String(o.created_at).slice(0, 10);
-    const hit = out.find((b) => b.key === k);
-    if (hit) hit.value += Number(o.total) || 0;
+    perDay.set(k, (perDay.get(k) || 0) + (Number(o.total) || 0));
   });
+  if (r.len <= 62) {
+    return Array.from({ length: r.len }, (_, i) => {
+      const day = addDays(fromKey(r.start), i);
+      const k = dateKey(day);
+      return { key: k, value: perDay.get(k) || 0, day };
+    });
+  }
+  const months = new Map();
+  perDay.forEach((v, k) => {
+    const mk = k.slice(0, 7);
+    months.set(mk, (months.get(mk) || 0) + v);
+  });
+  const out = [];
+  let m = new Date(fromKey(r.start).getFullYear(), fromKey(r.start).getMonth(), 1);
+  const last = fromKey(r.end);
+  while (m <= last) {
+    const mk = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+    out.push({ key: mk, value: months.get(mk) || 0, month: new Date(m) });
+    m = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+  }
   return out;
+}
+
+function Bar({ pct, tint = colors.primary }) {
+  return (
+    <View style={styles.barTrack}>
+      <View style={[styles.barFill, { width: `${Math.max(3, Math.min(100, pct))}%`, backgroundColor: tint }]} />
+    </View>
+  );
 }
 
 export default function ReportsScreen({ navigation }) {
   const { user } = useAuth();
   const currency = user?.currency_symbol || '₹';
+  const m = (v) => money(v, currency);
   const tabBarHeight = useBottomTabBarHeight();
   const { gutter } = useLayout();
   const [period, setPeriod] = useState('today');
-  const [reportType, setReportType] = useState('sales');
+  const [custom, setCustom] = useState(() => ({ start: dateKey(addDays(today0(), -6)), end: dateKey(today0()) }));
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [breakdown, setBreakdown] = useState('items');
 
-  const fetcher = useCallback(() => apiGet(`/api/get_sales_report.php?period=${period}&type=${reportType}`), [period, reportType]);
+  const r = useMemo(() => resolve(period, custom), [period, custom]);
+  const isToday = period === 'today';
+
+  const fetcher = useCallback(() => apiGet(query(r, 'sales', isToday)), [r, isToday]);
   const { data, loading, refreshing, error, refresh } = useApiData(fetcher, {
-    pollInterval: period === 'today' ? 30000 : 0,
-    cacheKey: `reports:${period}:${reportType}`,
+    pollInterval: isToday ? 30000 : 0,
+    cacheKey: `reports2:${r.start}:${r.end}:${isToday}`,
   });
+  const prevFetcher = useCallback(() => apiGet(query({ start: r.prevStart, end: r.prevEnd }, 'sales', false)), [r.prevStart, r.prevEnd]);
+  const prev = useApiData(prevFetcher, { cacheKey: `reports2:${r.prevStart}:${r.prevEnd}:false` });
 
-  const summary = data?.summary || {};
-  const orders = Number(summary.total_orders) || 0;
-  const avg = orders ? (Number(summary.total_sales) || 0) / orders : 0;
-  const { rows, emptyTitle, emptySubtitle } = useMemo(() => getReportRows(reportType, data, currency), [reportType, data, currency]);
-  const bars = useMemo(() => buildBars(period, data), [period, data]);
+  const s = data?.summary || {};
+  const sales = Number(s.total_sales) || 0;
+  const orders = Number(s.total_orders) || 0;
+  const avg = orders ? sales / orders : 0;
+
+  // Today is compared with yesterday up to the same hour, so a morning isn't set against a full day.
+  const prevSales = useMemo(() => {
+    if (!prev.data?.summary) return null;
+    if (!isToday) return Number(prev.data.summary.total_sales) || 0;
+    const hrs = prev.data.hourly_all;
+    if (!Array.isArray(hrs)) return null;
+    const nowH = new Date().getHours();
+    return hrs.filter((h) => Number(h.hour) <= nowH).reduce((t, h) => t + (Number(h.total_sales) || 0), 0);
+  }, [prev.data, isToday]);
+  const change = prevSales ? Math.round(((sales - prevSales) / prevSales) * 100) : null;
+  const vsText = isToday ? 'vs yesterday by this time' : period === 'yesterday' ? 'vs the day before' : period === 'thisMonth' ? 'vs same days last month' : `vs previous ${r.len} days`;
+
+  const bars = useMemo(() => buildBars(r, data), [r, data]);
   const hasBars = bars.some((b) => b.value > 0);
-  const reportTitle = REPORT_TYPES.find((t) => t.value === reportType)?.label || 'Report';
-  const expenses = Number(summary.total_expenses) || 0;
+  const best = bars.reduce((b, x) => (x.value > (b?.value || 0) ? x : b), null);
+  const busiest = useMemo(() => {
+    const hrs = data?.hourly_all || data?.hourly_sales || [];
+    return hrs.reduce((b, h) => ((Number(h.order_count) || 0) > (Number(b?.order_count) || 0) ? h : b), null);
+  }, [data]);
+  const topDish = (data?.top_items || [])[0];
 
-  const stats = [
-    // whole rupees in the tiles so big totals fit; exact amounts are in the list below
-    { label: 'Sales', value: money(Math.round(Number(summary.total_sales) || 0), currency), icon: 'trending-up', tint: colors.success, bg: colors.successBg },
-    { label: 'Orders', value: String(orders), icon: 'receipt', tint: colors.info, bg: colors.infoBg },
-    { label: 'Average bill', value: money(Math.round(avg), currency), icon: 'calculator', tint: colors.primary, bg: colors.primaryLight },
-    { label: 'Dishes sold', value: String(summary.total_items ?? 0), icon: 'fast-food', tint: colors.warning, bg: colors.warningBg },
-    { label: 'Customers', value: String(summary.total_customers ?? 0), icon: 'people', tint: colors.purple, bg: colors.purpleBg },
-    expenses > 0
-      ? { label: 'Profit after expenses', value: money(Math.round(Number(summary.net_profit) || 0), currency), icon: 'wallet', tint: colors.teal, bg: colors.tealBg }
-      : null,
-  ].filter(Boolean);
+  const insights = [];
+  if (orders && best && r.len > 1) {
+    insights.push({
+      icon: 'trophy',
+      text: best.day
+        ? `Best day: ${best.day.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })} with ${m(Math.round(best.value))}`
+        : best.month
+          ? `Best month: ${best.month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`
+          : '',
+    });
+  }
+  if (orders && busiest) insights.push({ icon: 'time', text: `Busiest time: ${hourText(busiest.hour)} (${busiest.order_count} orders)` });
+  if (topDish) insights.push({ icon: 'flame', text: `Most ordered: ${topDish.item_name} (${topDish.total_quantity} sold)` });
+  if (Number(s.total_expenses) > 0) insights.push({ icon: 'wallet', text: `Expenses ${m(Math.round(s.total_expenses))}, so profit is ${m(Math.round(s.net_profit))}` });
+
+  const rangeText = period === 'today' ? 'Today' : rangeLabel(r.start, r.end);
+
+  // ── breakdown lists ──
+  const lists = {
+    items: (data?.top_items || [])
+      .map((it) => ({ title: it.item_name, sub: `${it.total_quantity} sold`, value: Number(it.total_revenue) || 0 }))
+      .sort((a, b) => b.value - a.value),
+    payment: (data?.payment_methods || []).map((p) => ({ title: p.payment_method || 'Unknown', sub: `${p.count} order${Number(p.count) === 1 ? '' : 's'}`, value: Number(p.amount) || 0 })),
+    customers: (data?.top_customers || []).map((c) => ({ title: c.customer_name || 'No name', sub: `${c.total_orders} orders${c.phone ? ` · ${c.phone}` : ''}`, value: Number(c.total_spent) || 0 })),
+    sales: (data?.sales_details || []).map((o) => ({ title: o.order_number, sub: `${dayLabel(o.created_at)} · ${o.payment_method || ''}`, value: Number(o.total) || 0, plain: true })),
+    staff: (data?.staff_performance || []).map((st) => ({ title: st.staff_name || 'Unknown', sub: `${st.total_orders} orders`, value: Number(st.total_sales) || 0 })),
+  };
+  const shownBreakdowns = BREAKDOWNS.filter((b) => b.key !== 'staff' || lists.staff.length);
+  const rows = lists[breakdown] || [];
+  const rowTotal = rows.reduce((t, x) => t + x.value, 0) || 1;
+  const rowMax = Math.max(1, ...rows.map((x) => x.value));
+  const EXPLAIN = {
+    items: 'Dishes that brought in the most money in this period.',
+    payment: 'How customers paid. The bar shows the share of sales.',
+    customers: 'Customers who spent the most in this period.',
+    sales: 'Every order in this period, newest first.',
+    staff: 'Sales by the staff member who rang them up.',
+  };
 
   return (
     <View style={styles.fill}>
       <ScreenHeader eyebrow="Performance" title="Reports" onBack={navigation?.canGoBack() ? () => navigation.goBack() : undefined} />
 
-      <View style={[styles.periodRow, { paddingHorizontal: gutter }]}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.periodScroll} contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: gutter, alignItems: 'center' }}>
         {PERIODS.map((p) => {
-          const active = p.key === period;
+          const on = p.key === period;
           return (
-            <PressableScale key={p.key} feedback="select" style={[styles.periodChip, active && styles.periodChipActive]} onPress={() => setPeriod(p.key)}>
-              <Text style={[styles.periodChipText, active && styles.periodChipTextActive]} numberOfLines={1}>{p.label}</Text>
+            <PressableScale key={p.key} feedback="select" style={[styles.chip, shadow.sm, on && styles.chipOn]} onPress={() => setPeriod(p.key)}>
+              <Text style={[styles.chipText, on && styles.chipTextOn]}>{p.label}</Text>
             </PressableScale>
           );
         })}
-      </View>
+        <PressableScale feedback="select" style={[styles.chip, shadow.sm, period === 'custom' && styles.chipOn]} onPress={() => setPickerOpen(true)} accessibilityLabel="Choose dates">
+          <Ionicons name="calendar" size={14} color={period === 'custom' ? '#fff' : colors.primary} />
+          <Text style={[styles.chipText, period === 'custom' ? styles.chipTextOn : { color: colors.primary }]}>
+            {period === 'custom' ? rangeLabel(custom.start, custom.end) : 'Pick dates'}
+          </Text>
+        </PressableScale>
+      </ScrollView>
 
       {loading && !data ? (
         <LoadingState gutter={gutter} />
@@ -216,33 +251,68 @@ export default function ReportsScreen({ navigation }) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} />}
           showsVerticalScrollIndicator={false}
         >
+          {/* headline */}
           <FadeIn>
-            <View style={styles.grid}>
-              {stats.map((s) => (
-                <View key={s.label} style={[styles.stat, shadow.sm]}>
-                  <View style={[styles.statIcon, { backgroundColor: s.bg }]}>
-                    <Ionicons name={s.icon} size={16} color={s.tint} />
+            <LinearGradient colors={['#2A2735', '#1D1B26']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+              <View style={styles.heroTop}>
+                <Text style={styles.heroLabel}>Sales · {rangeText}</Text>
+                {change !== null ? (
+                  <View style={[styles.delta, { backgroundColor: change >= 0 ? 'rgba(74,222,128,0.16)' : 'rgba(255,138,128,0.16)' }]}>
+                    <Ionicons name={change >= 0 ? 'arrow-up' : 'arrow-down'} size={12} color={change >= 0 ? '#4ADE80' : '#FF8A80'} />
+                    <Text style={[styles.deltaText, { color: change >= 0 ? '#4ADE80' : '#FF8A80' }]}>{Math.abs(change)}%</Text>
                   </View>
-                  <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{s.value}</Text>
-                  <Text style={styles.statLabel} numberOfLines={1}>{s.label}</Text>
-                </View>
-              ))}
-            </View>
+                ) : null}
+              </View>
+              <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit>{m(Math.round(sales))}</Text>
+              <Text style={styles.heroSub}>
+                {change !== null ? `${change >= 0 ? 'Up' : 'Down'} ${Math.abs(change)}% ${vsText} (${m(Math.round(prevSales))})` : orders ? `${orders} order${orders === 1 ? '' : 's'} in this period` : 'No sales in this period yet'}
+              </Text>
+              <View style={styles.heroGrid}>
+                {[
+                  ['Orders', String(orders)],
+                  ['Average bill', orders ? m(Math.round(avg)) : '—'],
+                  ['Dishes sold', String(s.total_items ?? 0)],
+                  ['Customers', String(s.total_customers ?? 0)],
+                ].map(([l, v]) => (
+                  <View key={l} style={styles.heroStat}>
+                    <Text style={styles.heroStatValue} numberOfLines={1} adjustsFontSizeToFit>{v}</Text>
+                    <Text style={styles.heroStatLabel}>{l}</Text>
+                  </View>
+                ))}
+              </View>
+            </LinearGradient>
           </FadeIn>
 
-          {hasBars ? (
+          {insights.length ? (
             <FadeIn index={1}>
+              <View style={[styles.card, shadow.sm, { gap: 12 }]}>
+                <Text style={styles.cardTitle}>In short</Text>
+                {insights.map((it) => (
+                  <View key={it.text} style={styles.insight}>
+                    <View style={styles.insightIcon}>
+                      <Ionicons name={it.icon} size={15} color={colors.primary} />
+                    </View>
+                    <Text style={styles.insightText}>{it.text}</Text>
+                  </View>
+                ))}
+              </View>
+            </FadeIn>
+          ) : null}
+
+          {hasBars ? (
+            <FadeIn index={2}>
               <View style={[styles.card, shadow.sm]}>
-                <Text style={styles.cardTitle}>{period === 'today' ? 'Sales by hour' : period === 'year' ? 'Sales by month' : 'Sales by day'}</Text>
+                <Text style={styles.cardTitle}>{r.len === 1 ? 'Sales by hour' : r.len <= 62 ? 'Sales by day' : 'Sales by month'}</Text>
                 <MiniBars
                   data={bars}
-                  height={130}
+                  height={140}
+                  highlightLast={isToday || r.end === dateKey(today0())}
                   valueLabel={(v) => moneyShort(v, currency)}
                   dayLabel={(b, i) => {
-                    const every = bars.length > 14 ? 5 : bars.length > 8 ? 2 : 1;
+                    const every = bars.length > 20 ? 5 : bars.length > 10 ? 2 : 1;
                     if (i % every !== 0 && i !== bars.length - 1) return '';
-                    if (period === 'today') return hourLabel(b.hour).replace(' ', '');
-                    if (period === 'year') return b.month.toLocaleDateString(undefined, { month: 'short' }).slice(0, 3);
+                    if (b.hour != null) return hourText(b.hour).split('–')[0].replace(' ', '');
+                    if (b.month) return b.month.toLocaleDateString(undefined, { month: 'short' }).slice(0, 3);
                     return String(b.day.getDate());
                   }}
                 />
@@ -250,27 +320,39 @@ export default function ReportsScreen({ navigation }) {
             </FadeIn>
           ) : null}
 
-          <FadeIn index={2}>
-            <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>{reportTitle}</Text>
-              <View style={{ width: 170 }}>
-                <SelectField value={reportType} onChange={setReportType} options={REPORT_TYPES} placeholder="Report" />
-              </View>
-            </View>
+          <FadeIn index={3}>
+            <Text style={styles.sectionTitle}>Breakdown</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingBottom: spacing.sm }}>
+              {shownBreakdowns.map((b) => {
+                const on = b.key === breakdown;
+                return (
+                  <PressableScale key={b.key} feedback="select" style={[styles.seg, on && styles.segOn]} onPress={() => setBreakdown(b.key)}>
+                    <Ionicons name={b.icon} size={15} color={on ? '#fff' : colors.inkSoft} />
+                    <Text style={[styles.segText, on && { color: '#fff' }]}>{b.label}</Text>
+                  </PressableScale>
+                );
+              })}
+            </ScrollView>
+            <Text style={styles.explain}>{EXPLAIN[breakdown]}</Text>
             {rows.length === 0 ? (
-              <EmptyState icon="podium-outline" title={emptyTitle} subtitle={emptySubtitle} />
+              <View style={[styles.card, shadow.sm]}>
+                <EmptyState icon="podium-outline" title="Nothing here yet" subtitle="Try a longer period." />
+              </View>
             ) : (
-              <View style={[styles.card, shadow.sm, { paddingVertical: 4 }]}>
-                {rows.slice(0, 100).map((row, i) => (
-                  <View key={row.id ?? i} style={[styles.itemRow, i > 0 && styles.itemRowLine]}>
-                    <Text style={styles.rank}>{i + 1}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.itemName} numberOfLines={1}>{row.title}</Text>
-                      {row.subtitle ? <Text style={styles.itemSubtitle} numberOfLines={1}>{row.subtitle}</Text> : null}
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={styles.rowValue}>{row.value}</Text>
-                      {row.meta ? <Text style={styles.rowMeta}>{row.meta}</Text> : null}
+              <View style={[styles.card, shadow.sm, { paddingVertical: 6 }]}>
+                {rows.slice(0, 50).map((row, i) => (
+                  <View key={`${row.title}_${i}`} style={[styles.row, i > 0 && styles.rowLine]}>
+                    {!row.plain ? <Text style={styles.rank}>{i + 1}</Text> : null}
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <View style={styles.rowTop}>
+                        <Text style={styles.rowTitle} numberOfLines={1}>{row.title}</Text>
+                        <Text style={styles.rowValue}>{m(row.value)}</Text>
+                      </View>
+                      <View style={styles.rowTop}>
+                        <Text style={styles.rowSub} numberOfLines={1}>{row.sub}</Text>
+                        {breakdown === 'payment' ? <Text style={styles.rowPct}>{Math.round((row.value / rowTotal) * 100)}%</Text> : null}
+                      </View>
+                      {!row.plain ? <Bar pct={(row.value / (breakdown === 'payment' ? rowTotal : rowMax)) * 100} tint={breakdown === 'payment' ? colors.info : colors.primary} /> : null}
                     </View>
                   </View>
                 ))}
@@ -279,70 +361,108 @@ export default function ReportsScreen({ navigation }) {
           </FadeIn>
         </ScrollView>
       )}
+
+      <DateRangeSheet
+        visible={pickerOpen}
+        start={custom.start}
+        end={custom.end}
+        onClose={() => setPickerOpen(false)}
+        onApply={(start, end) => {
+          setCustom({ start, end });
+          setPeriod('custom');
+          setPickerOpen(false);
+        }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg },
-  periodRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  periodScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+    height: 48,
     marginTop: -spacing.lg,
-    marginBottom: spacing.sm,
   },
-  periodChip: {
-    flex: 1,
+  chip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
     height: 40,
-    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
     borderRadius: radius.pill,
-    paddingHorizontal: 4,
-    ...shadow.sm,
+    backgroundColor: colors.surface,
   },
-  periodChipActive: {
+  chipOn: {
     backgroundColor: colors.ink,
   },
-  periodChipText: {
+  chipText: {
     fontFamily: font.semiBold,
-    fontSize: 12.5,
+    fontSize: 13,
     color: colors.inkSoft,
   },
-  periodChipTextActive: {
+  chipTextOn: {
     color: '#fff',
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  stat: {
-    flexBasis: '30%',
-    flexGrow: 1,
-    minWidth: 100,
-    backgroundColor: colors.surface,
+  hero: {
     borderRadius: radius.lg,
-    padding: spacing.md,
+    padding: spacing.lg,
   },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 11,
+  heroTop: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
+    justifyContent: 'space-between',
   },
-  statValue: {
-    fontFamily: font.bold,
-    fontSize: 18,
-    color: colors.ink,
-  },
-  statLabel: {
+  heroLabel: {
     fontFamily: font.medium,
-    fontSize: 11.5,
-    color: colors.muted,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  delta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  deltaText: {
+    fontFamily: font.bold,
+    fontSize: 12,
+  },
+  heroValue: {
+    fontFamily: font.bold,
+    fontSize: 34,
+    color: '#fff',
+    marginTop: 4,
+  },
+  heroSub: {
+    fontFamily: font.regular,
+    fontSize: 12.5,
+    color: 'rgba(255,255,255,0.7)',
     marginTop: 2,
+  },
+  heroGrid: {
+    flexDirection: 'row',
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  heroStat: {
+    flex: 1,
+  },
+  heroStatValue: {
+    fontFamily: font.bold,
+    fontSize: 16,
+    color: '#fff',
+  },
+  heroStatLabel: {
+    fontFamily: font.regular,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 1,
   },
   card: {
     backgroundColor: colors.surface,
@@ -353,28 +473,67 @@ const styles = StyleSheet.create({
     fontFamily: font.semiBold,
     fontSize: 14.5,
     color: colors.ink,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
-  sectionHead: {
+  insight: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.md,
-    marginBottom: spacing.md,
+  },
+  insightIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insightText: {
+    flex: 1,
+    fontFamily: font.medium,
+    fontSize: 13.5,
+    color: colors.ink,
+    lineHeight: 19,
   },
   sectionTitle: {
-    flex: 1,
     fontFamily: font.bold,
     fontSize: 16,
     color: colors.ink,
+    marginBottom: spacing.sm,
   },
-  itemRow: {
+  seg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  segOn: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  segText: {
+    fontFamily: font.semiBold,
+    fontSize: 12.5,
+    color: colors.inkSoft,
+  },
+  explain: {
+    fontFamily: font.regular,
+    fontSize: 12.5,
+    color: colors.muted,
+    marginBottom: spacing.sm,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     paddingVertical: 12,
   },
-  itemRowLine: {
+  rowLine: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -390,26 +549,42 @@ const styles = StyleSheet.create({
     fontFamily: font.bold,
     fontSize: 12,
   },
-  itemName: {
+  rowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  rowTitle: {
+    flex: 1,
     fontFamily: font.semiBold,
     fontSize: 14,
     color: colors.ink,
-  },
-  itemSubtitle: {
-    fontFamily: font.regular,
-    fontSize: 12,
-    color: colors.muted,
-    marginTop: 1,
   },
   rowValue: {
     fontFamily: font.bold,
     fontSize: 14,
     color: colors.ink,
   },
-  rowMeta: {
+  rowSub: {
+    flex: 1,
     fontFamily: font.regular,
-    fontSize: 11,
+    fontSize: 12,
     color: colors.muted,
-    marginTop: 1,
+  },
+  rowPct: {
+    fontFamily: font.semiBold,
+    fontSize: 12,
+    color: colors.info,
+  },
+  barTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.bg,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: 6,
+    borderRadius: 3,
   },
 });

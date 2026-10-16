@@ -278,6 +278,22 @@ try {
         $hourlyStmt->execute([$restaurant_id]);
         $hourlySales = $hourlyStmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    // Sales per day and per hour across the whole period, for the app's charts — same rules
+    // as the totals above (sales_details stops at 100 orders, so it can't be summed for this).
+    $dailySales = [];
+    $hourlyAll = [];
+    try {
+        $chartParams = array_merge([$restaurant_id], $dateParams, $paymentFilterParams);
+        $dayStmt = $conn->prepare("SELECT DATE(created_at) AS day, COUNT(*) AS order_count, COALESCE(SUM(total), 0) AS total_sales FROM orders WHERE restaurant_id = ? AND " . $dateConditionNoAlias . $paymentFilter . " GROUP BY DATE(created_at) ORDER BY day ASC");
+        $dayStmt->execute($chartParams);
+        $dailySales = $dayStmt->fetchAll(PDO::FETCH_ASSOC);
+        $hourStmt = $conn->prepare("SELECT HOUR(created_at) AS hour, COUNT(*) AS order_count, COALESCE(SUM(total), 0) AS total_sales FROM orders WHERE restaurant_id = ? AND " . $dateConditionNoAlias . $paymentFilter . " GROUP BY HOUR(created_at) ORDER BY hour ASC");
+        $hourStmt->execute($chartParams);
+        $hourlyAll = $hourStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log('get_sales_report chart series skipped: ' . $e->getMessage());
+    }
     
     // Get staff performance (if staff_id is stored in orders)
     $staffPerformance = [];
@@ -327,6 +343,8 @@ try {
             'net_profit' => floatval($totalSales) - floatval($totalExpenses)
         ],
         'sales_details' => $salesDetails,
+        'daily_sales' => $dailySales,
+        'hourly_all' => $hourlyAll,
         'top_items' => $topItems,
         'payment_methods' => $paymentMethods,
         'top_customers' => $topCustomers,

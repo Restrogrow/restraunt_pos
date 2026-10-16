@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useMemo } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MiniBars from '../components/MiniBars';
@@ -61,18 +62,26 @@ export default function HomeScreen({ navigation }) {
     { n: att.low_stock || 0, icon: 'cube', tone: colors.info, bg: colors.infoBg, title: (n) => `${n} item${n > 1 ? 's' : ''} running low`, sub: (att.low_names || []).slice(0, 3).join(', ') || 'Check your stock', go: null },
   ].filter((a) => a.n > 0);
 
+  // Shortcuts: each its own colour so they're told apart at a glance.
   const quick = [
-    { icon: 'calculator', label: 'New order', go: () => navigation.navigate('POS') },
-    { icon: 'flame', label: 'Kitchen', go: () => goMore('Kitchen') },
-    { icon: 'grid', label: 'Tables', go: () => goMore('Tables') },
-    { icon: 'bar-chart', label: 'Reports', go: () => goMore('Reports') },
+    { icon: 'add', label: 'New order', c: ['#FF7A50', '#F0461F'], go: () => navigation.navigate('POS') },
+    { icon: 'flame', label: 'Kitchen', c: ['#FB7185', '#E11D48'], go: () => goMore('Kitchen') },
+    { icon: 'grid', label: 'Tables', c: ['#34D399', '#059669'], go: () => goMore('Tables') },
+    { icon: 'receipt', label: 'Orders', c: ['#60A5FA', '#2563EB'], go: () => goOrders(live.newOrders ? 'new' : 'cooking') },
+    { icon: 'stats-chart', label: 'Reports', c: ['#A78BFA', '#7C3AED'], go: () => goMore('Reports') },
+    { icon: 'people', label: 'Customers', c: ['#38BDF8', '#0284C7'], go: () => goMore('Customers') },
+    { icon: 'calendar', label: 'Bookings', c: ['#FBBF24', '#D97706'], go: () => goMore('Reservations') },
+    { icon: 'restaurant', label: 'Menu', c: ['#2DD4BF', '#0D9488'], go: () => navigation.navigate('Menu') },
   ];
 
-  const qCols = Math.min(4, columns(72, 4));
+  const qCols = columns(72, 8) >= 8 ? 8 : 4;
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader eyebrow={greeting()} title={data?.restaurant || user?.restaurant_name || 'Your restaurant'} />
+      <ScreenHeader
+        eyebrow={`${greeting()} · ${new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}`}
+        title={data?.restaurant || user?.restaurant_name || 'Your restaurant'}
+      />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: gutter, paddingTop: spacing.md, paddingBottom: tabBarHeight + spacing.xxl, gap: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} />}
@@ -80,53 +89,57 @@ export default function HomeScreen({ navigation }) {
       >
         {/* today */}
         <FadeIn>
-          <View style={[styles.card, shadow.sm, { marginTop: -spacing.xl }]}>
-            <Text style={styles.cardEyebrow}>Sales today</Text>
-            {loading && !data ? (
-              <SkeletonBlock width="55%" height={30} style={{ marginTop: 6 }} />
-            ) : (
-              <View style={styles.salesRow}>
-                <Text style={styles.salesBig} numberOfLines={1} adjustsFontSizeToFit>
-                  {ok ? money(today.sales, data.currency || currency) : '—'}
-                </Text>
-                {salesChange !== null && ok ? (
-                  <View style={[styles.delta, { backgroundColor: salesChange >= 0 ? colors.successBg : colors.dangerBg }]}>
-                    <Ionicons name={salesChange >= 0 ? 'trending-up' : 'trending-down'} size={13} color={salesChange >= 0 ? colors.success : colors.danger} />
-                    <Text style={[styles.deltaText, { color: salesChange >= 0 ? colors.success : colors.danger }]}>
-                      {salesChange >= 0 ? '+' : ''}
-                      {salesChange}% vs yesterday
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            )}
-            <View style={styles.miniStats}>
-              <View style={styles.miniStat}>
-                <Text style={styles.miniValue}>{ok ? today.orders ?? 0 : '—'}</Text>
-                <Text style={styles.miniLabel}>Orders</Text>
-              </View>
-              <View style={styles.miniDivider} />
-              <View style={styles.miniStat}>
-                <Text style={styles.miniValue}>{ok && today.avg ? money(today.avg, currency) : '—'}</Text>
-                <Text style={styles.miniLabel}>Average bill</Text>
-              </View>
-              <View style={styles.miniDivider} />
-              <View style={styles.miniStat}>
-                <Text style={styles.miniValue}>{ok ? data.live_count ?? 0 : '—'}</Text>
-                <Text style={styles.miniLabel}>In progress</Text>
+          <LinearGradient colors={['#2A2735', '#1D1B26']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, { marginTop: -spacing.xl }]}>
+            <View style={styles.heroTop}>
+              <Text style={styles.heroLabel}>Sales today</Text>
+              <View style={styles.livePill}>
+                <View style={styles.liveDot} />
+                <Text style={styles.livePillText}>Live</Text>
               </View>
             </View>
-          </View>
+            {loading && !data ? (
+              <SkeletonBlock width="55%" height={34} style={{ marginTop: 8, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+            ) : (
+              <Text style={styles.salesBig} numberOfLines={1} adjustsFontSizeToFit>
+                {ok ? money(Math.round(Number(today.sales) || 0), data.currency || currency) : '—'}
+              </Text>
+            )}
+            {salesChange !== null && ok ? (
+              <View style={styles.deltaRow}>
+                <View style={[styles.delta, { backgroundColor: salesChange >= 0 ? 'rgba(74,222,128,0.16)' : 'rgba(255,138,128,0.16)' }]}>
+                  <Ionicons name={salesChange >= 0 ? 'arrow-up' : 'arrow-down'} size={12} color={salesChange >= 0 ? '#4ADE80' : '#FF8A80'} />
+                  <Text style={[styles.deltaText, { color: salesChange >= 0 ? '#4ADE80' : '#FF8A80' }]}>{Math.abs(salesChange)}%</Text>
+                </View>
+                <Text style={styles.deltaHint}>vs yesterday by this time</Text>
+              </View>
+            ) : (
+              <Text style={styles.deltaHint}>
+                {!ok ? ' ' : Number(today.sales) > 0 ? `From ${today.orders} order${Number(today.orders) === 1 ? '' : 's'} so far today` : 'Sales appear here as orders are paid'}
+              </Text>
+            )}
+            <View style={styles.miniStats}>
+              {[
+                ['Orders', ok ? String(today.orders ?? 0) : '—'],
+                ['Average bill', ok && today.avg ? money(Math.round(today.avg), currency) : '—'],
+                ['In progress', ok ? String(data.live_count ?? 0) : '—'],
+              ].map(([l, v]) => (
+                <View key={l} style={styles.miniStat}>
+                  <Text style={styles.miniValue} numberOfLines={1} adjustsFontSizeToFit>{v}</Text>
+                  <Text style={styles.miniLabel}>{l}</Text>
+                </View>
+              ))}
+            </View>
+          </LinearGradient>
         </FadeIn>
 
         {/* quick actions */}
         <FadeIn index={1}>
-          <View style={[styles.quickGrid, { gap: spacing.md }]}>
-            {quick.slice(0, qCols >= 4 ? 4 : 4).map((q) => (
-              <PressableScale key={q.label} style={[styles.quick, shadow.sm]} onPress={q.go}>
-                <View style={styles.quickIcon}>
-                  <Ionicons name={q.icon} size={20} color={colors.primary} />
-                </View>
+          <View style={[styles.card, shadow.sm, styles.quickCard]}>
+            {quick.map((q) => (
+              <PressableScale key={q.label} style={[styles.quick, { width: `${100 / qCols}%` }]} onPress={q.go} accessibilityLabel={q.label} scale={0.92}>
+                <LinearGradient colors={q.c} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.quickIcon}>
+                  <Ionicons name={q.icon} size={23} color="#fff" />
+                </LinearGradient>
                 <Text style={styles.quickText} numberOfLines={1}>{q.label}</Text>
               </PressableScale>
             ))}
@@ -258,75 +271,106 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  salesRow: {
+  hero: {
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+  },
+  heroTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: 4,
+    justifyContent: 'space-between',
+  },
+  heroLabel: {
+    fontFamily: font.medium,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(74,222,128,0.14)',
+    borderRadius: radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4ADE80',
+  },
+  livePillText: {
+    fontFamily: font.semiBold,
+    fontSize: 11,
+    color: '#4ADE80',
   },
   salesBig: {
     fontFamily: font.bold,
-    fontSize: 30,
-    color: colors.ink,
-    flexShrink: 1,
+    fontSize: 34,
+    color: '#fff',
+    marginTop: 4,
+  },
+  deltaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
   },
   delta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     borderRadius: radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   deltaText: {
-    fontFamily: font.semiBold,
-    fontSize: 11.5,
+    fontFamily: font.bold,
+    fontSize: 12,
+  },
+  deltaHint: {
+    fontFamily: font.regular,
+    fontSize: 12.5,
+    color: 'rgba(255,255,255,0.65)',
+    marginTop: 2,
   },
   miniStats: {
     flexDirection: 'row',
-    alignItems: 'center',
     marginTop: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: 'rgba(255,255,255,0.12)',
   },
   miniStat: {
     flex: 1,
-    alignItems: 'center',
   },
   miniValue: {
     fontFamily: font.bold,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: 17,
+    color: '#fff',
   },
   miniLabel: {
     fontFamily: font.regular,
     fontSize: 11.5,
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.6)',
     marginTop: 1,
   },
-  miniDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: colors.border,
-  },
-  quickGrid: {
+  quickCard: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.md,
+    rowGap: spacing.lg,
   },
   quick: {
-    flex: 1,
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
+    gap: 7,
   },
   quickIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: colors.primaryLight,
+    width: 50,
+    height: 50,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },

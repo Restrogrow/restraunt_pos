@@ -344,10 +344,11 @@ export default function OrderDetailScreen({ route, navigation }) {
       const next = { ...order, order_status: to };
       if (extraFields.prep_minutes) {
         next.prep_minutes = extraFields.prep_minutes;
-        next.estimated_ready_at = new Date(Date.now() + extraFields.prep_minutes * 60000)
-          .toISOString()
-          .replace('T', ' ')
-          .slice(0, 19);
+        // local time, like the server's timestamps (toISOString() is UTC and showed the
+        // wrong "ready by" time, e.g. 5½ hours early in India)
+        const d = new Date(Date.now() + extraFields.prep_minutes * 60000);
+        const p = (n) => String(n).padStart(2, '0');
+        next.estimated_ready_at = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
       }
       setOrder(next);
       navigation.setParams({ order: next });

@@ -20,7 +20,13 @@ function friendlyStatusMessage(status) {
   return `Something went wrong (error ${status}). Please try again.`;
 }
 
+// The browser demo (restrogrow.com/app-demo) is built with EXPO_PUBLIC_DEMO=1: every request
+// is answered by demo/mockApi.js inside the browser and nothing reaches a real restaurant.
+export const DEMO = process.env.EXPO_PUBLIC_DEMO === '1';
+const demoApi = DEMO ? require('../demo/mockApi') : null;
+
 async function request(path, options = {}) {
+  if (DEMO) return demoApi.mockRequest(path, options);
   let res;
   try {
     res = await fetch(`${BASE_URL}${path}`, {

@@ -43,7 +43,7 @@ import WaiterCallsScreen from './screens/WaiterCallsScreen';
 import ReservationsScreen from './screens/ReservationsScreen';
 import CustomersScreen from './screens/CustomersScreen';
 import ReportsScreen from './screens/ReportsScreen';
-import SettingsScreen from './screens/SettingsScreen';
+import SettingsScreen, { SettingsSectionScreen } from './screens/SettingsScreen';
 import LogsScreen from './screens/LogsScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -229,6 +229,7 @@ function MoreStack() {
       <MoreStackNav.Screen name="Reports" component={ReportsScreen} />
       <MoreStackNav.Screen name="Logs" component={LogsScreen} />
       <MoreStackNav.Screen name="Settings" component={SettingsScreen} />
+      <MoreStackNav.Screen name="SettingsSection" component={SettingsSectionScreen} />
     </MoreStackNav.Navigator>
   );
 }

@@ -388,6 +388,7 @@ export default function POSScreen({ route }) {
         action: 'create_kot',
         ...buildCartPayload(),
         paymentMethod: 'Cash',
+        kot_only: 1, // kitchen ticket, not paid yet (the server ignores it; the app demo uses it)
       });
       if (!res.success) throw new Error(res.message || 'Could not send to kitchen');
       haptic.success();

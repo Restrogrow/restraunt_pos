@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { DEMO } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
 
@@ -19,8 +20,9 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function LoginScreen() {
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  // the browser demo comes filled in — any details work there
+  const [username, setUsername] = useState(DEMO ? 'demo' : '');
+  const [password, setPassword] = useState(DEMO ? 'demo1234' : '');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -133,8 +135,16 @@ export default function LoginScreen() {
           <View style={[styles.card, shadow.lg]}>
             {!otpRequired ? (
               <>
-                <Text style={styles.welcome}>Welcome back</Text>
-                <Text style={styles.subtitle}>Log in to manage today's orders</Text>
+                <Text style={styles.welcome}>{DEMO ? 'Try the app' : 'Welcome back'}</Text>
+                <Text style={styles.subtitle}>{DEMO ? 'A sample restaurant with real-looking orders' : "Log in to manage today's orders"}</Text>
+                {DEMO ? (
+                  <View style={styles.demoNote}>
+                    <Ionicons name="sparkles" size={16} color={colors.primary} />
+                    <Text style={styles.demoNoteText}>
+                      This is a live demo. Just tap Log In. Accept orders, take payments and explore everything. Nothing you do affects a real restaurant.
+                    </Text>
+                  </View>
+                ) : null}
 
                 <View style={styles.field}>
                   <Ionicons name="person-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
@@ -290,6 +300,22 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 4,
     marginBottom: spacing.xl,
+  },
+  demoNote: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: -spacing.md,
+    marginBottom: spacing.lg,
+  },
+  demoNoteText: {
+    flex: 1,
+    fontFamily: font.medium,
+    fontSize: 12.5,
+    color: colors.primaryDark,
+    lineHeight: 18,
   },
   field: {
     flexDirection: 'row',

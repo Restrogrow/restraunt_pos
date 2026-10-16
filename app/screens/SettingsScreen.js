@@ -567,15 +567,48 @@ function BusinessIdCard() {
   );
 }
 
+// Settings is a short menu of clear sections; each opens its own page (SettingsSection) with
+// only that section's controls, instead of one very long page mixing everything.
+const SECTIONS = [
+  {
+    title: 'Restaurant',
+    items: [
+      { key: 'details', icon: 'storefront', tint: '#FF5A3C', label: 'Restaurant details', sub: 'Name, owner, phone, address' },
+      { key: 'orderTypes', icon: 'bag-handle', tint: '#22A06B', label: 'Order types', sub: 'Delivery, takeaway, dine-in' },
+      { key: 'tax', icon: 'receipt', tint: '#3D7BF0', label: 'Tax and bill', sub: 'GST and business ID on the bill' },
+      { key: 'coupons', icon: 'pricetag', tint: '#8B5CF6', label: 'Coupons', sub: 'Discount codes for customers' },
+    ],
+  },
+  {
+    title: 'This device',
+    items: [
+      { key: 'printer', icon: 'print', tint: '#0EA5A5', label: 'Printer', sub: 'Receipts and kitchen tickets' },
+      { key: 'alerts', icon: 'notifications', tint: '#F5A623', label: 'New-order alerts', sub: 'Ring and notification' },
+    ],
+  },
+  {
+    title: 'Security',
+    items: [
+      { key: 'lock', icon: 'finger-print', tint: '#1D1B26', label: 'Fingerprint lock', sub: 'Lock the app when you leave it' },
+      { key: 'password', icon: 'key', tint: '#E5484D', label: 'Change password', sub: 'Your login password' },
+    ],
+  },
+  {
+    title: 'About',
+    items: [
+      { key: 'privacy', icon: 'shield-checkmark', tint: '#585667', label: 'Privacy policy', link: 'https://restrogrow.com/privacy-policy/' },
+      { key: 'terms', icon: 'document-text', tint: '#585667', label: 'Terms of service', link: 'https://restrogrow.com/terms-of-service/' },
+    ],
+  },
+];
+const SECTION_TITLE = Object.fromEntries(SECTIONS.flatMap((s) => s.items.map((i) => [i.key, i.label])));
+
 export default function SettingsScreen({ navigation }) {
   const { user, logout, refresh } = useAuth();
   const [couponsOpen, setCouponsOpen] = useState(false);
   const [pendingAsset, setPendingAsset] = useState(null); // picked photo awaiting explicit Save
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  // The logo URL is always the same `?type=logo&id=X` regardless of what the
-  // photo actually is, so after a re-upload the Image component would just
-  // keep showing its cached copy of the old one — bump this to force a
-  // fresh fetch once a new photo is actually saved.
+  // The logo URL never changes after a re-upload, so bump this to bypass the cached image.
   const [photoVersion, setPhotoVersion] = useState(0);
 
   const logoUrl = restaurantLogoUrl(user);
@@ -585,16 +618,10 @@ export default function SettingsScreen({ navigation }) {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (perm.status !== 'granted' && perm.granted !== true) {
-        feedback.error('Allow photo access to change your profile picture.');
+        feedback.error('Allow photo access to change your logo.');
         return;
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        base64: true,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.6,
-      });
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, allowsEditing: true, aspect: [1, 1], quality: 0.6 });
       if (result.canceled) return;
       const asset = result.assets?.[0];
       if (!asset?.base64) {
@@ -606,8 +633,6 @@ export default function SettingsScreen({ navigation }) {
       feedback.errorFrom(e, 'Could not open the photo library');
     }
   };
-
-  const cancelPhoto = () => setPendingAsset(null);
 
   const savePhoto = async () => {
     if (!pendingAsset) return;
@@ -621,162 +646,180 @@ export default function SettingsScreen({ navigation }) {
       await refresh();
       setPhotoVersion((v) => v + 1);
       setPendingAsset(null);
-      feedback.success('Photo saved');
+      feedback.success('Logo saved');
     } catch (e) {
-      feedback.errorFrom(e, 'Could not save the photo');
+      feedback.errorFrom(e, 'Could not save the logo');
     } finally {
       setUploadingPhoto(false);
     }
   };
 
+  const open = (item) => {
+    if (item.link) Linking.openURL(item.link).catch(() => {});
+    else if (item.key === 'coupons') setCouponsOpen(true);
+    else navigation.navigate('SettingsSection', { section: item.key });
+  };
+
+  const doLogout = async () => {
+    const ok = await feedback.confirm({ title: 'Log out?', message: 'You will need your username and password to log in again.', confirmText: 'Log out', danger: true });
+    if (ok) logout();
+  };
+
   return (
     <View style={styles.fill}>
       <ScreenHeader eyebrow="Account" title="Settings" onBack={navigation?.canGoBack() ? () => navigation.goBack() : undefined} />
-
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        style={styles.fill}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView style={styles.fill} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.profileCard, shadow.md]}>
-          <Pressable onPress={pickPhoto} disabled={uploadingPhoto} style={styles.avatarPressable}>
-            <Avatar
-              name={user?.username || user?.restaurant_name}
-              size={54}
-              bg={colors.primaryLight}
-              color={colors.primary}
-              uri={displayPhotoUri}
-            />
+          <Pressable onPress={pickPhoto} disabled={uploadingPhoto} style={styles.avatarPressable} accessibilityLabel="Change logo">
+            <Avatar name={user?.restaurant_name || user?.username} size={58} bg={colors.primaryLight} color={colors.primary} uri={displayPhotoUri} />
             <View style={styles.avatarEditBadge}>
               <Ionicons name="camera" size={12} color="#fff" />
             </View>
           </Pressable>
           <View style={{ marginLeft: spacing.md, flex: 1 }}>
-            <Text style={styles.profileName} numberOfLines={1}>{user?.restaurant_name || 'Your Restaurant'}</Text>
-            <Text style={styles.profileRole}>{user?.role || 'Administrator'}</Text>
+            <Text style={styles.profileName} numberOfLines={1}>{user?.restaurant_name || 'Your restaurant'}</Text>
+            <Text style={styles.profileRole} numberOfLines={1}>{user?.staff_name || user?.username} · {user?.role || 'Administrator'}</Text>
+            <Text style={styles.profileHint}>Tap the photo to change your logo</Text>
           </View>
         </View>
 
         {pendingAsset ? (
           <View style={[styles.photoConfirmRow, shadow.sm]}>
             <Ionicons name="image-outline" size={16} color={colors.primary} />
-            <Text style={styles.photoConfirmText}>New photo selected</Text>
-            <Pressable style={styles.photoCancelButton} onPress={cancelPhoto} disabled={uploadingPhoto}>
+            <Text style={styles.photoConfirmText}>New logo selected</Text>
+            <Pressable style={styles.photoCancelButton} onPress={() => setPendingAsset(null)} disabled={uploadingPhoto}>
               <Text style={styles.photoCancelText}>Cancel</Text>
             </Pressable>
             <Pressable style={styles.photoSaveButton} onPress={savePhoto} disabled={uploadingPhoto}>
-              {uploadingPhoto ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.photoSaveText}>Save Photo</Text>
-              )}
+              {uploadingPhoto ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.photoSaveText}>Save</Text>}
             </Pressable>
           </View>
         ) : null}
 
-        <View style={[styles.card, shadow.sm]}>
-          <Row icon="person-outline" label="Username" value={user?.username} />
-          <View style={styles.divider} />
-          <Row icon="mail-outline" label="Email" value={user?.email} />
-          <View style={styles.divider} />
-          <Row icon="shield-checkmark-outline" label="Role" value={user?.role} />
-        </View>
-
-        <Text style={styles.sectionTitle}>Restaurant</Text>
-        <View style={[styles.card, shadow.sm]}>
-          <Row icon="person-circle-outline" label="Owner" value={user?.owner_name} />
-          <View style={styles.divider} />
-          <Row icon="call-outline" label="Phone" value={user?.phone} />
-          <View style={styles.divider} />
-          <Row icon="location-outline" label="Address" value={user?.address} />
-        </View>
-
-        <Text style={styles.sectionTitle}>Order Types</Text>
-        <View style={[styles.card, shadow.sm, styles.pillsWrap]}>
-          <StatusPill label="Delivery" on={user?.enable_delivery == 1} />
-          <StatusPill label="Takeaway" on={user?.enable_takeaway == 1} />
-          <StatusPill label="Dine-in" on={user?.enable_dinein == 1} />
-          <StatusPill label="Cash on Delivery" on={user?.cod_enabled == 1} />
-        </View>
-
-        <Text style={styles.sectionTitle}>Tax</Text>
-        <View style={[styles.card, shadow.sm]}>
-          <Row icon="pricetag-outline" label={user?.tax_name || 'GST'} value={user?.enable_gst == 1 ? `${user?.tax_percent ?? 0}%` : 'Disabled'} />
-        </View>
-
-        <Text style={styles.sectionTitle}>Business ID</Text>
-        <BusinessIdCard />
-
-        <Text style={styles.sectionTitle}>Marketing</Text>
-        <Pressable style={({ pressed }) => [styles.card, shadow.sm, styles.row, pressed && { opacity: 0.9 }]} onPress={() => setCouponsOpen(true)}>
-          <View style={styles.rowIconWrap}>
-            <Ionicons name="pricetag-outline" size={16} color={colors.primary} />
+        {SECTIONS.map((sec) => (
+          <View key={sec.title}>
+            <Text style={styles.sectionTitle}>{sec.title}</Text>
+            <View style={[styles.card, shadow.sm, styles.menuCard]}>
+              {sec.items.map((it, i) => (
+                <Pressable
+                  key={it.key}
+                  onPress={() => open(it)}
+                  style={({ pressed }) => [styles.menuRow, i > 0 && styles.menuRowLine, pressed && { backgroundColor: colors.bg }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={it.label}
+                >
+                  <View style={[styles.menuIcon, { backgroundColor: it.tint }]}>
+                    <Ionicons name={it.icon} size={17} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.menuLabel}>{it.label}</Text>
+                    {it.sub ? <Text style={styles.menuSub} numberOfLines={1}>{it.sub}</Text> : null}
+                  </View>
+                  <Ionicons name={it.link ? 'open-outline' : 'chevron-forward'} size={17} color={colors.muted} />
+                </Pressable>
+              ))}
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Coupons</Text>
-            <Text style={styles.value}>Create and manage discount codes</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-        </Pressable>
+        ))}
 
-        <Text style={styles.sectionTitle}>Printing</Text>
-        <PrinterSettingsCard />
-
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        <OrderAlertsCard />
-
-        <Text style={styles.sectionTitle}>Security</Text>
-        <BiometricLockCard />
-        <View style={{ height: spacing.md }} />
-        <ChangePasswordCard />
-
-        <Text style={styles.sectionTitle}>Legal</Text>
-        <Pressable
-          style={({ pressed }) => [styles.card, shadow.sm, styles.row, pressed && { opacity: 0.9 }]}
-          onPress={() => Linking.openURL('https://restrogrow.com/privacy-policy/')}
-        >
-          <View style={styles.rowIconWrap}>
-            <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Privacy Policy</Text>
-          </View>
-          <Ionicons name="open-outline" size={16} color={colors.muted} />
-        </Pressable>
-        <View style={{ height: spacing.sm }} />
-        <Pressable
-          style={({ pressed }) => [styles.card, shadow.sm, styles.row, pressed && { opacity: 0.9 }]}
-          onPress={() => Linking.openURL('https://restrogrow.com/terms-of-service/')}
-        >
-          <View style={styles.rowIconWrap}>
-            <Ionicons name="document-text-outline" size={16} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Terms of Service</Text>
-          </View>
-          <Ionicons name="open-outline" size={16} color={colors.muted} />
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.9 }]}
-          onPress={async () => {
-            const ok = await feedback.confirm({ title: 'Log out?', message: 'You will need your username and password to log in again.', confirmText: 'Log out', danger: true });
-            if (ok) logout();
-          }}
-        >
+        <Pressable style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.9 }]} onPress={doLogout}>
           <Ionicons name="log-out-outline" size={18} color={colors.danger} />
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Text style={styles.logoutText}>Log out</Text>
         </Pressable>
 
         <Text style={styles.versionText}>
-          {Constants.expoConfig?.name || 'Restrogrow Partner'} v{Constants.expoConfig?.version || '1.0.0'}
+          {Constants.expoConfig?.name || 'Restrogrow Partner'} · version {Constants.expoConfig?.version || '1.0.0'}
         </Text>
       </ScrollView>
-      </KeyboardAvoidingView>
 
       <CouponsModal visible={couponsOpen} onClose={() => setCouponsOpen(false)} />
+    </View>
+  );
+}
+
+// One settings section on its own page.
+export function SettingsSectionScreen({ route, navigation }) {
+  const { user } = useAuth();
+  const section = route.params?.section;
+  const ownerOnly = user?.user_type === 'admin' || user?.user_type === 'branch_admin';
+  let body = null;
+  let hint = null;
+  if (section === 'details') {
+    hint = 'These come from your restaurant profile. To change them, open Settings on the RestroGrow website.';
+    body = (
+      <View style={[styles.card, shadow.sm]}>
+        <Row icon="storefront-outline" label="Restaurant name" value={user?.restaurant_name} />
+        <View style={styles.divider} />
+        <Row icon="person-circle-outline" label="Owner" value={user?.owner_name} />
+        <View style={styles.divider} />
+        <Row icon="call-outline" label="Phone" value={user?.phone} />
+        <View style={styles.divider} />
+        <Row icon="mail-outline" label="Email" value={user?.email} />
+        <View style={styles.divider} />
+        <Row icon="location-outline" label="Address" value={user?.address} />
+        <View style={styles.divider} />
+        <Row icon="person-outline" label="Your login" value={`${user?.username || ''}${user?.role ? ` · ${user.role}` : ''}`} />
+      </View>
+    );
+  } else if (section === 'orderTypes') {
+    hint = ownerOnly
+      ? 'Dine-in and delivery can be switched on or off at any time from the switches at the top of the Orders tab. Other changes are made on the website.'
+      : 'Which kinds of orders your restaurant takes right now.';
+    body = (
+      <View style={[styles.card, shadow.sm, { gap: 2 }]}>
+        {[
+          ['Delivery', user?.enable_delivery == 1, 'bicycle-outline'],
+          ['Takeaway', user?.enable_takeaway == 1, 'bag-handle-outline'],
+          ['Dine-in', user?.enable_dinein == 1, 'restaurant-outline'],
+          ['Cash on delivery', user?.cod_enabled == 1, 'cash-outline'],
+        ].map(([label, on, icon], i) => (
+          <View key={label} style={[styles.menuRow, i > 0 && styles.menuRowLine, { paddingHorizontal: 0 }]}>
+            <Ionicons name={icon} size={19} color={colors.inkSoft} />
+            <Text style={[styles.menuLabel, { flex: 1 }]}>{label}</Text>
+            <StatusPill label={on ? 'On' : 'Off'} on={on} />
+          </View>
+        ))}
+      </View>
+    );
+  } else if (section === 'tax') {
+    hint = 'Tax is added to every bill. The business ID (for example your GSTIN) can be printed at the top of the bill.';
+    body = (
+      <>
+        <View style={[styles.card, shadow.sm]}>
+          <Row icon="pricetag-outline" label={user?.tax_name || 'GST'} value={user?.enable_gst == 1 ? `${user?.tax_percent ?? 0}% added to bills` : 'Not added to bills'} />
+        </View>
+        <Text style={styles.sectionTitle}>Business ID on the bill</Text>
+        <BusinessIdCard />
+      </>
+    );
+  } else if (section === 'printer') {
+    hint = 'Choose the printer this phone or tablet prints to. Each device keeps its own printer.';
+    body = <PrinterSettingsCard />;
+  } else if (section === 'alerts') {
+    hint = 'How this device tells you about a new order from your website.';
+    body = <OrderAlertsCard />;
+  } else if (section === 'lock') {
+    hint = 'Ask for your fingerprint or face whenever the app is opened again.';
+    body = <BiometricLockCard />;
+  } else if (section === 'password') {
+    hint = 'Use at least 6 characters. You stay logged in on this device.';
+    body = <ChangePasswordCard />;
+  }
+
+  return (
+    <View style={styles.fill}>
+      <ScreenHeader eyebrow="Settings" title={SECTION_TITLE[section] || 'Settings'} onBack={() => navigation.goBack()} />
+      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView style={styles.fill} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {hint ? (
+            <View style={styles.hintBox}>
+              <Ionicons name="information-circle" size={18} color={colors.info} />
+              <Text style={styles.hintText}>{hint}</Text>
+            </View>
+          ) : null}
+          {body}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -1122,6 +1165,61 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: font.semiBold,
     fontSize: 14,
+  },
+  profileHint: {
+    fontFamily: font.regular,
+    fontSize: 11.5,
+    color: colors.muted,
+    marginTop: 3,
+  },
+  menuCard: {
+    padding: 0,
+    overflow: 'hidden',
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: 13,
+    paddingHorizontal: spacing.lg,
+    minHeight: 60,
+  },
+  menuRowLine: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  menuIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuLabel: {
+    fontFamily: font.semiBold,
+    fontSize: 14.5,
+    color: colors.ink,
+  },
+  menuSub: {
+    fontFamily: font.regular,
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 1,
+  },
+  hintBox: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: colors.infoBg,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  hintText: {
+    flex: 1,
+    fontFamily: font.medium,
+    fontSize: 13,
+    color: '#1E4FAF',
+    lineHeight: 19,
   },
   logoutButton: {
     flexDirection: 'row',
