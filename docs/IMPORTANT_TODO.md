@@ -1,6 +1,6 @@
 # Important to-do: the next-level features (planned 16 October 2026)
 
-Status: **1 and 2 built (16 Oct 2026), 4 later.** These three change what RestroGrow is: from billing software to the
+Status: **1 and 2 built (16 Oct 2026), 4 later, 5 next when asked (added 17 Oct 2026).** These three change what RestroGrow is: from billing software to the
 restaurant's own ordering channel, manager and single screen for every order. Order of work:
 
 | # | Feature | What it means for a restaurant | Rough size |
@@ -8,6 +8,7 @@ restaurant's own ordering channel, manager and single screen for every order. Or
 | 1 | **AI ordering on WhatsApp** | Customers order and pay in a WhatsApp chat, no app, no commission; the order lands in the POS with a KOT | 3–4 weeks |
 | 2 | **AI manager for the owner** | A morning WhatsApp report with what changed, why, and one-tap actions ("send ₹50 off to 23 regulars? YES") | 2–3 weeks |
 | 4 | **Swiggy, Zomato and ONDC orders in the POS** (later, after 1 and 2) | One screen and one KOT for every channel, stock and menu synced, no extra tablets | 4–8 weeks + partner approvals |
+| 5 | **Custom access per staff member** | The owner switches each permission on or off per person (or saves custom roles like "Captain"), instead of fixed roles only | about one session + new APKs |
 
 (The numbers match the list we discussed; #3 voice ordering for waiters is parked.)
 Smaller AI ideas stay in `docs/AI_TODO.md`; #1 and #2 here are the bigger versions of its items 2 and 5.
@@ -215,6 +216,40 @@ registration, certification, settlement). Start through a provider.
 ### Done when
 A test Swiggy/Zomato order shows in the POS within seconds, prints one KOT, accept/ready go back to the
 aggregator, switching a dish off removes it there, and the day's report splits sales by channel.
+
+---
+
+## 5. Custom access per staff member (next, build when asked)
+
+Today each role has a fixed list of permissions (`main/config/authorization_config.php`: Admin, Manager,
+Waiter, Chef, Cashier, Delivery rider). Owners want to give exactly the access they want.
+
+### What the owner sees
+- Staff › add / edit member: the **role is a starting point** that fills in a set of switches; below it,
+  **Custom access** with every switch, grouped:
+  - Orders: see orders, accept / reject online orders, cancel orders, delete orders
+  - Billing: use the POS, give discounts, take payments, refunds
+  - Menu: edit dishes and prices, mark items out of stock
+  - Tables, kitchen, bookings
+  - Customers: see customers, see phone numbers, loyalty points
+  - Money: today's sales, reports, cash and settlements
+  - Admin: staff, settings, coupons, inventory
+- **Saved roles** (optional): save a set of switches under a name ("Captain", "Head chef") and reuse it.
+- A small "Custom" tag on staff who differ from their role.
+
+### How we build it
+- Table `staff_permissions` (staff_id, permission, allowed) = overrides on top of the role's defaults;
+  `staff_roles_custom` for saved roles. Loaded into the session at login.
+- `hasPermission()` checks the overrides first, then the role. New, finer permissions (discounts, refunds,
+  cancel, delete, see phone numbers, see sales) are checked in the endpoints that do those things.
+- `get_session.php` sends the person's final permission list; the website and both apps show only the
+  screens, tiles and buttons that list allows (the server still refuses everything else).
+- Changing someone's access applies at their next request (no logout needed).
+
+### Done when
+A waiter given "give discounts" can apply one in POS and a waiter without it can't (also through the API);
+a manager with "reports" switched off sees no Reports anywhere; a saved "Captain" role can be given to two
+people; the website and both apps hide what the person can't use.
 
 ---
 
