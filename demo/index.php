@@ -59,7 +59,7 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   <a class="brand" href="../"><img src="../assets/images/logo-transparent.png" alt="">Restro Grow</a>
   <h1>Try RestroGrow with a real-looking restaurant</h1>
   <p class="lead"><b><?php echo $h(DEMO_RESTAURANT_NAME); ?></b> has a full menu with photos, tables, staff, six weeks of sales
-     and orders coming in right now. Tap around freely: the demo is reset every few hours.</p>
+     and orders coming in right now. Tap around freely: we reset the demo from time to time.</p>
 
   <div class="grid">
     <section class="card">

@@ -53,7 +53,7 @@ Last updated: 16 October 2026.
 - **WhatsApp never sends** from the demo restaurant. Sends report success but nothing goes out (`waSend()` in `main/config/whatsapp_engine.php`).
 - Everything else (orders, menu, settings) visitors can change. A reset undoes it:
   - **Super Admin › Tools › Demo restaurant › Reset demo** (about 10–30 seconds).
-  - **Cron** `main/cron/reset_demo_restaurant.php`, every 3 hours (see §7). This also keeps "today" fresh.
+  - Press **Reset demo** before showing it to someone too: that also makes "today" fresh (new orders waiting, food cooking). No cron is used for this, by choice. `main/cron/reset_demo_restaurant.php` exists if that ever changes.
   - Local: `php main/database/seed_demo_restaurant.php`.
 - All of this is one file: `main/config/demo_restaurant.php`. The menu data, the logins and what the demo is allowed to do are all there.
 - Photos: `main/assets/demo_restaurant/` (Wikimedia Commons, credits in `/demo-credits.txt`, which must stay public because of the CC licences).
@@ -159,7 +159,7 @@ Settings live in `main/.env` on each server (never in git; `main/.env.example` l
 | Apple and Google Wallet cards | `GOOGLE_WALLET_*`, `APPLE_*` | ❌ Missing. The buttons stay hidden. | Loyalty card on the phone |
 | Sentry | `SENTRY_DSN` | ✅ A default DSN is built into `config/sentry.php` | Error tracking |
 | Cron by URL | `CRON_SECRET_KEY` | ❌ Not set (crons run through the command line instead) | Running crons through a URL |
-| Other | `APP_URL`, `HEALTH_CHECK_KEY`, `RECONCILE_SECRET`, `TRUSTED_PROXY_IPS` | ❌ Not set (defaults are used) | Links in messages, detailed health check, the demo-reset cron's header photo URL |
+| Other | `APP_URL`, `HEALTH_CHECK_KEY`, `RECONCILE_SECRET`, `TRUSTED_PROXY_IPS` | ❌ Not set (defaults are used) | Links in messages, detailed health check |
 
 Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by `main/api/image.php`), analytics tags. Geoapify is deprecated.
 
@@ -177,7 +177,6 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 | Loyalty gifts | `/usr/bin/php <HOME>/main/cron/loyalty_autopilot.php` | daily 09:00 | check it's added |
 | Scheduled orders | `/usr/bin/php <HOME>/main/cron/activate_scheduled_orders.php` | every 5 min | check it's added |
 | Meal-plan deliveries | `/usr/bin/php <HOME>/main/cron/generate_subscription_deliveries.php` | daily 05:00 | check it's added |
-| **Demo reset (new)** | `/usr/bin/php <HOME>/main/cron/reset_demo_restaurant.php` | every 3 hours (`0 */3 * * *`) | **to add** |
 
 - **Uptime:** UptimeRobot keyword monitor on `/main/api/health.php?check=orders`, looking for `"status":"ok"`.
 
@@ -244,7 +243,6 @@ All of these can be read in Super Admin › Tools › Admin handbook. None can b
 ## 11. Open items
 
 - [ ] Live: deploy, then press **Create demo** in Super Admin › Tools › Demo restaurant.
-- [ ] Live: add the demo-reset cron (every 3 hours).
 - [ ] Live: confirm the other four crons are added.
 - [ ] Live: check `SMTP_ENABLED`, the app password and the `MAIL_FROM_*` aliases.
 - [ ] RepeatGrow: approve the WhatsApp templates, set `REPEATGROW_GIFT_TEMPLATE`, and build the Connect side.

@@ -4,8 +4,8 @@
  *
  * "Reset demo" builds it from scratch (main/config/demo_restaurant.php): menu with photos, tables,
  * staff, customers, six weeks of orders, live orders, bookings and coupons. Use it the first time on
- * a new server and whenever visitors have messed it up; cron/reset_demo_restaurant.php does the
- * same every few hours. "Remove" deletes it. Both are POST + CSRF token.
+ * a new server, before showing it to someone (fresh orders for today) and whenever visitors have
+ * messed it up. "Remove" deletes it. Both are POST + CSRF token.
  */
 require_once __DIR__ . '/auth.php';
 require_superadmin();
@@ -148,7 +148,8 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   <h1>Demo restaurant</h1>
   <p><b><?php echo $h(DEMO_RESTAURANT_NAME); ?></b> (<?php echo $h(DEMO_RESTAURANT_ID); ?>) is the restaurant we show to people:
      a full menu with photos, tables, staff, six weeks of sales and orders coming in. Anyone with the link can log in,
-     so messages, payment keys, passwords and uploads are switched off for it, and it is rebuilt every few hours.</p>
+     so messages, payment keys, passwords and uploads are switched off for it. Press <b>Reset demo</b> before showing it to someone:
+     it undoes visitors' changes and puts fresh orders in today.</p>
 
   <?php if ($message): ?><div class="msg ok"><?php echo $h($message); ?></div><?php endif; ?>
   <?php if ($error): ?><div class="msg err"><?php echo $h($error); ?></div><?php endif; ?>

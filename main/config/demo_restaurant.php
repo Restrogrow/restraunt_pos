@@ -5,7 +5,7 @@
  * One place builds it, used by:
  *   - php main/database/seed_demo_restaurant.php        (local, from the command line)
  *   - Super Admin › Demo restaurant › "Reset demo"       (live server)
- *   - main/cron/reset_demo_restaurant.php                (nightly reset, undoes visitors' changes)
+ *   - main/cron/reset_demo_restaurant.php                (optional; not scheduled, the owner resets from Super Admin)
  *
  * resetDemoRestaurant() deletes every row of the demo restaurant ID and builds it again:
  * settings, logo, 10 menus with ~55 dishes (photos, descriptions, sizes, breakfast hours),

@@ -50,7 +50,7 @@ php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner /
 
 ## Demo restaurant
 
-- **Spice Garden Indiranagar** (`RESSGI002`, login `demo` / `demo`, one-tap at `/demo/`). One builder for everything: `main/config/demo_restaurant.php` (`resetDemoRestaurant()`), used by `main/database/seed_demo_restaurant.php`, Super Admin › Tools › Demo restaurant and `main/cron/reset_demo_restaurant.php`.
+- **Spice Garden Indiranagar** (`RESSGI002`, login `demo` / `demo`, one-tap at `/demo/`). One builder for everything: `main/config/demo_restaurant.php` (`resetDemoRestaurant()`), used by `main/database/seed_demo_restaurant.php`, and Super Admin › Tools › Demo restaurant (the owner resets it from there; `main/cron/reset_demo_restaurant.php` exists but isn't scheduled).
 - `isDemoRestaurantSession()` guards the shared account: `admin/auth.php` blocks password / profile / payment-gateway / system-settings / upload actions and keeps the name (it's the website slug); `api/app_settings.php` ignores renames; `waSend()` never sends for it.
 - New features that send messages, charge money or upload files should check `isDemoRestaurantSession()` too.
 
