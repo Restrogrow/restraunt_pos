@@ -92,7 +92,16 @@ if (!function_exists('rgcBase')) {
         return $base . '/main/api/repeatgrow_connect.php';
     }
 
-    function rgcScopes(): array { return ['messages:send', 'templates:read', 'templates:write']; }
+    /**
+     * WhatsApp ordering (config/wa_order_engine.php) also needs webhooks:manage + contacts:read.
+     * RepeatGrow refuses the whole connection if asked for a scope its RestroGrow client doesn't allow,
+     * so they are only asked for once REPEATGROW_CONNECT_ORDERING=1 is set in .env (after RepeatGrow allows them).
+     */
+    function rgcScopes(): array {
+        $s = ['messages:send', 'templates:read', 'templates:write'];
+        if ((string)env('REPEATGROW_CONNECT_ORDERING', '') === '1') { $s[] = 'webhooks:manage'; $s[] = 'contacts:read'; }
+        return $s;
+    }
 
     /** The URL that starts the connection on RepeatGrow. */
     function rgcAuthorizeUrl(PDO $conn, string $rid, string $restaurantName): string {

@@ -1,13 +1,13 @@
 # Important to-do: the next-level features (planned 16 October 2026)
 
-Status: **planned, not built.** These three change what RestroGrow is: from billing software to the
+Status: **1 built (16 Oct 2026), 2 being built, 4 later.** These three change what RestroGrow is: from billing software to the
 restaurant's own ordering channel, manager and single screen for every order. Order of work:
 
 | # | Feature | What it means for a restaurant | Rough size |
 |---|---------|--------------------------------|-----------|
 | 1 | **AI ordering on WhatsApp** | Customers order and pay in a WhatsApp chat, no app, no commission; the order lands in the POS with a KOT | 3–4 weeks |
 | 2 | **AI manager for the owner** | A morning WhatsApp report with what changed, why, and one-tap actions ("send ₹50 off to 23 regulars? YES") | 2–3 weeks |
-| 4 | **Swiggy, Zomato and ONDC orders in the POS** | One screen and one KOT for every channel, stock and menu synced, no extra tablets | 4–8 weeks + partner approvals |
+| 4 | **Swiggy, Zomato and ONDC orders in the POS** (later, after 1 and 2) | One screen and one KOT for every channel, stock and menu synced, no extra tablets | 4–8 weeks + partner approvals |
 
 (The numbers match the list we discussed; #3 voice ordering for waiters is parked.)
 Smaller AI ideas stay in `docs/AI_TODO.md`; #1 and #2 here are the bigger versions of its items 2 and 5.
@@ -22,6 +22,28 @@ Rules for all three:
 ---
 
 ## 1. AI ordering on WhatsApp
+
+### Status: built (16 October 2026)
+- Owner screen: Dashboard › Growth › **WhatsApp ordering** (switch, order types, welcome line, "suggest an extra",
+  the order link + one QR per table, a test chat that talks to the real bot, customer chats with a reply box).
+- Files: `main/config/wa_order_engine.php` (the chat), `main/config/ai_gemini.php` (Gemini, the user's choice of AI;
+  without a key a built-in matcher understands plain orders), `main/api/wa_webhook.php` (RepeatGrow → RestroGrow),
+  `main/api/wa_order_admin.php`, `main/assets/js/wa-order-studio.js`. Orders go through
+  `api/process_website_order.php` with a signed internal header (skips only the per-IP limits) and carry
+  `[WhatsApp order]` in their notes; status changes message the customer (hook in `config/order_state_machine.php`).
+- Prices in the chat match the order exactly (dish offers, packing, tax on dishes); dishes whose category is closed
+  (e.g. breakfast hours) are left out; the website's minimum order, order types and stock rules apply.
+- Tested locally: Hinglish orders, notes ("kam spicy"), sizes, menu by category, takeaway/delivery/table, name,
+  confirm → real order + KOT, status messages, signed webhook (bad signature refused), duplicate deliveries ignored.
+
+**Still needs the user (to go live):**
+1. In RepeatGrow: allow `webhooks:manage` and `contacts:read` for the RestroGrow Connect client, then set
+   `REPEATGROW_CONNECT_ORDERING=1` in the live `main/.env`; restaurants reconnect once (Growth › WhatsApp).
+2. The live `main/.env` needs `GEMINI_API_KEY` (already used by the chatbot) for the AI understanding.
+3. Optional shared number for restaurants without their own: `WA_ORDER_SHARED_NUMBER` + `REPEATGROW_WEBHOOK_SECRET`,
+   and register `https://restrogrow.com/main/api/wa_webhook.php?rid=platform` as a webhook on that RepeatGrow account.
+4. Not in v1: voice notes, tap buttons (RepeatGrow's API sends text only today), online payment links in chat
+   (takeaway/delivery pay on pickup/delivery; restaurants that require online payment get a link to their website).
 
 ### What the customer sees
 1. Scans the table QR / taps "Order on WhatsApp" on the website / messages the restaurant's number.
@@ -131,7 +153,9 @@ suggestion really runs it (logged, with the result shown next day: "The ₹50 gi
 
 ---
 
-## 4. Swiggy, Zomato and ONDC orders in the POS
+## 4. Swiggy, Zomato and ONDC orders in the POS (later)
+
+> The user decided on 16 October 2026: build 1 and 2 first, this one later.
 
 ### What the restaurant sees
 - Aggregator orders pop up in RestroGrow with the alert; **Accept / Reject / set prep time** from the POS or app.

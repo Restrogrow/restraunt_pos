@@ -294,6 +294,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">menu_book</span>
           <span class="text">Admin handbook</span>
         </a>
+        <a class="menu-link" href="features.php">
+          <span class="material-symbols-rounded icon">checklist</span>
+          <span class="text">Features</span>
+        </a>
         <a class="menu-link" href="demo_restaurant.php">
           <span class="material-symbols-rounded icon">storefront</span>
           <span class="text">Demo restaurant</span>

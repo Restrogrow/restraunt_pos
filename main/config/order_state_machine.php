@@ -315,6 +315,21 @@ function validateAndUpdateOrderStatus(
     require_once __DIR__ . '/inventory_engine.php';
     invKick($conn, (string)$order['restaurant_id']);
 
+    // WhatsApp orders: tell the customer in their chat. Sent after the request is done (the caller
+    // has committed by then, and this row lock is long gone); it reads the saved status, so a
+    // rolled-back change sends nothing.
+    if (strpos((string)$order['notes'], '[WhatsApp order]') === 0) {
+        static $waQueued = [];
+        if (empty($waQueued[$orderId])) {
+            $waQueued[$orderId] = true;
+            register_shutdown_function(function () use ($conn, $orderId) {
+                if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request();
+                require_once __DIR__ . '/wa_order_engine.php';
+                woNotifyStatus($conn, $orderId);
+            });
+        }
+    }
+
     return [
         'success'       => true,
         'message'       => "Order status updated from {$currentStatus} to {$newStatus}",

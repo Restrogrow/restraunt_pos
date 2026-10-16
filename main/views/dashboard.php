@@ -1330,6 +1330,12 @@ try {
               </a>
             </li>
             <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="waOrderPage">
+                <span class="material-symbols-rounded">shopping_bag</span>
+                <span class="nav-label">WhatsApp ordering</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="customerSegmentsPage">
                 <span class="material-symbols-rounded">groups</span>
                 <span class="nav-label">Customer Segments</span>
@@ -4135,6 +4141,15 @@ function toggleGatewayMode() {
     </div>
 
     <!-- ═══════ Growth Module: Referrals ═══════ -->
+    <!-- Growth › WhatsApp ordering (assets/js/wa-order-studio.js) -->
+    <div id="waOrderPage" class="page sx lg">
+      <div class="page-header">
+        <h1>WhatsApp ordering</h1>
+        <p>Customers order and track their food in a WhatsApp chat</p>
+      </div>
+      <div id="woRoot"></div>
+    </div>
+
     <div id="whatsappPage" class="page sx">
       <style>
         #whatsappPage .ls-grid input, #whatsappPage .ls-grid select, #whatsappPage textarea { padding: 9px 11px; border: 1.5px solid #e5e7eb; border-radius: 10px; font: inherit; font-size: .9rem; color: #111827; background: #fff; }
@@ -7302,6 +7317,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/loyalty-studio-card.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-card.js'); ?>" defer></script>
   <script src="../assets/js/loyalty-studio-performance.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-performance.js'); ?>" defer></script>
   <script src="../assets/js/whatsapp-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/whatsapp-admin.js'); ?>" defer></script>
+  <script src="../assets/js/wa-order-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/wa-order-studio.js'); ?>" defer></script>
   <script src="../assets/js/studio-ui.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/studio-ui.js'); ?>" defer></script>
   <script src="../assets/js/areas-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/areas-studio.js'); ?>" defer></script>
   <script src="../assets/js/tables-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/tables-studio.js'); ?>" defer></script>

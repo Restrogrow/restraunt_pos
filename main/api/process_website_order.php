@@ -125,6 +125,15 @@ $abuse_ip = orderAbuseGetClientIp();
 if (!filter_var($abuse_ip, FILTER_VALIDATE_IP)) {
     $abuse_ip = null;
 }
+// WhatsApp orders (config/wa_order_engine.php) are sent by this server with a signed header: the
+// request's IP is the server's own, so the per-IP limits below would block a busy restaurant.
+// The per-phone limits still apply (the WhatsApp number is the customer's real number).
+$rgInternalOrder = false;
+if (!empty($_SERVER['HTTP_X_RG_INTERNAL'])) {
+    require_once __DIR__ . '/../config/wa_order_engine.php';
+    $rgInternalOrder = woVerifyInternal((string)file_get_contents('php://input'));
+    if ($rgInternalOrder) $abuse_ip = null;
+}
 
 try {
     $conn = getConnection();
@@ -159,7 +168,7 @@ try {
 
     // IP flood cap: 5 website orders per IP per 30 minutes. A real customer
     // places one or two; a script hammering the endpoint hits this first.
-    $orderFlood = orderAbuseCountRecentOrdersByIp($conn, $restaurant_id, $abuse_ip, 30);
+    $orderFlood = $rgInternalOrder ? 0 : orderAbuseCountRecentOrdersByIp($conn, $restaurant_id, $abuse_ip, 30);
     if ($orderFlood >= 5) {
         ob_end_clean();
         http_response_code(429);
@@ -174,7 +183,7 @@ try {
     // The flood bot rotated many IPv6 addresses inside the same /64 — exact-IP
     // caps each saw one order, the /64 bucket sees them all. 12 leaves headroom
     // for offices/campuses where many customers share one egress prefix.
-    $ipPrefixFlood = orderAbuseCountRecentOrdersByIpPrefix($conn, $restaurant_id, $abuse_ip, 30);
+    $ipPrefixFlood = $rgInternalOrder ? 0 : orderAbuseCountRecentOrdersByIpPrefix($conn, $restaurant_id, $abuse_ip, 30);
     if ($ipPrefixFlood >= 12) {
         ob_end_clean();
         http_response_code(429);
