@@ -1,4 +1,7 @@
-<?php require_once __DIR__ . '/header.php'; require_once __DIR__ . '/../config/google_login.php'; $googleReady = googleLoginReady(); ?>
+<?php require_once __DIR__ . '/header.php'; require_once __DIR__ . '/../config/google_login.php'; $googleReady = googleLoginReady();
+// came back from Google with no account here yet (google_finish.php): sign-up without the WhatsApp code
+$gp = $_SESSION['google_pending'] ?? null;
+$googleSignup = is_array($gp) && (int)($gp['exp'] ?? 0) > time() && ($gp['rid'] ?? '') === (string)($restaurant_id ?? '') ? ['email' => $gp['email'], 'name' => $gp['name']] : null; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -420,9 +423,19 @@ function continueWithGoogle() {
   var q = new URLSearchParams({ for: 'customer', rid: window.restaurantId, host: location.host, ret: back.pathname + back.search, back: location.pathname + location.search });
   location.href = new URL('../api/google_login.php?' + q.toString(), document.baseURI).href;
 }
+window.googleSignup = <?php echo json_encode($googleSignup, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.googleNeedsOtp = false;
 (function () {
   var q = new URLSearchParams(location.search);
   if (q.get('google_error')) setTimeout(function () { showAuthError(q.get('google_error')); }, 0);
+  if (window.googleSignup) setTimeout(function () {
+    switchAuthTab('signup');
+    var n = document.getElementById('signupName'), em = document.getElementById('signupEmail');
+    if (n && !n.value) n.value = window.googleSignup.name || '';
+    if (em) { em.value = window.googleSignup.email; em.readOnly = true; }
+    showToast('Signed in with Google. Add your phone number and a password to finish.', 'success');
+    (document.getElementById('signupPhone') || {}).focus && document.getElementById('signupPhone').focus();
+  }, 0);
 })();
 window.alreadyLoggedIn = <?php echo $logged_in_customer ? 'true' : 'false'; ?>;
 window.claimCode = <?php echo json_encode(preg_match('/^[a-f0-9]{32}$/', strtolower((string)($_GET['claim'] ?? ''))) ? strtolower($_GET['claim']) : '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -770,6 +783,48 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
   if (password !== confirmPassword) { showAuthError('Passwords do not match'); return; }
 
   var btn = document.getElementById('signupSubmitBtn');
+
+  // Signed in with Google as this email: Google replaces the WhatsApp code, unless this phone
+  // already has orders or an account here (the server answers needs_otp, then the normal code step runs)
+  if (!signupOtpSent && window.googleSignup && !window.googleNeedsOtp && email.toLowerCase() === window.googleSignup.email) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Creating account...';
+    var gfd = new FormData();
+    gfd.append('action', 'signup');
+    gfd.append('restaurant_id', window.restaurantId);
+    gfd.append('name', name);
+    gfd.append('phone', phone);
+    gfd.append('email', email);
+    gfd.append('password', password);
+    gfd.append('confirmPassword', confirmPassword);
+    gfd.append('remember', document.getElementById('signupRemember').checked ? '1' : '');
+    gfd.append('birthday', (document.getElementById('signupBirthday') || {}).value || '');
+    if ((document.getElementById('signupOptin') || {}).checked) gfd.append('whatsapp_optin', '1');
+    if (window.referralCode) gfd.append('ref', window.referralCode);
+    fetch('customer_auth.php', { method: 'POST', body: gfd })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        btn.disabled = false;
+        btn.innerHTML = 'Create account <i class="fa fa-arrow-right"></i>';
+        if (res.success) {
+          try { localStorage.setItem('customerDetails', JSON.stringify(res.customer)); } catch (e) {}
+          showToast(res.message, 'success');
+          setTimeout(function () { window.location.href = window.redirectUrl; }, 500);
+        } else if (res.needs_otp) {
+          window.googleNeedsOtp = true;
+          showToast(res.message, 'success');
+          document.getElementById('signupForm').requestSubmit(); // the normal WhatsApp code step
+        } else {
+          showAuthError(res.message || 'Sign up failed');
+        }
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.innerHTML = 'Create account <i class="fa fa-arrow-right"></i>';
+        showAuthError('Network error. Please try again.');
+      });
+    return;
+  }
 
   // Step 1: form is valid but no code sent yet — send the OTP and stop
   // here. Fields are locked so the code that's about to be verified

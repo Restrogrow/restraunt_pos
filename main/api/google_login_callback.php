@@ -45,7 +45,7 @@ try {
     $conn = getConnection();
     $for = $state['f'];
     if ($for === 'customer') {
-        $token = googleLoginIssueToken($conn, 'customer', $state['rid'], $profile + ['ret' => $state['r'] ?? '/']);
+        $token = googleLoginIssueToken($conn, 'customer', $state['rid'], $profile + ['ret' => $state['r'] ?? '/', 'back' => $state['b'] ?? ($state['r'] ?? '/')]);
     } else {
         $token = googleLoginIssueToken($conn, $for === 'app' ? 'app' : 'owner', null, $profile);
     }

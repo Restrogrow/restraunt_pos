@@ -695,8 +695,12 @@ function handleSignup() {
     // off signup to anyone who can't receive a WhatsApp message at that
     // number. Scoped under a fixed 'SIGNUP' restaurant_id since there's no
     // real restaurant_id yet at this point (one is only generated below).
+    // Came through "Continue with Google" with this same email: Google already confirmed the
+    // person, so that replaces the WhatsApp code (every other detail is still required).
+    $gp = $_SESSION['google_owner_pending'] ?? null;
+    $viaGoogle = is_array($gp) && (int)($gp['exp'] ?? 0) > time() && strtolower($email) === ($gp['email'] ?? '');
     $phoneDigits = preg_replace('/\D/', '', $phone);
-    if (!isPhoneVerifiedRecently($pdo, 'SIGNUP', $phoneDigits, 'owner_signup')) {
+    if (!$viaGoogle && !isPhoneVerifiedRecently($pdo, 'SIGNUP', $phoneDigits, 'owner_signup')) {
         throw new Exception('Please verify your phone number via WhatsApp before creating your account.');
     }
 
@@ -726,6 +730,17 @@ function handleSignup() {
     ");
     $result = $insertStmt->execute([$username, $email, $hashedPassword, $restaurantId, $restaurantName, $country, $phone, $currencySymbol]);
     
+    if ($result && $viaGoogle) {
+        // signed up with Google: straight into the new dashboard
+        unset($_SESSION['google_owner_pending']);
+        require_once __DIR__ . '/../config/google_login.php';
+        $row = $pdo->prepare('SELECT * FROM users WHERE restaurant_id = ? LIMIT 1');
+        $row->execute([$restaurantId]);
+        [$redirect] = googleLoginStartSession($pdo, ['type' => 'admin', 'row' => $row->fetch(PDO::FETCH_ASSOC)]);
+        echo json_encode(['success' => true, 'message' => 'Account created', 'redirect' => $redirect,
+                          'data' => ['username' => $username, 'restaurant_id' => $restaurantId, 'restaurant_name' => $restaurantName]]);
+        return;
+    }
     if ($result) {
         echo json_encode([
             'success' => true,

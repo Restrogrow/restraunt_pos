@@ -21,8 +21,11 @@ try {
 
     $account = googleLoginFindAccount($conn, $p['email']);
     if (!$account) {
-        // no RestroGrow account with this email yet: start the free-trial sign-up, filled in
-        googleOwnerBack(['google_signup' => 1, 'email' => $p['email'], 'name' => $p['name']]);
+        // no RestroGrow account with this email yet: the normal free-trial sign-up, with name and
+        // email filled in. Remembered here (not trusted from the URL) so sign-up can skip the
+        // WhatsApp code: Google has already confirmed who this is.
+        $_SESSION['google_owner_pending'] = ['email' => $p['email'], 'name' => $p['name'], 'exp' => time() + 1800];
+        googleOwnerBack(['google_signup' => 1]);
     }
     [$redirect] = googleLoginStartSession($conn, $account);
     header('Location: ' . $redirect);

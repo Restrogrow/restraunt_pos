@@ -93,8 +93,22 @@ function handleCustomerSignup($pdo) {
     // (otp.php, action=verify, purpose=customer_signup) before the account
     // is created — same gate as the restaurant-owner signup, but scoped
     // under the real restaurant_id since customers already have one.
+    // Came through "Continue with Google" with this same email: Google stands in for the WhatsApp
+    // code, unless this phone already has orders or an account here. Points, wallet and order
+    // history belong to the phone, so taking over an existing number still needs the code.
+    $gp = $_SESSION['google_pending'] ?? null;
+    $viaGoogle = is_array($gp) && (int)($gp['exp'] ?? 0) > time() && ($gp['rid'] ?? '') === $restaurantId && strtolower($email) === ($gp['email'] ?? '');
     if (!isPhoneVerifiedRecently($pdo, $restaurantId, $phone, 'customer_signup')) {
-        throw new Exception('Please verify your phone number via WhatsApp before creating your account.');
+        require_once __DIR__ . '/../config/order_abuse_guard.php';
+        $known = $pdo->prepare('SELECT 1 FROM customers WHERE restaurant_id = ? AND phone IN (?, ?) LIMIT 1');
+        $known->execute([$restaurantId, $phone, orderAbuseNormalizePhone($phone) ?? $phone]);
+        if (!$viaGoogle || $known->fetchColumn()) {
+            if ($viaGoogle) {
+                echo json_encode(['success' => false, 'needs_otp' => true, 'message' => 'This number already has orders here. Please confirm it with the WhatsApp code.']);
+                return;
+            }
+            throw new Exception('Please verify your phone number via WhatsApp before creating your account.');
+        }
     }
 
     // Orders store the 10-digit form (order_abuse_guard.php): use it here too, so the
@@ -151,6 +165,7 @@ function handleCustomerSignup($pdo) {
     }
 
     startSecureSession();
+    if ($viaGoogle) unset($_SESSION['google_pending']);
     startCustomerSession($pdo, ['id' => $customerId, 'restaurant_id' => $restaurantId], $remember);
 
     echo json_encode([
