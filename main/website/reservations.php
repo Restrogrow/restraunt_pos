@@ -313,5 +313,6 @@ document.getElementById('reservationForm').addEventListener('submit', function(e
     });
 });
 </script>
+<?php include __DIR__ . '/call_waiter.php'; ?>
 </body>
 </html>

@@ -43,6 +43,7 @@ const APP_SETTING_FIELDS = [
     'show_business_id' => 'bool', 'business_id_label' => 'text', 'business_id_no' => 'upper',
     'instagram_link' => 'url', 'facebook_link' => 'url', 'twitter_link' => 'url',
     'youtube_link' => 'url', 'linkedin_link' => 'url',
+    'call_waiter_enabled' => 'bool',
 ];
 
 function appSettingValue(string $field, string $type, $raw) {
@@ -107,6 +108,8 @@ try {
         $userId = $_SESSION['user_id'];
     }
 
+    require_once __DIR__ . '/../config/waiter_call.php';
+    waiterCallEnsureSchema($conn);
     // only columns this database actually has (older databases miss some of the newer ones)
     $have = array_flip($conn->query('SHOW COLUMNS FROM users')->fetchAll(PDO::FETCH_COLUMN));
     $fields = array_filter(APP_SETTING_FIELDS, fn($f) => isset($have[$f]), ARRAY_FILTER_USE_KEY);

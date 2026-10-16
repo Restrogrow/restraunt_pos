@@ -42,7 +42,15 @@ try {
     sort($resp);
     $median = $resp ? $resp[(int)floor((count($resp) - 1) / 2)] : null;
 
+    // the "customers can call a waiter from the website" switch (Waiter Requests page)
+    require_once __DIR__ . '/../config/waiter_call.php';
+    waiterCallEnsureSchema($conn);
+    $set = $q("SELECT COALESCE(call_waiter_enabled, 1) AS on_, COALESCE(enable_dinein, 1) AS dinein FROM users WHERE restaurant_id = ? LIMIT 1", [$rid])->fetch(PDO::FETCH_ASSOC) ?: [];
+    $tables = (int)$q("SELECT COUNT(*) FROM tables WHERE restaurant_id = ?", [$rid])->fetchColumn();
+    $canEdit = !empty($_SESSION['user_id']) || !empty($_SESSION['branch_admin_id']);
+
     wrOut(['success' => true, 'now' => date('Y-m-d H:i:s'), 'waiting' => $waiting, 'attended' => $done,
+        'website_calls' => ['enabled' => (int)($set['on_'] ?? 1) === 1, 'dinein' => (int)($set['dinein'] ?? 1) === 1, 'tables' => $tables, 'can_edit' => $canEdit],
         'stats' => ['waiting' => count($waiting), 'oldest' => $waiting ? $waiting[0]['waited'] : 0, 'attended_today' => count($done),
             'avg_response' => $resp ? (int)round(array_sum($resp) / count($resp)) : null, 'median_response' => $median]]);
 } catch (Throwable $e) {

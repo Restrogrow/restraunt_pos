@@ -19,7 +19,24 @@
   function heat(s) { return s >= 480 ? 'hot' : s >= 180 ? 'warm' : 'ok'; }
   function kind(r) {
     var order = r.request_type === 'Order' || /Order request:/.test(r.notes || '');
-    return order ? ['receipt_long', 'Wants to order', 'order'] : ['room_service', 'Calling a waiter', 'call'];
+    if (order) return ['receipt_long', 'Wants to order', 'order'];
+    // calls from the customer website say what they need
+    if (r.request_type === 'Bill') return ['payments', 'Wants the bill', 'call'];
+    if (r.request_type === 'Water') return ['water_drop', 'Wants water', 'call'];
+    if (r.request_type === 'Cutlery') return ['restaurant', 'Cutlery or napkins', 'call'];
+    return ['room_service', 'Calling a waiter', 'call'];
+  }
+
+  // "Customers can call a waiter from your website": the switch at the top of the page
+  function websiteSwitch() {
+    var w = D.website_calls;
+    if (!w) return '';
+    var hint = !w.dinein ? 'Dine-in is off, so the button is hidden on your website.'
+      : !w.tables ? 'Add your tables first: customers pick theirs, or it comes from the table QR code.'
+      : w.enabled ? 'A “Call waiter” button shows on your website for guests at a table. Calls appear here with a sound.'
+      : 'Switched off: guests won’t see a “Call waiter” button on your website.';
+    return '<label class="sx-switch-row wrq-switch"><span><b>' + ic('room_service') + 'Guests can call a waiter from your website</b><small>' + esc(hint) + '</small></span>' +
+      '<span class="up-switch"><input type="checkbox" id="wrqWebSwitch"' + (w.enabled ? ' checked' : '') + (w.can_edit ? '' : ' disabled title="Only the owner can change this"') + '><span></span></span></label>';
   }
 
   function load() {
@@ -44,7 +61,7 @@
     var s = D.stats, areas = {};
     D.waiting.forEach(function (r) { var a = r.area_name || 'No area'; areas[a] = (areas[a] || 0) + 1; });
     var list = D.waiting.filter(function (r) { return !area || (r.area_name || 'No area') === area; });
-    box.innerHTML =
+    box.innerHTML = websiteSwitch() +
       '<div class="sx-stats wrq-stats">' +
         '<div class="' + (s.waiting ? 'bad' : 'ok') + '">' + ic(s.waiting ? 'notifications_active' : 'notifications_off') + '<b>' + s.waiting + '</b><small>Waiting now</small></div>' +
         '<div class="' + (s.oldest >= 480 ? 'bad' : s.oldest >= 180 ? 'wait' : '') + '">' + ic('timer') + '<b data-wrq-oldest>' + (s.waiting ? dur(s.oldest) : '—') + '</b><small>Longest wait</small></div>' +
@@ -107,5 +124,23 @@
     new MutationObserver(function () { clearTimeout(t); t = setTimeout(load, 200); }).observe(el, { childList: true });
   }
   document.addEventListener('click', function (e) { if (e.target.closest('.nav-link[data-page="waiterRequestsPage"]')) setTimeout(function () { watch(); load(); }, 50); });
+
+  // the website "Call waiter" switch saves straight away (api/app_settings.php, owner or branch admin)
+  document.addEventListener('change', function (e) {
+    var sw = e.target.closest('#wrqWebSwitch');
+    if (!sw || !D || !D.website_calls) return;
+    var on = sw.checked;
+    sw.disabled = true;
+    var fd = new FormData();
+    fd.append('call_waiter_enabled', on ? '1' : '0');
+    fetch('../api/app_settings.php', { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.success) throw new Error(d.message || 'Could not save');
+      D.website_calls.enabled = on;
+      if (typeof window.showNotification === 'function') window.showNotification(on ? 'Guests can now call a waiter from your website' : 'Call waiter is off on your website', 'success');
+    }).catch(function (err) {
+      sw.checked = !on;
+      if (typeof window.showNotification === 'function') window.showNotification(err.message || 'Could not save', 'error');
+    }).then(function () { sw.disabled = false; draw(); });
+  });
   document.addEventListener('DOMContentLoaded', function () { watch(); if (window.SX && SX.isActive('waiterRequestsPage')) load(); });
 })();

@@ -4582,5 +4582,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/rg-banners.js'); ?>" defer></script>
 <script src="rg-drag-scroll.js?v=<?php echo @filemtime(__DIR__ . '/rg-drag-scroll.js'); ?>" defer></script>
 <script src="rg-upsell.js?v=<?php echo @filemtime(__DIR__ . '/rg-upsell.js'); ?>" defer></script>
+<?php include __DIR__ . '/call_waiter.php'; ?>
 </body>
 </html>

@@ -371,5 +371,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <div style="height:80px"></div>
 <?php require_once __DIR__ . '/bottom_nav.php'; ?>
+<?php include __DIR__ . '/call_waiter.php'; ?>
 </body>
 </html>

@@ -14,7 +14,7 @@ import { colors, font, radius, shadow, spacing } from '../theme';
 import { durationLabel, minutesSince } from '../utils/format';
 import { setLiveCount } from '../utils/liveCounts';
 
-const TYPE_ICON = { Bill: 'receipt-outline', Water: 'water-outline', 'Clean Table': 'sparkles-outline', Order: 'restaurant-outline', General: 'hand-left-outline' };
+const TYPE_ICON = { Bill: 'receipt-outline', Cutlery: 'restaurant-outline', Water: 'water-outline', 'Clean Table': 'sparkles-outline', Order: 'restaurant-outline', General: 'hand-left-outline' };
 
 export default function WaiterCallsScreen({ navigation }) {
   const tabBarHeight = useBottomTabBarHeight();

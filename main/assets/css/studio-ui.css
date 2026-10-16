@@ -3575,6 +3575,9 @@ body:has(#posPage.page.active) #poBar { display: none; }   /* the POS shows the 
 
 /* ── Waiter Requests board (assets/js/waiter-studio.js) ── */
 .wrq-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.wrq-switch { margin: 0 0 14px; background: #fff; }
+.wrq-switch b { display: inline-flex !important; align-items: center; gap: 6px; }
+.wrq-switch b .material-symbols-rounded { font-size: 19px; color: var(--sx-accent); }
 .wrq-areas { margin-bottom: 12px; } .wrq-areas em { font-style: normal; padding: 0 6px; border-radius: 999px; background: #f1f5f9; color: var(--sx-muted); font-size: .7rem; }
 .wrq-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
 .wrq-card { --h: #16a34a; position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1.5px solid color-mix(in srgb, var(--h) 35%, #fff); border-radius: var(--sx-r-lg); background: #fff; overflow: hidden;

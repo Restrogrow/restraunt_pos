@@ -684,5 +684,6 @@ window.lxFromQr = <?php echo $loyaltyFromQr ? 'true' : 'false'; ?>;
 </script>
 <script src="rg-vip.js?v=<?php echo @filemtime(__DIR__ . '/rg-vip.js'); ?>"></script>
 <?php require_once __DIR__ . '/bottom_nav.php'; ?>
+<?php include __DIR__ . '/call_waiter.php'; ?>
 </body>
 </html>
