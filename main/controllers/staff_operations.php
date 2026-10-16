@@ -81,6 +81,11 @@ function handleAddStaff($conn, $restaurant_id) {
     $phone = trim($_POST['restaurantPhone'] ?? '');
     $password = $_POST['memberPassword'] ?? '';
     $role = trim($_POST['memberRole'] ?? 'Waiter');
+    if ($role === 'Delivery') {
+        // the "Delivery rider" role is added to the staff table the first time it's used
+        require_once __DIR__ . '/../config/rider_engine.php';
+        riderEnsure($conn);
+    }
     
     // Validation
     if (empty($memberName)) {
@@ -152,6 +157,11 @@ function handleUpdateStaff($conn, $restaurant_id) {
     $phone = trim($_POST['restaurantPhone'] ?? '');
     $password = $_POST['memberPassword'] ?? '';
     $role = trim($_POST['memberRole'] ?? 'Waiter');
+    if ($role === 'Delivery') {
+        // the "Delivery rider" role is added to the staff table the first time it's used
+        require_once __DIR__ . '/../config/rider_engine.php';
+        riderEnsure($conn);
+    }
     
     // Validation
     if (empty($memberName)) {

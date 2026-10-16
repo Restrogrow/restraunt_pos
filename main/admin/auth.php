@@ -438,6 +438,9 @@ function handleLogin() {
             case 'Manager':
                 $redirect = '../views/manager_dashboard.php';
                 break;
+            case 'Delivery':
+                $redirect = '../views/rider_dashboard.php';
+                break;
             case 'Admin':
             default:
                 $redirect = '../views/dashboard.php';

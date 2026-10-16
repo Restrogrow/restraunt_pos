@@ -38,6 +38,8 @@ import { DEMO, DEMO_LOGIN } from './config/api';
 import { staffRole } from './utils/roles';
 import HomeScreen from './screens/HomeScreen';
 import ShiftHomeScreen from './screens/ShiftHomeScreen';
+import RiderHomeScreen from './screens/RiderHomeScreen';
+import RidersScreen from './screens/RidersScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import OrderDetailScreen from './screens/OrderDetailScreen';
 import POSScreen from './screens/POSScreen';
@@ -231,7 +233,8 @@ function MenuStack() {
 const LAYOUT = {
   chef: { tabs: ['Home', 'Kitchen', 'Orders', 'More'], more: ['Tables'] },
   waiter: { tabs: ['Home', 'Tables', 'POS', 'Orders', 'More'], more: ['Kitchen', 'WaiterCalls', 'Reservations', 'Customers'] },
-  manager: { tabs: ['Home', 'Orders', 'POS', 'Menu', 'More'], more: ['Kitchen', 'Tables', 'WaiterCalls', 'Reservations', 'Customers', 'Reports', 'Logs'] },
+  manager: { tabs: ['Home', 'Orders', 'POS', 'Menu', 'More'], more: ['Kitchen', 'Tables', 'WaiterCalls', 'Reservations', 'Customers', 'Riders', 'Reports', 'Logs'] },
+  rider: { tabs: ['Home', 'More'], more: [] },
 };
 
 const MORE_SCREENS = {
@@ -242,6 +245,7 @@ const MORE_SCREENS = {
   Customers: CustomersScreen,
   Reports: ReportsScreen,
   Logs: LogsScreen,
+  Riders: RidersScreen,
 };
 
 // "More": everything beyond the everyday tabs, one tap from a tidy grid.
@@ -418,7 +422,7 @@ function RootNavigator() {
 
   const role = staffRole(user);
   const tabs = {
-    Home: role === 'manager' ? HomeScreen : ShiftHomeScreen,
+    Home: role === 'manager' ? HomeScreen : role === 'rider' ? RiderHomeScreen : ShiftHomeScreen,
     Kitchen: KitchenScreen,
     Tables: TablesScreen,
     Orders: OrdersStack,
@@ -433,9 +437,9 @@ function RootNavigator() {
   //   chef: new kitchen tickets · waiter: online orders, waiter calls, food ready · manager: orders, calls
   return (
     <>
-      {role !== 'chef' ? <OrderAlertWatcher /> : null}
-      <LiveFeed role={role} />
-      <WebAudioUnlockBanner />
+      {role !== 'chef' && role !== 'rider' ? <OrderAlertWatcher /> : null}
+      {role !== 'rider' ? <LiveFeed role={role} /> : null}
+      {role !== 'rider' ? <WebAudioUnlockBanner /> : null}
       {checkingLock ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
           <ActivityIndicator size="large" color={colors.primary} />

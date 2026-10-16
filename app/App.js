@@ -19,6 +19,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import DemoDeepLink from './demo/DemoDeepLink';
+import RidersScreen from './screens/RidersScreen';
 import TabBar from './components/TabBar';
 import OrderAlertWatcher from './components/OrderAlertWatcher';
 import OrderWatchBridge from './components/OrderWatchBridge';
@@ -235,6 +236,7 @@ function MoreStack() {
       <MoreStackNav.Screen name="Reports" component={ReportsScreen} />
       <MoreStackNav.Screen name="Loyalty" component={LoyaltyScreen} />
       <MoreStackNav.Screen name="Logs" component={LogsScreen} />
+      <MoreStackNav.Screen name="Riders" component={RidersScreen} />
       <MoreStackNav.Screen name="Settings" component={SettingsScreen} />
       <MoreStackNav.Screen name="SettingsSection" component={SettingsSectionScreen} />
     </MoreStackNav.Navigator>

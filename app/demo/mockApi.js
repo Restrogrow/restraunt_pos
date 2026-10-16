@@ -403,6 +403,7 @@ function handle(path, method, q, f) {
         return ok({ data: clone(db.customers) });
       case '/api/get_sales_report.php': return salesReport(q);
       case '/api/get_login_logs.php': return clone(db.loginLogs);
+      case '/api/delivery_dispatch.php': return riderBoard(q);
       default: return ok({ data: [] });
     }
   }
@@ -472,6 +473,24 @@ function handle(path, method, q, f) {
       else if (f.action === 'add') db.adminCoupons.unshift({ id: Date.now(), coupon_code: String(f.coupon_code).toUpperCase(), discount_type: f.discount_type, discount_value: f.discount_value, minimum_order_amount: f.minimum_order_amount, max_uses: f.max_uses, current_uses: 0, is_active: 1, valid_until: f.valid_until || null, description: f.description });
       return ok();
     }
+    case '/api/delivery_dispatch.php': {
+      const r = demoRiders();
+      if (f.action === 'settings') { r.selfPick = !!Number(f.self_pick); return ok({ message: r.selfPick ? 'Riders can pick open deliveries themselves' : 'Only you and managers assign deliveries now' }); }
+      if (f.action === 'settle') {
+        const rider = r.list.find((x) => x.id === Number(f.rider_id));
+        const amt = rider ? rider.cash_in_hand : 0;
+        if (rider) rider.cash_in_hand = 0;
+        return ok({ message: amt ? `Settled ₹${amt} from ${rider.delivered_today} deliveries` : 'No cash to settle' });
+      }
+      if (f.action === 'assign') {
+        const o = db.orders.find((x) => String(x.id) === String(f.order_id));
+        if (!o) return no('Order not found');
+        const rider = r.list.find((x) => x.id === Number(f.rider_id));
+        r.track[o.id] = rider ? { rider_staff_id: rider.id, rider_name: rider.name, delivery_status: 'Assigned' } : null;
+        return ok({ message: rider ? `${o.order_number} given to ${rider.name}` : `Rider removed from ${o.order_number}` });
+      }
+      return no('Unknown action');
+    }
     case '/api/generate_delivery_qr.php':
       return ok({ qr_url: 'https://restrogrow.com/', expires_at: fmt(new Date(Date.now() + 6 * 3600000)) });
     case '/api/print_network.php':
@@ -479,6 +498,35 @@ function handle(path, method, q, f) {
     default:
       return ok();
   }
+}
+
+// Delivery riders in the demo: two riders, the delivery orders under way, assign / settle in memory.
+let ridersState = null;
+function demoRiders() {
+  if (!ridersState) {
+    ridersState = {
+      selfPick: true,
+      list: [
+        { id: 901, name: 'Arjun Singh', phone: '97000 00006', active: 0, delivered_today: 4, cash_in_hand: 1240, last_seen: fmt(new Date(Date.now() - 3 * 60000)) },
+        { id: 902, name: 'Faisal Ahmed', phone: '97000 00007', active: 0, delivered_today: 2, cash_in_hand: 0, last_seen: fmt(new Date(Date.now() - 40 * 60000)) },
+      ],
+      track: {},
+    };
+  }
+  return ridersState;
+}
+function riderBoard(q) {
+  const r = demoRiders();
+  const dels = db.orders.filter((o) => o.order_type === 'Delivery' && !o.deleted_at && ['Accepted', 'Preparing', 'Ready', 'Pending'].includes(o.order_status)).map((o) => {
+    const t = r.track[o.id] || {};
+    const cash = /cash/i.test(o.payment_method || '') && o.payment_status !== 'Paid';
+    return { id: o.id, order_number: o.order_number, order_status: o.order_status, customer_name: o.customer_name, address: o.customer_address || o.delivery_address || '',
+      items: '', payment_status: o.payment_status, cod_due: cash ? Number(o.total) : 0, delivery_status: t.delivery_status || 'Pending',
+      rider_staff_id: t.rider_staff_id || null, rider_name: t.rider_name || null, via_qr: false };
+  });
+  r.list.forEach((x) => { x.active = dels.filter((d) => d.rider_staff_id === x.id).length; });
+  if (q.order_id) return ok({ riders: clone(r.list), delivery: dels.find((d) => String(d.id) === String(q.order_id)) || null });
+  return ok({ riders: clone(r.list), deliveries: dels, settings: { self_pick: r.selfPick }, waiting: dels.filter((d) => !d.rider_staff_id).length });
 }
 
 function parseQuery(path) {

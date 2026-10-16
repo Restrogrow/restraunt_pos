@@ -36,6 +36,7 @@ export default function MoreScreen({ navigation }) {
       title: 'Business',
       items: [
         { key: 'Customers', icon: 'people', label: 'Customers', sub: 'Visits and spend', tint: colors.info, bg: colors.infoBg },
+        isOwnerish ? { key: 'Riders', icon: 'bicycle', label: 'Riders', sub: 'Deliveries, cash', tint: colors.warning, bg: colors.warningBg } : null,
         isOwnerish ? { key: 'Loyalty', icon: 'ribbon', label: 'Loyalty', sub: 'Points, offers', tint: colors.primary, bg: colors.primaryLight } : null,
         { key: 'Reports', icon: 'bar-chart', label: 'Reports', sub: 'Sales, top dishes', tint: colors.teal, bg: colors.tealBg },
         isOwnerish ? { key: 'Logs', icon: 'shield-checkmark', label: 'Security', sub: 'Logins, devices', tint: colors.inkSoft, bg: colors.border } : null,

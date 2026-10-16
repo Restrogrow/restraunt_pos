@@ -13,6 +13,12 @@ if (!isSessionValid() || (!isset($_SESSION['user_id']) && !isset($_SESSION['staf
     exit();
 }
 
+// Delivery riders have their own screen (and no dashboard permissions)
+if (isDeliverySession()) {
+    header('Location: rider_dashboard.php');
+    exit();
+}
+
 // Verify user has permission to view dashboard
 // If not, redirect to login (they shouldn't be here)
 try {
@@ -1379,6 +1385,12 @@ try {
               <a href="#" class="nav-link submenu-link" data-page="deliveryMapPage">
                 <span class="material-symbols-rounded">map</span>
                 <span class="nav-label">Map View</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="ridersPage">
+                <span class="material-symbols-rounded">two_wheeler</span>
+                <span class="nav-label">Riders</span>
               </a>
             </li>
           </ul>
@@ -4154,6 +4166,15 @@ function toggleGatewayMode() {
         <p>Customers order and track their food in a WhatsApp chat</p>
       </div>
       <div id="woRoot"></div>
+    </div>
+
+    <!-- Delivery › Riders (assets/js/riders-board.js) -->
+    <div id="ridersPage" class="page sx lg">
+      <div class="page-header">
+        <h1>Riders</h1>
+        <p>Your delivery riders: who is carrying what, deliveries waiting for a rider, and cash to collect</p>
+      </div>
+      <div id="rbRoot"></div>
     </div>
 
     <!-- Growth › AI manager (assets/js/owner-manager-studio.js) -->
@@ -7014,6 +7035,7 @@ function toggleGatewayMode() {
               <option value="Manager">Manager</option>
               <option value="Waiter">Waiter</option>
               <option value="Chef">Chef</option>
+              <option value="Delivery">Delivery rider</option>
             </select>
           </div>
           <div class="form-actions">
@@ -7334,6 +7356,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/whatsapp-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/whatsapp-admin.js'); ?>" defer></script>
   <script src="../assets/js/wa-order-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/wa-order-studio.js'); ?>" defer></script>
   <script src="../assets/js/owner-manager-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/owner-manager-studio.js'); ?>" defer></script>
+  <script src="../assets/js/riders-board.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/riders-board.js'); ?>" defer></script>
   <script src="../assets/js/studio-ui.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/studio-ui.js'); ?>" defer></script>
   <script src="../assets/js/areas-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/areas-studio.js'); ?>" defer></script>
   <script src="../assets/js/tables-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/tables-studio.js'); ?>" defer></script>

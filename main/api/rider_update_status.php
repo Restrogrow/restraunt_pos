@@ -51,103 +51,15 @@ try {
         throw new Exception('Invalid or expired QR code');
     }
 
-    // Validate status transition
-    $currentStatus = $tracking['delivery_status'];
-    $validTransitions = [
-        'Preparing' => ['Picked_Up'],
-        'Assigned' => ['Picked_Up'],
-        'Picked_Up' => ['In_Transit'],
-        'In_Transit' => ['Delivered']
-    ];
-
-    if (!isset($validTransitions[$currentStatus]) || !in_array($status, $validTransitions[$currentStatus])) {
-        throw new Exception('Cannot transition from ' . $currentStatus . ' to ' . $status);
-    }
-
-    // Begin transaction for atomic updates
-    $conn->beginTransaction();
-
-    // Refuse to advance delivery_status at all if the order itself has
-    // already been cancelled/rejected — this used to only be checked
-    // further down, inside the 'Delivered' branch, so a rider could still
-    // walk a cancelled order through Picked_Up -> In_Transit -> Delivered
-    // (staff cancels after pickup, e.g. wrong address) and delivery_tracking
-    // would end up showing "Delivered" for an order that's actually Cancelled.
-    $orderStatusStmt = $conn->prepare("SELECT order_status FROM orders WHERE id = ? FOR UPDATE");
-    $orderStatusStmt->execute([$tracking['order_id']]);
-    $currentOrderStatus = $orderStatusStmt->fetchColumn();
-    if (in_array($currentOrderStatus, ['Cancelled', 'Rejected'], true)) {
-        $conn->rollBack();
-        throw new Exception('This order has been ' . strtolower($currentOrderStatus) . ' and can no longer be updated');
-    }
-
-    // Update delivery_tracking status
-    $updateFields = ['delivery_status = ?', 'updated_at = NOW()'];
-    $updateParams = [$status];
-
-    if ($status === 'Picked_Up') {
-        $updateFields[] = 'picked_up_at = NOW()';
-    } elseif ($status === 'In_Transit') {
-        $updateFields[] = 'in_transit_at = NOW()';
-    } elseif ($status === 'Delivered') {
-        $updateFields[] = 'delivered_at = NOW()';
-    }
-
-    $sql = "UPDATE delivery_tracking SET " . implode(', ', $updateFields) . " WHERE id = ?";
-    $updateParams[] = $tracking['id'];
-    $stmt = $conn->prepare($sql);
-    $stmt->execute($updateParams);
-
-    // If delivered, update order status to Completed
-    // The order may be in any state (Preparing, Ready, Served, etc.) depending on
-    // whether the restaurant explicitly advanced it. We chain through intermediate
-    // transitions to reach 'Completed' regardless of the current state.
-    if ($status === 'Delivered') {
-        // $currentOrderStatus was already read (and the row locked) above.
-
-        // Build the chain of statuses needed to reach 'Completed' from the current state.
-        $path = [];
-        switch ($currentOrderStatus) {
-            case 'Served':
-                $path = ['Completed'];
-                break;
-            case 'Ready':
-                $path = ['Served', 'Completed'];
-                break;
-            case 'Preparing':
-                $path = ['Ready', 'Served', 'Completed'];
-                break;
-            case 'Accepted':
-                $path = ['Preparing', 'Ready', 'Served', 'Completed'];
-                break;
-            case 'Pending':
-                $path = ['Accepted', 'Preparing', 'Ready', 'Served', 'Completed'];
-                break;
-            case 'Completed':
-                // Already completed — nothing to do
-                $path = [];
-                break;
-            default:
-                // Terminal state (Cancelled, Rejected) or unknown — skip
-                $path = [];
-                break;
-        }
-
-        // Advance through the chain
-        foreach ($path as $target) {
-            $r = validateAndUpdateOrderStatus($conn, (int)$tracking['order_id'], $target);
-            if (!$r['success']) {
-                $conn->rollBack();
-                throw new Exception($r['message']);
-            }
-        }
-    }
-
-    $conn->commit();
+    // the delivery steps are shared with the rider app (config/rider_engine.php). A rider with only the QR
+    // link hands over the food and the cash together, so "Delivered" counts cash on delivery as collected.
+    require_once __DIR__ . '/../config/rider_engine.php';
+    riderEnsure($conn);
+    $message = riderAdvance($conn, $tracking, $status, true);
 
     echo json_encode([
         'success' => true,
-        'message' => $status === 'Picked_Up' ? 'Marked as Picked Up' : ($status === 'In_Transit' ? 'Marked as In Transit' : 'Marked as Delivered'),
+        'message' => $message,
         'status' => $status
     ]);
 
@@ -157,5 +69,7 @@ try {
     }
     http_response_code(400);
     error_log("Error in rider_update_status.php: " . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);
+    // the step rules explain themselves ("This order was cancelled…"); anything else stays generic
+    $msg = $e->getMessage();
+    echo json_encode(['success' => false, 'message' => preg_match('/^(This |Collect |Order not found|Invalid or expired|Missing|Invalid status)/', $msg) ? $msg : 'An error occurred. Please try again.']);
 }

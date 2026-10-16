@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import RiderAssign from '../components/RiderAssign';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Image, Linking, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -510,6 +511,7 @@ export default function OrderDetailScreen({ route, navigation }) {
           ) : null}
           {isDelivery ? (
             <>
+              <RiderAssign orderId={order.id} />
               <Pressable style={styles.mapsButton} onPress={generateRiderQr} disabled={generatingQr}>
                 {generatingQr ? (
                   <ActivityIndicator size="small" color={colors.primary} />

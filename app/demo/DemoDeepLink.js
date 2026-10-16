@@ -22,6 +22,7 @@ export const DEMO_SCREENS = {
   reports: ['More', 'Reports'],
   loyalty: ['More', 'Loyalty'],
   logs: ['More', 'Logs'],
+  riders: ['More', 'Riders'],
   settings: ['More', 'Settings'],
 };
 

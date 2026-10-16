@@ -24,6 +24,7 @@ $logins = [
     'manager' => ['manager.demo@spicegarden.test', DEMO_STAFF_PASSWORD, 'Manager'],
     'waiter'  => ['waiter.demo@spicegarden.test', DEMO_STAFF_PASSWORD, 'Waiter'],
     'chef'    => ['chef.demo@spicegarden.test', DEMO_STAFF_PASSWORD, 'Kitchen (chef)'],
+    'rider'   => ['rider.demo@spicegarden.test', DEMO_STAFF_PASSWORD, 'Delivery rider'],
 ];
 $go = isset($_GET['go'], $logins[$_GET['go']]) ? $_GET['go'] : '';
 $goPage = preg_match('/^[a-zA-Z]{3,40}Page$/', (string)($_GET['page'] ?? '')) ? $_GET['page'] : '';
@@ -49,7 +50,7 @@ $dashPages = [
     ['Reports', 'reportsPage'], ['Analytics', 'analyticsPage'], ['Payments', 'paymentsPage'], ['Feedback', 'feedbackPage'],
     ['WhatsApp ordering', 'waOrderPage'], ['AI manager', 'ownerManagerPage'], ['WhatsApp', 'whatsappPage'], ['Posters', 'marketingPostersPage'],
     ['Videos', 'marketingVideosPage'], ['Campaign calendar', 'marketingCalendarPage'], ['Google Business', 'googleBusinessPage'], ['SEO', 'seoPage'],
-    ['Website look', 'websiteThemePage'], ['QR codes', 'qrCodesPage'], ['Delivery', 'deliveryPage'], ['Meal plans', 'mealPlansPage'],
+    ['Website look', 'websiteThemePage'], ['QR codes', 'qrCodesPage'], ['Delivery zones', 'deliveryPage'], ['Riders', 'ridersPage'], ['Meal plans', 'mealPlansPage'],
     ['Staff', 'staffPage'], ['Settings', 'settingsPage'],
 ];
 // [label, path] on the customer website
@@ -58,14 +59,15 @@ $sitePages = [['Home', ''], ['Menu', '/menu'], ['Cart', '/cart'], ['Track order'
 // [label, ?screen=] in the Partner app demo
 $partnerScreens = [['Home', 'home'], ['Orders', 'orders'], ['POS', 'pos'], ['Menu', 'menu'], ['Kitchen', 'kitchen'], ['Tables', 'tables'],
     ['Waiter calls', 'waiter-calls'], ['Bookings', 'bookings'], ['Customers', 'customers'], ['Reports', 'reports'], ['Loyalty', 'loyalty'],
-    ['Activity log', 'logs'], ['Settings', 'settings']];
+    ['Riders', 'riders'], ['Activity log', 'logs'], ['Settings', 'settings']];
 // role => [[label, ?screen=]] in the Staff app (only the screens that role has)
 $staffScreens = [
-    'manager' => [['Home', 'home'], ['Orders', 'orders'], ['POS', 'pos'], ['Menu', 'menu'], ['Kitchen', 'kitchen'], ['Tables', 'tables'], ['Waiter calls', 'waiter-calls'], ['Bookings', 'bookings'], ['Customers', 'customers'], ['Reports', 'reports'], ['Activity log', 'logs']],
+    'manager' => [['Home', 'home'], ['Orders', 'orders'], ['POS', 'pos'], ['Menu', 'menu'], ['Kitchen', 'kitchen'], ['Tables', 'tables'], ['Waiter calls', 'waiter-calls'], ['Bookings', 'bookings'], ['Customers', 'customers'], ['Riders', 'riders'], ['Reports', 'reports'], ['Activity log', 'logs']],
     'waiter'  => [['Home', 'home'], ['Tables', 'tables'], ['POS', 'pos'], ['Orders', 'orders'], ['Kitchen', 'kitchen'], ['Waiter calls', 'waiter-calls'], ['Bookings', 'bookings'], ['Customers', 'customers']],
     'chef'    => [['Home', 'home'], ['Kitchen', 'kitchen'], ['Orders', 'orders'], ['Tables', 'tables']],
+    'rider'   => [['My deliveries', 'home']],
 ];
-$roleNames = ['manager' => 'Manager', 'waiter' => 'Waiter', 'chef' => 'Chef'];
+$roleNames = ['manager' => 'Manager', 'waiter' => 'Waiter', 'chef' => 'Chef', 'rider' => 'Rider'];
 ?>
 <!doctype html>
 <html lang="en">
@@ -147,12 +149,13 @@ $roleNames = ['manager' => 'Manager', 'waiter' => 'Waiter', 'chef' => 'Chef'];
   <section class="app" id="staff-web">
     <div class="app-h">
       <div><span class="kind">Web · restaurant staff</span><h2>Staff screens</h2>
-        <p>What the manager, waiters and kitchen see in the browser on their phones and tablets.</p>
+        <p>What the manager, waiters, kitchen and delivery riders see in the browser on their phones and tablets.</p>
         <p class="cred">Password for all staff: <code><?php echo $h(DEMO_STAFF_PASSWORD); ?></code></p></div>
       <div class="btns">
         <button class="btn ghost" data-go="manager" type="button">Manager</button>
         <button class="btn ghost" data-go="waiter" type="button">Waiter</button>
         <button class="btn ghost" data-go="chef" type="button">Kitchen</button>
+        <button class="btn ghost" data-go="rider" type="button">Rider</button>
       </div>
     </div>
   </section>
@@ -180,7 +183,7 @@ $roleNames = ['manager' => 'Manager', 'waiter' => 'Waiter', 'chef' => 'Chef'];
   <section class="app" id="staff-app">
     <div class="app-h">
       <div><span class="kind">Android app · restaurant staff</span><h2>Staff app</h2>
-        <p>The app for managers, waiters and chefs, each seeing only what their job needs. It runs on the demo restaurant, so what you do shows up in the dashboard too.</p></div>
+        <p>The app for managers, waiters, chefs and delivery riders, each seeing only what their job needs. It runs on the demo restaurant, so what you do shows up in the dashboard too.</p></div>
       <div class="btns"><a class="btn primary" href="<?php echo $h($staffApp); ?>" target="_blank" rel="noopener">Open staff app</a></div>
     </div>
     <div class="roles">

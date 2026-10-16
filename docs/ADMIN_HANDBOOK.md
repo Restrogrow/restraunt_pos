@@ -106,6 +106,8 @@ Re-create everything with `php main/database/seed_multibranch_demo.php` (this al
 | demo@restrogrow.invalid | Email of the demo restaurant (a deliberately undeliverable address) |
 | Phone on the website | +91 63775 68749 |
 
+**Delivery riders** (plan and status: `docs/RIDER_PLAN.md`): staff with the role "Delivery rider" log in to the Staff app or the website and see only their deliveries (Picked up → On the way → Delivered, cash on delivery, live location for the customer). The owner or a manager assigns deliveries in Order details or Delivery › Riders (also More › Riders in both apps), and settles the riders' cash there. "Riders can pick open deliveries themselves" is a switch on that page. The old QR link stays for outside riders. Demo riders: `rider.demo@spicegarden.test` / `demo`.
+
 **See every email: Super Admin › Tools › Email book** (`main/superadmin/email_book.php`). All emails full size, grouped by who gets them, with when and why each is sent, and what's still needed to switch sending on (green when done). It is made live from the sending code, so it is always up to date.
 
 **Manage everything in Super Admin › Tools › Email:**

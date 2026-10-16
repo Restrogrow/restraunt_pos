@@ -1654,6 +1654,7 @@ document.addEventListener("DOMContentLoaded", () => {
         whatsappPage: ['loadWhatsappAdmin'],
         waOrderPage: ['loadWaOrderStudio'],          // Growth › WhatsApp ordering (wa-order-studio.js)
         ownerManagerPage: ['loadOwnerManagerStudio'], // Growth › AI manager (owner-manager-studio.js)
+        ridersPage: ['loadRidersBoard'],              // Delivery › Riders (riders-board.js)
         customerSegmentsPage: ['loadCustomerSegments'],
         referralsPage: ['loadReferrals'],
         growthReportsPage: ['loadGrowthReports', ['loadClvReport', '']],
@@ -7485,7 +7486,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${typeof buildPaymentProofHtml === 'function' ? buildPaymentProofHtml(order, 220) : ''}
                 ${order.order_type === 'Delivery' ? `
                   <div id="qrSection-${order.id}" style="margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
-                    <strong style="color: #166534;">Delivery QR</strong>
+                    <strong style="color: #166534;">Delivery</strong>
+                    <div class="rg-rider-assign" data-order="${order.id}" style="margin-top: 0.5rem;"></div>
                     <div style="margin-top: 0.5rem;">
                       <button class="btn btn-success" onclick="generateDeliveryQR(${order.id})" style="background: #16a34a; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
                         <span class="material-symbols-rounded" style="font-size: 1.1rem;">qr_code</span>
@@ -7774,7 +7776,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <td>${escapeHtml(member.member_name)}</td>
           <td>${escapeHtml(member.email)}</td>
           <td>${escapeHtml(member.phone)}</td>
-          <td>${escapeHtml(member.role)}</td>
+          <td>${escapeHtml(member.role === 'Delivery' ? 'Delivery rider' : member.role)}</td>
           <td class="action-cell">
             <button class="btn-action-small edit-btn" onclick="editStaff(${member.id}, '${escapeHtml(member.member_name)}', '${escapeHtml(member.email)}', '${member.phone}', '${member.role}')">
               <span class="material-symbols-rounded">edit</span>

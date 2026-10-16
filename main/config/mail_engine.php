@@ -522,6 +522,30 @@ if (!function_exists('mailQueue')) {
             ['restaurant_id' => (string)$o['restaurant_id'], 'brand' => $b, 'dedupe' => 'status:' . $orderId . ':' . $s]);
     }
 
+    /** The rider picked the order up (config/rider_engine.php): "on the way" with the rider's name and a track link. */
+    function mailOrderOnTheWay(PDO $conn, int $orderId): void
+    {
+        $o = mailOrderFacts($conn, $orderId);
+        if (!$o || $o['to'] === '') return;
+        if (($pv = mailPreviewing()) !== null) $t = $pv['rider'];
+        else {
+            $st = $conn->prepare('SELECT rider_name, rider_phone FROM delivery_tracking WHERE order_id = ? LIMIT 1');
+            $st->execute([$orderId]);
+            $t = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        }
+        $b = mailRestaurantBrand($conn, (string)$o['restaurant_id']);
+        $rider = trim((string)($t['rider_name'] ?? ''));
+        $track = $b['site'] ? $b['site'] . '/track?order_number=' . rawurlencode((string)$o['order_number']) . '&customer_phone=' . rawurlencode((string)$o['customer_phone']) : null;
+        mailQueue($conn, 'order_status', $o['to'], 'Your order is on the way 🛵 · ' . $o['order_number'],
+            mailLayout($b, ['title' => 'Your order is on the way 🛵', 'preheader' => ($rider ? $rider . ' is bringing it to you.' : 'It has left the restaurant.'),
+                'intro' => '<p style="margin:0">' . ($rider ? '<b>' . mailE($rider) . '</b> picked up your order from <b>' . mailE($b['name']) . '</b> and is on the way.' : 'Your order has left <b>' . mailE($b['name']) . '</b> and is on the way.') . ' Watch it come to you live.</p>',
+                'rows' => array_values(array_filter([['Order', (string)$o['order_number']], $rider ? ['Delivery partner', $rider . (!empty($t['rider_phone']) ? ' · ' . $t['rider_phone'] : '')] : null,
+                    ['To pay', (stripos((string)$o['payment_method'], 'cash') !== false && $o['payment_status'] !== 'Paid') ? '₹' . number_format((float)$o['total'], 2) . ' in cash' : 'Paid']])),
+                'button' => $track ? ['Track my order', $track] : null,
+                'small' => 'Questions? Call ' . $b['name'] . ($b['phone'] ? ' on ' . $b['phone'] : '') . '.']),
+            ['restaurant_id' => (string)$o['restaurant_id'], 'brand' => $b, 'dedupe' => 'onway:' . $orderId]);
+    }
+
     /** Table bookings: received (on create), confirmed / cancelled (status change), reminder (the sweep). */
     function mailBooking(PDO $conn, int $reservationId, string $what): void
     {

@@ -12,13 +12,14 @@ export const DEMO_STAFF = {
   manager: 'manager.demo@spicegarden.test',
   waiter: 'waiter.demo@spicegarden.test',
   chef: 'chef.demo@spicegarden.test',
+  rider: 'rider.demo@spicegarden.test',
 };
 export const DEMO_STAFF_PASSWORD = 'demo';
 
 // ?screen= value → the tab or the page inside More (the role decides which one it is)
 const SCREENS = {
   home: 'Home', orders: 'Orders', pos: 'POS', menu: 'Menu', more: 'More', kitchen: 'Kitchen', tables: 'Tables',
-  'waiter-calls': 'WaiterCalls', bookings: 'Reservations', customers: 'Customers', reports: 'Reports', logs: 'Logs', settings: 'Settings',
+  'waiter-calls': 'WaiterCalls', bookings: 'Reservations', customers: 'Customers', reports: 'Reports', logs: 'Logs', settings: 'Settings', riders: 'Riders',
 };
 
 function fromUrl() {

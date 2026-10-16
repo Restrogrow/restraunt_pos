@@ -162,7 +162,7 @@ export default function LoginScreen() {
                   <View style={styles.demoBox}>
                     <Text style={styles.demoText}>Live demo of Spice Garden Indiranagar. Tap a role to log in as that staff member.</Text>
                     <View style={styles.demoRow}>
-                      {[['manager', 'Manager'], ['waiter', 'Waiter'], ['chef', 'Chef']].map(([key, label]) => (
+                      {[['manager', 'Manager'], ['waiter', 'Waiter'], ['chef', 'Chef'], ['rider', 'Rider']].map(([key, label]) => (
                         <Pressable
                           key={key}
                           style={styles.demoBtn}

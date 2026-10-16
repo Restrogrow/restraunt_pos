@@ -25,6 +25,7 @@ define('ROLE_MANAGER', 'Manager');
 define('ROLE_WAITER', 'Waiter');
 define('ROLE_CHEF', 'Chef');
 define('ROLE_STAFF', 'Staff');
+define('ROLE_DELIVERY', 'Delivery');   // delivery rider: only their own deliveries (config/rider_engine.php, api/rider_app.php)
 
 /**
  * Permission definitions
@@ -122,10 +123,20 @@ function isOnlineOrderRow(array $o): bool
 {
     return ($o['source'] ?? '') === 'website' && in_array($o['order_type'] ?? '', ['Delivery', 'Takeaway'], true);
 }
-/** SQL condition to add to an orders query: hides online delivery / takeaway orders from a waiter. */
+function isDeliverySession(): bool
+{
+    return ($_SESSION['user_type'] ?? '') === 'staff' && strcasecmp((string)($_SESSION['role'] ?? ''), ROLE_DELIVERY) === 0;
+}
+/**
+ * SQL condition to add to an orders query: a waiter doesn't get online delivery / takeaway orders,
+ * a delivery rider gets only the orders assigned to them.
+ */
 function waiterOrderFilterSql(string $alias = 'o'): string
 {
     $p = $alias !== '' ? $alias . '.' : '';
+    if (isDeliverySession()) {
+        return "{$p}id IN (SELECT order_id FROM delivery_tracking WHERE rider_staff_id = " . (int)($_SESSION['staff_id'] ?? 0) . ')';
+    }
     return isWaiterSession() ? "NOT ({$p}source = 'website' AND {$p}order_type IN ('Delivery', 'Takeaway'))" : '1 = 1';
 }
 

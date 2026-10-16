@@ -136,6 +136,11 @@ try {
             echo json_encode(['success' => false, 'message' => 'Order not found']);
             exit();
         }
+        if (isDeliverySession()) {
+            $conn->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Use Picked up / Delivered on your delivery instead.']);
+            exit();
+        }
         if (isWaiterSession() && isOnlineOrderRow($deletedCheck)) {
             $conn->rollBack();
             echo json_encode(['success' => false, 'message' => 'Online orders are handled by the owner or a manager.']);

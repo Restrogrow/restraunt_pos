@@ -245,6 +245,6 @@ function googleLoginStartSession(PDO $conn, array $account): array
     regenerateSessionAfterLogin();
     $log($r['restaurant_id'], $r['member_name'], 'staff');
     logActivity($conn, $r['restaurant_id'], 'login.staff', 'Logged in with Google', [], 'staff', $r['id'], ['name' => (string)$r['member_name'], 'role' => (string)$r['role'], 'staff_id' => (int)$r['id']]);
-    $redirect = ['Waiter' => '../views/waiter_dashboard.php', 'Chef' => '../views/chef_dashboard.php', 'Manager' => '../views/manager_dashboard.php'][$r['role']] ?? '../views/dashboard.php';
+    $redirect = ['Waiter' => '../views/waiter_dashboard.php', 'Chef' => '../views/chef_dashboard.php', 'Manager' => '../views/manager_dashboard.php', 'Delivery' => '../views/rider_dashboard.php'][$r['role']] ?? '../views/dashboard.php';
     return [$redirect, ['username' => $r['member_name'], 'restaurant_id' => $r['restaurant_id'], 'restaurant_name' => $r['restaurant_name'] ?? 'Restaurant', 'user_type' => 'staff', 'role' => $r['role']]];
 }

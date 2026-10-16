@@ -88,6 +88,15 @@ try {
         exit();
     }
     
+    if (isDeliverySession()) {
+        $mine = $conn->prepare('SELECT 1 FROM delivery_tracking WHERE order_id = ? AND rider_staff_id = ?');
+        $mine->execute([(int)$order['id'], (int)($_SESSION['staff_id'] ?? 0)]);
+        if (!$mine->fetchColumn()) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'This delivery is not assigned to you.']);
+            exit();
+        }
+    }
     if (isWaiterSession() && isOnlineOrderRow($order)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Online orders are handled by the owner or a manager.']);

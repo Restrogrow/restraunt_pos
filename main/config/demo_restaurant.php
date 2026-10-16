@@ -195,7 +195,8 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
     // Tables and columns some features add on first use — create them now, outside the transaction
     // (DDL commits implicitly in MySQL).
     foreach (['bestseller_helpers.php' => 'ensureBestsellersTable', 'menu_hours.php' => 'ensureMenuHoursColumns',
-              'website_theme_helpers.php' => 'ensureWebsiteThemeSchema', 'business_id_helpers.php' => 'ensureBusinessIdColumns'] as $file => $fn) {
+              'website_theme_helpers.php' => 'ensureWebsiteThemeSchema', 'business_id_helpers.php' => 'ensureBusinessIdColumns',
+              'rider_engine.php' => 'riderEnsure'] as $file => $fn) {
         if (is_file(__DIR__ . "/$file")) {
             require_once __DIR__ . "/$file";
             if (function_exists($fn)) { try { $fn($pdo); } catch (Throwable $e) { /* optional feature */ } }
@@ -337,7 +338,8 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         // ── Staff (log in with email + password "demo") ──
         $staffHash = password_hash(DEMO_STAFF_PASSWORD, PASSWORD_DEFAULT);
         foreach ([['Neha Kapoor', 'manager', 'Manager'], ['Ravi Kumar', 'waiter', 'Waiter'], ['Imran Khan', 'waiter2', 'Waiter'],
-                  ['Suresh Gowda', 'chef', 'Chef'], ['Lakshmi Iyer', 'chef2', 'Chef']] as $i => [$sname, $key, $role]) {
+                  ['Suresh Gowda', 'chef', 'Chef'], ['Lakshmi Iyer', 'chef2', 'Chef'],
+                  ['Arjun Singh', 'rider', 'Delivery'], ['Faisal Ahmed', 'rider2', 'Delivery']] as $i => [$sname, $key, $role]) {
             demoInsert($pdo, 'staff', ['restaurant_id' => $rid, 'member_name' => $sname, 'email' => "$key.demo@spicegarden.test",
                                        'phone' => '97000000' . str_pad((string)($i + 1), 2, '0', STR_PAD_LEFT),
                                        'password' => $staffHash, 'role' => $role, 'is_active' => 1]);

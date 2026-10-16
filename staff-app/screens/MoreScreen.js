@@ -35,13 +35,14 @@ export default function MoreScreen({ navigation }) {
     Customers: { key: 'Customers', icon: 'people', label: 'Customers', sub: 'Visits and spend', tint: colors.info, bg: colors.infoBg },
     Reports: { key: 'Reports', icon: 'bar-chart', label: 'Reports', sub: 'Sales, top dishes', tint: colors.teal, bg: colors.tealBg },
     Menu: { key: 'Menu', icon: 'restaurant', label: 'Menu', sub: 'Dishes, stock', tint: colors.teal, bg: colors.tealBg },
+    Riders: { key: 'Riders', icon: 'bicycle', label: 'Riders', sub: 'Deliveries, cash', tint: colors.warning, bg: colors.warningBg },
   };
   // a page that is already its own tab for this role isn't repeated here
   const pick = (...keys) => keys.filter((k) => !has(k) && tile[k] && navigation.getState().routeNames.includes(k)).map((k) => tile[k]);
 
   const groups = [
     { title: role === 'chef' ? 'Kitchen' : 'Service', items: pick('Kitchen', 'Tables', 'WaiterCalls', 'Reservations') },
-    { title: 'Business', items: [...pick('Customers', 'Reports'), isOwnerish ? { key: 'Logs', icon: 'shield-checkmark', label: 'Security', sub: 'Logins, devices', tint: colors.inkSoft, bg: colors.border } : null].filter(Boolean) },
+    { title: 'Business', items: [...pick('Customers', 'Riders', 'Reports'), isOwnerish ? { key: 'Logs', icon: 'shield-checkmark', label: 'Security', sub: 'Logins, devices', tint: colors.inkSoft, bg: colors.border } : null].filter(Boolean) },
     {
       title: 'Settings',
       items: [

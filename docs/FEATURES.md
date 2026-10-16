@@ -17,7 +17,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Tables & dine-in | 10 |
 | Menu | 13 |
 | Customer website & online ordering | 28 |
-| Delivery | 6 |
+| Delivery | 10 |
 | Customers, loyalty & rewards | 20 |
 | Offers | 13 |
 | Marketing & WhatsApp | 17 |
@@ -31,7 +31,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Apps | 18 |
 | Super Admin (platform) | 29 |
 | Demo & sales tools | 10 |
-| **Total built** | **271** |
+| **Total built** | **275** |
 | Planned, not built | 19 |
 
 ## Orders & POS
@@ -148,8 +148,12 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Delivery zones | Pincodes you deliver to, each with its own charge and time. | Dashboard › Delivery › Zones | owner | — |
 | Delivery by distance | Charge per km within a radius instead of zones. | Dashboard › Settings › Delivery | owner | Restaurant location pin set |
 | Packaging charge and minimum order | Add a packaging fee; set a minimum order value. | Dashboard › Settings › Delivery / Ordering | owner | — |
-| Rider page (no app) | Print/share a QR per order; the rider opens it, gets directions and taps Picked up → On the way → Delivered. | Order details › Delivery QR / Share link | staff (rider) | — |
-| Live rider location | The rider's phone shares GPS so the guest and you can see where the food is. | Rider page › Share location; guest sees it on Track | customer, owner | Rider uses the rider page |
+| Delivery riders (staff role) | Riders are staff with their own login (role "Delivery rider"). They see only their deliveries: directions, call the customer, Picked up → On the way → Delivered, cash to collect, today's deliveries and cash in hand. | Staff app (rider layout) or the website (rider screen) | staff (rider) | Add riders in Staff |
+| Assign riders | Give a delivery order to a rider, change or take it back; or let riders pick open deliveries themselves. | Order details › Delivery; Delivery › Riders; Partner app / Staff app › More › Riders | owner, manager | — |
+| Riders board and cash | Every rider with what they carry, deliveries today, last location and cash collected; Settle cash at the end of the shift. Delivered cash-on-delivery orders are marked paid. | Dashboard › Delivery › Riders; apps › More › Riders | owner, manager | — |
+| "On the way" email | The customer gets an email with the rider's name and a Track button when the rider picks the order up. | Automatic | customer | Emails switched on |
+| Rider page (no app) | For outside riders: print/share a QR per order; the rider opens it, gets directions and taps Picked up → On the way → Delivered. | Order details › Delivery QR / Share link | outside rider | — |
+| Live rider location | The rider's phone shares GPS while a delivery is under way, so the guest and you can see where the food is. | Rider app / rider page; guest sees it on Track | customer, owner | Rider allows location |
 | Delivery map | Live map of all active deliveries. | Dashboard › Delivery › Map View | owner | Riders use the rider page |
 
 ## Customers, loyalty & rewards
