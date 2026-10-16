@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { network } from '../config/api';
 import { isForeground, onAppForeground } from '../utils/foreground';
 
 // Last good response per screen, kept in memory (instant when switching tabs) and on disk
@@ -110,6 +111,18 @@ export function useApiData(fetcher, { pollInterval = 0, cacheKey = null, refetch
     if (!pollInterval && !refetchOnFocus) return undefined;
     return onAppForeground(() => load('background'));
   }, [pollInterval, refetchOnFocus, load]);
+
+  // connection back: reload in place (and clear the error a failed first load left behind)
+  const errorRef = useRef(error);
+  errorRef.current = error;
+  useEffect(() => {
+    let was = network.isOnline();
+    return network.subscribe(() => {
+      const now = network.isOnline();
+      if (now && !was) load(errorRef.current ? 'initial' : 'background');
+      was = now;
+    });
+  }, [load]);
 
   const firstFocus = useRef(true);
   useFocusEffect(

@@ -23,6 +23,7 @@ import LiveFeed from './components/LiveFeed';
 import OrderAlertWatcher from './components/OrderAlertWatcher';
 import WebAudioUnlockBanner from './components/WebAudioUnlockBanner';
 import { FeedbackHost } from './components/ui/Feedback';
+import ConnectionBanner from './components/ConnectionBanner';
 import { CONTENT_MAX } from './hooks/useLayout';
 import { getBiometricLockEnabled } from './config/biometricSettings';
 import { navigationRef } from './navigationRef';
@@ -524,6 +525,7 @@ export default function App() {
             <ErrorBoundary>
               <RootNavigator />
             </ErrorBoundary>
+            <ConnectionBanner />
             <FeedbackHost />
           </NavigationContainer>
         </AuthProvider>

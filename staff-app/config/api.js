@@ -24,6 +24,23 @@ function friendlyStatusMessage(status) {
 // shared screens that check it keep working.
 export const DEMO = false;
 
+// Is the server reachable? Flips off on a network failure and back on with the next answer,
+// so the app shows a quiet "offline" strip and screens reload by themselves when it's back.
+let online = true;
+const netListeners = new Set();
+function setOnline(v) {
+  if (online === v) return;
+  online = v;
+  netListeners.forEach((l) => l());
+}
+export const network = {
+  isOnline: () => online,
+  subscribe: (l) => {
+    netListeners.add(l);
+    return () => netListeners.delete(l);
+  },
+};
+
 async function request(path, options = {}) {
   let res;
   try {
@@ -41,9 +58,11 @@ async function request(path, options = {}) {
     // instead. Left unwrapped, this surfaces as a raw "Network request
     // failed" or "Failed to fetch", which means nothing to someone on
     // shaky wifi mid-shift.
+    setOnline(false);
     throw new Error("Can't reach the server — check your internet connection and try again.");
   }
 
+  setOnline(true);
   const text = await res.text();
   let data;
   try {
