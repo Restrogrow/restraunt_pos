@@ -59,6 +59,8 @@ if (!function_exists('ownerMgrHandleMessage')) {
             done_at DATETIME NULL,
             INDEX (restaurant_id, status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // the report can also come by email
+        try { $conn->exec('ALTER TABLE om_settings ADD COLUMN email_on TINYINT NOT NULL DEFAULT 0'); } catch (Throwable $e) { /* already there */ }
     }
 
     function ownerMgrSettings(PDO $conn, string $rid): array
@@ -78,6 +80,7 @@ if (!function_exists('ownerMgrHandleMessage')) {
             'language' => in_array($r['language'] ?? '', ['en', 'hi', 'hinglish'], true) ? $r['language'] : 'en',
             'phone' => $phone,
             'phone_override' => preg_replace('/\D/', '', (string)($r['phone'] ?? '')),
+            'email_on' => (int)($r['email_on'] ?? 0) === 1,
             'last_sent_on' => $r['last_sent_on'] ?? null,
             'tz' => $tz,
             'restaurant' => (string)($rest['restaurant_name'] ?? ''),
@@ -99,9 +102,9 @@ if (!function_exists('ownerMgrHandleMessage')) {
         $time = preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string)($in['send_time'] ?? '')) ? $in['send_time'] : '09:00';
         $lang = in_array($in['language'] ?? '', ['en', 'hi', 'hinglish'], true) ? $in['language'] : 'en';
         $phone = preg_replace('/\D/', '', (string)($in['phone'] ?? ''));
-        $conn->prepare('INSERT INTO om_settings (restaurant_id, enabled, send_time, language, phone) VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), send_time = VALUES(send_time), language = VALUES(language), phone = VALUES(phone)')
-            ->execute([$rid, empty($in['enabled']) ? 0 : 1, $time, $lang, $phone !== '' ? substr($phone, -12) : null]);
+        $conn->prepare('INSERT INTO om_settings (restaurant_id, enabled, send_time, language, phone, email_on) VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), send_time = VALUES(send_time), language = VALUES(language), phone = VALUES(phone), email_on = VALUES(email_on)')
+            ->execute([$rid, empty($in['enabled']) ? 0 : 1, $time, $lang, $phone !== '' ? substr($phone, -12) : null, empty($in['email_on']) ? 0 : 1]);
     }
 
     function ownerMgrMoney(array $s, float $n): string
@@ -346,6 +349,12 @@ if (!function_exists('ownerMgrHandleMessage')) {
             $sent = ownerMgrSend($conn, $rid, $s, $text);
             if ($sent) $conn->prepare('UPDATE om_briefs SET sent_at = NOW() WHERE id = ?')->execute([$briefId]);
         }
+        if ($send && $s['email_on']) {
+            try {
+                require_once __DIR__ . '/mail_engine.php';
+                mailDailySummary($conn, $rid, $text, (string)$f['day']);
+            } catch (Throwable $e) { error_log('owner report email: ' . $e->getMessage()); }
+        }
         return ['id' => $briefId, 'text' => $text, 'actions' => $actions, 'sent' => $sent, 'ai' => (bool)$ai, 'facts' => $f];
     }
 
@@ -361,7 +370,7 @@ if (!function_exists('ownerMgrHandleMessage')) {
     function ownerMgrDue(PDO $conn, string $rid): bool
     {
         $s = ownerMgrSettings($conn, $rid);
-        if (!$s['enabled'] || $s['phone'] === '') return false;
+        if (!$s['enabled'] || ($s['phone'] === '' && !$s['email_on'])) return false;
         $now = new DateTime('now', new DateTimeZone($s['tz']));
         return $s['last_sent_on'] !== $now->format('Y-m-d') && $now->format('H:i') >= $s['send_time'];
     }

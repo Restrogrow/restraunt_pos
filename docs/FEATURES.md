@@ -21,6 +21,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Customers, loyalty & rewards | 20 |
 | Offers | 13 |
 | Marketing & WhatsApp | 17 |
+| Emails | 9 |
 | Reports & analytics | 10 |
 | Inventory | 9 |
 | Payments & billing | 11 |
@@ -30,7 +31,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Apps | 18 |
 | Super Admin (platform) | 29 |
 | Demo & sales tools | 10 |
-| **Total built** | **262** |
+| **Total built** | **271** |
 | Planned, not built | 19 |
 
 ## Orders & POS
@@ -215,6 +216,20 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Quiet hours and limits | No messages at night; max campaigns per customer per week; test number. | Dashboard › Growth › WhatsApp › Settings | owner | — |
 | Purchase order on WhatsApp | Send a purchase order to a supplier on WhatsApp. | Dashboard › Menu › Inventory › Purchase orders | owner | — |
 | Announcements from RestroGrow | Notices from the RestroGrow team appear at the top of the dashboard. | Dashboard (top bar) | owner | Sent from Super Admin › Growth › Announcements |
+
+## Emails
+
+| Feature | What it does | Where | Who | Needs setup? |
+|---|---|---|---|---|
+| Email system (outbox + log) | Every automatic email in one branded design, queued so checkout never waits, retried 3 times, logged. All emails tab shows each email as it looks, who gets it and when, with a test send; plus the sent log (preview, send again), on/off per email, and whether the cron jobs run. | Super Admin › Tools › Email | super admin | SMTP_ENABLED=true + Google Workspace login in .env; cron every 10 min (cron/email_dispatch.php) for reminders |
+| Owner life-cycle emails | Welcome with a 5-step setup list after signup; trial ends in 3 days / 1 day / today; trial ended; renewal in 7 days / 1 day; plan expired; payment received. | Automatic | owner | SMTP_ENABLED=true + Google Workspace login in .env |
+| Invoice by email | Email any invoice from the invoice generator to the restaurant (change the address first if needed); paid ones go as a receipt. | Super Admin › Invoice generator › list › mail button | super admin | SMTP_ENABLED=true + Google Workspace login in .env |
+| Security and support emails | Owner gets an email when the account is opened on a new device, when support replies to a ticket, and branded password-reset links (owner, customer, Super Admin). | Automatic | owner, customer | SMTP_ENABLED=true + Google Workspace login in .env |
+| Lead alerts to the team | Contact form, chatbot call-back requests and new signups email the RestroGrow team; contact-form visitors get a "we got your message" reply. | Automatic (goes to MAIL_TEAM) | super admin | SMTP_ENABLED=true + Google Workspace login in .env; optional MAIL_TEAM |
+| Order emails to customers | Order confirmed with the bill, accepted / ready / cancelled updates (takeaway and delivery), and the e-bill when the order is completed. Sent in the restaurant's name with its logo. The restaurant gets a "new order" email. | Automatic (customer typed an email, or has one on file) | customer, owner | SMTP_ENABLED=true + Google Workspace login in .env |
+| Table booking emails | Booking received, confirmed or cancelled, and a reminder on the day. | Automatic | customer | SMTP_ENABLED=true + Google Workspace login in .env |
+| Customer welcome and gift emails | Welcome when a customer makes a website account; loyalty gifts (birthday, we miss you…) by email for customers who don't get WhatsApp messages. | Automatic | customer | SMTP_ENABLED=true + Google Workspace login in .env |
+| AI manager report by email | The morning report can also come to the owner's email. | Dashboard › Growth › AI manager › Settings | owner | SMTP_ENABLED=true + Google Workspace login in .env |
 
 ## Reports & analytics
 

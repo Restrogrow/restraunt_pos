@@ -164,6 +164,13 @@ function handleCustomerSignup($pdo) {
         error_log('Signup loyalty details: ' . $e->getMessage());
     }
 
+    if ($email !== '') {
+        try {
+            require_once __DIR__ . '/../config/mail_engine.php';
+            mailCustomerWelcome($pdo, (string)$restaurantId, $email, $name);
+        } catch (Throwable $e) { error_log('customer welcome email: ' . $e->getMessage()); }
+    }
+
     startSecureSession();
     if ($viaGoogle) unset($_SESSION['google_pending']);
     startCustomerSession($pdo, ['id' => $customerId, 'restaurant_id' => $restaurantId], $remember);
@@ -370,7 +377,16 @@ function handleCustomerForgotPassword($pdo) {
 
     $mailSent = false;
     if (function_exists('sendEmail')) {
-        $result = sendEmail($email, $subject, $message, '', 'accounts');
+        try {
+            require_once __DIR__ . '/../config/mail_engine.php';
+            $b = mailRestaurantBrand($pdo, (string)$restaurantId);
+            $result = mailSendNow($pdo, 'password_reset', $email, 'Reset your password · ' . $b['name'],
+                mailResetHtml($b, 'Hi ' . mailE((string)$customer['customer_name']) . ', tap the button to choose a new password for your <b>' . mailE($b['name']) . '</b> account.', $resetLink, 30),
+                ['restaurant_id' => (string)$restaurantId, 'brand' => $b, 'redact' => [$token]]);
+        } catch (Throwable $e) {
+            error_log('customer reset email (branded): ' . $e->getMessage());
+            $result = sendEmail($email, $subject, $message, '', 'accounts');
+        }
         $mailSent = is_array($result) ? ($result['success'] ?? false) : (bool)$result;
         if (!$mailSent) error_log('Customer password reset email failed for ' . $email);
     }

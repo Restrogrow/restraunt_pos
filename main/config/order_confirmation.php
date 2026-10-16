@@ -250,6 +250,14 @@ if (!function_exists('sendOrderConfirmationEmailsForOrder')) {
             // Columns may not exist on older DBs — fall back to defaults above
         }
 
+        // the branded emails (config/mail_engine.php: queued, logged, retried); the old plain ones only if that fails
+        try {
+            require_once __DIR__ . '/mail_engine.php';
+            mailOrderConfirmed($conn, $orderId);
+            return;
+        } catch (Throwable $e) {
+            error_log('mailOrderConfirmed: ' . $e->getMessage());
+        }
         try {
             require_once __DIR__ . '/email_config.php';
             sendOrderConfirmationEmails($order, $items, $order['customer_email'] ?? '', $restaurantEmail, $currencySymbol, $taxName, $taxPercent, $packagingCharge);

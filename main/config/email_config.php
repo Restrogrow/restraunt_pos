@@ -53,7 +53,15 @@ if (!defined('SMTP_FROM_EMAIL')) {
     define('SMTP_FROM_EMAIL', env('SMTP_FROM_EMAIL', 'restrogrow@gmail.com'));
 }
 if (!defined('SMTP_FROM_NAME')) {
-    define('SMTP_FROM_NAME', env('SMTP_FROM_NAME', 'Restaurant POS System'));
+    // the old default name: emails now say RestroGrow unless .env picks something else
+    $rgFromName = trim((string)env('SMTP_FROM_NAME', 'RestroGrow'), " \r\n\"'");
+    define('SMTP_FROM_NAME', ($rgFromName === '' || $rgFromName === 'Restaurant POS System') ? 'RestroGrow' : $rgFromName);
+}
+/** The sender name: env_loader may already have made SMTP_FROM_NAME from .env, so the old name is replaced here */
+function rgMailFromName(): string
+{
+    $n = trim((string)SMTP_FROM_NAME, " \r\n\"'");
+    return ($n === '' || $n === 'Restaurant POS System') ? 'RestroGrow' : $n;
 }
 
 /**
@@ -81,10 +89,25 @@ function rgMailFrom(?string $purpose = null): string
     }
     return SMTP_FROM_EMAIL;
 }
+/**
+ * Per-email options set by config/mail_engine.php around one send (rgMailWith()):
+ *   from_name  e.g. "Spice Garden via RestroGrow"   reply_to  where replies go
+ *   text       plain-text version                    list_unsubscribe  URL (marketing emails)
+ */
+$GLOBALS['RG_MAIL_OPTS'] = [];
+function rgMailWith(array $opts, callable $send)
+{
+    $GLOBALS['RG_MAIL_OPTS'] = $opts;
+    try { return $send(); } finally { $GLOBALS['RG_MAIL_OPTS'] = []; }
+}
+function rgMailEncodeHeader(string $v): string
+{
+    return preg_match('/[^\x20-\x7E]/', $v) ? '=?UTF-8?B?' . base64_encode($v) . '?=' : $v;
+}
 /** "Name <address>" with the name encoded if it is not plain ASCII */
 function rgMailHeaderFrom(string $email): string
 {
-    $name = SMTP_FROM_NAME;
+    $name = trim((string)($GLOBALS['RG_MAIL_OPTS']['from_name'] ?? '')) ?: rgMailFromName();
     if (preg_match('/[^\x20-\x7E]/', $name)) $name = '=?UTF-8?B?' . base64_encode($name) . '?=';
     else $name = '"' . str_replace('"', '', $name) . '"';
     return $name . ' <' . $email . '>';
@@ -236,19 +259,31 @@ function sendSMTPEmail($to, $subject, $message, $headers = '', $purpose = null) 
             return ['success' => false, 'error' => $errorMsg];
         }
         
-        // Prepare email headers
-        $emailHeaders = "From: " . rgMailHeaderFrom($fromEmail) . "\r\n";
-        if (stripos((string)$headers, 'Reply-To:') === false) $emailHeaders .= "Reply-To: <" . $fromEmail . ">\r\n";
+        // Headers: encoded subject, Date and Message-ID (spam filters expect them), reply-to
+        $o = $GLOBALS['RG_MAIL_OPTS'] ?? [];
+        $replyTo = trim((string)($o['reply_to'] ?? '')) ?: $fromEmail;
+        $domain = substr(strrchr($fromEmail, '@') ?: '@restrogrow.com', 1);
+        $emailHeaders = "Date: " . date('r') . "\r\n";
+        $emailHeaders .= "Message-ID: <" . bin2hex(random_bytes(12)) . "@" . $domain . ">\r\n";
+        $emailHeaders .= "From: " . rgMailHeaderFrom($fromEmail) . "\r\n";
+        if (stripos((string)$headers, 'Reply-To:') === false) $emailHeaders .= "Reply-To: <" . $replyTo . ">\r\n";
         $emailHeaders .= "To: <" . $to . ">\r\n";
-        $emailHeaders .= "Subject: " . $subject . "\r\n";
+        $emailHeaders .= "Subject: " . rgMailEncodeHeader((string)$subject) . "\r\n";
+        if (!empty($o['list_unsubscribe'])) $emailHeaders .= "List-Unsubscribe: <" . $o['list_unsubscribe'] . ">\r\n";
         $emailHeaders .= "MIME-Version: 1.0\r\n";
-        $emailHeaders .= "Content-type: text/html; charset=UTF-8\r\n";
         if ($headers) {
-            $emailHeaders .= $headers . "\r\n";
+            $emailHeaders .= rtrim($headers) . "\r\n";
         }
-        
+        // Body: HTML + plain text, base64 (no line-length limit, and a line starting with "." can't end the message early)
+        $text = trim((string)($o['text'] ?? '')) ?: trim(html_entity_decode(strip_tags(preg_replace('/<(br|\/p|\/div|\/tr|\/h[1-6])[^>]*>/i', "\n", (string)$message)), ENT_QUOTES, 'UTF-8'));
+        $boundary = 'rg' . bin2hex(random_bytes(8));
+        $emailHeaders .= "Content-Type: multipart/alternative; boundary=\"" . $boundary . "\"\r\n";
+        $body = "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($text))
+            . "--$boundary\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode((string)$message))
+            . "--$boundary--";
+
         // Send email data
-        fputs($smtp, $emailHeaders . "\r\n" . $message . "\r\n.\r\n");
+        fputs($smtp, $emailHeaders . "\r\n" . $body . "\r\n.\r\n");
         $response = fgets($smtp, 515);
         
         if (substr($response, 0, 3) != '250') {
@@ -285,7 +320,7 @@ function sendEmail($to, $subject, $message, $headers = '', $purpose = null) {
         $logMessage = "=== EMAIL NOT SENT (Development Mode) ===\n";
         $logMessage .= "To: $to\n";
         $logMessage .= "Subject: $subject\n";
-        $logMessage .= "From: " . SMTP_FROM_NAME . " <" . $fromEmail . ">\n";
+        $logMessage .= "From: " . rgMailFromName() . " <" . $fromEmail . ">\n";
         $logMessage .= "Time: " . date('Y-m-d H:i:s') . "\n";
         $logMessage .= "Message Preview: " . substr(strip_tags($message), 0, 200) . "...\n";
         $logMessage .= "========================================\n\n";

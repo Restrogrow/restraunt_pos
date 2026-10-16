@@ -396,6 +396,12 @@ try {
         }
         $conn->prepare("UPDATE support_tickets SET status = ?, unread_restaurant = IF(? <> '', 1, unread_restaurant), unread_admin = 0, updated_at = NOW() WHERE id = ?")->execute([$status, $body, $id]);
         pfAudit($conn, $body !== '' ? 'ticket.reply' : 'ticket.status', 'Ticket #' . $id . ' ' . $t['subject'], ['status' => $status]);
+        if ($body !== '') {
+            try {
+                require_once __DIR__ . '/../config/mail_engine.php';
+                mailSupportReply($conn, (string)$t['restaurant_id'], (string)$t['subject'], $body);
+            } catch (Throwable $e) { error_log('support reply email: ' . $e->getMessage()); }
+        }
         out(['message' => $body !== '' ? 'Reply sent' : 'Status updated']);
 
     /* ───────── 11. platform health ───────── */
@@ -621,12 +627,21 @@ try {
     case 'invoiceList':
         saInvEnsure($conn);
         $q = trim((string)($_GET['q'] ?? ''));
-        $sql = 'SELECT id, invoice_no, restaurant_id, restaurant_name, total, status, method, invoice_date, due_date, period_from, period_to, created_by, created_at FROM sa_invoices';
+        $sql = 'SELECT id, invoice_no, restaurant_id, restaurant_name, total, status, method, invoice_date, due_date, period_from, period_to, created_by, created_at, billed_to FROM sa_invoices';
         $p = [];
         if ($q !== '') { $sql .= ' WHERE invoice_no LIKE ? OR restaurant_name LIKE ? OR restaurant_id LIKE ?'; $p = ["%$q%", "%$q%", "%$q%"]; }
         $st = $conn->prepare($sql . ' ORDER BY id DESC LIMIT 100');
         $st->execute($p);
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        // where "Email" sends it: the billed-to email, else the restaurant's
+        $ue = $conn->prepare('SELECT email FROM users WHERE restaurant_id = ? LIMIT 1');
+        foreach ($rows as &$r) {
+            $bt = json_decode((string)$r['billed_to'], true) ?: [];
+            if (empty($bt['email'])) { $ue->execute([$r['restaurant_id']]); $bt['email'] = (string)$ue->fetchColumn(); }
+            $r['email'] = $bt['email'];
+            unset($r['billed_to']);
+        }
+        unset($r);
         $sm = $conn->prepare("SELECT COALESCE(SUM(CASE WHEN status = 'paid' THEN total END), 0) paid, COALESCE(SUM(CASE WHEN status = 'due' THEN total END), 0) due,
             COALESCE(SUM(status = 'due'), 0) due_n, COALESCE(SUM(status <> 'void'), 0) n FROM sa_invoices WHERE fy = ?");
         $sm->execute([saInvFy()]);
@@ -646,6 +661,20 @@ try {
         } else throw new Exception('Unknown status');
         pfAudit($conn, 'invoice.' . $to, $inv['restaurant_name'] . ' (' . $inv['restaurant_id'] . ')', ['invoice_no' => $inv['invoice_no']]);
         out(['message' => $to === 'paid' ? 'Marked as paid' : 'Invoice cancelled (its number stays used)']);
+
+    case 'invoiceEmail':
+        needPost();
+        $inv = saInvGet($conn, (int)($in['id'] ?? 0));
+        if ($inv['status'] === 'void') throw new Exception('A cancelled invoice is not emailed');
+        require_once __DIR__ . '/../config/mail_engine.php';
+        $to = trim((string)($in['to'] ?? ''));
+        if ($to !== '') {
+            if (!filter_var($to, FILTER_VALIDATE_EMAIL)) throw new Exception('That email address does not look right');
+            $inv['billed_to']['email'] = $to;
+        }
+        if (!mailInvoice($conn, $inv)) throw new Exception('No email address for this restaurant (or invoice emails are switched off in Email)');
+        pfAudit($conn, 'invoice.email', $inv['restaurant_name'] . ' (' . $inv['restaurant_id'] . ')', ['invoice_no' => $inv['invoice_no'], 'to' => $to ?: ($inv['billed_to']['email'] ?? '')]);
+        out(['message' => 'Invoice emailed']);
 
     case 'invoiceCatalog':
         if ($isPost) {

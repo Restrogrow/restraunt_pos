@@ -97,6 +97,7 @@
           '<label>Send every day at<input type="time" id="omTime" value="' + esc(s.send_time) + '"></label>' +
           '<label>Language<select id="omLang">' + [['en', 'English'], ['hinglish', 'Hinglish'], ['hi', 'हिंदी (Hindi)']].map(function (l) { return '<option value="' + l[0] + '"' + (s.language === l[0] ? ' selected' : '') + '>' + l[1] + '</option>'; }).join('') + '</select></label>' +
           '<label>WhatsApp number<input id="omPhone" inputmode="tel" placeholder="' + esc(s.phone || 'Your number') + '" value="' + esc(s.phone_override || '') + '"><small style="font-weight:500;color:#6b7280">Empty = the restaurant\'s phone' + (s.phone ? ' (+' + esc(s.phone) + ')' : '') + '. Replies from this number reach the AI manager.</small></label>' +
+          '<label style="display:flex;align-items:center;gap:8px;font-weight:600"><input type="checkbox" id="omEmail"' + (s.email_on ? ' checked' : '') + ' style="width:18px;height:18px">Also send the report to my email</label>' +
           '<div><button type="button" class="btn btn-primary" data-om="save"' + (D.can_edit ? '' : ' disabled') + '>' + ic('save') + 'Save</button></div></div></div>' +
         '<div class="om-note">' + ic('info') + '<div>On the live site the report goes out from a scheduled job every 15 minutes (cron/owner_brief.php). WhatsApp only delivers a message the owner didn\'t start if it uses an approved template, so until the "daily report" template is approved the owner should message the restaurant number once a day.</div></div>' +
         '<div class="om-card"><h3>' + ic('history') + 'Earlier reports</h3><div class="om-hist">' + ((D.briefs || []).slice(1).map(function (b) {
@@ -150,7 +151,7 @@
       }).catch(function () { t.disabled = false; t.innerHTML = old; notify('No connection', 'error'); });
     } else if (a === 'save') {
       t.disabled = true;
-      post({ action: 'save', enabled: $('omOn').checked ? 1 : 0, send_time: $('omTime').value, language: $('omLang').value, phone: $('omPhone').value }).then(function (d) {
+      post({ action: 'save', enabled: $('omOn').checked ? 1 : 0, send_time: $('omTime').value, language: $('omLang').value, phone: $('omPhone').value, email_on: $('omEmail').checked ? 1 : 0 }).then(function (d) {
         t.disabled = false; notify(d.message || (d.success ? 'Saved' : 'Could not save'), d.success ? 'success' : 'error'); if (d.success) load();
       });
     }

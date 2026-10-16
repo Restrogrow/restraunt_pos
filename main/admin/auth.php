@@ -321,6 +321,10 @@ function handleLogin() {
             ]);
             if ($isNewDevice) {
                 error_log(sprintf('NEW DEVICE: admin %s (restaurant %s) logged in from a never-seen-before device/IP %s', $user['username'], $user['restaurant_id'], loginLogClientIp()));
+                try {
+                    require_once __DIR__ . '/../config/mail_engine.php';
+                    mailNewDevice($pdo, (string)$user['restaurant_id'], (string)$user['username'], loginLogClientIp(), (string)($_SERVER['HTTP_USER_AGENT'] ?? ''));
+                } catch (Throwable $e) { error_log('new device email: ' . $e->getMessage()); }
             }
         } catch (Exception $logErr) {
             error_log('auth.php: login log (admin success) failed: ' . $logErr->getMessage());
@@ -390,6 +394,10 @@ function handleLogin() {
             ]);
             if ($isNewDevice) {
                 error_log(sprintf('NEW DEVICE: staff %s (restaurant %s) logged in from a never-seen-before device/IP %s', $staff['member_name'], $staff['restaurant_id'], loginLogClientIp()));
+                try {
+                    require_once __DIR__ . '/../config/mail_engine.php';
+                    mailNewDevice($pdo, (string)$staff['restaurant_id'], 'Staff member ' . $staff['member_name'], loginLogClientIp(), (string)($_SERVER['HTTP_USER_AGENT'] ?? ''));
+                } catch (Throwable $e) { error_log('new device email: ' . $e->getMessage()); }
             }
         } catch (Exception $logErr) {
             error_log('auth.php: login log (staff success) failed: ' . $logErr->getMessage());
@@ -730,6 +738,13 @@ function handleSignup() {
     ");
     $result = $insertStmt->execute([$username, $email, $hashedPassword, $restaurantId, $restaurantName, $country, $phone, $currencySymbol]);
     
+    if ($result) {
+        // welcome email to the owner + "new signup" to the RestroGrow team (queued, sent after this reply)
+        try {
+            require_once __DIR__ . '/../config/mail_engine.php';
+            mailOwnerWelcome($pdo, $restaurantId);
+        } catch (Throwable $e) { error_log('signup emails: ' . $e->getMessage()); }
+    }
     if ($result && $viaGoogle) {
         // signed up with Google: straight into the new dashboard
         unset($_SESSION['google_owner_pending']);
@@ -1974,7 +1989,16 @@ function handleForgotPassword() {
     
     if (function_exists('sendEmail')) {
         // Use SMTP email function
-        $emailResult = sendEmail($email, $subject, $message, '', 'accounts');
+        try {
+            require_once __DIR__ . '/../config/mail_engine.php';
+            $b = mailPlatformBrand();
+            $emailResult = mailSendNow($pdo, 'password_reset', $email, 'Reset your RestroGrow password',
+                mailResetHtml($b, 'We got a request to reset the password for <b>' . mailE((string)$user['restaurant_name']) . '</b>. Tap the button to choose a new one.', $resetLink, 5),
+                ['brand' => $b, 'redact' => [$token]]);
+        } catch (Throwable $e) {
+            error_log('reset email (branded): ' . $e->getMessage());
+            $emailResult = sendEmail($email, $subject, $message, '', 'accounts');
+        }
         if (is_array($emailResult)) {
             $mailSent = $emailResult['success'] ?? false;
             $mailError = $emailResult['error'] ?? '';

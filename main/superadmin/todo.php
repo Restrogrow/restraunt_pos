@@ -44,6 +44,21 @@ if ((int)$conn->query('SELECT COUNT(*) FROM sa_todos')->fetchColumn() === 0) {
     foreach ($seed as $i => $t) $ins->execute([$t[0], $t[1], $t[2], $t[3], $i]);
 }
 
+// jobs added after the first visit (each added once, by its title)
+$later = [
+    ['Email', 1, 'Turn on emails in the live .env', "Live main/.env: SMTP_ENABLED=true, SMTP_HOST=smtp.gmail.com, SMTP_PORT=587, SMTP_SECURE=tls, SMTP_USERNAME=<your Workspace address>, SMTP_PASSWORD=<an App Password: Google account › Security › 2-Step Verification › App passwords>, SMTP_FROM_EMAIL=<same address>, SMTP_FROM_NAME=RestroGrow. Optional: MAIL_TEAM=<where new leads and signups go>. Then Super Admin › Email › Send test."],
+    ['Email', 0, 'SPF, DKIM and DMARC for restrogrow.com', "So emails don't land in spam. In your domain's DNS (Hostinger › Domains › DNS):
+• SPF (TXT on @): v=spf1 include:_spf.google.com ~all  (if an SPF record exists, add include:_spf.google.com to it, don't make a second one)
+• DKIM: Google Admin › Apps › Google Workspace › Gmail › Authenticate email › Generate new record, add the TXT it shows (google._domainkey), then click Start authentication
+• DMARC (TXT on _dmarc): v=DMARC1; p=none; rua=mailto:<your address>
+Check after a day with Super Admin › Email › Send test to a Gmail address › Show original: SPF, DKIM, DMARC should say PASS."],
+    ['Email', 0, 'Optional: separate sender addresses', "In Google Admin add aliases (billing@, orders@, support@ …) to your Workspace user, then in the live .env: MAIL_FROM_BILLING, MAIL_FROM_ORDERS, MAIL_FROM_ALERTS, MAIL_FROM_ACCOUNTS, MAIL_FROM_SUPPORT, MAIL_FROM_SALES. Without them everything comes from SMTP_FROM_EMAIL, which is fine."],
+    ['Cron jobs', 0, 'Add the email cron job', "hPanel › Advanced › Cron Jobs, every 10 minutes: /usr/bin/php /home/<user>/public_html/main/cron/email_dispatch.php (trial / renewal reminders, receipts, booking reminders, retries). Emails also go out without it, but reminders then wait until someone opens a dashboard."],
+];
+$have = $conn->prepare('SELECT COUNT(*) FROM sa_todos WHERE title = ?');
+$addLater = $conn->prepare('INSERT INTO sa_todos (category, urgent, title, details, sort) VALUES (?, ?, ?, ?, ?)');
+foreach ($later as $i => $t) { $have->execute([$t[2]]); if (!(int)$have->fetchColumn()) $addLater->execute([$t[0], $t[1], $t[2], $t[3], 100 + $i]); }
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     // same-site only (the page's own fetch); stops another site posting with the admin's cookie

@@ -108,7 +108,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ";
                 
                 // Send email
-                $emailResult = sendEmail($to, $subject, $emailMessage, '', 'accounts');
+                try {
+                    require_once __DIR__ . '/../config/mail_engine.php';
+                    $b = mailPlatformBrand();
+                    $emailResult = mailSendNow($conn, 'password_reset', $to, $subject,
+                        mailResetHtml($b, 'A reset was requested for the Super Admin account <b>' . mailE((string)$superadmin['username']) . '</b>.', $resetLink, 5, 'Super Admin password reset'),
+                        ['brand' => $b, 'redact' => [$token]]);
+                } catch (Throwable $e) {
+                    error_log('superadmin reset email (branded): ' . $e->getMessage());
+                    $emailResult = sendEmail($to, $subject, $emailMessage, '', 'accounts');
+                }
                 
                 if (is_array($emailResult) && $emailResult['success']) {
                     $message = 'Password reset link has been sent to sujaysarraf55@gmail.com. Please check your email.';

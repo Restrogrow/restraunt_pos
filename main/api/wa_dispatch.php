@@ -24,6 +24,9 @@ try {
     $cards = 0;
     try { require_once __DIR__ . '/../config/wallet_card.php'; require_once __DIR__ . '/../config/vip_membership.php'; $cards = walletCardsSync($conn, $rid); }
     catch (Throwable $e) { error_log('wa_dispatch cards: ' . $e->getMessage()); }
+    // emails: the hourly date-based ones (trial, renewal, receipts…), then the outbox, after this reply
+    try { require_once __DIR__ . '/../config/mail_engine.php'; mailSweep($conn); mailKick($conn); }
+    catch (Throwable $e) { error_log('wa_dispatch mail: ' . $e->getMessage()); }
     $s = waSettings($conn, $rid);
     if (!$s['enabled']) { echo json_encode(['success' => true, 'enabled' => false, 'cards' => $cards]); exit; }
     // birthday / win-back gifts first, so they go out in this same run

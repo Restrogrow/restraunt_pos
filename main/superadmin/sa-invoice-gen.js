@@ -249,6 +249,7 @@
             '<td><span class="ig-pill ' + sl[1] + '">' + sl[0] + '</span>' + (r.status === 'due' && r.due_date ? '<br><small class="sp-muted">by ' + dmy(r.due_date) + '</small>' : r.status === 'paid' && r.method ? '<br><small class="sp-muted">' + esc(r.method) + '</small>' : '') + '</td>' +
             '<td><div class="ig-acts"><a class="btn btn-outline btn-sm" target="_blank" rel="noopener" href="' + viewUrl(r.id) + '" title="Open"><span class="material-symbols-rounded">visibility</span></a>' +
               '<a class="btn btn-outline btn-sm" target="_blank" rel="noopener" href="' + viewUrl(r.id, true) + '" title="Download PDF"><span class="material-symbols-rounded">download</span></a>' +
+              (r.status !== 'void' ? '<button class="btn btn-outline btn-sm" type="button" data-igmail="' + r.id + '" data-no="' + esc(r.invoice_no) + '" data-to="' + esc(r.email || '') + '" title="Email to restaurant"><span class="material-symbols-rounded">mail</span></button>' : '') +
               (r.status === 'due' ? '<button class="btn btn-outline btn-sm" type="button" data-igpaid="' + r.id + '" title="Mark paid"><span class="material-symbols-rounded">task_alt</span></button>' : '') +
               (r.status !== 'void' ? '<button class="btn btn-outline btn-sm" type="button" data-igvoid="' + r.id + '" data-no="' + esc(r.invoice_no) + '" title="Cancel invoice"><span class="material-symbols-rounded">block</span></button>' : '') +
             '</div></td></tr>';
@@ -262,6 +263,11 @@
     Swal.fire({ title: 'Mark as paid', html: '<select id="igMp" class="swal2-select" style="display:flex;width:80%;margin:8px auto">' + METHODS.map(function (m) { return '<option>' + m + '</option>'; }).join('') + '</select><input id="igMr" class="swal2-input" placeholder="Transaction / UTR number (optional)">',
       showCancelButton: true, confirmButtonText: 'Mark paid', confirmButtonColor: '#16a34a', preConfirm: function () { return { method: $('igMp').value, reference: $('igMr').value }; } })
       .then(function (r) { if (r.isConfirmed) post('invoiceMark', { id: id, status: 'paid', method: r.value.method, reference: r.value.reference }).then(function (d) { toast(d.message); loadList(); }).catch(function (e) { toast(e.message, 'error'); }); });
+  }
+  function mailInv(id, no, to) {
+    Swal.fire({ title: 'Email ' + no, input: 'email', inputValue: to || '', inputLabel: 'Send to', inputPlaceholder: 'owner@restaurant.com',
+      showCancelButton: true, confirmButtonText: 'Send email', confirmButtonColor: '#2563eb' })
+      .then(function (r) { if (r.isConfirmed) post('invoiceEmail', { id: id, to: r.value }).then(function (d) { toast(d.message + ' to ' + r.value); }).catch(function (e) { toast(e.message, 'error'); }); });
   }
   function cancelInv(id, no) {
     Swal.fire({ icon: 'warning', title: 'Cancel ' + no + '?', text: 'It stays in the list as cancelled and its number is not reused (GST rule). This does not undo a plan extension.', showCancelButton: true, confirmButtonText: 'Cancel invoice', cancelButtonText: 'Keep it', confirmButtonColor: '#dc2626' })
@@ -314,10 +320,12 @@
       return;
     }
     if (!st) {
-      if ((m = t.closest('[data-igpaid]'))) markPaid(+m.dataset.igpaid);
+      if ((m = t.closest('[data-igmail]'))) mailInv(+m.dataset.igmail, m.dataset.no, m.dataset.to);
+      else if ((m = t.closest('[data-igpaid]'))) markPaid(+m.dataset.igpaid);
       else if ((m = t.closest('[data-igvoid]'))) cancelInv(+m.dataset.igvoid, m.dataset.no);
       return;
     }
+    if ((m = t.closest('[data-igmail]'))) { mailInv(+m.dataset.igmail, m.dataset.no, m.dataset.to); return; }
     if ((m = t.closest('[data-igpaid]'))) { markPaid(+m.dataset.igpaid); return; }
     if ((m = t.closest('[data-igvoid]'))) { cancelInv(+m.dataset.igvoid, m.dataset.no); return; }
     if ((m = t.closest('[data-plan]'))) { st.plan = m.dataset.plan; if (!st.plan) st.extend = false; else st.extend = true; redraw(); return; }

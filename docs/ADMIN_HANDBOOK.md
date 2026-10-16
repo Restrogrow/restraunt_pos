@@ -102,12 +102,25 @@ Re-create everything with `php main/database/seed_multibranch_demo.php` (this al
 | demo@restrogrow.invalid | Email of the demo restaurant (a deliberately undeliverable address) |
 | Phone on the website | +91 63775 68749 |
 
-**How email is sent:** a built-in SMTP client (`main/config/email_config.php`, no PHPMailer). It uses Gmail SMTP (`smtp.gmail.com:587`, TLS) with an app password. Different emails can come from different addresses via `MAIL_FROM_BILLING`, `MAIL_FROM_ALERTS`, `MAIL_FROM_ORDERS`, `MAIL_FROM_ACCOUNTS`, `MAIL_FROM_SUPPORT` and `MAIL_FROM_SALES`. Each one must be a Gmail "Send mail as" alias of the SMTP login. When SMTP is off, PHP `mail()` is used.
+**Manage everything in Super Admin › Tools › Email:**
+- **All emails:** every email (32 previews of 21 types) as it really looks, who gets it, when and what starts it, how many went out in 30 days, and **Send me a test** for any of them. Type your address once at the top.
+- **Sent log:** every email sent, failed or waiting, with View and Send again (reset links are never kept).
+- **Settings & jobs:** the sending account, a plain test email, each email type on/off, and whether the two scheduled jobs (cron) are running (green "Running" means they ran in the last 30 / 45 minutes).
 
-**Who gets what:**
-- Order emails go to the customer and to the restaurant's own email.
-- Password resets go to the person's own email.
-- The website contact form doesn't send email. Leads appear in **Super Admin › Leads**.
+**How email is sent:**
+- Google Workspace SMTP (`smtp.gmail.com:587`, TLS) with an App Password, through the built-in client in `main/config/email_config.php`. Limit: 2,000 emails a day per Workspace user.
+- `main/config/mail_engine.php` makes every email: one branded design (RestroGrow for owners; the restaurant's name, logo and phone for customers, sent as "Spice Garden via RestroGrow" with replies going to the restaurant).
+- Every email goes into the `email_outbox` table and is sent seconds later, after the page has answered, so checkout never waits. Failed ones are retried 3 times (after 10, 20, 30 minutes).
+- Date-based emails (trial ending, renewal, payment received, gift emails, booking reminders) are made by an hourly check: the email cron, or any open dashboard if the cron isn't there.
+- Different emails can come from different addresses via `MAIL_FROM_BILLING`, `MAIL_FROM_ALERTS`, `MAIL_FROM_ORDERS`, `MAIL_FROM_ACCOUNTS`, `MAIL_FROM_SUPPORT` and `MAIL_FROM_SALES` (each must be an alias of the SMTP user in Google Admin). `MAIL_TEAM` is where new leads and signups go.
+- On a local PC, `MAIL_SINK_DIR=<folder>` in `.env` saves emails as .html files instead of sending them.
+- The full list of emails and their timing is in `docs/EMAIL_PLAN.md` and on the All emails tab.
+
+**Who gets what (short version):**
+- Owners: welcome, trial and renewal reminders, payment received, invoices, new-device login, support replies, password resets, optional morning report.
+- RestroGrow team: new signups, contact-form and chatbot leads. Contact-form visitors get "we got your message".
+- Customers: order confirmed, order updates (takeaway / delivery), e-bill, table bookings, account welcome, password reset, loyalty gifts (only if they don't get WhatsApp).
+- The restaurant: a "new order" email for every order.
 
 ---
 
@@ -133,7 +146,10 @@ Sidebar groups, and what each page does:
   - Settings: trial days, prices, auto-renewal, our business name, GSTIN, email, phone and address, GST %, invoice prefix, email test, database tools.
   - Error monitor.
 - **Tools:**
+  - My to-do: the jobs only you can do (keys, approvals, cron, DNS).
+  - Email: every email with previews and test sends, the sent log, on/off per email, cron status.
   - Admin handbook: this file, plus every other doc in the repo.
+  - Features: every feature, where it is and what it needs.
   - Demo restaurant: reset or remove the demo.
 
 Code: `main/superadmin/dashboard.php` (sidebar around line 190, one `<div class="menu-item" data-page="…">` per tab plus a matching `<div id="…Page" class="page">`). It's backed by `api.php` and `api_platform.php`; newer pages load through `sa-platform.js`.
@@ -147,7 +163,7 @@ Settings live in `main/.env` on each server (never in git; `main/.env.example` l
 | Integration | `.env` keys | Status | Needed for |
 |---|---|---|---|
 | Database | `DB_HOST_*`, `DB_NAME`, `DB_USER`, `DB_PASS` | ✅ Working | Everything |
-| Email (Gmail SMTP) | `SMTP_*`, `MAIL_FROM_*` | ⚠️ Local: off, placeholder sender. Live: check that `SMTP_ENABLED=true` and an app password are set. | Password resets, order emails |
+| Email (Google Workspace SMTP) | `SMTP_*`, `MAIL_FROM_*`, `MAIL_TEAM` | ⚠️ Local: test mode (`MAIL_SINK_DIR`). Live: set `SMTP_ENABLED=true` + an App Password, then Super Admin › Email › Settings & jobs › Send test. Add SPF, DKIM, DMARC (My to-do). | Every email (Super Admin › Tools › Email) |
 | PhonePe | `PHONEPE_*` | ⚠️ Test mode with demo credentials. Production merchant credentials missing. Each restaurant's own keys are in `users`. | Online payment, wallet top-up, VIP, subscription payment links |
 | WhatsApp via RepeatGrow (shared number) | `REPEATGROW_API_URL`, `REPEATGROW_API_KEY`, `REPEATGROW_OTP_TEMPLATE_*`, `REPEATGROW_GIFT_TEMPLATE` | ⚠️ API key set (live key). Local API URL is a placeholder. `REPEATGROW_GIFT_TEMPLATE` is missing. | Customer OTP login, loyalty gifts, campaigns |
 | Connect RepeatGrow (each restaurant's own number) | `REPEATGROW_CONNECT_URL`, `REPEATGROW_CLIENT_ID`, `REPEATGROW_CLIENT_SECRET`, `WA_KEY_SECRET` | ❌ The RepeatGrow side isn't built (contract: `docs/REPEATGROW_CONNECT.md`). The button stays hidden until the client ID and secret are set. | One-click template creation |
@@ -178,6 +194,8 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 | Loyalty gifts | `/usr/bin/php <HOME>/main/cron/loyalty_autopilot.php` | daily 09:00 | check it's added |
 | Scheduled orders | `/usr/bin/php <HOME>/main/cron/activate_scheduled_orders.php` | every 5 min | check it's added |
 | Meal-plan deliveries | `/usr/bin/php <HOME>/main/cron/generate_subscription_deliveries.php` | daily 05:00 | check it's added |
+| Emails (reminders, retries) | `/usr/bin/php <HOME>/main/cron/email_dispatch.php` | every 10 min | Super Admin › Email › Settings & jobs shows if it runs |
+| AI manager morning report | `/usr/bin/php <HOME>/main/cron/owner_brief.php` | every 15 min | Super Admin › Email › Settings & jobs shows if it runs |
 
 - **Uptime:** UptimeRobot keyword monitor on `/main/api/health.php?check=orders`, looking for `"status":"ok"`.
 

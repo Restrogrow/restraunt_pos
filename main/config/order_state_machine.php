@@ -330,6 +330,18 @@ function validateAndUpdateOrderStatus(
         }
     }
 
+    // email updates to the customer (accepted, ready, on the way, e-bill), also after the request is done
+    static $mailQueued = [];
+    if (empty($mailQueued[$orderId . ':' . $newStatus])) {
+        $mailQueued[$orderId . ':' . $newStatus] = true;
+        register_shutdown_function(function () use ($conn, $orderId) {
+            try {
+                require_once __DIR__ . '/mail_engine.php';
+                mailOrderStatus($conn, $orderId);
+            } catch (Throwable $e) { error_log('mailOrderStatus: ' . $e->getMessage()); }
+        });
+    }
+
     return [
         'success'       => true,
         'message'       => "Order status updated from {$currentStatus} to {$newStatus}",

@@ -121,6 +121,10 @@ try {
     ]);
     
     $reservation_id = $conn->lastInsertId();
+    try {
+        require_once __DIR__ . '/../config/mail_engine.php';
+        mailBooking($conn, (int)$reservation_id, 'received');
+    } catch (Throwable $e) { error_log('booking email: ' . $e->getMessage()); }
     
     // Auto-add customer if not exists
     if (!empty($phone)) {

@@ -295,6 +295,11 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">task_alt</span>
           <span class="text">My to-do<?php if ($saTodoOpen): ?> <span class="badge-new" style="background:#f97316"><?php echo $saTodoOpen; ?></span><?php endif; ?></span>
         </a>
+        <?php $saMailFailed = 0; try { $saMailFailed = (int)getConnection()->query("SELECT COUNT(*) FROM email_outbox WHERE status = 'failed' AND created_at > NOW() - INTERVAL 7 DAY")->fetchColumn(); } catch (Throwable $e) { $saMailFailed = 0; } ?>
+        <a class="menu-link" href="email.php">
+          <span class="material-symbols-rounded icon">mail</span>
+          <span class="text">Email<?php if ($saMailFailed): ?> <span class="badge-new" style="background:#dc2626" title="Failed in the last 7 days"><?php echo $saMailFailed; ?></span><?php endif; ?></span>
+        </a>
         <a class="menu-link" href="handbook.php">
           <span class="material-symbols-rounded icon">menu_book</span>
           <span class="text">Admin handbook</span>

@@ -302,6 +302,10 @@ try {
             
             if ($result) {
                 $newReservationId = $conn->lastInsertId();
+                try {
+                    require_once __DIR__ . '/../config/mail_engine.php';
+                    mailBooking($conn, (int)$newReservationId, $status === 'Confirmed' ? 'Confirmed' : 'received');
+                } catch (Throwable $e) { error_log('booking email: ' . $e->getMessage()); }
                 
                 // Auto-add customer if not exists
                 if (!empty($phone)) {
@@ -337,9 +341,10 @@ try {
             
         case 'update':
             // Check if reservation exists and belongs to this restaurant
-            $checkStmt = $conn->prepare("SELECT id FROM reservations WHERE id = ? AND restaurant_id = ?");
+            $checkStmt = $conn->prepare("SELECT id, status FROM reservations WHERE id = ? AND restaurant_id = ?");
             $checkStmt->execute([$reservationId, $restaurant_id]);
-            if (!$checkStmt->fetch()) {
+            $oldReservation = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$oldReservation) {
                 throw new Exception('Reservation not found');
             }
             
@@ -356,6 +361,12 @@ try {
             $updateStmt = $conn->prepare("UPDATE reservations SET table_id = ?, reservation_date = ?, time_slot = ?, no_of_guests = ?, meal_type = ?, customer_name = ?, phone = ?, email = ?, special_request = ?, status = ?, updated_at = NOW() WHERE id = ? AND restaurant_id = ?");
             $result = $updateStmt->execute([$tableId, $reservationDate, $timeSlot, $noOfGuests, $mealType, $customerName, $phone, $email, $specialRequest, $status, $reservationId, $restaurant_id]);
             
+            if ($result && $status !== $oldReservation['status'] && in_array($status, ['Confirmed', 'Cancelled'], true)) {
+                try {
+                    require_once __DIR__ . '/../config/mail_engine.php';
+                    mailBooking($conn, (int)$reservationId, $status);
+                } catch (Throwable $e) { error_log('booking email: ' . $e->getMessage()); }
+            }
             if ($result) {
                 echo json_encode([
                     'success' => true,

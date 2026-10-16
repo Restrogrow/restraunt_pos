@@ -96,6 +96,13 @@ try {
         if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254)) chatbotOut(['success' => false, 'message' => 'Please check the email address.'], 400);
         $conn->prepare('UPDATE chatbot_leads SET name = ?, restaurant_name = ?, email = ?, phone = ?, consent_at = CURRENT_TIMESTAMP WHERE id = ?')
             ->execute([$name, $restaurant, $email, $phone, $leadId]);
+        try {
+            require_once __DIR__ . '/../config/mail_engine.php';
+            $said = $conn->prepare("SELECT message FROM chatbot_messages WHERE lead_id = ? AND sender = 'visitor' ORDER BY id DESC LIMIT 4");
+            $said->execute([$leadId]);
+            mailNewLead($conn, 'website chatbot', ['name' => $name, 'restaurant' => $restaurant, 'phone' => $phone, 'email' => $email,
+                'message' => implode("\n", array_map(fn($m) => '• ' . $m, array_reverse($said->fetchAll(PDO::FETCH_COLUMN))))]);
+        } catch (Throwable $e) { error_log('chatbot lead email: ' . $e->getMessage()); }
         $first = explode(' ', $name)[0];
         $reply = "Thanks $first! 🙌 Our team will call you on **$phone** soon, usually within a few hours. Meanwhile, ask me anything else about RestroGrow.";
         $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)")->execute([$leadId, $reply]);

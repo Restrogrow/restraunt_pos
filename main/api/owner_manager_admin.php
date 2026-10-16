@@ -53,7 +53,7 @@ try {
         unset($b);
         omOut(['success' => true, 'can_edit' => $canEdit, 'ai' => aiGeminiAvailable(), 'sent_now' => $sentNow,
             'settings' => ['enabled' => $s['enabled'], 'send_time' => $s['send_time'], 'language' => $s['language'], 'phone' => $s['phone'],
-                'phone_override' => $s['phone_override'], 'last_sent_on' => $s['last_sent_on'], 'restaurant' => $s['restaurant']],
+                'phone_override' => $s['phone_override'], 'email_on' => $s['email_on'], 'last_sent_on' => $s['last_sent_on'], 'restaurant' => $s['restaurant']],
             'briefs' => $briefs]);
     }
 

@@ -148,6 +148,11 @@ try {
     error_log("Contact form insert attempt - Result: " . ($result ? 'true' : 'false') . ", RowCount: $rowCount, InsertId: $insertId");
     
     if ($result && $insertId) {
+        // tell the team, and tell the person we got it
+        try {
+            require_once __DIR__ . '/../config/mail_engine.php';
+            mailNewLead($conn, 'contact form', ['name' => $name, 'email' => $email, 'phone' => $phone, 'message' => $message]);
+        } catch (Throwable $e) { error_log('contact form emails: ' . $e->getMessage()); }
         error_log("Contact form submitted successfully - ID: $insertId, Name: $name, Email: $email");
         echo json_encode([
             'success' => true,
