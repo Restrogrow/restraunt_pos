@@ -147,7 +147,7 @@ export default function ShiftHomeScreen({ navigation }) {
         { n: ready.length, icon: 'checkmark-done', tone: colors.success, bg: colors.successBg, title: (n) => `${n} ready, waiting for pickup`, sub: 'Waiters are told when food is ready', go: () => goTo(navigation, 'Kitchen', { stage: 'Ready' }) },
       ]
     : [
-        { n: counts.newOrders || 0, icon: 'notifications', tone: colors.danger, bg: colors.dangerBg, title: (n) => `${n} new online order${n > 1 ? 's' : ''}`, sub: 'Accept or reject them', go: () => goOrders(navigation, 'new') },
+        { n: counts.newOrders || 0, icon: 'notifications', tone: colors.danger, bg: colors.dangerBg, title: (n) => `${n} new order${n > 1 ? 's' : ''} to accept`, sub: 'Guests are waiting for your answer', go: () => goOrders(navigation, 'new') },
       ]
   ).filter((a) => a.n > 0);
 

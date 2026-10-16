@@ -128,12 +128,17 @@ try {
         // accidental waiter tap) may advance its status afterwards.
         // validateAndUpdateOrderStatus would happily update one, so guard
         // here, tenant-scoped, before the state machine runs.
-        $deletedStmt = $conn->prepare("SELECT deleted_at FROM orders WHERE id = ? AND restaurant_id = ? FOR UPDATE");
+        $deletedStmt = $conn->prepare("SELECT deleted_at, source, order_type FROM orders WHERE id = ? AND restaurant_id = ? FOR UPDATE");
         $deletedStmt->execute([$orderId, $restaurant_id]);
         $deletedCheck = $deletedStmt->fetch(PDO::FETCH_ASSOC);
         if (!$deletedCheck) {
             $conn->rollBack();
             echo json_encode(['success' => false, 'message' => 'Order not found']);
+            exit();
+        }
+        if (isWaiterSession() && isOnlineOrderRow($deletedCheck)) {
+            $conn->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Online orders are handled by the owner or a manager.']);
             exit();
         }
         if (!empty($deletedCheck['deleted_at'])) {
@@ -228,7 +233,9 @@ try {
         
     } catch (Exception $e) {
         // Guarded rollback: only roll back if the transaction is actually
-        // still active — after a successful commit (or an engine-level        // implicit rollback) there is none, and an unguarded rollBack()        // would throw its own PDOException masking the real error.
+        // still active — after a successful commit (or an engine-level
+        // implicit rollback) there is none, and an unguarded rollBack()
+        // would throw its own PDOException masking the real error.
         if ($conn->inTransaction()) {
             $conn->rollBack();
         }

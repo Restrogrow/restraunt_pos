@@ -49,7 +49,7 @@ try {
     require_once __DIR__ . '/../config/soft_delete_helpers.php';
     ensureOrderSoftDeleteColumns($conn);
 
-    $whereConditions = ['o.restaurant_id = ?', "o.source = 'website'", "(o.payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR o.payment_status = 'Paid')", 'o.deleted_at IS NULL'];
+    $whereConditions = ['o.restaurant_id = ?', waiterOrderFilterSql('o'), "o.source = 'website'", "(o.payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR o.payment_status = 'Paid')", 'o.deleted_at IS NULL'];
     $params = [$restaurant_id];
 
     if ($statusFilter) {

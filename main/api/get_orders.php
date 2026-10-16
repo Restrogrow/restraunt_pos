@@ -75,7 +75,7 @@ try {
     $includeDeleted = ($_GET['include_deleted'] ?? '') === '1';
 
     // Build WHERE clause with filters
-    $whereConditions = ['o.restaurant_id = ?'];
+    $whereConditions = ['o.restaurant_id = ?', waiterOrderFilterSql('o')];
     $params = [$restaurant_id];
 
     // Deleted filter — first so the deleted-only branch below stays readable.

@@ -109,6 +109,26 @@ function getRolePermissions($role) {
  * @param string $permission Permission to check
  * @return bool True if user has permission
  */
+/**
+ * Waiters run the floor. Online delivery and takeaway orders (the website, WhatsApp) are the owner's and
+ * managers' to accept, reject and track, so a waiter's order lists, counts, order details and status
+ * changes leave them out. Orders placed from a table's QR code (website + Dine-in) stay: that's their table.
+ */
+function isWaiterSession(): bool
+{
+    return ($_SESSION['user_type'] ?? '') === 'staff' && strcasecmp((string)($_SESSION['role'] ?? ''), ROLE_WAITER) === 0;
+}
+function isOnlineOrderRow(array $o): bool
+{
+    return ($o['source'] ?? '') === 'website' && in_array($o['order_type'] ?? '', ['Delivery', 'Takeaway'], true);
+}
+/** SQL condition to add to an orders query: hides online delivery / takeaway orders from a waiter. */
+function waiterOrderFilterSql(string $alias = 'o'): string
+{
+    $p = $alias !== '' ? $alias . '.' : '';
+    return isWaiterSession() ? "NOT ({$p}source = 'website' AND {$p}order_type IN ('Delivery', 'Takeaway'))" : '1 = 1';
+}
+
 function hasPermission($permission) {
     // Ensure session is valid
     if (!isSessionValid()) {

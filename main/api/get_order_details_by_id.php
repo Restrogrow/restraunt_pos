@@ -88,6 +88,12 @@ try {
         exit();
     }
     
+    if (isWaiterSession() && isOnlineOrderRow($order)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Online orders are handled by the owner or a manager.']);
+        exit();
+    }
+
     // Get order items
     $itemsSql = "SELECT * FROM order_items WHERE order_id = ?";
     $itemsStmt = $conn->prepare($itemsSql);

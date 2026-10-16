@@ -81,7 +81,7 @@ try {
                    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
             FROM orders o
             LEFT JOIN payment_proofs pp ON pp.order_id = o.id
-            WHERE o.restaurant_id = ? AND o.source = 'website' AND o.order_status = 'Pending'
+            WHERE o.restaurant_id = ? AND " . waiterOrderFilterSql('o') . " AND o.source = 'website' AND o.order_status = 'Pending'
               AND o.deleted_at IS NULL
               AND (o.payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR o.payment_status = 'Paid')
               AND (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) > 0
@@ -100,7 +100,7 @@ try {
                        o.customer_address, o.created_at, o.subtotal, o.tax, o.total, o.notes,
                        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count
                 FROM orders o
-                WHERE o.restaurant_id = ? AND o.source = 'website' AND o.order_status = 'Pending'
+                WHERE o.restaurant_id = ? AND " . waiterOrderFilterSql('o') . " AND o.source = 'website' AND o.order_status = 'Pending'
                   AND o.deleted_at IS NULL
                   AND (o.payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR o.payment_status = 'Paid')
                   AND (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) > 0

@@ -26,7 +26,7 @@ try {
     $restaurant_id = $_SESSION['restaurant_id'] ?? null;
     if (!$restaurant_id) throw new Exception('No restaurant ID');
 
-    $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM orders WHERE restaurant_id = ? AND source = 'website' AND order_status = 'Pending' AND (payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR payment_status = 'Paid')");
+    $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM orders WHERE restaurant_id = ? AND " . waiterOrderFilterSql('') . " AND source = 'website' AND order_status = 'Pending' AND (payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR payment_status = 'Paid')");
     $stmt->execute([$restaurant_id]);
     $cnt = (int)$stmt->fetchColumn();
 
