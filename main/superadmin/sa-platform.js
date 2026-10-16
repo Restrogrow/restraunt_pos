@@ -407,126 +407,13 @@
         '<div class="card"><div class="card-body">' + (d.rows.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Invoice</th><th>Date</th><th>Restaurant</th><th>Plan</th><th>Taxable</th><th>GST</th><th>Total</th><th></th></tr></thead><tbody>' + d.rows.map(function (r) {
           return '<tr><td><b>' + esc(r.invoice_no) + '</b></td><td>' + day(r.created_at) + '</td><td>' + esc(r.restaurant_name || r.restaurant_id) + (r.gstin_no ? '<br><small class="sp-muted">GSTIN ' + esc(r.gstin_no) + '</small>' : '') + '</td>' +
             '<td>' + esc(r.subscription_type) + (+r.duration_months ? ' · ' + r.duration_months + ' mo' : '') + '<br><small class="sp-muted">' + esc(r.payment_method || '') + '</small></td><td>' + inr(r.gst.base) + '</td><td>' + inr(r.gst.tax) + '</td><td><b>' + inr(r.gst.total) + '</b></td>' +
-            '<td><a class="btn btn-outline btn-sm" target="_blank" rel="noopener" href="' + API + '?action=invoice&id=' + r.id + '"><span class="material-symbols-rounded">picture_as_pdf</span>Invoice</a></td></tr>';
+            '<td><a class="btn btn-outline btn-sm" target="_blank" rel="noopener" href="' + API + '?action=' + (r.kind === 'manual' ? 'invoiceView' : 'invoice') + '&id=' + r.id + '"><span class="material-symbols-rounded">picture_as_pdf</span>Invoice</a></td></tr>';
         }).join('') + '</tbody></table></div>' : empty('request_quote', 'No paid subscriptions in this month')) + '</div></div>';
     }).catch(function (e) { box.innerHTML = empty('error', esc(e.message)); });
   }
 
-  /* ════════ 12b. Invoice generator ════════ */
-  var igRestId = 0, igData = null, igRows = [];
-  var money2 = function (n) { return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-  function igItemRow(row) {
-    return '<tr>' +
-      '<td><input class="ig-desc" value="' + esc(row.desc) + '" placeholder="Description"></td>' +
-      '<td><input class="ig-sac" value="' + esc(row.sac) + '" placeholder="SAC" style="width:80px"></td>' +
-      '<td><input class="ig-qty" type="number" min="0" step="1" value="' + esc(row.qty) + '"></td>' +
-      '<td><input class="ig-rate" type="number" min="0" step="0.01" value="' + esc(row.rate) + '"></td>' +
-      '<td class="r ig-amt" style="font-weight:700">' + money2(row.qty * row.rate) + '</td>' +
-      '<td><button type="button" class="sa-more-btn" data-ig-del title="Remove" aria-label="Remove"><span class="material-symbols-rounded">delete</span></button></td>' +
-      '</tr>';
-  }
-  function igReadRows() {
-    var rows = [];
-    document.querySelectorAll('#spIgItems tbody tr').forEach(function (tr) {
-      rows.push({
-        desc: (tr.querySelector('.ig-desc') || {}).value || '', sac: (tr.querySelector('.ig-sac') || {}).value || '',
-        qty: +(tr.querySelector('.ig-qty') || {}).value || 0, rate: +(tr.querySelector('.ig-rate') || {}).value || 0
-      });
-    });
-    return rows;
-  }
-  function igRecalc() {
-    if (!igData || !$('spIgTotals')) return;
-    var s = igData.settings, rate = +s.gst_percent || 0, inc = String(s.prices_include_gst) === '1';
-    var rows = igReadRows(), subtotal = 0;
-    document.querySelectorAll('#spIgItems tbody tr').forEach(function (tr, i) {
-      var amt = (rows[i] ? rows[i].qty * rows[i].rate : 0); subtotal += amt;
-      var cell = tr.querySelector('.ig-amt'); if (cell) cell.textContent = money2(amt);
-    });
-    var disc = Math.min(Math.max(+($('spIgDisc') || {}).value || 0, 0), subtotal);
-    var net = Math.round((subtotal - disc) * 100) / 100, base, tax, total;
-    if (inc) { base = rate > 0 ? Math.round(net * 100 / (100 + rate) * 100) / 100 : net; tax = Math.round((net - base) * 100) / 100; total = net; }
-    else { base = net; tax = Math.round(net * rate / 100 * 100) / 100; total = Math.round((net + tax) * 100) / 100; }
-    var cgst = Math.round(tax / 2 * 100) / 100, sgst = Math.round((tax - cgst) * 100) / 100;
-    var line = function (l, v, big) { return '<div style="display:flex;justify-content:space-between;padding:' + (big ? '10px 0 2px' : '6px 0') + ';' + (big ? 'border-top:2px solid #111827;margin-top:6px;font-weight:800;font-size:1.05rem' : '') + '"><span' + (big ? '' : ' class="sp-muted"') + '>' + l + '</span><span>' + v + '</span></div>'; };
-    $('spIgTotals').innerHTML =
-      (disc > 0 ? line('Subtotal', money2(subtotal)) + line('Discount', '-' + money2(disc)) : '') +
-      line('Taxable value', money2(base)) +
-      (rate > 0 ? line('CGST ' + (rate / 2) + '%', money2(cgst)) + line('SGST ' + (rate / 2) + '%', money2(sgst)) : '') +
-      line('Total', money2(total), true);
-  }
-  function loadInvoiceDraft(id) {
-    var form = $('spIgForm'), gen = $('spIgGenerate');
-    form.innerHTML = '<div class="sp-loading">Loading details…</div>';
-    get('invoiceData', '&id=' + id).then(function (d) {
-      igData = d;
-      igRows = (d.suggested_items || [{ desc: 'RestroGrow restaurant software subscription', sac: '998314', qty: 1, rate: 0 }])
-        .map(function (x) { return { desc: x.desc || '', sac: x.sac || '', qty: +x.qty || 1, rate: +x.rate || 0 }; });
-      var r = d.restaurant, s = d.settings;
-      form.innerHTML =
-        '<div class="sp-cols">' +
-          '<div class="card"><div class="card-header"><div class="card-title">Invoice details</div></div><div class="card-body"><div class="sp-form"><div class="sp-grid2">' +
-            '<div class="sp-f"><label for="spIgNo">Invoice number</label><input id="spIgNo" value="' + esc(d.invoice_no) + '"></div>' +
-            '<div class="sp-f"><label for="spIgStatus">Status</label><select id="spIgStatus"><option>Paid</option><option>Pending</option></select></div>' +
-            '<div class="sp-f"><label for="spIgDate">Invoice date</label><input id="spIgDate" type="date" value="' + esc(d.today) + '"></div>' +
-            '<div class="sp-f"><label for="spIgDue">Due date (optional)</label><input id="spIgDue" type="date"></div>' +
-          '</div></div></div></div>' +
-          '<div class="card"><div class="card-header"><div class="card-title">Billed to</div><small class="sp-muted">' + esc(r.restaurant_id) + '</small></div><div class="card-body">' +
-            '<b>' + esc(r.restaurant_name) + '</b><div class="sp-muted" style="line-height:1.75;margin-top:4px">' +
-            (r.owner_name ? esc(r.owner_name) + '<br>' : '') + (r.address ? esc(r.address).replace(/\n/g, '<br>') + '<br>' : '') +
-            (r.gstin_no ? 'GSTIN: ' + esc(r.gstin_no) + '<br>' : '<span style="color:#b45309">No GSTIN on file</span><br>') +
-            (r.email ? esc(r.email) + '<br>' : '') + (r.phone ? esc(r.phone) : '') + '</div>' +
-          '</div></div>' +
-        '</div>' +
-        '<div class="card"><div class="card-header"><div class="card-title">2 · Items</div><button type="button" class="btn btn-outline btn-sm" data-ig-add><span class="material-symbols-rounded">add</span>Add item</button></div><div class="card-body">' +
-          '<div style="overflow-x:auto"><table id="spIgItems"><thead><tr><th style="min-width:240px">Description</th><th>SAC</th><th style="width:80px">Qty</th><th style="width:120px">Rate (₹)</th><th class="r" style="width:120px">Amount</th><th></th></tr></thead><tbody>' +
-          igRows.map(igItemRow).join('') + '</tbody></table></div>' +
-        '</div></div>' +
-        '<div class="sp-cols">' +
-          '<div class="card"><div class="card-header"><div class="card-title">3 · Adjustment & notes</div></div><div class="card-body"><div class="sp-form">' +
-            '<div class="sp-f"><label for="spIgDisc">Discount / adjustment (₹)</label><input id="spIgDisc" type="number" min="0" step="0.01" value="0"></div>' +
-            '<div class="sp-f"><label for="spIgNotes">Notes (shown on the invoice)</label><textarea id="spIgNotes" rows="2" placeholder="e.g. Paid by UPI on 15 Oct"></textarea></div>' +
-            '<div class="sp-f"><label for="spIgTerms">Terms (optional)</label><textarea id="spIgTerms" rows="2" placeholder="e.g. Please pay within 15 days."></textarea></div>' +
-          '</div></div></div>' +
-          '<div class="card"><div class="card-header"><div class="card-title">Totals</div><small class="sp-muted">GST ' + esc(s.gst_percent) + '% · ' + (String(s.prices_include_gst) === '1' ? 'prices include GST' : 'GST added on top') + '</small></div><div class="card-body"><div id="spIgTotals"></div></div></div>' +
-        '</div>';
-      igRecalc();
-      if (gen) gen.disabled = false;
-    }).catch(function (e) { form.innerHTML = empty('error', esc(e.message)); if (gen) gen.disabled = true; });
-  }
-  function loadInvoiceGen() {
-    var box = $('spInvoiceGen');
-    $('spInvoiceGenActs').innerHTML = '<button class="btn btn-primary" id="spIgGenerate" disabled><span class="material-symbols-rounded">picture_as_pdf</span>Generate invoice</button>';
-    box.innerHTML = '<div class="sp-loading">Loading…</div>';
-    restOptions().then(function (opts) {
-      var sel = '<option value="">Choose a restaurant…</option>' + opts.map(function (o) {
-        return '<option value="' + o.id + '"' + (+o.id === igRestId ? ' selected' : '') + '>' + esc(o.restaurant_name) + ' · ' + esc(o.restaurant_id) + '</option>';
-      }).join('');
-      box.innerHTML =
-        '<div class="card"><div class="card-header"><div class="card-title">1 · Choose the restaurant</div><small class="sp-muted">The invoice fills in automatically from their details and their last plan</small></div><div class="card-body">' +
-          '<div class="sa-search" style="max-width:420px"><span class="material-symbols-rounded">search</span><input id="spIgSearch" placeholder="Type to filter the list…"></div>' +
-          '<select id="spIgRest" style="margin-top:10px;width:100%;max-width:420px;height:42px;border:1px solid #e5e7eb;border-radius:10px;padding:0 12px;font:inherit">' + sel + '</select>' +
-        '</div></div><div id="spIgForm"></div>';
-      if (igRestId) loadInvoiceDraft(igRestId);
-    }).catch(function (e) { box.innerHTML = empty('error', esc(e.message)); });
-  }
-  function igGenerate() {
-    if (!igData) return;
-    var rows = igReadRows().filter(function (r) { return r.desc || r.qty || r.rate; });
-    if (!rows.length) { alertMsg('Add at least one item first', 'error'); return; }
-    var payload = {
-      id: +($('spIgRest') || {}).value || igData.restaurant.id,
-      invoice_no: ($('spIgNo') || {}).value || '', date: ($('spIgDate') || {}).value || '', due_date: ($('spIgDue') || {}).value || '',
-      status: ($('spIgStatus') || {}).value || 'Paid', items: rows, discount: +($('spIgDisc') || {}).value || 0,
-      notes: ($('spIgNotes') || {}).value || '', terms: ($('spIgTerms') || {}).value || '',
-      tax_rate: +igData.settings.gst_percent || 0, prices_include_gst: String(igData.settings.prices_include_gst) === '1' ? 1 : 0
-    };
-    var f = document.createElement('form');
-    f.method = 'POST'; f.action = API + '?action=invoiceGen'; f.target = '_blank'; f.style.display = 'none';
-    var i = document.createElement('input'); i.type = 'hidden'; i.name = 'payload'; i.value = JSON.stringify(payload);
-    f.appendChild(i); document.body.appendChild(f); f.submit();
-    setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 0);
-  }
+  /* ════════ 12b. Invoice generator: sa-invoice-gen.js ════════ */
+  function loadInvoiceGen() { if (window.saInvoiceGen) window.saInvoiceGen.load(); }
 
   /* ════════ 7. Security & activity ════════ */
   var secTab = 'logins', secQ = '', secOutcome = '';
@@ -597,7 +484,7 @@
 
   /* ════════ Settings: really save ════════ */
   var SET_MAP = { trialDays: 'trial_days', subscriptionPrice: 'plan_price', subscriptionPriceYearly: 'plan_price_yearly', autoRenewal: 'auto_renewal', renewalNoticeDays: 'renewal_notice_days',
-    bizName: 'biz_name', bizGstin: 'biz_gstin', bizEmail: 'biz_email', bizPhone: 'biz_phone', bizAddress: 'biz_address', gstPercent: 'gst_percent', pricesIncludeGst: 'prices_include_gst', invoicePrefix: 'invoice_prefix' };
+    bizName: 'biz_name', bizGstin: 'biz_gstin', bizEmail: 'biz_email', bizPhone: 'biz_phone', bizAddress: 'biz_address', gstPercent: 'gst_percent', pricesIncludeGst: 'prices_include_gst', invoicePrefix: 'invoice_prefix', bizUpi: 'biz_upi', bizBank: 'biz_bank' };
   function loadSettings() {
     get('getSettings').then(function (d) { Object.keys(SET_MAP).forEach(function (id) { var el = $(id); if (el && d.settings[SET_MAP[id]] != null) el.value = d.settings[SET_MAP[id]]; }); }).catch(function () {});
     // senders for the Email check (MAIL_FROM_* in main/.env)
@@ -770,17 +657,6 @@
         .catch(function (er) { m.disabled = false; out.style.color = '#dc2626'; out.textContent = er.message; });
       return;
     }
-    if (t.closest('#spIgGenerate')) { igGenerate(); return; }
-    if (t.closest('[data-ig-add]')) {
-      var igTb = document.querySelector('#spIgItems tbody');
-      if (igTb) { igTb.insertAdjacentHTML('beforeend', igItemRow({ desc: '', sac: '998314', qty: 1, rate: 0 })); igRecalc(); }
-      return;
-    }
-    if ((m = t.closest('[data-ig-del]'))) {
-      var trw = m.closest('tr');
-      if (trw) { trw.remove(); if (!document.querySelector('#spIgItems tbody tr')) document.querySelector('#spIgItems tbody').insertAdjacentHTML('beforeend', igItemRow({ desc: '', sac: '998314', qty: 1, rate: 0 })); igRecalc(); }
-      return;
-    }
     if (t.closest('#spBulkGo')) { runBulk(); return; }
     if (t.closest('#spBulkClear')) { document.querySelectorAll('.sp-ck-row, #spCkAll').forEach(function (x) { x.checked = false; }); refreshBulk(); return; }
   }, true);
@@ -791,11 +667,6 @@
     else if (t.classList.contains('sp-ck-row')) refreshBulk();
     else if (t.id === 'spCouponRest') { couponRid = t.value; loadCoupons(); }
     else if (t.id === 'spInvMonth') { invMonth = t.value || invMonth; loadInvoices(); }
-    else if (t.id === 'spIgRest') {
-      igRestId = +t.value || 0;
-      if (igRestId) loadInvoiceDraft(igRestId);
-      else { igData = null; $('spIgForm').innerHTML = ''; var gb = $('spIgGenerate'); if (gb) gb.disabled = true; }
-    }
     else if (t.id === 'spSecOutcome') { secOutcome = t.value; loadSecurity(); }
     else if (t.id === 'spChatLeadStatus') {
       var chatId = +t.dataset.chatLead, nextStatus = t.value;
@@ -810,12 +681,6 @@
   });
   var qTimer = 0;
   document.addEventListener('input', function (e) {
-    if (e.target.id === 'spIgSearch') {
-      var q = e.target.value.toLowerCase(), sel = $('spIgRest');
-      if (sel) [].forEach.call(sel.options, function (o) { o.hidden = !!o.value && o.text.toLowerCase().indexOf(q) === -1; });
-      return;
-    }
-    if (e.target.closest && e.target.closest('#spIgItems') || e.target.id === 'spIgDisc') { igRecalc(); return; }
     if (e.target.id !== 'spSecQ') return;
     secQ = e.target.value; refocus = 'spSecQ';
     clearTimeout(qTimer); qTimer = setTimeout(loadSecurity, 350);

@@ -94,7 +94,7 @@ function pfSettings(PDO $conn): array
         'trial_days' => '30', 'plan_price' => '999', 'plan_price_yearly' => '9999', 'auto_renewal' => '1',
         'renewal_notice_days' => '7',
         'biz_name' => 'RestroGrow', 'biz_address' => '', 'biz_gstin' => '', 'biz_email' => '', 'biz_phone' => '',
-        'gst_percent' => '18', 'prices_include_gst' => '1', 'invoice_prefix' => 'RG',
+        'gst_percent' => '18', 'prices_include_gst' => '1', 'invoice_prefix' => 'RG', 'biz_upi' => '', 'biz_bank' => '',
     ];
     foreach ($conn->query("SELECT k, v FROM sa_settings WHERE k <> 'schema'") as $r) $d[$r['k']] = (string)$r['v'];
     return $d;
@@ -103,7 +103,7 @@ function pfSettings(PDO $conn): array
 function pfSaveSettings(PDO $conn, array $in): array
 {
     $allowed = ['trial_days', 'plan_price', 'plan_price_yearly', 'auto_renewal', 'renewal_notice_days', 'biz_name', 'biz_address',
-        'biz_gstin', 'biz_email', 'biz_phone', 'gst_percent', 'prices_include_gst', 'invoice_prefix'];
+        'biz_gstin', 'biz_email', 'biz_phone', 'gst_percent', 'prices_include_gst', 'invoice_prefix', 'biz_upi', 'biz_bank'];
     $nums = ['trial_days' => [1, 365], 'plan_price' => [0, 1000000], 'plan_price_yearly' => [0, 10000000], 'renewal_notice_days' => [1, 60], 'gst_percent' => [0, 40]];
     $st = $conn->prepare("REPLACE INTO sa_settings (k, v) VALUES (?, ?)");
     foreach ($allowed as $k) {

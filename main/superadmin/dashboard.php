@@ -183,6 +183,8 @@ require_once __DIR__ . '/../config/countries.php';
   </style>
   <link rel="stylesheet" href="superadmin.css?v=<?php echo @filemtime(__DIR__ . '/superadmin.css'); ?>">
   <script src="sa-platform.js?v=<?php echo @filemtime(__DIR__ . '/sa-platform.js'); ?>" defer></script>
+  <link rel="stylesheet" href="sa-invoice-gen.css?v=<?php echo @filemtime(__DIR__ . '/sa-invoice-gen.css'); ?>">
+  <script src="sa-invoice-gen.js?v=<?php echo @filemtime(__DIR__ . '/sa-invoice-gen.js'); ?>" defer></script>
 </head>
 <body>
   <div class="layout">
@@ -777,6 +779,10 @@ require_once __DIR__ . '/../config/countries.php';
               <div class="form-group"><label>Plan prices</label><select id="pricesIncludeGst"><option value="1">Include GST</option><option value="0">GST added on top</option></select></div>
               <div class="form-group"><label>Invoice number prefix</label><input id="invoicePrefix" maxlength="10" value="RG"></div>
             </div>
+            <div class="sp-grid2">
+              <div class="form-group"><label>UPI ID (QR code on unpaid invoices)</label><input id="bizUpi" maxlength="80" placeholder="e.g. restrogrow@okaxis"></div>
+              <div class="form-group"><label>Bank details (on unpaid invoices)</label><textarea id="bizBank" rows="3" maxlength="400" style="width:100%" placeholder="Account name&#10;A/c no. · IFSC · Bank"></textarea></div>
+            </div>
             <button class="btn btn-primary" id="saveSettings">Save Settings</button>
           </div>
         </div>
@@ -927,7 +933,7 @@ require_once __DIR__ . '/../config/countries.php';
         <div class="page-header">
           <div style="display:flex;align-items:center;gap:12px;">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
-            <div><h1>Invoice generator</h1><div class="sa-sub">Pick a restaurant, adjust the lines and totals, then print or save it as a PDF</div></div>
+            <div><h1>Invoice generator</h1><div class="sa-sub">Pick the restaurant, plan and extras. The number, dates, GST and PDF are done for you</div></div>
           </div>
           <div class="header-actions" id="spInvoiceGenActs"></div>
         </div>
