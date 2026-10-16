@@ -36,7 +36,7 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   body { margin:0; background:var(--paper); color:var(--ink); font-family:'Public Sans','Segoe UI',sans-serif; }
   .wrap { max-width:980px; margin:0 auto; padding:28px 16px 56px; }
   .brand { display:flex; align-items:center; gap:10px; font-family:Archivo,sans-serif; font-weight:800; font-size:20px; text-decoration:none; color:inherit; }
-  .brand img { width:32px; height:32px; }
+  .brand img { height:28px; width:auto; display:block; }
   h1 { font-family:Archivo,sans-serif; font-weight:900; font-size:clamp(30px,4vw,44px); line-height:1.05; margin:26px 0 10px; letter-spacing:-.02em; }
   .lead { font-size:17px; line-height:1.6; color:var(--soft); margin:0 0 24px; max-width:640px; }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
@@ -56,7 +56,7 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 </head>
 <body>
 <main class="wrap">
-  <a class="brand" href="../"><img src="../assets/images/logo-transparent.png" alt="">Restro Grow</a>
+  <a class="brand" href="../" aria-label="Restro Grow home"><img src="../assets/images/logo-transparent.png" alt="Restro Grow"></a>
   <h1>Try RestroGrow with a real-looking restaurant</h1>
   <p class="lead"><b><?php echo $h(DEMO_RESTAURANT_NAME); ?></b> has a full menu with photos, tables, staff, six weeks of sales
      and orders coming in right now. Tap around freely: we reset the demo from time to time.</p>
