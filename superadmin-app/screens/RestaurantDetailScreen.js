@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import MiniBars from '../components/MiniBars';
@@ -30,6 +31,7 @@ function digits(phone) {
 }
 
 export default function RestaurantDetailScreen({ route }) {
+  const navigation = useNavigation();
   const { id, name } = route.params || {};
   const fetcher = useCallback(() => pf.get('restaurant360', { id }), [id]);
   const { data, loading, error, refresh, refreshing, setData } = useApiData(fetcher, { cacheKey: `r360:${id}` });
@@ -101,7 +103,7 @@ export default function RestaurantDetailScreen({ route }) {
     try {
       const res = await sa.post('generateAutoLogin', { id: r.id });
       if (Platform.OS === 'web') window.open(res.url, '_blank');
-      else Linking.openURL(res.url);
+      else navigation.navigate('WebPanel', { url: res.url, title: r.restaurant_name, eyebrow: 'Their dashboard' });
     } catch (e) {
       feedback.errorFrom(e);
     } finally {
@@ -250,9 +252,7 @@ export default function RestaurantDetailScreen({ route }) {
           {/* access */}
           <SectionTitle title="Access" />
           <Card padded={false} style={styles.listCard}>
-            {Platform.OS === 'web' ? (
-              <Row icon="open-outline" iconTone="info" title="Open their dashboard" subtitle="Signs in as this restaurant in a new tab" onPress={openDashboard} chevron />
-            ) : null}
+            <Row icon="open-outline" iconTone="info" title="Open their dashboard" subtitle="Signs in as this restaurant, to see what they see" onPress={openDashboard} chevron />
             <Row icon="key-outline" iconTone="warning" title="Reset password" subtitle="Set a new dashboard password for the owner" onPress={() => setSheet('password')} chevron />
             <Row
               icon="lock-open-outline"

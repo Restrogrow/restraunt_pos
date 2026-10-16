@@ -15,11 +15,13 @@ function devHost() {
 export const SITE_URL = __DEV__ ? 'http://' + devHost() + '/menuwebsite' : 'https://restrogrow.com';
 export const BASE_URL = SITE_URL + '/main';
 
-// Called when any request comes back "session expired" — AuthContext signs the person out.
+// Called when any request comes back "session expired". AuthContext first tries to resume the
+// session with the saved device token (resolves true = retry the request), else signs out.
 let onSessionExpired = null;
 export function setSessionExpiredHandler(fn) {
   onSessionExpired = fn;
 }
+let resuming = null; // one resume at a time, shared by every request that hit the expiry
 
 // Is the server reachable? Flips off on a network failure and back on with the next answer,
 // so the app can show a quiet "offline" strip instead of every screen erroring.
@@ -47,7 +49,7 @@ function friendlyStatusMessage(status) {
   return `Something went wrong (error ${status}). Please try again.`;
 }
 
-async function request(path, options = {}) {
+async function request(path, options = {}, retried = false) {
   let res;
   try {
     res = await fetch(`${BASE_URL}${path}`, {
@@ -71,7 +73,12 @@ async function request(path, options = {}) {
   }
 
   if (res.status === 401 || data.session_expired) {
-    if (onSessionExpired && !path.startsWith('/superadmin/app_auth.php')) onSessionExpired();
+    if (onSessionExpired && !path.startsWith('/superadmin/app_auth.php')) {
+      if (!retried) {
+        resuming = resuming || Promise.resolve(onSessionExpired()).finally(() => setTimeout(() => (resuming = null), 0));
+        if (await resuming) return request(path, options, true);
+      }
+    }
     const err = new Error(data.message || friendlyStatusMessage(401));
     err.sessionExpired = true;
     throw err;
@@ -102,14 +109,22 @@ const jsonPost = (body) => ({
 // ── auth ──
 export const auth = {
   session: () => request('/superadmin/app_auth.php?action=session'),
-  login: (username, password) => request('/superadmin/app_auth.php?action=login', jsonPost({ username, password })),
-  logout: () => request('/superadmin/app_auth.php?action=logout', jsonPost({})),
+  login: (username, password, device) => request('/superadmin/app_auth.php?action=login', jsonPost({ username, password, device })),
+  resume: (device_token) => request('/superadmin/app_auth.php?action=resume', jsonPost({ device_token })),
+  logout: (device_token) => request('/superadmin/app_auth.php?action=logout', jsonPost({ device_token })),
 };
 
 // ── api.php ──
 export const sa = {
   get: (action, params) => call(`/superadmin/api.php?${qs({ action, ...params })}`),
   post: (action, body) => call(`/superadmin/api.php?action=${action}`, jsonPost(body)),
+  // a few api.php actions (createPaymentLink, setPhonePeMode) read $_POST, not JSON
+  form: (action, fields) =>
+    call(`/superadmin/api.php?action=${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: qs(fields),
+    }),
 };
 
 // ── api_platform.php ──

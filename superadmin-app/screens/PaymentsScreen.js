@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import Screen from '../components/Screen';
@@ -16,6 +17,7 @@ function monthKey(offset) {
 }
 
 export default function PaymentsScreen() {
+  const navigation = useNavigation();
   const [tab, setTab] = useState('recent');
   const [month, setMonth] = useState(monthKey(0).value);
 
@@ -26,7 +28,11 @@ export default function PaymentsScreen() {
 
   const s = stats.data?.stats || {};
   const rows = tab === 'recent' ? list.data?.payments || [] : list.data?.rows || [];
-  const openInvoice = (p) => Platform.OS === 'web' && window.open(`${BASE_URL}/superadmin/api_platform.php?action=invoice&id=${p.id}`, '_blank');
+  const openInvoice = (p) => {
+    const url = `${BASE_URL}/superadmin/api_platform.php?action=invoice&id=${p.id}`;
+    if (Platform.OS === 'web') window.open(url, '_blank');
+    else navigation.navigate('WebPanel', { url, title: p.invoice_no || 'Invoice', eyebrow: p.restaurant_name || 'Invoice' });
+  };
 
   return (
     <Screen
@@ -88,7 +94,8 @@ export default function PaymentsScreen() {
                 subtitle={`${shortDate(p.created_at, true)} · ${p.payment_method || ''}${p.duration_months ? ` · ${p.duration_months} mo` : ''}${p.invoice_no ? ` · ${p.invoice_no}` : ''}${p.notes ? `\n${p.notes}` : ''}`}
                 value={money(p.amount)}
                 right={tab === 'recent' && p.payment_status !== 'success' ? <Pill small tone="warning" label={p.payment_status} /> : null}
-                onPress={Platform.OS === 'web' && p.payment_status === 'success' ? () => openInvoice(p) : undefined}
+                onPress={p.payment_status === 'success' ? () => openInvoice(p) : undefined}
+                chevron={p.payment_status === 'success'}
                 last={i === rows.length - 1}
               />
             ))}

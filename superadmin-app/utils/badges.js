@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { pf } from '../config/api';
+import { checkAlerts } from './alerts';
 import { isForeground, onAppForeground } from './foreground';
 
 // Unread tickets, new leads and renewals due: one shared poll feeds the tab bar and Home.
@@ -14,6 +15,7 @@ export async function refreshBadges() {
     const r = await pf.get('badges');
     counts = { tickets: Number(r.tickets) || 0, leads: Number(r.leads) || 0, renewals: Number(r.renewals) || 0 };
     listeners.forEach((l) => l());
+    checkAlerts();
   } catch (e) {
     // keep the last counts; a blip shouldn't clear the badges
   }

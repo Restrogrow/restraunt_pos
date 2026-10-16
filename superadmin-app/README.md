@@ -52,13 +52,24 @@ filters won't work there.
 | **Restaurants** | Search, filter by plan (All / Paying / Trial / Ending soon / Expired / Disabled, with counts), add a new one (suggested password, then share the login details). Tap one for its 360: plan and days left, activate (30 days / 3–24 months), extend, mark expired, WhatsApp renewal reminder, sales and 14-day chart, account details, link to their website, feature switches (install-app, WhatsApp orders, gallery, meal plans, online payments), reset password, clear OTP lock, enable / disable, payments, sign-ins, errors. In the browser: open their dashboard |
 | **Renewals** | Plans ending in 7 / 15 / 30 / 60 days and those expired in the last 30, with WhatsApp reminder, +7 and +30 days |
 | **Support** | Tickets by status, the full thread with the restaurant's recent orders and errors, quick-reply templates, reply and mark answered / closed, change status |
-| **More** | Leads (pipeline, notes, follow-ups, add / edit / delete), Chatbot conversations, Payments (subscription stats, recent payments, invoices by month), Announcements (create, target restaurants, start / stop, delete), Security (sign-in stats, suspicious IPs, unblock IPs, sign-in log), Activity log, Platform health, Settings (plan prices, trial length, invoice / GST details, test email, fingerprint app lock), sign out |
+| **More** | Payment links, Coupons, Branch admins, Leads (pipeline, notes, follow-ups, add / edit / delete), Chatbot conversations, Payments (subscription stats, recent payments, invoices by month), Announcements (create, target restaurants, start / stop, delete), Security (sign-in stats, suspicious IPs, unblock IPs, sign-in log), Activity log, Platform health, Settings (plan prices, trial length, invoice / GST details, test email, fingerprint app lock), sign out |
 
 When the server can't be reached a small "No connection" strip appears, screens keep their last
 data, and everything reloads by itself once the connection is back.
 
-Menu editing, coupons, branch admins, payment links and settlements stay in the web panel
-(More › Open full web panel).
+Menus, settlements, the invoice generator and the error monitor open the web panel inside the app
+(More › Web panel), already signed in.
+
+## Staying signed in and notifications
+
+- `app_auth.php` gives each phone a device token (stored hashed in `sa_app_tokens`, 90 days from
+  last use). When the 24-hour PHP session ends the app trades the token for a new session and
+  retries the request, so you are not asked to sign in again. Sign-out, deactivating the super
+  admin, or changing their password ends it.
+- Notifications (Settings › Notifications): new or updated tickets, new leads, and one morning
+  summary of plans ending soon. There is no push server: the app checks every minute while open
+  and about every 15 minutes in the background (Android WorkManager), and the first check on a
+  device only records what exists so nothing old is announced.
 
 ## Backend
 

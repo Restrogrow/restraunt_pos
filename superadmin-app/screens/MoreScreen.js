@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Platform, StyleSheet, Text, View, Linking } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Screen from '../components/Screen';
 import { Card, Row, SectionTitle, TONES } from '../components/kit';
 import { feedback } from '../components/ui/Feedback';
@@ -15,11 +15,23 @@ const TILES = [
   { screen: 'Leads', icon: 'person-add', tone: 'purple', title: 'Leads', sub: 'Website enquiries', badge: 'leads' },
   { screen: 'ChatLeads', icon: 'chatbox-ellipses', tone: 'info', title: 'Chatbot', sub: 'Chat conversations' },
   { screen: 'Payments', icon: 'wallet', tone: 'success', title: 'Payments', sub: 'Subscriptions & invoices' },
+  { screen: 'PaymentLinks', icon: 'link', tone: 'teal', title: 'Payment links', sub: 'Collect a subscription' },
+  { screen: 'Coupons', icon: 'pricetags', tone: 'primary', title: 'Coupons', sub: 'Discount codes' },
+  { screen: 'BranchAdmins', icon: 'git-branch', tone: 'purple', title: 'Branch admins', sub: 'Chains & multi-outlet' },
   { screen: 'Announcements', icon: 'megaphone', tone: 'primary', title: 'Announcements', sub: 'Banners to restaurants' },
   { screen: 'Security', icon: 'shield-checkmark', tone: 'danger', title: 'Security', sub: 'Sign-ins & blocked IPs' },
   { screen: 'Activity', icon: 'list', tone: 'teal', title: 'Activity log', sub: 'Who changed what' },
   { screen: 'Health', icon: 'pulse', tone: 'warning', title: 'Platform health', sub: 'DB, disk, WhatsApp, errors' },
   { screen: 'Settings', icon: 'settings', tone: 'muted', title: 'Settings', sub: 'Pricing, invoices, app' },
+];
+
+// sections of superadmin/dashboard.php that open inside the app, already signed in
+const PANEL = [
+  { page: 'menus', icon: 'restaurant-outline', tone: 'primary', title: 'Menus', sub: "Edit any restaurant's menu, or build one from photos" },
+  { page: 'settlements', icon: 'swap-horizontal-outline', tone: 'success', title: 'Settlements', sub: 'UPI payouts' },
+  { page: 'invoiceGen', icon: 'document-text-outline', tone: 'info', title: 'Invoice generator', sub: 'Make and download invoices' },
+  { page: 'errorMonitor', icon: 'bug-outline', tone: 'danger', title: 'Error monitor', sub: 'Errors from every restaurant' },
+  { page: 'dashboard', icon: 'desktop-outline', tone: 'muted', title: 'Full web panel', sub: 'Everything else' },
 ];
 
 export default function MoreScreen() {
@@ -58,12 +70,22 @@ export default function MoreScreen() {
         })}
       </View>
 
-      <SectionTitle title="Shortcuts" />
+      <SectionTitle title="Web panel" />
       <Card padded={false} style={{ paddingHorizontal: 16 }}>
-        <Row icon="desktop-outline" iconTone="info" title="Open full web panel" subtitle="Menus, coupons, branch admins, payment links" onPress={() => (Platform.OS === 'web' ? window.open(`${BASE_URL}/superadmin/dashboard.php`, '_blank') : Linking.openURL(`${BASE_URL}/superadmin/dashboard.php`))} chevron />
+        {PANEL.map((p) => (
+          <Row
+            key={p.page || 'all'}
+            icon={p.icon}
+            iconTone={p.tone}
+            title={p.title}
+            subtitle={p.sub}
+            onPress={() => navigation.navigate('WebPanel', { url: `${BASE_URL}/superadmin/dashboard.php`, title: p.title, eyebrow: 'Web panel', page: p.page })}
+            chevron
+          />
+        ))}
         <Row icon="log-out-outline" danger title="Sign out" onPress={signOut} last />
       </Card>
-      <Text style={styles.version}>RestroGrow Super Admin · v1.0.0</Text>
+      <Text style={styles.version}>RestroGrow Super Admin · v1.1.0</Text>
     </Screen>
   );
 }

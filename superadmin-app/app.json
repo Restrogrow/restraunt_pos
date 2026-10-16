@@ -3,7 +3,7 @@
     "name": "RestroGrow Super Admin",
     "slug": "restrogrow-superadmin",
     "scheme": "restrogrowadmin",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.restrogrow.superadmin",
-      "versionCode": 1,
+      "versionCode": 2,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#1D1B26",
@@ -49,7 +49,16 @@
         }
       ],
       "expo-web-browser",
-      "expo-local-authentication"
+      "expo-local-authentication",
+      "expo-secure-store",
+      "expo-background-task",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF5A3C",
+          "defaultChannel": "alerts"
+        }
+      ]
     ]
   }
 }

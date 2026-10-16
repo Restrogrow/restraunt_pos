@@ -16,7 +16,10 @@ import { FeedbackHost } from './components/ui/Feedback';
 import { getAppLock, lockSupported, unlock } from './config/appLock';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CONTENT_MAX } from './hooks/useLayout';
+import { navigationRef, openFromNotification } from './navigationRef';
 import { colors, font } from './theme';
+import { notificationsAllowed, stopAlerts, syncBackgroundTask } from './utils/alerts';
+import * as Notifications from 'expo-notifications';
 
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -35,6 +38,10 @@ import SecurityScreen from './screens/SecurityScreen';
 import ActivityScreen from './screens/ActivityScreen';
 import HealthScreen from './screens/HealthScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import CouponsScreen from './screens/CouponsScreen';
+import BranchAdminsScreen from './screens/BranchAdminsScreen';
+import PaymentLinksScreen from './screens/PaymentLinksScreen';
+import WebPanelScreen from './screens/WebPanelScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -108,6 +115,9 @@ const MoreStack = makeStack('MoreStack', [
   ['Activity', ActivityScreen],
   ['Health', HealthScreen],
   ['Settings', SettingsScreen],
+  ['Coupons', CouponsScreen],
+  ['BranchAdmins', BranchAdminsScreen],
+  ['PaymentLinks', PaymentLinksScreen],
 ]);
 
 function Tabs() {
@@ -149,9 +159,33 @@ function useAppLock(active) {
   return { locked, checking, retry: async () => setLocked(!(await unlock())) };
 }
 
+// After sign-in: ask once for notification permission and start the background checks.
+// Tapping a notification opens its screen. Signing out stops the checks.
+function useAlerts(userId) {
+  const was = useRef(false);
+  useEffect(() => {
+    if (Platform.OS === 'web') return undefined;
+    if (!userId) {
+      if (was.current) stopAlerts();
+      was.current = false;
+      return undefined;
+    }
+    was.current = true;
+    notificationsAllowed(true).then(() => syncBackgroundTask());
+    const open = (r) => {
+      const screen = r?.notification?.request?.content?.data?.screen;
+      if (screen) setTimeout(() => openFromNotification(screen), 300);
+    };
+    Notifications.getLastNotificationResponseAsync().then(open).catch(() => {});
+    const sub = Notifications.addNotificationResponseReceivedListener(open);
+    return () => sub.remove();
+  }, [userId]);
+}
+
 function Root() {
   const { user, checkingSession } = useAuth();
   const { locked, checking, retry } = useAppLock(!checkingSession && !!user);
+  useAlerts(checkingSession ? null : user?.id);
 
   if (checkingSession || (user && checking)) {
     return (
@@ -179,6 +213,7 @@ function Root() {
       <Stack.Screen name="RestaurantDetail" component={RestaurantDetailScreen} />
       <Stack.Screen name="CreateRestaurant" component={CreateRestaurantScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Ticket" component={TicketScreen} />
+      <Stack.Screen name="WebPanel" component={WebPanelScreen} />
     </Stack.Navigator>
   );
 }
@@ -212,7 +247,7 @@ export default function App() {
     <WebFrame>
       <SafeAreaProvider>
         <AuthProvider>
-          <NavigationContainer onReady={onReady} documentTitle={{ formatter: () => 'RestroGrow Super Admin' }}>
+          <NavigationContainer ref={navigationRef} onReady={onReady} documentTitle={{ formatter: () => 'RestroGrow Super Admin' }}>
             <StatusBar style="light" />
             <ErrorBoundary>
               <Root />

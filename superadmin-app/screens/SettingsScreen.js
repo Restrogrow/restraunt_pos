@@ -1,4 +1,6 @@
+import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
 import Screen from '../components/Screen';
 import { Button, Card, Field, Row, SectionTitle, ToggleRow } from '../components/kit';
@@ -8,6 +10,7 @@ import { getAppLock, lockSupported, setAppLock, unlock } from '../config/appLock
 import { useAuth } from '../context/AuthContext';
 import { useApiData } from '../hooks/useApiData';
 import { colors, font, spacing } from '../theme';
+import { getAlertPrefs, notificationsAllowed, setAlertPrefs } from '../utils/alerts';
 
 const NUMBERS = ['trial_days', 'plan_price', 'plan_price_yearly', 'renewal_notice_days', 'gst_percent'];
 
@@ -24,6 +27,30 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (data?.settings && !f) setF(data.settings);
   }, [data, f]);
+  const [prefs, setPrefs] = useState(null);
+  const [allowed, setAllowed] = useState(true);
+  useEffect(() => {
+    getAlertPrefs().then(setPrefs);
+    notificationsAllowed().then(setAllowed);
+  }, []);
+  const setPref = async (k, on) => {
+    if (on && !(await notificationsAllowed(true))) {
+      setAllowed(false);
+      return feedback.error('Allow notifications for RestroGrow Super Admin in the phone settings');
+    }
+    setAllowed(true);
+    const next = { ...prefs, [k]: on };
+    setPrefs(next);
+    await setAlertPrefs(next);
+  };
+  const testAlert = async () => {
+    if (!(await notificationsAllowed(true))) return feedback.error('Notifications are blocked in the phone settings');
+    await Notifications.scheduleNotificationAsync({
+      content: { title: '🔔 Notifications work', body: "You'll hear about new tickets, leads and renewals here.", ...(Platform.OS === 'android' ? { channelId: 'alerts' } : {}) },
+      trigger: null,
+    });
+  };
+
   useEffect(() => {
     getAppLock().then(setLock);
     lockSupported().then(setCanLock);
@@ -95,6 +122,19 @@ export default function SettingsScreen() {
             <Field label="Send a test email to" value={testTo} onChangeText={setTestTo} keyboardType="email-address" placeholder="you@example.com" hint="Uses the live SMTP settings from main/.env" />
             <Button title="Send test email" icon="mail-outline" variant="soft" tone="info" onPress={testEmail} loading={busy === 'email'} />
           </Card>
+        </>
+      ) : null}
+
+      {Platform.OS !== 'web' && prefs ? (
+        <>
+          <SectionTitle title="Notifications" />
+          <Card padded={false} style={{ paddingHorizontal: spacing.lg }}>
+            <ToggleRow icon="chatbubbles-outline" iconTone="info" title="Support tickets" subtitle="New tickets and replies from restaurants" value={prefs.tickets && allowed} onChange={(on) => setPref('tickets', on)} />
+            <ToggleRow icon="person-add-outline" iconTone="purple" title="New leads" subtitle="Enquiries from the website" value={prefs.leads && allowed} onChange={(on) => setPref('leads', on)} />
+            <ToggleRow icon="refresh-circle-outline" iconTone="warning" title="Renewals" subtitle="Once a morning, when plans are ending soon" value={prefs.renewals && allowed} onChange={(on) => setPref('renewals', on)} />
+            <Row icon="notifications-outline" title="Send a test notification" onPress={testAlert} chevron last />
+          </Card>
+          <Text style={styles.foot}>Checked every minute while the app is open and about every 15 minutes in the background.</Text>
         </>
       ) : null}
 
