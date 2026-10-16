@@ -1,9 +1,23 @@
 <?php
+/**
+ * restrogrow.com assistant (the chat bubble on the home page; config/chatbot_store.php).
+ *
+ *   POST {action:'start'}                       a new chat (no details needed to ask questions)
+ *   POST {action:'message', token, message}     → {reply, suggestions[], ask_contact}
+ *   POST {action:'lead', token, name, restaurant_name, phone, email?, consent:true}
+ *                                               the visitor shares their details (demo / call back)
+ *   POST {action:'resume', token}               the chat so far (+ has_contact)
+ *
+ * Chats without details are saved as "Website visitor" so Super Admin › Chat leads still sees the
+ * questions; they become real leads once details are shared.
+ */
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
+
+const CHAT_ANON = 'Website visitor';
 
 function chatbotOut(array $data, int $status = 200): void
 {
@@ -40,56 +54,52 @@ try {
 
     $action = (string)($input['action'] ?? '');
     if ($action === 'start') {
-        chatbotRateLimit('chat_lead', 5, 3600);
-
-        $name = trim((string)($input['name'] ?? ''));
-        $restaurant = trim((string)($input['restaurant_name'] ?? ''));
-        $email = trim((string)($input['email'] ?? ''));
-        $phone = trim((string)($input['phone'] ?? ''));
-        $phoneDigits = preg_replace('/\D+/', '', $phone);
-
-        if (($input['consent'] ?? null) !== true) {
-            chatbotOut(['success' => false, 'message' => 'Please agree to be contacted before starting the chat.'], 400);
-        }
-        if ($name === '' || strlen($name) > 120 || $restaurant === '' || strlen($restaurant) > 160) {
-            chatbotOut(['success' => false, 'message' => 'Please enter your name and restaurant name.'], 400);
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254) {
-            chatbotOut(['success' => false, 'message' => 'Please enter a valid email address.'], 400);
-        }
-        if (!preg_match('/^[+0-9().\-\s]{7,30}$/D', $phone) || strlen($phoneDigits) < 7 || strlen($phoneDigits) > 15) {
-            chatbotOut(['success' => false, 'message' => 'Please enter a valid phone number, including country code if needed.'], 400);
-        }
-
+        chatbotRateLimit('chat_start', 12, 3600);
         $token = bin2hex(random_bytes(32));
-        $greeting = 'Thanks for reaching out! Ask me anything about RestroGrow, and our team can follow up using the details you shared.';
-        $conn->beginTransaction();
-        $stmt = $conn->prepare('INSERT INTO chatbot_leads (session_token_hash, name, restaurant_name, email, phone) VALUES (?, ?, ?, ?, ?)');
-        $stmt->execute([hash('sha256', $token), $name, $restaurant, $email, $phone]);
-        $leadId = (int)$conn->lastInsertId();
-        $messageStmt = $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)");
-        $messageStmt->execute([$leadId, $greeting]);
-        $conn->commit();
-
-        chatbotOut(['success' => true, 'token' => $token, 'reply' => $greeting]);
+        $conn->prepare("INSERT INTO chatbot_leads (session_token_hash, name, restaurant_name, email, phone) VALUES (?, ?, '', '', '')")
+            ->execute([hash('sha256', $token), CHAT_ANON]);
+        chatbotOut(['success' => true, 'token' => $token]);
     }
 
     $token = strtolower(trim((string)($input['token'] ?? '')));
     if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
         chatbotOut(['success' => false, 'message' => 'Chat session is invalid. Please start a new chat.'], 400);
     }
-    $leadStmt = $conn->prepare('SELECT id FROM chatbot_leads WHERE session_token_hash = ?');
+    $leadStmt = $conn->prepare('SELECT id, name, phone FROM chatbot_leads WHERE session_token_hash = ?');
     $leadStmt->execute([hash('sha256', $token)]);
-    $leadId = (int)$leadStmt->fetchColumn();
-    if ($leadId < 1) {
+    $lead = $leadStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$lead) {
         chatbotOut(['success' => false, 'message' => 'Chat session was not found. Please start a new chat.'], 404);
     }
+    $leadId = (int)$lead['id'];
+    $hasContact = trim((string)$lead['phone']) !== '';
 
     if ($action === 'resume') {
         chatbotRateLimit('chat_resume', 30, 600);
         $stmt = $conn->prepare('SELECT sender, message, created_at FROM chatbot_messages WHERE lead_id = ? ORDER BY id ASC');
         $stmt->execute([$leadId]);
-        chatbotOut(['success' => true, 'messages' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        chatbotOut(['success' => true, 'messages' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'has_contact' => $hasContact,
+            'name' => $lead['name'] !== CHAT_ANON ? $lead['name'] : '']);
+    }
+
+    if ($action === 'lead') {
+        chatbotRateLimit('chat_lead', 5, 3600);
+        $name = trim((string)($input['name'] ?? ''));
+        $restaurant = trim((string)($input['restaurant_name'] ?? ''));
+        $email = trim((string)($input['email'] ?? ''));
+        $phone = trim((string)($input['phone'] ?? ''));
+        $phoneDigits = preg_replace('/\D+/', '', $phone);
+        if (($input['consent'] ?? null) !== true) chatbotOut(['success' => false, 'message' => 'Please agree to be contacted.'], 400);
+        if ($name === '' || mb_strlen($name) > 120) chatbotOut(['success' => false, 'message' => 'Please enter your name.'], 400);
+        if (mb_strlen($restaurant) > 160) chatbotOut(['success' => false, 'message' => 'Restaurant name is too long.'], 400);
+        if (!preg_match('/^[+0-9().\-\s]{7,30}$/D', $phone) || strlen($phoneDigits) < 10 || strlen($phoneDigits) > 15) chatbotOut(['success' => false, 'message' => 'Please enter a valid phone number.'], 400);
+        if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254)) chatbotOut(['success' => false, 'message' => 'Please check the email address.'], 400);
+        $conn->prepare('UPDATE chatbot_leads SET name = ?, restaurant_name = ?, email = ?, phone = ?, consent_at = CURRENT_TIMESTAMP WHERE id = ?')
+            ->execute([$name, $restaurant, $email, $phone, $leadId]);
+        $first = explode(' ', $name)[0];
+        $reply = "Thanks $first! 🙌 Our team will call you on **$phone** soon, usually within a few hours. Meanwhile, ask me anything else about RestroGrow.";
+        $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)")->execute([$leadId, $reply]);
+        chatbotOut(['success' => true, 'reply' => $reply, 'suggestions' => ['What is included?', 'Is there a free trial?']]);
     }
 
     if ($action === 'message') {
@@ -99,24 +109,11 @@ try {
         if ($message === '' || $length > 500) {
             chatbotOut(['success' => false, 'message' => 'Messages must be between 1 and 500 characters.'], 400);
         }
-
-        $stmt = $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'visitor', ?)");
-        $stmt->execute([$leadId, $message]);
-        $stmt = $conn->prepare('UPDATE chatbot_leads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-        $stmt->execute([$leadId]);
-
-        try {
-            $reply = rgGeminiChatbotReply($conn, $leadId, $message);
-        } catch (RuntimeException $e) {
-            error_log('Chatbot Gemini error: ' . $e->getMessage());
-            chatbotOut(['success' => false, 'message' => 'The AI assistant is temporarily unavailable. Your question has been saved; please try again or contact restrogrow@gmail.com.'], 502);
-        }
-
-        $stmt = $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)");
-        $stmt->execute([$leadId, $reply]);
-        $stmt = $conn->prepare('UPDATE chatbot_leads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-        $stmt->execute([$leadId]);
-        chatbotOut(['success' => true, 'reply' => $reply]);
+        $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'visitor', ?)")->execute([$leadId, $message]);
+        $r = rgChatbotSmartReply($conn, $leadId, $message, $hasContact);
+        $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)")->execute([$leadId, $r['reply']]);
+        $conn->prepare('UPDATE chatbot_leads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$leadId]);
+        chatbotOut(['success' => true] + $r);
     }
 
     chatbotOut(['success' => false, 'message' => 'Unknown action.'], 400);

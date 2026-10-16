@@ -845,264 +845,300 @@
         </div>
     </footer>
 
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet">
     <script src="script.js?v=3.0"></script>
 
-    <!-- RestroGrow help widget -->
-    <div id="ai-chatbot-widget">
-      <section id="ai-chatbot-panel" role="dialog" aria-labelledby="ai-chatbot-heading" aria-modal="false" hidden>
-        <header class="ai-chatbot-header">
-          <div class="ai-chatbot-avatar" aria-hidden="true"><span class="material-symbols-rounded">support_agent</span></div>
-          <div class="ai-chatbot-heading-wrap">
-            <h2 class="ai-chatbot-title" id="ai-chatbot-heading">RestroGrow help</h2>
-            <span class="ai-chatbot-status" id="ai-chatbot-status">A helpful guide to RestroGrow</span>
+    <!-- RestroGrow AI assistant (data: main/api/chatbot.php). Ask straight away; details only for a call back / demo. -->
+    <div id="rgc" aria-live="polite">
+      <div class="rgc-teaser" id="rgcTeaser" hidden>
+        <button type="button" class="rgc-teaser-x" id="rgcTeaserX" aria-label="Hide">×</button>
+        <b>👋 Hi! Questions about RestroGrow?</b>
+        <span>Prices, features, WhatsApp ordering… I reply in seconds.</span>
+      </div>
+      <section class="rgc-panel" id="rgcPanel" role="dialog" aria-modal="false" aria-labelledby="rgcTitle" hidden>
+        <header class="rgc-head">
+          <div class="rgc-av" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M16 4c6.6 0 12 4.6 12 10.4 0 5.7-5.4 10.3-12 10.3-1.3 0-2.6-.2-3.8-.5L7 27v-5.1C5.1 20 4 17.4 4 14.4 4 8.6 9.4 4 16 4z" fill="#fff"/><path d="M16.5 9.2l1.3 3 3 1.3-3 1.3-1.3 3-1.3-3-3-1.3 3-1.3z" fill="#c1440e"/></svg>
+            <i class="rgc-dot"></i>
           </div>
-          <button class="ai-chatbot-minimize" type="button" aria-label="Close chat"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+          <div class="rgc-ht">
+            <h2 id="rgcTitle">RestroGrow AI</h2>
+            <span id="rgcStatus">Online · replies in seconds</span>
+          </div>
+          <button type="button" class="rgc-ib" id="rgcNew" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+          <button type="button" class="rgc-ib" id="rgcClose" aria-label="Close chat"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
         </header>
-        <div id="ai-chatbot-messages" class="ai-chatbot-messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
-        <div id="ai-chatbot-capture">
-          <p class="ai-chatbot-capture-intro">Tell us a little about your restaurant so our team can follow up. Your information is only used to respond to your enquiry.</p>
-          <form id="ai-chatbot-capture-form">
-            <label for="ai-chatbot-name">Your name</label>
-            <input id="ai-chatbot-name" name="name" type="text" autocomplete="name" maxlength="120" required>
-            <label for="ai-chatbot-restaurant">Restaurant name</label>
-            <input id="ai-chatbot-restaurant" name="restaurant_name" type="text" autocomplete="organization" maxlength="160" required>
-            <div class="ai-chatbot-capture-grid">
-              <div><label for="ai-chatbot-email">Email address</label><input id="ai-chatbot-email" name="email" type="email" autocomplete="email" maxlength="254" required></div>
-              <div><label for="ai-chatbot-phone">Phone number</label><input id="ai-chatbot-phone" name="phone" type="tel" autocomplete="tel" maxlength="30" required></div>
-            </div>
-            <label class="ai-chatbot-consent"><input id="ai-chatbot-consent" type="checkbox" required><span>I agree that RestroGrow may contact me about my enquiry. See our <a href="privacy-policy/" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
-            <p id="ai-chatbot-capture-error" role="alert" hidden></p>
-            <button id="ai-chatbot-start" type="submit">Start chatting <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></button>
-          </form>
-        </div>
-        <form class="ai-chatbot-input-row" id="ai-chatbot-form" hidden>
-          <label class="ai-chatbot-sr-only" for="ai-chatbot-input">Type your question</label>
-          <input type="text" id="ai-chatbot-input" placeholder="Ask about RestroGrow..." autocomplete="off" maxlength="500">
-          <button id="ai-chatbot-send" type="submit" aria-label="Send message"><span class="material-symbols-rounded" aria-hidden="true">arrow_upward</span></button>
+        <div class="rgc-msgs" id="rgcMsgs" role="log"></div>
+        <form class="rgc-in" id="rgcForm" autocomplete="off">
+          <label class="rgc-sr" for="rgcInput">Type your question</label>
+          <textarea id="rgcInput" rows="1" maxlength="500" placeholder="Ask anything about RestroGrow…"></textarea>
+          <button type="submit" id="rgcSend" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M4 12l15-7-5 15-3-6-7-2z" fill="currentColor"/></svg></button>
         </form>
-        <p class="ai-chatbot-footnote" id="ai-chatbot-footnote">Share your details to start a conversation</p>
+        <p class="rgc-foot">AI answers by Gemini · <a href="privacy-policy/" target="_blank" rel="noopener">Privacy</a> · or call <a href="tel:+916377568749">+91 63775 68749</a></p>
       </section>
-      <button id="ai-chatbot-fab" type="button" aria-label="Open RestroGrow help" aria-controls="ai-chatbot-panel" aria-expanded="false">
-        <span class="ai-chatbot-fab-icon material-symbols-rounded" aria-hidden="true">chat</span>
-        <span class="ai-chatbot-fab-close material-symbols-rounded" aria-hidden="true">close</span>
+      <button type="button" class="rgc-fab" id="rgcFab" aria-label="Chat with RestroGrow AI" aria-controls="rgcPanel" aria-expanded="false">
+        <span class="rgc-fab-ic" aria-hidden="true">
+          <svg class="rgc-open" viewBox="0 0 32 32"><path d="M16 4c6.6 0 12 4.6 12 10.4 0 5.7-5.4 10.3-12 10.3-1.3 0-2.6-.2-3.8-.5L7 27v-5.1C5.1 20 4 17.4 4 14.4 4 8.6 9.4 4 16 4z" fill="#fff"/><path d="M16.5 9.2l1.3 3 3 1.3-3 1.3-1.3 3-1.3-3-3-1.3 3-1.3z" fill="#c1440e"/></svg>
+          <svg class="rgc-shut" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+        </span>
+        <span class="rgc-fab-t">Ask AI</span>
+        <i class="rgc-badge" id="rgcBadge" hidden>1</i>
       </button>
     </div>
     <style>
-    #ai-chatbot-widget { --chat-accent: #b94318; --chat-accent-dark: #963514; --chat-ink: #241d16; --chat-muted: #766b60; --chat-line: #eadfce; position: fixed; right: 24px; bottom: 24px; z-index: 99999; font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-    #ai-chatbot-fab { width: 60px; height: 60px; border: 0; border-radius: 50%; background: var(--chat-accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(119, 48, 18, .3); transition: transform .2s ease, background .2s ease, box-shadow .2s ease; }
-    #ai-chatbot-fab:hover { transform: translateY(-3px); background: var(--chat-accent-dark); box-shadow: 0 12px 28px rgba(119, 48, 18, .36); }
-    #ai-chatbot-fab .material-symbols-rounded { font-size: 27px; }
-    .ai-chatbot-fab-close { display: none; }
-    #ai-chatbot-fab[aria-expanded="true"] .ai-chatbot-fab-icon { display: none; }
-    #ai-chatbot-fab[aria-expanded="true"] .ai-chatbot-fab-close { display: block; }
-    #ai-chatbot-panel { position: absolute; right: 0; bottom: 76px; width: 380px; height: min(540px, calc(100dvh - 120px)); min-height: 380px; max-width: calc(100vw - 32px); background: #fffdf9; border: 1px solid rgba(36, 29, 22, .1); border-radius: 18px; box-shadow: 0 20px 60px rgba(36, 29, 22, .2); display: flex; flex-direction: column; overflow: hidden; transform-origin: bottom right; animation: ai-chatbot-open .18s ease-out; }
-    #ai-chatbot-panel[hidden] { display: none; }
-    @keyframes ai-chatbot-open { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-    .ai-chatbot-header { display: flex; align-items: center; gap: 11px; padding: 16px 17px; color: #fff; background: linear-gradient(120deg, #9e3815, #c45121); }
-    .ai-chatbot-avatar { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 12px; background: rgba(255,255,255,.16); display: grid; place-items: center; }
-    .ai-chatbot-avatar .material-symbols-rounded { font-size: 23px; }
-    .ai-chatbot-heading-wrap { flex: 1; min-width: 0; }
-    .ai-chatbot-title { margin: 0; color: inherit; font-size: 14px; line-height: 1.4; font-weight: 700; }
-    .ai-chatbot-status { display: block; margin-top: 2px; color: rgba(255,255,255,.8); font-size: 11px; }
-    .ai-chatbot-minimize { width: 34px; height: 34px; border: 0; border-radius: 9px; background: rgba(255,255,255,.14); color: #fff; cursor: pointer; display: grid; place-items: center; }
-    .ai-chatbot-minimize:hover { background: rgba(255,255,255,.25); }
-    .ai-chatbot-minimize .material-symbols-rounded { font-size: 20px; }
-    .ai-chatbot-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 15px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; overscroll-behavior: contain; }
-    .ai-chatbot-messages:empty { display: none; }
-    .ai-chatbot-msg { max-width: 88%; padding: 11px 13px; border-radius: 14px; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
-    .ai-chatbot-msg.bot { color: var(--chat-ink); background: #f4eee5; border: 1px solid #eee5d9; border-bottom-left-radius: 5px; }
-    .ai-chatbot-msg.user { align-self: flex-end; color: #fff; background: var(--chat-accent); border-bottom-right-radius: 5px; }
-    #ai-chatbot-capture { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-start; padding: 15px; }
-    #ai-chatbot-capture[hidden] { display: none; }
-    .ai-chatbot-capture-intro { margin: 0 0 10px; color: var(--chat-muted); font-size: 11px; line-height: 1.45; }
-    #ai-chatbot-capture-form { display: grid; grid-template-columns: 1fr; gap: 5px; }
-    #ai-chatbot-capture-form > label:not(.ai-chatbot-consent), .ai-chatbot-capture-grid label { color: var(--chat-ink); font-size: 10px; font-weight: 700; }
-    #ai-chatbot-capture-form input:not([type="checkbox"]) { width: 100%; min-width: 0; height: 35px; padding: 0 10px; border: 1px solid #e4d9ca; border-radius: 8px; color: var(--chat-ink); background: #fff; font: inherit; font-size: 12px; outline: none; }
-    #ai-chatbot-capture-form input:focus { border-color: var(--chat-accent); box-shadow: 0 0 0 2px rgba(185,67,24,.1); }
-    .ai-chatbot-capture-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .ai-chatbot-capture-grid > div { display: grid; gap: 5px; min-width: 0; }
-    .ai-chatbot-consent { display: flex; align-items: flex-start; gap: 7px; margin: 5px 0; color: var(--chat-muted); font-size: 10px; line-height: 1.4; }
-    .ai-chatbot-consent input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--chat-accent); }
-    .ai-chatbot-consent a { color: var(--chat-accent-dark); }
-    #ai-chatbot-capture-error { margin: 0; color: #a32916; font-size: 11px; }
-    #ai-chatbot-capture-error[hidden] { display: none; }
-    #ai-chatbot-start { min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 10px; background: var(--chat-accent); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-    #ai-chatbot-start:hover { background: var(--chat-accent-dark); }
-    #ai-chatbot-start:disabled { opacity: .65; cursor: wait; }
-    .ai-chatbot-suggestions { display: flex; flex-wrap: wrap; gap: 7px; max-width: 100%; margin: 1px 0 4px; }
-    .ai-chatbot-suggestion { padding: 8px 10px; border: 1px solid #e6cbb9; border-radius: 999px; color: var(--chat-accent-dark); background: #fffaf4; font: inherit; font-size: 11px; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
-    .ai-chatbot-suggestion:hover { background: #f8e9dc; border-color: #d9aa8c; }
-    .ai-chatbot-input-row { display: flex; gap: 9px; padding: 12px 13px 8px; border-top: 1px solid var(--chat-line); background: #fffdf9; }
-    .ai-chatbot-input-row[hidden] { display: none; }
-    #ai-chatbot-input { flex: 1; min-width: 0; height: 44px; padding: 0 13px; border: 1px solid #e4d9ca; border-radius: 11px; color: var(--chat-ink); background: #fff; font: inherit; font-size: 13px; outline: none; transition: border-color .15s ease, box-shadow .15s ease; }
-    #ai-chatbot-input::placeholder { color: #958a7d; }
-    #ai-chatbot-input:focus { border-color: var(--chat-accent); box-shadow: 0 0 0 3px rgba(185,67,24,.12); }
-    #ai-chatbot-send { width: 44px; height: 44px; flex: 0 0 44px; border: 0; border-radius: 11px; color: #fff; background: var(--chat-accent); cursor: pointer; display: grid; place-items: center; transition: background .15s ease, transform .15s ease; }
-    #ai-chatbot-send:hover { background: var(--chat-accent-dark); transform: translateY(-1px); }
-    #ai-chatbot-send .material-symbols-rounded { font-size: 21px; }
-    .ai-chatbot-footnote { margin: 0; padding: 0 14px 11px; color: var(--chat-muted); background: #fffdf9; font-size: 10px; text-align: center; }
-    .ai-chatbot-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-    #ai-chatbot-widget button:focus-visible { outline: 3px solid #e8a47d; outline-offset: 3px; }
-    @media (max-width: 480px) { #ai-chatbot-widget { right: 16px; bottom: 16px; } #ai-chatbot-panel { right: 0; bottom: 72px; width: min(380px, calc(100vw - 32px)); height: min(620px, calc(100dvh - 104px)); min-height: 320px; border-radius: 16px; } #ai-chatbot-fab { width: 56px; height: 56px; } }
-    @media (prefers-reduced-motion: reduce) { #ai-chatbot-panel, #ai-chatbot-fab, #ai-chatbot-send, .ai-chatbot-suggestion { animation: none; transition: none; } }
+    #rgc { --a: #c1440e; --ad: #8f3308; --al: #fbeee6; --ink: #241d16; --mute: #7a6e61; --line: #ecdfcd; --paper: #fffcf5; position: fixed; right: 22px; bottom: 22px; z-index: 99999; font-family: 'Public Sans', -apple-system, 'Segoe UI', sans-serif; }
+    #rgc *, #rgc *::before, #rgc *::after { box-sizing: border-box; }
+    .rgc-fab { position: relative; display: flex; align-items: center; gap: 9px; height: 58px; padding: 0 20px 0 9px; border: 0; border-radius: 999px; background: linear-gradient(135deg, #d4541b, var(--a) 55%, var(--ad)); color: #fff; font: 700 15px/1 'Public Sans', sans-serif; cursor: pointer; box-shadow: 0 12px 30px -8px rgba(143,51,8,.55), 0 0 0 0 rgba(193,68,14,.45); transition: transform .2s cubic-bezier(.2,.9,.3,1.2), box-shadow .2s; animation: rgcPulse 2.8s ease-out 2s 3; }
+    .rgc-fab:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 16px 34px -8px rgba(143,51,8,.6); }
+    .rgc-fab:active { transform: scale(.96); }
+    .rgc-fab-ic { position: relative; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); }
+    .rgc-fab-ic svg { width: 26px; height: 26px; transition: transform .25s, opacity .2s; }
+    .rgc-fab .rgc-shut { position: absolute; width: 20px; height: 20px; opacity: 0; transform: rotate(-90deg); }
+    .rgc-fab[aria-expanded="true"] .rgc-open { opacity: 0; transform: rotate(90deg) scale(.6); }
+    .rgc-fab[aria-expanded="true"] .rgc-shut { opacity: 1; transform: none; }
+    .rgc-fab[aria-expanded="true"] { padding-right: 9px; }
+    .rgc-fab[aria-expanded="true"] .rgc-fab-t { display: none; }
+    .rgc-badge { position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #16a34a; color: #fff; font: 700 11px/20px sans-serif; text-align: center; font-style: normal; border: 2px solid #fff; }
+    @keyframes rgcPulse { 0% { box-shadow: 0 12px 30px -8px rgba(143,51,8,.55), 0 0 0 0 rgba(193,68,14,.45); } 70% { box-shadow: 0 12px 30px -8px rgba(143,51,8,.55), 0 0 0 16px rgba(193,68,14,0); } 100% { box-shadow: 0 12px 30px -8px rgba(143,51,8,.55), 0 0 0 0 rgba(193,68,14,0); } }
+
+    .rgc-teaser { position: absolute; right: 0; bottom: 72px; width: 260px; padding: 13px 34px 13px 15px; border-radius: 16px 16px 4px 16px; background: #fff; color: var(--ink); box-shadow: 0 14px 34px -10px rgba(36,29,22,.35); border: 1px solid var(--line); cursor: pointer; animation: rgcIn .35s cubic-bezier(.2,.9,.3,1.2); }
+    .rgc-teaser b { display: block; font-size: 14px; margin-bottom: 3px; }
+    .rgc-teaser span { font-size: 12.5px; color: var(--mute); line-height: 1.45; }
+    .rgc-teaser-x { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #f4eee5; color: var(--mute); font-size: 16px; line-height: 1; cursor: pointer; }
+    .rgc-teaser[hidden] { display: none; }
+
+    .rgc-panel { position: absolute; right: 0; bottom: 74px; width: 390px; height: min(620px, calc(100dvh - 110px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; background: var(--paper); border: 1px solid rgba(36,29,22,.08); box-shadow: 0 30px 70px -20px rgba(36,29,22,.45); transform-origin: bottom right; animation: rgcOpen .28s cubic-bezier(.2,.9,.3,1.1); }
+    .rgc-panel[hidden] { display: none; }
+    @keyframes rgcOpen { from { opacity: 0; transform: translateY(14px) scale(.94); } to { opacity: 1; transform: none; } }
+    @keyframes rgcIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .rgc-head { display: flex; align-items: center; gap: 11px; padding: 14px 12px 14px 16px; color: #fff; background: radial-gradient(120% 160% at 100% 0%, #e2712f, transparent 60%), linear-gradient(135deg, #8f3308, #c1440e); }
+    .rgc-av { position: relative; width: 42px; height: 42px; flex: none; border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,.18); }
+    .rgc-av svg { width: 26px; height: 26px; }
+    .rgc-dot { position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%; background: #22c55e; border: 2px solid #b13f0f; }
+    .rgc-ht { flex: 1; min-width: 0; }
+    .rgc-ht h2 { margin: 0; color: #fff; font: 800 15.5px/1.2 'Archivo', 'Public Sans', sans-serif; letter-spacing: -.01em; }
+    .rgc-ht span { display: block; margin-top: 2px; font-size: 11.5px; color: rgba(255,255,255,.85); }
+    .rgc-ib { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border: 0; border-radius: 10px; background: rgba(255,255,255,.14); color: #fff; cursor: pointer; transition: background .15s; }
+    .rgc-ib:hover { background: rgba(255,255,255,.26); }
+    .rgc-ib svg { width: 17px; height: 17px; }
+
+    .rgc-msgs { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px 8px; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; scroll-behavior: smooth; }
+    .rgc-m { max-width: 86%; padding: 10px 13px; border-radius: 16px; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; animation: rgcIn .25s ease-out; }
+    .rgc-m.bot { align-self: flex-start; color: var(--ink); background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 5px; box-shadow: 0 1px 2px rgba(36,29,22,.04); }
+    .rgc-m.me { align-self: flex-end; color: #fff; background: linear-gradient(135deg, #cf4f17, var(--a)); border-bottom-right-radius: 5px; }
+    .rgc-m p { margin: 0 0 6px; } .rgc-m p:last-child { margin: 0; }
+    .rgc-m ul { margin: 4px 0; padding-left: 18px; } .rgc-m li { margin: 2px 0; }
+    .rgc-m a { color: inherit; text-decoration: underline; }
+    .rgc-m.err { background: #fff7ed; border-color: #fed7aa; }
+    .rgc-typing { align-self: flex-start; display: flex; gap: 4px; padding: 13px 15px; border-radius: 16px; border-bottom-left-radius: 5px; background: #fff; border: 1px solid var(--line); }
+    .rgc-typing i { width: 7px; height: 7px; border-radius: 50%; background: #c9b8a6; animation: rgcDot 1.2s infinite ease-in-out; }
+    .rgc-typing i:nth-child(2) { animation-delay: .15s; } .rgc-typing i:nth-child(3) { animation-delay: .3s; }
+    @keyframes rgcDot { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
+    .rgc-chips { display: flex; flex-wrap: wrap; gap: 7px; animation: rgcIn .3s ease-out; }
+    .rgc-chip { padding: 8px 13px; border: 1.5px solid #ead3c2; border-radius: 999px; background: #fff; color: var(--ad); font: 600 13px 'Public Sans', sans-serif; cursor: pointer; transition: background .15s, border-color .15s, transform .1s; }
+    .rgc-chip:hover { background: var(--al); border-color: #d9a888; }
+    .rgc-chip:active { transform: scale(.96); }
+    .rgc-chip.cta { background: var(--a); border-color: var(--a); color: #fff; }
+
+    .rgc-lead { align-self: stretch; padding: 14px; border-radius: 16px; background: #fff; border: 1.5px solid #ead3c2; animation: rgcIn .3s ease-out; }
+    .rgc-lead b { display: block; font-size: 14px; color: var(--ink); margin-bottom: 2px; }
+    .rgc-lead small { display: block; font-size: 12px; color: var(--mute); margin-bottom: 10px; }
+    .rgc-lead input { width: 100%; height: 42px; margin-bottom: 8px; padding: 0 12px; border: 1.5px solid #e6d9c8; border-radius: 10px; font: 15px 'Public Sans', sans-serif; color: var(--ink); background: #fffefb; outline: none; }
+    .rgc-lead input:focus { border-color: var(--a); box-shadow: 0 0 0 3px rgba(193,68,14,.12); }
+    .rgc-lead .rgc-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .rgc-lead label.rgc-ok { display: flex; gap: 7px; align-items: flex-start; margin: 2px 0 10px; font-size: 11.5px; line-height: 1.4; color: var(--mute); }
+    .rgc-lead label.rgc-ok input { width: 16px; height: 16px; margin: 1px 0 0; flex: none; accent-color: var(--a); }
+    .rgc-lead .rgc-lb { display: flex; gap: 8px; }
+    .rgc-lead button { height: 42px; padding: 0 16px; border: 0; border-radius: 10px; font: 700 14px 'Public Sans', sans-serif; cursor: pointer; }
+    .rgc-lead .go { flex: 1; background: var(--a); color: #fff; }
+    .rgc-lead .go:disabled { opacity: .6; }
+    .rgc-lead .later { background: #f4eee5; color: var(--mute); }
+    .rgc-lead .rgc-e { margin: 0 0 8px; color: #b42318; font-size: 12.5px; }
+
+    .rgc-in { display: flex; align-items: flex-end; gap: 8px; margin: 0 12px 6px; padding: 6px 6px 6px 14px; border: 1.5px solid #e6d9c8; border-radius: 18px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+    .rgc-in:focus-within { border-color: var(--a); box-shadow: 0 0 0 3px rgba(193,68,14,.12); }
+    #rgcInput { flex: 1; min-width: 0; min-height: 40px; max-height: 110px; padding: 9px 0; border: 0; resize: none; outline: none; background: transparent; color: var(--ink); font: 15px/1.4 'Public Sans', sans-serif; }
+    #rgcInput::placeholder { color: #9a8e80; }
+    #rgcSend { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 13px; background: var(--a); color: #fff; cursor: pointer; transition: background .15s, transform .1s, opacity .15s; }
+    #rgcSend:hover { background: var(--ad); } #rgcSend:active { transform: scale(.92); }
+    #rgcSend:disabled { opacity: .45; cursor: default; }
+    #rgcSend svg { width: 19px; height: 19px; transform: translateX(1px); }
+    .rgc-foot { margin: 0; padding: 2px 12px 10px; text-align: center; font-size: 11px; color: var(--mute); }
+    .rgc-foot a { color: var(--ad); }
+    .rgc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    #rgc button:focus-visible, #rgc textarea:focus-visible { outline: 3px solid #f0a37a; outline-offset: 2px; }
+    @media (max-width: 520px) {
+      #rgc { right: 14px; bottom: 14px; }
+      .rgc-fab { height: 54px; padding: 0 16px 0 7px; font-size: 14px; }
+      .rgc-panel { position: fixed; inset: 0; width: auto; height: 100dvh; border-radius: 0; border: 0; }
+      .rgc-head { padding-top: calc(14px + env(safe-area-inset-top)); }
+      .rgc-foot { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+      #rgc.open .rgc-fab { display: none; }
+      .rgc-teaser { width: min(260px, calc(100vw - 28px)); }
+    }
+    @media (prefers-reduced-motion: reduce) { #rgc *, #rgc *::before { animation: none !important; transition: none !important; } }
     </style>
     <script>
-    (function() {
-      var fab = document.getElementById('ai-chatbot-fab');
-      var panel = document.getElementById('ai-chatbot-panel');
-      var messages = document.getElementById('ai-chatbot-messages');
-      var input = document.getElementById('ai-chatbot-input');
-      var form = document.getElementById('ai-chatbot-form');
-      var capture = document.getElementById('ai-chatbot-capture');
-      var captureForm = document.getElementById('ai-chatbot-capture-form');
-      var captureError = document.getElementById('ai-chatbot-capture-error');
-      var startButton = document.getElementById('ai-chatbot-start');
-      var sendButton = document.getElementById('ai-chatbot-send');
-      var status = document.getElementById('ai-chatbot-status');
-      var footnote = document.getElementById('ai-chatbot-footnote');
-      var storageKey = 'restrogrow_chat_session';
-      var token = '';
-      try { token = sessionStorage.getItem(storageKey) || ''; } catch (e) {}
+    (function () {
+      'use strict';
+      var API = 'main/api/chatbot.php', KEY = 'rg_chat_token', SEEN = 'rg_chat_teased';
+      var root = document.getElementById('rgc'), fab = document.getElementById('rgcFab'), panel = document.getElementById('rgcPanel');
+      var msgs = document.getElementById('rgcMsgs'), form = document.getElementById('rgcForm'), input = document.getElementById('rgcInput');
+      var send = document.getElementById('rgcSend'), status = document.getElementById('rgcStatus'), teaser = document.getElementById('rgcTeaser'), badge = document.getElementById('rgcBadge');
+      var token = '', busy = false, loaded = false, hasContact = false, leadShown = false, asked = 0;
+      var START_CHIPS = ['What does it cost?', 'Is there a free trial?', 'WhatsApp ordering?', 'Does it work on my phone?', 'Book a demo'];
+      try { token = localStorage.getItem(KEY) || ''; } catch (e) {}
 
-      function addMessage(text, sender) {
-        var div = document.createElement('div');
-        div.className = 'ai-chatbot-msg ' + sender;
-        div.textContent = text;
-        messages.appendChild(div);
-        messages.scrollTop = messages.scrollHeight;
-        return div;
+      function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+      // light formatting for the assistant's answers: **bold**, "- " lists, links, line breaks
+      function fmt(t) {
+        var lines = esc(t).split(/\n/), out = [], list = [];
+        function flush() { if (list.length) { out.push('<ul>' + list.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul>'); list = []; } }
+        lines.forEach(function (l) {
+          l = l.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+          if (/^\s*[-•*]\s+/.test(l)) list.push(l.replace(/^\s*[-•*]\s+/, ''));
+          else { flush(); if (l.trim()) out.push('<p>' + l + '</p>'); }
+        });
+        flush();
+        return out.join('');
       }
-
-      function request(action, data) {
-        return fetch('main/api/chatbot.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign({ action: action }, data || {}))
-        }).then(function(response) {
-          return response.json().catch(function() { throw new Error('Unexpected reply from the server.'); }).then(function(result) {
-            if (!response.ok || !result.success) throw new Error(result.message || 'The request could not be completed.');
-            return result;
+      function scroll() { msgs.scrollTop = msgs.scrollHeight; }
+      function add(text, who, cls) {
+        var d = document.createElement('div');
+        d.className = 'rgc-m ' + who + (cls ? ' ' + cls : '');
+        if (who === 'me') d.textContent = text; else d.innerHTML = fmt(text);
+        msgs.appendChild(d); scroll();
+        return d;
+      }
+      function clearChips() { msgs.querySelectorAll('.rgc-chips').forEach(function (c) { c.remove(); }); }
+      function chips(list) {
+        clearChips();
+        if (!list || !list.length) return;
+        var c = document.createElement('div');
+        c.className = 'rgc-chips';
+        list.forEach(function (q) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'rgc-chip' + (/demo|call|baat/i.test(q) && !hasContact ? ' cta' : ''); b.textContent = q;
+          b.addEventListener('click', function () { if (/book a (free )?demo|demo chahiye|call me/i.test(q) && !hasContact) { clearChips(); add(q, 'me'); leadCard(true); } else ask(q); });
+          c.appendChild(b);
+        });
+        msgs.appendChild(c); scroll();
+      }
+      function typing(on) {
+        var t = msgs.querySelector('.rgc-typing');
+        if (on && !t) { t = document.createElement('div'); t.className = 'rgc-typing'; t.innerHTML = '<i></i><i></i><i></i>'; msgs.appendChild(t); scroll(); }
+        if (!on && t) t.remove();
+        status.textContent = on ? 'Typing…' : 'Online · replies in seconds';
+      }
+      function post(body) {
+        return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) {
+          return r.json().catch(function () { throw new Error('Unexpected reply. Please try again.'); }).then(function (d) {
+            if (!r.ok || !d.success) { var e = new Error(d.message || 'Something went wrong. Please try again.'); e.status = r.status; throw e; }
+            return d;
           });
         });
       }
-
-      function showCapture() {
-        capture.hidden = false;
-        form.hidden = true;
-        status.textContent = 'Start with your contact details';
-        footnote.textContent = 'Your details are stored so our team can follow up';
+      function ensureToken() {
+        if (token) return Promise.resolve(token);
+        return post({ action: 'start' }).then(function (d) { token = d.token; try { localStorage.setItem(KEY, token); } catch (e) {} return token; });
       }
-
-      function showChatInput() {
-        capture.hidden = true;
-        form.hidden = false;
-        status.textContent = 'Ask us anything about RestroGrow';
-        footnote.textContent = 'AI answers by Google Gemini · Your conversation is saved';
+      function welcome() {
+        add('Hi! 👋 I\'m the **RestroGrow assistant**. Ask me anything about billing, your restaurant website, WhatsApp ordering, loyalty or prices. English, Hindi or Hinglish is fine.', 'bot');
+        chips(START_CHIPS);
       }
-
-      function resumeChat() {
-        messages.replaceChildren();
-        capture.hidden = true;
-        form.hidden = true;
-        status.textContent = 'Loading your conversation…';
-        request('resume', { token: token }).then(function(result) {
-          result.messages.forEach(function(item) {
-            addMessage(item.message, item.sender === 'visitor' ? 'user' : 'bot');
+      function ask(text) {
+        text = String(text || '').trim();
+        if (!text || busy) return;
+        busy = true; send.disabled = true; clearChips();
+        add(text, 'me'); input.value = ''; grow(); asked++;
+        typing(true);
+        var t0 = Date.now();
+        ensureToken().then(function () { return post({ action: 'message', token: token, message: text }); }).then(function (d) {
+          // a short natural pause, so instant answers don't feel jumpy
+          setTimeout(function () {
+            typing(false); add(d.reply, 'bot');
+            if (d.ask_contact && !hasContact && !leadShown) leadCard(false); else chips(d.suggestions);
+            done();
+          }, Math.max(0, 450 - (Date.now() - t0)));
+        }).catch(function (e) {
+          typing(false);
+          if (e.status === 404 || e.status === 400 && /session/i.test(e.message)) { token = ''; try { localStorage.removeItem(KEY); } catch (x) {} }
+          add(e.message + ' You can also call or WhatsApp **+91 63775 68749**.', 'bot', 'err');
+          done();
+        });
+        function done() { busy = false; send.disabled = !input.value.trim(); if (window.innerWidth > 520) input.focus(); }
+      }
+      // details for a call back / demo, inside the chat (only when they're interested)
+      function leadCard(fromButton) {
+        leadShown = true; clearChips();
+        var c = document.createElement('form');
+        c.className = 'rgc-lead';
+        c.innerHTML = '<b>' + (fromButton ? 'Book a free demo 📞' : 'Want us to call you?') + '</b><small>Our team calls you, shows RestroGrow on your phone, and sets it up for your restaurant. Free.</small>' +
+          '<div class="rgc-2"><input name="name" placeholder="Your name" autocomplete="name" maxlength="120" required><input name="phone" type="tel" inputmode="tel" placeholder="Phone / WhatsApp" autocomplete="tel" maxlength="20" required></div>' +
+          '<input name="restaurant" placeholder="Restaurant name (optional)" autocomplete="organization" maxlength="160">' +
+          '<label class="rgc-ok"><input type="checkbox" name="ok" required><span>RestroGrow may contact me about this. <a href="privacy-policy/" target="_blank" rel="noopener">Privacy Policy</a></span></label>' +
+          '<p class="rgc-e" hidden></p><div class="rgc-lb"><button type="submit" class="go">Call me back</button><button type="button" class="later">Not now</button></div>';
+        msgs.appendChild(c); scroll();
+        setTimeout(function () { var f = c.querySelector('input[name=name]'); if (f && window.innerWidth > 520) f.focus(); }, 50);
+        c.querySelector('.later').addEventListener('click', function () { c.remove(); chips(['What does it cost?', 'What is included?']); });
+        c.addEventListener('submit', function (ev) {
+          ev.preventDefault();
+          var b = c.querySelector('.go'), er = c.querySelector('.rgc-e');
+          b.disabled = true; b.textContent = 'Saving…'; er.hidden = true;
+          ensureToken().then(function () {
+            return post({ action: 'lead', token: token, name: c.name.value, phone: c.phone.value, restaurant_name: c.restaurant.value, consent: c.ok.checked });
+          }).then(function (d) { hasContact = true; c.remove(); add(d.reply, 'bot'); chips(d.suggestions); }).catch(function (e) {
+            b.disabled = false; b.textContent = 'Call me back'; er.textContent = e.message; er.hidden = false;
           });
-          showChatInput();
-          input.focus();
-        }).catch(function() {
-          token = '';
-          try { sessionStorage.removeItem(storageKey); } catch (e) {}
-          messages.replaceChildren();
-          showCapture();
         });
       }
-
-      function startConversation(event) {
-        event.preventDefault();
-        captureError.hidden = true;
-        captureError.textContent = '';
-        startButton.disabled = true;
-        startButton.textContent = 'Starting…';
-        var data = new FormData(captureForm);
-        request('start', {
-          name: data.get('name'),
-          restaurant_name: data.get('restaurant_name'),
-          email: data.get('email'),
-          phone: data.get('phone'),
-          consent: document.getElementById('ai-chatbot-consent').checked
-        }).then(function(result) {
-          token = result.token;
-          try { sessionStorage.setItem(storageKey, token); } catch (e) {}
-          showChatInput();
-          addMessage(result.reply, 'bot');
-          input.focus();
-        }).catch(function(error) {
-          captureError.textContent = error.message;
-          captureError.hidden = false;
-        }).finally(function() {
-          startButton.disabled = false;
-          startButton.innerHTML = 'Start chatting <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span>';
-        });
+      function resume() {
+        loaded = true;
+        if (!token) { welcome(); return; }
+        typing(true);
+        post({ action: 'resume', token: token }).then(function (d) {
+          typing(false);
+          hasContact = !!d.has_contact; leadShown = hasContact;
+          if (!d.messages.length) { welcome(); return; }
+          d.messages.forEach(function (m) { add(m.message, m.sender === 'visitor' ? 'me' : 'bot'); });
+          chips(['What does it cost?', 'What is included?', hasContact ? 'Is there a free trial?' : 'Book a demo']);
+        }).catch(function () { typing(false); token = ''; try { localStorage.removeItem(KEY); } catch (e) {} welcome(); });
       }
-
-      function sendMessage(event) {
-        event.preventDefault();
-        var text = input.value.trim();
-        if (!text || !token || sendButton.disabled) return;
-        addMessage(text, 'user');
-        input.value = '';
-        input.disabled = true;
-        sendButton.disabled = true;
-        status.textContent = 'RestroGrow is thinking…';
-        request('message', { token: token, message: text }).then(function(result) {
-          addMessage(result.reply, 'bot');
-          status.textContent = 'Ask us anything about RestroGrow';
-        }).catch(function(error) {
-          addMessage(error.message, 'bot');
-          status.textContent = 'We’re here to help';
-          if (error.message.indexOf('Chat session') === 0) {
-            token = '';
-            try { sessionStorage.removeItem(storageKey); } catch (e) {}
-            showCapture();
-          }
-        }).finally(function() {
-          input.disabled = false;
-          sendButton.disabled = false;
-          if (!form.hidden) input.focus();
-        });
+      function open() {
+        teaser.hidden = true; badge.hidden = true;
+        panel.hidden = false; root.classList.add('open');
+        fab.setAttribute('aria-expanded', 'true'); fab.setAttribute('aria-label', 'Close chat');
+        if (!loaded) resume();
+        grow();
+        if (window.innerWidth > 520) setTimeout(function () { input.focus(); }, 60);
+        if (window.innerWidth <= 520) document.documentElement.style.overflow = 'hidden';
       }
-
-      function openChat() {
-        panel.hidden = false;
-        fab.setAttribute('aria-expanded', 'true');
-        fab.setAttribute('aria-label', 'Close RestroGrow help');
-        if (token) {
-          resumeChat();
-        } else {
-          showCapture();
-        }
+      function close() {
+        panel.hidden = true; root.classList.remove('open');
+        fab.setAttribute('aria-expanded', 'false'); fab.setAttribute('aria-label', 'Chat with RestroGrow AI');
+        document.documentElement.style.overflow = '';
       }
+      // the box grows with the text (measured only while visible: a hidden box measures 0)
+      function grow() { if (input.offsetParent) { input.style.height = 'auto'; input.style.height = Math.max(40, Math.min(110, input.scrollHeight)) + 'px'; } send.disabled = busy || !input.value.trim(); }
 
-      function closeChat() {
-        panel.hidden = true;
-        fab.setAttribute('aria-expanded', 'false');
-        fab.setAttribute('aria-label', 'Open RestroGrow help');
-        fab.focus();
-      }
-
-      fab.addEventListener('click', function() {
-        if (panel.hidden) openChat();
-        else closeChat();
+      fab.addEventListener('click', function () { panel.hidden ? open() : close(); });
+      document.getElementById('rgcClose').addEventListener('click', close);
+      document.getElementById('rgcNew').addEventListener('click', function () {
+        token = ''; hasContact = false; leadShown = false; try { localStorage.removeItem(KEY); } catch (e) {}
+        msgs.innerHTML = ''; welcome(); input.focus();
       });
-      panel.querySelector('.ai-chatbot-minimize').addEventListener('click', closeChat);
-      captureForm.addEventListener('submit', startConversation);
-      form.addEventListener('submit', sendMessage);
-      document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape' && !panel.hidden) closeChat();
-      });
+      form.addEventListener('submit', function (e) { e.preventDefault(); ask(input.value); });
+      input.addEventListener('input', grow);
+      input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); } });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) close(); });
+      teaser.addEventListener('click', function (e) { if (e.target.id === 'rgcTeaserX') { teaser.hidden = true; return; } open(); });
+      grow();
+      // a gentle hello after a while, once per visitor
+      var seen = false; try { seen = !!localStorage.getItem(SEEN); } catch (e) {}
+      if (!seen) setTimeout(function () {
+        if (!panel.hidden) return;
+        teaser.hidden = false; badge.hidden = false;
+        try { localStorage.setItem(SEEN, '1'); } catch (e) {}
+      }, 9000);
     })();
     </script>
 </body>
