@@ -453,7 +453,7 @@ function useRemoveWebInputOutline() {
 export default function App() {
   useRemoveWebInputOutline();
   useOrientationPolicy();
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
     Poppins_600SemiBold,
@@ -467,13 +467,23 @@ export default function App() {
     AsyncStorage.removeItem('navigationState_v1').catch(() => {});
   }, []);
 
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [fontsLoaded]);
+  // The startup logo goes as soon as the fonts are ready. It used to wait for the navigator's onReady,
+  // which never fires while the first screen is the welcome or login screen, so on a phone the app
+  // stayed on the logo (then a black screen). A font that fails to load no longer blocks the app
+  // (the phone's own font is used), and the logo always goes after 6 seconds whatever happens.
+  const fontsReady = fontsLoaded || !!fontError;
+  useEffect(() => {
+    if (fontsReady) SplashScreen.hideAsync().catch(() => {});
+  }, [fontsReady]);
+  useEffect(() => {
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 6000);
+    return () => clearTimeout(t);
+  }, []);
+  const onLayoutRootView = useCallback(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
 
-  if (!fontsLoaded) {
+  if (!fontsReady) {
     return (
       <WebFrame>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>

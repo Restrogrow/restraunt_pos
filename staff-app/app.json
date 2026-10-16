@@ -3,7 +3,7 @@
     "name": "RestroGrow Staff",
     "slug": "restrogrow-staff",
     "scheme": "restrogrowstaff",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.restrogrow.staff",
-      "versionCode": 2,
+      "versionCode": 3,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#0F6E6C",
@@ -35,6 +35,10 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-location",
+        { "locationWhenInUsePermission": "Delivery riders share their location with the customer while a delivery is under way." }
+      ],
       "expo-font",
       [
         "expo-splash-screen",

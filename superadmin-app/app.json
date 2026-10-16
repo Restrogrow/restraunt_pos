@@ -3,7 +3,7 @@
     "name": "RestroGrow Super Admin",
     "slug": "restrogrow-superadmin",
     "scheme": "restrogrowadmin",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.restrogrow.superadmin",
-      "versionCode": 2,
+      "versionCode": 3,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#1D1B26",

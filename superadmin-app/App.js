@@ -230,12 +230,23 @@ function useRemoveWebInputOutline() {
 
 export default function App() {
   useRemoveWebInputOutline();
-  const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold });
+  const [fontsLoaded, fontError] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold });
+  // The startup logo goes as soon as the fonts are ready (not on the navigator's onReady, which doesn't
+  // fire while the sign-in screen is shown), a failed font doesn't block the app, and the logo always
+  // goes after 6 seconds.
+  const fontsReady = fontsLoaded || !!fontError;
+  useEffect(() => {
+    if (fontsReady) SplashScreen.hideAsync().catch(() => {});
+  }, [fontsReady]);
+  useEffect(() => {
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 6000);
+    return () => clearTimeout(t);
+  }, []);
   const onReady = useCallback(() => {
-    if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
-  }, [fontsLoaded]);
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
 
-  if (!fontsLoaded) {
+  if (!fontsReady) {
     return (
       <View style={[st.center, { backgroundColor: colors.navy }]}>
         <ActivityIndicator size="large" color={colors.primary} />
