@@ -9,6 +9,8 @@
  * shortly after logging in, so the alert flow can be seen.
  */
 import fixtures from './fixtures.json';
+import { loyaltyMock, seedLoyalty } from './loyaltyMock';
+import { posMock } from './posMock';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const pad = (n) => String(n).padStart(2, '0');
@@ -349,6 +351,15 @@ function handle(path, method, q, f) {
   }
   if (!loggedIn) return no('Session expired. Please login again.');
 
+  // ── POS customer search, add-ons, combos, held orders, open bills (demo/posMock.js) ──
+  seedLoyalty(db);
+  const pos = posMock(path, method, q, f, db, newOrderFromCart);
+  if (pos) return pos;
+
+  // ── loyalty screen and the customer sheet (demo/loyaltyMock.js) ──
+  const loyal = loyaltyMock(path, method, q, f, db);
+  if (loyal) return loyal;
+
   // ── restaurant settings: kept in the demo session so changes show up straight away ──
   if (path === '/api/app_settings.php') {
     const S = db.session;
@@ -387,7 +398,9 @@ function handle(path, method, q, f) {
       case '/api/get_kot.php': return ok({ kots: clone(db.kots.filter((k) => ['Pending', 'Preparing', 'Ready'].includes(k.kot_status))) });
       case '/api/get_waiter_requests.php': return ok({ requests: db.calls.map((c) => ({ ...c, minutes_ago: Math.floor((Date.now() - parse(c.created_at).getTime()) / 60000) })), total_requests: db.calls.length });
       case '/api/get_reservations.php': return ok({ data: clone(db.reservations.filter((r) => !q.date || r.reservation_date === q.date)) });
-      case '/api/get_customers.php': return ok({ data: clone(db.customers) });
+      case '/api/get_customers.php':
+        seedLoyalty(db);
+        return ok({ data: clone(db.customers) });
       case '/api/get_sales_report.php': return salesReport(q);
       case '/api/get_login_logs.php': return clone(db.loginLogs);
       default: return ok({ data: [] });

@@ -10,6 +10,11 @@
 // captured bitmap into an ESC/POS raster image, which prints correctly
 // regardless of script/language because it was never text to the printer
 // in the first place.
+//
+// The bill/KOT that's actually shown and printed is now components/Receipt.js
+// (laid out like the website POS bill). buildReceiptLines() below is the
+// older monospace text version, kept only for anything that still wants a
+// plain-text receipt; nothing on screen uses it.
 import { apiPostJson } from '../config/api';
 
 function padLine(left, right, width) {

@@ -28,6 +28,8 @@ import AppImage from '../components/ui/AppImage';
 import { FeedbackHost, feedback } from '../components/ui/Feedback';
 import PressableScale from '../components/ui/PressableScale';
 import Sheet from '../components/ui/Sheet';
+import { CustomerBox, CustomerPicker, loadPosCustomer, loyaltyLine, posCustomerPricing, walletFor } from '../components/PosCustomer';
+import { AddonSheet, ComboSheet, DiscountSheet, HeldSheet, manualDiscountAmount, manualDiscountLabel } from '../components/PosSheets';
 import { apiGet, apiPostForm, imageUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { useLayout } from '../hooks/useLayout';
@@ -43,9 +45,18 @@ function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
 
-function cartKeyFor(id, variationName) {
-  return `${id}_${variationName || ''}`;
+function cartKeyFor(id, variationName, addons) {
+  const ids = (addons || []).map((a) => a.id).sort((x, y) => x - y);
+  return `${id}_${variationName || ''}${ids.length ? `_a${ids.join('-')}` : ''}`;
 }
+
+// One cart line's money: the dish plus its add-ons, per unit (same as the website's posLineTotal).
+function lineTotal(c) {
+  const extra = (c.addons || []).reduce((s, a) => s + (Number(a.price) || 0), 0);
+  return round2((Number(c.price) + extra) * c.quantity);
+}
+
+const NO_CUSTOMER = { cust: null, gift: null, ptsOn: false, pts: 0, walletOn: false };
 
 export default function POSScreen({ route }) {
   const { user } = useAuth();
@@ -61,13 +72,17 @@ export default function POSScreen({ route }) {
   const [tables, setTables] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [coupons, setCoupons] = useState([]);
+  const [addons, setAddons] = useState([]);   // Menu › Add-ons: [{id, name, price}]
+  const [combos, setCombos] = useState([]);   // Offers › Combos on sale now
 
   const [search, setSearch] = useState('');
   const [menuFilter, setMenuFilter] = useState('All');
   const [vegOnly, setVegOnly] = useState(false);
   const listRef = useRef(null);
   const searchRef = useRef(null);
-  const [cart, setCart] = useState([]); // [{key, id, name, price, quantity, variationName}]
+  // [{key, id, name, price, quantity, variationName, addons:[{id,name,price}]}]; order add-ons have
+  // isAddon + addonId, combos isCombo + comboId + picks + summary
+  const [cart, setCart] = useState([]);
   const [variationItem, setVariationItem] = useState(null); // item awaiting variation choice
   const [cartOpen, setCartOpen] = useState(false);
 
@@ -92,6 +107,22 @@ export default function POSScreen({ route }) {
   const [billPreview, setBillPreview] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  // the customer on this bill and what of theirs it uses (components/PosCustomer.js)
+  const [custState, setCustState] = useState(NO_CUSTOMER);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [manualDisc, setManualDisc] = useState(null);   // { type: 'percent' | 'amount', value }
+  const [discOpen, setDiscOpen] = useState(false);
+  const [addonLine, setAddonLine] = useState(null);     // cart line whose add-ons are being picked
+  const [comboPick, setComboPick] = useState(null);
+  const [heldOpen, setHeldOpen] = useState(false);
+  const [held, setHeld] = useState([]);
+  const [heldLoading, setHeldLoading] = useState(false);
+  const [heldBusy, setHeldBusy] = useState(null);
+  // An open bill: the KOT button sends the dishes to the kitchen and saves the bill unpaid;
+  // later KOTs send only what's new, and Pay settles that same bill (never a second order).
+  const [openBill, setOpenBill] = useState(null);       // { id, number }
+  const [sent, setSent] = useState({});                 // cart key -> how many the kitchen has
+
   // silent=true skips the full-screen spinner — used when refreshing on tab
   // focus (see useFocusEffect below), where the screen is already showing
   // good data and a flash-to-spinner on every tab switch would be jarring.
@@ -103,8 +134,12 @@ export default function POSScreen({ route }) {
       apiGet('/api/get_tables.php'),
       apiGet('/api/get_payment_methods.php'),
       apiGet('/api/get_coupons.php'),
+      apiGet('/api/get_addons.php?available=1').catch(() => null),
+      apiGet('/api/combos_admin.php?view=pos').catch(() => null),
     ])
-      .then(([miRes, tRes, pmRes, cpRes]) => {
+      .then(([miRes, tRes, pmRes, cpRes, adRes, cbRes]) => {
+        setAddons(adRes?.success ? (adRes.data || []).map((a) => ({ id: Number(a.id), name: a.addon_name, price: Number(a.addon_price) || 0 })) : []);
+        setCombos(cbRes?.success ? cbRes.combos || [] : []);
         setMenuItems(miRes?.success ? miRes.data || [] : []);
         setTables(tRes?.success ? tRes.data || [] : []);
         setPaymentMethods(pmRes?.success ? (pmRes.data || []).filter((m) => m.is_active) : []);
@@ -216,7 +251,7 @@ export default function POSScreen({ route }) {
       if (existing) {
         return prev.map((c) => (c.key === key ? { ...c, quantity: c.quantity + 1 } : c));
       }
-      return [...prev, { key, id: item.id, name: item.item_name_en, price, quantity: 1, variationName }];
+      return [...prev, { key, id: item.id, name: item.item_name_en, price, quantity: 1, variationName, addons: [] }];
     });
   };
 
@@ -232,7 +267,7 @@ export default function POSScreen({ route }) {
   const decItem = (item) => {
     haptic.tap();
     setCart((prev) => {
-      const lines = prev.filter((c) => c.id === item.id);
+      const lines = prev.filter((c) => c.id === item.id && !c.isAddon && !c.isCombo);
       if (!lines.length) return prev;
       const key = lines[lines.length - 1].key;
       return prev.map((c) => (c.key === key ? { ...c, quantity: c.quantity - 1 } : c)).filter((c) => c.quantity > 0);
@@ -250,23 +285,38 @@ export default function POSScreen({ route }) {
 
   const removeLine = (key) => setCart((prev) => prev.filter((c) => c.key !== key));
 
-  const subtotal = useMemo(() => round2(cart.reduce((s, c) => s + c.price * c.quantity, 0)), [cart]);
-  // Discount comes off the raw item subtotal before tax — mirrors the
-  // website's checkout and the server-side recompute in pos_operations.php,
-  // which is the actual source of truth (this is just for display/preview).
-  const discount = useMemo(() => {
-    if (!appliedCoupon) return 0;
+  // The bill's money, worked out once like the website's posComputeTotals(): the customer's
+  // reward code (or a typed coupon) and their points come off the subtotal first, then the
+  // cashier's own discount, then tax; the wallet pays part of the total. pos_operations.php
+  // checks every number again, so this is what the screen and the printed bill show.
+  const subtotal = useMemo(() => round2(cart.reduce((s, c) => s + lineTotal(c), 0)), [cart]);
+  const pc = useMemo(() => posCustomerPricing(custState, subtotal), [custState, subtotal]);
+  const discount = useMemo(() => {   // the typed coupon, only when no customer reward is in use
+    if (!appliedCoupon || pc.coupon > 0) return 0;
     const raw =
       appliedCoupon.discount_type === 'percent'
         ? subtotal * (Number(appliedCoupon.discount_value) || 0) / 100
         : Number(appliedCoupon.discount_value) || 0;
     return round2(Math.min(Math.max(raw, 0), subtotal));
-  }, [appliedCoupon, subtotal]);
-  const taxable = useMemo(() => round2(Math.max(0, subtotal - discount)), [subtotal, discount]);
+  }, [appliedCoupon, subtotal, pc.coupon]);
+  const taken = round2(pc.coupon + pc.pointsDiscount + discount);
+  const manualAmount = useMemo(() => manualDiscountAmount(manualDisc, subtotal, taken), [manualDisc, subtotal, taken]);
+  const taxable = useMemo(() => round2(Math.max(0, subtotal - taken - manualAmount)), [subtotal, taken, manualAmount]);
   const gstEnabled = user?.enable_gst == 1;
   const taxPercent = Number(user?.tax_percent ?? 5);
+  const taxName = user?.tax_name || 'Tax';
   const tax = useMemo(() => (gstEnabled ? round2(taxable * (taxPercent / 100)) : 0), [taxable, gstEnabled, taxPercent]);
   const total = useMemo(() => round2(taxable + tax), [taxable, tax]);
+  const walletPart = walletFor(custState, total);
+  const toCollect = round2(Math.max(0, total - walletPart));
+  const couponCode = pc.couponCode || (discount > 0 ? appliedCoupon?.coupon_code : '') || '';
+  // the discount rows the cart and the bill show
+  const discountRows = [
+    ...(pc.coupon > 0 ? [[`Reward ${pc.couponCode}`, pc.coupon]] : []),
+    ...(discount > 0 ? [[`Coupon ${appliedCoupon.coupon_code}`, discount]] : []),
+    ...(pc.pointsDiscount > 0 ? [[`${pc.points} points`, pc.pointsDiscount]] : []),
+    ...(manualAmount > 0 ? [[manualDiscountLabel(manualDisc, currency), manualAmount]] : []),
+  ];
   const itemCount = cart.reduce((s, c) => s + c.quantity, 0);
 
   const applyCoupon = () => {
@@ -298,32 +348,88 @@ export default function POSScreen({ route }) {
     setCouponInput('');
     setAppliedCoupon(null);
     setCouponError('');
+    setCustState(NO_CUSTOMER);
+    setManualDisc(null);
+    setOpenBill(null);
+    setSent({});
     setCartOpen(false);
   };
 
   const clearCart = async () => {
     if (cart.length === 0) return;
-    const ok = await feedback.confirm({ title: 'Clear the cart?', message: `${itemCount} item${itemCount > 1 ? 's' : ''} will be removed.`, confirmText: 'Clear', danger: true });
+    const ok = await feedback.confirm({
+      title: 'Clear the cart?',
+      message: openBill
+        ? `Bill ${openBill.number} is already in the kitchen. Clearing only empties this screen: the bill stays open (unpaid) in Orders, where you can mark it paid.`
+        : `${itemCount} item${itemCount > 1 ? 's' : ''} will be removed.`,
+      confirmText: 'Clear',
+      danger: true,
+    });
     if (ok) resetCart();
+  };
+
+  // ── add-ons and combos in the cart ──
+  // Add-ons on a dish line, for every unit or split off one unit; an identical line merges back.
+  const saveLineAddons = (line, picked, scope) => {
+    setCart((prev) => {
+      let next = prev.map((c) => ({ ...c }));
+      const idx = next.findIndex((c) => c.key === line.key);
+      if (idx < 0) return prev;
+      let target;
+      if (scope === 'one' && next[idx].quantity > 1) {
+        next[idx].quantity -= 1;
+        target = { ...next[idx], quantity: 1, addons: picked };
+        next.push(target);
+      } else {
+        target = next[idx];
+        target.addons = picked;
+      }
+      target.key = cartKeyFor(target.id, target.variationName, picked);
+      const twin = next.find((c) => c !== target && c.key === target.key);
+      if (twin) {
+        twin.quantity += target.quantity;
+        next = next.filter((c) => c !== target);
+      }
+      return next;
+    });
+    setAddonLine(null);
+  };
+  // An add-on for the whole order is its own cart line.
+  const addOrderAddon = (a) => {
+    playClickSound();
+    setCart((prev) => {
+      const key = `addon_${a.id}`;
+      if (prev.some((c) => c.key === key)) return prev.map((c) => (c.key === key ? { ...c, quantity: c.quantity + 1 } : c));
+      return [...prev, { key, id: `addon-${a.id}`, isAddon: true, addonId: a.id, name: a.name, price: a.price, quantity: 1 }];
+    });
+  };
+  const addCombo = (x) => {
+    playClickSound();
+    setCart((prev) => {
+      if (prev.some((c) => c.key === x.key)) return prev.map((c) => (c.key === x.key ? { ...c, quantity: c.quantity + x.quantity } : c));
+      return [...prev, { key: x.key, id: `combo-${x.comboId}`, isCombo: true, comboId: x.comboId, name: x.name, price: x.price, quantity: x.quantity, picks: x.picks, summary: x.summary }];
+    });
+    setComboPick(null);
+    feedback.success(`${x.name} added`);
+  };
+  const onPressCombo = (c) => {
+    if ((c.slots || []).some((s) => s.choices.length > 1)) { setComboPick(c); return; }
+    const picks = {};
+    (c.slots || []).forEach((s) => { picks[s.id] = s.choices[0]?.id; });
+    addCombo({ comboId: c.id, key: `combo_${c.id}_${Object.values(picks).join('-')}`, name: c.name, price: Number(c.price) || 0, quantity: 1, picks, summary: (c.slots || []).map((s) => s.choices[0]?.name).join(', ') });
   };
 
   // Shows what's about to be printed before it hits the printer — mirrors
   // the website's KOT/bill preview, instead of printing blind off a plain
   // "created" alert. Everything is snapshotted at call time (cart, table,
-  // coupon, tax, totals) so a resetCart() right after — or an item added
+  // customer, discounts, totals) so a resetCart() right after — or an item added
   // while the preview is open — can never change what's on the receipt.
   // opts.afterClose chains a second preview (Pay flow: KOT first, then the
-  // bill) once this one is dismissed or printed.
+  // bill) once this one is dismissed or printed. opts.items: only these lines (a KOT of new dishes).
   const offerPrint = (...args) => setBillPreview(buildPreview(...args));
   function buildPreview(title, kotNumber, paymentMethod, type, opts = {}) {
-    const cartSnapshot = [...cart];
-    const tableIdSnapshot = tableId;
-    const subtotalSnapshot = subtotal;
-    const discountSnapshot = discount;
-    const taxSnapshot = tax;
-    const totalSnapshot = total;
-    const couponSnapshot = appliedCoupon?.coupon_code;
-    const tableName = tables.find((t) => String(t.id) === String(tableIdSnapshot))?.table_number;
+    const table = tables.find((t) => String(t.id) === String(tableId));
+    const lines = opts.items || cart;
     return {
       type,
       title,
@@ -336,41 +442,111 @@ export default function POSScreen({ route }) {
       businessIdNo: user?.show_business_id ? user?.business_id_no : null,
       orderNumber: opts.orderNumber || null,
       kotNumber,
-      orderType: tableIdSnapshot ? 'Dine-in' : 'Takeaway',
-      tableName,
-      customerName: null,
+      orderType: tableId ? 'Dine-in' : 'Takeaway',
+      tableName: table?.table_number,
+      tableLabel: table ? `${table.table_number}${table.area_name ? ` · ${table.area_name}` : ''}` : 'Takeaway',
+      customerName: custState.cust?.name || null,
+      customer: custState.cust ? { name: custState.cust.name, phone: custState.cust.phone } : null,
+      status: opts.status || (type === 'bill' ? 'Paid' : null),
       createdAt: new Date().toISOString(),
-      items: cartSnapshot.map((c) => ({ name: c.name, quantity: c.quantity, price: c.price, variationName: c.variationName })),
-      subtotal: round2(subtotalSnapshot),
-      discount: discountSnapshot,
-      couponCode: couponSnapshot,
-      tax: taxSnapshot,
+      items: lines.map((c) => ({
+        name: c.isAddon ? `${c.name} (add-on)` : c.name,
+        quantity: c.quantity,
+        price: c.price,
+        variationName: c.isCombo ? c.summary : c.variationName,
+        addons: (c.addons || []).map((a) => ({ name: a.name, price: a.price })),
+        lineTotal: lineTotal(c),
+      })),
+      subtotal,
+      discount: round2(taken + manualAmount),
+      couponCode,
+      discounts: discountRows,
+      tax,
+      taxName,
       taxPercent: gstEnabled ? taxPercent : null,
-      total: totalSnapshot,
+      total,
+      walletPaid: opts.walletPaid || 0,
       paymentMethod,
+      payments: opts.payments,
+      returnAmount: opts.returnAmount || 0,
+      dueAmount: opts.dueAmount || 0,
+      loyaltyLine: opts.loyaltyLine || '',
       currency,
       afterClose: opts.afterClose,
     };
   }
 
-  // Mirrors the website POS, which has no customer-details form at all — a
-  // generic placeholder name is sent along with the table/order type instead.
-  const buildCartPayload = (extraNotes) => ({
-    tableId: tableId || '',
-    orderType: tableId ? 'Dine-in' : 'Takeaway',
-    customerName: tableId ? 'Table Customer' : 'Takeaway',
-    cartItems: JSON.stringify(
-      cart.map((c) => ({ id: c.id, name: c.name, price: c.price, quantity: c.quantity, variation_name: c.variationName || '' }))
-    ),
-    subtotal,
-    tax,
-    total,
-    couponCode: appliedCoupon?.coupon_code || '',
-    notes: extraNotes || '',
-  });
+  // What the server gets for this cart: dishes (with add-on ids), order add-ons and combos
+  // separately, the customer and every discount — the same fields as the website POS.
+  const buildCartPayload = (extraNotes) => {
+    const cust = custState.cust;
+    const f = {
+      tableId: tableId || '',
+      orderType: tableId ? 'Dine-in' : 'Takeaway',
+      customerName: cust ? cust.name : tableId ? 'Table Customer' : 'Takeaway',
+      cartItems: JSON.stringify(
+        cart.filter((c) => !c.isAddon && !c.isCombo).map((c) => ({
+          id: c.id, name: c.name, price: c.price, quantity: c.quantity, variation_name: c.variationName || '',
+          addons: (c.addons || []).map((a) => ({ id: a.id })),
+        }))
+      ),
+      globalAddons: JSON.stringify(cart.filter((c) => c.isAddon).map((c) => ({ id: c.addonId, quantity: c.quantity }))),
+      subtotal: subtotal.toFixed(2),
+      tax: tax.toFixed(2),
+      total: total.toFixed(2),
+      couponCode,
+      notes: extraNotes || '',
+    };
+    const cb = cart.filter((c) => c.isCombo);
+    if (cb.length) f.combos = JSON.stringify(cb.map((c) => ({ id: c.comboId, quantity: c.quantity, picks: c.picks || {} })));
+    if (cust) {
+      f.customerId = cust.id;
+      f.customerPhone = cust.phone;
+      if (pc.points) f.redeemPoints = pc.points;
+    }
+    if (manualAmount > 0) {
+      f.manualDiscount = manualAmount.toFixed(2);
+      f.manualDiscountType = manualDisc.type;
+      f.manualDiscountValue = String(manualDisc.value);
+    }
+    return f;
+  };
+
+  // What the kitchen doesn't have yet (the KOT button sends only this).
+  const kitchenDelta = () => {
+    const items = [];
+    const kCombos = [];
+    let kAddons = false;
+    const newLines = [];
+    cart.forEach((c) => {
+      const d = c.quantity - (sent[c.key] || 0);
+      if (d <= 0) return;
+      newLines.push({ ...c, quantity: d });
+      if (c.isAddon) { kAddons = true; return; }
+      if (c.isCombo) { kCombos.push({ id: c.comboId, quantity: d, picks: c.picks || {} }); return; }
+      items.push({ id: c.id, name: c.name, quantity: d, addons: (c.addons || []).map((a) => ({ id: a.id })) });
+    });
+    return { items, combos: kCombos, addons: kAddons, lines: newLines };
+  };
+  const markAllSent = () => {
+    const m = {};
+    cart.forEach((c) => { m[c.key] = c.quantity; });
+    setSent(m);
+  };
+  const withKitchen = (f, delta) => {
+    f.kitchenItems = JSON.stringify(delta.items);
+    if (delta.addons) f.kitchenAddons = '1';
+    if (delta.combos.length) f.kitchenCombos = JSON.stringify(delta.combos);
+    if (openBill) f.openOrderId = openBill.id;
+    return f;
+  };
 
   const holdOrder = async () => {
     if (cart.length === 0) return;
+    if (openBill) {
+      feedback.info(`Bill ${openBill.number} is already saved and in the kitchen. Use KOT for new dishes and Pay when the guest leaves.`);
+      return;
+    }
     setHolding(true);
     try {
       const res = await apiPostForm('/controllers/pos_operations.php', {
@@ -378,37 +554,111 @@ export default function POSScreen({ route }) {
         ...buildCartPayload(),
       });
       if (!res.success) throw new Error(res.message || 'Could not hold order');
-      feedback.success(`Held as ${res.order_number}. Find it in Orders.`);
+      feedback.success(`Held as ${res.order_number}. Bring it back from Held orders.`);
       resetCart();
     } catch (e) {
       feedback.errorFrom(e, 'Could not hold the order');
     } finally {
       setHolding(false);
     }
-  };  // "Send KOT" — ticket goes to the kitchen with no payment collected yet.
-  // The cart is deliberately KEPT (not cleared): the order isn't confirmed
-  // until payment — "Pay" — so the counter staff can still collect it, or
-  // add items and fire another KOT for the same table. Only Pay (or Clear
-  // Cart) empties the cart.
+  };
+
+  // ── held orders ──
+  const openHeld = async () => {
+    setHeldOpen(true);
+    setHeldLoading(true);
+    try {
+      const res = await apiPostForm('/controllers/pos_operations.php', { action: 'list_held' });
+      setHeld(res?.success ? res.orders || [] : []);
+    } catch (e) {
+      feedback.errorFrom(e, 'Could not load held orders');
+    } finally {
+      setHeldLoading(false);
+    }
+  };
+  const resumeHeld = async (o) => {
+    if (cart.length > 0) {
+      const ok = await feedback.confirm({ title: 'Replace the cart?', message: `The ${itemCount} item${itemCount > 1 ? 's' : ''} in the cart now will be removed.`, confirmText: 'Replace' });
+      if (!ok) return;
+    }
+    setHeldBusy(o.id);
+    try {
+      const res = await apiPostForm('/controllers/pos_operations.php', { action: 'resume_held', orderId: o.id });
+      if (!res.success) throw new Error(res.message || 'Could not resume');
+      const lines = [];
+      (res.items || []).forEach((it) => {
+        const qty = Number(it.quantity) || 1;
+        if (it.variation_name === 'Add-on' && it.addon_id) {
+          lines.push({ key: `addon_${it.addon_id}`, id: `addon-${it.addon_id}`, isAddon: true, addonId: Number(it.addon_id), name: it.item_name, price: Number(it.unit_price) || 0, quantity: qty });
+          return;
+        }
+        if (!it.menu_item_id) return;
+        const ad = (it.addons || []).map((a) => ({ id: Number(a.id), name: a.name, price: Number(a.price) || 0 }));
+        const variationName = it.variation_name || '';
+        const unit = round2((Number(it.unit_price) || 0) - ad.reduce((s, a) => s + a.price, 0));
+        lines.push({ key: cartKeyFor(it.menu_item_id, variationName, ad), id: Number(it.menu_item_id), name: it.item_name, price: unit, quantity: qty, variationName, addons: ad });
+      });
+      resetCart();
+      setCart(lines);
+      if (res.table_id) setTableId(String(res.table_id));
+      if (res.customer_id) loadPosCustomer(res.customer_id).then((c) => setCustState({ ...NO_CUSTOMER, cust: c })).catch(() => {});
+      setHeldOpen(false);
+      setCartOpen(true);
+      feedback.success(`${res.order_number} is back in the cart`);
+    } catch (e) {
+      feedback.errorFrom(e, 'Could not resume the order');
+    } finally {
+      setHeldBusy(null);
+    }
+  };
+  const discardHeld = async (o) => {
+    const ok = await feedback.confirm({ title: `Discard ${o.order_number}?`, message: 'The held order is removed.', confirmText: 'Discard', danger: true });
+    if (!ok) return;
+    setHeldBusy(o.id);
+    try {
+      const res = await apiPostForm('/controllers/pos_operations.php', { action: 'discard_held', orderId: o.id });
+      if (!res.success) throw new Error(res.message || 'Could not discard');
+      setHeld((h) => h.filter((x) => x.id !== o.id));
+    } catch (e) {
+      feedback.errorFrom(e, 'Could not discard the order');
+    } finally {
+      setHeldBusy(null);
+    }
+  };
+
+  // "KOT" — the dishes not sent yet go to the kitchen and the bill is saved UNPAID (open):
+  // it isn't counted in sales until Pay settles it. The cart is kept so the guest can order
+  // more (the next KOT sends only the new dishes) and pay at the end.
   const sendKOT = async () => {
     if (cart.length === 0) return;
+    const delta = kitchenDelta();
+    if (!delta.items.length && !delta.addons && !delta.combos.length) {
+      feedback.info('Everything on this bill is already in the kitchen.');
+      return;
+    }
     setSendingKot(true);
     try {
-      const res = await apiPostForm('/controllers/pos_operations.php', {
+      const res = await apiPostForm('/controllers/pos_operations.php', withKitchen({
         action: 'create_kot',
         ...buildCartPayload(),
-        paymentMethod: 'Cash',
-        kot_only: 1, // kitchen ticket, not paid yet (the server ignores it; the app demo uses it)
-      });
-      if (!res.success) throw new Error(res.message || 'Could not send to kitchen');
+        paymentMethod: 'Due',
+        kot_only: 1, // the app demo uses it; the server goes by paymentMethod = Due
+      }, delta));
+      if (!res.success) {
+        if (/already paid or cancelled/i.test(res.message || '')) { setOpenBill(null); setSent({}); }
+        throw new Error(res.message || 'Could not send to kitchen');
+      }
+      setOpenBill({ id: res.order_id, number: res.order_number });
+      markAllSent();
       haptic.success();
+      const kotPreview = buildPreview('KOT', res.kot_number, null, 'kot', { orderNumber: res.order_number, items: delta.lines });
       const pick = await feedback.choose({
         title: 'Sent to the kitchen',
-        message: `Ticket ${res.kot_number}. The cart is kept, tap Pay when the guest pays.`,
+        message: `Ticket ${res.kot_number}. Bill ${res.order_number} stays open until it's paid: add more and tap KOT again, or Pay.`,
         options: [{ label: 'Print KOT', value: 'kot', icon: 'print-outline' }],
         cancelText: 'Done',
       });
-      if (pick === 'kot') offerPrint('KOT sent to kitchen', res.kot_number, null, 'kot');
+      if (pick === 'kot') setBillPreview(kotPreview);
     } catch (e) {
       feedback.errorFrom(e, 'Could not send to the kitchen');
     } finally {
@@ -416,40 +666,74 @@ export default function POSScreen({ route }) {
     }
   };
 
-  // "Pay" — confirms the order: first a KOT ticket is fired to the kitchen,
-  // then the paid bill (with the payment method on it) is offered for
-  // printing. Only now does the server create the order (Ready + Paid,
-  // counted in sales immediately) and the cart is cleared.
+  // "Pay" — the wallet pays first; the payment window takes the rest (nothing left: no window).
   const payNow = () => {
     if (cart.length === 0) return;
+    if (toCollect <= 0.004) {
+      confirmPayment({ paymentMethod: 'Wallet', status: 'Paid', breakdown: null, entered: 0, due: 0, change: 0, amounts: {} });
+      return;
+    }
     setPayModalOpen(true);
   };
 
-  const confirmPayment = async ({ paymentMethod, breakdown }) => {
+  // Confirms the order: settles the open bill (or makes the order), sends the kitchen whatever
+  // it doesn't have yet, records the payment and what the customer earns, then offers the
+  // KOT and the bill for printing.
+  const confirmPayment = async ({ paymentMethod, status, breakdown, due = 0, change = 0, amounts = {} }) => {
     setPaying(true);
     try {
-      const res = await apiPostForm('/controllers/pos_operations.php', {
+      const paidBits = [
+        ...(walletPart > 0 ? [`Wallet: ${currency}${walletPart.toFixed(2)}`] : []),
+        ...Object.keys(amounts).filter((m) => Number(amounts[m]) > 0).map((m) => `${m}: ${currency}${Number(amounts[m]).toFixed(2)}`),
+      ];
+      const notes = [breakdown && !walletPart ? `Payment split: ${breakdown}` : paidBits.length > 1 ? paidBits.join(', ') : '', due > 0 ? `Due: ${currency}${due.toFixed(2)}` : '']
+        .filter(Boolean).join(', ');
+      const delta = kitchenDelta();
+      const fields = {
         action: 'create_kot',
-        ...buildCartPayload(breakdown ? `Payment split: ${breakdown}` : null),
+        ...buildCartPayload(notes),
         paymentMethod,
-      });
+        paymentStatus: status === 'Partially Paid' ? 'Partially Paid' : 'Paid',
+        paidAmount: Math.max(0, total - due).toFixed(2),
+      };
+      if (walletPart > 0) fields.walletAmount = walletPart.toFixed(2);
+      if (openBill) withKitchen(fields, delta);
+      const res = await apiPostForm('/controllers/pos_operations.php', fields);
       if (!res.success) throw new Error(res.message || 'Could not process payment');
       setPayModalOpen(false);
-      // Snapshot BEFORE resetCart — offerPrint reads live discount/tax/total
-      // state, which resetCart would zero out.
-      const billSnapshot = { kotNumber: res.kot_number, paymentMethod, orderNumber: res.order_number || null };
+      const payments = Object.keys(amounts).filter((m) => Number(amounts[m]) > 0).map((m) => [m, Number(amounts[m])]);
+      const line = loyaltyLine(res.loyalty, currency);
+      const billOpts = {
+        orderNumber: res.order_number || null,
+        status: status === 'Partially Paid' ? 'Partially Paid' : 'Paid',
+        walletPaid: walletPart,
+        payments: payments.length ? payments : undefined,
+        returnAmount: change,
+        dueAmount: due,
+        loyaltyLine: line,
+      };
       // Both previews snapshot the cart and totals, so build them before the cart is cleared.
       const totalPaid = total;
-      const kotPreview = buildPreview('KOT', res.kot_number, null, 'kot', { orderNumber: billSnapshot.orderNumber });
-      const billPreviewData = buildPreview('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill', { orderNumber: billSnapshot.orderNumber });
+      const custName = custState.cust?.name;
+      const kotPreview = res.kot_number ? buildPreview('KOT', res.kot_number, null, 'kot', { orderNumber: res.order_number, items: openBill ? delta.lines : undefined }) : null;
+      const billPreviewData = buildPreview('Payment collected', res.kot_number || res.order_number, paymentMethod, 'bill', billOpts);
       resetCart();
       haptic.success();
+      if (res.loyalty?.earned && custName) {
+        const e = res.loyalty.earned;
+        const bits = [];
+        if (e.points) bits.push(`${e.points} points`);
+        if (e.stamp) bits.push('a stamp');
+        if (e.cashback) bits.push(`${money(e.cashback, currency)} cashback`);
+        if (e.reward) bits.push(`a reward: ${e.reward.label}`);
+        if (bits.length) feedback.success(`${custName} earned ${bits.join(', ')}`, 4000);
+      }
       const pick = await feedback.choose({
         title: `Paid ${money(totalPaid, currency)}`,
-        message: res.order_number ? `${res.order_number} is in Orders and counted in today's sales.` : 'Sent to the kitchen.',
+        message: res.order_number ? `${res.order_number} is in Orders and counted in today's sales.${line ? `\n${line}` : ''}` : 'Sent to the kitchen.',
         options: [
-          { label: 'Print KOT and bill', value: 'both', icon: 'print-outline' },
-          { label: 'Print bill only', value: 'bill', icon: 'receipt-outline' },
+          ...(kotPreview ? [{ label: 'Print KOT and bill', value: 'both', icon: 'print-outline' }] : []),
+          { label: 'Print bill', value: 'bill', icon: 'receipt-outline' },
         ],
         cancelText: 'Done',
       });
@@ -482,6 +766,9 @@ export default function POSScreen({ route }) {
           <View style={styles.tablePick}>
             <SelectField compact icon={tableId ? 'restaurant' : 'walk'} placeholder="Walk-in" title="Order for" value={tableId} onChange={setTableId} options={tableOptions} />
           </View>
+          <PressableScale style={styles.heldBtn} onPress={openHeld} accessibilityLabel="Held orders">
+            <Ionicons name="pause-circle-outline" size={20} color={colors.ink} />
+          </PressableScale>
         </View>
       </ScreenHeader>
 
@@ -509,6 +796,22 @@ export default function POSScreen({ route }) {
               );
             })}
           </ScrollView>
+
+          {combos.length ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.comboScroll} contentContainerStyle={[styles.comboRow, { paddingHorizontal: gutter }]}>
+              {combos.map((c) => (
+                <PressableScale key={c.id} style={[styles.comboCard, shadow.sm]} onPress={() => onPressCombo(c)} accessibilityLabel={`Combo ${c.name}, ${money(c.price, currency)}`}>
+                  <View style={styles.comboIcon}><Ionicons name="fast-food" size={16} color={colors.primary} /></View>
+                  <View style={{ flexShrink: 1 }}>
+                    <Text style={styles.comboName} numberOfLines={1}>{c.name}</Text>
+                    <Text style={styles.comboPrice} numberOfLines={1}>
+                      {money(c.price, currency)}{c.save > 0 ? <Text style={styles.comboWorth}>  {money(c.worth, currency)}</Text> : null}
+                    </Text>
+                  </View>
+                </PressableScale>
+              ))}
+            </ScrollView>
+          ) : null}
 
           <FlatList
             key={gridCols}
@@ -659,13 +962,29 @@ export default function POSScreen({ route }) {
           </View>
 
           <ScrollView style={styles.fill} contentContainerStyle={styles.cartContent} showsVerticalScrollIndicator={false}>
-            {cart.map((c) => (
-              <View key={c.key} style={styles.cartLine}>
+            {openBill ? (
+              <View style={styles.openBill}>
+                <Ionicons name="flame" size={16} color="#B45309" />
+                <Text style={styles.openBillText}>
+                  <Text style={{ fontFamily: font.semiBold }}>Bill {openBill.number}</Text> is open: in the kitchen, not paid yet.
+                  {kitchenDelta().lines.length ? ' New dishes: tap KOT to send them.' : ''}
+                </Text>
+              </View>
+            ) : null}
+            {cart.map((c) => {
+              const inKitchen = Math.min(sent[c.key] || 0, c.quantity);
+              return (
+              <View key={c.key} style={styles.cartLineWrap}>
+              <View style={styles.cartLine}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cartLineName} numberOfLines={1}>
-                    {c.name}{c.variationName ? ` (${c.variationName})` : ''}
+                    {c.isAddon ? '+ ' : ''}{c.name}{c.variationName ? ` (${c.variationName})` : ''}
                   </Text>
-                  <Text style={styles.cartLinePrice}>{currency}{c.price} each</Text>
+                  {c.isCombo && c.summary ? <Text style={styles.cartLineSub} numberOfLines={2}>{c.summary}</Text> : null}
+                  <Text style={styles.cartLinePrice}>
+                    {money(lineTotal(c), currency)}{c.quantity > 1 ? ` · ${money(lineTotal(c) / c.quantity, currency)} each` : ''}
+                    {inKitchen ? `  ·  ${inKitchen} in kitchen` : ''}
+                  </Text>
                 </View>
                 <View style={styles.qtyStepper}>
                   <Pressable style={styles.qtyButton} onPress={() => changeQty(c.key, -1)} hitSlop={6}>
@@ -680,11 +999,44 @@ export default function POSScreen({ route }) {
                   <Ionicons name="trash-outline" size={16} color={colors.danger} />
                 </Pressable>
               </View>
-            ))}
+              {!c.isAddon && !c.isCombo && ((c.addons || []).length || addons.length) ? (
+                <View style={styles.addonRow}>
+                  {(c.addons || []).map((a) => (
+                    <View key={a.id} style={styles.addonChip}>
+                      <Text style={styles.addonChipText}>+ {a.name} {money(a.price, currency)}</Text>
+                    </View>
+                  ))}
+                  {addons.length ? (
+                    <Pressable style={styles.addonAdd} onPress={() => setAddonLine(c)} hitSlop={4}>
+                      <Ionicons name="add-circle-outline" size={15} color={colors.primary} />
+                      <Text style={styles.addonAddText}>{(c.addons || []).length ? 'Change' : 'Add-on'}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+              </View>
+              );
+            })}
+            {addons.length && cart.length ? (
+              <>
+                <Text style={styles.fieldLabel}>Add to the order</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                  {addons.map((a) => (
+                    <PressableScale key={a.id} feedback="select" style={styles.orderAddon} onPress={() => addOrderAddon(a)}>
+                      <Ionicons name="add" size={14} color={colors.primary} />
+                      <Text style={styles.orderAddonText}>{a.name} · {money(a.price, currency)}</Text>
+                    </PressableScale>
+                  ))}
+                </ScrollView>
+              </>
+            ) : null}
             {cart.length === 0 ? <Text style={styles.emptyCartText}>Your cart is empty</Text> : null}
 
             <Text style={styles.fieldLabel}>Select Table</Text>
             <SelectField placeholder="Walk-in" value={tableId} onChange={setTableId} options={tableOptions} />
+
+            <Text style={styles.fieldLabel}>Customer</Text>
+            <CustomerBox state={custState} setState={setCustState} subtotal={subtotal} currency={currency} onOpenPicker={() => setPickerOpen(true)} />
 
             <Text style={styles.fieldLabel}>Coupon</Text>
             {appliedCoupon ? (
@@ -733,20 +1085,28 @@ export default function POSScreen({ route }) {
               </ScrollView>
             ) : null}
 
+            <PressableScale style={styles.discRow} onPress={() => setDiscOpen(true)} accessibilityLabel="Discount on this bill">
+              <Ionicons name="pricetags-outline" size={17} color={manualAmount > 0 ? colors.success : colors.inkSoft} />
+              <Text style={[styles.discRowText, manualAmount > 0 && { color: colors.success }]}>
+                {manualAmount > 0 ? `${manualDiscountLabel(manualDisc, currency)} · −${money(manualAmount, currency)}` : 'Add a discount'}
+              </Text>
+              <Ionicons name={manualAmount > 0 ? 'create-outline' : 'add'} size={17} color={colors.inkSoft} />
+            </PressableScale>
+
             <View style={styles.summaryBox}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Subtotal</Text>
                 <Text style={styles.summaryValue}>{currency}{subtotal.toFixed(2)}</Text>
               </View>
-              {discount > 0 ? (
-                <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: colors.success }]}>Coupon ({appliedCoupon.coupon_code})</Text>
-                  <Text style={[styles.summaryValue, { color: colors.success }]}>-{currency}{discount.toFixed(2)}</Text>
+              {discountRows.map(([label, amt]) => (
+                <View key={label} style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.success }]} numberOfLines={1}>{label}</Text>
+                  <Text style={[styles.summaryValue, { color: colors.success }]}>-{currency}{amt.toFixed(2)}</Text>
                 </View>
-              ) : null}
+              ))}
               {tax > 0 ? (
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Tax ({taxPercent}%)</Text>
+                  <Text style={styles.summaryLabel}>{taxName} ({taxPercent}%)</Text>
                   <Text style={styles.summaryValue}>{currency}{tax.toFixed(2)}</Text>
                 </View>
               ) : null}
@@ -754,6 +1114,18 @@ export default function POSScreen({ route }) {
                 <Text style={styles.summaryTotalLabel}>Total</Text>
                 <Text style={styles.summaryTotalValue}>{currency}{total.toFixed(2)}</Text>
               </View>
+              {walletPart > 0 ? (
+                <>
+                  <View style={styles.summaryRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.success }]}>From wallet</Text>
+                    <Text style={[styles.summaryValue, { color: colors.success }]}>-{currency}{walletPart.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryTotalLabel}>To collect</Text>
+                    <Text style={styles.summaryTotalValue}>{currency}{toCollect.toFixed(2)}</Text>
+                  </View>
+                </>
+              ) : null}
             </View>
           </ScrollView>
 
@@ -778,21 +1150,63 @@ export default function POSScreen({ route }) {
                 </>
               )}
             </PressableScale>
-            <PressableScale style={styles.payButton} onPress={payNow} disabled={holding || sendingKot || paying || cart.length === 0} feedback="press" accessibilityLabel={`Pay ${money(total, currency)}`}>
+            <PressableScale style={styles.payButton} onPress={payNow} disabled={holding || sendingKot || paying || cart.length === 0} feedback="press" accessibilityLabel={`Pay ${money(toCollect, currency)}`}>
               <Ionicons name="card" size={17} color="#fff" />
-              <Text style={styles.payButtonText} numberOfLines={1}>Pay {money(total, currency)}</Text>
+              <Text style={styles.payButtonText} numberOfLines={1}>Pay {money(toCollect, currency)}</Text>
             </PressableScale>
           </View>
         </KeyboardAvoidingView>
+        <CustomerPicker
+          inline
+          visible={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          currency={currency}
+          onSkip={() => { setCustState(NO_CUSTOMER); setPickerOpen(false); }}
+          onPicked={(c, msg) => {
+            setCustState({ ...NO_CUSTOMER, cust: c });
+            setPickerOpen(false);
+            if (msg) feedback.success(msg);
+          }}
+        />
+        <DiscountSheet
+          inline
+          visible={discOpen}
+          onClose={() => setDiscOpen(false)}
+          value={manualDisc}
+          subtotal={subtotal}
+          currency={currency}
+          onApply={(d) => { setManualDisc(d); setDiscOpen(false); }}
+        />
+        <AddonSheet
+          inline
+          visible={!!addonLine}
+          line={addonLine}
+          addons={addons}
+          currency={currency}
+          onClose={() => setAddonLine(null)}
+          onSave={(picked, scope) => saveLineAddons(addonLine, picked, scope)}
+        />
         <FeedbackHost />
         </View>
       </Modal>
+
+      <ComboSheet visible={!!comboPick} combo={comboPick} currency={currency} onClose={() => setComboPick(null)} onAdd={addCombo} />
+      <HeldSheet
+        visible={heldOpen}
+        onClose={() => setHeldOpen(false)}
+        orders={held}
+        loading={heldLoading}
+        busyId={heldBusy}
+        currency={currency}
+        onResume={resumeHeld}
+        onDiscard={discardHeld}
+      />
 
       <SplitPaymentModal
         visible={payModalOpen}
         onClose={() => setPayModalOpen(false)}
         onConfirm={confirmPayment}
-        total={total}
+        total={toCollect}
         currency={currency}
         methods={paymentMethods.length > 0 ? paymentMethods.map((m) => m.method_name) : ['Cash', 'Card', 'UPI']}
         submitting={paying}
@@ -916,6 +1330,35 @@ const styles = StyleSheet.create({
   tablePick: {
     width: 124,
   },
+  heldBtn: {
+    width: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  comboScroll: { flexGrow: 0, marginTop: -spacing.xs, marginBottom: spacing.sm },
+  comboRow: { gap: spacing.sm, paddingVertical: 2 },
+  comboCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: 220, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary + '33' },
+  comboIcon: { width: 30, height: 30, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  comboName: { fontFamily: font.semiBold, fontSize: 13, color: colors.ink },
+  comboPrice: { fontFamily: font.semiBold, fontSize: 12, color: colors.primary },
+  comboWorth: { fontFamily: font.regular, fontSize: 11, color: colors.muted, textDecorationLine: 'line-through' },
+  openBill: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', padding: spacing.md, marginBottom: spacing.sm, borderRadius: radius.md, backgroundColor: '#FEF3C7' },
+  openBillText: { flex: 1, fontFamily: font.regular, fontSize: 12.5, lineHeight: 18, color: '#78350F' },
+  cartLineWrap: { backgroundColor: colors.surface, borderRadius: radius.md },
+  cartLineSub: { fontFamily: font.regular, fontSize: 11.5, color: colors.inkSoft },
+  addonRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, paddingHorizontal: spacing.md, paddingBottom: spacing.sm, marginTop: -spacing.xs },
+  addonChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: colors.bg },
+  addonChipText: { fontFamily: font.medium, fontSize: 11.5, color: colors.inkSoft },
+  addonAdd: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3 },
+  addonAddText: { fontFamily: font.semiBold, fontSize: 12, color: colors.primary },
+  orderAddon: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 34, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.primary + '44', backgroundColor: '#FFF8F5' },
+  orderAddonText: { fontFamily: font.semiBold, fontSize: 12.5, color: colors.ink },
+  discRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg, paddingHorizontal: spacing.md, height: 48, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  discRowText: { flex: 1, fontFamily: font.semiBold, fontSize: 13.5, color: colors.inkSoft },
   vegChip: {
     flexDirection: 'row',
     alignItems: 'center',

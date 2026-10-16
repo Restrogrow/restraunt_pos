@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import Avatar from '../components/Avatar';
 import CouponsModal from '../components/CouponsModal';
@@ -17,7 +17,8 @@ import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { isBiometricSupported, authenticate } from '../utils/biometricAuth';
 import { connectToPrinter, isPrinterConnected, listPairedPrinters, printToBluetoothPrinter } from '../utils/bluetoothPrinter';
-import { buildReceiptLines, convertReceiptImageToEscPos, printToNetworkPrinter } from '../utils/receiptPrinter';
+import { convertReceiptImageToEscPos, printToNetworkPrinter } from '../utils/receiptPrinter';
+import Receipt, { FitWidth, receiptWidth } from '../components/Receipt';
 
 function ChangePasswordCard() {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -102,6 +103,24 @@ function ChangePasswordCard() {
   );
 }
 
+// A short sample bill for "Test Print": same <Receipt> as real bills, with a
+// Hindi name in it so the test also proves non-Latin text prints.
+const TEST_RECEIPT = {
+  type: 'bill',
+  billNo: 'TEST',
+  tableLabel: 'Test print',
+  status: 'Paid',
+  items: [
+    { name: 'Paneer Tikka', quantity: 1, price: 220 },
+    { name: 'मसाला चाय', variationName: 'Large', quantity: 2, price: 40, addons: [{ name: 'Extra ginger', price: 5 }] },
+  ],
+  subtotal: 310,
+  taxName: 'Tax',
+  tax: 0,
+  total: 310,
+  payments: [['Cash', 310]],
+};
+
 function PrinterSettingsCard() {
   const [type, setType] = useState('network');
   const [ip, setIp] = useState('');
@@ -115,6 +134,8 @@ function PrinterSettingsCard() {
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState(null); // { text, isError }
   const testReceiptRef = useRef(null);
+  const [showSample, setShowSample] = useState(false);
+  const [sampleRoom, setSampleRoom] = useState(0);
   const [linked, setLinked] = useState(null); // Bluetooth link: null = checking
   const [linking, setLinking] = useState(false);
 
@@ -217,7 +238,7 @@ function PrinterSettingsCard() {
       // hidden test-receipt view below rather than encoding text into
       // printer bytes, so this also proves the actual print path works.
       const base64Png = await captureRef(testReceiptRef, { format: 'png', quality: 1, result: 'base64' });
-      const bytes = await convertReceiptImageToEscPos({ base64Png });
+      const bytes = await convertReceiptImageToEscPos({ base64Png, dotWidth: paperWidth === '80' ? 576 : 384 });
       if (type === 'bluetooth') {
         await printToBluetoothPrinter({ address: btAddress, bytes });
       } else {
@@ -234,36 +255,6 @@ function PrinterSettingsCard() {
   return (
     <View style={[styles.card, shadow.sm, styles.section]}>
       <Text style={styles.cardTitle}>Receipt Printer</Text>
-
-      {/* Off-screen but still laid out (not display:none) so
-          react-native-view-shot has a real rendered view to capture —
-          same image-based print pipeline "Test Print" is meant to verify. */}
-      <View ref={testReceiptRef} collapsable={false} style={styles.hiddenTestReceipt}>
-        {buildReceiptLines({
-          restaurantName: 'Test Print',
-          orderType: 'Test',
-          items: [{ name: 'Sample Item', quantity: 1, price: 0 }],
-          subtotal: 0,
-          tax: 0,
-          total: 0,
-        }).map((l, i) => (
-          <Text
-            key={i}
-            style={[
-              styles.hiddenTestReceiptText,
-              l.size === 'title' && styles.hiddenTestReceiptTitle,
-              l.size === 'small' && styles.hiddenTestReceiptSmall,
-              l.bold && { fontWeight: 'bold' },
-            ]}
-          >
-            {l.text}
-          </Text>
-        ))}
-        <View style={styles.hiddenTestReceiptBrandFooter}>
-          <Image source={require('../assets/restrogrow-logo.png')} style={styles.hiddenTestReceiptBrandLogo} />
-          <Text style={styles.hiddenTestReceiptBrandText}>Powered by RestroGrow</Text>
-        </View>
-      </View>
 
       <View style={styles.printerTypeRow}>
         <Pressable
@@ -402,6 +393,27 @@ function PrinterSettingsCard() {
           )}
         </Pressable>
       </View>
+      <Pressable style={styles.sampleLink} onPress={() => setShowSample((v) => !v)} hitSlop={6}>
+        <Text style={styles.sampleLinkText}>{showSample ? 'Hide sample bill' : 'See sample bill'}</Text>
+      </Pressable>
+
+      {/* Off-screen but still laid out (not display:none) so
+          react-native-view-shot has a real rendered view to capture —
+          same image-based print pipeline "Test Print" is meant to verify.
+          "See sample" moves the very same view on screen. */}
+      {showSample ? (
+        <View style={styles.sampleWrap} onLayout={(e) => setSampleRoom(e.nativeEvent.layout.width)}>
+          <FitWidth available={sampleRoom - 2} contentWidth={receiptWidth(paperWidth)}>
+            <View ref={testReceiptRef} collapsable={false} style={styles.testReceiptShown}>
+              <Receipt data={TEST_RECEIPT} paperWidth={paperWidth} />
+            </View>
+          </FitWidth>
+        </View>
+      ) : (
+        <View ref={testReceiptRef} collapsable={false} style={styles.hiddenTestReceipt}>
+          <Receipt data={TEST_RECEIPT} paperWidth={paperWidth} />
+        </View>
+      )}
     </View>
   );
 }
@@ -839,39 +851,24 @@ const styles = StyleSheet.create({
     top: -9999,
     left: -9999,
     backgroundColor: '#fff',
-    padding: spacing.sm,
   },
-  hiddenTestReceiptText: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontSize: 12,
-    lineHeight: 16,
-    color: '#000',
-  },
-  hiddenTestReceiptTitle: {
-    fontSize: 20,
-    lineHeight: 24,
-  },
-  hiddenTestReceiptSmall: {
-    fontSize: 10.5,
-    lineHeight: 14,
-    color: '#333',
-  },
-  hiddenTestReceiptBrandFooter: {
+  sampleWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-    gap: 4,
+    marginBottom: spacing.md,
   },
-  hiddenTestReceiptBrandLogo: {
-    width: 32,
-    height: 32,
-    resizeMode: 'contain',
+  testReceiptShown: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  hiddenTestReceiptBrandText: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: 'bold',
-    fontSize: 14,
-    color: '#000',
+  sampleLink: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+  },
+  sampleLinkText: {
+    fontFamily: font.semiBold,
+    fontSize: 12.5,
+    color: colors.primary,
   },
   content: {
     padding: spacing.xl,

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { getPrinterSettings, savePrinterSettings } from '../config/printerSettings';
@@ -10,7 +10,8 @@ import {
   listPairedPrinters,
   writeToPrinter,
 } from '../utils/bluetoothPrinter';
-import { buildReceiptLines, convertReceiptImageToEscPos, printToNetworkPrinter, testNetworkPrinter } from '../utils/receiptPrinter';
+import { convertReceiptImageToEscPos, printToNetworkPrinter, testNetworkPrinter } from '../utils/receiptPrinter';
+import Receipt, { FitWidth, receiptWidth } from './Receipt';
 
 const STATUS_META = {
   idle: { label: 'Not connected', color: colors.muted },
@@ -71,13 +72,14 @@ export default function BillPreviewModal({ visible, onClose, data }) {
     });
   }, [visible]);
 
-  // Real Unicode text — no ASCII substitution — since printing now works by
-  // capturing this exact rendered view as a bitmap (see handlePrint), not by
-  // encoding it into single-byte printer text. What's on screen is pixel-for-
-  // pixel what goes to the printer, so it can never drift, and it prints
-  // correctly in Hindi or any other script.
-  const receiptLines = useMemo(() => (data ? buildReceiptLines(data) : []), [data]);
+  // What's on screen is exactly what prints: handlePrint captures the
+  // <Receipt> view below as a picture, so any script (Hindi etc.) and the
+  // website-style layout come out as seen. The data contract is documented
+  // at the top of components/Receipt.js.
   const receiptRef = useRef(null);
+  // Width of the grey desk the slip sits on; FitWidth shrinks an 80mm slip
+  // to it on small phones.
+  const [deskWidth, setDeskWidth] = useState(0);
 
   if (!data) return null;
   const { title } = data;
@@ -193,7 +195,6 @@ export default function BillPreviewModal({ visible, onClose, data }) {
             </Pressable>
           </View>
 
-          <ScrollView style={styles.receiptScroll} showsVerticalScrollIndicator={false}>
           <View style={styles.printerBar}>
             {!setupOpen ? (
               <>
@@ -341,31 +342,23 @@ export default function BillPreviewModal({ visible, onClose, data }) {
             )}
           </View>
 
-            <View style={styles.receipt}>
+          {/* The paper sits on a grey desk so its white edge reads as a
+              slip, and keeps its print width (58mm / 80mm) while the
+              sheet scrolls. */}
+          <ScrollView
+            style={styles.receiptScroll}
+            contentContainerStyle={styles.receiptDesk}
+            showsVerticalScrollIndicator={false}
+            onLayout={(e) => setDeskWidth(e.nativeEvent.layout.width)}
+          >
+            <FitWidth available={deskWidth - spacing.sm * 2} contentWidth={receiptWidth(paperWidth)}>
               {/* collapsable={false} keeps Android's native view-flattening
                   optimization from dropping this node, which would otherwise
                   make react-native-view-shot capture a blank/wrong view. */}
-              <View ref={receiptRef} collapsable={false} style={styles.receiptCapture}>
-                {receiptLines.map((l, i) => (
-                  <Text
-                    key={i}
-                    style={[
-                      styles.receiptMono,
-                      l.size === 'title' && styles.receiptMonoTitle,
-                      l.size === 'small' && styles.receiptMonoSmall,
-                      l.bold && styles.receiptMonoBold,
-                    ]}
-                    selectable={false}
-                  >
-                    {l.text}
-                  </Text>
-                ))}
-                <View style={styles.receiptBrandFooter}>
-                  <Image source={require('../assets/restrogrow-logo.png')} style={styles.receiptBrandLogo} />
-                  <Text style={styles.receiptBrandText}>Powered by RestroGrow</Text>
-                </View>
+              <View ref={receiptRef} collapsable={false} style={[styles.receiptCapture, shadow.sm]}>
+                <Receipt data={data} paperWidth={paperWidth} />
               </View>
-            </View>
+            </FitWidth>
           </ScrollView>
 
           <View style={styles.actions}>
@@ -396,12 +389,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(29,27,38,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xl,
+    padding: spacing.lg,
   },
   sheet: {
     width: '100%',
-    maxWidth: 380,
-    maxHeight: '85%',
+    maxWidth: 400,
+    maxHeight: '90%',
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: spacing.lg,
@@ -517,7 +510,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
+  // minWidth 0 lets the IP/port pair shrink to the sheet; web inputs
+  // otherwise keep their intrinsic ~20-character width and overflow it.
   input: {
+    minWidth: 0,
     backgroundColor: colors.surface,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
@@ -602,68 +598,24 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: '#fff',
   },
+  // Shrinks to whatever the sheet's maxHeight leaves after the printer bar
+  // and buttons, so a long bill scrolls instead of pushing them off screen.
   receiptScroll: {
-    maxHeight: 360,
-  },
-  receipt: {
-    backgroundColor: colors.bg,
+    flexGrow: 0,
+    flexShrink: 1,
+    backgroundColor: '#ECE8E4',
     borderRadius: radius.md,
-    padding: spacing.lg,
   },
-  // This exact view is what gets captured as a bitmap and printed (see
-  // handlePrint) — pure white/black rather than the app's soft theme
-  // colors, so the server's black/white threshold has clean contrast to
-  // work with regardless of app theme.
+  receiptDesk: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
+  },
+  // This exact view is captured as a bitmap and printed (see handlePrint) —
+  // it must stay pure white so the server's black/white threshold only
+  // picks up the receipt's own ink.
   receiptCapture: {
     backgroundColor: '#fff',
-    padding: spacing.sm,
-  },
-  // Monospace so character-grid alignment (padLine's spacing, dashed
-  // dividers, wrapped names) lines up close to how it'll print — exact
-  // alignment isn't guaranteed for scripts like Hindi where a "monospace"
-  // font can't make every glyph the same width, but the text itself always
-  // renders correctly since this is captured as a picture, not encoded into
-  // single-byte printer text.
-  receiptMono: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontSize: 12.5,
-    lineHeight: 17,
-    color: '#000',
-  },
-  receiptMonoBold: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: 'bold',
-  },
-  // Restaurant name — prominent, centered, like the reference bill's logo
-  // position. Extra line-height keeps it from crowding the address below.
-  receiptMonoTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  // Address / phone / email block — slightly smaller, muted.
-  receiptMonoSmall: {
-    fontSize: 10.5,
-    lineHeight: 14,
-    color: '#333',
-  },
-  // Brand footer — always last, after "Thank you!" — a bit bigger than the
-  // body text but not as big as the restaurant name, plus a small logo.
-  receiptBrandFooter: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-    gap: 4,
-  },
-  receiptBrandLogo: {
-    width: 32,
-    height: 32,
-    resizeMode: 'contain',
-  },
-  receiptBrandText: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: 'bold',
-    fontSize: 14,
-    color: '#000',
   },
   actions: {
     flexDirection: 'row',

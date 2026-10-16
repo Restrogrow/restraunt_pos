@@ -17,6 +17,8 @@
  *                          source, members vs guests, repeat rate, weekly trend, what is owed
  * Always scoped to the session's restaurant.
  */
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin(); // the companion app's dev web preview (logged-in requests)
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession();

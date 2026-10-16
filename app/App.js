@@ -47,6 +47,7 @@ import WaiterCallsScreen from './screens/WaiterCallsScreen';
 import ReservationsScreen from './screens/ReservationsScreen';
 import CustomersScreen from './screens/CustomersScreen';
 import ReportsScreen from './screens/ReportsScreen';
+import LoyaltyScreen from './screens/LoyaltyScreen';
 import SettingsScreen, { SettingsSectionScreen } from './screens/SettingsScreen';
 import LogsScreen from './screens/LogsScreen';
 
@@ -231,6 +232,7 @@ function MoreStack() {
       <MoreStackNav.Screen name="Reservations" component={ReservationsScreen} />
       <MoreStackNav.Screen name="Customers" component={CustomersScreen} />
       <MoreStackNav.Screen name="Reports" component={ReportsScreen} />
+      <MoreStackNav.Screen name="Loyalty" component={LoyaltyScreen} />
       <MoreStackNav.Screen name="Logs" component={LogsScreen} />
       <MoreStackNav.Screen name="Settings" component={SettingsScreen} />
       <MoreStackNav.Screen name="SettingsSection" component={SettingsSectionScreen} />

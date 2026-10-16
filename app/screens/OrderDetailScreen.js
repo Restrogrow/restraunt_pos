@@ -101,6 +101,155 @@ const paymentLabel = (s) => PAYMENT_LABELS[s] || s || 'Not Paid';
 // "cannot change from Rejected to Accepted" errors from the API).
 const TERMINAL_STATUSES = ['Completed', 'Cancelled', 'Rejected'];
 
+// ── Reprinting a saved order (bill or KOT) in the website bill's layout ──
+// The orders row has no split-payment or per-discount columns, so those are
+// read back from the notes the POS writes when it saves a bill
+// (controllers/pos_operations.php + the website's processPayment):
+//   "Cash: ₹200.00, UPI: ₹61.45, Due: ₹10.00"   amounts per payment method
+//   "[Coupon: CODE -50.00]" "[Points: 120 -12.00]" "[Discount 10%: -25.00]"
+//   "[Wallet: 40.00]"
+const BILL_STATUS = { Paid: 'Paid', 'Partially Paid': 'Partially Paid', Pending: 'Unpaid', Refunded: 'Refunded' };
+
+function parseAddons(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (!raw) return [];
+  try {
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function parseBillNotes(notes) {
+  const raw = String(notes || '');
+  const tags = [];
+  const tagRe = /\[([^\]:]+):\s*([^\]]*)\]/g;
+  let t;
+  const seen = new Set();
+  while ((t = tagRe.exec(raw))) {
+    // An open bill paid in steps can carry the same tag twice; count it once.
+    const key = `${t[1].trim()}|${t[2].trim()}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      tags.push([t[1].trim(), t[2].trim()]);
+    }
+  }
+
+  const discounts = [];
+  let walletPaid = 0;
+  tags.forEach(([key, val]) => {
+    const amount = Math.abs(parseFloat((val.match(/-?\s*([\d,]+(?:\.\d+)?)\s*$/) || [])[1]?.replace(/,/g, '')) || 0);
+    if (/^coupon$/i.test(key)) {
+      const code = val.replace(/-?\s*[\d,.]+\s*$/, '').trim();
+      if (amount > 0) discounts.push([code ? `Coupon ${code}` : 'Coupon', amount]);
+    } else if (/^points$/i.test(key)) {
+      const pts = (val.match(/^(\d+)/) || [])[1];
+      if (amount > 0) discounts.push([pts ? `${pts} points` : 'Points', amount]);
+    } else if (/^discount\b/i.test(key)) {
+      if (amount > 0) discounts.push([key, amount]);
+    } else if (/^wallet$/i.test(key)) {
+      walletPaid = amount;
+    }
+  });
+
+  // "Method: <symbol>123.45" pairs outside the [..] tags. The POS always
+  // writes two decimals, which keeps a free-text note like "Table: 4" out.
+  const plain = raw.replace(/\[[^\]]*\]/g, ' ');
+  const payments = [];
+  let dueAmount = 0;
+  const payRe = /([A-Za-z][A-Za-z0-9 &._-]{0,30}?):\s*[^\d\s,]{0,4}\s*([\d,]+\.\d{2})\b/g;
+  let mm;
+  while ((mm = payRe.exec(plain))) {
+    const label = mm[1].trim();
+    const amount = parseFloat(mm[2].replace(/,/g, '')) || 0;
+    if (/^due$/i.test(label)) dueAmount = amount;
+    else if (/^wallet$/i.test(label)) walletPaid = walletPaid || amount;
+    else if (amount > 0) payments.push([label, amount]);
+  }
+  return { discounts, payments, walletPaid, dueAmount };
+}
+
+// Builds BillPreviewModal's data (contract: components/Receipt.js) from a
+// full order row (api/get_order_details_by_id.php).
+function orderReceiptData(order, user, currency, type) {
+  const parsed = parseBillNotes(order.notes);
+  const total = Number(order.total) || 0;
+
+  // Coupon + manual discount land together in discount_amount (points are
+  // stored apart), so the tags are only trusted when they add up to it.
+  let discounts = parsed.discounts;
+  const tagged = discounts.filter(([l]) => !/points$/i.test(l)).reduce((sum, d) => sum + d[1], 0);
+  if (Math.abs(tagged - (Number(order.discount_amount) || 0)) > 0.01) discounts = [];
+  if (discounts.length === 0) {
+    if (Number(order.discount_amount) > 0) {
+      discounts.push([order.coupon_code ? `Coupon ${order.coupon_code}` : 'Discount', Number(order.discount_amount)]);
+    }
+    if (Number(order.loyalty_discount_amount) > 0) {
+      const pts = Number(order.loyalty_points_redeemed) || 0;
+      discounts.push([pts ? `${pts} points` : 'Points', Number(order.loyalty_discount_amount)]);
+    }
+  }
+  if (Number(order.vip_discount) > 0) discounts.push(['VIP discount', Number(order.vip_discount)]);
+
+  const walletPaid = Number(order.wallet_paid) || parsed.walletPaid;
+  const status = BILL_STATUS[order.payment_status] || order.payment_status || null;
+  const dueAmount = parsed.dueAmount || (status === 'Unpaid' ? Math.max(0, total - walletPaid) : 0);
+  const tableLabel = order.table_number
+    ? `${order.table_number}${order.area_name ? ` · ${order.area_name}` : ''}`
+    : (order.table_name || order.order_type || 'Takeaway');
+  const name = realName(order.customer_name);
+  const kotTag = splitNotes(order.notes).kot;
+
+  return {
+    type,
+    title: type === 'kot' ? 'KOT Print' : 'Bill Print',
+    restaurantName: user?.restaurant_name || 'Receipt',
+    restaurantAddress: user?.address,
+    restaurantPhone: user?.phone,
+    businessIdLabel: user?.business_id_label,
+    businessIdNo: String(user?.show_business_id) === '1' || user?.show_business_id === true ? user?.business_id_no : null,
+    billNo: order.bill_no || null,
+    orderNumber: order.order_number,
+    kotNumber: kotTag || order.id,
+    orderType: order.order_type,
+    tableName: order.table_name,
+    tableLabel,
+    customer: name ? { name, phone: order.customer_phone || '' } : null,
+    customerName: order.customer_name,
+    status,
+    kotStatus: type === 'kot' ? order.order_status : undefined,
+    createdAt: order.created_at,
+    items: (order.items || []).map((it) => {
+      const addons = parseAddons(it.addons).map((a) => ({ name: a.name || a.addon_name, price: Number(a.price ?? a.addon_price) || 0 }));
+      const unit = Number(it.unit_price) || 0;
+      const qty = Number(it.quantity) || 0;
+      return {
+        name: it.item_name,
+        quantity: qty,
+        price: unit,
+        variationName: it.variation_name,
+        addons,
+        // unit_price never includes the add-ons; they're charged once per unit
+        lineTotal: (unit + addons.reduce((sum, a) => sum + a.price, 0)) * qty,
+        notes: it.notes,
+      };
+    }),
+    subtotal: order.subtotal,
+    discounts,
+    taxName: user?.tax_name || 'GST',
+    taxPercent: Number(order.tax) > 0 && user?.tax_percent != null ? user.tax_percent : null,
+    tax: order.tax,
+    charges: Number(order.delivery_charge) > 0 ? [['Delivery charge', Number(order.delivery_charge)]] : [],
+    total,
+    walletPaid,
+    payments: parsed.payments.length ? parsed.payments : undefined,
+    paymentMethod: order.payment_method,
+    dueAmount,
+    currency,
+  };
+}
+
 function formatOrderDateTime(value) {
   if (!value) return '';
   const d = new Date(value.replace(' ', 'T'));
@@ -395,38 +544,8 @@ export default function OrderDetailScreen({ route, navigation }) {
     }
   };
 
-  const openKotPrint = () => {
-    setBillPreview({
-      type: 'kot',
-      title: 'KOT Print',
-      restaurantName: user?.restaurant_name || 'Receipt',
-      restaurantAddress: user?.address,
-      restaurantPhone: user?.phone,
-      restaurantEmail: user?.email,
-      restaurantWebsite: user?.username ? `www.restrogrow.com/${user.username}` : null,
-      businessIdLabel: user?.business_id_label,
-      businessIdNo: user?.show_business_id ? user?.business_id_no : null,
-      orderNumber: order.order_number,
-      kotNumber: order.id,
-      orderType: order.order_type,
-      tableName: order.table_name,
-      customerName: order.customer_name,
-      createdAt: order.created_at,
-      items: items.map((it) => ({
-        name: it.item_name,
-        quantity: it.quantity,
-        price: it.unit_price,
-        variationName: it.variation_name,
-      })),
-      subtotal: order.subtotal,
-      discount: order.discount_amount,
-      couponCode: order.coupon_code,
-      tax: order.tax,
-      total: order.total,
-      paymentMethod: order.payment_method,
-      currency,
-    });
-  };
+  const openKotPrint = () => setBillPreview(orderReceiptData(order, user, currency, 'kot'));
+  const openBillPrint = () => setBillPreview(orderReceiptData(order, user, currency, 'bill'));
 
   const dateTime = useMemo(() => formatOrderDateTime(order.created_at), [order.created_at]);
   const notes = useMemo(() => splitNotes(order.notes), [order.notes]);
@@ -441,7 +560,11 @@ export default function OrderDetailScreen({ route, navigation }) {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {isPending ? 'New Order' : (order.order_number || `#${order.id}`)}
         </Text>
-        <Pressable style={styles.headerAction} onPress={openKotPrint} hitSlop={6}>
+        <Pressable style={styles.headerAction} onPress={openBillPrint} hitSlop={6} disabled={!hydrated}>
+          <Ionicons name="receipt-outline" size={20} color={colors.inkSoft} />
+          <Text style={styles.headerActionText}>Bill Print</Text>
+        </Pressable>
+        <Pressable style={styles.headerAction} onPress={openKotPrint} hitSlop={6} disabled={!hydrated}>
           <Ionicons name="print-outline" size={20} color={colors.inkSoft} />
           <Text style={styles.headerActionText}>KOT Print</Text>
         </Pressable>

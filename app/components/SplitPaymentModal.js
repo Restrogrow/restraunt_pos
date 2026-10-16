@@ -54,7 +54,11 @@ export default function SplitPaymentModal({ visible, onClose, onConfirm, total, 
       withAmounts.length > 1
         ? withAmounts.map((m) => `${m} ${currency}${Number(amounts[m]).toFixed(2)}`).join(', ')
         : null;
-    onConfirm({ paymentMethod, status, breakdown, entered, due, change });
+    // amounts per method, for the bill's payment rows (like the website's bill)
+    const used = {};
+    withAmounts.forEach((m) => { used[m] = Number(amounts[m]); });
+    if (!withAmounts.length && selected.length === 1) used[selected[0]] = total;
+    onConfirm({ paymentMethod, status, breakdown, entered, due, change, amounts: used });
   };
 
   return (
