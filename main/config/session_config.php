@@ -97,6 +97,21 @@ function destroySession() {
     session_destroy();
 }
 
+/**
+ * Call right before a login writes its account into the session. Forgets the account signed in before
+ * in this browser: without it, a waiter logging in where the owner had been logged in kept the owner's
+ * user_id (and role), so the server treated the waiter as the owner. Super Admin, the website's
+ * customer login and half-finished Google sign-ups are separate and stay.
+ */
+function resetLoginIdentity() {
+    foreach (['user_id', 'staff_id', 'branch_admin_id', 'username', 'email', 'restaurant_id', 'restaurant_name', 'user_type', 'role',
+              'linked_restaurants', 'currency_symbol', 'timezone', 'tax_percent', 'tax_name', 'enable_gst', 'country', 'phonepe_mode',
+              'seo_sc_state', 'seo_sc_state_rid', 'gbp_state', 'gbp_state_rid', 'auto_login_token', 'auto_login_restaurant_id',
+              'pending_payment_link_id'] as $k) {
+        unset($_SESSION[$k]);
+    }
+}
+
 function regenerateSessionAfterLogin() {
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_regenerate_id(true);

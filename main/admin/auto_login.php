@@ -29,6 +29,7 @@ try {
         $clear = $conn->prepare("UPDATE users SET auto_login_token = NULL, auto_login_expires = NULL WHERE id = ?");
         $clear->execute([$user['id']]);
 
+        if (function_exists('resetLoginIdentity')) resetLoginIdentity();
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['restaurant_id'] = $user['restaurant_id'];

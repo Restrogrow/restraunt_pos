@@ -221,6 +221,7 @@ function googleLoginStartSession(PDO $conn, array $account): array
     };
 
     if ($account['type'] === 'admin') {
+        resetLoginIdentity();
         $_SESSION['user_id'] = $r['id'];
         $_SESSION['username'] = $r['username'];
         $_SESSION['restaurant_id'] = $r['restaurant_id'];
@@ -233,6 +234,7 @@ function googleLoginStartSession(PDO $conn, array $account): array
         return ['../views/dashboard.php', ['username' => $r['username'], 'restaurant_id' => $r['restaurant_id'], 'restaurant_name' => $r['restaurant_name'], 'user_type' => 'admin', 'role' => 'Admin']];
     }
 
+    resetLoginIdentity();
     $_SESSION['staff_id'] = $r['id'];
     $_SESSION['username'] = $r['member_name'];
     $_SESSION['email'] = $r['email'];

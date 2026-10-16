@@ -338,6 +338,7 @@ function handleLogin() {
             exit();
         }
 
+        resetLoginIdentity();
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['restaurant_id'] = $user['restaurant_id'];
@@ -411,6 +412,7 @@ function handleLogin() {
             exit();
         }
 
+        resetLoginIdentity();
         $_SESSION['staff_id'] = $staff['id'];
         $_SESSION['username'] = $staff['member_name'];
         $_SESSION['email'] = $staff['email'];
@@ -523,6 +525,7 @@ function handleLogin() {
             throw new Exception('No linked restaurants found for this account');
         }
 
+        resetLoginIdentity();
         $_SESSION['branch_admin_id'] = $branchAdmin['id'];
         $_SESSION['username'] = $branchAdmin['username'];
         $_SESSION['user_type'] = 'branch_admin';
