@@ -127,6 +127,10 @@ try {
         case 'login':
             handleLogin();
             break;
+
+        case 'googleLogin':
+            handleGoogleAppLogin();
+            break;
             
         case 'signup':
             handleSignup();
@@ -590,6 +594,31 @@ function handleLogin() {
     
     // If neither found, throw error
     throw new Exception('Invalid username, email or password');
+}
+
+/**
+ * Partner app "Continue with Google": the app opened Google in the browser and got back a
+ * single-use pass (config/google_login.php); trade it for the same session a password login
+ * gives. Google already verified the person, so this device is trusted from now on.
+ */
+function handleGoogleAppLogin() {
+    require_once __DIR__ . '/../config/google_login.php';
+    if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+    $pdo = getConnection();
+    $p = googleLoginConsumeToken($pdo, (string)($_POST['token'] ?? ''), 'app');
+    if (!$p) throw new Exception('Google sign-in expired. Please try again.');
+    $account = googleLoginFindAccount($pdo, $p['email']);
+    if (!$account) {
+        throw new Exception('No RestroGrow account uses ' . $p['email'] . '. Ask your restaurant owner to add this email, or sign up at restrogrow.com.');
+    }
+    [$redirect, $data] = googleLoginStartSession($pdo, $account);
+    $deviceId = trim((string)($_POST['device_id'] ?? ''));
+    if ($deviceId !== '' && function_exists('trustDevice')) {
+        try { trustDevice($pdo, $account['type'], (int)$account['row']['id'], $deviceId); } catch (Throwable $e) { error_log('trust device after Google login: ' . $e->getMessage()); }
+    }
+    ob_clean();
+    echo json_encode(['success' => true, 'message' => 'Login successful', 'redirect' => $redirect, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    exit();
 }
 
 function handleSignup() {

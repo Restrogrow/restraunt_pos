@@ -155,6 +155,7 @@ Settings live in `main/.env` on each server (never in git; `main/.env.example` l
 | Gemini AI | `GEMINI_API_KEY`, `GEMINI_MODEL` | ❌ The local key is invalid. | Menus from photos, website chatbot, SEO AI, AI review replies |
 | Google Business Profile | `GOOGLE_GBP_CLIENT_ID`, `GOOGLE_GBP_CLIENT_SECRET`, `GOOGLE_PLACES_API_KEY` | ⏳ Places key set. The OAuth client and Google's API approval are pending (`docs/GOOGLE_BUSINESS_TODO.md`). Shows "Coming soon" until then. | Reviews, replies, posts, insights |
 | Google Search Console | `GOOGLE_SEO_CLIENT_ID`, `GOOGLE_SEO_CLIENT_SECRET` | ✅ Set | Dashboard › SEO |
+| Continue with Google (sign-in) | `GOOGLE_LOGIN_CLIENT_ID/SECRET`, else the GBP or Search Console client | ✅ Uses the Search Console client. The OAuth client must list `https://restrogrow.com/main/api/google_login_callback.php` (and the localhost one), and the consent screen must be **In production** with email/profile/openid scopes | Owner/staff login, customer login on every restaurant website, Partner app login |
 | Web push (browser alerts) | `VAPID_*` (optional) | ✅ Keys generate themselves into `push_vapid` | New-order alerts in the browser |
 | Apple and Google Wallet cards | `GOOGLE_WALLET_*`, `APPLE_*` | ❌ Missing. The buttons stay hidden. | Loyalty card on the phone |
 | Sentry | `SENTRY_DSN` | ✅ A default DSN is built into `config/sentry.php` | Error tracking |
@@ -194,7 +195,7 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 - Inventory Studio, Marketing Studio (posters, videos, captions, calendar), referrals, customer segments, reports.
 - Browser push alerts, multi-branch, SEO page.
 - Super Admin panel.
-- **Partner app 1.1.5** (Android, `com.restrogrow.app`, built locally as an APK) and its browser demo.
+- **Partner app 1.1.6** (Android, `com.restrogrow.app`, built locally as an APK) and its browser demo.
 
 **⏳ Built, waiting on setup:**
 
@@ -217,7 +218,7 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 ## 9. Partner app (Expo, `app/`)
 
 - Expo SDK 57. The release APK is built locally (JDK 17 and Android SDK in `C:\Users\INDIA\dev`): run `./gradlew assembleRelease` in `app/android`. Copies are kept on the Desktop as `RestroGrow-Partner-<version>.apk`.
-- Version is in `app/app.json` and `app/android/app/build.gradle` (now 1.1.5, versionCode 15).
+- Version is in `app/app.json` and `app/android/app/build.gradle` (now 1.1.6, versionCode 16).
 - **Browser demo:** `app/demo/mockApi.js` and `app/demo/fixtures.json`. Rebuild with `EXPO_PUBLIC_DEMO=1 EXPO_BASE_URL=/app-demo/app npx expo export --platform web --output-dir ../app-demo/app` (in Git Bash also add `MSYS_NO_PATHCONV=1`).
 - Restaurant settings the app can edit are saved through `main/api/app_settings.php`. It saves only the fields it's sent; only the owner or a branch admin can use it.
 

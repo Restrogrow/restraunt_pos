@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/header.php'; ?>
+<?php require_once __DIR__ . '/header.php'; require_once __DIR__ . '/../config/google_login.php'; $googleReady = googleLoginReady(); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -226,6 +226,10 @@ body { background: #eef0f4; }
 .btn-auth-submit { height: 50px; padding: 0; border-radius: 14px; background: linear-gradient(135deg, var(--primary-red), var(--dark-red)); font-size: 15px; font-weight: 700; box-shadow: 0 10px 22px color-mix(in srgb, var(--primary-red) 30%, transparent); transition: transform 0.15s ease, box-shadow 0.2s; }
 .btn-auth-submit:active { transform: scale(0.98); }
 .auth-divider { margin: 22px 0 16px; }
+.btn-google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 13px 16px; margin-bottom: 10px; border: 1.5px solid #dadce0; border-radius: 12px; background: #fff; color: #1f2937; font: 600 15px inherit; font-family: inherit; cursor: pointer; transition: background .15s, box-shadow .15s; }
+.btn-google:hover { background: #f8fafc; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.btn-google svg { width: 20px; height: 20px; flex: none; }
+body.claim-mode .btn-google { display: none !important; }
 .btn-guest { height: 48px; padding: 0; border-radius: 14px; border: 1.5px solid #e5e7eb; color: #374151; transition: background 0.2s, transform 0.15s; }
 .btn-guest:active { transform: scale(0.98); }
 .auth-perks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
@@ -374,6 +378,12 @@ body.claim-mode #authTabs, body.claim-mode #loginForm, body.claim-mode #signupFo
     </form>
 
     <div class="auth-divider">or</div>
+    <?php if ($googleReady): ?>
+    <button type="button" class="btn-google" onclick="continueWithGoogle()">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+      Continue with Google
+    </button>
+    <?php endif; ?>
     <button type="button" class="btn-guest" onclick="continueAsGuest()">Continue as guest</button>
 
     <div class="auth-perks">
@@ -402,6 +412,18 @@ if (!empty($_GET['table'])) {
 }
 ?>
 window.redirectUrl = <?php echo json_encode($redirectTargetUrl, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+
+// "Continue with Google": Google sends people back to restrogrow.com, which returns them here
+// (this restaurant's own address, its own domain too) logged in, then on to redirectUrl
+function continueWithGoogle() {
+  var back = new URL(window.redirectUrl, document.baseURI);
+  var q = new URLSearchParams({ for: 'customer', rid: window.restaurantId, host: location.host, ret: back.pathname + back.search, back: location.pathname + location.search });
+  location.href = new URL('../api/google_login.php?' + q.toString(), document.baseURI).href;
+}
+(function () {
+  var q = new URLSearchParams(location.search);
+  if (q.get('google_error')) setTimeout(function () { showAuthError(q.get('google_error')); }, 0);
+})();
 window.alreadyLoggedIn = <?php echo $logged_in_customer ? 'true' : 'false'; ?>;
 window.claimCode = <?php echo json_encode(preg_match('/^[a-f0-9]{32}$/', strtolower((string)($_GET['claim'] ?? ''))) ? strtolower($_GET['claim']) : '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.claimRedirect = <?php echo json_encode(restaurantPageUrl('loyalty'), JSON_HEX_TAG | JSON_HEX_AMP); ?>;

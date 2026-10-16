@@ -81,6 +81,16 @@ export function AuthProvider({ children }) {
     return res.data;
   }, [checkSession]);
 
+  // "Continue with Google": the single-use pass the browser brought back (config/google_login.php)
+  const loginWithGoogle = useCallback(async (token) => {
+    const deviceId = await getDeviceId();
+    const res = await apiPostForm('/admin/auth.php', { action: 'googleLogin', token, platform: 'app', device_id: deviceId });
+    if (!res.success) throw new Error(res.message || 'Google sign-in failed');
+    clearApiCache();
+    await checkSession();
+    return res.data;
+  }, [checkSession]);
+
   const logout = useCallback(async () => {
     try {
       await apiPostForm('/admin/auth.php', { action: 'logout' });
@@ -92,7 +102,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, checkingSession, login, logout, refresh: checkSession }}>
+    <AuthContext.Provider value={{ user, checkingSession, login, loginWithGoogle, logout, refresh: checkSession }}>
       {children}
     </AuthContext.Provider>
   );

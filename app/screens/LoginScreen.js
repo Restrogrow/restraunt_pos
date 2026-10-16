@@ -15,7 +15,9 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { DEMO } from '../config/api';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
+import { BASE_URL, DEMO } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
 
@@ -23,9 +25,32 @@ const RESEND_COOLDOWN_SECONDS = 60;
 const LOGO = require('../assets/logo-wordmark.png'); // 1000 × 184
 const PREVIEW = require('../assets/login-preview.jpg'); // the app's Home screen, 780 × 1100
 const NATIVE_DRIVER = Platform.OS !== 'web';
+const GOOGLE_G = require('../assets/google-g.png');
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  // "Continue with Google": Google opens in the browser, then restrogrow.com hands a single-use
+  // pass back to the app (restrogrow://google-auth?t=…), which logs in on the server
+  const signInWithGoogle = async () => {
+    setError('');
+    setGoogleBusy(true);
+    try {
+      const back = Linking.createURL('google-auth');
+      const start = `${BASE_URL}/api/google_login.php?for=app&app=${encodeURIComponent(back)}`;
+      const result = await WebBrowser.openAuthSessionAsync(start, back);
+      if (result.type !== 'success' || !result.url) return; // closed or cancelled
+      const { queryParams } = Linking.parse(result.url);
+      if (queryParams?.google_error) throw new Error(String(queryParams.google_error));
+      if (!queryParams?.t) return; // cancelled on Google's screen
+      await loginWithGoogle(String(queryParams.t));
+    } catch (e) {
+      setError(e.message || 'Google sign-in failed');
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
   // the browser demo comes filled in — any details work there
   const [username, setUsername] = useState(DEMO ? 'demo' : '');
   const [password, setPassword] = useState(DEMO ? 'demo1234' : '');
@@ -253,7 +278,7 @@ export default function LoginScreen() {
             <Pressable
               style={({ pressed }) => [styles.button, pressed && { opacity: 0.9 }]}
               onPress={onSubmit}
-              disabled={submitting}
+              disabled={submitting || googleBusy}
             >
               {submitting ? (
                 <ActivityIndicator color="#fff" />
@@ -264,6 +289,31 @@ export default function LoginScreen() {
                 </>
               )}
             </Pressable>
+
+            {!otpRequired && !DEMO && Platform.OS !== 'web' ? (
+              <>
+                <View style={styles.orRow}>
+                  <View style={styles.orLine} />
+                  <Text style={styles.orText}>or</Text>
+                  <View style={styles.orLine} />
+                </View>
+                <Pressable
+                  style={({ pressed }) => [styles.googleButton, pressed && { backgroundColor: '#F8FAFC' }]}
+                  onPress={signInWithGoogle}
+                  disabled={googleBusy || submitting}
+                  accessibilityLabel="Continue with Google"
+                >
+                  {googleBusy ? (
+                    <ActivityIndicator color={colors.ink} />
+                  ) : (
+                    <>
+                      <Image source={GOOGLE_G} style={styles.googleIcon} />
+                      <Text style={styles.googleText}>Continue with Google</Text>
+                    </>
+                  )}
+                </Pressable>
+              </>
+            ) : null}
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -426,6 +476,27 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: spacing.sm,
   },
+  orRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginVertical: spacing.lg,
+  },
+  orLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  orText: { fontFamily: font.medium, fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: 1 },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    height: 54,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: '#DADCE0',
+    backgroundColor: '#fff',
+  },
+  googleIcon: { width: 20, height: 20 },
+  googleText: { fontFamily: font.semiBold, fontSize: 15, color: colors.ink },
   buttonText: {
     color: '#fff',
     fontFamily: font.semiBold,
