@@ -31,6 +31,13 @@
 
 ## What's new
 
+### 17 October 2026
+
+| | Change | What it means |
+|---|---|---|
+| **Emails** | Every automatic email, branded and logged | 21 kinds of email in one design: RestroGrow's for owners, the restaurant's own name, logo and phone for customers ("Spice Garden via RestroGrow", replies go to the restaurant). **Owners:** welcome, trial ending / ended, renewal, plan expired, payment received, invoices (mail button in the Invoice generator), new-device login, support replies, password resets, AI manager report by email. **Team:** new signups, contact-form and chatbot leads (+ "we got your message"). **Customers:** order confirmed, updates (takeaway / delivery), e-bill, table bookings + reminder, account welcome, password reset, loyalty gifts for customers without WhatsApp. **Restaurants:** "new order" email. Everything is queued in `email_outbox`, sent after the page answers (checkout never waits), retried 3 times. Code: `main/config/mail_engine.php`, `main/config/mail_catalog.php`, `main/cron/email_dispatch.php`. Plan and hooks: [docs/EMAIL_PLAN.md](docs/EMAIL_PLAN.md). |
+| **Super Admin › Tools › Email** | See and manage every email | **All emails:** each email as it looks (32 previews from sample data), who gets it, when and what starts it, and *Send me a test*. **Sent log:** sent / failed / waiting, view, send again. **Settings & jobs:** sending account, test email, each email on/off, and whether the cron jobs are running. |
+
 ### 16 October 2026
 
 | | Change | What it means |
@@ -301,6 +308,8 @@ Menu › Inventory has eight tabs: **Overview, Stock, Recipes, Purchase orders, 
 | **[User guide](https://restrogrow.com/main/views/user-guide.html)** ([source](main/views/user-guide.html)) | Every feature with screenshots and steps, a **What's new** section and a quick-start checklist. Start here. |
 | [Website layout gallery](https://restrogrow.com/main/views/layout-gallery.html) | All customer-website designs side by side. |
 | [Table map preview](https://restrogrow.com/table-map-preview.html) | The live floor-plan view. |
+| [Email plan](docs/EMAIL_PLAN.md) (team only) | Every email, when it is sent, where it is hooked in, and what is needed to switch it on. Live previews: Super Admin › Tools › Email. |
+| [Feature list](docs/FEATURES.md) (team only) | Every built feature, where to find it and what it needs (also at Super Admin › Tools › Features). |
 | [AGENTS.md](AGENTS.md) | Architecture, routing and conventions for developers. |
 | [Connect RepeatGrow](docs/REPEATGROW_CONNECT.md) | How RestroGrow and RepeatGrow link up, which errors are handled and how. |
 | [Project documentation](main/docs/PROJECT_DOCUMENTATION.html) | Technical overview of the codebase. |
@@ -350,7 +359,9 @@ The full list with comments is in [`main/.env.example`](main/.env.example). The 
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional: push keys (generated automatically if missing) |
 | `CRON_SECRET_KEY` | Running cron jobs by URL |
 | `SMTP_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME` | Sending email. With Google Workspace: `smtp.gmail.com`, port `587`, `tls`, the mailbox as username and a Google **app password** (not the normal password). |
-| `MAIL_FROM_BILLING`, `MAIL_FROM_ALERTS`, `MAIL_FROM_ORDERS`, `MAIL_FROM_ACCOUNTS`, `MAIL_FROM_SUPPORT`, `MAIL_FROM_SALES` | Optional: which address each kind of email comes from (billing, new-order alerts to restaurants, order confirmations, password resets, support, sales). Each must be a *Send mail as* address of the SMTP login in Gmail. Unset ones use `SMTP_FROM_EMAIL`. Test them in Superadmin › Settings › Email check. |
+| `MAIL_FROM_BILLING`, `MAIL_FROM_ALERTS`, `MAIL_FROM_ORDERS`, `MAIL_FROM_ACCOUNTS`, `MAIL_FROM_SUPPORT`, `MAIL_FROM_SALES` | Optional: which address each kind of email comes from (billing, new-order alerts to restaurants, order confirmations, password resets, support, sales). Each must be an alias of the SMTP user (Google Admin). Unset ones use `SMTP_FROM_EMAIL`. |
+| `MAIL_TEAM` | Optional: where new signups and leads are emailed (default `SMTP_FROM_EMAIL`). |
+| `MAIL_SINK_DIR` | Local PCs only: save every email as an .html file in this folder instead of sending it. Never set it on the live server. |
 | `HEALTH_CHECK_KEY` | Optional: unlocks the detailed diagnostic page `main/admin/health_check.php` (`?key=…`). Not needed for the public health check. |
 | Apple / Google Wallet keys | The phone wallet card |
 
@@ -376,8 +387,10 @@ hPanel › **Advanced › Cron Jobs** › type **Custom**. `<HOME>` is the folde
 | Gifts for restaurants without WhatsApp | `/usr/bin/php <HOME>/main/cron/loyalty_autopilot.php` | Daily, e.g. 9 am (`0 9 * * *`) |
 | Scheduled website orders | `/usr/bin/php <HOME>/main/cron/activate_scheduled_orders.php` | Every 5 minutes |
 | Meal-subscription deliveries | `/usr/bin/php <HOME>/main/cron/generate_subscription_deliveries.php` | Daily, e.g. 5 am (`0 5 * * *`) |
+| Emails: trial / renewal reminders, payment receipts, gift emails, booking reminders, retries | `/usr/bin/php <HOME>/main/cron/email_dispatch.php` | Every 10 minutes (`*/10 * * * *`) |
+| AI manager morning report (WhatsApp / email) | `/usr/bin/php <HOME>/main/cron/owner_brief.php` | Every 15 minutes (`*/15 * * * *`) |
 
-Each run writes one line, which hPanel shows under the job's output. They can also run as a URL (`…/whatsapp_dispatch.php?key=…`) once `CRON_SECRET_KEY` is set.
+Each run writes one line, which hPanel shows under the job's output. Super Admin › Tools › Email › Settings & jobs shows whether the email and morning-report jobs ran recently. They can also run as a URL (`…/whatsapp_dispatch.php?key=…`) once `CRON_SECRET_KEY` is set.
 
 ### WhatsApp templates (RepeatGrow)
 
@@ -443,7 +456,7 @@ Ideas for next:
 | Area | Detail |
 |---|---|
 | Hosting | Shared-hosting MySQL connection limits (~150–200 at once); a VPS is recommended beyond about 10 busy restaurants |
-| Email | SMTP sending limits on shared hosting |
+| Email | Google Workspace SMTP sends up to 2,000 emails a day per user; emails need SPF / DKIM / DMARC on restrogrow.com to stay out of spam; invoices go as an email, not a PDF attachment |
 | Push | Needs HTTPS; on iPhone the dashboard must be added to the Home Screen; a browser that is fully closed on a computer only gets the notification when it opens again |
 
 This is a private project. For feature requests or bug reports, contact the maintainer.
