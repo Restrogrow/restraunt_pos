@@ -18,6 +18,11 @@ $logins = [
 $go = isset($_GET['go'], $logins[$_GET['go']]) ? $_GET['go'] : '';
 $slug = demoRestaurantSlug();
 $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+// The customer app demo is exported with an absolute base path: the live one lives at /customer-app-demo,
+// the local XAMPP build (gitignored) at /menuwebsite/customer-app-demo-local.
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$isLocal = $host === '127.0.0.1' || str_starts_with($host, 'localhost') || str_starts_with($host, '127.0.0.1:');
+$customerAppUrl = ($isLocal && is_dir(__DIR__ . '/../customer-app-demo-local')) ? '../customer-app-demo-local/' : '../customer-app-demo/';
 ?>
 <!doctype html>
 <html lang="en">
@@ -82,6 +87,11 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
         <button class="btn ghost" data-go="waiter" type="button">Waiter</button>
         <button class="btn ghost" data-go="chef" type="button">Kitchen</button>
       </div>
+    </section>
+    <section class="card">
+      <h2>Customer app (template)</h2>
+      <p>How a restaurant's own ordering app would look on the Play Store: its name, colours and menu. Try other looks live. Not published.</p>
+      <div class="row"><a class="btn primary" href="<?php echo $h($customerAppUrl); ?>" target="_blank" rel="noopener">Open customer app</a></div>
     </section>
     <section class="card">
       <h2>Partner app</h2>

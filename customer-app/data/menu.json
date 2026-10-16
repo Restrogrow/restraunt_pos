@@ -1,0 +1,770 @@
+[
+    {
+        "name": "Breakfast",
+        "sort": 7,
+        "photo": "masala-dosa.jpg",
+        "hours": {
+            "from": "08:00",
+            "to": "11:30"
+        },
+        "subs": [],
+        "items": [
+            {
+                "id": 1,
+                "name": "Masala Dosa",
+                "type": "Veg",
+                "price": 119,
+                "desc": "Crisp, golden rice-and-lentil crêpe folded over a spiced potato filling. Served with coconut chutney and hot sambar.",
+                "cal": 380,
+                "prep": 12,
+                "sizes": {},
+                "photo": "masala-dosa",
+                "sub": null
+            },
+            {
+                "id": 2,
+                "name": "Idli Vada",
+                "type": "Veg",
+                "price": 89,
+                "desc": "Two steamed rice idlis and one crunchy medu vada with sambar and coconut chutney. The Bengaluru breakfast.",
+                "cal": 340,
+                "prep": 8,
+                "sizes": {},
+                "photo": "idli-vada",
+                "sub": null
+            },
+            {
+                "id": 3,
+                "name": "Kanda Poha",
+                "type": "Veg",
+                "price": 79,
+                "desc": "Flattened rice tempered with mustard, curry leaves, onion and peanuts, finished with lemon, sev and coriander.",
+                "cal": 270,
+                "prep": 8,
+                "sizes": {},
+                "photo": "poha",
+                "sub": null
+            },
+            {
+                "id": 4,
+                "name": "Egg Bhurji Pav",
+                "type": "Egg",
+                "price": 149,
+                "desc": "Street-style spiced scrambled eggs with onion, tomato and green chilli, finished with butter. Comes with two toasted pav.",
+                "cal": 410,
+                "prep": 10,
+                "sizes": {},
+                "photo": "egg-bhurji",
+                "sub": null
+            }
+        ]
+    },
+    {
+        "name": "Soups",
+        "sort": 1,
+        "photo": "tomato-shorba.jpg",
+        "hours": null,
+        "subs": [],
+        "items": [
+            {
+                "id": 5,
+                "name": "Tomato Shorba",
+                "type": "Veg",
+                "price": 149,
+                "desc": "Slow-simmered tomato broth with roasted cumin, ginger and a touch of cream. Light, tangy and warming.",
+                "cal": 140,
+                "prep": 10,
+                "sizes": {},
+                "photo": "tomato-shorba",
+                "sub": null
+            },
+            {
+                "id": 6,
+                "name": "Chicken Clear Soup",
+                "type": "Non Veg",
+                "price": 169,
+                "desc": "Clear chicken broth with shredded chicken, fresh greens and cracked black pepper.",
+                "cal": 160,
+                "prep": 12,
+                "sizes": {},
+                "photo": "chicken-clear-soup",
+                "sub": null
+            }
+        ]
+    },
+    {
+        "name": "Starters",
+        "sort": 2,
+        "photo": "cat-starters.webp",
+        "hours": null,
+        "subs": [
+            "Veg Starters",
+            "Non-Veg Starters"
+        ],
+        "items": [
+            {
+                "id": 7,
+                "name": "Paneer Tikka",
+                "type": "Veg",
+                "price": 249,
+                "desc": "Cottage cheese marinated overnight in hung curd, kashmiri chilli and ajwain, chargrilled in the tandoor with peppers and onion. With mint chutney.",
+                "cal": 320,
+                "prep": 18,
+                "sizes": {},
+                "photo": "paneer-tikka",
+                "sub": "Veg Starters"
+            },
+            {
+                "id": 8,
+                "name": "Hara Bhara Kebab",
+                "type": "Veg",
+                "price": 219,
+                "desc": "Pan-crisped patties of spinach, green peas and potato, spiced with ginger and green chilli, topped with a cashew.",
+                "cal": 260,
+                "prep": 15,
+                "sizes": {},
+                "photo": "hara-bhara-kebab",
+                "sub": "Veg Starters"
+            },
+            {
+                "id": 9,
+                "name": "Chilli Paneer",
+                "type": "Veg",
+                "price": 239,
+                "desc": "Crispy paneer tossed in a hot wok with capsicum, onion, soy and green chillies. Indo-Chinese favourite.",
+                "cal": 360,
+                "prep": 15,
+                "sizes": {
+                    "Dry": 239,
+                    "Gravy": 259
+                },
+                "photo": "chilli-paneer",
+                "sub": "Veg Starters"
+            },
+            {
+                "id": 10,
+                "name": "Veg Spring Rolls",
+                "type": "Veg",
+                "price": 189,
+                "desc": "Crackly rolls stuffed with stir-fried cabbage, carrot, spring onion and glass noodles, with sweet chilli dip.",
+                "cal": 280,
+                "prep": 12,
+                "sizes": {
+                    "4 pcs": 189,
+                    "8 pcs": 339
+                },
+                "photo": "veg-spring-rolls",
+                "sub": "Veg Starters"
+            },
+            {
+                "id": 11,
+                "name": "Punjabi Samosa",
+                "type": "Veg",
+                "price": 69,
+                "desc": "Two flaky, hand-folded samosas filled with spiced potato and peas. Served with tamarind and mint chutney.",
+                "cal": 310,
+                "prep": 8,
+                "sizes": {},
+                "photo": "samosa",
+                "sub": "Veg Starters"
+            },
+            {
+                "id": 12,
+                "name": "Chicken 65",
+                "type": "Non Veg",
+                "price": 279,
+                "desc": "Crispy, fiery Chennai-style fried chicken tossed with curry leaves, green chillies and a squeeze of lime.",
+                "cal": 410,
+                "prep": 15,
+                "sizes": {},
+                "photo": "chicken-65",
+                "sub": "Non-Veg Starters"
+            },
+            {
+                "id": 13,
+                "name": "Chicken Tikka",
+                "type": "Non Veg",
+                "price": 299,
+                "desc": "Boneless chicken thigh in a smoky yogurt and red chilli marinade, skewered and roasted in the tandoor.",
+                "cal": 380,
+                "prep": 18,
+                "sizes": {},
+                "photo": "chicken-tikka",
+                "sub": "Non-Veg Starters"
+            },
+            {
+                "id": 14,
+                "name": "Tandoori Chicken",
+                "type": "Non Veg",
+                "price": 329,
+                "desc": "Bone-in chicken marinated in yogurt, ginger-garlic and house tandoori masala, roasted in the clay oven until charred at the edges.",
+                "cal": 450,
+                "prep": 25,
+                "sizes": {
+                    "Half": 329,
+                    "Full": 599
+                },
+                "photo": "tandoori-chicken",
+                "sub": "Non-Veg Starters"
+            },
+            {
+                "id": 15,
+                "name": "Mutton Seekh Kebab",
+                "type": "Non Veg",
+                "price": 349,
+                "desc": "Minced mutton with onion, ginger, green chilli and garam masala, hand-pressed on skewers and grilled. Served with onion rings.",
+                "cal": 420,
+                "prep": 20,
+                "sizes": {},
+                "photo": "seekh-kebab",
+                "sub": "Non-Veg Starters"
+            },
+            {
+                "id": 16,
+                "name": "Amritsari Fish",
+                "type": "Non Veg",
+                "price": 329,
+                "desc": "Basa fillet in a carom-spiced gram flour batter, fried crisp. Finished with chaat masala and lemon.",
+                "cal": 390,
+                "prep": 15,
+                "sizes": {},
+                "photo": "fish-amritsari",
+                "sub": "Non-Veg Starters"
+            }
+        ]
+    },
+    {
+        "name": "Main Course",
+        "sort": 3,
+        "photo": "cat-main-course.webp",
+        "hours": null,
+        "subs": [
+            "Veg Curries",
+            "Non-Veg Curries"
+        ],
+        "items": [
+            {
+                "id": 17,
+                "name": "Paneer Butter Masala",
+                "type": "Veg",
+                "price": 299,
+                "desc": "Soft paneer in a rich, mildly sweet tomato-butter gravy finished with fresh cream. Best with garlic naan.",
+                "cal": 480,
+                "prep": 18,
+                "sizes": {
+                    "Half": 299,
+                    "Full": 539
+                },
+                "photo": "paneer-butter-masala",
+                "sub": "Veg Curries"
+            },
+            {
+                "id": 18,
+                "name": "Kadai Paneer",
+                "type": "Veg",
+                "price": 289,
+                "desc": "Paneer, capsicum and onion cooked in an iron kadai with freshly pounded coriander and red chilli.",
+                "cal": 440,
+                "prep": 18,
+                "sizes": {},
+                "photo": "kadai-paneer",
+                "sub": "Veg Curries"
+            },
+            {
+                "id": 19,
+                "name": "Palak Paneer",
+                "type": "Veg",
+                "price": 279,
+                "desc": "Paneer cubes in a smooth, garlicky spinach gravy finished with a little cream.",
+                "cal": 390,
+                "prep": 18,
+                "sizes": {},
+                "photo": "palak-paneer",
+                "sub": "Veg Curries"
+            },
+            {
+                "id": 20,
+                "name": "Malai Kofta",
+                "type": "Veg",
+                "price": 289,
+                "desc": "Paneer and potato dumplings stuffed with dry fruits, in a silky cashew and tomato gravy.",
+                "cal": 520,
+                "prep": 20,
+                "sizes": {},
+                "photo": "malai-kofta",
+                "sub": "Veg Curries"
+            },
+            {
+                "id": 21,
+                "name": "Dal Makhani",
+                "type": "Veg",
+                "price": 229,
+                "desc": "Whole black lentils and rajma slow-cooked overnight on tandoor embers, finished with butter and cream.",
+                "cal": 390,
+                "prep": 15,
+                "sizes": {
+                    "Half": 229,
+                    "Full": 399
+                },
+                "photo": "dal-makhani",
+                "sub": "Veg Curries"
+            },
+            {
+                "id": 22,
+                "name": "Dal Tadka",
+                "type": "Veg",
+                "price": 199,
+                "desc": "Yellow lentils tempered with ghee, cumin, garlic and dried red chillies.",
+                "cal": 280,
+                "prep": 12,
+                "sizes": {},
+                "photo": "dal-tadka",
+                "sub": "Veg Curries"
+            },
+            {
+                "id": 23,
+                "name": "Pindi Chole",
+                "type": "Veg",
+                "price": 219,
+                "desc": "Chickpeas simmered with tea leaves and whole spices for a dark, tangy Punjabi-style curry.",
+                "cal": 340,
+                "prep": 15,
+                "sizes": {},
+                "photo": "chole",
+                "sub": "Veg Curries"
+            },
+            {
+                "id": 24,
+                "name": "Butter Chicken",
+                "type": "Non Veg",
+                "price": 349,
+                "desc": "Our signature: tandoor-roasted chicken in a silky tomato, butter and cashew gravy with kasuri methi. Mild and creamy.",
+                "cal": 540,
+                "prep": 20,
+                "sizes": {
+                    "Half": 349,
+                    "Full": 629
+                },
+                "photo": "butter-chicken",
+                "sub": "Non-Veg Curries"
+            },
+            {
+                "id": 25,
+                "name": "Chicken Tikka Masala",
+                "type": "Non Veg",
+                "price": 359,
+                "desc": "Charred chicken tikka folded into a spiced onion-tomato masala with peppers.",
+                "cal": 520,
+                "prep": 20,
+                "sizes": {},
+                "photo": "chicken-tikka-masala",
+                "sub": "Non-Veg Curries"
+            },
+            {
+                "id": 26,
+                "name": "Kadai Chicken",
+                "type": "Non Veg",
+                "price": 339,
+                "desc": "Chicken tossed in a hot kadai with capsicum, tomato and coarsely ground kadai masala.",
+                "cal": 480,
+                "prep": 20,
+                "sizes": {},
+                "photo": "kadai-chicken",
+                "sub": "Non-Veg Curries"
+            },
+            {
+                "id": 27,
+                "name": "Mutton Rogan Josh",
+                "type": "Non Veg",
+                "price": 429,
+                "desc": "Kashmiri-style tender mutton braised with whole spices, fennel and ratan jot. Rich but not too hot.",
+                "cal": 560,
+                "prep": 30,
+                "sizes": {},
+                "photo": "mutton-rogan-josh",
+                "sub": "Non-Veg Curries"
+            },
+            {
+                "id": 28,
+                "name": "Kerala Fish Curry",
+                "type": "Non Veg",
+                "price": 379,
+                "desc": "Seer fish simmered in coconut milk with kokum, curry leaves and green chilli.",
+                "cal": 430,
+                "prep": 20,
+                "sizes": {},
+                "photo": "fish-curry",
+                "sub": "Non-Veg Curries"
+            },
+            {
+                "id": 29,
+                "name": "Egg Curry",
+                "type": "Egg",
+                "price": 219,
+                "desc": "Boiled eggs in a home-style onion-tomato gravy with a hint of garam masala.",
+                "cal": 360,
+                "prep": 15,
+                "sizes": {},
+                "photo": "egg-curry",
+                "sub": "Non-Veg Curries"
+            }
+        ]
+    },
+    {
+        "name": "Biryani & Rice",
+        "sort": 4,
+        "photo": "chicken-biryani.jpg",
+        "hours": null,
+        "subs": [],
+        "items": [
+            {
+                "id": 30,
+                "name": "Chicken Dum Biryani",
+                "type": "Non Veg",
+                "price": 319,
+                "desc": "Long-grain basmati layered with masala chicken, fried onions, mint and saffron, sealed and slow-cooked. With raita and salan.",
+                "cal": 680,
+                "prep": 25,
+                "sizes": {
+                    "Regular": 319,
+                    "Family pack (serves 3)": 849
+                },
+                "photo": "chicken-biryani",
+                "sub": null
+            },
+            {
+                "id": 31,
+                "name": "Mutton Biryani",
+                "type": "Non Veg",
+                "price": 399,
+                "desc": "Tender mutton and aged basmati dum-cooked with whole spices and saffron. With raita.",
+                "cal": 720,
+                "prep": 30,
+                "sizes": {},
+                "photo": "mutton-biryani",
+                "sub": null
+            },
+            {
+                "id": 32,
+                "name": "Veg Dum Biryani",
+                "type": "Veg",
+                "price": 259,
+                "desc": "Basmati dum-cooked with seasonal vegetables, paneer, whole spices and saffron. With raita.",
+                "cal": 520,
+                "prep": 25,
+                "sizes": {
+                    "Regular": 259,
+                    "Family pack (serves 3)": 689
+                },
+                "photo": "veg-biryani",
+                "sub": null
+            },
+            {
+                "id": 33,
+                "name": "Rajma Chawal",
+                "type": "Veg",
+                "price": 199,
+                "desc": "Home-style kidney bean curry with steamed basmati rice and onion salad.",
+                "cal": 480,
+                "prep": 10,
+                "sizes": {},
+                "photo": "rajma-chawal",
+                "sub": null
+            },
+            {
+                "id": 34,
+                "name": "Jeera Rice",
+                "type": "Veg",
+                "price": 149,
+                "desc": "Basmati rice tempered with ghee and cumin.",
+                "cal": 300,
+                "prep": 8,
+                "sizes": {},
+                "photo": "jeera-rice",
+                "sub": null
+            },
+            {
+                "id": 35,
+                "name": "Curd Rice",
+                "type": "Veg",
+                "price": 139,
+                "desc": "Soft rice in cool curd with a mustard, curry leaf and ginger tempering, topped with pomegranate.",
+                "cal": 290,
+                "prep": 5,
+                "sizes": {},
+                "photo": "curd-rice",
+                "sub": null
+            }
+        ]
+    },
+    {
+        "name": "Breads",
+        "sort": 5,
+        "photo": "cat-breads.webp",
+        "hours": null,
+        "subs": [],
+        "items": [
+            {
+                "id": 36,
+                "name": "Butter Naan",
+                "type": "Veg",
+                "price": 59,
+                "desc": "Soft, pillowy leavened bread baked in the tandoor and brushed with butter.",
+                "cal": 260,
+                "prep": 8,
+                "sizes": {},
+                "photo": "butter-naan",
+                "sub": null
+            },
+            {
+                "id": 37,
+                "name": "Garlic Naan",
+                "type": "Veg",
+                "price": 69,
+                "desc": "Tandoor-baked naan topped with chopped garlic and coriander, finished with butter.",
+                "cal": 290,
+                "prep": 8,
+                "sizes": {},
+                "photo": "garlic-naan",
+                "sub": null
+            },
+            {
+                "id": 38,
+                "name": "Cheese Naan",
+                "type": "Veg",
+                "price": 99,
+                "desc": "Naan stuffed with molten cheese and a little green chilli.",
+                "cal": 380,
+                "prep": 10,
+                "sizes": {},
+                "photo": "cheese-naan",
+                "sub": null
+            },
+            {
+                "id": 39,
+                "name": "Tandoori Roti",
+                "type": "Veg",
+                "price": 35,
+                "desc": "Whole-wheat flatbread from the clay oven. Light and slightly crisp.",
+                "cal": 120,
+                "prep": 6,
+                "sizes": {},
+                "photo": "tandoori-roti",
+                "sub": null
+            },
+            {
+                "id": 40,
+                "name": "Laccha Paratha",
+                "type": "Veg",
+                "price": 65,
+                "desc": "Flaky, layered whole-wheat paratha cooked in the tandoor with ghee.",
+                "cal": 300,
+                "prep": 8,
+                "sizes": {},
+                "photo": "laccha-paratha",
+                "sub": null
+            },
+            {
+                "id": 41,
+                "name": "Amritsari Kulcha",
+                "type": "Veg",
+                "price": 89,
+                "desc": "Crisp tandoor kulcha stuffed with spiced potato and onion, topped with butter.",
+                "cal": 360,
+                "prep": 10,
+                "sizes": {},
+                "photo": "kulcha",
+                "sub": null
+            }
+        ]
+    },
+    {
+        "name": "Thalis",
+        "sort": 6,
+        "photo": "veg-thali.jpg",
+        "hours": {
+            "from": "12:00",
+            "to": "15:30"
+        },
+        "subs": [],
+        "items": [
+            {
+                "id": 42,
+                "name": "Veg Thali",
+                "type": "Veg",
+                "price": 299,
+                "desc": "Lunch thali: paneer of the day, dal makhani, seasonal sabzi, jeera rice, two rotis, raita, salad and a gulab jamun.",
+                "cal": 880,
+                "prep": 15,
+                "sizes": {},
+                "photo": "veg-thali",
+                "sub": null
+            },
+            {
+                "id": 43,
+                "name": "Non-Veg Thali",
+                "type": "Non Veg",
+                "price": 399,
+                "desc": "Lunch thali: butter chicken, dal, seasonal sabzi, jeera rice, two rotis, raita, salad and a gulab jamun.",
+                "cal": 980,
+                "prep": 15,
+                "sizes": {},
+                "photo": "nonveg-thali",
+                "sub": null
+            }
+        ]
+    },
+    {
+        "name": "Beverages",
+        "sort": 8,
+        "photo": "cat-beverages.webp",
+        "hours": null,
+        "subs": [],
+        "items": [
+            {
+                "id": 44,
+                "name": "Masala Chai",
+                "type": "Drink",
+                "price": 49,
+                "desc": "Strong Assam tea brewed with milk, fresh ginger, cardamom and our own chai masala.",
+                "cal": 110,
+                "prep": 5,
+                "sizes": {},
+                "photo": "masala-chai",
+                "sub": null
+            },
+            {
+                "id": 45,
+                "name": "Filter Coffee",
+                "type": "Drink",
+                "price": 59,
+                "desc": "South Indian decoction coffee with frothy hot milk, served in a davara-tumbler.",
+                "cal": 120,
+                "prep": 5,
+                "sizes": {},
+                "photo": "filter-coffee",
+                "sub": null
+            },
+            {
+                "id": 46,
+                "name": "Sweet Lassi",
+                "type": "Drink",
+                "price": 89,
+                "desc": "Thick Punjabi-style churned yogurt drink, lightly sweetened and topped with malai.",
+                "cal": 240,
+                "prep": 5,
+                "sizes": {
+                    "Regular": 89,
+                    "Large": 139
+                },
+                "photo": "sweet-lassi",
+                "sub": null
+            },
+            {
+                "id": 47,
+                "name": "Masala Chaas",
+                "type": "Drink",
+                "price": 69,
+                "desc": "Chilled spiced buttermilk with roasted cumin, ginger and coriander.",
+                "cal": 70,
+                "prep": 3,
+                "sizes": {},
+                "photo": "buttermilk",
+                "sub": null
+            },
+            {
+                "id": 48,
+                "name": "Fresh Lime Soda",
+                "type": "Drink",
+                "price": 79,
+                "desc": "Freshly squeezed lime with chilled soda. Sweet, salted or mixed.",
+                "cal": 90,
+                "prep": 5,
+                "sizes": {},
+                "photo": "fresh-lime-soda",
+                "sub": null
+            },
+            {
+                "id": 49,
+                "name": "Cold Coffee",
+                "type": "Drink",
+                "price": 129,
+                "desc": "Creamy blended cold coffee with a scoop of vanilla ice cream.",
+                "cal": 320,
+                "prep": 5,
+                "sizes": {},
+                "photo": "cold-coffee",
+                "sub": null
+            }
+        ]
+    },
+    {
+        "name": "Desserts",
+        "sort": 9,
+        "photo": "cat-desserts.webp",
+        "hours": null,
+        "subs": [],
+        "items": [
+            {
+                "id": 50,
+                "name": "Gulab Jamun",
+                "type": "Veg",
+                "price": 99,
+                "desc": "Two warm milk-solid dumplings soaked in cardamom and rose syrup.",
+                "cal": 330,
+                "prep": 5,
+                "sizes": {},
+                "photo": "gulab-jamun",
+                "sub": null
+            },
+            {
+                "id": 51,
+                "name": "Rasmalai",
+                "type": "Veg",
+                "price": 129,
+                "desc": "Soft chenna discs in chilled saffron-cardamom milk, topped with pistachio.",
+                "cal": 290,
+                "prep": 5,
+                "sizes": {},
+                "photo": "rasmalai",
+                "sub": null
+            },
+            {
+                "id": 52,
+                "name": "Kesar Pista Kulfi",
+                "type": "Veg",
+                "price": 109,
+                "desc": "Slow-reduced milk ice cream with saffron and pistachio, on a stick.",
+                "cal": 250,
+                "prep": 3,
+                "sizes": {},
+                "photo": "kulfi",
+                "sub": null
+            },
+            {
+                "id": 53,
+                "name": "Gajar Halwa",
+                "type": "Veg",
+                "price": 129,
+                "desc": "Grated carrots slow-cooked in milk and ghee with cardamom, cashews and raisins. Served warm.",
+                "cal": 360,
+                "prep": 5,
+                "sizes": {},
+                "photo": "gajar-halwa",
+                "sub": null
+            },
+            {
+                "id": 54,
+                "name": "Phirni",
+                "type": "Veg",
+                "price": 109,
+                "desc": "Chilled ground-rice pudding set in a clay pot, with cardamom and slivered almonds.",
+                "cal": 240,
+                "prep": 3,
+                "sizes": {},
+                "photo": "phirni",
+                "sub": null
+            }
+        ]
+    }
+]

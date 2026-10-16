@@ -81,3 +81,9 @@ composer.phar
 # The browser app demo's fonts and icons live in a folder named node_modules inside its web build
 !app-demo/app/assets/node_modules/
 !app-demo/app/assets/node_modules/**/vendor/
+
+# The customer app browser demo: fonts and icons live in a folder named node_modules inside its web build
+!customer-app-demo/app/assets/node_modules/
+!customer-app-demo/app/assets/node_modules/**/vendor/
+# Local-only build of the same demo (base path /menuwebsite/)
+customer-app-demo-local/

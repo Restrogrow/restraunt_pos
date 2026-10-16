@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your restaurant's own customer app – live demo | Restro Grow</title>
+<meta name="description" content="See how your restaurant's own ordering app would look on the Play Store: your name, your colours, your menu. Try it live in your browser.">
+<link rel="canonical" href="https://restrogrow.com/customer-app-demo/">
+<link rel="icon" type="image/png" href="../favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  // On a phone the demo opens straight away, full screen.
+  if (window.matchMedia('(max-width: 760px)').matches && !/[?&]frame\b/.test(location.search)) location.replace('app/' + location.search);
+</script>
+<style>
+  :root {
+    --paper: #f5efe2; --paper-raised: #fffcf5; --paper-deep: #ece2cd;
+    --ink: #241d16; --ink-soft: #55493c; --ink-faint: #726553;
+    --accent: #c1440e; --accent-dark: #8f3308; --app: #FAF8F6;
+    --font-display: 'Archivo', 'Segoe UI', sans-serif; --font-body: 'Public Sans', 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--font-body); min-height: 100vh; }
+  a { color: inherit; }
+
+  .top { max-width: 1280px; margin: 0 auto; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: inline-flex; align-items: center; text-decoration: none; }
+  .brand img { height: 28px; width: auto; display: block; }
+  .top-links { display: flex; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 20px; border-radius: 999px; border: 2px solid var(--ink); white-space: nowrap; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+  .btn-ghost { background: transparent; }
+
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 4px 24px 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 48px; align-items: start; }
+  .intro { padding-top: 28px; }
+  .eyebrow { display: inline-block; font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); background: var(--paper-raised); border: 1px solid var(--paper-deep); padding: 6px 12px; border-radius: 999px; }
+  h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(34px, 4.2vw, 52px); line-height: 1.05; margin: 16px 0 14px; letter-spacing: -.02em; }
+  .lead { font-size: 18px; line-height: 1.6; color: var(--ink-soft); margin: 0 0 26px; max-width: 560px; }
+  .try { list-style: none; padding: 0; margin: 0 0 28px; display: grid; gap: 12px; }
+  .try li { display: flex; gap: 14px; align-items: flex-start; background: var(--paper-raised); border: 1px solid var(--paper-deep); border-radius: 14px; padding: 14px 16px; }
+  .try .n { flex: none; width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 14px; }
+  .try b { display: block; font-size: 15.5px; margin-bottom: 2px; }
+  .try span { color: var(--ink-faint); font-size: 14px; line-height: 1.5; }
+  .note { font-size: 13.5px; color: var(--ink-faint); margin-top: 14px; }
+
+  /* ── device stage ── */
+  .stage { position: sticky; top: 12px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; background: var(--paper-raised); border: 1px solid var(--paper-deep); border-radius: 999px; padding: 5px; }
+  .picker button { display: inline-flex; align-items: center; gap: 7px; border: 0; background: transparent; color: var(--ink-soft); font: 600 13.5px var(--font-body); padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s; }
+  .picker button svg { width: 16px; height: 16px; flex: none; }
+  .picker button:hover { background: var(--paper-deep); color: var(--ink); }
+  .picker button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .options { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--ink-faint); }
+  .swatches { display: flex; gap: 8px; }
+  .swatches button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--paper); box-shadow: 0 0 0 1.5px var(--paper-deep); cursor: pointer; padding: 0; }
+  .swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
+  .options a { font-weight: 600; color: var(--ink-soft); }
+
+  .fit { position: relative; }                  /* sized by script to the scaled device */
+  .device {
+    position: absolute; top: 0; left: 0; transform-origin: top left;
+    background: var(--frame, #1d1d1f); border-radius: var(--r); padding: var(--bz-t) var(--bz) var(--bz-b);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.08), inset 0 0 0 7px rgba(0,0,0,.35), 0 50px 90px -30px rgba(36,29,22,.55), 0 20px 40px -20px rgba(36,29,22,.35);
+    transition: border-radius .3s;
+  }
+  .device::before, .device::after { content: ""; position: absolute; background: var(--frame, #1d1d1f); border-radius: 3px; filter: brightness(.85); }
+  .device::before { right: -4px; top: 22%; width: 4px; height: 9%; }            /* power */
+  .device::after { left: -4px; top: 17%; width: 4px; height: 14%; }             /* volume */
+  .device.tablet::before { right: auto; left: auto; top: -4px; right: 14%; width: 9%; height: 4px; }
+  .device.tablet::after { display: none; }
+  .screen { position: relative; width: var(--w); height: var(--h); border-radius: var(--sr); overflow: hidden; background: var(--app); display: flex; flex-direction: column; }
+  .statusbar { flex: none; height: var(--sb); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--sbpad); color: #1D1B26; font: 600 calc(var(--sb) * .34) -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--app); position: relative; z-index: 2; }
+  .statusbar .icons { display: flex; align-items: center; gap: 5px; }
+  .statusbar svg { height: calc(var(--sb) * .3); width: auto; display: block; fill: #1D1B26; }
+  .cut { position: absolute; left: 50%; transform: translateX(-50%); background: #000; z-index: 3; }
+  .cut.island { top: 11px; width: 120px; height: 34px; border-radius: 20px; }
+  .cut.punch { top: 9px; width: 14px; height: 14px; border-radius: 50%; }
+  .cut.none { display: none; }
+  iframe { flex: 1; width: 100%; border: 0; display: block; background: #FAF8F6; }
+  .homebar { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 34%; height: 5px; border-radius: 3px; background: rgba(0,0,0,.35); z-index: 3; pointer-events: none; }
+  .homebutton { position: absolute; left: 50%; bottom: calc(var(--bz-b) / 2); transform: translate(-50%, 50%); width: 54px; height: 54px; border-radius: 50%; border: 2px solid rgba(255,255,255,.18); }
+  .speaker { position: absolute; top: calc(var(--bz-t) / 2); left: 50%; transform: translate(-50%, -50%); width: 60px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); }
+  .camdot { position: absolute; top: calc(var(--bz-t) / 2); left: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; border-radius: 50%; background: #2a2a2e; box-shadow: inset 0 0 0 2px #111; }
+  .caption { font-size: 13px; color: var(--ink-faint); }
+
+  @media (max-width: 1060px) { .wrap { grid-template-columns: 1fr; } .stage { position: static; } .intro { padding-top: 8px; } }
+  .custom { background: var(--paper-raised); border: 1px solid var(--paper-deep); border-radius: 16px; padding: 16px; margin: 0 0 22px; max-width: 560px; }
+  .custom > b { display: block; font-size: 15.5px; margin-bottom: 10px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .presets button { display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--paper-deep); background: #fff; border-radius: 999px; padding: 7px 12px; font: 600 13px var(--font-body); color: var(--ink-soft); cursor: pointer; }
+  .presets button i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .presets button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+  .fields { display: grid; grid-template-columns: 1fr 90px; gap: 10px; margin-bottom: 12px; }
+  .fields label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--ink-faint); }
+  .fields input { font: 500 15px var(--font-body); padding: 9px 11px; border: 1.5px solid var(--paper-deep); border-radius: 10px; background: #fff; color: var(--ink); width: 100%; }
+  .fields input[type=color] { padding: 2px; height: 42px; cursor: pointer; }
+  .custom .apply { padding: 10px 18px; font-size: 14px; }
+  code { background: var(--paper-deep); border-radius: 6px; padding: 1px 6px; font-size: 13px; }
+</style>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="../" aria-label="Restro Grow home"><img src="../assets/images/logo-transparent.png" alt="Restro Grow"></a>
+    <nav class="top-links">
+      <a class="btn btn-ghost" href="../">Back to site</a>
+      <a class="btn btn-primary" href="../#contact">Get my app</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section class="intro">
+      <span class="eyebrow">Template · your customers' app</span>
+      <h1>Your own restaurant app, on the Play Store.</h1>
+      <p class="lead">This is how your customers would order from you: your name, your colours, your menu, in an app they install from the Play Store. Nothing here is published. It is a live template you can play with, and RestroGrow builds and publishes the real one for you.</p>
+
+      <div class="custom" aria-label="Make it yours">
+        <b>Make it yours</b>
+        <div class="presets" id="presets"></div>
+        <div class="fields">
+          <label>Restaurant name<input id="nameIn" maxlength="32" placeholder="e.g. Tandoor Tales"></label>
+          <label>Brand colour<input id="colorIn" type="color" value="#e4572e"></label>
+        </div>
+        <button class="btn btn-primary apply" id="applyBtn" type="button">Update the app</button>
+      </div>
+
+      <ol class="try">
+        <li><span class="n">1</span><div><b>Skip, then continue as guest</b><span>Or log in with any number: the code is not checked in the demo.</span></div></li>
+        <li><span class="n">2</span><div><b>Order something</b><span>Add dishes, pick sizes, apply <code>WELCOME50</code>, choose delivery, takeaway or dine-in.</span></div></li>
+        <li><span class="n">3</span><div><b>Watch it get made</b><span>The order tracker runs fast, so you see every step in about a minute.</span></div></li>
+        <li><span class="n">4</span><div><b>Try the extras</b><span>Offers, favourites, loyalty points, table booking and saved addresses.</span></div></li>
+      </ol>
+      <a class="btn btn-primary" href="../#contact">Get my restaurant's app</a>
+      <p class="note">Sample menu: Spice Garden Indiranagar. Your own menu, photos and prices come from your RestroGrow account. Payments and notifications are switched off in this preview.</p>
+    </section>
+
+    <section class="stage" aria-label="App preview">
+      <div class="picker" role="group" aria-label="Choose a device" id="picker"></div>
+      <div class="fit" id="fit">
+        <div class="device" id="device">
+          <div class="screen">
+            <div class="statusbar" id="statusbar">
+              <span id="clock">9:41</span>
+              <span class="icons">
+                <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+                <svg viewBox="0 0 16 12" aria-hidden="true"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.3-1.3A10.6 10.6 0 0 0 8 .4C5.1.4 2.5 1.6.5 3.4l1.3 1.3A8.8 8.8 0 0 1 8 2.2Zm0 3.6c1.4 0 2.7.5 3.6 1.5l1.3-1.3A7 7 0 0 0 8 4a7 7 0 0 0-4.9 2l1.3 1.3A5.2 5.2 0 0 1 8 5.8Zm0 3.6c.5 0 .9.2 1.2.5L8 11.6 6.8 9.9c.3-.3.7-.5 1.2-.5Z"/></svg>
+                <svg viewBox="0 0 26 12" aria-hidden="true"><rect x="0.5" y="0.5" width="22" height="11" rx="3" fill="none" stroke="#1D1B26" stroke-opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="1.6"/><rect x="23.5" y="4" width="2" height="4" rx="1" fill-opacity=".5"/></svg>
+              </span>
+            </div>
+            <div class="cut island" id="cut"></div>
+            <iframe src="about:blank" title="Customer app template preview" id="frame"></iframe>
+            <div class="homebar" id="homebar"></div>
+          </div>
+          <div class="homebutton" id="homebutton" hidden></div>
+          <div class="speaker" id="speaker" hidden></div>
+          <div class="camdot" id="camdot" hidden></div>
+        </div>
+      </div>
+      <div class="options">
+        <span class="swatches" role="group" aria-label="Frame colour" id="swatches"></span>
+        <span class="caption" id="caption"></span>
+        <a href="app/" id="fullLink" target="_blank" rel="noopener">Open full screen</a>
+      </div>
+    </section>
+  </main>
+
+<script>
+  // Each device shows the app at that device's real screen size (CSS pixels), so the app picks
+  // its phone or tablet layout as it would on the real thing; the frame is then scaled to fit.
+  var ICON = {
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>',
+    tablet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="2" width="18" height="20" rx="2.5"/><path d="M11 18h2"/></svg>'
+  };
+  var DEVICES = [
+    { id: 'iphone',  name: 'iPhone 15 Pro', kind: 'phone',  w: 393, h: 852,  r: 62, bz: 12, sr: 50, sb: 54, sbpad: 32, cut: 'island', home: 'bar' },
+    { id: 'pixel',   name: 'Pixel 8',       kind: 'phone',  w: 412, h: 915,  r: 50, bz: 12, sr: 40, sb: 36, sbpad: 22, cut: 'punch',  home: 'bar' },
+    { id: 'galaxy',  name: 'Galaxy S24',    kind: 'phone',  w: 384, h: 832,  r: 40, bz: 10, sr: 30, sb: 32, sbpad: 20, cut: 'punch',  home: 'bar' },
+    { id: 'small',   name: 'Small phone',   kind: 'phone',  w: 375, h: 667,  r: 54, bz: 14, sr: 6,  sb: 22, sbpad: 10, cut: 'none',   home: 'button', bzT: 82, bzB: 82 },
+    { id: 'tablet',  name: 'Tablet',        kind: 'tablet', w: 820, h: 1180, r: 40, bz: 22, sr: 18, sb: 26, sbpad: 22, cut: 'none',   home: 'bar', cam: true }
+  ];
+  var FRAMES = [['#1d1d1f', 'Black'], ['#d6d3cc', 'Silver'], ['#c9b28f', 'Gold'], ['#FF5A3C', 'Orange']];
+
+  var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  var device = document.getElementById('device'), fit = document.getElementById('fit');
+  var current = DEVICES.find(function (d) { return d.id === store.get('rg_cust_device'); }) || DEVICES[0];
+  var frame = store.get('rg_cust_frame') || FRAMES[0][0];
+
+  var picker = document.getElementById('picker');
+  DEVICES.forEach(function (d) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = ICON[d.kind] + '<span>' + d.name + '</span>';
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', function () { current = d; store.set('rg_cust_device', d.id); apply(); });
+    d.button = b;
+    picker.appendChild(b);
+  });
+  var swatches = document.getElementById('swatches');
+  FRAMES.forEach(function (f) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.style.background = f[0];
+    b.title = f[1] + ' frame';
+    b.setAttribute('aria-label', f[1] + ' frame');
+    b.addEventListener('click', function () { frame = f[0]; store.set('rg_cust_frame', frame); apply(); });
+    f.button = b;
+    swatches.appendChild(b);
+  });
+
+  function apply() {
+    var d = current, s = device.style;
+    var bzT = d.bzT || d.bz, bzB = d.bzB || d.bz;
+    s.setProperty('--w', d.w + 'px'); s.setProperty('--h', d.h + 'px');
+    s.setProperty('--r', d.r + 'px'); s.setProperty('--sr', d.sr + 'px');
+    s.setProperty('--bz', d.bz + 'px'); s.setProperty('--bz-t', bzT + 'px'); s.setProperty('--bz-b', bzB + 'px');
+    s.setProperty('--sb', d.sb + 'px'); s.setProperty('--sbpad', d.sbpad + 'px');
+    s.setProperty('--frame', frame);
+    device.className = 'device' + (d.kind === 'tablet' ? ' tablet' : '');
+    document.getElementById('cut').className = 'cut ' + d.cut;
+    document.getElementById('homebar').hidden = d.home !== 'bar';
+    document.getElementById('homebutton').hidden = d.home !== 'button';
+    document.getElementById('speaker').hidden = d.home !== 'button';
+    document.getElementById('camdot').hidden = !d.cam;
+    DEVICES.forEach(function (x) { x.button.setAttribute('aria-pressed', String(x === d)); });
+    FRAMES.forEach(function (f) { f.button.setAttribute('aria-pressed', String(f[0] === frame)); });
+    document.getElementById('caption').textContent = d.w + ' × ' + d.h;
+    size();
+  }
+
+  function size() {
+    var d = current;
+    var totalW = d.w + d.bz * 2, totalH = d.h + (d.bzT || d.bz) + (d.bzB || d.bz);
+    var stage = fit.parentElement.getBoundingClientRect();
+    // fit between the device picker and the bottom of the window, as the page first shows
+    var top = Math.min(fit.getBoundingClientRect().top + window.scrollY, window.innerHeight * 0.4);
+    var below = document.querySelector('.options').offsetHeight + 40;
+    var availH = Math.max(420, window.innerHeight - top - below);
+    var availW = Math.max(260, stage.width - 16);
+    var scale = Math.min(1, availH / totalH, availW / totalW);
+    device.style.transform = 'scale(' + scale + ')';
+    fit.style.width = Math.round(totalW * scale) + 'px';
+    fit.style.height = Math.round(totalH * scale) + 'px';
+  }
+
+  function tick() {
+    var n = new Date();
+    document.getElementById('clock').textContent = n.getHours() + ':' + String(n.getMinutes()).padStart(2, '0');
+  }
+  // make it yours: the app reads ?preset= / ?name= / ?color= when it loads
+  var PRESETS = [['spice', 'Spice Garden', '#E4572E'], ['leaf', 'Green Leaf Kitchen', '#2F9E5B'], ['royal', 'Royal Brew Café', '#7048E8'], ['harbour', 'Blue Harbour', '#1C7ED6']];
+  var look = { preset: 'spice', name: '', color: '' };
+  var frameEl = document.getElementById('frame'), nameIn = document.getElementById('nameIn'), colorIn = document.getElementById('colorIn');
+  var qs0 = new URLSearchParams(location.search);
+  ['preset', 'name', 'color'].forEach(function (k) { if (qs0.get(k)) look[k] = qs0.get(k); });
+  if (look.color && look.color[0] !== '#') look.color = '#' + look.color;
+  var start = PRESETS.filter(function (p) { return p[0] === look.preset; })[0] || PRESETS[0];
+  function query() {
+    var q = new URLSearchParams();
+    q.set('preset', look.preset);
+    if (look.name) q.set('name', look.name);
+    if (look.color) q.set('color', look.color.replace('#', ''));
+    return '?' + q.toString();
+  }
+  function loadApp() {
+    frameEl.src = 'app/' + query();
+    document.getElementById('fullLink').href = 'app/' + query();
+    document.querySelectorAll('#presets button').forEach(function (b) { b.setAttribute('aria-pressed', String(!look.name && !look.color && b.dataset.k === look.preset)); });
+  }
+  PRESETS.forEach(function (p) {
+    var b = document.createElement('button'); b.type = 'button'; b.dataset.k = p[0];
+    b.innerHTML = '<i style="background:' + p[2] + '"></i>' + p[1];
+    b.addEventListener('click', function () { look = { preset: p[0], name: '', color: '' }; start = p; nameIn.value = p[1]; colorIn.value = p[2].toLowerCase(); loadApp(); });
+    document.getElementById('presets').appendChild(b);
+  });
+  nameIn.value = look.name || start[1]; colorIn.value = (look.color || start[2]).toLowerCase();
+  document.getElementById('applyBtn').addEventListener('click', function () {
+    var n = nameIn.value.trim(), c = colorIn.value;
+    look.name = n === start[1] ? '' : n;
+    look.color = c.toLowerCase() === start[2].toLowerCase() ? '' : c;
+    loadApp();
+  });
+  loadApp();
+  tick(); setInterval(tick, 15000);
+  window.addEventListener('resize', size);
+  apply();
+</script>
+</body>
+</html>
