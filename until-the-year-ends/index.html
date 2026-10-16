@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Until the year ends · Restro Grow</title>
+<meta name="description" content="Every day counts. A live countdown to the end of the year for the Restro Grow team.">
+<meta property="og:title" content="Until the year ends · Restro Grow">
+<meta property="og:description" content="Every day counts. Let's make them count.">
+<meta name="theme-color" content="#14110f">
+<link rel="icon" type="image/png" href="../favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14110f; --bg-2: #1d1916; --card: #221d19; --line: rgba(255,255,255,.08);
+    --ink: #fbf6ee; --soft: rgba(251,246,238,.72); --faint: rgba(251,246,238,.45);
+    --accent: #ff6a2b; --accent-2: #ffb347; --done: #ff6a2b; --wa: #25d366;
+    --display: 'Archivo', 'Segoe UI', sans-serif; --body: 'Public Sans', 'Segoe UI', sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh; background: var(--bg); color: var(--ink); font-family: var(--body);
+    background-image:
+      radial-gradient(900px 500px at 85% -10%, rgba(255,106,43,.22), transparent 60%),
+      radial-gradient(700px 420px at -10% 30%, rgba(255,179,71,.10), transparent 60%);
+    background-attachment: fixed;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 22px 16px 56px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand img { height: 26px; width: auto; display: block; filter: brightness(0) invert(1); }
+  .year-pill { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--soft); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+
+  /* hero */
+  .hero { text-align: center; padding: 46px 0 22px; }
+  .kicker { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-2); }
+  .kicker .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 rgba(255,106,43,.6); animation: ping 1.8s infinite; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(255,106,43,.55); } 80%, 100% { box-shadow: 0 0 0 12px rgba(255,106,43,0); } }
+  .big { font-family: var(--display); font-weight: 900; line-height: .9; letter-spacing: -.04em; margin: 18px 0 6px; font-size: clamp(120px, 30vw, 260px);
+    background: linear-gradient(180deg, #fff 30%, #ffc69a 75%, var(--accent) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .big-label { font-family: var(--display); font-weight: 800; font-size: clamp(22px, 4.6vw, 36px); letter-spacing: -.01em; }
+  .big-label span { color: var(--accent); }
+
+  /* live clock */
+  .clock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-width: 620px; margin: 30px auto 0; }
+  .unit { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 8px 12px; }
+  .unit b { display: block; font-family: var(--mono); font-weight: 600; font-size: clamp(28px, 7vw, 46px); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .unit small { display: block; margin-top: 4px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+  .unit.sec b { color: var(--accent-2); }
+
+  /* message + share */
+  .note { max-width: 640px; margin: 34px auto 0; background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border: 1px solid var(--line); border-radius: 22px; padding: 22px 22px 20px; }
+  .note p { margin: 0 0 12px; color: var(--soft); line-height: 1.65; font-size: 16px; }
+  .note p.lead { color: var(--ink); font-family: var(--display); font-weight: 800; font-size: 20px; line-height: 1.3; }
+  .note p:last-of-type { margin-bottom: 0; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 999px; padding: 15px 22px; font: 700 15.5px var(--body); cursor: pointer; text-decoration: none; transition: transform .15s ease, filter .15s ease; }
+  .btn:active { transform: scale(.97); }
+  .btn-wa { background: var(--wa); color: #06210f; box-shadow: 0 14px 30px -12px rgba(37,211,102,.6); }
+  .btn-wa:hover { filter: brightness(1.06); }
+  .btn-wa svg { width: 22px; height: 22px; }
+  .btn-ghost { background: transparent; color: var(--ink); border: 1.5px solid rgba(255,255,255,.18); }
+  .btn-ghost:hover { border-color: rgba(255,255,255,.4); }
+  .toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0; background: #fff; color: #14110f; font-weight: 700; font-size: 14px; padding: 11px 18px; border-radius: 999px; transition: .25s ease; pointer-events: none; z-index: 10; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* year progress */
+  section.block { margin-top: 46px; }
+  .block h2 { font-family: var(--display); font-weight: 800; font-size: 22px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .block .sub { color: var(--faint); font-size: 14px; margin: 0 0 16px; }
+  .yearbar { position: relative; height: 16px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+  .yearbar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--accent-2), var(--accent)); transition: width 1s ease; }
+  .yearmeta { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-family: var(--mono); font-size: 12.5px; color: var(--faint); }
+  .yearmeta b { color: var(--ink); font-weight: 600; }
+
+  /* timeline */
+  .months { display: grid; gap: 14px; }
+  .month { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; }
+  .month-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .month-head b { font-family: var(--display); font-weight: 800; font-size: 18px; }
+  .month-head span { font-family: var(--mono); font-size: 12.5px; color: var(--faint); }
+  .days { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
+  .day { aspect-ratio: 1; display: grid; place-items: center; border-radius: 10px; font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--soft); background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); position: relative; }
+  .day.done { background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #1a0d05; border-color: transparent; }
+  .day.today { background: #fff; color: #14110f; border-color: transparent; box-shadow: 0 0 0 3px rgba(255,106,43,.55); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(255,106,43,.25); } }
+  .day.mark::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2); }
+  .day.done.mark::after { background: #1a0d05; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; font-size: 13px; color: var(--faint); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 14px; height: 14px; border-radius: 5px; display: inline-block; }
+
+  /* milestones */
+  .miles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .mile { display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+  .mile .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,106,43,.14); font-size: 20px; flex: none; }
+  .mile b { display: block; font-size: 15px; }
+  .mile small { color: var(--faint); font-size: 13px; }
+  .mile.past { opacity: .5; }
+
+  footer { margin-top: 48px; text-align: center; color: var(--faint); font-size: 13px; }
+  footer b { color: var(--ink); }
+
+  @media (max-width: 520px) {
+    .clock { gap: 8px; } .unit { border-radius: 14px; padding: 12px 4px 10px; }
+    .note { padding: 18px 16px; } .note p { font-size: 15px; } .note p.lead { font-size: 18px; }
+    .btn { width: 100%; }
+    .days { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+    .day { font-size: 11.5px; border-radius: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="../" aria-label="Restro Grow"><img src="../assets/images/logo-transparent.png" alt="Restro Grow"></a>
+    <span class="year-pill" id="yearPill">2026</span>
+  </header>
+
+  <section class="hero" aria-live="polite">
+    <div class="kicker"><span class="dot"></span>Every day counts</div>
+    <div class="big" id="bigDays">--</div>
+    <div class="big-label"><span id="dayWord">days</span> left until the year ends</div>
+
+    <div class="clock" role="timer" aria-label="Time left this year">
+      <div class="unit"><b id="cD">--</b><small>Days</small></div>
+      <div class="unit"><b id="cH">--</b><small>Hours</small></div>
+      <div class="unit"><b id="cM">--</b><small>Minutes</small></div>
+      <div class="unit sec"><b id="cS">--</b><small>Seconds</small></div>
+    </div>
+
+    <div class="note">
+      <p class="lead"><span id="noteDays">--</span> days left until the year ends! 🔥🚀</p>
+      <p>Time is moving, and every day counts. Let's stop overthinking, start executing, and turn our vision into reality. Small steps every day will lead to big results. Stay focused, keep pushing, and never lose sight of the goal.</p>
+      <p>Let's make these <span id="noteDays2">--</span> days count and take Restro Grow to a whole new level! 🧡💪</p>
+      <div class="actions">
+        <button class="btn btn-wa" id="shareWa" type="button">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.5 3.5A11.8 11.8 0 0 0 12 0C5.4 0 .1 5.3.1 11.9c0 2.1.6 4.1 1.6 5.9L0 24l6.4-1.7a11.9 11.9 0 0 0 5.6 1.4h.1c6.6 0 11.9-5.3 11.9-11.9 0-3.2-1.2-6.2-3.5-8.3zM12 21.7h-.1a9.8 9.8 0 0 1-5-1.4l-.4-.2-3.8 1 1-3.7-.2-.4a9.8 9.8 0 0 1-1.5-5.2C2 6.5 6.5 2 12 2a9.8 9.8 0 0 1 9.8 9.9c0 5.4-4.4 9.8-9.8 9.8zm5.4-7.3c-.3-.1-1.8-.9-2-1s-.5-.1-.7.1-.8 1-1 1.2-.4.2-.7.1a8 8 0 0 1-2.4-1.5 9 9 0 0 1-1.6-2c-.2-.3 0-.5.1-.6l.5-.5.3-.5c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4s-1 1-1 2.5 1 2.9 1.2 3.1c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4l-.4-.4z"/></svg>
+          Share on WhatsApp
+        </button>
+        <button class="btn btn-ghost" id="copyBtn" type="button">Copy message</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>The year so far</h2>
+    <p class="sub">How much of the year is behind us, and how much is still ours.</p>
+    <div class="yearbar"><i id="yearFill"></i></div>
+    <div class="yearmeta"><span><b id="yearPct">--%</b> of <span id="yearNum">2026</span> done</span><span><b id="daysGone">--</b> days gone · <b id="daysLeft2">--</b> to go</span></div>
+  </section>
+
+  <section class="block">
+    <h2>Day by day</h2>
+    <p class="sub" id="trackSub">Every day from today to 31 December. A day fills in once it's done.</p>
+    <div class="months" id="months"></div>
+    <div class="legend">
+      <span><i style="background:linear-gradient(135deg,#ffb347,#ff6a2b)"></i>Done</span>
+      <span><i style="background:#fff"></i>Today</span>
+      <span><i style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)"></i>Still ahead</span>
+      <span><i style="background:transparent;position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)"></i><span style="color:#ffb347">●</span> Milestone</span>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Checkpoints</h2>
+    <p class="sub">Moments to stop and ask: did we move the needle?</p>
+    <div class="miles" id="miles"></div>
+  </section>
+
+  <footer><b>Restro Grow</b> · Small steps every day lead to big results.</footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+  // The countdown runs to midnight at the end of 31 December, in the viewer's own time.
+  // "N days left" counts today as a day still to use (16 Oct → 77 days, as in the team message).
+  var START = new Date(2026, 9, 16);   // the day this countdown began (77 days left)
+  var $ = function (id) { return document.getElementById(id); };
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var MS_DAY = 86400000;
+
+  function now() { return new Date(); }
+  function yearOf(d) { return d.getFullYear(); }
+  function endOfYear(y) { return new Date(y + 1, 0, 1, 0, 0, 0); }
+  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+  function left() {
+    var n = now(), end = endOfYear(yearOf(n)), ms = Math.max(0, end - n);
+    var today = startOfDay(n);
+    var daysLeft = Math.round((end - today) / MS_DAY);   // today counts
+    return {
+      ms: ms, daysLeft: daysLeft,
+      d: Math.floor(ms / MS_DAY), h: Math.floor(ms / 3600000) % 24, m: Math.floor(ms / 60000) % 60, s: Math.floor(ms / 1000) % 60,
+    };
+  }
+
+  function message() {
+    var t = left();
+    var exact = t.d + ' days, ' + t.h + ' hours and ' + t.m + ' minutes';
+    return t.daysLeft + ' days left until the year ends! 🔥🚀\n' +
+      '⏳ Exactly ' + exact + ' to go.\n\n' +
+      'Time is moving, and every day counts. Let\'s stop overthinking, start executing, and turn our vision into reality. Small steps every day will lead to big results. Stay focused, keep pushing, and never lose sight of the goal.\n\n' +
+      'Let\'s make these ' + t.daysLeft + ' days count and take Restro Grow to a whole new level! 🧡💪\n\n' +
+      location.origin + location.pathname;
+  }
+
+  function tick() {
+    var t = left();
+    $('bigDays').textContent = t.daysLeft;
+    $('dayWord').textContent = t.daysLeft === 1 ? 'day' : 'days';
+    $('noteDays').textContent = t.daysLeft;
+    $('noteDays2').textContent = t.daysLeft;
+    $('cD').textContent = t.d; $('cH').textContent = pad(t.h); $('cM').textContent = pad(t.m); $('cS').textContent = pad(t.s);
+    document.title = t.daysLeft + ' days left · Restro Grow';
+  }
+
+  function yearStats() {
+    var n = now(), y = yearOf(n), start = new Date(y, 0, 1), end = endOfYear(y);
+    var pct = (n - start) / (end - start) * 100;
+    var gone = Math.floor((startOfDay(n) - start) / MS_DAY);
+    $('yearPill').textContent = y; $('yearNum').textContent = y;
+    $('yearPct').textContent = pct.toFixed(1) + '%';
+    $('daysGone').textContent = gone;
+    $('daysLeft2').textContent = left().daysLeft;
+    requestAnimationFrame(function () { $('yearFill').style.width = pct.toFixed(2) + '%'; });
+  }
+
+  var MILES = [
+    [9, 31, '🎃', 'October wraps up', 'First month of the push done'],
+    [10, 14, '📍', 'Halfway mark', 'Half the countdown behind us'],
+    [10, 30, '📈', 'November closes', 'One month left: double down'],
+    [11, 25, '🎄', 'Christmas', 'One week to finish strong'],
+    [11, 31, '🎆', "New Year's Eve", 'The finish line'],
+  ];
+
+  function timeline() {
+    var n = now(), y = yearOf(n), today = startOfDay(n);
+    var from = START.getFullYear() === y ? START : new Date(y, n.getMonth(), 1);
+    var marks = {};
+    MILES.forEach(function (m) { marks[m[0] + '-' + m[1]] = m[3]; });
+    var html = '';
+    for (var mo = from.getMonth(); mo <= 11; mo++) {
+      var first = mo === from.getMonth() ? from.getDate() : 1;
+      var last = new Date(y, mo + 1, 0).getDate();
+      var done = 0, cells = '';
+      for (var d = first; d <= last; d++) {
+        var date = new Date(y, mo, d), cls = 'day';
+        if (date < today) { cls += ' done'; done++; } else if (+date === +today) cls += ' today';
+        var mk = marks[mo + '-' + d];
+        if (mk) cls += ' mark';
+        cells += '<div class="' + cls + '" title="' + date.toDateString() + (mk ? ' · ' + mk : '') + '">' + d + '</div>';
+      }
+      var total = last - first + 1;
+      html += '<div class="month"><div class="month-head"><b>' + date.toLocaleString('en', { month: 'long' }) +
+        '</b><span>' + done + ' / ' + total + ' done</span></div><div class="days">' + cells + '</div></div>';
+    }
+    $('months').innerHTML = html;
+    if (START.getFullYear() === y) $('trackSub').textContent = 'Every day since the countdown started (16 October) to 31 December. A day fills in once it\'s done.';
+
+    $('miles').innerHTML = MILES.map(function (m) {
+      var date = new Date(y, m[0], m[1]);
+      var away = Math.round((date - today) / MS_DAY);
+      var when = away < 0 ? 'Done' : away === 0 ? 'Today' : away === 1 ? 'Tomorrow' : 'In ' + away + ' days';
+      return '<div class="mile' + (away < 0 ? ' past' : '') + '"><div class="ic">' + m[2] + '</div><div><b>' + m[3] + '</b><small>' +
+        date.toLocaleDateString('en', { day: 'numeric', month: 'short' }) + ' · ' + when + '<br>' + m[4] + '</small></div></div>';
+    }).join('');
+  }
+
+  function toast(text) {
+    var t = $('toast');
+    t.textContent = text; t.classList.add('show');
+    clearTimeout(toast.timer); toast.timer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  // WhatsApp: the message is written at the moment of the tap, with the exact time left then
+  $('shareWa').addEventListener('click', function () {
+    window.open('https://wa.me/?text=' + encodeURIComponent(message()), '_blank', 'noopener');
+  });
+  $('copyBtn').addEventListener('click', function () {
+    var text = message();
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+      .then(function () { toast('Message copied, with the exact time left'); })
+      .catch(function () { window.prompt('Copy the message:', text); });
+  });
+
+  tick(); yearStats(); timeline();
+  setInterval(tick, 1000);
+  // at midnight the day count, year bar and timeline move on by themselves
+  var lastDay = startOfDay(now()).getTime();
+  setInterval(function () {
+    var d = startOfDay(now()).getTime();
+    if (d !== lastDay) { lastDay = d; yearStats(); timeline(); }
+  }, 30000);
+})();
+</script>
+</body>
+</html>
