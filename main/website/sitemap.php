@@ -33,6 +33,7 @@ if (isset($_GET['index'])) {
     foreach ($rows as $r) {
         $slug = $slugOf($r['restaurant_name']);
         if ($slug === '' || isset($seen[$slug]) || $r['noindex'] || $r['own_domain']) continue;
+        if (seoAutoHidden($conn, $r['restaurant_id'], (string)$r['restaurant_name'])) continue; // demo, test, nearly empty menu
         $seen[$slug] = true;
         echo '<sitemap><loc>' . $x("$scheme://$host$root/$slug/sitemap.xml") . '</loc>' . ($r['updated_at'] ? '<lastmod>' . date('Y-m-d', strtotime($r['updated_at'])) . '</lastmod>' : '') . "</sitemap>\n";
     }
@@ -55,7 +56,7 @@ if (!empty($_GET['restaurant_id'])) {
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' . "\n";
 if (!$r) { http_response_code(404); echo '</urlset>'; exit; }
 $seo = seoGet($conn, $r['restaurant_id']);
-if (!empty($seo['noindex'])) { echo '</urlset>'; exit; }
+if (!empty($seo['noindex']) || seoAutoHidden($conn, $r['restaurant_id'], (string)$r['restaurant_name'])) { echo '</urlset>'; exit; }
 
 $onCustomHost = !preg_match('/^(localhost|127\.0\.0\.1|(www\.)?restrogrow\.com|.*hstgr\.io|.*\.ngrok-free\.(app|dev))(:\d+)?$/i', $host);
 if ($onCustomHost) $base = "$scheme://$host/";

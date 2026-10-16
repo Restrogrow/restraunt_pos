@@ -160,6 +160,27 @@ function seoHoursSpec($json): array
     return $out;
 }
 
+/**
+ * Restaurant pages Google shouldn't list even when the owner hasn't ticked "hide": the demo
+ * restaurant, test-style accounts and sites with almost no menu yet. Real restaurants rank
+ * normally; this keeps empty and test pages from showing up under a "restrogrow" search.
+ */
+function seoAutoHidden(?PDO $conn, string $rid, string $name): bool
+{
+    static $cache = [];
+    if (isset($cache[$rid])) return $cache[$rid];
+    if (in_array($rid, ['RESSGI002', 'RESDEMO01'], true)) return $cache[$rid] = true;
+    if (preg_match('/(test|testing|demo|dummy|sample)|^test\d*$/i', $name)) return $cache[$rid] = true;
+    if (!$conn) return $cache[$rid] = false;
+    try {
+        $st = $conn->prepare('SELECT COUNT(*) FROM menu_items WHERE restaurant_id = ? AND is_available = 1 AND COALESCE(is_hidden, 0) = 0');
+        $st->execute([$rid]);
+        return $cache[$rid] = (int)$st->fetchColumn() < 5;
+    } catch (Throwable $e) {
+        return $cache[$rid] = false;
+    }
+}
+
 /** Everything for <head> after <title>. $page: home | menu | about | contact. */
 function seoHeadTags(string $page): string
 {
@@ -172,7 +193,8 @@ function seoHeadTags(string $page): string
     $h = [];
     $h[] = '<meta name="description" content="' . $e($desc) . '">';
     if (!empty($s['keywords'])) $h[] = '<meta name="keywords" content="' . $e($s['keywords']) . '">';
-    $h[] = !empty($s['noindex']) ? '<meta name="robots" content="noindex, nofollow">' : '<meta name="robots" content="index, follow, max-image-preview:large">';
+    $hidden = !empty($s['noindex']) || seoAutoHidden($c['conn'], $r['id'], $r['name']);
+    $h[] = $hidden ? '<meta name="robots" content="noindex, nofollow">' : '<meta name="robots" content="index, follow, max-image-preview:large">';
     $h[] = '<link rel="canonical" href="' . $e($url) . '">';
     // share preview: WhatsApp, Facebook, Instagram, X, LinkedIn
     $h[] = '<meta property="og:type" content="' . ($page === 'home' ? 'restaurant.restaurant' : 'website') . '">';
