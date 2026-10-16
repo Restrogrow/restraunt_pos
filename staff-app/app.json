@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "RestroGrow Staff",
+    "slug": "restrogrow-staff",
+    "scheme": "restrogrowstaff",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.restrogrow.staff",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Used to connect to your Bluetooth receipt printer.",
+        "NSFaceIDUsageDescription": "Used to unlock the app when Fingerprint Lock is turned on in Settings."
+      }
+    },
+    "android": {
+      "package": "com.restrogrow.staff",
+      "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "backgroundColor": "#FA5502",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-splash-screen",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-notifications",
+      "expo-web-browser",
+      "./plugins/withRemovePermissions.js",
+      "expo-image",
+      "expo-asset"
+    ]
+  }
+}

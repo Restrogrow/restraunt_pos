@@ -1,0 +1,195 @@
+// Native-only implementation — Metro resolves bluetoothPrinter.web.js
+// instead of this file when bundling for web, so react-native-bluetooth-
+// classic (which touches NativeModules at import time) is never pulled into
+// the web bundle at all. Classic Bluetooth (SPP), the profile most cheap
+// thermal receipt printers use, isn't reachable from a browser regardless.
+import { Buffer } from 'buffer';
+import { PermissionsAndroid, Platform } from 'react-native';
+// Loaded on first use, not at import: Expo Go has no Bluetooth native module, and loading it
+// at startup would stop the app opening there at all.
+let btModule = null;
+function bt() {
+  if (!btModule) btModule = require('react-native-bluetooth-classic').default;
+  return btModule;
+}
+
+// Android 12+ (API 31+) reclassified classic Bluetooth as a runtime-dangerous
+// permission — BLUETOOTH_CONNECT in the manifest alone isn't enough, the app
+// must ask at runtime or getBondedDevices()/connectToDevice() throw a
+// SecurityException. react-native-bluetooth-classic itself never requests
+// this (checked its source — no PermissionsAndroid usage at all), so every
+// entry point below asks first.
+//
+// Only BLUETOOTH_CONNECT is requested — this app only reads already-bonded
+// devices and opens an RFCOMM connection to one, it never calls
+// startDiscovery(), so BLUETOOTH_SCAN (Android's discovery permission) is
+// never actually needed. Requesting it anyway used to make this whole check
+// fail (and every "Connect" tap error out with "permission denied") whenever
+// the OS didn't grant that unrelated permission for its own reasons.
+//
+// Below Android 12 this previously requested ACCESS_FINE_LOCATION, which
+// isn't declared in this app's manifest — an undeclared runtime permission
+// is auto-denied by the OS every time, so Bluetooth connect/print was
+// silently broken on every pre-12 device. Bonded-device lookup and RFCOMM
+// connect were never gated behind location there anyway (only live
+// discovery is, which this app doesn't do), so there's nothing to request.
+async function ensureBluetoothPermissions() {
+  if (Platform.OS !== 'android' || Platform.Version < 31) return true;
+  const granted = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
+  );
+  return granted === PermissionsAndroid.RESULTS.GRANTED;
+}
+
+// react-native-bluetooth-classic surfaces native Android failures as their
+// raw Java exception class + message (e.g. "java.io.IOException: read
+// failed, socket might closed, read ret: -1"), which just showed up
+// verbatim in the app's error text — meaningless, and looks like a crash
+// report, to a restaurant staff member. Translate the common cases into
+// plain language and fall back to a generic "check the printer" message
+// for anything else, instead of showing a raw stack-trace-looking string.
+function friendlyBluetoothError(e) {
+  const raw = (e && e.message) || String(e);
+  if (/read failed|socket might closed|broken pipe|connection reset/i.test(raw)) {
+    return "Lost connection to the printer. Make sure it's still on and in range, then try again.";
+  }
+  if (/security|permission/i.test(raw)) {
+    return 'Bluetooth permission denied — enable it in phone Settings > Apps > RestroGrow Staff > Permissions.';
+  }
+  if (/not connect|connection failed|refused|timed? ?out/i.test(raw)) {
+    return "Could not connect to the printer. Make sure it's turned on, paired, and in range.";
+  }
+  if (/^java\.|Exception/.test(raw)) {
+    return 'Something went wrong talking to the printer. Try turning it off and on again.';
+  }
+  return raw;
+}
+
+export async function isBluetoothSupported() {
+  try {
+    await ensureBluetoothPermissions();
+    return await bt().isBluetoothAvailable();
+  } catch (e) {
+    return false;
+  }
+}
+
+// Classic Bluetooth devices must already be paired via the phone's system
+// Bluetooth settings — this library (like the OS) only talks to bonded
+// devices, it doesn't do the pairing handshake itself.
+export async function listPairedPrinters() {
+  const ok = await ensureBluetoothPermissions();
+  if (!ok) {
+    throw new Error('Bluetooth permission denied — enable it in phone Settings > Apps > RestroGrow Staff > Permissions.');
+  }
+  try {
+    const devices = await bt().getBondedDevices();
+    return (devices || []).map((d) => ({ address: d.address, name: d.name || d.address }));
+  } catch (e) {
+    throw new Error(friendlyBluetoothError(e));
+  }
+}
+
+export async function isPrinterConnected(address) {
+  if (!address) return false;
+  try {
+    return await bt().isDeviceConnected(address);
+  } catch (e) {
+    return false;
+  }
+}
+
+// Connects and leaves the SPP connection open, so the bill preview can show
+// a real "Connected" state before the user commits to printing.
+export async function connectToPrinter(address) {
+  if (!address) throw new Error('No Bluetooth printer selected — pick one first');
+  const ok = await ensureBluetoothPermissions();
+  if (!ok) {
+    throw new Error('Bluetooth permission denied — enable it in phone Settings > Apps > RestroGrow Staff > Permissions.');
+  }
+  const alreadyConnected = await isPrinterConnected(address);
+  if (alreadyConnected) return true;
+  try {
+    await bt().connectToDevice(address);
+  } catch (e) {
+    throw new Error(friendlyBluetoothError(e));
+  }
+  // Cheap thermal printers' SPP sockets commonly aren't ready for data the
+  // instant connectToDevice() resolves — writing immediately after a fresh
+  // connect is a well-known source of dropped/garbled first prints. A short
+  // settle delay here (not needed on the already-connected path above) fixes
+  // that without the caller having to know about it.
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  return true;
+}
+
+export async function disconnectPrinter(address) {
+  if (!address) return;
+  await bt().disconnectFromDevice(address).catch(() => {});
+}
+
+// Writes to the printer, connecting first if needed. If the write fails because the link
+// dropped (printer switched off and on, phone walked out of range), it reconnects once and
+// tries again, so a stale connection never costs a print.
+export async function writeToPrinter(address, bytes) {
+  if (!address) throw new Error('No Bluetooth printer selected — pick one first');
+  const data = Buffer.from(bytes);
+  try {
+    await connectToPrinter(address);
+    await bt().writeToDevice(address, data);
+  } catch (first) {
+    try {
+      await bt().disconnectFromDevice(address).catch(() => {});
+      await connectToPrinter(address);
+      await bt().writeToDevice(address, data);
+    } catch (e) {
+      throw new Error(friendlyBluetoothError(e));
+    }
+  }
+}
+
+// The connection is left open after printing so the next bill or ticket goes out at once.
+export async function printToBluetoothPrinter({ address, bytes }) {
+  if (!address) throw new Error('No Bluetooth printer selected — pick one in Settings first');
+  await writeToPrinter(address, bytes);
+}
+
+// Keeps the saved Bluetooth printer connected while the app is open: connects at start,
+// reconnects when the printer drops or the app comes back to the front, and checks every
+// 30 seconds. Quiet on failure — the printer may simply be switched off.
+let keepAlive = null;
+export function keepPrinterConnected(getAddress) {
+  stopKeepingPrinterConnected();
+  const { AppState } = require('react-native');
+  let busy = false;
+  const check = async () => {
+    if (busy || AppState.currentState !== 'active') return;
+    busy = true;
+    try {
+      const address = await getAddress();
+      if (address && !(await isPrinterConnected(address))) await connectToPrinter(address);
+    } catch (e) {
+      // printer off or out of range: try again on the next tick
+    } finally {
+      busy = false;
+    }
+  };
+  const timer = setInterval(check, 30000);
+  const appSub = AppState.addEventListener('change', (st) => st === 'active' && check());
+  let dropSub = null;
+  try {
+    dropSub = bt().onDeviceDisconnected(() => setTimeout(check, 2000));
+  } catch (e) {
+    // no Bluetooth module (Expo Go): the timer still covers it
+  }
+  check();
+  keepAlive = { timer, appSub, dropSub };
+}
+
+export function stopKeepingPrinterConnected() {
+  if (!keepAlive) return;
+  clearInterval(keepAlive.timer);
+  keepAlive.appSub?.remove?.();
+  keepAlive.dropSub?.remove?.();
+  keepAlive = null;
+}
