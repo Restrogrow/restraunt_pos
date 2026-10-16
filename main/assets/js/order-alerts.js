@@ -111,13 +111,18 @@
     }, { capture: true });
   });
   var chip = null;
+  function hideChip() {
+    if (chip) { chip.remove(); chip = null; }
+    document.body.classList.remove('rg-alert-shown');
+  }
+
   function refreshChip() {
     var perm = supported ? Notification.permission : 'unsupported';
     if (perm === 'granted') store.set('rg_alerts_on', '1');   // already allowed on this device: nothing to ask
     var decided = store.get('rg_alerts_on') === '1' || store.get('rg_alerts_chip_closed') === '1';
     // ask once per device; ask again only if the browser forgot the permission it was given
     var show = !decided || (store.get('rg_alerts_on') === '1' && perm === 'default' && store.get('rg_alerts_chip_closed') !== '1');
-    if (!show) { if (chip) { chip.remove(); chip = null; } return; }
+    if (!show) { if (chip) { hideChip(); } return; }
     if (chip) return;
     chip = document.createElement('div');
     chip.className = 'rg-alert-chip';
@@ -125,17 +130,18 @@
     chip.innerHTML = '<span class="material-symbols-rounded">notifications_active</span><span><b>Turn on order alerts</b><small>Ring and notify me about new orders, even in another tab</small></span>' +
       '<button type="button" class="rg-alert-on">Turn on</button><button type="button" class="rg-alert-x" aria-label="Not now"><span class="material-symbols-rounded">close</span></button>';
     document.body.appendChild(chip);
+    document.body.classList.add('rg-alert-shown');   // phones: the page moves down to make room (mobile.css)
     chip.querySelector('.rg-alert-on').addEventListener('click', function () {
       store.set('rg_alerts_on', '1');   // saved: the bar doesn't come back on this device
       window.rgEnablePush().then(function (ok) {
         if (typeof window.showNotification === 'function') window.showNotification(ok ? 'Order alerts are on for this device' : 'Sound is on. Notifications were not allowed; you can allow them in the browser’s site settings.', ok ? 'success' : 'info');
         var t = document.getElementById('notifications'); if (t && ok) t.checked = true;
-        if (chip) { chip.remove(); chip = null; }
+        if (chip) { hideChip(); }
       });
     });
     chip.querySelector('.rg-alert-x').addEventListener('click', function () {
       store.set('rg_alerts_chip_closed', '1');
-      if (chip) { chip.remove(); chip = null; }
+      if (chip) { hideChip(); }
     });
   }
 

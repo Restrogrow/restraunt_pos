@@ -1,0 +1,158 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Owner dashboard on phones and small tablets. Loaded last (views/dashboard.php),
+   so it only adjusts what the desktop styles get wrong on narrow screens.
+   Data tables become one card per row via assets/js/mobile-tables.js
+   (adds data-label to each cell; opt out with data-no-cards on a parent).
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── "Turn on order alerts" bar ── */
+@media (max-width: 640px) {
+  .rg-alert-chip {
+    left: 10px;
+    right: 10px;
+    top: calc(64px + env(safe-area-inset-top, 0px));   /* under the top bar: never over Pay / Save bars */
+    bottom: auto;
+    transform: none;
+    max-width: none;
+    gap: 10px;
+    padding: 9px 8px 9px 10px;
+    border-radius: 14px;
+    animation: rgChipDown .3s ease both;
+  }
+  .rg-alert-chip > span:nth-of-type(2) { flex: 1; min-width: 0; }
+  .rg-alert-chip b { font-size: .86rem; line-height: 1.25; white-space: normal; }
+  .rg-alert-chip > .material-symbols-rounded { width: 32px; height: 32px; font-size: 19px; border-radius: 10px; }
+  .rg-alert-on { height: 34px; padding: 0 12px; font-size: .8rem; }
+  .rg-alert-x { width: 28px; height: 28px; }
+}
+@media (max-width: 640px) {
+  /* while the bar shows, the page starts below it instead of under it */
+  body.rg-alert-shown .main-content > .page.active { margin-top: 62px; }
+}
+@keyframes rgChipDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 640px) {
+  /* ── section headings: smaller, so the first screen shows the content ── */
+  .page-header { margin-bottom: 14px !important; padding-bottom: 12px !important; }
+  .page-header h1 { font-size: 1.45rem !important; line-height: 1.2 !important; letter-spacing: -.01em; }
+  .page-header h1 .material-symbols-rounded, .page-header h1 svg { font-size: 1.3rem !important; width: 1.3rem; height: 1.3rem; }
+  .page-header p { font-size: .88rem !important; line-height: 1.45 !important; margin-top: 4px !important; }
+
+  /* ── forms: 16px text so phones don't zoom in on tap; full-width fields ── */
+  .page input[type="text"], .page input[type="search"], .page input[type="email"], .page input[type="tel"],
+  .page input[type="number"], .page input[type="password"], .page input[type="date"], .page input[type="time"],
+  .page select, .page textarea { font-size: 16px !important; max-width: 100%; }
+
+  /* ── nothing wider than the screen ── */
+  .page, .page > * { max-width: 100%; }
+  .page img, .page video, .page canvas { max-width: 100%; height: auto; }
+  .page pre, .page code { white-space: pre-wrap; word-break: break-word; }
+
+  /* ── Policy pages: list above the editor instead of side by side ── */
+  .pol-layout, .pol-wrap, .pol-grid, [class^="pol-"][class$="-grid"] { display: block !important; }
+  .pol-side, .pol-main { width: auto !important; min-width: 0 !important; max-width: 100% !important; }
+  .pol-side { margin-bottom: 12px; }
+  .pol-main .ql-toolbar, .pol-main [class*="toolbar"] { flex-wrap: wrap; }
+
+  /* ── settings: section list scrolls sideways instead of overflowing ── */
+  .st-nav-group { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .st-nav-group::-webkit-scrollbar { display: none; }
+
+  /* ── modals: a full-width sheet that scrolls inside, buttons always reachable ── */
+  .modal-content, .modal-dialog, .rg-modal-box {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow-y: auto;
+    margin: 12px auto !important;
+    border-radius: 16px !important;
+  }
+
+  /* ── data tables as cards (mobile-tables.js labels the cells) ── */
+  .page table.rg-cardtable { min-width: 0 !important; width: 100% !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+  .page table.rg-cardtable thead { display: none !important; }
+  .page table.rg-cardtable, .page table.rg-cardtable tbody, .page table.rg-cardtable tr, .page table.rg-cardtable td { display: block !important; width: 100% !important; }
+  .page table.rg-cardtable tr {
+    background: #fff;
+    border: 1px solid #edf0f4 !important;
+    border-radius: 14px;
+    padding: 8px 14px;
+    margin: 0 0 10px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+  }
+  .page table.rg-cardtable td {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 7px 0 !important;
+    border: 0 !important;
+    border-top: 1px solid #f3f4f6 !important;
+    text-align: right !important;
+    white-space: normal !important;
+    word-break: break-word;
+    min-height: 0;
+  }
+  .page table.rg-cardtable td:first-child { border-top: 0 !important; }
+  .page table.rg-cardtable td::before {
+    content: attr(data-label);
+    flex: none;
+    max-width: 45%;
+    text-align: left;
+    font-size: .76rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .page table.rg-cardtable td[data-label=""]::before, .page table.rg-cardtable td:not([data-label])::before { display: none; }
+  .page table.rg-cardtable td[colspan] { justify-content: center; text-align: center !important; }
+  .page table.rg-cardtable td > * { max-width: 55%; }
+  .page table.rg-cardtable td[colspan] > *, .page table.rg-cardtable td:not([data-label]) > * { max-width: 100%; }
+  /* buttons in a card never break inside a word; a row of them wraps as a group */
+  .page table.rg-cardtable td button, .page table.rg-cardtable td .btn, .page table.rg-cardtable td a[class*="btn"] { white-space: nowrap; }
+  .page table.rg-cardtable td:has(button, .btn) { flex-wrap: wrap; }
+  .page table.rg-cardtable td:has(button, .btn) > * { max-width: 100%; }
+  .page table.rg-cardtable td > div:has(> button), .page table.rg-cardtable td > div:has(> .btn) { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  /* an avatar column needs no label */
+  .page table.rg-cardtable td[data-label="Avatar"]::before, .page table.rg-cardtable td[data-label="Photo"]::before, .page table.rg-cardtable td[data-label="Image"]::before { display: none; }
+  .page table.rg-cardtable td[data-label="Avatar"], .page table.rg-cardtable td[data-label="Photo"], .page table.rg-cardtable td[data-label="Image"] { justify-content: flex-start; }
+  /* the wrapper scrolled the wide table sideways; cards don't need it */
+  .page .table-container:has(> table.rg-cardtable), .page .table-responsive:has(> table.rg-cardtable),
+  .page [class*="table-wrap"]:has(> table.rg-cardtable) { overflow: visible !important; border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+}
+
+/* small phones (≤ 360px): a little more room */
+@media (max-width: 360px) {
+  .page-header h1 { font-size: 1.3rem !important; }
+  .rg-alert-on { padding: 0 10px; }
+}
+
+/* ── phone/tablet menu (☰): a full-height panel whose list scrolls; Profile and Logout stay at the bottom ── */
+@media (max-width: 1024px) {
+  .sidebar.menu-active {
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden !important;
+  }
+  .sidebar.menu-active .sidebar-header { flex: none; }
+  .sidebar.menu-active .sidebar-nav { flex: 1; min-height: 0; height: auto !important; display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar.menu-active .sidebar-nav .primary-nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto !important;
+    padding-bottom: 12px !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .sidebar.menu-active .sidebar-nav .secondary-nav {
+    position: static !important;
+    flex: none;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* the page behind doesn't scroll while the menu is open */
+  body:has(.sidebar.menu-active) { overflow: hidden; }
+}

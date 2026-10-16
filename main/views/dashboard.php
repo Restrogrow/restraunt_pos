@@ -340,6 +340,9 @@ try {
   <!-- Critical CSS -->
   <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo time(); ?>">
   <link rel="stylesheet" href="../assets/css/studio-ui.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/studio-ui.css'); ?>">
+  <!-- phones and small tablets: loaded last so it only corrects narrow screens; tables become cards -->
+  <link rel="stylesheet" href="../assets/css/mobile.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/mobile.css'); ?>">
+  <script src="../assets/js/mobile-tables.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/mobile-tables.js'); ?>" defer></script>
   <!-- Font Awesome: the bottom-bar icon style previews in Website Appearance (loaded without blocking the page) -->
   <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css" media="print" onload="this.media='all'">
   
