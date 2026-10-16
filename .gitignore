@@ -87,3 +87,13 @@ composer.phar
 !customer-app-demo/app/assets/node_modules/**/vendor/
 # Local-only build of the same demo (base path /menuwebsite/)
 customer-app-demo-local/
+# Local-only build of the Partner app demo (base path /menuwebsite/)
+app-demo-local/
+# Staff app and Super Admin app browser builds: fonts and icons live in a folder named node_modules inside the web build
+!staff-app-demo/app/assets/node_modules/
+!staff-app-demo/app/assets/node_modules/**/vendor/
+!superadmin-app-web/app/assets/node_modules/
+!superadmin-app-web/app/assets/node_modules/**/vendor/
+# Local-only copies of those builds (base path /menuwebsite/)
+staff-app-demo-local/
+superadmin-app-web-local/

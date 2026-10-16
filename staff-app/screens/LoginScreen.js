@@ -15,6 +15,8 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { DEMO_LOGIN } from '../config/api';
+import { DEMO_STAFF, DEMO_STAFF_PASSWORD } from '../demo/DemoDeepLink';
 import { colors, font, radius, shadow, spacing } from '../theme';
 
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -156,6 +158,27 @@ export default function LoginScreen() {
               <>
                 <Text style={styles.welcome}>Staff log in</Text>
                 <Text style={styles.subtitle}>Use the email or phone number and password your manager set up for you.</Text>
+                {DEMO_LOGIN ? (
+                  <View style={styles.demoBox}>
+                    <Text style={styles.demoText}>Live demo of Spice Garden Indiranagar. Tap a role to log in as that staff member.</Text>
+                    <View style={styles.demoRow}>
+                      {[['manager', 'Manager'], ['waiter', 'Waiter'], ['chef', 'Chef']].map(([key, label]) => (
+                        <Pressable
+                          key={key}
+                          style={styles.demoBtn}
+                          disabled={submitting}
+                          onPress={() => {
+                            setError('');
+                            setSubmitting(true);
+                            login(DEMO_STAFF[key], DEMO_STAFF_PASSWORD).catch((e) => setError(e.message || 'Could not log in')).finally(() => setSubmitting(false));
+                          }}
+                        >
+                          <Text style={styles.demoBtnText}>{label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
 
                 <View style={styles.field}>
                   <Ionicons name="person-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
@@ -265,6 +288,11 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  demoBox: { marginTop: spacing.md, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.primaryLight || '#FFF1EC', gap: spacing.sm },
+  demoText: { fontFamily: font.medium, fontSize: 13, color: colors.text, lineHeight: 19 },
+  demoRow: { flexDirection: 'row', gap: spacing.sm },
+  demoBtn: { flex: 1, paddingVertical: 11, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center' },
+  demoBtnText: { fontFamily: font.semiBold, fontSize: 14, color: '#fff' },
   fill: { flex: 1 },
   scroll: {
     flexGrow: 1,

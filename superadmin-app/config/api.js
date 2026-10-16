@@ -12,7 +12,15 @@ function devHost() {
   if (Platform.OS === 'web' && typeof window !== 'undefined') return window.location.host;
   return (Constants.expoConfig && Constants.expoConfig.hostUri) || 'localhost:8082';
 }
-export const SITE_URL = __DEV__ ? 'http://' + devHost() + '/menuwebsite' : 'https://restrogrow.com';
+// A browser build (restrogrow.com/superadmin-app-web, or its local copy under /menuwebsite/) talks to the
+// site it was opened from, so the login cookie works; phone builds always use the live site.
+function webSite() {
+  const loc = window.location;
+  return loc.origin + (loc.pathname.indexOf('/menuwebsite/') === 0 ? '/menuwebsite' : '');
+}
+export const SITE_URL = __DEV__
+  ? 'http://' + devHost() + '/menuwebsite'
+  : (Platform.OS === 'web' && typeof window !== 'undefined' ? webSite() : 'https://restrogrow.com');
 export const BASE_URL = SITE_URL + '/main';
 
 // Called when any request comes back "session expired". AuthContext first tries to resume the

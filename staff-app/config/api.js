@@ -8,7 +8,17 @@ import Constants from 'expo-constants';
 const devHost = Platform.OS === 'web'
   ? (typeof window !== 'undefined' && window.location ? window.location.host : 'localhost:8083')
   : ((Constants.expoConfig && Constants.expoConfig.hostUri) || 'localhost:8083');
-export const BASE_URL = __DEV__ ? 'http://' + devHost + '/menuwebsite/main' : 'https://restrogrow.com/main';
+// A browser build (the demo at restrogrow.com/staff-app-demo, or its local copy under /menuwebsite/) talks to
+// the site it was opened from, so the login cookie works; phone builds always use the live site.
+function webBase() {
+  const loc = window.location;
+  return loc.origin + (loc.pathname.indexOf('/menuwebsite/') === 0 ? '/menuwebsite' : '') + '/main';
+}
+export const BASE_URL = __DEV__
+  ? 'http://' + devHost + '/menuwebsite/main'
+  : (Platform.OS === 'web' && typeof window !== 'undefined' ? webBase() : 'https://restrogrow.com/main');
+// The browser demo build (EXPO_PUBLIC_DEMO_LOGIN=1): one-tap demo staff logins, links to screens.
+export const DEMO_LOGIN = process.env.EXPO_PUBLIC_DEMO_LOGIN === '1';
 
 // Maps a bad HTTP status to something a restaurant staff member can
 // actually act on — "Request failed (500)" doesn't tell them anything.

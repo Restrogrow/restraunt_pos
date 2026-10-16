@@ -27,13 +27,14 @@ import ConnectionBanner from './components/ConnectionBanner';
 import { CONTENT_MAX } from './hooks/useLayout';
 import { getBiometricLockEnabled } from './config/biometricSettings';
 import { navigationRef } from './navigationRef';
+import DemoDeepLink from './demo/DemoDeepLink';
 import { colors, font } from './theme';
 import { authenticate, isBiometricSupported } from './utils/biometricAuth';
 import { keepPrinterConnected, stopKeepingPrinterConnected } from './utils/bluetoothPrinter';
 import { getPrinterSettings } from './config/printerSettings';
 import LoginScreen from './screens/LoginScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
-import { DEMO } from './config/api';
+import { DEMO, DEMO_LOGIN } from './config/api';
 import { staffRole } from './utils/roles';
 import HomeScreen from './screens/HomeScreen';
 import ShiftHomeScreen from './screens/ShiftHomeScreen';
@@ -411,7 +412,7 @@ function RootNavigator() {
 
   if (!user) {
     // first launch: the welcome slides, then login (the browser demo goes straight to login)
-    if (!welcomeSeen && !DEMO) return <WelcomeScreen onDone={() => setWelcomeSeen(true)} />;
+    if (!welcomeSeen && !DEMO && !DEMO_LOGIN) return <WelcomeScreen onDone={() => setWelcomeSeen(true)} />;
     return <LoginScreen />;
   }
 
@@ -522,6 +523,7 @@ export default function App() {
             }}
           >
             <StatusBar style="light" />
+            <DemoDeepLink />
             <ErrorBoundary>
               <RootNavigator />
             </ErrorBoundary>

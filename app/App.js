@@ -18,6 +18,7 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
+import DemoDeepLink from './demo/DemoDeepLink';
 import TabBar from './components/TabBar';
 import OrderAlertWatcher from './components/OrderAlertWatcher';
 import OrderWatchBridge from './components/OrderWatchBridge';
@@ -495,6 +496,7 @@ export default function App() {
             <ErrorBoundary>
               <RootNavigator />
             </ErrorBoundary>
+            <DemoDeepLink />
             <FeedbackHost />
           </NavigationContainer>
         </AuthProvider>

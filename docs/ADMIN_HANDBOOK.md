@@ -15,7 +15,9 @@ Last updated: 16 October 2026.
 | Super Admin | https://restrogrow.com/main/superadmin/login.php | http://localhost/menuwebsite/main/superadmin/login.php |
 | **One-tap demo (private link)** | **https://restrogrow.com/demo** | http://localhost/menuwebsite/demo/ |
 | Demo restaurant's website | https://restrogrow.com/spice-garden-indiranagar | http://localhost/menuwebsite/spice-garden-indiranagar |
-| Partner app in the browser (public, linked from the homepage) | https://restrogrow.com/app-demo/ | http://localhost/menuwebsite/app-demo/ |
+| Partner app in the browser (public, linked from the homepage) | https://restrogrow.com/app-demo/ | http://localhost/menuwebsite/app-demo-local/ |
+| Staff app in the browser (on the demo restaurant) | https://restrogrow.com/staff-app-demo/app/ | http://localhost/menuwebsite/staff-app-demo-local/app/ |
+| Super Admin app in the browser (your real login) | https://restrogrow.com/superadmin-app-web/app/ | http://localhost/menuwebsite/superadmin-app-web-local/app/ |
 | Health check (for UptimeRobot) | https://restrogrow.com/main/api/health.php?check=orders | |
 | GitHub (private) | https://github.com/Restrogrow/restraunt_pos (branch `main`) | |
 | Hosting | Hostinger hPanel (database `u509616587_restrogrow`) | XAMPP, database `menuwebsite_db` (root, no password) |
@@ -44,8 +46,10 @@ Last updated: 16 October 2026.
 | Coupons to try on the website | `WELCOME50`, `SPICE20`, `FEAST100`, `WEEKEND15` | |
 
 ### Showing the demo
-- **`/demo`** is a private page with one button each for the owner dashboard, staff screens, customer website and app demo. Nobody needs to type anything.
-- `/demo?go=admin` (or `manager`, `waiter`, `chef`) logs straight in. This is handy as a link in a WhatsApp message.
+- **`/demo`** is a private page with every app and direct links to its main screens: owner dashboard (37 pages), staff screens, customer website (12 pages), Partner app (13 screens), Staff app (manager / waiter / chef screens), customer app. Nobody needs to type anything. Signed in to Super Admin, it also shows a **Team only** part: the Super Admin app, the panel, the Email book. Super Admin › Tools › **All demos** opens it.
+- `/demo?go=admin` (or `manager`, `waiter`, `chef`) logs straight in; add `&page=ordersPage` (any dashboard page) to open that page. Handy as a link in a WhatsApp message.
+- Partner app demo links: `/app-demo/app/?screen=pos` (home, orders, pos, menu, kitchen, tables, waiter-calls, bookings, customers, reports, loyalty, logs, settings) log in by themselves. Staff app links: `/staff-app-demo/app/?as=waiter&screen=tables`.
+- The app demos are web builds with a fixed folder, so this PC uses the `-local` copies (gitignored) and `/demo` picks the right one by itself.
 - `/demo` is **not linked from any public page**, and it's marked `noindex`, so search engines won't show it. Share it only with people you're pitching to.
 
 ### Keeping it clean
@@ -240,7 +244,10 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 
 - Expo SDK 57. The release APK is built locally (JDK 17 and Android SDK in `C:\Users\INDIA\dev`): run `./gradlew assembleRelease` in `app/android`. Copies are kept on the Desktop as `RestroGrow-Partner-<version>.apk`.
 - Version is in `app/app.json` and `app/android/app/build.gradle` (now 1.1.6, versionCode 16).
-- **Browser demo:** `app/demo/mockApi.js` and `app/demo/fixtures.json`. Rebuild with `EXPO_PUBLIC_DEMO=1 EXPO_BASE_URL=/app-demo/app npx expo export --platform web --output-dir ../app-demo/app` (in Git Bash also add `MSYS_NO_PATHCONV=1`).
+- **Browser demo:** `app/demo/mockApi.js`, `app/demo/fixtures.json`, `app/demo/DemoDeepLink.js` (the `?screen=` links). Rebuild with `EXPO_PUBLIC_DEMO=1 EXPO_BASE_URL=/app-demo/app npx expo export --platform web --output-dir ../app-demo/app` and, for this PC, `EXPO_BASE_URL=/menuwebsite/app-demo-local/app … --output-dir ../app-demo-local/app` (in Git Bash also add `MSYS_NO_PATHCONV=1`).
+- **Staff app in the browser:** in `staff-app/`, `EXPO_PUBLIC_DEMO_LOGIN=1 EXPO_BASE_URL=/staff-app-demo/app npx expo export -p web --output-dir ../staff-app-demo/app` (local: `/menuwebsite/staff-app-demo-local/app`). It uses the real demo restaurant; the login shows Manager / Waiter / Chef buttons and `?as=` / `&screen=` links work (`staff-app/demo/DemoDeepLink.js`).
+- **Super Admin app in the browser:** in `superadmin-app/`, `EXPO_BASE_URL=/superadmin-app-web/app npx expo export -p web --output-dir ../superadmin-app-web/app` (local: `/menuwebsite/superadmin-app-web-local/app`). Real Super Admin login only.
+- Browser builds of the Staff and Super Admin apps talk to the site they are opened from (`config/api.js`); phone builds still use restrogrow.com.
 - Restaurant settings the app can edit are saved through `main/api/app_settings.php`. It saves only the fields it's sent; only the owner or a branch admin can use it.
 
 ### Super Admin app (`superadmin-app/`) and Staff app (`staff-app/`)
