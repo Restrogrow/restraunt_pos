@@ -53,7 +53,10 @@ $later = [
 • DMARC (TXT on _dmarc): v=DMARC1; p=none; rua=mailto:<your address>
 Check after a day with Super Admin › Email › Send test to a Gmail address › Show original: SPF, DKIM, DMARC should say PASS."],
     ['Email', 0, 'Optional: separate sender addresses', "In Google Admin add aliases (billing@, orders@, support@ …) to your Workspace user, then in the live .env: MAIL_FROM_BILLING, MAIL_FROM_ORDERS, MAIL_FROM_ALERTS, MAIL_FROM_ACCOUNTS, MAIL_FROM_SUPPORT, MAIL_FROM_SALES. Without them everything comes from SMTP_FROM_EMAIL, which is fine."],
-    ['Cron jobs', 0, 'Add the email cron job', "hPanel › Advanced › Cron Jobs, every 10 minutes: /usr/bin/php /home/<user>/public_html/main/cron/email_dispatch.php (trial / renewal reminders, receipts, booking reminders, retries). Emails also go out without it, but reminders then wait until someone opens a dashboard."],
+    ['Cron jobs', 1, 'Add the 2 cron jobs for emails and the morning report', "hPanel › Advanced › Cron Jobs › Custom (<HOME> = the folder shown in File Manager):
+• every 10 minutes: /usr/bin/php <HOME>/main/cron/email_dispatch.php  (trial / renewal reminders, payment receipts, gift emails, booking reminders, retrying failed emails)
+• every 15 minutes: /usr/bin/php <HOME>/main/cron/owner_brief.php  (AI manager morning report on WhatsApp / email)
+Then open Super Admin › Email › Settings & jobs: both should say Running within 15 minutes. Without them, reminders only go out while someone has a dashboard open."],
 ];
 $have = $conn->prepare('SELECT COUNT(*) FROM sa_todos WHERE title = ?');
 $addLater = $conn->prepare('INSERT INTO sa_todos (category, urgent, title, details, sort) VALUES (?, ?, ?, ?, ?)');
