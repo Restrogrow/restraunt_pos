@@ -11266,14 +11266,17 @@ window.printOrder = async function(orderId) {
     
     const subtotal = parseFloat(order.subtotal || 0);
     const tax = parseFloat(order.tax || 0);
-    const discount = parseFloat(order.discount || 0);
+    // every discount on the order: coupon / manual (discount_amount), points (loyalty_discount_amount), VIP
+    const discount = order.discount != null ? parseFloat(order.discount || 0)
+      : (parseFloat(order.discount_amount) || 0) + (parseFloat(order.loyalty_discount_amount) || 0) + (parseFloat(order.vip_discount) || 0);
     const total = parseFloat(order.total || 0);
     
     // Professional items table: # | Item | Qty | Rate | Amount
     const itemsHtml = items.map((it, idx) => {
       const itemTotal = (parseFloat(it.total_price) || 0);
-      const itemRate = (parseFloat(it.price) || 0);
       const qty = it.quantity || 1;
+      // the order API sends unit_price (price is only on older payloads)
+      const itemRate = parseFloat(it.price != null ? it.price : it.unit_price) || (itemTotal / qty) || 0;
       return `
         <tr>
           <td style="text-align:center; padding:4px 2px; font-size:11px; border-bottom:1px dashed #d1d5db; color:#6b7280; width:18px;">${idx + 1}</td>
@@ -11452,7 +11455,7 @@ window.printOrder = async function(orderId) {
           // print just the combo name, not "Family Combo (Combo)".
           name: (it.item_name || it.name || '') + (it.variation_name && it.variation_name !== 'Combo' ? ' (' + it.variation_name + ')' : ''),
           quantity: it.quantity || 1,
-          rate: parseFloat(it.price) || 0,
+          rate: parseFloat(it.price != null ? it.price : it.unit_price) || 0,
           amount: parseFloat(it.total_price) || 0
         })),
         subtotal: subtotal,

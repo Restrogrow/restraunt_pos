@@ -210,6 +210,7 @@ function orderReceiptData(order, user, currency, type) {
     businessIdLabel: user?.business_id_label,
     businessIdNo: String(user?.show_business_id) === '1' || user?.show_business_id === true ? user?.business_id_no : null,
     billNo: order.bill_no || null,
+    orderId: order.id,
     orderNumber: order.order_number,
     kotNumber: kotTag || order.id,
     orderType: order.order_type,

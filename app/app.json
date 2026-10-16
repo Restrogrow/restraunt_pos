@@ -3,7 +3,7 @@
     "name": "Restrogrow Partner",
     "slug": "restrogrow",
     "scheme": "restrogrow",
-    "version": "1.1.7",
+    "version": "1.1.8",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.restrogrow.app",
-      "versionCode": 17,
+      "versionCode": 18,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#FA5502",

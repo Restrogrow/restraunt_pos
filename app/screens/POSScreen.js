@@ -441,6 +441,8 @@ export default function POSScreen({ route }) {
       businessIdLabel: user?.business_id_label,
       businessIdNo: user?.show_business_id ? user?.business_id_no : null,
       orderNumber: opts.orderNumber || null,
+      orderId: opts.orderId || null,
+      billNo: opts.billNo || null,
       kotNumber,
       orderType: tableId ? 'Dine-in' : 'Takeaway',
       tableName: table?.table_number,
@@ -705,6 +707,8 @@ export default function POSScreen({ route }) {
       const line = loyaltyLine(res.loyalty, currency);
       const billOpts = {
         orderNumber: res.order_number || null,
+        orderId: res.order_id || null,
+        billNo: res.bill_no || null,
         status: status === 'Partially Paid' ? 'Partially Paid' : 'Paid',
         walletPaid: walletPart,
         payments: payments.length ? payments : undefined,

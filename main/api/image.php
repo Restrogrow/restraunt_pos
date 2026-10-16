@@ -5,14 +5,14 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
 // Ensure no output before headers
-while (ob_get_level()) {
-    if (ob_get_level()) ob_end_clean();
+// a server-level buffer (e.g. compression) can't be removed: stop instead of warning in a loop
+while (ob_get_level() && @ob_end_clean()) {
 }
 ob_start(); // Start fresh buffer
 
 // Helper: return a placeholder SVG so the browser doesn't show a broken image
 function sendPlaceholderSvg($text = 'Image', $width = 200, $height = 200) {
-    if (ob_get_level()) ob_end_clean();
+    if (ob_get_level()) @ob_end_clean();
     $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $width . '" height="' . $height . '" viewBox="0 0 ' . $width . ' ' . $height . '">
         <rect width="100%" height="100%" fill="#f0f0f0"/>
         <text x="50%" y="50%" font-family="Arial,sans-serif" font-size="14" fill="#999" text-anchor="middle" dy=".3em">' . htmlspecialchars($text) . '</text>
@@ -87,7 +87,7 @@ if ($localRef !== '') {
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_file($finfo, $fullPath);
         finfo_close($finfo);
-        if (ob_get_level()) ob_end_clean();
+        if (ob_get_level()) @ob_end_clean();
         header('Content-Type: ' . $mimeType);
         header('Content-Length: ' . filesize($fullPath));
         header('Cache-Control: public, max-age=31536000');
@@ -113,7 +113,7 @@ if (!empty($imagePath) && strpos($imagePath, 'http') !== 0 && empty($imageType))
         $item = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
-            if (ob_get_level()) ob_end_clean();
+            if (ob_get_level()) @ob_end_clean();
             header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
             header('Content-Length: ' . strlen($item['image_data']));
             header('Cache-Control: public, max-age=' . $cacheMaxAge);
@@ -130,7 +130,7 @@ if (!empty($imagePath) && strpos($imagePath, 'http') !== 0 && empty($imageType))
             $item = $stmt2->fetch(PDO::FETCH_ASSOC);
             
             if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
-                if (ob_get_level()) ob_end_clean();
+                if (ob_get_level()) @ob_end_clean();
                 header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
                 header('Content-Length: ' . strlen($item['image_data']));
                 header('Cache-Control: public, max-age=' . $cacheMaxAge);
@@ -163,7 +163,7 @@ if (!empty($imagePath) && strpos($imagePath, 'http') !== 0 && empty($imageType))
         }
         
         if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
-            if (ob_get_level()) ob_end_clean();
+            if (ob_get_level()) @ob_end_clean();
             header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
             header('Content-Length: ' . strlen($item['image_data']));
             header('Cache-Control: public, max-age=31536000');
@@ -186,7 +186,7 @@ if (empty($imagePath) && empty($imageType) && !empty($imageId)) {
         $stmt->execute(['db:' . $imageId]);
         $addon = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($addon && !empty($addon['image_data'])) {
-            if (ob_get_level()) ob_end_clean();
+            if (ob_get_level()) @ob_end_clean();
             header('Content-Type: ' . ($addon['image_mime_type'] ?? 'image/jpeg'));
             header('Content-Length: ' . strlen($addon['image_data']));
             header('Cache-Control: public, max-age=86400');
@@ -204,7 +204,7 @@ if (empty($imagePath) && empty($imageType) && !empty($imageId)) {
         $stmt->execute(['db:' . $imageId]);
         $item = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
-            if (ob_get_level()) ob_end_clean();
+            if (ob_get_level()) @ob_end_clean();
             header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
             header('Content-Length: ' . strlen($item['image_data']));
             header('Cache-Control: public, max-age=86400');
@@ -229,7 +229,7 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                 $logo = $stmt->fetch(PDO::FETCH_ASSOC);
 
                 if ($logo && !empty($logo['logo_data']) && isValidImageBytes($logo['logo_data'])) {
-                    if (ob_get_level()) ob_end_clean();
+                    if (ob_get_level()) @ob_end_clean();
                     header('Content-Type: ' . ($logo['logo_mime_type'] ?? 'image/jpeg'));
                     header('Content-Length: ' . strlen($logo['logo_data']));
                     header('Cache-Control: public, max-age=31536000'); // Cache for 1 year
@@ -282,7 +282,7 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
 
                         // Only proceed if we have actual, decodable image data
                         if ($dataLength > 0 && isValidImageBytes($imageData)) {
-                            if (ob_get_level()) ob_end_clean();
+                            if (ob_get_level()) @ob_end_clean();
                             $mimeType = !empty($menu['menu_image_mime_type']) ? $menu['menu_image_mime_type'] : 'image/jpeg';
                             header('Content-Type: ' . $mimeType);
                             header('Content-Length: ' . $dataLength);
@@ -302,14 +302,14 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                             // Already tried BLOB, so skip
                         } elseif (strpos($menuImagePath, 'http') === 0) {
                             // External URL - redirect
-                            if (ob_get_level()) ob_end_clean();
+                            if (ob_get_level()) @ob_end_clean();
                             header('Location: ' . $menuImagePath);
                             exit();
                         } else {
                         // File path - try to serve the file
                         $filePath = __DIR__ . '/../' . ltrim($menuImagePath, '/');
                         if (file_exists($filePath) && is_file($filePath)) {
-                            if (ob_get_level()) ob_end_clean();
+                            if (ob_get_level()) @ob_end_clean();
                             $mimeType = mime_content_type($filePath);
                             header('Content-Type: ' . ($mimeType ?: 'image/jpeg'));
                             header('Content-Length: ' . filesize($filePath));
@@ -337,13 +337,13 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                         if ($menu && !empty($menu['menu_image'])) {
                             $menuImagePath = $menu['menu_image'];
                             if (strpos($menuImagePath, 'http') === 0) {
-                                if (ob_get_level()) ob_end_clean();
+                                if (ob_get_level()) @ob_end_clean();
                                 header('Location: ' . $menuImagePath);
                                 exit();
                             } else {
                                 $filePath = __DIR__ . '/../' . ltrim($menuImagePath, '/');
                                 if (file_exists($filePath) && is_file($filePath)) {
-                                    if (ob_get_level()) ob_end_clean();
+                                    if (ob_get_level()) @ob_end_clean();
                                     $mimeType = mime_content_type($filePath);
                                     header('Content-Type: ' . ($mimeType ?: 'image/jpeg'));
                                     header('Content-Length: ' . filesize($filePath));
@@ -489,7 +489,7 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                     // file) - otherwise it gets prepended to the image bytes
                     // and corrupts the file signature, same as every other
                     // branch on this page already does before echoing binary data.
-                    if (ob_get_level()) ob_end_clean();
+                    if (ob_get_level()) @ob_end_clean();
                     header('Content-Type: ' . ($proof['proof_mime_type'] ?? 'image/jpeg'));
                     header('Content-Length: ' . strlen($proof['proof_data']));
                     header('Cache-Control: private, max-age=3600');
@@ -510,7 +510,7 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
             $item = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
-                if (ob_get_level()) ob_end_clean();
+                if (ob_get_level()) @ob_end_clean();
                 header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
                 header('Content-Length: ' . strlen($item['image_data']));
                 header('Cache-Control: public, max-age=31536000'); // Cache for 1 year
@@ -526,7 +526,7 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                 $item = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($item && !empty($item['image_data']) && isValidImageBytes($item['image_data'])) {
-                    if (ob_get_level()) ob_end_clean();
+                    if (ob_get_level()) @ob_end_clean();
                     header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
                     header('Content-Length: ' . strlen($item['image_data']));
                     header('Cache-Control: public, max-age=31536000');
@@ -568,7 +568,7 @@ if (empty($imagePath)) {
 
 // Proxy external URLs through PHP (redirecting causes 404 on some servers)
 if (strpos($imagePath, 'http') === 0) {
-    if (ob_get_level()) ob_end_clean();
+    if (ob_get_level()) @ob_end_clean();
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $imagePath);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -714,7 +714,7 @@ if (!$fullPath || !file_exists($fullPath)) {
             }
             
             if ($finalItem && !empty($finalItem['image_data']) && isValidImageBytes($finalItem['image_data'])) {
-                if (ob_get_level()) ob_end_clean();
+                if (ob_get_level()) @ob_end_clean();
                 header('Content-Type: ' . ($finalItem['image_mime_type'] ?? 'image/jpeg'));
                 header('Content-Length: ' . strlen($finalItem['image_data']));
                 header('Cache-Control: public, max-age=31536000');
@@ -760,7 +760,7 @@ if (strpos($mimeType, 'image/') !== 0) {
 }
 
 // Clear any output buffer before sending image
-if (ob_get_level()) ob_end_clean();
+if (ob_get_level()) @ob_end_clean();
 
 // Set appropriate headers
 header('Content-Type: ' . $mimeType);
