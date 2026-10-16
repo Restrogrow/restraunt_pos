@@ -56,6 +56,7 @@ if (!$currency_symbol || $tax_name === null || $tax_percent === null || $timezon
             $tax_name = !empty($settingsRow['tax_name']) ? htmlspecialchars($settingsRow['tax_name'], ENT_QUOTES, 'UTF-8') : 'GST';
             $tax_percent = isset($settingsRow['tax_percent']) ? (float)$settingsRow['tax_percent'] : 5.00;
             $timezone = !empty($settingsRow['timezone']) ? $settingsRow['timezone'] : 'Asia/Kolkata';
+            $_SESSION['enable_gst'] = $enable_gst;
             $_SESSION['tax_name'] = $tax_name;
             $_SESSION['tax_percent'] = $tax_percent;
             $_SESSION['timezone'] = $timezone;
@@ -67,6 +68,9 @@ if (!$currency_symbol || $tax_name === null || $tax_percent === null || $timezon
 
 if (!$currency_symbol) {
     $currency_symbol = '₹';
+}
+if (!isset($enable_gst)) {
+    $enable_gst = isset($_SESSION['enable_gst']) ? (int)$_SESSION['enable_gst'] : 1;
 }
 if ($tax_name === null) {
     $tax_name = 'GST';
@@ -81,37 +85,39 @@ require_once __DIR__ . '/../config/timezone_utils.php';
 applyRestaurantTimezone($timezone, $conn);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="st">
 <head>
     <meta charset="UTF-8">
 <?php require_once __DIR__ . '/../config/sentry_browser.php'; echo rgSentryBrowserTag('waiter'); ?>
   <script src="../assets/js/quiet-console.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/quiet-console.js'); ?>"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Waiter Dashboard - <?php echo htmlspecialchars($_SESSION['restaurant_name'] ?? 'Restaurant'); ?></title>
-    
-    <!-- Resource Hints for Performance -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>Waiter – <?php echo htmlspecialchars($_SESSION['restaurant_name'] ?? 'Restaurant'); ?></title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
-    
-    <!-- Critical CSS -->
-    <link rel="stylesheet" href="../assets/css/style.css">
-    
-    <!-- Optimized Font Loading -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"></noscript>
+
+    <!-- style.css draws the POS (same as the owner dashboard); staff-ui.css draws everything around it -->
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/style.css'); ?>">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
     <link rel="preload" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="<?php require_once __DIR__ . '/../config/icon_font.php'; echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>"></noscript>
-    
+    <noscript><link rel="stylesheet" href="<?php echo htmlspecialchars(rgIconFontUrl(), ENT_QUOTES); ?>"></noscript>
+    <link rel="stylesheet" href="../assets/css/staff-ui.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/staff-ui.css'); ?>">
+
     <script>
         window.globalCurrencySymbol = <?php echo json_encode($currency_symbol, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
         window.enableGst = <?php echo json_encode((bool)($enable_gst ?? 1), JSON_HEX_TAG); ?>;
         window.taxName = <?php echo json_encode($tax_name, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE); ?>;
         window.taxPercent = <?php echo json_encode((float)$tax_percent, JSON_HEX_TAG); ?>;
         const waiterCurrencySymbol = window.globalCurrencySymbol || '₹';
+        window.STAFF = {
+            role: 'Waiter',
+            restaurantId: <?php echo json_encode($restaurant_id); ?>,
+            serverNow: <?php echo json_encode(date('Y-m-d H:i:s')); ?>,
+            currency: window.globalCurrencySymbol
+        };
     </script>
-    
+
     <!-- Scripts - Defer non-critical -->
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>
     <script src="../website/rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-notify.js'); ?>"></script>
@@ -122,129 +128,87 @@ applyRestaurantTimezone($timezone, $conn);
     <script src="../assets/js/script.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/script.js'); ?>" defer></script>
     <script src="../assets/js/pos-discount.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-discount.js'); ?>" defer></script>
     <style>
-        /* SweetAlert2 defaults to z-index:1060, which can render behind this
-           page's own full-screen overlays/modals (up to z-index:10001) -
-           force it above all of them so its buttons stay clickable. */
-        .swal2-container {
-            z-index: 100000 !important;
-        }
-        /* Prevent zoom on mobile devices */
-        html, body {
-            touch-action: manipulation;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-        /* Allow text selection in input fields */
-        input, textarea, select {
-            -webkit-user-select: text;
-            user-select: text;
-        }
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: #f3f4f6; }
-        .main-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        .waiter-header { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 20px; margin-bottom: 24px; border-radius: 12px; }
-        .page-tabs { display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 2px solid #e5e7eb; overflow-x: auto; }
-        .tab { padding: 12px 24px; cursor: pointer; font-weight: 600; color: #6b7280; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
-        .tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .request-card { background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
-        .request-card.pending { border-left: 4px solid #f59e0b; }
-        .request-card.attended { border-left: 4px solid #3b82f6; }
-        .order-card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn-primary { background: #3b82f6; color: white; }
-        .btn-success { background: #10b981; color: white; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
-        
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .main-container { padding: 12px; }
-            .waiter-header { padding: 16px; }
-            .waiter-header h1 { font-size: 1.25rem !important; }
-            .page-tabs { gap: 8px; margin-bottom: 16px; }
-            .tab { padding: 10px 16px; font-size: 0.9rem; }
-            .page-header { flex-direction: column; align-items: flex-start; }
-            .page-header h2 { font-size: 1.25rem; margin: 0; }
-            .request-card, .order-card { padding: 16px; margin-bottom: 12px; }
-            .order-card > div { flex-direction: column !important; }
-            .order-card .btn { width: 100%; margin-top: 12px; }
-            
-            /* Notification mobile styles */
-            .waiter-toast-notification { 
-                top: 10px !important;
-                right: 10px !important;
-                left: 10px !important;
-                max-width: none !important;
-                font-size: 0.9rem !important;
-                padding: 12px 16px !important;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .main-container { padding: 8px; }
-            .waiter-header { padding: 12px; }
-            .tab { padding: 8px 12px; font-size: 0.85rem; }
-            .request-card, .order-card { padding: 12px; }
-        }
+        /* Allow text selection in input fields only (stops long-press menus on the floor) */
+        html, body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        input, textarea, select { -webkit-user-select: text; user-select: text; }
     </style>
 </head>
-<body>
-    <div class="main-container">
-        <header class="waiter-header">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1 style="margin: 0; font-size: 1.75rem;">🍽️ Waiter Dashboard</h1>
-                    <p style="margin: 8px 0 0 0; opacity: 0.9;"><?php echo htmlspecialchars($_SESSION['restaurant_name'] ?? 'Restaurant'); ?></p>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 0.9rem; opacity: 0.9;">Welcome, <?php echo htmlspecialchars($_SESSION['username'] ?? 'Waiter'); ?></div>
-                    <button id="enableAlertsBtn" onclick="enableStaffPushAlerts(this)" style="color: white; font-weight: 600; margin-top: 8px; margin-right: 8px; display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔔 Enable Alerts</button>
-                    <a href="../controllers/staff_logout.php" style="color: white; text-decoration: none; font-weight: 600; margin-top: 8px; display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">Logout</a>
+<?php
+$staff_name = $_SESSION['username'] ?? 'Waiter';
+$name_parts = preg_split('/\s+/', trim($staff_name));
+$initials = strtoupper(mb_substr($name_parts[0] ?? 'W', 0, 1) . (count($name_parts) > 1 ? mb_substr(end($name_parts), 0, 1) : ''));
+?>
+<body class="st-body st-has-tabbar">
+    <header class="st-top">
+        <div class="st-top-in">
+            <div class="st-brand">
+                <span class="st-logo" aria-hidden="true"><span class="material-symbols-rounded">room_service</span></span>
+                <div class="st-brand-t">
+                    <b><?php echo htmlspecialchars($_SESSION['restaurant_name'] ?? 'Restaurant'); ?></b>
+                    <small>Waiter · <?php echo htmlspecialchars($name_parts[0] ?? 'Waiter'); ?></small>
                 </div>
             </div>
-        </header>
-
-        <div class="main-content">
-            <div class="page-tabs">
-                <div class="tab active" onclick="switchTab('requests', event)">Waiter Requests</div>
-                <div class="tab" onclick="switchTab('orders', event)">Active Orders</div>
-                <div class="tab" onclick="switchTab('pos', event)">POS</div>
-            </div>
-
-            <!-- Waiter Requests Tab -->
-            <div id="requestsTab" class="tab-content active">
-                <div class="page-header">
-                    <h2>Waiter Requests</h2>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span id="lastRefresh" style="color: #6b7280; font-size: 0.875rem;">Auto-refreshing every 5 seconds...</span>
-                        <button class="btn btn-primary" onclick="loadWaiterRequests()">
-                            <span class="material-symbols-rounded" style="vertical-align: middle;">refresh</span> Refresh
-                        </button>
-                    </div>
+            <div class="st-top-r">
+                <span class="st-live" id="stLive"><i></i><span>Connecting…</span></span>
+                <button type="button" class="st-ibtn on" id="stSoundBtn" aria-pressed="true" aria-label="Sound on"><span class="material-symbols-rounded">campaign</span></button>
+                <button type="button" class="st-alerts" id="enableAlertsBtn"><span class="material-symbols-rounded">notifications</span><span class="st-alerts-l">Turn on alerts</span></button>
+                <div class="st-user">
+                    <span class="st-av" aria-hidden="true"><?php echo htmlspecialchars($initials); ?></span>
+                    <div class="st-user-t"><b><?php echo htmlspecialchars($staff_name); ?></b><small>Waiter</small></div>
                 </div>
-                <div id="waiterRequestsList"></div>
+                <a class="st-ibtn" id="stLogout" href="../controllers/staff_logout.php" aria-label="Log out" title="Log out"><span class="material-symbols-rounded">logout</span></a>
             </div>
+        </div>
+    </header>
 
-            <!-- Active Orders Tab -->
-            <div id="ordersTab" class="tab-content">
-                <div class="page-header">
-                    <h2>Active Orders</h2>
-                    <button class="btn btn-primary" onclick="loadActiveOrders()">
-                        <span class="material-symbols-rounded" style="vertical-align: middle;">refresh</span> Refresh
-                    </button>
+    <main class="st-wrap">
+        <nav class="st-tabs" role="tablist" aria-label="Waiter screens">
+            <button type="button" class="st-tab" role="tab" data-tab="calls"><span class="material-symbols-rounded">notifications_active</span>Table calls<em data-badge="calls"></em></button>
+            <button type="button" class="st-tab" role="tab" data-tab="orders"><span class="material-symbols-rounded">room_service</span>Ready to serve<em data-badge="orders"></em></button>
+            <button type="button" class="st-tab" role="tab" data-tab="pos"><span class="material-symbols-rounded">point_of_sale</span>POS</button>
+        </nav>
+
+        <!-- Table calls -->
+        <section id="view-calls" class="st-view" aria-labelledby="callsTitle">
+            <div class="st-head">
+                <div class="st-head-l">
+                    <span class="st-hello">Hi <?php echo htmlspecialchars($name_parts[0] ?? 'there'); ?> 👋</span>
+                    <h1 id="callsTitle">Table calls</h1>
                 </div>
-                <div id="activeOrdersList"></div>
+                <div class="st-head-r">
+                    <span class="st-updated" id="lastRefresh">Auto-refreshing…</span>
+                    <button type="button" class="st-btn ghost" id="callsRefresh"><span class="material-symbols-rounded">refresh</span>Refresh</button>
+                </div>
             </div>
+            <div class="st-call-sum" id="callsSummary" aria-live="polite"></div>
+            <div id="waiterRequestsList"></div>
+        </section>
 
-            <!-- POS Tab -->
-            <div id="posTab" class="tab-content">
-                <div class="page-header">
-                    <h2>Point of Sale</h2>
-                    <p>Process orders and manage transactions</p>
+        <!-- Ready to serve -->
+        <section id="view-orders" class="st-view" aria-labelledby="ordersTitle">
+            <div class="st-head">
+                <div class="st-head-l">
+                    <span class="st-hello">Food the kitchen has finished</span>
+                    <h1 id="ordersTitle">Ready to serve</h1>
                 </div>
+                <div class="st-head-r">
+                    <span class="st-updated" id="ordersUpdated"></span>
+                    <button type="button" class="st-btn ghost" id="ordersRefresh"><span class="material-symbols-rounded">refresh</span>Refresh</button>
+                </div>
+            </div>
+            <div id="activeOrdersList"></div>
+        </section>
+
+        <!-- POS (markup unchanged: script.js drives it) -->
+        <section id="view-pos" class="st-view" aria-labelledby="posTitle">
+            <div id="posTab">
+            <div class="st-head">
+                <div class="st-head-l">
+                    <span class="st-hello">Process orders and manage transactions</span>
+                    <h1 id="posTitle">Point of sale</h1>
+                </div>
+            </div>
+            <div class="st-pos">
                 <div class="pos-content">
                     <div class="pos-container">
                         <!-- Left Side - Menu Items -->
@@ -403,9 +367,18 @@ applyRestaurantTimezone($timezone, $conn);
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+            </div>
+        </section>
+    </main>
 
+    <nav class="st-tabbar" aria-label="Waiter screens">
+        <button type="button" class="st-tb" data-tab="calls"><span class="material-symbols-rounded">notifications_active</span>Calls<em data-badge="calls"></em></button>
+        <button type="button" class="st-tb" data-tab="orders"><span class="material-symbols-rounded">room_service</span>Serve<em data-badge="orders"></em></button>
+        <button type="button" class="st-tb" data-tab="pos"><span class="material-symbols-rounded">point_of_sale</span>POS</button>
+    </nav>
+
+    <script src="../assets/js/staff-common.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/staff-common.js'); ?>"></script>
+    <script src="../assets/js/staff-calls.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/staff-calls.js'); ?>"></script>
     <script>
         const waiterRestaurantId = <?php echo json_encode($restaurant_id); ?>;
         const waiterRestaurantIdQuery = waiterRestaurantId ? encodeURIComponent(waiterRestaurantId) : '';
@@ -413,574 +386,74 @@ applyRestaurantTimezone($timezone, $conn);
         if (typeof window !== 'undefined') {
             window.restaurant_id = waiterRestaurantId;
         }
-        function switchTab(tab, event) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            if (event && event.target) {
-                event.target.classList.add('active');
-            } else {
-                // Find the tab by text content
-                document.querySelectorAll('.tab').forEach(t => {
-                    if (t.textContent.trim().toLowerCase().includes(tab.toLowerCase())) {
-                        t.classList.add('active');
-                    }
-                });
+
+        // Toasts + confirm: the shared RestroGrow look (RGNotify), same as the owner dashboard
+        function showNotification(message, type = 'info', duration = 4000) {
+            return StaffUI.toast(message, type, { html: true, duration: duration });
+        }
+        function showConfirmModal(message, onConfirm, onCancel = null) {
+            StaffUI.confirm(message, { title: 'Confirm action', html: true, confirmText: 'Confirm', cancelText: 'Cancel' })
+                .then(ok => { if (ok) { if (onConfirm) onConfirm(); } else if (onCancel) onCancel(); });
+        }
+        window.showNotification = showNotification;
+        window.showConfirmModal = showConfirmModal;
+
+        // POS: load menu, tables and filters the first time the tab opens (script.js does the work;
+        // the *ForWaiter functions below are the fallback if it is missing)
+        function initWaiterPOS(firstTime) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => initWaiterPOS(firstTime), { once: true });
+                return;
             }
-            const tabElement = document.getElementById(tab + 'Tab');
-            if (tabElement) {
-                tabElement.classList.add('active');
+            if (typeof window.posCart === 'undefined') {
+                window.posCart = [];
             }
-            if (tab === 'requests') loadWaiterRequests();
-            else if (tab === 'orders') loadActiveOrders();
-            else if (tab === 'pos') {
-                // Initialize POS cart if not exists
-                if (typeof window.posCart === 'undefined') {
-                    window.posCart = [];
-                }
-                
-                // Check mobile view to show/hide mobile buttons
-                if (typeof window.checkMobileView === 'function') {
-                    window.checkMobileView();
-                }
-                
-                // Wait for script.js to load
-                setTimeout(() => {
-                    // Load POS data - check window object since functions are global
+            if (typeof window.checkMobileView === 'function') {
+                window.checkMobileView();
+            }
+            setTimeout(() => {
+                if (firstTime) {
                     if (typeof window.loadPOSMenuItems === 'function') {
                         window.loadPOSMenuItems();
-                    } else if (typeof loadPOSMenuItems === 'function') {
-                        loadPOSMenuItems();
-                    } else {
-                        console.warn('loadPOSMenuItems function not found, trying alternative...');
-                        if (typeof loadPOSDataForWaiter === 'function') {
-                            loadPOSDataForWaiter();
-                        }
+                    } else if (typeof loadPOSDataForWaiter === 'function') {
+                        loadPOSDataForWaiter();
                     }
                     if (typeof window.loadTablesForPOS === 'function') {
                         window.loadTablesForPOS();
-                    } else if (typeof loadTablesForPOS === 'function') {
-                        loadTablesForPOS();
-                    } else {
-                        if (typeof loadTablesForWaiterPOS === 'function') {
-                            loadTablesForWaiterPOS();
-                        }
+                    } else if (typeof loadTablesForWaiterPOS === 'function') {
+                        loadTablesForWaiterPOS();
                     }
                     if (typeof window.loadMenusForPOSFilters === 'function') {
                         window.loadMenusForPOSFilters();
-                    } else if (typeof loadMenusForPOSFilters === 'function') {
-                        loadMenusForPOSFilters();
-                    } else {
-                        if (typeof loadMenusForWaiterPOS === 'function') {
-                            loadMenusForWaiterPOS();
-                        }
+                    } else if (typeof loadMenusForWaiterPOS === 'function') {
+                        loadMenusForWaiterPOS();
                     }
                     if (typeof window.loadCategoriesForPOSFilters === 'function') {
                         window.loadCategoriesForPOSFilters();
-                    } else if (typeof loadCategoriesForPOSFilters === 'function') {
-                        loadCategoriesForPOSFilters();
-                    } else {
-                        if (typeof loadCategoriesForWaiterPOS === 'function') {
-                            loadCategoriesForWaiterPOS();
-                        }
+                    } else if (typeof loadCategoriesForWaiterPOS === 'function') {
+                        loadCategoriesForWaiterPOS();
                     }
-                    
-                    // Check mobile view after loading POS data
-                    setTimeout(() => {
-                        if (typeof window.checkMobileView === 'function') {
-                            window.checkMobileView();
-                        } else {
-                            // Fallback: manually show/hide mobile elements
-                            const isMobile = window.innerWidth <= 768;
-                            const mobileBtn = document.getElementById('mobileAddItemBtn');
-                            const mobileBillSummary = document.getElementById('mobilePosBillSummary');
-                            const mobileBottomActions = document.getElementById('mobilePosBottomActions');
-                            
-                            if (mobileBtn) mobileBtn.style.display = isMobile ? 'flex' : 'none';
-                            if (mobileBillSummary) mobileBillSummary.style.display = isMobile ? 'block' : 'none';
-                            if (mobileBottomActions) mobileBottomActions.style.display = isMobile ? 'flex' : 'none';
-                        }
-                    }, 300);
-                }, 100);
-            }
-        }
-        
-        // Check mobile view on window resize
-        window.addEventListener('resize', () => {
-            const posTab = document.getElementById('posTab');
-            if (posTab && posTab.classList.contains('active')) {
-                if (typeof window.checkMobileView === 'function') {
-                    window.checkMobileView();
+                } else if (typeof window.loadTablesForPOS === 'function') {
+                    // tables change through the shift (occupied / free) - keep the picker fresh
+                    window.loadTablesForPOS();
                 }
-            }
-        });
-        
-        // Also check on initial page load if POS tab is active
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const posTab = document.getElementById('posTab');
-                if (posTab && posTab.classList.contains('active')) {
+                setTimeout(() => {
                     if (typeof window.checkMobileView === 'function') {
                         window.checkMobileView();
-                    }
-                }
-            }, 500);
-        });
-
-        async function loadWaiterRequests() {
-            try {
-                const response = await fetch(`../api/get_waiter_requests.php?restaurant_id=${waiterRestaurantIdQuery}`);
-                const result = await response.json();
-                
-                const list = document.getElementById('waiterRequestsList');
-                const lastRefresh = document.getElementById('lastRefresh');
-                
-                // Update last refresh time
-                if (lastRefresh) {
-                    lastRefresh.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
-                }
-                
-                if (result.success && result.requests && result.requests.length > 0) {
-                    list.innerHTML = result.requests.map(req => {
-                        const statusClass = req.status.toLowerCase();
-                        
-                        return `
-                            <div class="request-card ${statusClass}">
-                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                                    <div>
-                                        <strong style="font-size: 1.1rem;">Table ${req.table_number}</strong>
-                                        <div style="color: #6b7280; font-size: 0.875rem;">${req.area_name || ''}</div>
-                                    </div>
-                                    <span class="badge ${statusClass === 'pending' ? 'badge-warning' : 'badge-success'}">${req.status}</span>
-                                </div>
-                                <div style="color: #6b7280; margin-bottom: 12px;">
-                                    <strong>Request:</strong> ${req.request_type || 'General'}
-                                </div>
-                                ${req.notes ? `<div style="color: #6b7280; margin-bottom: 12px;"><strong>Notes:</strong> ${req.notes}</div>` : ''}
-                                <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 16px;">
-                                    ${new Date(req.created_at).toLocaleString()}
-                                </div>
-                                ${req.status === 'Pending' ? `
-                                    <button class="btn btn-success" onclick="markAttended(${req.id})">Mark as Attended</button>
-                                ` : ''}
-                            </div>
-                        `;
-                    }).join('');
-                } else {
-                    list.innerHTML = '<div style="text-align: center; padding: 40px; color: #6b7280;">No waiter requests at the moment</div>';
-                }
-            } catch (error) {
-                console.error('Error loading requests:', error);
-                document.getElementById('waiterRequestsList').innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">Error loading requests</div>';
-            }
-        }
-
-        let lastActiveOrdersSignature = null;
-        async function loadActiveOrders() {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    // Fetch orders with status Ready (orders that are ready to be served)
-                    const list = document.getElementById('activeOrdersList');
-                    // Only show the "Refreshing..." placeholder on the very first
-                    // load (empty list) — showing it on every background poll
-                    // wiped the whole list every 10-20s, flashing the screen and
-                    // resetting scroll position even when nothing had changed.
-                    if (list && list.children.length === 0) {
-                        list.innerHTML = '<div class="loading">Refreshing orders...</div>';
-                    }
-                    const response = await fetch(`../api/get_orders.php?restaurant_id=${waiterRestaurantIdQuery}&status=Ready`, { cache: 'no-store' });
-                    const result = await response.json();
-
-                if (result.success && result.orders && result.orders.length > 0) {
-                    const signature = JSON.stringify(result.orders.map(o => [o.id, o.order_status || o.status, o.total || o.total_amount]));
-                    if (signature === lastActiveOrdersSignature) {
-                        resolve();
-                        return;
-                    }
-                    lastActiveOrdersSignature = signature;
-                    list.innerHTML = result.orders.map(order => {
-                        const tableInfo = order.table_name || (order.table_number ? `Table ${order.table_number}${order.area_name ? ` (${order.area_name})` : ''}` : 'Takeaway');
-                        const items = order.items || [];
-                        
-                        return `
-                        <div class="order-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-                                <div style="flex: 1; min-width: 200px;">
-                                    <strong style="font-size: 1.1rem; color: #111827; display: block; margin-bottom: 8px;">Order #${order.order_number || order.id}</strong>
-                                    <div style="color: #dc2626; font-size: 1rem; font-weight: 600; margin-bottom: 8px;">${tableInfo}</div>
-                                    <div style="color: #6b7280; font-size: 0.875rem;">
-                                        ${new Date(order.created_at).toLocaleString()}
-                                    </div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <span class="badge badge-info" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600; display: inline-block; margin-bottom: 8px;">${waiterCurrencySymbol}${parseFloat(order.total || order.total_amount || 0).toFixed(2)}</span>
-                                </div>
-                            </div>
-                            
-                            <div style="margin: 16px 0; padding: 16px; background: #f9fafb; border-radius: 8px;">
-                                <h4 style="margin: 0 0 12px 0; color: #111827; font-size: 0.95rem; font-weight: 600;">Order Items (${items.length})</h4>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    ${items.map(item => `
-                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; border-radius: 6px;">
-                                            <div style="flex: 1;">
-                                                <div style="font-weight: 600; color: #111827; margin-bottom: 4px;">${item.item_name_translated || item.item_name || 'Item'}</div>
-                                                ${item.notes ? `<div style="color: #f59e0b; font-size: 0.85rem; font-style: italic;">Note: ${item.notes}</div>` : ''}
-                                            </div>
-                                            <div style="text-align: right; margin-left: 16px;">
-                                                <div style="color: #6b7280; font-size: 0.875rem;">Qty: ${item.quantity || 1}</div>
-                                                <div style="color: #111827; font-weight: 600;">${waiterCurrencySymbol}${parseFloat(item.total_price || item.unit_price || 0).toFixed(2)}</div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb; flex-wrap: wrap; gap: 12px;">
-                                <div style="color: #6b7280; font-size: 0.875rem; flex: 1;">
-                                    <strong>Subtotal:</strong> ${waiterCurrencySymbol}${parseFloat(order.subtotal || 0).toFixed(2)} | 
-                                    <strong>Tax:</strong> ${waiterCurrencySymbol}${parseFloat(order.tax || 0).toFixed(2)}
-                                </div>
-                                <button class="btn btn-success" onclick="markOrderServed(${order.id})" style="padding: 12px 24px; font-size: 1rem; white-space: nowrap;">
-                                    <span class="material-symbols-rounded" style="vertical-align: middle; font-size: 1.2rem;">check_circle</span>
-                                    Mark as Served
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    }).join('');
-                } else {
-                    if (lastActiveOrdersSignature !== '[]') {
-                        lastActiveOrdersSignature = '[]';
-                        list.innerHTML = '<div style="text-align: center; padding: 40px; color: #6b7280;">No active orders ready to serve</div>';
-                    }
-                }
-                    resolve();
-                } catch (error) {
-                    console.error('Error loading orders:', error);
-                    document.getElementById('activeOrdersList').innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">Error loading orders</div>';
-                    reject(error);
-                }
-            });
-        }
-        
-        async function markOrderServed(orderId) {
-            showConfirmModal('Are you sure you want to mark this order as served?', async () => {
-                try {
-                    const response = await fetch('../api/update_order_status.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `orderId=${orderId}&status=Served`
-                    });
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        showNotification('Order marked as served successfully!', 'success');
-                        loadActiveOrders(); // Refresh immediately after update
                     } else {
-                        showNotification(result.message || 'Failed to update order', 'error');
+                        const isMobile = window.innerWidth <= 768;
+                        const mobileBtn = document.getElementById('mobileAddItemBtn');
+                        const mobileBillSummary = document.getElementById('mobilePosBillSummary');
+                        const mobileBottomActions = document.getElementById('mobilePosBottomActions');
+                        if (mobileBtn) mobileBtn.style.display = isMobile ? 'flex' : 'none';
+                        if (mobileBillSummary) mobileBillSummary.style.display = isMobile ? 'block' : 'none';
+                        if (mobileBottomActions) mobileBottomActions.style.display = isMobile ? 'flex' : 'none';
                     }
-                } catch (error) {
-                    console.error('Error:', error);
-                    showNotification('Error updating order status', 'error');
-                }
-            });
+                }, 300);
+            }, 100);
         }
-        
-        // Make markOrderServed globally available
-        window.markOrderServed = markOrderServed;
+        window.initWaiterPOS = initWaiterPOS;
 
-        async function markAttended(requestId) {
-            try {
-                const response = await fetch('../controllers/waiter_request_operations.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `action=mark_attended&requestId=${requestId}`
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification('Request marked as attended!', 'success');
-                    loadWaiterRequests(); // Refresh immediately after update
-                } else {
-                    showNotification(result.message || 'Failed to update request', 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification('Error updating status', 'error');
-            }
-        }
-        
-        // Make markAttended globally available
-        window.markAttended = markAttended;
-
-        // Auto-refresh with intelligent polling (faster when orders exist)
-        let refreshInterval = null;
-        let lastOrdersCount = 0;
-        
-        function startAutoRefresh() {
-            if (refreshInterval) clearInterval(refreshInterval);
-            
-            const activeTab = document.querySelector('.tab.active');
-            const tabId = activeTab ? activeTab.textContent.trim() : '';
-            
-            // Check if we have orders/requests - refresh more frequently if yes
-            const checkInterval = () => {
-                const ordersTab = document.getElementById('ordersTab');
-                const requestsTab = document.getElementById('requestsTab');
-                
-                if (ordersTab && ordersTab.classList.contains('active')) {
-                    const prevOrderCount = document.querySelectorAll('.order-card').length;
-                    loadActiveOrders().then(() => {
-                        // Check if order count changed after loading
-                        setTimeout(() => {
-                            const currentOrders = document.querySelectorAll('.order-card').length;
-                            if (currentOrders !== prevOrderCount && prevOrderCount > 0) {
-                                // Flash notification if new orders
-                                showNotification('New order arrived!', 'success');
-                            }
-                            lastOrdersCount = currentOrders;
-                        }, 100);
-                    }).catch(() => {
-                        // Handle error silently
-                    });
-                } else if (requestsTab && requestsTab.classList.contains('active')) {
-                    loadWaiterRequests();
-                }
-            };
-            
-            // Optimized refresh: 10 seconds base, faster when orders exist (reduces DB load)
-            // With 10 users, this reduces requests from 3.3/sec to 1/sec per user
-            let baseInterval = 10000; // 10 seconds base
-            let currentInterval = baseInterval;
-            let noChangeCount = 0;
-            
-            const smartRefresh = () => {
-                // Only refresh if page is visible
-                if (document.hidden) {
-                    return;
-                }
-                
-                checkInterval();
-                
-                // Intelligent polling: slow down if no changes
-                const currentOrders = document.querySelectorAll('.order-card').length;
-                if (currentOrders === lastOrdersCount && lastOrdersCount === 0) {
-                    noChangeCount++;
-                    if (noChangeCount > 2) {
-                        currentInterval = Math.min(20000, currentInterval * 1.5); // Max 20 seconds when idle
-                    }
-                } else {
-                    noChangeCount = 0;
-                    currentInterval = baseInterval; // Reset to 10 seconds when active
-                }
-                
-                // Restart with new interval
-                if (refreshInterval) clearInterval(refreshInterval);
-                refreshInterval = setInterval(smartRefresh, currentInterval);
-            };
-            
-            refreshInterval = setInterval(smartRefresh, currentInterval);
-            // Also check immediately
-            checkInterval();
-        }
-        
-        // Start auto-refresh on page load
-        startAutoRefresh();
-        
-        // Restart auto-refresh when tab changes
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                setTimeout(() => startAutoRefresh(), 100);
-            });
-        });
-        
-        // Pause auto-refresh when page is hidden, resume when visible
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                if (refreshInterval) {
-                    clearInterval(refreshInterval);
-                    refreshInterval = null;
-                }
-            } else {
-                startAutoRefresh();
-            }
-        });
-        
-        // Enhanced Notification system
-        function showNotification(message, type = 'info', duration = 4000) {
-            if (window.RGNotify) return RGNotify.toast(message, type, { html: true, duration: duration });
-            const notification = document.createElement('div');
-            const icons = {
-                success: '✅',
-                error: '❌',
-                warning: '⚠️',
-                info: 'ℹ️'
-            };
-            const colors = {
-                success: '#10b981',
-                error: '#ef4444',
-                warning: '#f59e0b',
-                info: '#3b82f6'
-            };
-            
-            notification.className = 'waiter-toast-notification';
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${colors[type] || colors.info};
-                color: white;
-                padding: 16px 24px;
-                border-radius: 12px;
-                box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-                z-index: 10000;
-                animation: slideInRight 0.3s ease-out;
-                font-weight: 600;
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                max-width: 400px;
-                word-wrap: break-word;
-            `;
-            notification.innerHTML = `
-                <span style="font-size: 1.5rem;">${icons[type] || icons.info}</span>
-                <span style="flex: 1;">${message}</span>
-                <button onclick="this.parentElement.remove()" style="background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1.2rem; line-height: 1;">×</button>
-            `;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'slideOutRight 0.3s ease-out';
-                setTimeout(() => notification.remove(), 300);
-            }, duration);
-        }
-        
-        // Confirmation Modal
-        function showConfirmModal(message, onConfirm, onCancel = null) {
-            if (window.RGNotify) {
-                RGNotify.confirm(message, { title: 'Confirm action', html: true, confirmText: 'Confirm', cancelText: 'Cancel' })
-                    .then(ok => { if (ok) { if (onConfirm) onConfirm(); } else if (onCancel) onCancel(); });
-                return;
-            }
-            // Remove existing modal if any
-            const existing = document.getElementById('waiterConfirmModal');
-            if (existing) existing.remove();
-            
-            const modal = document.createElement('div');
-            modal.id = 'waiterConfirmModal';
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10001;
-                animation: fadeIn 0.2s ease-out;
-            `;
-            
-            modal.innerHTML = `
-                <div style="background: white; border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out;">
-                    <div style="text-align: center; margin-bottom: 24px;">
-                        <div style="font-size: 3rem; margin-bottom: 16px;">🤔</div>
-                        <h3 style="margin: 0 0 8px 0; color: #111827; font-size: 1.25rem;">Confirm Action</h3>
-                        <p style="margin: 0; color: #6b7280; font-size: 1rem;">${message}</p>
-                    </div>
-                    <div style="display: flex; gap: 12px;">
-                        <button id="confirmCancelBtn" style="flex: 1; padding: 12px; border: 2px solid #e5e7eb; background: white; border-radius: 8px; font-weight: 600; color: #6b7280; cursor: pointer; transition: all 0.2s;">
-                            Cancel
-                        </button>
-                        <button id="confirmOkBtn" style="flex: 1; padding: 12px; border: none; background: #3b82f6; color: white; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-                            Confirm
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            const cancelBtn = document.getElementById('confirmCancelBtn');
-            const okBtn = document.getElementById('confirmOkBtn');
-            
-            const closeModal = () => {
-                if (modal && modal.parentNode) {
-                    modal.style.animation = 'fadeOut 0.2s ease-out';
-                    setTimeout(() => {
-                        if (modal && modal.parentNode) {
-                            modal.remove();
-                        }
-                    }, 200);
-                }
-            };
-            
-            if (cancelBtn) {
-                cancelBtn.onclick = () => {
-                    closeModal();
-                    if (onCancel) onCancel();
-                };
-            }
-            
-            if (okBtn) {
-                okBtn.onclick = () => {
-                    closeModal();
-                    if (onConfirm) onConfirm();
-                };
-            }
-            
-            // Close on background click
-            modal.onclick = (e) => {
-                if (e.target === modal) {
-                    closeModal();
-                    if (onCancel) onCancel();
-                }
-            };
-            
-            // Close on Escape key
-            const escapeHandler = (e) => {
-                if (e.key === 'Escape') {
-                    closeModal();
-                    if (onCancel) onCancel();
-                    document.removeEventListener('keydown', escapeHandler);
-                }
-            };
-            document.addEventListener('keydown', escapeHandler);
-        }
-        
-        // Make functions globally available
-        window.showNotification = showNotification;
-        window.showConfirmModal = showConfirmModal;
-        
-        // Add animation styles
-        if (!document.getElementById('waiter-notification-styles')) {
-            const style = document.createElement('style');
-            style.id = 'waiter-notification-styles';
-            style.textContent = `
-                @keyframes slideInRight {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes slideOutRight {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                @keyframes fadeOut {
-                    from { opacity: 1; }
-                    to { opacity: 0; }
-                }
-                @keyframes slideUp {
-                    from { transform: translateY(20px); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
         // Store all menu items for filtering
         let allPOSItems = [];
         
@@ -1252,83 +725,7 @@ applyRestaurantTimezone($timezone, $conn);
                 window.checkMobileView();
             }
         });
-        
-        // Load on page load
-        loadWaiterRequests();
-
-        // ── Push notifications: waiter gets pushed the moment the kitchen
-        // marks an order Ready, instead of relying solely on polling.
-        function _pushVapidKeyToUint8Array(base64String) {
-            var padding = '='.repeat((4 - base64String.length % 4) % 4);
-            var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-            var rawData = window.atob(base64);
-            var outputArray = new Uint8Array(rawData.length);
-            for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-            return outputArray;
-        }
-
-        async function enableStaffPushAlerts(btn) {
-            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                alert('This browser does not support push notifications (Safari on iOS needs the site added to the Home Screen first).');
-                return;
-            }
-            if (btn) { btn.disabled = true; btn.textContent = 'Enabling…'; }
-            try {
-                var perm = Notification.permission;
-                if (perm !== 'granted') {
-                    perm = await Notification.requestPermission();
-                }
-                if (perm !== 'granted') {
-                    alert('Notification permission was not granted.');
-                    if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Alerts'; }
-                    return;
-                }
-
-                var reg = await navigator.serviceWorker.register('../website/sw.php?v=11', { scope: '../' });
-                reg = await navigator.serviceWorker.ready;
-                var sub = await reg.pushManager.getSubscription();
-                if (!sub) {
-                    var vapidKey = ((await (await fetch('../api/get_vapid_key.php', { cache: 'no-store' })).json()).publicKey || '');
-                    if (!vapidKey) {
-                        alert('Push notifications are not configured on the server yet.');
-                        if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Alerts'; }
-                        return;
-                    }
-                    sub = await reg.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: _pushVapidKeyToUint8Array(vapidKey)
-                    });
-                }
-
-                var res = await fetch('../api/save_push_subscription.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(sub.toJSON ? sub.toJSON() : sub)
-                });
-                var data = await res.json();
-                if (data.success) {
-                    localStorage.setItem('staffPushEnabled', '1');
-                    if (btn) { btn.disabled = false; btn.textContent = '🔔 Alerts On'; }
-                } else {
-                    alert('Failed to save subscription: ' + (data.message || 'unknown error'));
-                    if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Alerts'; }
-                }
-            } catch (e) {
-                console.error('Push subscribe error', e);
-                alert('Could not enable push alerts: ' + e.message);
-                if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Alerts'; }
-            }
-        }
-
-        // Silently re-subscribe on later visits once permission has already
-        // been granted once — otherwise the button would show "off" on every
-        // reload even though nothing needs the user's attention again.
-        if ('Notification' in window && Notification.permission === 'granted' && localStorage.getItem('staffPushEnabled') === '1') {
-            document.addEventListener('DOMContentLoaded', function() {
-                enableStaffPushAlerts(document.getElementById('enableAlertsBtn'));
-            });
-        }
     </script>
+    <script src="../assets/js/staff-waiter.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/staff-waiter.js'); ?>"></script>
 </body>
 </html>
-
