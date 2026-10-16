@@ -9,6 +9,10 @@ RewriteEngine On
 <FilesMatch "^(package(-lock)?\.json|playwright\.config\.js)$">
     Require all denied
 </FilesMatch>
+# PHP's own error log files (Hostinger writes "error_log" next to the script): server paths and errors
+<FilesMatch "^(error_log|php_errorlog|php_error\.log)$">
+    Require all denied
+</FilesMatch>
 RewriteRule ^(docs|tests|scripts)(/|$) - [F,L]
 
 # Allow direct access to admin/api scripts (main/ directory)

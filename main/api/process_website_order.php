@@ -131,8 +131,12 @@ try {
     require_once __DIR__ . '/../config/scheduled_order_helpers.php';
     ensureOrdersScheduleColumns($conn);
 
-    // Resolve restaurant ID: session > query param > default
-    $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? 'RES001');
+    // Resolve restaurant ID: the website page says which restaurant this cart is for, so that
+    // comes first. A dashboard login in the same browser (owner, staff, the demo account) must
+    // not send a customer's order to a different restaurant.
+    $restaurant_id = trim((string)($_GET['restaurant_id'] ?? '')) !== ''
+        ? trim((string)$_GET['restaurant_id'])
+        : ($_SESSION['restaurant_id'] ?? 'RES001');
 
     // ── Abuse protection (needs DB + restaurant) ───────────────────────────
     // Restaurant-wide velocity cap: total website orders (any customer, any
@@ -496,6 +500,20 @@ try {
     $vipCustomer = isset($walletCustomer) ? $walletCustomer : getLoggedInCustomer($conn, $restaurant_id);
 } catch (Throwable $e) {
     error_log('VIP perks lookup: ' . $e->getMessage());
+}
+
+// A table from an old QR code or another restaurant (deleted, re-created) must not sink the
+// whole order on the tables foreign key: keep the order as dine-in without a table instead.
+if ($table_id !== null) {
+    $tblCheck = $conn->prepare('SELECT id FROM tables WHERE id = ? AND restaurant_id = ? LIMIT 1');
+    $tblCheck->execute([(int)$table_id, $restaurant_id]);
+    $foundTable = $tblCheck->fetchColumn();
+    if ($foundTable) {
+        $table_id = (int)$foundTable;
+    } else {
+        error_log("Website order: table $table_id not found for $restaurant_id, saved without a table");
+        $table_id = null;
+    }
 }
 
 $conn->beginTransaction();
@@ -1298,16 +1316,41 @@ $conn->beginTransaction();
         }
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     // Rollback transaction on any error
     if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
-    ob_end_clean();
+    if (ob_get_level()) ob_end_clean();
     error_log("Order processing error: " . $e->getMessage());
+    // Keep the real reason where the team can see it (Super Admin › Error monitor), with what
+    // the customer was ordering, so a failed order can be traced without server log access.
+    $ref = false;
+    try {
+        require_once __DIR__ . '/../config/error_monitor.php';
+        if (isset($conn) && function_exists('logErrorToDB')) {
+            $ref = logErrorToDB($conn, 'api', 'critical', 'Website order failed: ' . $e->getMessage(), [
+                'restaurant_id' => $restaurant_id ?? null,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'extra' => [
+                    'order_type' => $order_type ?? null,
+                    'payment_method' => $payment_method ?? null,
+                    'table_id' => $table_id ?? null,
+                    'items' => array_map(fn($it) => [($it['id'] ?? null), ($it['name'] ?? ''), ($it['quantity'] ?? 0)], is_array($items ?? null) ? $items : []),
+                    'combos' => count($combos_in ?? []),
+                    'coupon' => $coupon_code ?? '',
+                ],
+            ]);
+        }
+    } catch (Throwable $logErr) {
+        error_log('Order error could not be logged: ' . $logErr->getMessage());
+    }
+    // status stays 200: the checkout retries 5xx answers, and this failure won't fix itself
     echo json_encode([
         'success' => false,
-        'message' => 'An error occurred while processing your order. Please try again.'
+        'message' => 'Sorry, your order could not be placed. Please try again, or call the restaurant.' . ($ref ? " (Ref #$ref)" : '')
     ], JSON_UNESCAPED_UNICODE);
 }
 ?>
