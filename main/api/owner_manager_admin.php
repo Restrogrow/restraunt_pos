@@ -100,8 +100,18 @@ try {
     if ($action === 'ask') {
         $t = trim(mb_substr((string)($in['text'] ?? ''), 0, 300));
         if ($t === '') omOut(['success' => false, 'message' => 'Type a question']);
-        // same path as a WhatsApp question: answer in the language it was asked in
-        omOut(['success' => true] + ownerMgrAsk($conn, $rid, $t));
+        // same path as a WhatsApp question: answer in the language it was asked in (+ the spoken version in voice mode)
+        omOut(['success' => true] + ownerMgrAsk($conn, $rid, $t, !empty($in['voice'])));
+    }
+    if ($action === 'tts') {
+        // voice mode: the manager's natural voice (Gemini speech); the page falls back to the phone's own voice
+        $t = trim(mb_substr((string)($in['text'] ?? ''), 0, 900));
+        if ($t === '') omOut(['success' => false, 'message' => 'Nothing to say']);
+        $voiceName = in_array($in['voice_name'] ?? '', ['Kore', 'Charon', 'Aoede', 'Puck'], true) ? $in['voice_name'] : 'Kore';
+        $style = preg_match('/\p{Devanagari}/u', $t) ? 'in a warm, friendly, natural Hindi voice, at a relaxed pace' : 'in a warm, friendly, natural Indian voice, at a relaxed pace';
+        $wav = aiGeminiSpeech($t, $voiceName, $style, $conn, $rid);
+        if (!$wav) omOut(['success' => false, 'message' => 'Voice not available']);
+        omOut(['success' => true, 'audio' => 'data:audio/wav;base64,' . base64_encode($wav)]);
     }
     omOut(['success' => false, 'message' => 'Unknown action'], 400);
 } catch (Throwable $e) {

@@ -95,6 +95,43 @@ if (!function_exists('aiGeminiJson')) {
         return is_array($j) ? $j : null;
     }
 
+    /**
+     * Natural speech for $text with Gemini's text-to-speech model (GEMINI_TTS_MODEL, default
+     * gemini-2.5-flash-preview-tts). $style is a short spoken-style instruction ("warm and friendly").
+     * Returns a WAV file's bytes (24 kHz, 16-bit mono), or null on any problem (caller falls back).
+     */
+    function aiGeminiSpeech(string $text, string $voice = 'Kore', string $style = '', ?PDO $conn = null, string $rid = ''): ?string
+    {
+        if (!aiGeminiAvailable() || !aiGeminiAllow($conn, $rid)) return null;
+        $model = trim((string)env('GEMINI_TTS_MODEL', 'gemini-2.5-flash-preview-tts'));
+        if (!preg_match('/^[A-Za-z0-9._-]{1,100}$/', $model) || !preg_match('/^[A-Za-z]{2,20}$/', $voice)) return null;
+        $prompt = ($style !== '' ? 'Say ' . $style . ': ' : '') . mb_substr($text, 0, 1200);
+        $c = curl_init('https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent');
+        $opts = [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode(['contents' => [['parts' => [['text' => $prompt]]]],
+                'generationConfig' => ['responseModalities' => ['AUDIO'], 'speechConfig' => ['voiceConfig' => ['prebuiltVoiceConfig' => ['voiceName' => $voice]]]]], JSON_UNESCAPED_UNICODE),
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_TIMEOUT => 45,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'x-goog-api-key: ' . trim((string)env('GEMINI_API_KEY', ''))],
+        ];
+        $ca = trim((string)env('AI_CAINFO', ''));
+        if ($ca !== '' && is_file($ca)) $opts[CURLOPT_CAINFO] = $ca;
+        curl_setopt_array($c, $opts);
+        $res = curl_exec($c);
+        $code = (int)curl_getinfo($c, CURLINFO_HTTP_CODE);
+        curl_close($c);
+        if ($res === false || $code < 200 || $code >= 300) { error_log('aiGeminiSpeech: HTTP ' . $code . ' ' . substr((string)$res, 0, 200)); return null; }
+        $d = json_decode((string)$res, true);
+        $inline = null;
+        foreach ($d['candidates'][0]['content']['parts'] ?? [] as $p) if (!empty($p['inlineData']['data'])) { $inline = $p['inlineData']; break; }
+        if (!$inline) return null;
+        $pcm = base64_decode($inline['data']);
+        if ($pcm === false || $pcm === '') return null;
+        $rate = preg_match('/rate=(\d+)/', (string)($inline['mimeType'] ?? ''), $m) ? (int)$m[1] : 24000;
+        // raw 16-bit PCM → a WAV file every browser can play
+        return 'RIFF' . pack('V', 36 + strlen($pcm)) . 'WAVEfmt ' . pack('VvvVVvv', 16, 1, 1, $rate, $rate * 2, 2, 16) . 'data' . pack('V', strlen($pcm)) . $pcm;
+    }
+
     function aiGeminiText(string $system, string $user, ?PDO $conn = null, string $rid = '', int $maxTokens = 700): ?string
     {
         if (!aiGeminiAvailable() || !aiGeminiAllow($conn, $rid)) return null;
