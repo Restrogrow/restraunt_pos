@@ -376,4 +376,33 @@ if (!function_exists('blogEnsure')) {
         return blogAiJson(BLOG_AI_BRAND . ' Suggest 12 search keywords (what Indian restaurant owners actually type into Google) for blog posts around the seed topic. intent: info (how-to), commercial (comparing software, buying), local (city based), brand. priority 1 = best chance to bring RestroGrow customers, 3 = nice to have. notes = the angle for a post (one line). No made-up search volumes.',
             "Seed topic: $seed", $schema, 1500);
     }
+
+    /**
+     * Ready-written posts from the keyword plan (docs/BLOG_KEYWORD_PLAN.md), kept in config/blog_starters/*.html:
+     * a "<!-- key: value -->" header (title, slug, focus_keyword, keywords, excerpt, meta_title, meta_description,
+     * tags, category = category slug) and the post HTML. Super Admin › Blog imports them as drafts.
+     */
+    function blogStarters(): array
+    {
+        $out = [];
+        foreach (glob(__DIR__ . '/blog_starters/*.html') ?: [] as $file) {
+            $raw = (string)file_get_contents($file);
+            if (!preg_match('/^\s*<!--(.*?)-->(.*)$/s', $raw, $m)) continue;
+            $p = [];
+            foreach (preg_split('/\r?\n/', $m[1]) as $line) {
+                if (preg_match('/^\s*([a-z_]+):\s*(.*)$/', $line, $kv)) $p[$kv[1]] = trim($kv[2]);
+            }
+            if (empty($p['title']) || empty($p['slug'])) continue;
+            $p['content'] = trim($m[2]);
+            $out[] = $p;
+        }
+        return $out;
+    }
+
+    /** Starter posts whose slug is not on the blog yet. */
+    function blogStartersMissing(PDO $conn): array
+    {
+        $have = array_flip($conn->query('SELECT slug FROM blog_posts')->fetchAll(PDO::FETCH_COLUMN));
+        return array_values(array_filter(blogStarters(), fn($p) => !isset($have[$p['slug']])));
+    }
 }

@@ -9,6 +9,7 @@
  * POST {action:'delete'|'duplicate', id}
  * POST {action:'category_save', id?, name, description} · {action:'category_delete', id}
  * POST {action:'keyword_save', id?, keyword, intent, priority, status, volume, notes} · {action:'keyword_delete', id}
+ * POST {action:'import_starters'}               adds the ready-written posts in config/blog_starters as drafts
  * POST {action:'keyword_bulk', text}           one keyword per line, or "keyword | intent | priority | volume | notes"
  * POST {action:'ai_seo', …post} · {action:'ai_draft', topic, keyword, notes} · {action:'ai_keywords', seed}
  * POST multipart action=upload, file=image     → {url, path}
@@ -69,7 +70,7 @@ try {
         if ($action === 'meta') {
             require_once __DIR__ . '/../config/ai_gemini.php';
             blogOut(['success' => true, 'categories' => blogCategories($conn, true), 'keywords' => blogKeywordCoverage($conn),
-                'ai' => aiGeminiAvailable(), 'site' => blogWebBase(), 'author' => $me]);
+                'ai' => aiGeminiAvailable(), 'site' => blogWebBase(), 'author' => $me, 'starters' => count(blogStartersMissing($conn))]);
         }
         blogOut(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -168,6 +169,34 @@ try {
         blogOut(['success' => true, 'post' => $post, 'seo' => blogSeoReport($post),
             'message' => $status === 'draft' ? 'Draft saved' : ($live ? 'Published' : 'Scheduled for ' . date('d M, h:i A', strtotime((string)$pubAt))),
             'url' => blogWebBase() . '/blog/' . $post['slug']]);
+    }
+    if ($action === 'import_starters') {
+        // the ready-written posts from the keyword plan, added as drafts (ones already on the blog are skipped)
+        $cats = array_column($conn->query('SELECT id, slug FROM blog_categories')->fetchAll(PDO::FETCH_ASSOC), 'id', 'slug');
+        $n = 0;
+        foreach (blogStartersMissing($conn) as $p) {
+            $content = blogSanitizeHtml($p['content']);
+            $row = [
+                'title' => mb_substr($p['title'], 0, 200),
+                'slug' => blogUniqueSlug($conn, $p['slug']),
+                'excerpt' => mb_substr($p['excerpt'] ?? '', 0, 400) ?: mb_substr(blogPlainText($content), 0, 200),
+                'content' => $content,
+                'category_id' => $cats[$p['category'] ?? ''] ?? null,
+                'tags' => mb_substr($p['tags'] ?? '', 0, 500) ?: null,
+                'focus_keyword' => mb_strtolower(mb_substr($p['focus_keyword'] ?? '', 0, 120)) ?: null,
+                'keywords' => mb_substr($p['keywords'] ?? '', 0, 600) ?: null,
+                'meta_title' => mb_substr($p['meta_title'] ?? '', 0, 160) ?: null,
+                'meta_description' => mb_substr($p['meta_description'] ?? '', 0, 320) ?: null,
+                'status' => 'draft',
+                'author_name' => 'RestroGrow team',
+                'reading_minutes' => blogReadingMinutes($content),
+            ];
+            $row['seo_score'] = blogSeoReport($row)['score'];
+            $conn->prepare('INSERT INTO blog_posts (' . implode(', ', array_keys($row)) . ') VALUES (' . implode(', ', array_fill(0, count($row), '?')) . ')')->execute(array_values($row));
+            if ($row['focus_keyword']) $conn->prepare("UPDATE blog_keywords SET status = 'planned' WHERE keyword = ? AND status = 'idea'")->execute([$row['focus_keyword']]);
+            $n++;
+        }
+        blogOut(['success' => true, 'message' => $n ? "Added $n draft post" . ($n > 1 ? 's' : '') . '. Review each one, add a cover photo and publish.' : 'All starter posts are already on the blog']);
     }
     if ($action === 'delete') {
         $conn->prepare('DELETE FROM blog_posts WHERE id = ?')->execute([(int)($in['id'] ?? 0)]);

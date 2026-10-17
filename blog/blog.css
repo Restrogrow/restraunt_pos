@@ -142,7 +142,10 @@
 .prose pre { background: #1d1914; color: #f5efe2; padding: 18px 20px; border-radius: 14px; overflow-x: auto; font-family: var(--font-mono); font-size: 14px; line-height: 1.6; }
 .prose code { font-family: var(--font-mono); font-size: .86em; background: var(--paper-deep); padding: 2px 6px; border-radius: 6px; }
 .prose pre code { background: none; padding: 0; }
-.prose table { width: 100%; border-collapse: separate; border-spacing: 0; display: block; overflow-x: auto; font-size: 16px; border: 1px solid var(--line); border-radius: 14px; }
+.prose .table-wrap { margin: 0 0 1.3em; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+.prose table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 16px; }
+.prose .table-wrap table { margin: 0; }
+.prose tr:last-child > td { border-bottom: 0; }
 .prose th, .prose td { border-bottom: 1px solid var(--line-soft); padding: 12px 16px; text-align: left; }
 .prose th { font-weight: 700; background: var(--paper); }
 .prose iframe { width: 100%; aspect-ratio: 16 / 9; height: auto; border: 0; border-radius: 16px; }

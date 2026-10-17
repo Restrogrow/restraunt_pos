@@ -46,7 +46,7 @@ Write in this order. Each group has one main guide ("pillar") and smaller posts 
 | 11 | **zomato commission rates** 2026 | 11 | 🟡 Medium | News articles and small blogs; no page that's kept up to date | **Pillar.** Every fee explained, a worked example on a ₹500 order, a commission calculator. Update it every 3 months |
 | 12 | **swiggy commission percentage** for cloud kitchen | 5 | 🟡 Medium | Petpooja and news | Same format for Swiggy, with what cloud kitchens pay |
 | 13 | **swiggy joining charges** for restaurant | 5 | 🟢 Easy | No page answers it directly | One-time and recurring fees, documents needed, how long onboarding takes |
-| 14 | **how to take orders on whatsapp** for restaurant (without zomato) | – | 🟢 Easy | Foreign vendor pages | Step by step: WhatsApp catalogue, payment links, your own ordering site (RestroGrow) |
+| 14 | how to **take orders on whatsapp** for restaurant (without zomato) | – | 🟢 Easy | Foreign vendor pages | Step by step: WhatsApp catalogue, payment links, your own ordering site (RestroGrow) |
 | 15 | how to create **online ordering for restaurant** | 5 | 🟡 Medium | Mixed vendor pages | Own website vs WhatsApp vs apps, costs compared |
 
 ### Group 4: Starting and running a food business
@@ -115,7 +115,7 @@ petpooja alternative | commercial | 2 | 2 | Fair comparison, when Petpooja is ov
 zomato commission rates | info | 1 | 11 | PILLAR group 3. Every fee, Rs 500 worked example, calculator. Update quarterly
 swiggy commission percentage for cloud kitchen | info | 2 | 5 | Same format as Zomato post. Medium
 swiggy joining charges for restaurant | info | 1 | 5 | One-time and recurring fees, documents. Easy: no direct answer ranks
-how to take orders on whatsapp for restaurant | info | 1 | - | Step by step incl. own ordering site. Easy: foreign vendor pages
+take orders on whatsapp | info | 1 | - | Step by step incl. own ordering site. Easy: foreign vendor pages
 how to create online ordering for restaurant | commercial | 2 | 5 | Own site vs WhatsApp vs apps, costs. Medium
 dhaba business profit per month | info | 1 | 4 | Real numbers, small vs highway. Easy
 kitchen display system price in india | commercial | 1 | 11 | Screen vs tablet vs app, when worth it. Medium

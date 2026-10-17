@@ -133,8 +133,10 @@ foreach (preg_split('#(?=<h2[\s>])#i', $content) as $part) {
         $out .= $head . $body;
     }
 }
-// a paragraph that opens with a bold label ("Hardware locks: ...") is shown as a small card
-$content = preg_replace('#<p>(\s*<strong>[^<]{2,80}</strong>)#i', '<p class="def">$1', $out);
+// a paragraph that opens with a bold label ending in a colon ("Hardware locks: ...") is shown as a small card;
+// tables get a scroll wrapper so wide ones scroll on phones while normal ones fill the column
+$content = preg_replace('#<p>(\s*<strong>[^<]{2,80}(?::</strong>|</strong>\s*:))#iu', '<p class="def">$1', $out);
+$content = preg_replace(['#<table>#i', '#</table>#i'], ['<div class="table-wrap"><table>', '</table></div>'], $content);
 ?>
 <div class="read-progress" id="readProgress" aria-hidden="true"></div>
 <?php if ($preview): ?><div class="preview-bar">Preview: this post is <?php echo $post['status'] === 'draft' ? 'a draft' : 'scheduled for ' . bh(date('j M Y, g:i A', strtotime((string)$post['published_at']))); ?>. Only you can see it.</div><?php endif; ?>

@@ -98,7 +98,7 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
   <div id="listView">
     <div class="top">
       <div><h1>Blog</h1><p class="sub">Write posts for restrogrow.com/blog, plan keywords, and see how each post does.</p></div>
-      <div class="row"><a class="btn light" id="viewBlog" href="../../blog/" target="_blank" rel="noopener"><span class="ms">open_in_new</span>View blog</a><button class="btn acc" id="newPost" type="button"><span class="ms">edit_square</span>New post</button></div>
+      <div class="row"><a class="btn light" id="viewBlog" href="../../blog/" target="_blank" rel="noopener"><span class="ms">open_in_new</span>View blog</a><button class="btn light" id="addStarters" type="button" style="display:none" title="Ready-written posts from the keyword plan, added as drafts"><span class="ms">library_add</span><span id="startersLbl">Add starter posts</span></button><button class="btn acc" id="newPost" type="button"><span class="ms">edit_square</span>New post</button></div>
     </div>
     <div class="stats" id="stats"></div>
     <nav class="tabs"><button type="button" class="on" data-tab="posts">Posts</button><button type="button" data-tab="keywords">Keywords</button><button type="button" data-tab="categories">Categories</button></nav>
@@ -377,6 +377,10 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
   }
   $('edBack').onclick = closeEditor;
   $('newPost').onclick = function () { openEditor(null); };
+  $('addStarters').onclick = function () {
+    var b = this; busy(b, true);
+    post({ action: 'import_starters' }).then(function (d) { toast(d.message); if (d.success) { loadMeta(); loadPosts(); } }).finally(function () { busy(b, false); });
+  };
   function save() {
     var p = gather();
     if (!p.title) { toast('Give the post a title first'); $('title').focus(); return; }
@@ -457,6 +461,8 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
       if (!d.success) return;
       META.categories = d.categories; META.keywords = d.keywords; META.ai = d.ai; META.site = d.site;
       $('viewBlog').href = META.site + '/blog/';
+      $('addStarters').style.display = d.starters ? '' : 'none';
+      $('startersLbl').textContent = 'Add ' + d.starters + ' starter post' + (d.starters === 1 ? '' : 's');
       var cv = field('catFilter');
       $('catFilter').innerHTML = '<option value="">All categories</option>' + META.categories.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + ' (' + c.posts + ')</option>'; }).join('');
       $('catFilter').value = cv;
