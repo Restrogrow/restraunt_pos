@@ -18,6 +18,8 @@ try {
     ownerMgrEnsure($conn);
     // so Super Admin › Email › Settings & jobs can show the job is running
     try { $conn->exec("CREATE TABLE IF NOT EXISTS sa_settings (k VARCHAR(60) PRIMARY KEY, v TEXT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"); $conn->prepare("REPLACE INTO sa_settings (k, v) VALUES ('cron_owner_brief_at', ?)")->execute([date('Y-m-d H:i:s')]); } catch (Throwable $e) { /* not important */ }
+    // speed indexes the database is missing (once; config/db_indexes.php)
+    try { require_once __DIR__ . '/../config/db_indexes.php'; dbEnsureIndexes($conn); } catch (Throwable $e) { error_log('owner_brief indexes: ' . $e->getMessage()); }
     $sent = 0;
     foreach ($conn->query('SELECT restaurant_id FROM om_settings WHERE enabled = 1')->fetchAll(PDO::FETCH_COLUMN) as $rid) {
         try {

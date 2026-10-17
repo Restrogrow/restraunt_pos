@@ -2768,3 +2768,13 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
   </script>
 </body>
 </html>
+<?php
+// after the page is sent: add any speed indexes the database is missing (once; config/db_indexes.php)
+if (function_exists('fastcgi_finish_request')) fastcgi_finish_request(); elseif (function_exists('litespeed_finish_request')) litespeed_finish_request(); else flush();   // Hostinger runs LiteSpeed
+try {
+    require_once __DIR__ . '/../db_connection.php';
+    require_once __DIR__ . '/../config/db_indexes.php';
+    dbEnsureIndexes(getConnection());
+} catch (Throwable $e) {
+    error_log('superadmin indexes: ' . $e->getMessage());
+}
