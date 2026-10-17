@@ -382,6 +382,16 @@ The full list with comments is in [`main/.env.example`](main/.env.example). The 
 
 Pushing to `main` deploys to restrogrow.com automatically. The code detects the Hostinger server and connects through the local MySQL socket. New tables and columns create themselves on first use (each feature has an `ensure…` function), so no manual migration is needed.
 
+A few Super Admin pages set things up the first time they're opened. On a fresh database or a new server, open each once (all done on the live site on 17 Oct 2026; details in the [admin handbook](docs/ADMIN_HANDBOOK.md#7-server-deploy-and-cron-jobs)):
+
+| Open | What it sets up |
+|---|---|
+| [Dashboard](https://restrogrow.com/main/superadmin/dashboard.php) | Database speed indexes |
+| [My to-do](https://restrogrow.com/main/superadmin/todo.php) | The owner's to-do list |
+| [Demo restaurant](https://restrogrow.com/main/superadmin/demo_restaurant.php) | Press **Create demo** |
+| [Blog](https://restrogrow.com/main/superadmin/blog.php) | Press **Add starter posts**; paste the keyword plan in Keywords › *Add many at once* |
+| [Email](https://restrogrow.com/main/superadmin/email.php) | Email settings table |
+
 ### Uptime monitoring
 
 `https://restrogrow.com/main/api/health.php` is a public health check for UptimeRobot or any monitor. It answers **200** with `{"status":"ok"}` when the database answers, logins can be saved and the disk is fine, and **503** with `{"status":"down"}` and a short reason when something critical fails. It shows no passwords, host names, versions or paths, and accepts GET or HEAD. Add `?check=orders` to also read the orders table.

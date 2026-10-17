@@ -69,10 +69,11 @@ Check after a day with Super Admin › Email › Send test to a Gmail address �
 Then open Super Admin › Email › Settings & jobs: both should say Running within 15 minutes. Without them, reminders only go out while someone has a dashboard open."],
 ];
 // jobs the owner has already done outside the list
-$conn->prepare('DELETE FROM sa_todos WHERE title = ?')->execute(['Give the AI manager a natural, fast voice (Google Cloud Text-to-Speech)']);
+$doneOutside = ['Give the AI manager a natural, fast voice (Google Cloud Text-to-Speech)', 'Reset the demo restaurant on the live site', 'Load the keyword plan into the blog'];
+$conn->prepare('DELETE FROM sa_todos WHERE title IN (?, ?, ?)')->execute($doneOutside);
 $have = $conn->prepare('SELECT COUNT(*) FROM sa_todos WHERE title = ?');
 $addLater = $conn->prepare('INSERT INTO sa_todos (category, urgent, title, details, sort) VALUES (?, ?, ?, ?, ?)');
-foreach ($later as $i => $t) { $have->execute([$t[2]]); if (!(int)$have->fetchColumn()) $addLater->execute([$t[0], $t[1], $t[2], $t[3], 100 + $i]); }
+foreach ($later as $i => $t) { if (in_array($t[2], $doneOutside, true)) continue; $have->execute([$t[2]]); if (!(int)$have->fetchColumn()) $addLater->execute([$t[0], $t[1], $t[2], $t[3], 100 + $i]); }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');

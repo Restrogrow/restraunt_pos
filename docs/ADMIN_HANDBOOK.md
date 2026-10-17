@@ -13,6 +13,14 @@ Last updated: 16 October 2026.
 | Marketing website | https://restrogrow.com | http://localhost/menuwebsite/ |
 | Restaurant admin login | https://restrogrow.com/main/admin/login.php | http://localhost/menuwebsite/main/admin/login.php |
 | Super Admin | https://restrogrow.com/main/superadmin/login.php | http://localhost/menuwebsite/main/superadmin/login.php |
+| Super Admin dashboard | https://restrogrow.com/main/superadmin/dashboard.php | http://localhost/menuwebsite/main/superadmin/dashboard.php |
+| My to-do | https://restrogrow.com/main/superadmin/todo.php | http://localhost/menuwebsite/main/superadmin/todo.php |
+| Demo restaurant (Create / Reset) | https://restrogrow.com/main/superadmin/demo_restaurant.php | http://localhost/menuwebsite/main/superadmin/demo_restaurant.php |
+| Blog (posts, keywords, starter posts) | https://restrogrow.com/main/superadmin/blog.php | http://localhost/menuwebsite/main/superadmin/blog.php |
+| Email (settings, jobs, test send) | https://restrogrow.com/main/superadmin/email.php | http://localhost/menuwebsite/main/superadmin/email.php |
+| Email book | https://restrogrow.com/main/superadmin/email_book.php | http://localhost/menuwebsite/main/superadmin/email_book.php |
+| Admin handbook (this file) | https://restrogrow.com/main/superadmin/handbook.php | http://localhost/menuwebsite/main/superadmin/handbook.php |
+| Features list | https://restrogrow.com/main/superadmin/features.php | http://localhost/menuwebsite/main/superadmin/features.php |
 | **One-tap demo (private link)** | **https://restrogrow.com/demo** | http://localhost/menuwebsite/demo/ |
 | Demo restaurant's website | https://restrogrow.com/spice-garden-indiranagar | http://localhost/menuwebsite/spice-garden-indiranagar |
 | Partner app in the browser (public, linked from the homepage) | https://restrogrow.com/app-demo/ | http://localhost/menuwebsite/app-demo-local/ |
@@ -61,7 +69,7 @@ Last updated: 16 October 2026.
   - Local: `php main/database/seed_demo_restaurant.php`.
 - All of this is one file: `main/config/demo_restaurant.php`. The menu data, the logins and what the demo is allowed to do are all there.
 - Photos: `main/assets/demo_restaurant/` (Wikimedia Commons, credits in `/demo-credits.txt`, which must stay public because of the CC licences).
-- **First time on the live server:** after deploying, open Super Admin › Tools › Demo restaurant and press **Create demo**. It also removes the old "Spice Garden Demo" (`RESDEMO01`) if that was created earlier.
+- **First time on a new server:** after deploying, open [Super Admin › Tools › Demo restaurant](https://restrogrow.com/main/superadmin/demo_restaurant.php) and press **Create demo**. It also removes the old "Spice Garden Demo" (`RESDEMO01`) if that was created earlier. Done on the live site on 17 Oct 2026.
 
 ---
 
@@ -211,6 +219,16 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 | Emails (reminders, retries) | `/usr/bin/php <HOME>/main/cron/email_dispatch.php` | every 10 min | Super Admin › Email › Settings & jobs shows if it runs |
 | AI manager morning report | `/usr/bin/php <HOME>/main/cron/owner_brief.php` | every 15 min | Super Admin › Email › Settings & jobs shows if it runs |
 
+- **Pages that set things up when opened.** Some setup runs the first time a Super Admin page is opened, not from a migration. On the live site all of these were done on 17 Oct 2026. Open them again after a fresh database or a new server:
+
+| Open | What it sets up | Live |
+|---|---|---|
+| [Dashboard](https://restrogrow.com/main/superadmin/dashboard.php) | Adds the database speed indexes (`main/config/db_indexes.php`, once per version; the 15-minute cron does it too) | ✅ 17 Oct 2026 |
+| [My to-do](https://restrogrow.com/main/superadmin/todo.php) | Creates `sa_todos` and fills it with the owner's jobs; new jobs in the code appear on the next visit | ✅ 17 Oct 2026 |
+| [Demo restaurant](https://restrogrow.com/main/superadmin/demo_restaurant.php) | Press **Create demo** (later **Reset demo**) | ✅ 17 Oct 2026 |
+| [Blog](https://restrogrow.com/main/superadmin/blog.php) | Press **Add starter posts** (10 drafts); Keywords › *Add many at once* with the block from `docs/BLOG_KEYWORD_PLAN.md` | ✅ 17 Oct 2026 |
+| [Email](https://restrogrow.com/main/superadmin/email.php) | Creates `sa_settings` (email on/off switches, job status) | ✅ 17 Oct 2026 |
+
 - **Uptime:** UptimeRobot keyword monitor on `/main/api/health.php?check=orders`, looking for `"status":"ok"`.
 
 ---
@@ -295,13 +313,14 @@ All of these can be read in Super Admin › Tools › Admin handbook. None can b
 
 ## 11. Open items
 
-- [ ] Live: deploy, then press **Create demo** in Super Admin › Tools › Demo restaurant.
+- [x] Live: deploy, then press **Create demo** in Super Admin › Tools › Demo restaurant (17 Oct 2026).
+- [x] Live: open the self-setup pages once: dashboard, My to-do, Blog (starter posts + keyword plan), Email (17 Oct 2026, see section 7).
 - [ ] Live: confirm the other four crons are added.
 - [ ] Live: check `SMTP_ENABLED`, the app password and the `MAIL_FROM_*` aliases.
 - [ ] RepeatGrow: approve the WhatsApp templates, set `REPEATGROW_GIFT_TEMPLATE`, and build the Connect side.
 - [ ] Google: OAuth client and API approval for Business Profile. Valid Maps and Gemini keys.
 - [ ] PhonePe production credentials (live `PHONEPE_CLIENT_ID` / `SECRET` = RestroGrow's account; renewals need them).
 - [ ] Restaurants outside India (Royal Sekuwa & Khaja Ghar first): set their time zone and tax in Settings (they signed up before country defaults). My to-do has the steps.
-- [ ] Blog: Add 10 starter posts, review, add covers, publish 2 a week, request indexing for each (My to-do).
+- [ ] Blog: the 10 starter posts and the keyword plan are in (17 Oct 2026). Still to do: review each, add covers, publish 2 a week, request indexing for each (My to-do).
 - [ ] Super Admin password reset is hard-coded to one Gmail address. Consider moving it to `.env`.
 - [x] `AGENTS.md` updated (no Composer, built-in web push, demo restaurant).
