@@ -14,6 +14,7 @@ import { useApiData } from '../hooks/useApiData';
 import { useLayout } from '../hooks/useLayout';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { clock, money } from '../utils/format';
+import { useAccess } from '../utils/access';
 
 const TONE = {
   free: { fg: colors.success, bg: colors.successBg, label: 'Free', icon: 'checkmark-circle' },
@@ -60,8 +61,10 @@ export default function TablesScreen({ navigation }) {
   const cols = columns(96, 6);
   const tileW = Math.floor((contentWidth - gutter * 2 - spacing.sm * (cols - 1)) / cols);
 
+  const canSee = useAccess(); // POS can be switched off in Super Admin (utils/access.js)
   const startOrder = (t) => {
     setOpen(null);
+    if (!canSee('POS')) return feedback.error('POS is not switched on for this restaurant.');
     navigation.navigate('POS', { tableId: String(t.id), tableLabel: t.table_number });
   };
 

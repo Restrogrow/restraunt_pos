@@ -157,6 +157,7 @@ Sidebar groups, and what each page does:
     - Saved in the `restaurant_access` table (created by itself) as the list of what's OFF; no row = everything on. The restaurant sees the change on its next page load.
     - To add a new dashboard page to it: add the page id (and any API used only by that page) in `accessModules()` in `main/config/access_control.php`.
     - Meal plans and Photo gallery keep their own switches on the row, as before.
+    - **Apps follow it too** (Partner 1.2.0, Staff 1.0.3, Super Admin 1.1.2): `get_session.php` sends the switched-off pages as `access_off` and the apps re-read it every 20 seconds, so a section switched off in Super Admin leaves the app's tabs, More menu and home shortcuts within about 20 seconds, with no new app. A screen that is already open shows "Not switched on". Mapping app screen → dashboard page: `utils/access.js` (same file in `app/` and `staff-app/`). The Super Admin app has the same editor: restaurant › Features › **Dashboard sections**.
   - Renewals: plans ending soon, payment link, WhatsApp reminder, extend.
   - Menus from photos: Gemini reads a photo of a paper menu.
   - Branch admins, and Coupons across all restaurants.
@@ -277,7 +278,7 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 ## 9. Partner app (Expo, `app/`)
 
 - Expo SDK 57. The release APK is built locally (JDK 17 and Android SDK in `C:\Users\INDIA\dev`): run `./gradlew assembleRelease` in `app/android`. Copies are kept on the Desktop as `RestroGrow-Partner-<version>.apk`.
-- Version is in `app/app.json` and `app/android/app/build.gradle` (now 1.1.6, versionCode 16).
+- Version is in `app/app.json` and `app/android/app/build.gradle` (now 1.2.0, versionCode 20). Staff app 1.0.3 (versionCode 4), Super Admin app 1.1.2 (versionCode 4); same two files in their folders.
 - **Browser demo:** `app/demo/mockApi.js`, `app/demo/fixtures.json`, `app/demo/DemoDeepLink.js` (the `?screen=` links). Rebuild with `EXPO_PUBLIC_DEMO=1 EXPO_BASE_URL=/app-demo/app npx expo export --platform web --output-dir ../app-demo/app` and, for this PC, `EXPO_BASE_URL=/menuwebsite/app-demo-local/app … --output-dir ../app-demo-local/app` (in Git Bash also add `MSYS_NO_PATHCONV=1`).
 - **Staff app in the browser:** in `staff-app/`, `EXPO_PUBLIC_DEMO_LOGIN=1 EXPO_BASE_URL=/staff-app-demo/app npx expo export -p web --output-dir ../staff-app-demo/app` (local: `/menuwebsite/staff-app-demo-local/app`). It uses the real demo restaurant; the login shows Manager / Waiter / Chef buttons and `?as=` / `&screen=` links work (`staff-app/demo/DemoDeepLink.js`).
 - **Super Admin app in the browser:** in `superadmin-app/`, `EXPO_BASE_URL=/superadmin-app-web/app npx expo export -p web --output-dir ../superadmin-app-web/app` (local: `/menuwebsite/superadmin-app-web-local/app`). Real Super Admin login only.
@@ -286,10 +287,10 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 
 ### Super Admin app (`superadmin-app/`) and Staff app (`staff-app/`)
 
-- **Super Admin app** (v1.1.0, `com.restrogrow.superadmin`): the Super Admin panel on a phone. Overview, restaurants (plan filters, 360 page, plan / features / password / OTP lock), renewals, support tickets, leads, chatbot, payments, **payment links, coupons, branch admins**, announcements, security, activity log, health, settings. Menus, settlements, the invoice generator and the error monitor open the web panel **inside the app**, already signed in. Code and details: `superadmin-app/README.md`.
+- **Super Admin app** (v1.1.2, `com.restrogrow.superadmin`): the Super Admin panel on a phone. Overview, restaurants (plan filters, 360 page, plan / features / password / OTP lock), renewals, support tickets, leads, chatbot, payments, **payment links, coupons, branch admins**, announcements, security, activity log, health, settings. Menus, settlements, the invoice generator and the error monitor open the web panel **inside the app**, already signed in. Code and details: `superadmin-app/README.md`.
 - **Stays signed in:** `main/superadmin/app_auth.php` gives each phone a device token (only its hash is stored, table `sa_app_tokens`, 90 days from last use). It is cleared on sign-out, when the super admin is deactivated, or when their password changes.
 - **Notifications:** new / updated tickets, new leads, and a daily "plans ending soon". The app checks itself (every minute while open, about every 15 minutes in the background), there is no push server. Switches are in the app's Settings.
-- **Staff app** (v1.0.1, `com.restrogrow.staff`): for waiters, chefs and managers, built from the Partner app. Details: `staff-app/README.md`.
+- **Staff app** (v1.0.3, `com.restrogrow.staff`): for waiters, chefs and managers, built from the Partner app. Details: `staff-app/README.md`.
 - Both APKs are built locally like the Partner app (`./gradlew assembleRelease` in `superadmin-app/android` or `staff-app/android`; the Desktop copies are `RestroGrow-SuperAdmin-<version>.apk` and `RestroGrow-Staff-<version>.apk`). They are signed with the debug key because they are for our own use, not the Play Store. If the build runs out of memory, close other programs and use `--max-workers=2`.
 - After changing the server side (`app_auth.php`, `api.php`), push first: the installed apps talk to restrogrow.com.
 

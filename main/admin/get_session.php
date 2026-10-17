@@ -208,6 +208,8 @@ try {
         'is_active' => $row['is_active'] ?? 1,
         'linked_restaurants' => $_SESSION['linked_restaurants'] ?? null,
         'user_type' => $_SESSION['user_type'] ?? ($isAdmin ? 'admin' : ($isStaff ? 'staff' : 'branch_admin')),
+        // sections Super Admin switched off (config/access_control.php): the apps hide them; polled every 20 s
+        'access_off' => ($conn instanceof PDO) ? accessOffPages($conn, (string)$_SESSION['restaurant_id']) : [],
         'session_remaining_time' => 86400,
         'session_remaining_minutes' => 1440,
         'session_remaining_seconds' => 0,

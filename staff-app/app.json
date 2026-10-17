@@ -3,7 +3,7 @@
     "name": "RestroGrow Staff",
     "slug": "restrogrow-staff",
     "scheme": "restrogrowstaff",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.restrogrow.staff",
-      "versionCode": 3,
+      "versionCode": 4,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#0F6E6C",

@@ -54,6 +54,7 @@ import CustomersScreen from './screens/CustomersScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import SettingsScreen, { SettingsSectionScreen } from './screens/SettingsScreen';
 import LogsScreen from './screens/LogsScreen';
+import { useAccess, withAccess } from './utils/access';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -238,16 +239,20 @@ const LAYOUT = {
   cashier: { tabs: ['Home', 'Orders', 'POS', 'Tables', 'More'], more: ['Kitchen', 'WaiterCalls', 'Reservations', 'Customers', 'Riders'] },
 };
 
+// sections Super Admin can switch off show a locked page instead (utils/access.js)
 const MORE_SCREENS = {
-  Kitchen: KitchenScreen,
-  Tables: TablesScreen,
-  WaiterCalls: WaiterCallsScreen,
-  Reservations: ReservationsScreen,
-  Customers: CustomersScreen,
-  Reports: ReportsScreen,
+  Kitchen: withAccess(KitchenScreen, 'Kitchen'),
+  Tables: withAccess(TablesScreen, 'Tables'),
+  WaiterCalls: withAccess(WaiterCallsScreen, 'WaiterCalls'),
+  Reservations: withAccess(ReservationsScreen, 'Reservations'),
+  Customers: withAccess(CustomersScreen, 'Customers'),
+  Reports: withAccess(ReportsScreen, 'Reports'),
   Logs: LogsScreen,
-  Riders: RidersScreen,
+  Riders: withAccess(RidersScreen, 'Riders'),
 };
+const TAB_KITCHEN = withAccess(KitchenScreen, 'Kitchen');
+const TAB_TABLES = withAccess(TablesScreen, 'Tables');
+const TAB_POS = withAccess(POSScreen, 'POS');
 
 // "More": everything beyond the everyday tabs, one tap from a tidy grid.
 function MoreStack({ route }) {
@@ -390,6 +395,7 @@ const lockStyles = StyleSheet.create({
 
 function RootNavigator() {
   const { user, checkingSession } = useAuth();
+  const canSee = useAccess();
   const { locked, checking: checkingLock, retry, retrying } = useAppLock(!checkingSession && !!user);
   const signedIn = !checkingSession && !!user;
   const [welcomeSeen, setWelcomeSeen] = useState(null);
@@ -424,10 +430,10 @@ function RootNavigator() {
   const role = staffRole(user);
   const tabs = {
     Home: role === 'manager' ? HomeScreen : role === 'rider' ? RiderHomeScreen : ShiftHomeScreen,
-    Kitchen: KitchenScreen,
-    Tables: TablesScreen,
+    Kitchen: TAB_KITCHEN,
+    Tables: TAB_TABLES,
     Orders: OrdersStack,
-    POS: POSScreen,
+    POS: TAB_POS,
     Menu: MenuStack,
     More: MoreStack,
   };
@@ -449,7 +455,7 @@ function RootNavigator() {
         <LockScreen onRetry={retry} retrying={retrying} />
       ) : (
         <Tab.Navigator
-          key={role}
+          key={`${role}|${(user.access_off || []).join(',')}`}
           tabBar={(props) => <TabBar {...props} />}
           screenOptions={{
             headerShown: false,
@@ -458,7 +464,7 @@ function RootNavigator() {
             sceneStyle: { backgroundColor: colors.bg },
           }}
         >
-          {LAYOUT[role].tabs.map((name) => (
+          {LAYOUT[role].tabs.filter(canSee).map((name) => (
             <Tab.Screen key={name} name={name} component={tabs[name]} initialParams={name === 'More' ? { role } : undefined} />
           ))}
         </Tab.Navigator>

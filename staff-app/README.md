@@ -42,3 +42,6 @@ Local demo logins (Spice Garden Indiranagar), password `demo`:
 - No Android background order service (`order-watch`) and no browser demo mode, so the app
   also runs in Expo Go. Bluetooth printing still needs a development build.
 - Android package `com.restrogrow.staff`, so it installs next to the partner app.
+- Sections Super Admin switches off for the restaurant (Restaurants › Access) leave the tabs, More
+  and Home shortcuts within about 20 seconds (`utils/access.js`, same file as the partner app's;
+  the list comes from `get_session.php` as `access_off`). An open screen shows "Not switched on".

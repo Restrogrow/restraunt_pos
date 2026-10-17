@@ -53,6 +53,21 @@ import LoyaltyScreen from './screens/LoyaltyScreen';
 import SettingsScreen, { SettingsSectionScreen } from './screens/SettingsScreen';
 import LogsScreen from './screens/LogsScreen';
 
+import { useAccess, withAccess } from './utils/access';
+
+// sections Super Admin can switch off (utils/access.js): a locked page instead of the screen
+const Gated = {
+  POS: withAccess(POSScreen, 'POS'),
+  Kitchen: withAccess(KitchenScreen, 'Kitchen'),
+  Tables: withAccess(TablesScreen, 'Tables'),
+  WaiterCalls: withAccess(WaiterCallsScreen, 'WaiterCalls'),
+  Reservations: withAccess(ReservationsScreen, 'Reservations'),
+  Customers: withAccess(CustomersScreen, 'Customers'),
+  Reports: withAccess(ReportsScreen, 'Reports'),
+  Loyalty: withAccess(LoyaltyScreen, 'Loyalty'),
+  Riders: withAccess(RidersScreen, 'Riders'),
+};
+
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // A render error anywhere below this (a bad API response shaped
@@ -228,15 +243,15 @@ function MoreStack() {
   return (
     <MoreStackNav.Navigator screenOptions={stackOptions}>
       <MoreStackNav.Screen name="MoreHome" component={MoreScreen} />
-      <MoreStackNav.Screen name="Kitchen" component={KitchenScreen} />
-      <MoreStackNav.Screen name="Tables" component={TablesScreen} />
-      <MoreStackNav.Screen name="WaiterCalls" component={WaiterCallsScreen} />
-      <MoreStackNav.Screen name="Reservations" component={ReservationsScreen} />
-      <MoreStackNav.Screen name="Customers" component={CustomersScreen} />
-      <MoreStackNav.Screen name="Reports" component={ReportsScreen} />
-      <MoreStackNav.Screen name="Loyalty" component={LoyaltyScreen} />
+      <MoreStackNav.Screen name="Kitchen" component={Gated.Kitchen} />
+      <MoreStackNav.Screen name="Tables" component={Gated.Tables} />
+      <MoreStackNav.Screen name="WaiterCalls" component={Gated.WaiterCalls} />
+      <MoreStackNav.Screen name="Reservations" component={Gated.Reservations} />
+      <MoreStackNav.Screen name="Customers" component={Gated.Customers} />
+      <MoreStackNav.Screen name="Reports" component={Gated.Reports} />
+      <MoreStackNav.Screen name="Loyalty" component={Gated.Loyalty} />
       <MoreStackNav.Screen name="Logs" component={LogsScreen} />
-      <MoreStackNav.Screen name="Riders" component={RidersScreen} />
+      <MoreStackNav.Screen name="Riders" component={Gated.Riders} />
       <MoreStackNav.Screen name="Settings" component={SettingsScreen} />
       <MoreStackNav.Screen name="SettingsSection" component={SettingsSectionScreen} />
     </MoreStackNav.Navigator>
@@ -369,6 +384,7 @@ const lockStyles = StyleSheet.create({
 
 function RootNavigator() {
   const { user, checkingSession } = useAuth();
+  const canSee = useAccess();
   const { locked, checking: checkingLock, retry, retrying } = useAppLock(!checkingSession && !!user);
   const signedIn = !checkingSession && !!user;
   const [welcomeSeen, setWelcomeSeen] = useState(null);
@@ -417,6 +433,7 @@ function RootNavigator() {
         <LockScreen onRetry={retry} retrying={retrying} />
       ) : (
         <Tab.Navigator
+          key={(user.access_off || []).join(',')}
           tabBar={(props) => <TabBar {...props} />}
           screenOptions={{
             headerShown: false,
@@ -425,7 +442,7 @@ function RootNavigator() {
         >
           <Tab.Screen name="Home" component={HomeScreen} />
           <Tab.Screen name="Orders" component={OrdersStack} />
-          <Tab.Screen name="POS" component={POSScreen} />
+          {canSee('POS') ? <Tab.Screen name="POS" component={Gated.POS} /> : null}
           <Tab.Screen name="Menu" component={MenuStack} />
           <Tab.Screen name="More" component={MoreStack} />
         </Tab.Navigator>

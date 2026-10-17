@@ -21,6 +21,7 @@ import { refreshLive, useLive } from '../utils/liveStore';
 import { goOrders, goTo } from '../utils/nav';
 import { firstName, ROLE_INFO, staffRole } from '../utils/roles';
 import { attendCall, moveKot } from '../utils/staffActions';
+import { useAccess } from '../utils/access';
 
 function greeting() {
   const h = new Date().getHours();
@@ -56,6 +57,7 @@ function RowAction({ label, icon, tone = colors.primary, onPress, busy }) {
 // change on any phone shows here within seconds. Managers get the sales Home (HomeScreen).
 export default function ShiftHomeScreen({ navigation }) {
   const { user } = useAuth();
+  const canSee = useAccess(); // sections Super Admin switched off (utils/access.js)
   const role = staffRole(user);
   const isChef = role === 'chef';
   const info = ROLE_INFO[role];
@@ -143,32 +145,33 @@ export default function ShiftHomeScreen({ navigation }) {
 
   const attention = (isChef
     ? [
-        { n: late.length, icon: 'alarm', tone: colors.danger, bg: colors.dangerBg, title: (n) => `${n} ticket${n > 1 ? 's' : ''} waiting over ${LATE_MIN} min`, sub: late.slice(0, 3).map(where).join(', '), go: () => goTo(navigation, 'Kitchen', { stage: late[0]?.kot_status || 'Pending' }) },
-        { n: ready.length, icon: 'checkmark-done', tone: colors.success, bg: colors.successBg, title: (n) => `${n} ready, waiting for pickup`, sub: 'Waiters are told when food is ready', go: () => goTo(navigation, 'Kitchen', { stage: 'Ready' }) },
+        { n: late.length, icon: 'alarm', tone: colors.danger, bg: colors.dangerBg, title: (n) => `${n} ticket${n > 1 ? 's' : ''} waiting over ${LATE_MIN} min`, sub: late.slice(0, 3).map(where).join(', '), go: () => goTo(navigation, 'Kitchen', { stage: late[0]?.kot_status || 'Pending' }), screen: 'Kitchen' },
+        { n: ready.length, icon: 'checkmark-done', tone: colors.success, bg: colors.successBg, title: (n) => `${n} ready, waiting for pickup`, sub: 'Waiters are told when food is ready', go: () => goTo(navigation, 'Kitchen', { stage: 'Ready' }), screen: 'Kitchen' },
       ]
     : [
         { n: counts.newOrders || 0, icon: 'notifications', tone: colors.danger, bg: colors.dangerBg, title: (n) => `${n} new order${n > 1 ? 's' : ''} to accept`, sub: 'Guests are waiting for your answer', go: () => goOrders(navigation, 'new') },
       ]
-  ).filter((a) => a.n > 0);
+  ).filter((a) => a.n > 0 && (!a.screen || canSee(a.screen)));
 
   const quick = isChef
     ? [
-        { icon: 'flame', label: 'Kitchen', c: ['#FB7185', '#E11D48'], go: () => goTo(navigation, 'Kitchen', { stage: 'Pending' }) },
-        { icon: 'timer', label: 'Cooking', c: ['#A78BFA', '#7C3AED'], go: () => goTo(navigation, 'Kitchen', { stage: 'Preparing' }) },
-        { icon: 'checkmark-done', label: 'Ready', c: ['#34D399', '#059669'], go: () => goTo(navigation, 'Kitchen', { stage: 'Ready' }) },
+        { icon: 'flame', label: 'Kitchen', c: ['#FB7185', '#E11D48'], go: () => goTo(navigation, 'Kitchen', { stage: 'Pending' }), screen: 'Kitchen' },
+        { icon: 'timer', label: 'Cooking', c: ['#A78BFA', '#7C3AED'], go: () => goTo(navigation, 'Kitchen', { stage: 'Preparing' }), screen: 'Kitchen' },
+        { icon: 'checkmark-done', label: 'Ready', c: ['#34D399', '#059669'], go: () => goTo(navigation, 'Kitchen', { stage: 'Ready' }), screen: 'Kitchen' },
         { icon: 'receipt', label: 'Orders', c: ['#60A5FA', '#2563EB'], go: () => goOrders(navigation, 'cooking') },
       ]
     : [
-        { icon: 'add', label: 'New order', c: ['#FF7A50', '#F0461F'], go: () => goTo(navigation, 'POS') },
-        { icon: 'grid', label: 'Tables', c: ['#34D399', '#059669'], go: () => goTo(navigation, 'Tables') },
-        { icon: 'hand-left', label: 'Calls', c: ['#FBBF24', '#D97706'], go: () => goTo(navigation, 'WaiterCalls'), badge: calls.length },
+        { icon: 'add', label: 'New order', c: ['#FF7A50', '#F0461F'], go: () => goTo(navigation, 'POS'), screen: 'POS' },
+        { icon: 'grid', label: 'Tables', c: ['#34D399', '#059669'], go: () => goTo(navigation, 'Tables'), screen: 'Tables' },
+        { icon: 'hand-left', label: 'Calls', c: ['#FBBF24', '#D97706'], go: () => goTo(navigation, 'WaiterCalls'), badge: calls.length, screen: 'WaiterCalls' },
         { icon: 'receipt', label: 'Orders', c: ['#60A5FA', '#2563EB'], go: () => goOrders(navigation, counts.newOrders ? 'new' : 'cooking'), badge: counts.newOrders },
-        { icon: 'flame', label: 'Kitchen', c: ['#FB7185', '#E11D48'], go: () => goTo(navigation, 'Kitchen') },
-        { icon: 'calendar', label: 'Bookings', c: ['#A78BFA', '#7C3AED'], go: () => goTo(navigation, 'Reservations') },
-        { icon: 'people', label: 'Customers', c: ['#38BDF8', '#0284C7'], go: () => goTo(navigation, 'Customers') },
-        { icon: 'settings', label: 'Settings', c: ['#94A3B8', '#475569'], go: () => goTo(navigation, 'Settings') },
+        { icon: 'flame', label: 'Kitchen', c: ['#FB7185', '#E11D48'], go: () => goTo(navigation, 'Kitchen'), screen: 'Kitchen' },
+        { icon: 'calendar', label: 'Bookings', c: ['#A78BFA', '#7C3AED'], go: () => goTo(navigation, 'Reservations'), screen: 'Reservations' },
+        { icon: 'people', label: 'Customers', c: ['#38BDF8', '#0284C7'], go: () => goTo(navigation, 'Customers'), screen: 'Customers' },
+        { icon: 'settings', label: 'Settings', c: ['#94A3B8', '#475569'], go: () => goTo(navigation, 'Settings'), screen: 'Settings' },
       ];
-  const qCols = quick.length <= 4 ? 4 : columns(72, 8) >= 8 ? 8 : 4;
+  const shortcuts = quick.filter((q) => !q.screen || canSee(q.screen));
+  const qCols = shortcuts.length <= 4 ? 4 : columns(72, 8) >= 8 ? 8 : 4;
 
   const nothingToDo = loaded && !attention.length && (isChef ? !queue.length && !cooking.length : !calls.length && !ready.length);
 
@@ -240,7 +243,7 @@ export default function ShiftHomeScreen({ navigation }) {
 
         <FadeIn index={1}>
           <View style={[styles.card, shadow.sm, styles.quickCard]}>
-            {quick.map((q) => (
+            {shortcuts.map((q) => (
               <PressableScale key={q.label} style={[styles.quick, { width: `${100 / qCols}%` }]} onPress={q.go} accessibilityLabel={q.label} scale={0.92}>
                 <View>
                   <LinearGradient colors={q.c} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.quickIcon}>
@@ -282,9 +285,11 @@ export default function ShiftHomeScreen({ navigation }) {
           <FadeIn index={3}>
             <View style={styles.cardHead}>
               <Text style={styles.sectionTitle}>Tables calling</Text>
-              <PressableScale onPress={() => goTo(navigation, 'WaiterCalls')} hitSlop={8}>
-                <Text style={styles.link}>See all</Text>
-              </PressableScale>
+              {canSee('WaiterCalls') ? (
+                <PressableScale onPress={() => goTo(navigation, 'WaiterCalls')} hitSlop={8}>
+                  <Text style={styles.link}>See all</Text>
+                </PressableScale>
+              ) : null}
             </View>
             <View style={[styles.card, shadow.sm, styles.listCard]}>
               {calls.slice(0, 5).map((c, i) => (
@@ -311,9 +316,11 @@ export default function ShiftHomeScreen({ navigation }) {
           <FadeIn index={4}>
             <View style={styles.cardHead}>
               <Text style={styles.sectionTitle}>Ready to serve</Text>
-              <PressableScale onPress={() => goTo(navigation, 'Kitchen', { stage: 'Ready' })} hitSlop={8}>
-                <Text style={styles.link}>Open kitchen</Text>
-              </PressableScale>
+              {canSee('Kitchen') ? (
+                <PressableScale onPress={() => goTo(navigation, 'Kitchen', { stage: 'Ready' })} hitSlop={8}>
+                  <Text style={styles.link}>Open kitchen</Text>
+                </PressableScale>
+              ) : null}
             </View>
             <View style={[styles.card, shadow.sm, styles.listCard]}>
               {ready.slice(0, 6).map((k, i) => (
@@ -352,9 +359,11 @@ export default function ShiftHomeScreen({ navigation }) {
           <FadeIn index={4}>
             <View style={styles.cardHead}>
               <Text style={styles.sectionTitle}>Cooking queue</Text>
-              <PressableScale onPress={() => goTo(navigation, 'Kitchen', { stage: queue.length ? 'Pending' : 'Preparing' })} hitSlop={8}>
-                <Text style={styles.link}>Open kitchen</Text>
-              </PressableScale>
+              {canSee('Kitchen') ? (
+                <PressableScale onPress={() => goTo(navigation, 'Kitchen', { stage: queue.length ? 'Pending' : 'Preparing' })} hitSlop={8}>
+                  <Text style={styles.link}>Open kitchen</Text>
+                </PressableScale>
+              ) : null}
             </View>
             <View style={[styles.card, shadow.sm, styles.listCard]}>
               {[...queue, ...cooking].slice(0, 8).map((k, i) => {

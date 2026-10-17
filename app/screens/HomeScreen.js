@@ -17,6 +17,7 @@ import { colors, font, radius, shadow, spacing, statusStyles } from '../theme';
 import { money, moneyShort, realName, timeAgo } from '../utils/format';
 import { useLiveCounts } from '../utils/liveCounts';
 import { openStatus } from '../utils/openStatus';
+import { useAccess } from '../utils/access';
 
 function greeting() {
   const h = new Date().getHours();
@@ -60,28 +61,29 @@ export default function HomeScreen({ navigation }) {
     [data?.days]
   );
 
+  const canSee = useAccess(); // sections Super Admin switched off (utils/access.js)
   const goOrders = (tab) => navigation.navigate('Orders', { screen: 'OrdersList', params: { tab } });
   const goMore = (screen) => navigation.navigate('More', { screen });
 
   const attention = [
     { n: Math.max(att.to_accept || 0, live.newOrders || 0), icon: 'notifications', tone: colors.danger, bg: colors.dangerBg, title: (n) => `${n} new order${n > 1 ? 's' : ''} to accept`, sub: 'Customers are waiting for your answer', go: () => goOrders('new') },
-    { n: Math.max(att.calls || 0, live.calls || 0), icon: 'hand-left', tone: colors.warning, bg: colors.warningBg, title: (n) => `${n} table${n > 1 ? 's' : ''} calling`, sub: 'A waiter is needed', go: () => goMore('WaiterCalls') },
-    { n: att.reservations_pending || 0, icon: 'calendar', tone: colors.purple, bg: colors.purpleBg, title: (n) => `${n} booking${n > 1 ? 's' : ''} to confirm`, sub: 'Confirm or decline table bookings', go: () => goMore('Reservations') },
-    { n: att.stale_kot || 0, icon: 'time', tone: colors.inkSoft, bg: colors.border, title: (n) => `${n} kitchen ticket${n > 1 ? 's' : ''} open for hours`, sub: 'Close them so tables show as free', go: () => goMore('Kitchen') },
+    { n: Math.max(att.calls || 0, live.calls || 0), icon: 'hand-left', tone: colors.warning, bg: colors.warningBg, title: (n) => `${n} table${n > 1 ? 's' : ''} calling`, sub: 'A waiter is needed', go: () => goMore('WaiterCalls'), screen: 'WaiterCalls' },
+    { n: att.reservations_pending || 0, icon: 'calendar', tone: colors.purple, bg: colors.purpleBg, title: (n) => `${n} booking${n > 1 ? 's' : ''} to confirm`, sub: 'Confirm or decline table bookings', go: () => goMore('Reservations'), screen: 'Reservations' },
+    { n: att.stale_kot || 0, icon: 'time', tone: colors.inkSoft, bg: colors.border, title: (n) => `${n} kitchen ticket${n > 1 ? 's' : ''} open for hours`, sub: 'Close them so tables show as free', go: () => goMore('Kitchen'), screen: 'Kitchen' },
     { n: att.low_stock || 0, icon: 'cube', tone: colors.info, bg: colors.infoBg, title: (n) => `${n} item${n > 1 ? 's' : ''} running low`, sub: (att.low_names || []).slice(0, 3).join(', ') || 'Check your stock', go: null },
-  ].filter((a) => a.n > 0);
+  ].filter((a) => a.n > 0 && (!a.screen || canSee(a.screen)));
 
   // Shortcuts: each its own colour so they're told apart at a glance.
   const quick = [
-    { icon: 'add', label: 'New order', c: ['#FF7A50', '#F0461F'], go: () => navigation.navigate('POS') },
-    { icon: 'flame', label: 'Kitchen', c: ['#FB7185', '#E11D48'], go: () => goMore('Kitchen') },
-    { icon: 'grid', label: 'Tables', c: ['#34D399', '#059669'], go: () => goMore('Tables') },
+    { icon: 'add', label: 'New order', c: ['#FF7A50', '#F0461F'], go: () => navigation.navigate('POS'), screen: 'POS' },
+    { icon: 'flame', label: 'Kitchen', c: ['#FB7185', '#E11D48'], go: () => goMore('Kitchen'), screen: 'Kitchen' },
+    { icon: 'grid', label: 'Tables', c: ['#34D399', '#059669'], go: () => goMore('Tables'), screen: 'Tables' },
     { icon: 'receipt', label: 'Orders', c: ['#60A5FA', '#2563EB'], go: () => goOrders(live.newOrders ? 'new' : 'cooking') },
-    { icon: 'stats-chart', label: 'Reports', c: ['#A78BFA', '#7C3AED'], go: () => goMore('Reports') },
-    { icon: 'people', label: 'Customers', c: ['#38BDF8', '#0284C7'], go: () => goMore('Customers') },
-    { icon: 'calendar', label: 'Bookings', c: ['#FBBF24', '#D97706'], go: () => goMore('Reservations') },
+    { icon: 'stats-chart', label: 'Reports', c: ['#A78BFA', '#7C3AED'], go: () => goMore('Reports'), screen: 'Reports' },
+    { icon: 'people', label: 'Customers', c: ['#38BDF8', '#0284C7'], go: () => goMore('Customers'), screen: 'Customers' },
+    { icon: 'calendar', label: 'Bookings', c: ['#FBBF24', '#D97706'], go: () => goMore('Reservations'), screen: 'Reservations' },
     { icon: 'restaurant', label: 'Menu', c: ['#2DD4BF', '#0D9488'], go: () => navigation.navigate('Menu') },
-  ];
+  ].filter((q) => !q.screen || canSee(q.screen));
 
   const qCols = columns(72, 8) >= 8 ? 8 : 4;
 

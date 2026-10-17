@@ -13,6 +13,7 @@ import { colors, font, radius, shadow, spacing } from '../theme';
 import { useLiveCounts } from '../utils/liveCounts';
 import { hasScreen } from '../utils/nav';
 import { ROLE_INFO, staffRole } from '../utils/roles';
+import { useAccess } from '../utils/access';
 
 const OWNER_ROLES = ['admin', 'administrator', 'manager', 'branch admin'];
 
@@ -27,6 +28,7 @@ export default function MoreScreen({ navigation }) {
   const role = staffRole(user);
   const isManager = role === 'manager';
   const has = (screen) => hasScreen(navigation, screen);
+  const canSee = useAccess(); // sections Super Admin switched off (utils/access.js)
   const tile = {
     Kitchen: { key: 'Kitchen', icon: 'flame', label: 'Kitchen', sub: kitchenNew ? `${kitchenNew} new` : 'Tickets to cook', tint: colors.primary, bg: colors.primaryLight, badge: kitchenNew },
     Tables: { key: 'Tables', icon: 'grid', label: 'Tables', sub: 'Live floor', tint: colors.success, bg: colors.successBg },
@@ -38,7 +40,7 @@ export default function MoreScreen({ navigation }) {
     Riders: { key: 'Riders', icon: 'bicycle', label: 'Riders', sub: 'Deliveries, cash', tint: colors.warning, bg: colors.warningBg },
   };
   // a page that is already its own tab for this role isn't repeated here
-  const pick = (...keys) => keys.filter((k) => !has(k) && tile[k] && navigation.getState().routeNames.includes(k)).map((k) => tile[k]);
+  const pick = (...keys) => keys.filter((k) => !has(k) && canSee(k) && tile[k] && navigation.getState().routeNames.includes(k)).map((k) => tile[k]);
 
   const groups = [
     { title: role === 'chef' ? 'Kitchen' : 'Service', items: pick('Kitchen', 'Tables', 'WaiterCalls', 'Reservations') },

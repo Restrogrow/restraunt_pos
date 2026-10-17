@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import MiniBars from '../components/MiniBars';
 import Screen from '../components/Screen';
@@ -237,6 +237,14 @@ export default function RestaurantDetailScreen({ route }) {
                 onChange={(on) => toggleFeature(f, on)}
               />
             ))}
+            <Row
+              icon="options-outline"
+              iconTone="primary"
+              title="Dashboard sections"
+              subtitle="POS, Loyalty & Growth, Offers… which ones they get"
+              onPress={() => setSheet('access')}
+              chevron
+            />
             <ToggleRow
               icon="card-outline"
               iconTone="primary"
@@ -336,6 +344,7 @@ export default function RestaurantDetailScreen({ route }) {
       {r ? (
         <>
           <PasswordSheet visible={sheet === 'password'} onClose={() => setSheet(null)} r={r} />
+          <AccessSheet visible={sheet === 'access'} onClose={() => setSheet(null)} r={r} />
           <PlanSheet visible={sheet === 'plan'} onClose={() => setSheet(null)} r={r} onDone={() => { refresh(); refreshBadges(); }} />
           <ExtendSheet visible={sheet === 'extend'} onClose={() => setSheet(null)} r={r} onDone={() => { refresh(); refreshBadges(); }} />
         </>
@@ -362,6 +371,93 @@ function Quick({ icon, onPress }) {
     <PressableScale onPress={onPress} style={styles.quick} hitSlop={4}>
       <Ionicons name={icon} size={17} color="#fff" />
     </PressableScale>
+  );
+}
+
+// Which dashboard sections this restaurant gets (same as the web panel's Restaurants › Access).
+// A switch per section, and per page for sections with several; saved as the list of what's OFF.
+function AccessSheet({ visible, onClose, r }) {
+  const [data, setData] = useState(null);
+  const [off, setOff] = useState([]);
+  const [open, setOpen] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!visible) return;
+    setData(null);
+    sa.get('getAccess', { id: r.id })
+      .then((d) => {
+        setData(d);
+        setOff(d.off || []);
+      })
+      .catch((e) => {
+        feedback.errorFrom(e);
+        onClose();
+      });
+  }, [visible, r.id]);
+
+  const pagesOf = (m) => m.pages.map((p) => p.id);
+  const setModule = (m, on) => setOff((o) => (on ? o.filter((id) => !pagesOf(m).includes(id)) : [...new Set([...o, ...pagesOf(m)])]));
+  const setPage = (id, on) => setOff((o) => (on ? o.filter((x) => x !== id) : [...o, id]));
+  const preset = (p) => setOff(data.modules.filter((m) => p.modules && !p.modules.includes(m.key)).flatMap(pagesOf));
+  const total = data ? data.modules.reduce((n, m) => n + m.pages.length, 0) : 0;
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const d = await sa.post('saveAccess', { id: r.id, off });
+      feedback.success(d.message || 'Saved');
+      onClose();
+    } catch (e) {
+      feedback.errorFrom(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet scroll visible={visible} onClose={onClose} title="Dashboard sections" subtitle={`${r.restaurant_name} · ${data ? (off.length ? `${total - off.length} of ${total} pages on` : 'everything on') : 'loading…'}`}>
+      {data ? (
+        <>
+          <View style={[styles.btnRow, { flexWrap: 'wrap', marginTop: 0, marginBottom: 12 }]}>
+            {data.presets.map((p) => (
+              <Button key={p.key} small title={p.label} variant="soft" tone="muted" onPress={() => preset(p)} />
+            ))}
+          </View>
+          <Card padded={false} style={styles.listCard}>
+            {data.modules.map((m, i) => {
+              const onCount = m.pages.filter((p) => !off.includes(p.id)).length;
+              const multi = m.pages.length > 1;
+              return (
+                <View key={m.key}>
+                  <ToggleRow
+                    title={m.label}
+                    subtitle={multi ? `${onCount} of ${m.pages.length} pages on · tap to pick` : m.desc}
+                    icon={onCount ? 'checkmark-circle-outline' : 'lock-closed-outline'}
+                    iconTone={onCount === m.pages.length ? 'success' : onCount ? 'warning' : 'muted'}
+                    value={onCount > 0}
+                    onChange={(on) => setModule(m, on)}
+                    last={i === data.modules.length - 1 && open !== m.key}
+                  />
+                  {multi ? (
+                    <PressableScale onPress={() => setOpen(open === m.key ? '' : m.key)} style={styles.accessMore}>
+                      <Text style={styles.accessMoreText}>{open === m.key ? 'Hide pages' : 'Choose pages'}</Text>
+                      <Ionicons name={open === m.key ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+                    </PressableScale>
+                  ) : null}
+                  {open === m.key
+                    ? m.pages.map((p) => <ToggleRow key={p.id} title={`   ${p.label}`} value={!off.includes(p.id)} onChange={(on) => setPage(p.id, on)} />)
+                    : null}
+                </View>
+              );
+            })}
+          </Card>
+          <Text style={styles.sheetNote}>Always on: Dashboard, Menu, Orders, Settings, Profile. Off sections leave their website dashboard and apps within a minute.</Text>
+          <Button title="Save" icon="checkmark" onPress={save} loading={busy} style={{ marginTop: 12 }} />
+        </>
+      ) : (
+        <Text style={styles.sheetNote}>Loading…</Text>
+      )}
+    </Sheet>
   );
 }
 
@@ -467,6 +563,8 @@ function ExtendSheet({ visible, onClose, r, onDone }) {
 }
 
 const styles = StyleSheet.create({
+  accessMore: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end', paddingBottom: 8, marginTop: -4 },
+  accessMoreText: { fontFamily: font.semiBold, fontSize: 12, color: colors.primary },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.lg },
   headerMeta: { fontFamily: font.medium, fontSize: 12, color: 'rgba(255,255,255,0.75)' },
   quick: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },

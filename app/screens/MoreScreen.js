@@ -10,6 +10,7 @@ import { restaurantLogoUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { useLayout } from '../hooks/useLayout';
 import { colors, font, radius, shadow, spacing } from '../theme';
+import { useAccess } from '../utils/access';
 import { useLiveCounts } from '../utils/liveCounts';
 
 const OWNER_ROLES = ['admin', 'administrator', 'manager', 'branch admin'];
@@ -19,6 +20,7 @@ export default function MoreScreen({ navigation }) {
   const tabBarHeight = useBottomTabBarHeight();
   const { gutter, columns, contentWidth } = useLayout();
   const { calls } = useLiveCounts();
+  const canSee = useAccess();
   const isOwnerish =
     OWNER_ROLES.includes(String(user?.role || '').toLowerCase()) || ['admin', 'branch_admin'].includes(String(user?.user_type || ''));
 
@@ -52,7 +54,10 @@ export default function MoreScreen({ navigation }) {
         { key: 'Settings', icon: 'settings', label: 'All settings', sub: 'Everything else', tint: colors.inkSoft, bg: colors.border },
       ].filter(Boolean),
     },
-  ];
+  ]
+    // sections Super Admin switched off for this restaurant (utils/access.js)
+    .map((g) => ({ ...g, items: g.items.filter((it) => it.section || canSee(it.key)) }))
+    .filter((g) => g.items.length);
 
   const cols = columns(160, 4);
   const tileW = Math.floor((contentWidth - gutter * 2 - spacing.sm * (cols - 1)) / cols);
