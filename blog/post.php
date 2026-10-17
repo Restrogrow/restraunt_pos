@@ -99,54 +99,94 @@ if (count($related['posts']) < 3) {
 }
 $shareText = rawurlencode($post['title']);
 $shareUrl = rawurlencode($url);
+$author = $post['author_name'] ?: 'RestroGrow team';
+$initial = mb_strtoupper(mb_substr($author, 0, 1));
+$updated = strtotime((string)$post['updated_at']) - strtotime((string)$post['published_at']) > 86400 * 2;
+
+/**
+ * Presentation only (the stored post is untouched): "1. Heading" h2s get a number badge, the FAQ section's
+ * questions become cards, a closing Summary/Conclusion is boxed, and a sign-up box goes in before the 3rd section.
+ */
+$h2count = preg_match_all('#<h2[\s>]#i', $content);
+$cta = '<aside class="post-inline-cta"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h18v4H3zM5 7v14h14V7M9 11h6M9 15h4"/></svg></span>'
+    . '<div><b>Run your restaurant on RestroGrow</b><p>GST billing, KOT, QR ordering, your own ordering site and WhatsApp marketing in one app. Start free, no card needed.</p>'
+    . '<div class="btns"><a href="' . bh($base) . '/main/admin/login.php">Start free trial</a><a href="' . bh($base) . '/app-demo/">See the demo</a></div></div></aside>';
+$out = ''; $n = 0;
+foreach (preg_split('#(?=<h2[\s>])#i', $content) as $part) {
+    if (!preg_match('#^<h2([^>]*)>(.*?)</h2>(.*)$#is', $part, $m)) { $out .= $part; continue; }
+    $n++;
+    [, $attrs, $inner, $body] = $m;
+    $plain = trim(html_entity_decode(strip_tags($inner), ENT_QUOTES, 'UTF-8'));
+    if (preg_match('/^(\d{1,2})[.)]\s+/', $plain, $nm)) {
+        $inner = preg_replace('/^((?:\s|<[^>]+>)*)\d{1,2}[.)]\s+/', '$1', $inner, 1);
+        $head = '<h2' . $attrs . ' class="h-numbered"><span class="h-num">' . str_pad($nm[1], 2, '0', STR_PAD_LEFT) . '</span><span>' . $inner . '</span></h2>';
+    } else {
+        $head = '<h2' . $attrs . '>' . $inner . '</h2>';
+    }
+    if ($n === 3 && $h2count >= 4) $out .= $cta;
+    if (preg_match('/^(FAQs?|Frequently asked)/i', $plain)) {
+        $body = preg_replace('#(<h3[^>]*>.*?</h3>)(.*?)(?=<h3[\s>]|$)#is', '<div class="faq-item">$1$2</div>', $body);
+        $out .= '<section class="post-faq">' . $head . $body . '</section>';
+    } elseif ($n === $h2count && preg_match('/^(Summary|Conclusion|In short|Final thoughts|Key takeaways|The bottom line|Wrapping up)/i', $plain)) {
+        $out .= '<section class="post-wrapup">' . $head . $body . '</section>';
+    } else {
+        $out .= $head . $body;
+    }
+}
+// a paragraph that opens with a bold label ("Hardware locks: ...") is shown as a small card
+$content = preg_replace('#<p>(\s*<strong>[^<]{2,80}</strong>)#i', '<p class="def">$1', $out);
 ?>
 <div class="read-progress" id="readProgress" aria-hidden="true"></div>
 <?php if ($preview): ?><div class="preview-bar">Preview: this post is <?php echo $post['status'] === 'draft' ? 'a draft' : 'scheduled for ' . bh(date('j M Y, g:i A', strtotime((string)$post['published_at']))); ?>. Only you can see it.</div><?php endif; ?>
 <main>
   <article>
-    <header class="post-head">
-      <div class="blog-wrap blog-narrow">
-        <nav class="post-crumbs" aria-label="Breadcrumb"><a href="<?php echo bh($base); ?>/blog/">Blog</a><?php if ($post['category']): ?><span aria-hidden="true">›</span><a class="post-cat" href="<?php echo bh($base . '/blog/category/' . $post['category_slug']); ?>"><?php echo bh($post['category']); ?></a><?php endif; ?></nav>
-        <h1><?php echo bh($post['title']); ?></h1>
-        <?php if ($post['excerpt']): ?><p class="post-lede"><?php echo bh($post['excerpt']); ?></p><?php endif; ?>
-        <div class="post-meta">
-          <span class="av-sm" aria-hidden="true"><?php echo bh(mb_strtoupper(mb_substr($post['author_name'] ?: 'R', 0, 1))); ?></span>
-          <span>By <b><?php echo bh($post['author_name'] ?: 'RestroGrow team'); ?></b></span>
-          <span class="dot"></span><span><?php echo bh(blogDate($post['published_at'] ?: $post['created_at'])); ?></span>
-          <?php if (strtotime((string)$post['updated_at']) - strtotime((string)$post['published_at']) > 86400 * 2): ?><span class="dot"></span><span>Updated <?php echo bh(blogDate($post['updated_at'])); ?></span><?php endif; ?>
-          <span class="dot"></span><span><?php echo (int)$post['reading_minutes']; ?> min read</span>
+    <header class="post-hero">
+      <div class="blog-wrap post-hero-in<?php echo $img ? '' : ' no-cover'; ?>">
+        <div>
+          <nav class="post-crumbs" aria-label="Breadcrumb"><a href="<?php echo bh($base); ?>/blog/">Blog</a><?php if ($post['category']): ?><span aria-hidden="true">/</span><a class="post-cat" href="<?php echo bh($base . '/blog/category/' . $post['category_slug']); ?>"><?php echo bh($post['category']); ?></a><?php endif; ?></nav>
+          <h1><?php echo bh($post['title']); ?></h1>
+          <?php if ($post['excerpt']): ?><p class="post-lede"><?php echo bh($post['excerpt']); ?></p><?php endif; ?>
+          <div class="post-meta">
+            <span class="who"><span class="av-sm" aria-hidden="true"><?php echo bh($initial); ?></span>
+              <span><b><?php echo bh($author); ?></b><small><?php echo bh(blogDate($post['published_at'] ?: $post['created_at'])); ?><?php echo $updated ? ' · Updated ' . bh(blogDate($post['updated_at'])) : ''; ?></small></span></span>
+            <span class="stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><?php echo (int)$post['reading_minutes']; ?> min read</span>
+          </div>
         </div>
+        <?php if ($img): ?><figure class="post-cover"><img src="<?php echo bh($img); ?>" alt="<?php echo bh($post['cover_alt'] ?: $post['title']); ?>" fetchpriority="high"></figure><?php endif; ?>
       </div>
-      <?php if ($img): ?><div class="blog-wrap" style="text-align:left"><figure class="post-cover"><img src="<?php echo bh($img); ?>" alt="<?php echo bh($post['cover_alt'] ?: $post['title']); ?>" fetchpriority="high"></figure></div><?php endif; ?>
     </header>
 
-    <div class="blog-wrap">
-      <div class="post-layout<?php echo count($toc) >= 3 ? '' : ' no-toc'; ?>">
-        <div class="post-main">
-          <div class="prose"><?php echo $content; ?></div>
-          <?php if ($tags): ?><div class="post-tags"><?php foreach ($tags as $t): ?><a href="<?php echo bh($base . '/blog/?tag=' . rawurlencode($t)); ?>">#<?php echo bh($t); ?></a><?php endforeach; ?></div><?php endif; ?>
-          <div class="post-share">
-            <span>Share</span>
-            <a href="https://wa.me/?text=<?php echo $shareText . '%20' . $shareUrl; ?>" target="_blank" rel="noopener">WhatsApp</a>
-            <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo $shareUrl; ?>" target="_blank" rel="noopener">LinkedIn</a>
-            <a href="https://twitter.com/intent/tweet?text=<?php echo $shareText; ?>&amp;url=<?php echo $shareUrl; ?>" target="_blank" rel="noopener">X</a>
-            <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo $shareUrl; ?>" target="_blank" rel="noopener">Facebook</a>
-            <button type="button" onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(<?php echo bh(json_encode($url)); ?>).then(function(){b.textContent='Link copied'})">Copy link</button>
+    <div class="post-body-band">
+      <div class="blog-wrap">
+        <div class="post-layout<?php echo count($toc) >= 3 ? '' : ' no-toc'; ?>">
+          <div class="post-main">
+            <div class="prose"><?php echo $content; ?></div>
+            <?php if ($tags): ?><div class="post-tags"><?php foreach ($tags as $t): ?><a href="<?php echo bh($base . '/blog/?tag=' . rawurlencode($t)); ?>">#<?php echo bh($t); ?></a><?php endforeach; ?></div><?php endif; ?>
+            <div class="post-share">
+              <span>Share this</span>
+              <a href="https://wa.me/?text=<?php echo $shareText . '%20' . $shareUrl; ?>" target="_blank" rel="noopener">WhatsApp</a>
+              <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo $shareUrl; ?>" target="_blank" rel="noopener">LinkedIn</a>
+              <a href="https://twitter.com/intent/tweet?text=<?php echo $shareText; ?>&amp;url=<?php echo $shareUrl; ?>" target="_blank" rel="noopener">X</a>
+              <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo $shareUrl; ?>" target="_blank" rel="noopener">Facebook</a>
+              <button type="button" onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(<?php echo bh(json_encode($url)); ?>).then(function(){b.lastChild.textContent='Link copied'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg><span>Copy link</span></button>
+            </div>
+            <div class="post-author"><div class="av"><?php echo bh($initial); ?></div>
+              <div><small>Written by</small><b><?php echo bh($author); ?></b><p>We build RestroGrow, restaurant software made in India, and write about what works for restaurant owners.</p></div></div>
           </div>
-          <div class="post-author"><div class="av"><?php echo bh(mb_strtoupper(mb_substr($post['author_name'] ?: 'R', 0, 1))); ?></div>
-            <div><small>Written by</small><b><?php echo bh($post['author_name'] ?: 'RestroGrow team'); ?></b><p>We build RestroGrow, restaurant software made in India, and write about what works for restaurant owners.</p></div></div>
+          <?php if (count($toc) >= 3): ?>
+            <details class="post-toc" id="postToc" open aria-label="On this page"><summary>On this page</summary><ol>
+              <?php foreach ($toc as $i => [$id, $text]): ?><li><a href="#<?php echo bh($id); ?>"><span class="n"><?php echo $i + 1; ?></span><span><?php echo bh(preg_replace('/^\d{1,2}[.)]\s+/', '', $text)); ?></span></a></li><?php endforeach; ?>
+            </ol>
+              <div class="post-toc-cta"><b>Try RestroGrow free</b><p>Billing, KOT, QR menu and WhatsApp marketing for your restaurant.</p><a href="<?php echo bh($base); ?>/main/admin/login.php">Start free trial</a></div>
+            </details>
+          <?php endif; ?>
         </div>
-        <?php if (count($toc) >= 3): ?>
-          <details class="post-toc" id="postToc" open aria-label="On this page"><summary>On this page</summary><ol>
-            <?php foreach ($toc as [$id, $text]): ?><li><a href="#<?php echo bh($id); ?>"><?php echo bh($text); ?></a></li><?php endforeach; ?>
-          </ol></details>
-        <?php endif; ?>
       </div>
-
-      <?php if ($related['posts']): ?>
-        <section class="post-related"><h2>Keep reading</h2><div class="blog-grid"><?php foreach ($related['posts'] as $p) echo blogCard($p); ?></div></section>
-      <?php endif; ?>
     </div>
+
+    <?php if ($related['posts']): ?>
+      <div class="blog-wrap"><section class="post-related"><h2>Keep reading</h2><div class="blog-grid"><?php foreach ($related['posts'] as $p) echo blogCard($p); ?></div></section></div>
+    <?php endif; ?>
   </article>
 </main>
 <script>
@@ -156,7 +196,7 @@ $shareUrl = rawurlencode($url);
   // the contents list is always open on wide screens and folded on phones
   function fold() { if (toc) { if (wide.matches) toc.open = true; else toc.open = false; } }
   fold(); wide.addEventListener && wide.addEventListener('change', fold);
-  if (toc) toc.addEventListener('click', function (e) { if (wide.matches && e.target.tagName === 'SUMMARY') e.preventDefault(); if (!wide.matches && e.target.tagName === 'A') toc.open = false; });
+  if (toc) toc.addEventListener('click', function (e) { if (wide.matches && e.target.tagName === 'SUMMARY') e.preventDefault(); if (!wide.matches && e.target.closest('a')) toc.open = false; });
   var links = toc ? [].slice.call(toc.querySelectorAll('a')) : [];
   var heads = links.map(function (a) { return document.getElementById(decodeURIComponent(a.hash.slice(1))); });
   function tick() {
@@ -166,7 +206,7 @@ $shareUrl = rawurlencode($url);
     }
     var cur = -1, line = window.innerHeight * 0.3;
     heads.forEach(function (h, i) { if (h && h.getBoundingClientRect().top < line) cur = i; });
-    links.forEach(function (a, i) { a.classList.toggle('on', i === cur); });
+    links.forEach(function (a, i) { a.classList.toggle('on', i === cur); a.classList.toggle('done', i < cur); });
   }
   var queued = false;
   window.addEventListener('scroll', function () { if (!queued) { queued = true; requestAnimationFrame(function () { queued = false; tick(); }); } }, { passive: true });

@@ -47,7 +47,7 @@ $qs = function (array $add) use ($catSlug, $tag, $q) {
   <header class="blog-hero">
     <div class="blog-wrap">
       <div class="blog-kicker"><?php echo $cat ? 'Category' : ($tag ? 'Tag' : ($q ? 'Search' : 'The RestroGrow blog')); ?></div>
-      <h1><?php echo bh($cat ? $cat['name'] : ($tag ? '#' . $tag : ($q ? 'Results for “' . $q . '”' : 'Grow your restaurant, one good idea at a time'))); ?></h1>
+      <h1><?php echo $cat || $tag || $q ? bh($cat ? $cat['name'] : ($tag ? '#' . $tag : 'Results for “' . $q . '”')) : 'Grow your restaurant, <em>one good idea at a time</em>'; ?></h1>
       <p><?php echo bh($cat && $cat['description'] ? $cat['description'] : ($q || $tag ? $list['total'] . ' post' . ($list['total'] === 1 ? '' : 's') . ' found.' : 'Practical guides for restaurant, cafe and cloud-kitchen owners in India. More orders, more regulars, less chaos.')); ?></p>
       <div class="blog-tools">
         <nav class="blog-cats" aria-label="Categories">
@@ -62,11 +62,14 @@ $qs = function (array $add) use ($catSlug, $tag, $q) {
     </div>
   </header>
 
-  <div class="blog-wrap">
+  <div class="blog-wrap blog-list">
     <?php if ($featured): ?><?php echo blogCard($featured, true); ?><?php endif; ?>
     <?php if ($list['posts']): ?>
+      <?php if ($featured): ?><div class="blog-section-title"><h2>Latest posts</h2><span><?php echo (int)$list['total']; ?> more</span></div><?php endif; ?>
       <div class="blog-grid"><?php foreach ($list['posts'] as $p) echo blogCard($p); ?></div>
-    <?php elseif (!$featured): ?>
+    <?php elseif ($featured): ?>
+      <div style="height:64px"></div>
+    <?php else: ?>
       <div class="blog-empty">
         <h2><?php echo $q || $tag || $cat ? 'Nothing here yet' : 'The first posts are on their way'; ?></h2>
         <p><?php echo $q ? 'Try a shorter search, or browse all posts.' : 'We\'re writing practical guides for restaurant owners. Meanwhile, see what RestroGrow can do for your restaurant.'; ?></p>

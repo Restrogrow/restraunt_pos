@@ -129,13 +129,13 @@ function blogCard(array $p, bool $big = false): string
     $base = blogWebBase();
     $url = $base . '/blog/' . rawurlencode($p['slug']);
     $img = blogImageUrl($p['cover_image'] ?? '');
-    return '<article class="bcard' . ($big ? ' bcard-big' : '') . '">'
+    return '<article class="bcard' . ($big ? ' bcard-big' : '') . '">' . ($big ? '<span class="bcard-flag">Featured</span>' : '')
         . '<a class="bcard-img" href="' . bh($url) . '" tabindex="-1" aria-hidden="true">'
         . ($img ? '<img src="' . bh($img) . '" alt="' . bh($p['cover_alt'] ?: $p['title']) . '" loading="lazy">' : '<span class="bcard-ph">' . bh(mb_substr($p['title'], 0, 1)) . '</span>') . '</a>'
         . '<div class="bcard-body">'
         . (!empty($p['category']) ? '<a class="bcard-cat" href="' . bh($base . '/blog/category/' . $p['category_slug']) . '">' . bh($p['category']) . '</a>' : '')
         . '<h' . ($big ? '2' : '3') . ' class="bcard-title"><a href="' . bh($url) . '">' . bh($p['title']) . '</a></h' . ($big ? '2' : '3') . '>'
         . ($p['excerpt'] ? '<p class="bcard-ex">' . bh($p['excerpt']) . '</p>' : '')
-        . '<p class="bcard-meta">' . bh(blogDate($p['published_at'])) . ' · ' . (int)$p['reading_minutes'] . ' min read</p>'
+        . '<p class="bcard-meta"><span>' . bh(blogDate($p['published_at'])) . ' · ' . (int)$p['reading_minutes'] . ' min read</span><b>Read →</b></p>'
         . '</div></article>';
 }
