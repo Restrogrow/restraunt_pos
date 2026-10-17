@@ -159,7 +159,7 @@ Sidebar groups, and what each page does:
   - Error monitor.
 - **Tools:**
   - My to-do: the jobs only you can do (keys, approvals, cron, DNS).
-  - Blog: posts, keyword plan, categories, SEO and AI writing help.
+  - Blog: posts, keyword plan (paste the researched plan from `docs/BLOG_KEYWORD_PLAN.md`), categories, SEO and AI writing help; **Add 10 starter posts** puts the ready-written posts in as drafts.
   - Email book: every email full size, who gets it, when and why.
   - Email: every email with previews and test sends, the sent log, on/off per email, cron status.
   - Admin handbook: this file, plus every other doc in the repo.
@@ -178,11 +178,11 @@ Settings live in `main/.env` on each server (never in git; `main/.env.example` l
 |---|---|---|---|
 | Database | `DB_HOST_*`, `DB_NAME`, `DB_USER`, `DB_PASS` | ✅ Working | Everything |
 | Email (Google Workspace SMTP) | `SMTP_*`, `MAIL_FROM_*`, `MAIL_TEAM` | ⚠️ Local: test mode (`MAIL_SINK_DIR`). Live: set `SMTP_ENABLED=true` + an App Password, then Super Admin › Email › Settings & jobs › Send test. Add SPF, DKIM, DMARC (My to-do). | Every email (Super Admin › Tools › Email) |
-| PhonePe | `PHONEPE_*` | ⚠️ Test mode with demo credentials. Production merchant credentials missing. Each restaurant's own keys are in `users`. | Online payment, wallet top-up, VIP, subscription payment links |
-| WhatsApp via RepeatGrow (shared number) | `REPEATGROW_API_URL`, `REPEATGROW_API_KEY`, `REPEATGROW_OTP_TEMPLATE_*`, `REPEATGROW_GIFT_TEMPLATE` | ⚠️ API key set (live key). Local API URL is a placeholder. `REPEATGROW_GIFT_TEMPLATE` is missing. | Customer OTP login, loyalty gifts, campaigns |
+| PhonePe | `PHONEPE_*` | ⚠️ Test mode with demo credentials. Production merchant credentials missing. Each restaurant's own keys are in `users`. **Plan renewals use only RestroGrow's own `PHONEPE_CLIENT_ID` / `SECRET`** (never a restaurant's keys); without them renewal is demo mode and activates nothing. **India only:** restaurants in other countries get no PhonePe at all ("contact support"). | Online payment, wallet top-up, VIP, subscription renewal and payment links |
+| WhatsApp via RepeatGrow (shared number) | `REPEATGROW_API_URL`, `REPEATGROW_API_KEY`, `REPEATGROW_OTP_TEMPLATE_*`, `REPEATGROW_GIFT_TEMPLATE` | ⚠️ API key set (live key). Local API URL is a placeholder. `REPEATGROW_GIFT_TEMPLATE` is missing. Numbers get the restaurant's own country code (+977 Nepal …); `REPEATGROW_DEFAULT_COUNTRY_CODE` only when the country is unknown. | Customer OTP login, loyalty gifts, campaigns |
 | Connect RepeatGrow (each restaurant's own number) | `REPEATGROW_CONNECT_URL`, `REPEATGROW_CLIENT_ID`, `REPEATGROW_CLIENT_SECRET`, `WA_KEY_SECRET` | ❌ The RepeatGrow side isn't built (contract: `docs/REPEATGROW_CONNECT.md`). The button stays hidden until the client ID and secret are set. | One-click template creation |
 | Google Maps | `GOOGLE_MAPS_API_KEY` | ❌ The local key is invalid. Without it, address search falls back to OpenStreetMap. | Address autocomplete, delivery map |
-| Gemini AI | `GEMINI_API_KEY`, `GEMINI_MODEL` | ❌ The local key is invalid. | Menus from photos, website chatbot, SEO AI, AI review replies |
+| Gemini AI | `GEMINI_API_KEY`, `GEMINI_MODEL` | ✅ The local key works (since 16 Oct; local PHP needs `AI_CAINFO` because the antivirus re-signs HTTPS). Check the live key. | Menus from photos, website chatbot, SEO AI, blog AI, WhatsApp AI ordering, AI manager, AI review replies |
 | Google Business Profile | `GOOGLE_GBP_CLIENT_ID`, `GOOGLE_GBP_CLIENT_SECRET`, `GOOGLE_PLACES_API_KEY` | ⏳ Places key set. The OAuth client and Google's API approval are pending (`docs/GOOGLE_BUSINESS_TODO.md`). Shows "Coming soon" until then. | Reviews, replies, posts, insights |
 | Google Search Console | `GOOGLE_SEO_CLIENT_ID`, `GOOGLE_SEO_CLIENT_SECRET` | ✅ Set | Dashboard › SEO |
 | Continue with Google (sign-in) | `GOOGLE_LOGIN_CLIENT_ID/SECRET`, else the GBP or Search Console client | ✅ Uses the Search Console client. The OAuth client must list `https://restrogrow.com/main/api/google_login_callback.php` (and the localhost one), and the consent screen must be **In production** with email/profile/openid scopes | Owner/staff login, customer login on every restaurant website, Partner app login |
@@ -228,6 +228,9 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 - Browser push alerts, multi-branch, SEO page.
 - Super Admin panel.
 - **Partner app 1.1.6** (Android, `com.restrogrow.app`, built locally as an APK) and its browser demo.
+- Growth › **WhatsApp ordering (AI)** and **AI manager** (morning report), staff roles **Cashier** and **Delivery rider** (own riders switch), every automatic **email** (Super Admin › Email / Email book).
+- **Blog** at restrogrow.com/blog with keyword plan, SEO tools, AI help and 10 ready-written starter posts.
+- **Country defaults:** new restaurants get their country's currency, time zone and tax; WhatsApp goes to their country code; PhonePe is India-only.
 
 **⏳ Built, waiting on setup:**
 
@@ -242,7 +245,8 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 | Menus from photos, AI chatbot, AI replies | A valid Gemini key |
 
 **📝 Planned (researched, not built):**
-- From `docs/AI_TODO.md`: smart upsell, WhatsApp ordering assistant, demand forecast, review replies and complaint summary, weekly owner summary, menu helpers, AI phone agent.
+- From `docs/AI_TODO.md`: smart upsell, demand forecast, review replies and complaint summary, menu helpers, AI phone agent (the WhatsApp ordering assistant and the owner's summary are built, see above).
+- From `docs/IMPORTANT_TODO.md`: Swiggy / Zomato / ONDC orders in the POS (#4), custom access per staff member (#5), restaurants outside India, Nepal first (#6: time zone everywhere, Nepal VAT bills, +91 links, Google showing INR, Nepali language, eSewa / Khalti).
 - From the README roadmap: birthday bonus points, group cart, PDF/Excel reports, multi-language website, automated backups.
 
 ---
@@ -277,6 +281,10 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 | `docs/REPEATGROW_CONNECT.md` | The contract for the Connect RepeatGrow button |
 | `docs/GOOGLE_BUSINESS_TODO.md` | Google Business setup steps |
 | `docs/AI_TODO.md` | Researched AI features, not built |
+| `docs/IMPORTANT_TODO.md` | The bigger features: built (#1 WhatsApp AI ordering, #2 AI manager) and queued (#4 Swiggy/Zomato, #5 custom access, #6 restaurants outside India) |
+| `docs/FEATURES.md` | Every built feature, where it is and what it needs; known problems |
+| `docs/EMAIL_PLAN.md`, `docs/RIDER_PLAN.md` | How emails and own riders work |
+| `docs/BLOG_KEYWORD_PLAN.md` | Researched blog keywords, the first 10 posts and the paste-in block |
 | `docs/SCALING_TO_1000_USERS.md`, `docs/CODEBASE_AUDIT_REPORT.md` | Scaling and audit notes |
 | `main/docs/*` | Older technical notes (payments, email, QR codes, deployment, XAMPP) |
 | `AGENTS.md` | Architecture, routing and conventions for developers and AI coding agents |
@@ -292,6 +300,8 @@ All of these can be read in Super Admin › Tools › Admin handbook. None can b
 - [ ] Live: check `SMTP_ENABLED`, the app password and the `MAIL_FROM_*` aliases.
 - [ ] RepeatGrow: approve the WhatsApp templates, set `REPEATGROW_GIFT_TEMPLATE`, and build the Connect side.
 - [ ] Google: OAuth client and API approval for Business Profile. Valid Maps and Gemini keys.
-- [ ] PhonePe production credentials.
+- [ ] PhonePe production credentials (live `PHONEPE_CLIENT_ID` / `SECRET` = RestroGrow's account; renewals need them).
+- [ ] Restaurants outside India (Royal Sekuwa & Khaja Ghar first): set their time zone and tax in Settings (they signed up before country defaults). My to-do has the steps.
+- [ ] Blog: Add 10 starter posts, review, add covers, publish 2 a week, request indexing for each (My to-do).
 - [ ] Super Admin password reset is hard-coded to one Gmail address. Consider moving it to `.env`.
 - [x] `AGENTS.md` updated (no Composer, built-in web push, demo restaurant).

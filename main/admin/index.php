@@ -19,6 +19,7 @@ if (!in_array($page, $allowedPages)) {
     $page = 'dashboard';
 }
 
-// Include the main application
-include 'index.html';
+// the old single-page app (index.html) is gone: the dashboard is views/dashboard.php
+header('Location: ../views/dashboard.php');
+exit();
 ?>

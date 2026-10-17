@@ -29,7 +29,9 @@ session_write_close();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // only this site's own pages may post here (the admin's cookie is not enough)
     $origin = (string)($_SERVER['HTTP_ORIGIN'] ?? '');
-    if ($origin !== '' && parse_url($origin, PHP_URL_HOST) !== ($_SERVER['HTTP_HOST'] ?? '')) blogOut(['success' => false, 'message' => 'Not allowed'], 403);
+    // compare host:port with host:port (parse_url drops the port, HTTP_HOST keeps it, e.g. localhost:8080)
+    $oHost = parse_url($origin, PHP_URL_HOST) . (parse_url($origin, PHP_URL_PORT) ? ':' . parse_url($origin, PHP_URL_PORT) : '');
+    if ($origin !== '' && strcasecmp($oHost, (string)($_SERVER['HTTP_HOST'] ?? '')) !== 0) blogOut(['success' => false, 'message' => 'Not allowed'], 403);
 }
 
 try {
@@ -194,6 +196,7 @@ try {
             $row['seo_score'] = blogSeoReport($row)['score'];
             $conn->prepare('INSERT INTO blog_posts (' . implode(', ', array_keys($row)) . ') VALUES (' . implode(', ', array_fill(0, count($row), '?')) . ')')->execute(array_values($row));
             if ($row['focus_keyword']) $conn->prepare("UPDATE blog_keywords SET status = 'planned' WHERE keyword = ? AND status = 'idea'")->execute([$row['focus_keyword']]);
+            $conn->prepare('INSERT IGNORE INTO blog_starter_imports (slug) VALUES (?)')->execute([$p['slug']]);
             $n++;
         }
         blogOut(['success' => true, 'message' => $n ? "Added $n draft post" . ($n > 1 ? 's' : '') . '. Review each one, add a cover photo and publish.' : 'All starter posts are already on the blog']);

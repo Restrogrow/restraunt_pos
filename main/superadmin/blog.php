@@ -16,6 +16,10 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
 <meta name="robots" content="noindex">
 <title>Blog · Super Admin</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css">
+<style>
+  #htmlBox .html-note { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; background: #fff7ed; color: #9a3412; font-size: 13.5px; }
+  #htmlEditor { width: 100%; box-sizing: border-box; font: 13px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; resize: vertical; }
+</style>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,500,0..1&display=block" rel="stylesheet">
 <style>
   :root { --ink:#111827; --soft:#374151; --muted:#6b7280; --line:#e5e7eb; --bg:#f3f4f6; --card:#fff; --accent:#c1440e; --accent-2:#fbe6da; --ok:#16a34a; --ok-bg:#dcfce7; --warn:#b45309; --warn-bg:#fef3c7; --bad:#dc2626; --bad-bg:#fee2e2; --blue:#2563eb; --blue-bg:#dbeafe; }
@@ -172,6 +176,10 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
         <input class="ed-title" id="title" type="text" placeholder="Post title" maxlength="200">
         <div class="slug"><span id="slugBase"></span><input type="text" id="slug" placeholder="post-url"><button class="btn light sm" type="button" id="slugFromTitle" title="Make the URL from the title">From title</button></div>
         <div id="editor"></div>
+        <div id="htmlBox" class="hide">
+          <p class="html-note"><span class="ms">table</span>This post has tables, which the visual editor can't keep, so it opens as HTML. Edit the text between the tags; cover, SEO and publishing work as usual.</p>
+          <textarea id="htmlEditor" rows="28" spellcheck="false"></textarea>
+        </div>
         <div class="meta-line"><span id="wc">0 words · 1 min read</span><span>Ctrl + S saves · images: paste, drag in, or use the image button</span></div>
         <div class="card" style="margin-top:8px">
           <div class="f" style="margin:0"><label>Excerpt <em id="exCount">shown on the blog list and in shares</em></label><textarea id="excerpt" rows="2" maxlength="400" placeholder="One or two sentences about the post"></textarea></div>
@@ -273,11 +281,25 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
   });
   quill.on('text-change', function () { dirty = true; live(); });
 
+  // Quill 1 has no tables and would flatten them on save, so a post with a <table> is edited as HTML
+  var HTML_MODE = false;
+  function setHtmlMode(on, html) {
+    HTML_MODE = !!on;
+    var bar = document.querySelector('#editor').previousElementSibling;
+    if (bar && bar.classList.contains('ql-toolbar')) bar.classList.toggle('hide', HTML_MODE);
+    $('editor').classList.toggle('hide', HTML_MODE); $('htmlBox').classList.toggle('hide', !HTML_MODE);
+    if (HTML_MODE) $('htmlEditor').value = html || '';
+  }
+  function contentHtml() { return HTML_MODE ? $('htmlEditor').value : quill.root.innerHTML; }
+  function contentRoot() { if (!HTML_MODE) return quill.root; var d = document.createElement('div'); d.innerHTML = $('htmlEditor').value; return d; }
+  function contentText() { return HTML_MODE ? contentRoot().textContent : quill.getText(); }
+  $('htmlEditor').addEventListener('input', function () { dirty = true; live(); });
+
   function field(id) { return $(id).value; }
   function gather() {
     var mode = field('pubMode');
     return {
-      action: 'save', id: CUR ? CUR.id : 0, title: field('title').trim(), slug: field('slug').trim(), content: quill.root.innerHTML,
+      action: 'save', id: CUR ? CUR.id : 0, title: field('title').trim(), slug: field('slug').trim(), content: contentHtml(),
       excerpt: field('excerpt'), cover_image: $('cover').dataset.path || '', cover_alt: field('coverAlt'), category_id: field('category'),
       tags: field('tags'), focus_keyword: field('focus'), keywords: field('keywords'), meta_title: field('metaTitle'), meta_description: field('metaDesc'),
       canonical_url: field('canonical'), status: mode === 'draft' ? 'draft' : 'published',
@@ -289,12 +311,12 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
   // live SEO checklist (same rules as blogSeoReport on the server)
   function live() {
     var p = gather(), kw = p.focus_keyword.trim().toLowerCase(), title = p.meta_title || p.title, desc = p.meta_description || p.excerpt;
-    var text = quill.getText().replace(/\s+/g, ' ').trim(), low = text.toLowerCase(), words = text ? text.split(' ').length : 0, html = p.content;
-    var firstP = (quill.root.querySelector('p') || { textContent: '' }).textContent.toLowerCase();
+    var root = contentRoot(), text = contentText().replace(/\s+/g, ' ').trim(), low = text.toLowerCase(), words = text ? text.split(' ').length : 0, html = p.content;
+    var firstP = (root.querySelector('p') || { textContent: '' }).textContent.toLowerCase();
     var count = kw ? low.split(kw).length - 1 : 0, density = words ? count * Math.max(1, kw.split(' ').length) / words * 100 : 0;
-    var heads = quill.root.querySelectorAll('h2, h3'), kwHead = kw && Array.prototype.some.call(heads, function (h) { return h.textContent.toLowerCase().indexOf(kw) !== -1; });
-    var imgs = quill.root.querySelectorAll('img'), altOk = Array.prototype.every.call(imgs, function (i) { return (i.getAttribute('alt') || '').trim(); }) && (!p.cover_image || p.cover_alt.trim());
-    var links = Array.prototype.map.call(quill.root.querySelectorAll('a[href]'), function (a) { return a.getAttribute('href'); });
+    var heads = root.querySelectorAll('h2, h3'), kwHead = kw && Array.prototype.some.call(heads, function (h) { return h.textContent.toLowerCase().indexOf(kw) !== -1; });
+    var imgs = root.querySelectorAll('img'), altOk = Array.prototype.every.call(imgs, function (i) { return (i.getAttribute('alt') || '').trim(); }) && (!p.cover_image || p.cover_alt.trim());
+    var links = Array.prototype.map.call(root.querySelectorAll('a[href]'), function (a) { return a.getAttribute('href'); });
     var checks = [
       [!!kw, 'A focus keyword is set'],
       [kw && title.toLowerCase().indexOf(kw) !== -1, 'The focus keyword is in the SEO title'],
@@ -347,7 +369,9 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
     CUR = p ? Object.assign({}, p, { slugTouched: true }) : null;
     $('listView').classList.add('hide'); $('edView').classList.remove('hide'); window.scrollTo(0, 0);
     $('title').value = p ? p.title : ''; $('slug').value = p ? p.slug : '';
-    quill.setContents([]); if (p && p.content) quill.clipboard.dangerouslyPasteHTML(p.content);
+    quill.setContents([]);
+    if (p && p.content && /<table[\s>]/i.test(p.content)) setHtmlMode(true, p.content);
+    else { setHtmlMode(false); if (p && p.content) quill.clipboard.dangerouslyPasteHTML(p.content); }
     $('excerpt').value = p ? (p.excerpt || '') : ''; $('coverAlt').value = p ? (p.cover_alt || '') : '';
     setCover(p ? p.cover_image : '', p ? p.cover_url : '');
     $('category').innerHTML = '<option value="">No category</option>' + META.categories.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
@@ -417,7 +441,7 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
     }).finally(function () { busy(b, false); });
   };
   $('aiDraftBtn').onclick = function () {
-    $('aiWarn').textContent = quill.getText().trim().length > 20 ? 'The editor already has text: the draft will replace it.' : '';
+    $('aiWarn').textContent = contentText().trim().length > 20 ? 'The editor already has text: the draft will replace it.' : '';
     if (!field('aiKeyword')) $('aiKeyword').value = field('focus');
     $('aiDlg').showModal();
   };
@@ -427,7 +451,7 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
       if (!d.success) { toast(d.message); return; }
       var r = d.result;
       $('title').value = r.title || field('title'); if (!(CUR && CUR.status === 'published')) $('slug').value = slugify(r.title || '');
-      quill.setContents([]); quill.clipboard.dangerouslyPasteHTML(r.html || '');
+      setHtmlMode(false); quill.setContents([]); quill.clipboard.dangerouslyPasteHTML(r.html || '');
       $('excerpt').value = r.excerpt || ''; $('metaTitle').value = r.meta_title || ''; $('metaDesc').value = r.meta_description || '';
       $('focus').value = field('aiKeyword') || field('focus'); if (r.keywords) $('keywords').value = r.keywords.join(', ');
       $('aiDlg').close(); dirty = true; live(); toast('Draft ready. Read it, add your own examples, then save.');

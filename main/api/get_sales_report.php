@@ -67,7 +67,8 @@ try {
     // Build payment method filter
     $paymentFilter = '';
     $paymentFilterParams = [];
-    if ($paymentMethod !== 'all' && $type === 'sales') {
+    // the filter is shown on the Payment Methods report, so it applies there as well as to Sales
+    if ($paymentMethod !== 'all' && $paymentMethod !== '' && ($type === 'sales' || $type === 'payment')) {
         $paymentFilter = " AND payment_method = ?";
         $paymentFilterParams[] = $paymentMethod;
     }
@@ -227,11 +228,11 @@ try {
     $topItems = $topItemsStmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get payment methods breakdown
-    $paymentMethodsParams = array_merge([$restaurant_id], $dateParams);
+    $paymentMethodsParams = array_merge([$restaurant_id], $dateParams, $paymentFilterParams);
     $paymentMethodsStmt = $conn->prepare("
         SELECT payment_method, COUNT(*) as count, SUM(total) as amount
         FROM orders
-        WHERE restaurant_id = ? AND " . $dateConditionNoAlias . "
+        WHERE restaurant_id = ? AND " . $dateConditionNoAlias . $paymentFilter . "
         GROUP BY payment_method
     ");
     $paymentMethodsStmt->execute($paymentMethodsParams);

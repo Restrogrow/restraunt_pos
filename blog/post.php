@@ -119,7 +119,10 @@ foreach (preg_split('#(?=<h2[\s>])#i', $content) as $part) {
     $plain = trim(html_entity_decode(strip_tags($inner), ENT_QUOTES, 'UTF-8'));
     if (preg_match('/^(\d{1,2})[.)]\s+/', $plain, $nm)) {
         $inner = preg_replace('/^((?:\s|<[^>]+>)*)\d{1,2}[.)]\s+/', '$1', $inner, 1);
-        $head = '<h2' . $attrs . ' class="h-numbered"><span class="h-num">' . str_pad($nm[1], 2, '0', STR_PAD_LEFT) . '</span><span>' . $inner . '</span></h2>';
+        // keep an existing class (e.g. ql-align-center from the editor) next to h-numbered: one class attribute only
+        $cls = preg_match('/\sclass="([^"]*)"/i', $attrs, $cm) ? trim($cm[1]) . ' h-numbered' : 'h-numbered';
+        $attrs = preg_replace('/\sclass="[^"]*"/i', '', $attrs);
+        $head = '<h2' . $attrs . ' class="' . $cls . '"><span class="h-num">' . str_pad($nm[1], 2, '0', STR_PAD_LEFT) . '</span><span>' . $inner . '</span></h2>';
     } else {
         $head = '<h2' . $attrs . '>' . $inner . '</h2>';
     }

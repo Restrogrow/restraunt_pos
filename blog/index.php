@@ -18,13 +18,15 @@ $cat = null;
 foreach ($cats as $c) if ($c['slug'] === $catSlug) $cat = $c;
 if ($catSlug !== '' && !$cat) { http_response_code(404); }
 
+// the featured post is shown big on page 1 and left out of the list on every page, so page 2 never repeats a post
 $isHome = !$catSlug && !$tag && !$q && $page === 1;
-$featured = null;
-if ($isHome) {
+$pick = null;
+if (!$catSlug && !$tag && !$q) {
     $f = blogPublished($conn, ['featured' => 1, 'limit' => 1]);
-    $featured = $f['posts'][0] ?? (blogPublished($conn, ['limit' => 1])['posts'][0] ?? null);
+    $pick = $f['posts'][0] ?? (blogPublished($conn, ['limit' => 1])['posts'][0] ?? null);
 }
-$list = blogPublished($conn, ['category' => $catSlug ?: null, 'tag' => $tag ?: null, 'q' => $q ?: null, 'exclude' => $featured['id'] ?? null,
+$featured = $isHome ? $pick : null;
+$list = blogPublished($conn, ['category' => $catSlug ?: null, 'tag' => $tag ?: null, 'q' => $q ?: null, 'exclude' => $pick['id'] ?? null,
     'limit' => $perPage, 'offset' => ($page - 1) * $perPage]);
 $pages = max(1, (int)ceil($list['total'] / $perPage));
 

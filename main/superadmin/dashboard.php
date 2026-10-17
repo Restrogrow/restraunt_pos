@@ -868,10 +868,6 @@ require_once __DIR__ . '/../config/countries.php';
                 <span class="material-symbols-rounded" style="vertical-align:middle;margin-right:8px;">lock_reset</span>
                 Password Reset Tokens Migration
               </a>
-              <a href="../admin/db_test.php" target="_blank" class="btn btn-outline" style="text-decoration:none;display:block;text-align:center;">
-                <span class="material-symbols-rounded" style="vertical-align:middle;margin-right:8px;">monitoring</span>
-                Database Performance Test
-              </a>
             </div>
           </div>
         </div>
@@ -1315,7 +1311,7 @@ require_once __DIR__ . '/../config/countries.php';
         // Load page-specific data
         if(pageId === 'restaurantsPage') fetchRestaurants();
         else if(pageId === 'subscriptionsPage') loadSubscriptions();
-        else if(pageId === 'paymentsPage') loadPayments();
+        else if(pageId === 'paymentsPage') loadPaymentHistory();   // plan payments (one loader; loadPayments filled the same table with order payments)
         else if(pageId === 'paymentLinksPage') { loadPaymentLinks(); populateRestaurantFilter(); }
         else if(pageId === 'dashboardPage') { loadStats(); loadRecentActivity(); }
         else if(pageId === 'branchAdminsPage') loadBranchAdmins();
@@ -1861,13 +1857,18 @@ require_once __DIR__ . '/../config/countries.php';
     document.getElementById('saSearch')?.addEventListener('input', (e)=>{ saQuery = e.target.value.trim(); saPage = 1; fetchRestaurants(); });
     document.getElementById('prevPage')?.addEventListener('click', ()=>{ if(saPage>1){ saPage--; fetchRestaurants(); }});
         document.getElementById('nextPage')?.addEventListener('click', ()=>{ if(saPage<saPages){ saPage++; fetchRestaurants(); }});
-        document.getElementById('paymentSearch')?.addEventListener('input', (e)=>{ paymentSearchTerm = e.target.value.trim(); loadPayments(); });
-        document.getElementById('paymentStatusFilter')?.addEventListener('change', (e)=>{ paymentStatus = e.target.value; loadPayments(); });
-    document.getElementById('btnExport')?.addEventListener('click', ()=>{ 
-      const rows = Array.from(document.querySelectorAll('#restaurantsTbody tr')).map(tr=>Array.from(tr.children).slice(0,6).map(td=>`"${td.textContent}"`).join(','));
-      const header = 'ID,Username,Restaurant ID,Name,Status,Created';
-      const csv = [header, ...rows].join('\n');
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    // Export CSV: every restaurant that matches the search (all pages), from the API rather than the table on screen
+    document.getElementById('btnExport')?.addEventListener('click', async ()=>{
+      const cell = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+      const rows = []; let page = 1, total = 0;
+      do {
+        const r = await fetch(`api.php?action=getRestaurants&page=${page}&limit=500${saQuery?`&q=${encodeURIComponent(saQuery)}`:''}`).then(x=>x.json()).catch(()=>null);
+        if (!r || !r.success) { alert('Could not load the restaurants for the export.'); return; }
+        total = r.total; r.restaurants.forEach(x => rows.push(x)); page++;
+      } while (rows.length < total);
+      const header = ['Restaurant ID','Name','Username','Country','Phone','Plan','Plan status','Days left','Online pay','Active','Created'];
+      const lines = rows.map(x => [x.restaurant_id, x.restaurant_name, x.username, x.country, (x.dial_code || '') + ' ' + (x.phone || ''), x.subscription_status, x.trial_status, x.days_left, x.payment_gateway_type === 'cash_and_gateway' ? 'yes' : 'no', x.is_active == 1 ? 'yes' : 'no', x.created_at].map(cell).join(','));
+      const blob = new Blob(['﻿' + [header.map(cell).join(','), ...lines].join('\n')], {type:'text/csv;charset=utf-8;'});
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'restaurants.csv'; a.click();
     });
 
@@ -2721,8 +2722,9 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
       try {
         const search = document.getElementById('paymentSearch')?.value || '';
         const status = document.getElementById('paymentStatusFilter')?.value || '';
-        let url = 'api.php?action=getSubscriptionPayments&limit=50';
-        if (search) url += '&restaurant_id=' + encodeURIComponent(search);
+        let url = 'api.php?action=getSubscriptionPayments&limit=100';
+        if (search) url += '&search=' + encodeURIComponent(search);
+        if (status) url += '&status=' + encodeURIComponent(status);
         const res = await fetch(url);
         const data = await res.json();
         const tbody = document.getElementById('paymentsTbody');

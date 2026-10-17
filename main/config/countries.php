@@ -204,7 +204,9 @@ function phoneToInternational(string $phone, ?array $country): ?string {
     if (!$country) return null;
     $cc = preg_replace('/\D/', '', $country['dial_code']);
     if (strlen($d) > $country['phone_max'] && strpos($d, $cc) === 0 && strlen($d) - strlen($cc) >= $country['phone_min']) return '+' . $d;
-    if (strlen($d) === $country['phone_max'] + 1 && $d[0] === '0') $d = substr($d, 1);
+    // a leading 0 is the domestic trunk prefix almost everywhere ("07911…" UK, "0171…" Germany); Italy keeps it
+    $n = strlen($d) - 1;
+    if ($d[0] === '0' && ($country['iso2'] ?? '') !== 'IT' && $n >= $country['phone_min'] && $n <= $country['phone_max']) $d = substr($d, 1);
     return '+' . $cc . $d;
 }
 

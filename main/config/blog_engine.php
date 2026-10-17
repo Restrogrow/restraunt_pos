@@ -18,6 +18,11 @@ if (!function_exists('blogEnsure')) {
         static $done = false;
         if ($done) return;
         $done = true;
+        // starter posts already added once (so one deleted or renamed later isn't offered again)
+        $conn->exec("CREATE TABLE IF NOT EXISTS blog_starter_imports (
+            slug VARCHAR(160) NOT NULL PRIMARY KEY,
+            imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         $conn->exec("CREATE TABLE IF NOT EXISTS blog_categories (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(80) NOT NULL,
@@ -399,10 +404,11 @@ if (!function_exists('blogEnsure')) {
         return $out;
     }
 
-    /** Starter posts whose slug is not on the blog yet. */
+    /** Starter posts never added before (not on the blog, and not added once then deleted or renamed). */
     function blogStartersMissing(PDO $conn): array
     {
-        $have = array_flip($conn->query('SELECT slug FROM blog_posts')->fetchAll(PDO::FETCH_COLUMN));
+        $have = array_flip(array_merge($conn->query('SELECT slug FROM blog_posts')->fetchAll(PDO::FETCH_COLUMN),
+            $conn->query('SELECT slug FROM blog_starter_imports')->fetchAll(PDO::FETCH_COLUMN)));
         return array_values(array_filter(blogStarters(), fn($p) => !isset($have[$p['slug']])));
     }
 }

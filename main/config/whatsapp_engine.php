@@ -195,7 +195,9 @@ if (!function_exists('ensureWhatsappSchema')) {
                 'connected_via' => (string)($r['connected_via'] ?? ''), 'rg_phone' => (string)($r['rg_phone'] ?? ''),
                 'connected_at' => $r['connected_at'] ?? null, 'templates_synced_at' => $r['templates_synced_at'] ?? null,
                 'lost_at' => $r['lost_at'] ?? null, 'templates_retry' => (int)($r['templates_retry'] ?? 0),
-                'is_demo' => $rid === DEMO_RESTAURANT_ID];
+                'is_demo' => $rid === DEMO_RESTAURANT_ID,
+                // waSend() reads it to give local numbers the restaurant's own country code
+                'restaurant_id' => $rid];
     }
 
     /** Template statuses are checked at most every 10 minutes (and right away after a rate limit cleared them). */

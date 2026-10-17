@@ -1,6 +1,6 @@
 # RestroGrow feature list
 
-Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from the code itself (not from memory), so if it is in this list, it exists.
+Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from the code itself (not from memory), updated 17 Oct 2026, so if it is in this list, it exists.
 
 ## How to use this list
 
@@ -15,7 +15,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Orders & POS | 18 |
 | Kitchen & staff | 14 |
 | Tables & dine-in | 10 |
-| Menu | 13 |
+| Menu | 12 |
 | Customer website & online ordering | 28 |
 | Delivery | 10 |
 | Customers, loyalty & rewards | 20 |
@@ -24,14 +24,14 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Emails | 9 |
 | Reports & analytics | 10 |
 | Inventory | 9 |
-| Payments & billing | 11 |
+| Payments & billing | 12 |
 | Google & SEO | 9 |
-| Website look & settings | 18 |
-| Security & accounts | 10 |
+| Website look & settings | 19 |
+| Security & accounts | 11 |
 | Apps | 18 |
 | Super Admin (platform) | 33 |
 | Demo & sales tools | 10 |
-| **Total built** | **280** |
+| **Total built** | **282** |
 | Planned, not built | 19 |
 
 ## Orders & POS
@@ -269,17 +269,18 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 
 | Feature | What it does | Where | Who | Needs setup? |
 |---|---|---|---|---|
-| Payment gateway | Take online payments through RestroGrow's account (paid to you in 2 days) or your own PhonePe. | Dashboard › Payments › Gateway | owner | Super Admin "Online pay" switch + PhonePe keys |
+| Payment gateway | Take online payments through RestroGrow's account (paid to you in 2 days) or your own PhonePe. **India only** (PhonePe takes rupees): restaurants in other countries see "contact support", and their customers, wallet top-ups, VIP and meal plans never reach PhonePe. | Dashboard › Payments › Gateway | owner | Super Admin "Online pay" switch + PhonePe keys; Super Admin can't switch it on outside India |
 | Payment methods | Add your own methods (e.g. Paytm QR) that show in POS and reports. | Dashboard › Payments › Gateway › Payment methods | owner | — |
 | Business UPI QR | Upload your UPI QR; guests pay and upload a screenshot. | Dashboard › Settings › Payments | owner | — |
 | Confirm payment screenshots | Check and confirm the screenshot a guest uploaded. | Dashboard › Orders (order details) | owner, staff | — |
 | Update payment status | Mark an order paid / part paid / refunded. | Dashboard › Orders › Online Orders / Orders | owner, staff | — |
 | Missed-payment checker | A background job confirms PhonePe payments whose callback was missed. | Automatic (tools/reconcile_pending_payments.php) | super admin | Cron job + PhonePe keys |
 | Tax on the bill | Tax name and % on bills; GSTIN/PAN printed on the bill. | Dashboard › Settings › Tax and bill | owner | — |
-| RestroGrow plan and renewal | See plan / trial days left and renew with PhonePe or UPI. | Dashboard › Profile (Manage Subscription), renewal popup | owner | PhonePe keys (otherwise demo mode). "Auto-Pay" switch does nothing yet |
+| RestroGrow plan and renewal | See plan / trial days left and renew with PhonePe. The prices shown and charged are the ones in Super Admin › Settings (never what the page sends), paid only to RestroGrow's own PhonePe account. Outside India the popup shows WhatsApp / email support instead. | Dashboard › Profile (Manage Subscription), renewal popup | owner | Platform PhonePe keys in main/.env (otherwise demo mode, which activates nothing). Auto-Pay is hidden until recurring payments are built |
 | Payment links (platform) | Send a restaurant a PhonePe link to pay its RestroGrow bill. | Super Admin › Money › Payment links | super admin | PhonePe keys; paying does not extend the plan by itself |
 | Invoice generator | Make GST invoices for restaurants: plan, months, extras, discount, paid or due, PDF. | Super Admin › Money › Invoice generator | super admin | Business details + GSTIN in Super Admin › Settings |
 | Invoices & GST export | Monthly list of invoices and a CSV for your accountant. | Super Admin › Money › Invoices & GST | super admin | — |
+| Country defaults | A new restaurant gets its country's currency, time zone and tax name/rate (Nepal: Rs., Asia/Kathmandu, VAT 13%); tax starts switched on only in India. | Signup; Super Admin › New restaurant | owner, super admin | — |
 
 ## Google & SEO
 
@@ -313,7 +314,8 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Location | Address, Google Maps link and pin. | Dashboard › Settings › Location | owner | Google Maps key for the pin map |
 | Business hours | Opening hours per day. | Dashboard › Settings › Business hours | owner | — |
 | Ordering switches | Delivery / takeaway / dine-in, table reservations, minimum order. | Dashboard › Settings › Ordering | owner | — |
-| Region and language | Country, currency, time zone and 19 languages. | Dashboard › Settings › Region and language | owner | — |
+| Region and language | Country, currency, time zone and 19 languages. Picking a country also picks its currency and time zone; a restaurant outside India still on India's clock gets a warning to change it. | Dashboard › Settings › Region and language | owner | — |
+| WhatsApp to the right country | Every WhatsApp code and message goes to the restaurant's own country code (+977 for Nepal, +44 for the UK); numbers typed with the code, 00 or a leading 0 work too. | Automatic (signup, logins, password reset, customer accounts, loyalty, campaigns) | all | — |
 | Printer settings | 58/80 mm paper, Bluetooth / USB / network / browser, test print, printer log. | Dashboard › Settings › Printer | owner | Network printer only works if the server can reach it |
 | Social links | Instagram, Facebook etc. shown on the website. | Dashboard › Settings › Social links | owner | — |
 | How to use guide | Built-in picture guide that opens at the page you were on, with a quick-start checklist. | Dashboard › How to use | owner | — |
@@ -332,6 +334,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Unlock OTP / reset password | Super admin can unlock a locked restaurant or reset its password. | Super Admin › Restaurants › ⋮ menu | super admin | — |
 | Owner-only pages | Staff cannot open owner pages (activity log, loyalty, security). | Automatic | — | — |
 | Fingerprint / Face ID lock | Lock the phone apps with fingerprint or face. | Partner / Staff / Super Admin app › Settings | owner, staff, super admin | Phone with biometrics |
+| Safe plan payments | The renewal amount and length are decided by the server from Super Admin › Settings, and checked with RestroGrow's own PhonePe account (a changed page or a restaurant's own test keys can't buy a plan). | Automatic | — | — |
 
 ## Apps
 
@@ -362,8 +365,8 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 |---|---|---|---|---|
 | Platform dashboard | Restaurants, active, today's sales and orders across all restaurants, shortcuts. | Super Admin › Overview › Dashboard | super admin | — |
 | Platform analytics | Monthly/yearly revenue (MRR/ARR), trials, paying, lost, top and at-risk restaurants. | Super Admin › Overview › Analytics | super admin | — |
-| Restaurants list | All restaurants with filters (active, trial, expired), search. | Super Admin › Restaurants › Restaurants | super admin | — |
-| Add a restaurant | Create a new restaurant login with country and currency. | Super Admin › Restaurants › New restaurant | super admin | — |
+| Restaurants list | All restaurants with filters (active, trial, expired), search; **Export CSV** downloads every matching restaurant (all pages) with country, phone, plan, days left and online pay. | Super Admin › Restaurants › Restaurants | super admin | — |
+| Add a restaurant | Create a new restaurant login with country; currency, time zone and tax follow the country. | Super Admin › Restaurants › New restaurant | super admin | — |
 | Feature switches | Turn on/off per restaurant: online pay, install app, WhatsApp orders, photo gallery, meal plans. | Super Admin › Restaurants (row switches) | super admin | — |
 | Bulk actions | Tick many restaurants to switch features, extend, enable/disable or send a notice. | Super Admin › Restaurants (tick boxes) | super admin | — |
 | Restaurant 360 view | Everything about one restaurant: plan, sales, orders chart, logins, payments, tickets, errors. | Super Admin › Restaurants › click name | super admin | — |
@@ -377,8 +380,8 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Support tickets | Answer restaurants' Help & support messages. | Super Admin › Growth › Support | super admin | — |
 | Announcements | Show a notice bar on all or chosen restaurant dashboards. | Super Admin › Growth › Announcements | super admin | — |
 | Subscriptions | Activate, extend or expire restaurant plans. | Super Admin › Money › Subscriptions | super admin | — |
-| Subscription payments | All plan payments with search and filter. | Super Admin › Money › Payments | super admin | — |
-| Settlements | Pay restaurants their online-payment money to UPI. | Super Admin › Money › Settlements | super admin | **Check before use:** without keys it records a fake "Success" |
+| Subscription payments | All plan payments; search by restaurant, ID or transaction and filter by status. | Super Admin › Money › Payments | super admin | — |
+| Settlements | Pay restaurants their online-payment money to UPI. | Super Admin › Money › Settlements | super admin | PhonePe payout keys; without them it is saved as Failed ("pay by hand"), never as paid |
 | Security & activity | Logins, suspicious IPs, blocked IPs, and a log of every Super Admin change. | Super Admin › System › Security & activity | super admin | — |
 | Platform health | Database size, uploads, errors, WhatsApp queue (shows if the cron is not running), backups. | Super Admin › System › Platform health | super admin | — |
 | Platform settings | Trial days, prices, invoice business details, UPI and bank details. | Super Admin › System › Settings | super admin | — |
@@ -387,12 +390,14 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Features (this list) | This feature list with search. | Super Admin › Tools › Features | super admin | — |
 | Demo restaurant | Create, reset or remove the Spice Garden demo restaurant. | Super Admin › Tools › Demo restaurant | super admin | — |
 | Super Admin login and reset | Separate login with forgot-password. | restrogrow.com/main/superadmin/ | super admin | Reset email goes to one fixed Gmail address |
-| Database tools | Links to run database indexes and migrations. | Super Admin › System › Settings | super admin | "Database Performance Test" link is broken |
+| Database tools | Links to run database indexes and migrations. | Super Admin › System › Settings | super admin | — |
 | Superadmin app login | Lets the Super Admin phone app sign in. | Super Admin app | super admin | — |
-| Blog | restrogrow.com/blog: blog home with featured post, categories, tags, search and pages; post pages with table of contents, share buttons, related posts and a free-trial band; RSS feed (/blog/feed.xml) and blog sitemap (/sitemap-blog.xml). Fully SEO-ready: meta tags, Open Graph, Article, Breadcrumb and FAQ structured data. | restrogrow.com/blog | customer (visitors) | — |
+| Blog | restrogrow.com/blog in a magazine design: dark hero, featured post, categories, tags, search and pages; post pages with the cover beside the title, numbered sections, a numbered contents rail that follows your reading, a reading bar, FAQ cards, a boxed summary, sign-up boxes, share buttons, related posts and a free-trial band; RSS feed (/blog/feed.xml) and blog sitemap (/sitemap-blog.xml). Fully SEO-ready: meta tags, Open Graph, Article, Breadcrumb and FAQ structured data. | restrogrow.com/blog | customer (visitors) | — |
 | Blog editor | Write posts with headings, lists, links, images (upload, paste or drag; resized and saved as WEBP) and videos; cover image with alt text; categories and tags; draft, publish now or schedule; feature on the blog home; preview drafts; duplicate; views per post. | Super Admin › Tools › Blog | super admin | — |
 | Blog SEO tools | Focus keyword, SEO title, meta description, keywords and canonical URL with a live 15-point SEO score and a Google preview; Fill with AI (Gemini) for the SEO fields; Write a draft with AI from a topic and keyword. | Super Admin › Tools › Blog › editor | super admin | GEMINI_API_KEY for the AI buttons |
-| Blog keyword plan | List of the searches to rank for (type, priority, monthly searches, notes, status idea → planned → written), which posts cover each, gaps with no post yet, "Write post" from a keyword, bulk add, and AI keyword ideas. | Super Admin › Tools › Blog › Keywords | super admin | — |
+| Blog keyword plan | List of the searches to rank for (type, priority, monthly searches, notes, status idea → planned → written), which posts cover each, gaps with no post yet, "Write post" from a keyword, bulk add (also "keyword \| intent \| priority \| volume \| notes" lines, so the researched plan in docs/BLOG_KEYWORD_PLAN.md pastes in one go), and AI keyword ideas. | Super Admin › Tools › Blog › Keywords | super admin | — |
+| Blog starter posts | 10 ready-written posts from the keyword plan (KOT, KOT printers, Swiggy and Zomato fees, WhatsApp orders, billing software prices, dhaba profit, kitchen screens), added as drafts with one click; each passes the SEO checklist except the cover. | Super Admin › Tools › Blog › Add 10 starter posts | super admin | Review, add a cover, publish |
+| Blog keyword research | 20 keywords from Google India's real search suggestions, checked against who ranks today, in 4 topic groups, with the first 10 posts and rules for each post. | docs/BLOG_KEYWORD_PLAN.md | super admin | — |
 
 ## Demo & sales tools
 
@@ -417,11 +422,11 @@ These are ideas and plans written in the docs. **None of these exist in the prod
 |---|---|---|---|---|
 | Voice ordering for waiters | Planned, not built (parked). | docs/IMPORTANT_TODO.md #3 | staff | Parked |
 | Swiggy / Zomato / ONDC orders in POS | Planned, not built: aggregator orders arrive in the POS. | docs/IMPORTANT_TODO.md #4 | owner | Planned, not built; needs partner/approval |
+| Custom access per staff member | Planned, not built: switch each permission on or off per person, saved custom roles. | docs/IMPORTANT_TODO.md #5 | owner | Build when asked |
+| Restaurants outside India (Nepal first) | Planned, not built: restaurant time zone in every report and timer, Nepal VAT bills (VAT-inclusive prices, service charge, PAN, bill numbers per fiscal year, Nepali dates), right country code in WhatsApp links, Google showing NPR, Nepal festivals, Nepali language, eSewa / Khalti. | docs/IMPORTANT_TODO.md #6 | owner, customer | Build when asked |
 | Smart upsell (AI) | Planned, not built: AI suggestions at checkout and POS. | docs/AI_TODO.md #1 | customer, staff | Planned, not built |
-| WhatsApp ordering assistant | Planned, not built. | docs/AI_TODO.md #2 | customer | Planned, not built |
 | Demand forecast for prep and stock | Planned, not built: how much to prepare and buy. | docs/AI_TODO.md #3 | owner | Planned, not built |
 | AI review replies and complaint summary | Planned, not built (reply drafts exist inside Google Business, which is waiting). | docs/AI_TODO.md #4 | owner | Planned, not built |
-| Weekly owner summary on WhatsApp | Planned, not built. | docs/AI_TODO.md #5 | owner | Planned, not built |
 | AI menu helpers | Planned, not built: AI dish descriptions, photo touch-up, price ideas. | docs/AI_TODO.md #6 | owner | Planned, not built |
 | AI phone-order agent | Planned, not built (later). | docs/AI_TODO.md #7 | customer | Planned, not built |
 | "Reply on Google" button | Planned, not built. | docs/GOOGLE_BUSINESS_TODO.md | owner | Planned, not built |
@@ -437,22 +442,15 @@ These are ideas and plans written in the docs. **None of these exist in the prod
 
 ## Problems found while making this list
 
-Things that exist but are half-built or broken. Fix or finish when there is time.
+Things that exist but are half-built or broken. Fix or finish when there is time. (On 17 Oct 2026 these were fixed and taken off: Reports payment filter, Auto-Pay and two dead Settings switches hidden, Loyalty Autopilot text, the leftover file that could wipe a menu, Super Admin CSV export and Payments page, the broken Database test link, `admin/index.php`, Settlements recording fake payouts, and Super Admin screens that stopped at 50 restaurants; `/reservations` on custom domains was already fixed.)
 
-- **Reports › Payment Method filter never applies.** The filter is shown only for the "Payment Methods" report type but sent only for the "Sales" type (`main/assets/js/script.js` lines ~1622 and ~13448).
-- **Auto-Pay switch does nothing.** "Enable Auto-Pay" on the renewal popup only saves a flag that nothing reads (`main/api/subscription_payment.php`).
-- **Settings › Account: "Email notifications" and "Auto sync" switches do nothing** (saved in the browser only; `main/assets/js/script.js`).
+- **Restaurants outside India** still run on India's clock in most reports and timers, get Indian-style bills and +91 WhatsApp links; the full list is in docs/IMPORTANT_TODO.md #6.
+- **Tax 0% shows as 5%** on the customer cart (`website/cart.php` ~2877, `taxPercent || 5`).
+- **Restaurants open past midnight** refuse website orders after 12 (`api/process_website_order.php` ~367).
+
 - **Catering page has no link** on the customer website; guests can only reach `/{restaurant}/catering` by typing it.
-- **Loyalty Autopilot text is out of date:** it says "WhatsApp delivery of this message comes next" although WhatsApp gifts are built (`main/assets/js/loyalty-studio-autopilot.js` line ~90).
-- **Dangerous leftover file:** `main/api/update_menu_items.php` deletes all of the logged-in restaurant's dishes and inserts sample dishes. Nothing calls it; it should be deleted.
-- **Super Admin › Restaurants › Export CSV** has the wrong columns and only exports the current page (`main/superadmin/dashboard.php` ~line 1840).
-- **Super Admin › Money › Payments:** two loaders fill the same table and the status filter case does not match (`main/superadmin/dashboard.php`).
-- **Super Admin › Settings › "Database Performance Test"** links to `main/admin/db_test.php`, which does not exist.
-- **`main/admin/index.php`** includes `index.html`, which does not exist.
 - **Payment links / due invoices:** a paid payment link, or marking a due invoice paid later, does not extend the restaurant's plan — extend it by hand.
-- **Settlements:** without PhonePe keys (or in demo mode) a payout is recorded as "Success" without paying; the real payout call may not work. Check before using.
 - **Payment-link mode** (demo / sandbox / live) is kept only for your login session and resets on every login.
-- **Custom domains:** `reservations` is missing from the custom-domain page list (`main/website/custom-domain.php`), so `/reservations` may not open on a restaurant's own domain.
 - **Old pages inside the dashboard** (Meal Plans, Subscribers, Blocked Customers) may show their full old layout inside the frame.
 - **Two delivery pricing systems** (pincode zones and per-km) live in two different places — easy to confuse.
 - **Menu translation** uses a free unofficial Google service that may stop working.

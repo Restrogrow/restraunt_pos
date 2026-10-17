@@ -5585,14 +5585,15 @@ function toggleGatewayMode() {
                   <input type="email" id="profileEmailSetting" placeholder="Enter email address" required>
                 </div>
               </div>
-              <label class="st-toggle st-toggle-flat">
+              <!-- "Email notifications" and "Auto sync" only saved a browser flag nothing reads: hidden, kept for the save code -->
+              <label class="st-toggle st-toggle-flat" style="display:none">
                 <span><b>Email notifications</b></span>
                 <span class="st-switch"><input type="checkbox" id="emailNotifications"><i></i></span>
               </label>
             </div>
             <div class="st-card" data-st-form="system">
               <div class="st-card-h"><b>This device</b></div>
-              <label class="st-toggle st-toggle-flat">
+              <label class="st-toggle st-toggle-flat" style="display:none">
                 <span><b>Auto sync</b></span>
                 <span class="st-switch"><input type="checkbox" id="autoSync"><i></i></span>
               </label>
@@ -7131,8 +7132,8 @@ function toggleGatewayMode() {
           </div>
         </div>
 
-        <!-- Auto-pay toggle -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding:10px 14px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;">
+        <!-- Auto-pay toggle: hidden until recurring PhonePe payments are built (it only saved a flag nothing reads) -->
+        <div style="display:none;align-items:center;gap:10px;margin-bottom:1.25rem;padding:10px 14px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;">
           <input type="checkbox" id="autoPayToggle" style="width:18px;height:18px;accent-color:#e17055;cursor:pointer;">
           <div style="flex:1;">
             <label for="autoPayToggle" style="font-weight:600;font-size:0.85rem;color:#374151;cursor:pointer;">Enable Auto-Pay</label>

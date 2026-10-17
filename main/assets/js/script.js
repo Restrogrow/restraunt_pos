@@ -13452,7 +13452,8 @@ async function loadReports() {
     if (period === 'custom' && startDate && endDate) {
       url += `&start_date=${startDate}&end_date=${endDate}`;
     }
-    if (paymentMethod !== 'all' && reportType === 'sales') {
+    // the Payment Method filter is shown on the "Payment Methods" report, so it applies there (and to Sales)
+    if (paymentMethod && paymentMethod !== 'all' && (reportType === 'sales' || reportType === 'payment')) {
       url += `&payment_method=${encodeURIComponent(paymentMethod)}`;
     }
     

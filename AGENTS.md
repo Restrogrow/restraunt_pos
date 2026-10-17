@@ -58,7 +58,7 @@ php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner /
 
 - Session-based, configured in `main/config/session_config.php`.
 - `startSecureSession()` must be called before any session usage.
-- Roles: Admin, Manager, Waiter, Chef — stored in `$_SESSION['role']`.
+- Roles: Admin, Manager, Waiter, Chef, Cashier, Delivery rider — stored in `$_SESSION['role']` (`main/config/staff_roles.php`). Call `resetLoginIdentity()` before every login so one session never mixes two people.
 - Session files stored in `main/sessions/`.
 
 ## Key conventions
@@ -70,9 +70,32 @@ php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner /
 
 ## Payments
 
-- **PhonePe** is the only payment gateway integrated.
+- **PhonePe** is the only payment gateway integrated, and it takes Indian rupees: it is **India-only**. Check
+  `restaurantIsIndia($country)` (`main/config/countries.php`) before offering it; `phonepeCallbackConfig()` returns no
+  keys for a restaurant outside India, and those restaurants see "contact support".
 - `PHONEPE_ENVIRONMENT=test` for sandbox, `production` for live.
 - Callback: `phonepe_order_callback.php` / `phonepe_callback.php`.
+- **RestroGrow plan renewals:** the amount and months come only from `pfRenewalPrice()` (Super Admin settings), never
+  from the request; they are paid to and verified with the platform keys (`phonepeCallbackConfig(null)`), never a
+  restaurant's own keys. Keep it that way in any new payment path.
+
+## Countries
+
+- `main/config/countries.php` is the single source: dial code, currency, phone length (`getCountryData`), time zone and
+  tax defaults (`getCountryLocalDefaults`), `applyCountryDefaults()` on signup / Super Admin create.
+- Phone numbers are stored as typed digits. When sending WhatsApp, turn them into `+<code><number>` with the
+  restaurant's country: `normalizePhoneForWhatsapp($phone, restaurantCountryInfo($pdo, $rid))`. Never hardcode 91.
+- `users.country` holds the country **name** ("Nepal"); `users.timezone` the IANA zone. Most of the server still runs on
+  IST (`db_connection.php`); the open work for other countries is `docs/IMPORTANT_TODO.md` #6.
+
+## Blog
+
+- Public pages in `blog/` (`_layout.php`, `index.php`, `post.php`, `feed.php`, `sitemap.php`), styles `blog/blog.css`;
+  engine `main/config/blog_engine.php`; editor and API `main/superadmin/blog.php` / `blog_api.php`.
+- `blog/post.php` only decorates at display time (numbered headings, FAQ cards, summary box, label cards, sign-up box,
+  table wrapper); stored posts stay plain HTML from the editor.
+- Ready-written posts live in `main/config/blog_starters/*.html` (a `<!-- key: value -->` header + HTML; the folder is
+  blocked from the web) and are imported as drafts from Super Admin › Blog.
 
 ## Push notifications
 

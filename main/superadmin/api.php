@@ -139,7 +139,8 @@ try {
     case 'getRestaurants':
       $q = trim($_GET['q'] ?? '');
       $page = max(1, (int)($_GET['page'] ?? 1));
-      $limit = min(50, max(5, (int)($_GET['limit'] ?? 10)));
+      // up to 500 a page: several screens ask for "all" (limit=200) and silently missed restaurants past 50
+      $limit = min(500, max(5, (int)($_GET['limit'] ?? 10)));
       $offset = ($page - 1) * $limit;
 
       $where = '';
@@ -717,12 +718,24 @@ try {
       $restaurant_id = trim($_GET['restaurant_id'] ?? '');
       $limit = min(100, max(5, (int)($_GET['limit'] ?? 20)));
       $offset = max(0, (int)($_GET['offset'] ?? 0));
-      $where = '';
+      $conds = [];
       $params = [];
       if ($restaurant_id !== '') {
-        $where = "WHERE sp.restaurant_id = :rid";
+        $conds[] = "sp.restaurant_id = :rid";
         $params[':rid'] = $restaurant_id;
       }
+      // Money › Payments filters: search (restaurant name / id / transaction) and status (success / failed / pending)
+      $search = trim($_GET['search'] ?? '');
+      if ($search !== '') {
+        $conds[] = "(u.restaurant_name LIKE :s1 OR sp.restaurant_id LIKE :s2 OR sp.transaction_id LIKE :s3)";
+        $params[':s1'] = $params[':s2'] = $params[':s3'] = "%$search%";
+      }
+      $pstatus = strtolower(trim($_GET['status'] ?? ''));
+      if (in_array($pstatus, ['success', 'failed', 'pending'], true)) {
+        $conds[] = "LOWER(sp.payment_status) = :st";
+        $params[':st'] = $pstatus;
+      }
+      $where = $conds ? 'WHERE ' . implode(' AND ', $conds) : '';
       $sql = "SELECT sp.*, u.restaurant_name FROM subscription_payments sp LEFT JOIN users u ON u.id = sp.user_id $where ORDER BY sp.created_at DESC LIMIT :limit OFFSET :offset";
       $stmt = $conn->prepare($sql);
       foreach ($params as $k=>$v) $stmt->bindValue($k, $v);
@@ -1860,12 +1873,12 @@ break;
       $settlement_id = $conn->lastInsertId();
 
       if ($demo_mode) {
-        // Demo mode - simulate successful settlement
-        $stmt = $conn->prepare("UPDATE settlements SET status = 'Success', response_data = ? WHERE id = ?");
-        $stmt->execute([json_encode(['demo' => true, 'message' => 'Demo settlement simulation']), $settlement_id]);
+        // Demo mode / no payout keys: nothing is paid, so never record it as "Success" (it looked paid)
+        $stmt = $conn->prepare("UPDATE settlements SET status = 'Failed', response_data = ? WHERE id = ?");
+        $stmt->execute([json_encode(['demo' => true, 'message' => 'Not paid: demo mode or no PhonePe payout keys. Pay this restaurant by hand.']), $settlement_id]);
         echo json_encode([
           'success' => true,
-          'message' => 'Demo settlement processed successfully',
+          'message' => 'Demo mode: nothing was paid (no PhonePe payout keys). It is saved as Failed; pay this restaurant by hand.',
           'settlement_id' => $settlement_id,
           'transaction_id' => $transaction_id,
           'demo_mode' => true

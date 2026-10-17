@@ -87,7 +87,7 @@
         '<div class="lsa-vars">' + vars.map(function (v) { return '<button type="button" data-lsa-var="' + v + '">' + v + '</button>'; }).join('') + '</div>' +
         '<div class="lsa-bubble"><span class="lsa-bubble-h">Preview</span><p>' + preview(a) + '</p></div>' +
       '</div>' +
-      '<div class="lsa-foot"><span class="material-symbols-rounded">info</span><span>The gift lands in the customer’s <b>Your gifts</b> on the rewards page and applies at checkout. WhatsApp delivery of this message comes next.</span>' +
+      '<div class="lsa-foot"><span class="material-symbols-rounded">info</span><span>The gift lands in the customer’s <b>Your gifts</b> on the rewards page and applies at checkout. With WhatsApp connected (Growth › WhatsApp) the message also goes on WhatsApp; customers without WhatsApp get it by email.</span>' +
         '<button type="button" class="btn btn-primary" data-lsa-save="' + a.type + '"><span class="material-symbols-rounded">save</span> Save</button></div>' +
     '</div>';
   }
