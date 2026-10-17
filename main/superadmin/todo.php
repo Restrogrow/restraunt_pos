@@ -45,7 +45,6 @@ if ((int)$conn->query('SELECT COUNT(*) FROM sa_todos')->fetchColumn() === 0) {
 
 // jobs added after the first visit (each added once, by its title)
 $later = [
-    ['AI manager', 0, 'Give the AI manager a natural, fast voice (Google Cloud Text-to-Speech)', "Right now voice mode uses the phone's own voice (instant) or Gemini's natural voice (sounds good but takes ~10-15 seconds). For a natural voice that is also instant: Google Cloud Console (same project as Gemini) › APIs & Services › Library › enable 'Cloud Text-to-Speech API' (needs billing on; 1 million characters a month are free) › Credentials › Create API key › restrict it to Cloud Text-to-Speech API › add GOOGLE_TTS_API_KEY=<key> to the live .env (Hostinger File Manager). Nothing else to change: voice mode switches to it by itself."],
     ['Other countries', 1, 'Fix the settings of restaurants outside India (Royal Sekuwa & Khaja Ghar first)', "They signed up before country defaults existed, so they still run on India's clock and \"GST 5%\". For each (Super Admin › Restaurants, country not India): log in as them › Settings › Region and language › Timezone = their country's (Nepal: Asia/Kathmandu; the page now shows an orange warning) › Save. Then Tax and bill: Nepal uses VAT 13%, and Nepal law wants menu prices to already include VAT and service charge, so most Nepal restaurants should keep tax OFF and price their menu VAT-inclusive (ask them). Online payment (PhonePe) is now hidden for them; if they ask for online payments or renewal, handle it by WhatsApp."],
     ['Other countries', 0, 'Decide when to build the other-country fixes', "docs/IMPORTANT_TODO.md #6 lists what's left for restaurants outside India (Nepal first): their own time zone everywhere in reports and timers, Nepal VAT bills (VAT-inclusive prices, service charge, PAN, bill numbers per fiscal year, Nepali dates), WhatsApp links with the right country code, one customer record per person, Google showing NPR, Nepal festivals, Nepali language, a way for them to pay you, eSewa/Khalti. Tell Claude 'build #6' (or one row of it) when you're ready."],
     ['Blog', 0, 'Plan keywords and write the first blog posts', "Super Admin › Tools › Blog › Keywords: add the searches you want to show up for (or Suggest with AI), then Write post on the top ones. AI drafts are a start: add your own examples and check every fact before publishing. Aim for one good post a week."],
@@ -69,6 +68,8 @@ Check after a day with Super Admin › Email › Send test to a Gmail address �
 • every 15 minutes: /usr/bin/php <HOME>/main/cron/owner_brief.php  (AI manager morning report on WhatsApp / email)
 Then open Super Admin › Email › Settings & jobs: both should say Running within 15 minutes. Without them, reminders only go out while someone has a dashboard open."],
 ];
+// jobs the owner has already done outside the list
+$conn->prepare('DELETE FROM sa_todos WHERE title = ?')->execute(['Give the AI manager a natural, fast voice (Google Cloud Text-to-Speech)']);
 $have = $conn->prepare('SELECT COUNT(*) FROM sa_todos WHERE title = ?');
 $addLater = $conn->prepare('INSERT INTO sa_todos (category, urgent, title, details, sort) VALUES (?, ?, ?, ?, ?)');
 foreach ($later as $i => $t) { $have->execute([$t[2]]); if (!(int)$have->fetchColumn()) $addLater->execute([$t[0], $t[1], $t[2], $t[3], 100 + $i]); }
