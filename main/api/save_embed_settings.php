@@ -8,7 +8,10 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
-if (!isset($_SESSION['restaurant_id']) && !isset($_SESSION['superadmin_id'])) {
+// a website visitor's session also carries a restaurant_id (main/website/header.php): only the restaurant's
+// owner / manager (settings permission) or Super Admin may change the embed and custom domain
+require_once __DIR__ . '/../config/authorization_config.php';
+if (!isset($_SESSION['superadmin_id']) && !(isLoggedIn() && hasPermission(PERMISSION_MANAGE_SETTINGS))) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;

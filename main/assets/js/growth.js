@@ -207,7 +207,9 @@ function openTierModal(data) {
   document.body.style.overflow = 'hidden';
 }
 
+let growthSavingTier = false;
 async function saveTier() {
+  if (growthSavingTier) return;
   const id = document.getElementById('tierId').value;
   const fd = new FormData();
   fd.append('action', id ? 'update_tier' : 'add_tier');
@@ -218,6 +220,7 @@ async function saveTier() {
   fd.append('sort_order', document.getElementById('tierSortOrder').value);
   fd.append('points_multiplier', document.getElementById('tierPointsMultiplier').value || '1');
 
+  growthSavingTier = true;
   try {
     const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
     const data = await res.json();
@@ -230,6 +233,8 @@ async function saveTier() {
     }
   } catch (e) {
     showSweetAlert('Failed to save tier', 'error');
+  } finally {
+    growthSavingTier = false;
   }
 }
 
@@ -300,7 +305,9 @@ async function openRewardModal() {
   }
 }
 
+let growthSavingReward = false;
 async function saveReward() {
+  if (growthSavingReward) return;
   const menuItemId = document.getElementById('rewardMenuItemId').value;
   const pointsCost = document.getElementById('rewardPointsCost').value;
   if (!menuItemId) { showSweetAlert('Select a menu item', 'error'); return; }
@@ -311,6 +318,7 @@ async function saveReward() {
   fd.append('menu_item_id', menuItemId);
   fd.append('points_cost', pointsCost);
 
+  growthSavingReward = true;
   try {
     const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
     const data = await res.json();
@@ -323,6 +331,8 @@ async function saveReward() {
     }
   } catch (e) {
     showSweetAlert('Failed to add reward', 'error');
+  } finally {
+    growthSavingReward = false;
   }
 }
 
@@ -471,7 +481,7 @@ function renderSegmentsTable(customers) {
       <td>${cur}${Number(c.total_spent || 0).toFixed(2)}</td>
       <td>${c.last_visit_date && c.last_visit_date !== '0000-00-00' ? c.last_visit_date : '-'}</td>
       <td>${c.loyalty_points_balance ?? 0}</td>
-      <td><button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick="openAdjustPointsModal(${c.id}, ${JSON.stringify(c.customer_name || '').replace(/"/g, '&quot;')})">Adjust Points</button></td>
+      <td><button class="btn" style="padding:6px 14px;font-size:0.8rem;" onclick="openAdjustPointsModal(${c.id}, ${JSON.stringify(c.customer_name || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;')})">Adjust Points</button></td>
     </tr>
   `).join('');
 }
@@ -487,13 +497,16 @@ function openAdjustPointsModal(customerId, customerName) {
   document.body.style.overflow = 'hidden';
 }
 
+let growthAdjustingPoints = false;
 async function submitAdjustPoints() {
+  if (growthAdjustingPoints) return;
   const fd = new FormData();
   fd.append('action', 'adjust_points');
   fd.append('customer_id', document.getElementById('adjustCustomerId').value);
   fd.append('points_delta', document.getElementById('adjustPointsDelta').value);
   fd.append('note', document.getElementById('adjustPointsNote').value.trim() || 'Manual adjustment');
 
+  growthAdjustingPoints = true;
   try {
     const res = await fetch('../controllers/growth_operations.php', { method: 'POST', body: fd });
     const data = await res.json();
@@ -506,6 +519,8 @@ async function submitAdjustPoints() {
     }
   } catch (e) {
     showSweetAlert('Failed to adjust points', 'error');
+  } finally {
+    growthAdjustingPoints = false;
   }
 }
 

@@ -271,8 +271,7 @@ try {
                 SUM(total) as total_sales
             FROM orders
             WHERE restaurant_id = ?
-            AND DATE(created_at) = CURDATE()
-            AND NOT (payment_method = 'QR Payment' AND payment_status != 'Paid')
+            AND " . $dateConditionNoAlias . "
             GROUP BY HOUR(created_at)
             ORDER BY hour ASC
         ");
@@ -310,12 +309,12 @@ try {
                 FROM orders o
                 LEFT JOIN staff s ON o.staff_id = s.id AND s.restaurant_id = ?
                 WHERE o.restaurant_id = ? 
-                AND " . $dateConditionNoAlias . "
+                AND " . $dateCondition . "
                 GROUP BY o.staff_id, s.member_name
                 ORDER BY total_sales DESC
                 LIMIT 20
             ");
-            $staffStmt->execute([$restaurant_id, $restaurant_id]);
+            $staffStmt->execute(array_merge([$restaurant_id, $restaurant_id], $dateParams));
             $staffPerformance = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
         }
     } catch (Exception $e) {

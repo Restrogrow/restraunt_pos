@@ -26,7 +26,10 @@ try {
     $restaurant_id = $_SESSION['restaurant_id'] ?? null;
     if (!$restaurant_id) throw new Exception('No restaurant ID');
 
-    $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM orders WHERE restaurant_id = ? AND " . waiterOrderFilterSql('') . " AND source = 'website' AND order_status = 'Pending' AND (payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR payment_status = 'Paid')");
+    // soft-deleted orders stay out of the badge, same as the Online Orders list
+    require_once __DIR__ . '/../config/soft_delete_helpers.php';
+    ensureOrderSoftDeleteColumns($conn);
+    $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM orders WHERE restaurant_id = ? AND " . waiterOrderFilterSql('') . " AND source = 'website' AND order_status = 'Pending' AND deleted_at IS NULL AND (payment_method NOT IN ('PhonePe', 'UPI / NetBanking') OR payment_status = 'Paid')");
     $stmt->execute([$restaurant_id]);
     $cnt = (int)$stmt->fetchColumn();
 

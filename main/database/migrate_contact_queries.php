@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/maintenance_guard.php';
+enforceMaintenanceAccess();
 /**
  * Migration Script: Create contact_queries table
  * Run this script to ensure the contact_queries table exists in the database

@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int)($in['id'] ?? 0);
     switch ($in['action'] ?? '') {
         case 'toggle':
-            $conn->prepare('UPDATE sa_todos SET done = 1 - done, done_at = IF(done = 0, NOW(), NULL) WHERE id = ?')->execute([$id]);
+            $conn->prepare('UPDATE sa_todos SET done_at = IF(done = 0, NOW(), NULL), done = 1 - done WHERE id = ?')->execute([$id]);
             break;
         case 'add':
             $title = trim(mb_substr((string)($in['title'] ?? ''), 0, 255));

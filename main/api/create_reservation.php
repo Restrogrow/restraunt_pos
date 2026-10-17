@@ -67,8 +67,8 @@ if ($no_of_guests <= 0) {
 try {
     $conn = getConnection();
     
-    // Resolve restaurant ID: session > query > default
-    $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? 'RES001');
+    // Resolve restaurant ID: query (the site being viewed) > session > default
+    $restaurant_id = $_GET['restaurant_id'] ?? ($_SESSION['restaurant_id'] ?? 'RES001');
     
     // Verify table belongs to this restaurant
     $tableCheckStmt = $conn->prepare("SELECT id FROM tables WHERE id = ? AND restaurant_id = ?");
@@ -79,7 +79,7 @@ try {
     
     // Check if table is already reserved for this date and time
     // Only check active reservations (not cancelled or completed)
-    $checkStmt = $conn->prepare("SELECT id, customer_name, phone 
+    $checkStmt = $conn->prepare("SELECT id 
                                  FROM reservations 
                                  WHERE restaurant_id = ? 
                                  AND table_id = ? 
@@ -93,11 +93,7 @@ try {
     if ($existing) {
         echo json_encode([
             'success' => false,
-            'message' => 'This table is already reserved for ' . $reservation_date . ' at ' . $time_slot . '. Please choose a different time or table.',
-            'existing_reservation' => [
-                'customer_name' => $existing['customer_name'],
-                'phone' => $existing['phone']
-            ]
+            'message' => 'This table is already reserved for ' . $reservation_date . ' at ' . $time_slot . '. Please choose a different time or table.'
         ]);
         exit();
     }

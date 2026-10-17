@@ -190,7 +190,7 @@
   var coupP = null;
   MK.coupons = function (fresh) {
     if (!coupP || fresh) coupP = fetch('../api/get_admin_coupons.php', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
-      var today = new Date().toISOString().slice(0, 10);
+      var today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
       return ((d && d.coupons) || []).filter(function (c) { return String(c.is_active) === '1' && (!c.valid_until || c.valid_until >= today) && (!(+c.max_uses) || +c.current_uses < +c.max_uses); });
     }).catch(function () { return []; });
     return coupP;
@@ -215,7 +215,7 @@
   MK.offerPicker = function (opt) {
     var el = document.createElement('div');
     el.className = 'mk-offer';
-    var until = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    var until = new Date(Date.now() + 7 * 86400000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     el.innerHTML = '<label class="mk-lbl">Coupon customers can use</label><select class="mk-offer-sel"><option value="">No coupon (just a poster)</option></select>' +
       '<div class="mk-offer-new" hidden><div class="mk-row"><label>Code<input class="mk-c-code" maxlength="20" value="' + esc(opt.suggestCode || '') + '" placeholder="e.g. DIWALI20"></label>' +
       '<label>Discount<span class="mk-inline"><input class="mk-c-val" type="number" min="1" value="20"><select class="mk-c-type"><option value="percent">% off</option><option value="flat">' + esc(MK.cur()) + ' off</option></select></span></label></div>' +

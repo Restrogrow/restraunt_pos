@@ -207,7 +207,10 @@
           tile('trending_up', '#16a34a', S.money(Math.round(avg)), 'Average order') + tile('restaurant', '#f97316', s.total_items || 0, 'Items sold') +
           tile('group', '#0f766e', s.total_customers || 0, 'Customers') +
         '</div>';
-      var byM = {}; (res.sales_details || []).forEach(function (r) { var m = r.payment_method || 'Other'; byM[m] = (byM[m] || 0) + (+r.total || 0); });
+      // payment_methods covers the whole day; sales_details stops at the latest 100 orders
+      var byM = {};
+      if (Array.isArray(res.payment_methods)) res.payment_methods.forEach(function (r) { var m = r.payment_method || 'Other'; byM[m] = (byM[m] || 0) + (+r.amount || 0); });
+      else (res.sales_details || []).forEach(function (r) { var m = r.payment_method || 'Other'; byM[m] = (byM[m] || 0) + (+r.total || 0); });
       var ms = Object.keys(byM).sort(function (a, b) { return byM[b] - byM[a]; }), mx = ms.length ? byM[ms[0]] : 1;
       $('payMix').innerHTML = ms.length ? '<div class="mg-split">' + ms.map(function (m) {
         return '<div class="mg-split-row"><span>' + S.esc(m) + '</span><span class="tr"><i style="width:' + Math.max(3, Math.round(byM[m] / mx * 100)) + '%"></i></span><span class="st-amt">' + S.money(Math.round(byM[m])) + '</span></div>';

@@ -591,7 +591,7 @@ try {
                         }
                         var html = '';
                         customers.forEach(function(c) {
-                            html += '<div class="cust-result-row" onclick=\'selectCustomer(' + JSON.stringify(c) + ')\'>' +
+                            html += '<div class="cust-result-row" onclick=\'selectCustomer(' + JSON.stringify(c).replace(/&/g, '&amp;').replace(/'/g, '&#39;') + ')\'>' +
                                 '<b>' + escapeHtml(c.customer_name) + '</b> &middot; ' + escapeHtml(c.phone) + '</div>';
                         });
                         resultsEl.innerHTML = html;

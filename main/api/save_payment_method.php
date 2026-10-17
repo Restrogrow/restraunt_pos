@@ -10,6 +10,8 @@ if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Authentication required']);
     exit;
 }
+// a waiter or chef must not be able to swap the restaurant's UPI QR for their own
+requirePermission(PERMISSION_MANAGE_PAYMENTS);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

@@ -488,8 +488,10 @@ try {
         fputcsv($f, ['Invoice no', 'Date', 'Restaurant', 'Restaurant ID', 'Customer GSTIN', 'Plan', 'Months', 'Method', 'Transaction', 'Taxable value', 'GST %', 'CGST', 'SGST', 'IGST', 'Total', 'Status']);
         foreach ($st as $r) {
             $g = pfGst($set, (float)$r['amount']);
+            // same inter-state rule as the invoice itself (action=invoice): IGST instead of CGST + SGST
+            $inter = saInvStateCode($r['gstin_no']) !== '' && saInvStateCode($set['biz_gstin']) !== '' && saInvStateCode($r['gstin_no']) !== saInvStateCode($set['biz_gstin']);
             fputcsv($f, [pfInvoiceNo($set, $r), substr($r['created_at'], 0, 10), $r['restaurant_name'], $r['restaurant_id'], $r['gstin_no'], $r['subscription_type'], $r['duration_months'],
-                $r['payment_method'], $r['transaction_id'], $g['base'], $g['rate'], $g['cgst'], $g['sgst'], 0, $g['total'], 'Paid']);
+                $r['payment_method'], $r['transaction_id'], $g['base'], $g['rate'], $inter ? 0 : $g['cgst'], $inter ? 0 : $g['sgst'], $inter ? $g['tax'] : 0, $g['total'], 'Paid']);
         }
         saInvEnsure($conn);
         $mi = $conn->prepare("SELECT i.*, u.gstin_no FROM sa_invoices i LEFT JOIN users u ON u.restaurant_id = i.restaurant_id

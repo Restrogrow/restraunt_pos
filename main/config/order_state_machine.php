@@ -264,12 +264,12 @@ function validateAndUpdateOrderStatus(
     // those back. (Points can't have been *earned* yet on this path, since
     // awarding only happens on Completed, and Completed is a terminal state
     // that can't transition to Cancelled — see reverseLoyaltyForOrder().)
-    if ($newStatus === 'Cancelled') {
+    if ($newStatus === 'Cancelled' || $newStatus === 'Rejected') {
         try {
             $orderRestaurantId = $restaurantId ?? ($order['restaurant_id'] ?? null);
             if ($orderRestaurantId) {
                 require_once __DIR__ . '/growth_helpers.php';
-                reverseLoyaltyForOrder($conn, $orderRestaurantId, $orderId, 'cancelled');
+                reverseLoyaltyForOrder($conn, $orderRestaurantId, $orderId, strtolower($newStatus));
             }
         } catch (Exception $e) {
             error_log('Growth module cancellation reversal failed for order ' . $orderId . ': ' . $e->getMessage());

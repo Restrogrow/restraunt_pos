@@ -3114,7 +3114,7 @@ function isRestaurantOpen(hours) {
   var days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
   // Use restaurant's timezone if available, else local time
   var now = new Date();
-  if (window.restaurantTimezoneOffset) {
+  if (typeof window.restaurantTimezoneOffset === 'number') {
     var utc = now.getTime() + now.getTimezoneOffset() * 60000;
     now = new Date(utc + window.restaurantTimezoneOffset * 60000);
   }

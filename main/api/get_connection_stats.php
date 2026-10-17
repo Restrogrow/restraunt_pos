@@ -85,7 +85,8 @@ try {
                 'command' => $p['Command'] ?? '',
                 'time' => $p['Time'] ?? '',
                 'state' => $p['State'] ?? '-',
-                'info' => substr($p['Info'] ?? '-', 0, 100),
+                // the query text can hold other restaurants' data (one shared database): not shown
+                'info' => '-',
             ];
         }, $process_list),
         'connection_info' => [

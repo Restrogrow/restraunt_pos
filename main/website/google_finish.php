@@ -16,7 +16,7 @@ startSecureSession();
 
 $safePath = function ($p) {
     $p = (string)$p;
-    return ($p !== '' && $p[0] === '/' && !str_starts_with($p, '//') && !preg_match('/[\r\n]/', $p)) ? $p : '/';
+    return ($p !== '' && $p[0] === '/' && !str_starts_with($p, '//') && !preg_match('/[\r\n\\\\]/', $p)) ? $p : '/';
 };
 
 $conn = getConnection();

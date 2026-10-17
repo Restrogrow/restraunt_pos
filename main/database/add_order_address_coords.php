@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/maintenance_guard.php';
+enforceMaintenanceAccess();
 try {
     require_once __DIR__ . '/../db_connection.php';
     $pdo = getConnection();

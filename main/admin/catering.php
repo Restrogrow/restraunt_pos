@@ -212,7 +212,7 @@ $currency_symbol = $_SESSION['currency_symbol'] ?? '₹';
                 html += '<td>' + CURRENCY + parseFloat(t.price).toFixed(2) + '</td>';
                 html += '<td>' + (t.is_active == 1 ? '<span class="status-badge confirmed">Active</span>' : '<span class="status-badge cancelled">Hidden</span>') + '</td>';
                 html += '<td>';
-                html += '<button class="btn btn-edit btn-sm" onclick=\'editTier(' + JSON.stringify(t) + ')\'><i class="fa fa-edit"></i></button> ';
+                html += '<button class="btn btn-edit btn-sm" onclick=\'editTier(' + JSON.stringify(t).replace(/&/g, '&amp;').replace(/'/g, '&#39;') + ')\'><i class="fa fa-edit"></i></button> ';
                 html += '<button class="btn btn-delete btn-sm" onclick="deleteTier(' + t.id + ')"><i class="fa fa-trash"></i></button>';
                 html += '</td></tr>';
             });

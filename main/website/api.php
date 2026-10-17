@@ -794,6 +794,10 @@ try {
                 // and 'Could Not Load Orders'. Leave such fields out instead.
                 foreach ($order as $k => $v) {
                     if (is_string($v) && !mb_check_encoding($v, 'UTF-8')) unset($order[$k]);
+                    // Anyone can call this with any phone number: never hand out the
+                    // customer's contact details, address or payment proof (the order
+                    // history list doesn't show them)
+                    elseif (strpos($k, 'customer_') === 0 || strpos($k, 'address') === 0 || $k === 'landmark' || strpos($k, 'proof') !== false) unset($order[$k]);
                 }
             }
             unset($order);

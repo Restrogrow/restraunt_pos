@@ -1624,7 +1624,7 @@ function addGlobalAddon(addonId, addonName, addonPrice) {
   }
   saveCart();
   renderCart();
-  showToast('Added ' + addonName + ' to cart', 'success');
+  showToast('Added ' + escapeHtml(addonName) + ' to cart', 'success');
 }
 
 
@@ -2042,7 +2042,7 @@ function upsellAdd(id, btn) {
   trackUpsellEvent('add', id);
   if (btn) { btn.classList.add('done'); btn.textContent = 'Added'; }
   var it = getItemByKey(key);
-  if (typeof showToast === 'function' && it) showToast((it.item_name_translated || it.item_name_en || 'Dish') + ' added', 'success');
+  if (typeof showToast === 'function' && it) showToast(escapeHtml(it.item_name_translated || it.item_name_en || 'Dish') + ' added', 'success');
   setTimeout(renderCart, 450);
 }
 function upsellChoose(id) {
@@ -2514,8 +2514,8 @@ function openCouponSheet() {
       '<div class="coupon-item ' + (isActive ? 'active' : '') + '" onclick="selectCoupon(\'' + c.code + '\')">' +
         '<div class="cpn-icon">%</div>' +
         '<div class="cpn-info">' +
-          '<div class="cpn-code">' + c.code + '</div>' +
-          '<div class="cpn-desc">' + discLabel + ' - ' + c.description + '</div>' +
+          '<div class="cpn-code">' + escapeHtml(c.code) + '</div>' +
+          '<div class="cpn-desc">' + discLabel + ' - ' + escapeHtml(c.description) + '</div>' +
           '<div class="cpn-expiry">Valid till: ' + c.validTill + '</div>' +
           '<div class="cpn-min">' + minText + '</div>' +
         '</div>' +
@@ -2574,7 +2574,7 @@ function isRestaurantOpen(hours) {
   var days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
   // Use restaurant's timezone if available, else local time
   var now = new Date();
-  if (window.restaurantTimezoneOffset) {
+  if (typeof window.restaurantTimezoneOffset === 'number') {
     var utc = now.getTime() + now.getTimezoneOffset() * 60000;
     now = new Date(utc + window.restaurantTimezoneOffset * 60000);
   }
@@ -2874,7 +2874,7 @@ function refreshCheckoutTotal() {
 
   var showGst = window.enableGst == 1 || window.enableGst === true;
   var taxable = baseAmt;
-  var gst = showGst ? taxable * ((window.taxPercent || 5) / 100) : 0;
+  var gst = showGst ? taxable * ((typeof window.taxPercent === 'number' ? window.taxPercent : 5) / 100) : 0;
 
   var gstRow = document.getElementById('gstRow');
   var gstAmount = document.getElementById('gstAmount');
@@ -3042,7 +3042,7 @@ function showCheckoutModal(cartData) {
   html += '<span>Delivery Fee</span><span id="deliveryFeeAmount">' + getCurrency() + '0.00</span>';
   html += '</div>';
   var enableGst = window.enableGst == 1 || window.enableGst === true;
-  var taxLabel = (window.taxName || 'GST') + ' (' + parseFloat(window.taxPercent || 5) + '%)';
+  var taxLabel = (window.taxName || 'GST') + ' (' + parseFloat(typeof window.taxPercent === 'number' ? window.taxPercent : 5) + '%)';
   html += '<div id="gstRow" class="summary-row" style="display:' + (enableGst ? 'flex' : 'none') + ';">';
   html += '<span>' + taxLabel + '</span><span id="gstAmount">' + getCurrency() + '0.00</span>';
   html += '</div>';

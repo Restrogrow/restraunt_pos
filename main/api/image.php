@@ -569,19 +569,33 @@ if (empty($imagePath)) {
 // Proxy external URLs through PHP (redirecting causes 404 on some servers)
 if (strpos($imagePath, 'http') === 0) {
     if (ob_get_level()) @ob_end_clean();
+    // Anyone can call this, so: public http(s) hosts only (not this server's own network), and
+    // only real image bytes go back out, typed by what they decode as. Passing on any page with
+    // its own Content-Type let a link serve someone else's HTML/JS from this site.
+    $proxyScheme = strtolower((string)parse_url($imagePath, PHP_URL_SCHEME));
+    $proxyHost = (string)parse_url($imagePath, PHP_URL_HOST);
+    $proxyIps = $proxyHost !== '' ? (@gethostbynamel($proxyHost) ?: []) : [];
+    foreach ($proxyIps as $proxyIp) {
+        if (!filter_var($proxyIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) $proxyIps = [];
+    }
+    if (!in_array($proxyScheme, ['http', 'https'], true) || !$proxyIps) {
+        sendPlaceholderSvg('Image');
+    }
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $imagePath);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+    curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
     $imageData = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
     curl_close($ch);
-    if ($imageData && $httpCode >= 200 && $httpCode < 300) {
-        header('Content-Type: ' . ($contentType ?: 'image/jpeg'));
+    $proxyInfo = is_string($imageData) && $imageData !== '' ? @getimagesizefromstring($imageData) : false;
+    if ($proxyInfo && !empty($proxyInfo['mime']) && $httpCode >= 200 && $httpCode < 300) {
+        header('Content-Type: ' . $proxyInfo['mime']);
         header('Content-Length: ' . strlen($imageData));
         header('Cache-Control: public, max-age=86400');
         echo $imageData;

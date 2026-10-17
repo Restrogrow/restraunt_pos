@@ -87,6 +87,7 @@ if ($link_id > 0) {
                 $envs = [
                     'sandbox' => [
                         'base' => 'https://api-preprod.phonepe.com/apis/pg-sandbox',
+                        'auth' => 'https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token',
                         'id' => env('PHONEPE_SANDBOX_MERCHANT_ID', ''),
                         'secret' => env('PHONEPE_SANDBOX_SALT_KEY', ''),
                         'version' => env('PHONEPE_SANDBOX_SALT_INDEX', '1'),
@@ -94,10 +95,12 @@ if ($link_id > 0) {
                     ],
                     'production' => [
                         'base' => 'https://api.phonepe.com/apis/pg',
+                        // links are created on v2 OAuth checkout (api.php createPaymentLink), so status is v2 too
+                        'auth' => 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token',
                         'id' => env('PHONEPE_CLIENT_ID', '') ?: env('PHONEPE_MERCHANT_ID', ''),
                         'secret' => env('PHONEPE_CLIENT_SECRET', '') ?: env('PHONEPE_SALT_KEY', ''),
                         'version' => env('PHONEPE_CLIENT_VERSION', '') ?: env('PHONEPE_SALT_INDEX', '1'),
-                        'type' => 'hash',
+                        'type' => 'oauth',
                     ],
                 ];
 
@@ -107,7 +110,7 @@ if ($link_id > 0) {
 
                     try {
                         if ($env['type'] === 'oauth') {
-                            $ch = curl_init($env['base'] . '/v1/oauth/token');
+                            $ch = curl_init($env['auth']);
                             curl_setopt($ch, CURLOPT_POST, true);
                             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
                                 'client_id' => $env['id'], 'client_version' => $env['version'],
@@ -218,7 +221,7 @@ p{color:#666;margin-bottom:24px;font-size:14px;line-height:1.5}
 <script>
 var pollId = <?= $link_id ?>;
 var pollCount = 0;
-setInterval(function() {
+var pollInterval = setInterval(function() {
     pollCount++;
     if (pollCount > 30) { clearInterval(pollInterval); return; }
     var xhr = new XMLHttpRequest();

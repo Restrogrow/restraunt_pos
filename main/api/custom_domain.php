@@ -18,6 +18,10 @@
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession();
 header('Content-Type: application/json; charset=UTF-8');
+// The customer website keeps the restaurant it shows in the same session, so restaurant_id alone
+// isn't a login. Owner / branch admin only: this redirects the restaurant's link and QR codes.
+require_once __DIR__ . '/../config/authorization_config.php';
+requirePermission(PERMISSION_MANAGE_SETTINGS);
 
 $restaurant_id = $_SESSION['restaurant_id'] ?? '';
 if (!$restaurant_id) {

@@ -8,11 +8,13 @@ require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../config/env_loader.php';
 require_once __DIR__ . '/../config/push_notification.php';
+require_once __DIR__ . '/../config/authorization_config.php';
 
 startSecureSession();
 header('Content-Type: application/json; charset=UTF-8');
 
-if (!isSessionValid() || !isset($_SESSION['restaurant_id'])) {
+// signed-in staff only: a website visitor's session also carries a restaurant_id
+if (!isLoggedIn()) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;

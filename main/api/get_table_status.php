@@ -36,7 +36,8 @@ try {
 
 $requested_restaurant_id = $_GET['restaurant_id'] ?? null;
 
-if (isLoggedIn()) {
+$isStaff = isLoggedIn();
+if ($isStaff) {
     // Authenticated staff/admin: always scope to the session's own tenant.
     // Never trust a client-supplied restaurant_id here, even if one is present,
     // otherwise one restaurant's staff could read another restaurant's table status.
@@ -134,9 +135,10 @@ try {
             'capacity' => (int)$table['capacity'],
             'is_available' => (bool)$table['is_available'],
             'status' => $status,
-            'customer_name' => $customerName,
+            // guest names and running bills are for the restaurant's own staff, not the public
+            'customer_name' => $isStaff ? $customerName : null,
             'order_timer' => $orderTimer,
-            'kot_info' => $kotInfo && count($kotInfo) > 0 ? $kotInfo : null
+            'kot_info' => $isStaff && $kotInfo && count($kotInfo) > 0 ? $kotInfo : null
         ];
     }
 

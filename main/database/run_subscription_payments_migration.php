@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/maintenance_guard.php';
+enforceMaintenanceAccess();
 /**
  * Subscription Payments Migration
  * Creates subscription_payments table and adds auto_pay support to users table

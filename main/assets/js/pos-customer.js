@@ -135,7 +135,7 @@
       '<div class="pc-sb"><div class="pc-search">' + ic('search') + '<input type="search" placeholder="Search name or phone" autocomplete="off"></div><div class="pc-results"><p class="pc-hint">Type at least 2 letters or digits.</p></div>' +
       '<form class="pc-new" hidden><div class="pc-new-h">' + ic('person_add') + '<b>New customer</b></div>' +
       '<label>Name<input name="name" maxlength="100" required></label><label>Phone<input name="phone" type="tel" inputmode="tel" maxlength="15" required></label>' +
-      '<div class="pc-2"><label>Email <small>optional</small><input name="email" type="email"></label><label>Birthday <small>optional</small><input name="birthday" type="date" max="' + new Date().toISOString().slice(0, 10) + '"></label></div>' +
+      '<div class="pc-2"><label>Email <small>optional</small><input name="email" type="email"></label><label>Birthday <small>optional</small><input name="birthday" type="date" max="' + new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) + '"></label></div>' +
       '<button type="submit" class="pc-btn">' + ic('check') + 'Save and add to bill</button></form></div>' +
       '<div class="pc-sf"><button type="button" class="pc-btn ghost" data-new>' + ic('person_add') + 'New customer</button><button type="button" class="pc-btn ghost" data-skip>Continue without customer</button></div></div>';
     document.body.appendChild(ov);

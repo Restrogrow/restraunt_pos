@@ -79,7 +79,11 @@ try {
         error_log(sprintf('SECURITY: IP %s blocked by %s (restaurant %s)%s', $ip, getActorName(), $restaurant_id, $reason !== '' ? ' — ' . $reason : ''));
         echo json_encode(['success' => true, 'message' => $ip . ' is now blocked'], JSON_UNESCAPED_UNICODE);
     } else {
-        $ok = loginLogUnblockIp($conn, $ip);
+        // only this restaurant's own block: loginLogUnblockIp() would also lift other restaurants' blocks on the IP
+        loginLogEnsureTables($conn);
+        $unblock = $conn->prepare("DELETE FROM blocked_ips WHERE ip_address = ? AND restaurant_id = ?");
+        $unblock->execute([$ip, $restaurant_id]);
+        $ok = $unblock->rowCount() > 0;
         error_log(sprintf('SECURITY: IP %s unblocked by %s (restaurant %s)', $ip, getActorName(), $restaurant_id));
         echo json_encode(['success' => $ok, 'message' => $ok ? $ip . ' unblocked' : 'IP was not on the blocklist'], JSON_UNESCAPED_UNICODE);
     }

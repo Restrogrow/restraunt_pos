@@ -19,6 +19,12 @@
  * formatting, column widths, and paper-size handling before buying hardware.
  */
 
+// a terminal tool: opened as a web page it would bind a public port and block a PHP worker forever
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit('Not found.');
+}
+
 $port = isset($argv[1]) ? (int)$argv[1] : 9100;
 if ($port < 1 || $port > 65535) {
     $port = 9100;

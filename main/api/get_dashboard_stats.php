@@ -156,6 +156,7 @@ try {
                            JOIN orders o ON oi.order_id = o.id
                            WHERE o.restaurant_id = ?
                            AND DATE(o.created_at) = ?
+                           AND o.order_status NOT IN ('Cancelled', 'Rejected')
                            AND o.deleted_at IS NULL AND NOT (COALESCE(o.notes, '') = 'Order on hold' AND o.order_status = 'Pending' AND o.payment_status = 'Pending')
                            GROUP BY oi.item_name
                            ORDER BY total_qty DESC

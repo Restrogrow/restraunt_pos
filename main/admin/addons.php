@@ -346,7 +346,7 @@ try {
                 html += '<span class="addon-status ' + (available ? 'available' : 'unavailable') + '">' + (available ? 'Available' : 'Unavailable') + '</span>';
                 html += '<div class="addon-actions">';
                 html += '<button class="btn btn-edit" onclick="editAddon(' + a.id + ')"><i class="fa fa-edit"></i> Edit</button>';
-                html += '<button class="btn btn-delete" onclick="deleteAddon(' + a.id + ', \'' + escapeHtml(a.addon_name) + '\')"><i class="fa fa-trash"></i> Delete</button>';
+                html += '<button class="btn btn-delete" onclick="deleteAddon(' + a.id + ', ' + JSON.stringify(String(a.addon_name || '')).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + ')"><i class="fa fa-trash"></i> Delete</button>';
                 html += '</div></div></div>';
             }
             grid.innerHTML = html;

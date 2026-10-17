@@ -313,6 +313,9 @@ try {
             $supName = $po['supplier_id'] ? (string)$q('SELECT name FROM inventory_suppliers WHERE id = ?', [$po['supplier_id']])->fetchColumn() : '';
             $date = ivDate($in['date'] ?? '') ?: date('Y-m-d');
             $conn->beginTransaction();
+            // a double tap (or a second device) waits here and must not add the same delivery and expense twice
+            $stNow = $q('SELECT status FROM inventory_purchase_orders WHERE id = ? FOR UPDATE', [$id])->fetchColumn();
+            if (in_array($stNow, ['received', 'cancelled'], true)) { $conn->rollBack(); ivFail('This order is already ' . $stNow . '.'); }
             $total = 0.0;
             // items removed since the order was made are skipped
             foreach ($q('SELECT l.*, i.item_name, i.unit FROM inventory_po_lines l JOIN inventory_items i ON i.id = l.inventory_item_id AND i.is_active = 1 WHERE l.po_id = ?', [$id])->fetchAll(PDO::FETCH_ASSOC) as $l) {

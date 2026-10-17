@@ -8,6 +8,23 @@ startSecureSession(true); // Skip timeout validation for public customer website
 
 $action = $_GET['action'] ?? 'get';
 
+// save/reset only for a signed-in admin or manager (same check as theme_api.php):
+// any website visitor gets $_SESSION['restaurant_id'] from ?restaurant_id= in
+// header.php, so that alone let anyone rewrite any restaurant's policy pages.
+if (in_array($action, ['save', 'reset'], true)) {
+  require_once __DIR__ . '/../config/authorization_config.php';
+  if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'You must be logged in to edit policy pages']);
+    exit;
+  }
+  if (!isAdmin() && !in_array(getUserRole(), ['Admin', 'Manager'], true)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Only an admin or manager can edit policy pages']);
+    exit;
+  }
+}
+
 $VALID_TYPES = ['privacy', 'terms', 'refund', 'shipping', 'cookie'];
 
 function buildDefaultPolicyHtml($type, $restaurant_name, $restaurant_owner, $restaurant_email, $restaurant_phone) {

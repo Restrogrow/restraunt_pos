@@ -188,7 +188,7 @@ function sendWhatsappOtpViaRepeatGrow(string $phone, string $code, ?array $count
     }
 
     $errMsg = $data['error']['message'] ?? ('RepeatGrow API error (HTTP ' . $httpCode . ')');
-    error_log('sendWhatsappOtpViaRepeatGrow: ' . $errMsg . ' | payload=' . json_encode($payload));
+    error_log('sendWhatsappOtpViaRepeatGrow: ' . $errMsg . ' | to=' . $payload['to'] . ' type=' . $payload['type']);   // not the payload: it carries the OTP code
     throw new Exception('Could not send the WhatsApp message: ' . $errMsg);
 }
 

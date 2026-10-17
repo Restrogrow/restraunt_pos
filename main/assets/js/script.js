@@ -1460,7 +1460,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Set default date to today
         const dateFilter = document.getElementById('ordersDateFilter');
         if (dateFilter && !dateFilter.value) {
-          const today = new Date().toISOString().split('T')[0];
+          const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
           dateFilter.value = today;
         }
         loadOrders();
@@ -2754,11 +2754,11 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="material-symbols-rounded">schedule</span>
             Hours
           </button>
-          <button class="btn-edit" onclick="editMenu(${menu.id}, '${escapeHtml(menu.menu_name)}', '${menuImageUrl || ''}')">
+          <button class="btn-edit" onclick="editMenu(${menu.id}, ${jsArg(menu.menu_name)}, '${menuImageUrl || ''}')">
             <span class="material-symbols-rounded">edit</span>
             Edit
           </button>
-          <button class="btn-delete" onclick="deleteMenu(${menu.id}, '${escapeHtml(menu.menu_name)}')">
+          <button class="btn-delete" onclick="deleteMenu(${menu.id}, ${jsArg(menu.menu_name)})">
             <span class="material-symbols-rounded">delete</span>
             Delete
           </button>
@@ -2957,10 +2957,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span style="font-weight: 500; color: #374151; font-size: 0.9rem;">${escapeHtml(sub.subcategory_name)}</span>
               </div>
               <div style="display: flex; gap: 0.25rem;">
-                <button type="button" onclick="editSubcategory(${sub.id}, '${escapeHtml(sub.subcategory_name)}', ${menuId})" style="padding: 4px 8px; background: transparent; color: #6b7280; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;" title="Edit">
+                <button type="button" onclick="editSubcategory(${sub.id}, ${jsArg(sub.subcategory_name)}, ${menuId})" style="padding: 4px 8px; background: transparent; color: #6b7280; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;" title="Edit">
                   <span class="material-symbols-rounded" style="font-size: 1.1rem;">edit</span>
                 </button>
-                <button type="button" onclick="deleteSubcategory(${sub.id}, '${escapeHtml(sub.subcategory_name)}')" style="padding: 4px 8px; background: transparent; color: #ef4444; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;" title="Delete">
+                <button type="button" onclick="deleteSubcategory(${sub.id}, ${jsArg(sub.subcategory_name)})" style="padding: 4px 8px; background: transparent; color: #ef4444; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;" title="Delete">
                   <span class="material-symbols-rounded" style="font-size: 1.1rem;">delete</span>
                 </button>
               </div>
@@ -4131,7 +4131,7 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         </div>
         <div class="item-actions">
-          <button class="btn-edit" onclick="editMenuItem(${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
+          <button class="btn-edit" onclick="editMenuItem(${item.id}, ${JSON.stringify(item).replace(/&/g, '&amp;').replace(/"/g, '&quot;')})">
             <span class="material-symbols-rounded">edit</span>
             Edit
           </button>
@@ -4139,7 +4139,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="material-symbols-rounded">${isHidden ? 'visibility' : 'visibility_off'}</span>
             ${isHidden ? 'Unhide' : 'Hide'}
           </button>
-          <button class="btn-delete" onclick="deleteMenuItem(${item.id}, '${escapeHtml(item.item_name_translated || item.item_name_en)}')">
+          <button class="btn-delete" onclick="deleteMenuItem(${item.id}, ${jsArg(item.item_name_translated || item.item_name_en)})">
             <span class="material-symbols-rounded">delete</span>
             Delete
           </button>
@@ -4473,10 +4473,10 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="menu-card-header">
           <h3>${escapeHtml(area.area_name)}</h3>
           <div class="menu-card-actions">
-            <button class="btn-edit" onclick="editArea(${area.id}, '${escapeHtml(area.area_name)}')">
+            <button class="btn-edit" onclick="editArea(${area.id}, ${jsArg(area.area_name)})">
               <span class="material-symbols-rounded">edit</span>
             </button>
-            <button class="btn-delete" onclick="deleteArea(${area.id}, '${escapeHtml(area.area_name)}')">
+            <button class="btn-delete" onclick="deleteArea(${area.id}, ${jsArg(area.area_name)})">
               <span class="material-symbols-rounded">delete</span>
             </button>
           </div>
@@ -4794,11 +4794,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="material-symbols-rounded">open_in_new</span>
                 Visit
               </button>
-              <button class="qr-download-btn" onclick="downloadQRCode('${qrCodeUrl}', '${escapeHtml(table.table_number)}')">
+              <button class="qr-download-btn" onclick="downloadQRCode('${qrCodeUrl}', ${jsArg(table.table_number)})">
                 <span class="material-symbols-rounded">download</span>
                 Download
               </button>
-              <button class="qr-print-btn" onclick="printQRCode('${qrCodeUrl}', '${escapeHtml(table.table_number)}')">
+              <button class="qr-print-btn" onclick="printQRCode('${qrCodeUrl}', ${jsArg(table.table_number)})">
                 <span class="material-symbols-rounded">print</span>
                 Print
               </button>
@@ -5210,10 +5210,10 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="menu-card-header">
           <h3>${escapeHtml(table.table_number)}</h3>
           <div class="menu-card-actions">
-            <button class="btn-edit" onclick="editTable(${table.id}, '${escapeHtml(table.table_number)}', ${table.capacity}, ${table.area_id})">
+            <button class="btn-edit" onclick="editTable(${table.id}, ${jsArg(table.table_number)}, ${table.capacity}, ${table.area_id})">
               <span class="material-symbols-rounded">edit</span>
             </button>
-            <button class="btn-delete" onclick="deleteTable(${table.id}, '${escapeHtml(table.table_number)}')">
+            <button class="btn-delete" onclick="deleteTable(${table.id}, ${jsArg(table.table_number)})">
               <span class="material-symbols-rounded">delete</span>
             </button>
           </div>
@@ -5289,7 +5289,7 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Set default date to today
   if (reservationDateInput) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
     reservationDateInput.value = today;
   }
   
@@ -5318,7 +5318,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (reservationModalTitle) reservationModalTitle.textContent = "New Reservation";
       if (reservationForm) reservationForm.reset();
       if (reservationIdInput) reservationIdInput.value = "";
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
       if (reservationDateInput) reservationDateInput.value = today;
       if (noOfGuestsInput) noOfGuestsInput.value = 1;
       if (mealTypeSelect) mealTypeSelect.value = "Lunch";
@@ -7189,15 +7189,15 @@ document.addEventListener("DOMContentLoaded", () => {
           <td>${totalSpent}</td>
           <td>${parseInt(customer.loyalty_points_balance, 10) > 0 ? parseInt(customer.loyalty_points_balance, 10).toLocaleString('en-IN') : '-'}</td>
           <td class="action-cell">
-            ${customer.id && /^\d+$/.test(String(customer.id)) && !customer.has_account && customer.phone ? `<button class="btn-action-small" title="Show a QR code: the customer scans it to make their website account with these points" onclick="rgCustomerAccountQR(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/"/g, '&quot;')})">
+            ${customer.id && /^\d+$/.test(String(customer.id)) && !customer.has_account && customer.phone ? `<button class="btn-action-small" title="Show a QR code: the customer scans it to make their website account with these points" onclick="rgCustomerAccountQR(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/&/g, '&amp;').replace(/"/g, '&quot;')})">
               <span class="material-symbols-rounded">qr_code_2</span>
               <span>Account QR</span>
             </button>` : ''}
-            <button class="btn-action-small edit-btn" onclick="editCustomer(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/"/g, '&quot;')}, ${JSON.stringify(customer.phone || '').replace(/"/g, '&quot;')}, ${JSON.stringify(customer.email || '').replace(/"/g, '&quot;')})">
+            <button class="btn-action-small edit-btn" onclick="editCustomer(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}, ${JSON.stringify(customer.phone || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;')}, ${JSON.stringify(customer.email || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;')})">
               <span class="material-symbols-rounded">edit</span>
               <span>Update</span>
             </button>
-            <button class="btn-action-small delete-btn" onclick="deleteCustomer(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/"/g, '&quot;')})">
+            <button class="btn-action-small delete-btn" onclick="deleteCustomer(${customer.id}, ${JSON.stringify(customer.customer_name).replace(/&/g, '&amp;').replace(/"/g, '&quot;')})">
               <span class="material-symbols-rounded">delete</span>
               <span>Delete</span>
             </button>
@@ -7282,7 +7282,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
                       </div>
                       ${request.request_type === 'Order' || request.notes?.includes('Order request:') ? `
-                        <button class="btn" style="background: white; border: 1px solid #d9d9d9; color: #333; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" onclick="showOrderItems('${escapeHtml(request.notes || '')}')">
+                        <button class="btn" style="background: white; border: 1px solid #d9d9d9; color: #333; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" onclick="showOrderItems(${JSON.stringify(request.notes || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;')})">
                           <span class="material-symbols-rounded" style="font-size: 1rem;">receipt_long</span>
                           Show Order
                         </button>
@@ -7391,7 +7391,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <tbody>
                 ${orderItems.map(item => `
                   <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 0.75rem;">${item.name}</td>
+                    <td style="padding: 0.75rem;">${escapeHtml(item.name)}</td>
                     <td style="padding: 0.75rem; text-align: center; font-weight: 600;">${item.quantity}</td>
                   </tr>
                 `).join('')}
@@ -7778,11 +7778,11 @@ document.addEventListener("DOMContentLoaded", () => {
           <td>${escapeHtml(member.phone)}</td>
           <td>${escapeHtml(member.role === 'Delivery' ? 'Delivery rider' : member.role)}</td>
           <td class="action-cell">
-            <button class="btn-action-small edit-btn" onclick="editStaff(${member.id}, '${escapeHtml(member.member_name)}', '${escapeHtml(member.email)}', '${member.phone}', '${member.role}')">
+            <button class="btn-action-small edit-btn" onclick="editStaff(${member.id}, ${jsArg(member.member_name)}, ${jsArg(member.email)}, '${member.phone}', '${member.role}')">
               <span class="material-symbols-rounded">edit</span>
               <span>Update</span>
             </button>
-            <button class="btn-action-small delete-btn" onclick="deleteStaff(${member.id}, '${escapeHtml(member.member_name)}')">
+            <button class="btn-action-small delete-btn" onclick="deleteStaff(${member.id}, ${jsArg(member.member_name)})">
               <span class="material-symbols-rounded">delete</span>
               <span>Delete</span>
             </button>
@@ -8625,8 +8625,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
   
-  // Hold order function
+  // Hold order function (one at a time: a double tap would put the same cart on hold twice)
+  let posHolding = false;
   async function holdOrder() {
+    if (posHolding) return;
+    posHolding = true;
+    try { return await holdOrderOnce(); } finally { posHolding = false; }
+  }
+  async function holdOrderOnce() {
     // Support both posCart (admin) and window.posCart (waiter/chef/manager)
     const cart = typeof posCart !== 'undefined' ? posCart : (window.posCart || []);
     if (window.posOpenBill) {
@@ -9240,7 +9246,16 @@ document.addEventListener("DOMContentLoaded", () => {
     return billHtml;
   }
 
+  // one payment at a time: a second tap on Pay while the first bill is saving would charge the same cart twice
+  // (the lock lets go by itself after a minute, so a stuck save can never block billing for good)
+  let posPaying = 0;
   async function processPayment() {
+    if (posPaying && Date.now() - posPaying < 60000) return;
+    const mine = posPaying = Date.now();
+    try { return await processPaymentOnce(); } finally { if (posPaying === mine) posPaying = 0; }
+  }
+
+  async function processPaymentOnce() {
     // Support both posCart (admin) and window.posCart (waiter/chef/manager)
     const cart = typeof posCart !== 'undefined' ? posCart : (window.posCart || []);
     const updateCartFn = typeof updatePOSCart !== 'undefined' ? updatePOSCart : (window.updateWaiterPOSCart || window.updatePOSCart || (() => {}));
@@ -10296,6 +10311,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // HTML escape utility used across UI rendering and printing
+// a string argument inside an inline onclick="fn(...)": quotes and & stay intact through the HTML attribute
+function jsArg(v) {
+  return JSON.stringify(v == null ? '' : String(v)).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
 function escapeHtml(str) {
   if (str === undefined || str === null) return '';
   return String(str)
@@ -10786,7 +10806,7 @@ window.resetAllOrdersFilters = function() {
   if (typeEl) typeEl.value = '';
   if (tableEl) tableEl.value = '';
   if (dateEl) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
     dateEl.value = today;
   }
   
@@ -11378,7 +11398,7 @@ window.printOrder = async function(orderId) {
         <div class="info-line"><span class="label">${tableOrType.includes('Table') ? 'DineIn' : 'Order'}</span><span class="value">${escapeHtml(tableOrType)}</span></div>
         <div class="info-line"><span class="label">Date</span><span class="value">${dateStr} | ${timeStr}</span></div>
         <div class="info-line"><span class="label">Bill</span><span class="value">#${escapeHtml(order.bill_no || order.order_number || order.id)}</span></div>
-        <div class="info-line"><span class="label">Invoice</span><span class="value">#INV-${new Date(order.created_at).toISOString().split("T")[0].replace(/-/g, "")}-${escapeHtml(String(order.order_number || order.id))}</span></div>
+        <div class="info-line"><span class="label">Invoice</span><span class="value">#INV-${String(order.created_at || "").slice(0, 10).replace(/-/g, "")}-${escapeHtml(String(order.order_number || order.id))}</span></div>
         <div class="info-line"><span class="label">Order No</span><span class="value">#${escapeHtml(order.id || order.order_number)}</span></div>
       </div>
 
@@ -12822,7 +12842,8 @@ function setupSettingsForms() {
   const uploadBusinessQRBtn = document.getElementById('uploadBusinessQRBtn');
   const businessQRUpload = document.getElementById('businessQRUpload');
   
-  if (uploadBusinessQRBtn && businessQRUpload) {
+  if (uploadBusinessQRBtn && businessQRUpload && !uploadBusinessQRBtn.dataset.handlerAttached) {
+    uploadBusinessQRBtn.dataset.handlerAttached = 'true';
     uploadBusinessQRBtn.addEventListener('click', async () => {
       if (!businessQRUpload.files || businessQRUpload.files.length === 0) {
         showNotification('Please select a QR code image file', 'error');
@@ -13989,7 +14010,7 @@ function getActualDateRange(period) {
       endDate = new Date(today);
   }
   
-  return `${formatDateForExport(startDate.toISOString().split('T')[0])} to ${formatDateForExport(endDate.toISOString().split('T')[0])}`;
+  return `${formatDateForExport(new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000).toISOString().split('T')[0])} to ${formatDateForExport(new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString().split('T')[0])}`;
 }
 
 // Helper function to format date for export
@@ -16425,7 +16446,7 @@ function openRestockModal(id) {
   document.getElementById('rsItemLabel').textContent = item.item_name + ' (currently ' + parseFloat(item.quantity_in_stock).toFixed(2) + ' ' + item.unit + ' in stock)';
   document.getElementById('rsQuantity').value = '';
   document.getElementById('rsCost').value = item.cost_per_unit || 0;
-  document.getElementById('rsDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('rsDate').value = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
   document.getElementById('rsNotes').value = '';
   const modal = document.getElementById('restockModal');
   modal.style.display = 'block';

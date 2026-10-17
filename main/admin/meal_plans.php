@@ -410,8 +410,8 @@ try {
                 html += '</div>';
                 html += '<span class="plan-status ' + (active ? 'available' : 'unavailable') + '">' + (active ? 'Available' : 'Hidden') + '</span>';
                 html += '<div class="plan-actions">';
-                html += '<button class="btn btn-edit" onclick=\'editPlan(' + JSON.stringify(p) + ')\'><i class="fa fa-edit"></i> Edit</button>';
-                html += '<button class="btn btn-delete" onclick="deletePlan(' + p.id + ', \'' + escapeHtml(p.plan_name) + '\')"><i class="fa fa-trash"></i> Delete</button>';
+                html += '<button class="btn btn-edit" onclick=\'editPlan(' + JSON.stringify(p).replace(/&/g, '&amp;').replace(/'/g, '&#39;') + ')\'><i class="fa fa-edit"></i> Edit</button>';
+                html += '<button class="btn btn-delete" onclick="deletePlan(' + p.id + ', ' + JSON.stringify(String(p.plan_name || '')).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + ')"><i class="fa fa-trash"></i> Delete</button>';
                 html += '</div>';
                 html += '<button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="copyPlanLink(' + p.id + ', this)"><i class="fa fa-link"></i> Copy Subscribe Link</button>';
                 html += '</div>';

@@ -2261,12 +2261,12 @@ function renderProducts(menuIdx) {
     if (window.menuCardStyle === 'modern') { html += modernCardHtml(item); continue; }
     html += '<div class="card' + (oos ? ' oos' : '') + '" data-itemId="' + item.id + '" onclick="if(!' + oos + ')showItemDetail(' + item.id + ')">' +
       '<div class="card-img-wrap">' +
-        '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + (item.item_name_translated || item.item_name_en || item.name) + '" loading="lazy">' +
+        '<img src="' + getImageUrl(item.item_image || item.image) + '" alt="' + escapeHtml(item.item_name_translated || item.item_name_en || item.name) + '" loading="lazy">' +
         getTypeIcon(item.item_type) + cardBadgesHtml(item) + favHeartHtml(item) +
         (oos ? '<span class="img-oos">' + oosLabel(item) + '</span>' : '') +
       '</div>' +
       '<div class="card-body">' +
-        '<div class="card-name">' + (item.item_name_translated || item.item_name_en || item.name) + '</div>' +
+        '<div class="card-name">' + escapeHtml(item.item_name_translated || item.item_name_en || item.name) + '</div>' +
         '<div class="card-price">' + cardPriceHtml(item) + '</div>' +
         (!oos ? '<span id="btn-' + item.id + '">' + renderCartBtn(item.id, item) + '</span>' : '') +
       '</div>' +
@@ -2320,7 +2320,7 @@ function showItemDetail(itemId) {
   selectedVariant = null;
 
   var imgUrl = getImageUrl(item.item_image || item.image);
-  var itemName = item.item_name_translated || item.item_name_en || item.name;
+  var itemName = escapeHtml(item.item_name_translated || item.item_name_en || item.name);
   var itemDesc = item.item_description_en || item.desc || '';
   var descFmt = item.description_format || 'paragraph';
   var itemPrice = parseFloat(item.base_price || item.price || 0);
@@ -2330,7 +2330,7 @@ function showItemDetail(itemId) {
   var itemType = item.item_type || '';
   var prepTime = item.preparation_time || '';
   var itemCalories = item.calories || 0;
-  var menuName = item.menu_name_translated || item.menu_name || '';
+  var menuName = escapeHtml(item.menu_name_translated || item.menu_name || '');
 
   var html = '';
 
@@ -3323,7 +3323,7 @@ function isRestaurantOpen(hours) {
   var days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
   // Use restaurant's timezone if available, else local time
   var now = new Date();
-  if (window.restaurantTimezoneOffset) {
+  if (typeof window.restaurantTimezoneOffset === 'number') {
     var utc = now.getTime() + now.getTimezoneOffset() * 60000;
     now = new Date(utc + window.restaurantTimezoneOffset * 60000);
   }

@@ -59,6 +59,12 @@ try {
         exit;
     }
 
+    // changing settings or a balance is money: owner / manager only, as in Offers › Combos
+    if (!hasPermission(PERMISSION_MANAGE_COUPONS) && !hasPermission(PERMISSION_MANAGE_MENU)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'You don’t have permission to change the wallet.']);
+        exit;
+    }
     $in = json_decode(file_get_contents('php://input'), true) ?: [];
     $action = $in['action'] ?? '';
 

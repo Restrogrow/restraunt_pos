@@ -66,6 +66,15 @@ if (!preg_match('/^[a-zA-Z0-9.\-]{1,255}$/', $ip)) {
     echo json_encode(['success' => false, 'message' => 'Invalid printer address']);
     exit;
 }
+// A printer is never this server itself (or the cloud metadata address): without this, any staff
+// login could make the server send raw bytes to its own database / mail ports. Connect to the
+// address checked here, not the name again (it could resolve differently a second time).
+$resolved = gethostbyname($ip);
+if (!filter_var($resolved, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
+    || preg_match('/^(127\.|0\.|169\.254\.)/', $resolved)) {
+    echo json_encode(['success' => false, 'message' => 'Invalid printer address']);
+    exit;
+}
 
 $raw = '';
 if (!$testOnly) {
@@ -85,7 +94,7 @@ if (!$testOnly) {
 
 $errno = 0;
 $errstr = '';
-$socket = @fsockopen($ip, $port, $errno, $errstr, 5);
+$socket = @fsockopen($resolved, $port, $errno, $errstr, 5);
 
 if (!$socket) {
     echo json_encode([

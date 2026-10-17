@@ -18,6 +18,12 @@ if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
     echo json_encode(['success' => false, 'message' => 'Please log in again.']);
     exit;
 }
+// same gate as get_payments.php: the restaurant's takings aren't for every staff role
+if (!hasPermission(PERMISSION_MANAGE_PAYMENTS)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You don’t have access to payments.']);
+    exit;
+}
 $rid = (string)$_SESSION['restaurant_id'];
 session_write_close();
 require_once __DIR__ . '/../db_connection.php';

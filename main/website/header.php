@@ -52,14 +52,18 @@ function findRestaurantBySlug($conn, $slug) {
 }
 
 $restaurant_id = null;
-$restaurant_id_param = isset($_GET['restaurant_id']) ? trim($_GET['restaurant_id']) : '';
-$restaurant_slug = isset($_GET['restaurant']) ? trim($_GET['restaurant']) : '';
+$restaurant_id_param = isset($_GET['restaurant_id']) && is_string($_GET['restaurant_id']) ? trim($_GET['restaurant_id']) : '';
+$restaurant_slug = isset($_GET['restaurant']) && is_string($_GET['restaurant']) ? trim($_GET['restaurant']) : '';
 $has_id_param = $restaurant_id_param !== '';
 $has_slug_param = $restaurant_slug !== '';
 
 if ($has_id_param) {
     $restaurant_id = $restaurant_id_param;
-    $_SESSION['restaurant_id'] = $restaurant_id;
+    // The dashboard shares this session: never move a signed-in owner/staff
+    // member's session onto the restaurant whose website they're looking at
+    if (empty($_SESSION['user_id']) && empty($_SESSION['staff_id']) && empty($_SESSION['branch_admin_id'])) {
+        $_SESSION['restaurant_id'] = $restaurant_id;
+    }
 } elseif ($has_slug_param) {
 } elseif (isset($_SESSION['restaurant_id']) && $_SESSION['restaurant_id'] !== '') {
     $restaurant_id = $_SESSION['restaurant_id'];
@@ -256,6 +260,12 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                     // No restaurant_logo set, try BLOB logo_data
                     $restaurant_logo = 'image.php?type=logo&id=' . urlencode($row['id']);
                 }
+            } elseif ($has_id_param) {
+                // ?restaurant_id= names no restaurant: real 404, same as an unknown slug
+                ob_end_clean();
+                http_response_code(404);
+                include __DIR__ . '/404.php';
+                exit();
             }
         }
     } catch (Exception $e) {

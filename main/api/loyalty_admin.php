@@ -36,6 +36,12 @@ if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
     echo json_encode(['success' => false, 'message' => 'Authentication required']);
     exit;
 }
+// same gate as controllers/growth_operations.php: owner / manager, not every staff login
+if (!hasPermission(PERMISSION_MANAGE_LOYALTY)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You do not have access to loyalty settings.']);
+    exit;
+}
 $rid = $_SESSION['restaurant_id'];
 session_write_close();
 

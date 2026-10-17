@@ -6,10 +6,10 @@ require_once __DIR__ . '/../config/growth_helpers.php';
 
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['restaurant_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Not authenticated']);
-    exit;
-}
+// The customer website stores the restaurant it shows in the same session,
+// so restaurant_id alone doesn't mean a dashboard login.
+require_once __DIR__ . '/../config/authorization_config.php';
+requireLogin(true);
 
 $restaurant_id = $_SESSION['restaurant_id'];
 

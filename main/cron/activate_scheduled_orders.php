@@ -19,7 +19,8 @@
 $isCli = (php_sapi_name() === 'cli');
 
 if (!$isCli) {
-    $cronKey = getenv('CRON_SECRET_KEY') ?: null;
+    require_once __DIR__ . '/../config/env_loader.php';
+    $cronKey = env('CRON_SECRET_KEY') ?: null;
     if (!$cronKey || !isset($_GET['key']) || !hash_equals($cronKey, (string)$_GET['key'])) {
         http_response_code(403);
         header('Content-Type: text/plain');

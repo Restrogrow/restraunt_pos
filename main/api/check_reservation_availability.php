@@ -28,12 +28,12 @@ if (!$table_id || !$reservation_date || !$time_slot) {
 try {
     $conn = getConnection();
     
-    // Resolve restaurant ID: session > query > default
-    $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? 'RES001');
+    // Resolve restaurant ID: query (the site being viewed) > session > default
+    $restaurant_id = $_GET['restaurant_id'] ?? ($_SESSION['restaurant_id'] ?? 'RES001');
     
     // Check if table is already reserved for this date and time
     // Only check active reservations (not cancelled or completed)
-    $stmt = $conn->prepare("SELECT id, customer_name, phone 
+    $stmt = $conn->prepare("SELECT id 
                             FROM reservations 
                             WHERE restaurant_id = ? 
                             AND table_id = ? 
@@ -48,12 +48,7 @@ try {
         echo json_encode([
             'success' => true,
             'available' => false,
-            'message' => 'This table is already reserved for the selected date and time',
-            'existing_reservation' => [
-                'id' => $existing['id'],
-                'customer_name' => $existing['customer_name'],
-                'phone' => $existing['phone']
-            ]
+            'message' => 'This table is already reserved for the selected date and time'
         ]);
     } else {
         echo json_encode([

@@ -1,4 +1,4 @@
- <?php
+<?php
 // Suppress error display, log errors instead
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -175,7 +175,7 @@ try {
     } catch (PDOException $e) {
         // Column doesn't exist
     }
-    $includeHidden = $canManageMenu && isset($_GET['include_hidden']) && $_GET['include_hidden'] == '1';
+    $includeHidden = $canManageMenu && $restaurant_id === ($_SESSION['restaurant_id'] ?? null) && isset($_GET['include_hidden']) && $_GET['include_hidden'] == '1';
 
     // Build the query - explicitly select columns (exclude binary image_data to avoid JSON issues)
     $translationsCol = $hasItemTranslations ? ", mi.translations" : "";

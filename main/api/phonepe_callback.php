@@ -126,14 +126,16 @@ try {
         exit();
     }
 
-    $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = ?, updated_at = NOW() WHERE id = ?");
+    // never turn a success back into failed; only the request that flips it to success extends the plan
+    $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = ?, updated_at = NOW() WHERE id = ? AND payment_status <> 'success'");
     $updateStmt->execute([$payment_status, $payment['id']]);
 
-    if ($payment_status === 'success') {
-        $durationMonths = (int)($payment['duration_months'] ?: 1);
-        $renewal_date = date('Y-m-d', strtotime("+{$durationMonths} months"));
-        $userUpdate = $conn->prepare("UPDATE users SET subscription_status = 'active', renewal_date = ?, is_active = 1 WHERE id = ?");
-        $userUpdate->execute([$renewal_date, $payment['user_id']]);
+    if ($payment_status === 'success' && $updateStmt->rowCount() > 0) {
+        $durationMonths = max(1, (int)($payment['duration_months'] ?: 1));
+        // added on top of the days still left (an early renewal must not lose them), as Super Admin does
+        $userUpdate = $conn->prepare("UPDATE users SET subscription_status = 'active', renewal_date = DATE_ADD(GREATEST(COALESCE(renewal_date, CURDATE()), CURDATE()), INTERVAL ? MONTH), is_active = 1 WHERE id = ?");
+        $userUpdate->execute([$durationMonths, $payment['user_id']]);
+        $renewal_date = (string)$conn->query('SELECT renewal_date FROM users WHERE id = ' . (int)$payment['user_id'])->fetchColumn();
         error_log('PhonePe subscription webhook: activated user=' . $payment['user_id'] . ' for ' . $durationMonths . ' month(s), renews ' . $renewal_date);
     }
 

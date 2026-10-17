@@ -69,16 +69,23 @@ if (!function_exists('activateDueScheduledOrders')) {
         ensureOrdersScheduleColumns($conn);
 
         try {
-            $sql = "SELECT id, restaurant_id FROM orders
-                    WHERE order_status = 'Scheduled' AND scheduled_at IS NOT NULL AND scheduled_at <= NOW()";
+            // scheduled_at is the restaurant's own wall-clock time (process_website_order.php), so
+            // "due" is checked against each restaurant's clock, not this connection's NOW()
+            $sql = "SELECT o.id, o.restaurant_id, o.scheduled_at,
+                           (SELECT u.timezone FROM users u WHERE u.restaurant_id = o.restaurant_id LIMIT 1) AS tz
+                    FROM orders o
+                    WHERE o.order_status = 'Scheduled' AND o.scheduled_at IS NOT NULL AND o.scheduled_at <= NOW() + INTERVAL 1 DAY";
             $params = [];
             if ($restaurantId !== null) {
-                $sql .= " AND restaurant_id = ?";
+                $sql .= " AND o.restaurant_id = ?";
                 $params[] = $restaurantId;
             }
             $stmt = $conn->prepare($sql);
             $stmt->execute($params);
-            $dueOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $dueOrders = array_filter($stmt->fetchAll(PDO::FETCH_ASSOC), function ($r) {
+                $tz = (!empty($r['tz']) && in_array($r['tz'], timezone_identifiers_list(), true)) ? $r['tz'] : 'Asia/Kolkata';
+                return (string)$r['scheduled_at'] <= (new DateTime('now', new DateTimeZone($tz)))->format('Y-m-d H:i:s');
+            });
         } catch (PDOException $e) {
             error_log('activateDueScheduledOrders: lookup failed: ' . $e->getMessage());
             return 0;

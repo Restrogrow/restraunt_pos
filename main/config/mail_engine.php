@@ -242,7 +242,7 @@ if (!function_exists('mailQueue')) {
         $st = $conn->prepare("SELECT * FROM email_outbox WHERE status = 'queued' AND send_after <= NOW() ORDER BY id LIMIT " . max(1, $limit));
         $st->execute();
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $m) {
-            $claim = $conn->prepare("UPDATE email_outbox SET status = 'sending', attempts = attempts + 1 WHERE id = ? AND status = 'queued'");
+            $claim = $conn->prepare("UPDATE email_outbox SET status = 'sending', attempts = attempts + 1, send_after = NOW() WHERE id = ? AND status = 'queued'");
             $claim->execute([$m['id']]);
             if ($claim->rowCount() === 0) continue;   // another run took it
             [$ok, $err] = mailDeliver($m);

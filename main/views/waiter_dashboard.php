@@ -487,9 +487,12 @@ $initials = strtoupper(mb_substr($name_parts[0] ?? 'W', 0, 1) . (count($name_par
             }
             
             container.innerHTML = items.map(item => {
-                const itemName = (item.item_name_translated || item.item_name_en || item.item_name || '').replace(/'/g, "\\'");
+                // a name like 12" Pizza or Chef's Special must not break the onclick attribute
+                const rawName = item.item_name_translated || item.item_name_en || item.item_name || '';
+                const jsArg = s => JSON.stringify(String(s)).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+                const itemName = String(rawName).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                 return `
-                    <div class="pos-menu-item" onclick="addToWaiterPOSCart(${item.id}, '${itemName}', ${item.base_price || item.price}, '${item.item_image || ''}')" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; text-align: center;">
+                    <div class="pos-menu-item" onclick="addToWaiterPOSCart(${item.id}, ${jsArg(rawName)}, ${parseFloat(item.base_price || item.price) || 0}, ${jsArg(item.item_image || '')})" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; text-align: center;">
                         <div class="item-image" style="width: 100%; height: 120px; background: #f9fafb; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; overflow: hidden;">
                             ${(() => {
                                 if (!item.item_image) return '<span class="material-symbols-rounded" style="font-size: 3rem; color: #9ca3af;">restaurant</span>';
@@ -504,7 +507,7 @@ $initials = strtoupper(mb_substr($name_parts[0] ?? 'W', 0, 1) . (count($name_par
                                 return `<img src="${imageUrl}" alt="${itemName}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">`;
                             })()}
                         </div>
-                        <div class="item-name" style="font-weight: 600; margin-bottom: 4px; color: #111827;">${item.item_name_translated || item.item_name_en || item.item_name}</div>
+                        <div class="item-name" style="font-weight: 600; margin-bottom: 4px; color: #111827;">${itemName}</div>
                         <div class="item-category" style="font-size: 0.875rem; color: #6b7280; margin-bottom: 8px;">${item.item_category || ''}</div>
                         <div class="item-price" style="font-weight: 700; color: #3b82f6; font-size: 1.1rem;">${waiterCurrencySymbol}${parseFloat(item.base_price || item.price || 0).toFixed(2)}</div>
                     </div>
@@ -651,7 +654,7 @@ $initials = strtoupper(mb_substr($name_parts[0] ?? 'W', 0, 1) . (count($name_par
                 container.innerHTML = window.posCart.map(item => `
                     <div class="cart-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e5e7eb;">
                         <div class="cart-item-info" style="flex: 1;">
-                            <div class="cart-item-name" style="font-weight: 600; margin-bottom: 4px;">${item.name}</div>
+                            <div class="cart-item-name" style="font-weight: 600; margin-bottom: 4px;">${String(item.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
                             <div class="cart-item-price" style="font-size: 0.875rem; color: #6b7280;">${waiterCurrencySymbol}${parseFloat(item.price).toFixed(2)} each</div>
                         </div>
                         <div class="cart-item-controls" style="display: flex; align-items: center; gap: 12px; margin: 0 16px;">

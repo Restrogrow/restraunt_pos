@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/maintenance_guard.php';
+enforceMaintenanceAccess();
 /**
  * Error Monitoring System — Database Migration
  * 

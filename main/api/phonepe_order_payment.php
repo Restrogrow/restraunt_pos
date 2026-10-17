@@ -242,7 +242,7 @@ function handleCreatePayment() {
 
         $payload = [
             'merchantOrderId' => $transaction_id,
-            'amount' => (int)($amount * 100),
+            'amount' => (int)round($amount * 100),
             'expireAfter' => 1200,
             'paymentFlow' => [
                 'type' => 'PG_CHECKOUT',

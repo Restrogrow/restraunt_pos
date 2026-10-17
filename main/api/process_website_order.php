@@ -488,7 +488,13 @@ if ($orderType === 'delivery') {
             $zoneStmt->execute([$delivery_zone_id, $restaurant_id]);
             $zoneRow = $zoneStmt->fetch(PDO::FETCH_ASSOC);
             $delivery_charge = $zoneRow ? (float)$zoneRow['delivery_charge'] : 0;
+        } else {
+            // No km pricing and no zone: the checkout never sends a charge here
+            $delivery_charge = 0;
         }
+    } else {
+        // Dine-in / Takeaway carry no delivery charge (a negative one would discount the bill)
+        $delivery_charge = 0;
     }
 
 if ($use_wallet) {

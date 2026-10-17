@@ -144,7 +144,7 @@ try {
 
             $payload = [
                 'merchantOrderId' => $transaction_id,
-                'amount' => (int)($amount * 100), // Convert to paise
+                'amount' => (int)round($amount * 100), // Convert to paise
                 'expireAfter' => 1200,
                 'paymentFlow' => [
                     'type' => 'PG_CHECKOUT',
@@ -217,11 +217,12 @@ try {
                 $verifiedState = phonepeVerifyOrderState($conn, null, $transaction_id);
 
                 if ($verifiedState === 'COMPLETED' || $verifiedState === 'SUCCESS') {
-                    $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = 'success', updated_at = NOW() WHERE id = ?");
+                    // only the request that flips it to success extends the plan (the webhook may race this poll)
+                    $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = 'success', updated_at = NOW() WHERE id = ? AND payment_status <> 'success'");
                     $updateStmt->execute([$payment['id']]);
 
                     // Activate subscription
-                    activateSubscription($conn, $user_id, $restaurant_id, $payment['duration_months']);
+                    if ($updateStmt->rowCount() > 0) activateSubscription($conn, $user_id, $restaurant_id, $payment['duration_months']);
 
                     $payment['payment_status'] = 'success';
                 } elseif (in_array($verifiedState, ['FAILED', 'REJECTED', 'CANCELLED'])) {
@@ -271,9 +272,11 @@ try {
  * Helper: Activate subscription for a user
  */
 function activateSubscription($conn, $user_id, $restaurant_id, $duration_months = 1) {
-    $renewal_date = date('Y-m-d', strtotime("+{$duration_months} months"));
-    $stmt = $conn->prepare("UPDATE users SET subscription_status = 'active', renewal_date = ?, is_active = 1 WHERE id = ?");
-    $stmt->execute([$renewal_date, $user_id]);
+    // added on top of the days still left (an early renewal must not lose them), as Super Admin does
+    $duration_months = max(1, (int)$duration_months);
+    $stmt = $conn->prepare("UPDATE users SET subscription_status = 'active', renewal_date = DATE_ADD(GREATEST(COALESCE(renewal_date, CURDATE()), CURDATE()), INTERVAL ? MONTH), is_active = 1 WHERE id = ?");
+    $stmt->execute([$duration_months, $user_id]);
+    $renewal_date = (string)$conn->query('SELECT renewal_date FROM users WHERE id = ' . (int)$user_id)->fetchColumn();
 
     error_log("Subscription activated for user {$user_id} (restaurant {$restaurant_id}) until {$renewal_date}");
 }

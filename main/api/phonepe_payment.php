@@ -153,7 +153,7 @@ try {
         'merchantId' => PHONEPE_MERCHANT_ID,
         'merchantTransactionId' => $merchant_transaction_id,
         'merchantUserId' => $merchant_user_id,
-        'amount' => (int)($amount * 100), // Amount in paise (multiply by 100)
+        'amount' => (int)round($amount * 100), // Amount in paise (multiply by 100)
         'redirectUrl' => $redirect_url,
         'redirectMode' => 'POST',
         'callbackUrl' => $callback_url,

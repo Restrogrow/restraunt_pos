@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/maintenance_guard.php';
+enforceMaintenanceAccess();
 // Payment proof screenshots live in their own table (not a BLOB column on
 // orders) so that existing `SELECT o.*` queries elsewhere in the codebase
 // can't accidentally pull binary image data into a json_encode() call.

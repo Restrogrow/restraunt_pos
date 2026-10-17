@@ -188,6 +188,7 @@ try {
                 GREATEST(DATEDIFF(COALESCE(renewal_date, trial_end_date, DATE_ADD(DATE(created_at), INTERVAL 30 DAY)), CURRENT_DATE()), 0) AS days_left,
                 CASE
                   WHEN subscription_status = 'disabled' THEN 'Disabled'
+                  WHEN subscription_status = 'expired' THEN 'Expired'
                   WHEN CURRENT_DATE() < COALESCE(renewal_date, trial_end_date, DATE_ADD(DATE(created_at), INTERVAL 30 DAY)) THEN 'Active'
                   ELSE 'Expired'
                 END AS trial_status
@@ -1072,95 +1073,61 @@ break;
       $txn_id = $link['transaction_id'];
       $pp_order_id = $link['phonepe_order_id'] ?? '';
 
-      if ($isSandbox) {
-        // v2 OAuth status check
-        $auth_url = $phonepe_base_url . '/v1/oauth/token';
-        $ch = curl_init($auth_url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-          'client_id' => $client_id,
-          'client_version' => $client_version,
-          'client_secret' => $client_secret,
-          'grant_type' => 'client_credentials',
-        ]));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        $auth_resp = curl_exec($ch);
-        $auth_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+      // v2 OAuth status check for sandbox and production alike: links are created
+      // on v2 (createPaymentLink), which the old v1 hash status API can't see
+      $auth_url = $isSandbox
+          ? $phonepe_base_url . '/v1/oauth/token'
+          : 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
+      $ch = curl_init($auth_url);
+      curl_setopt($ch, CURLOPT_POST, true);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'client_id' => $client_id,
+        'client_version' => $client_version,
+        'client_secret' => $client_secret,
+        'grant_type' => 'client_credentials',
+      ]));
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+      curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+      $auth_resp = curl_exec($ch);
+      $auth_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      curl_close($ch);
 
-        if ($auth_http !== 200 || !($auth_data = json_decode($auth_resp, true)) || !isset($auth_data['access_token'])) {
-          echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Could not authenticate with sandbox API']);
-          break;
-        }
+      if ($auth_http !== 200 || !($auth_data = json_decode($auth_resp, true)) || !isset($auth_data['access_token'])) {
+        echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Could not authenticate with PhonePe API']);
+        break;
+      }
 
-        // Use PhonePe's orderId if available, else fall back to transaction_id
-        $lookup_id = !empty($pp_order_id) ? $pp_order_id : $txn_id;
-        $status_url = $phonepe_base_url . '/checkout/v2/order/' . urlencode($lookup_id) . '/status';
-        $ch = curl_init($status_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-          'Authorization: O-Bearer ' . $auth_data['access_token'],
-          'Accept: application/json',
-        ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        $resp = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+      // v2 status is looked up by our merchantOrderId (the transaction_id sent to /checkout/v2/pay)
+      $lookup_id = $txn_id;
+      $status_url = $phonepe_base_url . '/checkout/v2/order/' . urlencode($lookup_id) . '/status';
+      $ch = curl_init($status_url);
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: O-Bearer ' . $auth_data['access_token'],
+        'Accept: application/json',
+      ]);
+      curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+      $resp = curl_exec($ch);
+      $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      curl_close($ch);
 
-        if ($http_code === 200 && $resp) {
-          $status_data = json_decode($resp, true);
-          $state = $status_data['state'] ?? $status_data['orderStatus'] ?? $status_data['responseCode'] ?? '';
-          if (in_array($state, ['COMPLETED', 'SUCCESS', 'PAYMENT_SUCCESS'])) {
-            $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Success' WHERE id = ?");
-            $stmt->execute([$id]);
-            echo json_encode(['success' => true, 'payment_status' => 'Success', 'message' => 'Payment confirmed!']);
-          } elseif (in_array($state, ['FAILED', 'REJECTED', 'CANCELLED', 'PAYMENT_FAILED', 'PAYMENT_ERROR'])) {
-            $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Failed' WHERE id = ?");
-            $stmt->execute([$id]);
-            echo json_encode(['success' => true, 'payment_status' => 'Failed', 'message' => 'Payment failed']);
-          } else {
-            echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Payment still pending', 'api_status' => $state]);
-          }
+      if ($http_code === 200 && $resp) {
+        $status_data = json_decode($resp, true);
+        $state = $status_data['state'] ?? $status_data['orderStatus'] ?? $status_data['responseCode'] ?? '';
+        if (in_array($state, ['COMPLETED', 'SUCCESS', 'PAYMENT_SUCCESS'])) {
+          $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Success' WHERE id = ?");
+          $stmt->execute([$id]);
+          echo json_encode(['success' => true, 'payment_status' => 'Success', 'message' => 'Payment confirmed!']);
+        } elseif (in_array($state, ['FAILED', 'REJECTED', 'CANCELLED', 'PAYMENT_FAILED', 'PAYMENT_ERROR'])) {
+          $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Failed' WHERE id = ?");
+          $stmt->execute([$id]);
+          echo json_encode(['success' => true, 'payment_status' => 'Failed', 'message' => 'Payment failed']);
         } else {
-          echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Could not verify status (HTTP: ' . $http_code . ')']);
+          echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Payment still pending', 'api_status' => $state]);
         }
       } else {
-        // Production: v1 hash-based status check
-        $status_url = $phonepe_base_url . '/pg/v1/status/' . urlencode($client_id) . '/' . urlencode($txn_id);
-        $x_verify = hash('sha256', '/pg/v1/status/' . $client_id . '/' . $txn_id . $client_secret) . '###' . $client_version;
-
-        $ch = curl_init($status_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-          'X-VERIFY: ' . $x_verify,
-          'Accept: application/json',
-        ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($http_code === 200 && $response) {
-          $status_data = json_decode($response, true);
-          $state = $status_data['state'] ?? $status_data['code'] ?? '';
-
-          if ($status_data['success'] === true && ($state === 'COMPLETED' || $state === 'SUCCESS' || $state === 'PAYMENT_SUCCESS')) {
-            $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Success' WHERE id = ?");
-            $stmt->execute([$id]);
-            echo json_encode(['success' => true, 'payment_status' => 'Success', 'message' => 'Payment confirmed!']);
-          } elseif ($status_data['success'] === false || in_array($state, ['FAILED', 'REJECTED', 'CANCELLED', 'PAYMENT_FAILED', 'PAYMENT_ERROR'])) {
-            $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Failed' WHERE id = ?");
-            $stmt->execute([$id]);
-            echo json_encode(['success' => true, 'payment_status' => 'Failed', 'message' => 'Payment failed']);
-          } else {
-            echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Payment still pending', 'api_status' => $state]);
-          }
-        } else {
-          echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Could not verify status (HTTP: ' . $http_code . ')']);
-        }
+        echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Could not verify status (HTTP: ' . $http_code . ')']);
       }
       break;
 
@@ -1429,13 +1396,13 @@ break;
       $findItemStmt = $conn->prepare("SELECT id FROM menu_items WHERE restaurant_id = :rid AND menu_id = :mid AND item_name_en = :name");
       $updateItemStmt = $conn->prepare("UPDATE menu_items SET subcategory_id = :sid, item_description_en = :desc, base_price = :price, item_type = :type, preparation_time = :prep, calories = :cal, is_available = :stock, has_variations = :hvar, item_image = :iimg WHERE id = :iid");
 
-      if ($mode === 'replace') {
-        // Full replace: delete all menu (cascades to subcategories and items)
-        $conn->exec("DELETE FROM menu WHERE restaurant_id = " . $conn->quote($restaurant_id));
-      }
-
       $conn->beginTransaction();
       try {
+        if ($mode === 'replace') {
+          // Full replace: delete all menu (cascades to subcategories and items), inside the
+          // transaction so a bad line rolls the old menu back instead of leaving it empty
+          $conn->exec("DELETE FROM menu WHERE restaurant_id = " . $conn->quote($restaurant_id));
+        }
         foreach ($lines as $i => $line) {
           $line = trim($line);
           if ($line === '') continue;
