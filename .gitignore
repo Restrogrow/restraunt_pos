@@ -97,3 +97,7 @@ app-demo-local/
 # Local-only copies of those builds (base path /menuwebsite/)
 staff-app-demo-local/
 superadmin-app-web-local/
+# Blog images are uploaded on the server (Super Admin > Blog); only the folder's guards are in git
+main/uploads/blog/*
+!main/uploads/blog/.htaccess
+!main/uploads/blog/index.php

@@ -29,9 +29,9 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Website look & settings | 18 |
 | Security & accounts | 10 |
 | Apps | 18 |
-| Super Admin (platform) | 29 |
+| Super Admin (platform) | 33 |
 | Demo & sales tools | 10 |
-| **Total built** | **276** |
+| **Total built** | **280** |
 | Planned, not built | 19 |
 
 ## Orders & POS
@@ -389,6 +389,10 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Super Admin login and reset | Separate login with forgot-password. | restrogrow.com/main/superadmin/ | super admin | Reset email goes to one fixed Gmail address |
 | Database tools | Links to run database indexes and migrations. | Super Admin › System › Settings | super admin | "Database Performance Test" link is broken |
 | Superadmin app login | Lets the Super Admin phone app sign in. | Super Admin app | super admin | — |
+| Blog | restrogrow.com/blog: blog home with featured post, categories, tags, search and pages; post pages with table of contents, share buttons, related posts and a free-trial band; RSS feed (/blog/feed.xml) and blog sitemap (/sitemap-blog.xml). Fully SEO-ready: meta tags, Open Graph, Article, Breadcrumb and FAQ structured data. | restrogrow.com/blog | customer (visitors) | — |
+| Blog editor | Write posts with headings, lists, links, images (upload, paste or drag; resized and saved as WEBP) and videos; cover image with alt text; categories and tags; draft, publish now or schedule; feature on the blog home; preview drafts; duplicate; views per post. | Super Admin › Tools › Blog | super admin | — |
+| Blog SEO tools | Focus keyword, SEO title, meta description, keywords and canonical URL with a live 15-point SEO score and a Google preview; Fill with AI (Gemini) for the SEO fields; Write a draft with AI from a topic and keyword. | Super Admin › Tools › Blog › editor | super admin | GEMINI_API_KEY for the AI buttons |
+| Blog keyword plan | List of the searches to rank for (type, priority, monthly searches, notes, status idea → planned → written), which posts cover each, gaps with no post yet, "Write post" from a keyword, bulk add, and AI keyword ideas. | Super Admin › Tools › Blog › Keywords | super admin | — |
 
 ## Demo & sales tools
 

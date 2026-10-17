@@ -13,6 +13,7 @@ Allow: /main/uploads/menu_items/
 Allow: /main/uploads/logos/
 Allow: /main/uploads/banners/
 Allow: /main/uploads/seo/
+Allow: /main/uploads/blog/
 Disallow: /*/cart$
 Disallow: /*/profile$
 Disallow: /*/login$
@@ -29,3 +30,4 @@ Allow: /assets/
 Sitemap: https://restrogrow.com/sitemap.xml
 Sitemap: https://restrogrow.com/sitemap-restaurants.xml
 
+Sitemap: https://restrogrow.com/sitemap-blog.xml

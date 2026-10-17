@@ -300,6 +300,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">mail</span>
           <span class="text">Email<?php if ($saMailFailed): ?> <span class="badge-new" style="background:#dc2626" title="Failed in the last 7 days"><?php echo $saMailFailed; ?></span><?php endif; ?></span>
         </a>
+        <a class="menu-link" href="blog.php">
+          <span class="material-symbols-rounded icon">edit_note</span>
+          <span class="text">Blog</span>
+        </a>
         <a class="menu-link" href="email_book.php">
           <span class="material-symbols-rounded icon">auto_stories</span>
           <span class="text">Email book</span>

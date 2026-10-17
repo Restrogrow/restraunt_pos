@@ -110,6 +110,8 @@ Re-create everything with `php main/database/seed_multibranch_demo.php` (this al
 
 **Delivery riders** (plan and status: `docs/RIDER_PLAN.md`): switched on per restaurant in **Settings › Delivery › "We deliver with our own riders"** (off by default; while off, Delivery › Riders, the Delivery rider staff role, Assign rider and the apps' Riders tile are hidden and the server refuses rider actions; the QR link for outside riders always works). Staff with the role "Delivery rider" log in to the Staff app or the website and see only their deliveries (Picked up → On the way → Delivered, cash on delivery, live location for the customer). The owner or a manager assigns deliveries in Order details or Delivery › Riders (also More › Riders in both apps), and settles the riders' cash there. "Riders can pick open deliveries themselves" is a switch on that page. The old QR link stays for outside riders. Demo riders: `rider.demo@spicegarden.test` / `demo`.
 
+**Blog: Super Admin › Tools › Blog** (`main/superadmin/blog.php`, API `blog_api.php`, engine `main/config/blog_engine.php`, public pages `blog/*.php`). Write posts (editor with images, cover, categories, tags), schedule or publish, and get a live SEO score with a Google preview; "Fill with AI" and "Write a draft with AI" use Gemini. The **Keywords** tab is the keyword plan: add searches to rank for (or AI ideas), see which posts cover them and which have no post yet, and start a post from a keyword. Public: `restrogrow.com/blog`, `/blog/<post>`, `/blog/category/<name>`, `/blog/feed.xml`, `/sitemap-blog.xml` (listed in robots.txt). Uploaded images go to `main/uploads/blog/` on the server (not in git). Always read AI drafts and add real experience before publishing.
+
 **See every email: Super Admin › Tools › Email book** (`main/superadmin/email_book.php`). All emails full size, grouped by who gets them, with when and why each is sent, and what's still needed to switch sending on (green when done). It is made live from the sending code, so it is always up to date.
 
 **Manage everything in Super Admin › Tools › Email:**
@@ -157,6 +159,7 @@ Sidebar groups, and what each page does:
   - Error monitor.
 - **Tools:**
   - My to-do: the jobs only you can do (keys, approvals, cron, DNS).
+  - Blog: posts, keyword plan, categories, SEO and AI writing help.
   - Email book: every email full size, who gets it, when and why.
   - Email: every email with previews and test sends, the sent log, on/off per email, cron status.
   - Admin handbook: this file, plus every other doc in the repo.

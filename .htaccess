@@ -51,7 +51,13 @@ RewriteRule ^(.*)$ $1.html [L]
 
 # Clean URLs for pages
 RewriteRule ^about/?$ about/index.html [L]
-RewriteRule ^blog/?$ blog/index.html [L]
+# Blog (managed in Super Admin › Blog; blog/*.php)
+RewriteRule ^blog/_layout\.php$ - [F,L]
+RewriteRule ^blog/?$ blog/index.php [L,QSA]
+RewriteRule ^blog/feed\.xml$ blog/feed.php [L]
+RewriteRule ^blog/category/([a-z0-9-]+)/?$ blog/index.php?category=$1 [L,QSA]
+RewriteRule ^blog/([a-z0-9-]+)/?$ blog/post.php?slug=$1 [L,QSA]
+RewriteRule ^sitemap-blog\.xml$ blog/sitemap.php [L]
 RewriteRule ^faq/?$ faq/index.html [L]
 RewriteRule ^privacy-policy/?$ privacy-policy/index.html [L]
 RewriteRule ^terms-of-service/?$ terms-of-service/index.html [L]
