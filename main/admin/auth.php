@@ -797,6 +797,7 @@ function handleSignup() {
         try {
             require_once __DIR__ . '/../config/mail_engine.php';
             mailOwnerWelcome($pdo, $restaurantId);
+            obWelcomeWhatsapp($pdo, $restaurantId);   // only with an approved template (REPEATGROW_WELCOME_TEMPLATE)
         } catch (Throwable $e) { error_log('signup emails: ' . $e->getMessage()); }
     }
     if ($result && $viaGoogle) {

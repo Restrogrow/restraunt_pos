@@ -36,6 +36,7 @@ if (!function_exists('mailQueue')) {
             'password_reset'  => ['Password reset links (always on)', 'owner', 'accounts', true],
             'team_lead'       => ['New lead to the RestroGrow team (contact form, chatbot)', 'team', 'sales', true],
             'team_signup'     => ['New restaurant signed up (to the team)', 'team', 'sales', true],
+            'setup_nudge'     => ['Setup reminders on day 1, 3 and 7 after sign-up (until the guide is done)', 'owner', 'sales', true],
             'lead_autoreply'  => ['"We got your message" to people who use the contact form', 'team', 'sales', true],
             'order_confirmed' => ['Order confirmed (to the customer)', 'customer', 'orders', true],
             'order_alert'     => ['New order (to the restaurant)', 'customer', 'alerts', true],
@@ -658,7 +659,7 @@ if (!function_exists('mailQueue')) {
     function mailSweep(PDO $conn, bool $force = false): array
     {
         mailEnsure($conn);
-        $done = ['trial' => 0, 'renewal' => 0, 'receipts' => 0, 'gifts' => 0, 'bookings' => 0];
+        $done = ['trial' => 0, 'renewal' => 0, 'receipts' => 0, 'gifts' => 0, 'bookings' => 0, 'onboarding' => 0];
         try {
             $last = $conn->query("SELECT v FROM sa_settings WHERE k = 'mail_sweep_at'")->fetchColumn();
             if (!$force && $last && strtotime((string)$last) > time() - 3300) return $done;
@@ -699,6 +700,13 @@ if (!function_exists('mailQueue')) {
                 WHERE r.created_at > NOW() - INTERVAL 2 DAY AND c.email IS NOT NULL AND c.email <> '' AND COALESCE(c.whatsapp_optin, 0) = 0 AND COALESCE(r.notify_status, '') <> 'sent'");
             foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $g) if (mailGiftEmail($conn, $g)) $n++;
             return $n;
+        });
+
+        // unfinished sign-ups become leads; setup reminders on day 1, 3, 7 (config/onboarding.php)
+        $run('onboarding', function () use ($conn) {
+            require_once __DIR__ . '/onboarding.php';
+            $o = obSweep($conn);
+            return $o['leads'] + $o['nudges'];
         });
 
         // booking reminders: confirmed bookings for today, sent in the morning

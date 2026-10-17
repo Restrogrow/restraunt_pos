@@ -14,6 +14,7 @@ function mailSchedule(): array
     return [
         'owner_welcome'   => ['Right after a restaurant signs up', 'Signup on the website or with Google'],
         'team_signup'     => ['Right after a restaurant signs up', 'Goes to MAIL_TEAM (or the sending address)'],
+        'setup_nudge'     => ['Day 1, 3 and 7 after sign-up, while the "Get ready" guide is not done', $hourly . '; stops when the owner hides the guide'],
         'trial_ending'    => ['3 days before, 1 day before and on the day the trial ends', $hourly],
         'trial_ended'     => ['The day after the trial ended', $hourly],
         'renewal_due'     => ['7 days and 1 day before the plan renewal date', $hourly],
@@ -92,6 +93,9 @@ function mailPreviewAll(PDO $conn): array
         'reset_owner'    => ['Owner', function () use ($conn) { $b = mailPlatformBrand(); mailQueue($conn, 'password_reset', 'ravi@spicegarden.in', 'Reset your RestroGrow password', mailResetHtml($b, 'We got a request to reset the password for <b>Spice Garden</b>. Tap the button to choose a new one.', mailAppUrl() . '/main/admin/reset_password.php?token=sample', 5), ['brand' => $b]); }],
         'reset_customer' => ['Customer', function () use ($conn) { $b = mailRestaurantBrand($conn, 'SAMPLE'); mailQueue($conn, 'password_reset', 'priya@example.in', 'Reset your password · ' . $b['name'], mailResetHtml($b, 'Hi Priya Sharma, tap the button to choose a new password for your <b>Spice Garden</b> account.', $b['site'] . '/reset?token=sample', 30), ['brand' => $b]); }],
         'lead_form'      => ['Contact form', fn() => mailNewLead($conn, 'contact form', ['name' => 'Anil Mehta', 'email' => 'anil@example.in', 'phone' => '98765 00000', 'message' => "Hi, I run a cafe in Pune with 2 outlets.\nCan we see a demo this week?"])],
+        'lead_unfinished' => ['Unfinished sign-up', fn() => mailNewLead($conn, 'unfinished sign-up', ['name' => 'Sana Bakes', 'phone' => '98111 11111', 'message' => 'Started signing up on ' . date('j M') . ', 11:20 and reached the last step (restaurant "Sana Bakes") but did not finish. Call or WhatsApp them to help.'])],
+        'nudge1'         => ['Day 1', function () use ($conn, $ownerRow) { require_once __DIR__ . '/onboarding.php'; mailSetupNudge($conn, $ownerRow + ['username' => 'spicegarden'], [['title' => 'Add your menu', 'sub' => 'Type your dishes, or send us a photo of your menu'], ['title' => 'Share your website', 'sub' => 'Your customers order from it, no app needed'], ['title' => 'Take your first order', 'sub' => 'Bill a test order on the POS']], 1, ['done' => 2, 'total' => 5]); }],
+        'nudge7'         => ['Day 7', function () use ($conn, $ownerRow) { require_once __DIR__ . '/onboarding.php'; mailSetupNudge($conn, $ownerRow + ['username' => 'spicegarden'], [['title' => 'Take your first order', 'sub' => 'Bill a test order on the POS']], 7, ['done' => 4, 'total' => 5]); }],
         'lead_chat'      => ['Chatbot', fn() => mailNewLead($conn, 'website chatbot', ['name' => 'Sana', 'restaurant' => 'Sana Bakes', 'phone' => '98111 11111', 'message' => "• what is the price?\n• does it work without internet?"])],
         'order_new'      => ['', fn() => mailOrderConfirmed($conn, 0)],
         'order_accepted' => ['Accepted', $order('Accepted')],

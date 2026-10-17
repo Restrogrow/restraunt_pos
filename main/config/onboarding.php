@@ -124,7 +124,7 @@ function obSave(PDO $conn, string $rid, string $what, string $mark = ''): void
     elseif ($what === 'tour_again') $conn->prepare('UPDATE onboarding_state SET tour_done_at = NULL, tour_skipped_at = NULL WHERE restaurant_id = ?')->execute([$rid]);
     elseif ($what === 'guide_hidden') $conn->prepare('UPDATE onboarding_state SET guide_hidden_at = NOW() WHERE restaurant_id = ?')->execute([$rid]);
     elseif ($what === 'guide_shown') $conn->prepare('UPDATE onboarding_state SET guide_hidden_at = NULL WHERE restaurant_id = ?')->execute([$rid]);
-    elseif ($what === 'mark' && preg_match('/^[a-z_]{2,30}$/', $mark)) {
+    elseif ($what === 'mark' && preg_match('/^[a-z0-9_]{2,30}$/', $mark)) {
         $s = obState($conn, $rid);
         $s['marks'][$mark] = date('Y-m-d H:i:s');
         $conn->prepare('UPDATE onboarding_state SET marks = ? WHERE restaurant_id = ?')->execute([json_encode($s['marks']), $rid]);
@@ -174,4 +174,117 @@ function obGuide(PDO $conn, string $rid): array
     $done = count(array_filter($steps, fn($x) => $x['done']));
     return ['steps' => $steps, 'done' => $done, 'total' => count($steps), 'complete' => $done === count($steps),
             'state' => $s, 'type' => $type, 'type_label' => OB_TYPES[$type] ?? ''];
+}
+
+/* ───────── follow-up: welcome on WhatsApp, unfinished sign-ups, setup reminders ───────── */
+
+/**
+ * A WhatsApp from RestroGrow's own number to a restaurant owner. Business-started messages need an
+ * approved template, so this only sends when the template named in .env exists ($templateEnv, e.g.
+ * REPEATGROW_WELCOME_TEMPLATE); otherwise it does nothing and the email covers it. Never throws.
+ */
+function obWhatsappOwner(PDO $conn, string $rid, string $phone, string $templateEnv, array $params, string $text): bool
+{
+    $tpl = trim((string)env($templateEnv, ''));
+    if ($tpl === '' || preg_replace('/\D/', '', $phone) === '') return false;
+    try {
+        require_once __DIR__ . '/whatsapp_engine.php';
+        $s = ['mode' => 'platform', 'api_key' => '', 'is_demo' => false, 'restaurant_id' => $rid];
+        [$ok, , $err] = waSend($s, $phone, $tpl, (string)env($templateEnv . '_LANG', 'en'), $params, $text);
+        if (!$ok) error_log("[onboarding] WhatsApp $templateEnv to $rid: $err");
+        return (bool)$ok;
+    } catch (Throwable $e) {
+        error_log('[onboarding] WhatsApp: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/** Right after sign-up: the WhatsApp welcome ({{1}} first name, {{2}} restaurant, {{3}} dashboard link, {{4}} website link). */
+function obWelcomeWhatsapp(PDO $conn, string $rid): void
+{
+    $u = $conn->prepare('SELECT restaurant_name, owner_name, username, phone FROM users WHERE restaurant_id = ? LIMIT 1');
+    $u->execute([$rid]);
+    $r = $u->fetch(PDO::FETCH_ASSOC);
+    if (!$r) return;
+    require_once __DIR__ . '/mail_engine.php';
+    $base = mailAppUrl();
+    $first = trim(explode(' ', (string)($r['owner_name'] ?: $r['username']))[0]) ?: 'there';
+    $site = $base . '/' . trim(preg_replace('/[^a-z0-9]+/', '-', strtolower((string)$r['restaurant_name'])), '-');
+    obWhatsappOwner($conn, $rid, (string)$r['phone'], 'REPEATGROW_WELCOME_TEMPLATE',
+        [$first, (string)$r['restaurant_name'], $base . '/main/admin/login.php', $site],
+        "Welcome to RestroGrow, $first! {$r['restaurant_name']} is ready. Dashboard: $base/main/admin/login.php · Your website: $site");
+}
+
+/** Run hourly (mailSweep): unfinished sign-ups become leads, and setup reminders go out on day 1, 3 and 7. */
+function obSweep(PDO $conn): array
+{
+    obEnsure($conn);
+    require_once __DIR__ . '/mail_engine.php';
+    require_once __DIR__ . '/platform_engine.php';
+    pfEnsure($conn);
+    $out = ['leads' => 0, 'nudges' => 0];
+
+    // 1) a phone that got a code (or was verified) 45+ minutes ago, but no account: a lead to call
+    $st = $conn->query("SELECT f.token, f.phone, MAX(f.created_at) at, MAX(CASE WHEN f.step = 'verified' THEN 1 ELSE 0 END) verified,
+            (SELECT d.restaurant_name FROM signup_funnel d WHERE d.token = f.token AND d.step = 'details' LIMIT 1) rname
+        FROM signup_funnel f
+        WHERE f.step IN ('code_sent', 'verified') AND f.phone IS NOT NULL AND f.created_at BETWEEN NOW() - INTERVAL 7 DAY AND NOW() - INTERVAL 45 MINUTE
+          AND NOT EXISTS (SELECT 1 FROM signup_funnel c WHERE c.token = f.token AND c.step IN ('created', 'lead'))
+        GROUP BY f.token, f.phone LIMIT 50");
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $f) {
+        $last = substr((string)$f['phone'], -10);
+        $has = $conn->prepare('SELECT COUNT(*) FROM users WHERE phone LIKE ?');
+        $has->execute(['%' . $last]);
+        $hasAccount = (int)$has->fetchColumn();
+        $lead = $conn->prepare('SELECT COUNT(*) FROM contact_queries WHERE phone LIKE ? AND created_at > NOW() - INTERVAL 30 DAY');
+        $lead->execute(['%' . $last]);
+        $hasLead = (int)$lead->fetchColumn();
+        if ($hasAccount || $hasLead) { obFunnel($conn, (string)$f['token'], 'lead', ['phone' => $f['phone']]); continue; }
+        $how = $f['rname'] ? 'reached the last step (restaurant "' . $f['rname'] . '")' : ((int)$f['verified'] ? 'verified the phone' : 'asked for the WhatsApp code');
+        $msg = 'Started signing up on ' . date('j M, H:i', strtotime((string)$f['at'])) . ' and ' . $how . ' but did not finish. Call or WhatsApp them to help.';
+        // email '' (not NULL): some databases have contact_queries.email NOT NULL
+        $conn->prepare("INSERT INTO contact_queries (name, email, phone, message, status, stage, restaurant_name_hint) VALUES (?, '', ?, ?, 'new', 'new', ?)")
+             ->execute([$f['rname'] ?: 'Unfinished sign-up', (string)$f['phone'], $msg, $f['rname'] ?: null]);
+        obFunnel($conn, (string)$f['token'], 'lead', ['phone' => $f['phone']]);   // handled: never looked at again
+        mailNewLead($conn, 'unfinished sign-up', ['name' => $f['rname'] ?: 'Unfinished sign-up', 'phone' => $f['phone'], 'message' => $msg]);
+        $out['leads']++;
+    }
+
+    // 2) setup reminders: day 1, 3 and 7 after sign-up, while the guide isn't done (email always, WhatsApp with a template)
+    $st = $conn->query('SELECT restaurant_id, restaurant_name, owner_name, username, email, phone, DATEDIFF(CURDATE(), DATE(created_at)) d FROM users
+        WHERE is_active = 1 AND DATEDIFF(CURDATE(), DATE(created_at)) IN (1, 3, 7) AND created_at > NOW() - INTERVAL 10 DAY');
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $u) {
+        $rid = (string)$u['restaurant_id'];
+        $g = obGuide($conn, $rid);
+        if ($g['complete'] || $g['state']['guide_hidden']) continue;
+        $d = (int)$u['d'];
+        if (!empty($g['state']['marks']['nudge_' . $d])) continue;
+        obSave($conn, $rid, 'mark', 'nudge_' . $d);
+        $left = array_values(array_filter($g['steps'], fn($s) => !$s['done'] && empty($s['optional'])));
+        $first = trim(explode(' ', (string)($u['owner_name'] ?: $u['username']))[0]) ?: 'there';
+        if (!empty($u['email'])) { mailSetupNudge($conn, $u, $left, $d, $g); $out['nudges']++; }
+        if ($left) obWhatsappOwner($conn, $rid, (string)$u['phone'], 'REPEATGROW_SETUP_TEMPLATE',
+            [$first, (string)$u['restaurant_name'], $left[0]['title'], mailAppUrl() . '/main/admin/login.php'],
+            "Hi $first, next step for {$u['restaurant_name']}: {$left[0]['title']}. " . mailAppUrl() . '/main/admin/login.php');
+    }
+    return $out;
+}
+
+/** The setup reminder email: what's done, what's left, one button. */
+function mailSetupNudge(PDO $conn, array $u, array $left, int $day, array $g): void
+{
+    $b = mailPlatformBrand();
+    $first = trim(explode(' ', (string)($u['owner_name'] ?: $u['username']))[0]) ?: 'there';
+    $titles = [1 => 'Your next step on RestroGrow', 3 => 'You are ' . $g['done'] . ' of ' . $g['total'] . ' steps in', 7 => 'Need a hand setting up?'];
+    $intro = $day === 7
+        ? 'Hi ' . mailE($first) . ', a week in and <b>' . mailE((string)$u['restaurant_name']) . '</b> still has a few steps left. Reply to this email or WhatsApp us and we will set it up with you, free.'
+        : 'Hi ' . mailE($first) . ', here is what is left to get <b>' . mailE((string)$u['restaurant_name']) . '</b> taking orders. Each takes a couple of minutes.';
+    $list = '<ol style="margin:14px 0 0;padding-left:20px;font-size:14.5px;line-height:1.9;color:#4b4036">'
+        . implode('', array_map(fn($s) => '<li><b>' . mailE($s['title']) . '</b> · ' . mailE($s['sub']) . '</li>', $left)) . '</ol>';
+    if ($day <= 3) $list .= '<p style="margin:14px 0 0;font-size:14px;color:#6b5e52">Menu on paper? Send us a photo on WhatsApp (+91 63775 68749) and we will type it in for you.</p>';
+    mailQueue($conn, 'setup_nudge', (string)$u['email'], $titles[$day] ?? 'Your next step on RestroGrow',
+        mailLayout($b, ['title' => $titles[$day] ?? 'Your next step', 'preheader' => $left ? 'Next: ' . $left[0]['title'] : 'Almost there',
+            'intro' => '<p style="margin:0">' . $intro . '</p>' . $list,
+            'button' => ['Continue setting up', mailAppUrl() . '/main/admin/login.php'], 'small' => 'Don\'t want these reminders? Hide the guide on your dashboard and they stop.']),
+        ['restaurant_id' => (string)$u['restaurant_id'], 'brand' => $b, 'dedupe' => 'nudge:' . $u['restaurant_id'] . ':' . $day]);
 }
