@@ -811,6 +811,8 @@ try {
             
         case 'getDeals':
             try {
+                require_once __DIR__ . '/../config/access_control.php';
+                if (!accessPageOn($conn, (string)$restaurantId, 'dealsPage')) { echo json_encode([]); break; }   // switched off by Super Admin
                 $stmt = $conn->prepare("
                     SELECT d.id, d.deal_type, d.menu_id, m.menu_name
                     FROM deals d
@@ -830,7 +832,8 @@ try {
             // Offers > Combos & Deals: combos on sale right now, with their choices (config/combo_helpers.php)
             try {
                 require_once __DIR__ . '/../config/combo_helpers.php';
-                $combos = getCombos($conn, (string)$restaurantId, true);
+                require_once __DIR__ . '/../config/access_control.php';
+                $combos = accessPageOn($conn, (string)$restaurantId, 'dealsPage') ? getCombos($conn, (string)$restaurantId, true) : [];
                 foreach ($combos as &$c) unset($c['is_active'], $c['sort_order'], $c['valid_from'], $c['days']);
                 unset($c);
                 echo json_encode(['success' => true, 'combos' => $combos], JSON_UNESCAPED_UNICODE);
@@ -844,7 +847,9 @@ try {
             // Offers > Today's Special: today's dish, note, limit and plates sold today
             try {
                 require_once __DIR__ . '/../config/todays_special_helpers.php';
-                echo json_encode(['success' => true, 'specials' => getTodaysSpecials($conn, $restaurantId)], JSON_UNESCAPED_UNICODE);
+                require_once __DIR__ . '/../config/access_control.php';
+                $on = accessPageOn($conn, (string)$restaurantId, 'todaysSpecialPage');
+                echo json_encode(['success' => true, 'specials' => $on ? getTodaysSpecials($conn, $restaurantId) : null], JSON_UNESCAPED_UNICODE);
             } catch (Throwable $e) {
                 error_log('Error in getTodaysSpecial: ' . $e->getMessage());
                 echo json_encode(['success' => true, 'specials' => null]);
@@ -879,7 +884,8 @@ try {
             try {
                 require_once __DIR__ . '/../config/offer_filter_helpers.php';
                 ensureOfferFiltersTable($conn);
-                echo json_encode(getOfferFilters($conn, $restaurantId, true), JSON_UNESCAPED_UNICODE);
+                require_once __DIR__ . '/../config/access_control.php';
+                echo json_encode(accessPageOn($conn, (string)$restaurantId, 'offerFiltersPage') ? getOfferFilters($conn, $restaurantId, true) : [], JSON_UNESCAPED_UNICODE);
             } catch (Throwable $e) {
                 error_log("Error in getOfferFilters: " . $e->getMessage());
                 echo json_encode([]);

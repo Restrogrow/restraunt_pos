@@ -46,6 +46,8 @@ function ensureBestsellersTable($conn) {
  * implicitly commit it in MySQL. A missing table just means no bestsellers.
  */
 function getBestsellerMap($conn, $restaurantId) {
+    require_once __DIR__ . '/access_control.php';
+    if ($conn instanceof PDO && !accessPageOn($conn, (string)$restaurantId, 'bestsellersPage')) return [];   // switched off by Super Admin
     try {
         try {
             $stmt = $conn->prepare("SELECT menu_item_id, sort_order, offer_price, variation_offers FROM bestsellers WHERE restaurant_id = ? ORDER BY sort_order, id");

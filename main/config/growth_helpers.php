@@ -324,6 +324,17 @@ function getGrowthSettings(PDO $conn, string $restaurant_id): array {
         $settings = $stmt->fetch();
     }
 
+    // Super Admin switched Loyalty Studio (or Referrals) off for this restaurant: off for customers too,
+    // so no points, rewards, VIP, phone card or referral gifts anywhere (config/access_control.php)
+    if ($settings) {
+        require_once __DIR__ . '/access_control.php';
+        if (!accessPageOn($conn, $restaurant_id, 'growthSettingsPage')) {
+            foreach (['loyalty_enabled', 'referral_enabled', 'vip_enabled', 'card_enabled'] as $k) $settings[$k] = 0;
+        } elseif (!accessPageOn($conn, $restaurant_id, 'referralsPage')) {
+            $settings['referral_enabled'] = 0;
+        }
+    }
+
     return $settings ?: [];
 }
 

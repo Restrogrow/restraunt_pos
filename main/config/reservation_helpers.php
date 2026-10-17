@@ -45,7 +45,9 @@ if (!function_exists('reservationsFeatureEnabled')) {
             ensureReservationsToggleColumn($conn);
             $stmt = $conn->prepare("SELECT enable_reservations FROM users WHERE restaurant_id = ? LIMIT 1");
             $stmt->execute([$restaurant_id]);
-            return (int)($stmt->fetchColumn() ?: 0) === 1;
+            if ((int)($stmt->fetchColumn() ?: 0) !== 1) return false;
+            require_once __DIR__ . '/access_control.php';
+            return accessPageOn($conn, $restaurant_id, 'reservationsPage');   // also off when Super Admin switched it off
         } catch (Exception $e) {
             return false;
         }

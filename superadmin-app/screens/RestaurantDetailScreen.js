@@ -451,7 +451,7 @@ function AccessSheet({ visible, onClose, r }) {
               );
             })}
           </Card>
-          <Text style={styles.sheetNote}>Always on: Dashboard, Menu, Orders, Settings, Profile. Off sections leave their website dashboard and apps within a minute.</Text>
+          <Text style={styles.sheetNote}>Always on: Dashboard, Menu, Orders, Settings, Profile. Off sections leave their dashboard and apps within a minute and stop for their customers too (e.g. Loyalty off = no points on their website).</Text>
           <Button title="Save" icon="checkmark" onPress={save} loading={busy} style={{ marginTop: 12 }} />
         </>
       ) : (

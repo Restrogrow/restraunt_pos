@@ -79,6 +79,12 @@ try {
     $restaurant_id = $_GET['restaurant_id'] ?? ($_SESSION['restaurant_id'] ?? 'RES001');
     session_write_close();
     if (!is_string($restaurant_id)) $restaurant_id = 'RES001';
+    // a guest booking while Reservations is switched off by Super Admin (logged-in staff are stopped by the section guard)
+    require_once __DIR__ . '/../config/access_control.php';
+    if (!isLoggedIn() && !accessPageOn($conn, $restaurant_id, 'reservationsPage')) {
+        echo json_encode(['success' => false, 'message' => 'Table booking is not available here.']);
+        exit;
+    }
     
     // Verify table belongs to this restaurant
     $tableCheckStmt = $conn->prepare("SELECT id FROM tables WHERE id = ? AND restaurant_id = ?");

@@ -90,6 +90,7 @@ if (!function_exists('woHandle')) {
     function woSettings(PDO $conn, string $rid): array
     {
         woEnsure($conn);
+        require_once __DIR__ . '/access_control.php';
         $st = $conn->prepare('SELECT * FROM wa_order_settings WHERE restaurant_id = ?');
         $st->execute([$rid]);
         $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -103,7 +104,8 @@ if (!function_exists('woHandle')) {
             if (in_array($t, $types, true) && (int)($rest[$col] ?? 1) === 1) $allowed[] = $t;
         }
         return [
-            'enabled' => (int)($r['enabled'] ?? 0) === 1,
+            // the bot stays quiet when Super Admin switched WhatsApp ordering off (config/access_control.php)
+            'enabled' => (int)($r['enabled'] ?? 0) === 1 && accessPageOn($conn, $rid, 'waOrderPage'),
             'order_types' => $types,
             'allowed_types' => $allowed,
             'greeting' => (string)($r['greeting'] ?? ''),

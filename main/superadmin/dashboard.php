@@ -1067,7 +1067,7 @@ require_once __DIR__ . '/../config/countries.php';
     <div class="modal-content ac-box">
       <div class="card-header">
         <div><div class="card-title">Access <span id="acName" class="ac-name"></span></div>
-          <div class="ac-sub">Switch whole sections or single pages. Off = gone from their dashboard and blocked on the server. Always on: Dashboard, Menu, Orders, Settings, Profile.</div></div>
+          <div class="ac-sub">Switch whole sections or single pages. Off = gone from their dashboard and apps, and stopped for their customers too (e.g. Loyalty off = no points or rewards on their website). Their own settings are kept for when you switch it back on. Always on: Dashboard, Menu, Orders, Settings, Profile.</div></div>
         <button id="acClose" type="button" class="btn btn-outline">Close</button>
       </div>
       <div class="card-body">

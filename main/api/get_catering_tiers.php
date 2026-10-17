@@ -54,6 +54,8 @@ try {
         exit();
     }
 
+    require_once __DIR__ . '/../config/access_control.php';
+    if (!accessPageOn($conn, (string)$restaurant_id, 'cateringPage')) { echo json_encode(['success' => true, 'tiers' => []]); exit; }   // switched off by Super Admin
     $stmt = $conn->prepare("SELECT id, tier_label, min_guests, max_guests, price FROM catering_price_tiers WHERE restaurant_id = ? AND is_active = 1 ORDER BY min_guests ASC");
     $stmt->execute([$restaurant_id]);
     $tiers = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -222,6 +222,11 @@ function handleUpdateRequestStatus($conn, $requestId, $restaurant_id) {
 
 function handleSubmitRequest($conn) {
     $restaurant_id = trim($_POST['restaurant_id'] ?? '');
+    require_once __DIR__ . '/../config/access_control.php';
+    if ($restaurant_id !== '' && !accessPageOn($conn, $restaurant_id, 'cateringPage')) {   // switched off by Super Admin
+        echo json_encode(['success' => false, 'message' => 'Catering requests are not available here.']);
+        return;
+    }
     $contactName = trim($_POST['contactName'] ?? '');
     $contactPhone = trim($_POST['contactPhone'] ?? '');
     $eventDate = trim($_POST['eventDate'] ?? '');

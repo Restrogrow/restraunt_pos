@@ -73,6 +73,8 @@ if (!function_exists('ensureUpsellTables')) {
             $roles = json_decode((string)$r['roles'], true);
             $s['roles'] = is_array($roles) ? $roles : [];
         }
+        require_once __DIR__ . '/access_control.php';
+        if (!accessPageOn($conn, $rid, 'upsellPage')) $s['enabled'] = 0;   // switched off by Super Admin
         return $s;
     }
 

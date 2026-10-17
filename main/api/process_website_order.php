@@ -540,6 +540,9 @@ $conn->beginTransaction();
         $cpnStmt = $conn->prepare("SELECT * FROM coupons WHERE restaurant_id = ? AND coupon_code = ? AND is_active = 1 AND (valid_from IS NULL OR valid_from <= CURDATE()) AND (valid_until IS NULL OR valid_until >= CURDATE()) AND (max_uses = 0 OR current_uses < max_uses) LIMIT 1 FOR UPDATE");
         $cpnStmt->execute([$restaurant_id, $coupon_code]);
         $coupon = $cpnStmt->fetch(PDO::FETCH_ASSOC);
+        // Coupons switched off by Super Admin: only personal reward codes (loyalty, scratch card) still apply
+        require_once __DIR__ . '/../config/access_control.php';
+        if ($coupon && empty($coupon['owner_phone']) && !accessPageOn($conn, (string)$restaurant_id, 'couponsPage')) $coupon = false;
         if (!$coupon) {
             $conn->rollBack();
             ob_end_clean();

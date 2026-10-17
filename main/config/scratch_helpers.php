@@ -75,7 +75,10 @@ if (!function_exists('ensureScratchTables')) {
         $st = $conn->prepare('SELECT * FROM scratch_settings WHERE restaurant_id = ?');
         $st->execute([$rid]);
         $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
-        return ['enabled' => (int)($r['enabled'] ?? 0), 'title' => (string)($r['title'] ?? ''),
+        require_once __DIR__ . '/access_control.php';
+        // off when Super Admin switched the Scratch card page off (config/access_control.php)
+        $on = (int)($r['enabled'] ?? 0) === 1 && accessPageOn($conn, $rid, 'scratchPage');
+        return ['enabled' => $on ? 1 : 0, 'title' => (string)($r['title'] ?? ''),
                 'min_order' => (float)($r['min_order'] ?? 0), 'next_min_order' => (float)($r['next_min_order'] ?? 0),
                 'valid_days' => (int)($r['valid_days'] ?? 15) ?: 15, 'monthly_budget' => (float)($r['monthly_budget'] ?? 0),
                 'game_style' => ($r['game_style'] ?? '') === 'wheel' ? 'wheel' : 'scratch'];

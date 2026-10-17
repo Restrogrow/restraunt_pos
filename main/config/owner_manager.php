@@ -66,6 +66,7 @@ if (!function_exists('ownerMgrHandleMessage')) {
     function ownerMgrSettings(PDO $conn, string $rid): array
     {
         ownerMgrEnsure($conn);
+        require_once __DIR__ . '/access_control.php';
         $st = $conn->prepare('SELECT * FROM om_settings WHERE restaurant_id = ?');
         $st->execute([$rid]);
         $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -75,7 +76,8 @@ if (!function_exists('ownerMgrHandleMessage')) {
         $tz = (!empty($rest['timezone']) && in_array($rest['timezone'], timezone_identifiers_list(), true)) ? $rest['timezone'] : 'Asia/Kolkata';
         $phone = preg_replace('/\D/', '', (string)($r['phone'] ?? '')) ?: preg_replace('/\D/', '', (string)($rest['phone'] ?? ''));
         return [
-            'enabled' => (int)($r['enabled'] ?? 0) === 1,
+            // no morning report when Super Admin switched the AI manager off (config/access_control.php)
+            'enabled' => (int)($r['enabled'] ?? 0) === 1 && accessPageOn($conn, $rid, 'ownerManagerPage'),
             'send_time' => preg_match('/^\d{2}:\d{2}$/', (string)($r['send_time'] ?? '')) ? $r['send_time'] : '09:00',
             'language' => in_array($r['language'] ?? '', ['en', 'hi', 'hinglish'], true) ? $r['language'] : 'en',
             'phone' => $phone,

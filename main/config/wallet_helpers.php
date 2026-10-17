@@ -80,6 +80,7 @@ if (!function_exists('ensureWalletTables')) {
 
     function getWalletSettings(PDO $conn, string $rid): array {
         ensureWalletTables($conn);
+        require_once __DIR__ . '/access_control.php';
         $st = $conn->prepare('SELECT * FROM wallet_settings WHERE restaurant_id = ?');
         $st->execute([$rid]);
         $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -90,7 +91,8 @@ if (!function_exists('ensureWalletTables')) {
         usort($tiers, function ($a, $b) { return $a['amount'] <=> $b['amount']; });
         $quick = array_values(array_filter(array_map('floatval', explode(',', (string)($r['quick_amounts'] ?? '')))));
         return [
-            'enabled' => (int)($r['enabled'] ?? 0),
+            // off when Super Admin switched the Wallet page off (config/access_control.php)
+            'enabled' => (int)($r['enabled'] ?? 0) === 1 && accessPageOn($conn, $rid, 'walletPage') ? 1 : 0,
             'name' => (string)($r['name'] ?? '') ?: 'RestroGrow Wallet',
             'min_topup' => (float)($r['min_topup'] ?? 100),
             'max_topup' => (float)($r['max_topup'] ?? 10000),

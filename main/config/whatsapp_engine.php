@@ -702,6 +702,8 @@ if (!function_exists('ensureWhatsappSchema')) {
         $out = ['sent' => 0, 'failed' => 0];
         $s = waSettings($conn, $rid);
         if (!$s['enabled']) return $out;
+        require_once __DIR__ . '/access_control.php';
+        if (!accessPageOn($conn, $rid, 'whatsappPage')) return $out;   // WhatsApp switched off by Super Admin: gifts and campaigns wait
         $lock = $conn->query('SELECT GET_LOCK(' . $conn->quote('wa_' . $rid) . ', 0)')->fetchColumn();
         if (!$lock) return $out;
         try {

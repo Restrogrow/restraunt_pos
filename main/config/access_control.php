@@ -150,6 +150,18 @@ function accessOffPages(PDO $conn, string $restaurantId): array {
     return $cache[$restaurantId] = $off;
 }
 
+/**
+ * Is this page on for the restaurant? Customer-facing features use it too, so a section Super Admin
+ * switched off stops for customers as well (loyalty points, scratch card, wallet, WhatsApp gifts, …).
+ */
+function accessPageOn(PDO $conn, string $restaurantId, string $page): bool {
+    try {
+        return !in_array($page, accessOffPages($conn, $restaurantId), true);
+    } catch (Throwable $e) {
+        return true;
+    }
+}
+
 /** Save the OFF list (unknown ids dropped). An empty list removes the row: everything on. */
 function accessSaveOffPages(PDO $conn, string $restaurantId, array $off): array {
     accessEnsureTable($conn);

@@ -1,4 +1,12 @@
-<?php require_once __DIR__ . '/header.php'; ?>
+<?php
+require_once __DIR__ . '/header.php';
+require_once __DIR__ . '/../config/access_control.php';
+// Catering switched off by Super Admin: back to the menu
+if (isset($conn) && $conn instanceof PDO && !accessPageOn($conn, (string)$restaurant_id, 'cateringPage')) {
+    header('Location: ' . restaurantPageUrl('menu'));
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
