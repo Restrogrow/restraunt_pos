@@ -35,14 +35,19 @@ if (!function_exists('isSecureRequest')) {
 // entry points (an API that has already echoed, an include after a redirect)
 // hit this file with headers already sent — guard so those don't flood the
 // error monitor with warnings that can't be acted on.
+// Logins stay signed in: the owner asked for no "session expired" (Oct 2026). A login lasts 400 days
+// (the most a browser keeps a cookie) and is renewed once a day while it is used, so someone who opens
+// the dashboard now and then is never logged out. Logout still ends it at once.
+if (!defined('SESSION_KEEP_SECONDS')) define('SESSION_KEEP_SECONDS', 400 * 86400);
+
 if (!headers_sent()) {
     ini_set('session.cookie_httponly', 1);
     ini_set('session.cookie_secure', isSecureRequest() ? 1 : 0);
     ini_set('session.cookie_samesite', 'Lax');
     ini_set('session.use_strict_mode', 1);
     ini_set('session.use_only_cookies', 1);
-    ini_set('session.cookie_lifetime', 86400); // 24 hours - re-login after inactivity
-    ini_set('session.gc_maxlifetime', 86400); // 24 hours - clean stale session files
+    ini_set('session.cookie_lifetime', SESSION_KEEP_SECONDS);
+    ini_set('session.gc_maxlifetime', SESSION_KEEP_SECONDS); // session files unused for 400 days are cleaned up
     ini_set('session.gc_probability', 1);
     ini_set('session.gc_divisor', 100);
 }
@@ -69,6 +74,28 @@ function startSecureSession($skipTimeoutValidation = false) {
         return;
     }
     session_start();
+    keepSessionCookieFresh();
+}
+
+/**
+ * PHP only sends the session cookie when a session starts, so its 400 days would count from the login.
+ * Once a day while someone is signed in, send it again with a fresh 400 days: in use = never expires.
+ */
+function keepSessionCookieFresh(): void {
+    if (headers_sent() || session_status() !== PHP_SESSION_ACTIVE) return;
+    if (!isset($_SESSION['restaurant_id']) && !isset($_SESSION['superadmin_id']) && !isset($_SESSION['branch_admin_id'])) return;
+    $today = date('Y-m-d');
+    if (($_SESSION['_cookie_renewed'] ?? '') === $today) return;
+    $_SESSION['_cookie_renewed'] = $today;
+    $p = session_get_cookie_params();
+    setcookie(session_name(), session_id(), [
+        'expires' => time() + SESSION_KEEP_SECONDS,
+        'path' => $p['path'] ?: '/',
+        'domain' => $p['domain'],
+        'secure' => $p['secure'],
+        'httponly' => true,
+        'samesite' => $p['samesite'] ?: 'Lax',
+    ]);
 }
 
 

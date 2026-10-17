@@ -215,6 +215,7 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 
 - **Deploy:** push to `main` and Hostinger deploys restrogrow.com automatically (there are no GitHub Actions). Every push is a production change: test locally first, and only push when the owner says "push".
 - **Live database:** new tables and columns create themselves on first use. The live database never ran `local_schema_upgrade.sql`, so new code must add any missing column or table itself, outside a transaction. Example: POS Pay failed on 15 Oct 2026 until `posEnsureBillColumns()` was added.
+- **Staying signed in:** dashboard, Super Admin and app logins last 400 days and renew themselves once a day while used (`SESSION_KEEP_SECONDS` and `keepSessionCookieFresh()` in `main/config/session_config.php`), so nobody sees "Session expired" in normal use. Logging out still ends it at once. Before 18 Oct 2026 every login ended after 24 hours.
 - **Crons** (hPanel › Advanced › Cron Jobs › Custom). `<HOME>` is the folder shown in hPanel › File Manager.
 
 | Job | Command | When | Status |
