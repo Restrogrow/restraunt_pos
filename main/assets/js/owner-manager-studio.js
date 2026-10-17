@@ -6,17 +6,32 @@
  * manager (English, Hindi, Hinglish), settings, a setup checklist and earlier reports.
  * Phones get three tabs (Today · Ask · Settings); wider screens two columns. Styles live here (om-*),
  * so the page needs only #omRoot.
+ * Voice: a mic in the chat (speak a question, hear the answer) and a hands-free voice mode that listens,
+ * answers out loud and listens again. Uses the browser's own speech (Web Speech API): no keys, best in
+ * Chrome on Android; hidden where the browser has no speech recognition.
  */
 (function () {
   'use strict';
   var API = '../api/owner_manager_admin.php';
   var CHAT_KEY = 'omChat';
   var D = null, busy = false, tab = 'today', reportOpen = false;
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  var TTS = 'speechSynthesis' in window;
+  var voice = { on: false, rec: null, listening: false, speaking: false, misses: 0,
+    lang: (function () { try { return localStorage.getItem('omVoiceLang') || 'hi-IN'; } catch (e) { return 'hi-IN'; } })() };
   var chat = (function () { try { return JSON.parse(sessionStorage.getItem(CHAT_KEY) || '[]'); } catch (e) { return []; } })();
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function ic(n) { return '<span class="material-symbols-rounded">' + n + '</span>'; }
+  var SVG = {
+    mic: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z',
+    speaker: 'M3 10v4h4l5 5V5L7 10H3zm13.5 2A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.06a7 7 0 0 1 0 13.48v2.06A9 9 0 0 0 14 3.2z',
+    wave: 'M7 18h2V6H7v12zm4 4h2V2h-2v20zm-8-8h2v-4H3v4zm12 4h2V6h-2v12zm4-8v4h2v-4h-2z',
+    spin: 'M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2z'
+  };
+  // the dashboard's self-hosted icon font has no mic / speaker glyphs, so these are drawn inline
+  function svg(n, size) { return '<svg viewBox="0 0 24 24" width="' + (size || 20) + '" height="' + (size || 20) + '" aria-hidden="true" style="display:block"><path fill="currentColor" d="' + SVG[n] + '"/></svg>'; }
   function notify(m, t) { if (m && typeof window.showNotification === 'function') window.showNotification(m, t); }
   function get() { return fetch(API, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }); }
   function post(b) { return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
@@ -96,6 +111,25 @@
       '.om-hist{display:grid;gap:6px}.om-h{width:100%;text-align:left;padding:10px 12px;border:1px solid #edf0f4;border-radius:12px;background:#fff;font:inherit;cursor:pointer}',
       '.om-h b{display:block;font-size:.86rem;color:#111827}.om-h small{display:block;color:#6b7280;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.om-empty{padding:20px;text-align:center;color:#9ca3af;font-size:.88rem}',
+      /* voice */
+      '.om-chatbox{position:relative}',
+      '.om-mic{width:44px;height:44px;flex:none;display:grid;place-items:center;border:1.5px solid #ddd6fe;border-radius:50%;background:#fff;color:var(--om);cursor:pointer}',
+      '.om-mic.on{background:#ef4444;border-color:#ef4444;color:#fff;animation:omPulse 1.2s infinite}',
+      '@keyframes omPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.5)}70%{box-shadow:0 0 0 12px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}',
+      '.om-vbtn{display:inline-flex;align-items:center;gap:5px;margin-left:auto;padding:6px 12px;border:0;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#4c1d95);color:#fff;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}',
+      '.om-card h3.om-chat-h{flex-wrap:wrap}@media(max-width:760px){.om-chat-h .om-vbtn{order:3;flex:1 1 100%;justify-content:center;margin:8px 0 0;padding:10px}}',
+      '.om-say{display:inline-flex;align-items:center;margin-left:6px;padding:0;border:0;background:none;color:#7c3aed;cursor:pointer;vertical-align:middle}.om-say .material-symbols-rounded{font-size:18px}',
+      '.om-voice{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;color:#fff;background:radial-gradient(90% 70% at 50% 35%,#6d28d9,#1e1b4b)}',
+      '.om-voice[hidden]{display:none}',
+      '.om-orb{position:relative;width:120px;height:120px;display:grid;place-items:center;border:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#c4b5fd,#7c3aed 60%,#4c1d95);color:#fff;cursor:pointer;box-shadow:0 20px 50px -15px rgba(0,0,0,.6)}',
+      '.om-orb .material-symbols-rounded{font-size:52px}',
+      '.om-orb.listen{animation:omOrb 1.4s infinite ease-in-out;background:radial-gradient(circle at 35% 30%,#fca5a5,#ef4444 60%,#991b1b)}',
+      '.om-orb.think{animation:omSpin 1.2s linear infinite}.om-orb.speak{animation:omOrb .9s infinite ease-in-out;background:radial-gradient(circle at 35% 30%,#86efac,#16a34a 60%,#14532d)}',
+      '@keyframes omOrb{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}@keyframes omSpin{to{transform:rotate(360deg)}}',
+      '.om-voice b{font-size:1.05rem}.om-vtext{min-height:3em;max-width:420px;margin:0;color:rgba(255,255,255,.85);font-size:.92rem;line-height:1.5;overflow-wrap:anywhere}',
+      '.om-vrow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}',
+      '.om-vrow button{padding:8px 14px;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer}',
+      '.om-vrow button.on{background:#fff;color:#4c1d95;border-color:#fff}.om-vrow .om-vend{background:#ef4444;border-color:#ef4444}',
       '@media(max-width:760px){.om-hero{padding:16px;border-radius:18px}.om-card{padding:14px;border-radius:16px}.om-chatbox{height:min(66vh,560px)}}'
     ].join('\n');
     document.head.appendChild(st);
@@ -131,9 +165,11 @@
     }).join('') + '</div>';
   }
 
+  function sayBtn(i) { return TTS ? '<button type="button" class="om-say" data-om-say="' + i + '" aria-label="Read aloud" title="Read aloud">' + svg('speaker', 18) + '</button>' : ''; }
+
   function chatHtml() {
-    if (!chat.length) return '<div class="om-hello">' + ic('waving_hand') + '<br>Ask about your sales, dishes, customers or payments, in English, Hindi or Hinglish. Every number comes from your own orders.</div>';
-    return chat.map(function (x) { return '<div class="om-q">' + esc(x.q) + '</div><div class="om-a">' + waFmt(x.a) + '</div>'; }).join('');
+    if (!chat.length) return '<div class="om-hello"><div style="font-size:34px">👋</div>Ask about your sales, dishes, customers or payments, in English, Hindi or Hinglish. Every number comes from your own orders.</div>';
+    return chat.map(function (x, i) { return '<div class="om-q">' + esc(x.q) + '</div><div class="om-a">' + waFmt(x.a) + sayBtn(i) + '</div>'; }).join('');
   }
 
   function setupHtml(s, st) {
@@ -160,12 +196,21 @@
       '<div class="om-btns"><button type="button" class="btn btn-secondary" data-om="preview">' + ic('refresh') + 'Make today\'s report</button>' +
       (D.can_edit ? '<button type="button" class="btn btn-primary" data-om="send"' + (s.phone ? '' : ' disabled title="Add your WhatsApp number in Settings"') + '>' + ic('send') + 'Send to my WhatsApp</button>' : '') + '</div></div>';
 
-    var ask = '<div class="om-card"><h3>' + ic('forum') + 'Ask your manager' + (chat.length ? '<button type="button" class="om-clear" data-om="clear">Clear</button>' : '') + '</h3>' +
-      '<p class="om-sub">Same answers as on WhatsApp. Ask in English, हिंदी or Hinglish.</p>' +
+    var ask = '<div class="om-card"><h3 class="om-chat-h">' + ic('forum') + 'Ask your manager' +
+        (SR ? '<button type="button" class="om-vbtn" data-om="voice">' + svg('wave', 16) + 'Voice mode</button>' : '') +
+        (chat.length ? '<button type="button" class="om-clear" data-om="clear"' + (SR ? ' style="margin-left:10px"' : '') + '>Clear</button>' : '') + '</h3>' +
+      '<p class="om-sub">Same answers as on WhatsApp. Ask in English, हिंदी or Hinglish' + (SR ? ', by typing or by voice' : '') + '.</p>' +
       '<div class="om-chatbox"><div class="om-msgs" id="omMsgs">' + chatHtml() + '</div>' +
+      (SR ? '<div class="om-voice" id="omVoice"' + (voice.on ? '' : ' hidden') + '>' +
+        '<button type="button" class="om-orb" id="omOrb" data-om="orb" aria-label="Speak">' + svg('mic', 52) + '</button>' +
+        '<b id="omVState">Tap the circle and speak</b><p class="om-vtext" id="omVText">Try “aaj kitna bika?” or “top dishes this week”.</p>' +
+        '<div class="om-vrow"><button type="button" data-om-vlang="hi-IN"' + (voice.lang === 'hi-IN' ? ' class="on"' : '') + '>हिंदी / Hinglish</button>' +
+          '<button type="button" data-om-vlang="en-IN"' + (voice.lang === 'en-IN' ? ' class="on"' : '') + '>English</button>' +
+          '<button type="button" class="om-vend" data-om="voice">End</button></div></div>' : '') +
       '<div class="om-chips">' + ['aaj kitna bika?', 'compare this week with last week', 'top dishes this month', 'how many Paneer Tikka sold this week', 'busiest hours', 'cash vs UPI this week', 'least sold dishes', 'new customers this month', 'what should I do to increase sales?', 'कल कितने ऑर्डर कैंसिल हुए?']
         .map(function (q) { return '<button type="button" data-om-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>' +
       '<form class="om-ask" id="omAskForm"><input id="omAsk" placeholder="Ask anything… e.g. sales this week" maxlength="300" autocomplete="off" enterkeyhint="send">' +
+      (SR ? '<button type="button" class="om-mic" id="omMic" data-om="mic" aria-label="Speak your question" title="Speak">' + svg('mic', 22) + '</button>' : '') +
       '<button type="submit" class="om-send" aria-label="Send"' + (busy ? ' disabled' : '') + '>' + ic('send') + '</button></form></div></div>';
 
     var settings = '<div class="om-card"><h3>' + ic('tune') + 'Settings</h3><div class="om-form">' +
@@ -199,9 +244,9 @@
 
   function scrollChat() { var m = $('omMsgs'); if (m) m.scrollTop = m.scrollHeight; }
 
-  function ask(q) {
+  function ask(q, speakIt) {
     q = String(q || '').trim();
-    if (!q || busy) return;
+    if (!q || busy) return Promise.resolve(null);
     busy = true;
     if (tab !== 'ask' && window.innerWidth <= 760) { tab = 'ask'; draw(); }
     var box = $('omMsgs');
@@ -212,17 +257,109 @@
     }
     var input = $('omAsk'); if (input) input.value = '';
     var sendBtn = document.querySelector('.om-send'); if (sendBtn) sendBtn.disabled = true;
-    post({ action: 'ask', text: q }).then(function (d) {
+    return post({ action: 'ask', text: q }).then(function (d) {
       var a = d.success ? d.answer : (d.message || 'Could not answer. Try again.');
       if (d.success) { chat.push({ q: q, a: a }); saveChat(); }
-      var w = $('omWait'); if (w) { w.removeAttribute('id'); w.innerHTML = waFmt(a); }
+      var w = $('omWait'); if (w) { w.removeAttribute('id'); w.innerHTML = waFmt(a) + (d.success ? sayBtn(chat.length - 1) : ''); }
+      return a;
     }).catch(function () {
       var w = $('omWait'); if (w) { w.removeAttribute('id'); w.textContent = 'No connection. Try again.'; }
+      return 'No connection. Try again.';
     }).finally(function () {
       busy = false;
       var b = document.querySelector('.om-send'); if (b) b.disabled = false;
       scrollChat();
+    }).then(function (a) { if (speakIt && a) return speak(a); return a; });
+  }
+
+  // ── voice ──
+  function vState(state, text) {
+    var o = $('omOrb'), st = $('omVState'), tx = $('omVText');
+    if (o) { o.className = 'om-orb' + (state ? ' ' + state : ''); o.innerHTML = svg(state === 'speak' ? 'wave' : state === 'think' ? 'spin' : 'mic', 52); }
+    if (st) st.textContent = { listen: 'Listening…', think: 'Thinking…', speak: 'Speaking…' }[state] || 'Tap the circle and speak';
+    if (tx && text !== undefined) tx.textContent = text;
+  }
+
+  // what the speech engine should say: no emoji or symbols, ₹ read as rupees
+  function speechText(t, hindi) {
+    return String(t).replace(/\p{Extended_Pictographic}|\uFE0F|\u20E3|[▲▼•*_]/gu, '').replace(/—|–/g, ', ')
+      .replace(/₹\s?/g, hindi ? 'रुपये ' : 'rupees ').replace(/\n+/g, '. ').replace(/\s+/g, ' ').replace(/\.\s*\./g, '.').replace(/:\s*\./g, ':').replace(/\s+,/g, ',').trim();
+  }
+
+  function pickVoice(lang) {
+    var vs = window.speechSynthesis.getVoices() || [], l = lang.toLowerCase();
+    var norm = function (v) { return String(v.lang || '').replace('_', '-').toLowerCase(); };
+    return vs.filter(function (v) { return norm(v) === l; })[0] || vs.filter(function (v) { return norm(v).indexOf(l.slice(0, 2)) === 0; })[0] || null;
+  }
+
+  function speak(text) {
+    if (!TTS) return Promise.resolve(text);
+    return new Promise(function (done) {
+      var hindi = /[\u0900-\u097F]/.test(text);
+      var lang = hindi ? 'hi-IN' : 'en-IN';
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(speechText(text, hindi));
+      u.lang = lang; u.rate = 1; var v = pickVoice(lang); if (v) u.voice = v;
+      voice.speaking = true; if (voice.on) vState('speak');
+      var finish = function () { voice.speaking = false; done(text); };
+      u.onend = finish; u.onerror = finish;
+      window.speechSynthesis.speak(u);
     });
+  }
+
+  function stopVoice() {
+    try { if (voice.rec) voice.rec.abort(); } catch (e) { /* already stopped */ }
+    voice.rec = null; voice.listening = false;
+    if (TTS) window.speechSynthesis.cancel();
+    var m = $('omMic'); if (m) m.classList.remove('on');
+  }
+
+  // one question by voice; in voice mode it answers out loud and listens again
+  function listen() {
+    if (!SR) { notify('Voice needs Chrome on Android or a computer', 'error'); return; }
+    if (voice.listening) { stopVoice(); if (voice.on) vState('', 'Tap the circle and speak'); return; }
+    if (TTS) window.speechSynthesis.cancel();
+    var rec = new SR(), final = '';
+    voice.rec = rec; voice.listening = true;
+    rec.lang = voice.lang; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
+    var mic = $('omMic'); if (mic && !voice.on) mic.classList.add('on');
+    if (voice.on) vState('listen', '…');
+    rec.onresult = function (e) {
+      var interim = '';
+      for (var i = e.resultIndex; i < e.results.length; i++) { if (e.results[i].isFinal) final += e.results[i][0].transcript; else interim += e.results[i][0].transcript; }
+      var shown = (final + ' ' + interim).trim();
+      if (voice.on) vState('listen', shown || '…'); else { var inp = $('omAsk'); if (inp) inp.value = shown; }
+    };
+    rec.onerror = function (e) {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { notify('Allow the microphone for this site to talk to your manager', 'error'); voice.on = false; var ov = $('omVoice'); if (ov) ov.hidden = true; }
+      else if (e.error === 'network') notify('Voice needs an internet connection', 'error');
+    };
+    rec.onend = function () {
+      voice.listening = false; voice.rec = null;
+      var m = $('omMic'); if (m) m.classList.remove('on');
+      var q = final.trim();
+      if (!q) {
+        voice.misses++;
+        if (voice.on) vState('', voice.misses >= 2 ? 'I didn\'t hear anything. Tap the circle when you\'re ready.' : 'Didn\'t catch that. Tap the circle and try again.');
+        return;
+      }
+      voice.misses = 0;
+      if (voice.on) vState('think', '“' + q + '”');
+      ask(q, true).then(function () {
+        if (voice.on) { vState('', ''); setTimeout(function () { if (voice.on && !voice.listening && !voice.speaking) listen(); }, 350); }
+      });
+    };
+    try { rec.start(); } catch (e) { voice.listening = false; }
+  }
+
+  function toggleVoiceMode() {
+    voice.on = !voice.on;
+    var ov = $('omVoice');
+    if (!voice.on) { stopVoice(); if (ov) ov.hidden = true; return; }
+    if (ov) ov.hidden = false;
+    voice.misses = 0;
+    vState('', 'Try “aaj kitna bika?” or “top dishes this week”.');
+    listen();
   }
 
   function save(extra) {
@@ -234,9 +371,17 @@
   }
 
   document.addEventListener('click', function (e) {
-    var t = e.target.closest && e.target.closest('[data-om],[data-om-q],[data-om-run],[data-om-skip],[data-om-hist],[data-om-tab]');
+    var t = e.target.closest && e.target.closest('[data-om],[data-om-q],[data-om-run],[data-om-skip],[data-om-hist],[data-om-tab],[data-om-say],[data-om-vlang]');
     if (!t || !D || !$('omRoot') || !$('omRoot').contains(t) && !t.closest('.rg-modal, [role="dialog"]')) return;
-    if (t.hasAttribute('data-om-tab')) { tab = t.getAttribute('data-om-tab'); draw(); return; }
+    if (t.hasAttribute('data-om-tab')) { if (voice.on) toggleVoiceMode(); tab = t.getAttribute('data-om-tab'); draw(); return; }
+    if (t.hasAttribute('data-om-say')) { var x = chat[+t.getAttribute('data-om-say')]; if (x) { if (voice.speaking) { window.speechSynthesis.cancel(); voice.speaking = false; } else speak(x.a); } return; }
+    if (t.hasAttribute('data-om-vlang')) {
+      voice.lang = t.getAttribute('data-om-vlang');
+      try { localStorage.setItem('omVoiceLang', voice.lang); } catch (er) { /* private mode */ }
+      document.querySelectorAll('[data-om-vlang]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-om-vlang') === voice.lang); });
+      if (voice.listening) { stopVoice(); listen(); }
+      return;
+    }
     if (t.hasAttribute('data-om-q')) { ask(t.getAttribute('data-om-q')); return; }
     if (t.hasAttribute('data-om-run') || t.hasAttribute('data-om-skip')) {
       var run = t.hasAttribute('data-om-run');
@@ -254,9 +399,12 @@
     var a = t.getAttribute('data-om');
     if (a === 'more') { reportOpen = !reportOpen; var w = $('omWa'); if (w) w.classList.toggle('clip', !reportOpen); t.textContent = reportOpen ? 'Show less' : 'Show the full report'; }
     else if (a === 'clear') { chat = []; saveChat(); draw(); }
+    else if (a === 'voice') toggleVoiceMode();
+    else if (a === 'orb') { if (voice.speaking) { window.speechSynthesis.cancel(); voice.speaking = false; } listen(); }
+    else if (a === 'mic') listen();
     else if (a === 'preview' || a === 'send') {
       t.disabled = true;
-      var old = t.innerHTML; t.innerHTML = ic('progress_activity') + (a === 'send' ? 'Sending…' : 'Making it…');
+      var old = t.innerHTML; t.innerHTML = svg('spin', 18) + (a === 'send' ? 'Sending…' : 'Making it…');
       post({ action: a }).then(function (d) {
         t.disabled = false; t.innerHTML = old;
         notify(d.message || (d.success ? 'Report ready' : 'Could not make the report'), d.success ? 'success' : 'error');
@@ -266,6 +414,10 @@
   });
   document.addEventListener('submit', function (e) { if (e.target && e.target.id === 'omAskForm') { e.preventDefault(); ask(($('omAsk') || {}).value); } });
   document.addEventListener('change', function (e) { if (e.target && e.target.id === 'omOn') save(); });
+
+  if (TTS) { window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged = function () { window.speechSynthesis.getVoices(); }; }
+  // leaving the page stops the microphone and the voice
+  document.addEventListener('visibilitychange', function () { if (document.hidden && (voice.listening || voice.speaking)) { voice.on = false; stopVoice(); } });
 
   window.loadOwnerManagerStudio = load;
 })();
