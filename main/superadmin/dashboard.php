@@ -312,6 +312,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">menu_book</span>
           <span class="text">Admin handbook</span>
         </a>
+        <a class="menu-link" href="usage.php">
+          <span class="material-symbols-rounded icon">insights</span>
+          <span class="text">Usage &amp; sign-ups</span>
+        </a>
         <a class="menu-link" href="undo_designs.php">
           <span class="material-symbols-rounded icon">undo</span>
           <span class="text">Undo design</span>
@@ -1511,6 +1515,7 @@ require_once __DIR__ . '/../config/countries.php';
               <div class="sa-more"><button type="button" class="sa-more-btn" data-sa-more aria-label="More actions"><span class="material-symbols-rounded">more_vert</span></button>
                 <div class="sa-more-menu">
                   <button type="button" data-sp360="${r.id}"><span class="material-symbols-rounded">info</span>View everything</button>
+                  <button type="button" onclick="location.href='usage.php?rid=' + encodeURIComponent('${r.restaurant_id}')"><span class="material-symbols-rounded">insights</span>What they use</button>
                   ${isActive ? `<button type="button" class="danger" onclick="toggleRestaurant(${r.id}, 0)"><span class="material-symbols-rounded">block</span>Disable restaurant</button>` : `<button type="button" onclick="toggleRestaurant(${r.id}, 1)"><span class="material-symbols-rounded">check_circle</span>Enable restaurant</button>`}
                   <button type="button" onclick="resetPassword(${r.id})"><span class="material-symbols-rounded">key</span>Reset password</button>
                   <button type="button" onclick="unlockOtp(${r.id})" title="Clear OTP lockout and forget trusted devices"><span class="material-symbols-rounded">lock_open</span>Unlock OTP</button>

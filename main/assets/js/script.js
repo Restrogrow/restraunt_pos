@@ -726,6 +726,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function showPage(pageId) {
     // a section Super Admin switched off for this restaurant (views/dashboard.php sets the list)
     if (window.RG_ACCESS_OFF && window.RG_ACCESS_OFF.indexOf(pageId) !== -1) pageId = 'dashboardPage';
+    // Super Admin › Usage: which pages a restaurant opens (assets/js/onboarding.js)
+    if (window.rgUsagePing) window.rgUsagePing(pageId);
     // Enable zoom only for website appearance section
     const viewport = document.querySelector('meta[name="viewport"]');
     if (pageId === 'websiteThemePage') {

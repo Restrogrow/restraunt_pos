@@ -310,9 +310,22 @@
     });
   };
 
+  /* ───────── usage: which pages get opened (Super Admin › Usage) ───────── */
+  // once per page per day in this tab: a beacon that never slows the page down
+  window.rgUsagePing = function (page) {
+    if (!/^[a-zA-Z]{3,50}Page$/.test(page || '')) return;
+    var k = 'rgUse:' + new Date().toISOString().slice(0, 10) + ':' + page;
+    try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) {}
+    var body = new URLSearchParams({ page: page });
+    if (navigator.sendBeacon) navigator.sendBeacon('../api/usage_ping.php', body);
+    else fetch('../api/usage_ping.php', { method: 'POST', body: body, credentials: 'same-origin', keepalive: true }).catch(function () {});
+  };
+
   /* ───────── start ───────── */
   function init() {
     ensureCss();
+    var act = document.querySelector('.page.active');
+    if (act && act.id) window.rgUsagePing(act.id);
     load().then(function (d) {
       if (!d || !d.is_owner) return;
       var welcome = /[?&]welcome=1/.test(location.search);
