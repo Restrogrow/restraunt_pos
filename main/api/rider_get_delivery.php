@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit();
 
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true);
+session_write_close(); // nothing here reads or writes the session — don't hold its lock
 
 require_once __DIR__ . '/../db_connection.php';
 
@@ -19,7 +20,7 @@ try {
         $conn = $pdo;
     }
 
-    $token = $_GET['token'] ?? '';
+    $token = is_string($_GET['token'] ?? null) ? $_GET['token'] : '';
 
     if (empty($token)) {
         echo json_encode(['success' => false, 'message' => 'Missing token']);
@@ -66,7 +67,7 @@ try {
         ]
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(400);
     error_log("Error in rider_get_delivery.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

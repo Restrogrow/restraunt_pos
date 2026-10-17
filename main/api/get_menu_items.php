@@ -48,7 +48,7 @@ $hasPermission = false;
 // include_hidden below) — POS/waiter/website must never be able to opt
 // into seeing them, even by guessing the query param.
 $canManageMenu = false;
-$requested_restaurant_id = $_GET['restaurant_id'] ?? null;
+$requested_restaurant_id = is_string($_GET['restaurant_id'] ?? null) ? $_GET['restaurant_id'] : null;
 
 if (isLoggedIn()) {
     // Check if user has permission
@@ -57,7 +57,7 @@ if (isLoggedIn()) {
             $hasPermission = true;
             $canManageMenu = true;
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // Permission check failed, continue to staff check
     }
     
@@ -128,19 +128,20 @@ try {
             $lang = 'en';
             $_SESSION['language'] = 'en';
         }
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
+    session_write_close(); // last session write above; release the lock for the dashboard's other requests
     
     // Check if translations column exists on menu_items
     $hasItemTranslations = false;
     try {
         $check = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'translations'");
         $hasItemTranslations = $check->rowCount() > 0;
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
     
     // Get filter parameters
     $menuFilter = isset($_GET['menu']) ? (int)$_GET['menu'] : 0;
-    $categoryFilter = isset($_GET['category']) ? trim($_GET['category']) : '';
-    $typeFilter = isset($_GET['type']) ? trim($_GET['type']) : '';
+    $categoryFilter = isset($_GET['category']) && is_string($_GET['category']) ? trim($_GET['category']) : '';
+    $typeFilter = isset($_GET['type']) && is_string($_GET['type']) ? trim($_GET['type']) : '';
     $subcategoryFilter = isset($_GET['subcategory']) ? (int)$_GET['subcategory'] : 0;
     
     // Check if subcategories table exists
@@ -302,7 +303,7 @@ try {
             if (!empty($typeFilter)) {
                 $sql .= " AND mi.item_type = ?";
             }
-            $sql .= " ORDER BY mi.sort_order ASC, mi.created_at DESC";
+            $sql .= " ORDER BY mi.sort_order ASC, mi.created_at DESC LIMIT ? OFFSET ?";
             
             $stmt = $conn->prepare($sql);
             $stmt->execute($params);
@@ -312,21 +313,30 @@ try {
         }
     }
     
-    // Load variations for each menu item if table exists
+    // Load variations for the menu items if table exists (one query for the whole page)
     if ($hasVariationsTable) {
-        foreach ($menuItems as &$item) {
+        $variationsByItem = [];
+        if ($menuItems) {
             try {
+                $itemIds = array_column($menuItems, 'id');
                 $variationsStmt = $conn->prepare("
-                    SELECT id, variation_name, price, sort_order, is_available 
+                    SELECT menu_item_id, id, variation_name, price, sort_order, is_available 
                     FROM menu_item_variations 
-                    WHERE menu_item_id = ?
+                    WHERE menu_item_id IN (" . implode(',', array_fill(0, count($itemIds), '?')) . ")
                     ORDER BY sort_order ASC
                 ");
-                $variationsStmt->execute([$item['id']]);
-                $item['variations'] = $variationsStmt->fetchAll(PDO::FETCH_ASSOC);
+                $variationsStmt->execute($itemIds);
+                foreach ($variationsStmt->fetchAll(PDO::FETCH_ASSOC) as $v) {
+                    $mid = $v['menu_item_id'];
+                    unset($v['menu_item_id']);
+                    $variationsByItem[$mid][] = $v;
+                }
             } catch (PDOException $e) {
-                $item['variations'] = [];
+                $variationsByItem = [];
             }
+        }
+        foreach ($menuItems as &$item) {
+            $item['variations'] = $variationsByItem[$item['id']] ?? [];
         }
         unset($item); // Break reference
     } else {
@@ -384,7 +394,7 @@ try {
         'categories' => []
     ], JSON_UNESCAPED_UNICODE);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_menu_items.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([

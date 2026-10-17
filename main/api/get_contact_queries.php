@@ -28,6 +28,7 @@ if (!isset($_SESSION['superadmin_id'])) {
     echo json_encode(['success' => false, 'message' => 'Access denied']);
     exit();
 }
+session_write_close(); // read-only endpoint
 
 // Include database connection
 if (file_exists(__DIR__ . '/../db_connection.php')) {
@@ -62,9 +63,9 @@ try {
     }
     
     // Get filter parameters
-    $status = $_GET['status'] ?? 'all';
-    $limit = intval($_GET['limit'] ?? 100);
-    $offset = intval($_GET['offset'] ?? 0);
+    $status = is_string($_GET['status'] ?? null) ? $_GET['status'] : 'all';
+    $limit = max(1, min(1000, intval($_GET['limit'] ?? 100)));
+    $offset = max(0, intval($_GET['offset'] ?? 0));
     
     // Build query
     $whereClause = '';
@@ -122,7 +123,7 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_contact_queries.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
@@ -132,4 +133,3 @@ try {
     exit();
 }
 ?>
-

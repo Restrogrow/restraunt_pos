@@ -16,7 +16,7 @@ $table_id = $_GET['table_id'] ?? null;
 $reservation_date = $_GET['reservation_date'] ?? null;
 $time_slot = $_GET['time_slot'] ?? null;
 
-if (!$table_id || !$reservation_date || !$time_slot) {
+if (!$table_id || !$reservation_date || !$time_slot || !is_string($reservation_date) || !is_string($time_slot) || is_array($table_id)) {
     echo json_encode([
         'success' => false,
         'available' => false,
@@ -30,6 +30,8 @@ try {
     
     // Resolve restaurant ID: query (the site being viewed) > session > default
     $restaurant_id = $_GET['restaurant_id'] ?? ($_SESSION['restaurant_id'] ?? 'RES001');
+    session_write_close();
+    if (!is_string($restaurant_id)) $restaurant_id = 'RES001';
     
     // Check if table is already reserved for this date and time
     // Only check active reservations (not cancelled or completed)
@@ -58,7 +60,7 @@ try {
         ]);
     }
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in check_reservation_availability.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
@@ -67,4 +69,3 @@ try {
     ]);
 }
 ?>
-

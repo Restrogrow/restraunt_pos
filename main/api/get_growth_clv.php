@@ -16,6 +16,7 @@ require_once __DIR__ . '/../config/authorization_config.php';
 requireLogin(true);
 
 $restaurant_id = $_SESSION['restaurant_id'];
+session_write_close(); // read-only endpoint
 $filterRisk = $_GET['risk'] ?? '';
 
 try {
@@ -57,7 +58,7 @@ try {
         'total_predicted_clv' => round($totalPredictedClv, 2),
         'customers' => $filtered,
     ], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_growth_clv.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Failed to load CLV report']);
 }

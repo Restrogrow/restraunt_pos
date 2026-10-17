@@ -11,6 +11,7 @@ if (ob_get_level()) {
 
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession();
+header('Content-Type: application/json; charset=UTF-8');
 
 if (!isSessionValid() || !isset($_SESSION['user_id']) || !isset($_SESSION['restaurant_id'])) {
     http_response_code(401);
@@ -33,8 +34,9 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 require_once __DIR__ . '/../config/meal_subscription_schema.php';
 
 $restaurant_id = $_SESSION['restaurant_id'];
-$search = trim($_GET['search'] ?? '');
-$statusFilter = trim($_GET['status'] ?? '');
+session_write_close(); // read-only endpoint
+$search = is_string($_GET['search'] ?? null) ? trim($_GET['search']) : '';
+$statusFilter = is_string($_GET['status'] ?? null) ? trim($_GET['status']) : '';
 
 try {
     if (function_exists('getConnection')) {
@@ -107,7 +109,7 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error', 'data' => []], JSON_UNESCAPED_UNICODE);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_meal_subscriptions.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred.', 'data' => []], JSON_UNESCAPED_UNICODE);

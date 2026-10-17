@@ -58,11 +58,12 @@ try {
     ensureInventoryTables($conn);
 
     $restaurant_id = $_SESSION['restaurant_id'];
-    $period = $_GET['period'] ?? 'today';
-    $type = $_GET['type'] ?? 'sales';
-    $startDate = $_GET['start_date'] ?? '';
-    $endDate = $_GET['end_date'] ?? '';
-    $paymentMethod = $_GET['payment_method'] ?? 'all';
+    session_write_close(); // read-only endpoint; the report queries below can be slow
+    $period = is_string($_GET['period'] ?? null) ? $_GET['period'] : 'today';
+    $type = is_string($_GET['type'] ?? null) ? $_GET['type'] : 'sales';
+    $startDate = is_string($_GET['start_date'] ?? null) ? $_GET['start_date'] : '';
+    $endDate = is_string($_GET['end_date'] ?? null) ? $_GET['end_date'] : '';
+    $paymentMethod = is_string($_GET['payment_method'] ?? null) ? $_GET['payment_method'] : 'all';
     
     // Build payment method filter
     $paymentFilter = '';
@@ -291,7 +292,7 @@ try {
         $hourStmt = $conn->prepare("SELECT HOUR(created_at) AS hour, COUNT(*) AS order_count, COALESCE(SUM(total), 0) AS total_sales FROM orders WHERE restaurant_id = ? AND " . $dateConditionNoAlias . $paymentFilter . " GROUP BY HOUR(created_at) ORDER BY hour ASC");
         $hourStmt->execute($chartParams);
         $hourlyAll = $hourStmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log('get_sales_report chart series skipped: ' . $e->getMessage());
     }
     
@@ -317,7 +318,7 @@ try {
             $staffStmt->execute(array_merge([$restaurant_id, $restaurant_id], $dateParams));
             $staffPerformance = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // If staff_id column doesn't exist or query fails, just skip it
         error_log("Staff performance query skipped: " . $e->getMessage());
         $staffPerformance = [];
@@ -367,23 +368,18 @@ try {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Database error occurred. Please try again later.',
-        'debug' => [
-            'error_code' => $errorCode,
-            'error_message' => $errorMsg
-        ]
+        'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     $errorMsg = $e->getMessage();
     error_log("Error in get_sales_report.php: " . $errorMsg);
     error_log("Period: " . ($period ?? 'N/A') . ", Type: " . ($type ?? 'N/A'));
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => $errorMsg
+        'message' => 'Something went wrong. Please try again.'
     ]);
     exit();
 }
 ?>
-

@@ -52,12 +52,13 @@ try {
 
     // Always scope to the authenticated session's own tenant.
     $restaurant_id = $_SESSION['restaurant_id'] ?? null;
+    session_write_close(); // read-only from here
     if (!$restaurant_id) {
         throw new Exception('Restaurant ID is required');
     }
 
     $orderId = (int)($_POST['orderId'] ?? 0);
-    $reason = trim($_POST['reason'] ?? '');
+    $reason = is_string($_POST['reason'] ?? null) ? trim($_POST['reason']) : '';
 
     if (!$orderId) {
         echo json_encode(['success' => false, 'message' => 'Order ID is required'], JSON_UNESCAPED_UNICODE);
@@ -144,7 +145,7 @@ try {
     error_log("PDO Error in delete_order.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error occurred. Please try again later.'], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in delete_order.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred while deleting the order. Please try again.'], JSON_UNESCAPED_UNICODE);

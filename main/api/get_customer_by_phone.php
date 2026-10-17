@@ -31,7 +31,8 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 }
 
 $restaurant_id = $_SESSION['restaurant_id'];
-$phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
+session_write_close(); // read-only endpoint
+$phone = isset($_POST['phone']) && is_string($_POST['phone']) ? trim($_POST['phone']) : '';
 
 if (empty($phone)) {
     echo json_encode(['success' => false, 'message' => 'Phone number is required']);
@@ -113,7 +114,7 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_customer_by_phone.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([

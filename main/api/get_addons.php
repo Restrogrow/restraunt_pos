@@ -39,8 +39,9 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 if ($isAdminRequest) {
     $restaurant_id = $_SESSION['restaurant_id'];
 } else {
-    $restaurant_id = $_GET['restaurant_id'] ?? null;
+    $restaurant_id = is_string($_GET['restaurant_id'] ?? null) ? $_GET['restaurant_id'] : null;
 }
+session_write_close(); // read-only endpoint
 
 if (!$restaurant_id) {
     echo json_encode(['success' => false, 'message' => 'Restaurant ID required', 'data' => []], JSON_UNESCAPED_UNICODE);
@@ -109,7 +110,7 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error', 'data' => []], JSON_UNESCAPED_UNICODE);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_addons.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.', 'data' => []], JSON_UNESCAPED_UNICODE);

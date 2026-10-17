@@ -38,7 +38,9 @@ try {
     }
 
     $restaurant_id = $_GET['restaurant_id'] ?? $_SESSION['restaurant_id'] ?? '';
-    $pincode = trim($_GET['pincode'] ?? '');
+    session_write_close();
+    if (!is_string($restaurant_id)) $restaurant_id = '';
+    $pincode = is_string($_GET['pincode'] ?? null) ? trim($_GET['pincode']) : '';
 
     if (empty($restaurant_id) || empty($pincode)) {
         echo json_encode(['success' => false, 'message' => 'Missing parameters']);
@@ -69,7 +71,7 @@ try {
         ]);
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in check_pincode.php: " . $e->getMessage());
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

@@ -26,7 +26,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 // 2. Is staff (waiter/chef) with matching restaurant_id
 // 3. Not logged in but restaurant_id is provided in query
 $hasPermission = false;
-$requested_restaurant_id = $_GET['restaurant_id'] ?? null;
+$requested_restaurant_id = is_string($_GET['restaurant_id'] ?? null) ? $_GET['restaurant_id'] : null;
 
 if (isLoggedIn()) {
     // Check if user has permission
@@ -34,7 +34,7 @@ if (isLoggedIn()) {
         if (hasPermission(PERMISSION_MANAGE_MENU)) {
             $hasPermission = true;
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // Permission check failed, continue to staff check
     }
     
@@ -90,7 +90,7 @@ try {
             throw new Exception('Database connection not available');
         }
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_menus.php (connection): " . $e->getMessage());
     echo json_encode([
         'success' => false,
@@ -138,21 +138,22 @@ try {
             $lang = 'en';
             $_SESSION['language'] = 'en';
         }
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
+    session_write_close(); // last session write above; release the lock for the dashboard's other requests
     
     // Check if translations column exists on menu
     $hasMenuTranslations = false;
     try {
         $check = $conn->query("SHOW COLUMNS FROM menu LIKE 'translations'");
         $hasMenuTranslations = $check->rowCount() > 0;
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
     
     // Check if translations column exists on subcategories
     $hasSubTranslations = false;
     try {
         $check = $conn->query("SHOW COLUMNS FROM subcategories LIKE 'translations'");
         $hasSubTranslations = $check->rowCount() > 0;
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
     
     // Get all menus for this restaurant (include image columns if they exist)
     // Check if image columns exist first
@@ -244,7 +245,7 @@ try {
     ]);
     exit();
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     // General error
     error_log("Error in get_menus.php: " . $e->getMessage());
     http_response_code(500);

@@ -25,6 +25,7 @@ if (!isset($_SESSION['superadmin_id'])) {
     echo json_encode(['success' => false, 'message' => 'Access denied']);
     exit();
 }
+session_write_close();
 
 // Include database connection
 if (file_exists(__DIR__ . '/../db_connection.php')) {
@@ -79,7 +80,7 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in update_query_status.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
@@ -89,4 +90,3 @@ try {
     exit();
 }
 ?>
-

@@ -10,6 +10,7 @@ require_once __DIR__ . '/../config/session_config.php';
 startSecureSession();
 require_once __DIR__ . '/../config/authorization_config.php';
 requirePermission(PERMISSION_MANAGE_INVENTORY);
+session_write_close(); // read-only endpoint ($_SESSION stays readable)
 
 require_once __DIR__ . '/../db_connection.php';
 if (function_exists('getConnection')) { $conn = getConnection(); } else { global $pdo; $conn = $pdo; }
@@ -36,7 +37,7 @@ try {
     $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['success' => true, 'transactions' => $transactions]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_inventory_transactions.php: " . $e->getMessage());
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

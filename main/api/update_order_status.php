@@ -34,6 +34,7 @@ try {
             $restaurant_id = $staff['restaurant_id'];
         }
     }
+    session_write_close(); // only reads $_SESSION from here on; lets the dashboard's parallel requests run
     
     if (!$restaurant_id) {
         echo json_encode(['success' => false, 'message' => 'Restaurant ID not found']);
@@ -42,7 +43,7 @@ try {
     
     // Get order ID and new status
     $orderId = (int)($_POST['orderId'] ?? 0);
-    $status = $_POST['status'] ?? null;
+    $status = is_string($_POST['status'] ?? null) ? $_POST['status'] : null;
     $reason = trim(mb_substr((string)($_POST['reason'] ?? ''), 0, 200));
     // Why an order was rejected / cancelled (assets/js/new-order-popup.js). The code decides what the
     // customer is told on the tracking page and whether it counts as a strike against their number:
@@ -218,7 +219,7 @@ try {
                         $orderMeta['customer_name'] ?? ''
                     );
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 error_log('update_order_status.php: abuse strike failed (non-fatal): ' . $e->getMessage());
             }
         }
@@ -226,7 +227,7 @@ try {
             try {
                 require_once __DIR__ . '/../config/push_notification.php';
                 notifyWaitersOrderReady($conn, $restaurant_id, $orderId);
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 error_log('update_order_status.php: waiter notification failed (non-fatal): ' . $e->getMessage());
             }
         }
@@ -236,7 +237,7 @@ try {
             'message' => $result['message']
         ]);
         
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // Guarded rollback: only roll back if the transaction is actually
         // still active — after a successful commit (or an engine-level
         // implicit rollback) there is none, and an unguarded rollBack()
@@ -247,7 +248,7 @@ try {
         throw $e;
     }
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('update_order_status.php: ' . $e->getMessage() . ' | orderId=' . ($orderId ?? '?') . ' status=' . ($status ?? '?'));
     http_response_code(500);
     echo json_encode([

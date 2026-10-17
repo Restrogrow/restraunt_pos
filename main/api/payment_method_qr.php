@@ -16,6 +16,7 @@ require_once __DIR__ . '/../db_connection.php';
 $conn = getConnection();
 
 $restaurant_id = $_SESSION['restaurant_id'] ?? '';
+session_write_close();
 $id = (int)($_GET['id'] ?? 0);
 
 if (!$id || empty($restaurant_id)) {

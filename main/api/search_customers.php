@@ -21,7 +21,7 @@ header('Content-Type: application/json');
 // Require permission to manage customers
 try {
 requirePermission(PERMISSION_MANAGE_CUSTOMERS);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Permission error in search_customers.php: " . $e->getMessage());
     http_response_code(403);
     echo json_encode([
@@ -51,8 +51,9 @@ if (!isset($_SESSION['restaurant_id'])) {
 }
 
 $restaurant_id = $_SESSION['restaurant_id'];
-$query = isset($_GET['q']) ? trim($_GET['q']) : '';
-$type = isset($_GET['type']) ? trim($_GET['type']) : 'name'; // 'name' or 'phone'
+session_write_close(); // only reads the session — release its lock
+$query = isset($_GET['q']) && is_string($_GET['q']) ? trim($_GET['q']) : '';
+$type = isset($_GET['type']) && is_string($_GET['type']) ? trim($_GET['type']) : 'name'; // 'name' or 'phone'
 
 // Normalize phone number (remove spaces, dashes, etc. for better matching)
 function normalizePhone($phone) {
@@ -231,14 +232,10 @@ try {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Database error occurred. Please try again later.',
-        'debug' => [
-            'error_code' => $errorCode,
-            'error_message' => $errorMsg
-        ]
+        'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     $errorMsg = $e->getMessage();
     error_log("Error in search_customers.php: " . $errorMsg);
     error_log("Error trace: " . $e->getTraceAsString());
@@ -246,7 +243,7 @@ try {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error: ' . $errorMsg
+        'message' => 'Something went wrong. Please try again.'
     ]);
     exit();
 }

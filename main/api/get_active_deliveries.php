@@ -20,6 +20,7 @@ try {
     }
 
     $restaurant_id = $_SESSION['restaurant_id'] ?? '';
+    session_write_close();
 
     if (empty($restaurant_id)) {
         echo json_encode(['success' => false, 'message' => 'Restaurant ID required', 'deliveries' => []]);
@@ -61,7 +62,7 @@ try {
         'count' => count($deliveries)
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_active_deliveries.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.', 'deliveries' => []]);
 }

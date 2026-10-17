@@ -34,6 +34,14 @@ $email = $input['email'] ?? '';
 $special_request = $input['special_request'] ?? '';
 
 // Validation
+foreach ([$table_id, $reservation_date, $time_slot, $no_of_guests, $meal_type, $customer_name, $phone, $email, $special_request] as $v) {
+    if (is_array($v)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid request']);
+        exit();
+    }
+}
+
 if (!$table_id) {
     echo json_encode(['success' => false, 'message' => 'Table ID is required']);
     exit();
@@ -69,6 +77,8 @@ try {
     
     // Resolve restaurant ID: query (the site being viewed) > session > default
     $restaurant_id = $_GET['restaurant_id'] ?? ($_SESSION['restaurant_id'] ?? 'RES001');
+    session_write_close();
+    if (!is_string($restaurant_id)) $restaurant_id = 'RES001';
     
     // Verify table belongs to this restaurant
     $tableCheckStmt = $conn->prepare("SELECT id FROM tables WHERE id = ? AND restaurant_id = ?");
@@ -145,7 +155,7 @@ try {
         'reservation_id' => $reservation_id
     ]);
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in create_reservation.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
@@ -153,4 +163,3 @@ try {
     ]);
 }
 ?>
-

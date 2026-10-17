@@ -3,6 +3,7 @@
 // Used by customers after their order is delivered
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true);
+session_write_close(); // nothing here reads or writes the session — don't hold its lock
 require_once __DIR__ . '/../db_connection.php';
 
 header('Content-Type: application/json');
@@ -33,19 +34,20 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
         echo json_encode(['success' => false, 'message' => 'POST required']);
         exit;
     }
 
-    $order_number = trim($_POST['order_number'] ?? '');
-    $customer_phone = trim($_POST['customer_phone'] ?? '');
+    $order_number = trim(is_string($_POST['order_number'] ?? null) ? $_POST['order_number'] : '');
+    $customer_phone = trim(is_string($_POST['customer_phone'] ?? null) ? $_POST['customer_phone'] : '');
     // Normalize to match the stored 10-digit phone format (order_abuse_guard.php).
     require_once __DIR__ . '/../config/order_abuse_guard.php';
     $customer_phone_norm = orderAbuseNormalizePhone($customer_phone);
     if ($customer_phone_norm !== null) $customer_phone = $customer_phone_norm;
     $rating = (int)($_POST['rating'] ?? 0);
-    $review = trim($_POST['review'] ?? '');
-    $customer_name = trim($_POST['customer_name'] ?? '');
+    $review = trim(is_string($_POST['review'] ?? null) ? $_POST['review'] : '');
+    $customer_name = trim(is_string($_POST['customer_name'] ?? null) ? $_POST['customer_name'] : '');
 
     if (empty($order_number) || empty($customer_phone)) {
         echo json_encode(['success' => false, 'message' => 'Order number and phone are required']);
@@ -89,7 +91,7 @@ try {
 
     echo json_encode(['success' => true, 'message' => 'Thank you for your feedback!']);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in submit_feedback.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);
 }

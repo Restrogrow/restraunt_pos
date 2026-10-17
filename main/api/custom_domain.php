@@ -29,6 +29,7 @@ if (!$restaurant_id) {
     echo json_encode(['success' => false, 'message' => 'Please log in again.']);
     exit;
 }
+session_write_close(); // the DNS / website check below can be slow; don't hold the session lock
 
 require_once __DIR__ . '/../db_connection.php';
 
@@ -200,7 +201,7 @@ try {
     ];
     if (!empty($_GET['check']) && $domain !== '') $data['check'] = cdCheck($domain, (string)$row['restaurant_name']);
     cdOut(200, ['success' => true, 'data' => $data]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('custom_domain.php: ' . $e->getMessage());
     cdOut(500, ['success' => false, 'message' => 'Something went wrong. Please try again.']);
 }

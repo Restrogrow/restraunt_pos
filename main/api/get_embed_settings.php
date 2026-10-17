@@ -12,6 +12,8 @@ $restaurant_id = $_SESSION['restaurant_id'] ?? $_GET['restaurant_id'] ?? '';
 if (!$restaurant_id && isset($_SESSION['superadmin_id'])) {
     $restaurant_id = $_GET['restaurant_id'] ?? '';
 }
+session_write_close(); // read-only endpoint
+if (!is_string($restaurant_id)) $restaurant_id = '';
 if (!$restaurant_id) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'No restaurant selected']);
@@ -74,7 +76,7 @@ try {
             'main_domain' => $host,
         ]
     ]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_embed_settings.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

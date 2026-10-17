@@ -340,7 +340,7 @@ try {
     /* ───────────── GET ───────────── */
     $ref = invRefresh($conn, $rid);   // orders, sold-out dishes and low-stock alerts
     $sync = $ref['synced'];
-    $view = $_GET['view'] ?? 'overview';
+    $view = is_string($_GET['view'] ?? null) ? $_GET['view'] : 'overview';
     $set = invSettings($conn, $rid);
 
     // items with what they are used for and how fast they go (last 30 days of sales)
@@ -443,11 +443,19 @@ try {
 
     if ($view === 'suppliers') {
         $list = $suppliers();
+        // per-supplier items and order totals, grouped in two queries instead of four per supplier
+        $supItems = [];
+        foreach ($q('SELECT supplier_id, id FROM inventory_items WHERE restaurant_id = ? AND is_active = 1 AND supplier_id IS NOT NULL', [$rid])->fetchAll(PDO::FETCH_ASSOC) as $r) $supItems[(int)$r['supplier_id']][] = (int)$r['id'];
+        $supPo = [];
+        foreach ($q("SELECT supplier_id, SUM(status IN ('draft','sent')) open_po,
+                COALESCE(SUM(CASE WHEN status = 'received' AND received_at >= NOW() - INTERVAL 90 DAY THEN total ELSE 0 END),0) spend_90, MAX(created_at) last_order
+            FROM inventory_purchase_orders WHERE restaurant_id = ? AND supplier_id IS NOT NULL GROUP BY supplier_id", [$rid])->fetchAll(PDO::FETCH_ASSOC) as $r) $supPo[(int)$r['supplier_id']] = $r;
         foreach ($list as &$s) {
-            $s['items'] = array_map('intval', $q('SELECT id FROM inventory_items WHERE supplier_id = ? AND restaurant_id = ? AND is_active = 1', [$s['id'], $rid])->fetchAll(PDO::FETCH_COLUMN));
-            $s['open_po'] = (int)$q("SELECT COUNT(*) FROM inventory_purchase_orders WHERE supplier_id = ? AND restaurant_id = ? AND status IN ('draft','sent')", [$s['id'], $rid])->fetchColumn();
-            $s['spend_90'] = (float)$q("SELECT COALESCE(SUM(total),0) FROM inventory_purchase_orders WHERE supplier_id = ? AND restaurant_id = ? AND status = 'received' AND received_at >= NOW() - INTERVAL 90 DAY", [$s['id'], $rid])->fetchColumn();
-            $s['last_order'] = $q("SELECT MAX(created_at) FROM inventory_purchase_orders WHERE supplier_id = ? AND restaurant_id = ?", [$s['id'], $rid])->fetchColumn() ?: null;
+            $po = $supPo[$s['id']] ?? null;
+            $s['items'] = $supItems[$s['id']] ?? [];
+            $s['open_po'] = (int)($po['open_po'] ?? 0);
+            $s['spend_90'] = (float)($po['spend_90'] ?? 0);
+            $s['last_order'] = ($po['last_order'] ?? null) ?: null;
         }
         unset($s);
         ivOut($base + ['suppliers' => $list, 'items' => $loadItems()]);
@@ -456,11 +464,20 @@ try {
     if ($view === 'orders') {
         $pos = $q('SELECT p.*, s.name AS supplier_name, s.phone AS supplier_phone, s.email AS supplier_email FROM inventory_purchase_orders p LEFT JOIN inventory_suppliers s ON s.id = p.supplier_id
             WHERE p.restaurant_id = ? ORDER BY FIELD(p.status, "draft", "sent", "received", "cancelled"), p.id DESC LIMIT 200', [$rid])->fetchAll(PDO::FETCH_ASSOC);
-        $lineSt = $conn->prepare('SELECT l.id, l.inventory_item_id, l.quantity, l.cost_per_unit, l.received_qty, i.item_name, i.unit FROM inventory_po_lines l JOIN inventory_items i ON i.id = l.inventory_item_id WHERE l.po_id = ?');
+        // lines of every listed order in one query instead of one per order
+        $poLines = [];
+        if ($pos) {
+            $poIds = array_column($pos, 'id');
+            foreach ($q('SELECT l.po_id, l.id, l.inventory_item_id, l.quantity, l.cost_per_unit, l.received_qty, i.item_name, i.unit FROM inventory_po_lines l JOIN inventory_items i ON i.id = l.inventory_item_id
+                    WHERE l.po_id IN (' . implode(',', array_fill(0, count($poIds), '?')) . ') ORDER BY l.id', $poIds)->fetchAll(PDO::FETCH_ASSOC) as $l) {
+                $pid = (int)$l['po_id'];
+                unset($l['po_id']);
+                $poLines[$pid][] = $l;
+            }
+        }
         foreach ($pos as &$p) {
-            $lineSt->execute([$p['id']]);
             $p['id'] = (int)$p['id']; $p['supplier_id'] = $p['supplier_id'] ? (int)$p['supplier_id'] : null; $p['total'] = (float)$p['total'];
-            $p['lines'] = array_map(function ($l) { foreach (['quantity', 'cost_per_unit', 'received_qty'] as $k) $l[$k] = (float)$l[$k]; $l['id'] = (int)$l['id']; $l['inventory_item_id'] = (int)$l['inventory_item_id']; return $l; }, $lineSt->fetchAll(PDO::FETCH_ASSOC));
+            $p['lines'] = array_map(function ($l) { foreach (['quantity', 'cost_per_unit', 'received_qty'] as $k) $l[$k] = (float)$l[$k]; $l['id'] = (int)$l['id']; $l['inventory_item_id'] = (int)$l['inventory_item_id']; return $l; }, $poLines[$p['id']] ?? []);
         }
         unset($p);
         ivOut($base + ['orders' => $pos, 'suppliers' => $suppliers(), 'items' => $loadItems()]);

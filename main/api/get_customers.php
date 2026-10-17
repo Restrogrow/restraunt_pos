@@ -33,6 +33,7 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 }
 
 $restaurant_id = $_SESSION['restaurant_id'];
+session_write_close(); // nothing below writes the session
 
 try {
     // Get connection using getConnection() for lazy connection support
@@ -178,24 +179,16 @@ try {
     $allCustomers = array_slice($allCustomers, $offset, $limit);
 
     // Recalculate spending and visits from orders table for accuracy (for customers table entries)
-    // Fetch all orders and group by normalized name+phone in PHP for accurate matching
-    $allOrdersStmt = $conn->prepare("SELECT customer_name, customer_phone, total, created_at
-                                     FROM orders 
-                                     WHERE restaurant_id = ? 
-                                     AND customer_name IS NOT NULL 
-                                     AND customer_name != '' 
-                                     AND customer_name != 'Table Customer'
-                                     AND customer_name != 'Takeaway'
-                                     AND created_at != '0000-00-00 00:00:00'");
-    $allOrdersStmt->execute([$restaurant_id]);
-    $allOrders = $allOrdersStmt->fetchAll(PDO::FETCH_ASSOC);
+    // Group by normalized name+phone in PHP for accurate matching. Same orders (same filter)
+    // as $allOrderRows above, so reuse them instead of fetching every order a second time.
+    $allOrders = $allOrderRows;
     
     // Group orders by normalized name+phone
     $orderTotals = [];
     foreach ($allOrders as $order) {
         // Skip orders with invalid zero-date created_at to prevent SQL errors
         if ($order['created_at'] == '0000-00-00 00:00:00' || $order['created_at'] == '0000-00-00') continue;
-        $key = createCustomerKey($order['customer_name'], $order['customer_phone'] ?? '');
+        $key = createCustomerKey($order['customer_name'], $order['phone'] ?? '');
         if (!isset($orderTotals[$key])) {
             $orderTotals[$key] = [
                 'spent' => 0,
@@ -248,12 +241,12 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_customers.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Database error: ' . $e->getMessage()
+        'message' => 'Something went wrong. Please try again.'
     ]);
     exit();
 }

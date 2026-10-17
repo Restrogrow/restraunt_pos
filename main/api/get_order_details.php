@@ -36,8 +36,9 @@ if (!isset($_SESSION['restaurant_id']) && (!isset($_SESSION['user_id']) && !isse
 }
 
 $table_id = $_GET['table_id'] ?? null;
+session_write_close(); // read-only endpoint ($_SESSION stays readable)
 
-if (!$table_id) {
+if (!$table_id || is_array($table_id)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Table ID required']);
     exit();
@@ -110,14 +111,13 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_order_details.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error: ' . $e->getMessage()
+        'message' => 'Something went wrong. Please try again.'
     ]);
     exit();
 }
 ?>
-

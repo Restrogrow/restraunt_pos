@@ -37,12 +37,13 @@ if (!$isSuperadmin) {
 try {
     $conn = getConnection();
     $restaurantId = $_SESSION['restaurant_id'] ?? null;
+    session_write_close(); // polled endpoint, read-only
 
-    $limit    = min((int)($_GET['limit'] ?? 50), 200);
+    $limit    = max(1, min((int)($_GET['limit'] ?? 50), 200));
     $offset   = max((int)($_GET['offset'] ?? 0), 0);
-    $source   = $_GET['source'] ?? '';
-    $severity = $_GET['severity'] ?? '';
-    $search   = trim($_GET['search'] ?? '');
+    $source   = is_string($_GET['source'] ?? null) ? $_GET['source'] : '';
+    $severity = is_string($_GET['severity'] ?? null) ? $_GET['severity'] : '';
+    $search   = is_string($_GET['search'] ?? null) ? trim($_GET['search']) : '';
     $unreadOnly = !empty($_GET['unread_only']);
     $sinceId  = (int)($_GET['since_id'] ?? 0);
 
@@ -127,7 +128,8 @@ try {
         'offset'       => $offset,
     ], JSON_UNESCAPED_UNICODE);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('get_error_logs.php: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,

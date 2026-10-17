@@ -36,6 +36,7 @@ try {
     }
 
     $restaurant_id = $_GET['restaurant_id'] ?? $_SESSION['restaurant_id'] ?? '';
+    if (!is_string($restaurant_id)) $restaurant_id = '';
 
     if (empty($restaurant_id)) {
         echo json_encode(['success' => false, 'message' => 'No restaurant_id provided']);
@@ -65,7 +66,7 @@ try {
     $coupons = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['success' => true, 'coupons' => $coupons]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_coupons.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

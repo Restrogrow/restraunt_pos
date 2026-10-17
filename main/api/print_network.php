@@ -32,6 +32,7 @@ if (ob_get_level()) {
 header('Content-Type: application/json');
 
 requirePermission(PERMISSION_MANAGE_ORDERS);
+session_write_close(); // the printer connect can take seconds; don't hold the session lock
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

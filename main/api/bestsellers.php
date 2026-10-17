@@ -27,6 +27,7 @@ if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
     exit;
 }
 $restaurantId = $_SESSION['restaurant_id'];
+session_write_close(); // nothing below writes the session
 
 try {
     $conn = getConnection();
@@ -180,7 +181,7 @@ try {
 } catch (InvalidArgumentException $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
     error_log('bestsellers.php: ' . $e->getMessage());
     http_response_code(500);

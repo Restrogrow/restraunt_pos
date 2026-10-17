@@ -30,8 +30,8 @@ try {
         $conn = $pdo;
     }
 
-    $token = $_POST['token'] ?? '';
-    $status = $_POST['status'] ?? '';
+    $token = is_string($_POST['token'] ?? null) ? $_POST['token'] : '';
+    $status = is_string($_POST['status'] ?? null) ? $_POST['status'] : '';
 
     if (empty($token) || empty($status)) {
         throw new Exception('Missing parameters');
@@ -63,7 +63,7 @@ try {
         'status' => $status
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }

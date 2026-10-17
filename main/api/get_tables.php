@@ -36,11 +36,12 @@ try {
     allowAppOrigin(true);
     header('Access-Control-Allow-Methods: GET');
     header('Access-Control-Allow-Headers: Content-Type');
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('get_tables.php init: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error initializing: ' . $e->getMessage(),
+        'message' => 'Something went wrong. Please try again.',
         'data' => []
     ]);
     exit();
@@ -51,7 +52,7 @@ try {
 // 2. Is staff (waiter/chef) with matching restaurant_id
 // 3. Not logged in but restaurant_id is provided in query
 $hasPermission = false;
-$requested_restaurant_id = $_GET['restaurant_id'] ?? null;
+$requested_restaurant_id = is_string($_GET['restaurant_id'] ?? null) ? $_GET['restaurant_id'] : null;
 
 if (isLoggedIn()) {
     // Check if user has permission
@@ -59,7 +60,7 @@ if (isLoggedIn()) {
         if (hasPermission(PERMISSION_MANAGE_TABLES)) {
             $hasPermission = true;
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // Permission check failed, continue to staff check
     }
     
@@ -119,6 +120,7 @@ if (!isset($_SESSION['restaurant_id']) && (!isset($_SESSION['user_id']) && !isse
 }
 
 $restaurant_id = $requested_restaurant_id ?? $_SESSION['restaurant_id'] ?? null;
+session_write_close(); // read-only endpoint
 
 if (!$restaurant_id) {
     echo json_encode([
@@ -163,12 +165,12 @@ try {
         'data' => []
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_tables.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error: ' . $e->getMessage(),
+        'message' => 'Something went wrong. Please try again.',
         'data' => []
     ]);
     exit();

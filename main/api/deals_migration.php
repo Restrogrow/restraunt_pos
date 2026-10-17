@@ -52,7 +52,7 @@ try {
     $conn->exec($sql);
     echo "✓ deals table created successfully.\n";
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     echo "✗ Error: " . $e->getMessage() . "\n";
     exit(1);
 }

@@ -80,6 +80,7 @@ try {
     riderOut(['success' => false, 'message' => 'Unknown action'], 400);
 } catch (Throwable $e) {
     $msg = $e->getMessage();
-    if ($e instanceof PDOException) { error_log('rider_app: ' . $msg); $msg = 'Something went wrong. Please try again.'; }
+    // the rider steps explain themselves; a database or code error stays in the log
+    if ($e instanceof PDOException || !($e instanceof Exception)) { error_log('rider_app: ' . $msg); riderOut(['success' => false, 'message' => 'Something went wrong. Please try again.'], 500); }
     riderOut(['success' => false, 'message' => $msg], 400);
 }

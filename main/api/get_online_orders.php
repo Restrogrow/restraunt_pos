@@ -36,13 +36,14 @@ try {
     // Always scope to the authenticated session's own tenant — never trust a
     // client-supplied restaurant_id, or one restaurant's staff could read another's online orders.
     $restaurant_id = $_SESSION['restaurant_id'] ?? null;
+    session_write_close(); // read-only endpoint ($_SESSION stays readable)
 
     if (!$restaurant_id) {
         throw new Exception('Restaurant ID is required');
     }
 
-    $statusFilter = $_GET['status'] ?? '';
-    $searchTerm = $_GET['search'] ?? '';
+    $statusFilter = is_string($_GET['status'] ?? null) ? $_GET['status'] : '';
+    $searchTerm = is_string($_GET['search'] ?? null) ? $_GET['search'] : '';
 
     // Soft-deleted orders live only in the app's Deleted tab — never in this
     // live online-orders list.
@@ -110,18 +111,29 @@ try {
         $result = $stmt->fetchAll();
     }
 
-    $orders = [];
-    foreach ($result as $row) {
+    // items of all listed orders, fetched in batches instead of one query per order
+    $itemsByOrder = [];
+    foreach (array_chunk(array_column($result, 'id'), 500) as $idChunk) {
+        $in = implode(',', array_fill(0, count($idChunk), '?'));
         // items with the dish photo, size and add-on names (read-only extras for the order cards)
         try {
-            $items_stmt = $conn->prepare("SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes, oi.variation_name, oi.addons, m.item_image, m.item_type
-                FROM order_items oi LEFT JOIN menu_items m ON m.id = oi.menu_item_id WHERE oi.order_id = ? ORDER BY oi.id");
-            $items_stmt->execute([$row['id']]);
+            $items_stmt = $conn->prepare("SELECT oi.order_id, oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes, oi.variation_name, oi.addons, m.item_image, m.item_type
+                FROM order_items oi LEFT JOIN menu_items m ON m.id = oi.menu_item_id WHERE oi.order_id IN ($in) ORDER BY oi.id");
+            $items_stmt->execute($idChunk);
         } catch (PDOException $e) {
-            $items_stmt = $conn->prepare("SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes FROM order_items oi WHERE oi.order_id = ? ORDER BY oi.id");
-            $items_stmt->execute([$row['id']]);
+            $items_stmt = $conn->prepare("SELECT oi.order_id, oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes FROM order_items oi WHERE oi.order_id IN ($in) ORDER BY oi.id");
+            $items_stmt->execute($idChunk);
         }
-        $row['items'] = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($items_stmt->fetchAll(PDO::FETCH_ASSOC) as $it) {
+            $oid = $it['order_id'];
+            unset($it['order_id']);
+            $itemsByOrder[$oid][] = $it;
+        }
+    }
+
+    $orders = [];
+    foreach ($result as $row) {
+        $row['items'] = $itemsByOrder[$row['id']] ?? [];
         foreach ($row['items'] as &$it) {
             $names = [];
             $raw = isset($it['addons']) ? json_decode((string)$it['addons'], true) : null;
@@ -154,7 +166,7 @@ try {
     error_log("PDO Error in get_online_orders.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error'], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_online_orders.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.'], JSON_UNESCAPED_UNICODE);

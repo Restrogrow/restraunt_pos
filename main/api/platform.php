@@ -29,6 +29,7 @@ $action = $_GET['action'] ?? '';
 $in = json_decode(file_get_contents('php://input') ?: '[]', true) ?: [];
 $who = $_SESSION['staff_name'] ?? $_SESSION['member_name'] ?? $_SESSION['username'] ?? $_SESSION['restaurant_name'] ?? 'Restaurant';
 $post = $_SERVER['REQUEST_METHOD'] === 'POST';
+session_write_close(); // nothing below writes the session; don't hold its lock
 
 try {
     pfEnsure($conn);
@@ -67,8 +68,8 @@ try {
 
     case 'createTicket':
         if (!$post) throw new Exception('POST required');
-        $subject = trim($in['subject'] ?? '');
-        $body = trim($in['body'] ?? '');
+        $subject = is_scalar($in['subject'] ?? null) ? trim((string)$in['subject']) : '';
+        $body = is_scalar($in['body'] ?? null) ? trim((string)$in['body']) : '';
         if ($subject === '' || $body === '') throw new Exception('Please write a subject and what happened');
         $cat = in_array($in['category'] ?? '', ['orders', 'payments', 'menu', 'website', 'printing', 'whatsapp', 'billing', 'other'], true) ? $in['category'] : 'other';
         // a few tickets an hour is plenty; stops accidental floods
@@ -85,7 +86,7 @@ try {
 
     case 'reply':
         if (!$post) throw new Exception('POST required');
-        $body = trim($in['body'] ?? '');
+        $body = is_scalar($in['body'] ?? null) ? trim((string)$in['body']) : '';
         if ($body === '') throw new Exception('Write a message first');
         $st = $conn->prepare("SELECT id FROM support_tickets WHERE id = ? AND restaurant_id = ?");
         $st->execute([(int)($in['id'] ?? 0), $rid]);
@@ -102,6 +103,13 @@ try {
         echo json_encode(['success' => false, 'message' => 'Unknown action']);
     }
 } catch (Throwable $e) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    // messages thrown above (plain Exception) are for the user; anything else (database, PHP error) is logged, not shown
+    if (get_class($e) === 'Exception') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    } else {
+        error_log('platform.php: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Something went wrong. Please try again.']);
+    }
 }

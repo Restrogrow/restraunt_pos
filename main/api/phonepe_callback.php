@@ -142,7 +142,7 @@ try {
     http_response_code(200);
     echo json_encode(['success' => true]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('PhonePe subscription webhook error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred processing the payment callback']);

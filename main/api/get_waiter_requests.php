@@ -46,13 +46,14 @@ try {
     // Always scope to the authenticated session's own tenant — never trust a
     // client-supplied restaurant_id, or one restaurant's staff could read another's waiter requests.
     $restaurant_id = $_SESSION['restaurant_id'] ?? null;
+    session_write_close();
     
     if (!$restaurant_id) {
         throw new Exception('Restaurant ID is required');
     }
     
     // Get waiter requests with table and area info
-    $status_filter = $_GET['status'] ?? 'Pending'; // Allow filtering by status
+    $status_filter = is_string($_GET['status'] ?? null) ? $_GET['status'] : 'Pending'; // Allow filtering by status
     
     if ($status_filter === 'All') {
         // Show all requests regardless of status
@@ -127,12 +128,12 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_waiter_requests.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error: ' . $e->getMessage()
+        'message' => 'Something went wrong. Please try again.'
     ]);
     exit();
 }

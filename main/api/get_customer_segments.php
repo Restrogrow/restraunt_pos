@@ -12,6 +12,7 @@ require_once __DIR__ . '/../config/authorization_config.php';
 requireLogin(true);
 
 $restaurant_id = $_SESSION['restaurant_id'];
+session_write_close(); // read-only endpoint
 $filterSegment = $_GET['segment'] ?? '';
 
 try {
@@ -50,7 +51,7 @@ try {
         'revenue' => $revenue,
         'customers' => $filtered,
     ], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_customer_segments.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Failed to load customer segments']);
 }

@@ -39,6 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/error_monitor.php';
+// only reads the session (who reported it) — release the lock so the dashboard's other calls don't wait
+$sessUserId = $_SESSION['user_id'] ?? null;
+$sessRestaurantId = $_SESSION['restaurant_id'] ?? null;
+if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 
 // Don't validate session — we want errors even from anonymous users.
 
@@ -65,9 +69,10 @@ if (empty($input)) {
         $input = json_decode($raw, true) ?? [];
     }
 }
+if (!is_array($input)) $input = [];
 
 // Validate required
-$message = trim($input['message'] ?? '');
+$message = is_string($input['message'] ?? null) ? trim($input['message']) : '';
 if (empty($message)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'message is required']);
@@ -77,12 +82,12 @@ if (empty($message)) {
 try {
     $conn = getConnection();
     
-    $source   = $input['source'] ?? 'js';
-    $severity = $input['severity'] ?? 'error';
-    $file     = $input['file'] ?? null;
-    $line     = isset($input['line']) ? (int)$input['line'] : null;
-    $trace    = $input['trace'] ?? null;
-    $url      = $input['url'] ?? ($_SERVER['HTTP_REFERER'] ?? null);
+    $source   = is_string($input['source'] ?? null) ? $input['source'] : 'js';
+    $severity = is_string($input['severity'] ?? null) ? $input['severity'] : 'error';
+    $file     = is_string($input['file'] ?? null) ? $input['file'] : null;
+    $line     = isset($input['line']) && is_scalar($input['line']) ? (int)$input['line'] : null;
+    $trace    = is_string($input['trace'] ?? null) ? $input['trace'] : null;
+    $url      = is_string($input['url'] ?? null) ? $input['url'] : ($_SERVER['HTTP_REFERER'] ?? null);
     $ua       = $_SERVER['HTTP_USER_AGENT'] ?? null;
     
     // Parse extra context
@@ -108,8 +113,8 @@ try {
         'url'        => $url,
         'user_agent' => $ua,
         'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
-        'user_id'    => $_SESSION['user_id'] ?? null,
-        'restaurant_id' => $_SESSION['restaurant_id'] ?? null,
+        'user_id'    => $sessUserId,
+        'restaurant_id' => $sessRestaurantId,
         'extra'      => $extra,
     ]);
 
@@ -118,7 +123,8 @@ try {
         'id'      => $id,
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('report_error.php: ' . $e->getMessage());
     // Silently fail — we don't want error-reporting to cause errors
     http_response_code(200); // Still return 200 so the client doesn't get HTTP errors
     echo json_encode(['success' => false, 'message' => 'Logging failed']);

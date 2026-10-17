@@ -29,6 +29,7 @@ try {
     // member of one restaurant could otherwise pass another restaurant's ID
     // and delete/create its deals.
     $restaurant_id = $_SESSION['restaurant_id'] ?? '';
+    session_write_close(); // done with the session — release its lock
     $deal_type = $_POST['deal_type'] ?? '';
     $menu_id = (int)($_POST['menu_id'] ?? 0);
     $action = $_POST['action'] ?? 'create'; // create or delete
@@ -78,7 +79,7 @@ try {
         'deal_id' => $conn->lastInsertId()
     ]);
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(400);
     error_log("Error in save_deal.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

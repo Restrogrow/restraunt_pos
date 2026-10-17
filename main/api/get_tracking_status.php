@@ -11,8 +11,8 @@ if (!file_exists(__DIR__ . '/../db_connection.php')) {
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/order_abuse_guard.php';
 
-$orderNumber = $_GET['order_number'] ?? '';
-$customerPhone = $_GET['customer_phone'] ?? '';
+$orderNumber = is_string($_GET['order_number'] ?? null) ? $_GET['order_number'] : '';
+$customerPhone = is_string($_GET['customer_phone'] ?? null) ? $_GET['customer_phone'] : '';
 // Normalize to match the stored 10-digit phone format (order_abuse_guard.php).
 $customerPhone = orderAbuseNormalizePhone($customerPhone) ?? $customerPhone;
 
@@ -62,6 +62,7 @@ try {
         'eta_text' => orderEtaText(orderEta($conn, (int)$order['id']), (string)$order['order_status'], (string)$order['order_type'], $tracking['delivery_status'] ?? null),
         'stop_reason' => in_array($order['order_status'], ['Rejected', 'Cancelled'], true) ? orderStopMessage($order['notes'] ?? '') : ''
     ]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('get_tracking_status.php: ' . $e->getMessage());
     echo json_encode(['success' => false]);
 }

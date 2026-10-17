@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true);
+session_write_close(); // nothing here reads or writes the session — don't hold its lock
 
 require_once __DIR__ . '/../db_connection.php';
 
@@ -25,9 +26,9 @@ try {
         $conn = $pdo;
     }
 
-    $token = $_POST['token'] ?? '';
-    $lat = (float)($_POST['lat'] ?? 0);
-    $lng = (float)($_POST['lng'] ?? 0);
+    $token = is_string($_POST['token'] ?? null) ? $_POST['token'] : '';
+    $lat = is_scalar($_POST['lat'] ?? null) ? (float)$_POST['lat'] : 0;
+    $lng = is_scalar($_POST['lng'] ?? null) ? (float)$_POST['lng'] : 0;
 
     if (empty($token) || $lat == 0 || $lng == 0) {
         throw new Exception('Missing parameters');
@@ -48,7 +49,7 @@ try {
 
     echo json_encode(['success' => true, 'message' => 'Location updated']);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(400);
     error_log("Error in rider_update_location.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

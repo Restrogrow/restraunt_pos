@@ -27,6 +27,7 @@ try {
     ensurePaymentMethodsTable($conn);
 
     $restaurant_id = $_SESSION['restaurant_id'] ?? '';
+    session_write_close(); // done with the session — release its lock
     if (empty($restaurant_id)) {
         throw new Exception('No restaurant session');
     }
@@ -85,8 +86,8 @@ try {
         exit;
     }
 
-    $method_name = trim($_POST['method_name'] ?? '');
-    $emoji = trim($_POST['emoji'] ?? '') ?: '💳';
+    $method_name = trim(is_string($_POST['method_name'] ?? null) ? $_POST['method_name'] : '');
+    $emoji = trim(is_string($_POST['emoji'] ?? null) ? $_POST['emoji'] : '') ?: '💳';
     $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1;
 
     if (empty($method_name)) {
@@ -116,8 +117,14 @@ try {
         echo json_encode(['success' => true, 'message' => 'Payment method added', 'id' => $conn->lastInsertId()]);
     }
 
-} catch (Exception $e) {
-    http_response_code(400);
+} catch (Throwable $e) {
     error_log('Error in save_payment_method.php: ' . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => $e->getMessage() ?: 'An error occurred. Please try again.']);
+    // our own checks above explain themselves; a database or code error stays in the log
+    if ($e instanceof PDOException || !($e instanceof Exception)) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Something went wrong. Please try again.']);
+    } else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage() ?: 'An error occurred. Please try again.']);
+    }
 }

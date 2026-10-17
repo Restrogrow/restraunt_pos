@@ -31,7 +31,7 @@ if (!isset($_SESSION['branch_admin_id']) || !isset($_SESSION['linked_restaurants
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
-$restaurantId = trim($input['restaurant_id'] ?? '');
+$restaurantId = is_scalar($input['restaurant_id'] ?? null) ? trim((string)$input['restaurant_id']) : '';
 
 if (!$restaurantId) {
     http_response_code(400);
@@ -69,7 +69,7 @@ try {
     } else {
         unset($_SESSION['user_id']);
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('switch_restaurant.php: could not resolve branch user_id: ' . $e->getMessage());
 }
 

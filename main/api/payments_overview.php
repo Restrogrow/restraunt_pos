@@ -37,7 +37,7 @@ try {
     // the range: today, the last N days, or two dates
     $range = $_GET['range'] ?? '7';
     $today = new DateTime('today');
-    if ($range === 'custom' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from'] ?? '') && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to'] ?? '')) {
+    if ($range === 'custom' && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_GET['from'] ?? '')) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_GET['to'] ?? ''))) {
         $from = new DateTime($_GET['from']); $to = new DateTime($_GET['to']);
         if ($to < $from) [$from, $to] = [$to, $from];
         if ($from->diff($to)->days > 366) $from = (clone $to)->modify('-366 days');

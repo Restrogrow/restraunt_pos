@@ -18,6 +18,9 @@ if (!isSessionValid() || (!isset($_SESSION['user_id']) && !isset($_SESSION['staf
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
+$userId = $_SESSION['user_id'] ?? null;
+$staffId = $_SESSION['staff_id'] ?? null;
+session_write_close(); // only reads the session — release its lock
 
 try {
     $conn = getConnection();
@@ -26,14 +29,13 @@ try {
         // Save a new subscription
         $input = json_decode(file_get_contents('php://input'), true);
         
-        if (!$input || empty($input['endpoint']) || empty($input['keys']['p256dh']) || empty($input['keys']['auth'])) {
+        if (!is_array($input) || empty($input['endpoint']) || !is_string($input['endpoint']) || !is_array($input['keys'] ?? null)
+            || empty($input['keys']['p256dh']) || !is_string($input['keys']['p256dh']) || empty($input['keys']['auth']) || !is_string($input['keys']['auth'])) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Invalid subscription data']);
             exit;
         }
         
-        $userId = $_SESSION['user_id'] ?? null;
-        $staffId = $_SESSION['staff_id'] ?? null;
         $endpoint = $input['endpoint'];
         $p256dhKey = $input['keys']['p256dh'];
         $authKey = $input['keys']['auth'];
@@ -68,16 +70,16 @@ try {
     } elseif ($method === 'DELETE') {
         // Remove a subscription
         $input = json_decode(file_get_contents('php://input'), true);
-        $endpoint = $input['endpoint'] ?? $_GET['endpoint'] ?? '';
+        $endpoint = (is_array($input) ? ($input['endpoint'] ?? null) : null) ?? $_GET['endpoint'] ?? '';
         
-        if (!$endpoint) {
+        if (!$endpoint || !is_string($endpoint)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'No endpoint specified']);
             exit;
         }
         
         $stmt = $conn->prepare("DELETE FROM push_subscriptions WHERE endpoint = ? AND (user_id = ? OR staff_id = ?)");
-        $stmt->execute([$endpoint, $_SESSION['user_id'] ?? 0, $_SESSION['staff_id'] ?? 0]);
+        $stmt->execute([$endpoint, $userId ?? 0, $staffId ?? 0]);
         
         echo json_encode(['success' => true, 'message' => 'Subscription removed']);
         
@@ -86,7 +88,7 @@ try {
         echo json_encode(['success' => false, 'message' => 'Method not allowed']);
     }
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Push subscription error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Server error']);

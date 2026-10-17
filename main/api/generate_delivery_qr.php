@@ -74,6 +74,7 @@ try {
     }
 
     $restaurant_id = $_SESSION['restaurant_id'] ?? '';
+    session_write_close();
     $order_id = (int)($_POST['order_id'] ?? 0);
 
     if (empty($restaurant_id) || !$order_id) {
@@ -125,7 +126,7 @@ try {
             $stmt->execute([$restaurant_id, $order_id, $token, $expiresAt]);
         }
         $conn->commit();
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         $conn->rollBack();
         throw $e;
     }
@@ -144,7 +145,7 @@ try {
         'expires_at' => $expiresAt
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in generate_delivery_qr.php: " . $e->getMessage());
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

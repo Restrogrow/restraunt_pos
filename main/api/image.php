@@ -63,9 +63,9 @@ if (function_exists('getConnection')) {
     }
 }
 
-$imagePath = $_GET['path'] ?? '';
-$imageType = $_GET['type'] ?? ''; // 'logo', 'item', 'banner', or 'business_qr'
-$imageId = $_GET['id'] ?? '';
+$imagePath = is_string($_GET['path'] ?? null) ? $_GET['path'] : '';
+$imageType = is_string($_GET['type'] ?? null) ? $_GET['type'] : ''; // 'logo', 'item', 'banner', or 'business_qr'
+$imageId = is_string($_GET['id'] ?? null) ? $_GET['id'] : '';
 
 // Local image library reference (images/<Folder>/<file>, e.g. from AI menu
 // auto-matching): serve straight from disk, no DB lookup needed.
@@ -173,7 +173,7 @@ if (!empty($imagePath) && strpos($imagePath, 'http') !== 0 && empty($imageType))
     } catch (PDOException $e) {
         // If query fails, continue to other checks
         error_log("Database BLOB check failed for path '$imagePath': " . $e->getMessage());
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("Unexpected error in BLOB check for path '$imagePath': " . $e->getMessage());
     }
 }
@@ -479,9 +479,11 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
                 http_response_code(403);
                 sendPlaceholderSvg('Forbidden');
             }
+            $proofRestaurantId = $_SESSION['restaurant_id'];
+            session_write_close(); // read-only from here
             try {
                 $stmt = $conn->prepare("SELECT proof_data, proof_mime_type FROM payment_proofs WHERE order_id = ? AND restaurant_id = ? LIMIT 1");
-                $stmt->execute([$imageId, $_SESSION['restaurant_id']]);
+                $stmt->execute([$imageId, $proofRestaurantId]);
                 $proof = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($proof && !empty($proof['proof_data'])) {
                     // Discard anything already sitting in the output buffer

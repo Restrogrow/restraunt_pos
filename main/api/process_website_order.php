@@ -41,26 +41,28 @@ $input = json_decode(file_get_contents('php://input'), true);
 // here is defense in depth alongside escaping every render site; it doesn't
 // replace that escaping, since this is the only checkpoint anything written
 // here ever passes through.
-$customer_name = trim(strip_tags($input['customer_name'] ?? ''));
-$customer_phone = $input['customer_phone'] ?? '';
-$customer_email = $input['customer_email'] ?? '';
-$customer_address = trim(strip_tags($input['customer_address'] ?? ''));
-$landmark = trim(strip_tags($input['landmark'] ?? ''));
+// A text field sent as an array/object would crash trim()/strip_tags()/preg_match(): treat it as empty.
+$inStr = function ($v, $default = '') { return is_scalar($v) ? (string)$v : $default; };
+$customer_name = trim(strip_tags($inStr($input['customer_name'] ?? '')));
+$customer_phone = $inStr($input['customer_phone'] ?? '');
+$customer_email = $inStr($input['customer_email'] ?? '');
+$customer_address = trim(strip_tags($inStr($input['customer_address'] ?? '')));
+$landmark = trim(strip_tags($inStr($input['landmark'] ?? '')));
 if ($landmark === '') $landmark = null;
 $address_lat = isset($input['address_lat']) && $input['address_lat'] !== '' ? (float)$input['address_lat'] : null;
 $address_lng = isset($input['address_lng']) && $input['address_lng'] !== '' ? (float)$input['address_lng'] : null;
-$notes = trim(strip_tags($input['notes'] ?? ''));
+$notes = trim(strip_tags($inStr($input['notes'] ?? '')));
 $order_type = $input['order_type'] ?? 'Delivery';
 $table_id = $input['table_id'] ?? null;
 // Ensure table_id is null if it's an empty string (e.g. for Delivery or non-Dine-in orders)
 if ($table_id === '' || $table_id === 0) $table_id = null;
-$items = $input['items'] ?? [];
+$items = is_array($input['items'] ?? null) ? $input['items'] : [];
 // Offers > Combos & Deals: [{id, quantity, picks: {slot id: choice id}}], priced on the server (config/combo_helpers.php)
 $combos_in = is_array($input['combos'] ?? null) ? array_slice($input['combos'], 0, 20) : [];
 $global_addons = $input['global_addons'] ?? [];
 $total = $input['total'] ?? 0;
 $total_payable = $input['total_payable'] ?? $total;
-$payment_method = $input['payment_method'] ?? 'Cash';
+$payment_method = $inStr($input['payment_method'] ?? 'Cash', 'Cash');
 
 // Optional payment-proof screenshot (customer uploads this when paying via
 // the restaurant's business QR). Stored separately in payment_proofs, not on
@@ -68,7 +70,7 @@ $payment_method = $input['payment_method'] ?? 'Cash';
 // until the restaurant explicitly reviews and confirms it.
 $paymentProofBytes = null;
 $paymentProofMime = null;
-$payment_proof_base64 = $input['payment_proof_base64'] ?? '';
+$payment_proof_base64 = $inStr($input['payment_proof_base64'] ?? '');
 if ($payment_proof_base64 !== '' && preg_match('/^data:(image\/(?:jpeg|jpg|png|webp|gif));base64,(.+)$/i', $payment_proof_base64, $proofMatch)) {
     $decodedProof = base64_decode($proofMatch[2], true);
     if ($decodedProof !== false && strlen($decodedProof) > 0 && strlen($decodedProof) <= 5 * 1024 * 1024) {
@@ -76,7 +78,7 @@ if ($payment_proof_base64 !== '' && preg_match('/^data:(image\/(?:jpeg|jpg|png|w
         $paymentProofMime = strtolower($proofMatch[1]) === 'image/jpg' ? 'image/jpeg' : strtolower($proofMatch[1]);
     }
 }
-$coupon_code = $input['coupon_code'] ?? '';
+$coupon_code = $inStr($input['coupon_code'] ?? '');
 $discount_amount = (float)($input['discount_amount'] ?? 0);
 $redeem_points_requested = max(0, (int)($input['redeem_points'] ?? 0));
 $use_wallet = !empty($input['use_wallet']);
@@ -338,7 +340,7 @@ try {
     if ($scheduled_at_input !== '') {
         try {
             $scheduledDT = new DateTime($scheduled_at_input, $restaurantTz);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $scheduledDT = null;
         }
         if (!$scheduledDT) {
@@ -674,7 +676,7 @@ $conn->beginTransaction();
         if (!$menuRow || !$menuRow['is_available']) continue;
 
         $unitPrice = (float)$menuRow['base_price'];
-        $variationName = $item['variation_name'] ?? '';
+        $variationName = $inStr($item['variation_name'] ?? '');
 
         if (!empty($variationName) && isset($variationsByItem[$menuItemId][$variationName])) {
             $unitPrice = $variationsByItem[$menuItemId][$variationName];
@@ -915,7 +917,7 @@ $conn->beginTransaction();
         $gstEnabled = $gstRow ? (bool)$gstRow['enable_gst'] : true;
         if ($gstRow && !empty($gstRow['tax_name'])) $taxName = $gstRow['tax_name'];
         if ($gstRow && isset($gstRow['tax_percent']) && $gstRow['tax_percent'] !== null) $taxPercent = (float)$gstRow['tax_percent'];
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         $gstEnabled = true;
     }
 
@@ -1074,7 +1076,7 @@ $conn->beginTransaction();
         try {
             $conn->prepare("UPDATE orders SET customer_ip = INET6_ATON(?) WHERE id = ?")
                  ->execute([$abuse_ip, $order_id]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log('process_website_order: could not record customer_ip (run add_order_abuse_protection.sql): ' . $e->getMessage());
         }
     }
@@ -1083,7 +1085,7 @@ $conn->beginTransaction();
         try {
             $conn->prepare("INSERT INTO payment_proofs (order_id, restaurant_id, proof_data, proof_mime_type, status) VALUES (?, ?, ?, ?, 'Pending')")
                  ->execute([$order_id, $restaurant_id, $paymentProofBytes, $paymentProofMime]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // Don't fail the whole order over a proof-storage hiccup — the
             // restaurant can still follow up with the customer manually.
             error_log('Failed to store payment proof for order ' . $order_id . ': ' . $e->getMessage());
@@ -1199,10 +1201,12 @@ $conn->beginTransaction();
     if ($loyalty_points_to_redeem > 0 && $loyaltyCustomerId) {
         try {
             redeemLoyaltyPoints($conn, $restaurant_id, $loyaltyCustomerId, $loyalty_points_to_redeem, (int)$order_id);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $conn->rollBack();
             ob_end_clean();
-            echo json_encode(['success' => false, 'message' => 'Could not apply loyalty points: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            // redeemLoyaltyPoints() throws plain Exceptions meant for the customer; anything else is logged, not shown
+            if (get_class($e) !== 'Exception') error_log('process_website_order loyalty: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Could not apply loyalty points: ' . (get_class($e) === 'Exception' ? $e->getMessage() : 'please try again.')], JSON_UNESCAPED_UNICODE);
             exit();
         }
     }
@@ -1218,7 +1222,7 @@ $conn->beginTransaction();
             $conn->prepare('UPDATE orders SET wallet_paid = ? WHERE id = ?')->execute([$wallet_paid, $order_id]);
             $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, 'Wallet', 'Success')")
                  ->execute([$restaurant_id, $order_id, $wallet_paid]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $conn->rollBack();
             ob_end_clean();
             echo json_encode(['success' => false, 'message' => 'Could not pay from your wallet. Please try again.'], JSON_UNESCAPED_UNICODE);
@@ -1231,7 +1235,7 @@ $conn->beginTransaction();
         try {
             $paymentStmt = $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Pending')");
             $paymentStmt->execute([$restaurant_id, $order_id, round($grand_total - $wallet_paid, 2), $payment_method]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // Payments table might not exist, skip
         }
     }
@@ -1252,9 +1256,14 @@ $conn->beginTransaction();
     // Commit transaction
     $conn->commit();
     // which campaign link (poster QR / caption link) brought this order, for Marketing › My campaigns
-    if (!empty($input['campaign_src'])) { require_once __DIR__ . '/../config/marketing_helpers.php'; mkRecordOrderSource($conn, (string)$restaurant_id, (int)$order_id, $input['campaign_src']); }
-    require_once __DIR__ . '/../config/inventory_engine.php';
-    invKick($conn, $restaurant_id);   // with "when the order is placed", stock goes out now
+    // (the order is saved now: a problem in these extras must not tell the customer it failed, or they order twice)
+    try {
+        if (!empty($input['campaign_src'])) { require_once __DIR__ . '/../config/marketing_helpers.php'; mkRecordOrderSource($conn, (string)$restaurant_id, (int)$order_id, (string)$input['campaign_src']); }
+        require_once __DIR__ . '/../config/inventory_engine.php';
+        invKick($conn, $restaurant_id);   // with "when the order is placed", stock goes out now
+    } catch (Throwable $e) {
+        error_log('process_website_order: after-save extras failed for order ' . $order_id . ': ' . $e->getMessage());
+    }
 
     // WhatsApp settings needed for the response payload below
     $waSettings = $restaurantRow;
@@ -1326,7 +1335,7 @@ $conn->beginTransaction();
         require_once __DIR__ . '/../config/order_confirmation.php';
         try {
             fireOrderConfirmedActions($conn, $order_id);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log('Order confirmation actions error: ' . $e->getMessage());
         }
     }
@@ -1369,4 +1378,3 @@ $conn->beginTransaction();
     ], JSON_UNESCAPED_UNICODE);
 }
 ?>
-

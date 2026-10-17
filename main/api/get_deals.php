@@ -13,6 +13,7 @@ if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Auth required', 'data' => []]);
     exit;
 }
+session_write_close(); // read-only endpoint ($_SESSION stays readable)
 
 try {
     $conn = getConnection();
@@ -46,7 +47,7 @@ try {
     
     echo json_encode(['success' => true, 'data' => $deals]);
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_deals.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.', 'data' => []]);
 }

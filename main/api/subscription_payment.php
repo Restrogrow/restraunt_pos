@@ -35,6 +35,7 @@ try {
     $conn = getConnection();
     $user_id = $_SESSION['user_id'];
     $restaurant_id = $_SESSION['restaurant_id'];
+    session_write_close(); // only reads the session — release its lock while PhonePe is called
 
     switch ($action) {
 
@@ -196,7 +197,7 @@ try {
 
         case 'checkPaymentStatus':
             // Check the status of a subscription payment
-            $transaction_id = trim($_GET['transaction_id'] ?? '');
+            $transaction_id = trim(is_string($_GET['transaction_id'] ?? null) ? $_GET['transaction_id'] : '');
             if (empty($transaction_id)) {
                 throw new Exception('Transaction ID is required');
             }
@@ -243,7 +244,7 @@ try {
         case 'toggleAutoPay':
             // Enable/disable auto-pay for subscription
             $enable = !empty($_POST['enable']) ? 1 : 0;
-            $method = trim($_POST['method'] ?? 'phonepe');
+            $method = trim(is_string($_POST['method'] ?? null) ? $_POST['method'] : 'phonepe');
 
             $stmt = $conn->prepare("UPDATE users SET auto_pay = ?, auto_pay_method = ? WHERE id = ?");
             $stmt->execute([$enable, $method, $user_id]);
@@ -260,7 +261,14 @@ try {
             throw new Exception('Invalid action. Use: getStatus, initiatePayment, checkPaymentStatus, toggleAutoPay');
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    // our own checks and the gateway's reply explain themselves; a database or code error stays in the log
+    if ($e instanceof PDOException || !($e instanceof Exception)) {
+        error_log('subscription_payment.php: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Something went wrong. Please try again.']);
+        exit();
+    }
     http_response_code(400);
     echo json_encode([
         'success' => false,

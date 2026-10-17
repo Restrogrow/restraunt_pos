@@ -74,10 +74,11 @@ try {
     } else {
         $userId = $_SESSION['user_id'];
     }
+    session_write_close();
 
     $showBusinessId = isset($_POST['show_business_id']) ? (int)$_POST['show_business_id'] : 0;
-    $businessIdLabel = isset($_POST['business_id_label']) ? trim($_POST['business_id_label']) : '';
-    $businessIdNo = isset($_POST['business_id_no']) ? strtoupper(trim($_POST['business_id_no'])) : '';
+    $businessIdLabel = isset($_POST['business_id_label']) && is_string($_POST['business_id_label']) ? trim($_POST['business_id_label']) : '';
+    $businessIdNo = isset($_POST['business_id_no']) && is_string($_POST['business_id_no']) ? strtoupper(trim($_POST['business_id_no'])) : '';
 
     $stmt = $conn->prepare("UPDATE users SET show_business_id = ?, business_id_label = ?, business_id_no = ? WHERE id = ?");
     $stmt->execute([$showBusinessId, $businessIdLabel, $businessIdNo, $userId]);
@@ -88,7 +89,7 @@ try {
         'business_id_label' => $businessIdLabel,
         'business_id_no' => $businessIdNo,
     ]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Error in update_business_id.php: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Could not save — please try again.']);

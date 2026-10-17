@@ -9,6 +9,7 @@ if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Auth required', 'feedback' => []]);
     exit;
 }
+session_write_close(); // read-only endpoint ($_SESSION stays readable)
 
 try {
     require_once __DIR__ . '/../db_connection.php';
@@ -64,7 +65,7 @@ try {
         'count' => count($feedback)
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_feedback.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.', 'feedback' => []]);
 }

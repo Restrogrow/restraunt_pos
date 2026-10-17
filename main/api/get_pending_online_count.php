@@ -34,6 +34,7 @@ try {
     $cnt = (int)$stmt->fetchColumn();
 
     echo json_encode(['success' => true, 'count' => $cnt]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('get_pending_online_count.php: ' . $e->getMessage());
     echo json_encode(['success' => false, 'count' => 0]);
 }

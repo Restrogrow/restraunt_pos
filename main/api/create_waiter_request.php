@@ -32,6 +32,7 @@ if (!is_array($input)) $input = $_POST;
 
 $rid = trim((string)($input['restaurant_id'] ?? ($_GET['restaurant_id'] ?? '')));
 if ($rid === '') $rid = (string)($_SESSION['restaurant_id'] ?? '');
+session_write_close();
 if (!preg_match('/^[A-Za-z0-9]{3,20}$/', $rid)) waiterCallFail('Restaurant not found.');
 
 $reasonKey = (string)($input['reason'] ?? 'waiter');

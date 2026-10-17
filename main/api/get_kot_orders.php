@@ -1,4 +1,6 @@
 <?php
+header('Content-Type: application/json');
+
 // Include secure session configuration
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession();
@@ -24,7 +26,6 @@ try {
     $conn = getConnection();
     
     $restaurant_id = $_SESSION['restaurant_id'];
-    
     // Get KOT orders (orders that are not completed or cancelled)
     $sql = "SELECT 
                 o.id,
@@ -55,24 +56,32 @@ try {
     $stmt->execute([$restaurant_id]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    $orders = [];
-    foreach ($rows as $row) {
-        // Get order items
+    // Get all order items in one query instead of one query per order
+    $itemsByOrder = [];
+    if ($rows) {
+        $ids = array_column($rows, 'id');
         $items_sql = "SELECT 
+                        oi.order_id,
                         oi.item_name,
                         oi.quantity,
                         oi.unit_price,
                         oi.total_price,
                         oi.notes
                       FROM order_items oi
-                      WHERE oi.order_id = ?
+                      WHERE oi.order_id IN (" . implode(',', array_fill(0, count($ids), '?')) . ")
                       ORDER BY oi.id";
-        
         $items_stmt = $conn->prepare($items_sql);
-        $items_stmt->execute([$row['id']]);
-        $items = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        $row['items'] = $items;
+        $items_stmt->execute($ids);
+        foreach ($items_stmt->fetchAll(PDO::FETCH_ASSOC) as $it) {
+            $oid = $it['order_id'];
+            unset($it['order_id']);
+            $itemsByOrder[$oid][] = $it;
+        }
+    }
+
+    $orders = [];
+    foreach ($rows as $row) {
+        $row['items'] = $itemsByOrder[$row['id']] ?? [];
         $row['table_name'] = $row['table_number'] ? $row['table_number'] . ' - ' . $row['area_name'] : null;
         
         $orders[] = $row;
@@ -83,7 +92,7 @@ try {
         'orders' => $orders
     ]);
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_kot_orders.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([

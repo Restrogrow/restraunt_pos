@@ -42,6 +42,7 @@ try {
     }
 
     $restaurant_id = $_SESSION['restaurant_id'] ?? null;
+    session_write_close(); // only reads the session from here on — release its lock
     if (!$restaurant_id) {
         throw new Exception('Restaurant ID is required');
     }
@@ -51,7 +52,7 @@ try {
     require_once __DIR__ . '/../config/soft_delete_helpers.php';
 
     $action = $_POST['action'] ?? '';
-    $ip = trim($_POST['ip'] ?? '');
+    $ip = trim(is_string($_POST['ip'] ?? null) ? $_POST['ip'] : '');
 
     if (!in_array($action, ['block_ip', 'unblock_ip'], true)) {
         echo json_encode(['success' => false, 'message' => 'Invalid action'], JSON_UNESCAPED_UNICODE);
@@ -71,7 +72,7 @@ try {
     }
 
     if ($action === 'block_ip') {
-        $reason = trim($_POST['reason'] ?? '');
+        $reason = trim(is_string($_POST['reason'] ?? null) ? $_POST['reason'] : '');
         $ok = loginLogBlockIp($conn, $restaurant_id, $ip, $reason !== '' ? $reason : null, getActorName());
         if (!$ok) {
             throw new Exception('Could not save the block');
@@ -92,7 +93,7 @@ try {
     error_log('PDO Error in security_operations.php: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error occurred. Please try again later.'], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Error in security_operations.php: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.'], JSON_UNESCAPED_UNICODE);

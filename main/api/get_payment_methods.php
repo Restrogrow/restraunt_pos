@@ -23,6 +23,7 @@ if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Authentication required']);
     exit;
 }
+session_write_close(); // read-only endpoint ($_SESSION stays readable)
 
 try {
     require_once __DIR__ . '/../db_connection.php';
@@ -54,7 +55,7 @@ try {
     unset($m);
 
     echo json_encode(['success' => true, 'data' => $methods]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('get_payment_methods error: ' . $e->getMessage());
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Unable to load payment methods']);

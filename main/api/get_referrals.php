@@ -12,6 +12,7 @@ require_once __DIR__ . '/../config/authorization_config.php';
 requireLogin(true);
 
 $restaurant_id = $_SESSION['restaurant_id'];
+session_write_close(); // read-only endpoint
 
 try {
     $conn = function_exists('getConnection') ? getConnection() : ($pdo ?? null);
@@ -66,7 +67,7 @@ try {
             'conversion_rate' => $total > 0 ? round(($completed / $total) * 100, 1) : 0,
         ],
     ], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_referrals.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Failed to load referrals']);
 }

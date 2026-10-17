@@ -48,6 +48,7 @@ if (file_exists(__DIR__ . '/../config/rate_limit.php')) {
 }
 
 $restaurant_id = $_SESSION['restaurant_id'];
+session_write_close(); // read-only endpoint
 
 try {
     // Get connection using getConnection() for lazy connection support
@@ -62,10 +63,10 @@ try {
     }
     
     // Get and validate filter parameters
-    $dateFilter = isset($_GET['date']) ? trim($_GET['date']) : '';
-    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-    $statusFilter = isset($_GET['status']) ? trim($_GET['status']) : '';
-    $dateRange = isset($_GET['date_range']) ? trim($_GET['date_range']) : '';
+    $dateFilter = isset($_GET['date']) && is_string($_GET['date']) ? trim($_GET['date']) : '';
+    $search = isset($_GET['search']) && is_string($_GET['search']) ? trim($_GET['search']) : '';
+    $statusFilter = isset($_GET['status']) && is_string($_GET['status']) ? trim($_GET['status']) : '';
+    $dateRange = isset($_GET['date_range']) && is_string($_GET['date_range']) ? trim($_GET['date_range']) : '';
     
     // Validate date filter if provided
     if (!empty($dateFilter)) {
@@ -157,7 +158,7 @@ try {
         'data' => []
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_reservations.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
@@ -168,4 +169,3 @@ try {
     exit();
 }
 ?>
-

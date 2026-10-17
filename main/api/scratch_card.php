@@ -16,6 +16,7 @@ header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
 
 $in = $_SERVER['REQUEST_METHOD'] === 'POST' ? (json_decode(file_get_contents('php://input'), true) ?: $_POST) : $_GET;
+if (!is_array($in)) $in = [];
 $orderNumber = substr(trim((string)($in['order_number'] ?? '')), 0, 50);
 $phone = (string)($in['customer_phone'] ?? '');
 $phone = orderAbuseNormalizePhone($phone) ?? $phone;

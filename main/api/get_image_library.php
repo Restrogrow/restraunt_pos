@@ -28,6 +28,7 @@ requirePermission(PERMISSION_MANAGE_MENU);
 // enforce it here too, not just by hiding the nav link.
 require_once __DIR__ . '/../db_connection.php';
 $restaurant_id = getRestaurantId();
+session_write_close(); // read-only endpoint; the folder scan below can be slow
 $galleryEnabled = false;
 try {
     $conn = getConnection();
@@ -67,7 +68,7 @@ try {
     usort($categories, function ($a, $b) { return strcasecmp($a['name'], $b['name']); });
 
     $images = [];
-    $category = $_GET['category'] ?? null;
+    $category = is_string($_GET['category'] ?? null) ? $_GET['category'] : null;
     if ($category !== null && isset($library[$category])) {
         foreach ($library[$category] as $entry) {
             $images[] = [
@@ -82,7 +83,7 @@ try {
         'categories' => $categories,
         'images' => $images,
     ]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_image_library.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([

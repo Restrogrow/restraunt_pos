@@ -27,6 +27,7 @@ if (!function_exists('isSessionValid') || !isSessionValid()
 require_once __DIR__ . '/../config/rate_limit.php';
 $rlId = 'translate_' . ($_SESSION['user_id'] ?? $_SESSION['staff_id'] ?? $_SESSION['branch_admin_id'] ?? $_SESSION['superadmin_id'] ?? 'anon');
 $rl = checkRateLimit($rlId, 30, 60);
+session_write_close();
 if (!$rl['allowed']) {
     http_response_code(429);
     header('Content-Type: application/json; charset=UTF-8');
@@ -40,7 +41,14 @@ $text = $_POST['text'] ?? $_GET['text'] ?? '';
 $target = $_POST['target'] ?? $_GET['target'] ?? 'hi';
 $source = $_POST['source'] ?? $_GET['source'] ?? 'en';
 
+if (!is_string($text) || !is_string($target) || !is_string($source)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'text and target must be text']);
+    exit;
+}
+
 if (!$text || !$target) {
+    http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'text and target required']);
     exit;
 }

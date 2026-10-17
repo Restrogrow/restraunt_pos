@@ -12,6 +12,7 @@ if (ob_get_level()) {
 
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession(true);
+session_write_close(); // public read: nothing here uses the session
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Origin: *');
@@ -26,7 +27,7 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
     exit();
 }
 
-$restaurant_id = $_GET['restaurant_id'] ?? null;
+$restaurant_id = is_string($_GET['restaurant_id'] ?? null) ? $_GET['restaurant_id'] : null;
 if (!$restaurant_id) {
     echo json_encode(['success' => false, 'message' => 'Restaurant ID required', 'data' => []], JSON_UNESCAPED_UNICODE);
     exit();
@@ -64,7 +65,7 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error', 'data' => []], JSON_UNESCAPED_UNICODE);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_catering_tiers.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred.', 'data' => []], JSON_UNESCAPED_UNICODE);

@@ -18,6 +18,7 @@ if (!isset($_SESSION['superadmin_id']) && !(isLoggedIn() && hasPermission(PERMIS
 }
 
 $restaurant_id = $_SESSION['restaurant_id'] ?? '';
+session_write_close(); // done with the session — release its lock
 if (!$restaurant_id) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'No restaurant selected']);
@@ -31,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
-if (!$input) {
+if (!$input || !is_array($input)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Invalid input']);
     exit;
@@ -60,7 +61,7 @@ try {
         // Normalize: strip an accidentally-pasted protocol/path/trailing slash
         // and lowercase, so "https://Foo.com/" and "foo.com" save identically
         // instead of silently being treated as two different domain strings.
-        $domainRaw = trim((string)($input['custom_domain'] ?? ''));
+        $domainRaw = trim(is_string($input['custom_domain'] ?? null) ? $input['custom_domain'] : '');
         $domainRaw = preg_replace('#^https?://#i', '', $domainRaw);
         $domainRaw = strtolower(rtrim(explode('/', $domainRaw)[0], '/'));
         $setClauses[] = 'custom_domain = ?';
@@ -91,7 +92,7 @@ try {
     http_response_code(500);
     error_log("Error in save_embed_settings.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500);
     error_log("Error in save_embed_settings.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

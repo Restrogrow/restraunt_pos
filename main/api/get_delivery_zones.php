@@ -9,6 +9,7 @@ if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'zones' => []]);
     exit;
 }
+session_write_close(); // read-only endpoint ($_SESSION stays readable)
 
 try {
     require_once __DIR__ . '/../db_connection.php';
@@ -49,7 +50,7 @@ try {
 
     echo json_encode(['success' => true, 'zones' => $zones]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_delivery_zones.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.', 'zones' => []]);
 }

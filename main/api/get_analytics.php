@@ -11,6 +11,7 @@ require_once __DIR__ . '/../config/authorization_config.php';
 requireLogin(true);
 
 $restaurant_id = $_SESSION['restaurant_id'] ?? 'RES001';
+session_write_close(); // read-only endpoint
 $days = isset($_GET['days']) ? max(1, min(90, (int)$_GET['days'])) : 7;
 
 try {
@@ -48,7 +49,7 @@ try {
         $stmt = $conn->prepare("SELECT COUNT(DISTINCT visitor_ip) as unique_visitors FROM page_visits WHERE restaurant_id = ? AND visited_at >= DATE_SUB(NOW(), INTERVAL ? DAY)");
         $stmt->execute([$restaurant_id, $days]);
         $uniqueVisitors = (int)$stmt->fetchColumn();
-    } catch (Exception $pvErr) {
+    } catch (Throwable $pvErr) {
         // page_visits table may not exist yet on production - return empty data
         $totalVisits = 0;
         $uniqueVisitors = 0;
@@ -114,6 +115,8 @@ try {
         'active_kot' => $activeKOT
     ]);
 
-} catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+} catch (Throwable $e) {
+    error_log('get_analytics.php: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Something went wrong. Please try again.']);
 }

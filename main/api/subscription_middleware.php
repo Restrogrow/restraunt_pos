@@ -92,8 +92,8 @@ function checkSubscriptionAccess($conn, $user_id, $restaurant_id) {
             'renewal_date' => $renewalDate
         ];
 
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("Subscription check error: " . $e->getMessage());
-        return ['blocked' => false, 'status' => 'unknown', 'error' => $e->getMessage()];
+        return ['blocked' => false, 'status' => 'unknown', 'error' => 'Subscription check failed'];
     }
 }

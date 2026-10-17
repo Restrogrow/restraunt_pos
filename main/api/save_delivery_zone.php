@@ -45,6 +45,7 @@ try {
     }
 
     $restaurant_id = $_SESSION['restaurant_id'] ?? '';
+    session_write_close(); // done with the session — release its lock
     if (empty($restaurant_id)) {
         throw new Exception('No restaurant session');
     }
@@ -73,8 +74,8 @@ try {
         exit;
     }
 
-    $pincode = trim($_POST['pincode'] ?? '');
-    $zone_name = trim($_POST['zone_name'] ?? '');
+    $pincode = trim(is_string($_POST['pincode'] ?? null) ? $_POST['pincode'] : '');
+    $zone_name = trim(is_string($_POST['zone_name'] ?? null) ? $_POST['zone_name'] : '');
     $delivery_charge = (float)($_POST['delivery_charge'] ?? 0);
     $estimated_time = (int)($_POST['estimated_time'] ?? 30);
     $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1;
@@ -102,7 +103,7 @@ try {
         echo json_encode(['success' => true, 'message' => 'Zone created', 'id' => $conn->lastInsertId()]);
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(400);
     error_log("Error in save_delivery_zone.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

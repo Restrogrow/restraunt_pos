@@ -31,6 +31,7 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 }
 
 $restaurant_id = $_SESSION['restaurant_id'];
+session_write_close(); // read-only endpoint
 
 try {
     // Get connection using getConnection() for lazy connection support
@@ -57,14 +58,13 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_staff.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Database error: ' . $e->getMessage()
+        'message' => 'Something went wrong. Please try again.'
     ]);
     exit();
 }
 ?>
-

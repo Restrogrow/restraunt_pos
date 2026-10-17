@@ -17,6 +17,7 @@ if (!$rid || (!isset($_SESSION['user_id']) && !isset($_SESSION['staff_id']) && !
     echo json_encode(['success' => false, 'message' => 'Session expired. Please login again.']);
     exit;
 }
+session_write_close(); // read-only from here: don't hold the session lock
 require_once __DIR__ . '/../db_connection.php';
 $conn = function_exists('getConnection') ? getConnection() : ($pdo ?? null);
 if (!$conn instanceof PDO) { http_response_code(500); echo json_encode(['success' => false, 'message' => 'Database unavailable']); exit; }

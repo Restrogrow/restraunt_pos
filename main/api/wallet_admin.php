@@ -23,6 +23,7 @@ if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
     exit;
 }
 $rid = $_SESSION['restaurant_id'];
+session_write_close();
 
 try {
     $conn = getConnection();

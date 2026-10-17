@@ -37,7 +37,7 @@ require_once __DIR__ . '/../config/order_confirmation.php';
 require_once __DIR__ . '/../config/email_config.php';
 
 $orderId = (int)($_POST['order_id'] ?? 0);
-$token = $_POST['token'] ?? '';
+$token = is_string($_POST['token'] ?? null) ? $_POST['token'] : '';
 if (!$orderId || !$token || !hash_equals(internalDispatchToken($orderId), $token)) {
     http_response_code(403);
     exit();
@@ -46,7 +46,7 @@ if (!$orderId || !$token || !hash_equals(internalDispatchToken($orderId), $token
 try {
     $conn = getConnection();
     sendOrderConfirmationEmailsForOrder($conn, $orderId);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('send_order_confirmation_emails: ' . $e->getMessage());
 }
 

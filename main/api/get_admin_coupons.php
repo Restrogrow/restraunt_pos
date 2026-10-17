@@ -17,6 +17,7 @@ if (function_exists('getConnection')) { $conn = getConnection(); } else { global
 
 try {
     $restaurant_id = $_SESSION['restaurant_id'] ?? '';
+    session_write_close();
     if (empty($restaurant_id)) {
         echo json_encode(['success' => false, 'message' => 'No restaurant session']);
         exit;
@@ -52,7 +53,7 @@ try {
     $coupons = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['success' => true, 'coupons' => $coupons]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_admin_coupons.php: " . $e->getMessage());
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);

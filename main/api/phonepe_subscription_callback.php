@@ -115,7 +115,7 @@ try {
             $conn->prepare("UPDATE customer_meal_subscriptions SET status = 'active' WHERE id = ? AND status = 'pending_payment'")->execute([$payment['subscription_id']]);
         }
         $conn->commit();
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         $conn->rollBack();
         throw $e;
     }
@@ -124,7 +124,7 @@ try {
 
     http_response_code(200);
     echo json_encode(['success' => true]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('PhonePe subscription webhook error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred processing the payment callback']);

@@ -71,7 +71,7 @@ function getPhonePeConfig($restaurantId = null) {
                     $dbSaltKey = $row['phonepe_salt_key'];
                     $dbEnvironment = $row['phonepe_environment'] ?? 'SANDBOX';
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
             }
         }
 
@@ -165,7 +165,7 @@ function handleCreatePayment() {
     try {
         $input = json_decode(file_get_contents('php://input'), true);
         $orderId = (int)($input['order_id'] ?? 0);
-        $customerPhone = trim($input['customer_phone'] ?? '');
+        $customerPhone = is_scalar($input['customer_phone'] ?? null) ? trim((string)$input['customer_phone']) : '';
         $embedMode = !empty($input['embed']);
 
         if (!$orderId) {
@@ -291,7 +291,7 @@ function handleCreatePayment() {
             $error_message = ($response_data['message'] ?? 'Payment initiation failed') . ' (client: ' . $config['client_id'] . ', code: ' . ($response_data['code'] ?? $http_code) . ')';
             throw new Exception($error_message);
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("PhonePe order payment error: " . $e->getMessage());
         if (ob_get_level()) ob_clean();
         http_response_code(500);
@@ -304,7 +304,7 @@ function handleCreatePayment() {
 }
 
 function handleStatusCheck() {
-    $orderNumber = $_GET['order_id'] ?? '';
+    $orderNumber = is_string($_GET['order_id'] ?? null) ? $_GET['order_id'] : '';
     $phonepeRedirectCode = $_GET['code'] ?? '';
     $allGet = $_GET;
     unset($allGet['action']);
@@ -388,7 +388,7 @@ function handleStatusCheck() {
                                     $conn->commit();
                                     $payment['payment_status'] = 'Success';
                                     $apiStatusConfirmed = true;
-                                } catch (Exception $tx) {
+                                } catch (Throwable $tx) {
                                     $conn->rollBack();
                                     error_log('[PhonePe] Transaction failed: ' . $tx->getMessage());
                                 }
@@ -396,7 +396,7 @@ function handleStatusCheck() {
                                     require_once __DIR__ . '/../config/order_confirmation.php';
                                     try {
                                         fireOrderConfirmedActions($conn, $justConfirmedOrderId);
-                                    } catch (Exception $e) {
+                                    } catch (Throwable $e) {
                                         error_log('Order confirmation actions error (status poll): ' . $e->getMessage());
                                     }
                                 }
@@ -406,7 +406,7 @@ function handleStatusCheck() {
                                 $payment['payment_status'] = 'Failed';
                             }
                         }
-                    } catch (Exception $e) {
+                    } catch (Throwable $e) {
                         error_log('[PhonePe] Status API error: ' . $e->getMessage());
                     }
                 }
@@ -421,7 +421,7 @@ function handleStatusCheck() {
                         $apiStatusConfirmed = true;
                     }
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 error_log('[PhonePe] Exception in status check: ' . $e->getMessage());
             }
         } else {
@@ -429,16 +429,12 @@ function handleStatusCheck() {
         }
 
         $response = ['success' => true, 'payment_status' => $payment['payment_status']];
-        // Include debug info only when ?debug=1 is passed (for debugging tools)
-        if (isset($_GET['debug']) && $_GET['debug'] === '1') {
-            $response['debug_txn'] = $payment['transaction_id'];
-        }
 
         
         if (ob_get_level()) ob_clean();
         echo json_encode($response);
         exit();
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log('[PhonePe] Database/connection error: ' . $e->getMessage());
         if (ob_get_level()) ob_clean();
         echo json_encode(['success' => false, 'message' => 'An error occurred checking payment status. Please try again.']);

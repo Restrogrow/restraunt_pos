@@ -50,6 +50,23 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);  // Don't display errors (prevents HTML output)
 ini_set('log_errors', 1);
 
+// API safety net: if a request under /api/ dies on a fatal error nothing caught (out of memory, time limit,
+// a missing function), the page still gets JSON it can show ("Something went wrong") instead of an empty or
+// HTML reply that breaks the dashboard with "Unexpected token".
+if (!defined('RG_API_FATAL_JSON') && PHP_SAPI !== 'cli' && strpos(str_replace('\\', '/', (string)($_SERVER['SCRIPT_FILENAME'] ?? '')), '/api/') !== false) {
+    define('RG_API_FATAL_JSON', true);
+    register_shutdown_function(function () {
+        $e = error_get_last();
+        if (!$e || !in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) return;
+        error_log('API fatal: ' . $e['message'] . ' in ' . $e['file'] . ':' . $e['line']);
+        if (headers_sent()) return;
+        while (ob_get_level() > 0) @ob_end_clean();
+        http_response_code(500);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => false, 'message' => 'Something went wrong. Please try again.']);
+    });
+}
+
 // Set UTF-8 encoding for all database operations and PHP output
 ini_set('default_charset', 'UTF-8');
 mb_internal_encoding('UTF-8');

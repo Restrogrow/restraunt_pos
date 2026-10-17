@@ -9,6 +9,7 @@ if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Auth required']);
     exit;
 }
+session_write_close(); // read-only endpoint ($_SESSION stays readable)
 
 try {
     require_once __DIR__ . '/../db_connection.php';
@@ -54,7 +55,7 @@ try {
         ]);
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_delivery_tracking.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred.', 'tracking' => null]);
 }

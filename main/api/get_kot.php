@@ -46,6 +46,7 @@ try {
     // Always scope to the authenticated session's own tenant — never trust a
     // client-supplied restaurant_id, or one restaurant's staff could read another's KOT tickets.
     $restaurant_id = $_SESSION['restaurant_id'] ?? null;
+    session_write_close(); // polled endpoint, read-only
     
     if (!$restaurant_id) {
         throw new Exception('Restaurant ID is required');
@@ -56,9 +57,9 @@ try {
     $hasCustomerCols = $checkCols->rowCount() > 0;
     
     // Get KOT orders (not completed) with optional filters
-    $statusFilter = $_GET['status'] ?? '';
-    $tableFilter = $_GET['table'] ?? '';
-    $kotIdFilter = $_GET['kot_id'] ?? '';
+    $statusFilter = is_string($_GET['status'] ?? null) ? $_GET['status'] : '';
+    $tableFilter = is_string($_GET['table'] ?? null) ? $_GET['table'] : '';
+    $kotIdFilter = is_string($_GET['kot_id'] ?? null) ? $_GET['kot_id'] : '';
     $customerFields = $hasCustomerCols ? ', k.customer_phone, k.customer_email, k.customer_address' : '';
     // add-on columns arrived with the add-ons update; a database without them still prints its tickets
     $itemCols = $conn->query("SHOW COLUMNS FROM kot_items")->fetchAll(PDO::FETCH_COLUMN);
@@ -111,10 +112,12 @@ try {
     $stmt->execute($params);
     $result = $stmt->fetchAll();
     
-    $kots = [];
-    foreach ($result as $row) {
-        // Get KOT items
+    // Get the items of every KOT in one query instead of one query per KOT
+    $itemsByKot = [];
+    if ($result) {
+        $kotIds = array_column($result, 'id');
         $items_sql = "SELECT 
+                        ki.kot_id,
                         ki.item_name,
                         ki.quantity,
                         ki.unit_price,
@@ -123,17 +126,22 @@ try {
                         $addonsField,
                         $addonNameField
                       FROM kot_items ki
-                      WHERE ki.kot_id = ?
+                      WHERE ki.kot_id IN (" . implode(',', array_fill(0, count($kotIds), '?')) . ")
                       ORDER BY ki.id";
-        
         $items_stmt = $conn->prepare($items_sql);
-        $items_stmt->execute([$row['id']]);
-        $items = $items_stmt->fetchAll();
-        // a dish's add-ons (JSON [{id, name, price}]) as a list the screens can show
-        foreach ($items as &$it) { $it['addons'] = !empty($it['addons']) ? (json_decode($it['addons'], true) ?: []) : []; }
-        unset($it);
-        
-        $row['items'] = $items;
+        $items_stmt->execute($kotIds);
+        foreach ($items_stmt->fetchAll() as $it) {
+            $kid = $it['kot_id'];
+            unset($it['kot_id']);
+            // a dish's add-ons (JSON [{id, name, price}]) as a list the screens can show
+            $it['addons'] = !empty($it['addons']) ? (json_decode($it['addons'], true) ?: []) : [];
+            $itemsByKot[$kid][] = $it;
+        }
+    }
+
+    $kots = [];
+    foreach ($result as $row) {
+        $row['items'] = $itemsByKot[$row['id']] ?? [];
         $row['table_name'] = $row['table_number'] ? $row['table_number'] . ' - ' . $row['area_name'] : null;
         
         $kots[] = $row;
@@ -153,7 +161,7 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_kot.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([

@@ -42,6 +42,7 @@ try {
         }
     }
     $restaurant_id = $_SESSION['restaurant_id'];
+    session_write_close(); // read-only endpoint
     
     $sql = "SELECT 
                 p.*,
@@ -56,7 +57,7 @@ try {
     $params = [$restaurant_id];
     
     // Add filters
-    if (isset($_GET['search']) && !empty($_GET['search'])) {
+    if (isset($_GET['search']) && !empty($_GET['search']) && is_string($_GET['search'])) {
         $search = '%' . $_GET['search'] . '%';
         $sql .= " AND (o.order_number LIKE ? OR p.amount LIKE ? OR p.transaction_id LIKE ?)";
         $params[] = $search;
@@ -64,12 +65,12 @@ try {
         $params[] = $search;
     }
     
-    if (isset($_GET['method']) && !empty($_GET['method'])) {
+    if (isset($_GET['method']) && !empty($_GET['method']) && is_string($_GET['method'])) {
         $sql .= " AND p.payment_method = ?";
         $params[] = $_GET['method'];
     }
     
-    if (isset($_GET['status']) && !empty($_GET['status'])) {
+    if (isset($_GET['status']) && !empty($_GET['status']) && is_string($_GET['status'])) {
         $sql .= " AND p.payment_status = ?";
         $params[] = $_GET['status'];
     }
@@ -95,15 +96,14 @@ try {
         'payments' => []
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_payments.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error fetching payments: ' . $e->getMessage(),
+        'message' => 'Something went wrong. Please try again.',
         'payments' => []
     ]);
     exit();
 }
 ?>
-

@@ -87,6 +87,7 @@ try {
     $conn = getConnection();
     $user_id = $_SESSION['user_id'];
     $restaurant_id = $_SESSION['restaurant_id'];
+    session_write_close(); // only read from here on; don't block the dashboard's other requests
     
     // Check if subscription_payments table exists
     $check_table = $conn->query("SHOW TABLES LIKE 'subscription_payments'");
@@ -218,7 +219,7 @@ try {
         throw new Exception($error_message);
     }
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('PhonePe subscription payment error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
@@ -227,4 +228,3 @@ try {
     ]);
 }
 ?>
-

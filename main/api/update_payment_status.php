@@ -32,6 +32,7 @@ try {
             $restaurant_id = $staff['restaurant_id'];
         }
     }
+    session_write_close(); // only reads $_SESSION from here on; lets the dashboard's parallel requests run
 
     if (!$restaurant_id) {
         echo json_encode(['success' => false, 'message' => 'Restaurant ID not found']);
@@ -39,7 +40,7 @@ try {
     }
 
     $orderId = (int)($_POST['orderId'] ?? 0);
-    $status = $_POST['status'] ?? null;
+    $status = is_string($_POST['status'] ?? null) ? $_POST['status'] : null;
     // optional: how it was paid (Update payment window); anything else is ignored
     $method = trim((string)($_POST['payment_method'] ?? ''));
     $methods = ['Cash', 'UPI', 'Card', 'Online', 'Wallet', 'Other'];
@@ -88,7 +89,7 @@ try {
             'success' => true,
             'message' => $result['message'],
         ]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // Guarded rollback — after a successful commit (or an engine-level
         // implicit rollback) there is no active transaction left, and an
         // unguarded rollBack() would throw its own PDOException that masks
@@ -98,7 +99,7 @@ try {
         }
         throw $e;
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('update_payment_status.php: ' . $e->getMessage() . ' | orderId=' . ($orderId ?? '?') . ' status=' . ($status ?? '?'));
     http_response_code(500);
     echo json_encode([

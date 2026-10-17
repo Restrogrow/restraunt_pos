@@ -21,6 +21,7 @@ if (!$restaurant_id) {
     echo json_encode(['success' => false, 'message' => 'Session expired. Please login again.'], JSON_UNESCAPED_UNICODE);
     exit();
 }
+session_write_close(); // only read below, so don't block the dashboard's other requests
 
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 $orderId = (int)($input['order_id'] ?? 0);
@@ -89,7 +90,7 @@ try {
         'message' => $action === 'confirm' ? 'Payment confirmed and marked as Paid.' : 'Payment proof rejected. Order remains unpaid.'
     ], JSON_UNESCAPED_UNICODE);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
     error_log('confirm_payment_proof error: ' . $e->getMessage());
     http_response_code(500);

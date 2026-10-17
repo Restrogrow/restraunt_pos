@@ -14,6 +14,7 @@ if (!isSessionValid() || (!isset($_SESSION['user_id']) && !isset($_SESSION['staf
     echo json_encode(['success' => false, 'message' => 'Not logged in']);
     exit();
 }
+session_write_close(); // polled endpoint, read-only
 
 require_once __DIR__ . '/../db_connection.php';
 
@@ -50,7 +51,7 @@ try {
     try {
         $stmt = $conn->query("SHOW PROCESSLIST");
         $process_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // May not have permission
     }
 
@@ -99,7 +100,8 @@ try {
             'stats' => $connectionStats,
         ],
     ]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('get_connection_stats.php: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Something went wrong. Please try again.']);
 }

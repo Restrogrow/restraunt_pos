@@ -46,6 +46,7 @@ try {
     // Always scope to the authenticated session's own tenant — never trust a
     // client-supplied restaurant_id, or one restaurant's staff could read another's orders.
     $restaurant_id = $_SESSION['restaurant_id'] ?? null;
+    session_write_close(); // polled endpoint, read-only ($_SESSION stays readable)
 
     if (!$restaurant_id) {
         throw new Exception('Restaurant ID is required');
@@ -64,11 +65,12 @@ try {
     ensureOrderSoftDeleteColumns($conn);
 
     // Get filter parameters
-    $statusFilter = $_GET['status'] ?? '';
-    $paymentFilter = $_GET['payment_status'] ?? '';
-    $typeFilter = $_GET['order_type'] ?? '';
-    $searchTerm = $_GET['search'] ?? '';
-    $dateFilter = $_GET['date'] ?? '';
+    $str = function ($k) { return is_string($_GET[$k] ?? null) ? $_GET[$k] : ''; };
+    $statusFilter = $str('status');
+    $paymentFilter = $str('payment_status');
+    $typeFilter = $str('order_type');
+    $searchTerm = $str('search');
+    $dateFilter = $str('date');
     // Soft-deleted orders: include_deleted=1 flips the list into the
     // "Deleted" view (deleted orders ONLY) — the live list never mixes them
     // in, they're a separate audit view.
@@ -198,10 +200,12 @@ try {
     $stmt->execute($params);
     $result = $stmt->fetchAll();
     
-    $orders = [];
-    foreach ($result as $row) {
-        // Get order items
+    // Get the items of every order on this page in one query instead of one per order
+    $itemsByOrder = [];
+    if ($result) {
+        $ids = array_column($result, 'id');
         $items_sql = "SELECT
+                        oi.order_id,
                         oi.item_name,
                         oi.variation_name,
                         oi.quantity,
@@ -211,14 +215,20 @@ try {
                         mi.item_type
                       FROM order_items oi
                       LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
-                      WHERE oi.order_id = ?
+                      WHERE oi.order_id IN (" . implode(',', array_fill(0, count($ids), '?')) . ")
                       ORDER BY oi.id";
-        
         $items_stmt = $conn->prepare($items_sql);
-        $items_stmt->execute([$row['id']]);
-        $items = $items_stmt->fetchAll();
-        
-        $row['items'] = $items;
+        $items_stmt->execute($ids);
+        foreach ($items_stmt->fetchAll() as $it) {
+            $oid = $it['order_id'];
+            unset($it['order_id']);
+            $itemsByOrder[$oid][] = $it;
+        }
+    }
+
+    $orders = [];
+    foreach ($result as $row) {
+        $row['items'] = $itemsByOrder[$row['id']] ?? [];
         $row['table_name'] = $row['table_number'] ? $row['table_number'] . ' - ' . $row['area_name'] : null;
         
         $orders[] = $row;
@@ -251,7 +261,7 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ], JSON_UNESCAPED_UNICODE);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_orders.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([

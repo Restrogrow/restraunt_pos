@@ -28,13 +28,14 @@ try {
     require_once __DIR__ . '/../config/cors_helper.php'; allowAppOrigin(true); // app dev preview gets credentials, everyone else keeps *
     header('Access-Control-Allow-Methods: GET');
     header('Access-Control-Allow-Headers: Content-Type');
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('get_table_status.php init: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Error initializing: ' . $e->getMessage(), 'data' => []]);
+    echo json_encode(['success' => false, 'message' => 'Something went wrong. Please try again.', 'data' => []]);
     exit();
 }
 
-$requested_restaurant_id = $_GET['restaurant_id'] ?? null;
+$requested_restaurant_id = is_string($_GET['restaurant_id'] ?? null) ? $_GET['restaurant_id'] : null;
 
 $isStaff = isLoggedIn();
 if ($isStaff) {
@@ -51,6 +52,7 @@ if ($isStaff) {
     echo json_encode(['success' => false, 'message' => 'Restaurant ID required', 'data' => []]);
     exit();
 }
+session_write_close(); // read-only endpoint
 
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
@@ -159,10 +161,10 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error.', 'data' => []]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_table_status.php: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage(), 'data' => []]);
+    echo json_encode(['success' => false, 'message' => 'Something went wrong. Please try again.', 'data' => []]);
     exit();
 }
 ?>

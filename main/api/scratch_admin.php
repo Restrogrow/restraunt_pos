@@ -22,6 +22,7 @@ if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
     exit;
 }
 $restaurantId = $_SESSION['restaurant_id'];
+session_write_close(); // only reads the session — release its lock
 
 try {
     $conn = getConnection();

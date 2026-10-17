@@ -35,12 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $action = $_POST['action'] ?? '';
 $id     = (int)($_POST['id'] ?? 0);
-$note   = trim($_POST['note'] ?? '');
+$note   = is_string($_POST['note'] ?? null) ? trim($_POST['note']) : '';
 
 try {
     $conn = getConnection();
     $restaurantId = $_SESSION['restaurant_id'] ?? null;
     $username = $_SESSION['username'] ?? 'unknown';
+    session_write_close();
 
     switch ($action) {
 
@@ -112,7 +113,8 @@ try {
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('clear_error_log.php: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Operation failed']);
 }

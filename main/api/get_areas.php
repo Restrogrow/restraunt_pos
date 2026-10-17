@@ -54,6 +54,7 @@ if (!isset($_SESSION['restaurant_id']) && (!isset($_SESSION['user_id']) && !isse
 // Always scope to the authenticated session's own tenant — never trust a
 // client-supplied restaurant_id, or one restaurant's staff could read another's areas.
 $restaurant_id = $_SESSION['restaurant_id'] ?? null;
+session_write_close(); // read-only endpoint
 
 if (!$restaurant_id) {
     http_response_code(400);
@@ -106,7 +107,7 @@ try {
         'data' => []
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_areas.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
@@ -117,4 +118,3 @@ try {
     exit();
 }
 ?>
-

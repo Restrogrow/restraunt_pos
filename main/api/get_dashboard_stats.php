@@ -44,6 +44,7 @@ try {
         }
     }
     $restaurant_id = $_SESSION['restaurant_id'];
+    session_write_close(); // read-only endpoint
 
     // Apply this restaurant's own configured timezone (falls back to Asia/Kolkata)
     // so "today" is computed in their local time, not a hardcoded one.

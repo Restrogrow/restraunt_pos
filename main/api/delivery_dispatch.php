@@ -79,6 +79,6 @@ try {
     dispatchOut(['success' => false, 'message' => 'Unknown action'], 400);
 } catch (Throwable $e) {
     $msg = $e->getMessage();
-    if ($e instanceof PDOException) { error_log('delivery_dispatch: ' . $msg); $msg = 'Something went wrong. Please try again.'; }
+    if ($e instanceof PDOException || $e instanceof Error) { error_log('delivery_dispatch: ' . $msg); $msg = 'Something went wrong. Please try again.'; }
     dispatchOut(['success' => false, 'message' => $msg], 400);
 }

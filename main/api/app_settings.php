@@ -47,6 +47,7 @@ const APP_SETTING_FIELDS = [
 ];
 
 function appSettingValue(string $field, string $type, $raw) {
+    if (is_array($raw)) throw new InvalidArgumentException('Invalid value for ' . str_replace('_', ' ', $field));
     $v = is_string($raw) ? trim($raw) : $raw;
     switch ($type) {
         case 'bool':
@@ -127,6 +128,7 @@ try {
     };
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        session_write_close(); // GET only reads the session
         echo json_encode(['success' => true, 'settings' => $read()], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -166,7 +168,7 @@ try {
 } catch (InvalidArgumentException $e) {
     http_response_code(422);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('app_settings.php: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Could not save, please try again.']);

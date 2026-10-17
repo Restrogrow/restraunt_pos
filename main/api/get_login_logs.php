@@ -26,6 +26,7 @@ if (!getUserRole() || !in_array(getUserRole(), [ROLE_ADMIN, ROLE_MANAGER], true)
     echo json_encode(['success' => false, 'message' => 'Only Admin or Manager can view security logs'], JSON_UNESCAPED_UNICODE);
     exit();
 }
+session_write_close(); // read-only endpoint ($_SESSION stays readable)
 
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
@@ -129,7 +130,7 @@ try {
     error_log('PDO Error in get_login_logs.php: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error occurred. Please try again later.'], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Error in get_login_logs.php: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred fetching logs. Please try again.'], JSON_UNESCAPED_UNICODE);

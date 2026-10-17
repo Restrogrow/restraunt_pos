@@ -70,7 +70,15 @@ try {
         $st = $conn->prepare('SELECT id, day, text, ai, sent_at, created_at FROM om_briefs WHERE restaurant_id = ? ORDER BY id DESC LIMIT 14');
         $st->execute([$rid]);
         $briefs = $st->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($briefs as &$b) $b['actions'] = $actionsFor((int)$b['id']);
+        // every listed report's actions in one query
+        $byBrief = [];
+        if ($briefs) {
+            $ids = array_map(function ($b) { return (int)$b['id']; }, $briefs);
+            $st = $conn->prepare('SELECT id, code, kind, label, status, result, done_at, brief_id FROM om_actions WHERE restaurant_id = ? AND brief_id IN (' . implode(',', $ids) . ') ORDER BY code');
+            $st->execute([$rid]);
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $a) { $bid = (int)$a['brief_id']; unset($a['brief_id']); $byBrief[$bid][] = $a; }
+        }
+        foreach ($briefs as &$b) $b['actions'] = $byBrief[(int)$b['id']] ?? [];
         unset($b);
         // what has to be in place for the report to arrive: WhatsApp sending, the 15-minute job, the AI key
         $status = ['whatsapp' => false, 'whatsapp_test' => false, 'cron' => null, 'email' => false];

@@ -40,12 +40,14 @@ try {
     }
 
     $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? null);
+    if (!is_string($restaurant_id)) $restaurant_id = null;
     if (!$restaurant_id) {
         echo json_encode(['success' => false, 'message' => 'Restaurant not identified', 'data' => []], JSON_UNESCAPED_UNICODE);
         exit();
     }
 
     $customer = getLoggedInCustomer($conn, $restaurant_id);
+    session_write_close(); // after the customer login check (it may refresh the session); read-only from here
     if (!$customer) {
         echo json_encode(['success' => false, 'message' => 'Not logged in', 'data' => []], JSON_UNESCAPED_UNICODE);
         exit();
@@ -98,7 +100,7 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error', 'data' => []], JSON_UNESCAPED_UNICODE);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in get_my_meal_subscriptions.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'An error occurred.', 'data' => []], JSON_UNESCAPED_UNICODE);

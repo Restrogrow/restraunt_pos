@@ -11,15 +11,13 @@ ob_start();
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error !== NULL && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        error_log('submit_contact.php fatal: ' . $error['message'] . ' in ' . $error['file'] . ':' . $error['line']);
         ob_clean();
         header('Content-Type: application/json');
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'message' => 'Server error occurred. Please try again later.',
-            'error' => $error['message'],
-            'file' => $error['file'],
-            'line' => $error['line']
+            'message' => 'Server error occurred. Please try again later.'
         ]);
         exit();
     }
@@ -40,7 +38,7 @@ $dbPath = __DIR__ . '/../db_connection.php';
 if (file_exists($dbPath)) {
     try {
         require_once $dbPath;
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("Error including db_connection.php: " . $e->getMessage());
         http_response_code(500);
         echo json_encode([
@@ -54,8 +52,7 @@ if (file_exists($dbPath)) {
     http_response_code(500);
     echo json_encode([
         'success' => false, 
-        'message' => 'Database connection file not found',
-        'path' => $dbPath
+        'message' => 'Database connection file not found'
     ]);
     exit();
 }
@@ -88,10 +85,10 @@ try {
     }
     
     // Get form data
-    $name = trim($_POST['name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $phone = trim($_POST['phone'] ?? '');
-    $message = trim($_POST['message'] ?? '');
+    $name = trim(is_string($_POST['name'] ?? null) ? $_POST['name'] : '');
+    $email = trim(is_string($_POST['email'] ?? null) ? $_POST['email'] : '');
+    $phone = trim(is_string($_POST['phone'] ?? null) ? $_POST['phone'] : '');
+    $message = trim(is_string($_POST['message'] ?? null) ? $_POST['message'] : '');
     
     // Validate required fields
     if (empty($name) || empty($email) || empty($message)) {
@@ -178,7 +175,7 @@ try {
         'message' => 'Database error occurred. Please try again later.'
     ]);
     exit();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in submit_contact.php: " . $e->getMessage());
     error_log("Error Trace: " . $e->getTraceAsString());
     http_response_code(500);
@@ -189,4 +186,3 @@ try {
     exit();
 }
 ?>
-

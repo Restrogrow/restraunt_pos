@@ -19,7 +19,8 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 try {
     $conn = getConnection();
     $user_id = $_SESSION['user_id'];
-    $transaction_id = $_GET['transaction_id'] ?? null;
+    session_write_close();
+    $transaction_id = is_string($_GET['transaction_id'] ?? null) ? $_GET['transaction_id'] : null;
     
     if (!$transaction_id) {
         // Get latest payment for user
@@ -60,7 +61,7 @@ try {
         ]
     ]);
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Error in check_payment_status.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
@@ -69,4 +70,3 @@ try {
     ]);
 }
 ?>
-
