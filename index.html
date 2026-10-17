@@ -7,7 +7,7 @@
     <!-- Primary Meta Tags -->
     <title>Restro Grow - Complete Restaurant POS & Management System | Order Tracking, KOT, Staff Management</title>
     <meta name="title" content="Restro Grow - Complete Restaurant POS & Management System | Order Tracking, KOT, Staff Management">
-    <meta name="description" content="Restro Grow is a powerful restaurant POS system with KOT management, real-time order tracking, staff management, table reservations, online ordering, and comprehensive analytics. Perfect for restaurants of all sizes. Start your 7-day free trial today!">
+    <meta name="description" content="Restro Grow is a powerful restaurant POS system with KOT management, real-time order tracking, staff management, table reservations, online ordering, and comprehensive analytics. Perfect for restaurants of all sizes. Start your free trial today!">
     <meta name="keywords" content="restaurant POS system, restaurant management software, KOT management, order tracking, restaurant POS India, table management, online ordering system, restaurant analytics, staff management, restaurant billing software, POS system for restaurants, restaurant technology">
     <meta name="author" content="Restro Grow">
     <meta name="robots" content="index, follow">
@@ -284,7 +284,7 @@
                         Now your POS actually works the way your restaurant does - fast, simple, and without the headaches.
                     </p>
                     <div class="hero-buttons">
-                        <a href="main/admin/login.php" class="btn btn-primary">Start Free Trial</a>
+                        <a href="main/admin/login.php?tab=signup" class="btn btn-primary">Start Free Trial</a>
                         <a href="./app-demo/" class="btn btn-secondary">Try the App Demo</a>
                     </div>
                     <div class="hero-stats">
@@ -293,7 +293,7 @@
                             <div class="stat-label">Setup Fee</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-number">7 Days</div>
+                            <div class="stat-number"><span data-trial-days>30</span> Days</div>
                             <div class="stat-label">Free Trial</div>
                         </div>
                         <div class="stat-item">
@@ -694,7 +694,7 @@
                         <li><svg class="icon"><use href="#i-check"></use></svg> Basic reports</li>
                         <li><svg class="icon"><use href="#i-check"></use></svg> Email support</li>
                     </ul>
-                    <a href="main/admin/login.php" class="btn btn-outline">Start Free Trial</a>
+                    <a href="main/admin/login.php?tab=signup" class="btn btn-outline">Start Free Trial</a>
                 </div>
                 <div class="pricing-card featured">
                     <div class="pricing-badge">Most Popular</div>
@@ -716,7 +716,7 @@
                         <li><svg class="icon"><use href="#i-check"></use></svg> Priority support</li>
                         <li><svg class="icon"><use href="#i-check"></use></svg> Custom training</li>
                     </ul>
-                    <a href="main/admin/login.php" class="btn btn-primary">Start Free Trial</a>
+                    <a href="main/admin/login.php?tab=signup" class="btn btn-primary">Start Free Trial</a>
                 </div>
                 <div class="pricing-card">
                     <div class="pricing-header">
@@ -741,7 +741,7 @@
                 </div>
             </div>
             <div class="pricing-note">
-                <p><strong>7-day free trial</strong> - No credit card needed. Cancel anytime. Setup takes 5 minutes.</p>
+                <p><strong><span data-trial-days>30</span>-day free trial</strong> - No credit card needed. Cancel anytime. Setup takes 5 minutes.</p>
             </div>
         </div>
     </section>
@@ -1151,5 +1151,6 @@
       }, 9000);
     })();
     </script>
+<script>fetch('main/api/public_info.php').then(function (r) { return r.json(); }).then(function (d) { if (d && d.trial_days) document.querySelectorAll('[data-trial-days]').forEach(function (e) { e.textContent = d.trial_days; }); }).catch(function () {});</script>
 </body>
 </html>

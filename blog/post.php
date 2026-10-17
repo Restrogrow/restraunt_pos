@@ -110,7 +110,7 @@ $updated = strtotime((string)$post['updated_at']) - strtotime((string)$post['pub
 $h2count = preg_match_all('#<h2[\s>]#i', $content);
 $cta = '<aside class="post-inline-cta"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h18v4H3zM5 7v14h14V7M9 11h6M9 15h4"/></svg></span>'
     . '<div><b>Run your restaurant on RestroGrow</b><p>GST billing, KOT, QR ordering, your own ordering site and WhatsApp marketing in one app. Start free, no card needed.</p>'
-    . '<div class="btns"><a href="' . bh($base) . '/main/admin/login.php">Start free trial</a><a href="' . bh($base) . '/app-demo/">See the demo</a></div></div></aside>';
+    . '<div class="btns"><a href="' . bh($base) . '/main/admin/login.php?tab=signup">Start free trial</a><a href="' . bh($base) . '/app-demo/">See the demo</a></div></div></aside>';
 $out = ''; $n = 0;
 foreach (preg_split('#(?=<h2[\s>])#i', $content) as $part) {
     if (!preg_match('#^<h2([^>]*)>(.*?)</h2>(.*)$#is', $part, $m)) { $out .= $part; continue; }
@@ -182,7 +182,7 @@ $content = preg_replace(['#<table>#i', '#</table>#i'], ['<div class="table-wrap"
             <details class="post-toc" id="postToc" open aria-label="On this page"><summary>On this page</summary><ol>
               <?php foreach ($toc as $i => [$id, $text]): ?><li><a href="#<?php echo bh($id); ?>"><span class="n"><?php echo $i + 1; ?></span><span><?php echo bh(preg_replace('/^\d{1,2}[.)]\s+/', '', $text)); ?></span></a></li><?php endforeach; ?>
             </ol>
-              <div class="post-toc-cta"><b>Try RestroGrow free</b><p>Billing, KOT, QR menu and WhatsApp marketing for your restaurant.</p><a href="<?php echo bh($base); ?>/main/admin/login.php">Start free trial</a></div>
+              <div class="post-toc-cta"><b>Try RestroGrow free</b><p>Billing, KOT, QR menu and WhatsApp marketing for your restaurant.</p><a href="<?php echo bh($base); ?>/main/admin/login.php?tab=signup">Start free trial</a></div>
             </details>
           <?php endif; ?>
         </div>

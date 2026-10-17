@@ -6,6 +6,10 @@ require_once __DIR__ . '/../config/countries.php';
 require_once __DIR__ . '/../config/google_login.php';
 startSecureSession();
 $googleReady = googleLoginReady();
+// one free-trial length everywhere (Super Admin › Settings › trial days; config/onboarding.php)
+$trialDays = 30;
+try { require_once __DIR__ . '/../db_connection.php'; require_once __DIR__ . '/../config/onboarding.php'; $trialDays = obTrialDays(getConnection()); } catch (Throwable $e) {}
+$openSignup = ($_GET['tab'] ?? '') === 'signup';
 // came back from Google with no account yet (admin/google_finish.php): sign-up without the WhatsApp code
 $gp = $_SESSION['google_owner_pending'] ?? null;
 $googleSignup = is_array($gp) && (int)($gp['exp'] ?? 0) > time() ? ['email' => $gp['email'], 'name' => $gp['name']] : null;
@@ -757,6 +761,41 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             color: #9ca3af;
             margin-top: 4px;
         }
+        /* 3-step sign-up */
+        .form-group label { text-transform: none; letter-spacing: 0; font-size: 13.5px; }
+        .su-steps { display: flex; list-style: none; padding: 0; margin: 0 0 22px; gap: 6px; counter-reset: s; }
+        .su-steps li { flex: 1; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: #f6f6f4; color: #9ca3af; font-size: 13px; font-weight: 600; transition: background .2s, color .2s; }
+        .su-steps li i { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 700; background: #e5e7eb; color: #6b7280; transition: background .2s, color .2s; }
+        .su-steps li.on { background: #fff3ec; color: #c2410c; }
+        .su-steps li.on i { background: linear-gradient(135deg, #ff6b35, #f7931e); color: #fff; }
+        .su-steps li.done { color: #15803d; }
+        .su-steps li.done i { background: #dcfce7; color: #15803d; font-size: 0; }
+        .su-steps li.done i::before { content: '✓'; font-size: 13px; }
+        .su-step { display: none; }
+        .su-step.on { display: block; animation: suIn .28s ease both; }
+        @keyframes suIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+        .su-note { margin: 12px 0 0; font-size: 13px; color: #6b7280; text-align: center; }
+        .su-note a { color: #ea580c; font-weight: 600; }
+        .su-hint { display: block; margin-top: 6px; color: #9ca3af; font-size: 12.5px; }
+        .su-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .su-chip { position: relative; cursor: pointer; }
+        .su-chip input { position: absolute; opacity: 0; pointer-events: none; }
+        .su-chip span { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; border: 1.5px solid #e5e7eb; background: #fff; font-size: 13.5px; font-weight: 600; color: #374151; transition: all .15s; }
+        .su-chip:hover span { border-color: #fdba74; }
+        .su-chip input:checked + span { border-color: #ff6b35; background: #fff3ec; color: #c2410c; }
+        .su-chip input:focus-visible + span { outline: 3px solid #fdba74; outline-offset: 2px; }
+        .su-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+        .su-row .btn-primary { flex: 1; margin: 0; }
+        .su-back { flex: none; border: 0; background: none; color: #6b7280; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; padding: 12px 6px; }
+        .su-back:hover { color: #ea580c; }
+        .su-terms { margin: 14px 0 0; font-size: 12px; color: #9ca3af; text-align: center; }
+        .su-terms a { color: #6b7280; }
+        .su-demo { display: block; margin-top: 8px; }
+        .su-demo a { color: #6b7280; font-weight: 500; }
+        .su-perks { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 10px; }
+        .su-perks li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; color: #374151; }
+        .su-perks b { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #dcfce7; color: #15803d; font-size: 12px; }
+        @media (max-width: 480px) { .su-steps li span { display: none; } .su-steps li { justify-content: center; } }
     </style>
 </head>
 <body>
@@ -767,8 +806,13 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 <div class="logo-section">
                     <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="logo-img">
                 </div>
-                <h1 class="login-heading">Login into your account</h1>
-                <p class="login-tagline">Let us make your restaurant grow!</p>
+                <h1 class="login-heading" id="leftHeading">Log in to your account</h1>
+                <p class="login-tagline" id="leftTagline">Let us make your restaurant grow!</p>
+                <ul class="su-perks" id="suPerks" hidden>
+                    <li><b>✓</b> <?php echo (int)$trialDays; ?> days free, no card needed</li>
+                    <li><b>✓</b> POS, kitchen tickets, online orders and your own website</li>
+                    <li><b>✓</b> Ready in about 10 minutes, we guide you step by step</li>
+                </ul>
             </div>
             
             <!-- Right Side - Form Card -->
@@ -782,16 +826,16 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     <!-- Login Form -->
                     <form id="loginForm" class="auth-form active">
                         <div class="form-group">
-                            <label for="loginUsername">USERNAME OR EMAIL</label>
+                            <label for="loginUsername">Username, email or phone</label>
                             <div class="input-wrapper">
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                 </svg>
-                                <input type="text" id="loginUsername" name="username" required autocomplete="username" placeholder="Your username or email">
+                                <input type="text" id="loginUsername" name="username" required autocomplete="username" placeholder="Username, email or phone number">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="loginPassword">PASSWORD</label>
+                            <label for="loginPassword">Password</label>
                             <div class="input-wrapper">
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
@@ -804,7 +848,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                             </div>
                         </div>
                         <div class="form-group" id="loginOtpGroup" style="display:none;">
-                            <label for="loginOtpCode">VERIFICATION CODE</label>
+                            <label for="loginOtpCode">Code from WhatsApp</label>
                             <div class="input-wrapper">
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -832,63 +876,17 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     </form>
                     
                     <!-- Signup Form -->
-                    <form id="signupForm" class="auth-form">
-                        <div class="form-group">
-                            <label for="signupUsername">USERNAME</label>
-                            <div class="input-wrapper">
-                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                </svg>
-                                <input type="text" id="signupUsername" name="username" required minlength="3" autocomplete="username" placeholder="Choose a username">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="signupEmail">EMAIL</label>
-                            <div class="input-wrapper">
-                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                </svg>
-                                <input type="email" id="signupEmail" name="email" required autocomplete="email" placeholder="you@example.com">
-                            </div>
-                            <small style="color:#9ca3af;display:block;margin-top:6px;">Needed to recover your account if you forget your password.</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="signupPassword">PASSWORD</label>
-                            <div class="input-wrapper">
-                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                                </svg>
-                                <input type="password" id="signupPassword" name="password" required minlength="6" autocomplete="new-password" placeholder="Choose a password" class="pw-field">
-                                <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility('signupPassword', this)">
-                                    <svg class="pw-icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                    <svg class="pw-icon-eye-off" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="signupPasswordConfirm">CONFIRM PASSWORD</label>
-                            <div class="input-wrapper">
-                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                                </svg>
-                                <input type="password" id="signupPasswordConfirm" name="password_confirm" required minlength="6" autocomplete="new-password" placeholder="Re-enter your password" class="pw-field">
-                                <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility('signupPasswordConfirm', this)">
-                                    <svg class="pw-icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                    <svg class="pw-icon-eye-off" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="restaurantName">RESTAURANT NAME</label>
-                            <div class="input-wrapper">
-                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                                </svg>
-                                <input type="text" id="restaurantName" name="restaurant_name" required placeholder="Enter your restaurant name">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="signupCountry">COUNTRY</label>
+                    <form id="signupForm" class="auth-form" novalidate>
+                        <!-- 3 steps: phone + WhatsApp code, the restaurant, the login. Old fields keep their ids. -->
+                        <ol class="su-steps" aria-label="Sign-up steps">
+                            <li class="on" data-s="1"><i>1</i><span>Phone</span></li>
+                            <li data-s="2"><i>2</i><span>Restaurant</span></li>
+                            <li data-s="3"><i>3</i><span>Login</span></li>
+                        </ol>
+
+                        <div class="su-step on" data-step="1">
+<div class="form-group">
+                            <label for="signupCountry">Country</label>
                             <div class="input-wrapper">
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -901,8 +899,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                                 </select>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="signupPhone">PHONE NUMBER</label>
+<div class="form-group">
+                            <label for="signupPhone">Phone number</label>
                             <div class="input-wrapper">
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
@@ -911,8 +909,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                             </div>
                             <small id="signupPhoneHint" style="color:#9ca3af;display:block;margin-top:6px;"></small>
                         </div>
-                        <div class="form-group" id="signupOtpGroup" style="display:none;">
-                            <label for="signupOtpCode">VERIFICATION CODE</label>
+<div class="form-group" id="signupOtpGroup" style="display:none;">
+                            <label for="signupOtpCode">Code from WhatsApp</label>
                             <div class="input-wrapper">
                                 <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -924,21 +922,83 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                                 <a href="#" id="signupOtpResend" onclick="event.preventDefault();">Resend code</a>
                             </small>
                         </div>
-                        <button type="submit" class="btn btn-primary" id="signupBtn">
-                            <span id="signupBtnText">SIGN UP</span>
-                            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                        </button>
-                        <?php echo $googleButton; ?>
+                            <button type="button" class="btn btn-primary" id="suNext1">
+                                <span id="suNext1Text">Send code on WhatsApp</span>
+                                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </button>
+                            <p class="su-note" id="suNote1">We send a 6-digit code on WhatsApp to check the number is yours.</p>
+                            <?php echo $googleButton; ?>
+                        </div>
+
+                        <div class="su-step" data-step="2">
+<div class="form-group">
+                            <label for="restaurantName">Restaurant name</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                                <input type="text" id="restaurantName" name="restaurant_name" required placeholder="Enter your restaurant name">
+                            </div>
+                        </div>
+                            <div class="form-group">
+                                <label>Type of place</label>
+                                <div class="su-chips"><label class="su-chip"><input type="radio" name="business_type" value="restaurant" checked><span>🍽️ Restaurant</span></label><label class="su-chip"><input type="radio" name="business_type" value="cafe"><span>☕ Café</span></label><label class="su-chip"><input type="radio" name="business_type" value="dhaba"><span>🛖 Dhaba</span></label><label class="su-chip"><input type="radio" name="business_type" value="cloud_kitchen"><span>🛵 Cloud kitchen</span></label><label class="su-chip"><input type="radio" name="business_type" value="bakery"><span>🥐 Bakery / sweets</span></label><label class="su-chip"><input type="radio" name="business_type" value="bar"><span>🍸 Bar / lounge</span></label><label class="su-chip"><input type="radio" name="business_type" value="qsr"><span>🍔 Fast food</span></label><label class="su-chip"><input type="radio" name="business_type" value="other"><span>✨ Something else</span></label></div>
+                                <small class="su-hint">We set up your dashboard to suit it. You can change everything later.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="signupCity">City</label>
+                                <div class="input-wrapper">
+                                    <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.66 16.66L13.41 20.9a2 2 0 01-2.83 0l-4.24-4.24a8 8 0 1111.32 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    <input type="text" id="signupCity" name="city" autocomplete="address-level2" placeholder="e.g. Bengaluru" maxlength="80">
+                                </div>
+                            </div>
+                            <div class="su-row">
+                                <button type="button" class="su-back" data-su-back="1">← Back</button>
+                                <button type="button" class="btn btn-primary" id="suNext2"><span>Continue</span><svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                            </div>
+                        </div>
+
+                        <div class="su-step" data-step="3">
+<div class="form-group">
+                            <label for="signupEmail">Email</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                                <input type="email" id="signupEmail" name="email" required autocomplete="email" placeholder="you@example.com">
+                            </div>
+                            <small class="su-hint">For your bills, receipts and password reset.</small>
+                        </div>
+<div class="form-group">
+                            <label for="signupPassword">Password</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                </svg>
+                                <input type="password" id="signupPassword" name="password" required minlength="6" autocomplete="new-password" placeholder="At least 6 characters" class="pw-field">
+                                <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility('signupPassword', this)">
+                                    <svg class="pw-icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    <svg class="pw-icon-eye-off" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                            <p class="su-note">You log in with this email or your phone number and the password.</p>
+                            <div class="su-row">
+                                <button type="button" class="su-back" data-su-back="2">← Back</button>
+                                <button type="submit" class="btn btn-primary" id="signupBtn"><span id="signupBtnText">Create my restaurant</span><svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                            </div>
+                            <p class="su-terms">By creating an account you agree to the <a href="../../terms-of-service/" target="_blank" rel="noopener">terms</a> and <a href="../../privacy-policy/" target="_blank" rel="noopener">privacy policy</a>.</p>
+                        </div>
+
                         <div class="signup-link">
                             Already have an account? <a href="#" onclick="event.preventDefault(); switchTab('login');">Sign in</a>
+                            <span class="su-demo"><a href="../../demo/">Not ready? Try the demo first</a></span>
                         </div>
                     </form>
                     
-                    <div class="demo-credentials">
-                        <h4>Login Credentials:</h4>
-                        <p><strong>Admin:</strong> Use your username</p>
+                    <div class="demo-credentials" id="loginHelpBox">
+                        <h4>How to log in</h4>
+                        <p><strong>Owner:</strong> your username, email or phone number</p>
                         <p><strong>Staff:</strong> Use your email or phone number</p>
                     </div>
                 </div>
@@ -946,7 +1006,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         </div>
         
         <div class="login-footer">
-            © 2024 Restro Grow. All Rights Reserved.
+            © <?php echo date('Y'); ?> RestroGrow. All rights reserved.
         </div>
     </div>
     
@@ -1138,12 +1198,20 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             // "Login / Please sign in to continue." even while the signup
             // form was showing.
             if (tab === 'signup') {
-                document.getElementById('authHeaderTitle').textContent = 'Sign Up';
-                document.getElementById('authHeaderSubtitle').textContent = 'Set up your restaurant to get started.';
+                document.getElementById('authHeaderTitle').textContent = 'Start your free trial';
+                document.getElementById('authHeaderSubtitle').textContent = TRIAL_DAYS + ' days free · no card needed · takes a minute';
+                document.getElementById('leftHeading').textContent = 'Start your free ' + TRIAL_DAYS + '-day trial';
+                document.getElementById('leftTagline').textContent = 'Everything your restaurant needs, in one place.';
             } else {
                 document.getElementById('authHeaderTitle').textContent = 'Login';
                 document.getElementById('authHeaderSubtitle').textContent = 'Please sign in to continue.';
+                document.getElementById('leftHeading').textContent = 'Log in to your account';
+                document.getElementById('leftTagline').textContent = 'Let us make your restaurant grow!';
             }
+            document.getElementById('suPerks').hidden = tab !== 'signup';
+            var helpBox = document.getElementById('loginHelpBox');
+            if (helpBox) helpBox.style.display = tab === 'signup' ? 'none' : '';
+            if (tab === 'signup' && typeof suTrack === 'function') suTrack('opened');
 
             // Clear messages
             const messages = document.querySelectorAll('.message');
@@ -1358,6 +1426,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             }
         });
         
+        const TRIAL_DAYS = <?php echo (int)$trialDays; ?>;
+
         // Show the expected phone digit count for the selected country, and
         // keep it updated as the user changes country.
         function updateSignupPhoneHint() {
@@ -1368,245 +1438,211 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             const min = parseInt(opt.dataset.phoneMin, 10);
             const max = parseInt(opt.dataset.phoneMax, 10);
             const digits = min === max ? `${min} digits` : `${min}-${max} digits`;
-            hint.textContent = `Enter your local number, ${digits} (without ${opt.dataset.dialCode}).`;
+            hint.textContent = `Your number without ${opt.dataset.dialCode} (${digits}).`;
         }
         document.getElementById('signupCountry').addEventListener('change', updateSignupPhoneHint);
         updateSignupPhoneHint();
 
-        // Signup is two steps: (1) validate the form and send a WhatsApp OTP
-        // to the phone number, (2) verify that code, then actually create
-        // the account. otp.php has no concept of a restaurant yet at this
-        // point, so it's scoped under a fixed 'SIGNUP' restaurant_id +
-        // 'owner_signup' purpose — auth.php's handleSignup() checks for a
-        // matching verified row under that same scope before inserting.
-        let signupOtpSent = false;
-        let signupResendTimer = null;
-
-        function resetSignupOtpState() {
-            signupOtpSent = false;
-            document.getElementById('signupOtpGroup').style.display = 'none';
-            document.getElementById('signupOtpCode').value = '';
-            document.getElementById('signupBtnText').textContent = 'SIGN UP';
-            [
-                'signupUsername', 'signupEmail', 'signupPassword', 'signupPasswordConfirm',
-                'restaurantName', 'signupCountry', 'signupPhone',
-            ].forEach((id) => { document.getElementById(id).disabled = false; });
-            if (signupResendTimer) { clearInterval(signupResendTimer); signupResendTimer = null; }
-            const resend = document.getElementById('signupOtpResend');
-            resend.style.pointerEvents = 'auto';
-            resend.textContent = 'Resend code';
+        /* ── Sign-up in 3 steps ─────────────────────────────────────────────
+           1 phone + WhatsApp code (otp.php, scope 'SIGNUP' / 'owner_signup'; auth.php's handleSignup() checks the
+             verified row), or no code when they came back from "Continue with Google"
+           2 restaurant name, type of place, city
+           3 email + password → account made and signed in → dashboard with the welcome tour
+           Each step reached is reported to the Super Admin sign-up funnel (auth.php signupStep). */
+        const SU = {
+            step: 1, codeSent: false, verified: false, timer: null,
+            token: (window.crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g, '') : (Date.now().toString(36) + Math.random().toString(36).slice(2)),
+        };
+        const suEl = (id) => document.getElementById(id);
+        function suTrack(step, extra) {
+            if (suTrack.sent && suTrack.sent[step]) return;
+            suTrack.sent = suTrack.sent || {}; suTrack.sent[step] = 1;
+            const body = new URLSearchParams(Object.assign({ action: 'signupStep', token: SU.token, step: step, source: window.googleSignup ? 'google' : 'phone' }, extra || {}));
+            fetch('auth.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body, keepalive: true }).catch(() => {});
         }
-
+        function suGo(n) {
+            SU.step = n;
+            document.querySelectorAll('#signupForm .su-step').forEach((el) => el.classList.toggle('on', +el.dataset.step === n));
+            document.querySelectorAll('#signupForm .su-steps li').forEach((li) => {
+                const k = +li.dataset.s;
+                li.classList.toggle('on', k === n);
+                li.classList.toggle('done', k < n);
+            });
+            document.querySelectorAll('.message').forEach((m) => m.remove());
+            const first = document.querySelector('#signupForm .su-step.on input:not([type=radio]):not([readonly]):not([disabled])');
+            if (first && window.innerWidth > 600) setTimeout(() => first.focus(), 60);
+        }
+        function suPhone() {
+            const sel = suEl('signupCountry'), opt = sel.options[sel.selectedIndex];
+            const digits = suEl('signupPhone').value.replace(/\D/g, '');
+            const min = parseInt(opt ? opt.dataset.phoneMin : 6, 10), max = parseInt(opt ? opt.dataset.phoneMax : 15, 10);
+            return { country: sel.value, digits: digits, ok: !!sel.value && digits.length >= min && digits.length <= max,
+                     need: min === max ? `${min} digits` : `${min}-${max} digits` };
+        }
+        function suLockPhone(lock) {
+            suEl('signupCountry').disabled = lock;
+            suEl('signupPhone').readOnly = lock;
+        }
         function startSignupResendCooldown(seconds) {
-            const resend = document.getElementById('signupOtpResend');
+            const resend = suEl('signupOtpResend');
             let remaining = seconds;
             resend.style.pointerEvents = 'none';
-            resend.textContent = `Resend code (${remaining}s)`;
-            if (signupResendTimer) clearInterval(signupResendTimer);
-            signupResendTimer = setInterval(() => {
+            resend.textContent = `Resend in ${remaining}s`;
+            if (SU.timer) clearInterval(SU.timer);
+            SU.timer = setInterval(() => {
                 remaining -= 1;
-                if (remaining <= 0) {
-                    clearInterval(signupResendTimer);
-                    signupResendTimer = null;
-                    resend.style.pointerEvents = 'auto';
-                    resend.textContent = 'Resend code';
-                } else {
-                    resend.textContent = `Resend code (${remaining}s)`;
-                }
+                if (remaining <= 0) { clearInterval(SU.timer); SU.timer = null; resend.style.pointerEvents = 'auto'; resend.textContent = 'Resend code'; }
+                else resend.textContent = `Resend in ${remaining}s`;
             }, 1000);
         }
-
         async function sendSignupOtp(phoneDigits) {
             const response = await fetch('../website/otp.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 // the country picks the code the WhatsApp goes to (+977 for Nepal, …)
-                body: `action=send&restaurant_id=SIGNUP&purpose=owner_signup&phone=${encodeURIComponent(phoneDigits)}&country=${encodeURIComponent(document.getElementById('signupCountry').value)}`,
+                body: `action=send&restaurant_id=SIGNUP&purpose=owner_signup&phone=${encodeURIComponent(phoneDigits)}&country=${encodeURIComponent(suEl('signupCountry').value)}`,
             });
             return response.json();
         }
-
-        document.getElementById('signupOtpResend').addEventListener('click', async () => {
-            const phoneDigits = document.getElementById('signupPhone').value.replace(/\D/g, '');
+        // going back to the login tab: start the code part again next time (the code expires in 5 minutes anyway)
+        function resetSignupOtpState() {
+            SU.codeSent = false; SU.verified = false;
+            suEl('signupOtpGroup').style.display = 'none';
+            suEl('signupOtpCode').value = '';
+            suEl('suNext1Text').textContent = window.googleSignup ? 'Continue' : 'Send code on WhatsApp';
+            suLockPhone(false);
+            if (SU.timer) { clearInterval(SU.timer); SU.timer = null; }
+            const resend = suEl('signupOtpResend');
+            resend.style.pointerEvents = 'auto';
+            resend.textContent = 'Resend code';
+            suGo(1);
+        }
+        suEl('signupOtpResend').addEventListener('click', async () => {
             try {
-                const result = await sendSignupOtp(phoneDigits);
-                if (result.success) {
-                    showMessage('A new code has been sent via WhatsApp.', 'success');
-                    startSignupResendCooldown(60);
-                } else {
-                    showMessage(result.message || 'Could not resend the code.', 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showMessage('Network error. Please try again.', 'error');
-            }
+                const result = await sendSignupOtp(suPhone().digits);
+                if (result.success) { showMessage('A new code has been sent on WhatsApp.', 'success'); startSignupResendCooldown(60); }
+                else showMessage(result.message || 'Could not resend the code.', 'error');
+            } catch (error) { showMessage('Network error. Please try again.', 'error'); }
         });
 
-        // Signup form submission
-        document.getElementById('signupForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const username = document.getElementById('signupUsername').value.trim();
-            const email = document.getElementById('signupEmail').value.trim();
-            const password = document.getElementById('signupPassword').value;
-            const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
-            const restaurantName = document.getElementById('restaurantName').value.trim();
-            const countrySelect = document.getElementById('signupCountry');
-            const country = countrySelect.value;
-            const phone = document.getElementById('signupPhone').value.trim();
-            const signupBtn = document.getElementById('signupBtn');
-            const signupBtnText = document.getElementById('signupBtnText');
-
-            if (!username || !email || !password || !passwordConfirm || !restaurantName || !country || !phone) {
-                showMessage('Please fill in all fields.', 'error');
-                return;
-            }
-
-            if (username.length < 3) {
-                showMessage('Username must be at least 3 characters long.', 'error');
-                return;
-            }
-
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                showMessage('Please enter a valid email address.', 'error');
-                return;
-            }
-
-            if (password.length < 6) {
-                showMessage('Password must be at least 6 characters long.', 'error');
-                return;
-            }
-
-            if (password !== passwordConfirm) {
-                showMessage('Passwords do not match.', 'error');
-                return;
-            }
-
-            const countryOpt = countrySelect.options[countrySelect.selectedIndex];
-            const phoneDigits = phone.replace(/\D/g, '');
-            const phoneMin = parseInt(countryOpt.dataset.phoneMin, 10);
-            const phoneMax = parseInt(countryOpt.dataset.phoneMax, 10);
-            if (phoneDigits.length < phoneMin || phoneDigits.length > phoneMax) {
-                const digits = phoneMin === phoneMax ? `${phoneMin} digits` : `${phoneMin}-${phoneMax} digits`;
-                showMessage(`Please enter a valid phone number for ${country} (${digits}).`, 'error');
-                return;
-            }
-
-            // Signed in with Google as this email: Google replaces the WhatsApp code, so the
-            // account is created straight away and they land in their new dashboard.
-            if (window.googleSignup && email.toLowerCase() === window.googleSignup.email) {
-                signupBtn.disabled = true;
-                signupBtnText.textContent = 'CREATING ACCOUNT...';
-                try {
-                    const response = await fetch('auth.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `action=signup&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&restaurant_name=${encodeURIComponent(restaurantName)}&country=${encodeURIComponent(country)}&phone=${encodeURIComponent(phone)}`
-                    });
-                    const result = await response.json();
-                    if (result.success) {
-                        showMessage('Account created! Opening your dashboard…', 'success');
-                        window.location.href = result.redirect || '../views/dashboard.php';
-                        return;
-                    }
-                    showMessage(result.message || 'Signup failed. Please try again.', 'error');
-                } catch (error) {
-                    showMessage('Network error. Please try again.', 'error');
-                } finally {
-                    signupBtn.disabled = false;
-                    signupBtnText.textContent = 'SIGN UP';
-                }
-                return;
-            }
-
-            // Step 1: form is valid but no code sent yet — send the OTP and
-            // stop here. The fields are locked (not re-editable) so the
-            // code that's about to be verified matches what gets submitted.
-            if (!signupOtpSent) {
-                signupBtn.disabled = true;
-                signupBtnText.textContent = 'SENDING CODE...';
-                try {
-                    const result = await sendSignupOtp(phoneDigits);
-                    if (result.success) {
-                        signupOtpSent = true;
-                        document.getElementById('signupOtpGroup').style.display = 'block';
-                        [
-                            'signupUsername', 'signupEmail', 'signupPassword', 'signupPasswordConfirm',
-                            'restaurantName', 'signupCountry', 'signupPhone',
-                        ].forEach((id) => { document.getElementById(id).disabled = true; });
-                        startSignupResendCooldown(60);
-                        signupBtnText.textContent = 'VERIFY & CREATE ACCOUNT';
-                        showMessage('A verification code has been sent via WhatsApp.', 'success');
-                        document.getElementById('signupOtpCode').focus();
-                    } else {
-                        signupBtnText.textContent = 'SIGN UP';
-                        showMessage(result.message || 'Could not send the verification code.', 'error');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    signupBtnText.textContent = 'SIGN UP';
-                    showMessage('Network error. Please try again.', 'error');
-                } finally {
-                    signupBtn.disabled = false;
-                }
-                return;
-            }
-
-            // Step 2: OTP already sent — verify the code, then create the account.
-            const code = document.getElementById('signupOtpCode').value.trim();
-            if (!code) {
-                showMessage('Please enter the verification code.', 'error');
-                return;
-            }
-
-            signupBtn.disabled = true;
-            signupBtnText.textContent = 'VERIFYING...';
-
+        async function suStep1() {
+            const ph = suPhone(), btn = suEl('suNext1'), txt = suEl('suNext1Text');
+            if (!ph.ok) { showMessage(ph.country ? `Please enter a valid phone number for ${ph.country} (${ph.need}).` : 'Please choose your country.', 'error'); suEl('signupPhone').focus(); return; }
+            // came back from Google: Google replaces the WhatsApp code
+            if (window.googleSignup) { SU.verified = true; suTrack('verified', { phone: ph.digits, country: ph.country }); suGo(2); return; }
+            if (SU.verified) { suGo(2); return; }
+            btn.disabled = true;
             try {
-                const verifyResponse = await fetch('../website/otp.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `action=verify&restaurant_id=SIGNUP&purpose=owner_signup&phone=${encodeURIComponent(phoneDigits)}&code=${encodeURIComponent(code)}`,
-                });
-                const verifyResult = await verifyResponse.json();
-
-                if (!verifyResult.success) {
-                    showMessage(verifyResult.message || 'Invalid code. Please try again.', 'error');
+                if (!SU.codeSent) {
+                    txt.textContent = 'Sending code…';
+                    const result = await sendSignupOtp(ph.digits);
+                    if (!result.success) { txt.textContent = 'Send code on WhatsApp'; showMessage(result.message || 'Could not send the verification code.', 'error'); return; }
+                    SU.codeSent = true;
+                    suLockPhone(true);
+                    suEl('signupOtpGroup').style.display = 'block';
+                    suEl('suNote1').innerHTML = 'Wrong number? <a href="#" id="suChangeNo">Change it</a>';
+                    startSignupResendCooldown(60);
+                    txt.textContent = 'Verify code';
+                    suTrack('code_sent', { phone: ph.digits, country: ph.country });
+                    // this computer (XAMPP): no WhatsApp, the server hands the code back and it's filled in
+                    if (result.local_code) {
+                        suEl('signupOtpCode').value = result.local_code;
+                        showMessage(result.local_note || 'Local mode: the code was filled in for you.', 'info');
+                        btn.disabled = false;
+                        return suStep1();
+                    }
+                    showMessage('We sent a code to your WhatsApp.', 'success');
+                    suEl('signupOtpCode').focus();
                     return;
                 }
-
-                signupBtnText.textContent = 'CREATING ACCOUNT...';
-                const response = await fetch('auth.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `action=signup&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&restaurant_name=${encodeURIComponent(restaurantName)}&country=${encodeURIComponent(country)}&phone=${encodeURIComponent(phone)}`
+                const code = suEl('signupOtpCode').value.trim();
+                if (!/^\d{4,8}$/.test(code)) { showMessage('Please enter the code from WhatsApp.', 'error'); suEl('signupOtpCode').focus(); return; }
+                txt.textContent = 'Checking…';
+                const r = await fetch('../website/otp.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `action=verify&restaurant_id=SIGNUP&purpose=owner_signup&phone=${encodeURIComponent(ph.digits)}&code=${encodeURIComponent(code)}`,
                 });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showMessage('Account created successfully! Please sign in.', 'success');
-                    setTimeout(() => {
-                        resetSignupOtpState();
-                        switchTab('login');
-                        document.getElementById('loginUsername').value = username;
-                    }, 1500);
-                } else {
-                    showMessage(result.message || 'Signup failed. Please try again.', 'error');
-                }
+                const v = await r.json();
+                if (!v.success) { txt.textContent = 'Verify code'; showMessage(v.message || 'That code is not right. Please try again.', 'error'); return; }
+                SU.verified = true;
+                if (SU.timer) { clearInterval(SU.timer); SU.timer = null; }
+                suEl('signupOtpGroup').style.display = 'none';
+                suEl('suNote1').innerHTML = '✓ Number verified. <a href="#" id="suChangeNo">Use a different number</a>';
+                txt.textContent = 'Continue';
+                suTrack('verified', { phone: ph.digits, country: ph.country });
+                suGo(2);
             } catch (error) {
-                console.error('Error:', error);
                 showMessage('Network error. Please try again.', 'error');
             } finally {
-                signupBtn.disabled = false;
-                if (signupBtnText.textContent !== 'VERIFY & CREATE ACCOUNT') {
-                    signupBtnText.textContent = signupOtpSent ? 'VERIFY & CREATE ACCOUNT' : 'SIGN UP';
+                btn.disabled = false;
+            }
+        }
+        suEl('suNext1').addEventListener('click', suStep1);
+        // the code fills itself in from WhatsApp on many phones: go on as soon as it's complete
+        suEl('signupOtpCode').addEventListener('input', (e) => { if (/^\d{6}$/.test(e.target.value.trim()) && SU.codeSent && !SU.verified) suStep1(); });
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'suChangeNo') {
+                e.preventDefault();
+                SU.codeSent = false; SU.verified = false;
+                suLockPhone(false);
+                suEl('signupOtpGroup').style.display = 'none';
+                suEl('signupOtpCode').value = '';
+                suEl('suNext1Text').textContent = 'Send code on WhatsApp';
+                suEl('suNote1').textContent = 'We send a 6-digit code on WhatsApp to check the number is yours.';
+                suEl('signupPhone').focus();
+            }
+            const back = e.target.closest && e.target.closest('[data-su-back]');
+            if (back) { e.preventDefault(); suGo(+back.dataset.suBack); }
+        });
+
+        function suStep2() {
+            const name = suEl('restaurantName').value.trim();
+            if (name.length < 2) { showMessage('Please enter your restaurant name.', 'error'); suEl('restaurantName').focus(); return; }
+            suTrack('details', { restaurant_name: name });
+            suGo(3);
+        }
+        suEl('suNext2').addEventListener('click', suStep2);
+
+        // Enter key: the button of the step that is showing
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (SU.step === 1) return suStep1();
+            if (SU.step === 2) return suStep2();
+            if (!SU.verified) { suGo(1); showMessage('Please verify your phone number first.', 'error'); return; }
+
+            const email = suEl('signupEmail').value.trim();
+            const password = suEl('signupPassword').value;
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMessage('Please enter a valid email address.', 'error'); suEl('signupEmail').focus(); return; }
+            if (password.length < 6) { showMessage('Your password needs at least 6 characters.', 'error'); suEl('signupPassword').focus(); return; }
+
+            const ph = suPhone();
+            const type = document.querySelector('#signupForm input[name=business_type]:checked');
+            const btn = suEl('signupBtn'), txt = suEl('signupBtnText');
+            btn.disabled = true; txt.textContent = 'Creating your restaurant…';
+            try {
+                const body = new URLSearchParams({
+                    action: 'signup', username: '', email: email, password: password,
+                    restaurant_name: suEl('restaurantName').value.trim(), country: ph.country, phone: suEl('signupPhone').value.trim(),
+                    business_type: type ? type.value : '', city: suEl('signupCity').value.trim(), signup_token: SU.token,
+                });
+                const response = await fetch('auth.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body });
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('Your restaurant is ready! Opening your dashboard…', 'success');
+                    if (result.signed_in === false) { setTimeout(() => { switchTab('login'); suEl('loginUsername').value = email; }, 1200); return; }
+                    const to = result.redirect || '../views/dashboard.php';
+                    window.location.href = to + (to.indexOf('?') > -1 ? '&' : '?') + 'welcome=1';
+                    return;
                 }
+                showMessage(result.message || 'Sign-up failed. Please try again.', 'error');
+                if (/phone|verify/i.test(result.message || '')) { SU.verified = false; resetSignupOtpState(); }
+            } catch (error) {
+                showMessage('Network error. Please try again.', 'error');
+            } finally {
+                btn.disabled = false; txt.textContent = 'Create my restaurant';
             }
         });
-        
+
         function showMessage(message, type) {
             const existingMessage = document.querySelector('.message');
             if (existingMessage) {
@@ -1852,12 +1888,16 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 showMessage(q.get('google_error'), 'error');
             } else if (window.googleSignup) {
                 switchTab('signup');
-                var email = window.googleSignup.email, name = window.googleSignup.name || '';
+                var email = window.googleSignup.email;
                 var em = document.getElementById('signupEmail');
                 if (em) { em.value = email; em.readOnly = true; }
-                var un = document.getElementById('signupUsername');
-                if (un && !un.value) un.value = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20);
-                showMessage('Signed in with Google as ' + email + '. Fill in the rest to start your free trial (no WhatsApp code needed).', 'info');
+                document.getElementById('suNext1Text').textContent = 'Continue';
+                document.getElementById('suNote1').textContent = 'Signed in with Google, so no WhatsApp code is needed.';
+                var g = document.querySelector('#signupForm .su-step[data-step="1"] .btn-google'); if (g) g.style.display = 'none';
+                var od = document.querySelector('#signupForm .su-step[data-step="1"] .or-divider'); if (od) od.style.display = 'none';
+                showMessage('Signed in with Google as ' + email + '. Add your phone and restaurant to start your free trial.', 'info');
+            } else if (<?php echo $openSignup ? 'true' : 'false'; ?> || q.get('tab') === 'signup' || location.hash === '#signup') {
+                switchTab('signup');
             }
             if (q.get('google_error') || q.get('google_signup') || q.get('google')) history.replaceState(null, '', location.pathname);
         })();

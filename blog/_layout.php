@@ -89,7 +89,7 @@ function blogFooter(): void
       <p>POS billing, QR ordering, your own ordering website and app, WhatsApp marketing and loyalty. Start free, no card needed.</p>
     </div>
     <div class="blog-cta-btns">
-      <a class="btn btn-primary" href="<?php echo bh($base); ?>/main/admin/login.php">Start free trial</a>
+      <a class="btn btn-primary" href="<?php echo bh($base); ?>/main/admin/login.php?tab=signup">Start free trial</a>
       <a class="btn btn-secondary" href="<?php echo bh($base); ?>/app-demo/">Try the app demo</a>
     </div>
   </div>

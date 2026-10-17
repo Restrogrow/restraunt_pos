@@ -609,8 +609,8 @@
     <section class="about-cta">
         <div class="container">
             <h2>Ready to Grow Your Restaurant?</h2>
-            <p>Start your 7-day free trial today. No credit card needed. Setup takes just 5 minutes.</p>
-            <a href="../main/admin/login.php" class="btn btn-primary">Start Free Trial</a>
+            <p>Start your <span data-trial-days>30</span>-day free trial today. No credit card needed. Setup takes just 5 minutes.</p>
+            <a href="../main/admin/login.php?tab=signup" class="btn btn-primary">Start Free Trial</a>
         </div>
     </section>
 
@@ -664,5 +664,6 @@
     </footer>
 
     <script src="../script.js?v=2.2"></script>
+<script>fetch('../main/api/public_info.php').then(function (r) { return r.json(); }).then(function (d) { if (d && d.trial_days) document.querySelectorAll('[data-trial-days]').forEach(function (e) { e.textContent = d.trial_days; }); }).catch(function () {});</script>
 </body>
 </html>

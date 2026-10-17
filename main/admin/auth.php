@@ -135,6 +135,18 @@ try {
         case 'signup':
             handleSignup();
             break;
+
+        case 'signupStep':
+            // the sign-up page reports how far a visitor got (Super Admin › Sign-ups funnel)
+            require_once __DIR__ . '/../config/onboarding.php';
+            $stepConn = function_exists('getConnection') ? getConnection() : null;
+            if ($stepConn && in_array($_POST['step'] ?? '', ['opened', 'code_sent', 'verified', 'details'], true)) {
+                obFunnel($stepConn, (string)($_POST['token'] ?? ''), (string)$_POST['step'], [
+                    'phone' => $_POST['phone'] ?? null, 'country' => $_POST['country'] ?? null,
+                    'restaurant_name' => $_POST['restaurant_name'] ?? null, 'source' => $_POST['source'] ?? null]);
+            }
+            echo json_encode(['success' => true]);
+            break;
             
         case 'logout':
             handleLogout();
@@ -302,6 +314,21 @@ function handleLogin() {
         }
     }
     
+    // an owner can also type their phone number (the new sign-up has no username to remember). Only when
+    // exactly one owner account has that number; otherwise this is skipped and the staff check below runs as before.
+    if (!$user && preg_match('/^\+?[\d\s\-]{7,16}$/', $username)) {
+        $digits = preg_replace('/\D/', '', $username);
+        $last = substr($digits, -10);
+        if (strlen($last) >= 7) {
+            $ph = $pdo->prepare("SELECT * FROM users WHERE phone LIKE ? AND is_active = 1 LIMIT 5");
+            $ph->execute(['%' . $last]);
+            $hits = array_values(array_filter($ph->fetchAll(PDO::FETCH_ASSOC), function ($r) use ($last) {
+                return substr(preg_replace('/\D/', '', (string)$r['phone']), -strlen($last)) === $last;
+            }));
+            if (count($hits) === 1) $user = $hits[0];
+        }
+    }
+
     if ($user && password_verify($password, $user['password'])) {
         // Admin/User login success — clear failed attempts
         if (function_exists('clearFailedAttempts')) {
@@ -662,6 +689,12 @@ function handleSignup() {
     $restaurantName = isset($_POST['restaurant_name']) ? trim(strip_tags($_POST['restaurant_name'])) : '';
     $country = isset($_POST['country']) ? trim($_POST['country']) : '';
     $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
+    require_once __DIR__ . '/../config/onboarding.php';
+    obEnsure($pdo);
+    $businessType = isset($_POST['business_type'], OB_TYPES[$_POST['business_type']]) ? $_POST['business_type'] : null;
+    $city = isset($_POST['city']) ? mb_substr(trim(strip_tags((string)$_POST['city'])), 0, 80) : '';
+    // the new 3-step sign-up doesn't ask for a username: one is made from the restaurant name (old pages still send one)
+    if ($username === '' && $restaurantName !== '') $username = obMakeUsername($pdo, $restaurantName, $email);
 
     // Validate input
     if (empty($username) || empty($email) || empty($password) || empty($restaurantName) || empty($country) || empty($phone)) {
@@ -743,11 +776,19 @@ function handleSignup() {
     // Insert new user with 30-day trial period, currency derived from chosen country
     $insertStmt = $pdo->prepare("
         INSERT INTO users (username, email, password, restaurant_id, restaurant_name, country, phone, currency_symbol, subscription_status, trial_end_date, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), NOW(), NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL " . obTrialDays($pdo) . " DAY), NOW(), NOW())
     ");
     $result = $insertStmt->execute([$username, $email, $hashedPassword, $restaurantId, $restaurantName, $country, $phone, $currencySymbol]);
     // the country's own time zone and tax name/rate (Nepal: Asia/Kathmandu, VAT 13% off until they switch it on)
     if ($result) applyCountryDefaults($pdo, $restaurantId, $country);
+    if ($result) {
+        try {
+            $pdo->prepare('UPDATE users SET business_type = ?, city = ?, signup_source = ? WHERE restaurant_id = ?')
+                ->execute([$businessType, $city !== '' ? $city : null, $viaGoogle ? 'google' : 'phone', $restaurantId]);
+        } catch (Throwable $e) { error_log('signup extras: ' . $e->getMessage()); }
+        obFunnel($pdo, (string)($_POST['signup_token'] ?? ''), 'created', ['phone' => $phone, 'country' => $country, 'restaurant_name' => $restaurantName,
+                 'restaurant_id' => $restaurantId, 'source' => $viaGoogle ? 'google' : 'phone']);
+    }
 
     if ($result) {
         // welcome email to the owner + "new signup" to the RestroGrow team (queued, sent after this reply)
@@ -768,8 +809,27 @@ function handleSignup() {
         return;
     }
     if ($result) {
+        // the phone was just verified by WhatsApp: open the new dashboard straight away, no second login
+        $redirect = '../views/dashboard.php';
+        try {
+            if (session_status() !== PHP_SESSION_ACTIVE) session_start();   // auth.php closes the session early
+            require_once __DIR__ . '/../config/google_login.php';
+            $row = $pdo->prepare('SELECT * FROM users WHERE restaurant_id = ? LIMIT 1');
+            $row->execute([$restaurantId]);
+            resetLoginIdentity();
+            $u = $row->fetch(PDO::FETCH_ASSOC);
+            $_SESSION['user_id'] = $u['id'];
+            $_SESSION['username'] = $u['username'];
+            $_SESSION['restaurant_id'] = $u['restaurant_id'];
+            $_SESSION['restaurant_name'] = $u['restaurant_name'];
+            $_SESSION['user_type'] = 'admin';
+            $_SESSION['role'] = 'Admin';
+            regenerateSessionAfterLogin();
+        } catch (Throwable $e) { error_log('signup auto sign-in: ' . $e->getMessage()); }
         echo json_encode([
             'success' => true,
+            'signed_in' => isset($_SESSION['user_id']),
+            'redirect' => $redirect,
             'message' => 'Account created successfully',
             'data' => [
                 'username' => $username,
