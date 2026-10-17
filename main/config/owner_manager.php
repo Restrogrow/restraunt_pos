@@ -109,7 +109,13 @@ if (!function_exists('ownerMgrHandleMessage')) {
 
     function ownerMgrMoney(array $s, float $n): string
     {
-        return $s['currency'] . number_format(round($n));
+        $n = (int)round($n);
+        // rupee countries write 3,22,271 (lakh grouping); everyone else 322,271
+        if (!preg_match('/₹|^Rs\.?$/u', $s['currency'])) return $s['currency'] . number_format($n);
+        $neg = $n < 0 ? '-' : '';
+        $d = (string)abs($n);
+        if (strlen($d) > 3) { $last = substr($d, -3); $rest = substr($d, 0, -3); $d = preg_replace('/\B(?=(\d{2})+(?!\d))/', ',', $rest) . ',' . $last; }
+        return $neg . $s['currency'] . $d;
     }
 
     /** "Today" etc. in the restaurant's timezone → [from 'Y-m-d H:i:s', to (exclusive), label]. */
@@ -158,6 +164,7 @@ if (!function_exists('ownerMgrHandleMessage')) {
     function ownerMgrFacts(PDO $conn, string $rid, ?string $day = null): array
     {
         $s = ownerMgrSettings($conn, $rid);
+        ownerMgrUseTz($conn, $s);
         $tz = new DateTimeZone($s['tz']);
         $D = $day ? new DateTime($day, $tz) : (new DateTime('today', $tz))->modify('-1 day');
         $f = ['day' => $D->format('Y-m-d'), 'day_label' => $D->format('D j M'), 'restaurant' => $s['restaurant']];
@@ -282,7 +289,7 @@ if (!function_exists('ownerMgrHandleMessage')) {
             if ($sa['orders']) $L[] = '🧾 Counter ' . $sa['pos'] . ' · Website ' . $sa['web'] . ($sa['wa'] ? ' · WhatsApp ' . $sa['wa'] : '');
         }
         if (!empty($f['top'])) $L[] = '🥇 Top dishes: ' . implode(', ', array_map(fn($d) => $d['name'] . ' (' . $d['qty'] . ')', $f['top']));
-        if (!empty($f['falling'])) $L[] = '📉 ' . $f['falling']['name'] . ' sold ' . $f['falling']['drop'] . '% less this week (' . $f['falling']['now'] . ' vs ' . $f['falling']['prev'] . ').';
+        if (!empty($f['falling'])) $L[] = '📉 ' . $f['falling']['name'] . ($f['falling']['now'] === 0 ? " didn't sell at all this week (" . $f['falling']['prev'] . ' the week before).' : ' sold ' . $f['falling']['drop'] . '% less this week (' . $f['falling']['now'] . ' vs ' . $f['falling']['prev'] . ').');
         if (!empty($f['cancelled'])) $L[] = '❌ ' . $f['cancelled'] . ' order' . ($f['cancelled'] > 1 ? 's were' : ' was') . ' cancelled or rejected.';
         if (!empty($f['customers']) && ($f['customers']['new'] + $f['customers']['repeat']) > 0) $L[] = '👥 ' . $f['customers']['new'] . ' new and ' . $f['customers']['repeat'] . ' returning customers.';
         if (!empty($f['low_stock'])) $L[] = '📦 Running low: ' . implode(', ', $f['low_stock']) . '.';
@@ -318,7 +325,7 @@ if (!function_exists('ownerMgrHandleMessage')) {
         $system = "You are the restaurant owner's sharp, friendly business manager writing their morning WhatsApp update.\n"
             . "Rewrite the whole DRAFT in $lang: every sentence and label in that language (dish names stay as written). Keep it short (under 900 characters) and keep the emoji. You may move the most important line to the top, but never repeat a line.\n"
             . "STRICT: use only numbers that appear in the DRAFT, written the same way; do not add percentages, totals or advice with new numbers. "
-            . "Keep the numbered action lines and the 'Reply 1 or 2' instruction. Plain WhatsApp text (*bold* allowed), no markdown headings.";
+            . "Keep the numbered action lines, and the reply instruction with exactly the same numbers as the DRAFT (if the DRAFT says 'Reply 1', never write 'Reply 1 or 2'). Plain WhatsApp text (*bold* allowed), no markdown headings.";
         $t = aiGeminiText($system, "DRAFT:\n" . $plain, $conn, $rid, 900);
         if (!$t) return null;
         $allowed = ownerMgrNumbers($plain);
@@ -430,44 +437,168 @@ if (!function_exists('ownerMgrHandleMessage')) {
         return $result;
     }
 
-    define('OM_INTENTS', ['sales', 'top_dishes', 'slow_dishes', 'channels', 'customers', 'cancellations', 'lapsed', 'report', 'help']);
+    define('OM_INTENTS', ['sales', 'compare', 'top_dishes', 'slow_dishes', 'dish', 'peak_hours', 'payments', 'channels', 'customers', 'cancellations', 'lapsed', 'report', 'advice', 'help']);
     define('OM_PERIODS', ['today', 'yesterday', 'this_week', 'last_week', 'last_7_days', 'this_month', 'last_month', 'last_30_days']);
 
-    /** The owner's question → [intent, period]. Gemini first, then simple keywords. */
+    /** The restaurant's own clock for this request: PHP dates and MySQL NOW()/HOUR() (orders.created_at is a TIMESTAMP). */
+    function ownerMgrUseTz(PDO $conn, array $s): void
+    {
+        require_once __DIR__ . '/timezone_utils.php';
+        applyRestaurantTimezone($s['tz'], $conn);
+    }
+
+    /** The language a question is written in: Devanagari = Hindi, common Hindi words in Roman letters = Hinglish. */
+    function ownerMgrGuessLang(string $t): string
+    {
+        if (preg_match('/\p{Devanagari}/u', $t)) return 'hi';
+        return preg_match('/\b(kitna|kitne|kitni|aaj|kal|hafte|mahine|bika|bike|kya|kaise|kaun|sabse|zyada|kam|hua|hue|batao|bata|kamai|grahak|wala|wale|mein|ka|ki|ke)\b/iu', $t) ? 'hinglish' : 'en';
+    }
+
+    /**
+     * The owner's question → [intent, period, extra]. extra: dish (for "how many paneer tikka"), lang (en / hi / hinglish).
+     * Gemini first (it only picks from fixed lists), then simple keywords.
+     */
     function ownerMgrIntent(PDO $conn, string $rid, string $text): array
     {
         $r = aiGeminiJson(
             "A restaurant owner asks their business assistant a question on WhatsApp (English, Hindi or Hinglish). Pick the ONE report that answers it.\n"
-            . "intents: sales (money/revenue/how much sold/kitna bika/kamai), top_dishes (best sellers), slow_dishes (least sold), channels (counter vs website vs WhatsApp), "
-            . "customers (new vs returning), cancellations (cancelled/rejected orders), lapsed (regulars who stopped coming), report (today's/morning update), help (anything else).\n"
-            . "periods: today, yesterday, this_week, last_week, last_7_days, this_month, last_month, last_30_days. 'aaj' = today, 'kal' = yesterday, 'is hafte' = this_week, 'is mahine' = this_month.",
+            . "intents: sales (money / revenue / orders count / average bill / kitna bika / kamai), compare (this period vs the one before, growth, better or worse), "
+            . "top_dishes (best sellers), slow_dishes (least sold), dish (how much ONE named dish sold: put its name in dish), peak_hours (busiest hours or days, rush time), "
+            . "payments (cash vs UPI vs card vs online), channels (counter vs website vs WhatsApp), customers (new vs returning), cancellations (cancelled / rejected orders), "
+            . "lapsed (regulars who stopped coming), report (today's / morning update, how is the day going), advice (what should I do, how to increase sales, ideas, tips), help (greetings or anything else).\n"
+            . "periods: today, yesterday, this_week, last_week, last_7_days, this_month, last_month, last_30_days. 'aaj' = today, 'kal' = yesterday, 'is hafte' = this_week, 'is mahine' = this_month. "
+            . "If the question names no time, use last_7_days (today only for report or when it says today/aaj).\n"
+            . "lang: the language the question is written in: en, hi (Devanagari) or hinglish (Hindi in Roman letters).",
             $text,
-            ['type' => 'OBJECT', 'properties' => ['intent' => ['type' => 'STRING', 'enum' => OM_INTENTS], 'period' => ['type' => 'STRING', 'enum' => OM_PERIODS]], 'required' => ['intent', 'period']],
+            ['type' => 'OBJECT', 'properties' => [
+                'intent' => ['type' => 'STRING', 'enum' => OM_INTENTS], 'period' => ['type' => 'STRING', 'enum' => OM_PERIODS],
+                'dish' => ['type' => 'STRING'], 'lang' => ['type' => 'STRING', 'enum' => ['en', 'hi', 'hinglish']],
+            ], 'required' => ['intent', 'period', 'lang']],
             [], $conn, $rid);
-        if ($r && in_array($r['intent'] ?? '', OM_INTENTS, true)) return [$r['intent'], in_array($r['period'] ?? '', OM_PERIODS, true) ? $r['period'] : 'last_7_days'];
+        if ($r && in_array($r['intent'] ?? '', OM_INTENTS, true)) {
+            return [$r['intent'], in_array($r['period'] ?? '', OM_PERIODS, true) ? $r['period'] : 'last_7_days',
+                ['dish' => trim(mb_substr((string)($r['dish'] ?? ''), 0, 60)), 'lang' => in_array($r['lang'] ?? '', ['en', 'hi', 'hinglish'], true) ? $r['lang'] : ownerMgrGuessLang($text)]];
+        }
         $t = mb_strtolower($text);
-        $period = preg_match('/\b(today|aaj)\b/u', $t) ? 'today' : (preg_match('/\b(yesterday|kal)\b/u', $t) ? 'yesterday' : (preg_match('/last month|pichle mahine/u', $t) ? 'last_month'
-            : (preg_match('/month|mahine/u', $t) ? 'this_month' : (preg_match('/last week|pichle hafte/u', $t) ? 'last_week' : (preg_match('/week|hafte/u', $t) ? 'this_week' : 'last_7_days')))));
-        $intent = preg_match('/top|best|most|sabse zyada/u', $t) ? 'top_dishes' : (preg_match('/least|slow|worst|kam bik/u', $t) ? 'slow_dishes'
-            : (preg_match('/whatsapp|website|counter|channel|online/u', $t) ? 'channels' : (preg_match('/new customer|customer|grahak/u', $t) ? 'customers'
-            : (preg_match('/cancel|reject/u', $t) ? 'cancellations' : (preg_match('/sale|sold|bika|kamai|revenue|kitna|how much|total|earn/u', $t) ? 'sales' : 'help')))));
-        return [$intent, $period];
+        $period = preg_match('/\b(today|aaj)\b|आज/u', $t) ? 'today' : (preg_match('/\b(yesterday|kal)\b|कल/u', $t) ? 'yesterday' : (preg_match('/last month|pichle mahine|पिछले महीने/u', $t) ? 'last_month'
+            : (preg_match('/month|mahine|महीने/u', $t) ? 'this_month' : (preg_match('/last week|pichle hafte|पिछले हफ्ते/u', $t) ? 'last_week' : (preg_match('/week|hafte|हफ्ते/u', $t) ? 'this_week' : 'last_7_days')))));
+        $intent = preg_match('/compare|vs last|than last|growth|better|worse/u', $t) ? 'compare'
+            : (preg_match('/busiest|busy|rush|peak|hour|time|ghante/u', $t) ? 'peak_hours'
+            : (preg_match('/\b(cash|upi|card|payment)/u', $t) ? 'payments'
+            : (preg_match('/top|best|most|sabse zyada/u', $t) ? 'top_dishes' : (preg_match('/least|slow|worst|kam bik/u', $t) ? 'slow_dishes'
+            : (preg_match('/whatsapp|website|counter|channel|online/u', $t) ? 'channels' : (preg_match('/new customer|customer|grahak|ग्राहक/u', $t) ? 'customers'
+            : (preg_match('/cancel|reject/u', $t) ? 'cancellations' : (preg_match('/increase|grow|improve|idea|tip|advice|should i|kya karu|kaise badh/u', $t) ? 'advice'
+            : (preg_match('/sale|sold|bika|kamai|revenue|kitna|how much|total|earn|average|order/u', $t) ? 'sales' : 'help')))))))));
+        return [$intent, $intent === 'help' ? 'today' : $period, ['dish' => '', 'lang' => ownerMgrGuessLang($text)]];
     }
 
-    function ownerMgrAnswer(PDO $conn, string $rid, string $intent, string $period): string
+    /** The period to compare with: the same stretch before (so far vs same time last week / month). [from, to, label] */
+    function ownerMgrPrevPeriod(array $s, string $period): array
+    {
+        $tz = new DateTimeZone($s['tz']);
+        $now = new DateTime('now', $tz);
+        [$from, $to] = ownerMgrPeriod($s, $period);
+        $F = new DateTime($from, $tz);
+        $T = new DateTime($to, $tz);
+        $f = fn(DateTime $x) => $x->format('Y-m-d H:i:s');
+        switch ($period) {
+            case 'today': return [$f((clone $F)->modify('-7 days')), $f((clone $now)->modify('-7 days')), 'same time last ' . $now->format('l')];
+            case 'this_week': return [$f((clone $F)->modify('-7 days')), $f((clone $now)->modify('-7 days')), 'same days last week'];
+            case 'this_month': return [$f((clone $F)->modify('-1 month')), $f((clone $now)->modify('-1 month')), 'same days last month'];
+            case 'yesterday': return [$f((clone $F)->modify('-7 days')), $f((clone $T)->modify('-7 days')), 'the same day last week'];
+            case 'last_week': return [$f((clone $F)->modify('-7 days')), $f((clone $T)->modify('-7 days')), 'the week before'];
+            case 'last_month': return [$f((clone $F)->modify('-1 month')), $f((clone $F)), 'the month before'];
+            default:
+                $days = (int)$F->diff($T)->days;
+                return [$f((clone $F)->modify("-$days days")), $f($F), "the $days days before"];
+        }
+    }
+
+    /** "+12% vs same days last week" (or '' when there is nothing to compare with). */
+    function ownerMgrChange(float $now, float $prev, string $label): string
+    {
+        if ($prev <= 0) return '';
+        $p = (int)round(($now - $prev) / $prev * 100);
+        return ($p >= 0 ? '📈 +' : '📉 ') . $p . '% vs ' . $label;
+    }
+
+    /** A handful of tips with real numbers, from the restaurant's own data. */
+    function ownerMgrAdvice(PDO $conn, string $rid, array $s): string
+    {
+        $m = fn($n) => ownerMgrMoney($s, (float)$n);
+        $f = ownerMgrFacts($conn, $rid);
+        [$mf, $mt] = ownerMgrPeriod($s, 'last_30_days');
+        $tips = [];
+        if (($f['lapsed'] ?? 0) >= 3) $tips[] = '🎁 ' . $f['lapsed'] . " regulars (3+ visits) haven't come in 30 days." . (empty($f['winback_on']) ? ' Turn on the "We miss you" gift (Growth › Loyalty › Autopilot) to bring them back.' : ' The "We miss you" gift is on and working on them.');
+        foreach (array_slice($f['off_dishes'] ?? [], 0, 1) as $d) $tips[] = '🍽️ ' . $d['name'] . ' sold ' . $d['qty'] . ' in 30 days but is switched off. Switch it back on if you can make it.';
+        $ch = ownerMgrSales($conn, $rid, $mf, $mt);
+        if ($ch['orders'] >= 20) {
+            $direct = $ch['web'] + $ch['wa'];
+            $share = (int)round($direct / $ch['orders'] * 100);
+            if ($share < 30) $tips[] = '📲 Only ' . $share . '% of your ' . $ch['orders'] . ' orders in 30 days came online (website + WhatsApp). Put your QR on every table and parcel so regulars order direct, with no commission.';
+        }
+        $top = ownerMgrDishes($conn, $rid, $mf, $mt, 'DESC', 1);
+        if ($top) $tips[] = '⭐ ' . $top[0]['name'] . ' is your best seller (' . $top[0]['qty'] . ' in 30 days). Make a combo or a "today\'s special" around it to lift the average bill (' . $m($ch['avg']) . ' now).';
+        $slow = ownerMgrDishes($conn, $rid, $mf, $mt, 'ASC', 2);
+        if (count($slow) === 2 && $slow[0]['qty'] <= 3) $tips[] = '🐢 ' . $slow[0]['name'] . ' (' . $slow[0]['qty'] . ') and ' . $slow[1]['name'] . ' (' . $slow[1]['qty'] . ') barely sold in 30 days: drop them or show them with a photo and offer.';
+        if (!empty($f['falling'])) $tips[] = '📉 ' . $f['falling']['name'] . ($f['falling']['now'] === 0 ? " didn't sell at all this week" : ' sold ' . $f['falling']['drop'] . '% less this week') . ' (' . $f['falling']['prev'] . ' the week before). Check its taste, price and photo.';
+        if (!$tips) return "📊 Things look steady. Keep an eye on your best sellers and ask me \"compare this week with last week\" any time.";
+        return "💡 What I'd do next, from your own numbers:\n" . implode("\n", array_slice($tips, 0, 4));
+    }
+
+    function ownerMgrAnswer(PDO $conn, string $rid, string $intent, string $period, array $extra = []): string
     {
         $s = ownerMgrSettings($conn, $rid);
+        ownerMgrUseTz($conn, $s);
         [$from, $to, $label] = ownerMgrPeriod($s, $period);
         $m = fn($n) => ownerMgrMoney($s, (float)$n);
         switch ($intent) {
             case 'sales':
+            case 'compare':
                 $x = ownerMgrSales($conn, $rid, $from, $to);
-                return '💰 ' . ucfirst($label) . ': ' . $m($x['amount']) . ' from ' . $x['orders'] . ' orders' . ($x['orders'] ? ', average bill ' . $m($x['avg']) : '') . '.';
+                [$pf, $pt, $pl] = ownerMgrPrevPeriod($s, $period);
+                $p = ownerMgrSales($conn, $rid, $pf, $pt);
+                $chg = ownerMgrChange($x['amount'], $p['amount'], $pl);
+                $out = '💰 ' . ucfirst($label) . ': ' . $m($x['amount']) . ' from ' . $x['orders'] . ' orders' . ($x['orders'] ? ', average bill ' . $m($x['avg']) : '') . '.';
+                if ($intent === 'compare' || $chg !== '') $out .= "\n" . ($chg !== '' ? $chg . ' (' . $m($p['amount']) . ', ' . $p['orders'] . ' orders).' : 'Nothing to compare with yet.');
+                return $out;
             case 'top_dishes':
             case 'slow_dishes':
                 $d = ownerMgrDishes($conn, $rid, $from, $to, $intent === 'top_dishes' ? 'DESC' : 'ASC', 5);
                 if (!$d) return 'No dishes sold ' . $label . '.';
                 return ($intent === 'top_dishes' ? '🥇 Best sellers ' : '🐢 Least sold ') . $label . ":\n" . implode("\n", array_map(fn($x, $i) => ($i + 1) . '. ' . $x['name'] . ' — ' . $x['qty'] . ' (' . $m($x['amount']) . ')', $d, array_keys($d)));
+            case 'dish':
+                $name = trim((string)($extra['dish'] ?? ''));
+                if ($name === '') return 'Which dish? For example: "how many Paneer Tikka sold this week".';
+                $words = array_filter(preg_split('/\s+/u', $name), fn($w) => mb_strlen($w) >= 3);
+                if (!$words) $words = [$name];
+                $cond = implode(' AND ', array_fill(0, count($words), 'oi.item_name LIKE ?'));
+                $st = $conn->prepare("SELECT oi.item_name name, SUM(oi.quantity) qty, COALESCE(SUM(oi.total_price), 0) amount FROM order_items oi JOIN orders o ON o.id = oi.order_id
+                    WHERE o.restaurant_id = ? AND " . OM_LIVE . " AND o.created_at >= ? AND o.created_at < ? AND $cond GROUP BY oi.item_name ORDER BY qty DESC LIMIT 4");
+                $st->execute(array_merge([$rid, $from, $to], array_map(fn($w) => '%' . $w . '%', array_values($words))));
+                $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+                if (!$rows) return "🔎 No \"$name\" sold " . $label . '. Check the name as it is on your menu.';
+                return '🍽️ ' . ucfirst($label) . ":\n" . implode("\n", array_map(fn($r) => '• ' . $r['name'] . ' — ' . (int)$r['qty'] . ' sold (' . $m($r['amount']) . ')', $rows));
+            case 'peak_hours':
+                $st = $conn->prepare("SELECT HOUR(o.created_at) h, COUNT(*) n, COALESCE(SUM(o.total), 0) amount FROM orders o WHERE o.restaurant_id = ? AND " . OM_LIVE . " AND o.created_at >= ? AND o.created_at < ? GROUP BY h ORDER BY n DESC LIMIT 3");
+                $st->execute([$rid, $from, $to]);
+                $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+                if (!$rows) return 'No orders ' . $label . ' yet.';
+                $hr = fn($h) => date('g a', mktime((int)$h, 0, 0)) . '–' . date('g a', mktime(((int)$h + 1) % 24, 0, 0));
+                $out = '⏰ Busiest hours ' . $label . ":\n" . implode("\n", array_map(fn($r, $i) => ($i + 1) . '. ' . $hr($r['h']) . ' — ' . (int)$r['n'] . ' orders (' . $m($r['amount']) . ')', $rows, array_keys($rows)));
+                if (!in_array($period, ['today', 'yesterday'], true)) {
+                    $dw = $conn->prepare("SELECT DAYNAME(o.created_at) d, COUNT(*) n FROM orders o WHERE o.restaurant_id = ? AND " . OM_LIVE . " AND o.created_at >= ? AND o.created_at < ? GROUP BY d ORDER BY n DESC LIMIT 1");
+                    $dw->execute([$rid, $from, $to]);
+                    if ($d = $dw->fetch(PDO::FETCH_ASSOC)) $out .= "\n📅 Busiest day: " . $d['d'] . ' (' . (int)$d['n'] . ' orders).';
+                }
+                return $out;
+            case 'payments':
+                $st = $conn->prepare("SELECT COALESCE(NULLIF(o.payment_method, ''), 'Other') pm, COUNT(*) n, COALESCE(SUM(o.total), 0) amount FROM orders o WHERE o.restaurant_id = ? AND " . OM_LIVE . " AND o.created_at >= ? AND o.created_at < ? GROUP BY pm ORDER BY amount DESC");
+                $st->execute([$rid, $from, $to]);
+                $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+                if (!$rows) return 'No orders ' . $label . ' yet.';
+                $total = array_sum(array_column($rows, 'amount')) ?: 1;
+                return '💳 Payments ' . $label . ":\n" . implode("\n", array_map(fn($r) => '• ' . $r['pm'] . ': ' . $m($r['amount']) . ' (' . (int)$r['n'] . ' orders, ' . (int)round($r['amount'] / $total * 100) . '%)', $rows));
             case 'channels':
                 $x = ownerMgrSales($conn, $rid, $from, $to);
                 return '🧾 ' . ucfirst($label) . ': counter ' . $x['pos'] . ', website ' . $x['web'] . ', WhatsApp ' . $x['wa'] . ' orders (' . $x['orders'] . ' in all, ' . $m($x['amount']) . ').';
@@ -489,11 +620,38 @@ if (!function_exists('ownerMgrHandleMessage')) {
                 $st->execute([$rid]);
                 return '😴 ' . (int)$st->fetchColumn() . " regulars (3+ visits) haven't come in 30 days. The \"We miss you\" gift in Growth › Loyalty › Autopilot brings them back automatically.";
             case 'report':
-                $f = ownerMgrFacts($conn, $rid, (new DateTime('today', new DateTimeZone($s['tz'])))->format('Y-m-d'));
+                $tz = new DateTimeZone($s['tz']);
+                $f = ownerMgrFacts($conn, $rid, (new DateTime('today', $tz))->format('Y-m-d'));
                 $x = $f['sales'] ?? ['amount' => 0, 'orders' => 0];
-                return '📊 Today so far: ' . $m($x['amount']) . ' from ' . $x['orders'] . ' orders.' . (!empty($f['top']) ? ' Top: ' . implode(', ', array_map(fn($d) => $d['name'] . ' (' . $d['qty'] . ')', $f['top'])) . '.' : '');
+                [$pf, $pt, $pl] = ownerMgrPrevPeriod($s, 'today');
+                $chg = ownerMgrChange((float)$x['amount'], ownerMgrSales($conn, $rid, $pf, $pt)['amount'], $pl);
+                return '📊 Today so far: ' . $m($x['amount']) . ' from ' . $x['orders'] . ' orders.' . ($chg !== '' ? "\n" . $chg . '.' : '')
+                    . (!empty($f['top']) ? "\n🥇 Top: " . implode(', ', array_map(fn($d) => $d['name'] . ' (' . $d['qty'] . ')', $f['top'])) . '.' : '');
+            case 'advice':
+                return ownerMgrAdvice($conn, $rid, $s);
         }
-        return "I'm your RestroGrow manager. Ask me things like:\n• sales today / this week / this month\n• top dishes this week\n• least sold dishes\n• WhatsApp vs website orders\n• new customers this month\n• cancelled orders yesterday\nReply 1 or 2 to run a suggestion from the morning report.";
+        return "👋 I'm your RestroGrow manager. Ask me things like:\n• sales today / this week / this month\n• compare this week with last week\n• top dishes this week · least sold dishes\n• how many Paneer Tikka sold this week\n• busiest hours · cash vs UPI\n• new customers this month · cancelled orders yesterday\n• what should I do to increase sales?\nReply 1 or 2 to run a suggestion from the morning report.";
+    }
+
+    /** Re-word an answer in Hindi or Hinglish with Gemini; every number must stay the same, else the English text is kept. */
+    function ownerMgrLocalize(PDO $conn, string $rid, string $text, string $lang): string
+    {
+        if ($lang === 'en' || !aiGeminiAvailable()) return $text;
+        $want = $lang === 'hi' ? 'simple Hindi in Devanagari script (keep dish names as written)' : 'Hinglish (Hindi in Roman letters mixed with English, the way Indian restaurant owners text)';
+        $t = aiGeminiText("Rewrite this short WhatsApp reply from a restaurant's business assistant in $want. Keep every number, amount, percentage, emoji and line break exactly as they are. "
+            . "Do not add advice, numbers or greetings. Plain WhatsApp text.", $text, $conn, $rid, 600);
+        if (!$t) return $text;
+        $allowed = ownerMgrNumbers($text);
+        foreach (ownerMgrNumbers($t) as $n) if (!in_array($n, $allowed, true)) { error_log("ownerMgrLocalize: number $n not in the answer, English kept"); return $text; }
+        return trim($t);
+    }
+
+    /** Question → answer in the asker's language (dashboard chat and WhatsApp use the same path). */
+    function ownerMgrAsk(PDO $conn, string $rid, string $text): array
+    {
+        [$intent, $period, $extra] = ownerMgrIntent($conn, $rid, $text);
+        $answer = ownerMgrAnswer($conn, $rid, $intent, $period, $extra);
+        return ['answer' => ownerMgrLocalize($conn, $rid, $answer, $extra['lang'] ?? 'en'), 'intent' => $intent, 'period' => $period];
     }
 
     /**
@@ -507,17 +665,34 @@ if (!function_exists('ownerMgrHandleMessage')) {
         $t = trim($text);
         if (preg_match('/^\s*(order|menu)\b/i', $t)) return null;   // the owner trying the ordering bot
         if (preg_match('/^\s*([12])\s*[.!]?\s*$/u', $t, $m)) return [ownerMgrRunAction($conn, $rid, (int)$m[1])];
-        if (preg_match('/^\s*(yes|haan|ha|ok|do it|kar do)\s*[.!]*\s*$/iu', $t)) {
+        if (preg_match('/^\s*(yes|haan|ha|ok|do it|kar do|हाँ|हां)\s*[.!]*\s*$/iu', $t)) {
             $c = $conn->prepare("SELECT COUNT(*) FROM om_actions WHERE restaurant_id = ? AND status = 'pending'");
             $c->execute([$rid]);
-            if ((int)$c->fetchColumn() === 1) return [ownerMgrRunAction($conn, $rid, 1)];
-            return ['Which one? Reply 1 or 2.'];
+            $n = (int)$c->fetchColumn();
+            if ($n === 1) return [ownerMgrRunAction($conn, $rid, 1)];
+            return [$n ? 'Which one? Reply 1 or 2.' : "There's nothing waiting right now. Ask me anything, e.g. \"sales this week\"."];
         }
-        if (preg_match('/^\s*(no|nahi|nahin|skip)\s*[.!]*\s*$/iu', $t)) {
+        if (preg_match('/^\s*(no|nahi|nahin|skip|नहीं)\s*[.!]*\s*$/iu', $t)) {
             $conn->prepare("UPDATE om_actions SET status = 'declined' WHERE restaurant_id = ? AND status = 'pending'")->execute([$rid]);
             return ['👍 Okay, skipped.'];
         }
-        [$intent, $period] = ownerMgrIntent($conn, $rid, $t);
-        return [ownerMgrAnswer($conn, $rid, $intent, $period)];
+        return [ownerMgrAsk($conn, $rid, $t)['answer']];
+    }
+
+    /** The numbers strip on the AI manager page: today, yesterday, this week, this month, each against the period before. */
+    function ownerMgrKpis(PDO $conn, string $rid): array
+    {
+        $s = ownerMgrSettings($conn, $rid);
+        ownerMgrUseTz($conn, $s);
+        $out = [];
+        foreach (['today' => 'Today so far', 'yesterday' => 'Yesterday', 'this_week' => 'This week', 'this_month' => 'This month'] as $p => $title) {
+            [$f, $t] = ownerMgrPeriod($s, $p);
+            [$pf, $pt, $pl] = ownerMgrPrevPeriod($s, $p);
+            $x = ownerMgrSales($conn, $rid, $f, $t);
+            $y = ownerMgrSales($conn, $rid, $pf, $pt);
+            $out[] = ['key' => $p, 'title' => $title, 'amount' => ownerMgrMoney($s, $x['amount']), 'orders' => $x['orders'],
+                'change' => $y['amount'] > 0 ? (int)round(($x['amount'] - $y['amount']) / $y['amount'] * 100) : null, 'vs' => $pl];
+        }
+        return $out;
     }
 }

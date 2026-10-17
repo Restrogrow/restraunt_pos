@@ -51,10 +51,27 @@ try {
         $briefs = $st->fetchAll(PDO::FETCH_ASSOC);
         foreach ($briefs as &$b) $b['actions'] = $actionsFor((int)$b['id']);
         unset($b);
+        // what has to be in place for the report to arrive: WhatsApp sending, the 15-minute job, the AI key
+        $status = ['whatsapp' => false, 'whatsapp_test' => false, 'cron' => null, 'email' => false];
+        try {
+            require_once __DIR__ . '/../config/whatsapp_engine.php';
+            $status['whatsapp'] = waConnection(waSettings($conn, $rid)) !== null;
+            $status['whatsapp_test'] = waDryRun();
+        } catch (Throwable $e) { /* WhatsApp not set up */ }
+        try {
+            $c = $conn->query("SELECT v FROM sa_settings WHERE k = 'cron_owner_brief_at'")->fetchColumn();
+            $status['cron'] = $c ? (strtotime((string)$c) > time() - 3600 ? 'running' : 'stopped') : 'never';
+        } catch (Throwable $e) { $status['cron'] = 'never'; }
+        $status['email'] = filter_var(env('SMTP_ENABLED', 'false'), FILTER_VALIDATE_BOOLEAN) || (string)env('MAIL_SINK_DIR', '') !== '';
+        // the number as WhatsApp sees it (+91 98…, +977 98…)
+        $intl = '';
+        try { require_once __DIR__ . '/../config/countries.php'; $intl = $s['phone'] !== '' ? (string)phoneToInternational($s['phone'], restaurantCountryInfo($conn, $rid)) : ''; } catch (Throwable $e) { $intl = ''; }
+        $kpis = [];
+        try { $kpis = ownerMgrKpis($conn, $rid); } catch (Throwable $e) { error_log('owner_manager_admin kpis: ' . $e->getMessage()); }
         omOut(['success' => true, 'can_edit' => $canEdit, 'ai' => aiGeminiAvailable(), 'sent_now' => $sentNow,
             'settings' => ['enabled' => $s['enabled'], 'send_time' => $s['send_time'], 'language' => $s['language'], 'phone' => $s['phone'],
-                'phone_override' => $s['phone_override'], 'email_on' => $s['email_on'], 'last_sent_on' => $s['last_sent_on'], 'restaurant' => $s['restaurant']],
-            'briefs' => $briefs]);
+                'phone_override' => $s['phone_override'], 'email_on' => $s['email_on'], 'last_sent_on' => $s['last_sent_on'], 'restaurant' => $s['restaurant'], 'tz' => $s['tz'], 'phone_intl' => $intl ?: ($s['phone'] !== '' ? '+' . $s['phone'] : '')],
+            'status' => $status, 'kpis' => $kpis, 'briefs' => $briefs]);
     }
 
     $in = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -83,8 +100,8 @@ try {
     if ($action === 'ask') {
         $t = trim(mb_substr((string)($in['text'] ?? ''), 0, 300));
         if ($t === '') omOut(['success' => false, 'message' => 'Type a question']);
-        [$intent, $period] = ownerMgrIntent($conn, $rid, $t);
-        omOut(['success' => true, 'answer' => ownerMgrAnswer($conn, $rid, $intent, $period), 'intent' => $intent, 'period' => $period]);
+        // same path as a WhatsApp question: answer in the language it was asked in
+        omOut(['success' => true] + ownerMgrAsk($conn, $rid, $t));
     }
     omOut(['success' => false, 'message' => 'Unknown action'], 400);
 } catch (Throwable $e) {

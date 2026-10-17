@@ -90,10 +90,22 @@ try {
     $replies = null;
     $own = $conn->prepare('SELECT phone FROM users WHERE restaurant_id = ? LIMIT 1');
     $own->execute([$waRid]);
-    $ownerPhone = substr(preg_replace('/\D/', '', (string)$own->fetchColumn()), -10);
-    if ($ownerPhone !== '' && substr($phone, -10) === $ownerPhone && is_file(__DIR__ . '/../config/owner_manager.php')) {
+    // the owner = the restaurant's phone, or the number set for the report in Growth › AI manager
+    $ownerPhones = [preg_replace('/\D/', '', (string)$own->fetchColumn())];
+    if (is_file(__DIR__ . '/../config/owner_manager.php')) {
         require_once __DIR__ . '/../config/owner_manager.php';
-        if (function_exists('ownerMgrHandleMessage')) $replies = ownerMgrHandleMessage($conn, $waRid, $phone, $text);
+        try { $ownerPhones[] = (string)ownerMgrSettings($conn, $waRid)['phone_override']; } catch (Throwable $e) { /* no AI manager tables yet */ }
+    }
+    // stored numbers have no country code (and maybe a leading 0); compare their last digits, at most 10
+    $inDigits = preg_replace('/\D/', '', $phone);
+    $isOwner = false;
+    foreach ($ownerPhones as $p) {
+        $p = ltrim($p, '0');
+        $n = min(10, strlen($p));
+        if ($n >= 7 && substr($inDigits, -$n) === substr($p, -$n)) $isOwner = true;
+    }
+    if ($isOwner && function_exists('ownerMgrHandleMessage')) {
+        $replies = ownerMgrHandleMessage($conn, $waRid, $phone, $text);
     }
     if ($replies === null) $replies = woHandle($conn, $waRid, $phone, $text, ['name' => $name, 'table' => $tableId]);
 
