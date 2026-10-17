@@ -847,7 +847,7 @@
 
     <script src="script.js?v=3.0"></script>
 
-    <!-- RestroGrow AI assistant (data: main/api/chatbot.php). Ask straight away; details only for a call back / demo. -->
+    <!-- RestroGrow chat assistant (data: main/api/chatbot.php; the word "AI" is kept off this widget on purpose). Ask straight away; details only for a call back / demo. -->
     <div id="rgc" aria-live="polite">
       <div class="rgc-teaser" id="rgcTeaser" hidden>
         <button type="button" class="rgc-teaser-x" id="rgcTeaserX" aria-label="Hide">×</button>
@@ -857,11 +857,11 @@
       <section class="rgc-panel" id="rgcPanel" role="dialog" aria-modal="false" aria-labelledby="rgcTitle" hidden>
         <header class="rgc-head">
           <div class="rgc-av" aria-hidden="true">
-            <svg viewBox="0 0 32 32"><path d="M16 4c6.6 0 12 4.6 12 10.4 0 5.7-5.4 10.3-12 10.3-1.3 0-2.6-.2-3.8-.5L7 27v-5.1C5.1 20 4 17.4 4 14.4 4 8.6 9.4 4 16 4z" fill="#fff"/><path d="M16.5 9.2l1.3 3 3 1.3-3 1.3-1.3 3-1.3-3-3-1.3 3-1.3z" fill="#c1440e"/></svg>
+            <svg viewBox="0 0 32 32"><path d="M16 4c6.6 0 12 4.6 12 10.4 0 5.7-5.4 10.3-12 10.3-1.3 0-2.6-.2-3.8-.5L7 27v-5.1C5.1 20 4 17.4 4 14.4 4 8.6 9.4 4 16 4z" fill="#fff"/><circle cx="11" cy="14.5" r="1.7" fill="#c1440e"/><circle cx="16" cy="14.5" r="1.7" fill="#c1440e"/><circle cx="21" cy="14.5" r="1.7" fill="#c1440e"/></svg>
             <i class="rgc-dot"></i>
           </div>
           <div class="rgc-ht">
-            <h2 id="rgcTitle">RestroGrow AI</h2>
+            <h2 id="rgcTitle">RestroGrow</h2>
             <span id="rgcStatus">Online · replies in seconds</span>
           </div>
           <button type="button" class="rgc-ib" id="rgcNew" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
@@ -873,30 +873,38 @@
           <textarea id="rgcInput" rows="1" maxlength="500" placeholder="Ask anything about RestroGrow…"></textarea>
           <button type="submit" id="rgcSend" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M4 12l15-7-5 15-3-6-7-2z" fill="currentColor"/></svg></button>
         </form>
-        <p class="rgc-foot">AI answers by Gemini · <a href="privacy-policy/" target="_blank" rel="noopener">Privacy</a> · or call <a href="tel:+916377568749">+91 63775 68749</a></p>
+        <p class="rgc-foot">Automatic replies · <a href="privacy-policy/" target="_blank" rel="noopener">Privacy</a> · or call <a href="tel:+916377568749">+91 63775 68749</a></p>
       </section>
-      <button type="button" class="rgc-fab" id="rgcFab" aria-label="Chat with RestroGrow AI" aria-controls="rgcPanel" aria-expanded="false">
+      <button type="button" class="rgc-fab" id="rgcFab" aria-label="Chat with RestroGrow" aria-controls="rgcPanel" aria-expanded="false">
         <span class="rgc-fab-ic" aria-hidden="true">
-          <svg class="rgc-open" viewBox="0 0 32 32"><path d="M16 4c6.6 0 12 4.6 12 10.4 0 5.7-5.4 10.3-12 10.3-1.3 0-2.6-.2-3.8-.5L7 27v-5.1C5.1 20 4 17.4 4 14.4 4 8.6 9.4 4 16 4z" fill="#fff"/><path d="M16.5 9.2l1.3 3 3 1.3-3 1.3-1.3 3-1.3-3-3-1.3 3-1.3z" fill="#c1440e"/></svg>
+          <svg class="rgc-open" viewBox="0 0 32 32"><path d="M16 4c6.6 0 12 4.6 12 10.4 0 5.7-5.4 10.3-12 10.3-1.3 0-2.6-.2-3.8-.5L7 27v-5.1C5.1 20 4 17.4 4 14.4 4 8.6 9.4 4 16 4z" fill="#fff"/><circle cx="11" cy="14.5" r="1.7" fill="#c1440e"/><circle cx="16" cy="14.5" r="1.7" fill="#c1440e"/><circle cx="21" cy="14.5" r="1.7" fill="#c1440e"/></svg>
           <svg class="rgc-shut" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <i class="rgc-fab-dot"></i>
         </span>
-        <span class="rgc-fab-t">Ask AI</span>
+        <span class="rgc-fab-t"><small>We're online</small>Chat with us</span>
+        <svg class="rgc-fab-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <i class="rgc-badge" id="rgcBadge" hidden>1</i>
       </button>
     </div>
     <style>
     #rgc { --a: #c1440e; --ad: #8f3308; --al: #fbeee6; --ink: #241d16; --mute: #7a6e61; --line: #ecdfcd; --paper: #fffcf5; position: fixed; right: 22px; bottom: 22px; z-index: 99999; font-family: 'Public Sans', -apple-system, 'Segoe UI', sans-serif; }
     #rgc *, #rgc *::before, #rgc *::after { box-sizing: border-box; }
-    .rgc-fab { position: relative; display: flex; align-items: center; gap: 9px; height: 58px; padding: 0 20px 0 9px; border: 0; border-radius: 999px; background: linear-gradient(135deg, #d4541b, var(--a) 55%, var(--ad)); color: #fff; font: 700 15px/1 'Public Sans', sans-serif; cursor: pointer; box-shadow: 0 12px 30px -8px rgba(143,51,8,.55), 0 0 0 0 rgba(193,68,14,.45); transition: transform .2s cubic-bezier(.2,.9,.3,1.2), box-shadow .2s; animation: rgcPulse 2.8s ease-out 2s 3; }
-    .rgc-fab:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 16px 34px -8px rgba(143,51,8,.6); }
-    .rgc-fab:active { transform: scale(.96); }
-    .rgc-fab-ic { position: relative; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); }
+    .rgc-fab { position: relative; display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 18px 0 8px; border: 1px solid rgba(143,51,8,.10); border-radius: 999px; background: #fff; color: var(--ink); cursor: pointer; text-align: left;
+      box-shadow: 0 18px 40px -14px rgba(60,30,10,.35), 0 3px 8px -2px rgba(60,30,10,.10); transition: transform .2s cubic-bezier(.2,.9,.3,1.2), box-shadow .2s, padding .2s, gap .2s; }
+    .rgc-fab:hover { transform: translateY(-3px); box-shadow: 0 22px 44px -14px rgba(60,30,10,.4), 0 4px 10px -2px rgba(60,30,10,.12); }
+    .rgc-fab:active { transform: scale(.97); }
+    .rgc-fab-ic { position: relative; flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #e0622a, var(--a) 55%, var(--ad)); box-shadow: 0 6px 14px -6px rgba(143,51,8,.7); animation: rgcPulse 2.8s ease-out 2s 3; }
     .rgc-fab-ic svg { width: 26px; height: 26px; transition: transform .25s, opacity .2s; }
+    .rgc-fab-dot { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; border-radius: 50%; background: #22c55e; border: 2.5px solid #fff; }
+    .rgc-fab-t { display: flex; flex-direction: column; gap: 3px; font: 800 15.5px/1.1 'Public Sans', sans-serif; letter-spacing: -.01em; white-space: nowrap; }
+    .rgc-fab-t small { font: 600 12px/1 'Public Sans', sans-serif; color: var(--mute); letter-spacing: 0; }
+    .rgc-fab-go { width: 18px; height: 18px; flex: none; color: var(--a); transition: transform .2s; }
+    .rgc-fab:hover .rgc-fab-go { transform: translateX(3px); }
     .rgc-fab .rgc-shut { position: absolute; width: 20px; height: 20px; opacity: 0; transform: rotate(-90deg); }
     .rgc-fab[aria-expanded="true"] .rgc-open { opacity: 0; transform: rotate(90deg) scale(.6); }
     .rgc-fab[aria-expanded="true"] .rgc-shut { opacity: 1; transform: none; }
-    .rgc-fab[aria-expanded="true"] { padding-right: 9px; }
-    .rgc-fab[aria-expanded="true"] .rgc-fab-t { display: none; }
+    .rgc-fab[aria-expanded="true"] { padding: 0 7px; gap: 0; }
+    .rgc-fab[aria-expanded="true"] .rgc-fab-t, .rgc-fab[aria-expanded="true"] .rgc-fab-go, .rgc-fab[aria-expanded="true"] .rgc-fab-dot { display: none; }
     .rgc-badge { position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #16a34a; color: #fff; font: 700 11px/20px sans-serif; text-align: center; font-style: normal; border: 2px solid #fff; }
     @keyframes rgcPulse { 0% { box-shadow: 0 12px 30px -8px rgba(143,51,8,.55), 0 0 0 0 rgba(193,68,14,.45); } 70% { box-shadow: 0 12px 30px -8px rgba(143,51,8,.55), 0 0 0 16px rgba(193,68,14,0); } 100% { box-shadow: 0 12px 30px -8px rgba(143,51,8,.55), 0 0 0 0 rgba(193,68,14,0); } }
 
@@ -968,7 +976,9 @@
     #rgc button:focus-visible, #rgc textarea:focus-visible { outline: 3px solid #f0a37a; outline-offset: 2px; }
     @media (max-width: 520px) {
       #rgc { right: 14px; bottom: 14px; }
-      .rgc-fab { height: 54px; padding: 0 16px 0 7px; font-size: 14px; }
+      .rgc-fab { height: 58px; padding: 0 14px 0 6px; gap: 10px; }
+      .rgc-fab-ic { width: 44px; height: 44px; }
+      .rgc-fab-t { font-size: 14.5px; }
       .rgc-panel { position: fixed; inset: 0; width: auto; height: 100dvh; border-radius: 0; border: 0; }
       .rgc-head { padding-top: calc(14px + env(safe-area-inset-top)); }
       .rgc-foot { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
@@ -1114,7 +1124,7 @@
       }
       function close() {
         panel.hidden = true; root.classList.remove('open');
-        fab.setAttribute('aria-expanded', 'false'); fab.setAttribute('aria-label', 'Chat with RestroGrow AI');
+        fab.setAttribute('aria-expanded', 'false'); fab.setAttribute('aria-label', 'Chat with RestroGrow');
         document.documentElement.style.overflow = '';
       }
       // the box grows with the text (measured only while visible: a hidden box measures 0)
