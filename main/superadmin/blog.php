@@ -127,7 +127,7 @@ $me = (string)($_SESSION['superadmin_username'] ?? 'RestroGrow team');
           <div class="f" style="margin-top:8px"><input type="text" id="kwNotes" placeholder="Angle for the post (optional)"></div>
           <button class="btn" type="button" id="kwAdd"><span class="ms">add</span>Add keyword</button>
           <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;font-size:13.5px">Add many at once</summary>
-            <textarea id="kwBulk" rows="5" placeholder="One keyword per line" style="margin-top:8px"></textarea>
+            <textarea id="kwBulk" rows="5" placeholder="One keyword per line. Or paste a plan: keyword | intent | priority (1-3) | volume | notes" style="margin-top:8px"></textarea>
             <button class="btn light sm" type="button" id="kwBulkAdd" style="margin-top:6px">Add all</button>
           </details>
         </div>

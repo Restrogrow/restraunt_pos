@@ -9,7 +9,7 @@
  * POST {action:'delete'|'duplicate', id}
  * POST {action:'category_save', id?, name, description} · {action:'category_delete', id}
  * POST {action:'keyword_save', id?, keyword, intent, priority, status, volume, notes} · {action:'keyword_delete', id}
- * POST {action:'keyword_bulk', text}           one keyword per line
+ * POST {action:'keyword_bulk', text}           one keyword per line, or "keyword | intent | priority | volume | notes"
  * POST {action:'ai_seo', …post} · {action:'ai_draft', topic, keyword, notes} · {action:'ai_keywords', seed}
  * POST multipart action=upload, file=image     → {url, path}
  */
@@ -234,19 +234,23 @@ try {
     if ($action === 'keyword_bulk') {
         $items = $in['items'] ?? null;
         $n = 0;
-        $ins = $conn->prepare('INSERT IGNORE INTO blog_keywords (keyword, intent, priority, notes) VALUES (?, ?, ?, ?)');
+        $ins = $conn->prepare('INSERT IGNORE INTO blog_keywords (keyword, intent, priority, volume, notes) VALUES (?, ?, ?, ?, ?)');
         if (is_array($items)) {
             foreach (array_slice($items, 0, 100) as $k) {
                 $kw = mb_strtolower(trim(mb_substr((string)($k['keyword'] ?? ''), 0, 150)));
                 if ($kw === '') continue;
-                $ins->execute([$kw, in_array($k['intent'] ?? '', ['info', 'commercial', 'local', 'brand'], true) ? $k['intent'] : 'info', max(1, min(3, (int)($k['priority'] ?? 2))), trim(mb_substr((string)($k['notes'] ?? ''), 0, 500)) ?: null]);
+                $ins->execute([$kw, in_array($k['intent'] ?? '', ['info', 'commercial', 'local', 'brand'], true) ? $k['intent'] : 'info', max(1, min(3, (int)($k['priority'] ?? 2))), null, trim(mb_substr((string)($k['notes'] ?? ''), 0, 500)) ?: null]);
                 $n += $ins->rowCount();
             }
         } else {
+            // a line is a keyword, or "keyword | intent | priority | volume | notes" (a pasted keyword plan); # lines are skipped
             foreach (array_slice(preg_split('/\r?\n/', (string)($in['text'] ?? '')), 0, 200) as $line) {
-                $kw = mb_strtolower(trim(mb_substr(preg_replace('/\s+/u', ' ', $line), 0, 150)));
-                if ($kw === '') continue;
-                $ins->execute([$kw, 'info', 2, null]);
+                $f = array_map('trim', explode('|', $line));
+                $kw = mb_strtolower(trim(mb_substr(preg_replace('/\s+/u', ' ', $f[0]), 0, 150)));
+                if ($kw === '' || $kw[0] === '#') continue;
+                $intent = mb_strtolower($f[1] ?? '');
+                $ins->execute([$kw, in_array($intent, ['info', 'commercial', 'local', 'brand'], true) ? $intent : 'info',
+                    ($f[2] ?? '') !== '' ? max(1, min(3, (int)$f[2])) : 2, mb_substr($f[3] ?? '', 0, 30) ?: null, mb_substr($f[4] ?? '', 0, 500) ?: null]);
                 $n += $ins->rowCount();
             }
         }
