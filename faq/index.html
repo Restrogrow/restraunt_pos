@@ -387,6 +387,9 @@
                         <span>Restro Grow</span>
                     </div>
                     <p>Complete restaurant management solution for modern restaurants.</p>
+                    <!-- our profiles (also in the Organization sameAs for Google) -->
+                    <div class="footer-social" aria-label="Follow RestroGrow"><a href="https://www.linkedin.com/company/restro-grow/" target="_blank" rel="noopener me" aria-label="RestroGrow on LinkedIn" title="LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.84-2.05 3.79-2.05C20.6 8.65 21 11.2 21 14.5V21h-4v-5.8c0-1.4-.03-3.2-1.95-3.2-1.95 0-2.25 1.52-2.25 3.1V21H9z"/></svg></a><a href="https://www.instagram.com/restrogrow/" target="_blank" rel="noopener me" aria-label="RestroGrow on Instagram" title="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92C2.21 15.58 2.2 15.2 2.2 12s.01-3.58.07-4.85C2.42 3.92 3.94 2.37 7.15 2.27 8.42 2.21 8.8 2.2 12 2.2zm0 4.86a4.94 4.94 0 1 0 0 9.88 4.94 4.94 0 0 0 0-9.88zm0 8.15a3.21 3.21 0 1 1 0-6.42 3.21 3.21 0 0 1 0 6.42zm5.14-9.5a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3z"/></svg></a><a href="https://x.com/restrogrow" target="_blank" rel="noopener me" aria-label="RestroGrow on X (Twitter)" title="X (Twitter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.2L2 3h6.33l4.37 5.78zm-1.08 16.18h1.7L7.4 4.74H5.58z"/></svg></a><a href="https://www.youtube.com/@RestroGrow" target="_blank" rel="noopener me" aria-label="RestroGrow on YouTube" title="YouTube"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 7.2a3 3 0 0 0-2.1-2.12C19.04 4.6 12 4.6 12 4.6s-7.04 0-8.9.48A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.12c1.86.48 8.9.48 8.9.48s7.04 0 8.9-.48A3 3 0 0 0 23 16.8a31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8zM9.75 15.02V8.98L15.5 12z"/></svg></a></div>
+                    <style>.footer-social{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}.footer-social a{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);color:inherit;opacity:.85;transition:background .2s,opacity .2s,transform .2s}.footer-social a:hover{background:#ff6b35;color:#fff;opacity:1;transform:translateY(-2px)}.footer-social svg{width:18px;height:18px;fill:currentColor}@media(max-width:768px){.footer-social{justify-content:center}}</style>
                 </div>
                 <div class="footer-section">
                     <h4>Product</h4>
@@ -416,7 +419,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 Restro Grow. All rights reserved.</p>
+                <p>&copy; <span class="js-year">2026</span> Restro Grow. All rights reserved.</p>
             </div>
         </div>
     </footer>
@@ -443,6 +446,7 @@
         });
     </script>
 <script>fetch('../main/api/public_info.php').then(function (r) { return r.json(); }).then(function (d) { if (d && d.trial_days) document.querySelectorAll('[data-trial-days]').forEach(function (e) { e.textContent = d.trial_days; }); }).catch(function () {});</script>
+<script>document.querySelectorAll(".js-year").forEach(function (e) { e.textContent = new Date().getFullYear(); });</script>
 </body>
 </html>
 

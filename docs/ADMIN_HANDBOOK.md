@@ -27,6 +27,8 @@ Last updated: 16 October 2026.
 | Staff app in the browser (on the demo restaurant) | https://restrogrow.com/staff-app-demo/app/ | http://localhost/menuwebsite/staff-app-demo-local/app/ |
 | Super Admin app in the browser (your real login) | https://restrogrow.com/superadmin-app-web/app/ | http://localhost/menuwebsite/superadmin-app-web-local/app/ |
 | Health check (for UptimeRobot) | https://restrogrow.com/main/api/health.php?check=orders | |
+| Demo video (public, 24 MB) | https://restrogrow.com/demo-video.mp4 (file `demo-video.mp4` in the repo root; replace the file to change it) | http://localhost/menuwebsite/demo-video.mp4 |
+| Our social profiles (footer icons + Google `sameAs`) | LinkedIn https://www.linkedin.com/company/restro-grow/ · Instagram https://www.instagram.com/restrogrow/ · X https://x.com/restrogrow · YouTube https://www.youtube.com/@RestroGrow | |
 | GitHub (private) | https://github.com/Restrogrow/restraunt_pos (branch `main`) | |
 | Hosting | Hostinger hPanel (database `u509616587_restrogrow`) | XAMPP, database `menuwebsite_db` (root, no password) |
 
