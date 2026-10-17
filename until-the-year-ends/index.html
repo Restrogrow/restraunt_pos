@@ -8,6 +8,9 @@
 <meta name="description" content="Every day counts. A live countdown to the end of the year for the Restro Grow team.">
 <meta property="og:title" content="Until the year ends · Restro Grow">
 <meta property="og:description" content="Every day counts. Let's make them count.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://restrogrow.com/until-the-year-ends/">
+<meta property="og:image" content="https://restrogrow.com/assets/images/logo.jpg">
 <meta name="theme-color" content="#14110f">
 <link rel="icon" type="image/png" href="../favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -122,9 +125,9 @@
     <span class="year-pill" id="yearPill">2026</span>
   </header>
 
-  <section class="hero" aria-live="polite">
+  <section class="hero">
     <div class="kicker"><span class="dot"></span>Every day counts</div>
-    <div class="big" id="bigDays">--</div>
+    <div class="big" id="bigDays" aria-hidden="true">--</div>
     <div class="big-label"><span id="dayWord">days</span> left until the year ends</div>
 
     <div class="clock" role="timer" aria-label="Time left this year">
@@ -163,11 +166,11 @@
       <span><i style="background:linear-gradient(135deg,#ffb347,#ff6a2b)"></i>Done</span>
       <span><i style="background:#fff"></i>Today</span>
       <span><i style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)"></i>Still ahead</span>
-      <span><i style="background:transparent;position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)"></i><span style="color:#ffb347">●</span> Milestone</span>
+      <span><i style="background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);position:relative"><b style="position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:#ffb347"></b></i>Checkpoint</span>
     </div>
   </section>
 
-  <section class="block">
+  <section class="block" id="milesBlock">
     <h2>Checkpoints</h2>
     <p class="sub">Moments to stop and ask: did we move the needle?</p>
     <div class="miles" id="miles"></div>
@@ -234,8 +237,8 @@
   }
 
   var MILES = [
-    [9, 31, '🎃', 'October wraps up', 'First month of the push done'],
-    [10, 14, '📍', 'Halfway mark', 'Half the countdown behind us'],
+    [9, 31, '🎃', 'October wraps up', 'First 16 days of the push done'],
+    [10, 23, '📍', 'Halfway mark', 'Half the countdown behind us'],   // 16 Oct → 31 Dec is 77 days; day 39 is 23 Nov
     [10, 30, '📈', 'November closes', 'One month left: double down'],
     [11, 25, '🎄', 'Christmas', 'One week to finish strong'],
     [11, 31, '🎆', "New Year's Eve", 'The finish line'],
@@ -254,17 +257,19 @@
       for (var d = first; d <= last; d++) {
         var date = new Date(y, mo, d), cls = 'day';
         if (date < today) { cls += ' done'; done++; } else if (+date === +today) cls += ' today';
-        var mk = marks[mo + '-' + d];
+        var mk = START.getFullYear() === y && marks[mo + '-' + d];
         if (mk) cls += ' mark';
         cells += '<div class="' + cls + '" title="' + date.toDateString() + (mk ? ' · ' + mk : '') + '">' + d + '</div>';
       }
       var total = last - first + 1;
-      html += '<div class="month"><div class="month-head"><b>' + date.toLocaleString('en', { month: 'long' }) +
+      html += '<div class="month"><div class="month-head"><b>' + new Date(y, mo, 1).toLocaleString('en', { month: 'long' }) +
         '</b><span>' + done + ' / ' + total + ' done</span></div><div class="days">' + cells + '</div></div>';
     }
     $('months').innerHTML = html;
     if (START.getFullYear() === y) $('trackSub').textContent = 'Every day since the countdown started (16 October) to 31 December. A day fills in once it\'s done.';
 
+    // the checkpoints belong to this year's push
+    $('milesBlock').hidden = START.getFullYear() !== y;
     $('miles').innerHTML = MILES.map(function (m) {
       var date = new Date(y, m[0], m[1]);
       var away = Math.round((date - today) / MS_DAY);
