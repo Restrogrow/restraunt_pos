@@ -107,6 +107,19 @@
     '.obt-confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}',
     '.obt-confetti i{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;animation:obFall 1.8s ease-in forwards}',
     '@keyframes obFall{to{transform:translateY(300px) rotate(540deg);opacity:0}}',
+    /* desktop: the card sits beside the menu, pointing at the item it explains, the rest dimmed */
+    '.obt-ov.side{display:block;padding:0;backdrop-filter:none}',
+    '.obt-ov.side.hole{background:transparent}',
+    '.obt-ov.side .obt{position:fixed;z-index:2;width:420px;max-height:calc(100vh - 32px);transition:top .45s cubic-bezier(.2,.9,.3,1),left .45s cubic-bezier(.2,.9,.3,1)}',
+    '.obt-ov.side .obt-shot{height:190px}.obt-ov.side .obt-shot img{height:172px;width:90%}.obt-ov.side .obt-shot img.phone{height:180px;width:auto}',
+    '.obt-ov.side .obt-body{padding:18px 20px 16px}.obt-ov.side .obt-body h3{font-size:19px}.obt-ov.side .obt-body p{font-size:14px}',
+    '.obt-hole{position:fixed;display:none;border-radius:12px;box-shadow:0 0 0 3px #fb923c,0 0 0 9999px rgba(15,23,42,.55);pointer-events:none;transition:left .45s cubic-bezier(.2,.9,.3,1),top .45s cubic-bezier(.2,.9,.3,1),width .45s,height .45s}',
+    '.obt-hole::after{content:"";position:absolute;inset:-3px;border-radius:14px;animation:obRing 1.6s ease-out infinite}',
+    '@keyframes obRing{0%{box-shadow:0 0 0 0 rgba(251,146,60,.65)}100%{box-shadow:0 0 0 16px rgba(251,146,60,0)}}',
+    '.obt-arrow{position:fixed;display:none;z-index:1;width:20px;height:20px;background:#fff;transform:rotate(45deg);border-radius:4px;transition:top .45s cubic-bezier(.2,.9,.3,1),left .45s cubic-bezier(.2,.9,.3,1)}',
+    '.obt-ov.side.hole .obt-hole,.obt-ov.side.hole .obt-arrow{display:block}',
+    '.obt-next{white-space:nowrap;flex:none}.obt-dots{min-width:0}.obt-ov.side .obt-count{display:none}.obt-ov.side .obt-dots i{width:6px;height:6px}.obt-ov.side .obt-dots i.on{width:18px}',
+    '.obt-ov.side:not(.hole){background:rgba(15,23,42,.55)}',
     '@media (max-width:640px){.obt-ov{align-items:flex-end;padding:0}.obt{border-radius:24px 24px 0 0;max-height:92vh}.obt-shot{height:200px}.obt-shot img{height:180px;width:94%}.obt-shot img.phone{height:190px}.obg{padding:16px}.obt-count{display:none}.obg-s .obg-r{margin-left:0;width:100%}.obg-acts .obg-btn span.t{display:none}}',
     '@media (prefers-reduced-motion:reduce){.obg,.obg-s,.obt,.obt-shot img,.obt-hero .material-symbols-rounded,.ob-spot{animation:none!important}}'
   ].join('\n');
@@ -214,16 +227,39 @@
   }
 
   var T = null;
+  // the menu item a step talks about: its menu group opened and scrolled into view (desktop)
   function spot(page) {
-    document.querySelectorAll('.ob-spot').forEach(function (e) { e.classList.remove('ob-spot'); });
-    if (!page || window.innerWidth < 900) return;
+    if (!page || window.innerWidth < 900) return null;
     var a = document.querySelector('.sidebar [data-page="' + page + '"]');
-    if (!a) return;
-    // open its menu group so it can be seen
+    if (!a) return null;
     var grp = a.closest('.has-submenu');
     if (grp && !grp.classList.contains('open')) { var tg = grp.querySelector('.submenu-toggle'); if (tg) tg.click(); }
-    a.classList.add('ob-spot');
-    try { a.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+    try { a.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+    return a;
+  }
+  // desktop: the card beside the menu, its arrow on the lit-up item; phones: a bottom sheet
+  function place() {
+    if (!T) return;
+    var s = T.steps[T.i], sb = document.querySelector('.sidebar'), r0 = sb ? sb.getBoundingClientRect() : null;
+    var side = window.innerWidth >= 900 && r0 && r0.width > 40;
+    T.ov.classList.toggle('side', !!side);
+    if (!side) { T.ov.classList.remove('hole'); T.box.style.left = T.box.style.top = ''; return; }
+    var a = s.page ? document.querySelector('.sidebar [data-page="' + s.page + '"]') : null;
+    var r = a ? a.getBoundingClientRect() : null;
+    if (r && (r.height < 4 || r.bottom < 0 || r.top > window.innerHeight)) r = null;
+    T.ov.classList.toggle('hole', !!r);
+    var bh = T.box.offsetHeight, left = Math.round(r0.right + 24);
+    var cy = r ? r.top + r.height / 2 : window.innerHeight / 2;
+    var top = Math.round(Math.min(Math.max(16, cy - Math.min(110, bh / 2)), window.innerHeight - bh - 16));
+    T.box.style.left = left + 'px';
+    T.box.style.top = top + 'px';
+    if (r) {
+      var pad = 5;
+      T.hole.style.left = (r.left - pad) + 'px'; T.hole.style.top = (r.top - pad) + 'px';
+      T.hole.style.width = (r.width + pad * 2) + 'px'; T.hole.style.height = (r.height + pad * 2) + 'px';
+      T.arrow.style.left = (left - 9) + 'px';
+      T.arrow.style.top = Math.round(Math.min(Math.max(top + 22, cy - 10), top + bh - 40)) + 'px';
+    }
   }
   function confetti(el) {
     var box = document.createElement('div'); box.className = 'obt-confetti';
@@ -256,6 +292,8 @@
           '<button type="button" class="obt-next" data-obt-next>' + (s.finish ? 'Start setting up' + ic('arrow_forward') : (T.i === 0 ? 'Show me' : 'Next') + ic('arrow_forward')) + '</button></div>' +
       '</div>';
     spot(s.page);
+    place();
+    setTimeout(place, 320);   // after a menu group has opened
     if (s.finish) confetti(T.box);
     // the next screenshot loads in the background so it shows at once
     var nx = T.steps[T.i + 1]; if (nx && nx.img) { var im = new Image(); im.src = IMG + nx.img + '.jpg'; }
@@ -264,7 +302,7 @@
   function endTour(how) {
     if (!T) return;
     document.removeEventListener('keydown', T.keys);
-    spot(null);
+    window.removeEventListener('resize', place);
     T.ov.remove();
     T = null; tourOn = false;
     post({ action: how === 'skip' ? 'tour_skipped' : 'tour_done' });
@@ -281,9 +319,10 @@
     if (manual && D && D.state.tour_done) post({ action: 'tour_again' });
     var ov = document.createElement('div');
     ov.className = 'obt-ov';
-    ov.innerHTML = '<div class="obt" role="dialog" aria-modal="true" aria-labelledby="obtTitle"></div>';
+    ov.innerHTML = '<div class="obt-hole" aria-hidden="true"></div><div class="obt-arrow" aria-hidden="true"></div><div class="obt" role="dialog" aria-modal="true" aria-labelledby="obtTitle"></div>';
     document.body.appendChild(ov);
-    T = { ov: ov, box: ov.querySelector('.obt'), i: 0, steps: tourSteps() };
+    T = { ov: ov, box: ov.querySelector('.obt'), hole: ov.querySelector('.obt-hole'), arrow: ov.querySelector('.obt-arrow'), i: 0, steps: tourSteps() };
+    window.addEventListener('resize', place);
     T.keys = function (e) {
       if (!T) return;
       if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
