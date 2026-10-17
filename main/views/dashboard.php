@@ -3166,11 +3166,14 @@ try {
       </div>
       <div class="page-content">
         <?php
-        $gwOn = ($payment_gateway_type_db ?? 'cash_only') !== 'cash_only';
+        // PhonePe takes Indian rupees only: outside India there is no online payment here, just support
+        $gwIndia = restaurantIsIndia(html_entity_decode((string)($country ?? 'India')));
+        $gwOn = $gwIndia && ($payment_gateway_type_db ?? 'cash_only') !== 'cash_only';
         $gwMode = $payment_gateway_mode ?? 'own';
         $gwLive = ($phonepe_environment ?? 'SANDBOX') === 'PRODUCTION';
         $gwKeys = trim($phonepe_merchant_id ?? '') !== '' && trim($phonepe_salt_key ?? '') !== '';
-        if (!$gwOn) { $gwState = ['off', 'Online payments are off', 'Customers pay cash, or by UPI QR at the counter. Online payment (UPI, cards, net banking through PhonePe) is switched on for your restaurant by RestroGrow support.']; }
+        if (!$gwIndia) { $gwState = ['off', 'Online payments: contact support', 'Online payment through PhonePe works for restaurants in India only. Customers can pay cash, or by your payment QR at the counter. To take online payments in ' . html_entity_decode((string)$country) . ', contact RestroGrow support on WhatsApp +91 63775 68749 or restrogrow@gmail.com.']; }
+        elseif (!$gwOn) { $gwState = ['off', 'Online payments are off', 'Customers pay cash, or by UPI QR at the counter. Online payment (UPI, cards, net banking through PhonePe) is switched on for your restaurant by RestroGrow support.']; }
         elseif ($gwMode === 'platform') { $gwState = ['ok', 'Online payments are on', 'Through the RestroGrow platform account. Nothing to set up; money reaches your bank in 2 working days.']; }
         elseif (!$gwKeys) { $gwState = ['warn', 'Add your PhonePe keys', 'Online payments are allowed, but your own PhonePe Client ID and Secret aren’t saved yet, so customers can’t pay online.']; }
         elseif (!$gwLive) { $gwState = ['warn', 'Test mode', 'Your PhonePe keys are saved in Sandbox. Payments are only tests; switch to Live when PhonePe approves your account.']; }
@@ -5309,10 +5312,11 @@ function toggleGatewayMode() {
                   <label for="countrySelect">Country</label>
                   <select id="countrySelect">
                     <?php foreach (getCountryData() as $iso2 => $c): ?>
-                    <option value="<?php echo htmlspecialchars($c['name']); ?>" data-currency="<?php echo htmlspecialchars($c['currency_symbol']); ?>" <?php echo $country === $c['name'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['name']); ?></option>
+                    <?php $cLocal = getCountryLocalDefaults($iso2); ?>
+                    <option value="<?php echo htmlspecialchars($c['name']); ?>" data-currency="<?php echo htmlspecialchars($c['currency_symbol']); ?>" data-timezone="<?php echo htmlspecialchars($cLocal['timezone'] ?? ''); ?>" <?php echo $country === $c['name'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['name']); ?></option>
                     <?php endforeach; ?>
                   </select>
-                  <p class="st-help">Picks the usual currency for you. You can still change it.</p>
+                  <p class="st-help">Picks the usual currency and time zone for you. You can still change them.</p>
                 </div>
                 <div class="st-field">
                   <label for="currencySymbolSelect">Currency</label>
@@ -5430,6 +5434,14 @@ function toggleGatewayMode() {
                   <?php endforeach; ?>
                 </select>
                 <p class="st-help">Order times, reports and opening hours follow this clock.</p>
+                <?php
+                // restaurants that signed up before country defaults existed still sit on India's clock
+                $cInfo = getCountryByName((string)$country);
+                $cTz = $cInfo ? (getCountryLocalDefaults($cInfo['iso2'])['timezone'] ?? '') : '';
+                if ($cTz && $cTz !== 'Asia/Kolkata' && ($timezone ?: 'Asia/Kolkata') === 'Asia/Kolkata'):
+                ?>
+                <p class="st-help" style="color:#b45309;font-weight:600">Your country is <?php echo htmlspecialchars($cInfo['name']); ?> but this clock is India's. Pick <?php echo htmlspecialchars($cTz); ?> and save, so order times and reports match your local time.</p>
+                <?php endif; ?>
               </div>
             </div>
             <div class="st-card" data-st-form="restaurant">
@@ -7072,17 +7084,39 @@ function toggleGatewayMode() {
         <p style="margin:0.5rem 0 0;opacity:0.8;font-size:0.9rem;" id="subscriptionModalMessage">Your subscription has expired. Please renew to continue using the service.</p>
       </div>
       <div style="padding:1.5rem 2rem 2rem;">
+        <?php
+        // the prices come from Super Admin › Settings (the server charges these, whatever the page sends);
+        // PhonePe works only for Indian restaurants, everyone else renews through support
+        $rgPlanM = 999.0; $rgPlanY = 9990.0;
+        try {
+            require_once __DIR__ . '/../config/platform_engine.php';
+            if (isset($conn) && $conn instanceof PDO) { $rgPs = pfSettings($conn); $rgPlanM = (float)$rgPs['plan_price']; $rgPlanY = (float)$rgPs['plan_price_yearly']; }
+        } catch (Throwable $e) { error_log('renewal modal prices: ' . $e->getMessage()); }
+        $rgSave = $rgPlanM > 0 ? (int)round((1 - $rgPlanY / ($rgPlanM * 12)) * 100) : 0;
+        $rgIndia = restaurantIsIndia(html_entity_decode((string)($country ?? 'India')));
+        $rgMoney = fn($v) => '₹' . number_format($v, floor($v) == $v ? 0 : 2);
+        ?>
+        <?php if (!$rgIndia): ?>
+        <div style="text-align:center;padding:.5rem 0 1rem;">
+          <p style="margin:0 0 1rem;color:#374151;font-size:.95rem;line-height:1.6;">To renew for a restaurant outside India, contact our support team. We'll share the price and how to pay in your country.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+            <a href="https://wa.me/916377568749?text=<?php echo rawurlencode('Hi, I want to renew RestroGrow for ' . ($restaurant_name ?? 'my restaurant') . ' (' . ($restaurant_id ?? '') . ').'); ?>" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:12px 18px;border-radius:12px;background:#16a34a;color:#fff;font-weight:700;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:20px;">chat</span>WhatsApp support</a>
+            <a href="mailto:restrogrow@gmail.com?subject=<?php echo rawurlencode('Renew RestroGrow – ' . ($restaurant_id ?? '')); ?>" style="display:inline-flex;align-items:center;gap:6px;padding:12px 18px;border-radius:12px;background:#1e293b;color:#fff;font-weight:700;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:20px;">mail</span>Email support</a>
+          </div>
+          <p style="margin:1rem 0 0;"><a href="#" onclick="event.preventDefault();closeSubscriptionModal();" style="color:#e17055;text-decoration:underline;font-size:.8rem;">Maybe later</a></p>
+        </div>
+        <?php else: ?>
         <!-- Plan Selection -->
         <div style="display:flex;gap:12px;margin-bottom:1.25rem;">
-          <div id="planMonthly" class="plan-option active" onclick="selectPlan('monthly', 999)" style="flex:1;border:2px solid #e17055;border-radius:12px;padding:1rem;text-align:center;cursor:pointer;background:#fff5f0;transition:all 0.2s;">
-            <div style="font-size:1.5rem;font-weight:800;color:#1e293b;">₹999</div>
+          <div id="planMonthly" class="plan-option active" onclick="selectPlan('monthly', <?php echo json_encode($rgPlanM); ?>)" style="flex:1;border:2px solid #e17055;border-radius:12px;padding:1rem;text-align:center;cursor:pointer;background:#fff5f0;transition:all 0.2s;">
+            <div style="font-size:1.5rem;font-weight:800;color:#1e293b;"><?php echo $rgMoney($rgPlanM); ?></div>
             <div style="font-size:0.8rem;color:#6b7280;margin-top:4px;">per month</div>
             <div style="font-size:0.7rem;color:#e17055;margin-top:6px;font-weight:600;">✓ Most Popular</div>
           </div>
-          <div id="planYearly" class="plan-option" onclick="selectPlan('yearly', 9990)" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:1rem;text-align:center;cursor:pointer;background:#fff;transition:all 0.2s;">
-            <div style="font-size:1.5rem;font-weight:800;color:#1e293b;">₹9,990</div>
+          <div id="planYearly" class="plan-option" onclick="selectPlan('yearly', <?php echo json_encode($rgPlanY); ?>)" style="flex:1;border:2px solid #e5e7eb;border-radius:12px;padding:1rem;text-align:center;cursor:pointer;background:#fff;transition:all 0.2s;">
+            <div style="font-size:1.5rem;font-weight:800;color:#1e293b;"><?php echo $rgMoney($rgPlanY); ?></div>
             <div style="font-size:0.8rem;color:#6b7280;margin-top:4px;">per year</div>
-            <div style="font-size:0.7rem;color:#10b981;margin-top:6px;font-weight:600;">✓ Save 17%</div>
+            <div style="font-size:0.7rem;color:#10b981;margin-top:6px;font-weight:600;"><?php echo $rgSave > 0 ? '✓ Save ' . $rgSave . '%' : '✓ Pay once a year'; ?></div>
           </div>
         </div>
 
@@ -7109,7 +7143,7 @@ function toggleGatewayMode() {
         <!-- Pay Button -->
         <button id="payNowBtn" onclick="initiateSubscriptionPayment()" style="width:100%;padding:14px;background:linear-gradient(135deg,#e17055,#d63031);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 15px rgba(225,112,85,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
           <span class="material-symbols-rounded" style="font-size:20px;">lock</span>
-          Pay ₹<span id="payNowAmount">999</span>
+          Pay ₹<span id="payNowAmount"><?php echo number_format($rgPlanM, floor($rgPlanM) == $rgPlanM ? 0 : 2); ?></span>
         </button>
 
         <!-- Payment status area -->
@@ -7119,6 +7153,7 @@ function toggleGatewayMode() {
           Secure payment via PhonePe. Your data is encrypted.
           <br><a href="#" onclick="event.preventDefault();closeSubscriptionModal();" style="color:#e17055;text-decoration:underline;">Maybe later</a>
         </p>
+        <?php endif; ?>
       </div>
     </div>
   </div>
@@ -8023,9 +8058,14 @@ function renderFeedback() {
 
 // Custom Domain page: see assets/js/custom-domain-studio.js (window.loadEmbedSettings)
 
-// Country -> currency auto-fill (still manually overridable via the Currency Symbol field below)
+// Country -> currency and time zone auto-fill (both still manually overridable below)
 document.getElementById('countrySelect').addEventListener('change', function() {
   var opt = this.options[this.selectedIndex];
+  var tz = opt.getAttribute('data-timezone'), tzSel = document.getElementById('timezone');
+  if (tz && tzSel) {
+    if (![].some.call(tzSel.options, function (o) { return o.value === tz; })) tzSel.add(new Option(tz, tz));
+    tzSel.value = tz;
+  }
   var currency = opt.getAttribute('data-currency');
   if (!currency) return;
   var currencySelect = document.getElementById('currencySymbolSelect');
@@ -8118,7 +8158,7 @@ window.addEventListener('appinstalled', function() {
 // ===== Subscription Management =====
 let selectedSubscriptionPlan = 'monthly';
 let selectedPaymentMethod = 'phonepe';
-let selectedAmount = 999;
+let selectedAmount = <?php echo json_encode($rgPlanM ?? 999); ?>;
 
 function closeSubscriptionModal() {
   document.getElementById('renewalModal').style.display = 'none';

@@ -110,7 +110,7 @@ function localOtpFields(): array {
  *
  * @return array{message_id:?string}
  */
-function sendWhatsappOtpViaRepeatGrow(string $phone, string $code): array {
+function sendWhatsappOtpViaRepeatGrow(string $phone, string $code, ?array $country = null): array {
     if (isLocalDevRequest()) {
         $GLOBALS['RG_LOCAL_OTP_CODE'] = $code; // see localOtpFields()
         return ['message_id' => null];
@@ -126,7 +126,7 @@ function sendWhatsappOtpViaRepeatGrow(string $phone, string $code): array {
     if ($sendMode === 'text') {
         // TEST MODE ONLY — see REPEATGROW_OTP_SEND_MODE doc above.
         $payload = [
-            'to' => normalizePhoneForWhatsapp($phone),
+            'to' => normalizePhoneForWhatsapp($phone, $country),
             'type' => 'text',
             'text' => "Your verification code is: {$code}",
         ];
@@ -134,7 +134,7 @@ function sendWhatsappOtpViaRepeatGrow(string $phone, string $code): array {
         $templateName = env('REPEATGROW_OTP_TEMPLATE_NAME', 'otp_verify');
         $templateLang = env('REPEATGROW_OTP_TEMPLATE_LANG', 'en_US');
         $payload = [
-            'to' => normalizePhoneForWhatsapp($phone),
+            'to' => normalizePhoneForWhatsapp($phone, $country),
             'type' => 'template',
             'template' => [
                 'name' => $templateName,
@@ -195,10 +195,17 @@ function sendWhatsappOtpViaRepeatGrow(string $phone, string $code): array {
 /**
  * RepeatGrow's API requires E.164 (+<countrycode><number>). The rest of
  * this app stores phone numbers as bare digits (see
- * preg_replace('/\D/', '', ...) in customer_auth.php), so prepend a
- * default country code when the number looks like a local 10-digit one.
+ * preg_replace('/\D/', '', ...) in customer_auth.php). With the restaurant's
+ * (or signup's) country, a local number gets that country's code (+977 for
+ * Nepal); without one, the platform default is prepended to numbers that
+ * look like local 10-digit ones.
  */
-function normalizePhoneForWhatsapp(string $phone): string {
+function normalizePhoneForWhatsapp(string $phone, ?array $country = null): string {
+    if ($country) {
+        require_once __DIR__ . '/countries.php';
+        $intl = phoneToInternational($phone, $country);
+        if ($intl) return $intl;
+    }
     $digits = preg_replace('/\D/', '', $phone);
     if (strlen($digits) > 10) {
         return '+' . $digits;
@@ -240,7 +247,9 @@ function issuePurposeOtp($pdo, string $restaurantId, string $phone, string $purp
         VALUES (?, ?, ?, ?, ?)
     ")->execute([$restaurantId, $phone, $purpose, $codeHash, $expiresAt]);
 
-    sendWhatsappOtpViaRepeatGrow($phone, $code);
+    // the code goes to the number in the restaurant's own country (+977 for a Nepal restaurant)
+    require_once __DIR__ . '/countries.php';
+    sendWhatsappOtpViaRepeatGrow($phone, $code, restaurantCountryInfo($pdo, $restaurantId));
 
     return ['sent' => true, 'wait' => null];
 }

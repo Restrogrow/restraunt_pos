@@ -272,6 +272,8 @@ try {
       $hash = password_hash($password, PASSWORD_DEFAULT);
       $stmt = $conn->prepare("INSERT INTO users (username, password, restaurant_id, restaurant_name, country, currency_symbol, email, is_active, payment_gateway_type) VALUES (:u, :p, :rid, :rname, :country, :currency, :email, 1, 'cash_only')");
       $stmt->execute([':u' => $username, ':p' => $hash, ':rid' => $restaurant_id, ':rname' => $restaurant_name, ':country' => $country, ':currency' => $currencySymbol, ':email' => ($email !== '' ? $email : null)]);
+      // the country's own time zone and tax name/rate, same as self-signup
+      applyCountryDefaults($conn, $restaurant_id, $country);
       // free trial length comes from Settings (Trial period)
       try { $td = (int)(pfSettings($conn)['trial_days'] ?? 30); $conn->prepare("UPDATE users SET subscription_status = 'trial', trial_end_date = DATE_ADD(CURDATE(), INTERVAL ? DAY) WHERE restaurant_id = ?")->execute([max(1, $td), $restaurant_id]); } catch (Throwable $e) { error_log('[superadmin] trial date: ' . $e->getMessage()); }
       echo json_encode(['success' => true, 'message' => 'Restaurant created', 'restaurant_id' => $restaurant_id]);
@@ -368,6 +370,13 @@ try {
       $type = $data['type'] ?? '';
       if ($id <= 0 || !in_array($type, ['cash_only', 'cash_and_gateway'])) {
         throw new Exception('Invalid payload');
+      }
+      // PhonePe takes Indian rupees only
+      if ($type === 'cash_and_gateway') {
+        $cst = $conn->prepare('SELECT country FROM users WHERE id = ?');
+        $cst->execute([$id]);
+        $ctry = (string)$cst->fetchColumn();
+        if (!restaurantIsIndia($ctry)) throw new Exception('Online payment (PhonePe, Indian rupees) works for restaurants in India only. This restaurant is in ' . $ctry . '.');
       }
 
       $stmt = $conn->prepare('UPDATE users SET payment_gateway_type = :type WHERE id = :id');

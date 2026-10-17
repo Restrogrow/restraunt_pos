@@ -79,23 +79,15 @@ try {
             break;
 
         case 'initiatePayment':
-            // Initiate PhonePe payment for subscription renewal
-            $amount = floatval($_POST['amount'] ?? 999.00);
-            $subscription_type = $_POST['subscription_type'] ?? 'monthly'; // monthly, yearly
-            $duration_months = 1;
+            // Initiate PhonePe payment for subscription renewal. The amount is the plan price from
+            // Super Admin › Settings, never the one the page sends; PhonePe (INR) is India-only.
+            require_once __DIR__ . '/../config/platform_engine.php';
+            pfAssertCanRenewOnline($conn, $restaurant_id);
+            $subscription_type = ($_POST['subscription_type'] ?? 'monthly') === 'yearly' ? 'yearly' : 'monthly';
+            [$amount, $duration_months] = pfRenewalPrice($conn, $subscription_type);
 
-            if ($subscription_type === 'yearly') {
-                $amount = floatval($_POST['amount'] ?? 9990.00); // ₹9,990/year
-                $duration_months = 12;
-            }
-
-            // Validate amount
             if ($amount <= 0) {
-                throw new Exception('Invalid amount');
-            }
-
-            if ($amount > 100000) {
-                throw new Exception('Amount exceeds maximum limit');
+                throw new Exception('Online renewal is not available right now. Please contact RestroGrow support.');
             }
 
             // Get restaurant info
@@ -113,9 +105,9 @@ try {
             $payment_id = $conn->lastInsertId();
 
             // ========== PhonePe Integration (v2 OAuth checkout) ==========
-            // Same credential resolution (restaurant's own > platform env) and
-            // v2 API config as the order-payment flow (phonepe_order_payment.php).
-            $config = phonepeCallbackConfig($restaurant_id);
+            // RestroGrow's own PhonePe account only (null = platform .env): with the restaurant's
+            // own keys the money went to the restaurant, and a sandbox key could "pay" for free.
+            $config = phonepeCallbackConfig(null);
             $demoMode = empty($config['client_id']) || empty($config['client_secret']);
 
             if ($demoMode) {
@@ -221,7 +213,8 @@ try {
             // API (never trust a redirect/webhook body directly — see
             // config/phonepe_verify.php).
             if ($payment['payment_status'] === 'pending') {
-                $verifiedState = phonepeVerifyOrderState($conn, $restaurant_id, $transaction_id);
+                // checked against RestroGrow's own PhonePe account (see initiatePayment)
+                $verifiedState = phonepeVerifyOrderState($conn, null, $transaction_id);
 
                 if ($verifiedState === 'COMPLETED' || $verifiedState === 'SUCCESS') {
                     $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = 'success', updated_at = NOW() WHERE id = ?");

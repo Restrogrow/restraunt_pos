@@ -1420,7 +1420,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
             const response = await fetch('../website/otp.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `action=send&restaurant_id=SIGNUP&purpose=owner_signup&phone=${encodeURIComponent(phoneDigits)}`,
+                // the country picks the code the WhatsApp goes to (+977 for Nepal, …)
+                body: `action=send&restaurant_id=SIGNUP&purpose=owner_signup&phone=${encodeURIComponent(phoneDigits)}&country=${encodeURIComponent(document.getElementById('signupCountry').value)}`,
             });
             return response.json();
         }

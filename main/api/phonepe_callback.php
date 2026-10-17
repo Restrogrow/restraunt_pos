@@ -104,7 +104,9 @@ try {
     // order-payment webhook — never trust it directly; re-confirm the real
     // status by calling PhonePe's order-status API server-to-server with
     // our own OAuth credentials.
-    $verifiedState = phonepeVerifyOrderState($conn, $payment['restaurant_id'], $merchant_transaction_id);
+    // subscriptions are paid to RestroGrow's own PhonePe account, so verify there (null = platform keys),
+    // never with the restaurant's own keys
+    $verifiedState = phonepeVerifyOrderState($conn, null, $merchant_transaction_id);
     if ($verifiedState === null) {
         error_log('PhonePe subscription webhook: txn=' . $merchant_transaction_id . ' could not be independently verified, ignoring webhook body');
         http_response_code(200);

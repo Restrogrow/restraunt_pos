@@ -9,7 +9,8 @@
 // customer website and the Expo app.
 //
 // POST action=send
-//   restaurant_id, phone, purpose (optional, default "verify")
+//   restaurant_id, phone, purpose (optional, default "verify"),
+//   country (owner signup only: the country name picked on the form, for the dial code)
 //   -> { success, message, expires_in }
 //
 // POST action=verify
@@ -129,7 +130,13 @@ function handleSendOtp($pdo) {
     // Send AFTER the row is committed — if RepeatGrow fails, the row still
     // exists but is unreachable (expires naturally), rather than the user
     // having a "valid" code that was never actually delivered.
-    sendWhatsappOtpViaRepeatGrow($phone, $code);
+    // the number gets the restaurant's country code (+977 for a Nepal restaurant); owner signup has no
+    // restaurant yet, so it sends the country picked on the signup form
+    require_once __DIR__ . '/../config/countries.php';
+    $country = $restaurantId === 'SIGNUP'
+        ? getCountryByName(trim((string)($_POST['country'] ?? '')))
+        : restaurantCountryInfo($pdo, $restaurantId);
+    sendWhatsappOtpViaRepeatGrow($phone, $code, $country);
 
     echo json_encode(array_merge([
         'success' => true,

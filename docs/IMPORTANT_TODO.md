@@ -1,6 +1,6 @@
 # Important to-do: the next-level features (planned 16 October 2026)
 
-Status: **1 and 2 built (16 Oct 2026), 4 later, 5 next when asked (added 17 Oct 2026).** These three change what RestroGrow is: from billing software to the
+Status: **1 and 2 built (16 Oct 2026), 4 later, 5 next when asked, 6 later (both added 17 Oct 2026).** These three change what RestroGrow is: from billing software to the
 restaurant's own ordering channel, manager and single screen for every order. Order of work:
 
 | # | Feature | What it means for a restaurant | Rough size |
@@ -9,6 +9,7 @@ restaurant's own ordering channel, manager and single screen for every order. Or
 | 2 | **AI manager for the owner** | A morning WhatsApp report with what changed, why, and one-tap actions ("send ₹50 off to 23 regulars? YES") | 2–3 weeks |
 | 4 | **Swiggy, Zomato and ONDC orders in the POS** (later, after 1 and 2) | One screen and one KOT for every channel, stock and menu synced, no extra tablets | 4–8 weeks + partner approvals |
 | 5 | **Custom access per staff member** | The owner switches each permission on or off per person (or saves custom roles like "Captain"), instead of fixed roles only | about one session + new APKs |
+| 6 | **Restaurants outside India (Nepal first)** | Their time, bills, links and Google listing follow their own country, not India's (basic defaults already done 17 Oct) | several sessions; the time zone fix is the biggest |
 
 (The numbers match the list we discussed; #3 voice ordering for waiters is parked.)
 Smaller AI ideas stay in `docs/AI_TODO.md`; #1 and #2 here are the bigger versions of its items 2 and 5.
@@ -250,6 +251,42 @@ Waiter, Chef, Cashier, Delivery rider). Owners want to give exactly the access t
 A waiter given "give discounts" can apply one in POS and a waiter without it can't (also through the API);
 a manager with "reports" switched off sees no Reports anywhere; a saved "Captain" role can be given to two
 people; the website and both apps hide what the person can't use.
+
+---
+
+## 6. Restaurants outside India (Nepal first) (later, build when asked)
+
+Found in the 17 Oct 2026 scan. **Already done that day:** WhatsApp codes and messages go to the restaurant's own
+country code (`phoneToInternational` in `config/countries.php`), new restaurants get their country's time zone and
+tax name/rate (`getCountryLocalDefaults`, tax switched on only in India), Settings › Region picks the time zone with
+the country and warns restaurants still on India's clock, the subscription price is always the Super Admin one (and
+paid only to RestroGrow's PhonePe), and PhonePe is hidden for every restaurant outside India ("contact support").
+
+Still to do, in suggested order (file:line pointers are from the scan):
+
+| # | Gap | Where | What goes wrong |
+|---|---|---|---|
+| 4 | **Restaurant time zone ignored by most of the server** | `db_connection.php:18,172` set India time; `applyRestaurantTimezone` runs in ~6 files only; all `main/api`, controllers, crons | "Today", reports, coupons, order numbers, kitchen timers, scheduled orders, combos and birthday rewards run on Indian time (Nepal 15 min off; Dubai/UK hours off). Also: restaurants open past midnight reject website orders after 12 (`api/process_website_order.php:367`, `website/header.php:436`, `api/dashboard_home.php:98`) |
+| 5 | **Nepal billing rules** | POS / bill code, `controllers/pos_operations.php:620` | Prices must include VAT and service charge (2022 court ruling); no "price includes tax" option, no service charge; no "Tax Invoice" title, taxable amount or buyer PAN; random bill numbers instead of a sequence per fiscal year (Shrawan–Asar); no Bikram Sambat dates; the online-order invoice hides VAT in "gross amount" (`assets/js/script.js:11410`) |
+| 6 | Emails show ₹ always, tax line says "Tax" | `config/mail_engine.php:457-543` (24 places) | Order and bill emails use ₹ whatever the currency |
+| 7 | "Chat on WhatsApp" links add 91 | ~12 places: `assets/js/inventory-studio.js:246`, `reservations-studio.js:96`, `superadmin/sa-platform.js:124`, `app/screens/CustomersScreen.js:51`, `staff-app/screens/CustomersScreen.js:52`, superadmin-app screens; `website/cart.php:3955`, `assets/js/order-card.js:129,198` have no code at all | Opens a chat with an Indian number |
+| 8 | Same customer saved twice | `api/wa_webhook.php:129` keeps 977…, website keeps 98… | Points, wallet and history split |
+| 9 | Order-form phone check is Indian | `config/order_abuse_guard.php:26-46`; also `api/wallet_admin.php:88`, `admin/blocklist.php:43`, `controllers/reservation_operations.php:230`, `website/script.js:683,697,959` | Rejects +977 numbers and landlines |
+| 10 | Tax 0% shows as 5% on the cart | `website/cart.php:2877,3045`, `public/script.js:4196` (`taxPercent || 5`) | Wrong tax shown when tax is 0 |
+| 11 | Google sees India / INR | `config/seo_helpers.php:205,220,222,249` | Wrong country and currency in search results |
+| 12 | Festival calendar is India-only | `assets/js/campaign-calendar.js` | No Dashain, Tihar, Nepali New Year |
+| 13 | No Nepali language; customer screens English only | `views/dashboard.php:5447` language list; `<html lang="en">` | |
+| 14 | Delivery areas by Indian pincode, map starts on India | `api/save_delivery_zone.php`, `website/cart.php:2798,4357` | Km-radius delivery works; pincode zones don't fit Nepal |
+| 15 | Default policies show RestroGrow's +91 number | `website/policy_defaults.php:41,128,213,255,300` | When the restaurant has no phone set |
+| 16 | Subscription for other countries | `config/sa_invoices.php` (CGST/SGST), ₹ prices | Price per country/currency, a gateway that takes their money, invoices without Indian GST |
+| 17 | "Made in India", ₹ in samples | `config/mail_engine.php:124`, `config/chatbot_store.php`, `assets/js/offers-studio.js:137`, `loyalty-studio.js:36`, `app/screens/RidersScreen.js:17` | Looks India-only |
+| 18 | No eSewa / Khalti / Fonepay | payments | Nepal restaurants can only add them as manual payment-method names |
+| 19 | IRD-certified billing + CBMS (bigger Nepal restaurants) | new | Needs IRD approval; only above the turnover limit (check the current limit) |
+
+### Done when
+A Nepal restaurant's day, reports and timers follow Nepal time; its bill is a legal Nepal VAT bill (VAT-inclusive
+prices, service charge, PAN, sequential numbers, BS date); every WhatsApp link and message reaches +977; one customer
+is one record; Google shows NPR and Nepal.
 
 ---
 

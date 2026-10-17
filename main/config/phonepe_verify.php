@@ -107,6 +107,17 @@ if (!function_exists('phonepeCallbackConfig')) {
             $isSandbox = strtoupper($environment) !== 'PRODUCTION';
         }
 
+        // PhonePe charges Indian rupees: a restaurant outside India gets no keys, so wallet top-ups,
+        // VIP and every other customer payment through it stay off (they show "not available")
+        if ($restaurantId) {
+            try {
+                require_once __DIR__ . '/countries.php';
+                $cst = getConnection()->prepare('SELECT country FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
+                $cst->execute([$restaurantId]);
+                if (!restaurantIsIndia((string)$cst->fetchColumn())) { $clientId = ''; $clientSecret = ''; }
+            } catch (Throwable $e) { /* no country column: India */ }
+        }
+
         if ($isSandbox) {
             $apiBase = env('PHONEPE_BASE_URL_TEST', 'https://api-preprod.phonepe.com/apis/pg-sandbox');
             $authUrl = $apiBase . '/v1/oauth/token';

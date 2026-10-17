@@ -191,6 +191,14 @@ function handleCreatePayment() {
             throw new Exception('Order not found');
         }
 
+        // PhonePe charges Indian rupees: a restaurant outside India never takes payment through it
+        require_once __DIR__ . '/../config/countries.php';
+        $cst = $conn->prepare('SELECT country FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
+        $cst->execute([$order['restaurant_id']]);
+        if (!restaurantIsIndia((string)$cst->fetchColumn())) {
+            throw new Exception('Online payment is not available for this restaurant. Please pay cash on delivery or at the counter.');
+        }
+
         $config = getPhonePeConfig($order['restaurant_id']);
         if ($embedMode) {
             $config['redirect_url'] = str_replace('/website/cart.php', '/embed/embed.php', $config['redirect_url']);

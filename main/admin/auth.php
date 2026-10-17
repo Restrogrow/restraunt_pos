@@ -746,7 +746,9 @@ function handleSignup() {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), NOW(), NOW())
     ");
     $result = $insertStmt->execute([$username, $email, $hashedPassword, $restaurantId, $restaurantName, $country, $phone, $currencySymbol]);
-    
+    // the country's own time zone and tax name/rate (Nepal: Asia/Kathmandu, VAT 13% off until they switch it on)
+    if ($result) applyCountryDefaults($pdo, $restaurantId, $country);
+
     if ($result) {
         // welcome email to the owner + "new signup" to the RestroGrow team (queued, sent after this reply)
         try {

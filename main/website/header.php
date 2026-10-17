@@ -218,6 +218,9 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 $packaging_charge = (float)($row['packaging_charge'] ?? 0);
                 $enable_gst = isset($row['enable_gst']) ? (int)$row['enable_gst'] : 1;
                 $payment_gateway_type = $row['payment_gateway_type'] ?? 'cash_only';
+                // PhonePe charges Indian rupees: customers of a restaurant outside India never see it
+                require_once __DIR__ . '/../config/countries.php';
+                if (!restaurantIsIndia($row['country'] ?? '')) $payment_gateway_type = 'cash_only';
                 $show_install_app = !empty($row['show_install_app']);
                 $custom_domain = $row['custom_domain'] ?? '';
                 $embed_enabled = !empty($row['embed_enabled']);

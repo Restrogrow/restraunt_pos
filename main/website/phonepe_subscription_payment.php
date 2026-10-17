@@ -193,6 +193,15 @@ function handleInitiate($conn, $restaurantId, $customer) {
             exit();
         }
 
+        // PhonePe charges Indian rupees: outside India there's no online payment (pay the restaurant directly)
+        require_once __DIR__ . '/../config/countries.php';
+        $cst = $conn->prepare('SELECT country FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
+        $cst->execute([$restaurantId]);
+        if (!restaurantIsIndia((string)$cst->fetchColumn())) {
+            header('Location: ' . mySubscriptionUrl($restaurantId, ['subscription_id' => $subscriptionId, 'payment_error' => 1]));
+            exit();
+        }
+
         $amount = (float)$payment['amount'];
         if ($amount <= 0) {
             throw new Exception('Invalid amount');

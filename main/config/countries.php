@@ -110,7 +110,106 @@ function getCountryData() {
 
 function getCountryByName($name) {
     foreach (getCountryData() as $iso2 => $c) {
-        if (strcasecmp($c['name'], $name) === 0) return array_merge(['iso2' => $iso2], $c);
+        if (strcasecmp($c['name'], (string)$name) === 0) return array_merge(['iso2' => $iso2], $c);
     }
     return null;
+}
+
+/**
+ * The basic local setup a new restaurant starts with: its main time zone and the usual name and
+ * rate of the sales tax on restaurant food. Only India's tax starts switched on; elsewhere the name
+ * and rate are filled in but left off, because whether a restaurant must charge it (and whether menu
+ * prices must already include it, as in Nepal) depends on its registration. Owners can change all of it
+ * in Settings. [timezone, tax name, tax %]
+ */
+function getCountryLocalDefaults($iso2) {
+    static $d = [
+        'IN' => ['Asia/Kolkata', 'GST', 5], 'NP' => ['Asia/Kathmandu', 'VAT', 13], 'US' => ['America/New_York', 'Sales Tax', 0],
+        'CA' => ['America/Toronto', 'GST', 5], 'GB' => ['Europe/London', 'VAT', 20], 'AU' => ['Australia/Sydney', 'GST', 10],
+        'NZ' => ['Pacific/Auckland', 'GST', 15], 'AE' => ['Asia/Dubai', 'VAT', 5], 'SA' => ['Asia/Riyadh', 'VAT', 15],
+        'QA' => ['Asia/Qatar', 'Tax', 0], 'KW' => ['Asia/Kuwait', 'Tax', 0], 'BH' => ['Asia/Bahrain', 'VAT', 10],
+        'OM' => ['Asia/Muscat', 'VAT', 5], 'PK' => ['Asia/Karachi', 'Sales Tax', 16], 'BD' => ['Asia/Dhaka', 'VAT', 15],
+        'LK' => ['Asia/Colombo', 'VAT', 18], 'BT' => ['Asia/Thimphu', 'Tax', 0], 'MM' => ['Asia/Yangon', 'Commercial Tax', 5],
+        'SG' => ['Asia/Singapore', 'GST', 9], 'MY' => ['Asia/Kuala_Lumpur', 'SST', 6], 'TH' => ['Asia/Bangkok', 'VAT', 7],
+        'ID' => ['Asia/Jakarta', 'PB1', 10], 'PH' => ['Asia/Manila', 'VAT', 12], 'VN' => ['Asia/Ho_Chi_Minh', 'VAT', 8],
+        'KH' => ['Asia/Phnom_Penh', 'VAT', 10], 'LA' => ['Asia/Vientiane', 'VAT', 10], 'CN' => ['Asia/Shanghai', 'VAT', 6],
+        'HK' => ['Asia/Hong_Kong', 'Tax', 0], 'TW' => ['Asia/Taipei', 'VAT', 5], 'JP' => ['Asia/Tokyo', 'Consumption Tax', 10],
+        'KR' => ['Asia/Seoul', 'VAT', 10], 'AF' => ['Asia/Kabul', 'Tax', 0], 'IE' => ['Europe/Dublin', 'VAT', 13.5],
+        'DE' => ['Europe/Berlin', 'MwSt', 19], 'FR' => ['Europe/Paris', 'TVA', 10], 'IT' => ['Europe/Rome', 'IVA', 10],
+        'ES' => ['Europe/Madrid', 'IVA', 10], 'PT' => ['Europe/Lisbon', 'IVA', 13], 'NL' => ['Europe/Amsterdam', 'BTW', 9],
+        'BE' => ['Europe/Brussels', 'TVA', 12], 'CH' => ['Europe/Zurich', 'MWST', 8.1], 'AT' => ['Europe/Vienna', 'USt', 10],
+        'SE' => ['Europe/Stockholm', 'Moms', 12], 'NO' => ['Europe/Oslo', 'MVA', 25], 'DK' => ['Europe/Copenhagen', 'Moms', 25],
+        'FI' => ['Europe/Helsinki', 'ALV', 14], 'PL' => ['Europe/Warsaw', 'VAT', 8], 'GR' => ['Europe/Athens', 'VAT', 13],
+        'RO' => ['Europe/Bucharest', 'TVA', 9], 'CZ' => ['Europe/Prague', 'DPH', 12], 'HU' => ['Europe/Budapest', 'ÁFA', 5],
+        'RU' => ['Europe/Moscow', 'VAT', 20], 'UA' => ['Europe/Kyiv', 'VAT', 20], 'TR' => ['Europe/Istanbul', 'KDV', 10],
+        'IL' => ['Asia/Jerusalem', 'VAT', 18], 'EG' => ['Africa/Cairo', 'VAT', 14], 'ZA' => ['Africa/Johannesburg', 'VAT', 15],
+        'NG' => ['Africa/Lagos', 'VAT', 7.5], 'KE' => ['Africa/Nairobi', 'VAT', 16], 'GH' => ['Africa/Accra', 'VAT', 15],
+        'TZ' => ['Africa/Dar_es_Salaam', 'VAT', 18], 'ET' => ['Africa/Addis_Ababa', 'VAT', 15], 'MA' => ['Africa/Casablanca', 'TVA', 10],
+        'DZ' => ['Africa/Algiers', 'TVA', 19], 'TN' => ['Africa/Tunis', 'TVA', 19], 'JO' => ['Asia/Amman', 'GST', 16],
+        'LB' => ['Asia/Beirut', 'VAT', 11], 'IQ' => ['Asia/Baghdad', 'Tax', 0], 'IR' => ['Asia/Tehran', 'VAT', 10],
+        'BR' => ['America/Sao_Paulo', 'Tax', 0], 'MX' => ['America/Mexico_City', 'IVA', 16], 'AR' => ['America/Argentina/Buenos_Aires', 'IVA', 21],
+        'CL' => ['America/Santiago', 'IVA', 19], 'CO' => ['America/Bogota', 'Impoconsumo', 8], 'PE' => ['America/Lima', 'IGV', 18],
+        'VE' => ['America/Caracas', 'IVA', 16], 'EC' => ['America/Guayaquil', 'IVA', 15], 'UY' => ['America/Montevideo', 'IVA', 22],
+        'PY' => ['America/Asuncion', 'IVA', 10], 'BO' => ['America/La_Paz', 'IVA', 13], 'PA' => ['America/Panama', 'ITBMS', 10],
+        'CR' => ['America/Costa_Rica', 'IVA', 13], 'GT' => ['America/Guatemala', 'IVA', 12], 'DO' => ['America/Santo_Domingo', 'ITBIS', 18],
+        'JM' => ['America/Jamaica', 'GCT', 15], 'TT' => ['America/Port_of_Spain', 'VAT', 12.5], 'FJ' => ['Pacific/Fiji', 'VAT', 15],
+        'MU' => ['Indian/Mauritius', 'VAT', 15], 'MV' => ['Indian/Maldives', 'GST', 8],
+    ];
+    $r = $d[strtoupper((string)$iso2)] ?? null;
+    if (!$r) return null;
+    return ['timezone' => $r[0], 'tax_name' => $r[1], 'tax_percent' => (float)$r[2], 'tax_on' => strtoupper($iso2) === 'IN'];
+}
+
+/**
+ * Sets a new restaurant's time zone and tax to its country's usual ones (signup and Super Admin create).
+ * Each column on its own, so a database without one of them still gets the rest.
+ */
+function applyCountryDefaults(PDO $pdo, string $restaurantId, ?string $countryName): void {
+    $c = getCountryByName((string)$countryName);
+    $d = $c ? getCountryLocalDefaults($c['iso2']) : null;
+    if (!$d) return;
+    foreach (['timezone' => $d['timezone'], 'tax_name' => $d['tax_name'], 'tax_percent' => $d['tax_percent'], 'enable_gst' => $d['tax_on'] ? 1 : 0] as $col => $val) {
+        try { $pdo->prepare("UPDATE users SET $col = ? WHERE restaurant_id = ?")->execute([$val, $restaurantId]); }
+        catch (Throwable $e) { error_log("applyCountryDefaults $col: " . $e->getMessage()); }
+    }
+}
+
+/** The country (getCountryByName shape) a restaurant is set to, or null. Cached per request. */
+function restaurantCountryInfo(PDO $pdo, ?string $restaurantId): ?array {
+    static $cache = [];
+    $rid = (string)$restaurantId;
+    if ($rid === '') return null;
+    if (!array_key_exists($rid, $cache)) {
+        try {
+            $st = $pdo->prepare('SELECT country FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
+            $st->execute([$rid]);
+            $cache[$rid] = getCountryByName((string)$st->fetchColumn());
+        } catch (Throwable $e) { $cache[$rid] = null; }
+    }
+    return $cache[$rid];
+}
+
+/**
+ * A phone number in full international form (+<country code><number>), using the given country for
+ * numbers typed without a code. Accepts "+977 98…", "00977…", "977 98…", "98…" and a leading trunk 0
+ * ("07911…" in the UK). Returns null when the country is unknown and the number has no code, so the
+ * caller can fall back to its own default.
+ */
+function phoneToInternational(string $phone, ?array $country): ?string {
+    $raw = trim($phone);
+    $d = preg_replace('/\D/', '', $raw);
+    if ($d === '') return null;
+    if (strpos($raw, '+') === 0) return '+' . $d;
+    if (strpos($d, '00') === 0) return '+' . substr($d, 2);
+    if (!$country) return null;
+    $cc = preg_replace('/\D/', '', $country['dial_code']);
+    if (strlen($d) > $country['phone_max'] && strpos($d, $cc) === 0 && strlen($d) - strlen($cc) >= $country['phone_min']) return '+' . $d;
+    if (strlen($d) === $country['phone_max'] + 1 && $d[0] === '0') $d = substr($d, 1);
+    return '+' . $cc . $d;
+}
+
+/** Is this restaurant's country India (or not set, which means India)? Online payments by PhonePe work only there. */
+function restaurantIsIndia(?string $countryName): bool {
+    $n = trim((string)$countryName);
+    return $n === '' || strcasecmp($n, 'India') === 0;
 }

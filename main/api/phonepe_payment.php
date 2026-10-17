@@ -94,12 +94,14 @@ try {
         throw new Exception('Subscription payments table not found. Please run the migration: migrations/run_subscription_payments_migration.php');
     }
     
-    $amount = floatval($_POST['amount'] ?? 999.00); // Default ₹999 for subscription renewal
-    $subscription_type = $_POST['subscription_type'] ?? 'monthly'; // monthly or yearly
-    
-    // Validate amount
+    // the plan price from Super Admin › Settings, never the amount the page sends; India-only (PhonePe, INR)
+    require_once __DIR__ . '/../config/platform_engine.php';
+    pfAssertCanRenewOnline($conn, $restaurant_id);
+    $subscription_type = ($_POST['subscription_type'] ?? 'monthly') === 'yearly' ? 'yearly' : 'monthly';
+    [$amount] = pfRenewalPrice($conn, $subscription_type);
+
     if ($amount <= 0) {
-        throw new Exception('Invalid amount');
+        throw new Exception('Online renewal is not available right now. Please contact RestroGrow support.');
     }
     
     // Generate unique transaction ID

@@ -367,7 +367,13 @@ if (!function_exists('ensureWhatsappSchema')) {
         // local computer: nothing is sent, except to a local stand-in RepeatGrow
         if (waDryRun() && !($c && waLocalUrl($c['url']))) return [true, 'test-' . substr(md5($phone . microtime(true)), 0, 10), null, null];
         if (!$c) return [false, null, 'WhatsApp is not connected', null];
-        $payload = ['to' => normalizePhoneForWhatsapp($phone)];
+        // a local number gets the restaurant's own country code (+977 for a Nepal restaurant)
+        $country = null;
+        if (!empty($s['restaurant_id']) && function_exists('getConnection')) {
+            require_once __DIR__ . '/countries.php';
+            try { $country = restaurantCountryInfo(getConnection(), (string)$s['restaurant_id']); } catch (Throwable $e) { $country = null; }
+        }
+        $payload = ['to' => normalizePhoneForWhatsapp($phone, $country)];
         if ($templateName) $payload += ['type' => 'template', 'template' => ['name' => $templateName, 'language' => $lang, 'params' => array_values($params)]];
         else $payload += ['type' => 'text', 'text' => $text];
         $ch = curl_init($c['url']);

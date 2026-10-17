@@ -91,13 +91,37 @@ function pfSettings(PDO $conn): array
 {
     pfEnsure($conn);
     $d = [
-        'trial_days' => '30', 'plan_price' => '999', 'plan_price_yearly' => '9999', 'auto_renewal' => '1',
+        'trial_days' => '30', 'plan_price' => '999', 'plan_price_yearly' => '9990', 'auto_renewal' => '1',
         'renewal_notice_days' => '7',
         'biz_name' => 'RestroGrow', 'biz_address' => '', 'biz_gstin' => '', 'biz_email' => '', 'biz_phone' => '',
         'gst_percent' => '18', 'prices_include_gst' => '1', 'invoice_prefix' => 'RG', 'biz_upi' => '', 'biz_bank' => '',
     ];
     foreach ($conn->query("SELECT k, v FROM sa_settings WHERE k <> 'schema'") as $r) $d[$r['k']] = (string)$r['v'];
     return $d;
+}
+
+/**
+ * What a restaurant pays to renew online: always the Super Admin price for the plan, never an amount
+ * sent by the browser (that used to let anyone renew a year for ₹1). [amount, months]
+ */
+function pfRenewalPrice(PDO $conn, string $type): array
+{
+    $s = pfSettings($conn);
+    return $type === 'yearly' ? [round((float)$s['plan_price_yearly'], 2), 12] : [round((float)$s['plan_price'], 2), 1];
+}
+
+/**
+ * Online renewal is PhonePe in Indian rupees, so only Indian restaurants can use it; the rest renew
+ * through support. Throws the message to show.
+ */
+function pfAssertCanRenewOnline(PDO $conn, string $restaurantId): void
+{
+    require_once __DIR__ . '/countries.php';
+    $st = $conn->prepare('SELECT country FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
+    $st->execute([$restaurantId]);
+    if (!restaurantIsIndia((string)$st->fetchColumn())) {
+        throw new Exception('Online renewal is available for restaurants in India only. Please contact RestroGrow support (WhatsApp +91 63775 68749 or restrogrow@gmail.com) to renew.');
+    }
 }
 
 function pfSaveSettings(PDO $conn, array $in): array
