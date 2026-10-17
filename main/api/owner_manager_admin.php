@@ -110,7 +110,7 @@ try {
         $voiceName = in_array($in['voice_name'] ?? '', ['Kore', 'Charon', 'Aoede', 'Puck'], true) ? $in['voice_name'] : 'Kore';
         $style = preg_match('/\p{Devanagari}/u', $t) ? 'in a warm, friendly, natural Hindi voice, at a relaxed pace' : 'in a warm, friendly, natural Indian voice, at a relaxed pace';
         $wav = aiGeminiSpeech($t, $voiceName, $style, $conn, $rid);
-        if (!$wav) omOut(['success' => false, 'message' => 'Voice not available']);
+        if (!$wav) omOut(['success' => false, 'message' => 'Voice not available', 'why' => $GLOBALS['AI_SPEECH_ERROR'] ?? (aiGeminiAvailable() ? 'daily AI limit reached' : 'no GEMINI_API_KEY')]);
         omOut(['success' => true, 'audio' => 'data:audio/wav;base64,' . base64_encode($wav)]);
     }
     omOut(['success' => false, 'message' => 'Unknown action'], 400);

@@ -119,8 +119,13 @@ if (!function_exists('aiGeminiJson')) {
         curl_setopt_array($c, $opts);
         $res = curl_exec($c);
         $code = (int)curl_getinfo($c, CURLINFO_HTTP_CODE);
+        if ($res === false || $code < 200 || $code >= 300) {
+            // why it failed, for the AI manager page (e.g. "HTTP 429 quota", "HTTP 404 model")
+            $GLOBALS['AI_SPEECH_ERROR'] = 'HTTP ' . $code . ' ' . mb_substr((string)(json_decode((string)$res, true)['error']['message'] ?? curl_error($c) ?? ''), 0, 160);
+            error_log('aiGeminiSpeech: ' . $GLOBALS['AI_SPEECH_ERROR']);
+            return null;
+        }
         curl_close($c);
-        if ($res === false || $code < 200 || $code >= 300) { error_log('aiGeminiSpeech: HTTP ' . $code . ' ' . substr((string)$res, 0, 200)); return null; }
         $d = json_decode((string)$res, true);
         $inline = null;
         foreach ($d['candidates'][0]['content']['parts'] ?? [] as $p) if (!empty($p['inlineData']['data'])) { $inline = $p['inlineData']; break; }
