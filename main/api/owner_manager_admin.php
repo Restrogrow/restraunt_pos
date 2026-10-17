@@ -33,6 +33,26 @@ require_once __DIR__ . '/../config/owner_manager.php';
 
 function omOut(array $d, int $code = 200): void { http_response_code($code); echo json_encode($d, JSON_UNESCAPED_UNICODE); exit; }
 
+/**
+ * The manager's voice for $text: Google Cloud TTS when set up (natural and fast), else Gemini's voice when the
+ * owner picked "Natural" (natural but ~10 s), else null and the phone's own voice speaks. [data URI|null, why]
+ */
+function omVoiceAudio(PDO $conn, string $rid, string $text, string $engine, bool $male): array
+{
+    $hindi = (bool)preg_match('/\p{Devanagari}/u', $text);
+    $say = trim(preg_replace(['/\p{Extended_Pictographic}|\x{FE0F}|\x{20E3}|[▲▼•*_]/u', '/\s+/u'], ['', ' '], str_replace('₹', $hindi ? 'रुपये ' : 'rupees ', $text)));
+    if ($say === '' || $engine === 'phone') return [null, 'phone voice'];
+    if (aiCloudSpeechAvailable()) {
+        $mp3 = aiCloudSpeech($say, $male);
+        if ($mp3) return ['data:audio/mpeg;base64,' . base64_encode($mp3), ''];
+    }
+    if ($engine === 'gemini') {
+        $wav = aiGeminiSpeech($say, $male ? 'Charon' : 'Kore', $hindi ? 'in a warm, friendly, natural Hindi voice, at a lively natural pace' : 'in a warm, friendly, natural Indian voice, at a lively natural pace', $conn, $rid);
+        if ($wav) return ['data:audio/wav;base64,' . base64_encode($wav), ''];
+    }
+    return [null, $GLOBALS['AI_SPEECH_ERROR'] ?? 'not available'];
+}
+
 try {
     $conn = getConnection();
     ownerMgrEnsure($conn);
@@ -71,7 +91,9 @@ try {
         omOut(['success' => true, 'can_edit' => $canEdit, 'ai' => aiGeminiAvailable(), 'sent_now' => $sentNow,
             'settings' => ['enabled' => $s['enabled'], 'send_time' => $s['send_time'], 'language' => $s['language'], 'phone' => $s['phone'],
                 'phone_override' => $s['phone_override'], 'email_on' => $s['email_on'], 'last_sent_on' => $s['last_sent_on'], 'restaurant' => $s['restaurant'], 'tz' => $s['tz'], 'phone_intl' => $intl ?: ($s['phone'] !== '' ? '+' . $s['phone'] : '')],
-            'status' => $status, 'kpis' => $kpis, 'briefs' => $briefs]);
+            'status' => $status, 'kpis' => $kpis, 'briefs' => $briefs,
+            // which voices the page can offer: cloud = natural and fast; gemini = natural but slow; else the phone's voice
+            'voice' => ['cloud' => aiCloudSpeechAvailable(), 'gemini' => aiGeminiAvailable()]]);
     }
 
     $in = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -101,17 +123,21 @@ try {
         $t = trim(mb_substr((string)($in['text'] ?? ''), 0, 300));
         if ($t === '') omOut(['success' => false, 'message' => 'Type a question']);
         // same path as a WhatsApp question: answer in the language it was asked in (+ the spoken version in voice mode)
-        omOut(['success' => true] + ownerMgrAsk($conn, $rid, $t, !empty($in['voice'])));
+        $r = ownerMgrAsk($conn, $rid, $t, !empty($in['voice']), !empty($in['fast']));
+        // voice: the audio comes in the same reply, so it starts one round trip sooner
+        if (!empty($in['voice']) && !empty($in['audio']) && !empty($r['speech'])) {
+            [$audio, $why] = omVoiceAudio($conn, $rid, $r['speech'], (string)($in['engine'] ?? 'auto'), ($in['voice_name'] ?? '') === 'Charon');
+            if ($audio) $r['audio'] = $audio; else $r['audio_why'] = $why;
+        }
+        omOut(['success' => true] + $r);
     }
     if ($action === 'tts') {
         // voice mode: the manager's natural voice (Gemini speech); the page falls back to the phone's own voice
         $t = trim(mb_substr((string)($in['text'] ?? ''), 0, 900));
         if ($t === '') omOut(['success' => false, 'message' => 'Nothing to say']);
-        $voiceName = in_array($in['voice_name'] ?? '', ['Kore', 'Charon', 'Aoede', 'Puck'], true) ? $in['voice_name'] : 'Kore';
-        $style = preg_match('/\p{Devanagari}/u', $t) ? 'in a warm, friendly, natural Hindi voice, at a relaxed pace' : 'in a warm, friendly, natural Indian voice, at a relaxed pace';
-        $wav = aiGeminiSpeech($t, $voiceName, $style, $conn, $rid);
-        if (!$wav) omOut(['success' => false, 'message' => 'Voice not available', 'why' => $GLOBALS['AI_SPEECH_ERROR'] ?? (aiGeminiAvailable() ? 'daily AI limit reached' : 'no GEMINI_API_KEY')]);
-        omOut(['success' => true, 'audio' => 'data:audio/wav;base64,' . base64_encode($wav)]);
+        [$audio, $why] = omVoiceAudio($conn, $rid, $t, (string)($in['engine'] ?? 'gemini'), ($in['voice_name'] ?? '') === 'Charon');
+        if (!$audio) omOut(['success' => false, 'message' => 'Voice not available', 'why' => $why]);
+        omOut(['success' => true, 'audio' => $audio]);
     }
     omOut(['success' => false, 'message' => 'Unknown action'], 400);
 } catch (Throwable $e) {

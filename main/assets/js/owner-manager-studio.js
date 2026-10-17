@@ -6,10 +6,11 @@
  * manager (English, Hindi, Hinglish), settings, a setup checklist and earlier reports.
  * Phones get three tabs (Today · Ask · Settings); wider screens two columns. Styles live here (om-*),
  * so the page needs only #omRoot.
- * Voice: the chat's mic types what you say (you press Send). Voice mode: tap the circle, speak, check or
- * edit what it heard, press Send; the answer shows and is spoken in Gemini's natural voice (the phone's own
- * voice if that fails). It never sends or listens again by itself. Speech recognition is the browser's
- * (Web Speech API, best in Chrome on Android); the voice buttons are hidden where it's missing.
+ * Voice: the chat's mic types what you say; you press Send and, because you spoke, the answer is also
+ * spoken. Voice mode (full screen) is hands-free like a call: tap the circle once, then it listens, answers
+ * out loud and listens again until you tap Pause or End. Voices: Google Cloud TTS when GOOGLE_TTS_API_KEY is
+ * set (natural and instant), else the phone's own voice (instant) or Gemini's "Natural" voice (slower).
+ * Speech recognition is the browser's (Web Speech API, best in Chrome on Android); voice is hidden without it.
  */
 (function () {
   'use strict';
@@ -21,8 +22,9 @@
   var ANDROID = /Android/i.test(navigator.userAgent);
   function pref(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
   function setPref(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
-  var voice = { on: false, rec: null, listening: false, speaking: false, audio: null, cache: {}, last: null,
-    lang: pref('omVoiceLang', 'hi-IN'), name: pref('omVoiceName', 'Kore') };
+  // loop: hands-free conversation running; engine: 'phone' (instant) or 'gemini' (natural, slower); cloud TTS wins when set up
+  var voice = { open: false, loop: false, rec: null, listening: false, speaking: false, audio: null, cache: {}, last: null, misses: 0, state: 'idle',
+    lang: pref('omVoiceLang', 'hi-IN'), male: pref('omVoiceMale', '0') === '1', engine: pref('omVoiceEngine', 'phone'), micUsed: false };
   var chat = (function () { try { return JSON.parse(sessionStorage.getItem(CHAT_KEY) || '[]'); } catch (e) { return []; } })();
 
   function $(id) { return document.getElementById(id); }
@@ -123,26 +125,42 @@
       '.om-vbtn{display:inline-flex;align-items:center;gap:5px;margin-left:auto;padding:6px 12px;border:0;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#4c1d95);color:#fff;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}',
       '.om-card h3.om-chat-h{flex-wrap:wrap}@media(max-width:760px){.om-chat-h .om-vbtn{order:3;flex:1 1 100%;justify-content:center;margin:8px 0 0;padding:10px}}',
       '.om-say{display:inline-flex;align-items:center;margin-left:6px;padding:0;border:0;background:none;color:#7c3aed;cursor:pointer;vertical-align:middle}.om-say .material-symbols-rounded{font-size:18px}',
-      '.om-voice{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;color:#fff;background:radial-gradient(90% 70% at 50% 35%,#6d28d9,#1e1b4b)}',
-      '.om-voice[hidden]{display:none}',
-      '.om-orb{position:relative;width:120px;height:120px;display:grid;place-items:center;border:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#c4b5fd,#7c3aed 60%,#4c1d95);color:#fff;cursor:pointer;box-shadow:0 20px 50px -15px rgba(0,0,0,.6)}',
-      '.om-orb .material-symbols-rounded{font-size:52px}',
-      '.om-orb.listen{animation:omOrb 1.4s infinite ease-in-out;background:radial-gradient(circle at 35% 30%,#fca5a5,#ef4444 60%,#991b1b)}',
-      '.om-orb.think{animation:omSpin 1.2s linear infinite}.om-orb.speak{animation:omOrb .9s infinite ease-in-out;background:radial-gradient(circle at 35% 30%,#86efac,#16a34a 60%,#14532d)}',
-      '@keyframes omOrb{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}@keyframes omSpin{to{transform:rotate(360deg)}}',
-      '.om-voice b{font-size:1.05rem}.om-vtext{min-height:3em;max-width:420px;margin:0;color:rgba(255,255,255,.85);font-size:.92rem;line-height:1.5;overflow-wrap:anywhere}',
-      '.om-vrow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}',
-      '.om-vrow button{padding:8px 14px;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer}',
-      '.om-vrow button.on{background:#fff;color:#4c1d95;border-color:#fff}.om-vrow .om-vend{background:#ef4444;border-color:#ef4444}',
-      '.om-voice{justify-content:flex-start;overflow-y:auto;padding:14px 16px 18px}',
-      '.om-vtop{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;width:100%}.om-vtop button{padding:6px 11px;font-size:.76rem}',
-      '.om-vgap{flex:1;min-height:6px}',
-      '.om-heard{width:100%;max-width:440px;display:grid;gap:8px}.om-heard[hidden],.om-vans[hidden]{display:none}',
-      '.om-heard textarea{width:100%;min-height:64px;padding:10px 12px;border:0;border-radius:14px;font:inherit;font-size:16px;line-height:1.4;color:#111827;background:#fff;resize:none}',
-      '.om-vact{display:flex;gap:8px}.om-vact button{flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;font:inherit;font-weight:800;cursor:pointer}',
-      '.om-vact .om-vsend{background:#22c55e;border-color:#22c55e;font-size:1rem}',
-      '.om-vans{width:100%;max-width:440px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.95);color:#1f2937;text-align:left;font-size:.88rem;line-height:1.55;max-height:38%;overflow-y:auto}',
-      '.om-vans .om-replay{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:6px 12px;border:0;border-radius:999px;background:#ede9fe;color:#4c1d95;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}',
+      /* voice mode: full screen */
+      '.omv{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;color:#fff;font-family:inherit;background:radial-gradient(120% 70% at 50% 0%,#5b21b6 0%,#1e1b4b 55%,#0b0a1f 100%);overscroll-behavior:contain}',
+      '.omv *{box-sizing:border-box}',
+      '.omv-top{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 14px) 16px 8px}',
+      '.omv-top div{flex:1;min-width:0}.omv-top b{display:block;font-size:1.05rem}.omv-top small{display:block;color:rgba(255,255,255,.65);font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.omv-x{width:40px;height:40px;flex:none;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:20px;cursor:pointer}',
+      '.omv-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:10px 20px;min-height:0;text-align:center}',
+      '.omv-orbwrap{position:relative;width:min(52vw,210px);height:min(52vw,210px);display:grid;place-items:center}',
+      '.omv-ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(196,181,253,.35);opacity:0}',
+      '.omv.listen .omv-ring{animation:omvRing 1.8s infinite ease-out}.omv.listen .omv-ring.r2{animation-delay:.6s}.omv.listen .omv-ring.r3{animation-delay:1.2s}',
+      '@keyframes omvRing{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.35);opacity:0}}',
+      '.omv-orb{position:relative;width:72%;height:72%;display:grid;place-items:center;border:0;border-radius:50%;cursor:pointer;color:#fff;background:radial-gradient(circle at 32% 28%,#ddd6fe,#8b5cf6 45%,#4c1d95);box-shadow:0 0 60px -6px rgba(139,92,246,.75),inset 0 -10px 30px rgba(0,0,0,.25);transition:transform .2s, background .3s}',
+      '.omv-orb:active{transform:scale(.95)}',
+      '.omv.listen .omv-orb{background:radial-gradient(circle at 32% 28%,#fecaca,#ef4444 45%,#7f1d1d);box-shadow:0 0 70px -6px rgba(239,68,68,.8)}',
+      '.omv.think .omv-orb{animation:omvBreath 1.2s infinite ease-in-out}',
+      '.omv.speak .omv-orb{background:radial-gradient(circle at 32% 28%,#bbf7d0,#22c55e 45%,#14532d);box-shadow:0 0 70px -6px rgba(34,197,94,.75)}',
+      '@keyframes omvBreath{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.92);opacity:.8}}',
+      '.omv-bars{display:none;gap:5px;align-items:center;height:46px}.omv.speak .omv-bars{display:flex}.omv.speak .omv-mic{display:none}',
+      '.omv-bars i{width:6px;border-radius:3px;background:#fff;animation:omvBar 1s infinite ease-in-out}',
+      '.omv-bars i:nth-child(1){height:18px;animation-delay:0s}.omv-bars i:nth-child(2){height:34px;animation-delay:.15s}.omv-bars i:nth-child(3){height:46px;animation-delay:.3s}.omv-bars i:nth-child(4){height:30px;animation-delay:.45s}.omv-bars i:nth-child(5){height:20px;animation-delay:.6s}',
+      '@keyframes omvBar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}',
+      '.omv-status{font-size:1.05rem;font-weight:800;letter-spacing:.01em}',
+      '.omv-you{min-height:1.5em;max-width:520px;color:rgba(255,255,255,.9);font-size:1.15rem;line-height:1.4;font-weight:600;overflow-wrap:anywhere}',
+      '.omv-you:empty{display:none}',
+      '.omv-ans{width:100%;max-width:520px;max-height:34vh;overflow-y:auto;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.96);color:#1f2937;text-align:left;font-size:.92rem;line-height:1.55;box-shadow:0 20px 40px -20px rgba(0,0,0,.6)}',
+      '.omv-ans[hidden]{display:none}.omv-ans .omv-say{font-size:1.02rem;font-weight:700;color:#111827;margin:0 0 6px}',
+      '.omv-ans details{margin-top:6px}.omv-ans summary{cursor:pointer;color:#6d28d9;font-weight:700;font-size:.82rem}',
+      '.omv-ans .omv-replay{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 12px;border:0;border-radius:999px;background:#ede9fe;color:#4c1d95;font:inherit;font-size:.8rem;font-weight:700;cursor:pointer}',
+      '.omv-bottom{padding:10px 16px calc(env(safe-area-inset-bottom) + 16px);display:grid;gap:12px}',
+      '.omv-opts{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;justify-content:center;flex-wrap:wrap}.omv-opts::-webkit-scrollbar{display:none}',
+      '.omv-opts button{flex:none;padding:7px 12px;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:rgba(255,255,255,.08);color:#fff;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}',
+      '.omv-opts button.on{background:#fff;color:#4c1d95;border-color:#fff}.omv-opts .sep{width:1px;background:rgba(255,255,255,.2);margin:4px 2px}',
+      '.omv-ctrl{display:flex;gap:10px;justify-content:center}',
+      '.omv-ctrl button{flex:1;max-width:220px;padding:14px;border:0;border-radius:16px;font:inherit;font-size:.95rem;font-weight:800;cursor:pointer}',
+      '.omv-pause{background:rgba(255,255,255,.14);color:#fff}.omv-end{background:#ef4444;color:#fff}',
+      '.omv-note{margin:0;text-align:center;color:rgba(255,255,255,.55);font-size:.72rem}',
       '@media(max-width:760px){.om-hero{padding:16px;border-radius:18px}.om-card{padding:14px;border-radius:16px}.om-chatbox{height:min(66vh,560px)}}'
     ].join('\n');
     document.head.appendChild(st);
@@ -214,19 +232,6 @@
         (chat.length ? '<button type="button" class="om-clear" data-om="clear"' + (SR ? ' style="margin-left:10px"' : '') + '>Clear</button>' : '') + '</h3>' +
       '<p class="om-sub">Same answers as on WhatsApp. Ask in English, हिंदी or Hinglish' + (SR ? ', by typing or by voice' : '') + '.</p>' +
       '<div class="om-chatbox"><div class="om-msgs" id="omMsgs">' + chatHtml() + '</div>' +
-      (SR ? '<div class="om-voice" id="omVoice"' + (voice.on ? '' : ' hidden') + '>' +
-        '<div class="om-vrow om-vtop"><button type="button" data-om-vlang="hi-IN"' + (voice.lang === 'hi-IN' ? ' class="on"' : '') + '>हिंदी / Hinglish</button>' +
-          '<button type="button" data-om-vlang="en-IN"' + (voice.lang === 'en-IN' ? ' class="on"' : '') + '>English</button>' +
-          '<button type="button" data-om-vname="Kore"' + (voice.name === 'Kore' ? ' class="on"' : '') + '>Female voice</button>' +
-          '<button type="button" data-om-vname="Charon"' + (voice.name === 'Charon' ? ' class="on"' : '') + '>Male voice</button>' +
-          '<button type="button" class="om-vend" data-om="voice">Close</button></div>' +
-        '<div class="om-vgap"></div>' +
-        '<button type="button" class="om-orb" id="omOrb" data-om="orb" aria-label="Speak">' + svg('mic', 52) + '</button>' +
-        '<b id="omVState">Tap the circle and speak</b>' +
-        '<div class="om-heard" id="omHeard" hidden><textarea id="omVQ" rows="2" placeholder="Your question"></textarea>' +
-          '<div class="om-vact"><button type="button" data-om="vagain">Again</button><button type="button" class="om-vsend" data-om="vsend">Send</button></div></div>' +
-        '<div class="om-vans" id="omVAns" hidden></div>' +
-        '<div class="om-vgap"></div></div>' : '') +
       '<div class="om-chips">' + ['aaj kitna bika?', 'compare this week with last week', 'top dishes this month', 'how many Paneer Tikka sold this week', 'busiest hours', 'cash vs UPI this week', 'least sold dishes', 'new customers this month', 'what should I do to increase sales?', 'कल कितने ऑर्डर कैंसिल हुए?']
         .map(function (q) { return '<button type="button" data-om-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>' +
       '<form class="om-ask" id="omAskForm"><input id="omAsk" placeholder="Ask anything… e.g. sales this week" maxlength="300" autocomplete="off" enterkeyhint="send">' +
@@ -278,11 +283,12 @@
     }
     var input = $('omAsk'); if (input) input.value = '';
     var sendBtn = document.querySelector('.om-send'); if (sendBtn) sendBtn.disabled = true;
-    return post({ action: 'ask', text: q, voice: opts.voice ? 1 : 0 }).then(function (d) {
+    return post({ action: 'ask', text: q, voice: opts.voice ? 1 : 0, fast: opts.fast ? 1 : 0, audio: opts.voice ? 1 : 0,
+        engine: (D && D.voice && D.voice.cloud) ? 'auto' : voice.engine, voice_name: voice.male ? 'Charon' : 'Kore' }).then(function (d) {
       var a = d.success ? d.answer : (d.message || 'Could not answer. Try again.');
       if (d.success) { chat.push({ q: q, a: a, s: d.speech || '' }); saveChat(); }
       var w = $('omWait'); if (w) { w.removeAttribute('id'); w.innerHTML = waFmt(a) + (d.success ? sayBtn(chat.length - 1) : ''); }
-      return { answer: a, speech: d.speech || a, ok: !!d.success };
+      return { answer: a, speech: d.speech || a, audio: d.audio || null, ok: !!d.success };
     }).catch(function () {
       var w = $('omWait'); if (w) { w.removeAttribute('id'); w.textContent = 'No connection. Try again.'; }
       return { answer: 'No connection. Try again.', speech: '', ok: false };
@@ -294,67 +300,49 @@
   }
 
   // ── voice ──
-  var VSTATE = { idle: 'Tap the circle and speak', listen: 'Listening… tap the circle when you\'re done', heard: 'Check your question, then press Send',
-    think: 'Thinking…', speak: 'Speaking… tap the circle to stop' };
-  function vState(state) {
-    voice.state = state;
-    var o = $('omOrb'), st = $('omVState');
-    if (o) { o.className = 'om-orb' + ({ listen: ' listen', think: ' think', speak: ' speak' }[state] || ''); o.innerHTML = svg(state === 'speak' ? 'wave' : state === 'think' ? 'spin' : 'mic', 52); }
-    if (st) st.textContent = VSTATE[state] || VSTATE.idle;
-    var h = $('omHeard'); if (h) h.hidden = !(state === 'listen' || state === 'heard');
-    var q = $('omVQ'); if (q) q.readOnly = state === 'listen';
-  }
-
-  // what the voice should say: no emoji or symbols, ₹ read as rupees
+  // what the phone's voice should say: no emoji or symbols, ₹ read as rupees
   function speechText(t, hindi) {
     return String(t).replace(/\p{Extended_Pictographic}|\uFE0F|\u20E3|[▲▼•*_]/gu, '').replace(/—|–/g, ', ')
       .replace(/₹\s?/g, hindi ? 'रुपये ' : 'rupees ').replace(/\n+/g, '. ').replace(/\s+/g, ' ').replace(/\.\s*\./g, '.').replace(/:\s*\./g, ':').replace(/\s+,/g, ',').trim();
   }
-
   function pickVoice(lang) {
     var vs = window.speechSynthesis.getVoices() || [], l = lang.toLowerCase();
     var norm = function (v) { return String(v.lang || '').replace('_', '-').toLowerCase(); };
-    return vs.filter(function (v) { return norm(v) === l; })[0] || vs.filter(function (v) { return norm(v).indexOf(l.slice(0, 2)) === 0; })[0] || null;
+    var same = vs.filter(function (v) { return norm(v) === l; });
+    var g = same.filter(function (v) { return voice.male ? /male|man|guy|ravi|hemant|prabhat/i.test(v.name) && !/female/i.test(v.name) : /female|woman|heera|kalpana|swara|neerja/i.test(v.name); })[0];
+    return g || same[0] || vs.filter(function (v) { return norm(v).indexOf(l.slice(0, 2)) === 0; })[0] || null;
   }
-
-  // the phone's own voice (fallback)
   function phoneVoice(text) {
     if (!TTS) return Promise.resolve();
     return new Promise(function (done) {
       var hindi = /[\u0900-\u097F]/.test(text), lang = hindi ? 'hi-IN' : 'en-IN';
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(speechText(text, hindi));
-      u.lang = lang; u.rate = 1; var v = pickVoice(lang); if (v) u.voice = v;
-      u.onend = done; u.onerror = done;
+      u.lang = lang; u.rate = 1.02; u.pitch = 1; var v = pickVoice(lang); if (v) u.voice = v;
+      var t = setTimeout(done, Math.min(60000, 4000 + text.length * 120));   // some phones never fire onend
+      u.onend = function () { clearTimeout(t); done(); }; u.onerror = function () { clearTimeout(t); done(); };
       window.speechSynthesis.speak(u);
     });
   }
-
-  // a phone only plays sound a page starts after a tap: play silence on the tap (Send) so the answer can play later
+  // phones only play sound a page starts after a tap: prime the player on the tap that starts voice / sends
   function unlockAudio() {
     if (!voice.audio) voice.audio = new Audio();
     try { voice.audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='; var p = voice.audio.play(); if (p && p.catch) p.catch(function () {}); } catch (e) { /* ignore */ }
+    if (TTS) { try { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; window.speechSynthesis.speak(u); } catch (e) { /* ignore */ } }
   }
-
   function stopSpeaking() {
     if (voice.audio) { try { voice.audio.pause(); } catch (e) { /* ignore */ } }
     if (TTS) window.speechSynthesis.cancel();
     voice.speaking = false;
   }
-
-  // say it in Gemini's natural voice; the phone's own voice if that isn't available
-  function speak(text) {
-    text = String(text || '').trim();
+  // speak an answer: its audio from the server if there is one (natural voice), else the phone's voice
+  function speak(r) {
+    var text = String((r && (r.speech || r.answer)) || '').trim();
     if (!text) return Promise.resolve();
     stopSpeaking();
     voice.speaking = true;
-    if (voice.on) vState('speak');
-    var key = voice.name + '|' + text;
-    var getAudio = voice.cache[key] ? Promise.resolve(voice.cache[key])
-      : post({ action: 'tts', text: speechText(text, /[\u0900-\u097F]/.test(text)), voice_name: voice.name }).then(function (d) { if (d.success && d.audio) { voice.cache[key] = d.audio; return d.audio; } return null; }).catch(function () { return null; });
-    return getAudio.then(function (src) {
-      if (!voice.speaking) return;   // stopped while it was loading
-      if (!src) return phoneVoice(text);
+    if (voice.open) vmState('speak');
+    var play = function (src) {
       return new Promise(function (done) {
         if (!voice.audio) voice.audio = new Audio();
         var a = voice.audio;
@@ -363,78 +351,132 @@
         var p = a.play();
         if (p && p.catch) p.catch(function () { phoneVoice(text).then(done); });
       });
-    }).then(function () {
-      voice.speaking = false;
-      if (voice.on && voice.state === 'speak') vState('idle');
-    });
+    };
+    return (r.audio ? play(r.audio) : phoneVoice(text)).then(function () { voice.speaking = false; });
   }
 
-  function stopListening(keep) {
-    try { if (voice.rec) { if (keep) voice.rec.stop(); else voice.rec.abort(); } } catch (e) { /* already stopped */ }
-    if (!keep) { voice.rec = null; voice.listening = false; }
-    var m = $('omMic'); if (m && !keep) m.classList.remove('on');
+  function stopListening(finish) {
+    try { if (voice.rec) { if (finish) voice.rec.stop(); else voice.rec.abort(); } } catch (e) { /* already stopped */ }
+    if (!finish) { voice.rec = null; voice.listening = false; var m = $('omMic'); if (m) m.classList.remove('on'); }
   }
 
-  // speech → text. target 'input' fills the chat box; 'voice' fills the voice screen. Nothing is sent: you press Send.
-  function listen(target) {
-    if (!SR) { notify('Voice needs Chrome on Android or a computer', 'error'); return; }
-    if (voice.listening) { stopListening(true); return; }   // tap again = done talking
+  // speech → text. onDone(text) gets what was heard ('' if nothing).
+  function hear(onPartial, onDone) {
+    if (!SR) { notify('Voice needs Chrome on Android, or Chrome / Edge on a computer', 'error'); onDone(''); return; }
     stopSpeaking();
     var rec = new SR(), heard = '';
     voice.rec = rec; voice.listening = true;
     rec.lang = voice.lang; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
-    var out = function (txt) { if (target === 'voice') { var q = $('omVQ'); if (q) q.value = txt; } else { var inp = $('omAsk'); if (inp) inp.value = txt; } };
-    if (target === 'voice') { out(''); vState('listen'); } else { var mic = $('omMic'); if (mic) mic.classList.add('on'); }
     rec.onresult = function (e) {
-      // Android Chrome repeats earlier words in every result ("aaj aaj kitna aaj kitna bika"): use only the latest one there
+      // Android Chrome repeats earlier words in every result ("aaj aaj kitna aaj kitna bika"): use only the latest there
       var txt = '';
       if (ANDROID) txt = e.results[e.results.length - 1][0].transcript;
       else for (var i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
       heard = txt.replace(/\s+/g, ' ').trim();
-      out(heard);
+      onPartial(heard);
     };
     rec.onerror = function (e) {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') notify('Allow the microphone for this site (tap the lock icon next to the address)', 'error');
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { notify('Allow the microphone for this site: tap the lock next to the address › Permissions › Microphone', 'error'); voice.loop = false; }
       else if (e.error === 'network') notify('Voice needs an internet connection', 'error');
       else if (e.error === 'language-not-supported') notify('This phone can\'t listen in that language. Try the other one.', 'error');
     };
-    rec.onend = function () {
-      voice.listening = false; voice.rec = null;
-      var m = $('omMic'); if (m) m.classList.remove('on');
-      if (target === 'voice') {
-        if (heard) { vState('heard'); } else { vState('idle'); var st = $('omVState'); if (st) st.textContent = 'Didn\'t catch that. Tap the circle and try again.'; }
-      } else {
-        var inp = $('omAsk'); if (inp) { inp.focus(); if (!heard) notify('Didn\'t catch that. Tap the mic and try again.', 'error'); }
-      }
-    };
-    try { rec.start(); } catch (e) { voice.listening = false; notify('The microphone is busy. Try again.', 'error'); }
+    rec.onend = function () { voice.listening = false; voice.rec = null; onDone(heard); };
+    try { rec.start(); } catch (e) { voice.listening = false; voice.rec = null; onDone(''); }
   }
 
-  // Send in voice mode: ask, show the answer, speak it. Then wait for the next tap.
-  function voiceSend() {
-    var q = ($('omVQ') || {}).value || '';
-    q = q.trim();
-    if (!q) { listen('voice'); return; }
+  // ── the chat's mic: types what you say; you press Send ──
+  function micDictate() {
+    if (voice.listening) { stopListening(true); return; }
+    var m = $('omMic'); if (m) m.classList.add('on');
     unlockAudio();
-    vState('think');
-    var box = $('omVAns'); if (box) { box.hidden = true; box.innerHTML = ''; }
-    ask(q, { voice: true }).then(function (r) {
-      if (!r) { vState('idle'); return; }
-      voice.last = r;
-      if (box) { box.innerHTML = waFmt(r.answer) + (r.ok ? '<br><button type="button" class="om-replay" data-om="vreplay">' + svg('speaker', 16) + 'Play again</button>' : ''); box.hidden = false; box.scrollTop = 0; }
-      var q2 = $('omVQ'); if (q2) q2.value = '';
-      if (r.ok && r.speech) return speak(r.speech);
-      vState('idle');
+    hear(function (t) { var i = $('omAsk'); if (i) i.value = t; }, function (t) {
+      var mm = $('omMic'); if (mm) mm.classList.remove('on');
+      var i = $('omAsk');
+      if (t) { voice.micUsed = true; if (i) i.focus(); } else notify('Didn\'t catch that. Tap the mic and try again.', 'error');
     });
   }
 
-  function toggleVoiceMode() {
-    voice.on = !voice.on;
-    var ov = $('omVoice');
-    if (!voice.on) { stopListening(false); stopSpeaking(); if (ov) ov.hidden = true; return; }
-    if (ov) ov.hidden = false;
-    var box = $('omVAns'); if (box) box.hidden = true;
-    vState('idle');
+  // ── voice mode: a full-screen, hands-free conversation ──
+  var VM_TEXT = { idle: 'Tap the circle to start', listen: 'Listening…', think: 'Thinking…', speak: 'Speaking… (tap to interrupt)', paused: 'Paused. Tap the circle to talk' };
+  function vmState(st, sub) {
+    voice.state = st;
+    var o = $('omv'); if (!o) return;
+    o.className = 'omv ' + st;
+    var s1 = $('omvStatus'); if (s1) s1.textContent = sub || VM_TEXT[st] || '';
+    var p = $('omvPause'); if (p) p.textContent = voice.loop ? 'Pause' : 'Resume';
+  }
+  function vmOpts() {
+    var b = function (attr, val, label, on) { return '<button type="button" data-omv-' + attr + '="' + val + '"' + (on ? ' class="on"' : '') + '>' + label + '</button>'; };
+    var cloud = D && D.voice && D.voice.cloud;
+    return b('lang', 'hi-IN', 'हिंदी / Hinglish', voice.lang === 'hi-IN') + b('lang', 'en-IN', 'English', voice.lang === 'en-IN') + '<span class="sep"></span>' +
+      b('male', '0', 'Female voice', !voice.male) + b('male', '1', 'Male voice', voice.male) +
+      (cloud ? '' : '<span class="sep"></span>' + b('engine', 'phone', 'Quick voice', voice.engine === 'phone') + b('engine', 'gemini', 'Natural (slower)', voice.engine === 'gemini'));
+  }
+  function vmOpen() {
+    if (!SR) { notify('Voice needs Chrome on Android, or Chrome / Edge on a computer', 'error'); return; }
+    vmClose(true);
+    var el = document.createElement('div');
+    el.id = 'omv'; el.className = 'omv idle'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Voice mode');
+    el.innerHTML = '<div class="omv-top"><div><b>Talk to your manager</b><small>' + esc((D && D.settings && D.settings.restaurant) || 'Your restaurant') + ' · real numbers from your orders</small></div>' +
+        '<button type="button" class="omv-x" data-omv="close" aria-label="Close">✕</button></div>' +
+      '<div class="omv-stage"><div class="omv-orbwrap"><span class="omv-ring"></span><span class="omv-ring r2"></span><span class="omv-ring r3"></span>' +
+          '<button type="button" class="omv-orb" data-omv="orb" aria-label="Talk"><span class="omv-mic">' + svg('mic', 64) + '</span><span class="omv-bars"><i></i><i></i><i></i><i></i><i></i></span></button></div>' +
+        '<div class="omv-status" id="omvStatus"></div><div class="omv-you" id="omvYou"></div><div class="omv-ans" id="omvAns" hidden></div></div>' +
+      '<div class="omv-bottom"><div class="omv-opts" id="omvOpts">' + vmOpts() + '</div>' +
+        '<div class="omv-ctrl"><button type="button" class="omv-pause" id="omvPause" data-omv="pause">Pause</button><button type="button" class="omv-end" data-omv="close">End</button></div>' +
+        '<p class="omv-note">Ask things like “aaj kitna bika?”, “top dishes this week”, “compare with last week”.</p></div>';
+    document.body.appendChild(el);
+    document.documentElement.style.overflow = 'hidden';
+    voice.open = true; voice.loop = false; voice.misses = 0;
+    vmState('idle');
+  }
+  function vmClose(quiet) {
+    voice.open = false; voice.loop = false;
+    stopListening(false); stopSpeaking();
+    var o = $('omv'); if (o) o.remove();
+    document.documentElement.style.overflow = '';
+    if (!quiet) scrollChat();
+  }
+  // one turn: listen → ask → speak → (still on) listen again
+  function vmListen() {
+    if (!voice.open) return;
+    var you = $('omvYou'); if (you) you.textContent = '';
+    vmState('listen');
+    hear(function (t) { var y = $('omvYou'); if (y) y.textContent = t; }, function (q) {
+      if (!voice.open) return;
+      if (!q) {
+        voice.misses++;
+        if (voice.misses >= 2 || !voice.loop) { voice.loop = false; vmState('paused', voice.misses >= 2 ? 'I didn\'t hear anything. Tap the circle when you\'re ready.' : 'Didn\'t catch that. Tap the circle and try again.'); }
+        else vmListen();
+        return;
+      }
+      voice.misses = 0;
+      vmState('think');
+      ask(q, { voice: true, fast: true }).then(function (r) {
+        if (!voice.open) return;
+        if (!r) { voice.loop = false; vmState('paused', 'Still answering the last question. Tap the circle to try again.'); return; }
+        voice.last = r;
+        var box = $('omvAns');
+        if (box) {
+          box.innerHTML = (r.ok ? '<p class="omv-say">' + esc(r.speech) + '</p><details><summary>Full details</summary>' + waFmt(r.answer) + '</details>' +
+            '<button type="button" class="omv-replay" data-omv="replay">' + svg('speaker', 16) + 'Play again</button>' : waFmt(r.answer));
+          box.hidden = false; box.scrollTop = 0;
+        }
+        return speak(r).then(function () {
+          if (!voice.open) return;
+          if (voice.loop) setTimeout(function () { if (voice.open && voice.loop && !voice.listening && !voice.speaking) vmListen(); }, 300);
+          else vmState('paused');
+        });
+      });
+    });
+  }
+  function vmOrb() {
+    if (voice.state === 'think') return;
+    if (voice.listening) { stopListening(true); return; }        // done talking: send now
+    unlockAudio();
+    if (voice.speaking) stopSpeaking();                        // interrupt the answer and talk
+    voice.loop = true; voice.misses = 0;
+    vmListen();
   }
 
   function save(extra) {
@@ -446,20 +488,12 @@
   }
 
   document.addEventListener('click', function (e) {
-    var t = e.target.closest && e.target.closest('[data-om],[data-om-q],[data-om-run],[data-om-skip],[data-om-hist],[data-om-tab],[data-om-say],[data-om-vlang],[data-om-vname]');
+    var t = e.target.closest && e.target.closest('[data-om],[data-om-q],[data-om-run],[data-om-skip],[data-om-hist],[data-om-tab],[data-om-say]');
     if (!t || !D || !$('omRoot') || !$('omRoot').contains(t) && !t.closest('.rg-modal, [role="dialog"]')) return;
-    if (t.hasAttribute('data-om-tab')) { if (voice.on) toggleVoiceMode(); tab = t.getAttribute('data-om-tab'); draw(); return; }
-    if (voice.on && voice.state === 'heard' && t.closest('#omVoice') === null && t.hasAttribute('data-om-q')) toggleVoiceMode();
-    if (t.hasAttribute('data-om-say')) { var x = chat[+t.getAttribute('data-om-say')]; if (x) { if (voice.speaking) stopSpeaking(); else { unlockAudio(); speak(x.s || x.a); } } return; }
-    if (t.hasAttribute('data-om-vlang')) {
-      voice.lang = t.getAttribute('data-om-vlang'); setPref('omVoiceLang', voice.lang);
-      document.querySelectorAll('[data-om-vlang]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-om-vlang') === voice.lang); });
-      if (voice.listening) { stopListening(false); listen('voice'); }
-      return;
-    }
-    if (t.hasAttribute('data-om-vname')) {
-      voice.name = t.getAttribute('data-om-vname'); setPref('omVoiceName', voice.name);
-      document.querySelectorAll('[data-om-vname]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-om-vname') === voice.name); });
+    if (t.hasAttribute('data-om-tab')) { tab = t.getAttribute('data-om-tab'); draw(); return; }
+    if (t.hasAttribute('data-om-say')) {
+      var x = chat[+t.getAttribute('data-om-say')];
+      if (x) { if (voice.speaking) stopSpeaking(); else { unlockAudio(); speak({ speech: x.s || x.a }); } }
       return;
     }
     if (t.hasAttribute('data-om-q')) { ask(t.getAttribute('data-om-q')); return; }
@@ -479,28 +513,39 @@
     var a = t.getAttribute('data-om');
     if (a === 'more') { reportOpen = !reportOpen; var w = $('omWa'); if (w) w.classList.toggle('clip', !reportOpen); t.textContent = reportOpen ? 'Show less' : 'Show the full report'; }
     else if (a === 'clear') { chat = []; saveChat(); draw(); }
-    else if (a === 'voice') toggleVoiceMode();
-    else if (a === 'orb') { if (voice.speaking) { stopSpeaking(); vState('idle'); } else if (voice.state !== 'think') listen('voice'); }
-    else if (a === 'vagain') listen('voice');
-    else if (a === 'vsend') voiceSend();
-    else if (a === 'vreplay') { if (voice.last) { unlockAudio(); speak(voice.last.speech || voice.last.answer); } }
-    else if (a === 'mic') listen('input');
-    else if (a === 'preview' || a === 'send') {
-      t.disabled = true;
-      var old = t.innerHTML; t.innerHTML = svg('spin', 18) + (a === 'send' ? 'Sending…' : 'Making it…');
-      post({ action: a }).then(function (d) {
-        t.disabled = false; t.innerHTML = old;
-        notify(d.message || (d.success ? 'Report ready' : 'Could not make the report'), d.success ? 'success' : 'error');
-        if (d.success) { reportOpen = true; load(); }
-      }).catch(function () { t.disabled = false; t.innerHTML = old; notify('No connection', 'error'); });
-    } else if (a === 'save') save();
+    else if (a === 'voice') vmOpen();
+    else if (a === 'mic') micDictate();
   });
-  document.addEventListener('submit', function (e) { if (e.target && e.target.id === 'omAskForm') { e.preventDefault(); ask(($('omAsk') || {}).value); } });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('[data-omv],[data-omv-lang],[data-omv-male],[data-omv-engine]');
+    if (!t || !$('omv') || !$('omv').contains(t)) return;
+    var set = function (k, v, key) { voice[k] = v; setPref(key, k === 'male' ? (v ? '1' : '0') : v); var o = $('omvOpts'); if (o) o.innerHTML = vmOpts(); };
+    if (t.hasAttribute('data-omv-lang')) { set('lang', t.getAttribute('data-omv-lang'), 'omVoiceLang'); if (voice.listening) { stopListening(false); vmListen(); } return; }
+    if (t.hasAttribute('data-omv-male')) { set('male', t.getAttribute('data-omv-male') === '1', 'omVoiceMale'); return; }
+    if (t.hasAttribute('data-omv-engine')) { set('engine', t.getAttribute('data-omv-engine'), 'omVoiceEngine'); return; }
+    var a = t.getAttribute('data-omv');
+    if (a === 'orb') vmOrb();
+    else if (a === 'close') vmClose();
+    else if (a === 'pause') { if (voice.loop) { voice.loop = false; stopListening(false); stopSpeaking(); vmState('paused'); } else vmOrb(); }
+    else if (a === 'replay' && voice.last) { unlockAudio(); speak(voice.last).then(function () { if (voice.open && !voice.loop) vmState('paused'); }); }
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && voice.open) vmClose(); });
+  // typed or dictated question; if you spoke it, the answer is spoken too
+  document.addEventListener('submit', function (e) {
+    if (!(e.target && e.target.id === 'omAskForm')) return;
+    e.preventDefault();
+    var q = ($('omAsk') || {}).value;
+    if (voice.micUsed) {
+      voice.micUsed = false;
+      unlockAudio();
+      ask(q, { voice: true }).then(function (r) { if (r && r.ok) speak(r); });
+    } else ask(q);
+  });
   document.addEventListener('change', function (e) { if (e.target && e.target.id === 'omOn') save(); });
 
   if (TTS) { window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged = function () { window.speechSynthesis.getVoices(); }; }
   // leaving the page stops the microphone and the voice
-  document.addEventListener('visibilitychange', function () { if (document.hidden && (voice.listening || voice.speaking)) { stopListening(false); stopSpeaking(); if (voice.on) vState('idle'); } });
+  document.addEventListener('visibilitychange', function () { if (document.hidden && (voice.listening || voice.speaking)) { voice.loop = false; stopListening(false); stopSpeaking(); if (voice.open) vmState('paused'); } });
 
   window.loadOwnerManagerStudio = load;
 })();

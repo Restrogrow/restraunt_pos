@@ -137,6 +137,46 @@ if (!function_exists('aiGeminiJson')) {
         return 'RIFF' . pack('V', 36 + strlen($pcm)) . 'WAVEfmt ' . pack('VvvVVvv', 16, 1, 1, $rate, $rate * 2, 2, 16) . 'data' . pack('V', strlen($pcm)) . $pcm;
     }
 
+    /** Google Cloud Text-to-Speech is set up (GOOGLE_TTS_API_KEY): fast, natural Indian English and Hindi voices. */
+    function aiCloudSpeechAvailable(): bool
+    {
+        return trim((string)env('GOOGLE_TTS_API_KEY', '')) !== '' && function_exists('curl_init');
+    }
+
+    /**
+     * Natural speech in well under a second with Google Cloud Text-to-Speech (needs GOOGLE_TTS_API_KEY: a Google
+     * Cloud API key allowed for the Cloud Text-to-Speech API). $male picks the male voice. Returns MP3 bytes or null.
+     */
+    function aiCloudSpeech(string $text, bool $male = false): ?string
+    {
+        if (!aiCloudSpeechAvailable()) return null;
+        $hindi = (bool)preg_match('/\p{Devanagari}/u', $text);
+        $lang = $hindi ? 'hi-IN' : 'en-IN';
+        $name = env($hindi ? ($male ? 'GOOGLE_TTS_VOICE_HI_MALE' : 'GOOGLE_TTS_VOICE_HI') : ($male ? 'GOOGLE_TTS_VOICE_EN_MALE' : 'GOOGLE_TTS_VOICE_EN'), '')
+            ?: $lang . '-Neural2-' . ($male ? 'B' : 'A');
+        $c = curl_init('https://texttospeech.googleapis.com/v1/text:synthesize?key=' . rawurlencode(trim((string)env('GOOGLE_TTS_API_KEY', ''))));
+        $opts = [
+            CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => 15,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_POSTFIELDS => json_encode(['input' => ['text' => mb_substr($text, 0, 1500)], 'voice' => ['languageCode' => $lang, 'name' => $name],
+                'audioConfig' => ['audioEncoding' => 'MP3', 'speakingRate' => 1.05]], JSON_UNESCAPED_UNICODE),
+        ];
+        $ca = trim((string)env('AI_CAINFO', ''));
+        if ($ca !== '' && is_file($ca)) $opts[CURLOPT_CAINFO] = $ca;
+        curl_setopt_array($c, $opts);
+        $res = curl_exec($c);
+        $code = (int)curl_getinfo($c, CURLINFO_HTTP_CODE);
+        curl_close($c);
+        $d = json_decode((string)$res, true);
+        if ($code < 200 || $code >= 300 || empty($d['audioContent'])) {
+            $GLOBALS['AI_SPEECH_ERROR'] = 'Cloud TTS HTTP ' . $code . ' ' . mb_substr((string)($d['error']['message'] ?? ''), 0, 160);
+            error_log('aiCloudSpeech: ' . $GLOBALS['AI_SPEECH_ERROR']);
+            return null;
+        }
+        $mp3 = base64_decode($d['audioContent']);
+        return $mp3 ?: null;
+    }
+
     function aiGeminiText(string $system, string $user, ?PDO $conn = null, string $rid = '', int $maxTokens = 700): ?string
     {
         if (!aiGeminiAvailable() || !aiGeminiAllow($conn, $rid)) return null;

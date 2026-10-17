@@ -656,14 +656,14 @@ if (!function_exists('ownerMgrHandleMessage')) {
         if (!aiGeminiAvailable()) return $answer;
         $want = ['en' => 'simple spoken Indian English', 'hi' => 'simple spoken Hindi in Devanagari script', 'hinglish' => 'spoken Hinglish (Hindi in Roman letters mixed with English)'][$lang] ?? 'simple spoken Indian English';
         $t = aiGeminiText("You are the restaurant owner's friendly business manager speaking on a call. Turn the written REPORT into what you would SAY out loud in $want: "
-            . "1 to 3 short sentences, warm and natural, most important point first. "
+            . "1 or 2 short sentences, at most 30 words, warm and natural, the most important point first (the full details are shown on screen). "
             . "STRICT: write every number in DIGITS exactly as it appears in the REPORT (e.g. 18,838 rupees, 36, 27 percent); never write a number in words. "
-            . "Use only numbers that appear in the REPORT, at most the top 3 items of a list, and say nothing that is not in the REPORT (no promises, no filler). "
+            . "Use only numbers that appear in the REPORT, at most the top 2 items of a list, and say nothing that is not in the REPORT (no promises, no filler). "
             . "No emoji, no bullet points, no markdown, no greetings.",
             "REPORT:\n" . $answer, $conn, $rid, 300);
         if (!$t) return $answer;
         // numbers spelled out can't be checked against the report (and Gemini got one wrong that way): not allowed
-        if (preg_match('/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|lakh|crore|ek|do|teen|chaar|paanch|hazaar|sau)\b|सौ|हज़ार|हजार|लाख|करोड़|बाईस|तीस|चालीस|पचास|साठ|सत्तर|अस्सी|नब्बे/iu', $t)) {
+        if (preg_match('/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|lakh|crore|hazaar|hazar)\b|सौ|हज़ार|हजार|लाख|करोड़|बाईस|तीस|चालीस|पचास|साठ|सत्तर|अस्सी|नब्बे/iu', $t)) {
             error_log('ownerMgrSpoken: numbers in words, written answer read instead');
             return $answer;
         }
@@ -672,12 +672,17 @@ if (!function_exists('ownerMgrHandleMessage')) {
         return trim($t);
     }
 
-    /** Question → answer in the asker's language (dashboard chat and WhatsApp use the same path); $voice adds the spoken version. */
-    function ownerMgrAsk(PDO $conn, string $rid, string $text, bool $voice = false): array
+    /**
+     * Question → answer in the asker's language (dashboard chat and WhatsApp use the same path); $voice adds the
+     * spoken version. $fast (voice mode): skip translating the written details, the spoken answer is already in
+     * the asker's language, which saves a few seconds.
+     */
+    function ownerMgrAsk(PDO $conn, string $rid, string $text, bool $voice = false, bool $fast = false): array
     {
         [$intent, $period, $extra] = ownerMgrIntent($conn, $rid, $text);
         $lang = $extra['lang'] ?? 'en';
-        $answer = ownerMgrLocalize($conn, $rid, ownerMgrAnswer($conn, $rid, $intent, $period, $extra), $lang);
+        $answer = ownerMgrAnswer($conn, $rid, $intent, $period, $extra);
+        if (!($voice && $fast)) $answer = ownerMgrLocalize($conn, $rid, $answer, $lang);
         $out = ['answer' => $answer, 'intent' => $intent, 'period' => $period, 'lang' => $lang];
         if ($voice) $out['speech'] = ownerMgrSpoken($conn, $rid, $answer, $lang);
         return $out;
