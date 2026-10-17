@@ -16,6 +16,7 @@ require_superadmin_api();
 
 // Activity log: every change made from the superadmin panel is recorded (Security & activity page)
 require_once __DIR__ . '/../config/platform_engine.php';
+require_once __DIR__ . '/../config/access_control.php';
 $__saAction = $_GET['action'] ?? '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' || preg_match('/^(create|update|toggle|delete|reset|unlock|save|set|refresh|generate)/', $__saAction)) {
   ob_start();
@@ -27,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || preg_match('/^(create|update|toggle
     foreach (['password', 'pass', 'salt_key', 'phonepe_salt_key', 'images', 'menu', 'items'] as $k) if (isset($in[$k])) $in[$k] = '(hidden)';
     $target = null;
     $c = $GLOBALS['conn'] ?? null;
-    if ($c instanceof PDO && !empty($in['id']) && preg_match('/Restaurant|Subscription|Password|Otp|InstallApp|WhatsappOrders|PaymentGateway|PhotoGallery|MealSubscriptions|AutoLogin/', $__saAction)) {
+    if ($c instanceof PDO && !empty($in['id']) && preg_match('/Restaurant|Subscription|Password|Otp|InstallApp|WhatsappOrders|PaymentGateway|PhotoGallery|MealSubscriptions|AutoLogin|Access/', $__saAction)) {
       try { $st = $c->prepare('SELECT CONCAT(restaurant_name, " (", restaurant_id, ")") FROM users WHERE id = ?'); $st->execute([(int)$in['id']]); $target = $st->fetchColumn() ?: null; } catch (Throwable $e) {}
     }
     if ($c instanceof PDO) pfAudit($c, $__saAction, $target ?? ($in['restaurant_id'] ?? null), $in);
@@ -223,6 +224,7 @@ try {
       foreach ($restaurants as &$row) {
         $rowCountry = getCountryByName($row['country'] ?? '');
         $row['dial_code'] = $rowCountry['dial_code'] ?? '+91';
+        $row['access_off'] = count(accessOffPages($conn, (string)$row['restaurant_id']));
       }
       unset($row);
 
@@ -417,6 +419,34 @@ try {
       $stmt = $conn->prepare('UPDATE users SET photo_gallery_enabled = :enabled WHERE id = :id');
       $stmt->execute([':enabled' => $enabled, ':id' => $id]);
       echo json_encode(['success' => true, 'message' => 'Photo Gallery access updated']);
+      break;
+
+    case 'getAccess': // Restaurants › Access: every switchable section and what this restaurant has off
+      $id = (int)($_GET['id'] ?? 0);
+      $st = $conn->prepare('SELECT restaurant_id, restaurant_name FROM users WHERE id = ?');
+      $st->execute([$id]);
+      $r = $st->fetch(PDO::FETCH_ASSOC);
+      if (!$r) throw new Exception('Restaurant not found');
+      $modules = [];
+      foreach (accessModules() as $key => $m) {
+          $pages = [];
+          foreach ($m[3] as $pid => $p) $pages[] = ['id' => $pid, 'label' => $p[0]];
+          $modules[] = ['key' => $key, 'label' => $m[0], 'icon' => $m[1], 'desc' => $m[2], 'pages' => $pages];
+      }
+      $presets = [];
+      foreach (accessPresets() as $key => $p) $presets[] = ['key' => $key, 'label' => $p[0], 'modules' => $p[1]];
+      echo json_encode(['success' => true, 'restaurant' => $r['restaurant_name'], 'modules' => $modules, 'presets' => $presets,
+          'off' => accessOffPages($conn, (string)$r['restaurant_id'])]);
+      break;
+
+    case 'saveAccess':
+      $data = json_decode(file_get_contents('php://input'), true) ?? [];
+      $st = $conn->prepare('SELECT restaurant_id, restaurant_name FROM users WHERE id = ?');
+      $st->execute([(int)($data['id'] ?? 0)]);
+      $r = $st->fetch(PDO::FETCH_ASSOC);
+      if (!$r) throw new Exception('Restaurant not found');
+      $off = accessSaveOffPages($conn, (string)$r['restaurant_id'], is_array($data['off'] ?? null) ? $data['off'] : []);
+      echo json_encode(['success' => true, 'off' => $off, 'message' => $off ? count($off) . ' sections switched off' : 'Everything switched on']);
       break;
 
     case 'updateMealSubscriptionsEnabled':

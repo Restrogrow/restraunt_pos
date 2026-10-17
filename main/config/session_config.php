@@ -123,3 +123,11 @@ function regenerateSessionAfterLogin() {
 if (session_status() === PHP_SESSION_NONE) {
     startSecureSession();
 }
+
+// Sections Super Admin switched off for this restaurant (config/access_control.php): their own APIs answer 403.
+// The database is loaded here only for those few files, at file scope so db_connection.php's globals stay global.
+require_once __DIR__ . '/access_control.php';
+if (!empty($_SESSION['restaurant_id']) && accessPageForApi(basename((string)($_SERVER['SCRIPT_FILENAME'] ?? ''))) !== '') {
+    require_once __DIR__ . '/../db_connection.php';
+    accessGuardRequest();
+}

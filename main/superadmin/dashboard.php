@@ -1062,6 +1062,56 @@ require_once __DIR__ . '/../config/countries.php';
     </div>
 
   <!-- Create Restaurant Modal -->
+  <!-- Restaurants › Access: which dashboard sections this restaurant gets (config/access_control.php) -->
+  <div id="accessModal" class="modal">
+    <div class="modal-content ac-box">
+      <div class="card-header">
+        <div><div class="card-title">Access <span id="acName" class="ac-name"></span></div>
+          <div class="ac-sub">Switch whole sections or single pages. Off = gone from their dashboard and blocked on the server. Always on: Dashboard, Menu, Orders, Settings, Profile.</div></div>
+        <button id="acClose" type="button" class="btn btn-outline">Close</button>
+      </div>
+      <div class="card-body">
+        <div class="ac-presets" id="acPresets"></div>
+        <div class="ac-grid" id="acGrid"><div class="ac-sub">Loading…</div></div>
+      </div>
+      <div class="ac-foot"><span id="acCount" class="ac-sub"></span><button id="acSave" type="button" class="btn btn-primary">Save access</button></div>
+    </div>
+  </div>
+  <style>
+    .ac-box { max-width: 880px; width: 100%; max-height: 92vh; display: flex; flex-direction: column; }
+    .ac-box .card-body { overflow: auto; }
+    .ac-box .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .ac-name { color: #6b7280; font-weight: 700; }
+    .ac-sub { color: #6b7280; font-size: .8rem; margin-top: 4px; line-height: 1.4; }
+    .ac-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .ac-presets button { border: 1px solid #e5e7eb; background: #fff; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+    .ac-presets button:hover { border-color: #93c5fd; background: #eff6ff; }
+    .ac-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+    .ac-mod { border: 1px solid #e5e7eb; border-radius: 14px; padding: 12px; background: #fff; }
+    .ac-mod.off { background: #f9fafb; }
+    .ac-mod.off .ac-mt { color: #9ca3af; }
+    .ac-mh { display: flex; align-items: flex-start; gap: 8px; }
+    .ac-mh .material-symbols-rounded { font-size: 20px; color: #4f46e5; }
+    .ac-mod.off .ac-mh .material-symbols-rounded { color: #9ca3af; }
+    .ac-mt { font-weight: 800; font-size: .9rem; flex: 1; }
+    .ac-mt small { display: block; font-weight: 500; color: #6b7280; font-size: .74rem; margin-top: 2px; }
+    .ac-sw { position: relative; width: 38px; height: 22px; flex: none; }
+    .ac-sw input { opacity: 0; width: 100%; height: 100%; margin: 0; position: absolute; cursor: pointer; z-index: 1; }
+    .ac-sw i { position: absolute; inset: 0; border-radius: 999px; background: #d1d5db; transition: .15s; }
+    .ac-sw i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: .15s; }
+    .ac-sw input:checked + i { background: #16a34a; }
+    .ac-sw input:checked + i::after { left: 19px; }
+    .ac-sw input:indeterminate + i { background: #f59e0b; }
+    .ac-sw input:indeterminate + i::after { left: 11px; }
+    .ac-sw input:focus-visible + i { outline: 2px solid #2563eb; outline-offset: 2px; }
+    .ac-pages { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+    .ac-pages label { display: inline-flex; align-items: center; gap: 4px; font-size: .74rem; font-weight: 700; padding: 3px 9px 3px 5px; border-radius: 999px; border: 1px solid #bbf7d0; background: #f0fdf4; color: #15803d; cursor: pointer; }
+    .ac-pages label.off { border-color: #e5e7eb; background: #fff; color: #9ca3af; text-decoration: line-through; }
+    .ac-pages input { margin: 0; accent-color: #16a34a; }
+    .ac-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px 16px; border-top: 1px solid #e5e7eb; }
+    @media (max-width: 560px) { .ac-grid { grid-template-columns: 1fr; } .ac-foot { flex-direction: column; align-items: stretch; } }
+  </style>
+
   <div id="createModal" class="modal">
     <div class="modal-content">
       <div class="card-header">
@@ -1447,6 +1497,7 @@ require_once __DIR__ . '/../config/countries.php';
               ${feat(whatsappOn, 'chat', 'WhatsApp orders', `toggleWhatsappOrders(${r.id}, ${whatsappOn})`, 'WhatsApp orders')}
               ${feat(galleryOn, 'photo_library', 'Gallery', `toggleGalleryEnabled(${r.id}, ${galleryOn})`, 'Photo gallery')}
               ${feat(mealSubsOn, 'lunch_dining', 'Meal plans', `toggleMealSubscriptionsEnabled(${r.id}, ${mealSubsOn})`, 'Meal subscriptions')}
+              ${feat(!Number(r.access_off), 'tune', Number(r.access_off) ? `Access: ${r.access_off} off` : 'Access: all', `openAccess(${r.id})`, 'Which dashboard sections this restaurant gets')}
             </div></td>
             <td>${trial}</td>
             <td>${isActive ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Disabled</span>'}</td>
@@ -1755,6 +1806,73 @@ require_once __DIR__ . '/../config/countries.php';
       if (data.success) { fetchRestaurants(); showSuperAlert('Photo Gallery set to '+label, 'success'); }
       else showSuperAlert(data.message||'Error', 'error');
     }
+
+    // Restaurants › Access: whole sections (switch) or single pages (chips); saves the list of what's OFF
+    let acId = 0, acData = null;
+    const acModal = document.getElementById('accessModal');
+    function acOff() { return [...acModal.querySelectorAll('.ac-pages input')].filter(x => !x.checked).map(x => x.value); }
+    function acSync() {
+      acModal.querySelectorAll('.ac-mod').forEach(m => {
+        const boxes = [...m.querySelectorAll('.ac-pages input')], on = boxes.filter(b => b.checked).length;
+        const sw = m.querySelector('.ac-sw input');
+        sw.checked = on > 0; sw.indeterminate = on > 0 && on < boxes.length;
+        m.classList.toggle('off', on === 0);
+        boxes.forEach(b => b.closest('label').classList.toggle('off', !b.checked));
+      });
+      const all = acModal.querySelectorAll('.ac-pages input').length, off = acOff().length;
+      document.getElementById('acCount').textContent = off ? `${all - off} of ${all} pages on · ${off} off` : `Everything on (${all} pages)`;
+    }
+    function acRender(off) {
+      document.getElementById('acPresets').innerHTML = acData.presets.map(p => `<button type="button" data-ac-preset="${p.key}">${saEsc(p.label)}</button>`).join('');
+      document.getElementById('acGrid').innerHTML = acData.modules.map(m => `
+        <div class="ac-mod" data-ac-mod="${m.key}">
+          <div class="ac-mh"><span class="material-symbols-rounded">${m.icon}</span>
+            <div class="ac-mt">${saEsc(m.label)}<small>${saEsc(m.desc)}</small></div>
+            <span class="ac-sw"><input type="checkbox" aria-label="${saEsc(m.label)} on or off"><i></i></span></div>
+          <div class="ac-pages"${m.pages.length > 1 ? '' : ' hidden'}>${m.pages.map(p => `<label><input type="checkbox" value="${p.id}"${off.includes(p.id) ? '' : ' checked'}>${saEsc(p.label)}</label>`).join('')}</div>
+        </div>`).join('');
+      acSync();
+    }
+    window.openAccess = async function (id) {
+      acId = id; acData = null;
+      document.getElementById('acName').textContent = '';
+      document.getElementById('acGrid').innerHTML = '<div class="ac-sub">Loading…</div>';
+      acModal.classList.add('active');
+      try {
+        const d = await (await fetch('api.php?action=getAccess&id=' + id)).json();
+        if (!d.success) throw new Error(d.message || 'Could not load');
+        acData = d;
+        document.getElementById('acName').textContent = '· ' + d.restaurant;
+        acRender(d.off || []);
+      } catch (e) { document.getElementById('acGrid').innerHTML = `<div class="ac-sub">${saEsc(e.message)}</div>`; }
+    };
+    acModal.addEventListener('change', e => {
+      const sw = e.target.closest('.ac-sw input');
+      if (sw) sw.closest('.ac-mod').querySelectorAll('.ac-pages input').forEach(b => { b.checked = sw.checked; });
+      acSync();
+    });
+    acModal.addEventListener('click', e => {
+      const p = e.target.closest('[data-ac-preset]');
+      if (p && acData) {
+        const keep = acData.presets.find(x => x.key === p.dataset.acPreset).modules;
+        acModal.querySelectorAll('.ac-mod').forEach(m => m.querySelectorAll('.ac-pages input').forEach(b => { b.checked = !keep || keep.includes(m.dataset.acMod); }));
+        acSync();
+      }
+      if (e.target === acModal) acModal.classList.remove('active');
+    });
+    document.getElementById('acClose').onclick = () => acModal.classList.remove('active');
+    document.getElementById('acSave').onclick = async function () {
+      if (!acData) return;
+      this.disabled = true;
+      try {
+        const d = await (await fetch('api.php?action=saveAccess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: acId, off: acOff() }) })).json();
+        if (!d.success) throw new Error(d.message || 'Could not save');
+        acModal.classList.remove('active');
+        showSuperAlert(d.message + '. They see it on their next page load.', 'success');
+        fetchRestaurants();
+      } catch (e) { showSuperAlert(e.message, 'error'); }
+      finally { this.disabled = false; }
+    };
 
     window.toggleMealSubscriptionsEnabled = async function(id, current){
       const newVal = current ? 0 : 1;

@@ -152,6 +152,11 @@ Sidebar groups, and what each page does:
   - Analytics: MRR estimate, paying vs trial, trial-to-paid, churn, 12-month charts.
 - **Restaurants:**
   - Restaurants: search, detail drawer, feature switches per restaurant, bulk actions, create a restaurant and send its login on WhatsApp.
+  - **Access** (button on each restaurant row): which dashboard sections that restaurant gets. Each section has a switch, and sections with several pages have a chip per page, so you can give e.g. Loyalty Studio but not WhatsApp. Ready sets: Everything, POS only, Online ordering, Loyalty & Growth only. Sections: POS billing, Kitchen (KOT), Online orders, Tables & QR, Reservations, Inventory, Customers, Staff, Payments, Reports & analytics, **Loyalty & Growth** (Loyalty Studio plus the whole Growth menu: WhatsApp, WhatsApp ordering, AI manager, segments, referrals, growth reports), Offers, Marketing, Google & SEO, Delivery, Feedback, Website design. Always on: Dashboard home, Menu, Orders, Settings, Profile.
+    - Off means the page is gone from their sidebar and home shortcuts, and the APIs that belong only to that page answer 403 (Partner and Staff app included). APIs other sections share (orders, menu, customers, KOT, POS saving) stay open, so nothing else breaks.
+    - Saved in the `restaurant_access` table (created by itself) as the list of what's OFF; no row = everything on. The restaurant sees the change on its next page load.
+    - To add a new dashboard page to it: add the page id (and any API used only by that page) in `accessModules()` in `main/config/access_control.php`.
+    - Meal plans and Photo gallery keep their own switches on the row, as before.
   - Renewals: plans ending soon, payment link, WhatsApp reminder, extend.
   - Menus from photos: Gemini reads a photo of a paper menu.
   - Branch admins, and Coupons across all restaurants.

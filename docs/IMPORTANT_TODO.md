@@ -222,6 +222,8 @@ aggregator, switching a dish off removes it there, and the day's report splits s
 
 ## 5. Custom access per staff member (next, build when asked)
 
+> Not the same as **Access per restaurant** (built 18 Oct 2026, Super Admin › Restaurants › Access, `main/config/access_control.php`), which decides the sections a whole restaurant gets. Per-staff switches should sit inside that: a staff member can never get a section the restaurant has switched off. Reuse its page list.
+
 Today each role has a fixed list of permissions (`main/config/authorization_config.php`: Admin, Manager,
 Waiter, Chef, Cashier, Delivery rider). Owners want to give exactly the access they want.
 

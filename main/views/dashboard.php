@@ -289,6 +289,10 @@ try {
 } catch (Exception $e) {
     $meal_subscriptions_enabled = 0;
 }
+
+// Sections Super Admin switched off for this restaurant (Restaurants › Access): hidden below and blocked in showPage()
+require_once __DIR__ . '/../config/access_control.php';
+try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant_id']); } catch (Throwable $e) { $accessOff = []; }
 ?>
 <?php $googleMapsApiKey = function_exists('googleMapsApiKey') ? googleMapsApiKey() : ''; ?>
 <!DOCTYPE html>
@@ -1493,6 +1497,19 @@ try {
       </ul>
     </nav>
   </aside>
+  <?php if ($accessOff): ?>
+  <style><?php foreach ($accessOff as $p) echo '[data-dh-go="' . htmlspecialchars($p, ENT_QUOTES) . '"],'; ?>.rg-access-none{display:none!important}</style>
+  <script>
+    // switched off by Super Admin: drop those links, then any menu group left empty
+    window.RG_ACCESS_OFF = <?php echo json_encode($accessOff); ?>;
+    (function () {
+      RG_ACCESS_OFF.forEach(function (p) {
+        document.querySelectorAll('.sidebar [data-page="' + p + '"]').forEach(function (a) { var li = a.closest('li'); (li || a).remove(); });
+      });
+      document.querySelectorAll('.sidebar li.has-submenu').forEach(function (g) { if (!g.querySelector('.submenu [data-page]')) g.remove(); });
+    })();
+  </script>
+  <?php endif; ?>
 
   <!-- Main Content Area -->
   <main class="main-content">

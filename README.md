@@ -31,6 +31,12 @@
 
 ## What's new
 
+### 18 October 2026
+
+| | Change | What it means |
+|---|---|---|
+| **Access per restaurant** | Super Admin › Restaurants › **Access** button on each row | Choose exactly which dashboard sections each restaurant gets: POS billing, Kitchen (KOT), Online orders, Tables & QR, Reservations, Inventory, Customers, Staff, Payments, Reports & analytics, **Loyalty & Growth** (Loyalty Studio plus the whole Growth menu: WhatsApp, WhatsApp ordering, AI manager, segments, referrals, growth reports), Offers, Marketing, Google & SEO, Delivery, Feedback, Website design. Switch a whole section or single pages inside it, or start from a ready set (Everything, POS only, Online ordering, Loyalty & Growth only). Switched-off pages disappear from that restaurant's sidebar and home shortcuts, and their own APIs answer 403, so the Partner app is blocked too. Dashboard home, Menu, Orders, Settings and Profile are always on. Every restaurant starts with everything on. Code: `main/config/access_control.php`. |
+
 ### 17 October 2026
 
 | | Change | What it means |
