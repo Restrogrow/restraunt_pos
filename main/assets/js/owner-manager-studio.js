@@ -10,7 +10,8 @@
  * spoken. Voice mode (full screen) is hands-free like a call: tap the circle once, then it listens, answers
  * out loud and listens again until you tap Pause or End. Voices: Google Cloud TTS when GOOGLE_TTS_API_KEY is
  * set (natural and instant), else the phone's own voice (instant) or Gemini's "Natural" voice (slower).
- * Speech recognition is the browser's (Web Speech API, best in Chrome on Android); voice is hidden without it.
+ * Listening: the page records you and the server writes down what you said (Gemini), so it works in any browser
+ * with a microphone; the phone's own speech service (Web Speech API) is only used when the AI is off.
  */
 (function () {
   'use strict';
@@ -20,10 +21,11 @@
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
   var TTS = 'speechSynthesis' in window;
   var ANDROID = /Android/i.test(navigator.userAgent);
+  var REC = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.AudioContext || window.webkitAudioContext));
   function pref(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
   function setPref(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
   // loop: hands-free conversation running; engine: 'phone' (instant) or 'gemini' (natural, slower); cloud TTS wins when set up
-  var voice = { open: false, loop: false, rec: null, listening: false, speaking: false, audio: null, cache: {}, last: null, misses: 0, state: 'idle',
+  var voice = { open: false, loop: false, rec: null, listening: false, speaking: false, audio: null, cache: {}, last: null, misses: 0, state: 'idle', turn: 0, hearing: false, phoneEars: false,
     lang: pref('omVoiceLang', 'hi-IN'), male: pref('omVoiceMale', '0') === '1', engine: pref('omVoiceEngine', 'phone'), micUsed: false };
   var chat = (function () { try { return JSON.parse(sessionStorage.getItem(CHAT_KEY) || '[]'); } catch (e) { return []; } })();
 
@@ -40,6 +42,8 @@
   function svg(n, size) { return '<svg viewBox="0 0 24 24" width="' + (size || 20) + '" height="' + (size || 20) + '" aria-hidden="true" style="display:block"><path fill="currentColor" d="' + SVG[n] + '"/></svg>'; }
   function notify(m, t) { if (m && typeof window.showNotification === 'function') window.showNotification(m, t); }
   function get() { return fetch(API, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }); }
+  function canTalk() { return serverEars() || !!SR; }
+  function serverEars() { return REC && !!(D && D.ai) && !voice.phoneEars; }
   function post(b) { return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
   function waFmt(s) { return esc(s).replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/(^|\s)_([^_\n]+)_/g, '$1<i>$2</i>').replace(/\n/g, '<br>'); }
   function day(d) { var t = new Date(String(d).slice(0, 10) + 'T00:00:00'); return isNaN(t) ? d : t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }); }
@@ -138,6 +142,8 @@
       '@keyframes omvRing{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.35);opacity:0}}',
       '.omv-orb{position:relative;width:72%;height:72%;display:grid;place-items:center;border:0;border-radius:50%;cursor:pointer;color:#fff;background:radial-gradient(circle at 32% 28%,#ddd6fe,#8b5cf6 45%,#4c1d95);box-shadow:0 0 60px -6px rgba(139,92,246,.75),inset 0 -10px 30px rgba(0,0,0,.25);transition:transform .2s, background .3s}',
       '.omv-orb:active{transform:scale(.95)}',
+      '.omv.listen .omv-orb{transform:scale(var(--lvl,1));transition:transform .08s linear, background .3s}',
+      '.omv-why{display:block;margin-top:8px;color:#9a3412;font-size:.74rem;line-height:1.35}',
       '.omv.listen .omv-orb{background:radial-gradient(circle at 32% 28%,#fecaca,#ef4444 45%,#7f1d1d);box-shadow:0 0 70px -6px rgba(239,68,68,.8)}',
       '.omv.think .omv-orb{animation:omvBreath 1.2s infinite ease-in-out}',
       '.omv.speak .omv-orb{background:radial-gradient(circle at 32% 28%,#bbf7d0,#22c55e 45%,#14532d);box-shadow:0 0 70px -6px rgba(34,197,94,.75)}',
@@ -228,14 +234,14 @@
       (D.can_edit ? '<button type="button" class="btn btn-primary" data-om="send"' + (s.phone ? '' : ' disabled title="Add your WhatsApp number in Settings"') + '>' + ic('send') + 'Send to my WhatsApp</button>' : '') + '</div></div>';
 
     var ask = '<div class="om-card"><h3 class="om-chat-h">' + ic('forum') + 'Ask your manager' +
-        (SR ? '<button type="button" class="om-vbtn" data-om="voice">' + svg('wave', 16) + 'Voice mode</button>' : '') +
-        (chat.length ? '<button type="button" class="om-clear" data-om="clear"' + (SR ? ' style="margin-left:10px"' : '') + '>Clear</button>' : '') + '</h3>' +
-      '<p class="om-sub">Same answers as on WhatsApp. Ask in English, हिंदी or Hinglish' + (SR ? ', by typing or by voice' : '') + '.</p>' +
+        (canTalk() ? '<button type="button" class="om-vbtn" data-om="voice">' + svg('wave', 16) + 'Voice mode</button>' : '') +
+        (chat.length ? '<button type="button" class="om-clear" data-om="clear"' + (canTalk() ? ' style="margin-left:10px"' : '') + '>Clear</button>' : '') + '</h3>' +
+      '<p class="om-sub">Same answers as on WhatsApp. Ask in English, हिंदी or Hinglish' + (canTalk() ? ', by typing or by voice' : '') + '.</p>' +
       '<div class="om-chatbox"><div class="om-msgs" id="omMsgs">' + chatHtml() + '</div>' +
       '<div class="om-chips">' + ['aaj kitna bika?', 'compare this week with last week', 'top dishes this month', 'how many Paneer Tikka sold this week', 'busiest hours', 'cash vs UPI this week', 'least sold dishes', 'new customers this month', 'what should I do to increase sales?', 'कल कितने ऑर्डर कैंसिल हुए?']
         .map(function (q) { return '<button type="button" data-om-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>' +
       '<form class="om-ask" id="omAskForm"><input id="omAsk" placeholder="Ask anything… e.g. sales this week" maxlength="300" autocomplete="off" enterkeyhint="send">' +
-      (SR ? '<button type="button" class="om-mic" id="omMic" data-om="mic" aria-label="Speak your question" title="Speak">' + svg('mic', 22) + '</button>' : '') +
+      (canTalk() ? '<button type="button" class="om-mic" id="omMic" data-om="mic" aria-label="Speak your question" title="Speak">' + svg('mic', 22) + '</button>' : '') +
       '<button type="submit" class="om-send" aria-label="Send"' + (busy ? ' disabled' : '') + '>' + ic('send') + '</button></form></div></div>';
 
     var settings = '<div class="om-card"><h3>' + ic('tune') + 'Settings</h3><div class="om-form">' +
@@ -288,7 +294,7 @@
       var a = d.success ? d.answer : (d.message || 'Could not answer. Try again.');
       if (d.success) { chat.push({ q: q, a: a, s: d.speech || '' }); saveChat(); }
       var w = $('omWait'); if (w) { w.removeAttribute('id'); w.innerHTML = waFmt(a) + (d.success ? sayBtn(chat.length - 1) : ''); }
-      return { answer: a, speech: d.speech || a, audio: d.audio || null, ok: !!d.success };
+      return { answer: a, speech: d.speech || a, audio: d.audio || null, why: d.audio_why || '', ok: !!d.success };
     }).catch(function () {
       var w = $('omWait'); if (w) { w.removeAttribute('id'); w.textContent = 'No connection. Try again.'; }
       return { answer: 'No connection. Try again.', speech: '', ok: false };
@@ -356,14 +362,107 @@
   }
 
   function stopListening(finish) {
+    if (!finish) voice.turn++;                                   // whatever that turn hears is dropped
     try { if (voice.rec) { if (finish) voice.rec.stop(); else voice.rec.abort(); } } catch (e) { /* already stopped */ }
-    if (!finish) { voice.rec = null; voice.listening = false; var m = $('omMic'); if (m) m.classList.remove('on'); }
+    if (!finish) { voice.rec = null; voice.listening = false; voice.hearing = false; var m = $('omMic'); if (m) m.classList.remove('on'); }
+  }
+  function showLevel(l) {
+    var o = $('omv'); if (o) o.style.setProperty('--lvl', (1 + l * 0.2).toFixed(3));
+    var m = $('omMic'); if (m) m.style.transform = 'scale(' + (1 + l * 0.15).toFixed(3) + ')';
   }
 
-  // speech → text. onDone(text) gets what was heard ('' if nothing).
-  function hear(onPartial, onDone) {
-    if (!SR) { notify('Voice needs Chrome on Android, or Chrome / Edge on a computer', 'error'); onDone(''); return; }
+  // the microphone, recorded on the page: stops by itself after you stop talking. onDone(base64 16 kHz WAV | '' | null, error)
+  var actx = null;
+  function audioCtx() {
+    if (!actx) { var C = window.AudioContext || window.webkitAudioContext; actx = new C(); }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function record(onLevel, onDone) {
+    var ctx; try { ctx = audioCtx(); } catch (e) { onDone(null, 'nomic'); return; }
+    var finished = false, stream = null, src = null, node = null, chunks = [], t0 = Date.now();
+    var floor = 0, nFloor = 0, spoke = 0, quiet = 0, voiced = false;
+    var ctl = { stop: function () { end(true); }, abort: function () { end(false); } };
+    voice.rec = ctl; voice.listening = true;
+    function end(keep) {
+      if (finished) return;
+      finished = true;
+      try { if (node) node.disconnect(); if (src) src.disconnect(); } catch (e) { /* ignore */ }
+      if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+      if (voice.rec === ctl) { voice.rec = null; voice.listening = false; }
+      onLevel(0);
+      if (keep) onDone(voiced ? wav16k(chunks, ctx.sampleRate) : '');
+    }
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function (st) {
+      if (finished) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+      stream = st;
+      src = ctx.createMediaStreamSource(st);
+      node = ctx.createScriptProcessor(4096, 1, 1);
+      node.onaudioprocess = function (e) {
+        if (finished) return;
+        var d = e.inputBuffer.getChannelData(0), sum = 0;
+        for (var i = 0; i < d.length; i++) sum += d[i] * d[i];
+        var rms = Math.sqrt(sum / d.length), ms = d.length / ctx.sampleRate * 1000, el = Date.now() - t0;
+        chunks.push(new Float32Array(d));
+        // the first ~1/3 s is the room's own noise; a voice is clearly louder than that
+        if (nFloor < 4) { floor = Math.min(0.03, (floor * nFloor + rms) / (nFloor + 1)); nFloor++; return; }
+        var thr = Math.max(0.012, floor * 2.5);
+        onLevel(Math.min(1, rms / (thr * 4)));
+        if (rms > thr) { spoke += ms; quiet = 0; if (spoke > 250) voiced = true; }
+        else { quiet += ms; if (!voiced) spoke = Math.max(0, spoke - ms / 2); }
+        if ((voiced && quiet > 1300) || (!voiced && el > 8000) || el > 20000) end(true);
+      };
+      src.connect(node); node.connect(ctx.destination);           // Chrome only runs the processor when it is connected (it outputs silence)
+    }, function (err) {
+      finished = true;
+      if (voice.rec === ctl) { voice.rec = null; voice.listening = false; }
+      onDone(null, err && (err.name === 'NotAllowedError' || err.name === 'SecurityError') ? 'denied' : 'nomic');
+    });
+  }
+  // float samples at the mic's rate → 16 kHz 16-bit mono WAV, base64
+  function wav16k(chunks, rate) {
+    var n = 0, o = 0, i;
+    chunks.forEach(function (c) { n += c.length; });
+    var all = new Float32Array(n);
+    chunks.forEach(function (c) { all.set(c, o); o += c.length; });
+    var ratio = rate / 16000, out = Math.floor(n / ratio), v = new DataView(new ArrayBuffer(44 + out * 2));
+    var w = function (p, t) { for (var k = 0; k < t.length; k++) v.setUint8(p + k, t.charCodeAt(k)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + out * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, out * 2, true);
+    for (i = 0; i < out; i++) {
+      var a = Math.floor(i * ratio), b = Math.min(n, Math.floor((i + 1) * ratio)), x = 0;
+      for (var j = a; j < b; j++) x += all[j];
+      x = b > a ? Math.max(-1, Math.min(1, x / (b - a))) : 0;
+      v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7FFF, true);
+    }
+    var bytes = new Uint8Array(v.buffer), bin = '';
+    for (i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+
+  // speech → text. onPartial(text) while the phone's speech service hears you; onWork() while the server writes it down;
+  // onDone(text) gets what was heard ('' if nothing). A cancelled turn (stopListening(false)) never calls onDone.
+  function hear(onPartial, onDone, onWork) {
     stopSpeaking();
+    var turn = ++voice.turn;
+    var done = function (t) { if (turn === voice.turn) onDone(t); };
+    if (serverEars()) {
+      record(showLevel, function (b64, err) {
+        if (turn !== voice.turn) return;
+        if (err === 'denied') { notify('Allow the microphone for this site: tap the lock next to the address › Permissions › Microphone', 'error'); voice.loop = false; done(''); return; }
+        if (err) { if (SR) { voice.phoneEars = true; hear(onPartial, onDone, onWork); } else { notify('No microphone found', 'error'); done(''); } return; }
+        if (!b64) { done(''); return; }
+        voice.hearing = true;
+        if (onWork) onWork();
+        post({ action: 'hear', audio: b64, mime: 'audio/wav', lang: voice.lang }).then(function (d) {
+          voice.hearing = false;
+          if (!d.success) notify(d.message || 'Could not understand. Try again.', 'error');
+          done(d.success ? String(d.text || '') : '');
+        }).catch(function () { voice.hearing = false; notify('No connection. Try again.', 'error'); done(''); });
+      });
+      return;
+    }
+    if (!SR) { notify('Voice needs a microphone and Chrome, Edge or Safari', 'error'); done(''); return; }
     var rec = new SR(), heard = '';
     voice.rec = rec; voice.listening = true;
     rec.lang = voice.lang; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
@@ -373,27 +472,31 @@
       if (ANDROID) txt = e.results[e.results.length - 1][0].transcript;
       else for (var i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
       heard = txt.replace(/\s+/g, ' ').trim();
-      onPartial(heard);
+      if (turn === voice.turn) onPartial(heard);
     };
     rec.onerror = function (e) {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { notify('Allow the microphone for this site: tap the lock next to the address › Permissions › Microphone', 'error'); voice.loop = false; }
-      else if (e.error === 'network') notify('Voice needs an internet connection', 'error');
+      else if (e.error === 'network') notify('The phone\'s speech service isn\'t reachable. Type your question instead.', 'error');
       else if (e.error === 'language-not-supported') notify('This phone can\'t listen in that language. Try the other one.', 'error');
     };
-    rec.onend = function () { voice.listening = false; voice.rec = null; onDone(heard); };
-    try { rec.start(); } catch (e) { voice.listening = false; voice.rec = null; onDone(''); }
+    rec.onend = function () { if (voice.rec === rec) { voice.listening = false; voice.rec = null; } done(heard); };
+    try { rec.start(); } catch (e) { voice.listening = false; voice.rec = null; done(''); }
   }
 
   // ── the chat's mic: types what you say; you press Send ──
   function micDictate() {
+    if (voice.hearing) return;
     if (voice.listening) { stopListening(true); return; }
     var m = $('omMic'); if (m) m.classList.add('on');
+    var i = $('omAsk'), ph = i ? i.placeholder : '';
+    if (i) i.placeholder = 'Listening… tap the mic again when done';
     unlockAudio();
-    hear(function (t) { var i = $('omAsk'); if (i) i.value = t; }, function (t) {
+    hear(function (t) { var x = $('omAsk'); if (x) x.value = t; }, function (t) {
       var mm = $('omMic'); if (mm) mm.classList.remove('on');
-      var i = $('omAsk');
-      if (t) { voice.micUsed = true; if (i) i.focus(); } else notify('Didn\'t catch that. Tap the mic and try again.', 'error');
-    });
+      var x = $('omAsk');
+      if (x) { x.placeholder = ph; if (t) x.value = t; }
+      if (t) { voice.micUsed = true; if (x) x.focus(); } else notify('Didn\'t catch that. Tap the mic and try again.', 'error');
+    }, function () { var x = $('omAsk'); if (x) x.placeholder = 'Understanding…'; });
   }
 
   // ── voice mode: a full-screen, hands-free conversation ──
@@ -413,7 +516,7 @@
       (cloud ? '' : '<span class="sep"></span>' + b('engine', 'phone', 'Quick voice', voice.engine === 'phone') + b('engine', 'gemini', 'Natural (slower)', voice.engine === 'gemini'));
   }
   function vmOpen() {
-    if (!SR) { notify('Voice needs Chrome on Android, or Chrome / Edge on a computer', 'error'); return; }
+    if (!canTalk()) { notify('Voice needs a microphone and Chrome, Edge or Safari', 'error'); return; }
     vmClose(true);
     var el = document.createElement('div');
     el.id = 'omv'; el.className = 'omv idle'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Voice mode');
@@ -444,6 +547,7 @@
     vmState('listen');
     hear(function (t) { var y = $('omvYou'); if (y) y.textContent = t; }, function (q) {
       if (!voice.open) return;
+      var yy = $('omvYou'); if (yy && q) yy.textContent = q;
       if (!q) {
         voice.misses++;
         if (voice.misses >= 2 || !voice.loop) { voice.loop = false; vmState('paused', voice.misses >= 2 ? 'I didn\'t hear anything. Tap the circle when you\'re ready.' : 'Didn\'t catch that. Tap the circle and try again.'); }
@@ -459,7 +563,8 @@
         var box = $('omvAns');
         if (box) {
           box.innerHTML = (r.ok ? '<p class="omv-say">' + esc(r.speech) + '</p><details><summary>Full details</summary>' + waFmt(r.answer) + '</details>' +
-            '<button type="button" class="omv-replay" data-omv="replay">' + svg('speaker', 16) + 'Play again</button>' : waFmt(r.answer));
+            '<button type="button" class="omv-replay" data-omv="replay">' + svg('speaker', 16) + 'Play again</button>' +
+            (r.why && r.why !== 'phone voice' ? '<small class="omv-why">Natural voice didn\'t work (' + esc(r.why) + '), so the phone\'s voice spoke.</small>' : '') : waFmt(r.answer));
           box.hidden = false; box.scrollTop = 0;
         }
         return speak(r).then(function () {
@@ -468,7 +573,7 @@
           else vmState('paused');
         });
       });
-    });
+    }, function () { vmState('think', 'Understanding…'); });
   }
   function vmOrb() {
     if (voice.state === 'think') return;

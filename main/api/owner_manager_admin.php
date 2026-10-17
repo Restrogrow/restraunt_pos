@@ -9,6 +9,7 @@
  * POST {action:'send'}      builds and sends it to the owner's WhatsApp now
  * POST {action:'run', id}   runs a suggested action    POST {action:'decline', id}
  * POST {action:'ask', text} asks the manager a question (same answers as on WhatsApp)
+ * POST {action:'hear', audio, lang} a spoken question (base64 WAV) → text
  *
  * Owner / manager only (manage settings or view reports). Always the session's restaurant.
  */
@@ -130,6 +131,23 @@ try {
             if ($audio) $r['audio'] = $audio; else $r['audio_why'] = $why;
         }
         omOut(['success' => true] + $r);
+    }
+    if ($action === 'hear') {
+        // the page's recording of a spoken question → text (works on every phone, unlike the browser's own speech service)
+        $raw = base64_decode((string)($in['audio'] ?? ''), true);
+        if ($raw === false || strlen($raw) < 2000) omOut(['success' => true, 'text' => '']);
+        if (strlen($raw) > 2500000) omOut(['success' => false, 'message' => 'That was too long. Ask one short question at a time.']);
+        $mime = in_array($in['mime'] ?? '', ['audio/wav', 'audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg'], true) ? $in['mime'] : 'audio/wav';
+        // the menu's dish names, so "paneer tikka" isn't heard as something else
+        $dishes = [];
+        try {
+            $st = $conn->prepare('SELECT DISTINCT item_name_en FROM menu_items WHERE restaurant_id = ? ORDER BY is_available DESC, id LIMIT 150');
+            $st->execute([$rid]);
+            $dishes = $st->fetchAll(PDO::FETCH_COLUMN);
+        } catch (Throwable $e) { $dishes = []; }
+        $text = aiGeminiTranscribe($raw, $mime, ($in['lang'] ?? '') === 'en-IN' ? 'en-IN' : 'hi-IN', $conn, $rid, $dishes);
+        if ($text === null) omOut(['success' => false, 'message' => 'Could not understand the recording. Try again.']);
+        omOut(['success' => true, 'text' => $text]);
     }
     if ($action === 'tts') {
         // voice mode: the manager's natural voice (Gemini speech); the page falls back to the phone's own voice

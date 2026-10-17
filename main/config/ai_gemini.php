@@ -40,10 +40,10 @@ if (!function_exists('aiGeminiJson')) {
         return true;
     }
 
-    function aiGeminiCall(array $body, int $timeout = 20): ?array
+    function aiGeminiCall(array $body, int $timeout = 20, string $model = ''): ?array
     {
         if (!aiGeminiAvailable()) return null;
-        $model = trim((string)env('GEMINI_MODEL', 'gemini-3.5-flash'));
+        $model = $model !== '' ? $model : trim((string)env('GEMINI_MODEL', 'gemini-3.5-flash'));
         if (!preg_match('/^[A-Za-z0-9._-]{1,100}$/', $model)) return null;
         $c = curl_init('https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent');
         $opts = [
@@ -135,6 +135,40 @@ if (!function_exists('aiGeminiJson')) {
         $rate = preg_match('/rate=(\d+)/', (string)($inline['mimeType'] ?? ''), $m) ? (int)$m[1] : 24000;
         // raw 16-bit PCM → a WAV file every browser can play
         return 'RIFF' . pack('V', 36 + strlen($pcm)) . 'WAVEfmt ' . pack('VvvVVvv', 16, 1, 1, $rate, $rate * 2, 2, 16) . 'data' . pack('V', strlen($pcm)) . $pcm;
+    }
+
+    /**
+     * Speech to text: what is said in a short recording ($audio = file bytes, e.g. a 16 kHz WAV from the page).
+     * $lang 'hi-IN' writes Hindi in Devanagari, 'en-IN' in English letters. $words: names it may hear (dishes), spelt
+     * as given. '' when nothing was said; null on a problem.
+     */
+    function aiGeminiTranscribe(string $audio, string $mime = 'audio/wav', string $lang = 'hi-IN', ?PDO $conn = null, string $rid = '', array $words = []): ?string
+    {
+        if ($audio === '' || !aiGeminiAvailable()) return null;
+        // a 16-bit WAV with no voice in it: Gemini invents words for silence, so don't send it
+        if ($mime === 'audio/wav' && substr($audio, 0, 4) === 'RIFF' && ($p = strpos($audio, 'data')) !== false) {
+            $smp = unpack('v*', substr($audio, $p + 8, 2 * 200000)) ?: [];
+            $loud = 0;
+            foreach ($smp as $v) { $v = $v >= 32768 ? $v - 65536 : $v; if ($v > 1500 || $v < -1500) $loud++; }
+            if ($loud < 800) return '';
+        }
+        if (!aiGeminiAllow($conn, $rid)) return null;
+        $model = trim((string)env('GEMINI_STT_MODEL', ''));
+        $how = $lang === 'en-IN'
+            ? 'Write it in English letters (Hindi words in Roman script, the way people type Hinglish).'
+            : 'Write Hindi words in Devanagari script and English words (dish names, "sales", "report"…) in English letters, the way the speaker would type it.';
+        $r = aiGeminiCall([
+            'contents' => [['role' => 'user', 'parts' => [
+                ['inlineData' => ['mimeType' => $mime, 'data' => base64_encode($audio)]],
+                ['text' => "Transcribe exactly what the speaker says in this recording. They are a restaurant owner talking to their business assistant, in Hindi, Hinglish or English (Indian accent). $how Write numbers as digits." . ($words ? ' Names they may say (write them exactly like this): ' . mb_substr(implode(', ', $words), 0, 2500) . '.' : '') . " Reply with only the words said, nothing else. If nobody clearly speaks (silence, noise, music), reply exactly NONE."],
+            ]]],
+            'generationConfig' => ['temperature' => 0, 'maxOutputTokens' => 200, 'thinkingConfig' => ['thinkingBudget' => 0]],
+        ], 20, $model);
+        if (!$r) return null;
+        $t = trim(preg_replace('/\s+/u', ' ', (string)$r['text']), " \t\n\r\"'");
+        // "(silence)", "[noise]" and the like mean nothing was said
+        if (preg_match('/^[\[(].*[\])]$/u', $t) || mb_strlen($t) < 2 || stripos($t, 'NONE') === 0) return '';
+        return mb_substr($t, 0, 300);
     }
 
     /** Google Cloud Text-to-Speech is set up (GOOGLE_TTS_API_KEY): fast, natural Indian English and Hindi voices. */
