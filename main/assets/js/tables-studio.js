@@ -199,9 +199,15 @@
       return;
     }
     if ((t = e.target.closest('[data-tb-del-one]'))) {
-      if (!edit.delAsk) { readEdit(); edit.delAsk = true; draw(true); return; }
-      post({ action: 'delete', ids: [+t.getAttribute('data-tb-del-one')] }).then(function (d) {
-        SX.notify(d.success ? (d.deleted ? 'Table deleted' : 'It has an open order, so it was kept') : (d.message || 'Could not delete'), d.success && d.deleted ? 'success' : 'error'); edit = null; load();
+      // goes at once with Undo for a few seconds (assets/js/rg-undo.js)
+      var delId = +t.getAttribute('data-tb-del-one'), delT = D.tables.filter(function (x) { return x.id === delId; })[0];
+      edit = null; draw();
+      rgUndo({
+        html: rgUndo.label('Deleted table', delT ? delT.number : ''),
+        hide: rgUndo.rows('[data-tb="' + delId + '"]'),
+        request: { url: API, json: { action: 'delete', ids: [delId] } },
+        onDone: function (d) { if (!d.deleted) SX.notify('It has an open order, so it was kept', 'error'); load(); },
+        onError: function (msg) { SX.notify(msg, 'error'); load(); }
       });
       return;
     }
@@ -220,11 +226,15 @@
     }
     if ((t = e.target.closest('[data-tb-bulk-avail]'))) bulk({ available: +t.getAttribute('data-tb-bulk-avail') }, t);
     if ((t = e.target.closest('[data-tb-bulk-del]'))) {
-      if (!delAsk) { delAsk = true; draw(); return; }
       var ids = Object.keys(sel).map(Number);
-      post({ action: 'delete', ids: ids }).then(function (d) {
-        SX.notify(d.success ? d.deleted + ' deleted' + (d.kept_busy ? ', ' + d.kept_busy + ' kept (open order)' : '') : (d.message || 'Could not delete'), d.success ? 'success' : 'error');
-        sel = {}; delAsk = false; load();
+      if (!ids.length) return;
+      sel = {}; delAsk = false; draw();
+      rgUndo({
+        html: 'Deleted <b>' + ids.length + ' table' + (ids.length > 1 ? 's' : '') + '</b>',
+        hide: rgUndo.rows(ids.map(function (i) { return '[data-tb="' + i + '"]'; }).join(',')),
+        request: { url: API, json: { action: 'delete', ids: ids } },
+        onDone: function (d) { if (d.kept_busy) SX.notify(d.kept_busy + ' kept (open order)', 'error'); load(); },
+        onError: function (msg) { SX.notify(msg, 'error'); load(); }
       });
     }
   });

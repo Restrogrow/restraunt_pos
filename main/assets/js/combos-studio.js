@@ -314,9 +314,15 @@
     if (t.hasAttribute('data-cbx-dup')) { api({ action: 'duplicate', id: +a('data-cbx-dup') }).then(function (d) { notify(d.success ? 'Copy made (off until you turn it on)' : (d.message || 'Could not copy'), d.success ? 'success' : 'error'); window.loadCombosStudio(); }); return; }
     if (t.hasAttribute('data-cbx-del')) {
       var id = +a('data-cbx-del');
-      if (delAsk !== id) { delAsk = id; draw(); setTimeout(function () { if (delAsk === id) { delAsk = 0; draw(); } }, 4000); return; }
-      delAsk = 0;
-      api({ action: 'delete', id: id }).then(function (d) { notify(d.success ? 'Combo deleted' : (d.message || 'Could not delete'), d.success ? 'success' : 'error'); window.loadCombosStudio(); });
+      // goes at once with Undo for a few seconds (assets/js/rg-undo.js)
+      var cb = D.combos.filter(function (k) { return k.id === id; })[0];
+      rgUndo({
+        html: rgUndo.label('Deleted combo', cb ? cb.name : ''),
+        hide: t.closest('.cbx-card'),
+        request: { url: API, json: { action: 'delete', id: id } },
+        onDone: function () { window.loadCombosStudio(); },
+        onError: function (msg) { notify(msg, 'error'); window.loadCombosStudio(); }
+      });
       return;
     }
     if (t.hasAttribute('data-cbx-move')) {

@@ -2827,14 +2827,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Delete menu function
   window.deleteMenu = function(menuId, menuName) {
-    currentMenuId = menuId;
-    currentMenuName = menuName;
-    
-    document.getElementById("deleteMessage").textContent = 
-      `Are you sure you want to delete "${menuName}"? This action cannot be undone.`;
-    
-    deleteModal.style.display = "block";
-    document.body.style.overflow = "hidden";
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+    rgUndo({
+      html: rgUndo.label('Deleted menu', menuName),
+      hide: rgUndo.rows('.menu-card[data-menu-id="' + menuId + '"]'),
+      request: { url: '../controllers/menu_operations.php', body: { action: 'delete', menuId: menuId } },
+      onDone: function () { loadMenus(); },
+      onError: function (msg) { showNotification(msg, "error"); }
+    });
   };
 
   // Handle delete confirmation
@@ -3093,32 +3093,15 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Delete subcategory
   window.deleteSubcategory = async function(id, name) {
-    const confirmed = await showSweetConfirm(`Are you sure you want to delete subcategory "${name}"? Items assigned to this subcategory will be unassigned.`);
-    if (!confirmed) return;
-    
-    try {
-      const formData = new FormData();
-      formData.append("action", "delete_subcategory");
-      formData.append("subcategoryId", id);
-      
-      const response = await fetch("../controllers/menu_operations.php", {
-        method: "POST",
-        body: formData
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        showNotification("Subcategory deleted successfully!", "success");
-        const menuId = document.getElementById("subcategoryMenuId").value;
-        if (menuId) loadSubcategories(menuId);
-      } else {
-        showNotification(result.message || "Error deleting subcategory.", "error");
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      showNotification("Network error. Please try again.", "error");
-    }
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+    const menuId = document.getElementById("subcategoryMenuId") ? document.getElementById("subcategoryMenuId").value : null;
+    rgUndo({
+      html: rgUndo.label('Deleted subcategory', name),
+      hide: rgUndo.rows('.subcategory-item[data-sub-id="' + id + '"]'),
+      request: { url: '../controllers/menu_operations.php', body: { action: 'delete_subcategory', subcategoryId: id } },
+      onDone: function () { if (menuId) loadSubcategories(menuId); },
+      onError: function (msg) { showNotification(msg, "error"); }
+    });
   };
   
   // Load subcategories for the menu item form dropdown
@@ -4245,14 +4228,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Delete menu item function
   window.deleteMenuItem = function(menuItemId, menuItemName) {
-    currentMenuItemId = menuItemId;
-    currentMenuItemData = { item_name_en: menuItemName };
-    
-    document.getElementById("deleteMessage").textContent = 
-      `Are you sure you want to delete "${menuItemName}"? This action cannot be undone.`;
-    
-    deleteModal.style.display = "block";
-    document.body.style.overflow = "hidden";
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+    rgUndo({
+      html: rgUndo.label('Deleted', menuItemName),
+      hide: rgUndo.rows('.menu-item-card[data-item-id="' + menuItemId + '"]'),
+      request: { url: '../controllers/menu_items_operations_base64.php', body: { action: 'delete', menuItemId: menuItemId } },
+      onDone: function () { loadMenuItems(); },
+      onError: function (msg) { showNotification(msg, "error"); }
+    });
   };
 
   // Handle delete confirmation for menu items
@@ -4498,33 +4481,15 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   
   window.deleteArea = async function(areaId, areaName) {
-    if (await showSweetConfirm(`Are you sure you want to delete "${areaName}"? This action cannot be undone.`, 'Delete Area')) {
-      // Call delete API
-      const formData = new URLSearchParams();
-      formData.append('action', 'delete');
-      formData.append('areaId', areaId);
-      
-      fetch("../controllers/area_operations.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          showMessage(result.message, "success");
-          loadAreas();
-        } else {
-          showMessage(result.message || "Error deleting area.", "error");
-        }
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        showMessage("Network error. Please check your connection and try again.", "error");
-      });
-    }
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+    const ev = window.event;
+    rgUndo({
+      html: rgUndo.label('Deleted area', areaName),
+      hide: rgUndo.rowOf(ev),
+      request: { url: '../controllers/area_operations.php', body: { action: 'delete', areaId: areaId } },
+      onDone: function () { loadAreas(); },
+      onError: function (msg) { showMessage(msg, "error"); }
+    });
   };
   
   // Table functionality
@@ -5239,33 +5204,15 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   
   window.deleteTable = async function(tableId, tableNumber) {
-    if (await showSweetConfirm(`Are you sure you want to delete table "${tableNumber}"? This action cannot be undone.`, 'Delete Table')) {
-      // Call delete API
-      const formData = new URLSearchParams();
-      formData.append('action', 'delete');
-      formData.append('tableId', tableId);
-      
-      fetch("../controllers/table_operations.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          showMessage(result.message, "success");
-          loadTables();
-        } else {
-          showMessage(result.message || "Error deleting table.", "error");
-        }
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        showMessage("Network error. Please check your connection and try again.", "error");
-      });
-    }
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+    const ev = window.event;
+    rgUndo({
+      html: rgUndo.label('Deleted table', tableNumber),
+      hide: rgUndo.rowOf(ev),
+      request: { url: '../controllers/table_operations.php', body: { action: 'delete', tableId: tableId } },
+      onDone: function () { loadTables(); },
+      onError: function (msg) { showMessage(msg, "error"); }
+    });
   };
   
   // Reservation functionality
@@ -6432,33 +6379,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   window.deleteReservation = async function(reservationId, customerName) {
-    if (await showSweetConfirm(`Are you sure you want to delete reservation for "${customerName}"? This action cannot be undone.`, 'Delete Reservation')) {
-      // Call delete API
-      const formData = new URLSearchParams();
-      formData.append('action', 'delete');
-      formData.append('reservationId', reservationId);
-      
-      fetch("../controllers/reservation_operations.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          showMessage(result.message, "success");
-          loadReservations();
-        } else {
-          showMessage(result.message || "Error deleting reservation.", "error");
-        }
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        showMessage("Network error. Please check your connection and try again.", "error");
-      });
-    }
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+    const ev = window.event;
+    rgUndo({
+      html: rgUndo.label('Deleted booking for', customerName),
+      hide: rgUndo.rowOf(ev, 'tr, .rsv-card, .rs-card, [data-res-id], .card'),
+      request: { url: '../controllers/reservation_operations.php', body: { action: 'delete', reservationId: reservationId } },
+      onDone: function () { loadReservations(); },
+      onError: function (msg) { showMessage(msg, "error"); }
+    });
   };
   
   // Update reservation status
@@ -7072,32 +7001,15 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Delete customer
   window.deleteCustomer = async function(customerId, customerName) {
-    if (await showSweetConfirm(`Are you sure you want to delete customer "${customerName}"? This action cannot be undone.`, 'Delete Customer')) {
-      const formData = new URLSearchParams();
-      formData.append('action', 'delete');
-      formData.append('customerId', customerId);
-      
-      fetch("../controllers/customer_operations.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          showMessage(result.message, "success");
-          loadCustomers();
-        } else {
-          showMessage(result.message || "Error deleting customer.", "error");
-        }
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        showMessage("Network error. Please check your connection and try again.", "error");
-      });
-    }
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+    const ev = window.event;
+    rgUndo({
+      html: rgUndo.label('Deleted customer', customerName),
+      hide: rgUndo.rowOf(ev, 'tr'),
+      request: { url: '../controllers/customer_operations.php', body: { action: 'delete', customerId: customerId } },
+      onDone: function () { loadCustomers(); },
+      onError: function (msg) { showMessage(msg, "error"); }
+    });
   };
   
   // Customer form submission
@@ -7822,32 +7734,15 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Delete staff
   window.deleteStaff = async function(staffId, memberName) {
-    if (await showSweetConfirm(`Are you sure you want to delete staff member "${memberName}"? This action cannot be undone.`, 'Delete Staff')) {
-      const formData = new URLSearchParams();
-      formData.append('action', 'delete');
-      formData.append('staffId', staffId);
-      
-      fetch("../controllers/staff_operations.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          showMessage(result.message, "success");
-          loadStaff();
-        } else {
-          showMessage(result.message || "Error deleting staff member.", "error");
-        }
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        showMessage("Network error. Please check your connection and try again.", "error");
-      });
-    }
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+    const ev = window.event;
+    rgUndo({
+      html: rgUndo.label('Deleted staff member', memberName),
+      hide: rgUndo.rows('[data-staff-id="' + staffId + '"]').concat(rgUndo.rowOf(ev, '.stf-card, tr') || []),
+      request: { url: '../controllers/staff_operations.php', body: { action: 'delete', staffId: staffId } },
+      onDone: function () { loadStaff(); if (window.loadStaffStudio) window.loadStaffStudio(); },
+      onError: function (msg) { showMessage(msg, "error"); }
+    });
   };
   
   // POS functionality
@@ -12093,24 +11988,14 @@ async function deletePaymentMethodEntry(id) {
     (window.showNotification || alert)('Built-in payment methods can be disabled but not deleted.', 'error');
     return;
   }
-  if (window.Swal) {
-    const result = await Swal.fire({ title: 'Delete Payment Method?', text: 'This cannot be undone.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', cancelButtonText: 'Cancel', confirmButtonColor: '#e74c3c' });
-    if (!result.isConfirmed) return;
-  } else if (!confirm('Delete this payment method? This cannot be undone.')) {
-    return;
-  }
-  const formData = new FormData();
-  formData.append('action', 'delete');
-  formData.append('id', id);
-  try {
-    const r = await fetch('../api/save_payment_method.php', { method: 'POST', body: formData });
-    const d = await r.json();
-    const notify = window.showNotification || function(m, t) { alert(m); };
-    if (d.success) { notify(d.message, 'success'); loadPaymentMethods(true); }
-    else notify(d.message || 'Failed to delete', 'error');
-  } catch (e) {
-    (window.showNotification || alert)('Network error. Please try again.', 'error');
-  }
+  // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+  rgUndo({
+    html: rgUndo.label('Deleted payment method', ''),
+    hide: rgUndo.rowOf(window.event, '.payment-method-card'),
+    request: { url: '../api/save_payment_method.php', body: { action: 'delete', id: id } },
+    onDone: function () { loadPaymentMethods(true); },
+    onError: function (msg) { (window.showNotification || alert)(msg, 'error'); }
+  });
 }
 
 function uploadPaymentMethodQR(id) {
@@ -16227,17 +16112,14 @@ async function toggleCoupon(id, newStatus) {
 }
 
 async function deleteCoupon(id) {
-  const result = await Swal.fire({ title: 'Delete Coupon?', text: 'This cannot be undone.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', cancelButtonText: 'Cancel', confirmButtonColor: '#e74c3c' });
-  if (!result.isConfirmed) return;
-  const formData = new FormData();
-  formData.append('action', 'delete');
-  formData.append('id', id);
-  try {
-    const r = await fetch('../controllers/coupon_operations.php', { method: 'POST', body: formData });
-    const d = await r.json();
-    if (d.success) { showSweetAlert(d.message, 'success'); loadAdminCoupons(); }
-    else showSweetAlert(d.message, 'error');
-  } catch (e) { showSweetAlert('Network error.', 'error'); }
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+  rgUndo({
+    html: rgUndo.label('Deleted coupon', ''),
+    hide: rgUndo.rowOf(window.event, 'tr, .ofx-coupon'),
+    request: { url: '../controllers/coupon_operations.php', body: { action: 'delete', id: id } },
+    onDone: function () { loadAdminCoupons(); },
+    onError: function (msg) { showSweetAlert(msg, 'error'); }
+  });
 }
 
 function escHtml(str) {
@@ -16428,17 +16310,14 @@ function editInventoryItem(id) {
 }
 
 async function deleteInventoryItem(id) {
-  const result = await Swal.fire({ title: 'Delete Inventory Item?', text: 'Its purchase history will be kept for reports.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', cancelButtonText: 'Cancel', confirmButtonColor: '#e74c3c' });
-  if (!result.isConfirmed) return;
-  const formData = new FormData();
-  formData.append('action', 'delete');
-  formData.append('id', id);
-  try {
-    const r = await fetch('../controllers/inventory_operations.php', { method: 'POST', body: formData });
-    const d = await r.json();
-    if (d.success) { showSweetAlert(d.message, 'success'); loadInventory(); }
-    else showSweetAlert(d.message, 'error');
-  } catch (e) { showSweetAlert('Network error.', 'error'); }
+    // no "are you sure": it goes away at once with Undo for a few seconds (assets/js/rg-undo.js)
+  rgUndo({
+    html: rgUndo.label('Deleted stock item', ''),
+    hide: rgUndo.rowOf(window.event, 'tr'),
+    request: { url: '../controllers/inventory_operations.php', body: { action: 'delete', id: id } },
+    onDone: function () { loadInventory(); },
+    onError: function (msg) { showSweetAlert(msg, 'error'); }
+  });
 }
 
 function openRestockModal(id) {

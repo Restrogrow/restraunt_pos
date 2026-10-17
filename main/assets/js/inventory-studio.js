@@ -569,8 +569,17 @@
       return;
     }
     if (a.ivItemDel) {
-      if (t.dataset.ask !== '1') { t.dataset.ask = '1'; t.innerHTML = ic('delete') + 'Click again to remove it (history is kept)'; return; }
-      save({ action: 'item_delete', id: +a.ivItemDel }, t); return;
+      // goes at once with Undo for a few seconds (assets/js/rg-undo.js); its history is kept either way
+      var delId = +a.ivItemDel, nm = document.getElementById('ivName');
+      close();
+      rgUndo({
+        html: rgUndo.label('Removed', nm ? nm.value.trim() : ''),
+        hide: rgUndo.rows('[data-iv-item-edit="' + delId + '"]').map(function (b) { return b.closest('tr, .iv-row') || b; }),
+        request: { url: API, json: { action: 'item_delete', id: delId } },
+        onDone: function () { load(true); },
+        onError: function (msg) { SX.notify(msg, 'error'); load(true); }
+      });
+      return;
     }
     if (a.ivRestock) { need().then(function () { restockModal(+a.ivRestock); }); return; }
     if (a.ivRestockSave !== undefined) {

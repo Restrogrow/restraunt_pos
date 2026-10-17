@@ -207,8 +207,16 @@
     if (t.hasAttribute('data-cp-edit')) { var c = C.list.filter(function (k) { return k.id === +t.getAttribute('data-cp-edit'); })[0]; if (c && window.openCouponModal) openCouponModal(c.raw); return; }
     if (t.hasAttribute('data-cp-del')) {
       var id = +t.getAttribute('data-cp-del');
-      if (C.delAsk !== id) { C.delAsk = id; drawCoupons(); setTimeout(function () { if (C.delAsk === id) { C.delAsk = 0; drawCoupons(); } }, 4000); return; }
-      C.delAsk = 0; couponOp({ action: 'delete', id: id }, 'Coupon deleted'); return;
+      // goes at once with Undo for a few seconds (assets/js/rg-undo.js)
+      var cp = C.list.filter(function (k) { return k.id === id; })[0];
+      rgUndo({
+        html: rgUndo.label('Deleted coupon', cp ? (cp.code || cp.coupon_code || '') : ''),
+        hide: t.closest('.ofx-coupon, tr'),
+        request: { url: '../controllers/coupon_operations.php', body: { action: 'delete', id: id } },
+        onDone: function () { window.loadAdminCoupons(); },
+        onError: function (msg) { notify(msg, 'error'); window.loadAdminCoupons(); }
+      });
+      return;
     }
     if (t.hasAttribute('data-cp-filter')) { C.filter = t.getAttribute('data-cp-filter'); drawCoupons(); return; }
     if (t.hasAttribute('data-cp-copy')) {

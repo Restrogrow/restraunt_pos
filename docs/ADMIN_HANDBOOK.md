@@ -179,6 +179,7 @@ Sidebar groups, and what each page does:
   - Email: every email with previews and test sends, the sent log, on/off per email, cron status.
   - Admin handbook: this file, plus every other doc in the repo.
   - Features: every feature, where it is and what it needs.
+  - Undo design: pick the look of the Undo box restaurants see after deleting something (try each one live first). Deleting a menu item, menu or subcategory, a staff member, a customer, a booking, an area, a table (one or many), a coupon, a combo, a stock item or a payment method no longer asks "Are you sure?": it disappears at once and a floating box offers **Undo** for 6 seconds (Ctrl+Z works too). The real delete is sent only when the time is up, or straight away if the page is closed; if the server refuses, the item comes back with the reason. Four looks (Dark pill, Countdown ring, Snackbar, Floating glass) can be tried live and picked in Super Admin › Tools › **Undo design** (`sa_settings` `undo_design`, default Dark pill). Code: `main/assets/js/rg-undo.js` (`rgUndo({ html, hide, request, onDone })`).
   - Demo restaurant: reset or remove the demo.
 
 Code: `main/superadmin/dashboard.php` (sidebar around line 190, one `<div class="menu-item" data-page="…">` per tab plus a matching `<div id="…Page" class="page">`). It's backed by `api.php` and `api_platform.php`; newer pages load through `sa-platform.js`.

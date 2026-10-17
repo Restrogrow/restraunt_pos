@@ -7407,6 +7407,13 @@ function toggleGatewayMode() {
   <script src="../assets/js/caption-generator.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/campaign-calendar.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/growth.js?v=<?php echo time(); ?>" defer></script>
+  <?php
+  // Undo box for important deletes; its look is picked in Super Admin › Tools › Undo design
+  $rgUndoDesign = 'pill';
+  try { $v = getConnection()->query("SELECT v FROM sa_settings WHERE k = 'undo_design'")->fetchColumn(); if (in_array($v, ['pill', 'ring', 'snack', 'glass'], true)) $rgUndoDesign = $v; } catch (Throwable $e) {}
+  ?>
+  <script>window.RG_UNDO_DESIGN = <?php echo json_encode($rgUndoDesign); ?>;</script>
+  <script src="../assets/js/rg-undo.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rg-undo.js'); ?>"></script>
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/qr-standee.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/bestsellers-admin.js?v=<?php echo time(); ?>" defer></script>
