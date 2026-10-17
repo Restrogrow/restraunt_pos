@@ -785,6 +785,8 @@ function handleSignup() {
         try {
             $pdo->prepare('UPDATE users SET business_type = ?, city = ?, signup_source = ? WHERE restaurant_id = ?')
                 ->execute([$businessType, $city !== '' ? $city : null, $viaGoogle ? 'google' : 'phone', $restaurantId]);
+            // set up to suit the type of place: a cloud kitchen has no dine-in (switch it on in Settings any time)
+            if ($businessType === 'cloud_kitchen') $pdo->prepare('UPDATE users SET enable_dinein = 0 WHERE restaurant_id = ?')->execute([$restaurantId]);
         } catch (Throwable $e) { error_log('signup extras: ' . $e->getMessage()); }
         obFunnel($pdo, (string)($_POST['signup_token'] ?? ''), 'created', ['phone' => $phone, 'country' => $country, 'restaurant_name' => $restaurantName,
                  'restaurant_id' => $restaurantId, 'source' => $viaGoogle ? 'google' : 'phone']);

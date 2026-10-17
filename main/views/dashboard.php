@@ -2769,6 +2769,8 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
         <div class="howto-bar">
           <p id="howToFrom">Start with the <b>Quick start checklist</b> to go live in ten steps.</p>
           <div class="howto-acts">
+            <button type="button" class="btn btn-secondary" onclick="window.rgStartTour && rgStartTour()"><span class="material-symbols-rounded">rocket_launch</span> Take the tour</button>
+            <button type="button" class="btn btn-secondary" onclick="window.rgShowSetupGuide && rgShowSetupGuide()"><span class="material-symbols-rounded">task_alt</span> Setup guide</button>
             <button type="button" class="btn btn-secondary" onclick="openHowTo(null, 'quick-start')"><span class="material-symbols-rounded">checklist</span> Quick start</button>
             <button type="button" class="btn btn-secondary" onclick="rgOpenSupport(event)"><span class="material-symbols-rounded">support_agent</span> Contact support</button>
             <a class="btn btn-primary" id="howToNewTab" href="user-guide.html" target="_blank" rel="noopener"><span class="material-symbols-rounded">open_in_new</span> Open in a new tab</a>
@@ -7414,6 +7416,7 @@ function toggleGatewayMode() {
   ?>
   <script>window.RG_UNDO_DESIGN = <?php echo json_encode($rgUndoDesign); ?>;</script>
   <script src="../assets/js/rg-undo.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rg-undo.js'); ?>"></script>
+  <script src="../assets/js/onboarding.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/onboarding.js'); ?>" defer></script>
   <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/qr-standee.js?v=<?php echo time(); ?>" defer></script>
   <script src="../assets/js/bestsellers-admin.js?v=<?php echo time(); ?>" defer></script>
