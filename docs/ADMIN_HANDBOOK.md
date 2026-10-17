@@ -28,7 +28,7 @@ Last updated: 16 October 2026.
 | Super Admin app in the browser (your real login) | https://restrogrow.com/superadmin-app-web/app/ | http://localhost/menuwebsite/superadmin-app-web-local/app/ |
 | Health check (for UptimeRobot) | https://restrogrow.com/main/api/health.php?check=orders | |
 | Demo video (public, 24 MB) | https://restrogrow.com/demo-video.mp4 (file `demo-video.mp4` in the repo root; replace the file to change it) | http://localhost/menuwebsite/demo-video.mp4 |
-| Our social profiles (footer icons + Google `sameAs`) | LinkedIn https://www.linkedin.com/company/restro-grow/ · Instagram https://www.instagram.com/restrogrow/ · X https://x.com/restrogrow · YouTube https://www.youtube.com/@RestroGrow | |
+| Our profiles and listings | LinkedIn, Instagram, X, YouTube, Product Hunt, Medium, Trustpilot, SoftwareSuggest, AlternativeTo: see section 11 | |
 | GitHub (private) | https://github.com/Restrogrow/restraunt_pos (branch `main`) | |
 | Hosting | Hostinger hPanel (database `u509616587_restrogrow`) | XAMPP, database `menuwebsite_db` (root, no password) |
 
@@ -326,7 +326,29 @@ All of these can be read in Super Admin › Tools › Admin handbook. None can b
 
 ---
 
-## 11. Open items
+## 11. Where RestroGrow is listed
+
+The four social profiles are the footer icons on every marketing page and, with Product Hunt, the Organization `sameAs` that Google reads (index.html, about/index.html). When a listing is approved, change its status here, and add its link to `sameAs` if it is an official profile page.
+
+| Where | Status (18 Oct 2026) | Link |
+|---|---|---|
+| Website | Live | https://restrogrow.com |
+| LinkedIn | Live | https://www.linkedin.com/company/restro-grow/ |
+| Instagram | Live | https://www.instagram.com/restrogrow/ |
+| X (Twitter) | Live | https://x.com/restrogrow |
+| YouTube | Live | https://www.youtube.com/@RestroGrow |
+| Product Hunt | Live | https://www.producthunt.com/products/restrogrow |
+| Medium article ("Commission-free online ordering system for restaurants") | Live | https://medium.com/@teamrestrogrow/commission-free-online-ordering-system-for-restaurants-how-to-cut-delivery-app-fees-in-2026-cd740f9fc3ed |
+| Trustpilot | Made; not checked yet (Trustpilot's bot check blocked the automated look) | https://www.trustpilot.com/review/restrogrow.com |
+| SoftwareSuggest | Submitted, waiting for approval (shows "Unapproved" in the vendor portal, 1–2 days) | Portal: https://www.softwaresuggest.com/vendorsportal/index.php?r=software · after approval probably https://www.softwaresuggest.com/restrogrow |
+| AlternativeTo | Submitted, waiting for approval | Profile menu › My submissions |
+| Demo video | Live | https://restrogrow.com/demo-video.mp4 |
+
+Copy-paste answers for new directories: `docs/backlinks/BACKLINK_KIT.md` on this computer (not in Git).
+
+---
+
+## 12. Open items
 
 - [x] Live: deploy, then press **Create demo** in Super Admin › Tools › Demo restaurant (17 Oct 2026).
 - [x] Live: open the self-setup pages once: dashboard, My to-do, Blog (starter posts + keyword plan), Email (17 Oct 2026, see section 7).

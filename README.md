@@ -20,6 +20,7 @@
 - [Features](#features)
 - [Inventory: stock, recipes, purchase orders](#inventory)
 - [New-order alerts and push notifications](#new-order-alerts-and-push-notifications)
+- [Where RestroGrow is listed](#where-restrogrow-is-listed)
 - [Guides and documents](#guides-and-documents)
 - [Running it locally](#running-it-locally-xampp)
 - [Configuration (.env)](#configuration-env)
@@ -321,6 +322,24 @@ Menu › Inventory has eight tabs: **Overview, Stock, Recipes, Purchase orders, 
 | Code and data | `main/config/demo_restaurant.php`; photos in `main/assets/demo_restaurant/` (credits: `demo-credits.txt`, must stay public) |
 
 ---
+
+## Where RestroGrow is listed
+
+Our profiles, listings and articles, so we know what exists and what is still waiting. The four social profiles are the footer icons on every marketing page and, with Product Hunt, the Organization `sameAs` that Google reads (index.html, about/index.html). When a listing is approved, change its status here, and add its link to `sameAs` if it is an official profile page.
+
+| Where | Status (18 Oct 2026) | Link |
+|---|---|---|
+| Website | Live | https://restrogrow.com |
+| LinkedIn | Live | https://www.linkedin.com/company/restro-grow/ |
+| Instagram | Live | https://www.instagram.com/restrogrow/ |
+| X (Twitter) | Live | https://x.com/restrogrow |
+| YouTube | Live | https://www.youtube.com/@RestroGrow |
+| Product Hunt | Live | https://www.producthunt.com/products/restrogrow |
+| Medium article ("Commission-free online ordering system for restaurants") | Live | https://medium.com/@teamrestrogrow/commission-free-online-ordering-system-for-restaurants-how-to-cut-delivery-app-fees-in-2026-cd740f9fc3ed |
+| Trustpilot | Made; not checked yet (Trustpilot's bot check blocked the automated look) | https://www.trustpilot.com/review/restrogrow.com |
+| SoftwareSuggest | Submitted, waiting for approval (shows "Unapproved" in the vendor portal, 1–2 days) | Portal: https://www.softwaresuggest.com/vendorsportal/index.php?r=software · after approval probably https://www.softwaresuggest.com/restrogrow |
+| AlternativeTo | Submitted, waiting for approval | Profile menu › My submissions |
+| Demo video | Live | https://restrogrow.com/demo-video.mp4 |
 
 ## Guides and documents
 
