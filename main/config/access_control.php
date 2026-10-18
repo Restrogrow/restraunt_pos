@@ -125,6 +125,10 @@ function accessEnsureTable(PDO $conn): void {
     if ($done) return;
     $done = true;
     try {
+        // CREATE TABLE (even IF NOT EXISTS) silently commits an open transaction: a website order calls this
+        // mid-transaction, and its commit then failed with "There is no active transaction" (every order lost).
+        // Only create it when it's really missing, and never inside a transaction (no table = everything on).
+        if ($conn->query("SHOW TABLES LIKE 'restaurant_access'")->fetchColumn() || $conn->inTransaction()) return;
         $conn->exec("CREATE TABLE IF NOT EXISTS restaurant_access (
             restaurant_id VARCHAR(50) NOT NULL PRIMARY KEY,
             off_pages TEXT NULL,
