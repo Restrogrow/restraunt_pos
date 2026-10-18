@@ -4,7 +4,8 @@
  * Each can be tried live here (light/dark, speed, full screen). Pick one loader for each place:
  * dashboard opening, page change, and section/button loading. Saved as sa_settings 'loader_settings'
  * (JSON: {dash, page, section, speed, enabled}). Styles: assets/loaders/rg-loaders.css.
- * Not wired into the restaurant dashboard yet — this page only stores the choice.
+ * The restaurant and Super Admin dashboards show the Bouncing G full screen on load / refresh / page change
+ * (includes/rg_boot_loader.php), switched off here with "Show loading screens".
  */
 require_once __DIR__ . '/auth.php';
 require_superadmin();
@@ -14,7 +15,7 @@ $conn = getConnection();
 $conn->exec("CREATE TABLE IF NOT EXISTS sa_settings (k VARCHAR(60) PRIMARY KEY, v TEXT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
 $ids = ['fill', 'shimmer', 'gspin', 'bounce', 'reveal', 'ring', 'steam', 'orbit', 'skeleton', 'topbar', 'inline', 'pulse'];
-$defaults = ['dash' => 'ring', 'page' => 'topbar', 'section' => 'inline', 'speed' => 1, 'enabled' => true];
+$defaults = ['dash' => 'bounce', 'page' => 'topbar', 'section' => 'inline', 'speed' => 1, 'enabled' => true];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');

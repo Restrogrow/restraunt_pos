@@ -187,6 +187,7 @@ require_once __DIR__ . '/../config/countries.php';
   <script src="sa-invoice-gen.js?v=<?php echo @filemtime(__DIR__ . '/sa-invoice-gen.js'); ?>" defer></script>
 </head>
 <body>
+<?php require __DIR__ . '/../includes/rg_boot_loader.php'; // Bouncing G loading screen ?>
   <div class="layout">
     <!-- Sidebar -->
     <div class="sidebar">

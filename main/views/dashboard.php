@@ -932,6 +932,7 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
   <script>window.NAV_ANIM_SVGS = <?php require_once __DIR__ . '/../config/nav_icon_packs.php'; $navAnimAll = ['line' => navAnimatedSvgAll('line'), 'flat' => navAnimatedSvgAll('flat')]; foreach (navIconPackNames() as $pk) $navAnimAll[$pk] = navAnimatedSvgAll($pk); echo json_encode($navAnimAll, JSON_HEX_TAG | JSON_HEX_AMP); ?>;</script>
 </head>
 <body>
+<?php require __DIR__ . '/../includes/rg_boot_loader.php'; // Bouncing G loading screen ?>
   <aside class="sidebar">
     <!-- Sidebar header -->
     <header class="sidebar-header">
