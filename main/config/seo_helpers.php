@@ -20,6 +20,8 @@ function seoEnsure(PDO $conn): void
     static $done = false;
     if ($done || $conn->inTransaction()) return;
     $done = true;
+    require_once __DIR__ . '/schema_cache.php';
+    if (rgHasTable($conn, 'seo_settings')) return;   // remembered: no CREATE TABLE on every page
     $conn->exec("CREATE TABLE IF NOT EXISTS seo_settings (
         restaurant_id VARCHAR(50) PRIMARY KEY,
         pages_json TEXT DEFAULT NULL,

@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../config/session_config.php';
 // Skip timeout validation for public customer website API - sessions are just for restaurant context
 startSecureSession(true);
+require_once __DIR__ . '/../config/schema_cache.php';   // column / table checks remembered (rgHasColumn)
 require_once 'db_config.php';
 require_once __DIR__ . '/../config/menu_hours.php';
 
@@ -191,13 +192,12 @@ try {
             if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
             
             $hasMenuTrans = false;
-            try { $hasMenuTrans = $conn->query("SHOW COLUMNS FROM menu LIKE 'translations'")->rowCount() > 0; } catch (Exception $e) {}
+            try { $hasMenuTrans = rgHasColumn($conn, 'menu', 'translations'); } catch (Exception $e) {}
             $hasSubTrans = false;
-            try { $hasSubTrans = $conn->query("SHOW COLUMNS FROM subcategories LIKE 'translations'")->rowCount() > 0; } catch (Exception $e) {}
+            try { $hasSubTrans = rgHasColumn($conn, 'subcategories', 'translations'); } catch (Exception $e) {}
             
             // Check if menu_image column exists
-            $checkCol = $conn->query("SHOW COLUMNS FROM menu LIKE 'menu_image'");
-            $hasImageColumns = $checkCol->rowCount() > 0;
+            $hasImageColumns = rgHasColumn($conn, 'menu', 'menu_image');
             
             $menuCols = "id, menu_name, is_active, sort_order";
             if ($hasMenuTrans) $menuCols .= ", translations";
@@ -212,8 +212,7 @@ try {
             
             // Fetch subcategories for each menu
             try {
-                $checkSubTable = $conn->query("SHOW TABLES LIKE 'subcategories'");
-                $hasSubcategoriesTable = $checkSubTable->rowCount() > 0;
+                $hasSubcategoriesTable = rgHasTable($conn, 'subcategories');
                 
                 if ($hasSubcategoriesTable) {
                     $subCols = "id, menu_id, subcategory_name, sort_order";
@@ -320,19 +319,18 @@ try {
             if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
             
             $hasItemTrans = false;
-            try { $hasItemTrans = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'translations'")->rowCount() > 0; } catch (Exception $e) {}
+            try { $hasItemTrans = rgHasColumn($conn, 'menu_items', 'translations'); } catch (Exception $e) {}
 
             // Items an admin has hidden (see menu_items_operations_base64.php's
             // toggle_hidden) must never reach the customer website — unlike
             // get_menu_items.php (admin/POS), there is no opt-in here at all.
             $hasIsHiddenColumn = false;
-            try { $hasIsHiddenColumn = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'is_hidden'")->rowCount() > 0; } catch (Exception $e) {}
+            try { $hasIsHiddenColumn = rgHasColumn($conn, 'menu_items', 'is_hidden'); } catch (Exception $e) {}
 
             // Check if subcategory_id column exists
             $hasSubcategoryColumn = false;
             try {
-                $checkSubCol = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'subcategory_id'");
-                $hasSubcategoryColumn = $checkSubCol->rowCount() > 0;
+                $hasSubcategoryColumn = rgHasColumn($conn, 'menu_items', 'subcategory_id');
             } catch (PDOException $e) {
                 $hasSubcategoryColumn = false;
             }
@@ -342,8 +340,7 @@ try {
             // Check if subcategories table exists
             $hasSubcategoriesTable = false;
             try {
-                $checkSubTable = $conn->query("SHOW TABLES LIKE 'subcategories'");
-                $hasSubcategoriesTable = $checkSubTable->rowCount() > 0;
+                $hasSubcategoriesTable = rgHasTable($conn, 'subcategories');
             } catch (PDOException $e) {
                 $hasSubcategoriesTable = false;
             }
@@ -373,7 +370,7 @@ try {
                 $query .= " LEFT JOIN subcategories sc ON mi.subcategory_id = sc.id";
             }
             
-            $query .= " WHERE mi.restaurant_id = :rid";
+            $query .= " WHERE mi.restaurant_id = :rid AND m.is_active = 1";   // not dishes of a switched-off category
             if ($hasIsHiddenColumn) {
                 $query .= " AND mi.is_hidden = 0";
             }
@@ -456,8 +453,10 @@ try {
                         $query .= " LEFT JOIN subcategories sc ON mi.subcategory_id = sc.id";
                     }
                     
+                    // this restaurant only (it had no WHERE: every restaurant's dishes)
+                    $query .= " WHERE mi.restaurant_id = :rid AND m.is_active = 1" . ($hasIsHiddenColumn ? " AND mi.is_hidden = 0" : "");
                     $stmt = $conn->prepare($query);
-                    $stmt->execute($params);
+                    $stmt->execute([':rid' => $restaurantId]);
                     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     
                     // Add translations for fallback
@@ -580,6 +579,9 @@ try {
             break;
             
         case 'searchItems':
+            // hidden dishes stay out of search too (getMenuItems already leaves them out)
+            $searchHiddenSql = '';
+            try { if (rgHasColumn($conn, 'menu_items', 'is_hidden')) $searchHiddenSql = ' AND mi.is_hidden = 0'; } catch (Exception $e) {}
             $searchTerm = isset($_GET['q']) ? trim($_GET['q']) : '';
             // 🛡️ SECURITY: Validate and sanitize search input
             // 1. Reject empty or whitespace-only searches early
@@ -618,8 +620,7 @@ try {
             // Check if subcategory_id column exists
             $searchHasSubCol = false;
             try {
-                $checkSubCol = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'subcategory_id'");
-                $searchHasSubCol = $checkSubCol->rowCount() > 0;
+                $searchHasSubCol = rgHasColumn($conn, 'menu_items', 'subcategory_id');
             } catch (PDOException $e) {
                 $searchHasSubCol = false;
             }
@@ -627,15 +628,14 @@ try {
             // Check if subcategories table exists
             $searchHasSubTable = false;
             try {
-                $checkSubTable = $conn->query("SHOW TABLES LIKE 'subcategories'");
-                $searchHasSubTable = $checkSubTable->rowCount() > 0;
+                $searchHasSubTable = rgHasTable($conn, 'subcategories');
             } catch (PDOException $e) {
                 $searchHasSubTable = false;
             }
 
             // Dish translations (same check as getMenuItems) so search shows translated names too
             $hasItemTrans = false;
-            try { $hasItemTrans = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'translations'")->rowCount() > 0; } catch (Exception $e) {}
+            try { $hasItemTrans = rgHasColumn($conn, 'menu_items', 'translations'); } catch (Exception $e) {}
             
                     $itemTransCol = $hasItemTrans ? ", mi.translations" : "";
                     $query = "SELECT mi.id, mi.restaurant_id, mi.menu_id, mi.item_name_en, mi.item_description_en, mi.description_format,
@@ -658,7 +658,7 @@ try {
             }
             
             $query .= " WHERE (mi.item_name_en LIKE :search1 OR mi.item_description_en LIKE :search2 OR mi.item_category LIKE :search3)
-                      AND mi.restaurant_id = :rid
+                      AND mi.restaurant_id = :rid AND m.is_active = 1" . $searchHiddenSql . "
                       ORDER BY mi.item_name_en LIMIT 20";
             $like = '%' . $searchTerm . '%';
             try {
@@ -726,7 +726,7 @@ try {
                     }
                     
                     $query .= " WHERE (mi.item_name_en LIKE :search1 OR mi.item_description_en LIKE :search2 OR mi.item_category LIKE :search3)
-                              AND mi.restaurant_id = :rid
+                              AND mi.restaurant_id = :rid AND m.is_active = 1" . $searchHiddenSql . "
                               ORDER BY mi.item_name_en LIMIT 20";
                     $stmt = $conn->prepare($query);
                     $stmt->execute([
@@ -768,6 +768,18 @@ try {
                 break;
             }
             
+            // Only the customer's own orders: logged in with this phone, or a guest who just ordered with it
+            // in this browser (customer_session.php). A typed phone number alone used to show anyone's
+            // orders, and their numbers opened tracking, reviews and scratch cards.
+            require_once __DIR__ . '/customer_session.php';
+            require_once __DIR__ . '/../config/order_abuse_guard.php';
+            if (!getAuthorizedCustomer($conn, $restaurantId, (string)$phone)) {
+                $lc = getLoggedInCustomer($conn, $restaurantId);
+                if (!$lc || (orderAbuseNormalizePhone((string)$lc['phone']) ?? $lc['phone']) !== (orderAbuseNormalizePhone((string)$phone) ?? $phone)) {
+                    echo json_encode(['orders' => [], 'need_login' => true]);
+                    break;
+                }
+            }
             // Query orders directly by customer_phone to avoid name mismatch issues
             try {
             $stmt = $conn->prepare("SELECT o.*, 
@@ -776,7 +788,7 @@ try {
                                    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count,
                                    (SELECT COUNT(*) FROM order_feedback f WHERE f.order_id = o.id) > 0 as has_feedback
                                    FROM orders o 
-                                   WHERE o.customer_phone = :phone AND o.restaurant_id = :rid 
+                                   WHERE o.customer_phone = :phone AND o.restaurant_id = :rid AND o.deleted_at IS NULL
                                    ORDER BY o.created_at DESC LIMIT 20");
             $stmt->execute([':phone' => $phone, ':rid' => $restaurantId]);
             $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -797,7 +809,8 @@ try {
                     // Anyone can call this with any phone number: never hand out the
                     // customer's contact details, address or payment proof (the order
                     // history list doesn't show them)
-                    elseif (strpos($k, 'customer_') === 0 || strpos($k, 'address') === 0 || $k === 'landmark' || strpos($k, 'proof') !== false) unset($order[$k]);
+                    elseif (strpos($k, 'customer_') === 0 || strpos($k, 'address') !== false || $k === 'landmark' || strpos($k, 'proof') !== false
+                            || strpos($k, 'delete') !== false || $k === 'notes') unset($order[$k]);
                 }
             }
             unset($order);

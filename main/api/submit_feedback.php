@@ -61,13 +61,25 @@ try {
 
     // Verify the order exists and belongs to this phone
     $stmt = $conn->prepare("SELECT id, order_number, customer_name, restaurant_id, order_status FROM orders WHERE order_number = ? AND customer_phone = ? LIMIT 1");
-    $stmt->execute([$order_number, $customer_phone]);
-    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    require_once __DIR__ . '/../config/guess_guard.php';
+    $order = false;
+    if (!rgGuessBlocked()) {
+        $stmt->execute([$order_number, $customer_phone]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$order) rgGuessMiss();
+    }
 
     if (!$order) {
         echo json_encode(['success' => false, 'message' => 'Order not found or phone does not match']);
         exit;
     }
+    // reviews only for orders that were really served: a cancelled or never-paid order can't rate the restaurant
+    if ($order['order_status'] !== 'Completed') {
+        echo json_encode(['success' => false, 'message' => 'You can rate your order once it is completed.']);
+        exit;
+    }
+    $customer_name = mb_substr(trim(strip_tags($customer_name)), 0, 80);
+    $review = is_string($review ?? null) ? mb_substr(trim(strip_tags($review)), 0, 1000) : '';
 
     // Check if feedback already exists for this order
     $stmt = $conn->prepare("SELECT id FROM order_feedback WHERE order_id = ? AND restaurant_id = ?");

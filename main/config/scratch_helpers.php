@@ -16,6 +16,10 @@ require_once __DIR__ . '/coupon_helpers.php';
 if (!function_exists('ensureScratchTables')) {
 
     function ensureScratchTables(PDO $conn): void {
+        // once per deploy, not on every request (config/schema_cache.php)
+        require_once __DIR__ . '/schema_cache.php';
+        $rgOnceKey = 'e:ensureScratchTables:' . @filemtime(__FILE__);
+        if (rgSchemaKnown($rgOnceKey) || $conn->inTransaction()) return;
         static $done = false;
         if ($done) return;
         $done = true;
@@ -68,6 +72,7 @@ if (!function_exists('ensureScratchTables')) {
         } catch (PDOException $e) {
             error_log('ensureScratchTables: ' . $e->getMessage());
         }
+            rgSchemaRemember($rgOnceKey);
     }
 
     function getScratchSettings(PDO $conn, string $rid): array {

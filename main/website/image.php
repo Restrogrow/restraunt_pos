@@ -76,6 +76,58 @@ if ($localRef !== '') {
     sendPlaceholderSvg('Image');
 }
 
+// Small, fast photos: image.php?id=<id>&w=400 (dish cards), w=96/200 (chips, cart), w=800 (detail view).
+// Made once as WebP from the stored photo and kept in uploads/cache/img, so later requests skip the database.
+// Every upload gets a new id (db:<uniqid>), so the browser may keep these for a year.
+$thumbW = (int)($_GET['w'] ?? 0);
+if ($thumbW > 0 && $imageType === '' && $imagePath === '' && preg_match('/^[A-Za-z0-9_.-]{4,80}$/', (string)$imageId) && function_exists('imagewebp')) {
+    $thumbW = in_array($thumbW, [96, 200, 400, 800], true) ? $thumbW : 400;
+    $cacheDir = dirname(__DIR__) . '/uploads/cache/img';
+    $cacheFile = $cacheDir . '/' . sha1($imageId) . '_' . $thumbW . '.webp';
+    $sendThumb = function (string $file) {
+        $etag = '"' . basename($file, '.webp') . '"';
+        header('Cache-Control: public, max-age=31536000, immutable');
+        header('ETag: ' . $etag);
+        if (trim((string)($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) { http_response_code(304); exit(); }
+        while (ob_get_level()) ob_end_clean();
+        header('Content-Type: image/webp');
+        header('Content-Length: ' . filesize($file));
+        readfile($file);
+        exit();
+    };
+    if (is_file($cacheFile)) $sendThumb($cacheFile);
+    if (file_exists(__DIR__ . '/../db_connection.php')) {
+        require_once __DIR__ . '/../db_connection.php';
+        try {
+            $tc = getConnection();
+            $raw = null;
+            foreach (['SELECT image_data FROM menu_items WHERE item_image = ? AND image_data IS NOT NULL LIMIT 1',
+                      'SELECT menu_image_data FROM menu WHERE menu_image = ? AND menu_image_data IS NOT NULL LIMIT 1',
+                      'SELECT image_data FROM meal_addons WHERE addon_image = ? AND image_data IS NOT NULL LIMIT 1'] as $sql) {
+                try { $st = $tc->prepare($sql); $st->execute(['db:' . $imageId]); $raw = $st->fetchColumn(); } catch (PDOException $e) { $raw = null; }
+                if ($raw) break;
+            }
+            $src = $raw ? @imagecreatefromstring($raw) : false;   // SVG and odd formats fall through to the original below
+            if ($src) {
+                $sw = imagesx($src); $sh = imagesy($src);
+                $tw = min($thumbW, $sw); $th = max(1, (int)round($sh * $tw / max(1, $sw)));
+                $dst = imagecreatetruecolor($tw, $th);
+                imagealphablending($dst, false); imagesavealpha($dst, true);
+                imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+                imagecopyresampled($dst, $src, 0, 0, 0, 0, $tw, $th, $sw, $sh);
+                if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+                $tmp = $cacheFile . '.' . getmypid() . '.tmp';
+                if (@imagewebp($dst, $tmp, 78) && @rename($tmp, $cacheFile)) { imagedestroy($src); imagedestroy($dst); $sendThumb($cacheFile); }
+                @unlink($tmp);
+                imagedestroy($src); imagedestroy($dst);
+            }
+        } catch (Throwable $e) {
+            error_log('image.php thumbnail: ' . $e->getMessage());
+        }
+    }
+    // could not make a small copy: the original photo is served below
+}
+
 // Include database connection
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
@@ -143,8 +195,7 @@ if (empty($imagePath) && empty($imageType) && !empty($imageId)) {
             ob_end_clean();
             header('Content-Type: ' . ($item['image_mime_type'] ?? 'image/jpeg'));
             header('Content-Length: ' . strlen($item['image_data']));
-            header('Cache-Control: public, max-age=86400'); // Shorter cache (1 day) so updates show faster
-            header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
+            header('Cache-Control: public, max-age=31536000, immutable'); // ids never change (a new upload = a new id)
             echo $item['image_data'];
             exit();
         }
@@ -161,8 +212,7 @@ if (empty($imagePath) && empty($imageType) && !empty($imageId)) {
             ob_end_clean();
             header('Content-Type: ' . ($menuImg['menu_image_mime_type'] ?? 'image/svg+xml'));
             header('Content-Length: ' . strlen($menuImg['menu_image_data']));
-            header('Cache-Control: public, max-age=86400');
-            header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
+            header('Cache-Control: public, max-age=31536000, immutable');
             echo $menuImg['menu_image_data'];
             exit();
         }
@@ -177,8 +227,7 @@ if (empty($imagePath) && empty($imageType) && !empty($imageId)) {
                 ob_end_clean();
                 header('Content-Type: ' . ($menuImg2['menu_image_mime_type'] ?? 'image/jpeg'));
                 header('Content-Length: ' . strlen($menuImg2['menu_image_data']));
-                header('Cache-Control: public, max-age=86400');
-                header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
+                header('Cache-Control: public, max-age=31536000, immutable');
                 echo $menuImg2['menu_image_data'];
                 exit();
             }
@@ -196,8 +245,7 @@ if (empty($imagePath) && empty($imageType) && !empty($imageId)) {
             ob_end_clean();
             header('Content-Type: ' . ($addon['image_mime_type'] ?? 'image/jpeg'));
             header('Content-Length: ' . strlen($addon['image_data']));
-            header('Cache-Control: public, max-age=86400');
-            header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
+            header('Cache-Control: public, max-age=31536000, immutable');
             echo $addon['image_data'];
             exit();
         }

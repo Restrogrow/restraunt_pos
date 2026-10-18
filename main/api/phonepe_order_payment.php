@@ -27,11 +27,13 @@ function ppoOwnOrder(PDO $conn, array $in): array {
     $orderId = (int)($in['order_id'] ?? 0);
     $phone = is_scalar($in['customer_phone'] ?? null) ? trim((string)$in['customer_phone']) : '';
     if (!$orderId || $phone === '') ppoOut(['success' => false, 'message' => 'Order not found'], 404);
+    require_once __DIR__ . '/../config/guess_guard.php';
+    if (rgGuessBlocked()) ppoOut(['success' => false, 'message' => 'Order not found'], 404);
     $st = $conn->prepare('SELECT * FROM orders WHERE id = ? LIMIT 1');
     $st->execute([$orderId]);
     $o = $st->fetch(PDO::FETCH_ASSOC);
     // order ids are shared across restaurants: the phone it was placed with proves it is theirs
-    if (!$o || $phone !== (string)$o['customer_phone']) ppoOut(['success' => false, 'message' => 'Order not found'], 404);
+    if (!$o || $phone !== (string)$o['customer_phone']) { rgGuessMiss(); ppoOut(['success' => false, 'message' => 'Order not found'], 404); }
     return $o;
 }
 

@@ -234,7 +234,14 @@ function handleCustomerLogin($pdo) {
         throw new Exception('Please enter your phone number and password');
     }
 
-    $rateId = 'cust_login_' . $restaurantId . '_' . $phone;
+    // The lockout after wrong passwords is per phone AND internet address: keyed on the phone alone, anyone
+    // could keep any customer locked out with three wrong tries. A per-phone cap (30 tries in 15 minutes,
+    // from anywhere) still stops guessing a password from many addresses.
+    $rateId = 'cust_login_' . $restaurantId . '_' . $phone . '_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    if (function_exists('checkRateLimit')) {
+        $anyIp = checkRateLimit('cust_login_any_' . $restaurantId . '_' . $phone, 30, 900);
+        if (!$anyIp['allowed']) throw new Exception('Too many login attempts for this number. Please try again in 15 minutes, or reset your password.');
+    }
 
     // trackFailedAttempt($rateId) below writes a per-account lockout file
     // after repeated failures, but nothing was ever reading it back — the
@@ -350,8 +357,19 @@ function handleCustomerForgotPassword($pdo) {
     $pdo->prepare("INSERT INTO customer_password_reset_tokens (customer_id, token, expires_at) VALUES (?, ?, ?)")->execute([$customer['id'], $token, $expiresAt]);
 
     $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    $resetLink = $protocol . '://' . $host . dirname($_SERVER['PHP_SELF']) . '/reset_password.php?token=' . $token . '&restaurant_id=' . urlencode($restaurantId);
+    $host = strtolower(preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+    // The link in the email must point to us: a forged Host header must not turn it into someone else's site
+    $okHost = in_array($host, ['restrogrow.com', 'www.restrogrow.com', 'localhost', '127.0.0.1'], true);
+    if (!$okHost) {
+        try {
+            $cd = $pdo->prepare('SELECT custom_domain FROM users WHERE restaurant_id = ? LIMIT 1');
+            $cd->execute([$restaurantId]);
+            $okHost = strtolower(preg_replace('#^https?://#', '', trim((string)$cd->fetchColumn()), 1)) === $host && $host !== '';
+        } catch (PDOException $e) { $okHost = false; }
+    }
+    $resetBase = $okHost ? $protocol . '://' . ($_SERVER['HTTP_HOST'] ?? $host) . dirname($_SERVER['PHP_SELF'])
+                         : rtrim((string)(env('APP_URL', '') ?: 'https://restrogrow.com'), '/') . '/main/website';
+    $resetLink = $resetBase . '/reset_password.php?token=' . $token . '&restaurant_id=' . urlencode($restaurantId);
 
     if (file_exists(__DIR__ . '/../config/email_config.php')) {
         require_once __DIR__ . '/../config/email_config.php';

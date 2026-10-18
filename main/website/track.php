@@ -25,8 +25,14 @@ if ($orderNumber && $customerPhone) {
             FROM orders o JOIN users u ON o.restaurant_id = u.restaurant_id
             WHERE o.order_number = ? AND o.customer_phone = ? AND o.source = 'website'
             LIMIT 1");
-        $stmt->execute([$orderNumber, $customerPhone]);
-        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+        require_once __DIR__ . '/../config/guess_guard.php';
+        if (rgGuessBlocked()) {
+            $order = false;
+        } else {
+            $stmt->execute([$orderNumber, $customerPhone]);
+            $order = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$order) rgGuessMiss();
+        }
 
         if (!$order) {
             $error = 'Order not found. Please check your order number and phone number.';

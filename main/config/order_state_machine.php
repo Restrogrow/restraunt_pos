@@ -275,6 +275,21 @@ function validateAndUpdateOrderStatus(
             error_log('Growth module cancellation reversal failed for order ' . $orderId . ': ' . $e->getMessage());
         }
 
+        // A website order added its total and a visit to the customer's record when it was placed
+        // (process_website_order.php); a cancelled / rejected one takes them back, so fake orders can't
+        // push someone into a higher loyalty tier. Runs once: an order is cancelled only once.
+        try {
+            $sp = $conn->prepare("SELECT restaurant_id, customer_phone, total, source FROM orders WHERE id = ?");
+            $sp->execute([$orderId]);
+            $so = $sp->fetch(PDO::FETCH_ASSOC);
+            if ($so && $so['source'] === 'website' && (string)$so['customer_phone'] !== '') {
+                $conn->prepare("UPDATE customers SET total_spent = GREATEST(0, total_spent - ?), total_visits = GREATEST(0, total_visits - 1) WHERE restaurant_id = ? AND phone = ?")
+                     ->execute([(float)$so['total'], $so['restaurant_id'], $so['customer_phone']]);
+            }
+        } catch (PDOException $e) {
+            error_log('Customer spend reversal failed for order ' . $orderId . ': ' . $e->getMessage());
+        }
+
         // Cascade to the linked KOT (kot.order_id — see kot_operations.php's
         // ensureKotSchema()) so a cancelled order's ticket stops showing as
         // active on the kitchen/KOT board. Without this the kitchen would

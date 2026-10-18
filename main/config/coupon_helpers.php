@@ -28,15 +28,20 @@ if (!function_exists('ensureCouponMilestoneColumn')) {
  */
 if (!function_exists('ensureCouponOwnerColumn')) {
     function ensureCouponOwnerColumn($conn) {
+        // once per deploy, not on every request (config/schema_cache.php)
+        require_once __DIR__ . '/schema_cache.php';
+        $rgOnceKey = 'e:ensureCouponOwnerColumn:' . @filemtime(__FILE__);
+        if (rgSchemaKnown($rgOnceKey) || $conn->inTransaction()) return;
         static $done = false;
         if ($done) return;
         $done = true;
         try {
             $col = $conn->query("SHOW COLUMNS FROM coupons LIKE 'owner_phone'");
-            if ($col && $col->fetch()) return;
+            if ($col && $col->fetch()) { rgSchemaRemember($rgOnceKey); return; }
             $conn->exec("ALTER TABLE coupons ADD COLUMN owner_phone VARCHAR(20) NULL DEFAULT NULL");
         } catch (PDOException $e) {
             error_log('coupon_helpers.php: could not add owner_phone: ' . $e->getMessage());
         }
+            rgSchemaRemember($rgOnceKey);
     }
 }

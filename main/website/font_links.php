@@ -37,9 +37,9 @@ if (!function_exists('websiteFontsBaseUrl')) {
         static $preloads = [
             'poppins'          => ['google/files/poppins-e6a077c34d.woff2', 'google/files/poppins-93818c3798.woff2'],
             'inter'            => ['google/files/inter-6ab57b19c6.woff2'],
-            'material-symbols' => ['google/files/material-symbols-rounded-2cd937c813.woff2'],
+            // Material Symbols (373 KB) and Bootstrap Icons (130 KB) are not preloaded: pages use only a few of
+            // their icons, and a font that isn't preloaded is downloaded only when the page really shows one
             'fontawesome'      => ['fontawesome/webfonts/fa-solid-900.woff2'],
-            'bootstrap-icons'  => ['bootstrap-icons/fonts/bootstrap-icons.woff2'],
         ];
         $base = websiteFontsBaseUrl();
         $dir  = __DIR__ . '/../assets/fonts/';

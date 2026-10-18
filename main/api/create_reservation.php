@@ -72,6 +72,47 @@ if ($no_of_guests <= 0) {
     exit();
 }
 
+// A booking from the website (nobody logged in) is checked properly: it used to accept past dates,
+// any guest count, any email (branded emails to strangers) and unlimited bookings from one person.
+$publicBooking = !isLoggedIn();
+$customer_name = mb_substr(trim(strip_tags((string)$customer_name)), 0, 80);
+$special_request = mb_substr(trim(strip_tags((string)$special_request)), 0, 500);
+$email = trim((string)$email);
+if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    echo json_encode(['success' => false, 'message' => 'Please enter a valid email address, or leave it empty']);
+    exit();
+}
+$no_of_guests = (int)$no_of_guests;
+if ($publicBooking) {
+    $digits = preg_replace('/\D/', '', (string)$phone);
+    if (strlen($digits) < 7 || strlen($digits) > 15) {
+        echo json_encode(['success' => false, 'message' => 'Please enter a valid phone number']);
+        exit();
+    }
+    if ($customer_name === '') {
+        echo json_encode(['success' => false, 'message' => 'Customer name is required']);
+        exit();
+    }
+    if ($no_of_guests > 50) {
+        echo json_encode(['success' => false, 'message' => 'For more than 50 guests, please call the restaurant']);
+        exit();
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$reservation_date) || !preg_match('/^[0-9: APMapm-]{3,20}$/', (string)$time_slot)) {
+        echo json_encode(['success' => false, 'message' => 'Please pick a valid date and time']);
+        exit();
+    }
+    require_once __DIR__ . '/../config/rate_limit.php';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    foreach ([['resv_ip_' . $ip, 6, 3600], ['resv_phone_' . $digits, 4, 86400]] as [$rid_, $max, $win]) {
+        $rl = checkRateLimit($rid_, $max, $win);
+        if (!$rl['allowed']) {
+            http_response_code(429);
+            echo json_encode(['success' => false, 'message' => 'Too many bookings. Please call the restaurant to book more tables.']);
+            exit();
+        }
+    }
+}
+
 try {
     $conn = getConnection();
     
@@ -87,10 +128,35 @@ try {
     }
     
     // Verify table belongs to this restaurant
-    $tableCheckStmt = $conn->prepare("SELECT id FROM tables WHERE id = ? AND restaurant_id = ?");
+    $tableCheckStmt = $conn->prepare("SELECT id, capacity FROM tables WHERE id = ? AND restaurant_id = ?");
     $tableCheckStmt->execute([$table_id, $restaurant_id]);
-    if (!$tableCheckStmt->fetch()) {
+    $tableRow = $tableCheckStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$tableRow) {
         throw new Exception('Invalid table selection');
+    }
+    if ($publicBooking) {
+        // in the restaurant's own time: not in the past, at most 60 days ahead, and guests that fit the table
+        try {
+            $tzq = $conn->prepare('SELECT timezone FROM users WHERE restaurant_id = ? LIMIT 1');
+            $tzq->execute([$restaurant_id]);
+            $tzName = (string)$tzq->fetchColumn();
+            date_default_timezone_set(in_array($tzName, timezone_identifiers_list(), true) ? $tzName : 'Asia/Kolkata');
+        } catch (Throwable $e) { date_default_timezone_set('Asia/Kolkata'); }
+        $today = date('Y-m-d');
+        $last = date('Y-m-d', strtotime('+60 days'));
+        if ($reservation_date < $today || $reservation_date > $last) {
+            echo json_encode(['success' => false, 'message' => 'Please pick a date from today up to 60 days ahead']);
+            exit();
+        }
+        if ($reservation_date === $today && ($slotTs = strtotime($today . ' ' . $time_slot)) && $slotTs < time()) {
+            echo json_encode(['success' => false, 'message' => 'That time has already passed. Please pick a later time.']);
+            exit();
+        }
+        $cap = (int)($tableRow['capacity'] ?? 0);
+        if ($cap > 0 && $no_of_guests > $cap) {
+            echo json_encode(['success' => false, 'message' => 'This table seats ' . $cap . '. Please pick a bigger table or fewer guests.']);
+            exit();
+        }
     }
     
     // Check if table is already reserved for this date and time
@@ -146,12 +212,9 @@ try {
         
         if (!$customerCheckStmt->fetch()) {
             // Customer doesn't exist, add them
-            $addCustomerStmt = $conn->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email, total_visits, last_visit_date) VALUES (?, ?, ?, ?, 1, ?)");
-            $addCustomerStmt->execute([$restaurant_id, $customer_name, $phone, $email, $reservation_date]);
-        } else {
-            // Customer exists, update their visit count and last visit date
-            $updateCustomerStmt = $conn->prepare("UPDATE customers SET total_visits = total_visits + 1, last_visit_date = ? WHERE restaurant_id = ? AND phone = ?");
-            $updateCustomerStmt->execute([$reservation_date, $restaurant_id, $phone]);
+            // a booking is not a visit yet (visits count when they come and order)
+            $addCustomerStmt = $conn->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email, total_visits) VALUES (?, ?, ?, ?, 0)");
+            $addCustomerStmt->execute([$restaurant_id, $customer_name, $phone, $email]);
         }
     }
     

@@ -64,6 +64,18 @@ function renderPolicyPage($type) {
             $conn = $pdo ?? null;
             if (!$conn) throw new Exception('Database connection not available');
         }
+        // /<restaurant-slug>/privacy-policy: the restaurant in the link wins over whatever is in the session
+        // (this page used to show "Restaurant" with no name or contact, or another restaurant's policy)
+        if ($restaurant_id_param === '' && $restaurant_slug !== '' && preg_match('/^[a-z0-9-]{1,120}$/', $restaurant_slug)) {
+            $toSlug = function ($n) { return trim(preg_replace('/[^a-z0-9]+/', '-', strtolower((string)$n)), '-'); };
+            $tokens = array_values(array_filter(explode('-', $restaurant_slug), 'strlen'));
+            $st = $conn->prepare("SELECT restaurant_id, restaurant_name FROM users WHERE restaurant_name LIKE ? ORDER BY id DESC LIMIT 50");
+            $st->execute(['%' . implode('%', $tokens) . '%']);
+            $restaurant_id = null;
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                if ($toSlug($r['restaurant_name']) === $restaurant_slug) { $restaurant_id = $r['restaurant_id']; break; }
+            }
+        }
         if ($restaurant_id) {
             $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, email, phone, owner_name, address FROM users WHERE restaurant_id = ? LIMIT 1");
             $stmt->execute([$restaurant_id]);

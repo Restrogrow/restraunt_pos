@@ -33,8 +33,13 @@ try {
     $st = $conn->prepare("SELECT o.id, o.restaurant_id, o.order_status, o.total, o.created_at, o.customer_phone, u.currency_symbol
         FROM orders o JOIN users u ON u.restaurant_id = o.restaurant_id
         WHERE o.order_number = ? AND o.customer_phone = ? AND o.source = 'website' AND o.deleted_at IS NULL LIMIT 1");
-    $st->execute([$orderNumber, $phone]);
-    $order = $st->fetch(PDO::FETCH_ASSOC);
+    require_once __DIR__ . '/../config/guess_guard.php';
+    $order = false;
+    if (!rgGuessBlocked()) {
+        $st->execute([$orderNumber, $phone]);
+        $order = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$order) rgGuessMiss();
+    }
     if (!$order) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Order not found']);

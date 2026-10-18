@@ -1,10 +1,10 @@
 <?php
 ob_start();
 
-// No-cache headers to ensure real-time updates on the customer website
-header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
-header('Pragma: no-cache');
-header('Expires: 0');
+// Always checked with the server (menu, prices and stock stay live), but not "no-store": that also turned off
+// the browser's instant Back / Forward. A logged-in customer's pages stay no-store (see below), so their
+// details are never kept after they log out.
+header('Cache-Control: private, no-cache, must-revalidate, max-age=0');
 
 require_once __DIR__ . '/../config/env_loader.php';
 require_once __DIR__ . '/../config/session_config.php';
@@ -303,7 +303,10 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     $bestseller_style = getBestsellerStyle(null);
     if ($restaurant_id) {
         try {
-            ensureWebsiteThemeSchema($conn);
+            require_once __DIR__ . '/../config/schema_cache.php';
+            rgEnsureOnce('ensureWebsiteThemeSchema', $conn);   // once per deploy, not on every page
+            require_once __DIR__ . '/../config/website_indexes.php';
+            rgEnsureOnce('ensureWebsiteIndexes', $conn);       // missing database indexes, added once
             $stmt = $conn->prepare('SELECT background_theme, logo_shape, logo_size, primary_red, dark_red, primary_yellow, font_family, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, home_card_style, profile_style, profile_opts, nav_bar_style, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');
             $stmt->execute([':rid' => $restaurant_id]);
             $themeRow = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -446,20 +449,9 @@ $restaurant_open = true;
 if (!empty($opening_hours)) {
     $hours = json_decode($opening_hours, true);
     if ($hours) {
-        $now = new DateTime('now', $restaurant_tz);
-        $day = strtolower($now->format('l'));
-        if (!isset($hours[$day]) || empty($hours[$day]['open'])) {
-            $restaurant_open = false;
-        } else {
-            $opening = $hours[$day]['opening'] ?? '09:00 AM';
-            $closing = $hours[$day]['closing'] ?? '10:00 PM';
-            $openDT = new DateTime($now->format('Y-m-d') . ' ' . $opening, $restaurant_tz);
-            $closeDT = new DateTime($now->format('Y-m-d') . ' ' . $closing, $restaurant_tz);
-            if ($closeDT <= $openDT) {
-                $closeDT->modify('+1 day');
-            }
-            $restaurant_open = ($now >= $openDT && $now < $closeDT);
-        }
+        // also counts yesterday's shift running past midnight (config/opening_hours.php)
+        require_once __DIR__ . '/../config/opening_hours.php';
+        $restaurant_open = rgIsOpenNow($hours, $restaurant_tz);
     }
 }
 
@@ -574,19 +566,11 @@ $site_root = rtrim(dirname(dirname(dirname($_SERVER['SCRIPT_NAME']))), '/') . '/
 // Fire-and-forget: track each page load silently (no effect on user experience)
 if ($restaurant_id) {
     $track_page = $_SERVER['REQUEST_URI'] ?? '/';
-    $track_name = 'Home';
-    // Determine page name from URL
-    if (strpos($track_page, 'menu') !== false) $track_name = 'Menu';
-    elseif (strpos($track_page, 'cart') !== false) $track_name = 'Cart';
-    elseif (strpos($track_page, 'about') !== false) $track_name = 'About Us';
-    elseif (strpos($track_page, 'contact') !== false) $track_name = 'Contact';
-    elseif (strpos($track_page, 'profile') !== false) $track_name = 'Profile';
-    elseif (strpos($track_page, 'track') !== false) $track_name = 'Track Order';
-    elseif (strpos($track_page, 'privacy') !== false) $track_name = 'Privacy Policy';
-    elseif (strpos($track_page, 'terms') !== false) $track_name = 'Terms of Service';
-    elseif (strpos($track_page, 'refund') !== false) $track_name = 'Refund Policy';
-    elseif (strpos($track_page, 'shipping') !== false) $track_name = 'Shipping Policy';
-    elseif (strpos($track_page, 'cookie') !== false) $track_name = 'Cookie Policy';
+    // page name from the file that runs (a restaurant slug like "menu-house" must not make every page "Menu")
+    $track_name = ['index' => 'Home', 'menu' => 'Menu', 'cart' => 'Cart', 'about' => 'About Us', 'contact' => 'Contact',
+        'profile' => 'Profile', 'track' => 'Track Order', 'loyalty' => 'Rewards', 'reservations' => 'Reservations',
+        'catering' => 'Catering', 'plans' => 'Plans', 'subscribe' => 'Subscribe', 'my-subscription' => 'My subscription',
+        'login' => 'Login'][basename((string)($_SERVER['SCRIPT_NAME'] ?? 'index.php'), '.php')] ?? 'Home';
     
     $track_ip = $_SERVER['REMOTE_ADDR'] ?? '';
     $track_ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
@@ -682,6 +666,18 @@ $logged_in_customer = null;
 if ($restaurant_id && isset($conn) && $conn instanceof PDO) {
     $logged_in_customer = getLoggedInCustomer($conn, $restaurant_id);
 }
+if ($logged_in_customer) header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
 
-ob_end_flush();
+// The scripts written above (visit tracker, campaign tag, install prompt) go inside the page's <head>.
+// They used to be printed before <!DOCTYPE html>, which put every page in old "quirks mode" (wrong sizes
+// on phones) and broke JSON replies (manifest, payment status) that include this file.
+$rgEarlyHtml = (string)ob_get_clean();
+if (trim($rgEarlyHtml) !== '') {
+    ob_start(function ($html) use ($rgEarlyHtml) {
+        $p = stripos($html, '<head');
+        $e = $p === false ? false : strpos($html, '>', $p);
+        return $e === false ? $html : substr($html, 0, $e + 1) . "
+" . $rgEarlyHtml . substr($html, $e + 1);
+    });
+}
 ?>

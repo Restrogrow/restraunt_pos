@@ -54,9 +54,10 @@ if (function_exists('getConnection')) {
 }
 
 try {
-  ensureWebsiteThemeSchema($conn);
-  ensureBannerPlacementColumn($conn);
-  ensureOfferBannersTable($conn);
+  require_once __DIR__ . '/../config/schema_cache.php';   // table setup once per deploy
+  rgEnsureOnce('ensureWebsiteThemeSchema', $conn);
+  rgEnsureOnce('ensureBannerPlacementColumn', $conn);
+  rgEnsureOnce('ensureOfferBannersTable', $conn);
 
   if ($action === 'get') {
     $stmt = $conn->prepare('SELECT primary_red, dark_red, primary_yellow, banner_image, layout_columns, background_theme, logo_shape, logo_size, font_family, theme_preset, card_style, checkout_color, layout_style, header_style, site_name, nav_icon_style, nav_labels, favicon_url, nav_icons_custom, bestseller_style, menu_nav_position, menu_card_style, home_card_style, profile_style, profile_opts, nav_bar_style, category_heading_bg, category_pic_style, all_category_icon FROM website_settings WHERE restaurant_id = :rid');

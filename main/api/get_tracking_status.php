@@ -28,10 +28,13 @@ try {
 
     $stmt = $conn->prepare("SELECT o.id, o.order_status, o.order_type, o.total, o.delivery_charge, o.source, o.loyalty_points_earned, o.notes
         FROM orders o WHERE o.order_number = ? AND o.customer_phone = ? AND o.source = 'website' LIMIT 1");
+    require_once __DIR__ . '/../config/guess_guard.php';
+    if (rgGuessBlocked()) { echo json_encode(['success' => false]); exit(); }
     $stmt->execute([$orderNumber, $customerPhone]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$order) {
+        rgGuessMiss();
         echo json_encode(['success' => false]);
         exit();
     }

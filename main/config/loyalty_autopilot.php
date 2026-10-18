@@ -35,6 +35,10 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
     }
 
     function ensureLoyaltyAutopilotSchema(PDO $conn): void {
+        // once per deploy, not on every request (config/schema_cache.php)
+        require_once __DIR__ . '/schema_cache.php';
+        $rgOnceKey = 'e:ensureLoyaltyAutopilotSchema:' . @filemtime(__FILE__);
+        if (rgSchemaKnown($rgOnceKey) || $conn->inTransaction()) return;
         static $done = false;
         if ($done || $conn->inTransaction()) return;
         $done = true;
@@ -60,6 +64,7 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
             $q = $conn->query("SHOW COLUMNS FROM loyalty_rewards_issued LIKE 'message'");
             if (!($q && $q->fetch())) $conn->exec('ALTER TABLE loyalty_rewards_issued ADD COLUMN message VARCHAR(600) NULL');
         } catch (PDOException $e) { error_log('ensureLoyaltyAutopilotSchema: ' . $e->getMessage()); }
+            rgSchemaRemember($rgOnceKey);
     }
 
     /** The owner's automations, defaults filled in. */

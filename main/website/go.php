@@ -20,14 +20,18 @@ try {
         $rid = $l['restaurant_id'];
         $coupon = null;
         $outboxId = null;
-        if (preg_match('/^[0-9a-z]{1,8}$/', (string)($_GET['m'] ?? ''))) {
-            $oid = (int)base_convert((string)$_GET['m'], 36, 10);
+        // ?m=<id base 36>-<signature>: only a signed id fills in that customer's gift code (links sent before
+        // the signature still count the click, but never reveal a code)
+        $signed = false;
+        if (preg_match('/^([0-9a-z]{1,8})(?:-([0-9a-f]{8}))?$/', (string)($_GET['m'] ?? ''), $mm)) {
+            $oid = (int)base_convert($mm[1], 36, 10);
+            $signed = !empty($mm[2]) && hash_equals(tlSign($oid), $mm[2]);
             $ob = $conn->prepare('SELECT id, ref_type, ref_id, phone FROM wa_outbox WHERE id = ? AND restaurant_id = ?');
             try { $ob->execute([$oid, $rid]); $row = $ob->fetch(PDO::FETCH_ASSOC); } catch (PDOException $e) { $row = false; }
             if ($row) {
                 $outboxId = (int)$row['id'];
                 // the gift this customer got in that message: open the menu with it already applied
-                try {
+                if ($signed) try {
                     if ($row['ref_type'] === 'gift') {
                         $g = $conn->prepare("SELECT coupon_code FROM loyalty_rewards_issued WHERE id = ? AND restaurant_id = ?");
                         $g->execute([(int)$row['ref_id'], $rid]);

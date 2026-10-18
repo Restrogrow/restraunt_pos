@@ -117,7 +117,13 @@ if (!function_exists('tlEnsure')) {
 
     function tlShortUrl(PDO $conn, string $rid, string $code, ?int $outboxId = null): string {
         $b = tlSiteBase($conn, $rid);
-        return $b['site'] . '/go/' . $code . ($outboxId ? '?m=' . base_convert((string)$outboxId, 10, 36) : '');
+        return $b['site'] . '/go/' . $code . ($outboxId ? '?m=' . base_convert((string)$outboxId, 10, 36) . '-' . tlSign($outboxId) : '');
+    }
+
+    /** Short signature on a message id in a link: a guessed id can't open someone else's gift code (website/go.php). */
+    function tlSign(int $outboxId): string {
+        $k = (string)(env('WA_KEY_SECRET', '') ?: env('PAYMENT_KEY_SECRET', '') ?: env('DB_PASS', '') ?: 'rg-links');
+        return substr(hash_hmac('sha256', 'tl|' . $outboxId, $k), 0, 8);
     }
 
     /** Where a link sends the visitor (with the tag and coupon the order attribution reads). */

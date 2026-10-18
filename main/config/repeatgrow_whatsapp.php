@@ -279,11 +279,13 @@ function verifyPurposeOtpCode($pdo, string $restaurantId, string $phone, string 
     if (strtotime($row['expires_at']) < time()) {
         return ['success' => false, 'message' => 'This code has expired. Please request a new one.'];
     }
-    if ((int)$row['attempts'] >= $maxAttempts) {
+    // count the try first, in one step (parallel guesses can't all slip under the limit)
+    $claim = $pdo->prepare("UPDATE whatsapp_otp_codes SET attempts = attempts + 1 WHERE id = ? AND attempts < ? AND consumed_at IS NULL");
+    $claim->execute([$row['id'], $maxAttempts]);
+    if ($claim->rowCount() !== 1) {
         return ['success' => false, 'message' => 'Too many incorrect attempts. Please request a new code.'];
     }
     if (!hash_equals($row['code_hash'], hash('sha256', $code))) {
-        $pdo->prepare("UPDATE whatsapp_otp_codes SET attempts = attempts + 1 WHERE id = ?")->execute([$row['id']]);
         $remaining = $maxAttempts - ((int)$row['attempts'] + 1);
         return [
             'success' => false,
@@ -291,7 +293,9 @@ function verifyPurposeOtpCode($pdo, string $restaurantId, string $phone, string 
         ];
     }
 
-    $pdo->prepare("UPDATE whatsapp_otp_codes SET consumed_at = NOW() WHERE id = ?")->execute([$row['id']]);
+    $use = $pdo->prepare("UPDATE whatsapp_otp_codes SET consumed_at = NOW() WHERE id = ? AND consumed_at IS NULL");
+    $use->execute([$row['id']]);
+    if ($use->rowCount() !== 1) return ['success' => false, 'message' => 'This code was already used. Please request a new one.'];
     return ['success' => true, 'message' => 'Code verified.'];
 }
 

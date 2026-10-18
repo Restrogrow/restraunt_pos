@@ -46,6 +46,9 @@ $inStr = function ($v, $default = '') { return is_scalar($v) ? (string)$v : $def
 $customer_name = trim(strip_tags($inStr($input['customer_name'] ?? '')));
 $customer_phone = $inStr($input['customer_phone'] ?? '');
 $customer_email = $inStr($input['customer_email'] ?? '');
+// a real address or none: order emails must not go to whatever was typed (or be used to spam someone)
+if ($customer_email !== '' && !filter_var(trim($customer_email), FILTER_VALIDATE_EMAIL)) $customer_email = '';
+$customer_email = trim($customer_email);
 $customer_address = trim(strip_tags($inStr($input['customer_address'] ?? '')));
 $landmark = trim(strip_tags($inStr($input['landmark'] ?? '')));
 if ($landmark === '') $landmark = null;
@@ -292,6 +295,7 @@ try {
     $minRow = $restaurantRow;
     // Use DB packaging_charge instead of client-provided value to prevent price manipulation
     $packaging_charge = (float)($minRow['packaging_charge'] ?? 0);
+    if ($order_type === 'Dine-in') $packaging_charge = 0;   // eaten at the table: no packing (the cart shows none either)
     // Minimum-order-value is checked further below, once $total has been
     // recalculated from verified menu-item prices — checking it here against
     // the raw client-submitted $total let a client submit an inflated total
@@ -393,24 +397,12 @@ try {
         $hours = json_decode($hoursRow['opening_hours'], true);
         if ($hours) {
             $checkDT = $is_scheduled_order ? $scheduledDT : new DateTime('now', $restaurantTz);
-            $day = strtolower($checkDT->format('l'));
-            $checkTime = $checkDT->getTimestamp();
             $closedMessage = $is_scheduled_order
                 ? 'The restaurant is closed at that time. Please pick a different slot.'
                 : 'Our restaurant is currently closed. Please come back during our opening hours!';
-            if (!isset($hours[$day]) || empty($hours[$day]['open'])) {
-                ob_end_clean();
-                echo json_encode(['success' => false, 'message' => $closedMessage], JSON_UNESCAPED_UNICODE);
-                exit();
-            }
-            $opening = $hours[$day]['opening'] ?? '09:00 AM';
-            $closing = $hours[$day]['closing'] ?? '10:00 PM';
-            $openDT = new DateTime($checkDT->format('Y-m-d') . ' ' . $opening, $restaurantTz);
-            $closeDT = new DateTime($checkDT->format('Y-m-d') . ' ' . $closing, $restaurantTz);
-            if ($closeDT <= $openDT) {
-                $closeDT->modify('+1 day');
-            }
-            if ($checkTime < $openDT->getTimestamp() || $checkTime >= $closeDT->getTimestamp()) {
+            // config/opening_hours.php: also counts yesterday's shift running past midnight
+            require_once __DIR__ . '/../config/opening_hours.php';
+            if (!rgIsOpenNow($hours, $restaurantTz, $checkDT)) {
                 ob_end_clean();
                 echo json_encode(['success' => false, 'message' => $closedMessage], JSON_UNESCAPED_UNICODE);
                 exit();
@@ -499,10 +491,18 @@ if ($orderType === 'delivery') {
                 }
 
                 $delivery_charge = round($distanceKm * $ratePerKm, 2);
+            } elseif ($radiusKm > 0 && $ratePerKm > 0) {
+                // No map location sent: charge as for the far edge of the delivery area. Leaving the
+                // location out used to make delivery free (it never trusts a charge sent by the browser).
+                $delivery_charge = round($radiusKm * $ratePerKm, 2);
+            } elseif ($ratePerKm > 0) {
+                ob_end_clean();
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Please pick your delivery location on the map so we can work out the delivery charge.',
+                    'error_code' => 'LOCATION_REQUIRED'], JSON_UNESCAPED_UNICODE);
+                exit();
             } else {
-                // No usable coordinates to calculate distance — fall back to 0
-                // rather than trusting an unverifiable client-submitted charge.
-                $delivery_charge = 0;
+                $delivery_charge = 0;   // km pricing on but no rate set: free delivery, as the restaurant set it
             }
         } elseif ($delivery_zone_id) {
             // ── Pincode/zone-based delivery (the default model) ──
@@ -577,7 +577,17 @@ $conn->beginTransaction();
         }
         // Scratch card reward: only for the phone that won it, and not if that order was cancelled
         if (!empty($coupon['owner_phone'])) {
-            $rewardOk = $coupon['owner_phone'] === $customer_phone;
+            // a personal code (gift, scratch card, birthday…) works only for its owner, logged in with that phone:
+            // the phone typed at checkout proves nothing
+            $ownerNorm = orderAbuseNormalizePhone((string)$coupon['owner_phone']) ?? (string)$coupon['owner_phone'];
+            $loggedNorm = $vipCustomer ? (orderAbuseNormalizePhone((string)$vipCustomer['phone']) ?? (string)$vipCustomer['phone']) : null;
+            if ($loggedNorm === null) {
+                $conn->rollBack();
+                ob_end_clean();
+                echo json_encode(['success' => false, 'message' => 'Log in with your phone number to use this reward code.'], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+            $rewardOk = $ownerNorm === $loggedNorm && $customer_phone === $loggedNorm;
             if ($rewardOk) {
                 try {
                     $src = $conn->prepare("SELECT o.order_status FROM scratch_cards sc JOIN orders o ON o.id = sc.order_id WHERE sc.restaurant_id = ? AND sc.coupon_code = ? LIMIT 1");
@@ -613,7 +623,9 @@ $conn->beginTransaction();
         $placeholders = implode(',', array_fill(0, count($menuItemIds), '?'));
         // Scope to this restaurant — without this filter a menu_item id belonging
         // to a different restaurant could be used to bill an unrelated price.
-        $menuStmt = $conn->prepare("SELECT id, menu_id, item_name_en, base_price, is_available FROM menu_items WHERE id IN ($placeholders) AND restaurant_id = ?");
+        // a dish in a category the restaurant switched off counts as not available
+        $menuStmt = $conn->prepare("SELECT mi.id, mi.menu_id, mi.item_name_en, mi.base_price, (mi.is_available = 1 AND (m.id IS NULL OR m.is_active = 1)) AS is_available
+            FROM menu_items mi LEFT JOIN menu m ON m.id = mi.menu_id AND m.restaurant_id = mi.restaurant_id WHERE mi.id IN ($placeholders) AND mi.restaurant_id = ?");
         $menuStmt->execute(array_merge($menuItemIds, [$restaurant_id]));
         foreach ($menuStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $menuItemsById[(int)$row['id']] = $row;
@@ -700,12 +712,34 @@ $conn->beginTransaction();
         $menuItemId = (int)($item['id'] ?? 0);
         $quantity = (int)($item['quantity'] ?? 0);
         if ($quantity <= 0) continue;
+        if ($quantity > 50) {   // a real customer never needs more; fake giant orders pumped spend / loyalty tiers
+            $conn->rollBack();
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'You can order up to 50 of one dish online. For a bigger order, please call the restaurant.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
 
         $menuRow = $menuItemsById[$menuItemId] ?? null;
-        if (!$menuRow || !$menuRow['is_available']) continue;
+        if (!$menuRow || !$menuRow['is_available']) {
+            // sold out / removed since it went in the cart: say so (it used to be dropped without a word)
+            $conn->rollBack();
+            ob_end_clean();
+            $gone = $inStr($item['name'] ?? '') !== '' ? $inStr($item['name']) : ($menuRow['item_name_en'] ?? 'A dish in your cart');
+            echo json_encode(['success' => false, 'code' => 'item_unavailable', 'item_id' => $menuItemId,
+                'message' => mb_substr(strip_tags($gone), 0, 80) . ' is not available right now. Please remove it from your cart and try again.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
 
         $unitPrice = (float)$menuRow['base_price'];
         $variationName = $inStr($item['variation_name'] ?? '');
+        if ($variationName !== '' && !empty($variationsByItem[$menuItemId]) && !isset($variationsByItem[$menuItemId][$variationName])) {
+            // a size that no longer exists (renamed / removed): don't quietly charge another price
+            $conn->rollBack();
+            ob_end_clean();
+            echo json_encode(['success' => false, 'code' => 'item_changed', 'item_id' => $menuItemId,
+                'message' => mb_substr(strip_tags((string)($menuRow['item_name_en'] ?? 'A dish')), 0, 80) . ' has changed (' . mb_substr(strip_tags($variationName), 0, 40) . ' is no longer offered). Please add it to your cart again.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
 
         if (!empty($variationName) && isset($variationsByItem[$menuItemId][$variationName])) {
             $unitPrice = $variationsByItem[$menuItemId][$variationName];
@@ -805,7 +839,7 @@ $conn->beginTransaction();
     if (!empty($global_addons) && is_array($global_addons)) {
         foreach ($global_addons as $gAddon) {
             $gAddonId = (int)($gAddon['id'] ?? 0);
-            $gQty = (int)($gAddon['quantity'] ?? 1);
+            $gQty = min(50, (int)($gAddon['quantity'] ?? 1));
             if ($gAddonId <= 0 || $gQty <= 0) continue;
             $dbAddon = $addonsById[$gAddonId] ?? null;
             if ($dbAddon) {
@@ -1032,8 +1066,7 @@ $conn->beginTransaction();
         }
     }
 
-    $_SESSION['ordering_customer_id'] = (int)$customer_id;
-    $_SESSION['ordering_customer_restaurant_id'] = $restaurant_id;
+    // (the guest's "this is my phone" session is set after the commit, below)
 
     // A plain unlocked SELECT here only catches *sequential* retries — two
     // genuinely concurrent submissions (same customer, two tabs, or a slow
@@ -1310,6 +1343,13 @@ $conn->beginTransaction();
 
     // Commit transaction
     $conn->commit();
+    // A guest who really placed this order may see that phone's points on the thank-you / loyalty page
+    // (read-only: spending points, gift codes and changing details need a login, see loyalty_actions.php).
+    // Not for an online order still waiting for payment: typing someone's number and leaving must give nothing.
+    if ($payment_method !== 'UPI / NetBanking') {
+        $_SESSION['ordering_customer_id'] = (int)$customer_id;
+        $_SESSION['ordering_customer_restaurant_id'] = $restaurant_id;
+    }
     // which campaign link (poster QR / caption link) brought this order, for Marketing › My campaigns
     // (the order is saved now: a problem in these extras must not tell the customer it failed, or they order twice)
     try {

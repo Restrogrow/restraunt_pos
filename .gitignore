@@ -105,3 +105,5 @@ main/config/.ga-service-account.json
 
 # signatures made in Super Admin › Email (kept in the database too)
 main/uploads/signatures/*
+# small photo copies made by main/website/image.php
+main/uploads/cache/*

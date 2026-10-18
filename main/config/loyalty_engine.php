@@ -28,6 +28,10 @@ if (!defined('LOYALTY_PROGRAM_TYPES')) define('LOYALTY_PROGRAM_TYPES', ['cashbac
 if (!function_exists('ensureLoyaltyEngineSchema')) {
 
     function ensureLoyaltyEngineSchema(PDO $conn): void {
+        // once per deploy, not on every request (config/schema_cache.php)
+        require_once __DIR__ . '/schema_cache.php';
+        $rgOnceKey = 'e:ensureLoyaltyEngineSchema:' . @filemtime(__FILE__);
+        if (rgSchemaKnown($rgOnceKey) || $conn->inTransaction()) return;
         static $done = false;
         if ($done || $conn->inTransaction()) return;   // DDL would commit a caller's transaction
         $done = true;
@@ -98,6 +102,7 @@ if (!function_exists('ensureLoyaltyEngineSchema')) {
         $conn->exec('CREATE TABLE IF NOT EXISTS loyalty_engine_version (v INT NOT NULL)');
         $conn->exec('DELETE FROM loyalty_engine_version');
         $conn->prepare('INSERT INTO loyalty_engine_version (v) VALUES (?)')->execute([LOYALTY_ENGINE_VERSION]);
+            rgSchemaRemember($rgOnceKey);
     }
 
     function loyaltyProgramType(array $settings): string {

@@ -20,6 +20,10 @@ if (!function_exists('ensureLoyaltyGamesSchema')) {
     define('LOYALTY_CHALLENGE_KINDS', ['visits', 'spend', 'dish', 'streak']);
 
     function ensureLoyaltyGamesSchema(PDO $conn): void {
+        // once per deploy, not on every request (config/schema_cache.php)
+        require_once __DIR__ . '/schema_cache.php';
+        $rgOnceKey = 'e:ensureLoyaltyGamesSchema:' . @filemtime(__FILE__);
+        if (rgSchemaKnown($rgOnceKey) || $conn->inTransaction()) return;
         static $done = false;
         if ($done || $conn->inTransaction()) return;
         $done = true;
@@ -46,6 +50,7 @@ if (!function_exists('ensureLoyaltyGamesSchema')) {
             $q = $conn->query("SHOW COLUMNS FROM scratch_settings LIKE 'game_style'");
             if (!($q && $q->fetch())) $conn->exec("ALTER TABLE scratch_settings ADD COLUMN game_style VARCHAR(10) NOT NULL DEFAULT 'scratch'");
         } catch (PDOException $e) { error_log('ensureLoyaltyGamesSchema: ' . $e->getMessage()); }
+            rgSchemaRemember($rgOnceKey);
     }
 
     function loyaltyChallenges(PDO $conn, string $rid, bool $activeOnly = false): array {

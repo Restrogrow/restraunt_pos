@@ -18,6 +18,8 @@ if (!function_exists('ensureMenuIngredientsColumn')) {
     function ensureMenuIngredientsColumn($conn) {
         static $has = null;
         if ($has !== null) return $has;
+        require_once __DIR__ . '/schema_cache.php';
+        if (rgHasColumn($conn, 'menu_items', 'ingredients')) return $has = true;   // remembered: no query per request
         try {
             $col = $conn->query("SHOW COLUMNS FROM menu_items LIKE 'ingredients'");
             if ($col && $col->fetch()) return $has = true;
@@ -64,6 +66,8 @@ if (!function_exists('ensureMenuIngredientsColumn')) {
     function ensureMenuNutritionColumns($conn) {
         static $has = null;
         if ($has !== null) return $has;
+        require_once __DIR__ . '/schema_cache.php';
+        if (rgHasColumn($conn, 'menu_items', 'health_tags') && rgHasColumn($conn, 'menu_items', 'fibre_g')) return $has = true;
         try {
             foreach (['protein_g', 'fat_g', 'carbs_g', 'fibre_g'] as $col) {
                 $q = $conn->query("SHOW COLUMNS FROM menu_items LIKE '$col'");

@@ -136,15 +136,14 @@ function issueCustomerRememberCookie($pdo, $customerId) {
     $pdo->prepare("INSERT INTO customer_remember_tokens (customer_id, selector, validator_hash, expires_at) VALUES (?, ?, ?, ?)")
         ->execute([$customerId, $selector, password_hash($validator, PASSWORD_DEFAULT), $expiresAt]);
 
-    setcookie(
-        CUSTOMER_REMEMBER_COOKIE,
-        $selector . ':' . $validator,
-        time() + (CUSTOMER_REMEMBER_DAYS * 86400),
-        '/',
-        '',
-        function_exists('isSecureRequest') ? isSecureRequest() : (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on'),
-        true
-    );
+    // SameSite=Lax: another website can't make this browser redeem points, pay from the wallet or log out
+    setcookie(CUSTOMER_REMEMBER_COOKIE, $selector . ':' . $validator, [
+        'expires' => time() + (CUSTOMER_REMEMBER_DAYS * 86400),
+        'path' => '/',
+        'secure' => function_exists('isSecureRequest') ? isSecureRequest() : (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 }
 
 /**

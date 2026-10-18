@@ -6,7 +6,7 @@
 $restaurant_id = $_GET['rid'] ?? '';
 $page_url = $_GET['page'] ?? '/';
 $page_name = $_GET['name'] ?? 'Home';
-$visitor_ip = $_GET['ip'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+$visitor_ip = $_SERVER['REMOTE_ADDR'] ?? '';   // never an ip= sent by the browser
 $referrer_url = $_GET['ref'] ?? '';
 $user_agent = $_GET['ua'] ?? $_SERVER['HTTP_USER_AGENT'] ?? '';
 

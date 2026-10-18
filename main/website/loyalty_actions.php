@@ -51,9 +51,10 @@ $phone = isset($_REQUEST['phone']) ? trim($_REQUEST['phone']) : '';
  * never a bare phone parameter. Orders keep points on the 10-digit phone, so
  * an account saved as 0XXXXXXXXXX still finds its points.
  */
-function loyaltyResolveCustomer(PDO $conn, string $rid, string $phone): ?array {
+function loyaltyResolveCustomer(PDO $conn, string $rid, string $phone, bool $mustLogIn = false): ?array {
+    // spending points, gift codes and changing details: only the logged-in customer (a phone number proves nothing)
     $who = getLoggedInCustomer($conn, $rid);
-    if (!$who && $phone !== '') $who = getAuthorizedCustomer($conn, $rid, $phone);
+    if (!$who && $phone !== '' && !$mustLogIn) $who = getAuthorizedCustomer($conn, $rid, $phone);
     if (!$who) return null;
     $raw = (string)$who['phone'];
     $norm = orderAbuseNormalizePhone($raw) ?? $raw;
@@ -63,6 +64,16 @@ function loyaltyResolveCustomer(PDO $conn, string $rid, string $phone): ?array {
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row && empty($row['customer_name'])) $row['customer_name'] = $who['customer_name'] ?? '';
     return $row ?: null;
+}
+
+/** A guest (not logged in) sees points and tier, never codes or personal details. */
+function loyaltyGuestView(array $m): array {
+    $m['gifts'] = [];
+    $m['pending_codes'] = [];
+    $m['details'] = null;
+    $m['ledger'] = array_map(function ($l) { $l['redemption_code'] = null; return $l; }, $m['ledger']);
+    $m['guest'] = true;
+    return $m;
 }
 
 /** Tiers, lowest first, with what each one gives. */
@@ -138,9 +149,11 @@ try {
     if (!$conn) throw new Exception('No connection');
     if (!$restaurantId) throw new Exception('Restaurant not identified');
 
-    ensureGrowthSchema($conn);
-    ensureLoyaltyAutopilotSchema($conn);
-    ensureWalletCardSchema($conn);
+    // table setup: once per deploy, not on every request (config/schema_cache.php)
+    require_once __DIR__ . '/../config/schema_cache.php';
+    rgEnsureOnce('ensureGrowthSchema', $conn);
+    rgEnsureOnce('ensureLoyaltyAutopilotSchema', $conn);
+    rgEnsureOnce('ensureWalletCardSchema', $conn);
 
     switch ($action) {
         case 'page':
@@ -183,15 +196,17 @@ try {
                 $cs->execute([$restaurantId]);
                 $program['challenges'] = loyaltyChallengesForCustomer($conn, $restaurantId, $customer ?: null, (string)($cs->fetchColumn() ?: '₹'));
             }
-            $loggedIn = (bool)getLoggedInCustomer($conn, $restaurantId) || $customer;
-            echo json_encode(['success' => true, 'program' => $program, 'logged_in' => (bool)$loggedIn,
-                'member' => $customer ? loyaltyMember($conn, $restaurantId, $customer, $settings, $tiers) : null], JSON_UNESCAPED_UNICODE);
+            $realLogin = (bool)getLoggedInCustomer($conn, $restaurantId);
+            $member = $customer ? loyaltyMember($conn, $restaurantId, $customer, $settings, $tiers) : null;
+            if ($member && !$realLogin) $member = loyaltyGuestView($member);
+            echo json_encode(['success' => true, 'program' => $program, 'logged_in' => $realLogin || $customer, 'guest' => !$realLogin,
+                'member' => $member], JSON_UNESCAPED_UNICODE);
             break;
 
         case 'save_details':
             // Birthday / anniversary / WhatsApp opt-in, for the logged-in customer
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Exception('Invalid request method');
-            $customer = loyaltyResolveCustomer($conn, $restaurantId, $phone);
+            $customer = loyaltyResolveCustomer($conn, $restaurantId, $phone, true);
             if (!$customer) throw new Exception('Please log in first.');
             $date = function ($v) { $v = trim((string)$v); return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) && strtotime($v) && $v <= date('Y-m-d') && $v >= '1900-01-01' ? $v : null; };
             $optin = !empty($_POST['whatsapp_optin']) ? 1 : 0;
@@ -210,6 +225,7 @@ try {
             $settings = getGrowthSettings($conn, $restaurantId);
             $tiers = loyaltyTiers($conn, $restaurantId);
             $m = loyaltyMember($conn, $restaurantId, $customer, $settings, $tiers);
+            if (!getLoggedInCustomer($conn, $restaurantId)) $m = loyaltyGuestView($m);
             echo json_encode([
                 'success' => true,
                 'enrolled' => true,
@@ -232,7 +248,7 @@ try {
             $points = (int)($_POST['points'] ?? 0);
             if ($points <= 0) throw new Exception('Enter a valid number of points');
 
-            $customer = loyaltyResolveCustomer($conn, $restaurantId, $phone);
+            $customer = loyaltyResolveCustomer($conn, $restaurantId, $phone, true);
             if (!$customer) throw new Exception('Please log in before redeeming points.');
 
             $conn->beginTransaction();
@@ -256,7 +272,7 @@ try {
             $rewardId = (int)($_POST['reward_id'] ?? 0);
             if ($rewardId <= 0) throw new Exception('Invalid reward');
 
-            $customer = loyaltyResolveCustomer($conn, $restaurantId, $phone);
+            $customer = loyaltyResolveCustomer($conn, $restaurantId, $phone, true);
             if (!$customer) throw new Exception('Please log in before redeeming a reward.');
 
             $conn->beginTransaction();

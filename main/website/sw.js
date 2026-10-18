@@ -1,6 +1,6 @@
 // Service Worker for PWA Install Support
 // Version bump on each deploy to bust all caches
-const CACHE_NAME = 'restaurant-cache-v12';
+const CACHE_NAME = 'restaurant-cache-v13';   // v13: personal data (orders, wallet, points) is never stored any more
 // The owner dashboard, kept so the POS opens with no internet (offline billing, assets/js/pos-offline.js).
 // Cleared on logout (script.js logout()).
 const SHELL_CACHE = 'rg-shell';
@@ -91,6 +91,30 @@ self.addEventListener('fetch', function(event) {
   // error handling (retry/backoff, "connection lost" UI) can react.
   if (reqUrl.indexOf('/api/') !== -1) {
     event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Server pages and their data (api.php, wallet_api.php, loyalty_actions.php, customer_auth.php…) hold
+  // personal details (order history, wallet, points): always live, never stored on a shared phone.
+  var path = reqHost.pathname;
+  var isPhotoCopy = /\/image\.php$/.test(path) && reqHost.searchParams.has('w');
+  if (/\.php$/.test(path) && !isPhotoCopy) { return; }
+
+  // Files that never change at the same address (versioned ?v= CSS/JS, fonts, small photo copies made
+  // by image.php): from the device straight away after the first visit, so pages open instantly.
+  if (isPhotoCopy || reqHost.searchParams.has('v') || /\.(woff2?|ttf)$/.test(path)) {
+    event.respondWith(
+      caches.match(event.request).then(function(hit) {
+        if (hit) return hit;
+        return fetch(event.request).then(function(response) {
+          if (response.status === 200) {
+            var copy = response.clone();
+            caches.open(CACHE_NAME).then(function(cache) { return cache.put(event.request, copy); }).catch(function() {});
+          }
+          return response;
+        });
+      })
+    );
     return;
   }
 

@@ -21,7 +21,7 @@ if (isset($_GET['preview_card']) && in_array($_GET['preview_card'], THEME_MENU_C
 <?php require_once __DIR__ . '/../config/seo_helpers.php'; ?>
 <title><?php echo htmlspecialchars(seoTitle('menu', 'Menu - ' . ($restaurant_name ?? '')), ENT_QUOTES, 'UTF-8'); ?></title>
 <?php echo seoHeadTags('menu'); ?>
-<?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'fontawesome', 'bootstrap-icons']); ?>
+<?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'fontawesome']); ?>
 <?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
 <style>
 :root {
@@ -1398,7 +1398,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
 
     <div class="search-rapper">
       <div class="search-container">
-        <i class="bi bi-search search-lead" aria-hidden="true"></i>
+        <i class="fa-solid fa-magnifying-glass search-lead" aria-hidden="true"></i>
         <div class="search-field">
           <input type="search" class="search-input" aria-label="Search dishes" autocomplete="off" enterkeyhint="search">
           <div class="search-hint" aria-hidden="true">Search for <span class="search-hint-word" id="searchHintWord">your favourite dish</span></div>
@@ -1550,13 +1550,13 @@ function apiUrl(action, extra) {
   return p;
 }
 
-function getImageUrl(img) {
+function getImageUrl(img, w) {   // w: width of the small copy image.php makes (96, 200, 400, 800)
   if (!img || img === '' || img === 'no-image') return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Image%3C/text%3E%3C/svg%3E';
   if (img.indexOf('http://') === 0 || img.indexOf('https://') === 0 || img.indexOf('data:') === 0) return img;
   // No per-load cache-buster: every upload gets a new id (db:<uniqid>), so a
   // changed photo already has a new URL. Busting on each load made every refresh
   // re-download all dish photos (they popped in one by one).
-  if (img.indexOf('db:') === 0) return 'image.php?id=' + encodeURIComponent(img.substring(3));
+  if (img.indexOf('db:') === 0) return 'image.php?id=' + encodeURIComponent(img.substring(3)) + '&w=' + (w || 400);
   return 'image.php?id=' + encodeURIComponent(img);
 }
 
@@ -2319,7 +2319,7 @@ function showItemDetail(itemId) {
   sheetQty = getQty(item.id) || 1;
   selectedVariant = null;
 
-  var imgUrl = getImageUrl(item.item_image || item.image);
+  var imgUrl = getImageUrl(item.item_image || item.image, 800);
   var itemName = escapeHtml(item.item_name_translated || item.item_name_en || item.name);
   var itemDesc = item.item_description_en || item.desc || '';
   var descFmt = item.description_format || 'paragraph';
@@ -3022,7 +3022,7 @@ function renderSideNav() {
     var img = getMenuImage(c) || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2242%22 height=%2242%22 viewBox=%220 0 42 42%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3C/svg%3E';
     html += '<div class="sub-views">' +
       '<button class="side-nav-btn' + active + '" data-index="' + i + '">' +
-        '<img src="' + getImageUrl(img) + '" alt="' + escapeHtml(displayName) + '" width="36" height="36" loading="' + (i < 5 ? 'eager' : 'lazy') + '" decoding="async"><br>' +
+        '<img src="' + getImageUrl(img, 96) + '" alt="' + escapeHtml(displayName) + '" width="36" height="36" loading="' + (i < 5 ? 'eager' : 'lazy') + '" decoding="async"><br>' +
         '<span class="cat-name">' + escapeHtml(displayName) + '</span>' +
       '</button>' +
     '</div>';
@@ -3184,7 +3184,7 @@ function rebuildMenuItems() {
   }
   for (var i = 0; i < rawMenuItems.length; i++) {
     var item = rawMenuItems[i];
-    if (vegOnly && item.item_type && item.item_type !== 'Veg') continue;
+    if (vegOnly && (item.item_type === 'Non Veg' || item.item_type === 'Egg')) continue;   // Veg only: hide meat and egg; drinks and others stay
     var mid = item.menu_id;
     if (menuMap[mid]) {
       menuMap[mid].items.push(item);
@@ -3238,15 +3238,26 @@ function fetchAndRender() {
     return;
   }
 
-  fetch(apiUrl('getMenus'))
-    .then(function(r) { return r.json(); })
-    .then(function(menusData) {
-      menus = menusData || [];
-      return fetch(apiUrl('getMenuItems'));
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(itemsData) {
-      rawMenuItems = itemsData || [];
+  // menus, dishes and the column setting load together (one wait instead of three in a row);
+  // the columns are set before the dishes are drawn, so the grid doesn't jump
+  var themeQ = 'action=get&restaurant_id=' + encodeURIComponent(window.websiteRestaurantId);
+  Promise.all([
+    fetch(apiUrl('getMenus')).then(function(r) { return r.json(); }),
+    fetch(apiUrl('getMenuItems')).then(function(r) { return r.json(); }),
+    fetch('theme_api.php?' + themeQ).then(function(r) { return r.json(); }).catch(function() { return null; })
+  ])
+    .then(function(all) {
+      var themeData = all[2];
+      if (themeData && themeData.success && themeData.settings) {
+        var cols = themeData.settings.layout_columns || 2;
+        // Dashboard "Current" preview: unsaved column count
+        if (window.__previewTheme && window.__previewTheme.layout_columns) cols = window.__previewTheme.layout_columns;
+        var grid = document.getElementById('productGrid');
+        grid.classList.remove('cols-1', 'cols-2');
+        grid.classList.add('cols-' + cols);
+      }
+      menus = all[0] || [];
+      rawMenuItems = all[1] || [];
       rebuildMenuItems();
       loadCart();
       cleanCart();
@@ -3266,20 +3277,6 @@ function fetchAndRender() {
       if (startIdx === FAV_CATEGORY) { renderSideNav(); updateNavActive(FAV_CATEGORY); }
       var dishParam = parseInt(getQueryParam('dish'), 10);
       if (dishParam) setTimeout(function() { showItemDetail(dishParam); }, 300);
-
-      // Load layout columns setting
-      var themeQ = 'action=get&restaurant_id=' + encodeURIComponent(window.websiteRestaurantId);
-      return fetch('theme_api.php?' + themeQ).then(function(r) { return r.json(); });
-    })
-    .then(function(themeData) {
-      if (themeData && themeData.success && themeData.settings) {
-        var cols = themeData.settings.layout_columns || 2;
-        // Dashboard "Current" preview: unsaved column count
-        if (window.__previewTheme && window.__previewTheme.layout_columns) cols = window.__previewTheme.layout_columns;
-        var grid = document.getElementById('productGrid');
-        grid.classList.remove('cols-1', 'cols-2');
-        grid.classList.add('cols-' + cols);
-      }
     })
     .catch(function(err) {
       console.error('Failed to load menu data:', err);
@@ -3327,22 +3324,26 @@ function isRestaurantOpen(hours) {
     var utc = now.getTime() + now.getTimezoneOffset() * 60000;
     now = new Date(utc + window.restaurantTimezoneOffset * 60000);
   }
-  var day = days[now.getDay()];
-  var dayData = hours[day];
-  if (!dayData || !dayData.open) return false;
   function toMins(t) {
-    var p = t.split(' ');
+    var p = String(t || '').split(' ');
     var tp = p[0].split(':');
-    var h = parseInt(tp[0], 10), m = parseInt(tp[1], 10);
+    var h = parseInt(tp[0], 10), m = parseInt(tp[1], 10) || 0;
     if (p[1] === 'PM' && h !== 12) h += 12;
     if (p[1] === 'AM' && h === 12) h = 0;
     return h * 60 + m;
   }
   var cur = now.getHours() * 60 + now.getMinutes();
-  var open = toMins(dayData.opening);
-  var close = toMins(dayData.closing);
-  if (close <= open) return cur >= open || cur < close;
-  return cur >= open && cur < close;
+  // today's hours, or yesterday's shift that runs past midnight (same rule as config/opening_hours.php)
+  var today = hours[days[now.getDay()]], yest = hours[days[(now.getDay() + 6) % 7]];
+  if (today && today.open) {
+    var o = toMins(today.opening || '09:00 AM'), c = toMins(today.closing || '10:00 PM');
+    if (c <= o ? cur >= o : (cur >= o && cur < c)) return true;
+  }
+  if (yest && yest.open) {
+    var yo = toMins(yest.opening || '09:00 AM'), yc = toMins(yest.closing || '10:00 PM');
+    if (yc <= yo && cur < yc) return true;
+  }
+  return false;
 }
 
 function showClosedModal() {

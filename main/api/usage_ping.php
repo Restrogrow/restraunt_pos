@@ -9,7 +9,9 @@ header('Content-Type: application/json; charset=UTF-8');
 $rid = (string)($_SESSION['restaurant_id'] ?? '');
 $who = ($_SESSION['user_type'] ?? '') === 'staff' ? 'staff' : 'owner';
 if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
-if ($rid === '' || $_SERVER['REQUEST_METHOD'] !== 'POST') { echo '{"success":false}'; exit; }
+// only someone logged in to the dashboard (a website visitor also has restaurant_id in the session)
+$dash = !empty($_SESSION['user_id']) || !empty($_SESSION['staff_id']) || !empty($_SESSION['branch_admin_id']);
+if ($rid === '' || !$dash || $_SERVER['REQUEST_METHOD'] !== 'POST') { echo '{"success":false}'; exit; }
 try {
     require_once __DIR__ . '/../db_connection.php';
     require_once __DIR__ . '/../config/usage.php';

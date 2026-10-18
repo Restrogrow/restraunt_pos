@@ -1462,6 +1462,7 @@ $pfStyle = (!empty($background_theme) ? "--pf-photo: url('" . $background_theme 
 
 <script>
 window.globalCurrencySymbol = <?php echo json_encode($currency_symbol ?? '₹', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+var TRACK_PAGE_URL = <?php echo json_encode(restaurantPageUrl('track'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;   // the restaurant's own track page (a bare track.php lost the restaurant)
 window.restaurantCountry = <?php echo json_encode($country ?? 'India', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 window.restaurantDialCode = <?php echo json_encode($phone_dial_code ?? '+91', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantPhoneMin = <?php echo json_encode((int)($phone_min_digits ?? 10), JSON_HEX_TAG); ?>;
@@ -1783,6 +1784,10 @@ async function loadOrderHistory(silent) {
       } catch (err) { data = null; console.warn('Orders request failed (attempt ' + (attempt + 1) + '):', err && err.message); }
     }
     if (data === null) throw new Error('orders unavailable');
+    if (data && data.need_login) {
+      el.innerHTML = '<div class="empty-state"><span class="empty-state-icon"><i class="fa-solid fa-lock"></i></span><div class="empty-state-title">Log in to see your orders</div><div class="empty-state-desc">For your privacy, your order history shows after you log in with your phone number.</div></div>';
+      return;
+    }
     allOrders = sortOrders(Array.isArray(data) ? data : (data.orders || []));
     updateStats(allOrders);
     renderOrders(allOrders, el);
@@ -2047,7 +2052,7 @@ function renderOrderCard(o) {
     var trackCustomer = window.loggedInCustomer || loadCustomerFromStorage();
     var trackPhone = trackCustomer ? (trackCustomer.phone || '') : '';
     if (trackPhone) {
-      html += '<button class="action-btn track" onclick="window.location.href=\'track.php?order_number=' + encodeURIComponent(orderNum) + '&customer_phone=' + encodeURIComponent(trackPhone) + '\'"><i class="fa-solid fa-location-dot"></i> Track Order</button>';
+      html += '<button class="action-btn track" onclick="window.location.href=\'' + TRACK_PAGE_URL + '?order_number=' + encodeURIComponent(orderNum) + '&customer_phone=' + encodeURIComponent(trackPhone) + '\'"><i class="fa-solid fa-location-dot"></i> Track Order</button>';
     }
   }
   if (isRatable) {

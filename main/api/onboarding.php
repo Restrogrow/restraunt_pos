@@ -18,7 +18,7 @@ header('Content-Type: application/json; charset=UTF-8');
 
 function obOut(array $d, int $code = 200): void { http_response_code($code); echo json_encode($d, JSON_UNESCAPED_UNICODE); exit; }
 
-if (empty($_SESSION['restaurant_id'])) obOut(['success' => false, 'message' => 'Please log in again.'], 401);
+if (empty($_SESSION['restaurant_id']) || (empty($_SESSION['user_id']) && empty($_SESSION['staff_id']) && empty($_SESSION['branch_admin_id']))) obOut(['success' => false, 'message' => 'Please log in again.'], 401);   // not a website visitor
 $rid = (string)$_SESSION['restaurant_id'];
 $isOwner = in_array($_SESSION['user_type'] ?? '', ['admin', 'branch_admin'], true);
 session_write_close();

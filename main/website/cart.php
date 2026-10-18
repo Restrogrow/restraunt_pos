@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="<?php echo htmlspecialchars($restaurant_logo ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>">
 <link rel="icon" href="<?php echo htmlspecialchars($favicon_href ?? $local_favicon_svg, ENT_QUOTES, 'UTF-8'); ?>">
 <title>Cart - <?php echo htmlspecialchars($restaurant_name ?? 'Dvani Cafe & Grill', ENT_QUOTES, 'UTF-8'); ?></title>
-<?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'material-symbols', 'fontawesome', 'bootstrap-icons']); ?>
+<?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'material-symbols', 'fontawesome']); ?>
 <?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
 <!-- Google Maps Places Autocomplete (Delivery address) -->
 <?php $googleMapsApiKey = function_exists('googleMapsApiKey') ? googleMapsApiKey() : ''; ?>
@@ -1340,10 +1340,10 @@ function fetchJsonWithRetry(url, options, maxAttempts) {
   return tryOnce();
 }
 
-function getImageUrl(img) {
+function getImageUrl(img, w) {   // w: width of the small copy image.php makes (96, 200, 400, 800)
   if (!img || img === '' || img === 'no-image') return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Image%3C/text%3E%3C/svg%3E';
   if (img.indexOf('http://') === 0 || img.indexOf('https://') === 0) return img;
-  if (img.indexOf('db:') === 0) return 'image.php?id=' + encodeURIComponent(img.substring(3));
+  if (img.indexOf('db:') === 0) return 'image.php?id=' + encodeURIComponent(img.substring(3)) + '&w=' + (w || 200);
   return 'image.php?id=' + encodeURIComponent(img);
 }
 
@@ -1745,7 +1745,7 @@ function renderCart() {
     }
     var addonTotal = getAddonTotalForItem(key);
     if (addonTotal > 0) {
-      price = price + (addonTotal / qty);
+      price = price + addonTotal;   // add-ons are per plate, as the menu and the order server count them
     }
     regPrice += price * qty;
 
@@ -1919,8 +1919,8 @@ function renderCart() {
           '<span class="val">-' + getCurrency() + vipDiscountAmount.toFixed(2) + '</span>' +
         '</div>' : '') +
         (PACKAGING_CHARGE > 0 ? '<div class="price-row">' +
-          '<span>Packaging Charge</span>' +
-          '<span class="val">' + getCurrency() + PACKAGING_CHARGE.toFixed(2) + '</span>' +
+          '<span>Packaging (delivery &amp; takeaway)</span>' +
+          '<span class="note">' + getCurrency() + PACKAGING_CHARGE.toFixed(2) + ', added at checkout</span>' +
         '</div>' : '') +
         '<div class="price-row">' +
           '<span>Delivery Fee</span>' +
@@ -1928,11 +1928,12 @@ function renderCart() {
         '</div>' +
         '<hr class="divider">' +
         '<div class="total-row">' +
-          '<span>To pay</span>' +
+          '<span>Subtotal</span>' +
           '<span>' + getCurrency() + finalTotal.toFixed(2) + '</span>' +
         '</div>' +
+        '<div class="price-row"><span class="note">Taxes and charges are added at checkout, before you pay.</span></div>' +
         (MIN_ORDER > 0 ? '<div class="min-order-warning" id="minOrderWarning">' +
-          '<i class="bi bi-exclamation-circle"></i> Minimum Order Value Is ' + getCurrency() + MIN_ORDER.toFixed(2) + ' Please Add More Items To Proceed.' +
+          '<i class="fa-solid fa-circle-exclamation"></i> Minimum Order Value Is ' + getCurrency() + MIN_ORDER.toFixed(2) + ' Please Add More Items To Proceed.' +
         '</div>' +
         (totalPrice < MIN_ORDER ? '<div class="min-order-bar"><div class="fill" style="width:' + Math.min(100, (totalPrice / MIN_ORDER) * 100) + '%"></div></div>' : '') : '') +
         ((discountAmount + loyaltyDiscountAmount + vipDiscountAmount) > 0 ? '<div class="bill-save"><i class="fa-solid fa-circle-check"></i>You\'re saving ' + getCurrency() + (discountAmount + loyaltyDiscountAmount + vipDiscountAmount).toFixed(0) + ' on this order</div>' : '') +
@@ -2577,22 +2578,26 @@ function isRestaurantOpen(hours) {
     var utc = now.getTime() + now.getTimezoneOffset() * 60000;
     now = new Date(utc + window.restaurantTimezoneOffset * 60000);
   }
-  var day = days[now.getDay()];
-  var dayData = hours[day];
-  if (!dayData || !dayData.open) return false;
   function toMins(t) {
-    var p = t.split(' ');
+    var p = String(t || '').split(' ');
     var tp = p[0].split(':');
-    var h = parseInt(tp[0], 10), m = parseInt(tp[1], 10);
+    var h = parseInt(tp[0], 10), m = parseInt(tp[1], 10) || 0;
     if (p[1] === 'PM' && h !== 12) h += 12;
     if (p[1] === 'AM' && h === 12) h = 0;
     return h * 60 + m;
   }
   var cur = now.getHours() * 60 + now.getMinutes();
-  var open = toMins(dayData.opening);
-  var close = toMins(dayData.closing);
-  if (close <= open) return cur >= open || cur < close;
-  return cur >= open && cur < close;
+  // today's hours, or yesterday's shift that runs past midnight (same rule as config/opening_hours.php)
+  var today = hours[days[now.getDay()]], yest = hours[days[(now.getDay() + 6) % 7]];
+  if (today && today.open) {
+    var o = toMins(today.opening || '09:00 AM'), c = toMins(today.closing || '10:00 PM');
+    if (c <= o ? cur >= o : (cur >= o && cur < c)) return true;
+  }
+  if (yest && yest.open) {
+    var yo = toMins(yest.opening || '09:00 AM'), yc = toMins(yest.closing || '10:00 PM');
+    if (yc <= yo && cur < yc) return true;
+  }
+  return false;
 }
 
 function showClosedModal() {
@@ -2630,7 +2635,7 @@ function getCartTotal() {
       var basePrice = getCartPrice(key);
       var addonTotal = getAddonTotalForItem(key);
       totalQty += qty;
-      totalPrice += (basePrice * qty) + addonTotal;
+      totalPrice += (basePrice + addonTotal) * qty;   // add-ons per plate (process_website_order.php does the same)
     }
   }
   var discountAmount = 0;
@@ -3839,7 +3844,7 @@ function showSuccessModal(orderNum, scheduledAt) {
     var storedPhone = '';
     try { var cd = JSON.parse(localStorage.getItem('customerDetails') || '{}'); storedPhone = cd.phone || ''; } catch (e) {}
     if (storedPhone) {
-      trackUrl = 'track.php?order_number=' + encodeURIComponent(orderNum) + '&customer_phone=' + encodeURIComponent(storedPhone);
+      trackUrl = <?php echo json_encode(restaurantPageUrl('track'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?> + '?order_number=' + encodeURIComponent(orderNum) + '&customer_phone=' + encodeURIComponent(storedPhone);
     }
   }
 

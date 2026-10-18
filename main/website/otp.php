@@ -89,16 +89,28 @@ function readRequestBasics() {
 function handleSendOtp($pdo) {
     [$restaurantId, $phone, $purpose] = readRequestBasics();
 
-    // Per phone+restaurant throttle: max 3 sends per 5 minutes, on top of a
-    // flat 60s cooldown between consecutive sends (checked against the DB
-    // below) so a user can't bulk-trigger WhatsApp sends.
+    // Only a real restaurant (or owner sign-up): a made-up restaurant_id used to get a fresh throttle
+    // every time, so anyone could flood a phone with WhatsApp codes (and run up the WhatsApp bill)
+    if ($restaurantId !== 'SIGNUP') {
+        $real = $pdo->prepare('SELECT 1 FROM users WHERE restaurant_id = ? LIMIT 1');
+        $real->execute([$restaurantId]);
+        if (!$real->fetchColumn()) throw new Exception('Restaurant not found. Please reload the page and try again.');
+    }
+
+    // Throttles, on top of the 60s cooldown checked against the database below:
+    //  - 3 per 5 minutes for this phone at this restaurant
+    //  - 5 per hour for this phone across all restaurants
+    //  - 10 per hour from one internet address (owner sign-up: 5)
     if (function_exists('checkRateLimit')) {
-        $rateId = 'otp_send_' . $restaurantId . '_' . $phone;
-        $rate = checkRateLimit($rateId, 3, 300);
-        if (!$rate['allowed']) {
-            http_response_code(429);
-            echo json_encode(['success' => false, 'message' => $rate['message']]);
-            return;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        foreach ([['otp_send_' . $restaurantId . '_' . $phone, 3, 300], ['otp_phone_' . $phone, 5, 3600],
+                  ['otp_ip_' . ($restaurantId === 'SIGNUP' ? 'signup_' : '') . $ip, $restaurantId === 'SIGNUP' ? 5 : 10, 3600]] as [$rateId, $max, $win]) {
+            $rate = checkRateLimit($rateId, $max, $win);
+            if (!$rate['allowed']) {
+                http_response_code(429);
+                echo json_encode(['success' => false, 'message' => 'Too many codes requested. Please try again a little later.']);
+                return;
+            }
         }
     }
 
@@ -152,6 +164,14 @@ function handleVerifyOtp($pdo) {
     if (empty($code)) {
         throw new Exception('Please enter the verification code');
     }
+    if (function_exists('checkRateLimit')) {
+        $rate = checkRateLimit('otp_verify_ip_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 30, 600);
+        if (!$rate['allowed']) {
+            http_response_code(429);
+            echo json_encode(['success' => false, 'message' => 'Too many tries. Please wait a few minutes.']);
+            return;
+        }
+    }
 
     $stmt = $pdo->prepare("
         SELECT id, code_hash, expires_at, attempts
@@ -172,13 +192,16 @@ function handleVerifyOtp($pdo) {
         return;
     }
 
-    if ((int)$row['attempts'] >= OTP_MAX_ATTEMPTS) {
+    // Count this try first, in one step: many guesses sent at the same moment used to all pass the
+    // "fewer than 5 tries" check before any of them was counted
+    $claim = $pdo->prepare("UPDATE whatsapp_otp_codes SET attempts = attempts + 1 WHERE id = ? AND attempts < ? AND consumed_at IS NULL");
+    $claim->execute([$row['id'], OTP_MAX_ATTEMPTS]);
+    if ($claim->rowCount() !== 1) {
         echo json_encode(['success' => false, 'message' => 'Too many incorrect attempts. Please request a new code.']);
         return;
     }
 
     if (!hash_equals($row['code_hash'], hash('sha256', $code))) {
-        $pdo->prepare("UPDATE whatsapp_otp_codes SET attempts = attempts + 1 WHERE id = ?")->execute([$row['id']]);
         $remaining = OTP_MAX_ATTEMPTS - ((int)$row['attempts'] + 1);
         echo json_encode([
             'success' => false,
@@ -187,7 +210,13 @@ function handleVerifyOtp($pdo) {
         return;
     }
 
-    $pdo->prepare("UPDATE whatsapp_otp_codes SET consumed_at = NOW() WHERE id = ?")->execute([$row['id']]);
+    // a code works once: two requests with the right code at the same moment can't both succeed
+    $use = $pdo->prepare("UPDATE whatsapp_otp_codes SET consumed_at = NOW() WHERE id = ? AND consumed_at IS NULL");
+    $use->execute([$row['id']]);
+    if ($use->rowCount() !== 1) {
+        echo json_encode(['success' => false, 'message' => 'This code was already used. Please request a new one.']);
+        return;
+    }
 
     echo json_encode(['success' => true, 'message' => 'Phone number verified.']);
 }

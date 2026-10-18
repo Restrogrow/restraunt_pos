@@ -180,8 +180,11 @@ function showResFieldError(id, msg) {
 }
 
 // Minimum bookable date is today (restaurant's own local date, not the visitor's)
-document.getElementById('resDate').min = new Date().toISOString().split('T')[0];
-document.getElementById('resDate').value = new Date().toISOString().split('T')[0];
+// (toISOString() is the UTC date: before 5:30 AM in India it showed yesterday)
+var RES_TODAY = <?php echo json_encode((new DateTime('now', $restaurant_tz ?? new DateTimeZone('Asia/Kolkata')))->format('Y-m-d')); ?>;
+document.getElementById('resDate').min = RES_TODAY;
+document.getElementById('resDate').max = <?php echo json_encode((new DateTime('+60 days', $restaurant_tz ?? new DateTimeZone('Asia/Kolkata')))->format('Y-m-d')); ?>;
+document.getElementById('resDate').value = RES_TODAY;
 
 if (LOGGED_IN_CUSTOMER) {
   if (LOGGED_IN_CUSTOMER.customer_name) document.getElementById('resName').value = LOGGED_IN_CUSTOMER.customer_name;

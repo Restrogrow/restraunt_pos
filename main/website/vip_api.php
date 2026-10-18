@@ -47,8 +47,9 @@ try {
     $rid = substr(trim((string)($_GET['restaurant_id'] ?? $_POST['restaurant_id'] ?? '')), 0, 50);
     if ($rid === '') vipOut(['success' => false, 'message' => 'Missing restaurant'], 400);
 
-    ensureVipSchema($conn);
-    ensureWalletTables($conn);
+    require_once __DIR__ . '/../config/schema_cache.php';   // table setup once per deploy
+    rgEnsureOnce('ensureVipSchema', $conn);
+    rgEnsureOnce('ensureWalletTables', $conn);
     $vs = vipSettings($conn, $rid);
     $customer = getLoggedInCustomer($conn, $rid);
     session_write_close();

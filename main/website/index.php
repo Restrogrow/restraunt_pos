@@ -42,7 +42,8 @@ if ($hx_style) {
     // Real rating from customers' order feedback (shown from 3 ratings up)
     $hxRating = null;
     try {
-        $hxSt = $conn->prepare('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM order_feedback WHERE restaurant_id = ? AND rating > 0');
+        // only ratings of completed orders count toward the public stars
+        $hxSt = $conn->prepare("SELECT COUNT(*) AS n, AVG(f.rating) AS avg FROM order_feedback f JOIN orders o ON o.id = f.order_id AND o.order_status = 'Completed' WHERE f.restaurant_id = ? AND f.rating > 0");
         $hxSt->execute([$restaurant_id]);
         $hxR = $hxSt->fetch(PDO::FETCH_ASSOC);
         if ($hxR && (int)$hxR['n'] >= 3) $hxRating = ['avg' => number_format((float)$hxR['avg'], 1), 'n' => (int)$hxR['n']];
@@ -85,7 +86,7 @@ if (isset($_GET['table']) && trim($_GET['table']) !== '') {
 // arrive with the page and are cached for a year, so the page never shows
 // unstyled text or missing icons while waiting on third-party CDNs.
 require_once __DIR__ . '/font_links.php';
-echo websiteFontLinks(['poppins', 'fontawesome', 'bootstrap-icons']);
+echo websiteFontLinks(['poppins', 'fontawesome']);
 ?>
 <?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
 <style>
@@ -2038,7 +2039,7 @@ window.socialLinks = {
   <div class="grid-btn-rapper">
     <div class="gradient-search-container">
       <input type="text" class="gradient-search-input" id="searchInput" placeholder="Search your favorite food fast ⚡">
-      <button type="button" class="gradient-search-button"><i class="bi bi-search"></i></button>
+      <button type="button" class="gradient-search-button"><i class="fa-solid fa-magnifying-glass"></i></button>
     </div>
   </div>
 
@@ -2362,13 +2363,13 @@ function mrpPriceHtml(now, was) {
     (was ? '<span class="mrp-was"><s>' + f(was) + '</s></span>' : '') + '</span>';
 }
 
-function getImageUrl(img) {
+function getImageUrl(img, w) {   // w: width of the small copy image.php makes (96, 200, 400, 800)
   if (!img || img === '' || img === 'no-image') return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%23f0f0f0%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Image%3C/text%3E%3C/svg%3E';
   if (img.indexOf('http://') === 0 || img.indexOf('https://') === 0) return img;
   // No per-load cache-buster: every upload gets a new id (db:<uniqid>), so a
   // changed photo already has a new URL. Busting on each load made every refresh
   // re-download all dish photos (they popped in one by one).
-  if (img.indexOf('db:') === 0) return 'image.php?id=' + encodeURIComponent(img.substring(3));
+  if (img.indexOf('db:') === 0) return 'image.php?id=' + encodeURIComponent(img.substring(3)) + '&w=' + (w || 400);
   return 'image.php?id=' + encodeURIComponent(img);
 }
 
@@ -2566,7 +2567,7 @@ function renderMenu() {
       catImg = cat.items[0].item_image || cat.items[0].image;
     }
     html += '<div class="category-header" style="cursor:pointer">' +
-      '<h3>' + (catImg ? '<img src="' + getImageUrl(catImg) + '" alt="' + escHtml(cat.name) + '" style="width:24px;height:24px;border-radius:4px;object-fit:cover"> ' : '') + escHtml(cat.name) + ' <span class="count-badge">' + items.length + '</span></h3>' +
+      '<h3>' + (catImg ? '<img src="' + getImageUrl(catImg, 96) + '" alt="' + escHtml(cat.name) + '" style="width:24px;height:24px;border-radius:4px;object-fit:cover"> ' : '') + escHtml(cat.name) + ' <span class="count-badge">' + items.length + '</span></h3>' +
       '<span class="collapse-icon" onclick="event.stopPropagation();toggleCategory(' + ci + ')">' +
         '<i class="fa ' + (cat.collapsed ? 'fa-chevron-right' : 'fa-chevron-down') + '"></i>' +
       '</span>' +
@@ -2877,7 +2878,7 @@ function showItemDetail(ci, ii) {
   sheetQty = getQty(item.id) || 1;
   selectedVariant = null;
 
-  var imgUrl = getImageUrl(item.item_image || item.image);
+  var imgUrl = getImageUrl(item.item_image || item.image, 800);
   var itemName = escHtml(item.item_name_translated || item.item_name_en || item.name);
   var itemDesc = escHtml(item.item_description_en || item.desc || '');
   var descFmt = item.description_format || 'paragraph';
@@ -3118,22 +3119,26 @@ function isRestaurantOpen(hours) {
     var utc = now.getTime() + now.getTimezoneOffset() * 60000;
     now = new Date(utc + window.restaurantTimezoneOffset * 60000);
   }
-  var day = days[now.getDay()];
-  var dayData = hours[day];
-  if (!dayData || !dayData.open) return false;
   function toMins(t) {
-    var p = t.split(' ');
+    var p = String(t || '').split(' ');
     var tp = p[0].split(':');
-    var h = parseInt(tp[0], 10), m = parseInt(tp[1], 10);
+    var h = parseInt(tp[0], 10), m = parseInt(tp[1], 10) || 0;
     if (p[1] === 'PM' && h !== 12) h += 12;
     if (p[1] === 'AM' && h === 12) h = 0;
     return h * 60 + m;
   }
   var cur = now.getHours() * 60 + now.getMinutes();
-  var open = toMins(dayData.opening);
-  var close = toMins(dayData.closing);
-  if (close <= open) return cur >= open || cur < close;
-  return cur >= open && cur < close;
+  // today's hours, or yesterday's shift that runs past midnight (same rule as config/opening_hours.php)
+  var today = hours[days[now.getDay()]], yest = hours[days[(now.getDay() + 6) % 7]];
+  if (today && today.open) {
+    var o = toMins(today.opening || '09:00 AM'), c = toMins(today.closing || '10:00 PM');
+    if (c <= o ? cur >= o : (cur >= o && cur < c)) return true;
+  }
+  if (yest && yest.open) {
+    var yo = toMins(yest.opening || '09:00 AM'), yc = toMins(yest.closing || '10:00 PM');
+    if (yc <= yo && cur < yc) return true;
+  }
+  return false;
 }
 
 function showClosedModal() {

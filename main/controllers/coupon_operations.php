@@ -53,6 +53,8 @@ try {
     switch ($action) {
         case 'add':
             $code = strtoupper(trim($_POST['coupon_code'] ?? ''));
+            // letters, numbers, - and _ only: other characters broke the coupon cards on the website
+            if (!preg_match('/^[A-Z0-9_-]{2,30}$/', $code)) throw new Exception('Coupon code: use 2–30 letters, numbers, - or _ (no spaces)');
             $type = $_POST['discount_type'] ?? 'percent';
             $value = (float)($_POST['discount_value'] ?? 0);
             $minOrder = (float)($_POST['minimum_order_amount'] ?? 0);
@@ -86,6 +88,8 @@ try {
             if ($id <= 0) throw new Exception('Invalid coupon id');
 
             $code = strtoupper(trim($_POST['coupon_code'] ?? ''));
+            // letters, numbers, - and _ only: other characters broke the coupon cards on the website
+            if (!preg_match('/^[A-Z0-9_-]{2,30}$/', $code)) throw new Exception('Coupon code: use 2–30 letters, numbers, - or _ (no spaces)');
             $type = $_POST['discount_type'] ?? 'percent';
             $value = (float)($_POST['discount_value'] ?? 0);
             $minOrder = (float)($_POST['minimum_order_amount'] ?? 0);
