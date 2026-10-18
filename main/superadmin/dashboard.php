@@ -320,6 +320,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">undo</span>
           <span class="text">Undo design</span>
         </a>
+        <a class="menu-link" href="loading_screens.php">
+          <span class="material-symbols-rounded icon">progress_activity</span>
+          <span class="text">Loading screens</span>
+        </a>
         <a class="menu-link" href="features.php">
           <span class="material-symbols-rounded icon">checklist</span>
           <span class="text">Features</span>
