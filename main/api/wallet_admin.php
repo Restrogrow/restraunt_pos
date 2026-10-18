@@ -56,7 +56,7 @@ try {
         $st->execute([$rid]);
         $u = $st->fetch(PDO::FETCH_ASSOC) ?: [];
         echo json_encode(['success' => true, 'settings' => $s, 'stats' => $stats, 'holders' => $holders, 'recent' => $recent, 'currency' => $cur,
-            'phonepe_ready' => !empty($u['phonepe_merchant_id']) || ($u['payment_gateway_mode'] ?? 'own') !== 'own'], JSON_UNESCAPED_UNICODE);
+            'phonepe_ready' => (require_once __DIR__ . '/../config/phonepe_verify.php') ? phonepeCallbackConfig($rid)['ready'] : false], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -84,6 +84,8 @@ try {
              ->execute([$rid, empty($s['enabled']) ? 0 : 1, mb_substr(trim(strip_tags((string)($s['name'] ?? ''))), 0, 40) ?: null,
                         $min, $max, max($max, $num($s['max_balance'] ?? 20000, 1, 10000000)), implode(',', $quick) ?: null, json_encode($tiers),
                         $num($s['cashback_pct'] ?? 0, 0, 50), $num($s['cashback_max'] ?? 0, 0, 100000)]);
+        require_once __DIR__ . '/../config/activity_log.php';
+        logActivity($conn, $rid, 'wallet.settings', 'Changed wallet settings');
         echo json_encode(['success' => true]);
         exit;
     }
@@ -101,6 +103,9 @@ try {
         } catch (RuntimeException $e) {
             throw new InvalidArgumentException('That would take the balance below zero');
         }
+        require_once __DIR__ . '/../config/activity_log.php';
+        logActivity($conn, $rid, 'wallet.adjust', ($amount > 0 ? 'Added ' : 'Took ') . abs($amount) . ' ' . ($amount > 0 ? 'to' : 'from') . ' the wallet of ' . substr($phone, 0, 2) . '******' . substr($phone, -2),
+            ['amount' => $amount, 'balance' => $bal, 'note' => $note]);
         echo json_encode(['success' => true, 'balance' => $bal]);
         exit;
     }

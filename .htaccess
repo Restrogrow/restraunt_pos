@@ -1,5 +1,7 @@
 # Basic Configuration
 RewriteEngine On
+# PhonePe's webhook sends Authorization: SHA256(username:password); keep it visible to PHP on every host
+SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
 
 # Internal files are for the team, not the public website: README, docs and notes (the admin
 # handbook lists emails and setup details), database dumps, logs and the test setup.

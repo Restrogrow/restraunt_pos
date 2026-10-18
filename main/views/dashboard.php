@@ -144,7 +144,9 @@ try {
             // Payment gateway credentials for pre-filling forms
             // Cashfree removed
             $phonepe_merchant_id = $userRow['phonepe_merchant_id'] ?? '';
-            $phonepe_salt_key = $userRow['phonepe_salt_key'] ?? '';
+            // the secret itself never reaches the page: only whether one is saved and its last 4 characters
+            require_once __DIR__ . '/../config/phonepe_verify.php';
+            $phonepe_salt_key = ppMask(ppSecretOpen($userRow['phonepe_salt_key'] ?? ''));
             $phonepe_environment = $userRow['phonepe_environment'] ?? 'SANDBOX';
 
             // Restaurant logo - load exactly like this
@@ -3240,7 +3242,7 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
                 </label>
                 <label class="gw-field" for="phonepeSaltKey"><span>Client Secret</span>
                   <span class="gw-secret">
-                    <input type="password" id="phonepeSaltKey" name="phonepe_salt_key" placeholder="Your PhonePe Client Secret" autocomplete="new-password" value="<?php echo htmlspecialchars($phonepe_salt_key ?? ''); ?>">
+                    <input type="password" id="phonepeSaltKey" name="phonepe_salt_key" placeholder="<?php echo ($phonepe_salt_key ?? '') !== '' ? 'Saved (' . htmlspecialchars($phonepe_salt_key) . '). Leave blank to keep it' : 'Your PhonePe Client Secret'; ?>" autocomplete="new-password" value="">
                     <button type="button" class="sx-icon-btn" onclick="var i=document.getElementById('phonepeSaltKey');i.type=i.type==='password'?'text':'password';this.querySelector('span').textContent=i.type==='password'?'visibility':'visibility_off'" title="Show or hide"><span class="material-symbols-rounded">visibility</span></button>
                   </span>
                 </label>
@@ -3253,6 +3255,17 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
                 </select>
                 <small>Use Sandbox until PhonePe has approved your account, then switch to Production.</small>
               </div>
+              <?php require_once __DIR__ . '/../config/phonepe_verify.php'; $gwHook = ppWebhookCreds((string)$restaurant_id); if ($gwHook): ?>
+              <div class="gw-hook" style="margin-top:16px;padding:14px;border:1px dashed var(--border,#e5e7eb);border-radius:12px;">
+                <div class="gw-keys-h"><span class="material-symbols-rounded">webhook</span><b>Webhook (so payments never get stuck)</b><small>PhonePe Business dashboard › Developer settings › Webhooks › Create webhook</small></div>
+                <div class="gw-grid">
+                  <label class="gw-field"><span>Webhook URL</span><input type="text" readonly value="<?php echo htmlspecialchars($gwHook['url']); ?>" onclick="this.select()"></label>
+                  <label class="gw-field"><span>Username</span><input type="text" readonly value="<?php echo htmlspecialchars($gwHook['username']); ?>" onclick="this.select()"></label>
+                  <label class="gw-field"><span>Password</span><input type="text" readonly value="<?php echo htmlspecialchars($gwHook['password']); ?>" onclick="this.select()"></label>
+                  <label class="gw-field"><span>Events to tick</span><input type="text" readonly value="checkout.order.completed, checkout.order.failed"></label>
+                </div>
+              </div>
+              <?php endif; ?>
             </div>
 
             <div class="gw-save">

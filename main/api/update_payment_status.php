@@ -62,6 +62,12 @@ try {
         exit();
     }
 
+    // giving money back is for the owner and managers only (a waiter can mark cash as received)
+    if ($status === 'Refunded' && !in_array(getUserRole(), [ROLE_ADMIN, ROLE_MANAGER], true)) {
+        echo json_encode(['success' => false, 'message' => 'Only the owner or a manager can mark a payment as refunded.']);
+        exit();
+    }
+
     $conn->beginTransaction();
 
     try {

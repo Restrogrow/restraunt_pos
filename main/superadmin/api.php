@@ -824,6 +824,8 @@ break;
       break;
 
     case 'getPaymentLinks':
+      require_once __DIR__ . '/../config/payment_settle.php';
+      ppLinksEnsure($conn);
       $restaurant_id = trim($_GET['restaurant_id'] ?? '');
       $status = trim($_GET['status'] ?? '');
       $page = max(1, (int)($_GET['page'] ?? 1));
@@ -854,311 +856,102 @@ break;
       $countStmt->execute();
       $total = (int)$countStmt->fetchColumn();
 
-      echo json_encode(['success' => true, 'links' => $stmt->fetchAll(), 'total' => $total]);
+      $links = $stmt->fetchAll(PDO::FETCH_ASSOC);
+      foreach ($links as &$pl) {
+        if (!empty($pl['token'])) $pl['payment_url'] = ppLinkUrl($pl['token']);   // the permanent page, also for old links
+        unset($pl['token'], $pl['phonepe_checkout_url']);
+      }
+      unset($pl);
+      echo json_encode(['success' => true, 'links' => $links, 'total' => $total]);
       break;
 
     case 'createPaymentLink':
-      $data = $_POST;
-      $restaurant_id = trim($data['restaurant_id'] ?? '');
-      $amount = (float)($data['amount'] ?? 0);
-      $notes = trim($data['notes'] ?? '');
+      // A link is a permanent page (website/pay_link.php?t=…) that starts a fresh PhonePe payment every time it
+      // is opened, on RestroGrow's own PhonePe account only. Nothing is sent to PhonePe here, so a link never
+      // "expires" after 20 minutes and a failed try can simply be paid again.
+      require_once __DIR__ . '/../config/payment_settle.php';
+      ppLinksEnsure($conn);
+      $restaurant_id = trim((string)($_POST['restaurant_id'] ?? ''));
+      $amount = round((float)($_POST['amount'] ?? 0), 2);
+      $notes = mb_substr(trim((string)($_POST['notes'] ?? '')), 0, 255);
+      $plan_months = max(0, min(36, (int)($_POST['plan_months'] ?? 0)));
 
-      if (!$restaurant_id || $amount <= 0) {
-        throw new Exception('Restaurant ID and valid amount required');
+      if (!$restaurant_id || $amount < 1 || $amount > 500000) {
+        throw new Exception('Pick a restaurant and an amount between ₹1 and ₹5,00,000');
       }
-
-      // Get restaurant info
-      $stmt = $conn->prepare("SELECT restaurant_name, phonepe_merchant_id, phonepe_salt_key, phonepe_environment FROM users WHERE restaurant_id = ? LIMIT 1");
+      $stmt = $conn->prepare("SELECT restaurant_name FROM users WHERE restaurant_id = ? LIMIT 1");
       $stmt->execute([$restaurant_id]);
       $restaurant = $stmt->fetch(PDO::FETCH_ASSOC);
-      if (!$restaurant) {
-        throw new Exception('Restaurant not found');
+      if (!$restaurant) throw new Exception('Restaurant not found');
+
+      $config = phonepeCallbackConfig(null, true);
+      if (!$config['ready'] && !$config['demo']) {
+        throw new Exception('RestroGrow\'s PhonePe keys are not set (PHONEPE_CLIENT_ID / PHONEPE_CLIENT_SECRET in .env)');
       }
 
-      $restaurant_name = $restaurant['restaurant_name'] ?? $restaurant_id;
-
-      // Load env for PhonePe global config
-      if (file_exists(__DIR__ . '/../config/env_loader.php')) {
-          require_once __DIR__ . '/../config/env_loader.php';
-      }
-
-      // Determine which environment to use (session toggle overrides everything)
-      $session_mode = $_SESSION['phonepe_mode'] ?? '';
-      $isSandbox = $session_mode === 'sandbox';
-      $isDemo = $session_mode === 'demo';
-
-      // Pick credentials based on environment
-      if ($isSandbox) {
-        $phonepe_client_id = env('PHONEPE_SANDBOX_MERCHANT_ID', '');
-        $phonepe_client_secret = env('PHONEPE_SANDBOX_SALT_KEY', '');
-        $phonepe_client_version = env('PHONEPE_SANDBOX_SALT_INDEX', '1');
-      } else {
-        $phonepe_client_id = env('PHONEPE_CLIENT_ID', '');
-        $phonepe_client_secret = env('PHONEPE_CLIENT_SECRET', '');
-        $phonepe_client_version = env('PHONEPE_CLIENT_VERSION', '');
-        if (empty($phonepe_client_id) || empty($phonepe_client_secret)) {
-          $phonepe_client_id = !empty($restaurant['phonepe_merchant_id']) && $restaurant['phonepe_merchant_id'] !== 'YOUR_MERCHANT_ID'
-              ? $restaurant['phonepe_merchant_id']
-              : (defined('PHONEPE_MERCHANT_ID') ? PHONEPE_MERCHANT_ID : env('PHONEPE_MERCHANT_ID', ''));
-          $phonepe_client_secret = !empty($restaurant['phonepe_salt_key']) && strpos($restaurant['phonepe_salt_key'], 'your_salt_key') === false
-              ? $restaurant['phonepe_salt_key']
-              : (defined('PHONEPE_SALT_KEY') ? PHONEPE_SALT_KEY : env('PHONEPE_SALT_KEY', ''));
-          $phonepe_client_version = env('PHONEPE_SALT_INDEX', '1');
-        }
-      }
-
-      $demo_mode = $isDemo || empty($phonepe_client_id) || empty($phonepe_client_secret);
-
-      $phonepe_base_url = $isSandbox
-          ? 'https://api-preprod.phonepe.com/apis/pg-sandbox'
-          : 'https://api.phonepe.com/apis/pg';
-      $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-      $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-      $base_path = dirname(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/')));
-      if ($base_path === '/' || $base_path === '\\') $base_path = '';
-      $site_url = $scheme . '://' . $host . $base_path;
-      $redirect_url = $site_url . '/main/superadmin/payment_link_redirect.php';
-
-      // Generate transaction ID — random_int() over a wide range rather than
-      // rand(100,999): the old suffix only had ~900 possible values per
-      // second-window, making it practically guessable within a link's
-      // lifetime (compounded by the restaurant-id prefix and timestamp both
-      // being knowable). The orderId cross-check in payment_link_callback.php
-      // is the primary defense against a forged callback, but a
-      // hard-to-guess transaction_id is still worth having.
-      $transaction_id = 'SPL_' . strtoupper(substr($restaurant_id, 0, 6)) . '_' . time() . '_' . random_int(100000000, 999999999);
-
-      // Save pending payment link record
-      $stmt = $conn->prepare("INSERT INTO payment_links (restaurant_id, restaurant_name, amount, transaction_id, payment_status, notes, created_by) VALUES (?, ?, ?, ?, 'Pending', ?, ?)");
-      $stmt->execute([$restaurant_id, $restaurant_name, $amount, $transaction_id, $notes, $_SESSION['superadmin_id'] ?? null]);
-      $payment_link_id = $conn->lastInsertId();
-
-      if ($demo_mode) {
-        // Demo mode - simulate payment link
-        $demo_payment_url = $redirect_url . '?demo=1&transaction_id=' . urlencode($transaction_id) . '&amount=' . urlencode($amount);
-
-        $stmt = $conn->prepare("UPDATE payment_links SET payment_url = ?, payment_status = 'Pending' WHERE id = ?");
-        $stmt->execute([$demo_payment_url, $payment_link_id]);
-
-        echo json_encode([
-          'success' => true,
-          'message' => 'Demo payment link created',
-          'payment_link_id' => $payment_link_id,
-          'payment_url' => $demo_payment_url,
-          'transaction_id' => $transaction_id,
-          'demo_mode' => true
-        ]);
-        break;
-      }
-
-      // Real PhonePe API integration — v2 OAuth checkout for both sandbox
-      // and production. Production used to sign requests with the old v1
-      // hash API (/pg/v1/pay), which PhonePe has since deprecated for this
-      // merchant; sandbox was already correctly on v2. Unified onto v2 here,
-      // matching the working order-payment flow (api/phonepe_order_payment.php).
-      $auth_url = $isSandbox
-          ? $phonepe_base_url . '/v1/oauth/token'
-          : 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
-
-      $ch = curl_init($auth_url);
-      curl_setopt($ch, CURLOPT_POST, true);
-      curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'client_id' => $phonepe_client_id,
-        'client_version' => $phonepe_client_version,
-        'client_secret' => $phonepe_client_secret,
-        'grant_type' => 'client_credentials',
-      ]));
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-      curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-      $auth_resp = curl_exec($ch);
-      $auth_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-      $auth_err = curl_error($ch);
-      curl_close($ch);
-
-      if ($auth_err) throw new Exception('Auth connection error: ' . $auth_err);
-      $auth_data = json_decode($auth_resp, true);
-      if ($auth_http !== 200 || !isset($auth_data['access_token'])) {
-        throw new Exception('Auth error: ' . ($auth_data['message'] ?? 'HTTP ' . $auth_http));
-      }
-
-      // Create checkout session
-      $pay_url = $phonepe_base_url . '/checkout/v2/pay';
-      $payload = [
-        'merchantOrderId' => $transaction_id,
-        'amount' => (int)($amount * 100),
-        'expireAfter' => 1200,
-        'paymentFlow' => ['type' => 'PG_CHECKOUT', 'merchantUrls' => ['redirectUrl' => $redirect_url]],
-      ];
-
-      $ch = curl_init($pay_url);
-      curl_setopt($ch, CURLOPT_POST, true);
-      curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Authorization: O-Bearer ' . $auth_data['access_token'],
-      ]);
-      curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-      $resp = curl_exec($ch);
-      $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-      curl_close($ch);
-
-      $resp_data = json_decode($resp, true);
-      if ($http === 200 && isset($resp_data['redirectUrl'])) {
-        $payment_url = $resp_data['redirectUrl'];
-        $phonepe_order_id = $resp_data['orderId'] ?? '';
-      } else {
-        $msg = $resp_data['message'] ?? ($resp_data['code'] ?? 'unknown');
-        throw new Exception('PhonePe API error (HTTP ' . $http . '): ' . $msg);
-      }
-
-      $our_payment_url = $redirect_url . '?id=' . $payment_link_id;
-      $phonepe_checkout_url = $payment_url;
-      $stmt = $conn->prepare("UPDATE payment_links SET payment_url = ?, phonepe_checkout_url = ?, phonepe_order_id = ?, payment_status = 'Pending' WHERE id = ?");
-      $stmt->execute([$our_payment_url, $phonepe_checkout_url, $phonepe_order_id, $payment_link_id]);
+      $token = bin2hex(random_bytes(16));
+      $payment_url = ppLinkUrl($token);
+      $stmt = $conn->prepare("INSERT INTO payment_links (restaurant_id, restaurant_name, amount, payment_status, payment_url, notes, created_by, token, plan_months) VALUES (?, ?, ?, 'Pending', ?, ?, ?, ?, ?)");
+      $stmt->execute([$restaurant_id, $restaurant['restaurant_name'] ?? $restaurant_id, $amount, $payment_url, $notes, $_SESSION['superadmin_id'] ?? null, $token, $plan_months]);
 
       echo json_encode([
         'success' => true,
-        'message' => 'Payment link created successfully',
-        'payment_link_id' => $payment_link_id,
-        'payment_url' => $our_payment_url,
-        'transaction_id' => $transaction_id,
-        'demo_mode' => false
+        'message' => 'Payment link created',
+        'payment_link_id' => $conn->lastInsertId(),
+        'payment_url' => $payment_url,
+        'demo_mode' => (bool)$config['demo'],
       ]);
       break;
 
     case 'updatePaymentLinkStatus':
+      // marked by hand (paid another way, or to close it)
+      require_once __DIR__ . '/../config/payment_settle.php';
+      ppLinksEnsure($conn);
       $data = json_decode(file_get_contents('php://input'), true) ?? [];
       $id = (int)($data['id'] ?? 0);
       $status = $data['status'] ?? '';
-      if ($id <= 0 || !in_array($status, ['Success', 'Failed'])) throw new Exception('Invalid params');
-      $stmt = $conn->prepare("UPDATE payment_links SET payment_status = ? WHERE id = ? AND payment_status = 'Pending'");
-      $stmt->execute([$status, $id]);
+      if ($id <= 0 || !in_array($status, ['Success', 'Failed'], true)) throw new Exception('Invalid params');
+      $stmt = $conn->prepare("UPDATE payment_links SET payment_status = ?, paid_at = IF(? = 'Success', NOW(), paid_at) WHERE id = ? AND payment_status = 'Pending'");
+      $stmt->execute([$status, $status, $id]);
       if ($stmt->rowCount() === 0) throw new Exception('Link not found or already processed');
+      if ($status === 'Success') {
+        $l = $conn->prepare('SELECT restaurant_id, plan_months FROM payment_links WHERE id = ?');
+        $l->execute([$id]);
+        $l = $l->fetch(PDO::FETCH_ASSOC);
+        if ($l && (int)$l['plan_months'] > 0) {
+          $uid = $conn->prepare('SELECT id FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
+          $uid->execute([$l['restaurant_id']]);
+          if ($u = (int)$uid->fetchColumn()) ppExtendPlan($conn, $u, (int)$l['plan_months']);
+        }
+      }
       echo json_encode(['success' => true, 'message' => 'Status updated to ' . $status]);
       break;
 
     case 'refreshPaymentLinkStatus':
+      // asks PhonePe about every try of this link (config/payment_settle.php); never trusts the address bar
+      require_once __DIR__ . '/../config/payment_settle.php';
+      ppLinksEnsure($conn);
+      ppAttemptsEnsure($conn);
       $id = (int)($_GET['id'] ?? 0);
-      $code = $_GET['code'] ?? '';
       if ($id <= 0) throw new Exception('Invalid ID');
-
       $stmt = $conn->prepare("SELECT * FROM payment_links WHERE id = ?");
       $stmt->execute([$id]);
       $link = $stmt->fetch(PDO::FETCH_ASSOC);
       if (!$link) throw new Exception('Payment link not found');
 
-      if ($link['payment_status'] !== 'Pending') {
-        echo json_encode(['success' => true, 'payment_status' => $link['payment_status'], 'message' => 'Already ' . $link['payment_status']]);
-        break;
-      }
-
-      // The old code used to trust a client-supplied code=PAYMENT_SUCCESS
-      // query param to mark the invoice paid outright — this endpoint is a
-      // plain GET with no CSRF token anywhere in this panel, and SameSite=Lax
-      // cookies still get sent on top-level navigation, so a link the
-      // superadmin merely clicked could silently mark any invoice "Success".
-      // Always fall through to the real PhonePe status check below instead;
-      // $code is intentionally unused now.
-
-      if (file_exists(__DIR__ . '/../config/env_loader.php')) {
-          require_once __DIR__ . '/../config/env_loader.php';
-      }
-
-      $stmt = $conn->prepare("SELECT phonepe_merchant_id, phonepe_salt_key, phonepe_environment FROM users WHERE restaurant_id = ? LIMIT 1");
-      $stmt->execute([$link['restaurant_id']]);
-      $rest = $stmt->fetch(PDO::FETCH_ASSOC);
-
-      $session_mode = $_SESSION['phonepe_mode'] ?? '';
-      $isSandbox = $session_mode === 'sandbox';
-
-      if ($isSandbox) {
-        $client_id = env('PHONEPE_SANDBOX_MERCHANT_ID', '');
-        $client_secret = env('PHONEPE_SANDBOX_SALT_KEY', '');
-        $client_version = env('PHONEPE_SANDBOX_SALT_INDEX', '1');
-      } else {
-        $client_id = env('PHONEPE_CLIENT_ID', '');
-        $client_secret = env('PHONEPE_CLIENT_SECRET', '');
-        $client_version = env('PHONEPE_CLIENT_VERSION', '');
-        if (empty($client_id) || empty($client_secret)) {
-          $client_id = !empty($rest['phonepe_merchant_id']) && $rest['phonepe_merchant_id'] !== 'YOUR_MERCHANT_ID'
-              ? $rest['phonepe_merchant_id'] : env('PHONEPE_MERCHANT_ID', '');
-          $client_secret = !empty($rest['phonepe_salt_key']) && strpos($rest['phonepe_salt_key'], 'your_salt_key') === false
-              ? $rest['phonepe_salt_key'] : env('PHONEPE_SALT_KEY', '');
-          $client_version = env('PHONEPE_SALT_INDEX', '1');
+      if ($link['payment_status'] === 'Pending') {
+        $tries = $conn->prepare("SELECT txn FROM payment_attempts WHERE kind = 'link' AND ref_id = ? AND status = 'Pending' ORDER BY created_at DESC LIMIT 5");
+        $tries->execute([$id]);
+        $txns = $tries->fetchAll(PDO::FETCH_COLUMN);
+        if (!$txns && !empty($link['transaction_id'])) $txns = [$link['transaction_id']];   // links made before this change
+        foreach ($txns as $t) {
+          if (in_array(ppSettle($conn, $t)['outcome'], ['paid', 'already'], true)) break;
         }
+        $stmt->execute([$id]);
+        $link = $stmt->fetch(PDO::FETCH_ASSOC);
       }
-
-      $demo_mode = $session_mode === 'demo' || empty($client_id) || empty($client_secret);
-
-      if ($demo_mode) {
-        echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Demo mode - status remains Pending']);
-        break;
-      }
-
-      $phonepe_base_url = $isSandbox
-          ? 'https://api-preprod.phonepe.com/apis/pg-sandbox'
-          : 'https://api.phonepe.com/apis/pg';
-      $txn_id = $link['transaction_id'];
-      $pp_order_id = $link['phonepe_order_id'] ?? '';
-
-      // v2 OAuth status check for sandbox and production alike: links are created
-      // on v2 (createPaymentLink), which the old v1 hash status API can't see
-      $auth_url = $isSandbox
-          ? $phonepe_base_url . '/v1/oauth/token'
-          : 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
-      $ch = curl_init($auth_url);
-      curl_setopt($ch, CURLOPT_POST, true);
-      curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'client_id' => $client_id,
-        'client_version' => $client_version,
-        'client_secret' => $client_secret,
-        'grant_type' => 'client_credentials',
-      ]));
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-      curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-      $auth_resp = curl_exec($ch);
-      $auth_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-      curl_close($ch);
-
-      if ($auth_http !== 200 || !($auth_data = json_decode($auth_resp, true)) || !isset($auth_data['access_token'])) {
-        echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Could not authenticate with PhonePe API']);
-        break;
-      }
-
-      // v2 status is looked up by our merchantOrderId (the transaction_id sent to /checkout/v2/pay)
-      $lookup_id = $txn_id;
-      $status_url = $phonepe_base_url . '/checkout/v2/order/' . urlencode($lookup_id) . '/status';
-      $ch = curl_init($status_url);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: O-Bearer ' . $auth_data['access_token'],
-        'Accept: application/json',
-      ]);
-      curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-      $resp = curl_exec($ch);
-      $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-      curl_close($ch);
-
-      if ($http_code === 200 && $resp) {
-        $status_data = json_decode($resp, true);
-        $state = $status_data['state'] ?? $status_data['orderStatus'] ?? $status_data['responseCode'] ?? '';
-        if (in_array($state, ['COMPLETED', 'SUCCESS', 'PAYMENT_SUCCESS'])) {
-          $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Success' WHERE id = ?");
-          $stmt->execute([$id]);
-          echo json_encode(['success' => true, 'payment_status' => 'Success', 'message' => 'Payment confirmed!']);
-        } elseif (in_array($state, ['FAILED', 'REJECTED', 'CANCELLED', 'PAYMENT_FAILED', 'PAYMENT_ERROR'])) {
-          $stmt = $conn->prepare("UPDATE payment_links SET payment_status = 'Failed' WHERE id = ?");
-          $stmt->execute([$id]);
-          echo json_encode(['success' => true, 'payment_status' => 'Failed', 'message' => 'Payment failed']);
-        } else {
-          echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Payment still pending', 'api_status' => $state]);
-        }
-      } else {
-        echo json_encode(['success' => true, 'payment_status' => 'Pending', 'message' => 'Could not verify status (HTTP: ' . $http_code . ')']);
-      }
+      $msg = ['Success' => 'Payment confirmed!', 'Failed' => 'Marked as failed'][$link['payment_status']] ?? 'Not paid yet';
+      echo json_encode(['success' => true, 'payment_status' => $link['payment_status'], 'message' => $msg]);
       break;
 
     case 'getMenus':

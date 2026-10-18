@@ -122,30 +122,13 @@ try {
             vipFail($conn, $m);
             vipOut(['success' => false, 'message' => 'Online payment is not available at this restaurant yet.'], 400);
         }
-        $token = phonepeCallbackAccessToken($config);
-        if (!$token) throw new RuntimeException('PhonePe auth failed');
-        $ch = curl_init($config['api_url'] . '/checkout/v2/pay');
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json', 'Authorization: O-Bearer ' . $token],
-            CURLOPT_POSTFIELDS => json_encode([
-                'merchantOrderId' => $txn,
-                'amount' => (int)round($plan['price'] * 100),
-                'expireAfter' => 1200,
-                'paymentFlow' => ['type' => 'PG_CHECKOUT', 'message' => 'Join ' . $vs['name'], 'merchantUrls' => ['redirectUrl' => $back]],
-            ]),
-        ]);
-        $res = json_decode((string)curl_exec($ch), true);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($code !== 200 || empty($res['redirectUrl'])) {
-            error_log('VIP join PhonePe error: ' . json_encode($res));
+        $res = phonepeCreatePayment($config, $txn, (float)$plan['price'], $back, 1200, 'Join ' . $vs['name']);
+        if (!$res['ok']) {
+            error_log('VIP join PhonePe refused: ' . $res['error']);
             vipFail($conn, $m);
             vipOut(['success' => false, 'message' => 'Could not start the payment. Please try again.'], 502);
         }
-        vipOut(['success' => true, 'payment_url' => $res['redirectUrl']]);
+        vipOut(['success' => true, 'payment_url' => $res['url']]);
     }
 
     if ($action === 'status') {
@@ -158,9 +141,10 @@ try {
             if (empty($config['client_id']) || empty($config['client_secret'])) {
                 if (isLocalDevRequest() && !empty($_GET['demo'])) { vipActivate($conn, $m); $m['status'] = 'Active'; }
             } else {
-                $state = phonepeVerifyOrderState($conn, $rid, $m['transaction_id']);
-                if ($state === 'COMPLETED') { vipActivate($conn, $m); $m['status'] = 'Active'; }
-                elseif (in_array($state, ['FAILED', 'CANCELLED', 'EXPIRED', 'REJECTED'], true)) { vipFail($conn, $m); $m['status'] = 'Failed'; }
+                require_once __DIR__ . '/../config/payment_settle.php';
+                $o = ppSettle($conn, $m['transaction_id'])['outcome'];
+                if (in_array($o, ['paid', 'already'], true)) $m['status'] = 'Active';
+                elseif (in_array($o, ['failed', 'mismatch'], true)) $m['status'] = 'Failed';
             }
         }
         vipOut(['success' => true, 'status' => $m['status'], 'plan' => $m['plan_name']]);

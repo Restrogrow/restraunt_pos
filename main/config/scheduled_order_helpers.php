@@ -109,6 +109,11 @@ if (!function_exists('activateDueScheduledOrders')) {
 
                 if ($result['success']) {
                     $activated++;
+                    // an order paid online reaches the kitchen only once it is paid (the payment confirmation does it then)
+                    $pay = $conn->prepare('SELECT payment_method, payment_status FROM orders WHERE id = ?');
+                    $pay->execute([$orderId]);
+                    $pm = $pay->fetch(PDO::FETCH_ASSOC) ?: [];
+                    if (($pm['payment_method'] ?? '') === 'UPI / NetBanking' && ($pm['payment_status'] ?? '') !== 'Paid') continue;
                     try {
                         fireOrderConfirmedActions($conn, $orderId);
                     } catch (Exception $e) {

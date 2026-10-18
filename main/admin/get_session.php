@@ -17,6 +17,7 @@ if (ob_get_level()) {
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../config/cors_helper.php';
+require_once __DIR__ . '/../config/phonepe_verify.php';
 allowAppOrigin();
 header('Access-Control-Allow-Methods: GET');
 header('Access-Control-Allow-Headers: Content-Type');
@@ -203,7 +204,7 @@ try {
         'youtube_link' => $row['youtube_link'] ?? null,
         'linkedin_link' => $row['linkedin_link'] ?? null,
         'phonepe_merchant_id' => !empty($row['phonepe_merchant_id']) ? maskSecret($row['phonepe_merchant_id']) : null,
-        'phonepe_salt_key' => !empty($row['phonepe_salt_key']) ? maskSecret($row['phonepe_salt_key']) : null,
+        'phonepe_salt_key' => !empty($row['phonepe_salt_key']) ? ppMask(ppSecretOpen($row['phonepe_salt_key'])) : null,
         'phonepe_environment' => $row['phonepe_environment'] ?? 'SANDBOX',
         'is_active' => $row['is_active'] ?? 1,
         'linked_restaurants' => $_SESSION['linked_restaurants'] ?? null,

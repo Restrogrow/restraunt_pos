@@ -86,30 +86,13 @@ try {
             if (isLocalDevRequest()) walletOut(['success' => true, 'payment_url' => $back . '&wallet_demo=1', 'demo' => true]);
             walletOut(['success' => false, 'message' => 'Adding money online is not available at this restaurant yet.'], 400);
         }
-        $token = phonepeCallbackAccessToken($config);
-        if (!$token) throw new RuntimeException('PhonePe auth failed');
-        $ch = curl_init($config['api_url'] . '/checkout/v2/pay');
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json', 'Authorization: O-Bearer ' . $token],
-            CURLOPT_POSTFIELDS => json_encode([
-                'merchantOrderId' => $txn,
-                'amount' => (int)round($amount * 100),
-                'expireAfter' => 1200,
-                'paymentFlow' => ['type' => 'PG_CHECKOUT', 'message' => 'Add money to ' . $s['name'], 'merchantUrls' => ['redirectUrl' => $back]],
-            ]),
-        ]);
-        $res = json_decode((string)curl_exec($ch), true);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($code !== 200 || empty($res['redirectUrl'])) {
-            error_log('wallet topup PhonePe error: ' . json_encode($res));
+        $res = phonepeCreatePayment($config, $txn, $amount, $back, 1200, 'Add money to ' . $s['name']);
+        if (!$res['ok']) {
+            error_log('wallet topup PhonePe refused: ' . $res['error']);
             $conn->prepare("UPDATE wallet_topups SET status = 'Failed', completed_at = NOW() WHERE transaction_id = ?")->execute([$txn]);
             walletOut(['success' => false, 'message' => 'Could not start the payment. Please try again.'], 502);
         }
-        walletOut(['success' => true, 'payment_url' => $res['redirectUrl']]);
+        walletOut(['success' => true, 'payment_url' => $res['url']]);
     }
 
     if ($action === 'status') {
@@ -123,9 +106,11 @@ try {
                 // Local try-out only (no PhonePe keys on this computer)
                 if (isLocalDevRequest() && !empty($_GET['demo'])) { walletCompleteTopup($conn, $t); $t['status'] = 'Success'; }
             } else {
-                $state = phonepeVerifyOrderState($conn, $rid, $t['transaction_id']);
-                if ($state === 'COMPLETED') { walletCompleteTopup($conn, $t); $t['status'] = 'Success'; }
-                elseif (in_array($state, ['FAILED', 'CANCELLED', 'EXPIRED', 'REJECTED'], true)) { walletFailTopup($conn, $t); $t['status'] = 'Failed'; }
+                // PhonePe's own answer, amount checked, credited once (config/payment_settle.php)
+                require_once __DIR__ . '/../config/payment_settle.php';
+                $o = ppSettle($conn, $t['transaction_id'])['outcome'];
+                if (in_array($o, ['paid', 'already'], true)) $t['status'] = 'Success';
+                elseif (in_array($o, ['failed', 'mismatch'], true)) $t['status'] = 'Failed';
             }
         }
         walletOut(['success' => true, 'status' => $t['status'], 'amount' => (float)$t['amount'], 'bonus' => (float)$t['bonus'],

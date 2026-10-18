@@ -425,6 +425,12 @@ function validateAndUpdatePaymentStatus(
         } catch (Exception $e) {
             error_log('Growth module refund reversal failed for order ' . $orderId . ': ' . $e->getMessage());
         }
+        try {
+            require_once __DIR__ . '/wallet_helpers.php';
+            walletOrderStatusHook($conn, $orderId, 'Refunded');
+        } catch (Throwable $e) {
+            error_log('Wallet refund for order ' . $orderId . ': ' . $e->getMessage());
+        }
     }
 
     // 'transitioned' => true means THIS call is the one that actually moved

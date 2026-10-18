@@ -1134,10 +1134,11 @@ function handleUpdateRestaurantSettings() {
     $existingStmt = $pdo->prepare("SELECT phonepe_merchant_id, phonepe_salt_key, phonepe_environment FROM users WHERE id = ?");
     $existingStmt->execute([$userId]);
     $existing = $existingStmt->fetch(PDO::FETCH_ASSOC);
-    // Only overwrite if a value is explicitly provided; otherwise preserve existing
-    $phonepeMerchantId = (isset($_POST['phonepe_merchant_id']) && $_POST['phonepe_merchant_id'] !== '') ? trim($_POST['phonepe_merchant_id']) : ($existing['phonepe_merchant_id'] ?? '');
-    $phonepeSaltKey = (isset($_POST['phonepe_salt_key']) && $_POST['phonepe_salt_key'] !== '') ? trim($_POST['phonepe_salt_key']) : ($existing['phonepe_salt_key'] ?? '');
-    $phonepeEnvironment = isset($_POST['phonepe_environment']) ? trim($_POST['phonepe_environment']) : ($existing['phonepe_environment'] ?? 'SANDBOX');
+    // PhonePe keys are changed only in Payments › Payment Gateway (owner only, saved encrypted):
+    // this general settings form (branch admins can use it too) always keeps what is saved
+    $phonepeMerchantId = $existing['phonepe_merchant_id'] ?? '';
+    $phonepeSaltKey = $existing['phonepe_salt_key'] ?? '';
+    $phonepeEnvironment = $existing['phonepe_environment'] ?? 'SANDBOX';
     $minimumOrderValue = isset($_POST['minimum_order_value']) && $_POST['minimum_order_value'] !== '' ? floatval($_POST['minimum_order_value']) : 0;
     $packagingCharge = isset($_POST['packaging_charge']) && $_POST['packaging_charge'] !== '' ? floatval($_POST['packaging_charge']) : 0;
     $deliveryRadius = isset($_POST['delivery_radius_km']) && $_POST['delivery_radius_km'] !== '' ? floatval($_POST['delivery_radius_km']) : 0;
@@ -1436,13 +1437,22 @@ function handleUpdatePaymentGateway() {
         throw new Exception('You must be logged in to update payment gateway settings');
     }
 
-    // Cashfree removed — use PhonePe only
-    $phonepeMerchantId = isset($_POST['phonepe_merchant_id']) ? trim($_POST['phonepe_merchant_id']) : '';
-    $phonepeSaltKey = isset($_POST['phonepe_salt_key']) ? trim($_POST['phonepe_salt_key']) : '';
-    $phonepeEnvironment = isset($_POST['phonepe_environment']) ? trim($_POST['phonepe_environment']) : 'SANDBOX';
-    $gatewayMode = isset($_POST['payment_gateway_mode']) ? trim($_POST['payment_gateway_mode']) : 'own';
+    require_once __DIR__ . '/../config/phonepe_verify.php';
     $userId = $_SESSION['user_id'];
     $restaurantId = $_SESSION['restaurant_id'];
+    $existingStmt = $pdo->prepare('SELECT phonepe_merchant_id, phonepe_salt_key FROM users WHERE id = ?');
+    $existingStmt->execute([$userId]);
+    $existing = $existingStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $phonepeMerchantId = mb_substr(trim((string)($_POST['phonepe_merchant_id'] ?? '')), 0, 100);
+    // the saved secret is never sent to the page: left blank means "keep the saved one"
+    $phonepeSaltKey = trim((string)($_POST['phonepe_salt_key'] ?? ''));
+    $phonepeSaltKey = $phonepeSaltKey === '' ? (string)($existing['phonepe_salt_key'] ?? '') : ppSecretSeal(mb_substr($phonepeSaltKey, 0, 200));
+    $phonepeEnvironment = strtoupper(trim((string)($_POST['phonepe_environment'] ?? ''))) === 'SANDBOX' ? 'SANDBOX' : 'PRODUCTION';
+    $gatewayMode = ($_POST['payment_gateway_mode'] ?? 'own') === 'platform' ? 'platform' : 'own';
+    if ($gatewayMode === 'own' && ($phonepeMerchantId === '') !== ($phonepeSaltKey === '')) {
+        throw new Exception('Enter both the PhonePe Client ID and the Client Secret.');
+    }
 
     // If platform mode, clear credentials so env() fallback is used
     if ($gatewayMode === 'platform') {
@@ -1473,7 +1483,7 @@ function handleUpdatePaymentGateway() {
             'data' => [
                 // Cashfree removed
                 'phonepe_merchant_id' => maskSecret($phonepeMerchantId),
-                'phonepe_salt_key' => maskSecret($phonepeSaltKey),
+                'phonepe_salt_key' => ppMask(ppSecretOpen($phonepeSaltKey)),
                 'phonepe_environment' => $phonepeEnvironment,
                 'payment_gateway_mode' => $gatewayMode
             ]

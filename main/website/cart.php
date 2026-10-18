@@ -1197,12 +1197,11 @@ if (!empty($restaurant_id) && function_exists('getConnection')) {
     $gwStmt->execute([$restaurant_id]);
     $gwRow = $gwStmt->fetch(PDO::FETCH_ASSOC);
     if ($gwRow) {
-      $gwMode = $gwRow['payment_gateway_mode'] ?? 'own';
-      if ($gwMode === 'own' && !empty($gwRow['phonepe_merchant_id'])) {
-        $phonepe_configured = true;
-      } elseif ($gwMode === 'platform') {
-        $phonepe_configured = true;
-      }
+      // same rule the order API enforces (process_website_order.php): keys usable, India only
+      // (Nepal and other countries get none), and not switched to cash-only
+      require_once __DIR__ . '/../config/phonepe_verify.php';
+      $gwCfg = phonepeCallbackConfig($restaurant_id);
+      $phonepe_configured = ($payment_gateway_type ?? 'cash_only') !== 'cash_only' && ($gwCfg['ready'] || $gwCfg['demo']);
       if (!empty($gwRow['has_business_qr'])) {
         $business_qr_available = true;
         $business_qr_image_url = '../api/image.php?type=business_qr&id=' . urlencode($gwRow['id']);
@@ -3587,9 +3586,9 @@ function processOrder(cartData) {
 
       // Cashfree removed — PhonePe is the only online payment
       if (data.phonepe_required) {
-        sessionStorage.setItem('phonepe_order_number', data.order_number);
-        setCookie('pp_order_number', data.order_number, 30);
-        document.getElementById('checkoutModal').remove();
+        ppRemember(data.order_id, phone, data.order_number);
+        var cm = document.getElementById('checkoutModal');
+        if (cm) cm.remove();
         initiatePhonePePayment(data.order_id, phone);
         return;
       }
@@ -3627,12 +3626,11 @@ function initiatePhonePePayment(orderId, customerPhone) {
   var loading = document.createElement('div');
   loading.id = 'phonepeLoader';
   loading.className = 'modal-overlay';
-  loading.innerHTML = '<div class="alert-box" style="text-align:center"><h3>Redirecting to PhonePe...</h3><p style="margin-top:10px">Please wait while we redirect you to PhonePe payment page.</p><div style="margin-top:15px;font-size:24px">&#8987;</div></div>';
+  loading.innerHTML = '<div class="alert-box" style="text-align:center"><h3>Opening PhonePe…</h3><p style="margin-top:10px">Please wait a moment.</p><div style="margin-top:15px;font-size:24px">&#8987;</div></div>';
   document.body.appendChild(loading);
 
-  // Store in sessionStorage AND cookies (cookies survive cross-domain redirects)
-  sessionStorage.setItem('phonepe_pending', orderId);
-  setCookie('pp_pending', orderId, 30);
+  // remembered for 30 minutes (cookies survive PhonePe's redirect back; sessionStorage may not)
+  ppRemember(orderId, customerPhone, null);
 
   fetchJsonWithRetry('../api/phonepe_order_payment.php', {
     method: 'POST',
@@ -3642,33 +3640,83 @@ function initiatePhonePePayment(orderId, customerPhone) {
   .then(function(data) {
     var loader = document.getElementById('phonepeLoader');
     if (loader) loader.remove();
-
-    if (data.success && data.payment_url) {
-      window.location.href = data.payment_url;
-    } else {
-      sessionStorage.removeItem('phonepe_pending');
-      deleteCookie('pp_pending');
-      showModal('Payment Error', data.message || 'Failed to initiate PhonePe payment.', function() {
-        initiatePhonePePayment(orderId, customerPhone);
-      });
-    }
+    if (data.success && data.paid) { handlePaymentSuccess(ppGet('pp_order_number') || ''); return; }
+    if (data.success && data.payment_url) { window.location.href = data.payment_url; return; }
+    ppShowChoices(ppGet('pp_order_number') || '', 'Could not open PhonePe', data.message || 'Please try again, or choose another way to pay.', { can_retry: true, can_cash: true });
   })
-  .catch(function(err) {
+  .catch(function() {
     var loader = document.getElementById('phonepeLoader');
     if (loader) loader.remove();
-    sessionStorage.removeItem('phonepe_order_number');
-    sessionStorage.removeItem('phonepe_pending');
-    deleteCookie('pp_pending');
-    deleteCookie('pp_order_number');
-    // Note: the order itself was already created and saved server-side
-    // (Pending payment state) before this payment step ran — only the
-    // payment session creation failed. Retrying re-uses the same orderId
-    // (initiatePhonePePayment re-sets the pending markers at its top)
-    // rather than creating a new order.
-    showModal('Connection Problem', 'We could not start the payment after a few tries. Your order is saved — please check your connection and retry payment.', function() {
-      initiatePhonePePayment(orderId, customerPhone);
-    });
+    // the order is saved (waiting for payment); only opening PhonePe failed
+    ppShowChoices(ppGet('pp_order_number') || '', 'Connection problem', 'We could not open PhonePe. Your order is saved: try again, or choose another way to pay.', { can_retry: true, can_cash: true });
   });
+}
+
+/* ── PhonePe return: remember the order, check it, offer Pay again / Pay cash / Cancel ── */
+function ppRemember(orderId, phone, orderNumber) {
+  if (orderId) { sessionStorage.setItem('phonepe_pending', orderId); setCookie('pp_pending', orderId, 1800); }
+  if (phone) { sessionStorage.setItem('phonepe_phone', phone); setCookie('pp_phone', phone, 1800); }
+  if (orderNumber) { sessionStorage.setItem('phonepe_order_number', orderNumber); setCookie('pp_order_number', orderNumber, 1800); }
+}
+function ppGet(name) {
+  var map = { pp_pending: 'phonepe_pending', pp_phone: 'phonepe_phone', pp_order_number: 'phonepe_order_number' };
+  return sessionStorage.getItem(map[name]) || getCookie(name);
+}
+function ppForget() {
+  ['phonepe_pending', 'phonepe_phone', 'phonepe_order_number'].forEach(function(k) { sessionStorage.removeItem(k); });
+  ['pp_pending', 'pp_phone', 'pp_order_number'].forEach(deleteCookie);
+}
+function ppCleanUrl() {
+  var url = new URL(window.location.href);
+  ['order_id', 'transaction_id', 'transactionId', 'merchantTransactionId', 'code', 'amount', 'providerReferenceId', 'phonepe_demo'].forEach(function(p) { url.searchParams.delete(p); });
+  window.history.replaceState({}, '', url.toString());
+}
+function ppStatusUrl(orderNumber) {
+  return '../api/phonepe_order_payment.php?action=status&order_id=' + encodeURIComponent(orderNumber) + '&restaurant_id=' + encodeURIComponent(window.websiteRestaurantId || '');
+}
+function ppPost(action, extra) {
+  return fetchJsonWithRetry('../api/phonepe_order_payment.php?action=' + action, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ order_id: ppGet('pp_pending'), customer_phone: ppGet('pp_phone') }, extra || {}))
+  });
+}
+/** A clear choice when the payment did not go through (or is taking long). */
+function ppShowChoices(orderNumber, title, msg, s) {
+  var old = document.getElementById('ppChoice'); if (old) old.remove();
+  var loader = document.getElementById('ppVerifyLoader'); if (loader) loader.remove();
+  var canAct = !!(ppGet('pp_pending') && ppGet('pp_phone'));
+  var m = document.createElement('div');
+  m.id = 'ppChoice';
+  m.className = 'modal-overlay';
+  var btn = 'display:block;width:100%;margin-top:10px;padding:12px 14px;border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;';
+  m.innerHTML = '<div class="alert-box" style="text-align:center;max-width:380px"><h3>' + esc(title) + '</h3><p style="margin-top:10px">' + esc(msg) + '</p>' +
+    (canAct && s.can_retry ? '<button type="button" id="ppRetry" style="' + btn + 'background:#5f259f;color:#fff;border:0">Pay again with PhonePe</button>' : '') +
+    (canAct && s.can_cash ? '<button type="button" id="ppCash" style="' + btn + 'background:#fff;color:#111;border:1px solid #d1d5db">Pay cash instead</button>' : '') +
+    (canAct && s.can_retry ? '<button type="button" id="ppCancel" style="' + btn + 'background:none;color:#b91c1c;border:0;font-weight:600">Cancel this order</button>' : '') +
+    '<button type="button" id="ppClose" style="' + btn + 'background:none;color:#6b7280;border:0;font-weight:600">Close</button></div>';
+  document.body.appendChild(m);
+  var q = function(id) { return document.getElementById(id); };
+  if (q('ppRetry')) q('ppRetry').onclick = function() { m.remove(); initiatePhonePePayment(ppGet('pp_pending'), ppGet('pp_phone')); };
+  if (q('ppCash')) q('ppCash').onclick = function() {
+    this.disabled = true;
+    ppPost('cash').then(function(d) {
+      m.remove();
+      if (d.success && d.paid) { handlePaymentSuccess(orderNumber); return; }
+      if (!d.success) { showModal('Could not change', d.message || 'Please try again.'); return; }
+      ppForget(); ppCleanUrl(); clearPlacedOrder();
+      showSuccessModal(d.order_number || orderNumber);
+    }).catch(function() { m.remove(); showModal('Connection problem', 'Please try again.'); });
+  };
+  if (q('ppCancel')) q('ppCancel').onclick = function() {
+    this.disabled = true;
+    ppPost('cancel').then(function(d) {
+      m.remove();
+      if (d.success && d.paid) { handlePaymentSuccess(orderNumber); return; }
+      ppForget(); ppCleanUrl();
+      showModal('Order cancelled', 'Nothing was charged. Your cart is still here if you want to order again.');
+    }).catch(function() { m.remove(); showModal('Connection problem', 'Please try again.'); });
+  };
+  q('ppClose').onclick = function() { m.remove(); ppCleanUrl(); };
 }
 
 // The order is placed: empty the cart, and drop its notes, add-ons and coupon so
@@ -3685,10 +3733,10 @@ function clearPlacedOrder() {
 function handlePaymentSuccess(orderNumber) {
   var loader = document.getElementById('ppVerifyLoader');
   if (loader) loader.remove();
-  sessionStorage.removeItem('phonepe_order_number');
-  sessionStorage.removeItem('phonepe_pending');
-  deleteCookie('pp_pending');
-  deleteCookie('pp_order_number');
+  var ch = document.getElementById('ppChoice');
+  if (ch) ch.remove();
+  window._ppVerifyCancelled = true;
+  ppForget();
   clearPlacedOrder();
   showSuccessModal(orderNumber);
   var url = new URL(window.location.href);
@@ -3710,192 +3758,72 @@ function handlePaymentSuccess(orderNumber) {
 function checkPhonePeReturn() {
   var params = new URLSearchParams(window.location.search);
   var orderNumber = params.get('order_id');
-  var isDemo = params.get('phonepe_demo');
-  
-  // Log all URL params for debugging
-  var allParams = {};
-  for (var _pair of params.entries()) { allParams[_pair[0]] = _pair[1]; }
-
-  // Check sessionStorage first, then fall back to cookies (which survive cross-domain redirects)
-  var hasPending = sessionStorage.getItem('phonepe_pending') || getCookie('pp_pending');
-
-  // If order_id is in URL, proceed regardless of hasPending (cross-domain redirect clears storage)
+  var hasPending = ppGet('pp_pending');
+  // order_id comes back in PhonePe's redirect; after Back the remembered order is used
   if (!orderNumber) {
-    orderNumber = sessionStorage.getItem('phonepe_order_number') || getCookie('pp_order_number');
-    if (!orderNumber || !hasPending) {
-      return;
-    }
+    orderNumber = ppGet('pp_order_number');
+    if (!orderNumber || !hasPending) return;
   }
+  if (document.getElementById('ppVerifyLoader') || document.getElementById('ppChoice')) return;
 
-
-  if (isDemo === '1') {
-    sessionStorage.removeItem('phonepe_order_number');
-    sessionStorage.removeItem('phonepe_pending');
-    deleteCookie('pp_pending');
-    deleteCookie('pp_order_number');
-    clearPlacedOrder();
-    showSuccessModal(orderNumber);
-    var url = new URL(window.location.href);
-    url.searchParams.delete('order_id');
-    url.searchParams.delete('phonepe_demo');
-    url.searchParams.delete('transaction_id');
-    window.history.replaceState({}, '', url.toString());
-
-    var waInfoStr = sessionStorage.getItem('whatsapp_order_info');
-    if (waInfoStr) {
-      try {
-        var waInfo = JSON.parse(waInfoStr);
-        if (waInfo && waInfo.phone) {
-          waInfo.number = orderNumber;
-          setTimeout(function() { redirectToWhatsApp(waInfo); }, 500);
-        }
-      } catch(e) {}
-      sessionStorage.removeItem('whatsapp_order_info');
-    }
+  // local computer without PhonePe keys: nothing is charged, the order stays unpaid (the server never trusts this)
+  if (params.get('phonepe_demo') === '1') {
+    ppCleanUrl();
+    ppShowChoices(orderNumber, 'Test payment (this computer)', 'PhonePe is not connected on this computer, so nothing was charged and the order is still waiting for payment.', { can_retry: false, can_cash: true });
     return;
   }
 
-  // Clean PhonePe-added params from URL (keep order_id and restaurant_id)
-  var url = new URL(window.location.href);
-  var cleanParams = ['transaction_id', 'transactionId', 'merchantTransactionId', 'code', 'amount', 'providerReferenceId', 'phonepe_demo'];
-  cleanParams.forEach(function(p) { url.searchParams.delete(p); });
-  window.history.replaceState({}, '', url.toString());
-
-  // Show loading overlay. Includes a "didn't complete payment" escape hatch —
-  // someone who backed out of PhonePe without paying knows immediately that
-  // nothing was charged, and shouldn't have to sit through the full polling
-  // window (previously up to 5 minutes) before getting a clear answer.
   window._ppVerifyCancelled = false;
   var loading = document.createElement('div');
   loading.id = 'ppVerifyLoader';
   loading.className = 'modal-overlay';
-  loading.innerHTML = '<div class="alert-box" style="text-align:center"><h3>Verifying Payment...</h3><p style="margin-top:10px">Please wait while we verify your payment.</p><div style="margin-top:15px;font-size:24px">&#8987;</div><button type="button" onclick="cancelPhonePeVerification(\'' + orderNumber.replace(/'/g, "\\'") + '\')" style="margin-top:18px;background:none;border:1px solid #ccc;border-radius:6px;padding:8px 16px;color:#666;cursor:pointer;font-size:0.9rem;">I didn\'t complete this payment</button></div>';
+  loading.innerHTML = '<div class="alert-box" style="text-align:center"><h3>Checking your payment…</h3><p style="margin-top:10px">This usually takes a few seconds.</p><div style="margin-top:15px;font-size:24px">&#8987;</div>' +
+    '<button type="button" onclick="cancelPhonePeVerification(\'' + String(orderNumber).replace(/[^A-Za-z0-9_-]/g, '') + '\')" style="margin-top:18px;background:none;border:1px solid #ccc;border-radius:6px;padding:8px 16px;color:#666;cursor:pointer;font-size:0.9rem;">I didn\'t pay / go back</button></div>';
   document.body.appendChild(loading);
-
-  // Build the status check URL (only pass code=PAYMENT_SUCCESS if PhonePe actually sent it)
-  var statusUrl = '../api/phonepe_order_payment.php?action=status&order_id=' + encodeURIComponent(orderNumber);
-  var successCode = params.get('code');
-  if (successCode === 'PAYMENT_SUCCESS') {
-    statusUrl += '&code=PAYMENT_SUCCESS';
-  }
-
-  fetch(statusUrl)
-    .then(function(r) { 
-      return r.json(); 
-    })
-    .then(function(data) {
-      if (data.success && data.payment_status === 'Success') {
-        handlePaymentSuccess(orderNumber);
-      } else if (!window._ppVerifyCancelled) {
-        // Fall back to regular polling
-        pollPaymentStatus(orderNumber, 24, 5000);
-      }
-    })
-    .catch(function(err) {
-      // Network error, fall back to polling
-      if (!window._ppVerifyCancelled) pollPaymentStatus(orderNumber, 24, 5000);
-    });
+  pollPaymentStatus(orderNumber, 12, 3000);
 }
 
-// No webhook is configured yet, so this browser poll is the ONLY automatic
-// way a payment gets confirmed — there's nothing else watching in the
-// background. So it deliberately keeps checking for a while (~2 min fast,
-// then ~10 min slower — UPI confirmations can occasionally take that long)
-// instead of giving up quickly. This is safe to do because someone who knows
-// they didn't pay already has the "I didn't complete this payment" button on
-// the overlay to bail out immediately — extending the automatic ceiling only
-// helps the people who stay and wait for a real (if slow) confirmation.
-// Once a webhook is wired up later, it becomes a redundant safety net instead
-// of the only path, and this can be trimmed back down.
+// Fast at first (UPI usually confirms in seconds), then slower. The server asks PhonePe each time, and a
+// background check also settles it, so closing the page never loses a payment. Unpaid orders are cancelled
+// automatically after 30 minutes (coupon, points and wallet money go back).
 function pollPaymentStatus(orderNumber, retries, intervalMs) {
-  intervalMs = intervalMs || 5000;
-
-  if (retries <= 0) {
-    if (intervalMs < 15000) {
-      // Fast phase exhausted — switch to slower background polling rather
-      // than giving up on a payment that might still be genuinely processing.
-      var msgEl = document.querySelector('#ppVerifyLoader p');
-      if (msgEl) msgEl.textContent = "This is taking longer than usual, but we're still checking. Please keep this tab open.";
-      pollPaymentStatus(orderNumber, 40, 15000);
-      return;
-    }
-    var loader = document.getElementById('ppVerifyLoader');
-    if (loader) loader.remove();
-    // Both phases exhausted (~12 minutes) — check the DB one more time directly
-    fetch('../api/phonepe_order_payment.php?action=status&order_id=' + encodeURIComponent(orderNumber))
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.success && data.payment_status === 'Success') {
-          handlePaymentSuccess(orderNumber);
-        } else {          sessionStorage.removeItem('phonepe_order_number');
-          sessionStorage.removeItem('phonepe_pending');
-          deleteCookie('pp_pending');
-          deleteCookie('pp_order_number');
-          showModal('Payment Not Confirmed', "We couldn't confirm this payment. If you completed it, it may take a few minutes to reflect — check Order Status in your profile. If you didn't complete it, you're free to try again.");
-          var url = new URL(window.location.href);
-          url.searchParams.delete('order_id');
-          window.history.replaceState({}, '', url.toString());
-        }
-      })
-      .catch(function() {
-        sessionStorage.removeItem('phonepe_order_number');
-        sessionStorage.removeItem('phonepe_pending');
-        deleteCookie('pp_pending');
-        deleteCookie('pp_order_number');
-        showModal('Payment Not Confirmed', "We couldn't confirm this payment. If you completed it, it may take a few minutes to reflect — check Order Status in your profile. If you didn't complete it, you're free to try again.");
-          var url = new URL(window.location.href);
-          url.searchParams.delete('order_id');
-          window.history.replaceState({}, '', url.toString());
-      });
-    return;
-  }
-
-  fetch('../api/phonepe_order_payment.php?action=status&order_id=' + encodeURIComponent(orderNumber))
-    .then(function(r) {
-      return r.json();
-    })
+  if (window._ppVerifyCancelled) return;
+  fetch(ppStatusUrl(orderNumber))
+    .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (data.success && data.payment_status === 'Success') {
-        handlePaymentSuccess(orderNumber);
-      } else if (data.success && data.payment_status === 'Pending') {
-        if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1, intervalMs); }, intervalMs);
-      } else {
-        var loader = document.getElementById('ppVerifyLoader');
-        if (loader) loader.remove();
-        sessionStorage.removeItem('phonepe_order_number');
-        sessionStorage.removeItem('phonepe_pending');
-        deleteCookie('pp_pending');
-        deleteCookie('pp_order_number');
-        showModal('Payment Failed', 'Your payment could not be completed.');
-        var url = new URL(window.location.href);
-        url.searchParams.delete('order_id');
-        window.history.replaceState({}, '', url.toString());
+      if (window._ppVerifyCancelled) return;
+      if (data.success && data.payment_status === 'Success') { handlePaymentSuccess(orderNumber); return; }
+      if (data.success && data.payment_status === 'Cash') { ppForget(); ppCleanUrl(); clearPlacedOrder(); var l = document.getElementById('ppVerifyLoader'); if (l) l.remove(); showSuccessModal(orderNumber); return; }
+      if (data.success && data.payment_status === 'Failed') {
+        if (data.cancelled) { ppForget(); ppCleanUrl(); var l2 = document.getElementById('ppVerifyLoader'); if (l2) l2.remove(); showModal('Order cancelled', 'This order was cancelled because the payment was not completed. Nothing was charged. Please place it again.'); return; }
+        ppShowChoices(orderNumber, 'Payment didn\'t go through', 'No money was taken. You can try again or pick another way to pay.', data);
+        return;
       }
+      if (retries > 0) { setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1, intervalMs); }, intervalMs); return; }
+      if (intervalMs < 10000) {
+        var msgEl = document.querySelector('#ppVerifyLoader p');
+        if (msgEl) msgEl.textContent = 'Still waiting for PhonePe. If you paid, keep this page open: it confirms by itself.';
+        setTimeout(function() { pollPaymentStatus(orderNumber, 24, 10000); }, 10000);
+        return;
+      }
+      ppShowChoices(orderNumber, 'Payment not confirmed yet', 'If money was taken, your order confirms by itself within a few minutes and you get a message. If you did not pay, choose an option below.', data.success ? data : { can_retry: true, can_cash: false });
     })
-    .catch(function(err) {
-      if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1, intervalMs); }, intervalMs);
+    .catch(function() {
+      if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, Math.max(0, retries - 1), intervalMs); }, intervalMs);
     });
 }
 
-// Lets someone who backed out of PhonePe without paying dismiss the
-// "Verifying Payment..." overlay immediately instead of waiting through the
-// full polling window — stops further polling and clears the pending order
-// markers so a retry starts clean. If the payment actually does succeed via
-// an in-flight request that resolves after this, handlePaymentSuccess() below
-// still overrides this and shows the real outcome.
+// "I didn't pay / go back": stop waiting and show the choices right away (one last check first).
 function cancelPhonePeVerification(orderNumber) {
   window._ppVerifyCancelled = true;
-  var loader = document.getElementById('ppVerifyLoader');
-  if (loader) loader.remove();
-  sessionStorage.removeItem('phonepe_order_number');
-  sessionStorage.removeItem('phonepe_pending');
-  deleteCookie('pp_pending');
-  deleteCookie('pp_order_number');
-  var url = new URL(window.location.href);
-  url.searchParams.delete('order_id');
-  window.history.replaceState({}, '', url.toString());
-  showModal('Payment Cancelled', "No problem — your order is saved as Pending payment. You can try paying again from your order details, or place a new order.");
+  fetch(ppStatusUrl(orderNumber)).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.success && d.payment_status === 'Success') { handlePaymentSuccess(orderNumber); return; }
+    ppShowChoices(orderNumber, 'Payment not completed', 'No problem: nothing was charged. What would you like to do?', d.success ? d : { can_retry: true, can_cash: false });
+  }).catch(function() { ppShowChoices(orderNumber, 'Payment not completed', 'What would you like to do?', { can_retry: true, can_cash: false }); });
 }
+
+// Back from PhonePe can restore this page from the browser's cache without reloading it: check again.
+window.addEventListener('pageshow', function(e) { if (e.persisted) checkPhonePeReturn(); });
 
 
 function showSuccessModal(orderNum, scheduledAt) {

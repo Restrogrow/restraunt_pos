@@ -19,6 +19,8 @@ session_write_close();
 
 try {
     $conn = getConnection();
+    // online payments nobody came back for: settle / cancel them after this reply (config/payment_reconcile.php)
+    try { require_once __DIR__ . '/../config/payment_reconcile.php'; ppReconcileAfterResponse($conn); } catch (Throwable $e) { error_log('wa_dispatch payments: ' . $e->getMessage()); }
     ensureWhatsappSchema($conn);
     // Phone wallet cards: push balance changes (Loyalty Studio › Phone card)
     $cards = 0;

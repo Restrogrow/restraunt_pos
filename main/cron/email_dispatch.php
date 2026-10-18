@@ -21,6 +21,8 @@ try {
     $conn = getConnection();
     // so Super Admin › Email › Settings & jobs can show the job is running
     try { $conn->exec("CREATE TABLE IF NOT EXISTS sa_settings (k VARCHAR(60) PRIMARY KEY, v TEXT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"); $conn->prepare("REPLACE INTO sa_settings (k, v) VALUES ('cron_email_dispatch_at', ?)")->execute([date('Y-m-d H:i:s')]); } catch (Throwable $e) { /* not important */ }
+    // online payments nobody came back for (also its own cron: cron/payments_reconcile.php)
+    try { require_once __DIR__ . '/../config/payment_reconcile.php'; runPaymentReconcile($conn, false, 30); } catch (Throwable $e) { error_log('email_dispatch payments: ' . $e->getMessage()); }
     $swept = mailSweep($conn, in_array('--force', $argv ?? [], true));
     [$sent, $failed] = mailDispatch($conn, 100);
     echo date('c') . " emails sent: $sent, failed: $failed, made by the sweep: " . json_encode($swept) . "\n";

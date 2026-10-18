@@ -299,6 +299,32 @@ try {
     // through, silently defeating the restaurant's minimum-order policy.
     $minOrderValue = (float)($minRow['minimum_order_value'] ?? 0);
 
+    // Only the methods the website offers. 'Wallet' is set by the server when the wallet covers the whole
+    // order; a client sending 'Wallet' / 'Online' / anything else must not get an unpaid order that looks prepaid.
+    if (in_array($payment_method, ['PhonePe', 'Online', 'UPI', 'NetBanking'], true)) $payment_method = 'UPI / NetBanking';
+    if (!in_array($payment_method, ['Cash', '', 'UPI / NetBanking', 'QR Payment'], true)) {
+        ob_end_clean();
+        echo json_encode(['success' => false, 'message' => 'Please choose how you want to pay.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+    if ($payment_method === 'QR Payment' && (int)($restaurantRow['has_business_qr'] ?? 0) !== 1) {
+        ob_end_clean();
+        echo json_encode(['success' => false, 'message' => 'Paying by QR is not available here. Please choose another way to pay.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+    if ($payment_method === 'UPI / NetBanking') {
+        // online payment really available here (keys set, India, not switched to cash-only by Super Admin)?
+        require_once __DIR__ . '/../config/phonepe_verify.php';
+        $ppCfg = phonepeCallbackConfig($restaurant_id);
+        $gwType = '';
+        try { $gt = $conn->prepare('SELECT payment_gateway_type FROM users WHERE restaurant_id = ? LIMIT 1'); $gt->execute([$restaurant_id]); $gwType = (string)$gt->fetchColumn(); } catch (Throwable $e) {}
+        if ($gwType === '' || $gwType === 'cash_only' || (!$ppCfg['ready'] && !$ppCfg['demo'])) {   // same rule as the cart page (header.php)
+            ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Online payment is not available at this restaurant right now. Please choose cash or another way to pay.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+    }
+
     // Enforce COD availability server-side. The client already hides the Cash
     // option when disabled, but that alone isn't authoritative.
     $codEnabled = true;
@@ -843,6 +869,15 @@ $conn->beginTransaction();
     $loyalty_points_to_redeem = 0;
     $loyalty_discount_amount = 0;
     $loyaltyCustomerId = null;
+    // Spending points needs the customer to be logged in with this phone (like the wallet):
+    // typing someone else's number must never spend their points.
+    $pointsOwnerOk = $vipCustomer && (orderAbuseNormalizePhone((string)$vipCustomer['phone']) ?? (string)$vipCustomer['phone']) === (string)$customer_phone;
+    if ($redeem_points_requested > 0 && !$pointsOwnerOk) {
+        $conn->rollBack();
+        ob_end_clean();
+        echo json_encode(['success' => false, 'message' => 'Log in with your phone number to use your points.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
     if ($redeem_points_requested > 0) {
         require_once __DIR__ . '/../config/growth_helpers.php';
         $growthSettings = getGrowthSettings($conn, $restaurant_id);
@@ -1027,13 +1062,30 @@ $conn->beginTransaction();
     // rare false-positive if they intentionally reorder the exact same cart
     // total within that window — acceptable trade-off for launch.
     $dedupStmt = $conn->prepare(
-        "SELECT id, order_number FROM orders
+        "SELECT id, order_number, payment_method, payment_status, order_status FROM orders
          WHERE restaurant_id = ? AND customer_phone = ? AND total = ?
-         AND created_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+         AND created_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE) AND order_status NOT IN ('Cancelled', 'Rejected')
          ORDER BY id DESC LIMIT 1"
     );
     $dedupStmt->execute([$restaurant_id, $customer_phone, $grand_total]);
     $dupOrder = $dedupStmt->fetch(PDO::FETCH_ASSOC);
+    $dupUnpaidOnline = $dupOrder && $dupOrder['payment_method'] === 'UPI / NetBanking' && $dupOrder['payment_status'] !== 'Paid'
+        && in_array($dupOrder['order_status'], ['Pending', 'Scheduled'], true);
+    if ($dupUnpaidOnline && $payment_method === 'UPI / NetBanking') {
+        // the same order, still waiting for payment (Back pressed on PhonePe): pay for it again
+        $conn->rollBack();
+        ob_end_clean();
+        echo json_encode(['success' => true, 'order_id' => $dupOrder['id'], 'order_number' => $dupOrder['order_number'], 'phonepe_required' => true,
+            'message' => 'Your order is waiting for payment.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+    if ($dupUnpaidOnline) {
+        // switching from online payment to cash / QR: the unpaid one is cancelled (coupon, points, wallet back) and a new one placed
+        require_once __DIR__ . '/../config/order_state_machine.php';
+        $cxl = validateAndUpdateOrderStatus($conn, (int)$dupOrder['id'], 'Cancelled', [], [], $restaurant_id, '[Replaced: the customer chose another way to pay]');
+        if (empty($cxl['success'])) error_log('dedup replace: could not cancel order ' . $dupOrder['id'] . ': ' . ($cxl['message'] ?? ''));
+        $dupOrder = null;
+    }
     if ($dupOrder) {
         // Duplicate detected — rollback and return existing order
         $conn->rollBack();

@@ -81,6 +81,22 @@ Then open Super Admin › Email › Settings & jobs: both should say Running wit
 4. analytics.google.com › Admin › Property access management › + › Add users › paste the service account email (ends with iam.gserviceaccount.com) › role Viewer › untick Notify › Add.
 5. Super Admin › Tools › Website analytics › Settings › choose the .json file › Upload key. The Google Analytics tab then shows users, pages, channels and countries."],
     ['WhatsApp', 0, 'New RepeatGrow key with webhooks:manage (WhatsApp Delivered / Read)', "So campaign cards show Delivered and Read for messages from RestroGrow's shared number. 1. RepeatGrow (RestroGrow's own account) › Settings › API keys › New key › tick messages:send AND webhooks:manage (\"Register and manage outbound event webhooks\") › create › copy the wacrm_live_… key. 2. Hostinger › File Manager › main/.env › replace the value after REPEATGROW_API_KEY= with the new key › Save. Nothing else: RestroGrow registers the webhook by itself the next time a WhatsApp page opens. (Skip if the current key already has webhooks:manage.)"],
+    ['Payments', 1, 'Create the PhonePe webhook (so payments never get stuck)', "1. Make a username and a strong password (letters + digits, 8+ characters).
+2. Hostinger › File Manager › main/.env › add (or fill):
+PHONEPE_WEBHOOK_USERNAME=<your username>
+PHONEPE_WEBHOOK_PASSWORD=<your password>
+› Save.
+3. business.phonepe.com (RestroGrow's PhonePe account) › Developer settings › Webhooks › Create webhook:
+• Webhook URL: https://restrogrow.com/main/api/phonepe_webhook.php
+• Username / Password: the same two as in .env
+• Description: RestroGrow payments
+• Events: tick checkout.order.completed and checkout.order.failed (nothing else needed)
+› Create.
+Only ONE webhook: it handles orders, plan renewals, payment links, wallet top-ups, VIP and meal plans. Restaurants on their own PhonePe account see their own webhook details in Payments › Payment Gateway."],
+    ['Payments', 1, 'Add the payment safety-net cron job', "hPanel › Advanced › Cron Jobs › Custom › every 5 minutes:
+/usr/bin/php <HOME>/main/cron/payments_reconcile.php
+(<HOME> = the folder shown in File Manager.) It asks PhonePe about every payment still waiting and cancels website orders whose online payment never completed after 30 minutes (coupon, points, wallet money and stock go back). It also runs while a dashboard is open, but the cron makes it run at night too."],
+    ['Payments', 1, 'Set the payment encryption key in .env', "Restaurants' own PhonePe secrets are now saved encrypted. Hostinger › File Manager › main/.env: if WA_KEY_SECRET= already has a value, nothing to do. Otherwise add PAYMENT_KEY_SECRET=<a long random text> (make one: any password generator, 40+ characters) › Save. Never change it afterwards (saved secrets could not be read any more). Also check PHONEPE_CLIENT_ID and PHONEPE_CLIENT_SECRET are RestroGrow's LIVE keys."],
     ['Decide', 0, 'Pick the loading screens', "Super Admin › Tools › Loading screens: try the 12 loaders (Try full screen), choose one for Dashboard opening, Page change and Section & button, then Save. Then tell Claude to switch them on in the restaurant dashboard."],
 ];
 // jobs the owner has already done outside the list

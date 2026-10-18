@@ -94,14 +94,20 @@
     var demo = q.get('vip_demo') ? '&demo=1' : '';
     q.delete('vip_txn'); q.delete('vip_demo');
     history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash);
-    return fetch(API + '?action=status&restaurant_id=' + encodeURIComponent(window.restaurantId) + '&txn=' + encodeURIComponent(txn) + demo, { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (!d.success) { toast(d.message || 'Could not check the payment', 'error'); return; }
-        if (d.status === 'Active') { toast('Welcome to the club! Your perks are on.'); setTimeout(function () { location.reload(); }, 1400); }
-        else if (d.status === 'Failed') toast('The payment did not go through. You were not charged.', 'error');
-        else toast('Payment is still processing. Check back in a minute.');
-      }).catch(function () {});
+    var tries = 0;
+    // fast at first, then slower for ~3 minutes; the server also settles it in the background
+    function check() {
+      return fetch(API + '?action=status&restaurant_id=' + encodeURIComponent(window.restaurantId) + '&txn=' + encodeURIComponent(txn) + demo, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.success) { toast(d.message || 'Could not check the payment', 'error'); return; }
+          if (d.status === 'Active') { toast('Welcome to the club! Your perks are on.'); setTimeout(function () { location.reload(); }, 1400); }
+          else if (d.status === 'Failed') toast('The payment did not go through. You were not charged.', 'error');
+          else if (++tries < 45) { if (tries === 1) toast('Checking your payment…'); setTimeout(check, tries < 15 ? 2000 : 6000); }
+          else toast('Still waiting for PhonePe. Your perks switch on by themselves once it is confirmed.');
+        }).catch(function () { if (++tries < 45) setTimeout(check, 4000); });
+    }
+    return check();
   }
 
   document.addEventListener('click', function (e) {

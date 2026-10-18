@@ -179,6 +179,23 @@ if (!function_exists('ensureWalletTables')) {
         try { $conn->query('SELECT 1 FROM wallet_ledger LIMIT 1'); } catch (PDOException $e) { return; }
         $done = $conn->prepare('SELECT 1 FROM wallet_ledger WHERE order_id = ? AND type = ? LIMIT 1');
 
+        // payment refunded (Update payment › Refunded): the wallet part goes back to the wallet like a cancel,
+        // and the cashback this order earned is taken back (only what is still in the wallet)
+        if ($newStatus === 'Refunded') {
+            if ((float)$o['wallet_paid'] > 0) {
+                $done->execute([$orderId, 'refund']);
+                if (!$done->fetchColumn()) walletApply($conn, $o['restaurant_id'], $o['customer_phone'], (float)$o['wallet_paid'], 'refund', 'Order refunded, wallet money returned', $orderId);
+            }
+            $cb = $conn->prepare("SELECT COALESCE(SUM(amount), 0) FROM wallet_ledger WHERE order_id = ? AND type = 'cashback'");
+            $cb->execute([$orderId]);
+            $cash = (float)$cb->fetchColumn();
+            $done->execute([$orderId, 'cb_reverse']);
+            if ($cash > 0 && !$done->fetchColumn()) {
+                $take = min($cash, walletBalance($conn, $o['restaurant_id'], $o['customer_phone']));
+                if ($take > 0) walletApply($conn, $o['restaurant_id'], $o['customer_phone'], -$take, 'cb_reverse', 'Cashback taken back: order refunded', $orderId);
+            }
+            return;
+        }
         if (in_array($newStatus, ['Cancelled', 'Rejected'], true) && (float)$o['wallet_paid'] > 0) {
             $done->execute([$orderId, 'refund']);
             if (!$done->fetchColumn()) {

@@ -634,9 +634,20 @@ require_once __DIR__ . '/../config/countries.php';
               <input id="cplmAmount" type="number" step="0.01" min="1" placeholder="Enter amount" style="width:100%;">
             </div>
             <div class="form-group">
+              <label>Add to their plan when paid</label>
+              <select id="cplmPlanMonths" style="width:100%;">
+                <option value="0">Nothing (other payment)</option>
+                <option value="1">1 month</option>
+                <option value="3">3 months</option>
+                <option value="6">6 months</option>
+                <option value="12">12 months</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label>Notes (optional)</label>
               <input id="cplmNotes" placeholder="e.g. Monthly subscription" style="width:100%;">
             </div>
+            <p style="font-size:0.8rem;color:var(--muted);margin:0 0 12px;">The link never expires: each time it is opened, a fresh PhonePe payment starts on RestroGrow's account.</p>
             <button id="cplmCreate" type="button" class="btn btn-primary" style="width:100%;">Generate Payment Link</button>
           </div>
         </div>
@@ -2097,13 +2108,13 @@ require_once __DIR__ . '/../config/countries.php';
               <td>${pl.id}</td>
               <td><strong>${saEsc(pl.restaurant_name) || pl.restaurant_id}</strong></td>
               <td>₹${Number(pl.amount).toLocaleString('en-IN')}</td>
-              <td style="font-family:monospace;font-size:0.8rem;">${pl.transaction_id || '-'}</td>
+              <td style="font-family:monospace;font-size:0.8rem;">${saEsc(pl.transaction_id) || '-'}</td>
               <td><span class="badge ${statusClass}">${pl.payment_status}</span></td>
               <td>
                 ${pl.payment_url ? `<a href="${pl.payment_url}" target="_blank" class="btn btn-outline" style="padding:4px 10px;font-size:0.8rem;">Open Link</a>
                 <button class="btn btn-outline" style="padding:4px 10px;font-size:0.8rem;" onclick="copyToClipboard('${pl.payment_url.replace(/'/g, "\\'")}')">Copy</button>` : '-'}
               </td>
-              <td style="font-size:0.85rem;color:var(--muted);">${pl.notes || '-'}</td>
+              <td style="font-size:0.85rem;color:var(--muted);">${saEsc(pl.notes) || '-'}${Number(pl.plan_months) > 0 ? `<br><span style="color:var(--text)">+${Number(pl.plan_months)} month plan</span>` : ''}</td>
               <td style="font-size:0.85rem;">${pl.created_at ? new Date(pl.created_at).toLocaleDateString() : '-'}</td>
               <td>
                 ${isPending ? `<button class="btn btn-outline" style="padding:4px 10px;font-size:0.8rem;" onclick="refreshPaymentLinkStatus(${pl.id})">Refresh</button>` : ''}
@@ -2210,6 +2221,7 @@ require_once __DIR__ . '/../config/countries.php';
         formData.append('restaurant_id', restaurant_id);
         formData.append('amount', amount);
         formData.append('notes', notes);
+        formData.append('plan_months', document.getElementById('cplmPlanMonths').value);
         const res = await fetch('api.php?action=createPaymentLink', {
           method: 'POST',
           body: formData,
@@ -2221,11 +2233,10 @@ require_once __DIR__ . '/../config/countries.php';
           cplmModal.classList.remove('active');
           document.getElementById('cplmAmount').value = '';
           document.getElementById('cplmNotes').value = '';
+          document.getElementById('cplmPlanMonths').value = '0';
           loadPaymentLinks();
 
-          if (d.demo_mode) {
-            showSuperAlert('Demo link created! Copy and open in browser to simulate payment.', 'info');
-          } else if (d.payment_url) {
+          if (d.payment_url) {
             if (window.Swal) {
               Swal.fire({
                 icon: 'success',

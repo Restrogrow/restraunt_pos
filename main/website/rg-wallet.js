@@ -188,13 +188,13 @@
             load().then(function () { var bal = document.getElementById('wlBal'); if (bal) bal.classList.add('pop'); });
           } else if (d.success && d.status === 'Failed') {
             toast('The payment did not go through. No money was taken.', 'error');
-          } else if (++tries < 15) {
-            setTimeout(check, 2000);
+          } else if (++tries < 45) {
+            setTimeout(check, tries < 15 ? 2000 : 6000);   // ~30 s fast, then up to ~3 min
           } else {
             toast('Still waiting for PhonePe. The money shows up here as soon as it is confirmed.', 'info');
           }
         })
-        .catch(function () { if (++tries < 15) setTimeout(check, 2000); });
+        .catch(function () { if (++tries < 45) setTimeout(check, tries < 15 ? 2000 : 6000); });
     })();
   }
 

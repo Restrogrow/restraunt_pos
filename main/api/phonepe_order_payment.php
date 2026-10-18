@@ -1,443 +1,170 @@
 <?php
+/**
+ * Customer website order paid online with PhonePe (website/cart.php, embed/embed.php).
+ *
+ *   POST {order_id, customer_phone, embed?}            start (or restart) the payment → {payment_url}
+ *   GET  ?action=status&order_id=<number>&restaurant_id  where it stands → {payment_status: Success|Pending|Failed, can_retry, can_cash}
+ *   POST ?action=cancel {order_id, customer_phone}      the customer gives up: order cancelled, coupon / points / wallet / stock back
+ *   POST ?action=cash   {order_id, customer_phone}      pay cash instead (only where the restaurant takes cash): order goes to the kitchen
+ *
+ * Paid / failed is only ever decided by PhonePe's status API (config/payment_settle.php). The order already
+ * exists (created by process_website_order.php, payment Pending, hidden from the kitchen until paid).
+ * Orders nobody pays are cancelled after 30 minutes by config/payment_reconcile.php.
+ */
 if (ob_get_level()) ob_clean();
 ob_start();
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
-    http_response_code(200);
-    ob_end_clean();
-    exit();
-}
-
-require_once __DIR__ . '/../config/session_config.php';
 require_once __DIR__ . '/../config/env_loader.php';
-require_once __DIR__ . '/../config/order_state_machine.php';
-startSecureSession(true);
+require_once __DIR__ . '/../db_connection.php';
+require_once __DIR__ . '/../config/payment_settle.php';
 
 header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Cache-Control: no-store');
 
-if (file_exists(__DIR__ . '/../db_connection.php')) {
-    require_once __DIR__ . '/../db_connection.php';
+function ppoOut(array $d, int $code = 200): void { if (ob_get_level()) ob_clean(); http_response_code($code); echo json_encode($d); exit; }
+
+/** The order this customer may act on: by id + the phone they ordered with. */
+function ppoOwnOrder(PDO $conn, array $in): array {
+    $orderId = (int)($in['order_id'] ?? 0);
+    $phone = is_scalar($in['customer_phone'] ?? null) ? trim((string)$in['customer_phone']) : '';
+    if (!$orderId || $phone === '') ppoOut(['success' => false, 'message' => 'Order not found'], 404);
+    $st = $conn->prepare('SELECT * FROM orders WHERE id = ? LIMIT 1');
+    $st->execute([$orderId]);
+    $o = $st->fetch(PDO::FETCH_ASSOC);
+    // order ids are shared across restaurants: the phone it was placed with proves it is theirs
+    if (!$o || $phone !== (string)$o['customer_phone']) ppoOut(['success' => false, 'message' => 'Order not found'], 404);
+    return $o;
 }
 
-$action = $_GET['action'] ?? 'create';
-
-
-if ($action === 'status') {
-    handleStatusCheck();
-} else {
-    handleCreatePayment();
+/** Ask PhonePe about this order's open attempts; true when one of them is paid. */
+function ppoSettleOpen(PDO $conn, int $orderId): bool {
+    $st = $conn->prepare("SELECT transaction_id FROM payments WHERE order_id = ? AND payment_method = 'Online' AND payment_status IN ('Pending', 'Success') AND transaction_id LIKE 'PP\\_%' ORDER BY id DESC LIMIT 4");
+    $st->execute([$orderId]);
+    $paid = false;
+    foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $t) {
+        $r = ppSettle($conn, $t);
+        if (in_array($r['outcome'], ['paid', 'already'], true)) $paid = true;
+    }
+    return $paid;
 }
 
-function getBaseUrl() {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+function ppoCashAllowed(PDO $conn, string $rid): bool {
+    try {
+        $st = $conn->prepare('SELECT cod_enabled FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
+        $st->execute([$rid]);
+        $v = $st->fetchColumn();
+        return $v === false || $v === null || (int)$v === 1;
+    } catch (Throwable $e) { return true; }
+}
+
+function ppoReturnBase(): string {
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
+    $host = preg_replace('/[^A-Za-z0-9.\-:\[\]]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'restrogrow.com'));
     $basePath = dirname(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/')));
     if ($basePath === '/' || $basePath === '\\') $basePath = '';
     return $scheme . '://' . $host . $basePath;
 }
 
-function getPhonePeConfig($restaurantId = null) {
-    $baseUrl = getBaseUrl();
+$action = $_GET['action'] ?? 'create';
+try {
+    $conn = getConnection();
 
-    $isLocalhost = (strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false ||
-                    strpos($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1') !== false);
-
-    if ($isLocalhost) {
-        $environment = 'SANDBOX';
-        $clientId = env('PHONEPE_SANDBOX_CLIENT_ID', env('PHONEPE_SANDBOX_MERCHANT_ID', ''));
-        $clientSecret = env('PHONEPE_SANDBOX_CLIENT_SECRET', env('PHONEPE_SANDBOX_SALT_KEY', ''));
-        $clientVersion = env('PHONEPE_SANDBOX_CLIENT_VERSION', env('PHONEPE_SANDBOX_SALT_INDEX', '1'));
-        $demoMode = empty($clientId) || empty($clientSecret);
-    } else {
-        $dbMerchantId = null;
-        $dbSaltKey = null;
-        $dbEnvironment = null;
-
-        if ($restaurantId) {
-            try {
-                $conn = getConnection();
-                $stmt = $conn->prepare("SELECT phonepe_merchant_id, phonepe_salt_key, phonepe_environment, payment_gateway_mode FROM users WHERE restaurant_id = ? LIMIT 1");
-                $stmt->execute([$restaurantId]);
-                $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                $gwMode = $row['payment_gateway_mode'] ?? 'own';
-                if ($gwMode === 'own' && $row && !empty($row['phonepe_merchant_id']) && !empty($row['phonepe_salt_key'])) {
-                    $dbMerchantId = $row['phonepe_merchant_id'];
-                    $dbSaltKey = $row['phonepe_salt_key'];
-                    $dbEnvironment = $row['phonepe_environment'] ?? 'SANDBOX';
-                }
-            } catch (Throwable $e) {
-            }
-        }
-
-        $environment = $dbEnvironment ?: env('PHONEPE_ENVIRONMENT', '');
-        if (empty($environment)) {
-            $environment = 'PRODUCTION';
-        }
-        $clientId = $dbMerchantId ?: env('PHONEPE_CLIENT_ID', '');
-        $clientSecret = $dbSaltKey ?: env('PHONEPE_CLIENT_SECRET', '');
-        $clientVersion = env('PHONEPE_CLIENT_VERSION', '1');
-
-        $hasValidCreds = (!empty($clientId) && !empty($clientSecret) && $clientId !== 'YOUR_MERCHANT_ID' && strpos($clientSecret, 'your_salt_key') === false);
-        $demoMode = !$hasValidCreds;
+    /* ── where the payment stands ── */
+    if ($action === 'status') {
+        $number = is_string($_GET['order_id'] ?? null) ? trim($_GET['order_id']) : '';
+        $rid = is_string($_GET['restaurant_id'] ?? null) ? preg_replace('/[^A-Za-z0-9_-]/', '', $_GET['restaurant_id']) : '';
+        if ($number === '') ppoOut(['success' => false, 'message' => 'Missing order_id'], 400);
+        // order numbers repeat between restaurants: scope by restaurant when the page knows it
+        $sql = 'SELECT id, restaurant_id, order_status, payment_status, payment_method FROM orders WHERE order_number = ?' . ($rid !== '' ? ' AND restaurant_id = ?' : '') . ' ORDER BY id DESC LIMIT 1';
+        $st = $conn->prepare($sql);
+        $st->execute($rid !== '' ? [$number, $rid] : [$number]);
+        $o = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$o) ppoOut(['success' => false, 'message' => 'Order not found'], 404);
+        if ($o['payment_status'] !== 'Paid' && !in_array($o['order_status'], ['Cancelled', 'Rejected'], true)) ppoSettleOpen($conn, (int)$o['id']);
+        $st = $conn->prepare('SELECT order_status, payment_status, payment_method FROM orders WHERE id = ?');
+        $st->execute([$o['id']]);
+        $o = array_merge($o, $st->fetch(PDO::FETCH_ASSOC) ?: []);
+        $open = $conn->prepare("SELECT SUM(payment_status = 'Pending') pending, SUM(payment_status = 'Failed') failed, COUNT(*) n FROM payments WHERE order_id = ? AND payment_method = 'Online'");
+        $open->execute([$o['id']]);
+        $a = $open->fetch(PDO::FETCH_ASSOC);
+        $cancelled = in_array($o['order_status'], ['Cancelled', 'Rejected'], true);
+        if ($o['payment_status'] === 'Paid') $status = 'Success';
+        elseif ($o['payment_method'] === 'Cash' && !$cancelled) $status = 'Cash';
+        elseif ($cancelled || ((int)$a['n'] > 0 && (int)$a['pending'] === 0)) $status = 'Failed';
+        else $status = 'Pending';
+        $unpaid = !$cancelled && $o['payment_status'] !== 'Paid' && $o['payment_method'] === 'UPI / NetBanking';
+        ppoOut(['success' => true, 'payment_status' => $status, 'order_status' => $o['order_status'], 'cancelled' => $cancelled,
+                'can_retry' => $unpaid, 'can_cash' => $unpaid && ppoCashAllowed($conn, $o['restaurant_id'])]);
     }
 
-    $isSandbox = strtoupper($environment) !== 'PRODUCTION';
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') ppoOut(['success' => false, 'message' => 'POST only'], 405);
+    $in = json_decode((string)file_get_contents('php://input'), true) ?: [];
+    $order = ppoOwnOrder($conn, $in);
+    $orderId = (int)$order['id'];
+    $rid = (string)$order['restaurant_id'];
+    $finished = in_array($order['order_status'], ['Cancelled', 'Rejected', 'Completed'], true);
 
-    if ($isSandbox) {
-        $apiBase = env('PHONEPE_BASE_URL_TEST', 'https://api-preprod.phonepe.com/apis/pg-sandbox');
-        $authUrl = $apiBase . '/v1/oauth/token';
-    } else {
-        $apiBase = 'https://api.phonepe.com/apis/pg';
-        $authUrl = 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
+    /* ── the customer gives up ── */
+    if ($action === 'cancel') {
+        if ($order['payment_status'] === 'Paid' || ppoSettleOpen($conn, $orderId)) ppoOut(['success' => true, 'paid' => true, 'message' => 'This order is already paid.']);
+        if ($finished) ppoOut(['success' => true, 'cancelled' => true]);
+        if (!in_array($order['order_status'], ['Pending', 'Scheduled'], true) || $order['payment_method'] !== 'UPI / NetBanking') ppoOut(['success' => false, 'message' => 'The restaurant has already started this order. Please call them.'], 409);
+        $conn->beginTransaction();
+        $r = validateAndUpdateOrderStatus($conn, $orderId, 'Cancelled', [], [], $rid, '[Cancelled by the customer before paying]');
+        $conn->commit();
+        $conn->prepare("UPDATE payments SET payment_status = 'Failed' WHERE order_id = ? AND payment_status = 'Pending' AND payment_method = 'Online'")->execute([$orderId]);
+        ppoOut(['success' => !empty($r['success']), 'cancelled' => true]);
     }
 
-    $redirectUrl = getBaseUrl() . '/main/website/cart.php';
-
-    return [
-        'environment' => $environment,
-        'client_id' => $clientId,
-        'client_secret' => $clientSecret,
-        'client_version' => $clientVersion,
-        'api_url' => $apiBase,
-        'auth_url' => $authUrl,
-        'pay_url' => $apiBase . '/checkout/v2/pay',
-        'redirect_url' => $redirectUrl,
-        'demo_mode' => $demoMode,
-        'is_sandbox' => $isSandbox,
-    ];
-}
-
-function getAccessToken($config) {
-    // Check session cache
-    $cacheKey = 'pp_token_' . md5($config['client_id']);
-    if (isset($_SESSION[$cacheKey]) && isset($_SESSION[$cacheKey . '_expires'])) {
-        if (time() < $_SESSION[$cacheKey . '_expires'] - 60) {
-            return $_SESSION[$cacheKey];
+    /* ── pay cash instead ── */
+    if ($action === 'cash') {
+        if ($order['payment_status'] === 'Paid' || ppoSettleOpen($conn, $orderId)) ppoOut(['success' => true, 'paid' => true, 'message' => 'This order is already paid.']);
+        if ($finished || !in_array($order['order_status'], ['Pending', 'Scheduled'], true)) ppoOut(['success' => false, 'message' => 'This order can no longer be changed.'], 409);
+        if (!ppoCashAllowed($conn, $rid)) ppoOut(['success' => false, 'message' => 'This restaurant only takes online payment.'], 400);
+        $u = $conn->prepare("UPDATE orders SET payment_method = 'Cash', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_method = 'UPI / NetBanking' AND payment_status = 'Pending'");
+        $u->execute([$orderId]);
+        $conn->prepare("UPDATE payments SET payment_status = 'Failed' WHERE order_id = ? AND payment_status = 'Pending' AND payment_method = 'Online'")->execute([$orderId]);
+        if ($u->rowCount() > 0 && $order['order_status'] === 'Pending') {
+            // now it is a normal cash order: kitchen ticket, alerts and emails, exactly like placing it with cash
+            require_once __DIR__ . '/../config/order_confirmation.php';
+            try { fireOrderConfirmedActions($conn, $orderId); } catch (Throwable $e) { error_log('cash switch confirm: ' . $e->getMessage()); }
         }
+        ppoOut(['success' => true, 'cash' => true, 'order_number' => $order['order_number']]);
     }
 
-    $ch = curl_init($config['auth_url']);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'client_id' => $config['client_id'],
-        'client_version' => $config['client_version'],
-        'client_secret' => $config['client_secret'],
-        'grant_type' => 'client_credentials',
-    ]));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/x-www-form-urlencoded',
-    ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    /* ── start (or restart) the online payment ── */
+    if ($order['payment_status'] === 'Paid') ppoOut(['success' => true, 'paid' => true, 'message' => 'This order is already paid.']);
+    if ($finished || !in_array($order['order_status'], ['Pending', 'Scheduled'], true)) ppoOut(['success' => false, 'message' => 'This order can no longer be paid. Please place it again.'], 409);
+    if ($order['payment_method'] !== 'UPI / NetBanking') ppoOut(['success' => false, 'message' => 'This order is not set to pay online.'], 409);
+    // an earlier try may have gone through after all: never charge twice
+    if (ppoSettleOpen($conn, $orderId)) ppoOut(['success' => true, 'paid' => true, 'message' => 'This order is already paid.']);
 
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_error = curl_error($ch);
-    curl_close($ch);
+    require_once __DIR__ . '/../config/countries.php';
+    $cst = $conn->prepare('SELECT country FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
+    $cst->execute([$rid]);
+    if (!restaurantIsIndia((string)$cst->fetchColumn())) ppoOut(['success' => false, 'message' => 'Online payment is not available for this restaurant. Please pay cash on delivery or at the counter.'], 400);
 
-    if ($curl_error) {
-        throw new Exception('PhonePe auth connection error: ' . $curl_error);
+    $amount = round((float)$order['total'] - (float)($order['wallet_paid'] ?? 0), 2);   // part may be paid from the wallet
+    if ($amount < 1) ppoOut(['success' => false, 'message' => 'Nothing left to pay on this order.'], 400);
+    $config = phonepeCallbackConfig($rid);
+    if (!$config['ready'] && !$config['demo']) ppoOut(['success' => false, 'message' => 'Online payment is not set up at this restaurant right now. Please pay cash, or try again later.'], 503);
+
+    $txn = ppTxnId('PP_', (string)$order['order_number']);
+    $conn->prepare("INSERT INTO payments (restaurant_id, order_id, transaction_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Online', 'Pending')")->execute([$rid, $orderId, $txn, $amount]);
+    $back = ppoReturnBase() . (!empty($in['embed']) ? '/main/embed/embed.php' : '/main/website/cart.php') . '?restaurant_id=' . rawurlencode($rid) . '&order_id=' . rawurlencode((string)$order['order_number']);
+
+    if ($config['demo']) {
+        // local computer without PhonePe sandbox keys: nothing is charged; the order stays unpaid
+        ppoOut(['success' => true, 'payment_url' => $back . '&phonepe_demo=1', 'transaction_id' => $txn, 'demo_mode' => true]);
     }
-
-    $data = json_decode($response, true);
-
-    if ($http_code !== 200 || !isset($data['access_token'])) {
-        $msg = $data['message'] ?? 'Failed to get auth token';
-        throw new Exception('PhonePe auth error: ' . $msg . ' (code: ' . ($data['code'] ?? $http_code) . ')');
+    $r = phonepeCreatePayment($config, $txn, $amount, $back, 1200);
+    if (!$r['ok']) {
+        $conn->prepare("UPDATE payments SET payment_status = 'Failed' WHERE transaction_id = ?")->execute([$txn]);
+        error_log('PhonePe order payment for order ' . $orderId . ' refused: ' . $r['error']);
+        ppoOut(['success' => false, 'message' => 'Could not open PhonePe right now. Please try again, or pay cash.'], 502);
     }
-
-    // Cache token
-    $_SESSION[$cacheKey] = $data['access_token'];
-    $_SESSION[$cacheKey . '_expires'] = $data['expires_at'] ?? (time() + 3600);
-
-    return $data['access_token'];
-}
-
-function handleCreatePayment() {
-    if (ob_get_level()) ob_clean();
-
-    try {
-        $input = json_decode(file_get_contents('php://input'), true);
-        $orderId = (int)($input['order_id'] ?? 0);
-        $customerPhone = is_scalar($input['customer_phone'] ?? null) ? trim((string)$input['customer_phone']) : '';
-        $embedMode = !empty($input['embed']);
-
-        if (!$orderId) {
-            throw new Exception('Missing order_id');
-        }
-
-        $conn = getConnection();
-
-        $stmt = $conn->prepare("SELECT o.* FROM orders o WHERE o.id = ?");
-        $stmt->execute([$orderId]);
-        $order = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$order) {
-            throw new Exception('Order not found');
-        }
-
-        // order_id is a single auto-increment shared across every tenant —
-        // without checking it against the phone number the client also
-        // submits (same value the checkout form already collects), anyone
-        // who knows/enumerates an order_id could spin up a payment session
-        // for someone else's order.
-        if (empty($customerPhone) || $customerPhone !== (string)$order['customer_phone']) {
-            throw new Exception('Order not found');
-        }
-
-        // PhonePe charges Indian rupees: a restaurant outside India never takes payment through it
-        require_once __DIR__ . '/../config/countries.php';
-        $cst = $conn->prepare('SELECT country FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
-        $cst->execute([$order['restaurant_id']]);
-        if (!restaurantIsIndia((string)$cst->fetchColumn())) {
-            throw new Exception('Online payment is not available for this restaurant. Please pay cash on delivery or at the counter.');
-        }
-
-        $config = getPhonePeConfig($order['restaurant_id']);
-        if ($embedMode) {
-            $config['redirect_url'] = str_replace('/website/cart.php', '/embed/embed.php', $config['redirect_url']);
-        }
-        // Part may already be paid from the customer's wallet (Offers > Wallet)
-        $amount = round((float)$order['total'] - (float)($order['wallet_paid'] ?? 0), 2);
-
-        if ($amount <= 0) {
-            throw new Exception('Invalid amount');
-        }
-
-        $transaction_id = 'PP_' . $order['order_number'] . '_' . bin2hex(random_bytes(12));
-
-        $payStmt = $conn->prepare("INSERT INTO payments (restaurant_id, order_id, transaction_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Online', 'Pending')");
-        $payStmt->execute([$order['restaurant_id'], $orderId, $transaction_id, $amount]);
-        $payment_id = $conn->lastInsertId();
-
-        if ($config['demo_mode'] || empty($config['client_id']) || empty($config['client_secret'])) {
-            $demoUrl = $config['redirect_url'] . '?restaurant_id=' . urlencode($order['restaurant_id']) . '&order_id=' . urlencode($order['order_number']) . '&phonepe_demo=1&transaction_id=' . urlencode($transaction_id);
-
-            ob_end_clean();
-            echo json_encode([
-                'success' => true,
-                'message' => 'Demo mode - simulating PhonePe payment',
-                'payment_url' => $demoUrl,
-                'transaction_id' => $transaction_id,
-                'payment_id' => $payment_id,
-                'demo_mode' => true
-            ]);
-            exit();
-        }
-
-        if (empty($config['client_id']) || empty($config['client_secret'])) {
-            throw new Exception('PhonePe credentials not configured. Please configure in Payment Gateway settings.');
-        }
-
-        $redirectUrl = $config['redirect_url'] . '?restaurant_id=' . urlencode($order['restaurant_id']) . '&order_id=' . urlencode($order['order_number']);
-
-        // v2 OAuth flow for both sandbox and production
-        $accessToken = getAccessToken($config);
-
-        $payload = [
-            'merchantOrderId' => $transaction_id,
-            'amount' => (int)round($amount * 100),
-            'expireAfter' => 1200,
-            'paymentFlow' => [
-                'type' => 'PG_CHECKOUT',
-                'merchantUrls' => [
-                    'redirectUrl' => $redirectUrl,
-                ],
-            ],
-        ];
-
-        $ch = curl_init($config['pay_url']);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Accept: application/json',
-            'Authorization: O-Bearer ' . $accessToken,
-        ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
-        curl_close($ch);
-
-        if ($curl_error) {
-            throw new Exception('Payment gateway connection error: ' . $curl_error);
-        }
-
-        $response_data = json_decode($response, true);
-
-        if ($http_code === 200 && isset($response_data['redirectUrl'])) {
-            $payment_url = $response_data['redirectUrl'];
-
-            ob_end_clean();
-            echo json_encode([
-                'success' => true,
-                'message' => 'Redirecting to PhonePe...',
-                'payment_url' => $payment_url,
-                'transaction_id' => $transaction_id,
-                'payment_id' => $payment_id,
-                'phonepe_order_id' => $response_data['orderId'] ?? '',
-            ]);
-            exit();
-        } else {
-            $error_message = ($response_data['message'] ?? 'Payment initiation failed') . ' (client: ' . $config['client_id'] . ', code: ' . ($response_data['code'] ?? $http_code) . ')';
-            throw new Exception($error_message);
-        }
-    } catch (Throwable $e) {
-        error_log("PhonePe order payment error: " . $e->getMessage());
-        if (ob_get_level()) ob_clean();
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'An error occurred processing your payment. Please try again.'
-        ]);
-        exit();
-    }
-}
-
-function handleStatusCheck() {
-    $orderNumber = is_string($_GET['order_id'] ?? null) ? $_GET['order_id'] : '';
-    $phonepeRedirectCode = $_GET['code'] ?? '';
-    $allGet = $_GET;
-    unset($allGet['action']);
-    error_log('[PhonePe] Status check for order: ' . $orderNumber);
-
-    if (!$orderNumber) {
-        error_log('[PhonePe] Missing order_id in status check');
-        if (ob_get_level()) ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Missing order_id']);
-        exit();
-    }
-
-    try {
-        $conn = getConnection();
-
-
-        $stmt = $conn->prepare("SELECT p.id as payment_id, p.order_id, p.transaction_id, p.payment_status, o.restaurant_id FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.order_number = ? AND p.payment_method = 'Online' AND p.transaction_id LIKE 'PP_%' ORDER BY p.id DESC LIMIT 1");
-        $stmt->execute([$orderNumber]);
-        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$payment) {
-            error_log('[PhonePe] No payment record found for order: ' . $orderNumber);
-            if (ob_get_level()) ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Payment record not found']);
-            exit();
-        }
-
-        error_log('[PhonePe] Found payment id=' . $payment['payment_id'] . ' status=' . $payment['payment_status']);
-
-        // If Pending in DB, check real-time status with PhonePe API
-        if ($payment['payment_status'] === 'Pending') {
-            error_log('[PhonePe] Payment is Pending, checking PhonePe API...');
-            $apiStatusConfirmed = false;
-
-            // IMPORTANT: Do NOT auto-confirm via PAYMENT_SUCCESS redirect code alone.
-            // The redirect URL can be faked. Only trust:
-            // 1) PhonePe webhook (phonepe_order_callback.php)
-            // 2) PhonePe status API check (below)
-            // 
-            // The $phonepeRedirectCode is logged for debugging but never used for payment confirmation.
-
-
-            // Always use status API/webhook, never auto-confirm from redirect
-            try {
-                $config = getPhonePeConfig($payment['restaurant_id']);
-
-                if (!$config['demo_mode'] && !empty($config['client_id'])) {
-                    try {
-                        $accessToken = getAccessToken($config);
-                        $statusUrl = $config['api_url'] . '/checkout/v2/order/' . urlencode($payment['transaction_id']) . '/status';
-
-                        $ch = curl_init($statusUrl);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                            'Authorization: O-Bearer ' . $accessToken,
-                            'Accept: application/json',
-                        ]);
-                        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-
-                        $statusResponse = curl_exec($ch);
-                        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                        curl_close($ch);
-
-                        if ($httpCode === 200 && $statusResponse) {
-                            $statusData = json_decode($statusResponse, true);
-                            $state = $statusData['state'] ?? $statusData['orderStatus'] ?? '';
-
-                            if (in_array($state, ['COMPLETED', 'SUCCESS', 'PAYMENT_SUCCESS'])) {
-                                $justConfirmedOrderId = null;
-                                $conn->beginTransaction();
-                                try {
-                                    $updatePay = $conn->prepare("UPDATE payments SET payment_status = 'Success' WHERE id = ?");
-                                    $updatePay->execute([$payment['payment_id']]);
-                                    // Use state machine for atomic payment status on orders
-                                    $payResult = validateAndUpdatePaymentStatus($conn, (int)($payment['order_id'] ?? 0), 'Paid');
-                                    if (!$payResult['success']) {
-                                        error_log('[PhonePe] State machine rejected: ' . $payResult['message']);
-                                    } elseif (!empty($payResult['transitioned'])) {
-                                        $justConfirmedOrderId = (int)($payment['order_id'] ?? 0);
-                                    }
-                                    $conn->commit();
-                                    $payment['payment_status'] = 'Success';
-                                    $apiStatusConfirmed = true;
-                                } catch (Throwable $tx) {
-                                    $conn->rollBack();
-                                    error_log('[PhonePe] Transaction failed: ' . $tx->getMessage());
-                                }
-                                if ($justConfirmedOrderId !== null) {
-                                    require_once __DIR__ . '/../config/order_confirmation.php';
-                                    try {
-                                        fireOrderConfirmedActions($conn, $justConfirmedOrderId);
-                                    } catch (Throwable $e) {
-                                        error_log('Order confirmation actions error (status poll): ' . $e->getMessage());
-                                    }
-                                }
-                            } elseif (in_array($state, ['FAILED', 'REJECTED', 'CANCELLED', 'EXPIRED'])) {
-                                $updatePay = $conn->prepare("UPDATE payments SET payment_status = 'Failed' WHERE id = ?");
-                                $updatePay->execute([$payment['payment_id']]);
-                                $payment['payment_status'] = 'Failed';
-                            }
-                        }
-                    } catch (Throwable $e) {
-                        error_log('[PhonePe] Status API error: ' . $e->getMessage());
-                    }
-                }
-
-                // Recheck DB for webhook update
-                if (!$apiStatusConfirmed && $payment['payment_status'] === 'Pending') {
-                    $recheck = $conn->prepare("SELECT payment_status FROM payments WHERE id = ?");
-                    $recheck->execute([$payment['payment_id']]);
-                    $current = $recheck->fetchColumn();
-                    if ($current && $current !== 'Pending') {
-                        $payment['payment_status'] = $current;
-                        $apiStatusConfirmed = true;
-                    }
-                }
-            } catch (Throwable $e) {
-                error_log('[PhonePe] Exception in status check: ' . $e->getMessage());
-            }
-        } else {
-
-        }
-
-        $response = ['success' => true, 'payment_status' => $payment['payment_status']];
-
-        
-        if (ob_get_level()) ob_clean();
-        echo json_encode($response);
-        exit();
-    } catch (Throwable $e) {
-        error_log('[PhonePe] Database/connection error: ' . $e->getMessage());
-        if (ob_get_level()) ob_clean();
-        echo json_encode(['success' => false, 'message' => 'An error occurred checking payment status. Please try again.']);
-        exit();
-    }
+    ppoOut(['success' => true, 'payment_url' => $r['url'], 'transaction_id' => $txn]);
+} catch (Throwable $e) {
+    if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
+    error_log('phonepe_order_payment: ' . $e->getMessage());
+    ppoOut(['success' => false, 'message' => 'Something went wrong with the payment. Please try again.'], 500);
 }

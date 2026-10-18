@@ -10,15 +10,9 @@ require_once __DIR__ . '/../config/authorization_config.php';
 require_once __DIR__ . '/../config/env_loader.php';
 require_once __DIR__ . '/../config/phonepe_verify.php';
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+require_once __DIR__ . '/../config/payment_settle.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+header('Content-Type: application/json');
 
 require_once __DIR__ . '/../db_connection.php';
 
@@ -40,6 +34,13 @@ try {
     switch ($action) {
 
         case 'getStatus':
+            // a renewal paid but not confirmed yet (window closed early, webhook late) is settled here first
+            $open = $conn->prepare("SELECT transaction_id FROM subscription_payments WHERE user_id = ? AND payment_status = 'pending' AND transaction_id LIKE 'SUB\_%' AND created_at > NOW() - INTERVAL 2 DAY ORDER BY id DESC LIMIT 3");
+            $open->execute([$user_id]);
+            foreach ($open->fetchAll(PDO::FETCH_COLUMN) as $t) {
+                try { ppSettle($conn, $t); } catch (Throwable $e) { error_log('subscription getStatus settle: ' . $e->getMessage()); }
+            }
+
             // Get current subscription status for the logged-in user
             $stmt = $conn->prepare("SELECT subscription_status, trial_end_date, renewal_date, is_active, auto_pay, auto_pay_method FROM users WHERE id = ? LIMIT 1");
             $stmt->execute([$user_id]);
@@ -97,24 +98,22 @@ try {
             $restaurant = $restStmt->fetch(PDO::FETCH_ASSOC);
             $restaurant_name = $restaurant['restaurant_name'] ?? 'Restaurant';
 
-            // Generate unique transaction ID
-            $transaction_id = 'SUB_' . strtoupper(substr($restaurant_id, 0, 6)) . '_' . time() . '_' . rand(100, 999);
+            // RestroGrow's own PhonePe account only (platform .env): with the restaurant's own keys the money
+            // went to the restaurant, and a sandbox key could "pay" for free. Demo only on a local computer.
+            $config = phonepeCallbackConfig(null, true);
+            if (!$config['ready'] && !$config['demo']) {
+                throw new Exception('Online renewal is not available right now. Please contact RestroGrow support.');
+            }
+
+            $transaction_id = ppTxnId('SUB_', (string)$restaurant_id);
 
             // Create subscription_payments record (pending)
             $stmt = $conn->prepare("INSERT INTO subscription_payments (user_id, restaurant_id, transaction_id, amount, subscription_type, duration_months, payment_status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
             $stmt->execute([$user_id, $restaurant_id, $transaction_id, $amount, $subscription_type, $duration_months]);
             $payment_id = $conn->lastInsertId();
 
-            // ========== PhonePe Integration (v2 OAuth checkout) ==========
-            // RestroGrow's own PhonePe account only (null = platform .env): with the restaurant's
-            // own keys the money went to the restaurant, and a sandbox key could "pay" for free.
-            $config = phonepeCallbackConfig(null);
-            $demoMode = empty($config['client_id']) || empty($config['client_secret']);
-
-            if ($demoMode) {
-                // Demo mode - simulate payment
-                $demo_success_url = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname(dirname($_SERVER['SCRIPT_NAME'])) . '/views/dashboard.php?demo_payment=success&txn=' . urlencode($transaction_id);
-
+            if ($config['demo']) {
+                // local computer without real keys: pretend (never on the live site, see ppIsLocal)
                 echo json_encode([
                     'success' => true,
                     'message' => 'Demo payment mode',
@@ -124,75 +123,36 @@ try {
                     'amount' => $amount,
                     'subscription_type' => $subscription_type,
                     'demo_mode' => true,
-                    'demo_complete_url' => $demo_success_url
                 ]);
                 exit();
             }
 
-            // Build redirect URL (dashboard) — v2 has no per-request callbackUrl;
-            // the webhook is configured account-wide in the PhonePe dashboard.
-            $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $base_path = dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
-            if ($base_path === '/' || $base_path === '\\') $base_path = '';
-            $site_url = $scheme . '://' . $host . $base_path;
-            $redirect_url = $site_url . '/main/views/dashboard.php';
-
-            $accessToken = phonepeCallbackAccessToken($config);
-            if (!$accessToken) {
-                throw new Exception('Failed to authenticate with payment gateway');
+            // back to the dashboard; the webhook (api/phonepe_webhook.php) and the safety net settle it too
+            $app = rtrim((string)env('APP_URL', ''), '/');
+            if ($app === '' || ppIsLocal()) {
+                $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $base_path = dirname(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/')));
+                if ($base_path === '/' || $base_path === '\\' || $base_path === '.') $base_path = '';
+                $app = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $base_path;
             }
+            $redirect_url = $app . '/main/views/dashboard.php?renewal=' . urlencode($transaction_id);
 
-            $payload = [
-                'merchantOrderId' => $transaction_id,
-                'amount' => (int)round($amount * 100), // Convert to paise
-                'expireAfter' => 1200,
-                'paymentFlow' => [
-                    'type' => 'PG_CHECKOUT',
-                    'merchantUrls' => [
-                        'redirectUrl' => $redirect_url,
-                    ],
-                ],
-            ];
-
-            // Initiate payment via PhonePe v2 checkout API
-            $ch = curl_init($config['api_url'] . '/checkout/v2/pay');
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'Accept: application/json',
-                'Authorization: O-Bearer ' . $accessToken,
+            $res = phonepeCreatePayment($config, $transaction_id, (float)$amount, $redirect_url, 1200, 'RestroGrow plan for ' . $restaurant_name);
+            if (!$res['ok']) {
+                $conn->prepare("UPDATE subscription_payments SET payment_status = 'failed', updated_at = NOW() WHERE id = ?")->execute([$payment_id]);
+                error_log('subscription renewal PhonePe refused: ' . $res['error']);
+                throw new Exception('Could not start the payment. Please try again in a minute.');
+            }
+            echo json_encode([
+                'success' => true,
+                'message' => 'Payment initiated successfully',
+                'payment_url' => $res['url'],
+                'transaction_id' => $transaction_id,
+                'payment_id' => $payment_id,
+                'amount' => $amount,
+                'subscription_type' => $subscription_type,
+                'demo_mode' => false
             ]);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-
-            $response = curl_exec($ch);
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curl_error = curl_error($ch);
-            curl_close($ch);
-
-            if ($curl_error) {
-                throw new Exception('Payment gateway connection error: ' . $curl_error);
-            }
-
-            $response_data = json_decode($response, true);
-
-            if ($http_code === 200 && isset($response_data['redirectUrl'])) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Payment initiated successfully',
-                    'payment_url' => $response_data['redirectUrl'],
-                    'transaction_id' => $transaction_id,
-                    'payment_id' => $payment_id,
-                    'amount' => $amount,
-                    'subscription_type' => $subscription_type,
-                    'demo_mode' => false
-                ]);
-            } else {
-                $error_msg = $response_data['message'] ?? ($response_data['code'] ?? 'Payment initiation failed');
-                throw new Exception($error_msg);
-            }
             break;
 
         case 'checkPaymentStatus':
@@ -210,28 +170,11 @@ try {
                 throw new Exception('Payment record not found');
             }
 
-            // If still pending, independently verify with PhonePe's v2 status
-            // API (never trust a redirect/webhook body directly — see
-            // config/phonepe_verify.php).
+            // still pending: PhonePe's own answer, amount checked, plan extended once (config/payment_settle.php)
             if ($payment['payment_status'] === 'pending') {
-                // checked against RestroGrow's own PhonePe account (see initiatePayment)
-                $verifiedState = phonepeVerifyOrderState($conn, null, $transaction_id);
-
-                if ($verifiedState === 'COMPLETED' || $verifiedState === 'SUCCESS') {
-                    // only the request that flips it to success extends the plan (the webhook may race this poll)
-                    $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = 'success', updated_at = NOW() WHERE id = ? AND payment_status <> 'success'");
-                    $updateStmt->execute([$payment['id']]);
-
-                    // Activate subscription
-                    if ($updateStmt->rowCount() > 0) activateSubscription($conn, $user_id, $restaurant_id, $payment['duration_months']);
-
-                    $payment['payment_status'] = 'success';
-                } elseif (in_array($verifiedState, ['FAILED', 'REJECTED', 'CANCELLED'])) {
-                    $updateStmt = $conn->prepare("UPDATE subscription_payments SET payment_status = 'failed', updated_at = NOW() WHERE id = ?");
-                    $updateStmt->execute([$payment['id']]);
-                    $payment['payment_status'] = 'failed';
-                }
-                // null or PENDING: leave as pending, the client will poll again
+                ppSettle($conn, $transaction_id);
+                $stmt->execute([$transaction_id, $user_id]);
+                $payment = $stmt->fetch(PDO::FETCH_ASSOC);
             }
 
             echo json_encode([
@@ -244,7 +187,7 @@ try {
         case 'toggleAutoPay':
             // Enable/disable auto-pay for subscription
             $enable = !empty($_POST['enable']) ? 1 : 0;
-            $method = trim(is_string($_POST['method'] ?? null) ? $_POST['method'] : 'phonepe');
+            $method = in_array($_POST['method'] ?? '', ['phonepe', 'upi', 'card'], true) ? $_POST['method'] : 'phonepe';
 
             $stmt = $conn->prepare("UPDATE users SET auto_pay = ?, auto_pay_method = ? WHERE id = ?");
             $stmt->execute([$enable, $method, $user_id]);
@@ -274,17 +217,4 @@ try {
         'success' => false,
         'message' => $e->getMessage()
     ]);
-}
-
-/**
- * Helper: Activate subscription for a user
- */
-function activateSubscription($conn, $user_id, $restaurant_id, $duration_months = 1) {
-    // added on top of the days still left (an early renewal must not lose them), as Super Admin does
-    $duration_months = max(1, (int)$duration_months);
-    $stmt = $conn->prepare("UPDATE users SET subscription_status = 'active', renewal_date = DATE_ADD(GREATEST(COALESCE(renewal_date, CURDATE()), CURDATE()), INTERVAL ? MONTH), is_active = 1 WHERE id = ?");
-    $stmt->execute([$duration_months, $user_id]);
-    $renewal_date = (string)$conn->query('SELECT renewal_date FROM users WHERE id = ' . (int)$user_id)->fetchColumn();
-
-    error_log("Subscription activated for user {$user_id} (restaurant {$restaurant_id}) until {$renewal_date}");
 }
