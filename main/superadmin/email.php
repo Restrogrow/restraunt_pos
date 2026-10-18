@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // ── Proposals & letters ──
             case 'sigSave':
                 $name = mb_substr(trim(strip_tags((string)($in['name'] ?? ''))), 0, 80);
-                if ($name === '') throw new Exception('Type the name to show under the signature');
+                if ($name === '') $name = 'RestroGrow';
                 $png = letterSigClean((string)($in['image'] ?? ''));
                 if ($png === '' || $png[0] === '!') throw new Exception(ltrim($png, '!') ?: 'The signature image is missing');
                 $file = 'sig_' . bin2hex(random_bytes(12)) . '.png';
@@ -550,16 +550,17 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
       <canvas id="sigPad" class="sig-pad" width="900" height="300"></canvas>
       <div class="row" style="margin-top:8px" id="sigDrawBar"><small style="color:var(--muted);flex:1">Sign with your mouse or finger.</small>
         <select id="sigInk" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--line)"><option value="#1e3a8a">Blue ink</option><option value="#111827">Black ink</option></select>
-        <button class="btn light sm" type="button" id="sigClear">Clear</button></div>
+        <button class="btn light sm" type="button" id="sigUndo">Undo</button><button class="btn light sm" type="button" id="sigClear">Clear</button></div>
       <div class="sig-f" id="sigTypeBar" hidden><label for="sigTypeText">Type your signature</label><input id="sigTypeText" maxlength="40" placeholder="Your name">
         <select id="sigFont"><option value="Dancing Script">Style 1</option><option value="Great Vibes">Style 2</option><option value="Caveat">Style 3</option></select></div>
       <div class="sig-f" id="sigUpBar" hidden><label for="sigFile">Photo or scan of your signature (on white paper)</label><input type="file" id="sigFile" accept="image/png,image/jpeg,image/webp"></div>
       <div class="sig-f">
-        <div><label for="sigName">Name shown under it</label><input id="sigName" maxlength="80" placeholder="e.g. Rahul Sharma"></div>
+        <div><label for="sigName">Name shown under it (optional)</label><input id="sigName" maxlength="80" placeholder="e.g. Rahul Sharma"></div>
         <div><label for="sigDesig">Designation (optional)</label><input id="sigDesig" maxlength="80" placeholder="e.g. Founder, RestroGrow"></div>
         <div><label for="sigExtra">Extra line (optional)</label><input id="sigExtra" maxlength="120" placeholder="e.g. +91 63775 68749 · restrogrow.com"></div>
         <label style="display:flex;gap:8px;align-items:center;font-weight:400;font-size:13.5px"><input type="checkbox" id="sigDef" style="width:auto"> Use this one by default</label>
         <button class="btn" type="button" id="sigSave">Save signature</button>
+        <div id="sigMsg" role="status" style="font-size:13.5px;font-weight:600;min-height:18px"></div>
       </div>
     </div>
   </div>
@@ -569,10 +570,13 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
 <script>
 var dlg = document.getElementById('dlg');
 var $ = function (id) { return document.getElementById(id); };
-function toast(t) { var e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function () { e.style.display = 'none'; }, 4500); }
+function toast(t) { var e = $('toast'), host = document.querySelector('dialog[open]') || document.body; if (e.parentNode !== host) host.appendChild(e); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function () { e.style.display = 'none'; }, 4500); }
 function post(b, btn) {
   if (btn) btn.disabled = true;
-  return fetch('email.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); })
+  return fetch('email.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) {
+      if (r.redirected && /login/.test(r.url)) return { ok: false, message: 'Your login expired. Log in again and try once more.' };
+      return r.text().then(function (s) { try { return JSON.parse(s); } catch (e) { return { ok: false, message: 'The server had a problem (' + r.status + '). Try again in a minute.' }; } });
+    })
     .then(function (d) { toast(d.message || (d.ok ? 'Done' : 'Something went wrong')); return d; })
     .catch(function () { toast('Network error'); return { ok: false }; })
     .finally(function () { if (btn) btn.disabled = false; });
@@ -800,29 +804,73 @@ document.addEventListener('change', function (e) {
   }
   sigOptions();
   $('ltSig').addEventListener('change', preview);
-  var sigDlg = $('sigDlg'), pad = $('sigPad'), ctx = pad.getContext('2d'), mode = 'draw', drawn = false, last = null;
+  var sigDlg = $('sigDlg'), pad = $('sigPad'), ctx = pad.getContext('2d'), mode = 'draw', drawn = false;
+  // drawing: every stroke is kept (so Undo and a resize can draw it again), smoothed through the midpoints,
+  // a little thinner when the pen moves fast, like real ink; the canvas matches the screen's pixels so it stays sharp
+  var strokes = [], stroke = null;
+  function sigMsg(t, bad) { var m = $('sigMsg'); m.textContent = t || ''; m.style.color = bad ? 'var(--bad)' : 'var(--ok)'; }
+  function padSize() {
+    var r = pad.getBoundingClientRect();
+    if (!r.width) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), w = Math.min(1400, Math.round(r.width * dpr)), h = Math.round(w / 3);
+    if (pad.width !== w) { pad.width = w; pad.height = h; if (mode === 'draw') redraw(); else if (mode === 'type') typeDraw(); }
+  }
   function padClear() { ctx.clearRect(0, 0, pad.width, pad.height); drawn = false; }
-  function padPos(e) { var r = pad.getBoundingClientRect(); return { x: (e.clientX - r.left) * pad.width / r.width, y: (e.clientY - r.top) * pad.height / r.height }; }
-  pad.addEventListener('pointerdown', function (e) { if (mode !== 'draw') return; pad.setPointerCapture(e.pointerId); last = padPos(e); });
-  pad.addEventListener('pointermove', function (e) {
-    if (mode !== 'draw' || !last) return;
-    var p = padPos(e);
-    ctx.strokeStyle = $('sigInk').value; ctx.lineWidth = 4.5; ctx.lineCap = ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.quadraticCurveTo(last.x, last.y, (last.x + p.x) / 2, (last.y + p.y) / 2); ctx.lineTo(p.x, p.y); ctx.stroke();
-    last = p; drawn = true;
+  function padPos(e) { var r = pad.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, t: e.timeStamp, p: e.pointerType === 'pen' && e.pressure ? e.pressure : 0.5 }; }
+  function seg(s, i) {
+    // the curve from the midpoint before point i to the midpoint after it, with point i as the control
+    var W = pad.width, H = pad.height, a = s.pts[i - 1], b = s.pts[i], c = s.pts[i + 1] || b;
+    var dist = Math.hypot((b.x - a.x) * W, (b.y - a.y) * H), dt = Math.max(1, b.t - a.t), speed = dist / dt;
+    var base = W / 220, width = Math.max(base * 0.45, Math.min(base * 1.25, base * (1.25 - Math.min(speed, 3) * 0.22) * (0.6 + b.p * 0.8)));
+    s.w = s.w == null ? width : s.w * 0.6 + width * 0.4;
+    ctx.lineWidth = s.w; ctx.strokeStyle = s.ink; ctx.lineCap = ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo((a.x + b.x) / 2 * W, (a.y + b.y) / 2 * H);
+    ctx.quadraticCurveTo(b.x * W, b.y * H, (b.x + c.x) / 2 * W, (b.y + c.y) / 2 * H);
+    ctx.stroke();
+  }
+  function dot(s) { var a = s.pts[0]; ctx.fillStyle = s.ink; ctx.beginPath(); ctx.arc(a.x * pad.width, a.y * pad.height, pad.width / 300, 0, 7); ctx.fill(); }
+  function redraw() {
+    padClear();
+    strokes.forEach(function (s) { s.w = null; if (s.pts.length < 2) dot(s); else for (var i = 1; i < s.pts.length; i++) seg(s, i); });
+    drawn = strokes.length > 0;
+  }
+  pad.addEventListener('pointerdown', function (e) {
+    if (mode !== 'draw') return;
+    e.preventDefault();
+    pad.setPointerCapture(e.pointerId);
+    stroke = { ink: $('sigInk').value, pts: [padPos(e)], w: null };
+    strokes.push(stroke);
+    dot(stroke); drawn = true; sigMsg('');
   });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { pad.addEventListener(ev, function () { last = null; }); });
+  pad.addEventListener('pointermove', function (e) {
+    if (mode !== 'draw' || !stroke) return;
+    var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    (evs.length ? evs : [e]).forEach(function (ev) {
+      var p = padPos(ev), q = stroke.pts[stroke.pts.length - 1];
+      if (Math.hypot((p.x - q.x) * pad.width, (p.y - q.y) * pad.height) < 1.5) return;
+      stroke.pts.push(p);
+      if (stroke.pts.length > 2) seg(stroke, stroke.pts.length - 2);
+    });
+  });
+  ['pointerup', 'pointercancel'].forEach(function (ev) {
+    pad.addEventListener(ev, function () {
+      if (stroke && stroke.pts.length > 1) seg(stroke, stroke.pts.length - 1);   // the last bit up to the pen
+      stroke = null;
+    });
+  });
+  window.addEventListener('resize', function () { if (sigDlg.open) padSize(); });
   function typeDraw() {
     var txt = $('sigTypeText').value.trim(), f = $('sigFont').value;
     padClear();
     if (!txt) return;
     document.fonts.load('96px "' + f + '"').then(function () {
       padClear();
-      var size = 120;
+      var size = Math.round(pad.height * 0.42);
       ctx.font = size + 'px "' + f + '"';
-      while (ctx.measureText(txt).width > pad.width - 60 && size > 30) { size -= 6; ctx.font = size + 'px "' + f + '"'; }
+      while (ctx.measureText(txt).width > pad.width * 0.92 && size > 20) { size -= 4; ctx.font = size + 'px "' + f + '"'; }
       ctx.fillStyle = $('sigInk').value; ctx.textBaseline = 'middle';
-      ctx.fillText(txt, 30, pad.height / 2);
+      ctx.fillText(txt, pad.width * 0.04, pad.height / 2);
       drawn = true;
     });
   }
@@ -854,11 +902,12 @@ document.addEventListener('change', function (e) {
       document.querySelectorAll('[data-sigmode]').forEach(function (x) { x.classList.toggle('on', x === b); });
       $('sigDrawBar').hidden = mode === 'upload'; $('sigTypeBar').hidden = mode !== 'type'; $('sigUpBar').hidden = mode !== 'upload';
       pad.style.cursor = mode === 'draw' ? 'crosshair' : 'default';
-      padClear();
+      strokes = []; padClear(); sigMsg('');
       if (mode === 'type') typeDraw();
     });
   });
-  $('sigClear').onclick = function () { padClear(); if (mode === 'type') $('sigTypeText').value = ''; };
+  $('sigClear').onclick = function () { strokes = []; padClear(); if (mode === 'type') $('sigTypeText').value = ''; };
+  $('sigUndo').onclick = function () { if (mode === 'draw') { strokes.pop(); redraw(); } };
   function trimmed() {
     // only the inked part, with a little room around it
     var d = ctx.getImageData(0, 0, pad.width, pad.height).data, x0 = pad.width, y0 = pad.height, x1 = -1, y1 = -1;
@@ -871,13 +920,15 @@ document.addEventListener('change', function (e) {
   }
   $('sigSave').onclick = function () {
     var img = drawn ? trimmed() : null;
-    if (!img) { toast(mode === 'upload' ? 'Choose a photo of your signature first' : 'Sign in the box first'); return; }
+    if (!img) { sigMsg(mode === 'upload' ? 'Choose a photo of your signature first.' : mode === 'type' ? 'Type your signature first.' : 'Sign in the box first.', true); return; }
+    sigMsg('Saving…');
     post({ action: 'sigSave', image: img, name: $('sigName').value, designation: $('sigDesig').value, extra: $('sigExtra').value, is_default: $('sigDef').checked }, this).then(function (d) {
-      if (!d.ok) return;
+      if (!d.ok) { sigMsg(d.message || 'Not saved', true); return; }
+      sigMsg('Saved ✓ It is now in the list on the left and in the Signature box of every letter.');
       SIGS = d.sigs;
       var newest = SIGS.reduce(function (a, s) { return +s.id > +a ? +s.id : a; }, 0);
       sigList(); sigOptions(newest); preview();
-      padClear(); $('sigTypeText').value = ''; $('sigName').value = ''; delete $('sigName').dataset.touched; $('sigDesig').value = ''; $('sigExtra').value = ''; $('sigDef').checked = false; $('sigFile').value = '';
+      strokes = []; padClear(); $('sigTypeText').value = ''; $('sigName').value = ''; delete $('sigName').dataset.touched; $('sigDesig').value = ''; $('sigExtra').value = ''; $('sigDef').checked = false; $('sigFile').value = '';
     });
   };
   $('sigList').addEventListener('click', function (e) {
@@ -893,7 +944,7 @@ document.addEventListener('change', function (e) {
       });
     }
   });
-  function sigOpen() { sigList(); sigDlg.showModal(); }
+  function sigOpen() { sigList(); sigMsg(''); sigDlg.showModal(); requestAnimationFrame(padSize); }
   $('ltSigBtn').onclick = sigOpen;
   $('sigClose').onclick = function () { sigDlg.close(); };
 
