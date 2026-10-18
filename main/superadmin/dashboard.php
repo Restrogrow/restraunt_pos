@@ -316,6 +316,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">insights</span>
           <span class="text">Usage &amp; sign-ups</span>
         </a>
+        <a class="menu-link" href="site_analytics.php">
+          <span class="material-symbols-rounded icon">monitoring</span>
+          <span class="text">Website analytics</span>
+        </a>
         <a class="menu-link" href="undo_designs.php">
           <span class="material-symbols-rounded icon">undo</span>
           <span class="text">Undo design</span>

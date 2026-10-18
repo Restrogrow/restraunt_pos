@@ -49,6 +49,9 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME}\.html -f
 RewriteRule ^(.*)$ $1.html [L]
 
+# Website analytics script (our own tracking + GA4 ID from Super Admin › Website analytics)
+RewriteRule ^assets/rg-analytics\.js$ main/api/rg_analytics_js.php [L]
+
 # Clean URLs for pages
 RewriteRule ^about/?$ about/index.html [L]
 # Blog (managed in Super Admin › Blog; blog/*.php)

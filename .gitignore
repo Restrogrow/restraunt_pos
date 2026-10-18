@@ -101,3 +101,4 @@ superadmin-app-web-local/
 main/uploads/blog/*
 !main/uploads/blog/.htaccess
 !main/uploads/blog/index.php
+main/config/.ga-service-account.json
