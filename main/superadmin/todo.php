@@ -80,6 +80,7 @@ Then open Super Admin › Email › Settings & jobs: both should say Running wit
 3. IAM & Admin › Service accounts › Create › name ga-reader (no roles) › open it › Keys › Add key › Create new key › JSON (a .json file downloads).
 4. analytics.google.com › Admin › Property access management › + › Add users › paste the service account email (ends with iam.gserviceaccount.com) › role Viewer › untick Notify › Add.
 5. Super Admin › Tools › Website analytics › Settings › choose the .json file › Upload key. The Google Analytics tab then shows users, pages, channels and countries."],
+    ['WhatsApp', 0, 'New RepeatGrow key with webhooks:manage (WhatsApp Delivered / Read)', "So campaign cards show Delivered and Read for messages from RestroGrow's shared number. 1. RepeatGrow (RestroGrow's own account) › Settings › API keys › New key › tick messages:send AND webhooks:manage (\"Register and manage outbound event webhooks\") › create › copy the wacrm_live_… key. 2. Hostinger › File Manager › main/.env › replace the value after REPEATGROW_API_KEY= with the new key › Save. Nothing else: RestroGrow registers the webhook by itself the next time a WhatsApp page opens. (Skip if the current key already has webhooks:manage.)"],
     ['Decide', 0, 'Pick the loading screens', "Super Admin › Tools › Loading screens: try the 12 loaders (Try full screen), choose one for Dashboard opening, Page change and Section & button, then Save. Then tell Claude to switch them on in the restaurant dashboard."],
 ];
 // jobs the owner has already done outside the list
