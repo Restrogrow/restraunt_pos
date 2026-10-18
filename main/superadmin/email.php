@@ -11,9 +11,11 @@ require_once __DIR__ . '/auth.php';
 require_superadmin();
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/mail_catalog.php';
+require_once __DIR__ . '/../config/mail_letters.php';
 
 $conn = getConnection();
 mailEnsure($conn);
+letterEnsure($conn);
 $conn->exec("CREATE TABLE IF NOT EXISTS sa_settings (k VARCHAR(60) PRIMARY KEY, v TEXT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 
@@ -41,7 +43,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $out = ['ok' => true];
     try {
         $to = trim((string)($in['to'] ?? ''));
+        $letterIn = function () use ($in): array {
+            $t = (array)($in['letter'] ?? []);
+            $s = fn($k, $n) => mb_substr(trim((string)($t[$k] ?? '')), 0, $n);
+            return ['name' => $s('name', 120), 'category' => in_array($t['category'] ?? '', letterCategories(), true) ? $t['category'] : 'Other',
+                'subject' => $s('subject', 200), 'title' => $s('title', 200), 'body' => mb_substr((string)($t['body'] ?? ''), 0, 60000),
+                'button_text' => $s('button_text', 60), 'button_url' => $s('button_url', 300)];
+        };
+        $letterGet = function (int $id) use ($conn): array {
+            $st = $conn->prepare('SELECT * FROM sa_letters WHERE id = ?');
+            $st->execute([$id]);
+            $t = $st->fetch(PDO::FETCH_ASSOC);
+            if (!$t) throw new Exception('Template not found');
+            return $t;
+        };
         switch ($in['action'] ?? '') {
+            // ── Proposals & letters ──
+            case 'letterPreview':
+                $r = letterRender($conn, $letterIn(), (array)($in['vals'] ?? []));
+                $out += ['subject' => $r['subject'], 'html' => $r['html'], 'text' => $r['text'], 'missing' => $r['missing']];
+                break;
+            case 'letterSave':
+                $t = $letterIn();
+                if ($t['name'] === '' || $t['subject'] === '' || trim($t['body']) === '') throw new Exception('Give it a name, a subject and some text');
+                $id = (int)($in['id'] ?? 0);
+                if ($id) {
+                    $conn->prepare('UPDATE sa_letters SET name = ?, category = ?, subject = ?, title = ?, body = ?, button_text = ?, button_url = ? WHERE id = ?')
+                        ->execute([$t['name'], $t['category'], $t['subject'], $t['title'], $t['body'], $t['button_text'] ?: null, $t['button_url'] ?: null, $id]);
+                } else {
+                    $conn->prepare('INSERT INTO sa_letters (category, name, subject, title, body, button_text, button_url, sort) VALUES (?, ?, ?, ?, ?, ?, ?, 999)')
+                        ->execute([$t['category'], $t['name'], $t['subject'], $t['title'], $t['body'], $t['button_text'] ?: null, $t['button_url'] ?: null]);
+                    $id = (int)$conn->lastInsertId();
+                }
+                $out += ['id' => $id, 'message' => 'Saved'];
+                break;
+            case 'letterDelete':
+                $conn->prepare('UPDATE sa_letters SET deleted_at = NOW() WHERE id = ?')->execute([(int)($in['id'] ?? 0)]);
+                $out['message'] = 'Deleted';
+                break;
+            case 'letterRestore':
+                $conn->prepare('UPDATE sa_letters SET deleted_at = NULL WHERE id = ?')->execute([(int)($in['id'] ?? 0)]);
+                $out['message'] = 'Brought back';
+                break;
+            case 'letterReset':
+                // a starter template back to how RestroGrow wrote it
+                $t = $letterGet((int)($in['id'] ?? 0));
+                $d = null;
+                foreach (letterDefaults() as $x) if ($x['seed'] === $t['seed']) $d = $x;
+                if (!$d) throw new Exception('Only the starter templates can be reset');
+                $conn->prepare('UPDATE sa_letters SET name = ?, category = ?, subject = ?, title = ?, body = ?, button_text = ?, button_url = ? WHERE id = ?')
+                    ->execute([$d['name'], $d['category'], $d['subject'], $d['title'], $d['body'], $d['button_text'] ?? null, $d['button_url'] ?? null, $t['id']]);
+                $out['message'] = 'Back to the original';
+                break;
+            case 'letterSend':
+                $t = $letterIn();
+                $vals = (array)($in['vals'] ?? []);
+                if (!filter_var($to, FILTER_VALIDATE_EMAIL)) throw new Exception('Enter the email address to send to');
+                $r = letterRender($conn, $t, $vals);
+                if ($r['missing']) throw new Exception('Fill in first: ' . implode(', ', array_map(fn($k) => ucfirst(str_replace('_', ' ', $k)), $r['missing'])));
+                $rid = preg_replace('/[^A-Za-z0-9_-]/', '', (string)($in['restaurant_id'] ?? '')) ?: null;
+                $s = mailSendNow($conn, 'letter', $to, $r['subject'], $r['html'], ['brand' => mailPlatformBrand(), 'text' => $r['text'], 'restaurant_id' => $rid,
+                    'to_name' => (string)($vals['owner'] ?? '')]);
+                if (!$s['success']) throw new Exception('Not sent: ' . ($s['error'] ?: 'check the SMTP settings in .env'));
+                if (!empty($in['copy'])) mailSendNow($conn, 'letter', mailTeamAddress(), '[Copy] ' . $r['subject'], $r['html'], ['brand' => mailPlatformBrand(), 'text' => $r['text'], 'restaurant_id' => $rid]);
+                if ((int)($in['id'] ?? 0)) $conn->prepare('UPDATE sa_letters SET sent_count = sent_count + 1, last_sent_at = NOW() WHERE id = ?')->execute([(int)$in['id']]);
+                $out['message'] = 'Sent to ' . $to . (!empty($in['copy']) ? ' (copy to ' . mailTeamAddress() . ')' : '');
+                break;
             case 'types':
                 $off = array_values(array_intersect(array_keys(mailTypes()), (array)($in['off'] ?? [])));
                 $conn->prepare("REPLACE INTO sa_settings (k, v) VALUES ('email_off', ?)")->execute([json_encode($off)]);
@@ -118,7 +185,12 @@ $jobs = [
 ];
 $who = ['owner' => 'Restaurant owners', 'team' => 'RestroGrow team & website visitors', 'customer' => 'Customers'];
 $whoLong = ['owner' => 'To restaurant owners (from RestroGrow)', 'team' => 'To the RestroGrow team / website visitors', 'customer' => 'To customers (from the restaurant\'s name)'];
-$tab = in_array($_GET['tab'] ?? '', ['all', 'log', 'settings'], true) ? $_GET['tab'] : (($q !== '' || $fs !== '') ? 'log' : 'all');
+$tab = in_array($_GET['tab'] ?? '', ['letters', 'all', 'log', 'settings'], true) ? $_GET['tab'] : (($q !== '' || $fs !== '') ? 'log' : 'letters');
+// Proposals & letters: the templates, the restaurants to fill them from, and the values filled in automatically
+$letters = $conn->query('SELECT id, seed, category, name, subject, title, body, button_text, button_url, sent_count, last_sent_at FROM sa_letters WHERE deleted_at IS NULL ORDER BY sort, id')->fetchAll(PDO::FETCH_ASSOC);
+try { $letterRests = $conn->query("SELECT restaurant_id, restaurant_name, owner_name, email, phone, address, city FROM users WHERE restaurant_id IS NOT NULL AND restaurant_id <> '' ORDER BY restaurant_name LIMIT 2000")->fetchAll(PDO::FETCH_ASSOC); }
+catch (PDOException $e) { $letterRests = $conn->query("SELECT restaurant_id, restaurant_name, owner_name, email, phone, address FROM users WHERE restaurant_id IS NOT NULL AND restaurant_id <> '' ORDER BY restaurant_name LIMIT 2000")->fetchAll(PDO::FETCH_ASSOC); }
+$letterAuto = letterAutoValues($conn);
 $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
 ?>
 <!DOCTYPE html>
@@ -202,6 +274,33 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
   dialog .top span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   dialog iframe { width: 100%; height: calc(100% - 50px); border: 0; background: #f5efe2; }
   #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px; display: none; max-width: 92vw; z-index: 10; }
+  /* proposals & letters */
+  .lt { display: grid; grid-template-columns: 250px minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .lt-list { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 10px; position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; }
+  .lt-list h4 { margin: 12px 8px 4px; font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .lt-item { display: block; width: 100%; text-align: left; padding: 9px 10px; border: 0; border-radius: 10px; background: none; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--soft); cursor: pointer; line-height: 1.35; }
+  .lt-item small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .lt-item:hover { background: #f9fafb; } .lt-item.on { background: #fff1e8; color: var(--ink); }
+  .lt-main { display: grid; gap: 14px; }
+  .lt-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .lt-head h3 { margin: 0; font-size: 18px; }
+  .lt-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .lt-f label, .lt-e label { display: block; font-size: 12.5px; font-weight: 700; color: var(--soft); margin-bottom: 4px; }
+  .lt-f input, .lt-e input, .lt-e select, .lt-e textarea, .lt-send input[type=email], .lt-send select { width: 100%; padding: 9px 11px; border: 1.5px solid var(--line); border-radius: 10px; font: inherit; font-size: 14px; background: #fff; }
+  .lt-f.empty input { border-color: #f59e0b; background: #fffbeb; }
+  .lt-f.auto label:after { content: ' (auto)'; font-weight: 400; color: var(--muted); }
+  .lt-e { display: grid; gap: 10px; } .lt-e[hidden], .lt-miss[hidden] { display: none; }
+  .lt-e textarea { min-height: 380px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.55; resize: vertical; }
+  .lt-help { font-size: 12.5px; color: var(--muted); line-height: 1.6; background: #f9fafb; border-radius: 10px; padding: 10px 12px; }
+  .lt-help code { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; }
+  .lt-send { display: grid; gap: 10px; }
+  .lt-prev { background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; position: sticky; top: 10px; }
+  .lt-prev .s { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13.5px; } .lt-prev .s small { color: var(--muted); display: block; font-size: 11.5px; }
+  .lt-prev iframe { width: 100%; height: calc(100vh - 90px); min-height: 520px; border: 0; background: #f5efe2; display: block; }
+  .lt-miss { font-size: 13px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 8px 12px; }
+  #toast button { margin-left: 12px; background: #fff; color: var(--ink); border: 0; border-radius: 8px; padding: 4px 10px; font-weight: 700; cursor: pointer; }
+  @media (max-width: 1100px) { .lt { grid-template-columns: 220px minmax(0, 1fr); } .lt-prev { grid-column: 1 / -1; position: static; } }
+  @media (max-width: 760px) { .lt { grid-template-columns: 1fr; } .lt-list { position: static; max-height: none; } }
   @media (max-width: 640px) { .hide-sm { display: none; } .mails { grid-template-columns: 1fr; } .bar { position: static; } }
 </style>
 </head>
@@ -218,10 +317,65 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
   <?php endif; ?>
 
   <nav class="tabs">
+    <a href="?tab=letters" data-tab="letters"<?php echo $tab === 'letters' ? ' class="on"' : ''; ?>>Proposals &amp; letters<b><?php echo count($letters); ?></b></a>
     <a href="?tab=all" data-tab="all"<?php echo $tab === 'all' ? ' class="on"' : ''; ?>>All emails<b><?php echo count($all); ?></b></a>
     <a href="?tab=log" data-tab="log"<?php echo $tab === 'log' ? ' class="on"' : ''; ?>>Sent log<?php if ((int)($stats['failed'] ?? 0)): ?><span class="dot" title="Failed emails"></span><?php endif; ?></a>
     <a href="?tab=settings" data-tab="settings"<?php echo $tab === 'settings' ? ' class="on"' : ''; ?>>Settings &amp; jobs</a>
   </nav>
+
+  <!-- ═══ Proposals & letters ═══ -->
+  <section class="pane<?php echo $tab === 'letters' ? ' on' : ''; ?>" id="pane-letters">
+    <div class="lt">
+      <nav class="lt-list" id="ltList" aria-label="Templates"></nav>
+      <div class="lt-main">
+        <div class="card">
+          <div class="lt-head">
+            <div><h3 id="ltName"></h3><small id="ltMeta" style="color:var(--muted)"></small></div>
+            <div class="row">
+              <button class="btn light sm" type="button" id="ltEditBtn">Edit template</button>
+              <button class="btn light sm" type="button" id="ltDup">Make a copy</button>
+              <button class="btn light sm" type="button" id="ltReset" hidden>Reset</button>
+              <button class="btn light sm" type="button" id="ltDel">Delete</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card lt-e" id="ltEdit" hidden>
+          <h3 style="margin:0">Edit template</h3>
+          <div class="row" style="align-items:flex-end">
+            <div style="flex:2;min-width:200px"><label for="eName">Template name (only you see it)</label><input id="eName" maxlength="120"></div>
+            <div style="flex:1;min-width:140px"><label for="eCat">Group</label><select id="eCat"><?php foreach (letterCategories() as $k): ?><option><?php echo $h($k); ?></option><?php endforeach; ?></select></div>
+          </div>
+          <div><label for="eSubject">Email subject</label><input id="eSubject" maxlength="200"></div>
+          <div><label for="eTitle">Heading inside the email</label><input id="eTitle" maxlength="200"></div>
+          <div><label for="eBody">Text</label><textarea id="eBody" spellcheck="true"></textarea></div>
+          <div class="row"><div style="flex:1;min-width:160px"><label for="eBtnT">Button text (optional)</label><input id="eBtnT" maxlength="60" placeholder="e.g. See a live demo"></div>
+            <div style="flex:2;min-width:200px"><label for="eBtnU">Button link</label><input id="eBtnU" maxlength="300" placeholder="https://…"></div></div>
+          <div class="lt-help">
+            <b>How to write:</b> a blank line starts a new paragraph · <code>## Heading</code> · <code>- point</code> for bullets · <code>1. step</code> for numbers · <code>**bold**</code> · <code>[text](https://link)</code> · <code>---</code> a line.<br>
+            <b>Boxes to fill:</b> write any word in double braces, like <code>{{restaurant}}</code>, <code>{{owner}}</code> or <code>{{setup_fee}}</code>; it becomes a box above Send. Filled by itself: <code>{{date}}</code> <code>{{my_name}}</code> <code>{{my_phone}}</code> <code>{{my_email}}</code> <code>{{price}}</code> <code>{{price_yearly}}</code> <code>{{trial_days}}</code> <code>{{website}}</code>. Picking a restaurant fills <code>{{restaurant}}</code> <code>{{owner}}</code> <code>{{restaurant_address}}</code> <code>{{city}}</code> <code>{{login_email}}</code>.
+          </div>
+          <div class="row"><button class="btn" type="button" id="ltSave">Save template</button><button class="btn light" type="button" id="ltCancel">Cancel</button><small style="color:var(--muted)">The preview on the right updates as you type.</small></div>
+        </div>
+
+        <div class="card lt-send">
+          <h3 style="margin:0">Fill in and send</h3>
+          <div><label for="ltRest" style="font-size:12.5px;font-weight:700;color:var(--soft)">Fill from a restaurant (optional)</label>
+            <select id="ltRest"><option value="">Type the details yourself…</option><?php foreach ($letterRests as $r): ?><option value="<?php echo $h($r['restaurant_id']); ?>"><?php echo $h(($r['restaurant_name'] ?: $r['restaurant_id']) . ($r['owner_name'] ? ' · ' . $r['owner_name'] : '')); ?></option><?php endforeach; ?></select></div>
+          <div class="lt-fields" id="ltFields"></div>
+          <div class="lt-miss" id="ltMiss" hidden></div>
+          <div><label for="ltTo" style="font-size:12.5px;font-weight:700;color:var(--soft)">Send to</label><input type="email" id="ltTo" placeholder="owner@restaurant.com"></div>
+          <label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="ltCopy" checked> Send a copy to me (<?php echo $h(mailTeamAddress()); ?>)</label>
+          <div class="row">
+            <button class="btn" type="button" id="ltSend">Send email</button>
+            <button class="btn light" type="button" id="ltText" title="Copy as text for WhatsApp">Copy text</button>
+            <button class="btn light" type="button" id="ltPrint" title="Print, or Save as PDF in the print window">Print / PDF</button>
+          </div>
+        </div>
+      </div>
+      <div class="lt-prev"><div class="s"><small>Subject</small><span id="ltSubj"></span></div><iframe id="ltFrame" sandbox title="Preview"></iframe></div>
+    </div>
+  </section>
 
   <!-- ═══ All emails ═══ -->
   <section class="pane<?php echo $tab === 'all' ? ' on' : ''; ?>" id="pane-all">
@@ -385,6 +539,181 @@ document.addEventListener('change', function (e) {
   var off = [].slice.call(document.querySelectorAll('[data-type]')).filter(function (c) { return !c.checked; }).map(function (c) { return c.dataset.type; });
   post({ action: 'types', off: off });
 });
+/* ── Proposals & letters ── */
+(function () {
+  var L = <?php echo json_encode(array_map(fn($t) => ['id' => (int)$t['id'], 'seed' => $t['seed'], 'category' => $t['category'], 'name' => $t['name'], 'subject' => $t['subject'], 'title' => $t['title'],
+    'body' => $t['body'], 'button_text' => (string)$t['button_text'], 'button_url' => (string)$t['button_url'], 'sent' => (int)$t['sent_count'], 'last' => $t['last_sent_at'] ? date('d M Y', strtotime($t['last_sent_at'])) : ''], $letters), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE); ?>;
+  var RESTS = <?php echo json_encode($letterRests, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE); ?>;
+  var AUTO = <?php echo json_encode($letterAuto, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE); ?>;
+  var CATS = <?php echo json_encode(letterCategories()); ?>;
+  var cur = null, editing = false, vals = {}, restId = '', lastText = '', lastHtml = '';
+  try { vals = JSON.parse(localStorage.getItem('rgLetterVals') || '{}') || {}; } catch (e) {}
+  function keep() { try { localStorage.setItem('rgLetterVals', JSON.stringify(vals)); } catch (e) {} }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]; }); }
+  function label(k) { var t = k.replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); }
+  function draft() { return editing ? { name: $('eName').value, category: $('eCat').value, subject: $('eSubject').value, title: $('eTitle').value, body: $('eBody').value, button_text: $('eBtnT').value, button_url: $('eBtnU').value } : cur; }
+  function fieldsOf(t) {
+    var s = [t.subject, t.title, t.body, t.button_text, t.button_url].join('\n'), m, re = /\{\{\s*([a-z0-9_]{1,40})\s*\}\}/gi, out = [];
+    while ((m = re.exec(s))) { var k = m[1].toLowerCase(); if (out.indexOf(k) === -1) out.push(k); }
+    return out;
+  }
+  function list() {
+    var html = '<button class="btn sm" type="button" id="ltNew" style="width:100%;margin-bottom:4px">+ New template</button>';
+    CATS.forEach(function (c) {
+      var items = L.filter(function (t) { return t.category === c; });
+      if (!items.length) return;
+      html += '<h4>' + esc(c) + '</h4>' + items.map(function (t) {
+        return '<button type="button" class="lt-item' + (cur && cur.id === t.id ? ' on' : '') + '" data-lt="' + t.id + '">' + esc(t.name) + '<small>' + (t.sent ? 'Sent ' + t.sent + '× · last ' + esc(t.last) : 'Not sent yet') + '</small></button>';
+      }).join('');
+    });
+    $('ltList').innerHTML = html;
+  }
+  function fields() {
+    var t = draft(), box = $('ltFields');
+    if (!t) { box.innerHTML = ''; return; }
+    var keys = fieldsOf(t);
+    var focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.k : null;
+    box.innerHTML = keys.map(function (k) {
+      var auto = !(k in vals) && (k in AUTO), v = k in vals ? vals[k] : (AUTO[k] || '');
+      return '<div class="lt-f' + (auto ? ' auto' : '') + (String(v).trim() === '' ? ' empty' : '') + '"><label for="ltv_' + k + '">' + esc(label(k)) + '</label><input id="ltv_' + k + '" data-k="' + k + '" value="' + esc(v) + '"></div>';
+    }).join('') || '<small style="color:var(--muted)">Nothing to fill in: this template has no {{boxes}}.</small>';
+    if (focused && $('ltv_' + focused)) { var i = $('ltv_' + focused); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+  }
+  var pt;
+  function preview() {
+    clearTimeout(pt);
+    pt = setTimeout(function () {
+      var t = draft();
+      if (!t) return;
+      fetch('email.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'letterPreview', letter: t, vals: vals }) })
+        .then(function (r) { return r.json(); }).then(function (d) {
+          if (!d.ok) return;
+          lastText = d.text; lastHtml = d.html;
+          $('ltSubj').textContent = d.subject;
+          $('ltFrame').srcdoc = d.html;
+          var m = $('ltMiss');
+          m.hidden = !d.missing.length;
+          m.textContent = d.missing.length ? 'Still to fill in: ' + d.missing.map(label).join(', ') : '';
+        });
+    }, 250);
+  }
+  function open(id) {
+    cur = L.filter(function (t) { return t.id === id; })[0] || L[0] || null;
+    if (!cur) { startNew(); return; }
+    editing = false;
+    $('ltEdit').hidden = true;
+    $('ltName').textContent = cur.name;
+    $('ltMeta').textContent = cur.category + (cur.sent ? ' · sent ' + cur.sent + ' times, last on ' + cur.last : ' · not sent yet');
+    $('ltReset').hidden = !cur.seed;
+    $('ltDel').hidden = $('ltDup').hidden = $('ltEditBtn').hidden = false;
+    list(); fields(); preview();
+    try { localStorage.setItem('rgLetterOpen', id); } catch (e) {}
+  }
+  function edit(on) {
+    editing = on;
+    $('ltEdit').hidden = !on;
+    if (on && cur) {
+      $('eName').value = cur.name; $('eCat').value = cur.category; $('eSubject').value = cur.subject; $('eTitle').value = cur.title;
+      $('eBody').value = cur.body; $('eBtnT').value = cur.button_text || ''; $('eBtnU').value = cur.button_url || '';
+      $('eBody').focus();
+    }
+    fields(); preview();
+  }
+  function startNew(copyOf) {
+    var base = copyOf ? Object.assign({}, copyOf, { name: copyOf.name + ' (copy)' }) : { name: 'New template', category: 'Proposal', subject: 'Hello {{owner}}', title: '', body: 'Hi {{owner}},\n\nWrite your message here.\n\nRegards,\n{{my_name}}', button_text: '', button_url: '' };
+    cur = null;
+    $('ltName').textContent = base.name;
+    $('ltMeta').textContent = 'Not saved yet';
+    $('ltReset').hidden = $('ltDel').hidden = $('ltDup').hidden = $('ltEditBtn').hidden = true;
+    editing = true; $('ltEdit').hidden = false;
+    $('eName').value = base.name; $('eCat').value = base.category; $('eSubject').value = base.subject; $('eTitle').value = base.title;
+    $('eBody').value = base.body; $('eBtnT').value = base.button_text || ''; $('eBtnU').value = base.button_url || '';
+    $('eName').focus(); $('eName').select();
+    list(); fields(); preview();
+  }
+  function undoToast(msg, fn) {
+    var e = $('toast');
+    e.innerHTML = esc(msg) + '<button type="button">Undo</button>';
+    e.style.display = 'block';
+    e.querySelector('button').onclick = function () { e.style.display = 'none'; fn(); };
+    clearTimeout(toast.t); toast.t = setTimeout(function () { e.style.display = 'none'; }, 8000);
+  }
+  $('ltList').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-lt]');
+    if (b) open(+b.dataset.lt);
+    else if (e.target.closest('#ltNew')) startNew();
+  });
+  $('ltEditBtn').onclick = function () { edit(!editing); };
+  $('ltCancel').onclick = function () { open(cur ? cur.id : (L[0] ? L[0].id : 0)); };
+  $('ltDup').onclick = function () { if (cur) startNew(cur); };
+  $('ltSave').onclick = function () {
+    var t = draft();
+    post({ action: 'letterSave', id: cur ? cur.id : 0, letter: t }, this).then(function (d) {
+      if (!d.ok) return;
+      var row = Object.assign(cur || { sent: 0, last: '', seed: null }, t, { id: d.id });
+      if (!cur) L.push(row);
+      open(row.id);
+    });
+  };
+  $('ltReset').onclick = function () {
+    if (!cur) return;
+    var id = cur.id;
+    post({ action: 'letterReset', id: id }, this).then(function (d) { if (d.ok) location.href = 'email.php?tab=letters&open=' + id; });
+  };
+  $('ltDel').onclick = function () {
+    if (!cur) return;
+    var gone = cur, idx = L.indexOf(cur);
+    post({ action: 'letterDelete', id: gone.id }).then(function (d) {
+      if (!d.ok) return;
+      L.splice(idx, 1);
+      open(L[0] ? L[0].id : 0);
+      undoToast('"' + gone.name + '" deleted', function () {
+        post({ action: 'letterRestore', id: gone.id }).then(function (r) { if (r.ok) { L.splice(idx, 0, gone); open(gone.id); } });
+      });
+    });
+  };
+  ['eName', 'eCat', 'eSubject', 'eTitle', 'eBody', 'eBtnT', 'eBtnU'].forEach(function (id) {
+    $(id).addEventListener('input', function () { if (id === 'eName') $('ltName').textContent = this.value; fields(); preview(); });
+  });
+  $('ltFields').addEventListener('input', function (e) {
+    var k = e.target.dataset.k;
+    if (!k) return;
+    vals[k] = e.target.value;
+    e.target.parentNode.classList.toggle('empty', e.target.value.trim() === '');
+    e.target.parentNode.classList.remove('auto');
+    keep(); preview();
+  });
+  $('ltRest').addEventListener('change', function () {
+    restId = this.value;
+    var r = RESTS.filter(function (x) { return x.restaurant_id === restId; })[0];
+    if (!r) return;
+    vals.restaurant = r.restaurant_name || '';
+    vals.owner = (r.owner_name || '').trim().split(' ')[0] || '';
+    vals.restaurant_address = [r.address, r.city].filter(Boolean).join(', ');
+    vals.city = r.city || '';
+    vals.login_email = r.email || '';
+    $('ltTo').value = r.email || '';
+    keep(); fields(); preview();
+  });
+  $('ltSend').onclick = function () {
+    post({ action: 'letterSend', id: cur ? cur.id : 0, letter: draft(), vals: vals, to: $('ltTo').value.trim(), copy: $('ltCopy').checked, restaurant_id: restId }, this)
+      .then(function (d) { if (d.ok && cur) { cur.sent++; cur.last = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); list(); } });
+  };
+  $('ltText').onclick = function () {
+    var s = $('ltSubj').textContent + '\n\n' + lastText;
+    (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(function () { toast('Copied. Paste it in WhatsApp or anywhere.'); }, function () { toast('Could not copy'); });
+  };
+  $('ltPrint').onclick = function () {
+    var w = window.open('', '_blank');
+    if (!w) { toast('Allow pop-ups to print'); return; }
+    w.document.write(lastHtml.replace('</body>', '<script>window.onload=function(){window.print()}<\/script></body>'));
+    w.document.close();
+  };
+  var want = +(new URLSearchParams(location.search).get('open') || 0);
+  try { want = want || +(localStorage.getItem('rgLetterOpen') || 0); } catch (e) {}
+  open(L.some(function (t) { return t.id === want; }) ? want : (L[0] ? L[0].id : 0));
+})();
+
 document.addEventListener('click', function (e) {
   var t = e.target.closest('[data-open],[data-view],[data-resend],[data-testone],#test,#sweep');
   if (!t) return;

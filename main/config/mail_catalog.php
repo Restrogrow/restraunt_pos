@@ -25,6 +25,7 @@ function mailSchedule(): array
         'support_reply'   => ['When you reply to a support ticket', 'Super Admin › Support'],
         'daily_summary'   => ['Every morning at the time the owner picked', 'Owner turns on "Also send the report to my email" in Growth › AI manager; cron/owner_brief.php every 15 min'],
         'password_reset'  => ['At once, when someone uses "Forgot password"', 'Owner login, customer website login, Super Admin login'],
+        'letter'          => ['When you press Send on a proposal or letter', 'Super Admin › Email › Proposals & letters'],
         'team_lead'       => ['When the contact form is sent or the chatbot gets a call-back request', 'Goes to MAIL_TEAM (or the sending address)'],
         'lead_autoreply'  => ['Right after someone sends the contact form', 'restrogrow.com contact form'],
         'order_confirmed' => ['When an order is confirmed', 'Website, WhatsApp and POS orders where the customer gave an email (or has one saved)'],

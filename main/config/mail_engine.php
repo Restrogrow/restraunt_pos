@@ -34,6 +34,7 @@ if (!function_exists('mailQueue')) {
             'support_reply'   => ['Support ticket replied', 'owner', 'support', true],
             'daily_summary'   => ['Daily sales summary (AI manager, if the owner turns it on)', 'owner', 'alerts', true],
             'password_reset'  => ['Password reset links (always on)', 'owner', 'accounts', true],
+            'letter'          => ['Proposals & letters you send by hand (Email › Proposals & letters)', 'owner', 'sales', true],
             'team_lead'       => ['New lead to the RestroGrow team (contact form, chatbot)', 'team', 'sales', true],
             'team_signup'     => ['New restaurant signed up (to the team)', 'team', 'sales', true],
             'setup_nudge'     => ['Setup reminders on day 1, 3 and 7 after sign-up (until the guide is done)', 'owner', 'sales', true],
