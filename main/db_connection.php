@@ -114,6 +114,14 @@ if ($is_hostinger_server) {
 // Add connection timeout in DSN for remote connections
 $timeout = $is_hostinger_server ? 2 : 5; // 5s timeout for remote connections from localhost
 $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
+// Cron jobs (command-line PHP) on Hostinger may not use the MySQL socket that "localhost" means:
+// "SQLSTATE[HY000] [2002] Operation not permitted". They connect over TCP to 127.0.0.1 instead
+// (same server, same database), and fall back to the socket if that is refused.
+$dsn_fallback = null;
+if (PHP_SAPI === 'cli' && strtolower((string)$host) === 'localhost') {
+    $dsn_fallback = $dsn;
+    $dsn = "mysql:host=127.0.0.1;port=3306;dbname=$dbname;charset=utf8mb4";
+}
 // Use NON-persistent connections to prevent connection accumulation on Hostinger
 // This ensures connections are properly closed after each request
 // Prevents hitting the 500 connections/hour limit
@@ -274,7 +282,14 @@ function createDatabaseConnection() {
         } catch (PDOException $e) {
             $last_error = $e;
             $GLOBALS['db_connection_stats']['failures']++;
-            
+            // command line: TCP refused, try the socket once (see $dsn_fallback above)
+            if (!empty($GLOBALS['dsn_fallback'])) {
+                $dsn = $GLOBALS['dsn_fallback'];
+                $GLOBALS['dsn_fallback'] = null;
+                $attempt--;
+                continue;
+            }
+
             $error_msg = $e->getMessage();
             $error_code = $e->getCode();
             
