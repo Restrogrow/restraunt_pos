@@ -208,6 +208,8 @@ $setting = function (string $k) use ($conn) { $s = $conn->prepare('SELECT v FROM
 $lastSweep = $setting('mail_sweep_at');
 // the scheduled jobs: when each one last ran from the server's cron
 $jobs = [
+    ['Cron test', 'cron/heartbeat.php', 'Every minute', $setting('cron_heartbeat_at'), 3,
+        'Only checks that the server\'s cron can run PHP and reach the database' . ($setting('cron_heartbeat_info') !== '' ? ' (last run: ' . $setting('cron_heartbeat_info') . ')' : '') . '. If this says Running, the other jobs can run too.'],
     ['Emails: reminders and retries', 'cron/email_dispatch.php', 'Every 10 minutes', $setting('cron_email_dispatch_at'), 30,
         'Trial / renewal reminders, payment receipts, gift emails, booking reminders, and retrying failed emails. Without it they still go out, but only while someone has a dashboard open.'],
     ['AI manager morning report', 'cron/owner_brief.php', 'Every 15 minutes', $setting('cron_owner_brief_at'), 45,
