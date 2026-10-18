@@ -53,6 +53,7 @@ function blogHeader(array $m): void
 <?php foreach ($m['jsonld'] ?? [] as $ld): ?><script type="application/ld+json"><?php echo json_encode($ld, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?></script>
 <?php endforeach; ?>
 <?php echo $m['extra'] ?? ''; ?>
+<script src="/assets/rg-analytics.js" async></script>
 </head>
 <body class="blog-body">
 <nav class="navbar">
