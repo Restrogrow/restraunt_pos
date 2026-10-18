@@ -30,6 +30,7 @@ $rid = (string)$_SESSION['restaurant_id'];
 session_write_close();
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/marketing_helpers.php';
+require_once __DIR__ . '/../config/link_tracking.php';
 
 function mkOut(array $d, int $code = 200) { http_response_code($code); echo json_encode($d, JSON_UNESCAPED_UNICODE); exit; }
 function mkTry(callable $f) { try { return $f(); } catch (Throwable $e) { return null; } }
@@ -60,7 +61,7 @@ try {
     };
 
     // results for a set of designs: visits, orders and sales per campaign tag / coupon
-    $results = function (array $designs) use ($q, $rid) {
+    $results = function (array $designs) use ($q, $rid, $conn) {
         $out = [];
         $notCancelled = "o.order_status NOT IN ('Cancelled','Rejected')";
         foreach ($designs as $d) {
@@ -85,6 +86,16 @@ try {
                 });
                 if ($row) { $r['coupon_orders'] = (int)$row['n']; $r['orders'] += (int)$row['n']; $r['sales'] += (float)$row['s']; }
             }
+            // taps on the design's short link (restrogrow.com/<slug>/go/<code>, also behind its QR code)
+            if ($src !== '') {
+                $tl = mkTry(function () use ($q, $rid, $src) { return $q("SELECT * FROM tracked_links WHERE restaurant_id = ? AND kind = 'mk' AND ref = ?", [$rid, $src])->fetch(PDO::FETCH_ASSOC); });
+                if ($tl) {
+                    $ts = tlStats($conn, $rid, [$tl])[(int)$tl['id']] ?? [];
+                    $r['clicks'] = (int)($ts['clicks'] ?? 0); $r['people'] = (int)($ts['people'] ?? 0); $r['last_click'] = $ts['last_click'] ?? null;
+                    $r['spark'] = tlDaily($conn, $rid, (int)$tl['id'], 14);
+                    $r['short'] = tlShortUrl($conn, $rid, $tl['code']);
+                }
+            }
             $out[(int)$d['id']] = $r;
         }
         return $out;
@@ -93,6 +104,13 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $view = $_GET['view'] ?? 'designs';
         if ($view === 'brand') mkOut(['success' => true, 'brand' => $brand()]);
+        // the tracked short link for a design's tag (and coupon): what posters, QR codes, videos and captions print
+        if ($view === 'link') {
+            $src = mkCleanSrc((string)($_GET['src'] ?? ''));
+            if ($src === '') mkOut(['success' => false, 'message' => 'No link tag'], 400);
+            $l = tlLink($conn, $rid, 'mk', $src, ['label' => (string)($_GET['label'] ?? $src), 'target' => 'menu', 'src' => $src, 'coupon' => (string)($_GET['coupon'] ?? '')]);
+            mkOut(['success' => true, 'short' => $l['short'], 'code' => $l['code']]);
+        }
         if ($view === 'design') {
             $row = $q('SELECT id, kind, name, src, coupon_code, state FROM marketing_designs WHERE id = ? AND restaurant_id = ?', [(int)($_GET['id'] ?? 0), $rid])->fetch(PDO::FETCH_ASSOC);
             if (!$row) mkOut(['success' => false, 'message' => 'That design was not found.'], 404);

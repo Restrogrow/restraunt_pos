@@ -60,7 +60,7 @@ if (!function_exists('ensureWhatsappSchema')) {
     // Variables a message can use, in the order the owner may write them
     function waVars(): array {
         return ['name' => 'Customer’s first name', 'reward' => 'The gift, e.g. ₹50 off', 'code' => 'The gift code', 'valid_till' => 'Last day to use it',
-                'restaurant' => 'Your restaurant name', 'min_order' => 'Minimum order for the gift', 'link' => 'Link to your rewards page',
+                'restaurant' => 'Your restaurant name', 'min_order' => 'Minimum order for the gift', 'link' => 'Order link (their gift is already applied; clicks are counted)',
                 'tier' => 'New level (Level up only)', 'count' => 'Order number (Milestone only)'];
     }
     function waAutopilotKinds(): array { return ['welcome', 'birthday', 'anniversary', 'winback', 'tier_up', 'milestone', 'referral']; }
@@ -136,6 +136,15 @@ if (!function_exists('ensureWhatsappSchema')) {
             INDEX idx_wc_due (status, scheduled_at)
         )");
         ensureRepeatgrowConnectSchema($conn);   // template tracking for "Connect RepeatGrow"
+        // delivery / read (RepeatGrow message.status_updated webhook) and link clicks (website/go.php)
+        $have = array_column($conn->query('SHOW COLUMNS FROM wa_outbox')->fetchAll(PDO::FETCH_ASSOC), 'Field');
+        foreach (['delivered_at' => 'DATETIME NULL', 'read_at' => 'DATETIME NULL', 'clicked_at' => 'DATETIME NULL'] as $col => $def)
+            if (!in_array($col, $have, true)) $conn->exec("ALTER TABLE wa_outbox ADD COLUMN $col $def");
+        if (!in_array('message_id', array_column($conn->query("SHOW INDEX FROM wa_outbox WHERE Key_name = 'idx_wa_msg'")->fetchAll(PDO::FETCH_ASSOC), 'Column_name'), true))
+            $conn->exec('ALTER TABLE wa_outbox ADD INDEX idx_wa_msg (message_id)');
+        $wcols = array_column($conn->query('SHOW COLUMNS FROM wa_settings')->fetchAll(PDO::FETCH_ASSOC), 'Field');
+        foreach (['status_hook_id' => 'VARCHAR(80) NULL', 'status_hook_secret' => 'VARCHAR(300) NULL'] as $col => $def)
+            if (!in_array($col, $wcols, true)) $conn->exec("ALTER TABLE wa_settings ADD COLUMN $col $def");
         waKeysEncryptAll($conn);
     }
 
@@ -219,6 +228,35 @@ if (!function_exists('ensureWhatsappSchema')) {
         error_log("WhatsApp $rid: RepeatGrow no longer accepts the key (401), connection cleared");
     }
     function waLostMessage(): string { return 'RepeatGrow was disconnected. Connect again to keep sending.'; }
+
+    /**
+     * Ask RepeatGrow to tell us when this restaurant's messages are delivered / read (webhook
+     * message.status_updated → api/wa_webhook.php?hook=status). Once; tries again at most once a day.
+     */
+    function waEnsureStatusHook(PDO $conn, string $rid): void {
+        $s = waSettings($conn, $rid);
+        if ($s['mode'] !== 'own' || $s['api_key'] === '' || waDryRun()) return;
+        $st = $conn->prepare('SELECT status_hook_id FROM wa_settings WHERE restaurant_id = ?');
+        $st->execute([$rid]);
+        $have = (string)$st->fetchColumn();
+        if ($have !== '' && strpos($have, 'try:') !== 0) return;
+        if (strpos($have, 'try:') === 0 && (int)substr($have, 4) > time() - 86400) return;
+        $c = waConnection($s);
+        if (!$c) return;
+        $app = rtrim((string)env('APP_API_BASE', ''), '/') ?: (rtrim((string)env('APP_URL', ''), '/') ?: 'https://restrogrow.com') . '/main/api';
+        $ch = curl_init(preg_replace('#/messages/?$#', '/webhooks', $c['url']));
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $c['key']],
+            CURLOPT_POSTFIELDS => json_encode(['url' => $app . '/wa_webhook.php?rid=' . rawurlencode($rid) . '&hook=status',
+                'events' => ['message.status_updated'], 'description' => 'RestroGrow campaign delivery and read receipts'])]);
+        $res = curl_exec($ch);
+        curl_close($ch);
+        $d = json_decode((string)$res, true) ?: [];
+        $id = (string)($d['data']['id'] ?? '');
+        $secret = (string)($d['data']['secret'] ?? '');
+        if ($id !== '' && $secret !== '') $conn->prepare('UPDATE wa_settings SET status_hook_id = ?, status_hook_secret = ? WHERE restaurant_id = ?')->execute([$id, waKeySeal($secret), $rid]);
+        else { $conn->prepare('UPDATE wa_settings SET status_hook_id = ? WHERE restaurant_id = ?')->execute(['try:' . time(), $rid]); error_log("WhatsApp $rid: status webhook not registered: " . substr((string)$res, 0, 200)); }
+    }
 
     /** The customer replied STOP on WhatsApp (RepeatGrow: opted_out): stop messaging them from here too. */
     function waOptedOut(PDO $conn, string $rid, array $m): void {
@@ -305,6 +343,26 @@ if (!function_exists('ensureWhatsappSchema')) {
 
     function waFill(string $msg, array $v): string {
         return preg_replace_callback('/\{([a-z_]+)\}/', function ($m) use ($v) { return array_key_exists($m[1], $v) ? (string)$v[$m[1]] : $m[0]; }, $msg);
+    }
+
+    /** Stand-in for {link} until the outbox row exists; then waFillLinkSlot puts the customer's own tracked link in. */
+    if (!defined('WA_LINK_SLOT')) define('WA_LINK_SLOT', '[[rg-link]]');
+    function waFillLinkSlot(PDO $conn, string $rid, int $outboxId, string $kind, string $ref, string $label): void {
+        if ($outboxId <= 0) return;   // INSERT IGNORE skipped a duplicate
+        try {
+            require_once __DIR__ . '/link_tracking.php';
+            $l = tlLink($conn, $rid, $kind, $ref, ['label' => $label, 'target' => 'menu', 'src' => 'wa-' . $ref]);
+            $url = tlShortUrl($conn, $rid, $l['code'], $outboxId);
+        } catch (Throwable $e) {
+            error_log('wa link: ' . $e->getMessage());
+            $url = waRestaurant($conn, $rid)['link'];
+        }
+        $st = $conn->prepare('SELECT params, body FROM wa_outbox WHERE id = ?');
+        $st->execute([$outboxId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$row || (strpos((string)$row['params'], WA_LINK_SLOT) === false && strpos((string)$row['body'], WA_LINK_SLOT) === false)) return;
+        $params = str_replace(json_encode(WA_LINK_SLOT), json_encode($url, JSON_UNESCAPED_SLASHES), (string)$row['params']);
+        $conn->prepare('UPDATE wa_outbox SET params = ?, body = ? WHERE id = ?')->execute([$params, mb_substr(str_replace(WA_LINK_SLOT, $url, (string)$row['body']), 0, 1000), $outboxId]);
     }
 
     function waRestaurant(PDO $conn, string $rid): array {
@@ -459,7 +517,7 @@ if (!function_exists('ensureWhatsappSchema')) {
             if (!empty($c['template_vars'])) $order = json_decode($c['template_vars'], true) ?: $order;
             $r = waRestaurant($conn, $rid);
             foreach ($list as $p) {
-                $vars = ['name' => trim(explode(' ', trim((string)$p['customer_name']))[0] ?? '') ?: 'there', 'restaurant' => $r['name'], 'link' => $r['link'],
+                $vars = ['name' => trim(explode(' ', trim((string)$p['customer_name']))[0] ?? '') ?: 'there', 'restaurant' => $r['name'], 'link' => WA_LINK_SLOT,
                          'reward' => '', 'code' => '', 'valid_till' => '', 'min_order' => '', 'tier' => '', 'count' => ''];
                 if ($c['gift_kind']) {
                     $conn->beginTransaction();
@@ -478,6 +536,7 @@ if (!function_exists('ensureWhatsappSchema')) {
                 }
                 $params = array_map(function ($k) use ($vars) { $v = (string)($vars[$k] ?? ''); return $v !== '' ? $v : '-'; }, $order);
                 $ins->execute([$rid, (int)$c['id'], (int)$p['id'], $p['phone'], $p['customer_name'], $c['template_name'], $c['language'], json_encode($params, JSON_UNESCAPED_UNICODE), mb_substr(waFill($c['message'], $vars), 0, 1000)]);
+                waFillLinkSlot($conn, $rid, (int)$conn->lastInsertId(), 'wa_campaign', 'c' . $c['id'], 'WhatsApp campaign · ' . $c['name']);
             }
             $conn->prepare('UPDATE wa_campaigns SET audience_count = ? WHERE id = ?')->execute([count($list), (int)$c['id']]);
         }
@@ -500,6 +559,7 @@ if (!function_exists('ensureWhatsappSchema')) {
             $a = $auto[$kind];
             $message = $a['message'];
             $vars = waGiftVars($conn, $g, $g);
+            $vars['link'] = WA_LINK_SLOT;   // the tracked link goes in once the row has its id
             $b = waBuild($s, $a, $message, $vars);
             if (!$b && $s['mode'] === 'own' && in_array($a['template_status'] ?? '', ['pending'], true)) continue;   // goes out once Meta approves
             if (!$b) {
@@ -509,6 +569,7 @@ if (!function_exists('ensureWhatsappSchema')) {
             }
             $ins->execute([$rid, $kind, $g['id'], $g['customer_id'], $g['phone'], $g['customer_name'], $b['template_name'], $b['language'],
                 json_encode($b['params'], JSON_UNESCAPED_UNICODE), mb_substr($b['body'], 0, 1000), 'queued', null]);
+            waFillLinkSlot($conn, $rid, (int)$conn->lastInsertId(), 'wa_auto', $kind, 'WhatsApp · ' . $kind);
             $mark->execute(['queued', $g['id']]);
         }
     }

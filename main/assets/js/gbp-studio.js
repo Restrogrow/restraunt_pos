@@ -119,11 +119,32 @@
         todo(S.unanswered, 'reviews waiting for a reply', 'Reply now', 'reviews', S.unanswered ? 'warn' : 'ok', S.connected ? null : (S.setup.oauth ? 'Connect Google to reply from here' : 'Replying from here: coming soon')) +
         todo(scans, 'review link scans in 30 days', 'Get more reviews', 'get', scans ? 'ok' : 'muted') +
         todo(null, 'Post an offer or a combo on Google', 'New post', 'posts', 'muted') + '</div></section>' +
+      healthCard() +
       '<section class="gbx-card gbx-span"><h4>' + ic('auto_awesome') + 'Tips to rank higher on Google Maps</h4><ul class="gbx-tips">' +
         '<li>' + ic(S.unanswered ? 'reviews' : 'check_circle') + '<span>Reply to every review within a day. Google shows owners who reply higher.</span></li>' +
         '<li>' + ic('qr_code_2') + '<span>Put the review QR on tables and the bill. Steady new reviews matter more than the total.</span></li>' +
         '<li>' + ic('campaign') + '<span>Post once a week: a combo, today’s special or an offer. Posts keep your listing fresh.</span></li>' +
         '<li>' + ic('schedule') + '<span>Keep hours and phone right on Google, especially on festival days.</span></li></ul></section></div>';
+  }
+  /** New reviews this month, rating trend, how often and how fast you reply, review-link scans. */
+  function healthCard() {
+    var h = S.health; if (!h || !window.RGStats) return '';
+    var max = Math.max.apply(null, h.trend.map(function (m) { return m.n; }).concat([1]));
+    var diff = h.last30 - h.prev30;
+    var hrs = h.reply_hours == null ? '–' : h.reply_hours < 1 ? Math.max(1, Math.round(h.reply_hours * 60)) + ' min' : h.reply_hours < 48 ? Math.round(h.reply_hours) + ' h' : Math.round(h.reply_hours / 24) + ' days';
+    return '<section class="gbx-card gbx-span"><h4>' + ic('monitoring') + 'How your reviews are doing</h4>' +
+      RGStats.funnel([
+        { label: 'New reviews (30 days)', value: h.last30, icon: 'reviews', noPct: true, hint: h.prev30 + ' in the 30 days before' },
+        { label: 'Average (30 days)', text: h.avg30 == null ? '–' : h.avg30.toFixed(1) + ' ★', value: null, icon: 'star', noPct: true },
+        { label: 'Replied to', text: h.reply_rate == null ? '–' : h.reply_rate + '%', value: null, icon: 'reply', noPct: true, strong: h.reply_rate != null && h.reply_rate < 80 },
+        { label: 'Average reply time', text: hrs, value: null, icon: 'timer', noPct: true },
+        { label: 'Review-link scans (30 days)', value: h.link_taps30, icon: 'qr_code_2', noPct: true }], {
+        extra: [diff ? { label: (diff > 0 ? '+' : '') + diff + ' vs the 30 days before', tone: diff > 0 ? 'good' : 'bad', icon: diff > 0 ? 'trending_up' : 'trending_down' } : null,
+                h.reply_rate != null && h.reply_rate < 80 ? { label: 'Reply to more reviews: Google ranks owners who reply higher', tone: 'info', icon: 'lightbulb' } : null] }) +
+      '<div class="gbx-trend">' + h.trend.map(function (m) {
+        var lbl = new Date(m.month + '-01T00:00:00').toLocaleDateString(undefined, { month: 'short' });
+        return '<div title="' + m.n + ' reviews' + (m.avg ? ', average ' + m.avg.toFixed(1) : '') + '"><i style="height:' + Math.max(4, Math.round(m.n * 100 / max)) + '%"></i><b>' + m.n + '</b><small>' + lbl + (m.avg ? ' · ' + m.avg.toFixed(1) + '★' : '') + '</small></div>';
+      }).join('') + '</div></section>';
   }
   function todo(n, label, btn, go, cls, note) {
     return '<div class="gbx-todo-r ' + cls + '">' + (n != null ? '<b>' + n + '</b>' : ic('campaign')) + '<span>' + label + (note ? '<small>' + note + '</small>' : '') + '</span><button type="button" class="btn btn-secondary btn-sm" data-gbx-tab="' + go + '">' + btn + '</button></div>';
@@ -172,6 +193,7 @@
       (post.topic === 'OFFER' ? '<div class="cbx-row"><label class="cbx-l">Coupon code <small>optional</small><input type="text" maxlength="58" data-gbx-p="coupon" value="' + esc(post.coupon || '') + '"></label><label class="cbx-l">Terms <small>optional</small><input type="text" maxlength="500" data-gbx-p="terms" value="' + esc(post.terms || '') + '"></label></div>' :
         '<label class="cbx-l">Button<select data-gbx-p="cta"><option value="">No button</option>' + [['ORDER', 'Order online'], ['BOOK', 'Book'], ['LEARN_MORE', 'Learn more'], ['CALL', 'Call now']].map(function (c) { return '<option value="' + c[0] + '"' + (post.cta === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</select></label>') +
       '<label class="cbx-l">Link <small>your website menu by default</small><input type="url" data-gbx-p="url" value="' + esc(post.url || webUrl()) + '"></label>' +
+      '<p class="sx-muted gbx-mini">' + ic('touch_app') + ' The button opens a short tracked link, so you see how many people tapped it and the orders it brought, under “Posted from here”.</p>' +
       '<label class="cbx-l">Photo address <small>optional, a public https:// image (720×540 or bigger)</small><input type="url" data-gbx-p="image_url" value="' + esc(post.image_url || '') + '" placeholder="https://…"></label>' +
       '<button type="button" class="btn btn-primary" data-gbx-post>' + ic('send') + 'Post to Google</button></section>' +
       '<section class="gbx-card"><h4>' + ic('visibility') + 'Preview</h4><div class="gbx-gpost">' + (post.image_url ? '<img src="' + esc(post.image_url) + '" alt="">' : '') +
@@ -181,8 +203,14 @@
     get('view=posts').then(function (d) {
       var el = document.getElementById('gbxPosts'); if (!el) return;
       el.innerHTML = (d.posts || []).length ? d.posts.map(function (p) {
-        return '<div class="gbx-prow"><span class="sx-pill ' + (p.state === 'LIVE' ? 'ok' : p.state === 'REJECTED' ? 'bad' : 'wait') + '">' + esc({ STANDARD: 'Update', OFFER: 'Offer', EVENT: 'Event' }[p.topic] || p.topic) + '</span><span><b>' + esc(p.title || p.summary.slice(0, 60)) + '</b><small>' + ago(p.created_at) + ' · ' + esc((p.state || '').toLowerCase()) + '</small></span>' +
-          (p.search_url ? '<a class="sx-icon-btn" href="' + esc(p.search_url) + '" target="_blank" rel="noopener" title="See on Google">' + ic('open_in_new') + '</a>' : '') + '<button type="button" class="sx-icon-btn" data-gbx-delpost="' + p.id + '" title="Delete from Google">' + ic('delete') + '</button></div>';
+        var r = p.results;
+        return '<div class="gbx-pitem"><div class="gbx-prow"><span class="sx-pill ' + (p.state === 'LIVE' ? 'ok' : p.state === 'REJECTED' ? 'bad' : 'wait') + '">' + esc({ STANDARD: 'Update', OFFER: 'Offer', EVENT: 'Event' }[p.topic] || p.topic) + '</span><span><b>' + esc(p.title || p.summary.slice(0, 60)) + '</b><small>' + ago(p.created_at) + ' · ' + esc((p.state || '').toLowerCase()) + '</small></span>' +
+          (p.search_url ? '<a class="sx-icon-btn" href="' + esc(p.search_url) + '" target="_blank" rel="noopener" title="See on Google">' + ic('open_in_new') + '</a>' : '') + '<button type="button" class="sx-icon-btn" data-gbx-delpost="' + p.id + '" title="Delete from Google">' + ic('delete') + '</button></div>' +
+          (r && window.RGStats ? RGStats.funnel([
+              { label: 'Tapped the button', value: r.people || 0, icon: 'touch_app', hint: (r.clicks || 0) + ' taps in all' },
+              { label: 'Ordered', value: r.orders || 0, icon: 'shopping_bag', strong: true }], { money: (window.SX && SX.cur && SX.cur()) || '₹', revenue: r.sales || 0, compact: true }) +
+            (r.spark ? '<div class="mk-spark">' + RGStats.spark(r.spark, { title: 'Taps per day, last 14 days' }) + '</div>' : '')
+            : '<p class="sx-muted gbx-mini">Posted before tap counting started.</p>') + '</div>';
       }).join('') : '<p class="sx-muted">Nothing posted from here yet.</p>';
     });
     // combos make ready-made posts

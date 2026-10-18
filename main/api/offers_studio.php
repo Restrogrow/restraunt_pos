@@ -25,6 +25,7 @@ $rid = $_SESSION['restaurant_id'];
 $canCoupons = hasPermission(PERMISSION_MANAGE_COUPONS);   // checked before the session is released
 session_write_close();
 require_once __DIR__ . '/../db_connection.php';
+require_once __DIR__ . '/../config/link_tracking.php';
 
 function osOut(array $d, int $code = 200) { http_response_code($code); echo json_encode($d, JSON_UNESCAPED_UNICODE); exit; }
 /** Run a query that may hit a table this server hasn't created yet: null instead of an error. */
@@ -40,6 +41,15 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $in = json_decode(file_get_contents('php://input'), true) ?: [];
+        // a short link that opens the menu with this coupon already applied; its taps show on the coupon card
+        if (($in['action'] ?? '') === 'coupon_link') {
+            if (!$canCoupons) osOut(['success' => false, 'message' => 'You don’t have access to coupons.'], 403);
+            $code = strtoupper(trim((string)($in['code'] ?? '')));
+            $ok = $code !== '' ? $q('SELECT 1 FROM coupons WHERE restaurant_id = ? AND UPPER(coupon_code) = ? AND owner_phone IS NULL', [$rid, $code])->fetchColumn() : false;
+            if (!$ok) osOut(['success' => false, 'message' => 'That coupon was not found'], 404);
+            $l = tlLink($conn, $rid, 'coupon', mb_substr($code, 0, 40), ['label' => 'Coupon ' . $code, 'target' => 'menu', 'src' => 'coupon-' . $code, 'coupon' => $code]);
+            osOut(['success' => true, 'short' => $l['short']]);
+        }
         if (($in['action'] ?? '') === 'tag') {
             $type = in_array($in['type'] ?? '', ['combo', 'new'], true) ? $in['type'] : null;
             $menuId = (int)($in['menu_id'] ?? 0);
@@ -72,7 +82,12 @@ try {
             $stats[$s['code']] = $s;
         }
         $today = date('Y-m-d');
-        $out = array_map(function ($c) use ($stats, $today) {
+        // share links already made for coupons, with their taps
+        tlEnsure($conn);
+        $links = [];
+        foreach ($q("SELECT * FROM tracked_links WHERE restaurant_id = ? AND kind = 'coupon'", [$rid])->fetchAll(PDO::FETCH_ASSOC) as $l) $links[strtoupper($l['ref'])] = $l;
+        $lstats = tlStats($conn, $rid, array_values($links));
+        $out = array_map(function ($c) use ($stats, $today, $links, $lstats, $conn, $rid) {
             $st = $stats[strtoupper($c['coupon_code'])] ?? null;
             $state = !$c['is_active'] ? 'paused'
                 : (($c['valid_until'] && $c['valid_until'] < $today) ? 'expired'
@@ -84,6 +99,7 @@ try {
                     'description' => (string)$c['description'], 'milestone' => (int)($c['is_milestone'] ?? 0), 'created_at' => $c['created_at'], 'state' => $state,
                     'orders_30d' => $st ? (int)$st['orders'] : 0, 'sales_30d' => $st ? (float)$st['sales'] : 0, 'given_30d' => $st ? (float)$st['given'] : 0,
                     'last_used' => $st['last_used'] ?? null,
+                    'link' => ($l = $links[strtoupper($c['coupon_code'])] ?? null) ? ['short' => tlShortUrl($conn, $rid, $l['code']), 'people' => $lstats[(int)$l['id']]['people'] ?? 0, 'clicks' => $lstats[(int)$l['id']]['clicks'] ?? 0] : null,
                     // the raw row, for the existing edit form
                     'raw' => $c];
         }, $rows);

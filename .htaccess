@@ -70,6 +70,9 @@ RewriteRule ^cookie-policy/?$ cookie-policy/index.html [L]
 RewriteRule ^sitemap-restaurants\.xml$ main/website/sitemap.php?index=1 [L]
 RewriteRule ^([a-z0-9-]+)/sitemap\.xml$ main/website/sitemap.php?restaurant=$1 [L,QSA]
 
+# Tracked short links from campaigns, posters, QR codes and Google posts (main/website/go.php, config/link_tracking.php)
+RewriteRule ^([a-z0-9-]+)/go/([A-Za-z0-9]{4,12})$ main/website/go.php?c=$2 [L,QSA]
+
 # Restaurant short URLs (e.g., /restaurant-name)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

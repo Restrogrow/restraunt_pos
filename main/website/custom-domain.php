@@ -58,6 +58,9 @@ if ($customDomainRow) {
         exit;
     }
 
+    // tracked short link on the restaurant's own domain: <domain>/go/<code> (go.php)
+    if (preg_match('#^go/([A-Za-z0-9]{4,12})$#', $path, $gm)) { $_GET['c'] = $gm[1]; include __DIR__ . '/go.php'; exit; }
+
     $staticExts = ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'ico', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'webp', 'pdf', 'zip', 'mp4', 'webm', 'json'];
     if (in_array(pathinfo($path, PATHINFO_EXTENSION), $staticExts)) return false;
 

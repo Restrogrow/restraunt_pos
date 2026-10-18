@@ -1216,6 +1216,7 @@
       if (e.detail.phone) videoState.phone = e.detail.phone;
       renderFields(getTemplate(videoState.templateId)); redrawThumbnails();
     });
+    document.addEventListener('mk:link', function() { var pg = document.getElementById('marketingVideosPage'); if (pg && pg.classList.contains('active')) refreshVideoQR(); });
     document.addEventListener('mk:campaign', function() {
       if (!videoState.designId) videoState.src = '';
       var cp = campaignCoupon(), t = getTemplate(videoState.templateId);

@@ -1455,6 +1455,8 @@
       if (e.detail.phone) posterState.phone = e.detail.phone;
       renderFields(getTemplate(posterState.templateId)); renderPoster(); redrawThumbnails();
     });
+    // the short tracked link is ready: redraw so the QR code / printed link uses it
+    document.addEventListener('mk:link', function() { var pg = document.getElementById('marketingPostersPage'); if (pg && pg.classList.contains('active')) renderPoster(); });
     document.addEventListener('mk:campaign', function(e) {
       if (e.detail && e.detail.coupon && (!posterState.coupon || posterState.coupon.code !== e.detail.coupon.code)) { posterState.coupon = e.detail.coupon; renderFields(getTemplate(posterState.templateId)); }
       if (!posterState.designId) posterState.src = '';

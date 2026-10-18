@@ -123,6 +123,9 @@ function gbpEnsureTables(PDO $conn): void
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_gbp_hits (restaurant_id, created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // each post's button opens a tracked link (config/link_tracking.php), so its taps and orders can be shown
+    $pc = array_column($conn->query('SHOW COLUMNS FROM gbp_posts')->fetchAll(PDO::FETCH_ASSOC), 'Field');
+    if (!in_array('link_ref', $pc, true)) $conn->exec('ALTER TABLE gbp_posts ADD COLUMN link_ref VARCHAR(40) NULL');
 }
 
 function gbpRow(PDO $conn, string $rid): array

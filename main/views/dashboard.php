@@ -359,6 +359,7 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
   <!-- Critical CSS -->
   <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo time(); ?>">
   <link rel="stylesheet" href="../assets/css/studio-ui.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/studio-ui.css'); ?>">
+  <link rel="stylesheet" href="../assets/css/rg-stats.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/rg-stats.css'); ?>">
   <!-- phones and small tablets: loaded last so it only corrects narrow screens; tables become cards -->
   <link rel="stylesheet" href="../assets/css/mobile.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/mobile.css'); ?>">
   <script src="../assets/js/mobile-tables.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/mobile-tables.js'); ?>" defer></script>
@@ -4992,6 +4993,7 @@ function toggleGatewayMode() {
           <div class="lg-stat" style="--c:#16a34a"><span class="sx-ic material-symbols-rounded">sentiment_satisfied</span><div><small>Positive (4–5 stars)</small><b id="fbPositive">0</b></div></div>
           <div class="lg-stat" style="--c:#dc2626"><span class="sx-ic material-symbols-rounded">sentiment_dissatisfied</span><div><small>Negative (1–2 stars)</small><b id="fbNegative">0</b></div></div>
         </div>
+        <div id="fbInsights"></div>
         <div class="section-card">
           <div class="section-header">
             <div class="section-title">All reviews</div>
@@ -7432,6 +7434,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/loyalty-studio-vip.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-vip.js'); ?>" defer></script>
   <script src="../assets/js/loyalty-studio-card.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-card.js'); ?>" defer></script>
   <script src="../assets/js/loyalty-studio-performance.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/loyalty-studio-performance.js'); ?>" defer></script>
+  <script src="../assets/js/rg-stats.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rg-stats.js'); ?>" defer></script>
   <script src="../assets/js/whatsapp-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/whatsapp-admin.js'); ?>" defer></script>
   <script src="../assets/js/wa-order-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/wa-order-studio.js'); ?>" defer></script>
   <script src="../assets/js/owner-manager-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/owner-manager-studio.js'); ?>" defer></script>
@@ -8053,11 +8056,41 @@ function loadFeedback() {
         document.getElementById("fbPositive").textContent = res.stats.positive || 0;
         document.getElementById("fbNegative").textContent = res.stats.negative || 0;
       }
+      renderFeedbackInsights(res.insights);
       renderFeedback();
     })
     .catch(function() {
       document.getElementById("feedbackTbody").innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">Couldn\'t load feedback — try refreshing the page!</td></tr>';
     });
+}
+
+// last 30 days at a glance: how many orders get rated, rating vs the month before, 6-month trend, who to call back
+function renderFeedbackInsights(x) {
+  var el = document.getElementById("fbInsights");
+  if (!el || !x || !window.RGStats) return;
+  var max = Math.max.apply(null, x.trend.map(function(m) { return m.n; }).concat([1]));
+  var d = x.avg30 != null && x.avgprev != null ? Math.round((x.avg30 - x.avgprev) * 10) / 10 : null;
+  var waNum = function(ph) { var s = String(ph || "").replace(/\D/g, ""); return s.length === 10 ? "91" + s : s; };
+  el.innerHTML = '<div class="section-card" style="margin-bottom:16px"><div class="section-header"><div class="section-title">Last 30 days</div></div><div class="section-body">' +
+    RGStats.funnel([
+      { label: "Completed orders", value: x.orders30, icon: "receipt_long", hint: "Orders completed in the last 30 days" },
+      { label: "Left a rating", value: x.n30, icon: "reviews", hint: "Share of orders that got a rating" },
+      { label: "Happy (4–5★)", value: x.pos30, icon: "sentiment_satisfied", strong: true },
+      { label: "Unhappy (1–2★)", value: x.neg30, icon: "sentiment_dissatisfied", noPct: true }
+    ], { extra: [
+      x.avg30 != null ? { label: "Average " + x.avg30.toFixed(1) + " ★", icon: "star", tone: x.avg30 >= 4 ? "good" : x.avg30 < 3.5 ? "bad" : "" } : null,
+      d ? { label: (d > 0 ? "+" : "") + d.toFixed(1) + "★ vs the month before", tone: d > 0 ? "good" : "bad", icon: d > 0 ? "trending_up" : "trending_down" } : null,
+      x.nprev ? { label: x.nprev + " ratings the month before" } : null ] }) +
+    '<div class="gbx-trend">' + x.trend.map(function(m) {
+      var lbl = new Date(m.month + "-01T00:00:00").toLocaleDateString(undefined, { month: "short" });
+      return '<div title="' + m.n + ' ratings' + (m.avg ? ', average ' + m.avg.toFixed(1) : '') + '"><i style="height:' + Math.max(4, Math.round(m.n * 100 / max)) + '%"></i><b>' + m.n + '</b><small>' + lbl + (m.avg ? ' · ' + m.avg.toFixed(1) + '★' : '') + '</small></div>';
+    }).join("") + '</div>' +
+    (x.unhappy && x.unhappy.length ? '<div class="fb-unhappy"><b><span class="material-symbols-rounded">support_agent</span>Call these customers back</b><small>A quick sorry and a small gift often turns a 1-star into a regular.</small>' +
+      x.unhappy.map(function(u) {
+        return '<div class="fb-u"><span>' + "★".repeat(u.rating) + '</span><div><b>' + escHtml(u.customer_name || "Customer") + '</b> · #' + escHtml(u.order_number) + '<small>' + escHtml(u.review || "No comment") + '</small></div>' +
+          (u.customer_phone ? '<a class="btn btn-secondary btn-sm" href="https://wa.me/' + waNum(u.customer_phone) + '" target="_blank" rel="noopener">WhatsApp</a>' : '') + '</div>';
+      }).join("") + '</div>' : '') +
+    '</div></div>';
 }
 
 function renderFeedback() {

@@ -43,7 +43,14 @@ try {
         if ($view === 'audience') waOut(['success' => true, 'count' => waAudienceCount($conn, $rid, (string)($_GET['key'] ?? ''))]);
 
         $q = function ($sql, $args) use ($conn) { $st = $conn->prepare($sql); $st->execute($args); return $st; };
+        try { waEnsureStatusHook($conn, $rid); } catch (Throwable $e) { error_log('wa status hook: ' . $e->getMessage()); }
         $stats = [];
+        // delivered / read (RepeatGrow receipts) and link clicks, per automatic message (30 days)
+        $funnel = [];
+        foreach ($q("SELECT kind, SUM(delivered_at IS NOT NULL) delivered, SUM(read_at IS NOT NULL) seen, SUM(clicked_at IS NOT NULL) clicked FROM wa_outbox
+                WHERE restaurant_id = ? AND status = 'sent' AND created_at >= NOW() - INTERVAL 30 DAY GROUP BY kind", [$rid])->fetchAll(PDO::FETCH_ASSOC) as $x) {
+            $funnel[$x['kind']] = ['delivered' => (int)$x['delivered'], 'read' => (int)$x['seen'], 'clicked' => (int)$x['clicked']];
+        }
         foreach ($q("SELECT kind, status, COUNT(*) n FROM wa_outbox WHERE restaurant_id = ? AND created_at >= NOW() - INTERVAL 30 DAY GROUP BY kind, status", [$rid])->fetchAll(PDO::FETCH_ASSOC) as $x) {
             $stats[$x['kind']][$x['status']] = (int)$x['n'];
         }
@@ -62,18 +69,25 @@ try {
             $sampleReward = isset($autos[$a['kind']]) ? loyaltyAutoRewardLabel($conn, $rid, $autos[$a['kind']]) : null;
             // connected: does the wording still match the template that was sent for review?
             $a['needs_update'] = !empty($a['template_status']) && $tpl !== $a['template_text'] && $tpl !== $a['pending_text'];
-            return $a + ['sample_reward' => $sampleReward, 'template_text' => $tpl, 'template_vars' => $vars, 'stats' => $stats[$a['kind']] ?? (object)[], 'orders' => $used[$a['kind']] ?? ['orders' => 0, 'revenue' => 0]];
+            return $a + ['sample_reward' => $sampleReward, 'template_text' => $tpl, 'template_vars' => $vars, 'stats' => $stats[$a['kind']] ?? (object)[], 'orders' => $used[$a['kind']] ?? ['orders' => 0, 'revenue' => 0],
+                'funnel' => $funnel[$a['kind']] ?? ['delivered' => 0, 'read' => 0, 'clicked' => 0]];
         }, waAutoConfig($conn, $rid)));
         $campaigns = $q("SELECT c.*, (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.status = 'sent') sent,
                 (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.status = 'failed') failed,
+                (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.delivered_at IS NOT NULL) delivered,
+                (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.read_at IS NOT NULL) seen,
+                (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.clicked_at IS NOT NULL) clicked,
+                (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.status = 'queued') queued,
                 (SELECT COUNT(DISTINCT ord.id) FROM loyalty_rewards_issued g JOIN orders ord ON ord.restaurant_id = g.restaurant_id AND ord.coupon_code = g.coupon_code AND ord.deleted_at IS NULL AND ord.order_status NOT IN ('Cancelled', 'Rejected')
                     WHERE g.restaurant_id = c.restaurant_id AND g.source = 'campaign' AND g.period_key = CONCAT('c', c.id)) orders,
                 (SELECT COALESCE(SUM(ord.total), 0) FROM loyalty_rewards_issued g JOIN orders ord ON ord.restaurant_id = g.restaurant_id AND ord.coupon_code = g.coupon_code AND ord.deleted_at IS NULL AND ord.order_status NOT IN ('Cancelled', 'Rejected')
                     WHERE g.restaurant_id = c.restaurant_id AND g.source = 'campaign' AND g.period_key = CONCAT('c', c.id)) revenue
             FROM wa_campaigns c WHERE c.restaurant_id = ? ORDER BY c.id DESC LIMIT 30", [$rid])->fetchAll(PDO::FETCH_ASSOC);
-        $log = $q("SELECT id, kind, phone, name, body, status, error, sent_at, created_at FROM wa_outbox WHERE restaurant_id = ? ORDER BY id DESC LIMIT 60", [$rid])->fetchAll(PDO::FETCH_ASSOC);
+        $log = $q("SELECT id, kind, phone, name, body, status, error, sent_at, created_at, delivered_at, read_at, clicked_at FROM wa_outbox WHERE restaurant_id = ? ORDER BY id DESC LIMIT 60", [$rid])->fetchAll(PDO::FETCH_ASSOC);
         $k = $q("SELECT COUNT(*) total, SUM(whatsapp_optin = 1) optin FROM customers WHERE restaurant_id = ?", [$rid])->fetch(PDO::FETCH_ASSOC);
-        $sum = $q("SELECT SUM(status = 'sent') sent, SUM(status = 'failed') failed, SUM(status = 'queued') queued FROM wa_outbox WHERE restaurant_id = ? AND created_at >= NOW() - INTERVAL 30 DAY", [$rid])->fetch(PDO::FETCH_ASSOC);
+        $sum = $q("SELECT SUM(status = 'sent') sent, SUM(status = 'failed') failed, SUM(status = 'queued') queued, SUM(delivered_at IS NOT NULL) delivered, SUM(read_at IS NOT NULL) seen, SUM(clicked_at IS NOT NULL) clicked
+            FROM wa_outbox WHERE restaurant_id = ? AND created_at >= NOW() - INTERVAL 30 DAY", [$rid])->fetch(PDO::FETCH_ASSOC);
+        $receipts = (function () use ($conn, $rid) { $x = $conn->prepare('SELECT status_hook_id FROM wa_settings WHERE restaurant_id = ?'); $x->execute([$rid]); $v = (string)$x->fetchColumn(); return $v !== '' && strpos($v, 'try:') !== 0; })();
         $rev = array_sum(array_column($used, 'revenue')) + array_sum(array_map(function ($c) { return (float)$c['revenue']; }, $campaigns));
         $pt = waPlatformTemplate();
         $items = $q('SELECT mi.id, mi.item_name_en name, mi.base_price price FROM menu_items mi WHERE mi.restaurant_id = ? ORDER BY mi.item_name_en', [$rid])->fetchAll(PDO::FETCH_ASSOC);
@@ -85,14 +99,16 @@ try {
                            'connection_lost' => !empty($s['lost_at']) && $s['connected_via'] === '', 'lost_message' => waLostMessage()],
             'connect' => ['available' => rgcAvailable(), 'url' => '../api/repeatgrow_connect.php?action=start', 'repeatgrow' => rgcBase()],
             'platform' => ['available' => env('REPEATGROW_API_URL') && env('REPEATGROW_API_KEY') && $pt['name'] !== '', 'template' => $pt['name'], 'text' => $pt['text']],
-            'kpis' => ['customers' => (int)$k['total'], 'optin' => (int)$k['optin'], 'sent' => (int)$sum['sent'], 'failed' => (int)$sum['failed'], 'queued' => (int)$sum['queued'], 'revenue' => $rev],
+            'kpis' => ['customers' => (int)$k['total'], 'optin' => (int)$k['optin'], 'sent' => (int)$sum['sent'], 'failed' => (int)$sum['failed'], 'queued' => (int)$sum['queued'], 'revenue' => $rev,
+                       'delivered' => (int)$sum['delivered'], 'read' => (int)$sum['seen'], 'clicked' => (int)$sum['clicked'], 'receipts' => $receipts],
             'auto' => $auto, 'vars' => waVars(),
             'audiences' => array_map(function ($key, $a) use ($conn, $rid) { return ['key' => $key, 'label' => $a[0], 'count' => waAudienceCount($conn, $rid, $key)]; }, array_keys(waAudiences()), waAudiences()),
             'campaigns' => array_map(function ($c) { return ['id' => (int)$c['id'], 'name' => $c['name'], 'audience' => $c['audience'], 'template_name' => $c['template_name'], 'language' => $c['language'],
                 'message' => $c['message'], 'gift_kind' => $c['gift_kind'], 'gift_value' => (float)$c['gift_value'], 'gift_item_id' => $c['gift_item_id'] ? (int)$c['gift_item_id'] : null,
                 'gift_min_order' => (float)$c['gift_min_order'], 'gift_valid_days' => (int)$c['gift_valid_days'], 'scheduled_at' => $c['scheduled_at'], 'status' => $c['status'],
                 'template_status' => $c['template_status'] ?? null,
-                'audience_count' => (int)$c['audience_count'], 'sent' => (int)$c['sent'], 'failed' => (int)$c['failed'], 'orders' => (int)$c['orders'], 'revenue' => (float)$c['revenue']]; }, $campaigns),
+                'audience_count' => (int)$c['audience_count'], 'sent' => (int)$c['sent'], 'failed' => (int)$c['failed'], 'orders' => (int)$c['orders'], 'revenue' => (float)$c['revenue'],
+                'delivered' => (int)$c['delivered'], 'read' => (int)$c['seen'], 'clicked' => (int)$c['clicked'], 'queued' => (int)$c['queued'], 'created_at' => $c['created_at']]; }, $campaigns),
             'log' => array_map(function ($l) { return ['id' => (int)$l['id'], 'kind' => $l['kind'], 'phone' => substr($l['phone'], 0, 2) . '******' . substr($l['phone'], -2), 'name' => $l['name'],
                 'body' => $l['body'], 'status' => $l['status'], 'error' => $l['error'], 'at' => $l['sent_at'] ?: $l['created_at']]; }, $log),
             'items' => array_map(function ($i) { return ['id' => (int)$i['id'], 'name' => $i['name'], 'price' => (float)$i['price']]; }, $items),
@@ -221,6 +237,7 @@ try {
             if (!$ok) { $conn->prepare('DELETE FROM wa_campaigns WHERE id = ?')->execute([$cid]); waOut(['success' => false, 'message' => 'RepeatGrow could not create the template: ' . $res0], 400); }
             $waiting = $res0 !== 'approved';
         }
+        try { waEnsureStatusHook($conn, $rid); } catch (Throwable $e) { error_log('wa status hook: ' . $e->getMessage()); }
         $res = !empty($in['send_now']) && !$waiting ? waDispatch($conn, $rid, 25) : null;
         waOut(['success' => true, 'dispatched' => $res, 'waiting_approval' => $waiting]);
     }

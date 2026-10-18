@@ -14,11 +14,16 @@
 
   var API = '../api/whatsapp_admin.php';
   var D = null, tab = 'auto', open = null, draft = null, logFilter = 'all', pendingDisconnect = false, pollT = null;
+  // ready campaigns: [name, audience, message, gift kind, gift value, icon, what it is for, min order, valid days]
   var PRESETS = [
-    ['We miss you', 'lapsed30', 'Hi {name}, it has been a while! Come back to {restaurant} this week for {reward}. Use code {code} before {valid_till}.', 'flat', 75],
-    ['Weekend treat', 'recent', 'Hi {name}, your weekend treat from {restaurant}: {reward} on orders above {min_order}. Use code {code} before {valid_till}.', 'percent', 15],
-    ['New on the menu', 'all', 'Hi {name}, something new just landed at {restaurant}! Try it with {reward}. Use code {code} before {valid_till}. Order here: {link}', 'flat', 50],
-    ['Thank our regulars', 'regulars', 'Hi {name}, thank you for being one of our regulars at {restaurant}. Here is {reward} on us. Use code {code} before {valid_till}.', 'item', 0]
+    ['We miss you', 'lapsed30', 'Hi {name}, it has been a while! Come back to {restaurant} this week for {reward}. Use code {code} before {valid_till}. Order here: {link}', 'flat', 75, 'favorite', 'Bring back customers who have not ordered for a month. Works best of all.', 299, 7],
+    ['Weekend treat', 'recent', 'Hi {name}, your weekend treat from {restaurant}: {reward} on orders above {min_order}. Use code {code} before {valid_till}. Order here: {link}', 'percent', 15, 'celebration', 'A Friday nudge to people who ordered recently.', 399, 3],
+    ['New on the menu', 'all', 'Hi {name}, something new just landed at {restaurant}! Try it with {reward}. Use code {code} before {valid_till}. Order here: {link}', 'flat', 50, 'restaurant_menu', 'Tell everyone about a new dish, with a small reason to try it.', 299, 7],
+    ['Thank our regulars', 'regulars', 'Hi {name}, thank you for being one of our regulars at {restaurant}. Here is {reward} on us. Use code {code} before {valid_till}. Order here: {link}', 'item', 0, 'workspace_premium', 'A free dish for people with 5+ orders. Keeps your best customers loyal.', 0, 14],
+    ['Festival offer', 'all', 'Hi {name}, happy festival from all of us at {restaurant}! Celebrate with {reward} on orders above {min_order}. Use code {code} before {valid_till}. Order here: {link}', 'percent', 10, 'auto_awesome', 'Diwali, Holi, Eid, Christmas: a festive offer for everyone.', 499, 5],
+    ['Birthday month', 'birthdays', 'Hi {name}, it is your birthday month! {restaurant} has {reward} waiting for you. Use code {code} before {valid_till}. Order here: {link}', 'flat', 100, 'cake', 'A treat for customers with a birthday this month.', 0, 14],
+    ['Come back for a 2nd order', 'new', 'Hi {name}, thanks for trying {restaurant}! Here is {reward} on your next order. Use code {code} before {valid_till}. Order here: {link}', 'flat', 50, 'replay', 'Turn first-time customers into regulars.', 249, 7],
+    ['VIP members', 'vip', 'Hi {name}, an extra thank-you for our VIP members at {restaurant}: {reward}. Use code {code} before {valid_till}. Order here: {link}', 'percent', 15, 'diamond', 'Something special for your paying members.', 0, 7]
   ];
 
   function $(id) { return document.getElementById(id); }
@@ -31,7 +36,7 @@
   function slug() { var s = String(D.restaurant || 'shop').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); if (s.length > 30) s = s.slice(0, 30).replace(/_[^_]*$/, ''); return s || 'shop'; }
   function sample() {
     return { name: 'Priya', reward: cur() + '50 off', code: 'GIFT7K2Q9M', valid_till: new Date(Date.now() + 14 * 864e5).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
-      restaurant: D.restaurant, min_order: cur() + '199', link: 'restrogrow.com/r/' + slug(), tier: 'Gold', count: '10' };
+      restaurant: D.restaurant, min_order: cur() + '199', link: 'restrogrow.com/' + slug().replace(/_/g, '-') + '/go/Ab3xK9q', tier: 'Gold', count: '10' };
   }
   function fill(msg, over) { var v = Object.assign(sample(), over || {}); return esc(msg).replace(/\{([a-z_]+)\}/g, function (m, k) { return v[k] != null ? '<b>' + esc(v[k]) + '</b>' : m; }); }
   function toTemplate(msg) { var n = 0, vars = [], known = D.vars; var t = String(msg).replace(/\{([a-z_]+)\}/g, function (m, k) { if (!known[k]) return m; vars.push(k); return '{{' + (++n) + '}}'; }); return [t, vars]; }
@@ -83,6 +88,24 @@
     else if (a.needs_update) out += ' <span class="wa-chip warn">Wording changed</span>';
     return out;
   }
+  /** Sent > Delivered > Read > Clicked > Ordered > Sales, with failed / waiting chips and one plain sentence. */
+  function results(n, compact, when) {
+    var receipts = D.kpis.receipts || D.dry_run;
+    var steps = [];
+    if (n.reached != null) steps.push({ label: 'Reached', value: n.reached, icon: 'groups', hint: 'Customers in the audience who opted in' });
+    steps.push({ label: 'Sent', value: n.sent, icon: 'send' });
+    steps.push({ label: 'Delivered', value: n.delivered || 0, icon: 'done_all', muted: !receipts, hint: receipts ? 'Reached the customer\u2019s phone' : 'Shows once RepeatGrow sends delivery receipts' });
+    steps.push({ label: 'Read', value: n.read || 0, icon: 'visibility', muted: !receipts, hint: receipts ? 'Customer opened the message (if they allow read receipts)' : 'Shows once RepeatGrow sends read receipts' });
+    steps.push({ label: 'Clicked', value: n.clicked || 0, icon: 'touch_app', hint: 'Opened the link in the message ({link})' });
+    steps.push({ label: 'Ordered', value: n.orders || 0, icon: 'shopping_bag', strong: true, hint: 'Orders that used the gift code from this message' });
+    var extra = [];
+    if (n.failed) extra.push({ label: 'Failed', value: n.failed, tone: 'bad', icon: 'error' });
+    if (n.queued) extra.push({ label: 'Waiting to send', value: n.queued, tone: 'info', icon: 'schedule' });
+    if (n.sent && n.orders) extra.push({ label: 'Order rate', value: RGStats.pct(n.orders, n.sent), tone: 'good', icon: 'trending_up' });
+    if (when) extra.push({ label: when });
+    var line = n.sent ? RGStats.sentence({ people: n.clicked || 0, verb: 'tapped the link', orders: n.orders || 0, revenue: n.revenue, money: cur() }) : '';
+    return RGStats.funnel(steps, { money: cur(), revenue: n.revenue || 0, compact: compact, extra: extra, note: line });
+  }
   function autoCard(a) {
     var st = a.stats || {}, platform = D.settings.mode === 'platform';
     var isOpen = open === a.kind;
@@ -92,8 +115,8 @@
         (a.autopilot_on === 0 ? ' <span class="wa-chip muted">Gift is off in Autopilot</span>' : '') + '</small></div>' +
         '<label class="up-switch"><input type="checkbox" data-wa-auto-toggle="' + a.kind + '"' + (a.enabled ? ' checked' : '') + '><span></span></label></div>' +
       '<p class="wa-card-msg">' + fill(a.message, autoSample(a)) + '</p>' +
-      '<div class="wa-nums"><div><b>' + (st.sent || 0) + '</b><span>Sent</span></div><div><b>' + (st.failed || 0) + '</b><span>Failed</span></div><div><b>' + a.orders.orders + '</b><span>Orders</span></div><div><b>' + money(a.orders.revenue) + '</b><span>Revenue</span></div>' +
-        '<button type="button" class="lsa-edit" data-wa-open="' + a.kind + '">' + (isOpen ? 'Close' : 'Edit') + '<span class="material-symbols-rounded">' + (isOpen ? 'expand_less' : 'tune') + '</span></button></div>';
+      results({ sent: st.sent || 0, failed: st.failed || 0, delivered: (a.funnel || {}).delivered, read: (a.funnel || {}).read, clicked: (a.funnel || {}).clicked, orders: a.orders.orders, revenue: a.orders.revenue }, true, 'Last 30 days') +
+      '<div class="wa-card-acts"><button type="button" class="lsa-edit" data-wa-open="' + a.kind + '">' + (isOpen ? 'Close' : 'Edit') + '<span class="material-symbols-rounded">' + (isOpen ? 'expand_less' : 'tune') + '</span></button></div>';
     if (!isOpen) return head + '</div>';
     var tplName = a.template_name || (slug() + '_' + a.kind + '_gift');
     return head + '<div class="wa-ed"><div class="wa-ed-l">' +
@@ -150,12 +173,23 @@
       min_order: +c.gift_min_order > 0 ? cur() + (+c.gift_min_order) : 'any order',
       valid_till: new Date(Date.now() + (+c.gift_valid_days || 14) * 864e5).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) };
   }
+  function goalPicker() {
+    return '<div class="wa-compose"><div class="lsg-ed-h"><b>What do you want this campaign to do?</b><button type="button" class="lsa-edit" data-wa-cancel-draft>Cancel</button></div>' +
+      '<div class="wa-steps"><span class="on">1 · Goal</span><span>2 · Check message and gift</span><span>3 · Send</span></div>' +
+      '<div class="wa-goals">' + PRESETS.map(function (p, i) {
+        var a = D.audiences.filter(function (x) { return x.key === p[1]; })[0] || { count: 0, label: '' };
+        return '<button type="button" class="wa-goal" data-wa-goal="' + i + '"><span class="material-symbols-rounded">' + p[5] + '</span><b>' + esc(p[0]) + '</b><small>' + esc(p[6]) + '</small>' +
+          '<em' + (a.count ? '' : ' class="zero"') + '>' + a.count + ' customer' + (a.count === 1 ? '' : 's') + ' · ' + esc(a.label) + '</em></button>';
+      }).join('') +
+      '<button type="button" class="wa-goal" data-wa-goal="blank"><span class="material-symbols-rounded">edit_note</span><b>Write my own</b><small>Start from an empty message and pick everything yourself.</small><em class="zero">Any audience</em></button></div></div>';
+  }
   function campaignForm() {
     var c = draft, aud = D.audiences.filter(function (a) { return a.key === c.audience; })[0] || {};
     var tplName = c.template_name || (slug() + '_' + String(c.name || 'campaign').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30));
     var opt = '<option value="">Pick a dish</option>' + D.items.map(function (i) { return '<option value="' + i.id + '"' + (+c.gift_item_id === i.id ? ' selected' : '') + '>' + esc(i.name) + '</option>'; }).join('');
-    return '<div class="wa-compose"><div class="lsg-ed-h"><b>New campaign</b><button type="button" class="lsa-edit" data-wa-cancel-draft>Cancel</button></div>' +
-      '<div class="wa-presets"><span>Start from</span>' + PRESETS.map(function (p, i) { return '<button type="button" data-wa-preset="' + i + '">' + esc(p[0]) + '</button>'; }).join('') + '</div>' +
+    return '<div class="wa-compose"><div class="lsg-ed-h"><b>New campaign</b><span style="display:flex;gap:6px"><button type="button" class="lsa-edit" data-wa-back-goal>Change goal</button><button type="button" class="lsa-edit" data-wa-cancel-draft>Cancel</button></span></div>' +
+      '<div class="wa-steps"><span>1 · Goal</span><span class="on">2 · Check message and gift</span><span>3 · Send</span></div>' +
+      (String(c.message).indexOf('{link}') < 0 ? '<div class="sx-note warn" style="margin:0 0 10px"><span class="material-symbols-rounded">link</span><span>Add <b>{link}</b> to the message to see who tapped it. It opens your menu with their gift already applied.</span></div>' : '') +
       '<div class="wa-ed"><div class="wa-ed-l">' +
         '<div class="ls-grid"><label>Campaign name<input data-wc="name" maxlength="80" value="' + esc(c.name) + '" placeholder="Weekend treat"></label></div>' +
         '<label class="wa-lbl" style="margin-top:12px">Who gets it</label><div class="wa-aud">' + D.audiences.map(function (a) {
@@ -177,16 +211,26 @@
         '<div class="wa-ed-acts"><button type="button" class="btn btn-secondary" data-wa-test-campaign><span class="material-symbols-rounded">send</span> Send me a test</button>' +
         '<button type="button" class="btn btn-primary" data-wa-launch><span class="material-symbols-rounded">rocket_launch</span> ' + (c.when === 'later' ? 'Schedule' : 'Send to ' + (aud.count || 0)) + '</button></div></div></div></div>';
   }
+  function bestId(C) { var b = null; C.forEach(function (c) { if (c.revenue > 0 && (!b || c.revenue > b.revenue)) b = c; }); return b ? b.id : null; }
+  function campSummary(C) {
+    var t = C.reduce(function (s, c) { s.sent += c.sent; s.read += c.read; s.clicked += c.clicked; s.orders += c.orders; s.revenue += c.revenue; return s; }, { sent: 0, read: 0, clicked: 0, orders: 0, revenue: 0 });
+    if (!t.sent) return '';
+    return '<div class="wa-sum"><b>All campaigns</b>' + RGStats.funnel([
+      { label: 'Messages sent', value: t.sent, icon: 'send' }, { label: 'Read', value: t.read, icon: 'visibility', muted: !(D.kpis.receipts || D.dry_run) },
+      { label: 'Link taps', value: t.clicked, icon: 'touch_app' }, { label: 'Orders', value: t.orders, icon: 'shopping_bag', strong: true }], { money: cur(), revenue: t.revenue, compact: true }) + '</div>';
+  }
   function campTab() {
     if (D.settings.mode === 'own' && !D.settings.key_last4 && D.connect.available) return connectBanner();
     if (D.settings.mode !== 'own') return '<div class="wa-lock"><span class="material-symbols-rounded">lock</span><b>Campaigns need your own WhatsApp number</b><p>Connect your RepeatGrow account in Settings. Then send offers to the customers you pick, with your own name and messages.</p><button type="button" class="btn btn-primary" data-wa-tab="settings">Open Settings</button></div>';
     var C = D.campaigns;
-    return (draft ? campaignForm() : '<div class="wa-new"><div><b>Send a campaign</b><span>Pick who gets it, write the message, add a gift code if you like.</span></div><button type="button" class="btn btn-primary" data-wa-new><span class="material-symbols-rounded">add</span> New campaign</button></div>') +
-      (C.length ? '<div class="wa-camps">' + C.map(function (c) {
+    return (draft ? (draft.step === 'goal' ? goalPicker() : campaignForm()) : '<div class="wa-new"><div><b>Send a campaign</b><span>Pick a goal, check the message, send. Every message has its own tracked link, so you see who read it, tapped it and ordered.</span></div><button type="button" class="btn btn-primary" data-wa-new><span class="material-symbols-rounded">add</span> New campaign</button></div>') +
+      (C.length ? campSummary(C) + '<div class="wa-camps">' + C.map(function (c) {
         var aud = D.audiences.filter(function (a) { return a.key === c.audience; })[0];
-        return '<div class="wa-camp"><div class="wa-camp-h"><b>' + esc(c.name) + '</b>' + (c.status === 'scheduled' && (c.template_status === 'pending' || c.template_status === 'queued') ? '<span class="wa-pill wait">Waiting for approval</span>' : pill(c.status)) + '</div><small>' + esc(aud ? aud.label : c.audience) + ' · ' + esc(String(c.scheduled_at).slice(0, 16).replace('T', ' ')) + (c.gift_kind ? ' · with gift' : '') + '</small>' +
-          '<div class="wa-nums"><div><b>' + c.audience_count + '</b><span>Reached</span></div><div><b>' + c.sent + '</b><span>Sent</span></div><div><b>' + c.orders + '</b><span>Orders</span></div><div><b>' + money(c.revenue) + '</b><span>Revenue</span></div>' +
-          (c.status === 'scheduled' || c.status === 'sending' ? '<button type="button" class="lsa-edit" data-wa-cancel="' + c.id + '">Stop</button>' : '') + '</div></div>';
+        var best = bestId(C) === c.id;
+        return '<div class="wa-camp"><div class="wa-camp-h"><b>' + esc(c.name) + (best ? ' ' + RGStats.badge('Best campaign', 'gold', 'emoji_events') : '') + '</b>' + (c.status === 'scheduled' && (c.template_status === 'pending' || c.template_status === 'queued') ? '<span class="wa-pill wait">Waiting for approval</span>' : pill(c.status)) + '</div><small>' + esc(aud ? aud.label : c.audience) + ' · ' + esc(String(c.scheduled_at).slice(0, 16).replace('T', ' ')) + (c.gift_kind ? ' · with gift' : '') + '</small>' +
+          results({ reached: c.audience_count, sent: c.sent, failed: c.failed, queued: c.queued, delivered: c.delivered, read: c.read, clicked: c.clicked, orders: c.orders, revenue: c.revenue }) +
+          '<div class="wa-card-acts">' + (c.status === 'scheduled' || c.status === 'sending' ? '<button type="button" class="lsa-edit" data-wa-cancel="' + c.id + '">Stop</button>' : '') +
+          '<button type="button" class="lsa-edit" data-wa-again="' + c.id + '">Send again<span class="material-symbols-rounded">content_copy</span></button></div></div>';
       }).join('') + '</div>' : (draft ? '' : '<div class="lsa-empty" style="margin-top:12px"><span class="material-symbols-rounded">campaign</span><b>No campaigns yet</b><span>Start from a ready idea: “We miss you” brings back quiet customers best.</span></div>'));
   }
 
@@ -197,7 +241,8 @@
     return '<div class="wa-logbar"><div class="lsp-range">' + [['all', 'All'], ['sent', 'Sent'], ['queued', 'Queued'], ['failed', 'Failed'], ['skipped', 'Skipped']].map(function (f) { return '<button type="button" data-wa-filter="' + f[0] + '"' + (f[0] === logFilter ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>' +
       '<div style="display:flex;gap:8px"><button type="button" class="btn btn-secondary" data-wa-dispatch><span class="material-symbols-rounded">sync</span> Send waiting now</button>' + (D.kpis.failed ? '<button type="button" class="btn btn-secondary" data-wa-retry><span class="material-symbols-rounded">replay</span> Retry failed</button>' : '') + '</div></div>' +
       (L.length ? '<div class="wa-log">' + L.map(function (l) {
-        return '<div class="wa-log-row"><div class="wa-log-who"><b>' + esc(l.name || 'Customer') + '</b><small>' + esc(l.phone) + ' · ' + esc(names[l.kind] || l.kind) + '</small></div><p>' + esc(l.body || '') + (l.error ? '<em>' + esc(l.error) + '</em>' : '') + '</p>' +
+        var ticks = l.status === 'sent' ? '<span class="wa-ticks"><span class="' + (l.delivered_at ? 'on' : '') + '">Delivered</span><span class="' + (l.read_at ? 'on' : '') + '">Read</span>' + (l.clicked_at ? '<span class="click">Tapped link</span>' : '') + '</span>' : '';
+        return '<div class="wa-log-row"><div class="wa-log-who"><b>' + esc(l.name || 'Customer') + '</b><small>' + esc(l.phone) + ' · ' + esc(names[l.kind] || l.kind) + '</small>' + ticks + '</div><p>' + esc(l.body || '') + (l.error ? '<em>' + esc(l.error) + '</em>' : '') + '</p>' +
           '<div class="wa-log-st">' + pill(l.status) + '<small>' + esc(String(l.at || '').slice(5, 16)) + '</small></div></div>';
       }).join('') + '</div>' : '<div class="lsa-empty"><span class="material-symbols-rounded">forum</span><b>No messages yet</b><span>Messages appear here as gifts are earned and campaigns go out.</span></div>');
   }
@@ -233,7 +278,8 @@
       '<div class="wa-hero"><div class="wa-hero-l"><label class="up-switch" style="margin:0"><input type="checkbox" id="waOn"' + (s.enabled ? ' checked' : '') + '><span></span> <b>WhatsApp messages are ' + (s.enabled ? 'on' : 'off') + '</b></label>' +
         '<p><span class="material-symbols-rounded">link</span>' + conn + (s.last_dispatch ? ' · last checked ' + esc(String(s.last_dispatch).slice(11, 16)) : '') + '</p></div>' +
         '<div class="wa-ring" style="--p:' + pct + '"><div><b>' + pct + '%</b><span>reachable</span></div></div>' +
-        '<div class="ls-kpis"><div><b>' + k.optin + '</b><span>Opted in of ' + k.customers + '</span></div><div><b>' + k.sent + '</b><span>Sent (30 days)</span></div><div><b>' + money(k.revenue) + '</b><span>Orders from messages</span></div></div></div>' +
+        '<div class="ls-kpis"><div><b>' + k.optin + '</b><span>Opted in of ' + k.customers + '</span></div><div><b>' + k.sent + '</b><span>Sent (30 days)</span></div>' +
+          (k.receipts || D.dry_run ? '<div><b>' + RGStats.pct(k.read, k.sent) + '</b><span>Read</span></div>' : '') + '<div><b>' + (k.clicked || 0) + '</b><span>Link taps</span></div><div><b>' + money(k.revenue) + '</b><span>Orders from messages</span></div></div></div>' +
       '<div class="ls-tabs">' + [['auto', 'Automatic messages', 'bolt'], ['camp', 'Campaigns', 'campaign'], ['log', 'Message log', 'forum'], ['settings', 'Settings', 'settings']].map(function (t) {
         return '<button type="button" class="ls-tab' + (t[0] === tab ? ' on' : '') + '" data-wa-tab="' + t[0] + '"><span class="material-symbols-rounded">' + t[2] + '</span>' + t[1] + (t[0] === 'log' && k.failed ? ' <em class="wa-badge">' + k.failed + '</em>' : '') + '</button>';
       }).join('') + '</div>' +
@@ -269,9 +315,22 @@
       var card = t.closest('[data-wa-kind]'); if (card.querySelector('[data-wa-f]')) { var a2 = readAuto(card); t.disabled = true; saveAuto(a2, null, true).then(function () { test({ action: 'test', kind: a2.kind }, t); }); } else test({ action: 'test', kind: card.getAttribute('data-wa-kind') }, t);
       return;
     }
-    if (e.target.closest('[data-wa-new]')) { draft = { name: '', audience: 'all', message: PRESETS[0][2], gift_kind: 'flat', gift_value: 75, gift_min_order: 299, gift_valid_days: 7, when: 'now', template_name: '' }; draw(); return; }
+    if (e.target.closest('[data-wa-new]')) { draft = { step: 'goal', name: '', audience: 'all', message: PRESETS[0][2], gift_kind: 'flat', gift_value: 75, gift_min_order: 299, gift_valid_days: 7, when: 'now', template_name: '' }; draw(); return; }
+    if ((t = e.target.closest('[data-wa-goal]'))) {
+      var gi = t.getAttribute('data-wa-goal'), g = PRESETS[+gi];
+      var stamp = new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+      if (gi === 'blank') Object.assign(draft, { step: 'form', name: 'Campaign ' + stamp, audience: 'all', message: 'Hi {name}, \n\nOrder here: {link}', gift_kind: '', gift_value: 0 });
+      else Object.assign(draft, { step: 'form', name: g[0] + ' · ' + stamp, audience: g[1], message: g[2], gift_kind: g[3], gift_value: g[4], gift_min_order: g[7], gift_valid_days: g[8], gift_item_id: g[3] === 'item' && D.items[0] ? D.items[0].id : '' });
+      draw(); var box = document.querySelector('.wa-compose'); if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' }); return;
+    }
+    if (e.target.closest('[data-wa-back-goal]')) { readDraft(); draft.step = 'goal'; draw(); return; }
+    if ((t = e.target.closest('[data-wa-again]'))) {
+      var old = D.campaigns.filter(function (x) { return x.id === +t.getAttribute('data-wa-again'); })[0]; if (!old) return;
+      draft = { step: 'form', name: old.name.replace(/ · .*$/, '') + ' · ' + new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), audience: old.audience, message: old.message, gift_kind: old.gift_kind || '', gift_value: old.gift_value,
+        gift_item_id: old.gift_item_id || '', gift_min_order: old.gift_min_order, gift_valid_days: old.gift_valid_days, when: 'now', template_name: old.template_name };
+      draw(); var bx = document.querySelector('.wa-compose'); if (bx) bx.scrollIntoView({ behavior: 'smooth', block: 'start' }); return;
+    }
     if (e.target.closest('[data-wa-cancel-draft]')) { draft = null; draw(); return; }
-    if ((t = e.target.closest('[data-wa-preset]'))) { var pr = PRESETS[+t.getAttribute('data-wa-preset')]; readDraft(); Object.assign(draft, { name: pr[0], audience: pr[1], message: pr[2], gift_kind: pr[3], gift_value: pr[4] }); draw(); return; }
     if ((t = e.target.closest('[data-wa-aud]'))) { readDraft(); draft.audience = t.getAttribute('data-wa-aud'); draw(); return; }
     if (e.target.closest('[data-wa-test-campaign]')) { readDraft(); test({ action: 'test', campaign: draft }, e.target.closest('button')); return; }
     if ((t = e.target.closest('[data-wa-launch]'))) {

@@ -58,10 +58,27 @@ try {
     $stmt->execute([$restaurant_id]);
     $stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // insights: last 30 days vs the 30 before, how many orders get rated, 6-month trend, unhappy customers to call back
+    $q = function ($sql, $a) use ($conn) { $st = $conn->prepare($sql); $st->execute($a); return $st; };
+    $p = $q("SELECT SUM(created_at >= NOW() - INTERVAL 30 DAY) n30, AVG(CASE WHEN created_at >= NOW() - INTERVAL 30 DAY THEN rating END) avg30,
+            SUM(created_at < NOW() - INTERVAL 30 DAY AND created_at >= NOW() - INTERVAL 60 DAY) nprev, AVG(CASE WHEN created_at < NOW() - INTERVAL 30 DAY AND created_at >= NOW() - INTERVAL 60 DAY THEN rating END) avgprev,
+            SUM(created_at >= NOW() - INTERVAL 30 DAY AND rating >= 4) pos30, SUM(created_at >= NOW() - INTERVAL 30 DAY AND rating <= 2) neg30
+        FROM order_feedback WHERE restaurant_id = ?", [$restaurant_id])->fetch(PDO::FETCH_ASSOC);
+    $orders30 = 0;
+    try { $orders30 = (int)$q("SELECT COUNT(*) FROM orders WHERE restaurant_id = ? AND order_status = 'Completed' AND created_at >= NOW() - INTERVAL 30 DAY AND deleted_at IS NULL", [$restaurant_id])->fetchColumn(); } catch (Throwable $e) {}
+    $months = [];
+    foreach ($q("SELECT DATE_FORMAT(created_at, '%Y-%m') m, COUNT(*) n, AVG(rating) a FROM order_feedback WHERE restaurant_id = ? AND created_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL 5 MONTH) GROUP BY m", [$restaurant_id])->fetchAll(PDO::FETCH_ASSOC) as $m) $months[$m['m']] = $m;
+    $trend = [];
+    for ($i = 5; $i >= 0; $i--) { $k = date('Y-m', strtotime(date('Y-m-01') . " -$i month")); $trend[] = ['month' => $k, 'n' => (int)($months[$k]['n'] ?? 0), 'avg' => isset($months[$k]) ? round((float)$months[$k]['a'], 2) : null]; }
+    $unhappy = $q("SELECT customer_name, customer_phone, rating, review, order_number, created_at FROM order_feedback WHERE restaurant_id = ? AND rating <= 2 AND created_at >= NOW() - INTERVAL 30 DAY ORDER BY created_at DESC LIMIT 8", [$restaurant_id])->fetchAll(PDO::FETCH_ASSOC);
+    $insights = ['n30' => (int)$p['n30'], 'nprev' => (int)$p['nprev'], 'avg30' => $p['avg30'] !== null ? round((float)$p['avg30'], 2) : null, 'avgprev' => $p['avgprev'] !== null ? round((float)$p['avgprev'], 2) : null,
+        'pos30' => (int)$p['pos30'], 'neg30' => (int)$p['neg30'], 'orders30' => $orders30, 'trend' => $trend, 'unhappy' => $unhappy];
+
     echo json_encode([
         'success' => true,
         'feedback' => $feedback,
         'stats' => $stats,
+        'insights' => $insights,
         'count' => count($feedback)
     ]);
 

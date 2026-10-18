@@ -34,6 +34,7 @@ $state = $_SESSION['gbp_state'] ?? '';
 session_write_close();
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/gbp_helpers.php';
+require_once __DIR__ . '/../config/link_tracking.php';
 
 function gOut(array $d, int $code = 200) { http_response_code($code); echo json_encode($d, JSON_UNESCAPED_UNICODE); exit; }
 function gFail(string $m, int $code = 400) { gOut(['success' => false, 'message' => $m], $code); }
@@ -84,7 +85,22 @@ try {
             gOut(['success' => true, 'source' => $source, 'can_reply' => $source === 'gbp' && $canEdit, 'reviews' => $list]);
         }
         if ($view === 'posts') {
-            gOut(['success' => true, 'posts' => $q('SELECT id, topic, title, summary, cta, url, image_url, state, search_url, created_at FROM gbp_posts WHERE restaurant_id = ? ORDER BY id DESC LIMIT 50', [$rid])->fetchAll(PDO::FETCH_ASSOC)]);
+            $posts = $q('SELECT id, topic, title, summary, cta, url, image_url, state, search_url, created_at, link_ref FROM gbp_posts WHERE restaurant_id = ? ORDER BY id DESC LIMIT 50', [$rid])->fetchAll(PDO::FETCH_ASSOC);
+            tlEnsure($conn);
+            $refs = array_values(array_filter(array_column($posts, 'link_ref')));
+            $links = [];
+            if ($refs) {
+                $in = implode(',', array_fill(0, count($refs), '?'));
+                foreach ($q("SELECT * FROM tracked_links WHERE restaurant_id = ? AND kind = 'gbp_post' AND ref IN ($in)", array_merge([$rid], $refs))->fetchAll(PDO::FETCH_ASSOC) as $l) $links[$l['ref']] = $l;
+            }
+            $stats = tlStats($conn, $rid, array_values($links));
+            foreach ($posts as &$p) {
+                $l = $p['link_ref'] ? ($links[$p['link_ref']] ?? null) : null;
+                $p['results'] = $l ? ($stats[(int)$l['id']] ?? []) + ['short' => tlShortUrl($conn, $rid, $l['code']), 'spark' => tlDaily($conn, $rid, (int)$l['id'], 14)] : null;
+                unset($p['link_ref']);
+            }
+            unset($p);
+            gOut(['success' => true, 'posts' => $posts]);
         }
         if ($view === 'info') {
             if (empty($row['location_name'])) gFail('Connect Google and pick your location first.');
@@ -127,13 +143,26 @@ try {
         $unanswered = (int)$q("SELECT COUNT(*) FROM gbp_reviews WHERE restaurant_id = ? AND source = 'gbp' AND (reply IS NULL OR reply = '')", [$rid])->fetchColumn();
         $hits = [];
         foreach ($q('SELECT source, COUNT(*) n FROM gbp_link_hits WHERE restaurant_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY source', [$rid])->fetchAll(PDO::FETCH_ASSOC) as $h) $hits[$h['source']] = (int)$h['n'];
+        // review health: last 6 months (count and average), new this month vs last, how fast and how often we reply
+        $months = [];
+        foreach ($q("SELECT DATE_FORMAT(created_at, '%Y-%m') m, COUNT(*) n, AVG(rating) a FROM gbp_reviews WHERE restaurant_id = ? AND source = ? AND created_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL 5 MONTH) GROUP BY m", [$rid, $source])->fetchAll(PDO::FETCH_ASSOC) as $m) $months[$m['m']] = ['n' => (int)$m['n'], 'avg' => round((float)$m['a'], 2)];
+        $trend = [];
+        for ($i = 5; $i >= 0; $i--) { $k = date('Y-m', strtotime(date('Y-m-01') . " -$i month")); $trend[] = ['month' => $k, 'n' => $months[$k]['n'] ?? 0, 'avg' => $months[$k]['avg'] ?? null]; }
+        $rh = $q("SELECT SUM(created_at >= NOW() - INTERVAL 30 DAY) last30, SUM(created_at < NOW() - INTERVAL 30 DAY AND created_at >= NOW() - INTERVAL 60 DAY) prev30,
+                AVG(CASE WHEN created_at >= NOW() - INTERVAL 30 DAY THEN rating END) avg30,
+                SUM(reply IS NOT NULL AND reply <> '') replied, COUNT(*) total,
+                AVG(CASE WHEN reply IS NOT NULL AND reply <> '' AND replied_at IS NOT NULL AND replied_at >= created_at THEN TIMESTAMPDIFF(MINUTE, created_at, replied_at) END) reply_min
+            FROM gbp_reviews WHERE restaurant_id = ? AND source = ?", [$rid, $source])->fetch(PDO::FETCH_ASSOC);
+        $health = ['trend' => $trend, 'last30' => (int)$rh['last30'], 'prev30' => (int)$rh['prev30'], 'avg30' => $rh['avg30'] !== null ? round((float)$rh['avg30'], 2) : null,
+            'reply_rate' => (int)$rh['total'] ? round($rh['replied'] * 100 / $rh['total']) : null, 'reply_hours' => $rh['reply_min'] !== null ? round($rh['reply_min'] / 60, 1) : null,
+            'link_taps30' => array_sum($hits)];
         gOut(['success' => true, 'can_edit' => $canEdit,
             'setup' => ['oauth' => gbpOAuthReady(), 'places' => gbpEnv('GOOGLE_PLACES_API_KEY') !== '', /* the old Maps key alone doesn't switch this on */ 'ai' => gbpEnv('GEMINI_API_KEY') !== '', 'redirect_uri' => gbpRedirectUri()],
             'connected' => $connected, 'google_email' => $row['google_email'] ?? null, 'location' => !empty($row['location_name']) ? ['name' => $row['location_name'], 'title' => $row['location_title']] : null,
             'place' => !empty($row['place_id']) ? ['id' => $row['place_id'], 'name' => $row['place_name']] : null,
             'rating' => isset($row['rating']) ? (float)$row['rating'] : null, 'rating_count' => isset($row['rating_count']) ? (int)$row['rating_count'] : null,
             'source' => $source, 'distribution' => $dist, 'unanswered' => $unanswered, 'auto_reply' => (int)($row['auto_reply'] ?? 0),
-            'review_url' => gbpReviewUrl($row, $user['google_maps_link'] ?? null), 'short_url' => $shortUrl, 'hits' => $hits,
+            'review_url' => gbpReviewUrl($row, $user['google_maps_link'] ?? null), 'short_url' => $shortUrl, 'hits' => $hits, 'health' => $health,
             'synced' => ['reviews' => $row['reviews_synced_at'] ?? null, 'places' => $row['places_synced_at'] ?? null], 'last_error' => $row['last_error'] ?? null,
             'restaurant' => ['name' => $user['restaurant_name'] ?? '', 'address' => $user['address'] ?? '', 'phone' => $user['phone'] ?? '']]);
     }
@@ -217,6 +246,16 @@ try {
         $post = ['languageCode' => 'en', 'summary' => $summary, 'topicType' => $topic];
         $cta = in_array($in['cta'] ?? '', ['ORDER', 'BOOK', 'LEARN_MORE', 'CALL', 'SHOP', 'SIGN_UP'], true) ? $in['cta'] : '';
         $url = trim((string)($in['url'] ?? ''));
+        // the button opens a tracked short link: taps and the orders they bring show under the post
+        $linkRef = null;
+        if (($cta && $cta !== 'CALL') || $topic === 'OFFER') {
+            $linkRef = 'p' . base_convert((string)time(), 10, 36) . bin2hex(random_bytes(2));
+            $own = $url === '' || preg_match('#^https?://[^/]*restrogrow\.com/#i', $url);
+            $target = $own ? ($cta === 'BOOK' ? 'reservations' : (preg_match('#/(loyalty|reservations|catering|plans)(\?|$)#', $url, $tm) ? $tm[1] : 'menu')) : 'url';
+            $tl = tlLink($conn, $rid, 'gbp_post', $linkRef, ['label' => 'Google post · ' . mb_substr($summary, 0, 60), 'target' => $target, 'url' => $own ? null : $url,
+                'src' => 'gbp-' . $linkRef, 'coupon' => $topic === 'OFFER' ? (string)($in['coupon'] ?? '') : '']);
+            $url = $tl['short'];
+        }
         if ($cta === 'CALL') $post['callToAction'] = ['actionType' => 'CALL'];
         elseif ($cta && filter_var($url, FILTER_VALIDATE_URL)) $post['callToAction'] = ['actionType' => $cta, 'url' => $url];
         $img = trim((string)($in['image_url'] ?? ''));
@@ -235,8 +274,8 @@ try {
         }
         $r = gbpApi($conn, $rid, 'POST', 'https://mybusiness.googleapis.com/v4/' . $path . '/localPosts', $post);
         if (!$r['ok']) gFail($r['error']);
-        $q('INSERT INTO gbp_posts (restaurant_id, post_name, topic, summary, title, cta, url, image_url, state, search_url) VALUES (?,?,?,?,?,?,?,?,?,?)',
-            [$rid, $r['json']['name'] ?? null, $topic, $summary, $title ?: null, $cta ?: null, $url ?: null, $img ?: null, $r['json']['state'] ?? 'LIVE', $r['json']['searchUrl'] ?? null]);
+        $q('INSERT INTO gbp_posts (restaurant_id, post_name, topic, summary, title, cta, url, image_url, state, search_url, link_ref) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+            [$rid, $r['json']['name'] ?? null, $topic, $summary, $title ?: null, $cta ?: null, $url ?: null, $img ?: null, $r['json']['state'] ?? 'LIVE', $r['json']['searchUrl'] ?? null, $linkRef]);
         gOut(['success' => true, 'state' => $r['json']['state'] ?? null, 'search_url' => $r['json']['searchUrl'] ?? null]);
     }
     if ($action === 'delete_post') {

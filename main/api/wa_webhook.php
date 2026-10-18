@@ -38,13 +38,35 @@ try {
     ensureWhatsappSchema($conn);
 
     // ── who sent it, and is it really from RepeatGrow ──
-    $secret = $rid === 'platform' ? trim((string)env('REPEATGROW_WEBHOOK_SECRET', '')) : woSettings($conn, $rid)['webhook_secret'];
+    $statusHook = ($_GET['hook'] ?? '') === 'status';   // delivery / read updates for campaigns (waEnsureStatusHook)
+    if ($statusHook && $rid !== 'platform') {
+        $hs = $conn->prepare('SELECT status_hook_secret FROM wa_settings WHERE restaurant_id = ?');
+        $hs->execute([$rid]);
+        $sealed = (string)$hs->fetchColumn();
+        $secret = $sealed !== '' ? waKeyOpen($sealed) : '';
+    } else {
+        $secret = $rid === 'platform' ? trim((string)env('REPEATGROW_WEBHOOK_SECRET', '')) : woSettings($conn, $rid)['webhook_secret'];
+    }
     $sig = (string)($_SERVER['HTTP_X_WACRM_SIGNATURE'] ?? '');
     if ($secret === '' || !preg_match('/^t=(\d+),v1=([0-9a-f]{64})$/', $sig, $m)) whOut(401, 'Missing signature');
     if (abs(time() - (int)$m[1]) > 300) whOut(401, 'Old signature');
     if (!hash_equals(hash_hmac('sha256', $m[1] . '.' . $raw, $secret), $m[2])) whOut(401, 'Bad signature');
 
     $ev = json_decode($raw, true);
+    // a message we sent was delivered / read / failed: update the campaign numbers
+    if (is_array($ev) && ($ev['event'] ?? '') === 'message.status_updated') {
+        $d = (array)($ev['data'] ?? []);
+        $mid = mb_substr((string)($d['whatsapp_message_id'] ?? $d['message_id'] ?? ''), 0, 120);
+        $stt = strtolower((string)($d['status'] ?? ''));
+        if ($mid !== '') {
+            $where = 'message_id = ?' . ($rid !== 'platform' ? ' AND restaurant_id = ?' : '');
+            $args = $rid !== 'platform' ? [$mid, $rid] : [$mid];
+            if ($stt === 'delivered') $conn->prepare("UPDATE wa_outbox SET delivered_at = COALESCE(delivered_at, NOW()) WHERE $where")->execute($args);
+            elseif ($stt === 'read') $conn->prepare("UPDATE wa_outbox SET read_at = COALESCE(read_at, NOW()), delivered_at = COALESCE(delivered_at, NOW()) WHERE $where")->execute($args);
+            elseif ($stt === 'failed') $conn->prepare("UPDATE wa_outbox SET status = 'failed', error = COALESCE(error, 'WhatsApp could not deliver it') WHERE $where AND delivered_at IS NULL")->execute($args);
+        }
+        whOut(200, 'Status noted');
+    }
     if (!is_array($ev) || ($ev['event'] ?? '') !== 'message.received') whOut(200, 'Ignored');
     $deliveryId = mb_substr((string)($ev['id'] ?? ($_SERVER['HTTP_X_WACRM_WEBHOOK_ID'] ?? '')), 0, 80);
     if ($deliveryId !== '') {

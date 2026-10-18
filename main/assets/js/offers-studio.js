@@ -91,10 +91,16 @@
       (c.milestone ? '<span class="ofx-c-tag" title="Shown in the cart as “add ₹X more to unlock”">' + ic('flag') + 'Milestone offer</span>' : '') +
       '<div class="ofx-c-meta"><span>' + ic('event') + esc(valid) + '</span><span>' + ic('group') + esc(uses) + '</span></div>' +
       (c.max_uses > 0 ? '<div class="ofx-bar"><i style="width:' + pct + '%"></i></div>' : '') +
-      '<div class="ofx-c-res">' + (c.orders_30d ? '<b>' + c.orders_30d + ' order' + (c.orders_30d > 1 ? 's' : '') + '</b> · ' + money(c.sales_30d) + ' in sales · ' + money(c.given_30d) + ' discount (30 days)' : '<span class="sx-muted">Not used in the last 30 days</span>') + '</div>' +
+      (window.RGStats ? RGStats.funnel([
+          { label: 'Link taps', value: c.link ? c.link.people : 0, icon: 'touch_app', muted: !c.link, hint: c.link ? c.link.clicks + ' taps in all' : 'Share the coupon link to count taps' },
+          { label: 'Orders (30 days)', value: c.orders_30d, icon: 'shopping_bag', strong: true, noPct: true },
+          { label: 'Discount given', text: money(c.given_30d), value: null, icon: 'sell', noPct: true }], { money: CUR, revenue: c.sales_30d, compact: true })
+        : '<div class="ofx-c-res">' + (c.orders_30d ? '<b>' + c.orders_30d + ' order' + (c.orders_30d > 1 ? 's' : '') + '</b> · ' + money(c.sales_30d) + ' in sales · ' + money(c.given_30d) + ' discount (30 days)' : '<span class="sx-muted">Not used in the last 30 days</span>') + '</div>') +
+      (c.link ? '<div class="rgs-link"><span class="material-symbols-rounded">link</span><code>' + esc(c.link.short.replace(/^https?:\/\//, '')) + '</code><button type="button" data-cp-share="' + esc(c.code) + '">Copy</button></div>' : '') +
       '<div class="ofx-c-acts">' +
         '<label class="st-switch" title="' + (c.is_active ? 'Pause this coupon' : 'Turn it back on') + '"><input type="checkbox" data-cp-toggle="' + c.id + '"' + (c.is_active ? ' checked' : '') + '><i></i></label><span class="ofx-c-sw">' + (c.is_active ? 'On' : 'Paused') + '</span>' +
         '<span class="ofx-spacer"></span>' +
+        (c.link ? '' : '<button type="button" class="btn btn-secondary btn-sm" data-cp-share="' + esc(c.code) + '" title="A link that opens your menu with this coupon applied">' + ic('share') + 'Share link</button>') +
         '<button type="button" class="btn btn-secondary btn-sm" data-cp-edit="' + c.id + '">' + ic('edit') + 'Edit</button>' +
         '<button type="button" class="btn btn-secondary btn-sm sx-danger-ghost" data-cp-del="' + c.id + '">' + ic('delete') + (C.delAsk === c.id ? 'Sure?' : '') + '</button>' +
       '</div></article>';
@@ -192,8 +198,20 @@
 
   /* ───────────── events ───────────── */
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-of-go], [data-cp-new], [data-cp-idea], [data-cp-edit], [data-cp-del], [data-cp-filter], [data-cp-copy]');
+    var t = e.target.closest('[data-of-go], [data-cp-new], [data-cp-idea], [data-cp-edit], [data-cp-del], [data-cp-filter], [data-cp-copy], [data-cp-share]');
     if (!t) return;
+    if (t.hasAttribute('data-cp-share')) {
+      t.disabled = true;
+      fetch('../api/offers_studio.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'coupon_link', code: t.getAttribute('data-cp-share') }) })
+        .then(function (r) { return r.json(); }).then(function (d) {
+          t.disabled = false;
+          if (!d.success) { notify(d.message || 'Could not make the link', 'error'); return; }
+          var done = function () { notify('Link copied. It opens your menu with the coupon applied, and every tap is counted.', 'success'); if (window.loadAdminCoupons) window.loadAdminCoupons(); };
+          if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(d.short).then(done, function () { notify(d.short, 'info'); });
+          else { notify(d.short, 'info'); if (window.loadAdminCoupons) window.loadAdminCoupons(); }
+        }).catch(function () { t.disabled = false; notify('No connection. Please try again.', 'error'); });
+      return;
+    }
     if (t.hasAttribute('data-of-go')) { e.preventDefault(); if (window.SX) SX.goTo(t.getAttribute('data-of-go')); return; }
     if (t.hasAttribute('data-cp-new')) { if (window.openCouponModal) openCouponModal(); return; }
     if (t.hasAttribute('data-cp-idea')) {

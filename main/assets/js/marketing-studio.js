@@ -119,13 +119,32 @@
   };
 
   /* ── links and QR codes ── */
+  // A design's link is a tracked short link (restrogrow.com/<slug>/go/<code>): every tap and QR scan is counted.
+  // The first time a tag is seen the long menu link is returned while the short one is made; then 'mk:link' fires
+  // and the poster / video redraws with the short link (a smaller, easier-to-scan QR code too).
+  var shortLinks = {}, shortPending = {};
   MK.link = function (o) {
     o = o || {};
     var base = window.getMarketingMenuUrl ? window.getMarketingMenuUrl() : location.origin;
     var qs = [];
     if (o.src) qs.push('src=' + encodeURIComponent(o.src));
     if (o.coupon) qs.push('coupon=' + encodeURIComponent(o.coupon));
-    return qs.length ? base + (base.indexOf('?') > -1 ? '&' : '?') + qs.join('&') : base;
+    var long = qs.length ? base + (base.indexOf('?') > -1 ? '&' : '?') + qs.join('&') : base;
+    if (!o.src || o.long) return long;
+    var key = o.src + '|' + (o.coupon || '');
+    if (shortLinks[key]) return shortLinks[key];
+    if (!shortPending[key]) {
+      shortPending[key] = fetch(API + '?view=link&src=' + encodeURIComponent(o.src) + '&coupon=' + encodeURIComponent(o.coupon || '') + '&label=' + encodeURIComponent((camp && camp.name) || o.src), { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.success && d.short) { shortLinks[key] = d.short; document.dispatchEvent(new CustomEvent('mk:link', { detail: { src: o.src, short: d.short } })); } })
+        .catch(function () {}).then(function () { delete shortPending[key]; });
+    }
+    return long;
+  };
+  /** Promise of the short link (for copy buttons that must not hand out the long one). */
+  MK.linkReady = function (o) {
+    var l = MK.link(o), key = (o && o.src || '') + '|' + (o && o.coupon || '');
+    return shortLinks[key] ? Promise.resolve(shortLinks[key]) : (shortPending[key] || Promise.resolve()).then(function () { return shortLinks[key] || l; });
   };
   var qrCache = {};
   MK.qr = function (text) {
@@ -538,7 +557,7 @@
       var a = c.getAttribute('data-mk-camp');
       if (a === 'start') MK.startCampaignPrompt('');
       else if (a === 'end') MK.setCampaign(null);
-      else if (a === 'copy' && camp) MK.copy(MK.link({ src: camp.src, coupon: camp.coupon && camp.coupon.code }), c);
+      else if (a === 'copy' && camp) MK.linkReady({ src: camp.src, coupon: camp.coupon && camp.coupon.code }).then(function (l) { MK.copy(l, c); });
     }
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addTabs); else addTabs();
@@ -550,15 +569,20 @@
   function drawDesigns() {
     var root = document.getElementById('mkDesignsRoot');
     if (!root) return;
-    var tot = { visits: 0, orders: 0, sales: 0 }, seen = {};
+    var tot = { visits: 0, people: 0, orders: 0, sales: 0 }, seen = {}, best = null;
     designs.forEach(function (d) {
       var r = d.results || {}, k = (d.src || '') + '|' + (d.coupon_code || '');
       if (seen[k]) return; seen[k] = 1;   // designs of one campaign share their results
-      tot.visits += r.visits || 0; tot.orders += r.orders || 0; tot.sales += r.sales || 0;
+      tot.visits += r.visits || 0; tot.people += r.people || 0; tot.orders += r.orders || 0; tot.sales += r.sales || 0;
+      if ((r.sales || 0) > 0 && (!best || r.sales > best.results.sales)) best = d;
     });
     var list = designs.filter(function (d) { return dFilter === 'all' || d.kind === dFilter; });
     root.innerHTML =
-      '<div class="mk-stats"><div><small>People who opened your links</small><b>' + tot.visits.toLocaleString('en-IN') + '</b></div><div><small>Orders from your marketing</small><b>' + tot.orders.toLocaleString('en-IN') + '</b></div><div><small>Sales from your marketing</small><b>' + money(tot.sales) + '</b></div></div>' +
+      (window.RGStats ? '<div class="wa-sum"><b>All your marketing</b>' + RGStats.funnel([
+          { label: 'Tapped or scanned', value: tot.people, icon: 'touch_app', hint: 'People who opened your short links or scanned your QR codes' },
+          { label: 'Visited the menu', value: tot.visits, icon: 'storefront', noPct: true, hint: 'Visits that carried a campaign tag' },
+          { label: 'Ordered', value: tot.orders, icon: 'shopping_bag', strong: true }], { money: dCur, revenue: tot.sales, compact: true }) + '</div>'
+        : '<div class="mk-stats"><div><small>People who opened your links</small><b>' + tot.visits.toLocaleString('en-IN') + '</b></div><div><small>Orders from your marketing</small><b>' + tot.orders.toLocaleString('en-IN') + '</b></div><div><small>Sales from your marketing</small><b>' + money(tot.sales) + '</b></div></div>') +
       '<div class="mk-dhead"><div class="campaign-seg">' + [['all', 'All'], ['poster', 'Posters'], ['video', 'Videos'], ['caption', 'Captions']].map(function (f) { return '<button type="button" data-mk-df="' + f[0] + '"' + (dFilter === f[0] ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>' +
       '<button type="button" class="mk-btn" data-mk-go="marketingPostersPage">' + ic('add') + 'New poster</button></div>' +
       (list.length ? '<div class="mk-dgrid">' + list.map(function (d) {
@@ -566,11 +590,18 @@
         return '<article class="mk-dcard"><div class="mk-dthumb">' + (d.thumb ? '<img alt="" src="' + esc(d.thumb) + '">' : ic(K[0])) + '<span class="mk-kind">' + ic(K[0]) + K[1] + '</span></div>' +
           '<div class="mk-dbody"><b>' + esc(d.name) + '</b><small>' + esc(new Date(String(d.updated_at).replace(' ', 'T')).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })) +
           (d.coupon_code ? ' · <span class="mk-code">' + esc(d.coupon_code) + '</span>' : '') + '</small>' +
-          '<div class="mk-dres"><span><b>' + (r.visits || 0) + '</b>visits</span><span><b>' + (r.orders || 0) + '</b>orders</span><span><b>' + money(r.sales) + '</b>sales</span></div>' +
+          (best && best.id === d.id && window.RGStats ? RGStats.badge('Best campaign', 'gold', 'emoji_events') : '') +
+          (window.RGStats ? RGStats.funnel([
+              { label: 'Taps', value: r.people || 0, icon: 'touch_app', hint: (r.clicks || 0) + ' taps or scans in all' },
+              { label: 'Ordered', value: r.orders || 0, icon: 'shopping_bag', strong: true }], { money: dCur, revenue: r.sales || 0, compact: true,
+              extra: [r.last_click ? { label: 'Last tap ' + new Date(String(r.last_click).replace(' ', 'T')).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), icon: 'schedule' } : null] }) +
+              (r.spark ? '<div class="mk-spark">' + RGStats.spark(r.spark, { title: 'Taps per day, last 14 days' }) + '</div>' : '') +
+              (r.short ? '<div class="rgs-link"><span class="material-symbols-rounded">link</span><code>' + esc(r.short.replace(/^https?:\/\//, '')) + '</code><button type="button" data-mk-copylink="' + esc(r.short) + '">Copy</button></div>' : '')
+            : '<div class="mk-dres"><span><b>' + (r.visits || 0) + '</b>visits</span><span><b>' + (r.orders || 0) + '</b>orders</span><span><b>' + money(r.sales) + '</b>sales</span></div>') +
           '<div class="mk-dacts"><button type="button" class="mk-btn sm" data-mk-open="' + d.id + '">' + ic('edit') + 'Open</button><button type="button" class="mk-btn sm ghost" data-mk-dup="' + d.id + '">' + ic('content_copy') + 'Duplicate</button><button type="button" class="mk-btn sm ghost icon" data-mk-del="' + d.id + '" aria-label="Delete">' + ic('delete') + '</button></div></div></article>';
       }).join('') + '</div>'
         : '<div class="mk-empty">' + ic('folder') + '<b>' + (designs.length ? 'Nothing here yet' : 'No saved designs yet') + '</b><span>Make a poster, video or caption and press <b>Save</b>. It shows here with how many people opened it and the orders it brought in.</span></div>') +
-      '<p class="mk-hint mk-foot">' + ic('info') + 'Visits count people who opened the link or scanned the QR code. Orders count website orders placed within 7 days of opening it, plus every order that used the attached coupon.</p>';
+      '<p class="mk-hint mk-foot">' + ic('info') + 'Taps count people who opened the short link or scanned the QR code (a refresh within an hour counts once). Orders count website orders placed within 7 days of opening it, plus every order that used the attached coupon.</p>';
   }
   function getDesign(id) { return fetch(API + '?view=design&id=' + id, { cache: 'no-store' }).then(function (r) { return r.json(); }); }
   window.initMarketingDesigns = function () {
@@ -590,8 +621,9 @@
     });
   };
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-mk-df],[data-mk-open],[data-mk-dup],[data-mk-del]');
+    var t = e.target.closest('[data-mk-df],[data-mk-open],[data-mk-dup],[data-mk-del],[data-mk-copylink]');
     if (!t || !t.closest('#marketingDesignsPage')) return;
+    if (t.dataset.mkCopylink) { MK.copy(t.dataset.mkCopylink, t); return; }
     if (t.dataset.mkDf) { dFilter = t.dataset.mkDf; drawDesigns(); return; }
     if (t.dataset.mkOpen) { MK.openDesign(+t.dataset.mkOpen); return; }
     if (t.dataset.mkDup) {
