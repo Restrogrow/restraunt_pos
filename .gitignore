@@ -102,3 +102,6 @@ main/uploads/blog/*
 !main/uploads/blog/.htaccess
 !main/uploads/blog/index.php
 main/config/.ga-service-account.json
+
+# signatures made in Super Admin › Email (kept in the database too)
+main/uploads/signatures/*

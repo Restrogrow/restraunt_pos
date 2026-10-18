@@ -16,6 +16,7 @@ require_once __DIR__ . '/../config/mail_letters.php';
 $conn = getConnection();
 mailEnsure($conn);
 letterEnsure($conn);
+letterSigEnsure($conn);
 $conn->exec("CREATE TABLE IF NOT EXISTS sa_settings (k VARCHAR(60) PRIMARY KEY, v TEXT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 
@@ -59,8 +60,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         };
         switch ($in['action'] ?? '') {
             // ── Proposals & letters ──
+            case 'sigSave':
+                $name = mb_substr(trim(strip_tags((string)($in['name'] ?? ''))), 0, 80);
+                if ($name === '') throw new Exception('Type the name to show under the signature');
+                $png = letterSigClean((string)($in['image'] ?? ''));
+                if ($png === '' || $png[0] === '!') throw new Exception(ltrim($png, '!') ?: 'The signature image is missing');
+                $file = 'sig_' . bin2hex(random_bytes(12)) . '.png';
+                if (!is_dir(letterSigDir())) @mkdir(letterSigDir(), 0755, true);
+                @file_put_contents(letterSigDir() . '/' . $file, $png);
+                $first = !(int)$conn->query('SELECT COUNT(*) FROM sa_signatures WHERE deleted_at IS NULL')->fetchColumn();
+                $def = $first || !empty($in['is_default']);
+                if ($def) $conn->exec('UPDATE sa_signatures SET is_default = 0');
+                $conn->prepare('INSERT INTO sa_signatures (name, designation, extra, image, file, is_default) VALUES (?, ?, ?, ?, ?, ?)')
+                    ->execute([$name, mb_substr(trim(strip_tags((string)($in['designation'] ?? ''))), 0, 80) ?: null, mb_substr(trim(strip_tags((string)($in['extra'] ?? ''))), 0, 120) ?: null,
+                        base64_encode($png), $file, $def ? 1 : 0]);
+                $out += ['message' => 'Signature saved', 'sigs' => letterSigList($conn)];
+                break;
+            case 'sigDefault':
+                $conn->exec('UPDATE sa_signatures SET is_default = 0');
+                $conn->prepare('UPDATE sa_signatures SET is_default = 1 WHERE id = ?')->execute([(int)($in['id'] ?? 0)]);
+                $out += ['message' => 'Used by default from now on', 'sigs' => letterSigList($conn)];
+                break;
+            case 'sigDelete':
+                $conn->prepare('UPDATE sa_signatures SET deleted_at = NOW(), is_default = 0 WHERE id = ?')->execute([(int)($in['id'] ?? 0)]);
+                $out += ['message' => 'Signature deleted', 'sigs' => letterSigList($conn)];
+                break;
+            case 'sigRestore':
+                $conn->prepare('UPDATE sa_signatures SET deleted_at = NULL WHERE id = ?')->execute([(int)($in['id'] ?? 0)]);
+                $out += ['message' => 'Brought back', 'sigs' => letterSigList($conn)];
+                break;
             case 'letterPreview':
-                $r = letterRender($conn, $letterIn(), (array)($in['vals'] ?? []));
+                $r = letterRender($conn, $letterIn(), (array)($in['vals'] ?? []), letterSigGet($conn, (int)($in['sig'] ?? 0)), false);
                 $out += ['subject' => $r['subject'], 'html' => $r['html'], 'text' => $r['text'], 'missing' => $r['missing']];
                 break;
             case 'letterSave':
@@ -99,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $t = $letterIn();
                 $vals = (array)($in['vals'] ?? []);
                 if (!filter_var($to, FILTER_VALIDATE_EMAIL)) throw new Exception('Enter the email address to send to');
-                $r = letterRender($conn, $t, $vals);
+                $r = letterRender($conn, $t, $vals, letterSigGet($conn, (int)($in['sig'] ?? 0)), true);
                 if ($r['missing']) throw new Exception('Fill in first: ' . implode(', ', array_map(fn($k) => ucfirst(str_replace('_', ' ', $k)), $r['missing'])));
                 $rid = preg_replace('/[^A-Za-z0-9_-]/', '', (string)($in['restaurant_id'] ?? '')) ?: null;
                 $s = mailSendNow($conn, 'letter', $to, $r['subject'], $r['html'], ['brand' => mailPlatformBrand(), 'text' => $r['text'], 'restaurant_id' => $rid,
@@ -191,6 +221,7 @@ $letters = $conn->query('SELECT id, seed, category, name, subject, title, body, 
 try { $letterRests = $conn->query("SELECT restaurant_id, restaurant_name, owner_name, email, phone, address, city FROM users WHERE restaurant_id IS NOT NULL AND restaurant_id <> '' ORDER BY restaurant_name LIMIT 2000")->fetchAll(PDO::FETCH_ASSOC); }
 catch (PDOException $e) { $letterRests = $conn->query("SELECT restaurant_id, restaurant_name, owner_name, email, phone, address FROM users WHERE restaurant_id IS NOT NULL AND restaurant_id <> '' ORDER BY restaurant_name LIMIT 2000")->fetchAll(PDO::FETCH_ASSOC); }
 $letterAuto = letterAutoValues($conn);
+$letterSigs = letterSigList($conn);
 $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
 ?>
 <!DOCTYPE html>
@@ -200,9 +231,11 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>Email · Super Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <style>
   :root { --ink:#111827; --soft:#374151; --muted:#6b7280; --line:#e5e7eb; --bg:#f3f4f6; --ok:#16a34a; --bad:#dc2626; --wait:#b45309; --accent:#c1440e; }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; } [hidden] { display: none !important; }
   body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--ink); }
   main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 60px; }
   .back { color: var(--muted); text-decoration: none; font-size: 14px; }
@@ -298,6 +331,17 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
   .lt-prev .s { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13.5px; } .lt-prev .s small { color: var(--muted); display: block; font-size: 11.5px; }
   .lt-prev iframe { width: 100%; height: calc(100vh - 90px); min-height: 520px; border: 0; background: #f5efe2; display: block; }
   .lt-miss { font-size: 13px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 8px 12px; }
+  .sigdlg { width: min(900px, 96vw); height: auto; max-height: 92vh; overflow: auto; }
+  .sig-wrap { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; padding: 16px; }
+  .sig-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; margin-bottom: 10px; }
+  .sig-card img { max-height: 56px; max-width: 100%; justify-self: start; background: #fff; }
+  .sig-card small { color: var(--muted); }
+  .sig-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .sig-pad { width: 100%; aspect-ratio: 3 / 1; border: 1.5px dashed #cbd5e1; border-radius: 12px; background: #fff; touch-action: none; cursor: crosshair; display: block; }
+  .sig-f { display: grid; gap: 8px; margin-top: 10px; }
+  .sig-f input, .sig-f select { width: 100%; padding: 9px 11px; border: 1.5px solid var(--line); border-radius: 10px; font: inherit; font-size: 14px; }
+  .sig-f label { font-size: 12.5px; font-weight: 700; color: var(--soft); }
+  @media (max-width: 760px) { .sig-wrap { grid-template-columns: 1fr; } }
   #toast button { margin-left: 12px; background: #fff; color: var(--ink); border: 0; border-radius: 8px; padding: 4px 10px; font-weight: 700; cursor: pointer; }
   @media (max-width: 1100px) { .lt { grid-template-columns: 220px minmax(0, 1fr); } .lt-prev { grid-column: 1 / -1; position: static; } }
   @media (max-width: 760px) { .lt { grid-template-columns: 1fr; } .lt-list { position: static; max-height: none; } }
@@ -353,7 +397,7 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
             <div style="flex:2;min-width:200px"><label for="eBtnU">Button link</label><input id="eBtnU" maxlength="300" placeholder="https://…"></div></div>
           <div class="lt-help">
             <b>How to write:</b> a blank line starts a new paragraph · <code>## Heading</code> · <code>- point</code> for bullets · <code>1. step</code> for numbers · <code>**bold**</code> · <code>[text](https://link)</code> · <code>---</code> a line.<br>
-            <b>Boxes to fill:</b> write any word in double braces, like <code>{{restaurant}}</code>, <code>{{owner}}</code> or <code>{{setup_fee}}</code>; it becomes a box above Send. Filled by itself: <code>{{date}}</code> <code>{{my_name}}</code> <code>{{my_phone}}</code> <code>{{my_email}}</code> <code>{{price}}</code> <code>{{price_yearly}}</code> <code>{{trial_days}}</code> <code>{{website}}</code>. Picking a restaurant fills <code>{{restaurant}}</code> <code>{{owner}}</code> <code>{{restaurant_address}}</code> <code>{{city}}</code> <code>{{login_email}}</code>.
+            <b>Boxes to fill:</b> write any word in double braces, like <code>{{restaurant}}</code>, <code>{{owner}}</code> or <code>{{setup_fee}}</code>; it becomes a box above Send. Filled by itself: <code>{{date}}</code> <code>{{my_name}}</code> <code>{{my_phone}}</code> <code>{{my_email}}</code> <code>{{price}}</code> <code>{{price_yearly}}</code> <code>{{trial_days}}</code> <code>{{website}}</code>. <code>{{signature}}</code> puts your chosen signature there (without it, the signature replaces the last <code>{{my_name}}</code>). Picking a restaurant fills <code>{{restaurant}}</code> <code>{{owner}}</code> <code>{{restaurant_address}}</code> <code>{{city}}</code> <code>{{login_email}}</code>.
           </div>
           <div class="row"><button class="btn" type="button" id="ltSave">Save template</button><button class="btn light" type="button" id="ltCancel">Cancel</button><small style="color:var(--muted)">The preview on the right updates as you type.</small></div>
         </div>
@@ -364,6 +408,8 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
             <select id="ltRest"><option value="">Type the details yourself…</option><?php foreach ($letterRests as $r): ?><option value="<?php echo $h($r['restaurant_id']); ?>"><?php echo $h(($r['restaurant_name'] ?: $r['restaurant_id']) . ($r['owner_name'] ? ' · ' . $r['owner_name'] : '')); ?></option><?php endforeach; ?></select></div>
           <div class="lt-fields" id="ltFields"></div>
           <div class="lt-miss" id="ltMiss" hidden></div>
+          <div><label for="ltSig" style="font-size:12.5px;font-weight:700;color:var(--soft)">Signature</label>
+            <div class="row" style="flex-wrap:nowrap"><select id="ltSig" style="flex:1"></select><button class="btn light sm" type="button" id="ltSigBtn">Signatures…</button></div></div>
           <div><label for="ltTo" style="font-size:12.5px;font-weight:700;color:var(--soft)">Send to</label><input type="email" id="ltTo" placeholder="owner@restaurant.com"></div>
           <label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="ltCopy" checked> Send a copy to me (<?php echo $h(mailTeamAddress()); ?>)</label>
           <div class="row">
@@ -494,6 +540,30 @@ $problems = (!SMTP_ENABLED && $sink === '') || (int)($stats['failed'] ?? 0) > 0;
     </div>
   </section>
 </main>
+<dialog id="sigDlg" class="sigdlg">
+  <div class="top"><span>Signatures</span><button class="btn light sm" type="button" id="sigClose">Close</button></div>
+  <div class="sig-wrap">
+    <div><h3 style="margin:0 0 10px;font-size:15px">Saved</h3><div id="sigList"></div></div>
+    <div>
+      <h3 style="margin:0 0 10px;font-size:15px">New signature</h3>
+      <div class="sig-tabs"><button class="chip on" type="button" data-sigmode="draw">Draw</button><button class="chip" type="button" data-sigmode="type">Type</button><button class="chip" type="button" data-sigmode="upload">Upload</button></div>
+      <canvas id="sigPad" class="sig-pad" width="900" height="300"></canvas>
+      <div class="row" style="margin-top:8px" id="sigDrawBar"><small style="color:var(--muted);flex:1">Sign with your mouse or finger.</small>
+        <select id="sigInk" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--line)"><option value="#1e3a8a">Blue ink</option><option value="#111827">Black ink</option></select>
+        <button class="btn light sm" type="button" id="sigClear">Clear</button></div>
+      <div class="sig-f" id="sigTypeBar" hidden><label for="sigTypeText">Type your signature</label><input id="sigTypeText" maxlength="40" placeholder="Your name">
+        <select id="sigFont"><option value="Dancing Script">Style 1</option><option value="Great Vibes">Style 2</option><option value="Caveat">Style 3</option></select></div>
+      <div class="sig-f" id="sigUpBar" hidden><label for="sigFile">Photo or scan of your signature (on white paper)</label><input type="file" id="sigFile" accept="image/png,image/jpeg,image/webp"></div>
+      <div class="sig-f">
+        <div><label for="sigName">Name shown under it</label><input id="sigName" maxlength="80" placeholder="e.g. Rahul Sharma"></div>
+        <div><label for="sigDesig">Designation (optional)</label><input id="sigDesig" maxlength="80" placeholder="e.g. Founder, RestroGrow"></div>
+        <div><label for="sigExtra">Extra line (optional)</label><input id="sigExtra" maxlength="120" placeholder="e.g. +91 63775 68749 · restrogrow.com"></div>
+        <label style="display:flex;gap:8px;align-items:center;font-weight:400;font-size:13.5px"><input type="checkbox" id="sigDef" style="width:auto"> Use this one by default</label>
+        <button class="btn" type="button" id="sigSave">Save signature</button>
+      </div>
+    </div>
+  </div>
+</dialog>
 <dialog id="dlg"><div class="top"><span id="dlgT"></span><button class="btn light sm" type="button" onclick="dlg.close()">Close</button></div><iframe id="frame" sandbox title="Email preview"></iframe></dialog>
 <div id="toast"></div>
 <script>
@@ -546,6 +616,7 @@ document.addEventListener('change', function (e) {
   var RESTS = <?php echo json_encode($letterRests, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE); ?>;
   var AUTO = <?php echo json_encode($letterAuto, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE); ?>;
   var CATS = <?php echo json_encode(letterCategories()); ?>;
+  var SIGS = <?php echo json_encode($letterSigs, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE); ?>;
   var cur = null, editing = false, vals = {}, restId = '', lastText = '', lastHtml = '';
   try { vals = JSON.parse(localStorage.getItem('rgLetterVals') || '{}') || {}; } catch (e) {}
   function keep() { try { localStorage.setItem('rgLetterVals', JSON.stringify(vals)); } catch (e) {} }
@@ -554,7 +625,7 @@ document.addEventListener('change', function (e) {
   function draft() { return editing ? { name: $('eName').value, category: $('eCat').value, subject: $('eSubject').value, title: $('eTitle').value, body: $('eBody').value, button_text: $('eBtnT').value, button_url: $('eBtnU').value } : cur; }
   function fieldsOf(t) {
     var s = [t.subject, t.title, t.body, t.button_text, t.button_url].join('\n'), m, re = /\{\{\s*([a-z0-9_]{1,40})\s*\}\}/gi, out = [];
-    while ((m = re.exec(s))) { var k = m[1].toLowerCase(); if (out.indexOf(k) === -1) out.push(k); }
+    while ((m = re.exec(s))) { var k = m[1].toLowerCase(); if (k !== 'signature' && out.indexOf(k) === -1) out.push(k); }
     return out;
   }
   function list() {
@@ -566,6 +637,7 @@ document.addEventListener('change', function (e) {
         return '<button type="button" class="lt-item' + (cur && cur.id === t.id ? ' on' : '') + '" data-lt="' + t.id + '">' + esc(t.name) + '<small>' + (t.sent ? 'Sent ' + t.sent + '× · last ' + esc(t.last) : 'Not sent yet') + '</small></button>';
       }).join('');
     });
+    html += '<h4>Signatures</h4><button type="button" class="lt-item" id="ltSigs">Your signatures<small>' + (SIGS.length ? SIGS.length + ' saved' : 'Draw, type or upload one') + '</small></button>';
     $('ltList').innerHTML = html;
   }
   function fields() {
@@ -585,7 +657,7 @@ document.addEventListener('change', function (e) {
     pt = setTimeout(function () {
       var t = draft();
       if (!t) return;
-      fetch('email.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'letterPreview', letter: t, vals: vals }) })
+      fetch('email.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'letterPreview', letter: t, vals: vals, sig: +$('ltSig').value || 0 }) })
         .then(function (r) { return r.json(); }).then(function (d) {
           if (!d.ok) return;
           lastText = d.text; lastHtml = d.html;
@@ -642,6 +714,7 @@ document.addEventListener('change', function (e) {
     var b = e.target.closest('[data-lt]');
     if (b) open(+b.dataset.lt);
     else if (e.target.closest('#ltNew')) startNew();
+    else if (e.target.closest('#ltSigs')) sigOpen();
   });
   $('ltEditBtn').onclick = function () { edit(!editing); };
   $('ltCancel').onclick = function () { open(cur ? cur.id : (L[0] ? L[0].id : 0)); };
@@ -696,7 +769,7 @@ document.addEventListener('change', function (e) {
     keep(); fields(); preview();
   });
   $('ltSend').onclick = function () {
-    post({ action: 'letterSend', id: cur ? cur.id : 0, letter: draft(), vals: vals, to: $('ltTo').value.trim(), copy: $('ltCopy').checked, restaurant_id: restId }, this)
+    post({ action: 'letterSend', id: cur ? cur.id : 0, letter: draft(), vals: vals, to: $('ltTo').value.trim(), copy: $('ltCopy').checked, restaurant_id: restId, sig: +$('ltSig').value || 0 }, this)
       .then(function (d) { if (d.ok && cur) { cur.sent++; cur.last = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); list(); } });
   };
   $('ltText').onclick = function () {
@@ -709,6 +782,121 @@ document.addEventListener('change', function (e) {
     w.document.write(lastHtml.replace('</body>', '<script>window.onload=function(){window.print()}<\/script></body>'));
     w.document.close();
   };
+  /* signatures: pick one for the letter, manage them in the Signatures window */
+  function sigOptions(keepId) {
+    var sel = $('ltSig'), pick = keepId != null ? keepId : sel.value;
+    var def = SIGS.filter(function (s) { return +s.is_default; })[0];
+    sel.innerHTML = '<option value="">No signature (just the name)</option>' + SIGS.map(function (s) {
+      return '<option value="' + s.id + '">' + esc(s.name + (s.designation ? ' · ' + s.designation : '')) + (+s.is_default ? ' (default)' : '') + '</option>';
+    }).join('');
+    sel.value = pick && SIGS.some(function (s) { return String(s.id) === String(pick); }) ? pick : (def ? def.id : '');
+  }
+  function sigList() {
+    $('sigList').innerHTML = SIGS.length ? SIGS.map(function (s) {
+      return '<div class="sig-card"><img src="../uploads/signatures/' + encodeURIComponent(s.file) + '" alt=""><b>' + esc(s.name) + '</b>' + (s.designation ? '<small>' + esc(s.designation) + '</small>' : '') + (s.extra ? '<small>' + esc(s.extra) + '</small>' : '')
+        + '<div class="row">' + (+s.is_default ? '<span class="pill sent">Default</span>' : '<button class="btn light sm" type="button" data-sigdef="' + s.id + '">Make default</button>')
+        + '<button class="btn light sm" type="button" data-sigdel="' + s.id + '">Delete</button></div></div>';
+    }).join('') : '<p style="color:var(--muted);font-size:14px;margin:0">No signatures yet. Make one on the right: draw it, type it or upload a photo.</p>';
+  }
+  sigOptions();
+  $('ltSig').addEventListener('change', preview);
+  var sigDlg = $('sigDlg'), pad = $('sigPad'), ctx = pad.getContext('2d'), mode = 'draw', drawn = false, last = null;
+  function padClear() { ctx.clearRect(0, 0, pad.width, pad.height); drawn = false; }
+  function padPos(e) { var r = pad.getBoundingClientRect(); return { x: (e.clientX - r.left) * pad.width / r.width, y: (e.clientY - r.top) * pad.height / r.height }; }
+  pad.addEventListener('pointerdown', function (e) { if (mode !== 'draw') return; pad.setPointerCapture(e.pointerId); last = padPos(e); });
+  pad.addEventListener('pointermove', function (e) {
+    if (mode !== 'draw' || !last) return;
+    var p = padPos(e);
+    ctx.strokeStyle = $('sigInk').value; ctx.lineWidth = 4.5; ctx.lineCap = ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.quadraticCurveTo(last.x, last.y, (last.x + p.x) / 2, (last.y + p.y) / 2); ctx.lineTo(p.x, p.y); ctx.stroke();
+    last = p; drawn = true;
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { pad.addEventListener(ev, function () { last = null; }); });
+  function typeDraw() {
+    var txt = $('sigTypeText').value.trim(), f = $('sigFont').value;
+    padClear();
+    if (!txt) return;
+    document.fonts.load('96px "' + f + '"').then(function () {
+      padClear();
+      var size = 120;
+      ctx.font = size + 'px "' + f + '"';
+      while (ctx.measureText(txt).width > pad.width - 60 && size > 30) { size -= 6; ctx.font = size + 'px "' + f + '"'; }
+      ctx.fillStyle = $('sigInk').value; ctx.textBaseline = 'middle';
+      ctx.fillText(txt, 30, pad.height / 2);
+      drawn = true;
+    });
+  }
+  $('sigTypeText').addEventListener('input', function () { if (!$('sigName').dataset.touched) $('sigName').value = this.value; typeDraw(); });
+  $('sigFont').addEventListener('change', typeDraw);
+  $('sigInk').addEventListener('change', function () { if (mode === 'type') typeDraw(); });
+  $('sigName').addEventListener('input', function () { this.dataset.touched = '1'; });
+  $('sigFile').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    if (f.size > 8 * 1024 * 1024) { toast('That photo is too big'); return; }
+    var img = new Image();
+    img.onload = function () {
+      padClear();
+      var s = Math.min(pad.width / img.width, pad.height / img.height) * 0.95, w = img.width * s, h = img.height * s;
+      ctx.drawImage(img, (pad.width - w) / 2, (pad.height - h) / 2, w, h);
+      // white paper becomes see-through, so it sits nicely on the email
+      var d = ctx.getImageData(0, 0, pad.width, pad.height), a = d.data;
+      for (var i = 0; i < a.length; i += 4) { var lum = (a[i] + a[i + 1] + a[i + 2]) / 3; if (lum > 200) a[i + 3] = 0; else if (lum > 150) a[i + 3] = Math.round(a[i + 3] * (200 - lum) / 50); }
+      ctx.putImageData(d, 0, 0);
+      drawn = true;
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(f);
+  });
+  document.querySelectorAll('[data-sigmode]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      mode = b.dataset.sigmode;
+      document.querySelectorAll('[data-sigmode]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      $('sigDrawBar').hidden = mode === 'upload'; $('sigTypeBar').hidden = mode !== 'type'; $('sigUpBar').hidden = mode !== 'upload';
+      pad.style.cursor = mode === 'draw' ? 'crosshair' : 'default';
+      padClear();
+      if (mode === 'type') typeDraw();
+    });
+  });
+  $('sigClear').onclick = function () { padClear(); if (mode === 'type') $('sigTypeText').value = ''; };
+  function trimmed() {
+    // only the inked part, with a little room around it
+    var d = ctx.getImageData(0, 0, pad.width, pad.height).data, x0 = pad.width, y0 = pad.height, x1 = -1, y1 = -1;
+    for (var y = 0; y < pad.height; y++) for (var x = 0; x < pad.width; x++) if (d[(y * pad.width + x) * 4 + 3] > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) return null;
+    var m = 12; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(pad.width - 1, x1 + m); y1 = Math.min(pad.height - 1, y1 + m);
+    var c2 = document.createElement('canvas'); c2.width = x1 - x0 + 1; c2.height = y1 - y0 + 1;
+    c2.getContext('2d').drawImage(pad, x0, y0, c2.width, c2.height, 0, 0, c2.width, c2.height);
+    return c2.toDataURL('image/png');
+  }
+  $('sigSave').onclick = function () {
+    var img = drawn ? trimmed() : null;
+    if (!img) { toast(mode === 'upload' ? 'Choose a photo of your signature first' : 'Sign in the box first'); return; }
+    post({ action: 'sigSave', image: img, name: $('sigName').value, designation: $('sigDesig').value, extra: $('sigExtra').value, is_default: $('sigDef').checked }, this).then(function (d) {
+      if (!d.ok) return;
+      SIGS = d.sigs;
+      var newest = SIGS.reduce(function (a, s) { return +s.id > +a ? +s.id : a; }, 0);
+      sigList(); sigOptions(newest); preview();
+      padClear(); $('sigTypeText').value = ''; $('sigName').value = ''; delete $('sigName').dataset.touched; $('sigDesig').value = ''; $('sigExtra').value = ''; $('sigDef').checked = false; $('sigFile').value = '';
+    });
+  };
+  $('sigList').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-sigdef],[data-sigdel]');
+    if (!b) return;
+    if (b.dataset.sigdef) post({ action: 'sigDefault', id: +b.dataset.sigdef }, b).then(function (d) { if (d.ok) { SIGS = d.sigs; sigList(); sigOptions(); preview(); } });
+    else {
+      var id = +b.dataset.sigdel;
+      post({ action: 'sigDelete', id: id }, b).then(function (d) {
+        if (!d.ok) return;
+        SIGS = d.sigs; sigList(); sigOptions(); preview();
+        undoToast('Signature deleted', function () { post({ action: 'sigRestore', id: id }).then(function (r) { if (r.ok) { SIGS = r.sigs; sigList(); sigOptions(); preview(); } }); });
+      });
+    }
+  });
+  function sigOpen() { sigList(); sigDlg.showModal(); }
+  $('ltSigBtn').onclick = sigOpen;
+  $('sigClose').onclick = function () { sigDlg.close(); };
+
   var want = +(new URLSearchParams(location.search).get('open') || 0);
   try { want = want || +(localStorage.getItem('rgLetterOpen') || 0); } catch (e) {}
   open(L.some(function (t) { return t.id === want; }) ? want : (L[0] ? L[0].id : 0));

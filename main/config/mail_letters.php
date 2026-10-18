@@ -10,6 +10,10 @@
  *   1. item               numbered list          [text](https://…)  link
  *   ---                   a divider line
  * Saved in sa_letters; the starter templates (letterDefaults) are added once and can be changed or deleted.
+ *
+ * Signatures (sa_signatures): drawn, typed or uploaded in the same tab, saved as a PNG (in the database, and as a
+ * file under uploads/signatures/ so emails can show it). A letter puts the chosen signature where {{signature}}
+ * is, else in place of the last {{my_name}}, else at the end.
  */
 require_once __DIR__ . '/mail_engine.php';
 
@@ -38,6 +42,9 @@ if (!function_exists('letterEnsure')) {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         }
+        // the agreement signs with the chosen signature (only if that line was never changed)
+        $conn->prepare('UPDATE sa_letters SET body = REPLACE(body, ?, ?) WHERE seed = ?')
+             ->execute(['For RestroGrow: **{{my_name}}**, {{date}}', "For RestroGrow, {{date}}:\n{{signature}}", 'agreement']);
         // starter templates: added once (a deleted one keeps its row, so it never comes back by itself)
         $have = array_flip($conn->query('SELECT seed FROM sa_letters WHERE seed IS NOT NULL')->fetchAll(PDO::FETCH_COLUMN));
         $ins = $conn->prepare('INSERT INTO sa_letters (seed, category, name, subject, title, body, button_text, button_url, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -71,7 +78,7 @@ if (!function_exists('letterEnsure')) {
     /** The {{words}} a template uses, in order of first use. */
     function letterFields(array $t): array {
         preg_match_all('/\{\{\s*([a-z0-9_]{1,40})\s*\}\}/i', $t['subject'] . "\n" . $t['title'] . "\n" . $t['body'] . "\n" . ($t['button_url'] ?? '') . "\n" . ($t['button_text'] ?? ''), $m);
-        return array_values(array_unique(array_map('strtolower', $m[1])));
+        return array_values(array_diff(array_unique(array_map('strtolower', $m[1])), ['signature']));
     }
 
     function letterFill(string $s, array $vals): string {
@@ -132,8 +139,19 @@ if (!function_exists('letterEnsure')) {
     }
 
     /** Fill and render a template: ['subject', 'html', 'text', 'missing' => [words still empty]]. */
-    function letterRender(PDO $conn, array $t, array $vals): array {
+    function letterRender(PDO $conn, array $t, array $vals, ?array $sig = null, bool $absolute = true): array {
         $vals = array_change_key_case(array_map(fn($v) => is_scalar($v) ? trim((string)$v) : '', $vals)) + letterAutoValues($conn);
+        // where the signature goes: {{signature}}, else the last {{my_name}}, else the end (no signature: just the name)
+        $mark = '[[RGSIG]]';
+        $body = str_replace("\r", '', (string)($t['body'] ?? ''));
+        if ($sig) {
+            if (preg_match('/\{\{\s*signature\s*\}\}/i', $body)) $body = preg_replace('/\{\{\s*signature\s*\}\}/i', $mark, $body);
+            elseif (preg_match_all('/\{\{\s*my_name\s*\}\}/i', $body, $mm, PREG_OFFSET_CAPTURE)) { $last = end($mm[0]); $body = substr_replace($body, $mark, $last[1], strlen($last[0])); }
+            else $body = rtrim($body) . "\n\n" . $mark;
+        } else {
+            $body = preg_replace('/\{\{\s*signature\s*\}\}/i', '{{my_name}}', $body);
+        }
+        $t['body'] = $body;
         $t2 = $t;
         foreach (['subject', 'title', 'body', 'button_text', 'button_url'] as $k) $t2[$k] = letterFill((string)($t[$k] ?? ''), $vals);
         $missing = letterFields($t2);
@@ -141,9 +159,85 @@ if (!function_exists('letterEnsure')) {
         $title = trim((string)$t2['title']) !== '' ? $t2['title'] : $t2['subject'];
         $plainFirst = trim(strtok(letterBodyText($t2['body']), "\n"));
         $html = mailLayout(mailPlatformBrand(), ['title' => $title, 'preheader' => mb_substr($plainFirst, 0, 120),
-            'intro' => letterBodyHtml($t2['body']), 'button' => $btn]);
-        $text = ($title !== '' ? $title . "\n\n" : '') . letterBodyText($t2['body']) . ($btn ? "\n\n" . $btn[0] . ': ' . $btn[1] : '');
+            'intro' => str_replace($mark, $sig ? letterSigHtml($conn, $sig, $absolute) : '', letterBodyHtml($t2['body'])), 'button' => $btn]);
+        $sigText = $sig ? implode("\n", array_filter([$sig['name'], $sig['designation'] ?? '', $sig['extra'] ?? ''])) : '';
+        $text = ($title !== '' ? $title . "\n\n" : '') . str_replace($mark, $sigText, letterBodyText($t2['body'])) . ($btn ? "\n\n" . $btn[0] . ': ' . $btn[1] : '');
         return ['subject' => $t2['subject'], 'html' => $html, 'text' => $text, 'missing' => $missing];
+    }
+
+    /* ── signatures ── */
+
+    function letterSigEnsure(PDO $conn): void {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        if ($conn->inTransaction() || $conn->query("SHOW TABLES LIKE 'sa_signatures'")->fetchColumn()) return;
+        $conn->exec("CREATE TABLE IF NOT EXISTS sa_signatures (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(80) NOT NULL,
+            designation VARCHAR(80) NULL,
+            extra VARCHAR(120) NULL,
+            image MEDIUMTEXT NOT NULL,
+            file VARCHAR(80) NOT NULL,
+            is_default TINYINT(1) NOT NULL DEFAULT 0,
+            deleted_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    function letterSigList(PDO $conn): array {
+        letterSigEnsure($conn);
+        return $conn->query('SELECT id, name, designation, extra, file, is_default FROM sa_signatures WHERE deleted_at IS NULL ORDER BY is_default DESC, id')->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    function letterSigGet(PDO $conn, int $id): ?array {
+        if ($id <= 0) return null;
+        letterSigEnsure($conn);
+        $st = $conn->prepare('SELECT * FROM sa_signatures WHERE id = ? AND deleted_at IS NULL');
+        $st->execute([$id]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    function letterSigDir(): string { return dirname(__DIR__) . '/uploads/signatures'; }
+
+    /** A drawn / typed / uploaded signature (PNG data URL) -> clean PNG bytes, or an error message (string starting with '!'). */
+    function letterSigClean(string $dataUrl): string {
+        if (!preg_match('#^data:image/png;base64,([A-Za-z0-9+/=]+)$#', $dataUrl, $m)) return '!The signature image is missing';
+        $raw = base64_decode($m[1], true);
+        if ($raw === false || strlen($raw) > 600000) return '!The signature image is too big';
+        $info = @getimagesizefromstring($raw);
+        if (!$info || $info[2] !== IMAGETYPE_PNG || $info[0] > 2000 || $info[1] > 1000 || $info[0] < 10 || $info[1] < 5) return '!That is not a usable signature image';
+        if (function_exists('imagecreatefromstring')) {   // drawn again, so nothing but pixels is kept
+            $im = @imagecreatefromstring($raw);
+            if (!$im) return '!That is not a usable signature image';
+            imagealphablending($im, false);
+            imagesavealpha($im, true);
+            ob_start(); imagepng($im, null, 9); $raw = (string)ob_get_clean();
+            imagedestroy($im);
+        }
+        return $raw;
+    }
+
+    /** The signature's image file (made again from the database if it went missing). */
+    function letterSigFile(array $sig): string {
+        $f = letterSigDir() . '/' . $sig['file'];
+        if (!is_file($f) && !empty($sig['image'])) {
+            if (!is_dir(letterSigDir())) @mkdir(letterSigDir(), 0755, true);
+            @file_put_contents($f, base64_decode($sig['image']));
+        }
+        return $sig['file'];
+    }
+
+    /** The signature block in a letter: image, name, designation, extra line. $absolute: a full link (for the email). */
+    function letterSigHtml(PDO $conn, array $sig, bool $absolute): string {
+        if (empty($sig['image'])) $sig = letterSigGet($conn, (int)$sig['id']) ?: $sig;
+        $file = letterSigFile($sig);
+        $src = ($absolute ? mailAppUrl() . '/main/uploads/signatures/' : '../uploads/signatures/') . rawurlencode($file);
+        $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+        return '<img src="' . $e($src) . '" alt="' . $e($sig['name']) . ' signature" style="display:block;max-height:64px;max-width:240px;margin:10px 0 6px;border:0">'
+            . '<b style="color:#241d16">' . $e($sig['name']) . '</b>'
+            . (!empty($sig['designation']) ? '<br><span style="color:#7a6e61;font-size:13.5px">' . $e($sig['designation']) . '</span>' : '')
+            . (!empty($sig['extra']) ? '<br><span style="color:#7a6e61;font-size:13.5px">' . $e($sig['extra']) . '</span>' : '');
     }
 
     /** The starter templates. Change them in Super Admin › Email › Proposals & letters (not here). */
@@ -295,7 +389,8 @@ Reply **"I agree"** to this email (or sign and return a copy) to accept this agr
 
 ---
 
-For RestroGrow: **{{my_name}}**, {{date}}
+For RestroGrow, {{date}}:
+{{signature}}
 
 For {{restaurant}}: **{{owner}}**, signature: ____________________, date: __________
 TXT],
