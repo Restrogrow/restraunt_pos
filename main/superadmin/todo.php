@@ -74,6 +74,13 @@ Check after a day with Super Admin › Email › Send test to a Gmail address �
 • every 10 minutes: /usr/bin/php <HOME>/main/cron/email_dispatch.php  (trial / renewal reminders, payment receipts, gift emails, booking reminders, retrying failed emails)
 • every 15 minutes: /usr/bin/php <HOME>/main/cron/owner_brief.php  (AI manager morning report on WhatsApp / email)
 Then open Super Admin › Email › Settings & jobs: both should say Running within 15 minutes. Without them, reminders only go out while someone has a dashboard open."],
+    ['Analytics', 0, 'Connect Google Analytics numbers to Super Admin', "So Super Admin › Tools › Website analytics › Google Analytics shows GA's real numbers (our own tracking already works without this). Same Google account as Analytics:
+1. console.cloud.google.com/projectcreate › name it restrogrow-analytics › Create.
+2. APIs › Library › \"Google Analytics Data API\" › Enable.
+3. IAM & Admin › Service accounts › Create › name ga-reader (no roles) › open it › Keys › Add key › Create new key › JSON (a .json file downloads).
+4. analytics.google.com › Admin › Property access management › + › Add users › paste the service account email (ends with iam.gserviceaccount.com) › role Viewer › untick Notify › Add.
+5. Super Admin › Tools › Website analytics › Settings › choose the .json file › Upload key. The Google Analytics tab then shows users, pages, channels and countries."],
+    ['Decide', 0, 'Pick the loading screens', "Super Admin › Tools › Loading screens: try the 12 loaders (Try full screen), choose one for Dashboard opening, Page change and Section & button, then Save. Then tell Claude to switch them on in the restaurant dashboard."],
 ];
 // jobs the owner has already done outside the list
 $doneOutside = ['Give the AI manager a natural, fast voice (Google Cloud Text-to-Speech)', 'Reset the demo restaurant on the live site', 'Load the keyword plan into the blog'];
