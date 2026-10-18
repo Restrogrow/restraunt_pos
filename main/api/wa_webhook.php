@@ -39,7 +39,10 @@ try {
 
     // ── who sent it, and is it really from RepeatGrow ──
     $statusHook = ($_GET['hook'] ?? '') === 'status';   // delivery / read updates for campaigns (waEnsureStatusHook)
-    if ($statusHook && $rid !== 'platform') {
+    if ($statusHook && $rid === 'platform') {
+        $ph = json_decode((string)$conn->query("SELECT v FROM sa_settings WHERE k = 'wa_platform_status_hook'")->fetchColumn(), true) ?: [];
+        $secret = !empty($ph['secret']) ? waKeyOpen((string)$ph['secret']) : '';
+    } elseif ($statusHook) {
         $hs = $conn->prepare('SELECT status_hook_secret FROM wa_settings WHERE restaurant_id = ?');
         $hs->execute([$rid]);
         $sealed = (string)$hs->fetchColumn();

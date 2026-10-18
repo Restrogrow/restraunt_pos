@@ -80,7 +80,6 @@ Then open Super Admin › Email › Settings & jobs: both should say Running wit
 3. IAM & Admin › Service accounts › Create › name ga-reader (no roles) › open it › Keys › Add key › Create new key › JSON (a .json file downloads).
 4. analytics.google.com › Admin › Property access management › + › Add users › paste the service account email (ends with iam.gserviceaccount.com) › role Viewer › untick Notify › Add.
 5. Super Admin › Tools › Website analytics › Settings › choose the .json file › Upload key. The Google Analytics tab then shows users, pages, channels and countries."],
-    ['WhatsApp', 0, 'Turn on read receipts for RestroGrow’s shared WhatsApp number', "Campaign and gift messages now show Delivered / Read / Tapped link. Restaurants on their own RepeatGrow number get this by itself. For messages sent from RestroGrow's shared number: in RepeatGrow (RestroGrow's own account) › Settings › Webhooks › the webhook that points to …/main/api/wa_webhook.php?rid=platform › also tick the event message.status_updated › Save. Until then, those messages show Sent, Tapped link and Ordered, but not Delivered / Read."],
     ['Decide', 0, 'Pick the loading screens', "Super Admin › Tools › Loading screens: try the 12 loaders (Try full screen), choose one for Dashboard opening, Page change and Section & button, then Save. Then tell Claude to switch them on in the restaurant dashboard."],
 ];
 // jobs the owner has already done outside the list

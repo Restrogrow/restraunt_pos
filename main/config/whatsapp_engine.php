@@ -230,11 +230,42 @@ if (!function_exists('ensureWhatsappSchema')) {
     function waLostMessage(): string { return 'RepeatGrow was disconnected. Connect again to keep sending.'; }
 
     /**
+     * The same receipts for RestroGrow's shared number (REPEATGROW_API_KEY): one webhook for the whole platform,
+     * kept in sa_settings 'wa_platform_status_hook' {id, secret (sealed), error, tried}. Tries again at most once a day.
+     */
+    function waEnsurePlatformStatusHook(PDO $conn): void {
+        if (waDryRun()) return;
+        $c = waConnection(['mode' => 'platform', 'api_key' => '']);
+        if (!$c) return;
+        $conn->exec("CREATE TABLE IF NOT EXISTS sa_settings (k VARCHAR(60) PRIMARY KEY, v TEXT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $cur = json_decode((string)$conn->query("SELECT v FROM sa_settings WHERE k = 'wa_platform_status_hook'")->fetchColumn(), true) ?: [];
+        if (!empty($cur['id']) && !empty($cur['secret'])) return;
+        if (!empty($cur['tried']) && (int)$cur['tried'] > time() - 86400) return;
+        $app = rtrim((string)env('APP_API_BASE', ''), '/') ?: (rtrim((string)env('APP_URL', ''), '/') ?: 'https://restrogrow.com') . '/main/api';
+        $ch = curl_init(preg_replace('#/messages/?$#', '/webhooks', $c['url']));
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $c['key']],
+            CURLOPT_POSTFIELDS => json_encode(['url' => $app . '/wa_webhook.php?rid=platform&hook=status',
+                'events' => ['message.status_updated'], 'description' => 'RestroGrow shared number: delivery and read receipts'])]);
+        $res = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $d = json_decode((string)$res, true) ?: [];
+        $id = (string)($d['data']['id'] ?? '');
+        $secret = (string)($d['data']['secret'] ?? '');
+        $save = $id !== '' && $secret !== '' ? ['id' => $id, 'secret' => waKeySeal($secret), 'at' => date('c')]
+            : ['tried' => time(), 'error' => $code === 403 ? 'The RepeatGrow key in .env (REPEATGROW_API_KEY) needs the webhooks:manage permission' : mb_substr(rgcError($d, 'Error ' . $code), 0, 200)];
+        $conn->prepare("REPLACE INTO sa_settings (k, v) VALUES ('wa_platform_status_hook', ?)")->execute([json_encode($save)]);
+        if (empty($save['id'])) error_log('WhatsApp platform status webhook not registered: ' . $save['error']);
+    }
+
+    /**
      * Ask RepeatGrow to tell us when this restaurant's messages are delivered / read (webhook
      * message.status_updated → api/wa_webhook.php?hook=status). Once; tries again at most once a day.
      */
     function waEnsureStatusHook(PDO $conn, string $rid): void {
         $s = waSettings($conn, $rid);
+        if ($s['mode'] === 'platform') { waEnsurePlatformStatusHook($conn); return; }
         if ($s['mode'] !== 'own' || $s['api_key'] === '' || waDryRun()) return;
         $st = $conn->prepare('SELECT status_hook_id FROM wa_settings WHERE restaurant_id = ?');
         $st->execute([$rid]);
