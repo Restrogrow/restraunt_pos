@@ -3779,7 +3779,7 @@ function checkPhonePeReturn() {
   }
 
   window._ppVerifyCancelled = false;
-  window._ppNoTry = 0;
+  window._ppStartedAt = Date.now();
   var loading = document.createElement('div');
   loading.id = 'ppVerifyLoader';
   loading.className = 'modal-overlay';
@@ -3805,10 +3805,12 @@ function pollPaymentStatus(orderNumber, retries, intervalMs) {
         ppShowChoices(orderNumber, 'Payment didn\'t go through', 'No money was taken. You can try again or pick another way to pay.', data);
         return;
       }
-      // Came back without paying (PhonePe shows no payment being made, twice in a row): don't keep them waiting
-      if (data.success && data.payment_status === 'Pending' && data.not_started) {
-        if (++window._ppNoTry >= 2) { ppShowChoices(orderNumber, 'Payment not completed', 'You came back before paying, so nothing was charged. Pay now, or choose another option.', data); return; }
-      } else window._ppNoTry = 0;
+      // Still pending after a few seconds: PhonePe keeps saying "pending" until its page expires even when the
+      // customer came back without paying (or cancelled), so offer the choices now and keep checking behind
+      // them. A payment that does arrive replaces them with "Order placed" (handlePaymentSuccess).
+      if (data.success && !document.getElementById('ppChoice') && Date.now() - (window._ppStartedAt || 0) > 6000) {
+        ppShowChoices(orderNumber, 'Payment not completed yet', 'Nothing has been charged. If you have just paid, stay on this page: it confirms by itself. Otherwise choose an option.', data);
+      }
       if (retries > 0) { setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1, intervalMs); }, intervalMs); return; }
       if (intervalMs < 10000) {
         var msgEl = document.querySelector('#ppVerifyLoader p');
@@ -3816,7 +3818,7 @@ function pollPaymentStatus(orderNumber, retries, intervalMs) {
         setTimeout(function() { pollPaymentStatus(orderNumber, 24, 10000); }, 10000);
         return;
       }
-      ppShowChoices(orderNumber, 'Payment not confirmed yet', 'If money was taken, your order confirms by itself within a few minutes and you get a message. If you did not pay, choose an option below.', data.success ? data : { can_retry: true, can_cash: false });
+      if (!document.getElementById('ppChoice')) ppShowChoices(orderNumber, 'Payment not confirmed yet', 'If money was taken, your order confirms by itself within a few minutes and you get a message. If you did not pay, choose an option below.', data.success ? data : { can_retry: true, can_cash: false });
     })
     .catch(function() {
       if (!window._ppVerifyCancelled) setTimeout(function() { pollPaymentStatus(orderNumber, Math.max(0, retries - 1), intervalMs); }, intervalMs);

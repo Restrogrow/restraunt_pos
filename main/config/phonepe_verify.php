@@ -170,11 +170,7 @@ if (!function_exists('phonepeCallbackAccessToken')) {
 }
 
 if (!function_exists('phonepeOrderStatus')) {
-    /**
-     * PhonePe's own answer for one payment: ['state' => COMPLETED|FAILED|PENDING|…, 'amount' => paise|null,
-     * 'live_attempt' => true while a payment is being made or went through] or null. The last answer per order
-     * is also kept in $GLOBALS['PP_LAST_STATUS'] so a caller can tell "never tried to pay" without asking again.
-     */
+    /** PhonePe's own answer for one payment: ['state' => COMPLETED|FAILED|PENDING|…, 'amount' => paise|null] or null. */
     function phonepeOrderStatus(array $config, string $merchantOrderId): ?array {
         if (empty($config['client_id']) || empty($config['client_secret'])) return null;
         $token = phonepeCallbackAccessToken($config);
@@ -188,21 +184,14 @@ if (!function_exists('phonepeOrderStatus')) {
         curl_close($ch);
         $data = json_decode((string)$response, true);
         // an order PhonePe has never seen (the customer never reached the payment page) is as good as failed
-        if ($httpCode === 404 || ($httpCode === 400 && in_array(($data['code'] ?? ''), ['ORDER_NOT_FOUND', 'INVALID_TRANSACTION_ID'], true))) {
-            return $GLOBALS['PP_LAST_STATUS'][$merchantOrderId] = ['state' => 'NOT_FOUND', 'amount' => null, 'live_attempt' => false];
-        }
+        if ($httpCode === 404 || ($httpCode === 400 && in_array(($data['code'] ?? ''), ['ORDER_NOT_FOUND', 'INVALID_TRANSACTION_ID'], true))) return ['state' => 'NOT_FOUND', 'amount' => null];
         if ($curlError || $httpCode !== 200 || !is_array($data)) {
             error_log('PhonePe: status check failed for ' . $merchantOrderId . ' (http ' . $httpCode . ($curlError ? ', ' . $curlError : '') . ')');
             return null;
         }
         $state = strtoupper((string)($data['state'] ?? $data['orderStatus'] ?? ''));
         if ($state === '') return null;
-        // paymentDetails lists each try (UPI, card…): none, or only failed ones, means nobody is paying right now
-        $live = false;
-        foreach ((array)($data['paymentDetails'] ?? []) as $try) {
-            if (is_array($try) && in_array(strtoupper((string)($try['state'] ?? '')), ['PENDING', 'COMPLETED'], true)) $live = true;
-        }
-        return $GLOBALS['PP_LAST_STATUS'][$merchantOrderId] = ['state' => $state, 'amount' => isset($data['amount']) ? (int)$data['amount'] : null, 'live_attempt' => $live];
+        return ['state' => $state, 'amount' => isset($data['amount']) ? (int)$data['amount'] : null];
     }
 }
 
