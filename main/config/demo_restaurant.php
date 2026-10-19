@@ -521,6 +521,10 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
             $pdo->prepare('INSERT INTO website_settings (restaurant_id, background_theme) VALUES (?, ?) ON DUPLICATE KEY UPDATE background_theme = VALUES(background_theme)')
                 ->execute([$rid, rtrim($mainUrl, '/') . '/assets/demo_restaurant/hero.jpg']);
             $pdo->prepare('UPDATE website_settings SET menu_nav_position = ? WHERE restaurant_id = ?')->execute(['top', $rid]);
+            // the ready-made Emerald theme (matches the green logo) with existing header and card styles
+            $pdo->prepare("UPDATE website_settings SET theme_preset = 'emerald', primary_red = '#1B5E3D', dark_red = '#0F3D28', primary_yellow = '#F4E1C1',
+                           font_family = 'Playfair Display', card_style = 'rounded', layout_style = 'grid', header_style = 'card',
+                           home_card_style = 'delivery', menu_card_style = 'modern', nav_bar_style = 'floating' WHERE restaurant_id = ?")->execute([$rid]);
         } catch (PDOException $e) {}
 
         $pdo->commit();
