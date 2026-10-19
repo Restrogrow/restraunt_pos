@@ -180,6 +180,115 @@ function demoMenuData(): array {
 }
 
 /**
+ * The demo's website offers and loyalty, run after the main build: offer banners, combos,
+ * menu filter chips, "goes well with" suggestions, points + autopilot gifts, spin wheel,
+ * challenges and the Spice Club VIP plans. $items: dish name => ['id' => ...].
+ * Returns one callable(PDO, rid) per part.
+ */
+function demoOfferSetup(array $items): array {
+    $id = fn(string $dish) => $items[$dish]['id'];
+    $need = function (string $file, string ...$fns) {
+        require_once __DIR__ . "/$file";
+        foreach ($fns as $fn) if (!function_exists($fn)) throw new RuntimeException("$fn missing");
+    };
+    return [
+        // animated offer banners on the home page, menu page and cart
+        function (PDO $pdo, string $rid) use ($id, $need) {
+            $need('website_theme_helpers.php', 'ensureOfferBannersTable');
+            ensureOfferBannersTable($pdo);
+            $n = 0;
+            foreach ([
+                ['countdown', 'Biryani Hour', 'Chicken Dum Biryani at ₹289 — today only', null, 'Order now', '#1b5e3d', 'Chicken Dum Biryani', 'home_top', ['kicker' => 'Today only', 'countdown' => 1, 'accent' => '#f4c95d']],
+                ['ticket', 'Flat ₹150 OFF', 'On orders above ₹999 — applied automatically', 'FEAST150', null, '#b45309', null, 'home_top', ['kicker' => 'No code needed']],
+                ['gold', 'Butter Chicken', 'Our No.1 bestseller — smoky, buttery, creamy', null, 'Add to cart', '#7c2d12', 'Butter Chicken', 'home_menu', ['kicker' => 'Chef’s pick', 'font' => 'serif']],
+                ['marquee', 'Save more as you add', '₹40 off at ₹349 · ₹75 off at ₹599 · ₹150 off at ₹999', null, null, '#1b5e3d', 'Paneer Tikka', 'menu_top', ['speed' => 'calm']],
+                ['stamp', 'Sweet ending?', 'Add warm Gulab Jamun for ₹99', null, 'Add', '#9d174d', 'Gulab Jamun', 'cart', []],
+            ] as [$tpl, $title, $sub, $code, $cta, $color, $dish, $place, $opts]) {
+                demoInsert($pdo, 'website_offer_banners', [
+                    'restaurant_id' => $rid, 'template' => $tpl, 'title' => $title, 'subtitle' => $sub, 'code' => $code, 'cta' => $cta,
+                    'color' => $color, 'menu_item_id' => $dish ? $id($dish) : null, 'placement' => $place, 'is_active' => 1,
+                    'display_order' => $n++, 'opts' => $opts ? json_encode($opts) : null,
+                ]);
+            }
+        },
+        // combos
+        function (PDO $pdo, string $rid) use ($id, $need) {
+            $need('combo_helpers.php', 'saveCombo');
+            $pick = fn(array $dishes) => array_map(fn($d) => ['menu_item_id' => $id($d)], $dishes);
+            saveCombo($pdo, $rid, ['name' => 'Lunch Combo', 'price' => 249, 'badge' => 'Save ₹100', 'is_active' => 1,
+                'description' => 'A curry, two breads and a cool drink — the easy weekday lunch.',
+                'slots' => [['title' => 'Pick a curry', 'choices' => $pick(['Dal Makhani', 'Paneer Butter Masala', 'Pindi Chole'])],
+                            ['title' => 'Breads', 'qty' => 2, 'choices' => $pick(['Butter Naan', 'Tandoori Roti'])],
+                            ['title' => 'Drink', 'choices' => $pick(['Masala Chaas', 'Sweet Lassi'])]]]);
+            saveCombo($pdo, $rid, ['name' => 'Biryani Party Pack', 'price' => 899, 'badge' => 'Serves 3', 'is_active' => 1,
+                'description' => 'Two biryanis, a plate of Chicken 65 and two Gulab Jamun.',
+                'slots' => [['title' => 'Biryanis', 'qty' => 2, 'choices' => $pick(['Chicken Dum Biryani', 'Veg Dum Biryani'])],
+                            ['title' => 'Starter', 'choices' => $pick(['Chicken 65', 'Paneer Tikka'])],
+                            ['title' => 'Dessert', 'qty' => 2, 'choices' => $pick(['Gulab Jamun'])]]]);
+            saveCombo($pdo, $rid, ['name' => 'Chai & Samosa', 'price' => 99, 'badge' => 'Evening snack', 'is_active' => 1,
+                'description' => 'Hot masala chai with two crisp Punjabi samosas.',
+                'slots' => [['title' => 'Chai', 'choices' => $pick(['Masala Chai', 'Filter Coffee'])],
+                            ['title' => 'Samosa', 'choices' => $pick(['Punjabi Samosa'])]]]);
+        },
+        // filter chips on the menu page
+        function (PDO $pdo, string $rid) {
+            $n = 0;
+            foreach ([['Bestsellers', '⭐', 'bestsellers', null], ['Offers', '🏷️', 'any_offer', null], ['Under ₹199', '💸', 'price_under', 199], ['Pure veg', '🥗', 'veg', null]]
+                     as [$title, $icon, $rule, $value]) {
+                demoInsert($pdo, 'offer_filters', ['restaurant_id' => $rid, 'title' => $title, 'icon' => $icon, 'rule_type' => $rule,
+                                                   'rule_value' => $value, 'is_active' => 1, 'sort_order' => $n++]);
+            }
+        },
+        // "goes well with" suggestions in the cart
+        function (PDO $pdo, string $rid) use ($id) {
+            demoInsert($pdo, 'upsell_settings', ['restaurant_id' => $rid, 'enabled' => 1, 'mode' => 'both', 'title' => 'Goes well with your order']);
+            foreach (['Butter Chicken' => ['Butter Naan', 'Garlic Naan', 'Jeera Rice'], 'Paneer Butter Masala' => ['Butter Naan', 'Laccha Paratha'],
+                      'Dal Makhani' => ['Jeera Rice', 'Butter Naan'], 'Chicken Dum Biryani' => ['Masala Chaas', 'Gulab Jamun'],
+                      'Mutton Biryani' => ['Masala Chaas', 'Phirni'], 'Masala Dosa' => ['Filter Coffee'], 'Chicken Tikka' => ['Fresh Lime Soda']] as $dish => $sugg) {
+                foreach ($sugg as $p => $s) {
+                    demoInsert($pdo, 'upsell_pairs', ['restaurant_id' => $rid, 'menu_item_id' => $id($dish), 'suggest_item_id' => $id($s), 'position' => $p]);
+                }
+            }
+        },
+        // loyalty: points + referrals, autopilot gifts, spin wheel, challenges, Spice Club VIP, phone card
+        function (PDO $pdo, string $rid) use ($id, $need) {
+            $need('growth_helpers.php', 'getGrowthSettings');
+            $need('loyalty_autopilot.php', 'loyaltyAutopilotDefaults');
+            $need('wallet_card.php', 'ensureWalletCardSchema');
+            ensureWalletCardSchema($pdo);
+            getGrowthSettings($pdo, $rid);
+            $pdo->prepare("UPDATE growth_settings SET loyalty_enabled = 1, program_type = 'points', referral_enabled = 1, reward_valid_days = 30,
+                vip_enabled = 1, vip_name = 'Spice Club', vip_tagline = 'Save on every order, all year', card_enabled = 1, card_color = '#1b5e3d', card_text_color = '#ffffff'
+                WHERE restaurant_id = ?")->execute([$rid]);
+            $defs = loyaltyAutopilotDefaults();
+            $free = $id('Gulab Jamun');
+            foreach (['welcome' => ['flat', 50, null, 0, 199, 30], 'birthday' => ['item', 0, $free, 7, 0, 14], 'anniversary' => ['percent', 15, null, 7, 499, 14],
+                      'winback' => ['flat', 75, null, 30, 299, 14], 'tier_up' => ['flat', 100, null, 0, 399, 30], 'milestone' => ['percent', 20, null, 10, 0, 30],
+                      'referral' => ['flat', 50, null, 0, 199, 30]] as $type => [$kind, $value, $dish, $param, $min, $days]) {
+                demoInsert($pdo, 'loyalty_automations', ['restaurant_id' => $rid, 'type' => $type, 'enabled' => 1, 'reward_kind' => $kind, 'reward_value' => $value,
+                    'reward_item_id' => $dish, 'param' => $param, 'min_order' => $min, 'valid_days' => $days, 'message' => $defs[$type][6] ?? null]);
+            }
+            demoInsert($pdo, 'scratch_settings', ['restaurant_id' => $rid, 'enabled' => 1, 'game_style' => 'wheel', 'valid_days' => 15, 'monthly_budget' => 5000]);
+            foreach ([['flat', 50, 30, null], ['percent', 10, 15, null], ['flat', 100, 5, 599], ['none', 0, 50, null]] as $p => [$kind, $value, $weight, $min]) {
+                demoInsert($pdo, 'scratch_prizes', ['restaurant_id' => $rid, 'type' => $kind, 'value' => $value, 'weight' => $weight, 'position' => $p, 'min_order' => $min]);
+            }
+            foreach ([['visits', 'Visit 3 times this month', 3, null, 'flat', 100, null, 299, 30], ['spend', null, 2000, null, 'percent', 15, null, 0, 30],
+                      ['dish', null, 1, $id('Butter Chicken'), 'flat', 50, null, 199, 30], ['streak', null, 3, null, 'item', 0, $free, 0, 14]]
+                     as [$kind, $title, $target, $item, $rk, $rv, $ri, $min, $days]) {
+                demoInsert($pdo, 'loyalty_challenges', ['restaurant_id' => $rid, 'kind' => $kind, 'title' => $title, 'target' => $target, 'item_id' => $item,
+                    'reward_kind' => $rk, 'reward_value' => $rv, 'reward_item_id' => $ri, 'min_order' => $min, 'valid_days' => $days]);
+            }
+            foreach ([['Monthly', 199, 30, 10, 100, 1.5, null, 0, null, 0], ['Quarterly', 499, 90, 10, 150, 2, 'flat', 100, null, 1],
+                      ['Yearly', 1499, 365, 15, 200, 2, 'item', 0, $free, 0]] as $p => [$name, $price, $dur, $pct, $max, $boost, $gk, $gv, $gi, $hl]) {
+                demoInsert($pdo, 'vip_plans', ['restaurant_id' => $rid, 'name' => $name, 'price' => $price, 'duration_days' => $dur, 'discount_pct' => $pct,
+                    'discount_max' => $max, 'free_delivery' => 1, 'free_delivery_min' => 0, 'earn_boost' => $boost, 'gift_kind' => $gk, 'gift_value' => $gv,
+                    'gift_item_id' => $gi, 'highlight' => $hl, 'position' => $p]);
+            }
+        },
+    ];
+}
+
+/**
  * Builds the demo restaurant from scratch. $assetDir: main/assets/demo_restaurant. $mainUrl: the
  * absolute URL of main/ (for the website header photo). Returns a short summary.
  */
@@ -197,7 +306,10 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
     // (DDL commits implicitly in MySQL).
     foreach (['bestseller_helpers.php' => 'ensureBestsellersTable', 'menu_hours.php' => 'ensureMenuHoursColumns',
               'website_theme_helpers.php' => 'ensureWebsiteThemeSchema', 'business_id_helpers.php' => 'ensureBusinessIdColumns',
-              'rider_engine.php' => 'riderEnsure', 'inventory_engine.php' => 'invEnsure'] as $file => $fn) {
+              'rider_engine.php' => 'riderEnsure', 'inventory_engine.php' => 'invEnsure', 'coupon_helpers.php' => 'ensureCouponMilestoneColumn',
+              'combo_helpers.php' => 'ensureCombosTables', 'upsell_helpers.php' => 'ensureUpsellTables', 'offer_filter_helpers.php' => 'ensureOfferFiltersTable',
+              'scratch_helpers.php' => 'ensureScratchTables', 'loyalty_autopilot.php' => 'ensureLoyaltyAutopilotSchema', 'vip_membership.php' => 'ensureVipSchema',
+              'growth_helpers.php' => 'ensureGrowthSchema'] as $file => $fn) {
         if (is_file(__DIR__ . "/$file")) {
             require_once __DIR__ . "/$file";
             if (function_exists($fn)) { try { $fn($pdo); } catch (Throwable $e) { /* optional feature */ } }
@@ -210,6 +322,14 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         $st = $pdo->prepare('SELECT branch_admin_id, label FROM branch_restaurant_links WHERE restaurant_id = ?');
         $st->execute([$rid]);
         $links = $st->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {}
+
+    // Keep the website look the owner saved (Website Appearance) across a reset
+    $savedSite = null;
+    try {
+        $st = $pdo->prepare('SELECT * FROM website_settings WHERE restaurant_id = ?');
+        $st->execute([$rid]);
+        $savedSite = $st->fetch(PDO::FETCH_ASSOC) ?: null;
     } catch (PDOException $e) {}
 
     mt_srand(20261016); // the same demo every time
@@ -310,17 +430,20 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         }
 
         // Coupons
+        // milestone coupons apply themselves in the cart as the order grows
         foreach ([
-            ['WELCOME50', 'flat', 50, 299, 'Flat ₹50 off your first order'],
-            ['SPICE20', 'percent', 20, 599, '20% off on orders above ₹599'],
-            ['FEAST100', 'flat', 100, 999, '₹100 off on orders above ₹999'],
-            ['WEEKEND15', 'percent', 15, 399, '15% off every weekend order'],
-        ] as [$code, $ctype, $value, $min, $cdesc]) {
+            ['TREAT40', 'flat', 40, 349, '₹40 off above ₹349 — applied automatically', 1],
+            ['SAVE75', 'flat', 75, 599, '₹75 off above ₹599 — applied automatically', 1],
+            ['FEAST150', 'flat', 150, 999, '₹150 off above ₹999 — applied automatically', 1],
+            ['WELCOME50', 'flat', 50, 299, 'Flat ₹50 off your first order', 0],
+            ['SPICE20', 'percent', 20, 599, '20% off on orders above ₹599', 0],
+            ['WEEKEND15', 'percent', 15, 399, '15% off every weekend order', 0],
+        ] as [$code, $ctype, $value, $min, $cdesc, $milestone]) {
             demoInsert($pdo, 'coupons', [
                 'restaurant_id' => $rid, 'coupon_code' => $code, 'discount_type' => $ctype, 'discount_value' => $value,
                 'minimum_order_amount' => $min, 'max_uses' => 0, 'current_uses' => mt_rand(3, 40),
                 'valid_from' => date('Y-m-d', strtotime('-60 days')), 'valid_until' => date('Y-m-d', strtotime('+1 year')),
-                'is_active' => 1, 'description' => $cdesc,
+                'is_active' => 1, 'description' => $cdesc, 'is_milestone' => $milestone,
             ]);
         }
 
@@ -676,8 +799,10 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         $spend('Repairs & Maintenance', 3200, 'Tandoor repair and deep-fryer service', strtotime('-17 days', $now));
         $spend('Repairs & Maintenance', 1450, 'Pest control', strtotime('-8 days', $now));
 
-        // ── Website: header photo and layout ──
-        try {
+        // ── Website: header photo and layout (the owner's saved look wins) ──
+        if ($savedSite) {
+            demoInsert($pdo, 'website_settings', $savedSite);
+        } else try {
             $pdo->prepare('INSERT INTO website_settings (restaurant_id, background_theme) VALUES (?, ?) ON DUPLICATE KEY UPDATE background_theme = VALUES(background_theme)')
                 ->execute([$rid, rtrim($mainUrl, '/') . '/assets/demo_restaurant/hero.jpg']);
             $pdo->prepare('UPDATE website_settings SET menu_nav_position = ? WHERE restaurant_id = ?')->execute(['top', $rid]);
@@ -693,6 +818,11 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         if ($pdo->inTransaction()) $pdo->rollBack();
         try { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (Throwable $e2) {}
         throw $e;
+    }
+
+    // Offers and loyalty: each part is optional, so one missing feature never stops a reset
+    foreach (demoOfferSetup($items) as $part) {
+        try { $part($pdo, $rid); } catch (Throwable $e) { error_log('demo offers: ' . $e->getMessage()); }
     }
 
     return [
