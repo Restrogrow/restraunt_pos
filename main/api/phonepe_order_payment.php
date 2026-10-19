@@ -93,9 +93,18 @@ try {
         elseif ($o['payment_method'] === 'Cash' && !$cancelled) $status = 'Cash';
         elseif ($cancelled || ((int)$a['n'] > 0 && (int)$a['pending'] === 0)) $status = 'Failed';
         else $status = 'Pending';
+        // Back from PhonePe without paying: PhonePe still says PENDING (until the page expires) but shows no
+        // payment being made. The page then offers the choices at once instead of waiting.
+        $notStarted = false;
+        if ($status === 'Pending') {
+            $t = $conn->prepare("SELECT transaction_id FROM payments WHERE order_id = ? AND payment_method = 'Online' AND payment_status = 'Pending' AND transaction_id LIKE 'PP\_%' ORDER BY id DESC LIMIT 1");
+            $t->execute([$o['id']]);
+            $last = $GLOBALS['PP_LAST_STATUS'][(string)$t->fetchColumn()] ?? null;
+            $notStarted = $last && empty($last['live_attempt']) && in_array($last['state'], ['PENDING', 'NOT_FOUND'], true);
+        }
         $unpaid = !$cancelled && $o['payment_status'] !== 'Paid' && $o['payment_method'] === 'UPI / NetBanking';
         ppoOut(['success' => true, 'payment_status' => $status, 'order_status' => $o['order_status'], 'cancelled' => $cancelled,
-                'can_retry' => $unpaid, 'can_cash' => $unpaid && ppoCashAllowed($conn, $o['restaurant_id'])]);
+                'not_started' => $notStarted, 'can_retry' => $unpaid, 'can_cash' => $unpaid && ppoCashAllowed($conn, $o['restaurant_id'])]);
     }
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') ppoOut(['success' => false, 'message' => 'POST only'], 405);

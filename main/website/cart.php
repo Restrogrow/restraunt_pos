@@ -3779,6 +3779,7 @@ function checkPhonePeReturn() {
   }
 
   window._ppVerifyCancelled = false;
+  window._ppNoTry = 0;
   var loading = document.createElement('div');
   loading.id = 'ppVerifyLoader';
   loading.className = 'modal-overlay';
@@ -3804,6 +3805,10 @@ function pollPaymentStatus(orderNumber, retries, intervalMs) {
         ppShowChoices(orderNumber, 'Payment didn\'t go through', 'No money was taken. You can try again or pick another way to pay.', data);
         return;
       }
+      // Came back without paying (PhonePe shows no payment being made, twice in a row): don't keep them waiting
+      if (data.success && data.payment_status === 'Pending' && data.not_started) {
+        if (++window._ppNoTry >= 2) { ppShowChoices(orderNumber, 'Payment not completed', 'You came back before paying, so nothing was charged. Pay now, or choose another option.', data); return; }
+      } else window._ppNoTry = 0;
       if (retries > 0) { setTimeout(function() { pollPaymentStatus(orderNumber, retries - 1, intervalMs); }, intervalMs); return; }
       if (intervalMs < 10000) {
         var msgEl = document.querySelector('#ppVerifyLoader p');
