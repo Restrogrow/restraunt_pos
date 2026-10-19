@@ -73,145 +73,6 @@ $statusLabels = [
 <?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'inter', 'material-symbols']); ?>
 <?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
 <style>
-:root {
-  --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
-  --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
-  --primary-yellow: <?php echo htmlspecialchars($primary_yellow, ENT_QUOTES, 'UTF-8'); ?>;
-  --site-font: <?php echo $font_family_css; ?>;
-  /* Progress + main button use the restaurant's checkout colour */
-  --tk: <?php echo htmlspecialchars($checkout_color ?? $primary_red, ENT_QUOTES, 'UTF-8'); ?>;
-  --tk-dark: <?php echo htmlspecialchars($checkout_color_dark ?? $dark_red, ENT_QUOTES, 'UTF-8'); ?>;
-  --tk-soft: color-mix(in srgb, var(--tk) 12%, #fff);
-  /* deep shade of the theme for the progress card (instead of plain black) */
-  --tk-deep: color-mix(in srgb, var(--tk-dark) 62%, #06080b);
-  --ink: #16181d; --muted: #8a8f98; --line: #eceef1; --page: color-mix(in srgb, var(--tk) 5%, #f3f4f6);
-  /* amounts: a font that always has the currency sign */
-  --num-font: 'Poppins', 'Inter', sans-serif;
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: var(--site-font), 'Inter', sans-serif; background: color-mix(in srgb, var(--tk) 8%, #e3e6ea); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
-.phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; position: relative; background: var(--page); box-shadow: 0 0 40px rgba(0,0,0,0.08); }
-@media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 32px; overflow: hidden; } }
-
-/* Top: brand band in the theme colour, round buttons, logo + title */
-.tk-band { position: relative; padding-bottom: 34px; color: #fff; overflow: hidden;
-  background: radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--primary-yellow) 30%, transparent), transparent 60%), linear-gradient(150deg, var(--tk), var(--tk-dark)); }
-.tk-band::after { content: ""; position: absolute; right: -40px; bottom: -60px; width: 180px; height: 180px; border-radius: 50%; border: 28px solid rgba(255,255,255,.06); pointer-events: none; }
-.tk-top { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 16px 16px 8px; }
-.tk-round { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; cursor: pointer; text-decoration: none; transition: transform .15s, background .15s; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.tk-round:hover { background: rgba(255,255,255,.26); }
-.tk-round:active { transform: scale(.94); }
-.tk-round .material-symbols-rounded { font-size: 21px; }
-.tk-title { flex: 1; min-width: 0; text-align: center; }
-.tk-title b { display: block; font-size: 17px; font-weight: 700; }
-.tk-title small { display: block; font-size: 11.5px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tk-actions { display: flex; gap: 8px; }
-.tk-brand { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 8px 20px 0; }
-.tk-brand img { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid rgba(255,255,255,.7); }
-.tk-brand.sq img { border-radius: 14px; }
-.tk-brand b { display: block; font-size: 19px; font-weight: 700; line-height: 1.2; }
-.tk-brand span { display: block; margin-top: 2px; font-size: 12.5px; opacity: .82; }
-
-.content { position: relative; z-index: 2; margin-top: -26px; padding: 0 14px 30px; }
-.card { background: #fff; border-radius: 26px; padding: 20px 18px; margin-bottom: 14px; box-shadow: 0 6px 22px color-mix(in srgb, var(--tk) 9%, rgba(17,24,39,.05)); }
-
-/* Headline card */
-.tk-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
-.tk-head h1 { flex: 1; font-size: 23px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em; }
-.tk-head .sub { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
-.status-badge { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--tk-soft); color: var(--tk-dark); white-space: nowrap; }
-.status-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.status-rejected, .status-cancelled { background: #fee2e2; color: #b91c1c; }
-.status-completed, .status-served { background: #dcfce7; color: #15803d; }
-.status-badge.status-flash { animation: statusFlash 1.2s ease-out 2; }
-@keyframes statusFlash { 0% { transform: scale(1); } 30% { transform: scale(1.1); } 100% { transform: scale(1); } }
-
-/* Speech bubble pointing at the current step */
-.tk-bubble { position: relative; margin: 0 2px 16px; padding: 14px 14px 12px; border-radius: 20px; background: #fff; box-shadow: 0 6px 22px rgba(17,24,39,.09); transition: transform .3s; }
-.tk-bubble::after { content: ""; position: absolute; bottom: -8px; left: var(--arrow, 12.5%); width: 18px; height: 18px; margin-left: -9px; background: #fff; transform: rotate(45deg); border-radius: 0 0 4px 0; box-shadow: 4px 4px 8px rgba(17,24,39,.05); transition: left .7s cubic-bezier(.22,1,.36,1); }
-.tk-bubble b { display: block; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
-.tk-bubble-row { display: flex; align-items: center; gap: 8px; }
-.tk-chip { display: inline-flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 6px 14px 6px 6px; border-radius: 999px; background: #f4f5f7; color: var(--muted); font-size: 13px; font-weight: 500; }
-.tk-chip i { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--tk); color: #fff; font-style: normal; }
-.tk-chip i .material-symbols-rounded { font-size: 17px; }
-.tk-chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tk-next { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
-.tk-next i { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #f4f5f7; font-style: normal; font-size: 13px; }
-.tk-bubble.pop { animation: bubblePop .5s cubic-bezier(.2,1.4,.4,1); }
-@keyframes bubblePop { from { transform: translateY(6px) scale(.97); opacity: .6; } to { transform: none; opacity: 1; } }
-
-/* The pill track */
-.tk-track { position: relative; height: 72px; border-radius: 999px; background: #eef0f3; box-shadow: inset 0 0 0 2px #e4e7eb; overflow: hidden; }
-.tk-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--tk-dark), var(--tk) 70%, color-mix(in srgb, var(--tk) 35%, #fff)); transition: width .9s cubic-bezier(.22,1,.36,1); }
-.tk-fill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.28) 50%, transparent 70%); background-size: 220% 100%; animation: tkShine 2.6s linear infinite; border-radius: inherit; }
-.tk-nodes { position: absolute; inset: 0; display: flex; }
-.tk-node { flex: 1; display: grid; place-items: center; }
-.tk-node i { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: #fff; color: #9aa0a8; font-style: normal; box-shadow: 0 2px 8px rgba(0,0,0,.08); transition: color .3s, transform .3s; }
-.tk-node i .material-symbols-rounded { font-size: 24px; }
-.tk-node.done i, .tk-node.on i { color: var(--tk-dark); }
-.tk-node.on i { animation: nodePulse 1.8s ease-out infinite; }
-.tk-node.on.final i { animation: none; }
-@keyframes nodePulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.75), 0 2px 8px rgba(0,0,0,.08); } 100% { box-shadow: 0 0 0 12px rgba(255,255,255,0), 0 2px 8px rgba(0,0,0,.08); } }
-@keyframes tkShine { from { background-position: 120% 0; } to { background-position: -120% 0; } }
-.tk-labels { display: flex; margin-top: 8px; }
-.tk-labels div { flex: 1; text-align: center; font-size: 13px; font-weight: 600; color: #9aa0a8; transition: color .3s; }
-.tk-labels div em { display: grid; place-items: center; width: 18px; height: 18px; margin: 0 auto 3px; border-radius: 50%; font-style: normal; font-size: 11px; font-weight: 700; color: #9aa0a8; }
-.tk-labels div.done, .tk-labels div.on { color: var(--ink); }
-.tk-labels div.on em { background: var(--ink); color: #fff; }
-.tk-labels div.done em { color: var(--ink); }
-
-/* Status card with a big icon */
-.tk-status { display: flex; align-items: center; gap: 14px; margin-top: 18px; padding: 16px; border-radius: 20px; background: #f4f5f7; }
-.tk-status .ic { width: 64px; height: 64px; flex-shrink: 0; display: grid; place-items: center; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-.tk-status .ic .material-symbols-rounded { font-size: 36px; animation: icBob 2.4s ease-in-out infinite; }
-@keyframes icBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-.tk-status b { display: block; font-size: 15.5px; font-weight: 700; margin-bottom: 3px; }
-.tk-status p { font-size: 13px; color: var(--muted); line-height: 1.45; }
-.tk-stopped .tk-status { background: #fef2f2; }
-.tk-stopped .tk-status .ic { color: #b91c1c; }
-
-#trackMap { height: 200px; border-radius: 18px; margin-top: 14px; display: none; overflow: hidden; }
-#riderLocationNote { display: none; font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center; }
-
-.loyalty-note { display: none; margin-top: 14px; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--primary-yellow) 22%, #fff); font-size: 13px; font-weight: 600; color: #7c4a03; }
-.loyalty-note .material-symbols-rounded { font-size: 17px; vertical-align: -3px; }
-
-/* Cards: details and summary */
-h2 { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; margin-bottom: 14px; }
-h2 .h-ic { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: var(--tk-soft); color: var(--tk-dark); }
-h2 .h-ic .material-symbols-rounded { font-size: 19px; }
-.info-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 14px; }
-.label { color: var(--muted); }
-.value { font-weight: 600; color: var(--ink); text-align: right; }
-.value, .tk-item-price, .tk-item-info span { font-family: var(--num-font); font-variant-numeric: tabular-nums; }
-.tk-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
-.tk-item + .tk-item { border-top: 1px dashed var(--line); }
-.tk-thumb { width: 58px; height: 58px; flex-shrink: 0; border-radius: 18px; overflow: hidden; background: #f4f5f7; display: grid; place-items: center; color: #c4c8ce; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
-.tk-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.tk-item-info { flex: 1; min-width: 0; }
-.tk-item-info b { display: block; font-size: 14.5px; font-weight: 600; line-height: 1.3; }
-.tk-item-info span { font-size: 12.5px; color: var(--muted); }
-.tk-item-price { font-size: 15px; font-weight: 700; white-space: nowrap; }
-.tk-totals { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
-.tk-totals .info-row:first-child .label { color: var(--ink); font-weight: 600; }
-.tk-grand { margin-top: 6px; padding-top: 10px; border-top: 2px solid #d7dade; font-size: 15px; }
-.tk-grand .label { color: var(--ink); font-weight: 700; }
-.tk-grand .label small { font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 4px; }
-.tk-grand .value { font-size: 17px; font-weight: 800; color: var(--tk-dark); }
-
-/* Big button */
-.tk-cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 17px; border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--tk), var(--tk-dark)); color: #fff; font: 600 16px var(--site-font), 'Inter', sans-serif; cursor: pointer; box-shadow: 0 10px 24px color-mix(in srgb, var(--tk) 35%, transparent); text-decoration: none; transition: transform .15s; }
-.tk-cta:active { transform: scale(.98); }
-.tk-another { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 14px auto 0; font-size: 13.5px; font-weight: 600; color: var(--muted); text-decoration: none; }
-
-/* Live-update indicator */
-.live-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--muted); margin: 6px 0 14px; }
-.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
-.live-note.on .live-dot { animation: livePulse 1.6s ease-out infinite; }
-.live-note.offline .live-dot { background: #f59e0b; }
-.live-note.done .live-dot { background: #9ca3af; }
-@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,.55); } 100% { box-shadow: 0 0 0 7px rgba(22,163,74,0); } }
-
 /* ── Fun layer: animated scene per step, rotating lines, rider card, confetti ── */
 .tk-scene { position: relative; height: 150px; margin-top: 18px; border-radius: 22px; overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--tk) 10%, #fff), color-mix(in srgb, var(--tk) 22%, #fff)); }
 .tk-scene .hero { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -46px 0 0 -38px; display: grid; place-items: center; border-radius: 24px; background: #fff; color: var(--tk-dark); box-shadow: 0 10px 24px color-mix(in srgb, var(--tk) 25%, transparent); z-index: 3; }
@@ -298,74 +159,187 @@ h2 .h-ic .material-symbols-rounded { font-size: 19px; }
   .tk-scene *, .tk-scene .hero, .tk-burst i, .tk-rider.on { animation: none !important; }
 }
 
-/* ── Progress section: one dark "journey" card (scene, status, steps) ── */
-.tk-journey { position: relative; margin-top: 16px; padding: 4px 12px 18px; border-radius: 26px; color: #fff; overflow: hidden;
-  background: radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--tk) 55%, transparent), transparent 70%), linear-gradient(180deg, color-mix(in srgb, var(--tk-deep) 85%, #fff 4%), var(--tk-deep));
-  box-shadow: 0 16px 34px color-mix(in srgb, var(--tk-deep) 40%, transparent); }
-.tk-journey svg { display: block; }
-.tk-journey .tk-scene { margin: 0 -12px; height: 150px; background: transparent; border-radius: 0; }
-.tk-journey .tk-scene .hero { width: 84px; height: 84px; margin: -48px 0 0 -42px; border-radius: 50%; background: #fff; color: var(--tk);
-  box-shadow: 0 0 0 8px rgba(255,255,255,.07), 0 0 46px color-mix(in srgb, var(--tk) 65%, transparent); }
-.tk-journey .tk-scene .hero svg { width: 40px; height: 40px; }
-.tk-journey .sc-onway .hero { width: 74px; height: 74px; margin: -34px 0 0 -37px; }
-.tk-journey .sc-done .hero, .tk-journey .sc-delivered .hero { color: #16a34a; box-shadow: 0 0 0 8px rgba(255,255,255,.07), 0 0 46px rgba(22,163,74,.55); }
-.tk-journey .sc-stop { background: transparent; }
-.tk-journey .sc-stop .hero { color: #ef4444; box-shadow: 0 0 0 8px rgba(255,255,255,.07), 0 0 46px rgba(239,68,68,.5); }
-.tk-journey .sc-placed .fx i.slot { background: rgba(255,255,255,.35); }
-.tk-journey .sc-accepted .fx i.ring { border-color: rgba(255,255,255,.55); border-radius: 50%; }
-.tk-journey .sc-preparing .fx i.steam { background: linear-gradient(transparent, rgba(255,255,255,.75)); }
-.tk-journey .sc-onway .fx i.road { background: #2a2d36; }
-.tk-journey .sc-onway .fx i.town { filter: invert(1); opacity: .28; }
-.tk-journey .sc-onway .fx i.cloud { background: rgba(255,255,255,.14); }
-.tk-journey .fx i.spark { background: #fde047; }
-.tk-journey .tk-status-text { margin-top: 2px; }
-.tk-journey .tk-status-text b { color: #fff; font-size: 18px; }
-.tk-journey .tk-status-text p { color: rgba(255,255,255,.68); }
-.tk-journey .tk-tip { background: rgba(255,255,255,.08); color: #f3f4f6; }
-.tk-journey .tk-tip svg { width: 15px; height: 15px; color: #fde047; }
+:root {
+  --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --dark-red: <?php echo htmlspecialchars($dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --primary-yellow: <?php echo htmlspecialchars($primary_yellow, ENT_QUOTES, 'UTF-8'); ?>;
+  --site-font: <?php echo $font_family_css; ?>;
+  /* Progress + main button use the restaurant's checkout colour */
+  --tk: <?php echo htmlspecialchars($checkout_color ?? $primary_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --tk-dark: <?php echo htmlspecialchars($checkout_color_dark ?? $dark_red, ENT_QUOTES, 'UTF-8'); ?>;
+  --tk-soft: color-mix(in srgb, var(--tk) 10%, #fff);
+  --ink: #1b1d22; --muted: #7b808a; --line: #eef0f2; --page: #f4f5f7;
+  /* one clean sans font for the whole tracking screen (amounts always have the currency sign) */
+  --ui: 'Poppins', 'Inter', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+.phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; position: relative; background: var(--page); box-shadow: 0 0 40px rgba(0,0,0,0.08); }
+@media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 32px; overflow: hidden; } }
 
-/* Steps: rail with a glowing fill, a spinning ring on the current step */
-.tk-steps { position: relative; display: flex; margin-top: 22px; }
-.tk-steps .rail { position: absolute; left: 12.5%; right: 12.5%; top: 21px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.1); }
-.tk-steps .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 4px; background: linear-gradient(90deg, var(--tk-dark), var(--tk), color-mix(in srgb, var(--tk) 45%, #fff)); box-shadow: 0 0 12px color-mix(in srgb, var(--tk) 70%, transparent); transition: width 1s cubic-bezier(.22,1,.36,1); }
-.tk-steps .fill::after { content: ""; position: absolute; right: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--tk) 45%, transparent), 0 0 14px #fff; animation: tkGlow 1.4s ease-in-out infinite; }
-.tk-steps.final .fill::after, .tk-steps.start .fill::after { display: none; }
-.tk-step { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0; }
-.tk-step i { position: relative; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.1); color: rgba(255,255,255,.5); font-style: normal; transition: background .4s, color .4s, transform .4s; }
-.tk-step i svg { width: 21px; height: 21px; }
+/* Round buttons floating over the top area */
+.tk-top { position: absolute; z-index: 5; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 0; pointer-events: none; }
+.tk-top > * { pointer-events: auto; }
+.tk-round { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: #fff; color: var(--ink); cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.1); text-decoration: none; transition: transform .15s; }
+.tk-round:active { transform: scale(.94); }
+.tk-round .material-symbols-rounded { font-size: 20px; }
+.tk-actions { display: flex; gap: 8px; }
+
+/* Top area: animated scene, or the rider's map once there is a location */
+.tk-hero { position: relative; height: 250px; overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--tk) 16%, #fff), color-mix(in srgb, var(--tk) 7%, #fff)); }
+.tk-hero .tk-scene { position: absolute; inset: 0; height: auto; margin: 0; border-radius: 0; background: transparent; }
+.tk-hero .tk-scene .hero { width: 96px; height: 96px; margin: -36px 0 0 -48px; border-radius: 50%; color: var(--tk); box-shadow: 0 0 0 12px color-mix(in srgb, var(--tk) 10%, transparent), 0 14px 30px color-mix(in srgb, var(--tk) 25%, transparent); }
+.tk-hero .tk-scene .hero svg { width: 44px; height: 44px; }
+.tk-hero .sc-onway .hero { width: 84px; height: 84px; margin: -20px 0 0 -42px; }
+.tk-hero .sc-placed .fx i.slot { top: 64px; }
+.tk-hero .sc-preparing .fx i.steam { top: 40px; }
+.tk-hero .sc-preparing .fx i.flame { bottom: 54px; }
+.tk-hero .sc-done .hero, .tk-hero .sc-delivered .hero { color: #16a34a; box-shadow: 0 0 0 12px rgba(22,163,74,.12), 0 14px 30px rgba(22,163,74,.25); animation: heroDone 2.4s ease-in-out infinite; }
+.tk-hero .sc-stop .hero { color: #dc2626; box-shadow: 0 0 0 12px rgba(220,38,38,.1), 0 14px 30px rgba(220,38,38,.2); }
+.tk-hero:has(.sc-stop) { background: linear-gradient(180deg, #fee2e2, #fff5f5); }
+@keyframes heroDone { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.1) rotate(-6deg); } 30% { transform: scale(1); } }
+.tk-hero.has-map .tk-scene { display: none; }
+#trackMap { position: absolute; inset: 0; display: none; }
+.tk-hero.has-map #trackMap { display: block; }
+
+/* White sheet over the top area */
+.tk-sheet { position: relative; z-index: 2; margin-top: -26px; padding: 22px 18px 18px; border-radius: 28px 28px 0 0; background: #fff; }
+.tk-sheet::before { content: ""; position: absolute; top: 8px; left: 50%; width: 38px; height: 4px; margin-left: -19px; border-radius: 4px; background: #e2e4e8; }
+.tk-rest { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.tk-rest img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
+.tk-rest .nm { flex: 1; min-width: 0; }
+.tk-rest .nm b { display: block; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-rest .nm small { display: block; font-size: 11.5px; color: var(--muted); }
+.status-badge { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: var(--tk-soft); color: var(--tk-dark); white-space: nowrap; }
+.status-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status-rejected, .status-cancelled { background: #fee2e2; color: #b91c1c; }
+.status-completed, .status-served { background: #dcfce7; color: #15803d; }
+.status-badge.status-flash { animation: statusFlash 1.2s ease-out 2; }
+@keyframes statusFlash { 0% { transform: scale(1); } 30% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+.tk-status-text { text-align: left; }
+.tk-status-text b { display: block; font-size: 21px; font-weight: 700; line-height: 1.25; letter-spacing: -.01em; }
+.tk-status-text p { margin-top: 4px; font-size: 13.5px; color: var(--muted); line-height: 1.45; }
+.tk-eta { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 6px 12px; border-radius: 10px; background: var(--tk-soft); color: var(--tk-dark); font-size: 13px; font-weight: 600; }
+.tk-eta svg { width: 16px; height: 16px; }
+
+/* Progress bar + "next" line */
+.tk-bar { margin-top: 16px; }
+.tk-bar .rail { height: 6px; border-radius: 6px; background: #eceef1; overflow: hidden; }
+.tk-bar .fill { position: relative; height: 100%; width: 0; min-width: 8%; border-radius: 6px; background: var(--tk); transition: width 1s cubic-bezier(.22,1,.36,1); overflow: hidden; }
+.tk-bar .fill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.55) 50%, transparent 80%); background-size: 200% 100%; animation: tkShine 1.8s linear infinite; }
+@keyframes tkShine { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+.tk-bar-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.tk-next b { color: var(--ink); font-weight: 600; }
+.tk-tip { display: inline-flex; align-items: center; gap: 5px; min-width: 0; transition: opacity .35s, transform .35s; }
+.tk-tip svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--tk); }
+.tk-tip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-tip.out { opacity: 0; transform: translateY(3px); }
+.tk-bubble.pop { animation: bubblePop .5s cubic-bezier(.2,1.4,.4,1); }
+@keyframes bubblePop { from { transform: translateY(4px); opacity: .6; } to { transform: none; opacity: 1; } }
+
+/* Timeline */
+.tk-steps { position: relative; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.tk-step { position: relative; display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+.tk-step:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 39px; bottom: -7px; width: 2px; margin-left: -1px; background: #e5e7eb; }
+.tk-step.done:not(:last-child)::after { background: var(--tk); }
+.tk-step i { position: relative; z-index: 1; width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: #f1f2f4; color: #a3a8b0; font-style: normal; transition: background .3s, color .3s; }
+.tk-step i svg { width: 16px; height: 16px; }
+.tk-step span { font-size: 14px; font-weight: 500; color: #a3a8b0; }
 .tk-step.done i { background: var(--tk); color: #fff; }
-.tk-step.on i { background: #fff; color: var(--tk); transform: scale(1.12); }
-.tk-step.on i::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; background: conic-gradient(var(--tk) 0 28%, transparent 28% 100%);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); animation: tkSpin 1.3s linear infinite; }
-.tk-step.on.final i { background: #16a34a; color: #fff; }
-.tk-step.on.final i::before { display: none; }
-.tk-step span { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.5); text-align: center; line-height: 1.2; }
-.tk-step.done span, .tk-step.on span { color: #fff; }
-.tk-step.on span { font-weight: 800; }
-@keyframes tkGlow { 50% { transform: scale(1.3); } }
-@keyframes tkSpin { to { transform: rotate(360deg); } }
-.tk-chip i svg { width: 16px; height: 16px; }
-@media (prefers-reduced-motion: reduce) { .tk-steps .fill::after, .tk-step.on i::before { animation: none; } .tk-steps .fill { transition: none; } }
+.tk-step.done span { color: var(--ink); }
+.tk-step.on i { background: #fff; color: var(--tk); box-shadow: 0 0 0 2px var(--tk), 0 0 0 7px color-mix(in srgb, var(--tk) 14%, transparent); animation: stepPulse 1.8s ease-out infinite; }
+.tk-step.on span { color: var(--ink); font-weight: 700; }
+.tk-step.on.final i { background: #16a34a; color: #fff; box-shadow: none; animation: none; }
+@keyframes stepPulse { 50% { box-shadow: 0 0 0 2px var(--tk), 0 0 0 10px color-mix(in srgb, var(--tk) 6%, transparent); } }
+.tk-stopped .tk-status-text b { color: #b91c1c; }
+
+.tk-clock { display: flex; align-items: center; gap: 5px; margin-top: 14px; font-size: 12px; color: var(--muted); }
+.tk-clock .material-symbols-rounded { font-size: 15px; }
+
+/* Rider + help */
+.tk-rider { display: none; align-items: center; gap: 12px; margin-top: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; }
+.tk-rider.on { display: flex; animation: bubblePop .5s cubic-bezier(.2,1.4,.4,1); }
+.tk-rider .av { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--tk-soft); color: var(--tk-dark); font-size: 16px; font-weight: 700; }
+.tk-rider .who { flex: 1; min-width: 0; }
+.tk-rider .who b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-rider .who span { font-size: 12px; color: var(--muted); }
+.tk-call { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--tk); color: #fff; text-decoration: none; }
+.tk-call .material-symbols-rounded { font-size: 19px; }
+#riderLocationNote { display: none; margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+.tk-help { display: flex; gap: 10px; margin-top: 16px; }
+.tk-help a { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: none; }
+.tk-help a .material-symbols-rounded { font-size: 18px; color: var(--tk); }
+.loyalty-note { display: none; margin-top: 14px; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--primary-yellow) 22%, #fff); font-size: 13px; font-weight: 600; color: #7c4a03; }
+.loyalty-note .material-symbols-rounded { font-size: 17px; vertical-align: -3px; }
+
+.live-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--muted); margin: 14px 0 0; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; }
+.live-note.on .live-dot { animation: livePulse 1.6s ease-out infinite; }
+.live-note.offline .live-dot { background: #f59e0b; }
+.live-note.done .live-dot { background: #9ca3af; }
+@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,.55); } 100% { box-shadow: 0 0 0 7px rgba(22,163,74,0); } }
+
+/* Details below the sheet */
+.content { padding: 10px 14px 28px; }
+.card { background: #fff; border-radius: 20px; padding: 16px; margin-bottom: 10px; }
+.tk-fold summary { display: flex; align-items: center; gap: 12px; list-style: none; cursor: pointer; }
+.tk-fold summary::-webkit-details-marker { display: none; }
+.tk-fold .f-ic { width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: var(--tk-soft); color: var(--tk-dark); }
+.tk-fold .f-ic .material-symbols-rounded { font-size: 19px; }
+.tk-fold .f-t { flex: 1; min-width: 0; }
+.tk-fold .f-t b { display: block; font-size: 14.5px; font-weight: 600; }
+.tk-fold .f-t small { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-fold .chev { color: var(--muted); transition: transform .25s; }
+.tk-fold[open] .chev { transform: rotate(180deg); }
+.tk-fold .f-body { margin-top: 12px; padding-top: 6px; border-top: 1px solid var(--line); }
+.info-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 13.5px; }
+.label { color: var(--muted); }
+.value { font-weight: 600; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.tk-item { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
+.tk-item + .tk-item { border-top: 1px dashed var(--line); }
+.tk-thumb { width: 48px; height: 48px; flex-shrink: 0; border-radius: 12px; overflow: hidden; background: #f4f5f7; display: grid; place-items: center; color: #c4c8ce; }
+.tk-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.tk-item-info { flex: 1; min-width: 0; }
+.tk-item-info b { display: block; font-size: 14px; font-weight: 500; line-height: 1.3; }
+.tk-item-info span { font-size: 12px; color: var(--muted); }
+.tk-item-price { font-size: 14px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tk-totals { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+.tk-grand { margin-top: 4px; padding-top: 10px; border-top: 1px dashed #d7dade; }
+.tk-grand .label { color: var(--ink); font-weight: 600; }
+.tk-grand .label small { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+.tk-grand .value { font-size: 16px; font-weight: 700; }
+
+/* Buttons */
+.tk-cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 15px; border: 0; border-radius: 14px; background: var(--tk); color: #fff; font: 600 15px var(--ui); cursor: pointer; text-decoration: none; transition: transform .15s, filter .15s; }
+.tk-cta:hover { filter: brightness(1.06); }
+.tk-cta:active { transform: scale(.98); }
+.tk-cta .material-symbols-rounded { font-size: 20px; }
+.tk-cta.ghost { margin-top: 6px; background: #fff; color: var(--tk-dark); border: 1.5px solid color-mix(in srgb, var(--tk) 30%, #fff); }
+.tk-another { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 14px auto 0; font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: none; }
 
 /* Search form (no order yet) */
-.tk-search-ic { width: 72px; height: 72px; margin: 4px auto 12px; display: grid; place-items: center; border-radius: 22px; background: var(--tk-soft); color: var(--tk-dark); }
-.tk-search-ic .material-symbols-rounded { font-size: 38px; }
-.tk-search h1 { font-size: 22px; font-weight: 700; text-align: center; }
-.tk-search .subtitle { font-size: 13px; color: var(--muted); text-align: center; margin: 4px 0 18px; }
+.tk-find { padding: 70px 18px 24px; text-align: center; background: linear-gradient(180deg, color-mix(in srgb, var(--tk) 14%, #fff), var(--page)); }
+.tk-find img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: #fff; box-shadow: 0 8px 20px color-mix(in srgb, var(--tk) 20%, transparent); }
+.tk-find .tk-find-ic { width: 64px; height: 64px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%; background: #fff; color: var(--tk); box-shadow: 0 8px 20px color-mix(in srgb, var(--tk) 20%, transparent); }
+.tk-find .tk-find-ic .material-symbols-rounded { font-size: 32px; }
+.tk-find h1 { margin-top: 14px; font-size: 22px; font-weight: 700; }
+.tk-find p { margin-top: 4px; font-size: 13px; color: var(--muted); }
+.tk-search { padding: 20px 18px; }
 .form-group { margin-bottom: 14px; }
-.form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.form-group label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink); }
 .tk-field { position: relative; }
 .tk-field .material-symbols-rounded { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--muted); pointer-events: none; transition: color .2s; }
-.form-group input { width: 100%; padding: 14px 16px 14px 44px; border: 1.5px solid var(--line); border-radius: 16px; background: #f8f9fa; font-size: 15px; font-family: var(--num-font); outline: none; transition: border-color .2s, background .2s, box-shadow .2s; }
-.form-group input:focus { border-color: var(--tk); background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--tk) 14%, transparent); }
+.form-group input { width: 100%; padding: 14px 16px 14px 44px; border: 1.5px solid var(--line); border-radius: 14px; background: #f8f9fa; font-size: 15px; font-family: var(--ui); outline: none; transition: border-color .2s, background .2s, box-shadow .2s; }
+.form-group input:focus { border-color: var(--tk); background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--tk) 12%, transparent); }
 .tk-field:focus-within .material-symbols-rounded { color: var(--tk); }
-.tk-hint { display: flex; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: 16px; background: var(--tk-soft); color: var(--tk-dark); font-size: 12.5px; line-height: 1.45; }
-.tk-hint .material-symbols-rounded { font-size: 19px; flex-shrink: 0; }
-.error-box { margin-top: 14px; padding: 14px; border-radius: 16px; background: #fef2f2; color: #991b1b; font-size: 14px; text-align: center; }
+.tk-hint { display: flex; gap: 8px; margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.45; text-align: left; }
+.tk-hint .material-symbols-rounded { font-size: 17px; flex-shrink: 0; }
+.error-box { margin-top: 14px; padding: 12px; border-radius: 12px; background: #fef2f2; color: #991b1b; font-size: 13.5px; text-align: center; }
 
 @media (prefers-reduced-motion: reduce) {
-  .live-note.on .live-dot, .status-badge.status-flash, .tk-fill::after, .tk-node.on i, .tk-status .ic .material-symbols-rounded, .tk-bubble.pop { animation: none; }
-  .tk-fill, .tk-bubble::after { transition: none; }
+  .live-note.on .live-dot, .status-badge.status-flash, .tk-bar .fill::after, .tk-step.on i, .tk-bubble.pop { animation: none; }
+  .tk-bar .fill { transition: none; }
 }
 /* Scratch card (Offers > Scratch card) */
 .sc-card { padding: 16px; overflow: hidden; }
@@ -418,42 +392,36 @@ h2 .h-ic .material-symbols-rounded { font-size: 19px; }
 </head>
 <body>
 <div class="phone-frame">
-  <div class="tk-band">
   <div class="tk-top">
     <button class="tk-round" aria-label="Back" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">arrow_back_ios_new</span></button>
-    <div class="tk-title"><b>Track Order</b><small><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></small></div>
     <div class="tk-actions">
       <button class="tk-round" aria-label="Menu" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'"><span class="material-symbols-rounded">restaurant_menu</span></button>
       <button class="tk-round" aria-label="Home" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">home</span></button>
     </div>
   </div>
-  <?php if (!empty($restaurant_logo)): ?>
-  <div class="tk-brand<?php echo ($logo_shape ?? 'circle') === 'circle' ? '' : ' sq'; ?>">
-    <img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt="">
-    <div><b><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></b><span><?php echo $order ? 'Thanks for ordering with us' : 'Live order tracking'; ?></span></div>
-  </div>
-  <?php endif; ?>
-  </div>
 
-  <div class="content">
   <?php if (!$order): ?>
-    <div class="card tk-search">
-      <div class="tk-search-ic"><span class="material-symbols-rounded">local_shipping</span></div>
-      <h1>Track Your Order</h1>
-      <p class="subtitle">Enter your order number and phone to see live status</p>
-      <form method="POST">
-        <div class="form-group">
-          <label for="tkOrderNo">Order Number</label>
-          <div class="tk-field"><span class="material-symbols-rounded">receipt_long</span><input type="text" id="tkOrderNo" name="order_number" placeholder="e.g. ORD-20261012-1234" value="<?php echo htmlspecialchars($orderNumber, ENT_QUOTES, 'UTF-8'); ?>" required></div>
-        </div>
-        <div class="form-group">
-          <label for="tkPhone">Phone Number</label>
-          <div class="tk-field"><span class="material-symbols-rounded">call</span><input type="tel" id="tkPhone" name="customer_phone" placeholder="Phone used at checkout" value="<?php echo htmlspecialchars($customerPhone, ENT_QUOTES, 'UTF-8'); ?>" required></div>
-        </div>
-        <button type="submit" class="tk-cta"><span class="material-symbols-rounded">near_me</span>Track Order</button>
-      </form>
-      <div class="tk-hint"><span class="material-symbols-rounded">info</span><span>Your order number is on the confirmation screen and in the message we sent after you ordered.</span></div>
-      <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+    <div class="tk-find">
+      <?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php else: ?><div class="tk-find-ic"><span class="material-symbols-rounded">local_shipping</span></div><?php endif; ?>
+      <h1>Track your order</h1>
+      <p>Live status from <?php echo htmlspecialchars($restaurant_name ?? 'the restaurant', ENT_QUOTES, 'UTF-8'); ?></p>
+    </div>
+    <div class="content">
+      <div class="card tk-search">
+        <form method="POST">
+          <div class="form-group">
+            <label for="tkOrderNo">Order number</label>
+            <div class="tk-field"><span class="material-symbols-rounded">receipt_long</span><input type="text" id="tkOrderNo" name="order_number" placeholder="e.g. ORD-20261012-1234" value="<?php echo htmlspecialchars($orderNumber, ENT_QUOTES, 'UTF-8'); ?>" required></div>
+          </div>
+          <div class="form-group">
+            <label for="tkPhone">Phone number</label>
+            <div class="tk-field"><span class="material-symbols-rounded">call</span><input type="tel" id="tkPhone" name="customer_phone" placeholder="Phone used at checkout" value="<?php echo htmlspecialchars($customerPhone, ENT_QUOTES, 'UTF-8'); ?>" required></div>
+          </div>
+          <button type="submit" class="tk-cta">Track order</button>
+        </form>
+        <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+        <div class="tk-hint"><span class="material-symbols-rounded">info</span><span>Your order number is on the confirmation screen and in the message we sent after you ordered.</span></div>
+      </div>
     </div>
   <?php else:
     $tkType = $order['order_type'];
@@ -479,50 +447,53 @@ h2 .h-ic .material-symbols-rounded { font-size: 19px; }
     $tkIcon = function ($k) use ($tkIconPaths) {
         return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($tkIconPaths[$k] ?? $tkIconPaths['check']) . '</svg>';
     };
-  ?><?php
-    // Steps shown in the pill (labels + icons) for this kind of order
+    // Timeline steps (labels + icons) for this kind of order
     if ($tkType === 'Delivery') {
-        $tkSteps = [['Placed', 'receipt_long'], ['Preparing', 'skillet'], ['On the way', 'two_wheeler'], ['Delivered', 'where_to_vote']];
+        $tkSteps = [['Order placed', 'receipt_long'], ['Preparing', 'skillet'], ['On the way', 'two_wheeler'], ['Delivered', 'where_to_vote']];
     } elseif ($tkType === 'Takeaway') {
-        $tkSteps = [['Placed', 'receipt_long'], ['Preparing', 'skillet'], ['Pickup', 'shopping_bag'], ['Collected', 'front_hand']];
+        $tkSteps = [['Order placed', 'receipt_long'], ['Preparing', 'skillet'], ['Ready for pickup', 'shopping_bag'], ['Collected', 'front_hand']];
     } else {
-        $tkSteps = [['Placed', 'receipt_long'], ['Preparing', 'skillet'], ['Ready', 'room_service'], ['Served', 'restaurant']];
+        $tkSteps = [['Order placed', 'receipt_long'], ['Preparing', 'skillet'], ['Ready', 'room_service'], ['Served', 'restaurant']];
     }
+    $itemCount = 0;
+    foreach ($items as $it) $itemCount += (int)$it['quantity'];
   ?>
-    <div class="card" id="tkMain">
-      <div class="tk-head">
-        <h1><span id="tkHeadline">Order placed!</span><span class="sub">Order #<?php echo htmlspecialchars($order['order_number']); ?> · <?php echo htmlspecialchars($tkType); ?></span></h1>
+    <div class="tk-hero" id="tkHero">
+      <div class="tk-scene sc-placed" id="tkScene" aria-hidden="true">
+        <div class="fx" id="tkSceneFx"></div>
+        <div class="hero" id="tkStatusIcon"><?php echo $tkIcon('receipt_long'); ?></div>
+      </div>
+      <?php if ($tkType === 'Delivery'): ?><div id="trackMap"></div><?php endif; ?>
+    </div>
+
+    <div class="tk-sheet" id="tkMain">
+      <div class="tk-rest">
+        <?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php endif; ?>
+        <div class="nm"><b><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></b><small>#<?php echo htmlspecialchars($order['order_number']); ?> · <?php echo htmlspecialchars($tkType); ?></small></div>
         <div class="status-badge status-<?php echo strtolower($order['order_status']); ?>" id="orderStatusBadge"><span id="orderStatusText"><?php echo htmlspecialchars($statusLabels[$order['order_status']] ?? $order['order_status']); ?></span></div>
       </div>
 
-      <div class="tk-clock"><span class="material-symbols-rounded">schedule</span><span>Placed at <?php echo htmlspecialchars(date('g:i A', strtotime($order['created_at']))); ?></span><span id="tkAgo"></span></div>
+      <div class="tk-status-text">
+        <b id="tkStatusTitle">We've got your order</b>
+        <p id="tkStatusText">The restaurant will confirm it shortly.</p>
+        <span class="tk-eta" id="tkEta" style="display:<?php echo !empty($etaText) ? 'inline-flex' : 'none'; ?>"><?php echo $tkIcon('schedule'); ?><span id="tkEtaText"><?php echo htmlspecialchars($etaText ?? '', ENT_QUOTES, 'UTF-8'); ?></span></span>
+      </div>
 
       <div id="tkProgress">
-        <div class="tk-bubble" id="tkBubble">
-          <b id="tkBubbleTitle">Order placed!</b>
-          <div class="tk-bubble-row">
-            <span class="tk-chip"><i id="tkChipIcon"><?php echo $tkIcon('receipt_long'); ?></i><span id="tkChipText">Waiting for the restaurant</span></span>
-            <span class="tk-next" id="tkNext"><i>&rsaquo;</i><span id="tkNextText">Preparing</span></span>
+        <div class="tk-bar tk-bubble" id="tkBubble">
+          <div class="rail"><div class="fill" id="tkFill"></div></div>
+          <div class="tk-bar-row">
+            <span class="tk-tip" id="tkTip"><?php echo $tkIcon('sparkle'); ?><span id="tkTipText">Sending your order to the kitchen</span></span>
+            <span class="tk-next" id="tkNext">Next: <b id="tkNextText">Preparing</b></span>
           </div>
         </div>
       </div>
 
-      <div class="tk-journey" id="tkJourney">
-        <div class="tk-scene sc-placed" id="tkScene" aria-hidden="true">
-          <div class="fx" id="tkSceneFx"></div>
-          <div class="hero" id="tkStatusIcon"><?php echo $tkIcon('receipt_long'); ?></div>
-        </div>
-        <div class="tk-status-text">
-          <b id="tkStatusTitle">We've got your order</b>
-          <p id="tkStatusText">The restaurant will confirm it shortly.</p>
-          <span class="tk-eta" id="tkEta" style="display:<?php echo !empty($etaText) ? 'inline-flex' : 'none'; ?>;align-items:center;gap:6px;margin:6px 0 2px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.12);color:#bbf7d0;font-weight:700;font-size:.9rem"><?php echo str_replace('<svg ', '<svg width="18" height="18" ', $tkIcon('schedule')); ?><span id="tkEtaText"><?php echo htmlspecialchars($etaText ?? '', ENT_QUOTES, 'UTF-8'); ?></span></span>
-          <span class="tk-tip" id="tkTip"><?php echo $tkIcon('sparkle'); ?><span id="tkTipText">Sending your order to the kitchen</span></span>
-        </div>
-        <div class="tk-steps" role="progressbar" aria-valuemin="1" aria-valuemax="4" id="tkTrack">
-          <div class="rail"><div class="fill" id="tkFill"></div></div>
-          <?php foreach ($tkSteps as $i => $st): ?><div class="tk-step" data-icon="<?php echo $st[1]; ?>"><i><?php echo $tkIcon($st[1]); ?></i><span><?php echo htmlspecialchars($st[0]); ?></span></div><?php endforeach; ?>
-        </div>
+      <div class="tk-steps" role="progressbar" aria-valuemin="1" aria-valuemax="4" id="tkTrack">
+        <?php foreach ($tkSteps as $st): ?><div class="tk-step" data-icon="<?php echo $st[1]; ?>"><i><?php echo $tkIcon($st[1]); ?></i><span><?php echo htmlspecialchars($st[0]); ?></span></div><?php endforeach; ?>
       </div>
+
+      <div class="tk-clock"><span class="material-symbols-rounded">schedule</span><span>Placed at <?php echo htmlspecialchars(date('g:i A', strtotime($order['created_at']))); ?></span><span id="tkAgo"></span></div>
 
       <?php if ($tkType === 'Delivery'): ?>
       <div class="tk-rider<?php echo ($tracking && !empty($tracking['rider_name'])) ? ' on' : ''; ?>" id="tkRider">
@@ -530,10 +501,6 @@ h2 .h-ic .material-symbols-rounded { font-size: 19px; }
         <div class="who"><b id="tkRiderName"><?php echo htmlspecialchars((string)($tracking['rider_name'] ?? '')); ?></b><span>Your delivery partner</span></div>
         <a class="tk-call" id="tkRiderCall" href="<?php echo !empty($tracking['rider_phone']) ? 'tel:' . htmlspecialchars(preg_replace('/[^\d+]/', '', $tracking['rider_phone'])) : '#'; ?>" style="<?php echo !empty($tracking['rider_phone']) ? '' : 'display:none;'; ?>" aria-label="Call rider"><span class="material-symbols-rounded">call</span></a>
       </div>
-      <?php endif; ?>
-
-      <?php if ($tkType === 'Delivery'): ?>
-      <div id="trackMap"></div>
       <p id="riderLocationNote">Rider's live location</p>
       <?php endif; ?>
 
@@ -541,30 +508,35 @@ h2 .h-ic .material-symbols-rounded { font-size: 19px; }
         <span class="material-symbols-rounded">redeem</span>
         You earned <span id="loyaltyEarnedPoints"><?php echo (int)($order['loyalty_points_earned'] ?? 0); ?></span> loyalty points on this order!
       </div>
+
+      <?php if (!empty($restaurant_phone)): ?>
+      <div class="tk-help">
+        <a href="tel:<?php echo htmlspecialchars(preg_replace('/[^\d+]/', '', $restaurant_phone)); ?>"><span class="material-symbols-rounded">call</span>Call restaurant</a>
+        <a href="<?php echo restaurantPageUrl('menu'); ?>"><span class="material-symbols-rounded">restaurant_menu</span>Order more</a>
+      </div>
+      <?php endif; ?>
+
+      <p id="liveNote" class="live-note on"><span class="live-dot"></span><span class="live-text">Live · updates automatically</span></p>
     </div>
 
+    <div class="content">
     <div id="tkScratch" data-order="<?php echo htmlspecialchars($order['order_number'], ENT_QUOTES, 'UTF-8'); ?>" data-phone="<?php echo htmlspecialchars($customerPhone, ENT_QUOTES, 'UTF-8'); ?>" data-rid="<?php echo htmlspecialchars($order['restaurant_id'], ENT_QUOTES, 'UTF-8'); ?>" data-cur="<?php echo htmlspecialchars($currency, ENT_QUOTES, 'UTF-8'); ?>"></div>
     <script src="rg-scratch.js?v=<?php echo @filemtime(__DIR__ . '/rg-scratch.js'); ?>" defer></script>
 
-    <?php if (!empty($restaurant_phone)): ?>
-    <div class="tk-help">
-      <a href="tel:<?php echo htmlspecialchars(preg_replace('/[^\d+]/', '', $restaurant_phone)); ?>"><span class="material-symbols-rounded">call</span>Call restaurant</a>
-    </div>
-    <?php endif; ?>
-
-    <p id="liveNote" class="live-note on"><span class="live-dot"></span><span class="live-text">Live · updates automatically</span></p>
-
     <?php if ($tkType === 'Delivery'): ?>
-    <div class="card">
-      <h2><span class="h-ic"><span class="material-symbols-rounded">location_on</span></span>Delivery Details</h2>
-      <div class="info-row"><span class="label">Address</span><span class="value" style="max-width:220px;"><?php echo htmlspecialchars($order['customer_address'] ?? 'N/A'); ?></span></div>
-      <div class="info-row" id="deliveryChargeRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>"><span class="label">Delivery Charge</span><span class="value" id="deliveryChargeValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
-      <div class="info-row" id="riderRow" style="<?php echo ($tracking && $tracking['rider_name']) ? '' : 'display:none;'; ?>"><span class="label">Rider</span><span class="value" id="riderName"><?php echo $tracking ? htmlspecialchars($tracking['rider_name'] ?? '') : ''; ?></span></div>
-    </div>
+    <details class="card tk-fold">
+      <summary><span class="f-ic"><span class="material-symbols-rounded">location_on</span></span><span class="f-t"><b>Delivery details</b><small><?php echo htmlspecialchars($order['customer_address'] ?? 'N/A'); ?></small></span><span class="material-symbols-rounded chev">expand_more</span></summary>
+      <div class="f-body">
+        <div class="info-row"><span class="label">Address</span><span class="value" style="max-width:220px;"><?php echo htmlspecialchars($order['customer_address'] ?? 'N/A'); ?></span></div>
+        <div class="info-row" id="deliveryChargeRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>"><span class="label">Delivery charge</span><span class="value" id="deliveryChargeValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
+        <div class="info-row" id="riderRow" style="<?php echo ($tracking && $tracking['rider_name']) ? '' : 'display:none;'; ?>"><span class="label">Rider</span><span class="value" id="riderName"><?php echo $tracking ? htmlspecialchars($tracking['rider_name'] ?? '') : ''; ?></span></div>
+      </div>
+    </details>
     <?php endif; ?>
 
-    <div class="card">
-      <h2><span class="h-ic"><span class="material-symbols-rounded">receipt_long</span></span>Order Summary</h2>
+    <details class="card tk-fold" open>
+      <summary><span class="f-ic"><span class="material-symbols-rounded">receipt_long</span></span><span class="f-t"><b>Order summary</b><small><?php echo $itemCount; ?> item<?php echo $itemCount === 1 ? '' : 's'; ?> · <?php echo $currency . number_format((float)$order['total'], 2); ?></small></span><span class="material-symbols-rounded chev">expand_more</span></summary>
+      <div class="f-body">
       <?php foreach ($items as $item):
         $img = (string)($item['item_image'] ?? '');
         $imgUrl = $img === '' ? '' : (preg_match('#^(https?:|data:)#', $img) ? $img : 'image.php?id=' . rawurlencode(preg_replace('/^db:/', '', $img)));
@@ -605,12 +577,13 @@ h2 .h-ic .material-symbols-rounded { font-size: 19px; }
         <?php endif; ?>
         <div class="info-row tk-grand"><span class="label">Total<small>(incl. fees and tax)</small></span><span class="value" id="summaryTotalValue"><?php echo $currency . number_format((float)$order['total'], 2); ?></span></div>
       </div>
-    </div>
+      </div>
+    </details>
 
-    <a class="tk-cta" href="<?php echo restaurantPageUrl('menu'); ?>"><span class="material-symbols-rounded">restaurant_menu</span>Back to Menu</a>
+    <a class="tk-cta ghost" href="<?php echo restaurantPageUrl('menu'); ?>"><span class="material-symbols-rounded">restaurant_menu</span>Back to menu</a>
     <a href="track.php" class="tk-another"><span class="material-symbols-rounded" style="font-size:17px;">search</span>Track another order</a>
+    </div>
   <?php endif; ?>
-  </div>
 </div>
 
 <?php if ($order): ?>
@@ -804,6 +777,8 @@ h2 .h-ic .material-symbols-rounded { font-size: 19px; }
             var mapEl = document.getElementById('trackMap');
             var noteEl = document.getElementById('riderLocationNote');
             if (mapEl) mapEl.style.display = 'block';
+            var heroEl = document.getElementById('tkHero');
+            if (heroEl) heroEl.classList.add('has-map');
             if (noteEl) noteEl.style.display = 'block';
             if (!map) {
                 map = L.map('trackMap').setView([lat, lng], 15);
