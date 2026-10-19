@@ -20,7 +20,7 @@
  *                        sg_hsr          / Branch@123
  *   Staff (per branch) : <role>.<code>@spicegarden.test / Staff@123
  *                        role = manager | waiter | chef, code = kor | hsr
- *                        Indiranagar staff: <role>.demo@spicegarden.test / demo
+ *                        Indiranagar staff: <name>@spicegardenindiranagar.com (DEMO_STAFF) / demo
  */
 
 if (PHP_SAPI !== 'cli') {

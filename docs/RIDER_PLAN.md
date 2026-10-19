@@ -3,8 +3,8 @@
 **Status: built (17 October 2026).** On/off per restaurant: Settings › Delivery › "We deliver with our own riders" (`rider_settings.own_riders`, off by default; the demo has it on). Server: `main/config/rider_engine.php`, `main/api/rider_app.php`, `main/api/delivery_dispatch.php`.
 Web: `main/assets/js/riders-board.js` (Delivery › Riders + Assign in order details), `main/views/rider_dashboard.php`.
 Apps: Staff app `screens/RiderHomeScreen.js` (rider layout, location with expo-location), `RidersScreen.js` and
-`components/RiderAssign.js` in both the Partner app and the Staff app. Demo riders: `rider.demo@spicegarden.test`,
-`rider2.demo@spicegarden.test` (password `demo`). The phone apps need a new APK for the rider screens (location module).
+`components/RiderAssign.js` in both the Partner app and the Staff app. Demo riders: `arjun@spicegardenindiranagar.com`,
+`faisal@spicegardenindiranagar.com` (password `demo`). The phone apps need a new APK for the rider screens (location module).
 
 The restaurant's own delivery riders become staff with their own login, on the web and in the Staff app.
 The owner or a manager assigns each delivery order to a rider; the rider sees only their own deliveries,
@@ -45,7 +45,7 @@ the shift.
 - Partner app and the Staff app (manager): assign a rider on a delivery order; Riders board in More.
 
 **Docs, demo**
-- Demo restaurant gets a rider (`rider.demo@spicegarden.test` / `demo`); `/demo` links to the rider app.
+- Demo restaurant gets a rider (`arjun@spicegardenindiranagar.com` / `demo`); `/demo` links to the rider app.
 - Feature list, handbook, README.
 
 ## Later (not in this build)

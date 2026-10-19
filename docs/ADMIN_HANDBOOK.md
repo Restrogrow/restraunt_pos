@@ -50,10 +50,10 @@ Last updated: 16 October 2026.
 | Who | Username / email | Opens |
 |---|---|---|
 | Owner | `demo` | Full admin dashboard |
-| Manager | `manager.demo@spicegarden.test` | Manager dashboard |
-| Waiters | `waiter.demo@spicegarden.test`, `waiter2.demo@spicegarden.test` | Waiter dashboard (calls, active orders, POS) |
-| Kitchen | `chef.demo@spicegarden.test`, `chef2.demo@spicegarden.test` | Chef dashboard (KOT screen) |
-| Coupons to try on the website | `WELCOME50`, `SPICE20`, `FEAST100`, `WEEKEND15` | |
+| Manager | `neha@spicegardenindiranagar.com` | Manager dashboard |
+| Waiters | `ravi@spicegardenindiranagar.com`, `imran@spicegardenindiranagar.com` | Waiter dashboard (calls, active orders, POS) |
+| Kitchen | `suresh@spicegardenindiranagar.com`, `lakshmi@spicegardenindiranagar.com` | Chef dashboard (KOT screen) |
+| Coupons to try on the website | `WELCOME50`, `SPICE20`, `WEEKEND15` (TREAT40, SAVE75, FEAST150 apply by themselves in the cart) | |
 
 ### Showing the demo
 - **`/demo`** is a private page with every app and direct links to its main screens: owner dashboard (37 pages), staff screens, customer website (12 pages), Partner app (13 screens), Staff app (manager / waiter / chef screens), customer app. Nobody needs to type anything. Signed in to Super Admin, it also shows a **Team only** part: the Super Admin app, the panel, the Email book. Super Admin › Tools › **All demos** opens it.
@@ -116,9 +116,9 @@ Re-create everything with `php main/database/seed_multibranch_demo.php` (this al
 | demo@restrogrow.invalid | Email of the demo restaurant (a deliberately undeliverable address) |
 | Phone on the website | +91 63775 68749 |
 
-**Staff roles:** Admin (full dashboard), Manager (everything except staff and settings), Waiter (floor: tables, POS, table orders; no online delivery / takeaway orders), Chef (kitchen), **Cashier** (billing counter: orders incl. online, POS, payments, customers, tables, riders and cash; no reports, menu, staff or settings), **Delivery rider** (own deliveries only). Permissions: `main/config/authorization_config.php`; Cashier and Delivery are added to `staff.role` on first use (`main/config/staff_roles.php`). Demo: `cashier.demo@spicegarden.test` / `demo`.
+**Staff roles:** Admin (full dashboard), Manager (everything except staff and settings), Waiter (floor: tables, POS, table orders; no online delivery / takeaway orders), Chef (kitchen), **Cashier** (billing counter: orders incl. online, POS, payments, customers, tables, riders and cash; no reports, menu, staff or settings), **Delivery rider** (own deliveries only). Permissions: `main/config/authorization_config.php`; Cashier and Delivery are added to `staff.role` on first use (`main/config/staff_roles.php`). Demo: `kavita@spicegardenindiranagar.com` / `demo`.
 
-**Delivery riders** (plan and status: `docs/RIDER_PLAN.md`): switched on per restaurant in **Settings › Delivery › "We deliver with our own riders"** (off by default; while off, Delivery › Riders, the Delivery rider staff role, Assign rider and the apps' Riders tile are hidden and the server refuses rider actions; the QR link for outside riders always works). Staff with the role "Delivery rider" log in to the Staff app or the website and see only their deliveries (Picked up → On the way → Delivered, cash on delivery, live location for the customer). The owner or a manager assigns deliveries in Order details or Delivery › Riders (also More › Riders in both apps), and settles the riders' cash there. "Riders can pick open deliveries themselves" is a switch on that page. The old QR link stays for outside riders. Demo riders: `rider.demo@spicegarden.test` / `demo`.
+**Delivery riders** (plan and status: `docs/RIDER_PLAN.md`): switched on per restaurant in **Settings › Delivery › "We deliver with our own riders"** (off by default; while off, Delivery › Riders, the Delivery rider staff role, Assign rider and the apps' Riders tile are hidden and the server refuses rider actions; the QR link for outside riders always works). Staff with the role "Delivery rider" log in to the Staff app or the website and see only their deliveries (Picked up → On the way → Delivered, cash on delivery, live location for the customer). The owner or a manager assigns deliveries in Order details or Delivery › Riders (also More › Riders in both apps), and settles the riders' cash there. "Riders can pick open deliveries themselves" is a switch on that page. The old QR link stays for outside riders. Demo riders: `arjun@spicegardenindiranagar.com` / `demo`.
 
 **Blog: Super Admin › Tools › Blog** (`main/superadmin/blog.php`, API `blog_api.php`, engine `main/config/blog_engine.php`, public pages `blog/*.php`). Write posts (editor with images, cover, categories, tags), schedule or publish, and get a live SEO score with a Google preview; "Fill with AI" and "Write a draft with AI" use Gemini. The **Keywords** tab is the keyword plan: add searches to rank for (or AI ideas), see which posts cover them and which have no post yet, and start a post from a keyword. Public: `restrogrow.com/blog`, `/blog/<post>`, `/blog/category/<name>`, `/blog/feed.xml`, `/sitemap-blog.xml` (listed in robots.txt). Uploaded images go to `main/uploads/blog/` on the server (not in git). Always read AI drafts and add real experience before publishing.
 

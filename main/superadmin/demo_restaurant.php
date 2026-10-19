@@ -194,10 +194,10 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   <h2>Logins (password for all: <code><?php echo $h(DEMO_PASSWORD); ?></code>)</h2>
   <table>
     <tr><td>Owner</td><td><code><?php echo $h(DEMO_USERNAME); ?></code></td></tr>
-    <tr><td>Manager</td><td><code>manager.demo@spicegarden.test</code></td></tr>
-    <tr><td>Waiters</td><td><code>waiter.demo@spicegarden.test</code>, <code>waiter2.demo@spicegarden.test</code></td></tr>
-    <tr><td>Kitchen</td><td><code>chef.demo@spicegarden.test</code>, <code>chef2.demo@spicegarden.test</code></td></tr>
-    <tr><td>Coupons to try</td><td><code>WELCOME50</code> <code>SPICE20</code> <code>FEAST100</code> <code>WEEKEND15</code></td></tr>
+    <?php foreach (DEMO_STAFF as $key => [$sname, , $role]): ?>
+    <tr><td><?php echo $h($role . ' · ' . $sname); ?></td><td><code><?php echo $h(demoStaffEmail($key)); ?></code></td></tr>
+    <?php endforeach; ?>
+    <tr><td>Coupons to try</td><td><code>WELCOME50</code> <code>SPICE20</code> <code>WEEKEND15</code> (TREAT40 / SAVE75 / FEAST150 apply by themselves in the cart)</td></tr>
   </table>
 
   <h2>Links</h2>

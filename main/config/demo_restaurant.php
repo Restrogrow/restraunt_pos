@@ -29,6 +29,18 @@ const DEMO_LEGACY_ID       = 'RESDEMO01';
 const DEMO_LEGACY_USERNAME = 'demo_spicegarden';
 // The demo's own email address domain: shown on the site like a real one, but mail_engine never sends to it
 const DEMO_EMAIL_DOMAIN    = 'spicegardenindiranagar.com';
+// Staff: key (used by /demo and the Staff app demo, ?as=) => [name, email name, role]. Log in with password DEMO_STAFF_PASSWORD.
+const DEMO_STAFF = [
+    'manager' => ['Neha Kapoor', 'neha', 'Manager'], 'waiter' => ['Ravi Kumar', 'ravi', 'Waiter'], 'waiter2' => ['Imran Khan', 'imran', 'Waiter'],
+    'chef' => ['Suresh Gowda', 'suresh', 'Chef'], 'chef2' => ['Lakshmi Iyer', 'lakshmi', 'Chef'],
+    'rider' => ['Arjun Singh', 'arjun', 'Delivery'], 'rider2' => ['Faisal Ahmed', 'faisal', 'Delivery'], 'cashier' => ['Kavita Rao', 'kavita', 'Cashier'],
+];
+const DEMO_CUSTOMER_NAMES = ['Aarav Sharma', 'Diya Patel', 'Rohan Iyer', 'Ananya Reddy', 'Kabir Mehta', 'Isha Nair', 'Vivaan Gupta', 'Meera Joshi',
+    'Arjun Rao', 'Saanvi Kulkarni', 'Aditya Menon', 'Priya Das', 'Karthik Subramanian', 'Nisha Hegde', 'Rahul Verma',
+    'Sneha Pillai', 'Vikram Shetty', 'Pooja Bhat', 'Siddharth Jain', 'Kavya Murthy', 'Manish Agarwal', 'Ritika Sen',
+    'Harsh Vardhan', 'Divya Krishnan', 'Nikhil Desai', 'Tanvi Saxena', 'Amit Chauhan', 'Shreya Ghosh', 'Varun Prasad',
+    'Lavanya Rao', 'Farhan Ali', 'Neha Bansal', 'Gautam Naidu', 'Swati Mishra', 'Rajesh Gowda', 'Anjali Thomas',
+    'Deepak Yadav', 'Zoya Shaikh', 'Sameer Kulkarni', 'Bhavana Reddy'];
 
 /** True when the logged-in session belongs to the public demo restaurant. */
 function isDemoRestaurantSession(): bool {
@@ -40,6 +52,29 @@ function demoPhone(string $name): string {
     $starts = ['98', '99', '97', '96', '95', '94', '93', '91', '89', '88', '87', '86', '85', '81', '80', '79', '78', '77', '76', '74', '73', '70', '63', '62'];
     $h = crc32($name);
     return $starts[$h % count($starts)] . str_pad((string)(intdiv($h, 7) % 100000000), 8, '0', STR_PAD_LEFT);
+}
+
+/** Login email of a demo staff member (DEMO_STAFF key). */
+function demoStaffEmail(string $key): string {
+    return DEMO_STAFF[$key][1] . '@' . DEMO_EMAIL_DOMAIN;
+}
+
+/** A normal-looking personal email for a made-up customer, or null (some customers never gave one). */
+function demoCustomerEmail(string $name): ?string {
+    $h = crc32('mail ' . $name);
+    if ($h % 4 === 0) return null;
+    [$first, $last] = array_pad(explode(' ', strtolower($name), 2), 2, '');
+    $local = [$first . '.' . $last, $first . $last . ($h % 90 + 10), $first . '_' . substr($last, 0, 1) . ($h % 900 + 100)][$h % 3];
+    return $local . '@' . ['gmail.com', 'gmail.com', 'gmail.com', 'yahoo.co.in', 'outlook.com'][intdiv($h, 3) % 5];
+}
+
+/** True for any address the demo restaurant made up (owner, staff, customers): mail_engine never sends to these. */
+function demoOwnsEmail(string $email): bool {
+    $email = strtolower(trim($email));
+    if (substr((string)strrchr($email, '@'), 1) === DEMO_EMAIL_DOMAIN) return true;
+    static $customers = null;
+    if ($customers === null) $customers = array_filter(array_map('demoCustomerEmail', DEMO_CUSTOMER_NAMES));
+    return in_array($email, $customers, true);
 }
 
 /** Website slug of the demo restaurant (same rule as main/website/router.php). */
@@ -474,12 +509,10 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
             }
         }
 
-        // ── Staff (log in with email + password "demo") ──
+        // ── Staff (log in with email + password DEMO_STAFF_PASSWORD) ──
         $staffHash = password_hash(DEMO_STAFF_PASSWORD, PASSWORD_DEFAULT);
-        foreach ([['Neha Kapoor', 'manager', 'Manager'], ['Ravi Kumar', 'waiter', 'Waiter'], ['Imran Khan', 'waiter2', 'Waiter'],
-                  ['Suresh Gowda', 'chef', 'Chef'], ['Lakshmi Iyer', 'chef2', 'Chef'],
-                  ['Arjun Singh', 'rider', 'Delivery'], ['Faisal Ahmed', 'rider2', 'Delivery'], ['Kavita Rao', 'cashier', 'Cashier']] as $i => [$sname, $key, $role]) {
-            demoInsert($pdo, 'staff', ['restaurant_id' => $rid, 'member_name' => $sname, 'email' => "$key.demo@spicegarden.test",
+        foreach (DEMO_STAFF as $key => [$sname, , $role]) {
+            demoInsert($pdo, 'staff', ['restaurant_id' => $rid, 'member_name' => $sname, 'email' => demoStaffEmail($key),
                                        'phone' => demoPhone($sname),
                                        'password' => $staffHash, 'role' => $role, 'is_active' => 1]);
         }
@@ -490,19 +523,14 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         }
 
         // ── Customers ──
-        $names = ['Aarav Sharma', 'Diya Patel', 'Rohan Iyer', 'Ananya Reddy', 'Kabir Mehta', 'Isha Nair', 'Vivaan Gupta', 'Meera Joshi',
-                  'Arjun Rao', 'Saanvi Kulkarni', 'Aditya Menon', 'Priya Das', 'Karthik Subramanian', 'Nisha Hegde', 'Rahul Verma',
-                  'Sneha Pillai', 'Vikram Shetty', 'Pooja Bhat', 'Siddharth Jain', 'Kavya Murthy', 'Manish Agarwal', 'Ritika Sen',
-                  'Harsh Vardhan', 'Divya Krishnan', 'Nikhil Desai', 'Tanvi Saxena', 'Amit Chauhan', 'Shreya Ghosh', 'Varun Prasad',
-                  'Lavanya Rao', 'Farhan Ali', 'Neha Bansal', 'Gautam Naidu', 'Swati Mishra', 'Rajesh Gowda', 'Anjali Thomas',
-                  'Deepak Yadav', 'Zoya Shaikh', 'Sameer Kulkarni', 'Bhavana Reddy'];
+        $names = DEMO_CUSTOMER_NAMES;
         $customers = [];
         foreach ($names as $ci => $cname) {
             $phone = demoPhone($cname);
             $bday = date('Y-m-d', strtotime(sprintf('%d-%02d-%02d', mt_rand(1975, 2002), mt_rand(1, 12), mt_rand(1, 28))));
             $id = demoInsert($pdo, 'customers', [
                 'restaurant_id' => $rid, 'customer_name' => $cname, 'phone' => $phone,
-                'email' => null,   // no email: nothing can ever be mailed to a made-up customer
+                'email' => demoCustomerEmail($cname),   // mail_engine never sends to these (demoOwnsEmail)
                 'total_visits' => 0, 'total_spent' => 0, 'birthday' => $ci % 3 === 0 ? $bday : null, 'whatsapp_optin' => 0,
                 'created_at' => date('Y-m-d H:i:s', strtotime('-' . mt_rand(45, 400) . ' days')),
             ]);
@@ -659,9 +687,9 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         // Purchases and wastage become expenses (as Menu › Inventory does), so with rent, salaries
         // and gas below, Reports show sales minus real costs as the net profit.
         $supIds = [];
-        foreach ([['veg', 'Fresh Farms Vegetables', 'Ramesh', '9845000101'], ['dairy', 'Nandini Dairy Distributors', 'Manjunath', '9845000102'],
-                  ['meat', 'Royal Meat & Poultry', 'Salim', '9845000103'], ['dry', 'Metro Wholesale', 'Accounts desk', '9845000104']] as [$key, $sname, $person, $sphone]) {
-            $supIds[$key] = demoInsert($pdo, 'inventory_suppliers', ['restaurant_id' => $rid, 'name' => $sname, 'contact_person' => $person, 'phone' => $sphone]);
+        foreach ([['veg', 'Fresh Farms Vegetables', 'Ramesh'], ['dairy', 'Nandini Dairy Distributors', 'Manjunath'],
+                  ['meat', 'Royal Meat & Poultry', 'Salim'], ['dry', 'Metro Wholesale', 'Prakash']] as [$key, $sname, $person]) {
+            $supIds[$key] = demoInsert($pdo, 'inventory_suppliers', ['restaurant_id' => $rid, 'name' => $sname, 'contact_person' => $person, 'phone' => demoPhone($sname)]);
         }
         // name => [unit, category, cost per unit, in stock, low-stock level, used per day, supplier, bought every N days]
         $stock = [

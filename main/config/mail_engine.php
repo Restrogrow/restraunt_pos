@@ -211,7 +211,7 @@ if (!function_exists('mailQueue')) {
         $to = trim($to);
         if (!filter_var($to, FILTER_VALIDATE_EMAIL) || preg_match('/@(example\.(com|org)|restrogrow\.invalid|test)$/i', $to)) return null;
         // the public demo restaurant: its made-up addresses and its owner mails never go out
-        if (($o['restaurant_id'] ?? '') === DEMO_RESTAURANT_ID || strcasecmp(substr((string)strrchr($to, '@'), 1), DEMO_EMAIL_DOMAIN) === 0) return null;
+        if (($o['restaurant_id'] ?? '') === DEMO_RESTAURANT_ID || demoOwnsEmail($to)) return null;
         if (!mailTypeOn($conn, $type)) return null;
         $b = $o['brand'] ?? [];
         try {

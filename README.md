@@ -316,7 +316,7 @@ Menu › Inventory has eight tabs: **Overview, Stock, Recipes, Purchase orders, 
 |---|---|
 | One-tap page | `https://restrogrow.com/demo` (private link, share only when pitching) · local `http://localhost/menuwebsite/demo/` |
 | Owner login | `demo` / `demo` |
-| Staff logins | `manager.demo@`, `waiter.demo@`, `waiter2.demo@`, `chef.demo@`, `chef2.demo@spicegarden.test`, password `demo` |
+| Staff logins | `neha@`, `ravi@`, `imran@`, `suresh@`, `lakshmi@spicegardenindiranagar.com`, password `demo` |
 | Customer website | `/spice-garden-indiranagar` (coupons `WELCOME50`, `SPICE20`, `FEAST100`, `WEEKEND15`) |
 | Build or reset | Live: Super Admin › Tools › Demo restaurant › **Create / Reset demo**. Local: `php main/database/seed_demo_restaurant.php`. Reset before a pitch, so today's orders are fresh. |
 | Code and data | `main/config/demo_restaurant.php`; photos in `main/assets/demo_restaurant/` (credits: `demo-credits.txt`, must stay public) |

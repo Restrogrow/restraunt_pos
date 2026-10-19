@@ -9,11 +9,12 @@ import { useAuth } from '../context/AuthContext';
 import { navigationRef } from '../navigationRef';
 
 export const DEMO_STAFF = {
-  manager: 'manager.demo@spicegarden.test',
-  waiter: 'waiter.demo@spicegarden.test',
-  chef: 'chef.demo@spicegarden.test',
-  rider: 'rider.demo@spicegarden.test',
-  cashier: 'cashier.demo@spicegarden.test',
+  // same as DEMO_STAFF in main/config/demo_restaurant.php
+  manager: 'neha@spicegardenindiranagar.com',
+  waiter: 'ravi@spicegardenindiranagar.com',
+  chef: 'suresh@spicegardenindiranagar.com',
+  rider: 'arjun@spicegardenindiranagar.com',
+  cashier: 'kavita@spicegardenindiranagar.com',
 };
 export const DEMO_STAFF_PASSWORD = 'demo';
 

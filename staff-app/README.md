@@ -27,7 +27,7 @@ In dev the app calls its own address and `metro.config.js` forwards `/menuwebsit
 so XAMPP (Apache + MySQL) must be running. Release builds call https://restrogrow.com/main.
 
 Local demo logins (Spice Garden Indiranagar), password `demo`:
-`waiter.demo@spicegarden.test`, `chef.demo@spicegarden.test`, `manager.demo@spicegarden.test`.
+`ravi@spicegardenindiranagar.com`, `suresh@spicegardenindiranagar.com`, `neha@spicegardenindiranagar.com`.
 
 ## Differences from the partner app
 

@@ -4,7 +4,7 @@
  *
  *   php main/database/seed_demo_restaurant.php
  *
- * Login: demo / demo  (or open /demo for one-tap login). Staff: <role>.demo@spicegarden.test / demo.
+ * Login: demo / demo  (or open /demo for one-tap login). Staff: <name>@spicegardenindiranagar.com (DEMO_STAFF) / demo.
  * Everything is in main/config/demo_restaurant.php; on the live server use
  * Super Admin › Demo restaurant › Reset demo instead.
  */

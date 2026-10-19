@@ -21,11 +21,11 @@ session_write_close();
 
 $logins = [
     'admin'   => [DEMO_USERNAME, DEMO_PASSWORD, 'Owner dashboard'],
-    'manager' => ['manager.demo@spicegarden.test', DEMO_STAFF_PASSWORD, 'Manager'],
-    'waiter'  => ['waiter.demo@spicegarden.test', DEMO_STAFF_PASSWORD, 'Waiter'],
-    'chef'    => ['chef.demo@spicegarden.test', DEMO_STAFF_PASSWORD, 'Kitchen (chef)'],
-    'rider'   => ['rider.demo@spicegarden.test', DEMO_STAFF_PASSWORD, 'Delivery rider'],
-    'cashier' => ['cashier.demo@spicegarden.test', DEMO_STAFF_PASSWORD, 'Cashier'],
+    'manager' => [demoStaffEmail('manager'), DEMO_STAFF_PASSWORD, 'Manager'],
+    'waiter'  => [demoStaffEmail('waiter'), DEMO_STAFF_PASSWORD, 'Waiter'],
+    'chef'    => [demoStaffEmail('chef'), DEMO_STAFF_PASSWORD, 'Kitchen (chef)'],
+    'rider'   => [demoStaffEmail('rider'), DEMO_STAFF_PASSWORD, 'Delivery rider'],
+    'cashier' => [demoStaffEmail('cashier'), DEMO_STAFF_PASSWORD, 'Cashier'],
 ];
 $go = isset($_GET['go'], $logins[$_GET['go']]) ? $_GET['go'] : '';
 $goPage = preg_match('/^[a-zA-Z]{3,40}Page$/', (string)($_GET['page'] ?? '')) ? $_GET['page'] : '';
