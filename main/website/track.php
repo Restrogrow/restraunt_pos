@@ -82,25 +82,38 @@ $statusLabels = [
   --tk: <?php echo htmlspecialchars($checkout_color ?? $primary_red, ENT_QUOTES, 'UTF-8'); ?>;
   --tk-dark: <?php echo htmlspecialchars($checkout_color_dark ?? $dark_red, ENT_QUOTES, 'UTF-8'); ?>;
   --tk-soft: color-mix(in srgb, var(--tk) 12%, #fff);
-  --ink: #16181d; --muted: #8a8f98; --line: #eceef1; --page: #f2f3f5;
+  /* deep shade of the theme for the progress card (instead of plain black) */
+  --tk-deep: color-mix(in srgb, var(--tk-dark) 62%, #06080b);
+  --ink: #16181d; --muted: #8a8f98; --line: #eceef1; --page: color-mix(in srgb, var(--tk) 5%, #f3f4f6);
+  /* amounts: a font that always has the currency sign */
+  --num-font: 'Poppins', 'Inter', sans-serif;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: var(--site-font), 'Inter', sans-serif; background: #e3e6ea; color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+body { font-family: var(--site-font), 'Inter', sans-serif; background: color-mix(in srgb, var(--tk) 8%, #e3e6ea); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
 .phone-frame { max-width: 425px; margin: 0 auto; min-height: 100vh; position: relative; background: var(--page); box-shadow: 0 0 40px rgba(0,0,0,0.08); }
 @media (min-width: 768px) { .phone-frame { margin: 20px auto; min-height: calc(100vh - 40px); border-radius: 32px; overflow: hidden; } }
 
-/* Top bar: round buttons, centred title */
-.tk-top { display: flex; align-items: center; gap: 10px; padding: 16px 16px 8px; }
-.tk-round { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: #fff; color: var(--ink); cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.06); text-decoration: none; transition: transform .15s; }
+/* Top: brand band in the theme colour, round buttons, logo + title */
+.tk-band { position: relative; padding-bottom: 34px; color: #fff; overflow: hidden;
+  background: radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--primary-yellow) 30%, transparent), transparent 60%), linear-gradient(150deg, var(--tk), var(--tk-dark)); }
+.tk-band::after { content: ""; position: absolute; right: -40px; bottom: -60px; width: 180px; height: 180px; border-radius: 50%; border: 28px solid rgba(255,255,255,.06); pointer-events: none; }
+.tk-top { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 16px 16px 8px; }
+.tk-round { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; cursor: pointer; text-decoration: none; transition: transform .15s, background .15s; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.tk-round:hover { background: rgba(255,255,255,.26); }
 .tk-round:active { transform: scale(.94); }
-.tk-round .material-symbols-rounded { font-size: 22px; }
+.tk-round .material-symbols-rounded { font-size: 21px; }
 .tk-title { flex: 1; min-width: 0; text-align: center; }
 .tk-title b { display: block; font-size: 17px; font-weight: 700; }
-.tk-title small { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-title small { display: block; font-size: 11.5px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tk-actions { display: flex; gap: 8px; }
+.tk-brand { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 8px 20px 0; }
+.tk-brand img { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid rgba(255,255,255,.7); }
+.tk-brand.sq img { border-radius: 14px; }
+.tk-brand b { display: block; font-size: 19px; font-weight: 700; line-height: 1.2; }
+.tk-brand span { display: block; margin-top: 2px; font-size: 12.5px; opacity: .82; }
 
-.content { padding: 8px 14px 30px; }
-.card { background: #fff; border-radius: 26px; padding: 20px 18px; margin-bottom: 14px; box-shadow: 0 2px 14px rgba(17,24,39,.05); }
+.content { position: relative; z-index: 2; margin-top: -26px; padding: 0 14px 30px; }
+.card { background: #fff; border-radius: 26px; padding: 20px 18px; margin-bottom: 14px; box-shadow: 0 6px 22px color-mix(in srgb, var(--tk) 9%, rgba(17,24,39,.05)); }
 
 /* Headline card */
 .tk-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
@@ -119,7 +132,7 @@ body { font-family: var(--site-font), 'Inter', sans-serif; background: #e3e6ea; 
 .tk-bubble b { display: block; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
 .tk-bubble-row { display: flex; align-items: center; gap: 8px; }
 .tk-chip { display: inline-flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 6px 14px 6px 6px; border-radius: 999px; background: #f4f5f7; color: var(--muted); font-size: 13px; font-weight: 500; }
-.tk-chip i { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--ink); color: #fff; font-style: normal; }
+.tk-chip i { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--tk); color: #fff; font-style: normal; }
 .tk-chip i .material-symbols-rounded { font-size: 17px; }
 .tk-chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tk-next { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
@@ -164,13 +177,16 @@ body { font-family: var(--site-font), 'Inter', sans-serif; background: #e3e6ea; 
 .loyalty-note .material-symbols-rounded { font-size: 17px; vertical-align: -3px; }
 
 /* Cards: details and summary */
-h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+h2 { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+h2 .h-ic { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: var(--tk-soft); color: var(--tk-dark); }
+h2 .h-ic .material-symbols-rounded { font-size: 19px; }
 .info-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 14px; }
 .label { color: var(--muted); }
 .value { font-weight: 600; color: var(--ink); text-align: right; }
+.value, .tk-item-price, .tk-item-info span { font-family: var(--num-font); font-variant-numeric: tabular-nums; }
 .tk-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
 .tk-item + .tk-item { border-top: 1px dashed var(--line); }
-.tk-thumb { width: 58px; height: 58px; flex-shrink: 0; border-radius: 50%; overflow: hidden; background: #f4f5f7; display: grid; place-items: center; color: #c4c8ce; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+.tk-thumb { width: 58px; height: 58px; flex-shrink: 0; border-radius: 18px; overflow: hidden; background: #f4f5f7; display: grid; place-items: center; color: #c4c8ce; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
 .tk-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .tk-item-info { flex: 1; min-width: 0; }
 .tk-item-info b { display: block; font-size: 14.5px; font-weight: 600; line-height: 1.3; }
@@ -181,7 +197,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 .tk-grand { margin-top: 6px; padding-top: 10px; border-top: 2px solid #d7dade; font-size: 15px; }
 .tk-grand .label { color: var(--ink); font-weight: 700; }
 .tk-grand .label small { font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 4px; }
-.tk-grand .value { font-size: 16px; font-weight: 800; }
+.tk-grand .value { font-size: 17px; font-weight: 800; color: var(--tk-dark); }
 
 /* Big button */
 .tk-cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 17px; border: 0; border-radius: 999px; background: linear-gradient(135deg, var(--tk), var(--tk-dark)); color: #fff; font: 600 16px var(--site-font), 'Inter', sans-serif; cursor: pointer; box-shadow: 0 10px 24px color-mix(in srgb, var(--tk) 35%, transparent); text-decoration: none; transition: transform .15s; }
@@ -284,8 +300,8 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 
 /* ── Progress section: one dark "journey" card (scene, status, steps) ── */
 .tk-journey { position: relative; margin-top: 16px; padding: 4px 12px 18px; border-radius: 26px; color: #fff; overflow: hidden;
-  background: radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--tk) 42%, transparent), transparent 70%), linear-gradient(180deg, #1c1e25, #111217);
-  box-shadow: 0 16px 34px rgba(17,24,39,.28); }
+  background: radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--tk) 55%, transparent), transparent 70%), linear-gradient(180deg, color-mix(in srgb, var(--tk-deep) 85%, #fff 4%), var(--tk-deep));
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--tk-deep) 40%, transparent); }
 .tk-journey svg { display: block; }
 .tk-journey .tk-scene { margin: 0 -12px; height: 150px; background: transparent; border-radius: 0; }
 .tk-journey .tk-scene .hero { width: 84px; height: 84px; margin: -48px 0 0 -42px; border-radius: 50%; background: #fff; color: var(--tk);
@@ -304,7 +320,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 .tk-journey .fx i.spark { background: #fde047; }
 .tk-journey .tk-status-text { margin-top: 2px; }
 .tk-journey .tk-status-text b { color: #fff; font-size: 18px; }
-.tk-journey .tk-status-text p { color: #a3a8b3; }
+.tk-journey .tk-status-text p { color: rgba(255,255,255,.68); }
 .tk-journey .tk-tip { background: rgba(255,255,255,.08); color: #f3f4f6; }
 .tk-journey .tk-tip svg { width: 15px; height: 15px; color: #fde047; }
 
@@ -315,7 +331,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 .tk-steps .fill::after { content: ""; position: absolute; right: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--tk) 45%, transparent), 0 0 14px #fff; animation: tkGlow 1.4s ease-in-out infinite; }
 .tk-steps.final .fill::after, .tk-steps.start .fill::after { display: none; }
 .tk-step { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0; }
-.tk-step i { position: relative; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; background: #272a33; color: #7d828d; font-style: normal; transition: background .4s, color .4s, transform .4s; }
+.tk-step i { position: relative; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.1); color: rgba(255,255,255,.5); font-style: normal; transition: background .4s, color .4s, transform .4s; }
 .tk-step i svg { width: 21px; height: 21px; }
 .tk-step.done i { background: var(--tk); color: #fff; }
 .tk-step.on i { background: #fff; color: var(--tk); transform: scale(1.12); }
@@ -323,7 +339,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); animation: tkSpin 1.3s linear infinite; }
 .tk-step.on.final i { background: #16a34a; color: #fff; }
 .tk-step.on.final i::before { display: none; }
-.tk-step span { font-size: 12px; font-weight: 600; color: #7d828d; text-align: center; line-height: 1.2; }
+.tk-step span { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.5); text-align: center; line-height: 1.2; }
 .tk-step.done span, .tk-step.on span { color: #fff; }
 .tk-step.on span { font-weight: 800; }
 @keyframes tkGlow { 50% { transform: scale(1.3); } }
@@ -338,8 +354,13 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 .tk-search .subtitle { font-size: 13px; color: var(--muted); text-align: center; margin: 4px 0 18px; }
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-.form-group input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 16px; background: #f8f9fa; font-size: 15px; font-family: inherit; outline: none; transition: border-color .2s, background .2s; }
-.form-group input:focus { border-color: var(--tk); background: #fff; }
+.tk-field { position: relative; }
+.tk-field .material-symbols-rounded { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--muted); pointer-events: none; transition: color .2s; }
+.form-group input { width: 100%; padding: 14px 16px 14px 44px; border: 1.5px solid var(--line); border-radius: 16px; background: #f8f9fa; font-size: 15px; font-family: var(--num-font); outline: none; transition: border-color .2s, background .2s, box-shadow .2s; }
+.form-group input:focus { border-color: var(--tk); background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--tk) 14%, transparent); }
+.tk-field:focus-within .material-symbols-rounded { color: var(--tk); }
+.tk-hint { display: flex; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: 16px; background: var(--tk-soft); color: var(--tk-dark); font-size: 12.5px; line-height: 1.45; }
+.tk-hint .material-symbols-rounded { font-size: 19px; flex-shrink: 0; }
 .error-box { margin-top: 14px; padding: 14px; border-radius: 16px; background: #fef2f2; color: #991b1b; font-size: 14px; text-align: center; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -397,6 +418,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 </head>
 <body>
 <div class="phone-frame">
+  <div class="tk-band">
   <div class="tk-top">
     <button class="tk-round" aria-label="Back" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">arrow_back_ios_new</span></button>
     <div class="tk-title"><b>Track Order</b><small><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></small></div>
@@ -404,6 +426,13 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
       <button class="tk-round" aria-label="Menu" onclick="window.location.href='<?php echo restaurantPageUrl('menu'); ?>'"><span class="material-symbols-rounded">restaurant_menu</span></button>
       <button class="tk-round" aria-label="Home" onclick="window.location.href='<?php echo restaurantPageUrl(); ?>'"><span class="material-symbols-rounded">home</span></button>
     </div>
+  </div>
+  <?php if (!empty($restaurant_logo)): ?>
+  <div class="tk-brand<?php echo ($logo_shape ?? 'circle') === 'circle' ? '' : ' sq'; ?>">
+    <img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt="">
+    <div><b><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></b><span><?php echo $order ? 'Thanks for ordering with us' : 'Live order tracking'; ?></span></div>
+  </div>
+  <?php endif; ?>
   </div>
 
   <div class="content">
@@ -415,14 +444,15 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
       <form method="POST">
         <div class="form-group">
           <label for="tkOrderNo">Order Number</label>
-          <input type="text" id="tkOrderNo" name="order_number" placeholder="e.g. ORD-20261012-1234" required>
+          <div class="tk-field"><span class="material-symbols-rounded">receipt_long</span><input type="text" id="tkOrderNo" name="order_number" placeholder="e.g. ORD-20261012-1234" value="<?php echo htmlspecialchars($orderNumber, ENT_QUOTES, 'UTF-8'); ?>" required></div>
         </div>
         <div class="form-group">
           <label for="tkPhone">Phone Number</label>
-          <input type="tel" id="tkPhone" name="customer_phone" placeholder="Phone used at checkout" required>
+          <div class="tk-field"><span class="material-symbols-rounded">call</span><input type="tel" id="tkPhone" name="customer_phone" placeholder="Phone used at checkout" value="<?php echo htmlspecialchars($customerPhone, ENT_QUOTES, 'UTF-8'); ?>" required></div>
         </div>
-        <button type="submit" class="tk-cta">Track Order</button>
+        <button type="submit" class="tk-cta"><span class="material-symbols-rounded">near_me</span>Track Order</button>
       </form>
+      <div class="tk-hint"><span class="material-symbols-rounded">info</span><span>Your order number is on the confirmation screen and in the message we sent after you ordered.</span></div>
       <?php if ($error): ?><div class="error-box"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
     </div>
   <?php else:
@@ -485,7 +515,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
         <div class="tk-status-text">
           <b id="tkStatusTitle">We've got your order</b>
           <p id="tkStatusText">The restaurant will confirm it shortly.</p>
-          <span class="tk-eta" id="tkEta" style="display:<?php echo !empty($etaText) ? 'inline-flex' : 'none'; ?>;align-items:center;gap:6px;margin:6px 0 2px;padding:5px 12px;border-radius:999px;background:rgba(22,163,74,.1);color:#15803d;font-weight:700;font-size:.9rem"><?php echo str_replace('<svg ', '<svg width="18" height="18" ', $tkIcon('schedule')); ?><span id="tkEtaText"><?php echo htmlspecialchars($etaText ?? '', ENT_QUOTES, 'UTF-8'); ?></span></span>
+          <span class="tk-eta" id="tkEta" style="display:<?php echo !empty($etaText) ? 'inline-flex' : 'none'; ?>;align-items:center;gap:6px;margin:6px 0 2px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.12);color:#bbf7d0;font-weight:700;font-size:.9rem"><?php echo str_replace('<svg ', '<svg width="18" height="18" ', $tkIcon('schedule')); ?><span id="tkEtaText"><?php echo htmlspecialchars($etaText ?? '', ENT_QUOTES, 'UTF-8'); ?></span></span>
           <span class="tk-tip" id="tkTip"><?php echo $tkIcon('sparkle'); ?><span id="tkTipText">Sending your order to the kitchen</span></span>
         </div>
         <div class="tk-steps" role="progressbar" aria-valuemin="1" aria-valuemax="4" id="tkTrack">
@@ -526,7 +556,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 
     <?php if ($tkType === 'Delivery'): ?>
     <div class="card">
-      <h2>Delivery Details</h2>
+      <h2><span class="h-ic"><span class="material-symbols-rounded">location_on</span></span>Delivery Details</h2>
       <div class="info-row"><span class="label">Address</span><span class="value" style="max-width:220px;"><?php echo htmlspecialchars($order['customer_address'] ?? 'N/A'); ?></span></div>
       <div class="info-row" id="deliveryChargeRow" style="<?php echo ((float)$order['delivery_charge'] > 0) ? '' : 'display:none;'; ?>"><span class="label">Delivery Charge</span><span class="value" id="deliveryChargeValue"><?php echo $currency . number_format((float)$order['delivery_charge'], 2); ?></span></div>
       <div class="info-row" id="riderRow" style="<?php echo ($tracking && $tracking['rider_name']) ? '' : 'display:none;'; ?>"><span class="label">Rider</span><span class="value" id="riderName"><?php echo $tracking ? htmlspecialchars($tracking['rider_name'] ?? '') : ''; ?></span></div>
@@ -534,7 +564,7 @@ h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
     <?php endif; ?>
 
     <div class="card">
-      <h2>Order Summary</h2>
+      <h2><span class="h-ic"><span class="material-symbols-rounded">receipt_long</span></span>Order Summary</h2>
       <?php foreach ($items as $item):
         $img = (string)($item['item_image'] ?? '');
         $imgUrl = $img === '' ? '' : (preg_match('#^(https?:|data:)#', $img) ? $img : 'image.php?id=' . rawurlencode(preg_replace('/^db:/', '', $img)));
