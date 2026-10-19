@@ -171,11 +171,11 @@ self.addEventListener('push', function(event) {
     vibrate: [200, 100, 200],
     tag: data.tag || 'default',
     renotify: true,
-    requireInteraction: true,
+    requireInteraction: data.sticky !== false,   // customer order updates (config/customer_push.php) close by themselves
     data: {
       url: data.url || '../views/dashboard.php',
       orderId: data.orderId || null,
-      type: data.type || 'general'
+      type: data.type || (data.sticky === false ? 'order-update' : 'general')
     },
     actions: data.actions || []
   };
@@ -235,7 +235,9 @@ self.addEventListener('notificationclick', function(event) {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       for (var i = 0; i < clientList.length; i++) {
         var client = clientList[i];
-        if (new URL(client.url).pathname === target.pathname && 'focus' in client) {
+        var open = new URL(client.url);
+        // a customer's order update opens the tab tracking that same order (the query names the order)
+        if (open.pathname === target.pathname && (d.orderId || d.type !== 'order-update' || open.search === target.search) && 'focus' in client) {
           if (d.orderId) client.postMessage({ type: 'rg-open-order', orderId: d.orderId });
           var page = target.searchParams.get('page');   // e.g. a low-stock alert opens Inventory
           if (page) client.postMessage({ type: 'rg-open-page', page: page });

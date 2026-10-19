@@ -516,6 +516,14 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
       </div>
       <?php endif; ?>
 
+      <?php if (!in_array($order['order_status'], ['Completed', 'Cancelled', 'Rejected'], true)): ?>
+      <div id="tkPush" hidden data-rg-push data-order="<?php echo htmlspecialchars($order['order_number'], ENT_QUOTES, 'UTF-8'); ?>" data-phone="<?php echo htmlspecialchars($customerPhone, ENT_QUOTES, 'UTF-8'); ?>"
+           data-sw="<?php echo htmlspecialchars($website_base_href . 'sw.php', ENT_QUOTES, 'UTF-8'); ?>" data-scope="<?php echo htmlspecialchars($site_root, ENT_QUOTES, 'UTF-8'); ?>"
+           data-icon="<?php echo htmlspecialchars((string)($restaurant_logo ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+           data-page="<?php echo htmlspecialchars(restaurantPageUrl('track') . '?order_number=' . rawurlencode($order['order_number']) . '&customer_phone=' . rawurlencode($customerPhone), ENT_QUOTES, 'UTF-8'); ?>"></div>
+      <script src="rg-order-push.js?v=<?php echo @filemtime(__DIR__ . '/rg-order-push.js'); ?>" defer></script>
+      <?php endif; ?>
+
       <p id="liveNote" class="live-note on"><span class="live-dot"></span><span class="live-text">Live · updates automatically</span></p>
     </div>
 

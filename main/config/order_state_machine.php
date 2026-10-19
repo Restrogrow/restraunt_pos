@@ -345,6 +345,12 @@ function validateAndUpdateOrderStatus(
         }
     }
 
+    // push notification to the customer's phone, if they turned it on for this order (also after the request is done)
+    try {
+        require_once __DIR__ . '/customer_push.php';
+        cpQueue($conn, $orderId);
+    } catch (Throwable $e) { error_log('cpQueue: ' . $e->getMessage()); }
+
     // email updates to the customer (accepted, ready, on the way, e-bill), also after the request is done
     static $mailQueued = [];
     if (empty($mailQueued[$orderId . ':' . $newStatus])) {

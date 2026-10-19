@@ -278,6 +278,10 @@ if (!function_exists('riderEnsure')) {
                 require_once __DIR__ . '/mail_engine.php';
                 if (function_exists('mailOrderOnTheWay')) mailOrderOnTheWay($conn, (int)$t['order_id']);
             } catch (Throwable $e) { error_log('rider on-the-way email: ' . $e->getMessage()); }
+            try {
+                require_once __DIR__ . '/customer_push.php';
+                cpQueue($conn, (int)$t['order_id'], 'onway');
+            } catch (Throwable $e) { error_log('rider on-the-way push: ' . $e->getMessage()); }
         }
         return ['Picked_Up' => 'Picked up. Have a safe ride!', 'In_Transit' => 'On the way', 'Delivered' => 'Delivered. Well done!'][$status];
     }

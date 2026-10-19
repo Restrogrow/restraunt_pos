@@ -1264,6 +1264,7 @@ function appendTableParam(url) {
   return url;
 }</script>
 <script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
+<script src="rg-order-push.js?v=<?php echo @filemtime(__DIR__ . '/rg-order-push.js'); ?>" defer></script>
 <script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
@@ -3868,11 +3869,13 @@ function showSuccessModal(orderNum, scheduledAt) {
     (orderNum ? '<p class="order-num">Order #' + orderNum + '</p>' : '<p class="order-num">&nbsp;</p>') +
     scheduledText +
     '<p style="font-size:12px;color:#6b7280;margin-bottom:12px;">After your order is delivered, rate your experience in your profile!</p>' +
+    (trackUrl ? '<div id="successPush" hidden data-rg-push data-order="' + esc(orderNum) + '" data-phone="' + esc(storedPhone) + '" data-sw="<?php echo $website_base_href ?>sw.php" data-scope="<?php echo $site_root ?>" data-icon="<?php echo htmlspecialchars((string)($restaurant_logo ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-page="' + esc(trackUrl) + '"></div>' : '') +
     (trackUrl ? '<button class="btn-profile" style="margin-bottom:8px;" onclick="window.location.href=\'' + trackUrl + '\'">Track Order</button>' : '') +
     '<button class="btn-profile" onclick="goToProfile()">View My Profile</button>' +
   '</div>';
 
   document.body.appendChild(modal);
+  if (window.RGOrderPush) RGOrderPush.mount(document.getElementById('successPush'));
 }
 
 function redirectToWhatsApp(info) {
