@@ -1,0 +1,105 @@
+/*
+ * Navigation style (Settings › Navigation style): the normal sidebar, a bottom dock, or a round menu.
+ * The choice is a class on <html> (rg-nav-dock / rg-nav-radial) set before the page draws; the sidebar
+ * stays in the page, only hidden, and assets/js/nav-style.js builds the dock / round menu from it.
+ */
+
+/* ── sidebar hidden, content full width ── */
+html.rg-nav-dock .sidebar,
+html.rg-nav-radial .sidebar { display: none !important; }
+html.rg-nav-dock .main-content,
+html.rg-nav-radial .main-content { margin-left: 0 !important; width: 100% !important; }
+html.rg-nav-dock .main-content { padding-bottom: 112px; }
+html.rg-nav-radial .main-content { padding-bottom: 96px; }
+@media (max-width: 1024px) {
+  html.rg-nav-dock .main-content,
+  html.rg-nav-radial .main-content { padding-top: 15px !important; }
+}
+/* things pinned to the bottom of the screen move up above the dock */
+html.rg-nav-dock .rg-alert-chip { bottom: 100px !important; }
+html.rgnav-r-open .rg-alert-chip,
+html.rgnav-stack-open .rg-alert-chip { visibility: hidden; }
+
+.rgnav-ms { font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; font-size: 22px; line-height: 1; display: inline-block; -webkit-font-smoothing: antialiased; font-variation-settings: 'FILL' 1, 'wght' 400; user-select: none; }
+.rgnav-badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #ef4444; color: #fff; font: 700 10px/18px 'Poppins', sans-serif; text-align: center; border: 2px solid #fff; z-index: 2; }
+.rgnav-tip { position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%); white-space: nowrap; font: 600 11.5px 'Poppins', sans-serif; padding: 5px 9px; border-radius: 8px; background: #111827; color: #fff; pointer-events: none; opacity: 0; transition: opacity .15s; }
+
+/* ── bottom dock ── */
+.rgnav-dock { position: fixed; z-index: 950; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 6px; padding: 8px 10px; border-radius: 24px; background: rgba(255, 255, 255, .62); -webkit-backdrop-filter: blur(20px) saturate(1.7); backdrop-filter: blur(20px) saturate(1.7); border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 18px 44px rgba(15, 23, 42, .18), 0 0 0 1px rgba(15, 23, 42, .04); max-width: calc(100vw - 16px); }
+.rgnav-di { position: relative; flex-shrink: 0; width: 46px; height: 46px; border: 0; padding: 0; border-radius: 14px; display: grid; place-items: center; color: #fff; background: var(--c); cursor: pointer; transition: width .16s, height .16s, transform .16s; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 4px 10px rgba(0, 0, 0, .18); }
+.rgnav-di .rgnav-ms { font-size: 24px; }
+.rgnav-di:hover .rgnav-tip, .rgnav-di:focus-visible .rgnav-tip { opacity: 1; }
+.rgnav-di.on::after { content: ""; position: absolute; bottom: -8px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #111827; }
+.rgnav-di.folder { background: rgba(255, 255, 255, .5); box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .08); }
+.rgnav-di.folder .rgnav-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.rgnav-di.folder .rgnav-mini i { width: 15px; height: 15px; border-radius: 4px; background: var(--c); display: grid; place-items: center; font-style: normal; }
+.rgnav-di.folder .rgnav-mini .rgnav-ms { font-size: 10px; color: #fff; }
+.rgnav-sep { flex-shrink: 0; width: 1px; height: 38px; margin: 0 3px 4px; background: rgba(15, 23, 42, .14); }
+
+/* folder pop-up above the dock */
+.rgnav-stack { position: fixed; z-index: 951; bottom: 92px; left: 50%; width: 360px; max-width: calc(100vw - 20px); max-height: calc(100vh - 120px); overflow-y: auto; transform: translate(-50%, 8px); opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; background: rgba(255, 255, 255, .86); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); border: 1px solid rgba(255, 255, 255, .95); border-radius: 22px; box-shadow: 0 24px 60px rgba(15, 23, 42, .24); padding: 14px; font-family: 'Poppins', sans-serif; color: #111827; }
+.rgnav-stack.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.rgnav-stack h4 { display: flex; align-items: center; gap: 6px; margin: 0 4px 10px; font-size: 13px; font-weight: 700; }
+.rgnav-stack h4 .rgnav-ms { font-size: 18px; color: var(--c); }
+.rgnav-stack h4 button { margin-right: 2px; border: 0; background: #f1f5f9; width: 26px; height: 26px; border-radius: 8px; cursor: pointer; display: grid; place-items: center; }
+.rgnav-sg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 4px; }
+.rgnav-sg button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; border: 0; background: none; padding: 6px 2px; border-radius: 12px; cursor: pointer; font: 500 10.5px/1.2 'Poppins', sans-serif; color: #1f2937; text-align: center; }
+.rgnav-sg button:hover, .rgnav-sg button:focus-visible { background: rgba(15, 23, 42, .06); }
+.rgnav-sg button.on { background: rgba(37, 99, 235, .1); color: #1d4ed8; font-weight: 600; }
+.rgnav-sg button i { position: relative; width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; background: var(--c); color: #fff; font-style: normal; box-shadow: 0 4px 10px rgba(0, 0, 0, .15); }
+.rgnav-sg button i .rgnav-ms { font-size: 22px; }
+@media (max-width: 700px) {
+  .rgnav-dock { gap: 4px; padding: 6px 7px; border-radius: 22px; bottom: 10px; }
+  .rgnav-di { width: 42px; height: 42px; border-radius: 12px; }
+  .rgnav-di .rgnav-ms { font-size: 22px; }
+  .rgnav-stack { bottom: 76px; }
+  .rgnav-sg { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── round menu ── */
+.rgnav-fab { position: fixed; z-index: 992; right: 22px; bottom: 22px; width: 62px; height: 62px; border: 0; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #7c3aed, #ec4899); box-shadow: 0 14px 30px rgba(124, 58, 237, .45); cursor: pointer; }
+.rgnav-fab > .rgnav-ms { font-size: 30px; transition: transform .3s; font-variation-settings: 'FILL' 0, 'wght' 500; }
+html.rgnav-r-open .rgnav-fab > .rgnav-ms { transform: rotate(135deg); }
+.rgnav-fab .rgnav-badge { top: 1px; right: 1px; }
+.rgnav-veil { position: fixed; z-index: 990; inset: 0; background: rgba(15, 23, 42, .32); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity .25s; }
+html.rgnav-r-open .rgnav-veil { opacity: 1; pointer-events: auto; }
+.rgnav-orb { position: fixed; z-index: 991; right: 22px; bottom: 22px; width: 62px; height: 62px; pointer-events: none; }
+.rgnav-oi { position: absolute; left: 7px; top: 7px; width: 48px; height: 48px; border: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--c); box-shadow: 0 8px 18px rgba(0, 0, 0, .22); transform: translate(0, 0) scale(.3); opacity: 0; transition: transform .38s cubic-bezier(.2, 1.35, .4, 1), opacity .2s; cursor: pointer; pointer-events: none; }
+.rgnav-oi .rgnav-ms { font-size: 22px; }
+.rgnav-lab { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px; white-space: nowrap; font: 600 10.5px 'Poppins', sans-serif; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); pointer-events: none; }
+html.rgnav-r-open .rgnav-oi.l1 { opacity: 1; pointer-events: auto; transform: translate(var(--x), var(--y)) scale(1); }
+html.rgnav-r-open .rgnav-oi.l1.on { box-shadow: 0 0 0 3px #fff, 0 8px 18px rgba(0, 0, 0, .22); }
+html.rgnav-r-open .rgnav-oi.l1.dim { opacity: .18; transform: translate(var(--x), var(--y)) scale(.7); }
+html.rgnav-r-open .rgnav-oi.l1.dim .rgnav-lab, html.rgnav-r-open .rgnav-oi.l1.dim .rgnav-badge { display: none; }
+html.rgnav-r-open .rgnav-oi.l1.sel { box-shadow: 0 0 0 4px #fff, 0 10px 24px rgba(0, 0, 0, .25); }
+.rgnav-oi.l2 { width: 42px; height: 42px; left: 10px; top: 10px; background: #fff; color: var(--c); }
+.rgnav-oi.l2 .rgnav-lab { color: #111827; text-shadow: none; background: rgba(255, 255, 255, .95); padding: 1px 6px; border-radius: 6px; }
+.rgnav-oi.l2.on { box-shadow: 0 0 0 3px var(--c), 0 8px 18px rgba(0, 0, 0, .22); }
+html.rgnav-r-open.rgnav-r-sub .rgnav-oi.l2 { opacity: 1; pointer-events: auto; transform: translate(var(--x), var(--y)) scale(1); }
+@media (max-width: 700px) {
+  .rgnav-fab, .rgnav-orb { right: 14px; bottom: 14px; width: 56px; height: 56px; }
+  .rgnav-oi { left: 5px; top: 5px; width: 46px; height: 46px; }
+  .rgnav-oi.l2 { width: 40px; height: 40px; left: 8px; top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rgnav-oi, .rgnav-stack, .rgnav-di, .rgnav-fab > .rgnav-ms { transition: none; }
+}
+
+/* ── Settings › Navigation style ── */
+.rgnav-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.rgnav-pick label { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 16px; cursor: pointer; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.rgnav-pick label:hover { border-color: #c7d2fe; }
+.rgnav-pick input { position: absolute; opacity: 0; pointer-events: none; }
+.rgnav-pick label.on { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, .12); }
+.rgnav-pick b { font-size: 14px; }
+.rgnav-pick em { font-style: normal; font-size: 12px; color: #6b7280; line-height: 1.4; }
+.rgnav-pick .pv { position: relative; height: 96px; border-radius: 10px; overflow: hidden; background: linear-gradient(160deg, #eef2ff, #fdf2f8); border: 1px solid #eef0f4; }
+.rgnav-pick .pv-side { position: absolute; left: 6px; top: 6px; bottom: 6px; width: 34px; border-radius: 7px; background: #111a2e; }
+.rgnav-pick .pv-side::before { content: ""; position: absolute; left: 8px; right: 8px; top: 10px; height: 60%; background: repeating-linear-gradient(180deg, rgba(255, 255, 255, .5) 0 3px, transparent 3px 9px); }
+.rgnav-pick .pv-dock { position: absolute; left: 50%; bottom: 7px; transform: translateX(-50%); display: flex; gap: 3px; padding: 4px; border-radius: 8px; background: rgba(255, 255, 255, .8); box-shadow: 0 3px 8px rgba(0, 0, 0, .12); }
+.rgnav-pick .pv-dock i { width: 12px; height: 12px; border-radius: 4px; }
+.rgnav-pick .pv-fab { position: absolute; right: 8px; bottom: 8px; width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #ec4899); }
+.rgnav-pick .pv-fab ~ i { position: absolute; width: 11px; height: 11px; border-radius: 50%; }
+.rgnav-pick .pv-lines { position: absolute; left: 48px; right: 10px; top: 12px; height: 50%; background: repeating-linear-gradient(180deg, #dbe2f0 0 6px, transparent 6px 14px); border-radius: 4px; }
+.rgnav-pick .pv-lines.full { left: 10px; }
+.rgnav-note { margin-top: 10px; font-size: 12px; color: #6b7280; }

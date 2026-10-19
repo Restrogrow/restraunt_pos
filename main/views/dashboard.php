@@ -379,6 +379,9 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
   <!-- Critical CSS -->
   <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/style.css'); ?>">
   <link rel="stylesheet" href="../assets/css/studio-ui.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/studio-ui.css'); ?>">
+  <!-- Navigation style (Settings › Navigation style): sidebar, bottom dock or round menu — assets/js/nav-style.js -->
+  <link rel="stylesheet" href="../assets/css/nav-style.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/nav-style.css'); ?>">
+  <script>try { var rgNs = localStorage.getItem('rgNavStyle'); if (rgNs === 'dock' || rgNs === 'radial') document.documentElement.classList.add(rgNs === 'dock' ? 'rg-nav-dock' : 'rg-nav-radial'); } catch (e) {}</script>
   <link rel="stylesheet" href="../assets/css/rg-stats.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/rg-stats.css'); ?>">
   <!-- phones and small tablets: loaded last so it only corrects narrow screens; tables become cards -->
   <link rel="stylesheet" href="../assets/css/mobile.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/mobile.css'); ?>">
@@ -5094,6 +5097,7 @@ function toggleGatewayMode() {
           <div class="st-nav-group"><small>Devices and account</small>
             <button type="button" data-st-go="printer"><span class="material-symbols-rounded">print</span><span><b>Printer</b><em>Receipts and KOTs</em></span></button>
             <button type="button" data-st-go="account"><span class="material-symbols-rounded">account_circle</span><span><b>Account</b><em>Login, notifications, app</em></span></button>
+            <button type="button" data-st-go="navstyle"><span class="material-symbols-rounded">space_dashboard</span><span><b>Navigation style</b><em>Sidebar, dock or round menu</em></span></button>
           </div>
         </nav>
 
@@ -5659,6 +5663,18 @@ function toggleGatewayMode() {
               <span class="st-install-ic material-symbols-rounded">install_mobile</span>
               <div><b>Install the app</b><small>Add this dashboard to your phone or computer for one-tap access.</small></div>
               <button type="button" class="btn btn-secondary" onclick="promptInstall()"><span class="material-symbols-rounded">download</span>Install App</button>
+            </div>
+          </section>
+          <section class="st-pane" data-st-pane="navstyle">
+            <header class="st-pane-h"><span class="material-symbols-rounded">space_dashboard</span><div><h2>Navigation style</h2><p>How you move between pages on this device.</p></div></header>
+            <div class="st-card">
+              <div class="st-card-h"><b>Pick a style</b></div>
+              <div class="rgnav-pick" role="radiogroup" aria-label="Navigation style">
+                <label><input type="radio" name="rgNavStyle" value="sidebar"><span class="pv"><span class="pv-side"></span><span class="pv-lines"></span></span><b>Sidebar</b><em>The usual menu on the left. Default.</em></label>
+                <label><input type="radio" name="rgNavStyle" value="dock"><span class="pv"><span class="pv-lines full"></span><span class="pv-dock"><i style="background:#2563eb"></i><i style="background:#0ea5e9"></i><i style="background:#f97316"></i><i style="background:#ef4444"></i><i style="background:#10b981"></i><i style="background:#8b5cf6"></i><i style="background:#16a34a"></i></span></span><b>Bottom dock</b><em>Colourful icons at the bottom, like a Mac. Sections open as folders.</em></label>
+                <label><input type="radio" name="rgNavStyle" value="radial"><span class="pv"><span class="pv-lines full"></span><span class="pv-fab"></span><i style="right:36px;bottom:10px;background:#2563eb"></i><i style="right:32px;bottom:26px;background:#f97316"></i><i style="right:22px;bottom:38px;background:#10b981"></i><i style="right:8px;bottom:40px;background:#8b5cf6"></i></span><b>Round menu</b><em>One round button in the corner. Tap it and the sections open around it.</em></label>
+              </div>
+              <p class="rgnav-note">Changes straight away and is remembered on this device. Every page works the same in all three.</p>
             </div>
           </section>
 
@@ -7504,6 +7520,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/analytics-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/analytics-studio.js'); ?>" defer></script>
   <script src="../assets/js/platform-notices.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/platform-notices.js'); ?>" defer></script>
   <script src="../assets/js/dashboard-home.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-home.js'); ?>" defer></script>
+  <script src="../assets/js/nav-style.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/nav-style.js'); ?>" defer></script>
   <script src="../assets/js/marketing-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/marketing-studio.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>
