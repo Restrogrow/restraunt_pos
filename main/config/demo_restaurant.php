@@ -27,10 +27,19 @@ const DEMO_KNOWN_USERNAMES = ['demo', 'sg_indiranagar'];
 // The first demo, made by an older version of the Super Admin page. Removed on reset.
 const DEMO_LEGACY_ID       = 'RESDEMO01';
 const DEMO_LEGACY_USERNAME = 'demo_spicegarden';
+// The demo's own email address domain: shown on the site like a real one, but mail_engine never sends to it
+const DEMO_EMAIL_DOMAIN    = 'spicegardenindiranagar.com';
 
 /** True when the logged-in session belongs to the public demo restaurant. */
 function isDemoRestaurantSession(): bool {
     return ($_SESSION['restaurant_id'] ?? null) === DEMO_RESTAURANT_ID;
+}
+
+/** A normal-looking 10-digit mobile number for a made-up person (same name, same number; WhatsApp never sends for the demo). */
+function demoPhone(string $name): string {
+    $starts = ['98', '99', '97', '96', '95', '94', '93', '91', '89', '88', '87', '86', '85', '81', '80', '79', '78', '77', '76', '74', '73', '70', '63', '62'];
+    $h = crc32($name);
+    return $starts[$h % count($starts)] . str_pad((string)(intdiv($h, 7) % 100000000), 8, '0', STR_PAD_LEFT);
 }
 
 /** Website slug of the demo restaurant (same rule as main/website/router.php). */
@@ -359,14 +368,14 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
             'sunday' => $time('08:00 AM', '11:00 PM'),
         ];
         $userId = demoInsert($pdo, 'users', [
-            'username' => DEMO_USERNAME, 'email' => 'demo@restrogrow.invalid', 'phone' => '9800000002',
+            'username' => DEMO_USERNAME, 'email' => 'hello@' . DEMO_EMAIL_DOMAIN, 'phone' => '08041237788',
             'address' => '12, 100 Feet Road, HAL 2nd Stage, Indiranagar, Bengaluru, Karnataka 560038',
             'password' => password_hash(DEMO_PASSWORD, PASSWORD_DEFAULT), 'restaurant_id' => $rid,
             'restaurant_name' => DEMO_RESTAURANT_NAME, 'owner_name' => 'Spice Garden Group',
             'currency_symbol' => '₹', 'timezone' => 'Asia/Kolkata', 'country' => 'India', 'language' => 'en',
             'is_active' => 1, 'subscription_status' => 'active', 'trial_end_date' => date('Y-m-d', strtotime('+5 years')),
             'description' => 'North Indian curries, smoky tandoor favourites, dum biryanis and South Indian breakfasts, cooked to order since 2014. '
-                . 'This is the RestroGrow demo restaurant: orders placed here are test orders and are not prepared or delivered.',
+                . 'Family recipes, fresh masalas ground every morning and a warm table on 100 Feet Road.',
             'description_format' => 'paragraph', 'opening_hours' => json_encode($hours),
             'enable_delivery' => 1, 'enable_takeaway' => 1, 'enable_dinein' => 1, 'enable_reservations' => 1, 'cod_enabled' => 1,
             'enable_gst' => 1, 'tax_name' => 'GST', 'tax_percent' => 5,
@@ -471,7 +480,7 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
                   ['Suresh Gowda', 'chef', 'Chef'], ['Lakshmi Iyer', 'chef2', 'Chef'],
                   ['Arjun Singh', 'rider', 'Delivery'], ['Faisal Ahmed', 'rider2', 'Delivery'], ['Kavita Rao', 'cashier', 'Cashier']] as $i => [$sname, $key, $role]) {
             demoInsert($pdo, 'staff', ['restaurant_id' => $rid, 'member_name' => $sname, 'email' => "$key.demo@spicegarden.test",
-                                       'phone' => '97000000' . str_pad((string)($i + 1), 2, '0', STR_PAD_LEFT),
+                                       'phone' => demoPhone($sname),
                                        'password' => $staffHash, 'role' => $role, 'is_active' => 1]);
         }
 
@@ -489,11 +498,11 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
                   'Deepak Yadav', 'Zoya Shaikh', 'Sameer Kulkarni', 'Bhavana Reddy'];
         $customers = [];
         foreach ($names as $ci => $cname) {
-            $phone = '90000' . str_pad((string)(10001 + $ci * 37), 5, '0', STR_PAD_LEFT);
+            $phone = demoPhone($cname);
             $bday = date('Y-m-d', strtotime(sprintf('%d-%02d-%02d', mt_rand(1975, 2002), mt_rand(1, 12), mt_rand(1, 28))));
             $id = demoInsert($pdo, 'customers', [
                 'restaurant_id' => $rid, 'customer_name' => $cname, 'phone' => $phone,
-                'email' => strtolower(str_replace(' ', '.', $cname)) . '@example.com',
+                'email' => null,   // no email: nothing can ever be mailed to a made-up customer
                 'total_visits' => 0, 'total_spent' => 0, 'birthday' => $ci % 3 === 0 ? $bday : null, 'whatsapp_optin' => 0,
                 'created_at' => date('Y-m-d H:i:s', strtotime('-' . mt_rand(45, 400) . ' days')),
             ]);
