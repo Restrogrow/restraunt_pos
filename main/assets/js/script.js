@@ -2387,9 +2387,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Load Dashboard Stats
-  async function loadDashboardStats() {
+  async function loadDashboardStats(force) {
     // the redesigned home screen (assets/js/dashboard-home.js) loads its own data
-    if (typeof window.loadDashboardHome === 'function') return window.loadDashboardHome();
+    if (typeof window.loadDashboardHome === 'function') return window.loadDashboardHome(force === true);
     // Guard to prevent concurrent API calls
     if (window._loadingDashboardStats) {
       console.log('Dashboard stats already loading, skipping...');

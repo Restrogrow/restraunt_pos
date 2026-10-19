@@ -26,7 +26,8 @@
   function imgUrl(p) {
     if (!p) return '';
     if (/^https?:\/\//.test(p)) return p;
-    return 'image.php?id=' + encodeURIComponent(p.indexOf('db:') === 0 ? p.substring(3) : p);
+    // photos kept in the database get image.php's small WebP copy (the cards are never wider than 400px)
+    return p.indexOf('db:') === 0 ? 'image.php?id=' + encodeURIComponent(p.substring(3)) + '&w=400' : 'image.php?id=' + encodeURIComponent(p);
   }
   function rid() { return window.websiteRestaurantId || (document.querySelector('meta[name="restaurant-id"]') || {}).content || ''; }
   function vegMark(t) {

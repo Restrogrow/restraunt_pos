@@ -175,9 +175,14 @@
     var rb = document.querySelector('#dashboardPage .dh-icon'); if (rb) rb.title = 'Refresh (' + stamp.toLowerCase() + ')';
   }
 
-  window.loadDashboardHome = function () {
+  // Opening the page asks for this up to three times within a second or two (page shown, page loaded,
+  // a waiting order's popup); one answer is enough. The Refresh button passes force.
+  var lastLoad = 0;
+  window.loadDashboardHome = function (force) {
     if (busy) return;
+    if (!force && D && Date.now() - lastLoad < 2000) return;
     busy = true;
+    lastLoad = Date.now();
     return fetch('../api/dashboard_home.php', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
       busy = false;
       var root = document.getElementById('dhRoot');

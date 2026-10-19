@@ -392,7 +392,8 @@
     var img = '';
     if (b.image) {
       var ref = String(b.image);
-      img = /^(https?:|data:)/.test(ref) ? ref : (opts.imgBase || 'image.php?id=') + encodeURIComponent(ref.replace(/^db:/, ''));
+      // a dish photo from the database: image.php's small WebP copy is plenty for the banner
+      img = /^(https?:|data:)/.test(ref) ? ref : (opts.imgBase || 'image.php?id=') + encodeURIComponent(ref.replace(/^db:/, '')) + (ref.indexOf('db:') === 0 ? '&w=400' : '');
     }
     var dish = img ? '<img class="rg-ob-dish' + (FRAMED[tpl] ? ' framed' : '') + '" src="' + esc(img) + '" alt="" loading="lazy">' : '';
     var kickText = b.kicker ? String(b.kicker) : (b.code ? 'Limited time' : 'Today only');

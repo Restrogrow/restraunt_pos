@@ -122,8 +122,8 @@ applyRestaurantTimezone($timezone, $conn);
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>
     <script src="../website/rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-notify.js'); ?>"></script>
     <script>RGNotify.setup({ toast: 'card', watchSaves: true });</script>
-  <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
-    <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
+  <script src="../assets/js/utils/currency.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/utils/currency.js'); ?>"></script>
+    <script src="../assets/js/escpos.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/escpos.js'); ?>"></script>
     <script src="../assets/js/direct-printer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/direct-printer.js'); ?>" defer></script>
     <script src="../assets/js/script.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/script.js'); ?>" defer></script>
     <script src="../assets/js/pos-discount.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-discount.js'); ?>" defer></script>

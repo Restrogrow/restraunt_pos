@@ -304,6 +304,24 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
   <meta charset="UTF-8">
 <?php require_once __DIR__ . '/../config/sentry_browser.php'; echo rgSentryBrowserTag('dashboard'); ?>
   <script src="../assets/js/quiet-console.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/quiet-console.js'); ?>"></script>
+  <script>
+  // Many parts of the dashboard ask get_session.php for the restaurant details as the page opens. While one
+  // such request is still on its way, the others share its answer instead of sending their own.
+  (function () {
+    var realFetch = window.fetch, inflight = null;
+    window.fetch = function (url, opts) {
+      var m = opts && opts.method ? String(opts.method).toUpperCase() : 'GET';
+      if (typeof url === 'string' && m === 'GET' && /(^|\/)admin\/get_session\.php(\?|$)/.test(url)) {
+        if (!inflight) {
+          inflight = realFetch.apply(window, arguments);
+          inflight.then(function () { inflight = null; }, function () { inflight = null; });
+        }
+        return inflight.then(function (r) { return r.clone(); });
+      }
+      return realFetch.apply(window, arguments);
+    };
+  })();
+  </script>
   <?php if ($googleMapsApiKey): ?>
   <!-- Google Maps Places Autocomplete (Restaurant address setup) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo urlencode($googleMapsApiKey); ?>&libraries=places&loading=async" async defer></script>
@@ -359,7 +377,7 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
   <link rel="dns-prefetch" href="https://fonts.gstatic.com">
   
   <!-- Critical CSS -->
-  <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo time(); ?>">
+  <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/style.css'); ?>">
   <link rel="stylesheet" href="../assets/css/studio-ui.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/studio-ui.css'); ?>">
   <link rel="stylesheet" href="../assets/css/rg-stats.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/rg-stats.css'); ?>">
   <!-- phones and small tablets: loaded last so it only corrects narrow screens; tables become cards -->
@@ -1532,7 +1550,7 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
         </div>
         <div class="dh-head-r">
           <span class="dh-updated" id="dashboardTime"></span>
-          <button type="button" class="btn btn-secondary dh-icon" onclick="loadDashboardStats()" title="Refresh" aria-label="Refresh"><span class="material-symbols-rounded">refresh</span></button>
+          <button type="button" class="btn btn-secondary dh-icon" onclick="loadDashboardStats(true)" title="Refresh" aria-label="Refresh"><span class="material-symbols-rounded">refresh</span></button>
           <a class="btn btn-secondary" href="<?php
             if (!empty($restaurant_custom_domain) && $restaurant_embed_enabled) {
                 echo htmlspecialchars('https://' . preg_replace('#^https?://#', '', $restaurant_custom_domain) . '/', ENT_QUOTES, 'UTF-8');
@@ -7416,15 +7434,15 @@ function toggleGatewayMode() {
 
   <!-- Script -->
   <!-- Currency utils (extracted from script.js) -->
-  <script src="../assets/js/utils/currency.js?v=<?php echo time(); ?>"></script>
-  <script src="../assets/js/escpos.js?v=<?php echo time(); ?>"></script>
+  <script src="../assets/js/utils/currency.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/utils/currency.js'); ?>"></script>
+  <script src="../assets/js/escpos.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/escpos.js'); ?>"></script>
   <script src="../assets/js/direct-printer.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/direct-printer.js'); ?>" defer></script>
   <script src="../assets/libs/qrcode/qrcode.min.js" defer></script>
-  <script src="../assets/js/poster-generator.js?v=<?php echo time(); ?>" defer></script>
-  <script src="../assets/js/video-generator.js?v=<?php echo time(); ?>" defer></script>
-  <script src="../assets/js/caption-generator.js?v=<?php echo time(); ?>" defer></script>
-  <script src="../assets/js/campaign-calendar.js?v=<?php echo time(); ?>" defer></script>
-  <script src="../assets/js/growth.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/poster-generator.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/poster-generator.js'); ?>" defer></script>
+  <script src="../assets/js/video-generator.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/video-generator.js'); ?>" defer></script>
+  <script src="../assets/js/caption-generator.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/caption-generator.js'); ?>" defer></script>
+  <script src="../assets/js/campaign-calendar.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/campaign-calendar.js'); ?>" defer></script>
+  <script src="../assets/js/growth.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/growth.js'); ?>" defer></script>
   <?php
   // Undo box for important deletes; its look is picked in Super Admin › Tools › Undo design
   $rgUndoDesign = 'pill';
@@ -7433,10 +7451,10 @@ function toggleGatewayMode() {
   <script>window.RG_UNDO_DESIGN = <?php echo json_encode($rgUndoDesign); ?>;</script>
   <script src="../assets/js/rg-undo.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rg-undo.js'); ?>"></script>
   <script src="../assets/js/onboarding.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/onboarding.js'); ?>" defer></script>
-  <script src="../assets/js/script.js?v=<?php echo time(); ?>" defer></script>
-  <script src="../assets/js/qr-standee.js?v=<?php echo time(); ?>" defer></script>
-  <script src="../assets/js/bestsellers-admin.js?v=<?php echo time(); ?>" defer></script>
-  <script src="../assets/js/offer-filters-admin.js?v=<?php echo time(); ?>" defer></script>
+  <script src="../assets/js/script.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/script.js'); ?>" defer></script>
+  <script src="../assets/js/qr-standee.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/qr-standee.js'); ?>" defer></script>
+  <script src="../assets/js/bestsellers-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/bestsellers-admin.js'); ?>" defer></script>
+  <script src="../assets/js/offer-filters-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-filters-admin.js'); ?>" defer></script>
   <script src="../assets/js/todays-special-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/todays-special-admin.js'); ?>" defer></script>
   <script src="../website/rg-upsell.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-upsell.js'); ?>" defer></script>
   <script src="../assets/js/upsell-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/upsell-admin.js'); ?>" defer></script>
