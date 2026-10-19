@@ -324,12 +324,18 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
         $links = $st->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {}
 
-    // Keep the website look the owner saved (Website Appearance) across a reset
-    $savedSite = null;
+    // Keep the website look the owner saved (Website Appearance) and the sections Super Admin
+    // switched on/off (Restaurants › Access) across a reset
+    $savedSite = $savedAccess = null;
     try {
         $st = $pdo->prepare('SELECT * FROM website_settings WHERE restaurant_id = ?');
         $st->execute([$rid]);
         $savedSite = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (PDOException $e) {}
+    try {
+        $st = $pdo->prepare('SELECT off_pages FROM restaurant_access WHERE restaurant_id = ?');
+        $st->execute([$rid]);
+        $savedAccess = $st->fetchColumn();
     } catch (PDOException $e) {}
 
     mt_srand(20261016); // the same demo every time
@@ -824,6 +830,14 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
     foreach (demoOfferSetup($items) as $part) {
         try { $part($pdo, $rid); } catch (Throwable $e) { error_log('demo offers: ' . $e->getMessage()); }
     }
+
+    // Super Admin › Restaurants › Access: loyalty (studio, referrals, spin wheel) starts switched off;
+    // whatever Super Admin set since is kept
+    try {
+        require_once __DIR__ . '/access_control.php';
+        $off = is_string($savedAccess) ? (json_decode($savedAccess, true) ?: []) : ['growthSettingsPage', 'referralsPage', 'scratchPage'];
+        accessSaveOffPages($pdo, $rid, $off);
+    } catch (Throwable $e) { error_log('demo access: ' . $e->getMessage()); }
 
     return [
         'restaurant' => DEMO_RESTAURANT_NAME . ' (' . $rid . ')',
