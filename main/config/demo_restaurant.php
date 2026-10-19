@@ -70,6 +70,7 @@ function demoRemoveRestaurant(PDO $pdo, string $rid): void {
         'DELETE oia FROM order_item_addons oia JOIN order_items oi ON oi.id = oia.order_item_id JOIN orders o ON o.id = oi.order_id WHERE o.restaurant_id = ?',
         'DELETE oi FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.restaurant_id = ?',
         'DELETE ki FROM kot_items ki JOIN kot k ON k.id = ki.kot_id WHERE k.restaurant_id = ?',
+        'DELETE l FROM inventory_po_lines l JOIN inventory_purchase_orders p ON p.id = l.po_id WHERE p.restaurant_id = ?',
     ];
     foreach ($children as $sql) {
         try { $pdo->prepare($sql)->execute([$rid]); } catch (PDOException $e) { /* table not present */ }
@@ -196,7 +197,7 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
     // (DDL commits implicitly in MySQL).
     foreach (['bestseller_helpers.php' => 'ensureBestsellersTable', 'menu_hours.php' => 'ensureMenuHoursColumns',
               'website_theme_helpers.php' => 'ensureWebsiteThemeSchema', 'business_id_helpers.php' => 'ensureBusinessIdColumns',
-              'rider_engine.php' => 'riderEnsure'] as $file => $fn) {
+              'rider_engine.php' => 'riderEnsure', 'inventory_engine.php' => 'invEnsure'] as $file => $fn) {
         if (is_file(__DIR__ . "/$file")) {
             require_once __DIR__ . "/$file";
             if (function_exists($fn)) { try { $fn($pdo); } catch (Throwable $e) { /* optional feature */ } }
@@ -515,6 +516,165 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
                 'created_at' => date('Y-m-d H:i:s', strtotime(($offset - 2) . ' days', $now)),
             ]);
         }
+
+        // ── Inventory: raw material, suppliers, recipes, purchases ──
+        // Purchases and wastage become expenses (as Menu › Inventory does), so with rent, salaries
+        // and gas below, Reports show sales minus real costs as the net profit.
+        $supIds = [];
+        foreach ([['veg', 'Fresh Farms Vegetables', 'Ramesh', '9845000101'], ['dairy', 'Nandini Dairy Distributors', 'Manjunath', '9845000102'],
+                  ['meat', 'Royal Meat & Poultry', 'Salim', '9845000103'], ['dry', 'Metro Wholesale', 'Accounts desk', '9845000104']] as [$key, $sname, $person, $sphone]) {
+            $supIds[$key] = demoInsert($pdo, 'inventory_suppliers', ['restaurant_id' => $rid, 'name' => $sname, 'contact_person' => $person, 'phone' => $sphone]);
+        }
+        // name => [unit, category, cost per unit, in stock, low-stock level, used per day, supplier, bought every N days]
+        $stock = [
+            'Onion' => ['kg', 'Vegetables', 32, 45, 15, 8, 'veg', 1], 'Tomato' => ['kg', 'Vegetables', 28, 30, 12, 7, 'veg', 1],
+            'Potato' => ['kg', 'Vegetables', 26, 25, 10, 4, 'veg', 1], 'Ginger garlic paste' => ['kg', 'Vegetables', 120, 6, 2, 1, 'veg', 1],
+            'Green chillies' => ['kg', 'Vegetables', 60, 3, 1, 0.6, 'veg', 1], 'Coriander' => ['bunch', 'Vegetables', 10, 25, 8, 8, 'veg', 1],
+            'Capsicum' => ['kg', 'Vegetables', 70, 8, 3, 1.5, 'veg', 1], 'Spinach' => ['bunch', 'Vegetables', 15, 4, 10, 3, 'veg', 1],
+            'Milk' => ['L', 'Dairy', 56, 40, 15, 6, 'dairy', 1], 'Paneer' => ['kg', 'Dairy', 380, 9, 5, 2, 'dairy', 1],
+            'Butter' => ['kg', 'Dairy', 520, 6, 2, 0.7, 'dairy', 1], 'Fresh cream' => ['L', 'Dairy', 240, 5, 2, 0.8, 'dairy', 1],
+            'Curd' => ['kg', 'Dairy', 70, 15, 5, 3, 'dairy', 1], 'Ghee' => ['L', 'Dairy', 620, 7, 2, 0.4, 'dairy', 7],
+            'Chicken boneless' => ['kg', 'Meat & Fish', 280, 14, 5, 2, 'meat', 2], 'Chicken curry cut' => ['kg', 'Meat & Fish', 220, 18, 6, 2, 'meat', 2],
+            'Mutton' => ['kg', 'Meat & Fish', 780, 6, 3, 0.6, 'meat', 2], 'Seer fish' => ['kg', 'Meat & Fish', 900, 2.5, 3, 0.4, 'meat', 2],
+            'Eggs' => ['pcs', 'Meat & Fish', 7, 150, 48, 12, 'meat', 2],
+            'Basmati rice' => ['kg', 'Grains & Dals', 120, 60, 20, 4, 'dry', 7], 'Atta' => ['kg', 'Grains & Dals', 42, 50, 15, 5, 'dry', 7],
+            'Maida' => ['kg', 'Grains & Dals', 40, 25, 8, 1.5, 'dry', 7], 'Urad dal' => ['kg', 'Grains & Dals', 140, 18, 5, 1, 'dry', 7],
+            'Rajma' => ['kg', 'Grains & Dals', 160, 10, 3, 0.5, 'dry', 7], 'Chickpeas' => ['kg', 'Grains & Dals', 110, 12, 4, 0.6, 'dry', 7],
+            'Cooking oil' => ['L', 'Oil & Spices', 155, 40, 15, 2.5, 'dry', 7], 'Garam masala' => ['kg', 'Oil & Spices', 650, 4, 1, 0.15, 'dry', 7],
+            'Sugar' => ['kg', 'Oil & Spices', 46, 20, 6, 1.5, 'dry', 7], 'Cashew' => ['kg', 'Oil & Spices', 950, 3, 1, 0.15, 'dry', 7],
+            'Tea leaves' => ['kg', 'Beverages', 480, 3, 1, 0.15, 'dry', 7], 'Coffee powder' => ['kg', 'Beverages', 900, 2, 1, 0.05, 'dry', 7],
+            'Takeaway containers' => ['pcs', 'Packaging', 6, 400, 150, 40, 'dry', 7], 'Carry bags' => ['pcs', 'Packaging', 2, 600, 200, 25, 'dry', 7],
+        ];
+        $inv = [];
+        foreach ($stock as $iname => [$unit, $cat, $cost, $qty, $low, $perDay, $sup]) {
+            $inv[$iname] = demoInsert($pdo, 'inventory_items', [
+                'restaurant_id' => $rid, 'item_name' => $iname, 'unit' => $unit, 'category' => $cat, 'quantity_in_stock' => $qty,
+                'low_stock_threshold' => $low, 'par_level' => round($perDay * 7, 2), 'cost_per_unit' => $cost, 'supplier_id' => $supIds[$sup],
+            ]);
+        }
+        // what one plate uses (dishes not listed simply have no recipe yet)
+        $recipes = [
+            'Paneer Tikka' => [['Paneer', 200, 'g'], ['Curd', 50, 'g'], ['Capsicum', 50, 'g'], ['Onion', 50, 'g']],
+            'Chilli Paneer' => [['Paneer', 180, 'g'], ['Capsicum', 60, 'g'], ['Onion', 60, 'g'], ['Cooking oil', 30, 'ml']],
+            'Paneer Butter Masala' => [['Paneer', 180, 'g'], ['Tomato', 150, 'g'], ['Butter', 30, 'g'], ['Fresh cream', 30, 'ml'], ['Cashew', 15, 'g']],
+            'Kadai Paneer' => [['Paneer', 180, 'g'], ['Capsicum', 60, 'g'], ['Tomato', 120, 'g'], ['Onion', 80, 'g']],
+            'Palak Paneer' => [['Paneer', 150, 'g'], ['Spinach', 1, 'bunch'], ['Fresh cream', 20, 'ml']],
+            'Dal Makhani' => [['Urad dal', 80, 'g'], ['Rajma', 20, 'g'], ['Butter', 30, 'g'], ['Fresh cream', 30, 'ml']],
+            'Pindi Chole' => [['Chickpeas', 100, 'g'], ['Onion', 80, 'g'], ['Tomato', 80, 'g']],
+            'Rajma Chawal' => [['Rajma', 80, 'g'], ['Basmati rice', 120, 'g'], ['Onion', 60, 'g']],
+            'Butter Chicken' => [['Chicken boneless', 220, 'g'], ['Tomato', 150, 'g'], ['Butter', 40, 'g'], ['Fresh cream', 40, 'ml'], ['Cashew', 15, 'g']],
+            'Chicken Tikka Masala' => [['Chicken boneless', 220, 'g'], ['Tomato', 120, 'g'], ['Onion', 100, 'g'], ['Fresh cream', 20, 'ml']],
+            'Kadai Chicken' => [['Chicken curry cut', 250, 'g'], ['Capsicum', 60, 'g'], ['Tomato', 120, 'g'], ['Onion', 100, 'g']],
+            'Chicken Tikka' => [['Chicken boneless', 250, 'g'], ['Curd', 60, 'g'], ['Ginger garlic paste', 20, 'g']],
+            'Tandoori Chicken' => [['Chicken curry cut', 450, 'g'], ['Curd', 80, 'g'], ['Ginger garlic paste', 25, 'g']],
+            'Chicken 65' => [['Chicken boneless', 220, 'g'], ['Cooking oil', 60, 'ml'], ['Green chillies', 15, 'g']],
+            'Mutton Rogan Josh' => [['Mutton', 250, 'g'], ['Curd', 60, 'g'], ['Onion', 100, 'g'], ['Ghee', 20, 'ml']],
+            'Mutton Seekh Kebab' => [['Mutton', 200, 'g'], ['Onion', 40, 'g'], ['Garam masala', 5, 'g']],
+            'Kerala Fish Curry' => [['Seer fish', 220, 'g'], ['Tomato', 80, 'g'], ['Onion', 80, 'g']],
+            'Egg Curry' => [['Eggs', 3, 'pcs'], ['Onion', 80, 'g'], ['Tomato', 80, 'g']],
+            'Egg Bhurji Pav' => [['Eggs', 3, 'pcs'], ['Onion', 50, 'g'], ['Butter', 15, 'g']],
+            'Chicken Dum Biryani' => [['Basmati rice', 180, 'g'], ['Chicken curry cut', 220, 'g'], ['Onion', 100, 'g'], ['Ghee', 20, 'ml'], ['Curd', 50, 'g']],
+            'Mutton Biryani' => [['Basmati rice', 180, 'g'], ['Mutton', 200, 'g'], ['Onion', 100, 'g'], ['Ghee', 20, 'ml']],
+            'Veg Dum Biryani' => [['Basmati rice', 180, 'g'], ['Potato', 60, 'g'], ['Onion', 80, 'g'], ['Ghee', 15, 'ml']],
+            'Jeera Rice' => [['Basmati rice', 150, 'g'], ['Ghee', 10, 'ml']],
+            'Curd Rice' => [['Basmati rice', 120, 'g'], ['Curd', 150, 'g']],
+            'Masala Dosa' => [['Urad dal', 40, 'g'], ['Basmati rice', 80, 'g'], ['Potato', 120, 'g']],
+            'Butter Naan' => [['Maida', 90, 'g'], ['Butter', 10, 'g']],
+            'Garlic Naan' => [['Maida', 90, 'g'], ['Butter', 10, 'g'], ['Ginger garlic paste', 5, 'g']],
+            'Tandoori Roti' => [['Atta', 80, 'g']],
+            'Laccha Paratha' => [['Atta', 100, 'g'], ['Ghee', 10, 'ml']],
+            'Veg Thali' => [['Paneer', 80, 'g'], ['Urad dal', 40, 'g'], ['Basmati rice', 120, 'g'], ['Atta', 80, 'g'], ['Curd', 80, 'g']],
+            'Non-Veg Thali' => [['Chicken boneless', 150, 'g'], ['Urad dal', 40, 'g'], ['Basmati rice', 120, 'g'], ['Atta', 80, 'g'], ['Curd', 80, 'g']],
+            'Masala Chai' => [['Milk', 120, 'ml'], ['Tea leaves', 5, 'g'], ['Sugar', 10, 'g']],
+            'Filter Coffee' => [['Milk', 120, 'ml'], ['Coffee powder', 10, 'g'], ['Sugar', 10, 'g']],
+            'Sweet Lassi' => [['Curd', 200, 'g'], ['Sugar', 25, 'g']],
+            'Gulab Jamun' => [['Milk', 100, 'ml'], ['Sugar', 40, 'g'], ['Ghee', 15, 'ml']],
+        ];
+        foreach ($recipes as $dish => $lines) {
+            foreach ($lines as [$iname, $rq, $ru]) {
+                demoInsert($pdo, 'inventory_recipes', ['restaurant_id' => $rid, 'menu_item_id' => $items[$dish]['id'],
+                                                       'inventory_item_id' => $inv[$iname], 'quantity' => $rq, 'unit' => $ru]);
+            }
+        }
+        // sales use up stock from the reset onwards (dishes never go sold out on their own)
+        try {
+            $pdo->prepare('INSERT INTO inventory_settings (restaurant_id, auto_deduct, track_from, auto_soldout) VALUES (?, 1, ?, 0)')
+                ->execute([$rid, date('Y-m-d H:i:s', $now)]);
+        } catch (PDOException $e) {}
+
+        $supName = ['veg' => 'Fresh Farms Vegetables', 'dairy' => 'Nandini Dairy Distributors', 'meat' => 'Royal Meat & Poultry', 'dry' => 'Metro Wholesale'];
+        $buy = function (string $iname, float $qty, string $date, string $category = 'Inventory Purchase') use ($pdo, $rid, $stock, $inv, $supName) {
+            [$unit, , $cost, , , , $sup] = $stock[$iname];
+            $wasted = $category === 'Inventory Wastage';
+            $total = round($qty * $cost, 2);
+            $at = $date . ($wasted ? ' 22:30:00' : ' 07:30:00');
+            $txId = demoInsert($pdo, 'inventory_transactions', [
+                'restaurant_id' => $rid, 'inventory_item_id' => $inv[$iname], 'type' => $wasted ? 'wastage' : 'restock',
+                'quantity' => $wasted ? -$qty : $qty, 'cost_per_unit' => $cost, 'total_cost' => $total,
+                'notes' => $wasted ? 'Spoiled' : 'From ' . $supName[$sup], 'created_by' => 'Neha Kapoor', 'created_at' => $at,
+            ]);
+            demoInsert($pdo, 'expenses', [
+                'restaurant_id' => $rid, 'category' => $category, 'amount' => $total,
+                'description' => ($wasted ? 'Wastage: ' : 'Restock: ') . "$iname x" . round($qty, 2) . " $unit", 'expense_date' => $date,
+                'source' => 'inventory', 'reference_id' => $txId, 'created_at' => $at,
+            ]);
+        };
+        // fresh stock every morning, meat every other day, dry goods weekly — 42 days back up to today
+        for ($day = 42; $day >= 0; $day--) {
+            $date = date('Y-m-d', strtotime("-$day days", $now));
+            foreach ($stock as $iname => [, , , , , $perDay, , $every]) {
+                if ($every > 1 && $day % $every !== 1) continue;   // bulk buys never land on the reset day
+                $qty = $perDay * $every * mt_rand(90, 112) / 100;
+                $buy($iname, in_array($stock[$iname][0], ['pcs', 'bunch'], true) ? round($qty) : round($qty, 1), $date);
+            }
+        }
+        foreach ([[33, 'Tomato', 3], [26, 'Fresh cream', 1], [19, 'Chicken curry cut', 1.5], [12, 'Spinach', 6], [6, 'Paneer', 0.8], [2, 'Milk', 4]] as [$ago, $iname, $wq]) {
+            $buy($iname, $wq, date('Y-m-d', strtotime("-$ago days", $now)), 'Inventory Wastage');
+        }
+        // purchase orders: two received, one sent, one still a draft
+        $poN = 0;
+        foreach ([['meat', 'received', -9, [['Chicken boneless', 10], ['Mutton', 4], ['Eggs', 60]]],
+                  ['dry', 'received', -3, [['Basmati rice', 25], ['Cooking oil', 15], ['Cashew', 1]]],
+                  ['veg', 'sent', 1, [['Onion', 40], ['Tomato', 30], ['Capsicum', 8]]],
+                  ['dairy', 'draft', 2, [['Paneer', 15], ['Fresh cream', 6], ['Butter', 5]]]] as [$sup, $pst, $off, $lines]) {
+            $total = 0.0;
+            foreach ($lines as [$iname, $lq]) $total += $lq * $stock[$iname][2];
+            $made = date('Y-m-d H:i:s', strtotime(($off - 2) . ' days', $now));
+            $poId = demoInsert($pdo, 'inventory_purchase_orders', [
+                'restaurant_id' => $rid, 'po_number' => 'PO-' . str_pad((string)++$poN, 4, '0', STR_PAD_LEFT), 'supplier_id' => $supIds[$sup],
+                'status' => $pst, 'expected_date' => date('Y-m-d', strtotime("$off days", $now)), 'total' => $total, 'created_at' => $made,
+                'sent_at' => $pst === 'draft' ? null : $made, 'received_at' => $pst === 'received' ? date('Y-m-d H:i:s', strtotime("$off days", $now)) : null,
+            ]);
+            foreach ($lines as [$iname, $lq]) {
+                demoInsert($pdo, 'inventory_po_lines', ['po_id' => $poId, 'inventory_item_id' => $inv[$iname], 'quantity' => $lq,
+                                                        'cost_per_unit' => $stock[$iname][2], 'received_qty' => $pst === 'received' ? $lq : 0]);
+            }
+        }
+
+        // ── Running costs: rent, salaries, bills, gas ──
+        $spend = function (string $cat, float $amount, string $desc, int $ts) use ($pdo, $rid) {
+            demoInsert($pdo, 'expenses', ['restaurant_id' => $rid, 'category' => $cat, 'amount' => $amount, 'description' => $desc,
+                                          'expense_date' => date('Y-m-d', $ts), 'source' => 'manual', 'created_at' => date('Y-m-d 11:00:00', $ts)]);
+        };
+        for ($day = 42; $day >= 0; $day--) {
+            $ts = strtotime("-$day days", $now);
+            $dom = (int)date('j', $ts);
+            $month = date('F', $ts);
+            if ($day === 0) continue;   // the reset day only has the morning's fresh stock
+            if ($dom === 1) {
+                $spend('Rent', 85000, "Shop rent – $month", $ts);
+                $spend('Salaries', 145000, "Staff salaries – $month (8 staff)", $ts);
+            }
+            if ($dom === 5) {
+                $spend('Electricity', mt_rand(16500, 19500), "BESCOM electricity bill – $month", $ts);
+                $spend('Water', 2500, "Water tanker and BWSSB bill – $month", $ts);
+                $spend('Software & Internet', 2999, "Internet and POS – $month", $ts);
+            }
+            if ($dom === 15) $spend('Marketing', 6000, "Instagram and Google ads – $month", $ts);
+            if ($day % 7 === 2) $spend('Gas', 11100, 'LPG commercial cylinders x6', $ts);
+        }
+        $spend('Repairs & Maintenance', 3200, 'Tandoor repair and deep-fryer service', strtotime('-17 days', $now));
+        $spend('Repairs & Maintenance', 1450, 'Pest control', strtotime('-8 days', $now));
 
         // ── Website: header photo and layout ──
         try {
