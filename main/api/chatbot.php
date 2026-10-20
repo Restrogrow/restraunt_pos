@@ -21,6 +21,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 const CHAT_ANON = 'Website visitor';
+// voice call paused for now (docs/FEATURES.md); also VOICE_ON in index.html
+const CHAT_VOICE_ON = false;
 
 function chatbotOut(array $data, int $status = 200): void
 {
@@ -124,6 +126,10 @@ try {
         $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)")->execute([$leadId, $r['reply']]);
         $conn->prepare('UPDATE chatbot_leads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$leadId]);
         chatbotOut(['success' => true] + $r);
+    }
+
+    if (($action === 'voiceStart' || $action === 'voice') && !CHAT_VOICE_ON) {
+        chatbotOut(['success' => false, 'message' => 'Voice talk is not available right now. Please type your question.'], 403);
     }
 
     if ($action === 'voiceStart') {

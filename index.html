@@ -870,7 +870,7 @@
             <h2 id="rgcTitle">RestroGrow</h2>
             <span id="rgcStatus">Online · replies in seconds</span>
           </div>
-          <button type="button" class="rgc-ib rgc-talk" id="rgcTalk" aria-label="Talk on voice" title="Talk on voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Talk</span></button>
+          <button type="button" class="rgc-ib rgc-talk" id="rgcTalk" aria-label="Talk on voice" title="Talk on voice" hidden><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Talk</span></button>
           <button type="button" class="rgc-ib" id="rgcNew" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
           <button type="button" class="rgc-ib" id="rgcClose" aria-label="Close chat"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
         </header>
@@ -891,7 +891,7 @@
         <form class="rgc-in" id="rgcForm" autocomplete="off">
           <label class="rgc-sr" for="rgcInput">Type your question</label>
           <textarea id="rgcInput" rows="1" maxlength="500" placeholder="Ask anything about RestroGrow…"></textarea>
-          <button type="button" id="rgcMic" aria-label="Talk on voice" title="Talk on voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+          <button type="button" id="rgcMic" aria-label="Talk on voice" title="Talk on voice" hidden><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
           <button type="submit" id="rgcSend" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M4 12l15-7-5 15-3-6-7-2z" fill="currentColor"/></svg></button>
         </form>
         <p class="rgc-foot">Automatic replies · <a href="privacy-policy/" target="_blank" rel="noopener">Privacy</a> · or call <a href="tel:+916377568749">+91 63775 68749</a></p>
@@ -994,6 +994,7 @@
     #rgcMic { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 13px; background: var(--al); color: var(--a); cursor: pointer; transition: background .15s, transform .1s; }
     #rgcMic:hover { background: #f6dccb; } #rgcMic:active { transform: scale(.92); }
     #rgcMic svg { width: 20px; height: 20px; }
+    .rgc-talk[hidden], #rgcMic[hidden] { display: none !important; }
     .rgc-talk { width: auto; padding: 0 11px 0 9px; gap: 5px; display: flex; align-items: center; font: 700 12.5px 'Public Sans', sans-serif; background: rgba(255,255,255,.22); }
     .rgc-m.vc { position: relative; }
     .rgc-m.vc::after { content: '🎙'; position: absolute; top: -7px; font-size: 11px; line-height: 1; }
@@ -1057,8 +1058,10 @@
       var msgs = document.getElementById('rgcMsgs'), form = document.getElementById('rgcForm'), input = document.getElementById('rgcInput');
       var send = document.getElementById('rgcSend'), status = document.getElementById('rgcStatus'), teaser = document.getElementById('rgcTeaser'), badge = document.getElementById('rgcBadge');
       var token = '', busy = false, loaded = false, hasContact = false, leadShown = false, asked = 0;
+      // voice call paused for now (docs/FEATURES.md); true shows the Talk buttons again (also CHAT_VOICE_ON in main/api/chatbot.php)
+      var VOICE_ON = false;
       var TALK_CHIP = '🎙 Talk on voice';
-      var START_CHIPS = [TALK_CHIP, 'What does it cost?', 'Is there a free trial?', 'WhatsApp ordering?', 'Book a demo'];
+      var START_CHIPS = (VOICE_ON ? [TALK_CHIP] : []).concat(['What does it cost?', 'Is there a free trial?', 'WhatsApp ordering?', 'Does it work on my phone?', 'Book a demo']);
       try { token = localStorage.getItem(KEY) || ''; } catch (e) {}
 
       function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -1174,7 +1177,7 @@
           hasContact = !!d.has_contact; leadShown = hasContact;
           if (!d.messages.length) { welcome(); return; }
           d.messages.forEach(function (m) { add(m.message, m.sender === 'visitor' ? 'me' : 'bot', m.channel === 'voice' ? 'vc' : ''); });
-          chips([TALK_CHIP, 'What does it cost?', hasContact ? 'Is there a free trial?' : 'Book a demo']);
+          chips((VOICE_ON ? [TALK_CHIP] : ['What is included?']).concat(['What does it cost?', hasContact ? 'Is there a free trial?' : 'Book a demo']));
         }).catch(function () { typing(false); token = ''; try { localStorage.removeItem(KEY); } catch (e) {} welcome(); });
       }
       function open() {
@@ -1276,7 +1279,7 @@
         });
       }
       function startVoice() {
-        if (vOn) return;
+        if (vOn || !VOICE_ON) return;
         if (panel.hidden) open();
         if (!SR || !synth) { add('Voice talk works in **Chrome, Edge or Safari**. You can type your question here, or call **+91 63775 68749**.', 'bot'); return; }
         vOn = true; quiet = 0; clearChips();
@@ -1311,6 +1314,7 @@
       document.getElementById('rgcVend').addEventListener('click', endVoice);
       document.getElementById('rgcTalk').addEventListener('click', startVoice);
       document.getElementById('rgcMic').addEventListener('click', startVoice);
+      if (VOICE_ON) { document.getElementById('rgcTalk').hidden = false; document.getElementById('rgcMic').hidden = false; }
 
       // the box grows with the text (measured only while visible: a hidden box measures 0)
       function grow() { if (input.offsetParent) { input.style.height = 'auto'; input.style.height = Math.max(40, Math.min(110, input.scrollHeight)) + 'px'; } send.disabled = busy || !input.value.trim(); }

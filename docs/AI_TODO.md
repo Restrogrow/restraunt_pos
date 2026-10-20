@@ -132,6 +132,33 @@ day and the top 3 "What to do now" tips from Analytics.
 
 ---
 
+## 8. Voice call with a sales agent in the website chatbot — built, PAUSED (21 October 2026)
+
+**Status:** built and pushed, then **switched off** on the site the same day (owner: "abhi discontinue, baad me dekhenge").
+Nothing is deleted; it only needs the two switches turned back on.
+
+**What it does:** the restrogrow.com chat gets a Talk button. "Riya" talks to the visitor like a salesperson
+(asks about their restaurant, matches features to their problems, handles price doubts, pushes for the free trial
+or a demo). If they give name + number and say yes to a call back, they become a chat lead and the team gets the
+new-lead email. Every line is saved in Super Admin › Chat leads, tagged "voice call".
+
+**How it is built now (version 1):** the browser listens and speaks (Web Speech API: works in Chrome, Edge, Safari;
+not Firefox); each sentence goes to `main/api/chatbot.php` (actions `voiceStart`, `voice`) and Gemini writes the
+reply (`rgChatbotVoiceReply` in `main/config/chatbot_store.php`). Lines are stored in `chatbot_messages` with
+`channel = 'voice'`. Weak spots: it waits for a pause before answering and the browser voice sounds robotic.
+
+**To switch it back on:** `VOICE_ON = true` in `index.html` and `CHAT_VOICE_ON = true` in `main/api/chatbot.php`, then push.
+
+**Next version when we pick it up again ("live", catches speech easily, answers fast):** Gemini Live API.
+Tested on 21 Oct 2026 with the RestroGrow key: model `gemini-3.8-live` works; the server makes a one-time token
+(`POST v1alpha/auth_tokens` with the setup locked in: system prompt, voice, transcripts, a `save_contact` tool), the
+browser opens `wss://…/BidiGenerateContentConstrained?access_token=…`, streams 16 kHz mic audio and plays the
+24 kHz PCM reply. First audio came back about 0.5 s after the question; the key never reaches the browser.
+Still to build: mic capture (AudioWorklet), audio playback queue with barge-in, saving the transcripts of each turn
+to `chatbot_messages`, and the `save_contact` tool call → lead. Keep version 1 as the fallback.
+
+---
+
 ## Sources (mostly vendor material; figures not independently verified)
 
 - [Loman: AI restaurant upselling](https://loman.ai/blog/using-ai-to-enhance-upselling-strategies-in-restaurants)

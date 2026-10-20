@@ -415,6 +415,7 @@ Everything RestroGrow can do today, grouped by area. Made on 16 Oct 2026 from th
 | Customer app demo | Preview of a restaurant's own customer app with "make it yours" (name, colour). | `restrogrow.com/customer-app-demo/` | anyone | — |
 | Marketing website | RestroGrow home page with features, pricing, screenshots and contact form. | `restrogrow.com` | anyone | — |
 | AI chatbot on restrogrow.com | Answers visitors' questions and saves them as leads. | `restrogrow.com` (chat bubble) | anyone | Valid Gemini key |
+| Voice call in the chatbot (**paused, switched off**) | "Riya", a sales agent visitors can talk to (English/Hindi); call saved in Chat leads, caller saved as a lead after they agree. Built 21 Oct 2026, switched off the same day to revisit later. See `docs/AI_TODO.md` › 8. | Hidden (`VOICE_ON` in index.html + `CHAT_VOICE_ON` in main/api/chatbot.php) | anyone, when on | Valid Gemini key |
 | FAQ and About pages | Public FAQ, about and legal pages. | `restrogrow.com/faq/`, `/about/`, `/privacy-policy/` etc. | anyone | Blog is an empty "coming soon" page |
 | Year-end goal page | Internal team countdown to 31 Dec with progress and checkpoints (not a product feature). | `restrogrow.com/until-the-year-ends/` | team | — |
 
