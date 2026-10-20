@@ -17,18 +17,18 @@
 .stages-dark .stage, .stage.dark, .rgl-root.dark {
   --stage-bg: #121016; --stage-ink: #FBF6F1; --stage-dim: #26222B; --stage-dim-2: #1B1820;
 }
-/* ---------- logo layers ---------- */
-.lg { position: relative; aspect-ratio: 600 / 106; width: 62%; max-width: 100%; }
-.lg > i { position: absolute; inset: 0; display: block; }
-.mask-ink { -webkit-mask: var(--ink-img) center / 100% 100% no-repeat; mask: var(--ink-img) center / 100% 100% no-repeat; background: var(--stage-ink); }
-.mask-g { -webkit-mask: var(--g-img) center / 100% 100% no-repeat; mask: var(--g-img) center / 100% 100% no-repeat; background: var(--orange); }
-.mask-all { -webkit-mask: var(--ink-img) center / 100% 100% no-repeat, var(--g-img) center / 100% 100% no-repeat; mask: var(--ink-img) center / 100% 100% no-repeat, var(--g-img) center / 100% 100% no-repeat; }
-.gpos { left: 54% !important; width: 16.2%; right: auto !important; }
-.gmark { -webkit-mask: var(--gm-img) center / contain no-repeat; mask: var(--gm-img) center / contain no-repeat; background: var(--orange); }
+/* ---------- logo layers (scoped to .stage: the dashboards use .lg / .col / .cap for their own pages) ---------- */
+.stage .lg { position: relative; aspect-ratio: 600 / 106; width: 62%; max-width: 100%; }
+.stage .lg > i { position: absolute; inset: 0; display: block; }
+.stage .mask-ink { -webkit-mask: var(--ink-img) center / 100% 100% no-repeat; mask: var(--ink-img) center / 100% 100% no-repeat; background: var(--stage-ink); }
+.stage .mask-g { -webkit-mask: var(--g-img) center / 100% 100% no-repeat; mask: var(--g-img) center / 100% 100% no-repeat; background: var(--orange); }
+.stage .mask-all { -webkit-mask: var(--ink-img) center / 100% 100% no-repeat, var(--g-img) center / 100% 100% no-repeat; mask: var(--ink-img) center / 100% 100% no-repeat, var(--g-img) center / 100% 100% no-repeat; }
+.stage .gpos { left: 54% !important; width: 16.2%; right: auto !important; }
+.stage .gmark { -webkit-mask: var(--gm-img) center / contain no-repeat; mask: var(--gm-img) center / contain no-repeat; background: var(--orange); }
 
-.cap { font: 500 12.5px var(--f-body); color: var(--stage-ink); opacity: .6; letter-spacing: .02em; }
-.col { display: grid; justify-items: center; gap: 14px; width: 100%; }
-.dur { animation-duration: calc(var(--d, 1.6s) / var(--spd)); animation-iteration-count: infinite; }
+.stage .cap { font: 500 12.5px var(--f-body); color: var(--stage-ink); opacity: .6; letter-spacing: .02em; }
+.stage .col { display: grid; justify-items: center; gap: 14px; width: 100%; }
+.stage .dur { animation-duration: calc(var(--d, 1.6s) / var(--spd)); animation-iteration-count: infinite; }
 
 /* 1. Liquid fill */
 .l-fill .lg { width: 66%; }
