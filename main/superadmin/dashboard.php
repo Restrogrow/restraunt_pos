@@ -237,6 +237,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">forum</span>
           <span class="text">Chat leads <span id="spChatLeadBadge" class="badge-new" style="display:none;">0</span></span>
         </div>
+        <div class="menu-item" data-page="recordings">
+          <span class="material-symbols-rounded icon">phone</span>
+          <span class="text">Recordings</span>
+        </div>
         <div class="menu-item" data-page="support">
           <span class="material-symbols-rounded icon">support_agent</span>
           <span class="text">Support <span id="spTicketBadge" class="badge-new" style="display:none;">0</span></span>
@@ -944,6 +948,17 @@ require_once __DIR__ . '/../config/countries.php';
         </div>
         <div id="spChatLeads" class="sp-body"><div class="sp-loading">Loading…</div></div>
         <div id="spChatConversation" class="sp-body"></div>
+      </div>
+
+      <div id="recordingsPage" class="page">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div><h1>Recordings</h1><div class="sa-sub">Call recordings saved on your server. Upload many at once, play and download</div></div>
+          </div>
+          <div class="header-actions" id="spRecsActs"></div>
+        </div>
+        <div id="spRecs" class="sp-body"><div class="sp-loading">Loading…</div></div>
       </div>
 
       <div id="supportPage" class="page">

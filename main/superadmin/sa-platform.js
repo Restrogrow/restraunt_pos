@@ -1,6 +1,6 @@
 /**
  * Superadmin platform screens (data: api_platform.php; coupons use api.php):
- * Restaurant 360, Analytics, Renewals, Coupons, Leads, Support, Announcements, Invoices & GST,
+ * Restaurant 360, Analytics, Renewals, Coupons, Leads, Recordings, Support, Announcements, Invoices & GST,
  * Security & activity, Platform health, Settings (save), bulk actions on Restaurants.
  * Page switching stays in dashboard.php; this file loads a page when its sidebar item is clicked.
  */
@@ -205,8 +205,8 @@
     return get('leads', '&stage=' + leadStage).then(function (d) {
       var total = 0; for (var k in d.counts) total += +d.counts[k];
       var rc = d.recordings || { files: 0, leads: 0 };
-      $('spLeadsActs').innerHTML = (rc.files ? '<a class="btn btn-outline" href="' + API + '?action=downloadLeadRecordings" download title="One ZIP with a folder for every lead you called"><span class="material-symbols-rounded">folder_zip</span>Download all recordings <em class="sp-cnt">' + num(rc.files) + '</em></a>'
-        : '<button class="btn btn-outline" type="button" disabled title="Upload call recordings on a lead first"><span class="material-symbols-rounded">folder_zip</span>Download all recordings</button>') +
+      $('spLeadsActs').innerHTML = (rc.files ? '<a class="btn btn-outline" href="' + API + '?action=downloadLeadRecordings&scope=leads" download title="One ZIP with a folder for every lead you called"><span class="material-symbols-rounded">download</span>Download all recordings <em class="sp-cnt">' + num(rc.files) + '</em></a>'
+        : '<button class="btn btn-outline" type="button" disabled title="Upload call recordings on a lead first"><span class="material-symbols-rounded">download</span>Download all recordings</button>') +
         '<button class="btn btn-primary" id="spLeadNew"><span class="material-symbols-rounded">person_add</span>Add lead</button>';
       spLeadRows = {}; d.rows.forEach(function (r) { spLeadRows[r.id] = r; });
       var today = new Date().toISOString().slice(0, 10);
@@ -218,7 +218,7 @@
             '<div class="sp-lead-r"><span class="badge ' + ({ new: 'badge-info', won: 'badge-success', lost: 'badge-danger' }[r.stage] || 'badge-warning') + '">' + esc(stageName(r.stage)) + '</span>' +
             (r.follow_up_on ? '<small class="' + (due ? 'sp-due' : 'sp-muted') + '">Follow up ' + day(r.follow_up_on) + '</small>' : '') +
             '<div class="sa-acts">' + (r.phone ? '<a class="sa-more-btn" href="tel:' + esc(r.phone) + '" title="Call"><span class="material-symbols-rounded">call</span></a><a class="sa-more-btn" target="_blank" rel="noopener" href="' + waLink(r.phone, 'Hi ' + r.name + ', this is RestroGrow. Thanks for your enquiry!') + '" title="WhatsApp"><span class="material-symbols-rounded">chat</span></a>' : '') +
-            '<button class="btn btn-outline btn-sm" data-sp-rec="' + r.id + '" title="Call recordings"><span class="material-symbols-rounded">mic</span>' + (r.recordings.length ? r.recordings.length : 'Add') + '</button>' +
+            '<button class="btn btn-outline btn-sm" data-sp-rec="' + r.id + '" title="Call recordings"><span class="material-symbols-rounded">phone</span>' + (r.recordings.length ? r.recordings.length : 'Add') + '</button>' +
             '<button class="btn btn-outline btn-sm" data-sp-lead="' + r.id + '">Update</button>' + (r.stage !== 'won' ? '<button class="btn btn-primary btn-sm" data-sp-convert="' + r.id + '">Create restaurant</button>' : '') + '</div></div></div>';
         }).join('') + '</div>' : empty('person_search', leadStage === 'all' ? 'No enquiries yet. Website contact form messages show up here.' : 'No leads in this stage')) + '</div></div>';
       setBadge('spLeadBadge', +(d.counts.new || 0));
@@ -236,13 +236,13 @@
       '<input type="file" id="spRecFile" multiple accept="' + REC_ACCEPT + '" hidden></label>' +
       '<div class="sp-rec-status" id="spRecStatus"></div>' +
       (list.length ? '<div class="sp-rec-list">' + list.map(function (x) {
-        return '<div class="sp-rec-item"><div class="sp-rec-top"><span class="material-symbols-rounded">graphic_eq</span><b title="' + esc(x.original_name) + '">' + esc(x.original_name) + '</b>' +
+        return '<div class="sp-rec-item"><div class="sp-rec-top"><span class="material-symbols-rounded">call</span><b title="' + esc(x.original_name) + '">' + esc(x.original_name) + '</b>' +
           '<small>' + fsize(x.size_bytes) + ' · ' + when(x.created_at) + '</small>' +
           '<a class="sa-more-btn" href="' + API + '?action=leadRecording&dl=1&id=' + x.id + '" download title="Download"><span class="material-symbols-rounded">download</span></a>' +
           '<button class="sa-more-btn" type="button" data-sp-recdel="' + x.id + '" title="Delete"><span class="material-symbols-rounded">delete</span></button></div>' +
           '<audio controls preload="none" src="' + API + '?action=leadRecording&id=' + x.id + '"></audio></div>';
       }).join('') + '</div>' +
-      (list.length > 1 ? '<a class="btn btn-outline btn-sm sp-rec-all" href="' + API + '?action=downloadLeadRecordings&lead_id=' + r.id + '" download><span class="material-symbols-rounded">folder_zip</span>Download these ' + list.length + ' as ZIP</a>' : '')
+      (list.length > 1 ? '<a class="btn btn-outline btn-sm sp-rec-all" href="' + API + '?action=downloadLeadRecordings&lead_id=' + r.id + '" download><span class="material-symbols-rounded">download</span>Download these ' + list.length + ' as ZIP</a>' : '')
       : '<p class="sp-muted sp-rec-none">No recordings for this lead yet.</p>') + '</div>';
   }
   function openRecordings(id) {
@@ -255,16 +255,21 @@
     return loadLeads().then(function () { var b = $('spRecBody'); if (b && recLead && spLeadRows[recLead]) b.innerHTML = recHtml(spLeadRows[recLead]); });
   }
   function uploadRecordings(files) {
-    if (recBusy || !recLead || !files || !files.length) return;
+    if (!recLead) return;
+    uploadAudio(files, recLead, 'spRecStatus', redrawRecordings);
+  }
+  // shared by a lead's recordings window and the Recordings page; leadId 0 = no lead
+  function uploadAudio(files, lead, statusId, after) {
+    if (recBusy || !files || !files.length) return;
     files = Array.prototype.slice.call(files);
-    var lead = recLead, done = 0, errors = [];
+    var done = 0, errors = [];
     recBusy = true;
-    var show = function (txt) { var s = $('spRecStatus'); if (s) s.innerHTML = txt; };
+    var show = function (txt) { var s = $(statusId); if (s) s.innerHTML = txt; };
     // one file per request so a big batch never hits the server's total upload limit
     var next = function (i) {
       if (i >= files.length) {
         recBusy = false;
-        return redrawRecordings().then(function () {
+        return Promise.resolve(after()).then(function () {
           show((done ? '<span class="sp-ok">' + done + ' uploaded</span>' : '') + errors.map(function (m) { return '<span class="sp-err">' + esc(m) + '</span>'; }).join(''));
         });
       }
@@ -275,6 +280,62 @@
         .then(function () { return next(i + 1); });
     };
     next(0);
+  }
+
+  /* ════════ Recordings page: all call recordings, with or without a lead ════════ */
+  var recsQ = '', recsTimer = 0, recsRows = {}, recsLeads = [], recsUploadLead = '';
+  var leadLabel = function (l) { return [l.name, l.restaurant_name_hint, l.phone].filter(Boolean).join(' · '); };
+  function loadRecordings() {
+    var box = $('spRecs');
+    return get('recordings', '&q=' + encodeURIComponent(recsQ)).then(function (d) {
+      recsRows = {}; d.rows.forEach(function (r) { recsRows[r.id] = r; });
+      recsLeads = d.leads || [];
+      if (!$('spRecsSearch')) {
+        $('spRecsActs').innerHTML = '<input id="spRecsSearch" type="search" placeholder="Search file, lead or phone" aria-label="Search recordings" value="' + esc(recsQ) + '">' +
+          '<a class="btn btn-primary" id="spRecsAll" href="' + API + '?action=downloadLeadRecordings" download><span class="material-symbols-rounded">download</span>Download all <em class="sp-cnt"></em></a>';
+      }
+      var all = $('spRecsAll');
+      all.querySelector('em').textContent = num(d.total);
+      all.classList.toggle('sp-off', !d.total);
+      var leadOpts = '<option value="">No lead</option>' + recsLeads.map(function (l) { return '<option value="' + l.id + '"' + (String(l.id) === recsUploadLead ? ' selected' : '') + '>' + esc(leadLabel(l)) + '</option>'; }).join('');
+      box.innerHTML = '<div class="card"><div class="card-body sp-rec">' +
+        '<label class="sp-rec-drop" id="spRecsDrop"><span class="material-symbols-rounded">upload</span><b>Upload recordings</b><small>Pick or drop as many audio files as you like (mp3, m4a, wav, amr, ogg…). Up to ' + esc(d.max_upload) + ' each</small>' +
+        '<input type="file" id="spRecsFile" multiple accept="' + REC_ACCEPT + '" hidden></label>' +
+        '<div class="sp-rec-link"><label for="spRecsLead">Link new uploads to a lead (optional)</label><select id="spRecsLead">' + leadOpts + '</select></div>' +
+        '<div class="sp-rec-status" id="spRecsStatus"></div></div></div>' +
+        '<div class="card"><div class="card-header"><div class="card-title">' + num(d.total) + ' recordings <small class="sp-muted">· ' + fsize(d.bytes) + ' on the server</small></div>' +
+        (d.rows.length ? '<div class="sp-rec-bulk"><label class="sp-rec-ckall"><input type="checkbox" id="spRecsCkAll"> All</label><a class="btn btn-outline btn-sm sp-off" id="spRecsSel" download><span class="material-symbols-rounded">download</span>Download selected <em class="sp-cnt">0</em></a></div>' : '') +
+        '</div><div class="card-body">' +
+        (d.rows.length ? '<div class="sp-rec-list sp-rec-page">' + d.rows.map(function (x) {
+          return '<div class="sp-rec-item"><div class="sp-rec-top"><input type="checkbox" class="sp-rec-ck" value="' + x.id + '" aria-label="Select"><span class="material-symbols-rounded">call</span>' +
+            '<div class="sp-rec-name"><b title="' + esc(x.original_name) + '">' + esc(x.original_name) + '</b>' +
+            '<small>' + (x.lead_name != null ? '<span class="sp-rec-tag">' + esc(leadLabel({ name: x.lead_name, restaurant_name_hint: x.restaurant_name_hint, phone: x.lead_phone })) + '</span>' : '') + fsize(x.size_bytes) + ' · ' + when(x.created_at) + '</small></div>' +
+            '<button class="sa-more-btn" type="button" data-sp-recmove="' + x.id + '" title="' + (+x.lead_id ? 'Change lead' : 'Link to a lead') + '"><span class="material-symbols-rounded">person_add</span></button>' +
+            '<a class="sa-more-btn" href="' + API + '?action=leadRecording&dl=1&id=' + x.id + '" download title="Download"><span class="material-symbols-rounded">download</span></a>' +
+            '<button class="sa-more-btn" type="button" data-sp-recdel="' + x.id + '" data-sp-recpage="1" title="Delete"><span class="material-symbols-rounded">delete</span></button></div>' +
+            '<audio controls preload="none" src="' + API + '?action=leadRecording&id=' + x.id + '"></audio></div>';
+        }).join('') + '</div>' : empty('phone', recsQ ? 'No recordings match your search' : 'No recordings yet. Upload your call recordings above.')) + '</div></div>';
+      var s = $('spRecsSearch');
+      if (s && !s.dataset.bound) {
+        s.dataset.bound = '1';
+        s.addEventListener('input', function () { recsQ = s.value.trim(); clearTimeout(recsTimer); recsTimer = setTimeout(loadRecordings, 300); });
+      }
+    }).catch(function (e) { box.innerHTML = empty('error', esc(e.message)); });
+  }
+  function recsSelection() {
+    var ids = Array.prototype.map.call(document.querySelectorAll('.sp-rec-ck:checked'), function (c) { return c.value; });
+    var b = $('spRecsSel'); if (!b) return;
+    b.querySelector('em').textContent = ids.length;
+    b.classList.toggle('sp-off', !ids.length);
+    b.href = ids.length ? API + '?action=downloadLeadRecordings&ids=' + ids.join(',') : '#';
+    var all = $('spRecsCkAll'), n = document.querySelectorAll('.sp-rec-ck').length;
+    if (all) { all.checked = n > 0 && ids.length === n; all.indeterminate = ids.length > 0 && ids.length < n; }
+  }
+  function moveRecording(id) {
+    var x = recsRows[id]; if (!x) return;
+    Swal.fire({ title: 'Link to a lead', input: 'select', inputOptions: new Map([['0', 'No lead']].concat(recsLeads.map(function (l) { return [String(l.id), leadLabel(l)]; }))),
+      inputValue: String(+x.lead_id || 0), showCancelButton: true, confirmButtonText: 'Save', confirmButtonColor: '#2563eb' })
+      .then(function (r) { if (r.isConfirmed) post('moveRecording', { id: id, lead_id: +r.value }).then(function (d) { alertMsg(d.message); loadRecordings(); }).catch(fail); });
   }
   function leadForm(r) {
     r = r || {};
@@ -654,7 +715,7 @@
       inputAttributes: { min: 1, max: 365 }, showCancelButton: true, confirmButtonColor: '#2563eb', inputValidator: function (x) { return !(+x >= 1 && +x <= 365) ? 'Enter 1 to 365' : null; } })
       .then(function (r) { if (r.isConfirmed) post('extendRenewal', { id: id, days: +r.value }).then(function (d) { alertMsg(d.message); reloadActive(); if (drawer && drawer.classList.contains('show')) open360(id); }).catch(fail); });
   }
-  var LOADERS = { analytics: loadAnalytics, renewals: loadRenewals, coupons: loadCoupons, leads: loadLeads, chatLeads: loadChatLeads, support: loadSupport, announcements: loadAnnouncements, invoices: loadInvoices, invoiceGen: loadInvoiceGen, security: loadSecurity, health: loadHealth, settings: loadSettings };
+  var LOADERS = { analytics: loadAnalytics, renewals: loadRenewals, coupons: loadCoupons, leads: loadLeads, chatLeads: loadChatLeads, recordings: loadRecordings, support: loadSupport, announcements: loadAnnouncements, invoices: loadInvoices, invoiceGen: loadInvoiceGen, security: loadSecurity, health: loadHealth, settings: loadSettings };
   function reloadActive() { var a = document.querySelector('.menu-item.active'); if (a && LOADERS[a.dataset.page]) LOADERS[a.dataset.page](); }
 
   document.addEventListener('click', function (e) {
@@ -687,12 +748,14 @@
     if ((m = t.closest('[data-sp-chat-open]'))) { showChatConversation(+m.dataset.spChatOpen); return; }
     if (t.closest('#spLeadNew')) { leadForm(null); return; }
     if ((m = t.closest('[data-sp-lead]'))) { leadForm(spLeadRows[m.dataset.spLead]); return; }
+    if ((m = t.closest('[data-sp-recmove]'))) { moveRecording(+m.dataset.spRecmove); return; }
+    if ((m = t.closest('a.sp-off'))) { e.preventDefault(); return; }
     if ((m = t.closest('[data-sp-rec]'))) { openRecordings(+m.dataset.spRec); return; }
     if ((m = t.closest('[data-sp-recdel]'))) {
       // first tap arms the button, second tap deletes (keeps the recordings window open)
       if (!m.classList.contains('armed')) { m.classList.add('armed'); m.title = 'Tap again to delete'; setTimeout(function () { m.classList.remove('armed'); m.title = 'Delete'; }, 3000); return; }
       m.disabled = true;
-      post('deleteLeadRecording', { id: +m.dataset.spRecdel }).then(redrawRecordings).catch(function (er) { m.disabled = false; fail(er); });
+      post('deleteLeadRecording', { id: +m.dataset.spRecdel }).then(m.dataset.spRecpage ? loadRecordings : redrawRecordings).catch(function (er) { m.disabled = false; fail(er); });
       return;
     }
     if ((m = t.closest('[data-sp-convert]'))) { convertLead(spLeadRows[m.dataset.spConvert]); return; }
@@ -730,6 +793,10 @@
     if (t.id === 'spCkAll') { document.querySelectorAll('.sp-ck-row').forEach(function (x) { x.checked = t.checked; }); refreshBulk(); }
     else if (t.classList.contains('sp-ck-row')) refreshBulk();
     else if (t.id === 'spRecFile') { uploadRecordings(t.files); t.value = ''; }
+    else if (t.id === 'spRecsFile') { uploadAudio(t.files, +recsUploadLead || 0, 'spRecsStatus', loadRecordings); t.value = ''; }
+    else if (t.id === 'spRecsLead') recsUploadLead = t.value;
+    else if (t.id === 'spRecsCkAll') { document.querySelectorAll('.sp-rec-ck').forEach(function (x) { x.checked = t.checked; }); recsSelection(); }
+    else if (t.classList.contains('sp-rec-ck')) recsSelection();
     else if (t.id === 'spCouponRest') { couponRid = t.value; loadCoupons(); }
     else if (t.id === 'spInvMonth') { invMonth = t.value || invMonth; loadInvoices(); }
     else if (t.id === 'spSecOutcome') { secOutcome = t.value; loadSecurity(); }
@@ -746,10 +813,10 @@
   });
   ['dragover', 'dragleave', 'drop'].forEach(function (ev) {
     document.addEventListener(ev, function (e) {
-      var z = e.target.closest && e.target.closest('#spRecDrop'); if (!z) return;
+      var z = e.target.closest && e.target.closest('#spRecDrop, #spRecsDrop'); if (!z) return;
       e.preventDefault();
       z.classList.toggle('over', ev === 'dragover');
-      if (ev === 'drop') uploadRecordings(e.dataTransfer.files);
+      if (ev === 'drop') { if (z.id === 'spRecsDrop') uploadAudio(e.dataTransfer.files, +recsUploadLead || 0, 'spRecsStatus', loadRecordings); else uploadRecordings(e.dataTransfer.files); }
     });
   });
   var qTimer = 0;

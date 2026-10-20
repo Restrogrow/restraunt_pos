@@ -259,17 +259,19 @@ try {
         foreach ($conn->query("SELECT id, lead_id, original_name, size_bytes, created_at FROM lead_recordings ORDER BY id")->fetchAll(PDO::FETCH_ASSOC) as $rc) $recs[$rc['lead_id']][] = $rc;
         foreach ($rows as &$row) $row['recordings'] = $recs[$row['id']] ?? [];
         unset($row);
-        $recTotal = $conn->query("SELECT COUNT(*) AS n, COUNT(DISTINCT lead_id) AS leads FROM lead_recordings")->fetch(PDO::FETCH_ASSOC);
+        $recTotal = $conn->query("SELECT COUNT(*) AS n, COUNT(DISTINCT lead_id) AS leads FROM lead_recordings WHERE lead_id > 0")->fetch(PDO::FETCH_ASSOC);
         out(['rows' => $rows, 'counts' => $counts, 'recordings' => ['files' => (int)$recTotal['n'], 'leads' => (int)$recTotal['leads']]]);
 
     /* ───────── call recordings on leads ───────── */
     case 'uploadLeadRecording':
         needPost();
         leadRecEnsure($conn);
-        $leadId = (int)($_POST['lead_id'] ?? 0);
-        $chk = $conn->prepare("SELECT id FROM contact_queries WHERE id = ?");
-        $chk->execute([$leadId]);
-        if (!$chk->fetchColumn()) throw new Exception('Lead not found');
+        $leadId = (int)($_POST['lead_id'] ?? 0);   // 0 = uploaded in Recordings without a lead
+        if ($leadId) {
+            $chk = $conn->prepare("SELECT id FROM contact_queries WHERE id = ?");
+            $chk->execute([$leadId]);
+            if (!$chk->fetchColumn()) throw new Exception('Lead not found');
+        }
         $f = $_FILES['file'] ?? null;
         if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             $err = $f['error'] ?? UPLOAD_ERR_NO_FILE;
@@ -282,8 +284,9 @@ try {
         $stored = $leadId . '_' . bin2hex(random_bytes(12)) . '.' . $ext;
         if (!move_uploaded_file($f['tmp_name'], leadRecDir() . '/' . $stored)) throw new Exception('Could not save the file on the server');
         $conn->prepare("INSERT INTO lead_recordings (lead_id, stored_name, original_name, size_bytes) VALUES (?,?,?,?)")->execute([$leadId, $stored, $orig, (int)$f['size']]);
-        pfAudit($conn, 'lead.recording.upload', 'Lead #' . $leadId, ['file' => $orig]);
-        out(['id' => (int)$conn->lastInsertId(), 'message' => 'Recording uploaded']);
+        $recId = (int)$conn->lastInsertId();
+        pfAudit($conn, 'lead.recording.upload', $leadId ? 'Lead #' . $leadId : 'Recordings', ['file' => $orig]);
+        out(['id' => $recId, 'message' => 'Recording uploaded']);
 
     case 'leadRecording':
         leadRecEnsure($conn);
@@ -326,15 +329,21 @@ try {
 
     case 'downloadLeadRecordings':
         // one ZIP, a folder per lead: "Name - Restaurant - Phone (#id)/recording.mp3"
+        // scope=leads: only lead recordings (Leads page); ids=1,2,3: just those (Recordings › Download selected); else everything
         leadRecEnsure($conn);
         $leadId = (int)($_GET['lead_id'] ?? 0);
-        $sql = "SELECT r.stored_name, r.original_name, r.created_at, q.id AS lead_id, q.name, q.phone, q.restaurant_name_hint
-            FROM lead_recordings r JOIN contact_queries q ON q.id = r.lead_id" . ($leadId ? " WHERE r.lead_id = ?" : '') . " ORDER BY q.name, q.id, r.id";
+        $ids = array_values(array_filter(array_map('intval', explode(',', (string)($_GET['ids'] ?? '')))));
+        $where = []; $p = [];
+        if ($leadId) { $where[] = 'r.lead_id = ?'; $p[] = $leadId; }
+        elseif (($_GET['scope'] ?? '') === 'leads') $where[] = 'r.lead_id > 0';
+        if ($ids) { $where[] = 'r.id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')'; $p = array_merge($p, $ids); }
+        $sql = "SELECT r.stored_name, r.original_name, r.created_at, r.lead_id, q.name, q.phone, q.restaurant_name_hint
+            FROM lead_recordings r LEFT JOIN contact_queries q ON q.id = r.lead_id" . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . " ORDER BY (q.id IS NULL), q.name, q.id, r.id";
         $st = $conn->prepare($sql);
-        $st->execute($leadId ? [$leadId] : []);
+        $st->execute($p);
         $dir = leadRecDir(); $files = []; $used = [];
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $rc) {
-            $folder = zipSafe(implode(' - ', array_filter([$rc['name'], $rc['restaurant_name_hint'], $rc['phone']]))) . ' (#' . $rc['lead_id'] . ')';
+            $folder = $rc['name'] === null ? 'Recordings' : zipSafe(implode(' - ', array_filter([$rc['name'], $rc['restaurant_name_hint'], $rc['phone']]))) . ' (#' . $rc['lead_id'] . ')';
             $name = zipSafe(pathinfo($rc['original_name'], PATHINFO_FILENAME));
             $ext = strtolower(pathinfo($rc['original_name'], PATHINFO_EXTENSION));
             $path = $folder . '/' . $name . '.' . $ext;
@@ -344,8 +353,32 @@ try {
         }
         if (!$files) { header('Content-Type: text/plain'); echo 'No recordings yet'; exit; }
         session_write_close();
-        pfAudit($conn, 'lead.recording.download', $leadId ? 'Lead #' . $leadId : 'All leads', ['files' => count($files)]);
-        streamZip('lead-recordings-' . ($leadId ? $leadId . '-' : '') . date('Y-m-d') . '.zip', $files);
+        pfAudit($conn, 'lead.recording.download', $leadId ? 'Lead #' . $leadId : ($ids ? 'Selected recordings' : 'All recordings'), ['files' => count($files)]);
+        streamZip(($leadId || ($_GET['scope'] ?? '') === 'leads' ? 'lead-recordings-' : 'recordings-') . ($leadId ? $leadId . '-' : '') . ($ids ? 'selected-' : '') . date('Y-m-d') . '.zip', $files);
+
+    case 'recordings':
+        // Super Admin › Recordings: every recording, uploaded there or on a lead
+        leadRecEnsure($conn);
+        $q = trim((string)($_GET['q'] ?? ''));
+        $sql = "SELECT r.id, r.lead_id, r.original_name, r.size_bytes, r.created_at, q.name AS lead_name, q.phone AS lead_phone, q.restaurant_name_hint
+            FROM lead_recordings r LEFT JOIN contact_queries q ON q.id = r.lead_id";
+        $p = [];
+        if ($q !== '') { $sql .= " WHERE r.original_name LIKE ? OR q.name LIKE ? OR q.phone LIKE ? OR q.restaurant_name_hint LIKE ?"; $p = array_fill(0, 4, '%' . $q . '%'); }
+        $st = $conn->prepare($sql . " ORDER BY r.id DESC LIMIT 2000");
+        $st->execute($p);
+        $tot = $conn->query("SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes),0) AS bytes FROM lead_recordings")->fetch(PDO::FETCH_ASSOC);
+        $leads = $conn->query("SELECT id, name, phone, restaurant_name_hint FROM contact_queries ORDER BY id DESC LIMIT 1000")->fetchAll(PDO::FETCH_ASSOC);
+        out(['rows' => $st->fetchAll(PDO::FETCH_ASSOC), 'total' => (int)$tot['n'], 'bytes' => (int)$tot['bytes'], 'leads' => $leads,
+            'max_upload' => ini_get('upload_max_filesize')]);
+
+    case 'moveRecording':
+        // link a recording to a lead, or unlink it (lead_id 0)
+        needPost();
+        leadRecEnsure($conn);
+        $leadId = (int)($in['lead_id'] ?? 0);
+        if ($leadId) { $chk = $conn->prepare("SELECT id FROM contact_queries WHERE id = ?"); $chk->execute([$leadId]); if (!$chk->fetchColumn()) throw new Exception('Lead not found'); }
+        $conn->prepare("UPDATE lead_recordings SET lead_id = ? WHERE id = ?")->execute([$leadId, (int)($in['id'] ?? 0)]);
+        out(['message' => $leadId ? 'Linked to the lead' : 'Unlinked from the lead']);
 
     /* ───────── chatbot leads ───────── */
     case 'chatLeads':

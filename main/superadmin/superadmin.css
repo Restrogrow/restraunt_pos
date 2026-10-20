@@ -217,6 +217,20 @@ input:focus, select:focus, textarea:focus { border-color: #93c5fd; box-shadow: 0
 .sp-rec-all { align-self: flex-start; }
 .sp-rec-none { margin: 4px 0; text-align: center; }
 @media (max-width: 560px) { .sp-rec-top small { display: none; } }
+.sp-off { opacity: .45; pointer-events: none; }
+#spRecsSearch { min-width: 240px; padding: 0 12px; border: 1.5px solid var(--border); background: #fff; }
+.sp-rec-link { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .85rem; color: #374151; font-weight: 600; }
+.sp-rec-link select { flex: 1; min-width: 200px; max-width: 420px; height: 38px; border: 1.5px solid var(--border); border-radius: 10px; padding: 0 10px; background: #fff; }
+.sp-rec-bulk { display: flex; align-items: center; gap: 10px; }
+.sp-rec-ckall { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: #374151; cursor: pointer; }
+.sp-rec-page { max-height: none; }
+.sp-rec-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sp-rec-name b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .9rem; }
+.sp-rec-page .sp-rec-top small { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; white-space: normal; }
+.sp-rec-tag { background: #f5f3ff; color: #6d28d9; border-radius: 999px; padding: 1px 8px; font-weight: 600; }
+.sp-rec-ck { width: 16px; height: 16px; flex: 0 0 auto; cursor: pointer; }
+#spRecsAll, #spRecsAll:hover { text-decoration: none; }
+@media (max-width: 560px) { #spRecsActs { flex-wrap: wrap; } #spRecsSearch { min-width: 0; flex: 1 1 100%; } .sp-rec-page .sp-rec-top small { display: flex; } }
 .sp-chat-lead { align-items: center; cursor: default; }
 .sp-chat-preview { max-width: 700px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap !important; }
 .sp-chat-status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .8rem; font-weight: 600; }
