@@ -7,6 +7,9 @@
  *   POST {action:'lead', token, name, restaurant_name, phone, email?, consent:true}
  *                                               the visitor shares their details (demo / call back)
  *   POST {action:'resume', token}               the chat so far (+ has_contact)
+ *   POST {action:'voiceStart', token, lang}     the voice agent's greeting (talk button; lang 'en' | 'hi')
+ *   POST {action:'voice', token, message, lang} what the caller said → {reply, has_contact}; lines saved with channel 'voice',
+ *                                               and the caller becomes a lead once they give their number and agree to a call back
  *
  * Chats without details are saved as "Website visitor" so Super Admin › Chat leads still sees the
  * questions; they become real leads once details are shared.
@@ -76,7 +79,7 @@ try {
 
     if ($action === 'resume') {
         chatbotRateLimit('chat_resume', 30, 600);
-        $stmt = $conn->prepare('SELECT sender, message, created_at FROM chatbot_messages WHERE lead_id = ? ORDER BY id ASC');
+        $stmt = $conn->prepare('SELECT sender, message, channel, created_at FROM chatbot_messages WHERE lead_id = ? ORDER BY id ASC');
         $stmt->execute([$leadId]);
         chatbotOut(['success' => true, 'messages' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'has_contact' => $hasContact,
             'name' => $lead['name'] !== CHAT_ANON ? $lead['name'] : '']);
@@ -121,6 +124,49 @@ try {
         $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)")->execute([$leadId, $r['reply']]);
         $conn->prepare('UPDATE chatbot_leads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$leadId]);
         chatbotOut(['success' => true] + $r);
+    }
+
+    if ($action === 'voiceStart') {
+        chatbotRateLimit('chat_voice_start', 20, 3600);
+        $hindi = ($input['lang'] ?? '') === 'hi';
+        $first = $lead['name'] !== CHAT_ANON ? ' ' . explode(' ', $lead['name'])[0] : '';
+        $hello = $hindi
+            ? "नमस्ते$first! मैं रिया हूँ, RestroGrow से। आपका रेस्टोरेंट कौन सा है, और अभी आप बिलिंग और ऑर्डर कैसे संभालते हैं?"
+            : "Hi$first! I'm Riya from RestroGrow. Tell me a little about your restaurant. What kind of place is it, and how do you handle billing and orders today?";
+        $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message, channel) VALUES (?, 'assistant', ?, 'voice')")->execute([$leadId, $hello]);
+        chatbotOut(['success' => true, 'reply' => $hello]);
+    }
+
+    if ($action === 'voice') {
+        chatbotRateLimit('chat_voice', 60, 600);
+        $message = trim((string)($input['message'] ?? ''));
+        if ($message === '' || mb_strlen($message) > 500) chatbotOut(['success' => false, 'message' => 'Sorry, I could not hear that.'], 400);
+        $lang = ($input['lang'] ?? '') === 'hi' ? 'hi' : 'en';
+        $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message, channel) VALUES (?, 'visitor', ?, 'voice')")->execute([$leadId, $message]);
+        $r = rgChatbotVoiceReply($conn, $leadId, $message, $hasContact, $lang);
+        $c = $r['contact'];
+        if ($c) {
+            $name = mb_substr(trim((string)($c['name'] ?? '')), 0, 120);
+            $phone = trim((string)($c['phone'] ?? ''));
+            $digits = preg_replace('/\D+/', '', $phone);
+            if ($name !== '' && strlen($digits) >= 10 && strlen($digits) <= 15) {
+                $restaurant = mb_substr(trim((string)($c['restaurant'] ?? '')), 0, 160);
+                // they said yes on the call to being contacted on this number
+                $conn->prepare('UPDATE chatbot_leads SET name = ?, restaurant_name = ?, phone = ?, consent_at = CURRENT_TIMESTAMP WHERE id = ?')
+                    ->execute([$name, $restaurant, $digits, $leadId]);
+                $hasContact = true;
+                try {
+                    require_once __DIR__ . '/../config/mail_engine.php';
+                    $saidStmt = $conn->prepare("SELECT message FROM chatbot_messages WHERE lead_id = ? AND sender = 'visitor' ORDER BY id DESC LIMIT 6");
+                    $saidStmt->execute([$leadId]);
+                    mailNewLead($conn, 'website voice agent', ['name' => $name, 'restaurant' => $restaurant, 'phone' => $digits, 'email' => '',
+                        'message' => implode("\n", array_map(fn($m) => '• ' . $m, array_reverse($saidStmt->fetchAll(PDO::FETCH_COLUMN))))]);
+                } catch (Throwable $e) { error_log('chatbot voice lead email: ' . $e->getMessage()); }
+            }
+        }
+        $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message, channel) VALUES (?, 'assistant', ?, 'voice')")->execute([$leadId, $r['reply']]);
+        $conn->prepare('UPDATE chatbot_leads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$leadId]);
+        chatbotOut(['success' => true, 'reply' => $r['reply'], 'has_contact' => $hasContact]);
     }
 
     chatbotOut(['success' => false, 'message' => 'Unknown action.'], 400);

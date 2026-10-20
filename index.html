@@ -870,13 +870,28 @@
             <h2 id="rgcTitle">RestroGrow</h2>
             <span id="rgcStatus">Online · replies in seconds</span>
           </div>
+          <button type="button" class="rgc-ib rgc-talk" id="rgcTalk" aria-label="Talk on voice" title="Talk on voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Talk</span></button>
           <button type="button" class="rgc-ib" id="rgcNew" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
           <button type="button" class="rgc-ib" id="rgcClose" aria-label="Close chat"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
         </header>
         <div class="rgc-msgs" id="rgcMsgs" role="log"></div>
+        <!-- voice call: speech in the browser (Web Speech API), answers from main/api/chatbot.php action=voice; lines are saved in this chat -->
+        <div class="rgc-voice" id="rgcVoice" hidden>
+          <div class="rgc-vlang" role="group" aria-label="Language"><button type="button" data-l="en">English</button><button type="button" data-l="hi">हिन्दी</button></div>
+          <button type="button" class="rgc-orb" id="rgcOrb" data-s="idle" aria-label="Tap to talk">
+            <i class="rgc-ring"></i><i class="rgc-ring two"></i>
+            <span class="rgc-orb-c"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <span class="rgc-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></span>
+          </button>
+          <p class="rgc-vst" id="rgcVst" aria-live="polite">Connecting…</p>
+          <p class="rgc-vcap" id="rgcVcap"></p>
+          <button type="button" class="rgc-vend" id="rgcVend"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15.5c4.6-4.4 11.4-4.4 16 0l-2.3 2.3-3-1.5v-2.4a10 10 0 0 0-5.4 0v2.4l-3 1.5z" fill="currentColor"/></svg>End call</button>
+          <small class="rgc-vnote">Speak naturally, in English or Hindi. This call is saved in the chat so our team can help you.</small>
+        </div>
         <form class="rgc-in" id="rgcForm" autocomplete="off">
           <label class="rgc-sr" for="rgcInput">Type your question</label>
           <textarea id="rgcInput" rows="1" maxlength="500" placeholder="Ask anything about RestroGrow…"></textarea>
+          <button type="button" id="rgcMic" aria-label="Talk on voice" title="Talk on voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
           <button type="submit" id="rgcSend" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M4 12l15-7-5 15-3-6-7-2z" fill="currentColor"/></svg></button>
         </form>
         <p class="rgc-foot">Automatic replies · <a href="privacy-policy/" target="_blank" rel="noopener">Privacy</a> · or call <a href="tel:+916377568749">+91 63775 68749</a></p>
@@ -976,6 +991,47 @@
     #rgcSend:hover { background: var(--ad); } #rgcSend:active { transform: scale(.92); }
     #rgcSend:disabled { opacity: .45; cursor: default; }
     #rgcSend svg { width: 19px; height: 19px; transform: translateX(1px); }
+    #rgcMic { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 13px; background: var(--al); color: var(--a); cursor: pointer; transition: background .15s, transform .1s; }
+    #rgcMic:hover { background: #f6dccb; } #rgcMic:active { transform: scale(.92); }
+    #rgcMic svg { width: 20px; height: 20px; }
+    .rgc-talk { width: auto; padding: 0 11px 0 9px; gap: 5px; display: flex; align-items: center; font: 700 12.5px 'Public Sans', sans-serif; background: rgba(255,255,255,.22); }
+    .rgc-m.vc { position: relative; }
+    .rgc-m.vc::after { content: '🎙'; position: absolute; top: -7px; font-size: 11px; line-height: 1; }
+    .rgc-m.bot.vc::after { right: -6px; } .rgc-m.me.vc::after { left: -6px; }
+
+    /* voice call screen */
+    .rgc-voice { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 18px 22px 16px; text-align: center;
+      background: radial-gradient(90% 60% at 50% 38%, #fff3ea, var(--paper) 70%); }
+    .rgc-voice[hidden], .rgc-panel.voice .rgc-msgs, .rgc-panel.voice .rgc-in { display: none; }
+    .rgc-vlang { display: flex; padding: 3px; border-radius: 999px; background: #f4eae0; }
+    .rgc-vlang button { padding: 6px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--mute); font: 700 12.5px 'Public Sans', sans-serif; cursor: pointer; }
+    .rgc-vlang button.on { background: #fff; color: var(--ad); box-shadow: 0 1px 3px rgba(36,29,22,.12); }
+    .rgc-orb { position: relative; width: 148px; height: 148px; margin: 10px 0 4px; border: 0; border-radius: 50%; background: none; cursor: pointer; display: grid; place-items: center; -webkit-tap-highlight-color: transparent; }
+    .rgc-orb-c { position: relative; z-index: 1; width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+      background: linear-gradient(140deg, #e8702f, var(--a) 55%, var(--ad)); box-shadow: 0 18px 40px -14px rgba(143,51,8,.75), inset 0 2px 0 rgba(255,255,255,.25); transition: transform .25s; }
+    .rgc-orb-c svg { width: 40px; height: 40px; transition: opacity .2s, transform .2s; }
+    .rgc-orb:active .rgc-orb-c { transform: scale(.95); }
+    .rgc-ring { position: absolute; inset: 18px; border-radius: 50%; border: 2px solid rgba(193,68,14,.35); opacity: 0; }
+    .rgc-orb[data-s="listening"] .rgc-ring { animation: rgcRing 1.8s ease-out infinite; }
+    .rgc-orb[data-s="listening"] .rgc-ring.two { animation-delay: .9s; }
+    .rgc-orb[data-s="listening"] .rgc-orb-c { background: linear-gradient(140deg, #22c55e, #16a34a 60%, #15803d); box-shadow: 0 18px 40px -14px rgba(21,128,61,.7); }
+    @keyframes rgcRing { from { transform: scale(.85); opacity: .9; } to { transform: scale(1.35); opacity: 0; } }
+    .rgc-bars { position: absolute; display: none; gap: 5px; align-items: center; height: 40px; }
+    .rgc-bars i { width: 6px; height: 12px; border-radius: 3px; background: #fff; animation: rgcBar .9s ease-in-out infinite; }
+    .rgc-bars i:nth-child(2) { animation-delay: .12s; } .rgc-bars i:nth-child(3) { animation-delay: .24s; } .rgc-bars i:nth-child(4) { animation-delay: .36s; } .rgc-bars i:nth-child(5) { animation-delay: .48s; }
+    @keyframes rgcBar { 0%, 100% { height: 10px; } 50% { height: 36px; } }
+    .rgc-orb[data-s="speaking"] .rgc-bars { display: flex; }
+    .rgc-orb[data-s="speaking"] .rgc-orb-c svg { opacity: 0; }
+    .rgc-orb[data-s="thinking"] .rgc-orb-c { animation: rgcThink 1.2s ease-in-out infinite; }
+    @keyframes rgcThink { 50% { transform: scale(.93); filter: brightness(1.12); } }
+    .rgc-orb[data-s="paused"] .rgc-orb-c, .rgc-orb[data-s="idle"] .rgc-orb-c { filter: saturate(.75); }
+    .rgc-vst { margin: 0; color: var(--ink); font: 800 17px/1.3 'Archivo', 'Public Sans', sans-serif; }
+    .rgc-vcap { margin: 0; min-height: 66px; max-height: 120px; overflow-y: auto; max-width: 320px; color: var(--mute); font-size: 14px; line-height: 1.5; }
+    .rgc-vcap.you { color: var(--ink); font-style: italic; }
+    .rgc-vend { display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 22px; border: 0; border-radius: 999px; background: #dc2626; color: #fff; font: 700 14.5px 'Public Sans', sans-serif; cursor: pointer; box-shadow: 0 10px 22px -10px rgba(220,38,38,.8); }
+    .rgc-vend:hover { background: #b91c1c; }
+    .rgc-vend svg { width: 22px; height: 22px; }
+    .rgc-vnote { max-width: 300px; color: var(--mute); font-size: 11.5px; line-height: 1.45; }
     .rgc-foot { margin: 0; padding: 2px 12px 10px; text-align: center; font-size: 11px; color: var(--mute); }
     .rgc-foot a { color: var(--ad); }
     .rgc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -1001,7 +1057,8 @@
       var msgs = document.getElementById('rgcMsgs'), form = document.getElementById('rgcForm'), input = document.getElementById('rgcInput');
       var send = document.getElementById('rgcSend'), status = document.getElementById('rgcStatus'), teaser = document.getElementById('rgcTeaser'), badge = document.getElementById('rgcBadge');
       var token = '', busy = false, loaded = false, hasContact = false, leadShown = false, asked = 0;
-      var START_CHIPS = ['What does it cost?', 'Is there a free trial?', 'WhatsApp ordering?', 'Does it work on my phone?', 'Book a demo'];
+      var TALK_CHIP = '🎙 Talk on voice';
+      var START_CHIPS = [TALK_CHIP, 'What does it cost?', 'Is there a free trial?', 'WhatsApp ordering?', 'Book a demo'];
       try { token = localStorage.getItem(KEY) || ''; } catch (e) {}
 
       function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -1034,7 +1091,8 @@
         list.forEach(function (q) {
           var b = document.createElement('button');
           b.type = 'button'; b.className = 'rgc-chip' + (/demo|call|baat/i.test(q) && !hasContact ? ' cta' : ''); b.textContent = q;
-          b.addEventListener('click', function () { if (/book a (free )?demo|demo chahiye|call me/i.test(q) && !hasContact) { clearChips(); add(q, 'me'); leadCard(true); } else ask(q); });
+          if (q === TALK_CHIP) b.className = 'rgc-chip cta';
+          b.addEventListener('click', function () { if (q === TALK_CHIP) { startVoice(); return; } if (/book a (free )?demo|demo chahiye|call me/i.test(q) && !hasContact) { clearChips(); add(q, 'me'); leadCard(true); } else ask(q); });
           c.appendChild(b);
         });
         msgs.appendChild(c); scroll();
@@ -1115,8 +1173,8 @@
           typing(false);
           hasContact = !!d.has_contact; leadShown = hasContact;
           if (!d.messages.length) { welcome(); return; }
-          d.messages.forEach(function (m) { add(m.message, m.sender === 'visitor' ? 'me' : 'bot'); });
-          chips(['What does it cost?', 'What is included?', hasContact ? 'Is there a free trial?' : 'Book a demo']);
+          d.messages.forEach(function (m) { add(m.message, m.sender === 'visitor' ? 'me' : 'bot', m.channel === 'voice' ? 'vc' : ''); });
+          chips([TALK_CHIP, 'What does it cost?', hasContact ? 'Is there a free trial?' : 'Book a demo']);
         }).catch(function () { typing(false); token = ''; try { localStorage.removeItem(KEY); } catch (e) {} welcome(); });
       }
       function open() {
@@ -1129,16 +1187,138 @@
         if (window.innerWidth <= 520) document.documentElement.style.overflow = 'hidden';
       }
       function close() {
+        endVoice();
         panel.hidden = true; root.classList.remove('open');
         fab.setAttribute('aria-expanded', 'false'); fab.setAttribute('aria-label', 'Chat with RestroGrow');
         document.documentElement.style.overflow = '';
       }
+      /* ── voice call: the browser listens (SpeechRecognition) and speaks (speechSynthesis); every line is saved in this chat ── */
+      var SR = window.SpeechRecognition || window.webkitSpeechRecognition, synth = window.speechSynthesis;
+      var vBox = document.getElementById('rgcVoice'), orb = document.getElementById('rgcOrb'), vSt = document.getElementById('rgcVst'), vCap = document.getElementById('rgcVcap');
+      var vOn = false, rec = null, vLang = 'en', quiet = 0, speakTimer = 0, speakId = 0, VLANG = 'rg_chat_voice_lang';
+      try { vLang = localStorage.getItem(VLANG) || (/^hi/i.test(navigator.language || '') ? 'hi' : 'en'); } catch (e) {}
+      var T = {
+        en: { connecting: 'Connecting…', listening: 'Listening… speak now', thinking: 'Thinking…', speaking: 'Riya is speaking · tap to interrupt', paused: 'Tap the circle to talk', mic: 'Please allow the microphone to talk. You can also type in the chat.', fail: 'Sorry, something went wrong. Please try again.' },
+        hi: { connecting: 'जुड़ रहे हैं…', listening: 'सुन रही हूँ… बोलिए', thinking: 'सोच रही हूँ…', speaking: 'रिया बोल रही है · रोकने के लिए टैप करें', paused: 'बोलने के लिए गोले पर टैप करें', mic: 'बात करने के लिए माइक्रोफ़ोन की अनुमति दें। आप चैट में लिख भी सकते हैं।', fail: 'माफ़ कीजिए, कुछ गड़बड़ हो गई। फिर से कोशिश करें।' }
+      };
+      function vState(s, cap, you) {
+        orb.dataset.s = s;
+        vSt.textContent = T[vLang][s] || '';
+        if (cap != null) { vCap.textContent = cap; vCap.classList.toggle('you', !!you); }
+        orb.setAttribute('aria-label', s === 'speaking' ? 'Interrupt' : s === 'listening' ? 'Stop listening' : 'Tap to talk');
+      }
+      function setLang(l) {
+        vLang = l === 'hi' ? 'hi' : 'en';
+        try { localStorage.setItem(VLANG, vLang); } catch (e) {}
+        vBox.querySelectorAll('.rgc-vlang button').forEach(function (b) { b.classList.toggle('on', b.dataset.l === vLang); });
+        if (vOn && orb.dataset.s === 'listening') { stopRec(); listen(); } else if (vOn) vState(orb.dataset.s);
+      }
+      function pickVoice() {
+        var want = vLang === 'hi' ? /^hi/i : /^en[-_]IN/i, all = synth.getVoices();
+        var list = all.filter(function (v) { return want.test(v.lang); });
+        if (!list.length && vLang === 'en') list = all.filter(function (v) { return /^en/i.test(v.lang); });
+        var score = function (v) { return (/natural|neural|online/i.test(v.name) ? 4 : 0) + (/google/i.test(v.name) ? 2 : 0) + (/neerja|swara|kalpana|heera|female|lekha|veena|aditi|riya/i.test(v.name) ? 2 : 0); };
+        return list.sort(function (a, b) { return score(b) - score(a); })[0] || null;
+      }
+      // spoken a sentence at a time (Chrome cuts long utterances); then() runs once when done, with a timer in case onend never fires
+      function speak(text, then) {
+        var my = ++speakId, done = function () { if (my !== speakId) return; speakId++; clearTimeout(speakTimer); if (vOn && then) then(); };
+        stopRec();
+        vState('speaking', text);
+        synth.cancel();
+        var parts = String(text).replace(/\*\*/g, '').match(/[^.!?।]+[.!?।]*\s*/g) || [text], v = pickVoice();
+        parts.forEach(function (p, i) {
+          var u = new SpeechSynthesisUtterance(p.trim());
+          u.lang = vLang === 'hi' ? 'hi-IN' : 'en-IN'; if (v) u.voice = v; u.rate = 1.02;
+          if (i === parts.length - 1) { u.onend = done; u.onerror = done; }
+          synth.speak(u);
+        });
+        speakTimer = setTimeout(done, 4000 + String(text).length * 95);
+      }
+      function stopRec() { if (rec) { rec.onend = null; rec.onresult = null; rec.onerror = null; try { rec.abort(); } catch (e) {} rec = null; } }
+      function listen() {
+        if (!vOn) return;
+        stopRec();
+        var heard = '', r = new SR();
+        rec = r;
+        r.lang = vLang === 'hi' ? 'hi-IN' : 'en-IN'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+        vState('listening');   // Riya's last line stays until the caller speaks
+        r.onresult = function (e) {
+          var fin = '', mid = '';
+          for (var i = 0; i < e.results.length; i++) { if (e.results[i].isFinal) fin += e.results[i][0].transcript; else mid += e.results[i][0].transcript; }
+          heard = (fin || heard).trim();
+          vCap.textContent = (fin + ' ' + mid).trim(); vCap.classList.add('you');
+        };
+        r.onerror = function (e) {
+          if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') { var m = T[vLang].mic; endVoice(); add(m, 'bot', 'err'); }
+        };
+        r.onend = function () {
+          if (rec !== r || !vOn) return;
+          rec = null;
+          if (heard) { quiet = 0; think(heard); return; }
+          // nothing heard: keep listening a few times, then wait for a tap
+          if (++quiet < 3) listen(); else vState('paused', '');
+        };
+        try { r.start(); } catch (e) { vState('paused', ''); }
+      }
+      function think(text) {
+        vState('thinking', text, true);
+        add(text, 'me', 'vc');
+        ensureToken().then(function () { return post({ action: 'voice', token: token, message: text, lang: vLang }); }).then(function (d) {
+          if (!vOn) return;
+          if (d.has_contact) { hasContact = true; leadShown = true; }
+          add(d.reply, 'bot', 'vc');
+          speak(d.reply, listen);
+        }).catch(function (e) {
+          if (!vOn) return;
+          if (e.status === 404 || e.status === 400 && /session/i.test(e.message)) { token = ''; try { localStorage.removeItem(KEY); } catch (x) {} }
+          speak(T[vLang].fail, listen);
+        });
+      }
+      function startVoice() {
+        if (vOn) return;
+        if (panel.hidden) open();
+        if (!SR || !synth) { add('Voice talk works in **Chrome, Edge or Safari**. You can type your question here, or call **+91 63775 68749**.', 'bot'); return; }
+        vOn = true; quiet = 0; clearChips();
+        panel.classList.add('voice'); vBox.hidden = false;
+        setLang(vLang);
+        vState('thinking', '');
+        vSt.textContent = T[vLang].connecting;
+        // unlock speech inside the tap (needed on iPhone)
+        try { synth.cancel(); var u = new SpeechSynthesisUtterance(' '); u.volume = 0; synth.speak(u); } catch (e) {}
+        ensureToken().then(function () { return post({ action: 'voiceStart', token: token, lang: vLang }); }).then(function (d) {
+          if (!vOn) return;
+          add(d.reply, 'bot', 'vc');
+          speak(d.reply, listen);
+        }).catch(function (e) { endVoice(); add(e.message + ' You can also call or WhatsApp **+91 63775 68749**.', 'bot', 'err'); });
+      }
+      function endVoice() {
+        if (!vOn) return;
+        vOn = false; speakId++; clearTimeout(speakTimer);
+        stopRec(); try { synth.cancel(); } catch (e) {}
+        panel.classList.remove('voice'); vBox.hidden = true;
+        chips([TALK_CHIP, 'What does it cost?', hasContact ? 'Is there a free trial?' : 'Book a demo']);
+      }
+      if (synth && synth.onvoiceschanged !== undefined) synth.onvoiceschanged = function () { synth.getVoices(); };
+      orb.addEventListener('click', function () {
+        if (!vOn) return;
+        var s = orb.dataset.s;
+        if (s === 'speaking') { speakId++; clearTimeout(speakTimer); synth.cancel(); quiet = 0; listen(); }
+        else if (s === 'listening') { if (rec) rec.stop(); }
+        else if (s === 'paused') { quiet = 0; listen(); }
+      });
+      vBox.querySelectorAll('.rgc-vlang button').forEach(function (b) { b.addEventListener('click', function () { setLang(b.dataset.l); }); });
+      document.getElementById('rgcVend').addEventListener('click', endVoice);
+      document.getElementById('rgcTalk').addEventListener('click', startVoice);
+      document.getElementById('rgcMic').addEventListener('click', startVoice);
+
       // the box grows with the text (measured only while visible: a hidden box measures 0)
       function grow() { if (input.offsetParent) { input.style.height = 'auto'; input.style.height = Math.max(40, Math.min(110, input.scrollHeight)) + 'px'; } send.disabled = busy || !input.value.trim(); }
 
       fab.addEventListener('click', function () { panel.hidden ? open() : close(); });
       document.getElementById('rgcClose').addEventListener('click', close);
       document.getElementById('rgcNew').addEventListener('click', function () {
+        endVoice();
         token = ''; hasContact = false; leadShown = false; try { localStorage.removeItem(KEY); } catch (e) {}
         msgs.innerHTML = ''; welcome(); input.focus();
       });

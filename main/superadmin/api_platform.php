@@ -444,6 +444,7 @@ try {
         $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
         $stmt = $conn->prepare("SELECT l.id, l.name, l.restaurant_name, l.email, l.phone, l.status, l.created_at, l.updated_at,
                 (SELECT COUNT(*) FROM chatbot_messages m WHERE m.lead_id = l.id) AS message_count,
+                (SELECT COUNT(*) FROM chatbot_messages m WHERE m.lead_id = l.id AND m.channel = 'voice') AS voice_count,
                 (SELECT m.message FROM chatbot_messages m WHERE m.lead_id = l.id ORDER BY m.id DESC LIMIT 1) AS last_message
             FROM chatbot_leads l $whereSql ORDER BY l.updated_at DESC, l.id DESC LIMIT 300");
         $stmt->execute($params);
@@ -458,7 +459,7 @@ try {
         $stmt->execute([$id]);
         $lead = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$lead) throw new Exception('Chat lead not found');
-        $stmt = $conn->prepare('SELECT sender, message, created_at FROM chatbot_messages WHERE lead_id = ? ORDER BY id ASC');
+        $stmt = $conn->prepare('SELECT sender, message, channel, created_at FROM chatbot_messages WHERE lead_id = ? ORDER BY id ASC');
         $stmt->execute([$id]);
         out(['lead' => $lead, 'messages' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 

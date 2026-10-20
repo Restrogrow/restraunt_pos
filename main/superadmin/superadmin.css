@@ -243,6 +243,9 @@ input:focus, select:focus, textarea:focus { border-color: #93c5fd; box-shadow: 0
 .sp-chat-message > span { display: block; color: var(--muted); font-size: .7rem; font-weight: 700; }
 .sp-chat-message p { margin: 4px 0; color: var(--ink); font-size: .88rem; line-height: 1.5; white-space: pre-wrap; }
 .sp-chat-message small { display: block; color: var(--faint); font-size: .68rem; text-align: right; }
+.sp-voice-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #fef3c7; color: #92400e !important; font-style: normal; font-size: .68rem; font-weight: 700; }
+small.sp-voice-tag { margin-left: 0; }
+.sp-chat-message.voice { border-style: dashed; }
 .sp-due { color: #dc2626 !important; font-weight: 800; }
 .sp-code { padding: 2px 7px; border-radius: 7px; background: #f3f4f6; color: #111827; font-size: .78rem; font-weight: 700; }
 .sp-wrap { white-space: normal !important; max-width: 340px; word-break: break-word; font-size: .8rem; }

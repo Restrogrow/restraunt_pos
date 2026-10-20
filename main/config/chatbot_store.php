@@ -27,6 +27,53 @@ function rgEnsureChatbotTables(PDO $conn): void
         KEY idx_chatbot_messages_lead_created (lead_id, created_at, id),
         CONSTRAINT fk_chatbot_messages_lead FOREIGN KEY (lead_id) REFERENCES chatbot_leads(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // voice agent lines are saved with the chat, marked 'voice' (added here: the live database may not have it yet)
+    if (!$conn->query("SHOW COLUMNS FROM chatbot_messages LIKE 'channel'")->fetch()) {
+        $conn->exec("ALTER TABLE chatbot_messages ADD COLUMN channel ENUM('chat','voice') NOT NULL DEFAULT 'chat' AFTER message");
+    }
+}
+
+/**
+ * The voice agent (talk button in the chat): a friendly salesperson on a call. Replies are spoken aloud, so
+ * plain short sentences. When the caller says their name + number and agrees to a call back, 'contact' is
+ * filled and api/chatbot.php saves them as a lead.
+ * Returns ['reply' => text, 'contact' => ['name','phone','restaurant','agreed'] | null].
+ */
+function rgChatbotVoiceReply(PDO $conn, int $leadId, string $said, bool $hasContact, string $lang): array
+{
+    require_once __DIR__ . '/ai_gemini.php';
+    $stmt = $conn->prepare('SELECT sender, message FROM chatbot_messages WHERE lead_id = ? ORDER BY id DESC LIMIT 17');
+    $stmt->execute([$leadId]);
+    $history = array_reverse($stmt->fetchAll(PDO::FETCH_ASSOC));
+    if ($history && end($history)['sender'] === 'visitor' && end($history)['message'] === $said) array_pop($history);
+    $turns = array_map(fn($r) => ['role' => $r['sender'] === 'visitor' ? 'user' : 'model', 'text' => $r['message']], array_slice($history, -16));
+
+    $hindi = $lang === 'hi';
+    $system = "You are Riya, RestroGrow's sales consultant, talking to a restaurant owner on a live voice call from restrogrow.com. Your goal: understand their restaurant, show how RestroGrow helps them earn more and work less, and get them to start the free trial or book a free demo call with the team.\n"
+        . "HOW TO SELL: be warm, confident and genuinely helpful, never pushy. Early on ask about their restaurant (type, how many tables or outlets, what they use now, what bothers them most). Link 1–2 features to what they said, with a concrete benefit (no commission on own orders, faster billing, repeat customers through loyalty and WhatsApp). Handle doubts honestly (price: compare with commission they pay apps; 'too complicated': setup takes 5 minutes, team helps for free). Close with one clear next step: the 7-day free trial or a free demo call.\n"
+        . ($hasContact
+            ? "They already shared their contact details: the team will call them. Don't ask again.\n"
+            : "To book a demo or call back, ask for their name and mobile number (and restaurant name), read the number back to confirm, and ask if the team may call them on it. Only when they clearly say yes, fill contact with agreed = true.\n")
+        . "THIS IS SPOKEN ALOUD: reply in 1–3 short, natural spoken sentences (under 60 words), then usually one short question. No markdown, no bullets, no emoji, no links. Say prices like 'two thousand nine hundred ninety nine rupees a month'. Read phone numbers digit by digit.\n"
+        . ($hindi ? "Speak in natural Hindi written in Devanagari script (common English words like POS, WhatsApp, online order are fine).\n" : "Speak in simple Indian English; if the caller speaks Hinglish, reply in Hinglish written in Latin letters.\n")
+        . "Answer from the KNOWLEDGE only. Never invent prices, discounts, integrations or features; if unsure, say the team will confirm on the demo call. Never ask for passwords, card details or OTPs.\n\nKNOWLEDGE:\n" . rgChatbotKnowledge();
+    $schema = ['type' => 'OBJECT', 'properties' => [
+        'reply' => ['type' => 'STRING'],
+        'contact' => ['type' => 'OBJECT', 'nullable' => true, 'properties' => [
+            'name' => ['type' => 'STRING'], 'phone' => ['type' => 'STRING'], 'restaurant' => ['type' => 'STRING'], 'agreed' => ['type' => 'BOOLEAN'],
+        ]],
+    ], 'required' => ['reply']];
+    $r = aiGeminiJson($system, $said, $schema, $turns, $conn, 'chatbot');
+    $reply = trim((string)($r['reply'] ?? ''));
+    if ($reply === '') {
+        $reply = $hindi
+            ? 'माफ़ कीजिए, अभी मैं ठीक से जवाब नहीं दे पा रही। आप हमारी टीम को प्लस नौ एक, छह तीन सात सात पाँच, छह आठ सात चार नौ पर कॉल कर सकते हैं।'
+            : 'Sorry, I could not get that just now. You can call our team on plus nine one, six three seven seven five, six eight seven four nine.';
+        return ['reply' => $reply, 'contact' => null];
+    }
+    $c = is_array($r['contact'] ?? null) ? $r['contact'] : null;
+    return ['reply' => mb_substr($reply, 0, 1200), 'contact' => $c && !empty($c['agreed']) && !$hasContact ? $c : null];
 }
 
 function rgGeminiChatbotReply(PDO $conn, int $leadId, string $question): string

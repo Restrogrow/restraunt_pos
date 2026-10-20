@@ -409,7 +409,7 @@
           var badge = { new: 'badge-info', contacted: 'badge-warning', qualified: 'badge-success', closed: 'badge-danger' }[r.status] || 'badge-info';
           return '<div class="sp-li sp-lead sp-chat-lead"><span class="sa-ini">' + esc((r.name || '?').charAt(0).toUpperCase()) + '</span><div><b>' + esc(r.name) + ' <span class="sp-muted">· ' + esc(r.restaurant_name) + '</span></b>' +
             '<small>' + esc(r.phone) + ' · ' + esc(r.email) + ' · ' + when(r.updated_at) + '</small><p class="sp-chat-preview">' + esc(r.last_message || 'No messages yet') + '</p></div>' +
-            '<div class="sp-lead-r"><span class="badge ' + badge + '">' + esc(chatStatusName(r.status)) + '</span><small>' + num(r.message_count) + ' messages</small>' +
+            '<div class="sp-lead-r"><span class="badge ' + badge + '">' + esc(chatStatusName(r.status)) + '</span><small>' + num(r.message_count) + ' messages</small>' + (+r.voice_count ? '<small class="sp-voice-tag">Voice call · ' + num(r.voice_count) + ' lines</small>' : '') +
             '<button class="btn btn-outline btn-sm" type="button" data-sp-chat-open="' + (+r.id) + '">View conversation</button></div></div>';
         }).join('') + '</div>' : empty('forum', chatLeadQuery ? 'No chat leads match your search' : 'No website chat leads yet')) + '</div></div>';
       var search = $('spChatLeadSearch');
@@ -430,7 +430,8 @@
         return '<option value="' + s[0] + '"' + (s[0] === lead.status ? ' selected' : '') + '>' + s[1] + '</option>';
       }).join('');
       var transcript = d.messages.length ? d.messages.map(function (m) {
-        return '<div class="sp-chat-message ' + (m.sender === 'visitor' ? 'visitor' : 'assistant') + '"><span>' + (m.sender === 'visitor' ? 'Visitor' : 'RestroGrow') + '</span><p>' + esc(m.message) + '</p><small>' + when(m.created_at) + '</small></div>';
+        var voice = m.channel === 'voice' ? ' <em class="sp-voice-tag">voice call</em>' : '';
+        return '<div class="sp-chat-message ' + (m.sender === 'visitor' ? 'visitor' : 'assistant') + (voice ? ' voice' : '') + '"><span>' + (m.sender === 'visitor' ? 'Visitor' : 'RestroGrow') + voice + '</span><p>' + esc(m.message) + '</p><small>' + when(m.created_at) + '</small></div>';
       }).join('') : empty('chat', 'This conversation has no messages');
       box.innerHTML = '<div class="card sp-chat-detail"><div class="card-header"><div><div class="card-title">' + esc(lead.name) + ' · ' + esc(lead.restaurant_name) + '</div><small class="sp-muted">Lead #' + (+lead.id) + ' · Started ' + when(lead.created_at) + '</small></div>' +
         '<label class="sp-chat-status">Lead status <select id="spChatLeadStatus" data-chat-lead="' + (+lead.id) + '">' + options + '</select></label></div>' +
