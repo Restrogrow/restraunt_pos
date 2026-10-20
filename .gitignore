@@ -107,3 +107,6 @@ main/config/.ga-service-account.json
 main/uploads/signatures/*
 # small photo copies made by main/website/image.php
 main/uploads/cache/*
+
+# Super Admin call recordings: private, stay on the server only
+main/uploads/lead_recordings/
