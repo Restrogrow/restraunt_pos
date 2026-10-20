@@ -7521,6 +7521,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/platform-notices.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/platform-notices.js'); ?>" defer></script>
   <script src="../assets/js/dashboard-home.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/dashboard-home.js'); ?>" defer></script>
   <script src="../assets/js/nav-style.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/nav-style.js'); ?>" defer></script>
+  <script src="../assets/js/delivery-partners.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/delivery-partners.js'); ?>" defer></script>
   <script src="../assets/js/marketing-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/marketing-studio.js'); ?>" defer></script>
   <script src="../website/rg-banners.js?v=<?php echo @filemtime(__DIR__ . '/../website/rg-banners.js'); ?>" defer></script>
   <script src="../assets/js/offer-banners-admin.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/offer-banners-admin.js'); ?>" defer></script>

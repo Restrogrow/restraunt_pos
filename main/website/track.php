@@ -498,7 +498,14 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
       <?php if ($tkType === 'Delivery'): ?>
       <div class="tk-rider<?php echo ($tracking && !empty($tracking['rider_name'])) ? ' on' : ''; ?>" id="tkRider">
         <div class="av" id="tkRiderInitial"><?php echo htmlspecialchars(mb_strtoupper(mb_substr((string)($tracking['rider_name'] ?? 'R'), 0, 1))); ?></div>
-        <div class="who"><b id="tkRiderName"><?php echo htmlspecialchars((string)($tracking['rider_name'] ?? '')); ?></b><span>Your delivery partner</span></div>
+<?php
+        // booked with an outside app (Order details › Book a delivery partner, api/delivery_partner.php)
+        $tkPartners = ['uber' => 'Uber', 'rapido' => 'Rapido', 'porter' => 'Porter', 'borzo' => 'Borzo', 'ola' => 'Ola', 'other' => ''];
+        $tkPartner = $tkPartners[(string)($tracking['partner'] ?? '')] ?? '';
+        $tkPartnerUrl = (string)($tracking['partner_track_url'] ?? '');
+        if (!preg_match('#^https?://#i', $tkPartnerUrl)) $tkPartnerUrl = '';
+?>
+        <div class="who"><b id="tkRiderName"><?php echo htmlspecialchars((string)($tracking['rider_name'] ?? '')); ?></b><span><?php echo $tkPartner !== '' ? 'Delivering with ' . htmlspecialchars($tkPartner) : 'Your delivery partner'; ?><?php if ($tkPartnerUrl !== ''): ?> · <a href="<?php echo htmlspecialchars($tkPartnerUrl); ?>" target="_blank" rel="noopener nofollow" style="color:inherit;font-weight:600;text-decoration:underline;">Live tracking</a><?php endif; ?></span></div>
         <a class="tk-call" id="tkRiderCall" href="<?php echo !empty($tracking['rider_phone']) ? 'tel:' . htmlspecialchars(preg_replace('/[^\d+]/', '', $tracking['rider_phone'])) : '#'; ?>" style="<?php echo !empty($tracking['rider_phone']) ? '' : 'display:none;'; ?>" aria-label="Call rider"><span class="material-symbols-rounded">call</span></a>
       </div>
       <p id="riderLocationNote">Rider's live location</p>

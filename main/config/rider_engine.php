@@ -37,6 +37,8 @@ if (!function_exists('riderEnsure')) {
         $add = [
             'rider_staff_id' => 'INT NULL', 'assigned_at' => 'DATETIME NULL', 'cod_amount' => 'DECIMAL(10,2) NULL',
             'cod_collected_at' => 'DATETIME NULL', 'cash_settled_at' => 'DATETIME NULL', 'cash_settled_by' => 'VARCHAR(100) NULL',
+            // delivery booked with an outside app (Uber, Rapido, Porter…): api/delivery_partner.php
+            'partner' => 'VARCHAR(30) NULL', 'partner_track_url' => 'VARCHAR(500) NULL',
         ];
         foreach ($add as $c => $def) {
             if (!in_array($c, $have, true)) {

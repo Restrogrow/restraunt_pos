@@ -7411,6 +7411,7 @@ document.addEventListener("DOMContentLoaded", () => {
                       </button>
                       <div id="qrDisplay-${order.id}" style="display:none; margin-top: 0.75rem; text-align: center;"></div>
                     </div>
+                    <div class="rg-book-delivery" data-order="${order.id}"></div>
                   </div>
                 ` : ''}
                 ${order.notes ? `
@@ -7425,7 +7426,8 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
         
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
+        if (window.rgBookDeliveryInit) window.rgBookDeliveryInit(order);   // Uber / Rapido / Porter… (assets/js/delivery-partners.js)
+
         // Close modal when clicking outside
         const modal = document.getElementById('orderDetailsModal');
         modal.addEventListener('click', function(e) {
