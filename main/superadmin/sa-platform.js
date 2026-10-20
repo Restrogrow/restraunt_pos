@@ -205,6 +205,7 @@
     return get('leads', '&stage=' + leadStage).then(function (d) {
       var total = 0; for (var k in d.counts) total += +d.counts[k];
       var rc = d.recordings || { files: 0, leads: 0 };
+      if (rc.chunk_bytes) recChunk = +rc.chunk_bytes;
       $('spLeadsActs').innerHTML = (rc.files ? '<a class="btn btn-outline" href="' + API + '?action=downloadLeadRecordings&scope=leads" download title="One ZIP with a folder for every lead you called"><span class="material-symbols-rounded">download</span>Download all recordings <em class="sp-cnt">' + num(rc.files) + '</em></a>'
         : '<button class="btn btn-outline" type="button" disabled title="Upload call recordings on a lead first"><span class="material-symbols-rounded">download</span>Download all recordings</button>') +
         '<button class="btn btn-primary" id="spLeadNew"><span class="material-symbols-rounded">person_add</span>Add lead</button>';
@@ -226,7 +227,7 @@
   }
 
   /* call recordings on a lead: upload many at once, play, download, delete */
-  var recLead = 0, recBusy = false;
+  var recLead = 0, recBusy = false, recChunk = 1048576;
   var REC_ACCEPT = 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.amr,.3gp,.webm,.flac,.wma,.mp4';
   var fsize = function (b) { b = +b || 0; return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; };
   function recHtml(r) {
@@ -273,10 +274,23 @@
           show((done ? '<span class="sp-ok">' + done + ' uploaded</span>' : '') + errors.map(function (m) { return '<span class="sp-err">' + esc(m) + '</span>'; }).join(''));
         });
       }
-      show('<span class="sp-busy">Uploading ' + (i + 1) + ' of ' + files.length + ': ' + esc(files[i].name) + '…</span>');
-      var fd = new FormData(); fd.append('lead_id', lead); fd.append('file', files[i]);
-      return fetch(API + '?action=uploadLeadRecording', { method: 'POST', body: fd }).then(res)
-        .then(function () { done++; }, function (e) { errors.push(files[i].name + ': ' + e.message); })
+      var file = files[i], uid = '';
+      for (var k = 0; k < 24; k++) uid += '0123456789abcdef'.charAt(Math.floor(Math.random() * 16));
+      // no size limit: the file goes up in pieces the server joins back together
+      var piece = function (offset, tries) {
+        show('<span class="sp-busy">Uploading ' + (i + 1) + ' of ' + files.length + ': ' + esc(file.name) + (file.size > recChunk ? ' · ' + Math.floor(offset * 100 / file.size) + '%' : '') + '…</span>');
+        var end = Math.min(file.size, offset + recChunk);
+        var fd = new FormData();
+        fd.append('lead_id', lead); fd.append('name', file.name); fd.append('upload_id', uid);
+        fd.append('offset', offset); fd.append('total', file.size); fd.append('file', file.slice(offset, end), file.name);
+        return fetch(API + '?action=uploadLeadRecording', { method: 'POST', body: fd }).then(res, function (e) {
+          // network dropped: try the same piece again a few times
+          if (tries < 3) return new Promise(function (ok) { setTimeout(ok, 2000 * (tries + 1)); }).then(function () { return piece(offset, tries + 1); }).then(function () { return { done: true }; });
+          throw e;
+        }).then(function (d) { if (!d.done && d.received != null) return piece(d.received, 0); });
+      };
+      return piece(0, 0)
+        .then(function () { done++; }, function (e) { errors.push(file.name + ': ' + e.message); })
         .then(function () { return next(i + 1); });
     };
     next(0);
@@ -290,6 +304,7 @@
     return get('recordings', '&q=' + encodeURIComponent(recsQ)).then(function (d) {
       recsRows = {}; d.rows.forEach(function (r) { recsRows[r.id] = r; });
       recsLeads = d.leads || [];
+      if (d.chunk_bytes) recChunk = +d.chunk_bytes;
       if (!$('spRecsSearch')) {
         $('spRecsActs').innerHTML = '<input id="spRecsSearch" type="search" placeholder="Search file, lead or phone" aria-label="Search recordings" value="' + esc(recsQ) + '">' +
           '<a class="btn btn-primary" id="spRecsAll" href="' + API + '?action=downloadLeadRecordings" download><span class="material-symbols-rounded">download</span>Download all <em class="sp-cnt"></em></a>';
@@ -299,7 +314,7 @@
       all.classList.toggle('sp-off', !d.total);
       var leadOpts = '<option value="">No lead</option>' + recsLeads.map(function (l) { return '<option value="' + l.id + '"' + (String(l.id) === recsUploadLead ? ' selected' : '') + '>' + esc(leadLabel(l)) + '</option>'; }).join('');
       box.innerHTML = '<div class="card"><div class="card-body sp-rec">' +
-        '<label class="sp-rec-drop" id="spRecsDrop"><span class="material-symbols-rounded">upload</span><b>Upload recordings</b><small>Pick or drop as many audio files as you like (mp3, m4a, wav, amr, ogg…). Up to ' + esc(d.max_upload) + ' each</small>' +
+        '<label class="sp-rec-drop" id="spRecsDrop"><span class="material-symbols-rounded">upload</span><b>Upload recordings</b><small>Pick or drop as many audio files as you like (mp3, m4a, wav, amr, ogg…). Any size</small>' +
         '<input type="file" id="spRecsFile" multiple accept="' + REC_ACCEPT + '" hidden></label>' +
         '<div class="sp-rec-link"><label for="spRecsLead">Link new uploads to a lead (optional)</label><select id="spRecsLead">' + leadOpts + '</select></div>' +
         '<div class="sp-rec-status" id="spRecsStatus"></div></div></div>' +

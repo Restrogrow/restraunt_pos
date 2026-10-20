@@ -45,6 +45,14 @@ function leadRecDir(): string
     if (!is_file($dir . '/index.html')) @file_put_contents($dir . '/index.html', '');
     return $dir;
 }
+/** Size of each upload piece: comfortably under the server's upload and POST limits, at most 8 MB */
+function leadRecChunkBytes(): int
+{
+    $toBytes = function ($v) { $v = trim((string)$v); $n = (float)$v; $u = strtolower(substr($v, -1)); return (int)($u === 'g' ? $n * 1073741824 : ($u === 'm' ? $n * 1048576 : ($u === 'k' ? $n * 1024 : $n))); };
+    $lims = array_filter([$toBytes(ini_get('upload_max_filesize')), $toBytes(ini_get('post_max_size'))], function ($x) { return $x > 0; });
+    $lim = $lims ? min($lims) : 8388608;
+    return max(262144, min(8388608, (int)($lim * 0.8)));
+}
 function leadRecEnsure(PDO $conn): void
 {
     static $done = false;
@@ -71,8 +79,11 @@ function zipSafe(string $s): string
     $s = trim(preg_replace('/[\\\\\/:*?"<>|\x00-\x1f]+/u', ' ', $s));
     return mb_substr(preg_replace('/\s+/', ' ', $s), 0, 80) ?: 'file';
 }
-/** Streams a ZIP (stored, no compression: audio is already compressed) without needing PHP's zip extension. $files: [[zipPath, diskPath], ...] */
-function streamZip(string $zipName, array $files): void
+/**
+ * Streams a ZIP (stored, no compression: audio is already compressed) without needing PHP's zip extension.
+ * Switches to ZIP64 records past 4 GB, so the download has no size limit. $files: [[zipPath, diskPath], ...]
+ */
+function streamZip(string $zipName, array $files, int $z64 = 0xFFFFFFFF): void
 {
     while (ob_get_level()) ob_end_clean();
     @set_time_limit(0);
@@ -87,17 +98,31 @@ function streamZip(string $zipName, array $files): void
         if (!is_file($disk)) continue;
         $size = filesize($disk);
         $crc = hexdec(hash_file('crc32b', $disk));
+        $big = $size >= $z64; $far = $offset >= $z64;
         // flag 0x0800 = file name is UTF-8
-        $local = pack('VvvvvvVVVvv', 0x04034b50, 20, 0x0800, 0, $dosTime, $dosDate, $crc, $size, $size, strlen($name), 0) . $name;
+        $local = pack('VvvvvvVVVvv', 0x04034b50, $big ? 45 : 20, 0x0800, 0, $dosTime, $dosDate, $crc, $big ? 0xFFFFFFFF : $size, $big ? 0xFFFFFFFF : $size, strlen($name), $big ? 20 : 0)
+            . $name . ($big ? pack('vvPP', 1, 16, $size, $size) : '');
         echo $local;
         $fh = fopen($disk, 'rb');
-        while (!feof($fh)) { echo fread($fh, 1048576); flush(); }
+        while (!feof($fh)) { echo fread($fh, 1048576); flush(); if (connection_aborted()) exit; }
         fclose($fh);
-        $central .= pack('VvvvvvvVVVvvvvvVV', 0x02014b50, 20, 20, 0x0800, 0, $dosTime, $dosDate, $crc, $size, $size, strlen($name), 0, 0, 0, 0, 0, $offset) . $name;
+        $extra = ($big ? pack('PP', $size, $size) : '') . ($far ? pack('P', $offset) : '');
+        if ($extra !== '') $extra = pack('vv', 1, strlen($extra)) . $extra;
+        $v = $extra !== '' ? 45 : 20;
+        $central .= pack('VvvvvvvVVVvvvvvVV', 0x02014b50, $v, $v, 0x0800, 0, $dosTime, $dosDate, $crc, $big ? 0xFFFFFFFF : $size, $big ? 0xFFFFFFFF : $size,
+            strlen($name), strlen($extra), 0, 0, 0, 0, $far ? 0xFFFFFFFF : $offset) . $name . $extra;
         $offset += strlen($local) + $size;
         $count++;
     }
-    echo $central . pack('VvvvvVVv', 0x06054b50, 0, 0, $count, $count, strlen($central), $offset, 0);
+    $cdSize = strlen($central);
+    echo $central;
+    if ($count >= 0xFFFF || $offset >= $z64 || $cdSize >= $z64) {
+        echo pack('VPvvVVPPPP', 0x06064b50, 44, 45, 45, 0, 0, $count, $count, $cdSize, $offset);   // ZIP64 end record
+        echo pack('VVPV', 0x07064b50, 0, $offset + $cdSize, 1);                                      // and its locator
+        echo pack('VvvvvVVv', 0x06054b50, 0, 0, 0xFFFF, 0xFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0);
+    } else {
+        echo pack('VvvvvVVv', 0x06054b50, 0, 0, $count, $count, $cdSize, $offset, 0);
+    }
     exit;
 }
 const LIVE_ORDER ="o.deleted_at IS NULL AND o.order_status NOT IN ('Cancelled','Rejected')";
@@ -260,7 +285,7 @@ try {
         foreach ($rows as &$row) $row['recordings'] = $recs[$row['id']] ?? [];
         unset($row);
         $recTotal = $conn->query("SELECT COUNT(*) AS n, COUNT(DISTINCT lead_id) AS leads FROM lead_recordings WHERE lead_id > 0")->fetch(PDO::FETCH_ASSOC);
-        out(['rows' => $rows, 'counts' => $counts, 'recordings' => ['files' => (int)$recTotal['n'], 'leads' => (int)$recTotal['leads']]]);
+        out(['rows' => $rows, 'counts' => $counts, 'recordings' => ['files' => (int)$recTotal['n'], 'leads' => (int)$recTotal['leads'], 'chunk_bytes' => leadRecChunkBytes()]]);
 
     /* ───────── call recordings on leads ───────── */
     case 'uploadLeadRecording':
@@ -272,18 +297,36 @@ try {
             $chk->execute([$leadId]);
             if (!$chk->fetchColumn()) throw new Exception('Lead not found');
         }
+        // no size limit: the page sends big files in pieces (chunk_bytes) that are joined here, so the server's upload limit never applies
         $f = $_FILES['file'] ?? null;
-        if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            $err = $f['error'] ?? UPLOAD_ERR_NO_FILE;
-            throw new Exception(in_array($err, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
-                ? 'File is bigger than the server allows (' . ini_get('upload_max_filesize') . ')' : 'Upload failed, try again');
-        }
-        $orig = mb_substr(basename((string)$f['name']), 0, 255);
+        if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) throw new Exception('Upload failed, try again');
+        $orig = mb_substr(basename((string)($_POST['name'] ?? $f['name'])), 0, 255);
         $ext = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
         if (!in_array($ext, LEAD_REC_EXT, true)) throw new Exception($orig . ': not an audio file (' . implode(', ', LEAD_REC_EXT) . ')');
+        $dir = leadRecDir();
+        $uid = (string)($_POST['upload_id'] ?? '');
+        if ($uid !== '') {
+            if (!preg_match('/^[a-f0-9]{16,40}$/', $uid)) throw new Exception('Upload failed, try again');
+            $part = $dir . '/.part_' . $uid;
+            $offset = (int)($_POST['offset'] ?? 0);
+            if ($offset === 0) {
+                foreach (glob($dir . '/.part_*') ?: [] as $old) if (filemtime($old) < time() - 86400) @unlink($old);   // abandoned uploads
+                @unlink($part);
+            }
+            clearstatcache(true, $part);
+            if ((is_file($part) ? filesize($part) : 0) !== $offset) throw new Exception('Upload got out of step, try again');
+            $src = fopen($f['tmp_name'], 'rb'); $dst = fopen($part, 'ab');
+            if (!$src || !$dst) throw new Exception('Could not save the file on the server');
+            stream_copy_to_stream($src, $dst);
+            fclose($src); fclose($dst);
+            clearstatcache(true, $part);
+            $have = filesize($part);
+            if ($have < (int)($_POST['total'] ?? 0)) out(['received' => $have]);   // more pieces to come
+        }
         $stored = $leadId . '_' . bin2hex(random_bytes(12)) . '.' . $ext;
-        if (!move_uploaded_file($f['tmp_name'], leadRecDir() . '/' . $stored)) throw new Exception('Could not save the file on the server');
-        $conn->prepare("INSERT INTO lead_recordings (lead_id, stored_name, original_name, size_bytes) VALUES (?,?,?,?)")->execute([$leadId, $stored, $orig, (int)$f['size']]);
+        if ($uid !== '' ? !rename($part, $dir . '/' . $stored) : !move_uploaded_file($f['tmp_name'], $dir . '/' . $stored)) throw new Exception('Could not save the file on the server');
+        clearstatcache();
+        $conn->prepare("INSERT INTO lead_recordings (lead_id, stored_name, original_name, size_bytes) VALUES (?,?,?,?)")->execute([$leadId, $stored, $orig, (int)filesize($dir . '/' . $stored)]);
         $recId = (int)$conn->lastInsertId();
         pfAudit($conn, 'lead.recording.upload', $leadId ? 'Lead #' . $leadId : 'Recordings', ['file' => $orig]);
         out(['id' => $recId, 'message' => 'Recording uploaded']);
@@ -369,7 +412,7 @@ try {
         $tot = $conn->query("SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes),0) AS bytes FROM lead_recordings")->fetch(PDO::FETCH_ASSOC);
         $leads = $conn->query("SELECT id, name, phone, restaurant_name_hint FROM contact_queries ORDER BY id DESC LIMIT 1000")->fetchAll(PDO::FETCH_ASSOC);
         out(['rows' => $st->fetchAll(PDO::FETCH_ASSOC), 'total' => (int)$tot['n'], 'bytes' => (int)$tot['bytes'], 'leads' => $leads,
-            'max_upload' => ini_get('upload_max_filesize')]);
+            'chunk_bytes' => leadRecChunkBytes()]);
 
     case 'moveRecording':
         // link a recording to a lead, or unlink it (lead_id 0)
