@@ -17,7 +17,7 @@ if (!$conn instanceof PDO) { http_response_code(500); header('Content-Type: appl
 $action = $_GET['action'] ?? '';
 $in = json_decode(file_get_contents('php://input') ?: '[]', true) ?: [];
 $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
-if (!in_array($action, ['invoice', 'invoiceView', 'exportInvoices'], true)) header('Content-Type: application/json');
+if (!in_array($action, ['invoice', 'invoiceView', 'exportInvoices', 'leadRecording', 'downloadLeadRecordings'], true)) header('Content-Type: application/json');
 
 function out(array $a): void { echo json_encode(['success' => true] + $a, JSON_UNESCAPED_UNICODE); exit; }
 function needPost(): void { global $isPost; if (!$isPost) throw new Exception('POST required'); }
@@ -35,7 +35,72 @@ function tableExists(PDO $conn, string $t): bool
     if (!isset($c[$t])) $c[$t] = (bool)$conn->query("SHOW TABLES LIKE " . $conn->quote($t))->fetch();
     return $c[$t];
 }
-const LIVE_ORDER = "o.deleted_at IS NULL AND o.order_status NOT IN ('Cancelled','Rejected')";
+// call recordings for leads: files live on this server in uploads/lead_recordings (web access denied, served by this API only)
+const LEAD_REC_EXT = ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus', 'amr', '3gp', 'webm', 'flac', 'wma', 'mp4'];
+function leadRecDir(): string
+{
+    $dir = __DIR__ . '/../uploads/lead_recordings';
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) throw new Exception('Could not create the recordings folder on the server');
+    if (!is_file($dir . '/.htaccess')) @file_put_contents($dir . '/.htaccess', "Require all denied\n");
+    if (!is_file($dir . '/index.html')) @file_put_contents($dir . '/index.html', '');
+    return $dir;
+}
+function leadRecEnsure(PDO $conn): void
+{
+    static $done = false;
+    if ($done) return;
+    $conn->exec("CREATE TABLE IF NOT EXISTS lead_recordings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        lead_id INT NOT NULL,
+        stored_name VARCHAR(120) NOT NULL,
+        original_name VARCHAR(255) NOT NULL,
+        size_bytes BIGINT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_lead (lead_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $done = true;
+}
+function leadRecMime(string $name): string
+{
+    $m = ['mp3' => 'audio/mpeg', 'm4a' => 'audio/mp4', 'mp4' => 'audio/mp4', 'aac' => 'audio/aac', 'wav' => 'audio/wav', 'ogg' => 'audio/ogg', 'oga' => 'audio/ogg',
+        'opus' => 'audio/ogg', 'amr' => 'audio/amr', '3gp' => 'audio/3gpp', 'webm' => 'audio/webm', 'flac' => 'audio/flac', 'wma' => 'audio/x-ms-wma'];
+    return $m[strtolower(pathinfo($name, PATHINFO_EXTENSION))] ?? 'application/octet-stream';
+}
+function zipSafe(string $s): string
+{
+    $s = trim(preg_replace('/[\\\\\/:*?"<>|\x00-\x1f]+/u', ' ', $s));
+    return mb_substr(preg_replace('/\s+/', ' ', $s), 0, 80) ?: 'file';
+}
+/** Streams a ZIP (stored, no compression: audio is already compressed) without needing PHP's zip extension. $files: [[zipPath, diskPath], ...] */
+function streamZip(string $zipName, array $files): void
+{
+    while (ob_get_level()) ob_end_clean();
+    @set_time_limit(0);
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="' . $zipName . '"');
+    header('Cache-Control: no-store');
+    $offset = 0; $central = ''; $count = 0;
+    $t = getdate();
+    $dosTime = ($t['hours'] << 11) | ($t['minutes'] << 5) | intdiv($t['seconds'], 2);
+    $dosDate = (($t['year'] - 1980) << 9) | ($t['mon'] << 5) | $t['mday'];
+    foreach ($files as [$name, $disk]) {
+        if (!is_file($disk)) continue;
+        $size = filesize($disk);
+        $crc = hexdec(hash_file('crc32b', $disk));
+        // flag 0x0800 = file name is UTF-8
+        $local = pack('VvvvvvVVVvv', 0x04034b50, 20, 0x0800, 0, $dosTime, $dosDate, $crc, $size, $size, strlen($name), 0) . $name;
+        echo $local;
+        $fh = fopen($disk, 'rb');
+        while (!feof($fh)) { echo fread($fh, 1048576); flush(); }
+        fclose($fh);
+        $central .= pack('VvvvvvvVVVvvvvvVV', 0x02014b50, 20, 20, 0x0800, 0, $dosTime, $dosDate, $crc, $size, $size, strlen($name), 0, 0, 0, 0, 0, $offset) . $name;
+        $offset += strlen($local) + $size;
+        $count++;
+    }
+    echo $central . pack('VvvvvVVv', 0x06054b50, 0, 0, $count, $count, strlen($central), $offset, 0);
+    exit;
+}
+const LIVE_ORDER ="o.deleted_at IS NULL AND o.order_status NOT IN ('Cancelled','Rejected')";
 
 try {
     pfEnsure($conn);
@@ -188,7 +253,99 @@ try {
         $st = $conn->prepare($sql . " ORDER BY (stage = 'new') DESC, COALESCE(follow_up_on, '9999-12-31') ASC, id DESC LIMIT 300");
         $st->execute($p);
         $counts = $conn->query("SELECT stage, COUNT(*) n FROM contact_queries GROUP BY stage")->fetchAll(PDO::FETCH_KEY_PAIR);
-        out(['rows' => $st->fetchAll(PDO::FETCH_ASSOC), 'counts' => $counts]);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        leadRecEnsure($conn);
+        $recs = [];
+        foreach ($conn->query("SELECT id, lead_id, original_name, size_bytes, created_at FROM lead_recordings ORDER BY id")->fetchAll(PDO::FETCH_ASSOC) as $rc) $recs[$rc['lead_id']][] = $rc;
+        foreach ($rows as &$row) $row['recordings'] = $recs[$row['id']] ?? [];
+        unset($row);
+        $recTotal = $conn->query("SELECT COUNT(*) AS n, COUNT(DISTINCT lead_id) AS leads FROM lead_recordings")->fetch(PDO::FETCH_ASSOC);
+        out(['rows' => $rows, 'counts' => $counts, 'recordings' => ['files' => (int)$recTotal['n'], 'leads' => (int)$recTotal['leads']]]);
+
+    /* ───────── call recordings on leads ───────── */
+    case 'uploadLeadRecording':
+        needPost();
+        leadRecEnsure($conn);
+        $leadId = (int)($_POST['lead_id'] ?? 0);
+        $chk = $conn->prepare("SELECT id FROM contact_queries WHERE id = ?");
+        $chk->execute([$leadId]);
+        if (!$chk->fetchColumn()) throw new Exception('Lead not found');
+        $f = $_FILES['file'] ?? null;
+        if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $err = $f['error'] ?? UPLOAD_ERR_NO_FILE;
+            throw new Exception(in_array($err, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+                ? 'File is bigger than the server allows (' . ini_get('upload_max_filesize') . ')' : 'Upload failed, try again');
+        }
+        $orig = mb_substr(basename((string)$f['name']), 0, 255);
+        $ext = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
+        if (!in_array($ext, LEAD_REC_EXT, true)) throw new Exception($orig . ': not an audio file (' . implode(', ', LEAD_REC_EXT) . ')');
+        $stored = $leadId . '_' . bin2hex(random_bytes(12)) . '.' . $ext;
+        if (!move_uploaded_file($f['tmp_name'], leadRecDir() . '/' . $stored)) throw new Exception('Could not save the file on the server');
+        $conn->prepare("INSERT INTO lead_recordings (lead_id, stored_name, original_name, size_bytes) VALUES (?,?,?,?)")->execute([$leadId, $stored, $orig, (int)$f['size']]);
+        pfAudit($conn, 'lead.recording.upload', 'Lead #' . $leadId, ['file' => $orig]);
+        out(['id' => (int)$conn->lastInsertId(), 'message' => 'Recording uploaded']);
+
+    case 'leadRecording':
+        leadRecEnsure($conn);
+        $st = $conn->prepare("SELECT stored_name, original_name FROM lead_recordings WHERE id = ?");
+        $st->execute([(int)($_GET['id'] ?? 0)]);
+        $rc = $st->fetch(PDO::FETCH_ASSOC);
+        $path = $rc ? leadRecDir() . '/' . $rc['stored_name'] : '';
+        if (!$rc || !is_file($path)) { http_response_code(404); header('Content-Type: text/plain'); echo 'Recording not found'; exit; }
+        while (ob_get_level()) ob_end_clean();
+        session_write_close();
+        $size = filesize($path); $start = 0; $end = $size - 1;
+        header('Content-Type: ' . leadRecMime($rc['original_name']));
+        header('Accept-Ranges: bytes');
+        header('Cache-Control: private, max-age=3600');
+        header('Content-Disposition: ' . (!empty($_GET['dl']) ? 'attachment' : 'inline') . '; filename="' . str_replace('"', '', $rc['original_name']) . '"');
+        // range requests let the audio player seek
+        if (preg_match('/bytes=(\d*)-(\d*)/', $_SERVER['HTTP_RANGE'] ?? '', $mr) && ($mr[1] !== '' || $mr[2] !== '')) {
+            if ($mr[1] === '') { $start = max(0, $size - (int)$mr[2]); } else { $start = (int)$mr[1]; if ($mr[2] !== '') $end = min($end, (int)$mr[2]); }
+            if ($start > $end) { http_response_code(416); header("Content-Range: bytes */$size"); exit; }
+            http_response_code(206);
+            header("Content-Range: bytes $start-$end/$size");
+        }
+        header('Content-Length: ' . ($end - $start + 1));
+        $fh = fopen($path, 'rb'); fseek($fh, $start); $left = $end - $start + 1;
+        while ($left > 0 && !feof($fh)) { $chunk = fread($fh, min(1048576, $left)); echo $chunk; $left -= strlen($chunk); flush(); }
+        fclose($fh);
+        exit;
+
+    case 'deleteLeadRecording':
+        needPost();
+        leadRecEnsure($conn);
+        $st = $conn->prepare("SELECT id, lead_id, stored_name, original_name FROM lead_recordings WHERE id = ?");
+        $st->execute([(int)($in['id'] ?? 0)]);
+        $rc = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$rc) throw new Exception('Recording not found');
+        @unlink(leadRecDir() . '/' . $rc['stored_name']);
+        $conn->prepare("DELETE FROM lead_recordings WHERE id = ?")->execute([$rc['id']]);
+        pfAudit($conn, 'lead.recording.delete', 'Lead #' . $rc['lead_id'], ['file' => $rc['original_name']]);
+        out(['message' => 'Recording deleted']);
+
+    case 'downloadLeadRecordings':
+        // one ZIP, a folder per lead: "Name - Restaurant - Phone (#id)/recording.mp3"
+        leadRecEnsure($conn);
+        $leadId = (int)($_GET['lead_id'] ?? 0);
+        $sql = "SELECT r.stored_name, r.original_name, r.created_at, q.id AS lead_id, q.name, q.phone, q.restaurant_name_hint
+            FROM lead_recordings r JOIN contact_queries q ON q.id = r.lead_id" . ($leadId ? " WHERE r.lead_id = ?" : '') . " ORDER BY q.name, q.id, r.id";
+        $st = $conn->prepare($sql);
+        $st->execute($leadId ? [$leadId] : []);
+        $dir = leadRecDir(); $files = []; $used = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $rc) {
+            $folder = zipSafe(implode(' - ', array_filter([$rc['name'], $rc['restaurant_name_hint'], $rc['phone']]))) . ' (#' . $rc['lead_id'] . ')';
+            $name = zipSafe(pathinfo($rc['original_name'], PATHINFO_FILENAME));
+            $ext = strtolower(pathinfo($rc['original_name'], PATHINFO_EXTENSION));
+            $path = $folder . '/' . $name . '.' . $ext;
+            for ($n = 2; isset($used[$path]); $n++) $path = $folder . '/' . $name . " ($n)." . $ext;
+            $used[$path] = true;
+            $files[] = [$path, $dir . '/' . $rc['stored_name']];
+        }
+        if (!$files) { header('Content-Type: text/plain'); echo 'No recordings yet'; exit; }
+        session_write_close();
+        pfAudit($conn, 'lead.recording.download', $leadId ? 'Lead #' . $leadId : 'All leads', ['files' => count($files)]);
+        streamZip('lead-recordings-' . ($leadId ? $leadId . '-' : '') . date('Y-m-d') . '.zip', $files);
 
     /* ───────── chatbot leads ───────── */
     case 'chatLeads':
@@ -271,6 +428,11 @@ try {
 
     case 'deleteLead':
         needPost();
+        leadRecEnsure($conn);
+        $recs = $conn->prepare("SELECT stored_name FROM lead_recordings WHERE lead_id = ?");
+        $recs->execute([(int)($in['id'] ?? 0)]);
+        foreach ($recs->fetchAll(PDO::FETCH_COLUMN) as $sn) @unlink(leadRecDir() . '/' . $sn);
+        $conn->prepare("DELETE FROM lead_recordings WHERE lead_id = ?")->execute([(int)($in['id'] ?? 0)]);
         $conn->prepare("DELETE FROM contact_queries WHERE id = ?")->execute([(int)($in['id'] ?? 0)]);
         pfAudit($conn, 'lead.delete', 'Lead #' . (int)($in['id'] ?? 0));
         out([]);

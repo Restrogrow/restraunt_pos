@@ -194,6 +194,29 @@ input:focus, select:focus, textarea:focus { border-color: #93c5fd; box-shadow: 0
 .sp-note { display: flex; gap: 6px; padding: 8px 10px; border-radius: 10px; background: #fffbeb; color: #78350f !important; }
 .sp-note .material-symbols-rounded { font-size: 17px; }
 .sp-lead-r { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: 0 0 auto !important; }
+.sp-cnt { font-style: normal; font-size: .75rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; }
+.sp-rec-who { color: #6b7280; font-size: .9rem; margin-bottom: 12px; }
+.sp-rec { text-align: left; display: flex; flex-direction: column; gap: 10px; }
+.sp-rec-drop { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 18px 12px; border: 2px dashed #cbd5e1; border-radius: 12px; cursor: pointer; color: #1f2937; transition: background .15s, border-color .15s; }
+.sp-rec-drop:hover, .sp-rec-drop.over { border-color: #2563eb; background: #eff6ff; }
+.sp-rec-drop .material-symbols-rounded { font-size: 28px; color: #2563eb; }
+.sp-rec-drop small { color: #6b7280; font-size: .8rem; }
+.sp-rec-status:empty { display: none; }
+.sp-rec-status { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; }
+.sp-rec-status .sp-ok { color: #15803d; font-weight: 600; }
+.sp-rec-status .sp-err { color: #dc2626; }
+.sp-rec-status .sp-busy { color: #2563eb; }
+.sp-rec-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+.sp-rec-item { border: 1px solid #e5e7eb; border-radius: 12px; padding: 8px 10px; }
+.sp-rec-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sp-rec-top > .material-symbols-rounded { color: #7c3aed; font-size: 20px; }
+.sp-rec-top b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9rem; }
+.sp-rec-top small { color: #6b7280; font-size: .75rem; white-space: nowrap; }
+.sp-rec-top .sa-more-btn.armed { background: #dc2626; color: #fff; border-color: #dc2626; }
+.sp-rec-item audio { width: 100%; height: 36px; margin-top: 6px; }
+.sp-rec-all { align-self: flex-start; }
+.sp-rec-none { margin: 4px 0; text-align: center; }
+@media (max-width: 560px) { .sp-rec-top small { display: none; } }
 .sp-chat-lead { align-items: center; cursor: default; }
 .sp-chat-preview { max-width: 700px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap !important; }
 .sp-chat-status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .8rem; font-weight: 600; }
