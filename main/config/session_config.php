@@ -100,10 +100,9 @@ function keepSessionCookieFresh(): void {
 
 
 
+// Reads $_SESSION, not session_status(): APIs call session_write_close() early (so requests don't queue
+// on the session lock) and still check the role afterwards — the data stays loaded after the close.
 function isSessionValid() {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        return false;
-    }
     return isset($_SESSION['restaurant_id']) || isset($_SESSION['superadmin_id']) || isset($_SESSION['branch_admin_id']);
 }
 
