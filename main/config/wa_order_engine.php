@@ -135,7 +135,8 @@ if (!function_exists('woHandle')) {
         // categories with serving hours (e.g. breakfast 8–11:30) are left out while they are closed, like on the website
         $closed = [];
         try { require_once __DIR__ . '/menu_hours.php'; $closed = menuHoursClosedMap($conn, $rid); } catch (Throwable $e) { error_log('woMenu hours: ' . $e->getMessage()); }
-        $st = $conn->prepare("SELECT mi.id, mi.menu_id, mi.item_name_en name, mi.base_price price, mi.item_type type, COALESCE(m.menu_name, mi.item_category, '') category, mi.has_variations
+        $st = $conn->prepare("SELECT mi.id, mi.menu_id, mi.item_name_en name, mi.base_price price, mi.item_type type, COALESCE(m.menu_name, mi.item_category, '') category, mi.has_variations,
+                mi.item_image image, mi.item_description_en descr
             FROM menu_items mi LEFT JOIN menu m ON m.id = mi.menu_id
             WHERE mi.restaurant_id = ? AND mi.is_available = 1 AND COALESCE(mi.is_hidden, 0) = 0
             ORDER BY m.sort_order, m.menu_name, mi.sort_order, mi.item_name_en");
@@ -144,7 +145,8 @@ if (!function_exists('woHandle')) {
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
             if (isset($closed[(int)$r['menu_id']])) continue;
             $items[(int)$r['id']] = ['id' => (int)$r['id'], 'name' => trim((string)$r['name']), 'price' => (float)$r['price'], 'type' => (string)$r['type'],
-                'category' => trim((string)$r['category']), 'variations' => []];
+                'category' => trim((string)$r['category']), 'variations' => [],
+                'image' => (string)($r['image'] ?? ''), 'desc' => trim(preg_replace('/\s+/', ' ', strip_tags((string)($r['descr'] ?? ''))))];
         }
         if ($items) {
             $ids = implode(',', array_keys($items));
@@ -441,6 +443,158 @@ if (!function_exists('woHandle')) {
         return !empty($r['username']) ? 'https://restrogrow.com/' . rawurlencode((string)$r['username']) : '';
     }
 
+    // ── tap-friendly replies: buttons, lists and dish photos ──
+    // A reply is a string (plain text) or ['text', 'buttons' => [[id, title]], 'image' => url, 'list' => [...]].
+    // RepeatGrow sends them as WhatsApp reply buttons / lists (type 'interactive'); a tap comes back with its id
+    // (wa_webhook.php → $opt['reply_id']), and its title is also a word the bot understands when typed.
+    // Anything that can't be sent that way goes out as text (woPlain).
+
+    /** Cut to WhatsApp's length limits (button 20, list row 24, row description 72). */
+    function woCut(string $s, int $n): string
+    {
+        // counted the way RepeatGrow (JavaScript) checks the limits: an emoji like 🟢 is 2, not 1
+        $len = fn(string $x) => intdiv(strlen(mb_convert_encoding($x, 'UTF-16LE', 'UTF-8')), 2);
+        $s = trim($s);
+        if ($len($s) <= $n) return $s;
+        $cut = mb_substr($s, 0, $n - 1);
+        while ($cut !== '' && $len($cut) > $n - 1) $cut = mb_substr($cut, 0, -1);
+        return rtrim($cut) . '…';
+    }
+
+    function woBtns(string $text, array $buttons, ?string $image = null): array
+    {
+        $b = [];
+        foreach (array_slice($buttons, 0, 3) as [$id, $title]) $b[] = [mb_substr((string)$id, 0, 200), woCut((string)$title, 20)];
+        return ['text' => $text, 'buttons' => $b, 'image' => $image];
+    }
+
+    /** A list message: $rows = [[id, title, description]], at most 10 (WhatsApp's limit). */
+    function woList(string $text, string $label, array $rows, string $section = ''): array
+    {
+        $r = [];
+        foreach (array_slice($rows, 0, 10) as $x) $r[] = [mb_substr((string)$x[0], 0, 200), woCut((string)$x[1], 24), woCut((string)($x[2] ?? ''), 72)];
+        return ['text' => $text, 'list' => ['button' => woCut($label, 20), 'section' => woCut($section, 24), 'rows' => $r]];
+    }
+
+    /** The reply as plain text: the log, the AI's chat history, and WhatsApp when buttons can't be sent. */
+    function woPlain($m): string
+    {
+        if (is_string($m)) return $m;
+        $t = (string)($m['text'] ?? '');
+        $opts = [];
+        foreach ($m['buttons'] ?? [] as [, $title]) $opts[] = '• *' . $title . '*';
+        foreach ($m['list']['rows'] ?? [] as [, $title, $desc]) $opts[] = '• *' . $title . '*' . ($desc !== '' ? ' — ' . $desc : '');
+        return $opts ? $t . "\n\n" . implode("\n", $opts) . (isset($m['list']) ? "\n_(type the one you want)_" : '') : $t;
+    }
+
+    /** A dish photo WhatsApp can show: a public JPEG copy (website/image.php &f=jpg); null without a photo. */
+    function woImg(array $item): ?string
+    {
+        $img = (string)($item['image'] ?? '');
+        if (strpos($img, 'db:') !== 0) return null;
+        $base = rtrim((string)env('APP_URL', ''), '/') ?: 'https://restrogrow.com';
+        return $base . '/main/website/image.php?id=' . rawurlencode(substr($img, 3)) . '&w=800&f=jpg';
+    }
+
+    function woPrice(array $cfg, array $it): string
+    {
+        $p = $it['variations'] ? $it['variations'][0] : $it;
+        return ($it['variations'] ? 'from ' : '') . woMoney($cfg, (float)$p['price']) . (isset($p['was']) ? ' (was ' . woMoney($cfg, (float)$p['was']) . ')' : '');
+    }
+
+    function woVeg(array $it): string
+    {
+        $t = strtolower((string)$it['type']);
+        return $t === 'veg' ? '🟢' : (strpos($t, 'non') === 0 ? '🔴' : ($t === 'egg' ? '🟡' : ''));
+    }
+
+    /** Category name → its dishes, in menu order. */
+    function woCategories(array $menu): array
+    {
+        $by = [];
+        foreach ($menu as $it) $by[$it['category'] ?: 'Menu'][] = $it;
+        return $by;
+    }
+
+    /** "Pick a category" (9 a page + More). */
+    function woMenuRich(array $cfg, array $menu, int $page = 1): array|string
+    {
+        $by = woCategories($menu);
+        if (!$by) return 'Sorry, nothing is on the menu right now.';
+        $names = array_keys($by);
+        $per = count($names) > 10 ? 9 : 10;
+        $rows = [];
+        foreach (array_slice($names, ($page - 1) * $per, $per) as $k) {
+            $min = min(array_map(fn($i) => $i['variations'] ? (float)$i['variations'][0]['price'] : (float)$i['price'], $by[$k]));
+            $rows[] = ['cat:' . $k, $k, count($by[$k]) . ' dish' . (count($by[$k]) > 1 ? 'es' : '') . ' · from ' . woMoney($cfg, $min)];
+        }
+        if (count($names) > $page * $per) $rows[] = ['catp:' . ($page + 1), '➡️ More categories', ''];
+        $url = woMenuUrl($cfg);
+        return woList("📋 *Our menu*\nPick a category to see the dishes 👇" . ($url ? "\n\nWith photos: " . $url : ''), 'See categories', $rows, 'Categories');
+    }
+
+    /** One category's dishes with prices; a tap adds one (9 a page + More). */
+    function woDishesRich(array $cfg, array $menu, string $cat, int $page = 1): array|string
+    {
+        $by = woCategories($menu);
+        if (!isset($by[$cat])) return woMenuRich($cfg, $menu);
+        $list = $by[$cat];
+        $per = count($list) > 10 ? 9 : 10;
+        $rows = [];
+        foreach (array_slice($list, ($page - 1) * $per, $per) as $it) $rows[] = ['add:' . $it['id'], $it['name'], trim(woVeg($it) . ' ' . woPrice($cfg, $it) . ($it['desc'] !== '' ? ' · ' . $it['desc'] : ''))];
+        if (count($list) > $page * $per) $rows[] = ['dish:' . ($page + 1) . ':' . $cat, '➡️ More dishes', ''];
+        return woList('🍽️ *' . $cat . "*\nTap a dish to add it to your order 🛒", 'Choose a dish', $rows, woCut($cat, 24));
+    }
+
+    /** Best sellers of the last 30 days as photo cards with an Add button (else the first dishes). */
+    function woPopular(PDO $conn, string $rid, array $cfg, array $menu): array
+    {
+        $ids = [];
+        try {
+            $st = $conn->prepare("SELECT oi.menu_item_id id, SUM(oi.quantity) n FROM order_items oi JOIN orders o ON o.id = oi.order_id
+                WHERE o.restaurant_id = ? AND o.created_at > NOW() - INTERVAL 30 DAY AND o.order_status NOT IN ('Cancelled','Rejected') AND oi.menu_item_id IS NOT NULL
+                GROUP BY oi.menu_item_id ORDER BY n DESC LIMIT 12");
+            $st->execute([$rid]);
+            foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $id) if (isset($menu[(int)$id])) $ids[] = (int)$id;
+        } catch (Throwable $e) { error_log('woPopular: ' . $e->getMessage()); }
+        // dishes with a photo first, so the cards look good
+        $pick = array_merge(array_filter($ids, fn($id) => woImg($menu[$id]) !== null), array_filter($ids, fn($id) => woImg($menu[$id]) === null));
+        if (count($pick) < 3) foreach ($menu as $it) if (!in_array($it['id'], $pick, true)) $pick[] = $it['id'];
+        $out = ['⭐ *Our most loved dishes*'];
+        foreach (array_slice(array_values(array_unique($pick)), 0, 3) as $i => $id) {
+            $it = $menu[$id];
+            $btns = [['add:' . $id, '➕ Add']];
+            if ($i === 2) $btns[] = ['menu', '📋 Full menu'];
+            $out[] = woBtns(trim(woVeg($it) . ' *' . $it['name'] . '* — ' . woPrice($cfg, $it)) . ($it['desc'] !== '' ? "\n" . woCut($it['desc'], 160) : ''), $btns, woImg($it));
+        }
+        return $out;
+    }
+
+    /** The order so far with what to do next; $extra = a dish worth suggesting. */
+    function woCartRich(array $cfg, array $s, ?array $extra = null, string $lead = ''): array
+    {
+        if (!$s['cart']) return woBtns(($lead !== '' ? $lead . "\n\n" : '') . "Your order is empty. Pick from the menu, or just type what you'd like.", [['menu', '📋 Menu'], ['popular', '⭐ Popular']]);
+        $text = ($lead !== '' ? $lead . "\n\n" : '') . woCartText($cfg, $s);
+        if ($extra) $text .= "\n\n💡 Goes well with it: *" . $extra['name'] . '* (' . woPrice($cfg, $extra) . ')';
+        return woBtns($text, [['checkout', '🧾 Place order'], ['menu', '📋 Add more'], $extra ? ['add:' . $extra['id'], '➕ ' . $extra['name']] : ['clear', '🗑️ Clear']]);
+    }
+
+    /** Which size? Buttons for up to 3, else a list. */
+    function woSizeAsk(array $cfg, array $item, int $qty): array
+    {
+        $text = 'Which size for *' . $item['name'] . '*' . ($qty > 1 ? ' (×' . $qty . ')' : '') . '?';
+        $opts = [];
+        foreach ($item['variations'] as $k => $v) $opts[] = ['size:' . $item['id'] . ':' . $k . ':' . $qty, $v['name'] . ' ' . woMoney($cfg, (float)$v['price']), ''];
+        if (count($opts) <= 3) return woBtns($text, array_map(fn($o) => [$o[0], $o[1]], $opts), woImg($item));
+        return woList($text, 'Choose a size', $opts, 'Sizes');
+    }
+
+    function woTypeAsk(array $choices): array
+    {
+        $label = ['takeaway' => '🥡 Takeaway', 'delivery' => '🛵 Delivery', 'dinein' => '🍽️ Dine-in'];
+        return woBtns('How would you like it?', array_map(fn($t) => ['type:' . $t, $label[$t]], $choices));
+    }
+
     function woTypeLabel(string $t): string
     {
         return ['dinein' => 'Dine-in', 'takeaway' => 'Takeaway', 'delivery' => 'Delivery'][$t] ?? 'Takeaway';
@@ -477,9 +631,11 @@ if (!function_exists('woHandle')) {
     }
 
     /**
-     * One incoming message → the replies to send (strings, in order). Side effects: the chat session,
-     * the log, and on confirm a real order (unless $opt['simulate']: then the order is only described).
-     * $opt: name (from WhatsApp), simulate (bool), table (from a QR route), force (the owner's test chat, even when switched off).
+     * One incoming message → the replies to send, in order: strings, or messages with buttons / a list / a photo
+     * (woBtns, woList; woPlain turns one into text). Side effects: the chat session, the log, and on confirm a real
+     * order (unless $opt['simulate']: then the order is only described).
+     * $opt: name (from WhatsApp), simulate (bool), table (from a QR route), force (the owner's test chat, even when switched off),
+     * reply_id (the id of a tapped button / list row; $text is then its title).
      */
     function woHandle(PDO $conn, string $rid, string $phone, string $text, array $opt = []): array
     {
@@ -494,10 +650,11 @@ if (!function_exists('woHandle')) {
         if (!$s['name']) $s['name'] = trim((string)($opt['name'] ?? '')) ?: woKnownName($conn, $rid, $phone);
         if (!empty($opt['table'])) { $s['table_id'] = (int)$opt['table']; $s['order_type'] = 'dinein'; }
         $out = [];
-        $say = function (string $m) use (&$out) { if ($m !== '') $out[] = $m; };
+        $say = function ($m) use (&$out) { if ($m !== '' && $m !== null) $out[] = $m; };
+        $tap = woTapId($s, (string)($opt['reply_id'] ?? ''), $text);
 
         // talking to a person: stay quiet until they say "order" or the time runs out
-        if ($s['handover_until'] && strtotime($s['handover_until']) > time() && !preg_match('/\b(order|menu|bot)\b/i', $text)) {
+        if ($s['handover_until'] && strtotime($s['handover_until']) > time() && !preg_match('/\b(order|menu|bot)\b/i', $text) && $tap === '') {
             woSave($conn, $s);
             return [];
         }
@@ -505,13 +662,16 @@ if (!function_exists('woHandle')) {
 
         // after an order: a new message starts the next one (status questions are answered first)
         if ($s['state'] === 'placed') {
-            if (preg_match('/\b(status|where|kahan|kab|kitna time|how long|ready)\b/iu', $text) && $s['order_id']) {
+            if ((preg_match('/\b(status|where|kahan|kab|kitna time|how long|ready)\b/iu', $text) || $tap === 'status') && $s['order_id']) {
                 $say(woStatusText($conn, (int)$s['order_id'], $cfg));
                 woSave($conn, $s);
                 return woOut($conn, $rid, $phone, $out);
             }
             $s['state'] = 'browsing'; $s['cart'] = []; $s['order_type'] = $s['table_id'] ? 'dinein' : null; $s['_new'] = true;
         }
+
+        // a tapped button / list row (or its title typed): no AI needed
+        if ($tap !== '' && ($r = woTap($conn, $rid, $phone, $s, $cfg, $menu, $opt, $tap)) !== null) return $r;
 
         $norm = woNorm($text);
         // table from the message ("table 4", "T4")
@@ -550,7 +710,7 @@ if (!function_exists('woHandle')) {
             if (woIsYes($text)) return woPlace($conn, $rid, $phone, $s, $cfg, $opt, $out);
             if (preg_match('/^\s*(2|change|edit|badlo|modify|no|nahi|nahin)\s*$/iu', $text)) {
                 $s['state'] = 'browsing';
-                $say(woCartText($cfg, $s) . "\n\nTell me what to change, e.g. *remove lassi* or *3 naan*.");
+                $say(woCartRich($cfg, $s, null, "No problem. Tell me what to change, e.g. *remove lassi* or *3 naan*, or add more from the menu."));
                 woSave($conn, $s);
                 return woOut($conn, $rid, $phone, $out);
             }
@@ -564,18 +724,18 @@ if (!function_exists('woHandle')) {
             return woOut($conn, $rid, $phone, $out);
         }
         if (preg_match('/^(menu|card|list|what do you have|kya hai|kya kya hai)\s*$/iu', $text)) {
-            $say(woMenuText($cfg, $menu));
+            $say(woMenuRich($cfg, $menu));
             woSave($conn, $s);
             return woOut($conn, $rid, $phone, $out);
         }
         if (preg_match('/^(cart|bill|my order|order dikhao|total)\s*$/iu', $text)) {
-            $say(woCartText($cfg, $s) . ($s['cart'] ? "\n\nReply *1* to place the order, or send more dishes." : "\n\nSend a dish name to start, or *menu*."));
+            $say(woCartRich($cfg, $s));
             woSave($conn, $s);
             return woOut($conn, $rid, $phone, $out);
         }
         if (preg_match('/^(cancel|clear|reset|start over|empty|cancel order)\s*$/iu', $text)) {
             $s['cart'] = []; $s['state'] = 'browsing';
-            $say('Cleared. Send dish names whenever you are ready, or *menu* to see the menu.');
+            $say(woBtns('🗑️ Cleared. Order again whenever you are ready.', [['menu', '📋 Menu'], ['popular', '⭐ Popular']]));
             woSave($conn, $s);
             return woOut($conn, $rid, $phone, $out);
         }
@@ -635,10 +795,14 @@ if (!function_exists('woHandle')) {
                     $changed = true;
                     break;
                 case 'show_menu':
-                    $say(woMenuText($cfg, $menu, (string)($a['value'] ?? '')));
+                    // "show starters" → that category's dishes to tap; else the categories
+                    $catKey = '';
+                    $want = (string)($a['value'] ?? '');
+                    if ($want !== '') foreach (array_keys(woCategories($menu)) as $k) if (woScore($want, $k) >= 0.6) { $catKey = $k; break; }
+                    $say($catKey !== '' ? woDishesRich($cfg, $menu, $catKey) : woMenuRich($cfg, $menu));
                     break;
                 case 'show_cart':
-                    $say(woCartText($cfg, $s));
+                    $say(woCartRich($cfg, $s));
                     break;
                 case 'checkout':
                     $wantCheckout = true;
@@ -673,52 +837,148 @@ if (!function_exists('woHandle')) {
         }
         if ($ai && $ai['hint'] !== '') $say($ai['hint']);
 
-        foreach ($needSize as [$item, $qty]) {
-            $opts = array_map(fn($v) => $v['name'] . ' ' . woMoney($cfg, $v['price']), $item['variations']);
-            $say('Which size for *' . $item['name'] . '*' . ($qty > 1 ? ' (×' . $qty . ')' : '') . '? ' . implode(' / ', $opts) . "\nReply e.g. *" . $qty . ' ' . $item['name'] . ' ' . $item['variations'][0]['name'] . '*');
-        }
+        foreach ($needSize as [$item, $qty]) $say(woSizeAsk($cfg, $item, $qty));
         if ($unknown) {
+            // "did you mean" as buttons that add the dish (the first unknown word; the rest as text)
             $tips = [];
-            foreach (array_slice($unknown, 0, 3) as $u) {
+            $btns = [];
+            foreach (array_slice($unknown, 0, 3) as $n => $u) {
                 $m = woMatch($menu, $u, 3);
+                if ($n === 0 && $m) foreach ($m as $x) $btns[] = ['add:' . $x[0]['id'], '➕ ' . $x[0]['name']];
                 $tips[] = '“' . $u . '”' . ($m ? ': did you mean ' . implode(', ', array_map(fn($x) => '*' . $x[0]['name'] . '*', $m)) . '?' : ' is not on the menu.');
             }
-            $say("I couldn't find " . implode("\n", $tips) . "\nType *menu* to see everything.");
+            $say(woBtns("I couldn't find " . implode("\n", $tips), $btns ?: [['menu', '📋 See the menu']]));
         }
 
         if ($wantCheckout && $s['cart'] && !$needSize) return woCheckout($conn, $rid, $phone, $s, $cfg, $menu, $opt, $out);
 
         if ($changed) {
-            $msg = woCartText($cfg, $s);
-            if ($s['cart']) {
-                $extra = $cfg['suggest_extras'] ? woSuggest($conn, $rid, $menu, $s['cart']) : null;
-                if ($extra) $msg .= "\n\n💡 Add *" . $extra['name'] . '* for ' . woMoney($cfg, $extra['variations'] ? $extra['variations'][0]['price'] : $extra['price']) . '? Just reply *add ' . $extra['name'] . '*';
-                $msg .= "\n\nReply *1* to place the order, or send more dishes.";
-            }
-            $say($msg);
+            $extra = $s['cart'] && $cfg['suggest_extras'] ? woSuggest($conn, $rid, $menu, $s['cart']) : null;
+            $say(woCartRich($cfg, $s, $extra));
         } elseif (!$out) {
-            $say($s['cart'] ? "Sorry, I didn't get that. Send dish names to add, *bill* to see your order, or *1* to place it."
+            $say($s['cart'] ? woCartRich($cfg, $s, null, "Sorry, I didn't get that. Type a dish name to add it, or tap below.")
                 : woGreeting($conn, $cfg, $s));
         }
         woSave($conn, $s);
         return woOut($conn, $rid, $phone, $out);
     }
 
-    function woGreeting(PDO $conn, array $cfg, array $s): string
+    function woGreeting(PDO $conn, array $cfg, array $s): array
     {
         $r = $cfg['restaurant'];
         $name = $s['name'] ? ' ' . explode(' ', $s['name'])[0] : '';
         $g = $cfg['greeting'] !== '' ? $cfg['greeting'] : 'Welcome to *' . ($r['restaurant_name'] ?? 'our restaurant') . '*!';
         $t = $s['table_id'] ? "\nYou're at table *" . woTableName($conn, (int)$s['table_id']) . '*.' : '';
-        return '👋 Hi' . $name . '! ' . $g . $t . "\n\nJust type what you'd like, e.g. *2 butter naan and 1 paneer tikka* (Hindi or English is fine).\n"
-            . "• *menu* to see the menu\n• *bill* to see your order\n• *1* to place it";
+        return woBtns('👋 Hi' . $name . '! ' . $g . $t . "\n\nTap a button below, or just type what you'd like, e.g. *2 butter naan and 1 paneer tikka* (Hindi or English is fine).",
+            [['menu', '📋 Menu'], ['popular', '⭐ Popular'], $s['cart'] ? ['cart', '🛒 My order'] : ['human', '🙋 Talk to us']]);
+    }
+
+    /**
+     * The id of a tapped button / list row, or the same thing typed ("menu", "place order", the titles without
+     * their emoji), so the old way of sending the titles as text works too. '' = an ordinary message.
+     */
+    function woTapId(array $s, string $replyId, string $text): string
+    {
+        if ($replyId !== '') return mb_substr($replyId, 0, 200);
+        $n = woNorm($text);
+        $map = ['popular' => 'popular', 'bestsellers' => 'popular', 'bestseller' => 'popular', 'best sellers' => 'popular', 'recommend' => 'popular',
+            'recommended' => 'popular', 'most loved' => 'popular', 'full menu' => 'menu', 'see the menu' => 'menu', 'see categories' => 'menu',
+            'add more' => 'menu', 'place order' => 'checkout', 'checkout' => 'checkout', 'view order' => 'cart', 'confirm order' => 'confirm',
+            'order status' => 'status', 'talk to us' => 'human', 'more categories' => 'catp:2'];
+        if (isset($map[$n])) return $map[$n];
+        if ($s['state'] === 'ask_type' && in_array($n, ['takeaway', 'delivery', 'dine in'], true)) return 'type:' . str_replace(' ', '', $n);
+        return '';
+    }
+
+    /** Act on a tap. Returns the replies, or null when the id means nothing here (then the text is read as usual). */
+    function woTap(PDO $conn, string $rid, string $phone, array $s, array $cfg, array $menu, array $opt, string $tap): ?array
+    {
+        $out = [];
+        $done = function () use ($conn, $rid, $phone, &$s, &$out) { woSave($conn, $s); return woOut($conn, $rid, $phone, $out); };
+        [$kind, $arg] = array_pad(explode(':', $tap, 2), 2, '');
+        switch ($kind) {
+            case 'menu':
+                $out[] = woMenuRich($cfg, $menu);
+                return $done();
+            case 'catp':
+                $out[] = woMenuRich($cfg, $menu, max(1, (int)$arg));
+                return $done();
+            case 'cat':
+                $out[] = woDishesRich($cfg, $menu, $arg);
+                return $done();
+            case 'dish':
+                [$page, $cat] = array_pad(explode(':', $arg, 2), 2, '');
+                $out[] = woDishesRich($cfg, $menu, $cat, max(1, (int)$page));
+                return $done();
+            case 'popular':
+                $out = woPopular($conn, $rid, $cfg, $menu);
+                return $done();
+            case 'cart':
+                $out[] = woCartRich($cfg, $s);
+                return $done();
+            case 'clear':
+                $s['cart'] = []; $s['state'] = 'browsing';
+                $out[] = woBtns('🗑️ Cleared. Order again whenever you are ready.', [['menu', '📋 Menu'], ['popular', '⭐ Popular']]);
+                return $done();
+            case 'checkout':
+                $s['state'] = 'browsing';
+                return woCheckout($conn, $rid, $phone, $s, $cfg, $menu, $opt, $out);
+            case 'add':
+            case 'size':
+                $parts = explode(':', $arg);
+                $item = $menu[(int)$parts[0]] ?? null;
+                if (!$item) { $out[] = woBtns("Sorry, that dish isn't available right now.", [['menu', '📋 Menu']]); return $done(); }
+                $qty = $kind === 'size' ? max(1, min(50, (int)($parts[2] ?? 1))) : 1;
+                $var = null;
+                if ($kind === 'size') {
+                    $v = $item['variations'][(int)($parts[1] ?? -1)] ?? null;
+                    if (!$v) { $out[] = woSizeAsk($cfg, $item, $qty); return $done(); }
+                    $var = $v['name'];
+                } elseif ($item['variations']) {
+                    $out[] = woSizeAsk($cfg, $item, 1);
+                    return $done();
+                }
+                if ($s['state'] !== 'browsing') $s['state'] = 'browsing';
+                woAdd($s['cart'], $item, $var, $qty);
+                $extra = $cfg['suggest_extras'] ? woSuggest($conn, $rid, $menu, $s['cart']) : null;
+                $t = woTotals($cfg, $s['cart'], (string)$s['order_type']);
+                $count = array_sum(array_column($s['cart'], 'qty'));
+                $out[] = woBtns('✅ Added *' . $item['name'] . ($var ? ' (' . $var . ')' : '') . '*' . ($qty > 1 ? ' ×' . $qty : '') . ' — ' . woMoney($cfg, woUnitPrice($item, $var) * $qty)
+                    . "\n\n🛒 " . $count . ' item' . ($count > 1 ? 's' : '') . ' · *' . woMoney($cfg, $t['total']) . '*'
+                    . ($extra ? "\n💡 Goes well with it: *" . $extra['name'] . '* (' . woPrice($cfg, $extra) . ')' : ''),
+                    [['checkout', '🧾 Place order'], ['menu', '📋 Add more'], $extra ? ['add:' . $extra['id'], '➕ ' . $extra['name']] : ['cart', '🛒 View order']], woImg($item));
+                return $done();
+            case 'type':
+                if (!in_array($arg, $cfg['allowed_types'], true)) return null;
+                $s['order_type'] = $arg; $s['state'] = 'browsing';
+                return woCheckout($conn, $rid, $phone, $s, $cfg, $menu, $opt, $out);
+            case 'confirm':
+                if ($s['state'] === 'confirm' && $s['cart']) return woPlace($conn, $rid, $phone, $s, $cfg, $opt, $out);
+                if ($s['cart']) return woCheckout($conn, $rid, $phone, $s, $cfg, $menu, $opt, $out);
+                $out[] = woGreeting($conn, $cfg, $s);
+                return $done();
+            case 'change':
+                $s['state'] = 'browsing';
+                $out[] = woCartRich($cfg, $s, null, "No problem. Tell me what to change, e.g. *remove lassi* or *3 naan*, or add more from the menu.");
+                return $done();
+            case 'status':
+                $out[] = $s['order_id'] ? woStatusText($conn, (int)$s['order_id'], $cfg) : woBtns("I don't see an order from this number yet.", [['menu', '📋 Menu']]);
+                return $done();
+            case 'human':
+                $r = $cfg['restaurant'];
+                $s['handover_until'] = date('Y-m-d H:i:s', time() + 2 * 3600);
+                $out[] = 'Sure, someone from ' . ($r['restaurant_name'] ?? 'the restaurant') . ' will reply here shortly.' . (!empty($r['phone']) ? ' You can also call ' . $r['phone'] . '.' : '') . "\n(Type *order* any time to order again.)";
+                woLog($conn, $rid, $phone, 'sys', 'Handed over to the restaurant', 'handover');
+                return $done();
+        }
+        return null;
     }
 
     /** Before placing: order type, address, name; then the bill with "reply 1". */
     function woCheckout(PDO $conn, string $rid, string $phone, array $s, array $cfg, array $menu, array $opt, array $out): array
     {
         if (!$s['cart']) {
-            $out[] = 'Your order is empty. Send dish names to add them.';
+            $out[] = woCartRich($cfg, $s);
             woSave($conn, $s);
             return woOut($conn, $rid, $phone, $out);
         }
@@ -733,7 +993,7 @@ if (!function_exists('woHandle')) {
                 return woOut($conn, $rid, $phone, $out);
             } else {
                 $s['state'] = 'ask_type';
-                $out[] = 'Takeaway or delivery? Reply *T* for takeaway or *D* for delivery.';
+                $out[] = woTypeAsk($choices);
                 woSave($conn, $s);
                 return woOut($conn, $rid, $phone, $out);
             }
@@ -753,7 +1013,7 @@ if (!function_exists('woHandle')) {
         $t = woTotals($cfg, $s['cart'], $s['order_type']);
         $min = (float)($cfg['restaurant']['minimum_order_value'] ?? 0);
         if ($s['order_type'] !== 'dinein' && $min > 0 && $t['subtotal'] < $min) {
-            $out[] = 'The minimum order is ' . woMoney($cfg, $min) . '. Add ' . woMoney($cfg, $min - $t['subtotal']) . ' more to place it.';
+            $out[] = woBtns('The minimum order is ' . woMoney($cfg, $min) . '. Add ' . woMoney($cfg, $min - $t['subtotal']) . ' more to place it.', [['menu', '📋 Add more'], ['popular', '⭐ Popular']]);
             woSave($conn, $s);
             return woOut($conn, $rid, $phone, $out);
         }
@@ -761,7 +1021,8 @@ if (!function_exists('woHandle')) {
             : ($s['order_type'] === 'delivery' ? 'Delivery to: ' . $s['address'] : 'Takeaway');
         $pay = $s['order_type'] === 'dinein' ? 'Pay at the table when you are done.' : ($s['order_type'] === 'delivery' ? 'Pay on delivery.' : 'Pay when you pick it up.');
         $s['state'] = 'confirm';
-        $out[] = woCartText($cfg, $s) . "\n\n" . $where . "\nName: " . $s['name'] . "\n" . $pay . "\n\nReply *1* to confirm ✅ or *2* to change.";
+        $out[] = woBtns(woCartText($cfg, $s) . "\n\n" . $where . "\nName: " . $s['name'] . "\n" . $pay . "\n\nAll good? (or reply *1* to confirm, *2* to change)",
+            [['confirm', '✅ Confirm order'], ['change', '✏️ Change']]);
         woSave($conn, $s);
         return woOut($conn, $rid, $phone, $out);
     }
@@ -773,7 +1034,8 @@ if (!function_exists('woHandle')) {
         if (!empty($opt['simulate'])) {
             $s['state'] = 'browsing';
             $s['cart'] = [];
-            $out[] = "🧪 *Test chat:* here the order would be placed (" . woMoney($cfg, $t['total']) . ") and show in Orders with a KOT. Real WhatsApp orders do that.";
+            $out[] = woBtns("🧪 *Test chat:* here the order would be placed (" . woMoney($cfg, $t['total']) . ") and show in Orders with a KOT. Real WhatsApp orders do that.",
+                [['status', '📍 Order status'], ['menu', '📋 Order more']]);
             woSave($conn, $s);
             return woOut($conn, $rid, $phone, $out);
         }
@@ -797,7 +1059,8 @@ if (!function_exists('woHandle')) {
             $s['notified_status'] = null;
             $s['cart'] = [];
             $total = isset($res['total_with_tax']) ? (float)$res['total_with_tax'] : $t['total'];
-            $out[] = '✅ *Order placed!* ' . $s['order_number'] . "\nTotal: *" . woMoney($cfg, $total) . "*\n\nWe'll message you here when it's being made and when it's ready. Reply *status* any time.";
+            $out[] = woBtns('✅ *Order placed!* ' . $s['order_number'] . "\nTotal: *" . woMoney($cfg, $total) . "*\n\nWe'll message you here when it's being made and when it's ready.",
+                [['status', '📍 Order status']]);
             $conn->prepare('UPDATE wa_order_sessions SET notified_status = NULL WHERE id = ?')->execute([$s['id']]);
             woSave($conn, $s);
             woLog($conn, $rid, $phone, 'sys', 'Order ' . $s['order_number'] . ' placed', 'order:' . $s['order_id']);
@@ -806,7 +1069,8 @@ if (!function_exists('woHandle')) {
         $msg = (string)($res['message'] ?? 'The order could not be placed.');
         $url = woMenuUrl($cfg);
         $s['state'] = 'browsing';
-        $out[] = '⚠️ ' . $msg . ($url && preg_match('/online payment|cash on delivery/i', $msg) ? "\nYou can finish this order on our website: " . $url : '') . "\nReply *bill* to see your order.";
+        $out[] = woBtns('⚠️ ' . $msg . ($url && preg_match('/online payment|cash on delivery/i', $msg) ? "\nYou can finish this order on our website: " . $url : ''),
+            [['cart', '🛒 View order'], ['human', '🙋 Talk to us']]);
         woSave($conn, $s);
         woLog($conn, $rid, $phone, 'sys', 'Order failed: ' . $msg, 'error');
         return woOut($conn, $rid, $phone, $out);
@@ -814,8 +1078,27 @@ if (!function_exists('woHandle')) {
 
     function woOut(PDO $conn, string $rid, string $phone, array $out): array
     {
-        foreach ($out as $m) woLog($conn, $rid, $phone, 'out', $m);
+        foreach ($out as $m) woLog($conn, $rid, $phone, 'out', woPlain($m));
         return $out;
+    }
+
+    /** A reply as RepeatGrow's POST /messages body (without "to"): interactive, image or text. */
+    function woPayload($m): array
+    {
+        if (is_string($m)) return ['type' => 'text', 'text' => $m];
+        $text = mb_substr((string)($m['text'] ?? ''), 0, 1024);
+        if (!empty($m['buttons'])) {
+            $i = ['kind' => 'buttons', 'buttons' => array_map(fn($b) => ['id' => $b[0], 'title' => $b[1]], $m['buttons'])];
+            if (!empty($m['image'])) $i['header_image_url'] = $m['image'];
+            return ['type' => 'interactive', 'text' => $text, 'interactive' => $i];
+        }
+        if (!empty($m['list']['rows'])) {
+            $rows = array_map(fn($r) => array_filter(['id' => $r[0], 'title' => $r[1], 'description' => $r[2] ?? ''], 'strlen'), $m['list']['rows']);
+            return ['type' => 'interactive', 'text' => $text, 'interactive' => ['kind' => 'list', 'button' => $m['list']['button'],
+                'sections' => [array_filter(['title' => $m['list']['section'] ?? '', 'rows' => $rows], fn($v) => $v !== '')]]];
+        }
+        if (!empty($m['image'])) return ['type' => 'image', 'text' => $text, 'media_url' => $m['image']];
+        return ['type' => 'text', 'text' => $text];
     }
 
     // ── internal call to the website's order endpoint ──
@@ -904,15 +1187,39 @@ if (!function_exists('woHandle')) {
         }
     }
 
-    /** Send one chat message to a customer through the restaurant's WhatsApp (RepeatGrow), and log it. */
-    function woSend(PDO $conn, string $rid, string $phone, string $text, bool $log = true): bool
+    /**
+     * Send one chat message to a customer through the restaurant's WhatsApp (RepeatGrow), and log it.
+     * $msg: text, or a reply with buttons / a list / a photo; if RepeatGrow can't send that (an older RepeatGrow,
+     * or WhatsApp refused the photo), it goes again as plain text so the customer always gets an answer.
+     */
+    function woSend(PDO $conn, string $rid, string $phone, $msg, bool $log = true): bool
     {
         ensureWhatsappSchema($conn);
         $s = waSettings($conn, $rid);
-        [$ok, , $err] = waSend($s, $phone, null, '', [], $text);
-        // replies from woHandle() are logged already; only a failure is added then
-        if ($log) woLog($conn, $rid, $phone, 'out', $text, $ok ? '' : 'send failed: ' . (string)$err);
-        elseif (!$ok) woLog($conn, $rid, $phone, 'sys', 'Could not send the reply above: ' . (string)$err, 'error');
+        return woSendWith($s, $phone, $msg, function (bool $ok, string $text, ?string $err) use ($conn, $rid, $phone, $log) {
+            // replies from woHandle() are logged already; only a failure is added then
+            if ($log) woLog($conn, $rid, $phone, 'out', $text, $ok ? '' : 'send failed: ' . (string)$err);
+            elseif (!$ok) woLog($conn, $rid, $phone, 'sys', 'Could not send the reply above: ' . (string)$err, 'error');
+        });
+    }
+
+    /** woSend() for any WhatsApp settings (the restaurant's own, or the shared RestroGrow number). */
+    function woSendWith(array $s, string $phone, $msg, ?callable $after = null): bool
+    {
+        $text = woPlain($msg);
+        $payload = woPayload($msg);
+        $err = null;
+        if ($payload['type'] !== 'text') {
+            [$ok, , $err, $why] = waSend($s, $phone, null, '', [], $payload['text'], $payload);
+            // only a refused message is worth a second try as text; not a lost connection or a rate limit
+            if ($ok || in_array($why, ['unauthorized', 'rate_limited', 'network', 'opted_out', 'plan_expired'], true)) {
+                if ($after) $after($ok, $text, $err);
+                return $ok;
+            }
+            error_log('woSend: ' . $payload['type'] . ' not sent (' . $err . '), sending it as text');
+        }
+        [$ok, , $err2] = waSend($s, $phone, null, '', [], $text);
+        if ($after) $after($ok, $text, $ok ? null : (string)$err2);
         return $ok;
     }
 

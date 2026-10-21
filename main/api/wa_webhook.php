@@ -79,7 +79,9 @@ try {
     }
     $data = (array)($ev['data'] ?? []);
     $text = trim((string)($data['text'] ?? ''));
-    if ($text === '') whOut(200, 'No text');   // photos / voice notes: not understood yet
+    // a tapped button / list row: text is its title, reply_id the id the bot sent it with (config/wa_order_engine.php)
+    $replyId = trim(mb_substr((string)($data['reply_id'] ?? ''), 0, 200));
+    if ($text === '' && $replyId === '') whOut(200, 'No text');   // photos / voice notes: not understood yet
 
     // ── the sender's phone (RepeatGrow sends the contact id; looked up once, then remembered) ──
     $waRid = $rid === 'platform' ? '' : $rid;
@@ -132,7 +134,7 @@ try {
     if ($isOwner && function_exists('ownerMgrHandleMessage')) {
         $replies = ownerMgrHandleMessage($conn, $waRid, $phone, $text);
     }
-    if ($replies === null) $replies = woHandle($conn, $waRid, $phone, $text, ['name' => $name, 'table' => $tableId]);
+    if ($replies === null) $replies = woHandle($conn, $waRid, $phone, $text, ['name' => $name, 'table' => $tableId, 'reply_id' => $replyId]);
 
     foreach ($replies as $msg) {
         if ($rid === 'platform') whPlatformSend($phone, $msg);
@@ -170,9 +172,10 @@ function whContactPhone(PDO $conn, string $contactId, array $s, ?string &$name):
     return $phone;
 }
 
-/** A message from the shared RestroGrow number (platform key in .env). */
-function whPlatformSend(string $phone, string $text): void
+/** A message from the shared RestroGrow number (platform key in .env): text, or a reply with buttons / a list. */
+function whPlatformSend(string $phone, $msg): void
 {
-    [$ok, , $err] = waSend(['mode' => 'platform', 'api_key' => '', 'is_demo' => false], $phone, null, '', [], $text);
-    if (!$ok) error_log('wa_webhook platform send: ' . $err);
+    woSendWith(['mode' => 'platform', 'api_key' => '', 'is_demo' => false], $phone, $msg, function (bool $ok, string $text, ?string $err) {
+        if (!$ok) error_log('wa_webhook platform send: ' . $err);
+    });
 }

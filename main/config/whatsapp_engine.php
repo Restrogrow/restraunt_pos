@@ -450,8 +450,9 @@ if (!function_exists('ensureWhatsappSchema')) {
     /**
      * POST one message to RepeatGrow. Returns [ok, message_id|null, error|null, reason|null] where
      * reason is 'unauthorized' (401), 'rate_limited' (429), 'opted_out' (customer replied STOP) or 'network'.
+     * $rich: a ready RepeatGrow body without "to" (type image / interactive, from woPayload()), sent instead of $text.
      */
-    function waSend(array $s, string $phone, ?string $templateName, string $lang, array $params, string $text): array {
+    function waSend(array $s, string $phone, ?string $templateName, string $lang, array $params, string $text, ?array $rich = null): array {
         // the public demo restaurant never sends real messages (anyone can log in to it)
         if (!empty($s['is_demo'])) return [true, 'demo-' . substr(md5($phone . microtime(true)), 0, 10), null, null];
         $c = waConnection($s);
@@ -466,6 +467,7 @@ if (!function_exists('ensureWhatsappSchema')) {
         }
         $payload = ['to' => normalizePhoneForWhatsapp($phone, $country)];
         if ($templateName) $payload += ['type' => 'template', 'template' => ['name' => $templateName, 'language' => $lang, 'params' => array_values($params)]];
+        elseif ($rich) $payload += $rich;
         else $payload += ['type' => 'text', 'text' => $text];
         $ch = curl_init($c['url']);
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_TIMEOUT => 12, CURLOPT_CONNECTTIMEOUT => 5,

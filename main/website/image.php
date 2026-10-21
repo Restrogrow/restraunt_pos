@@ -79,18 +79,21 @@ if ($localRef !== '') {
 // Small, fast photos: image.php?id=<id>&w=400 (dish cards), w=96/200 (chips, cart), w=800 (detail view).
 // Made once as WebP from the stored photo and kept in uploads/cache/img, so later requests skip the database.
 // Every upload gets a new id (db:<uniqid>), so the browser may keep these for a year.
+// &f=jpg: a JPEG copy instead (WhatsApp only takes JPEG / PNG photos: the WhatsApp ordering bot uses it).
 $thumbW = (int)($_GET['w'] ?? 0);
-if ($thumbW > 0 && $imageType === '' && $imagePath === '' && preg_match('/^[A-Za-z0-9_.-]{4,80}$/', (string)$imageId) && function_exists('imagewebp')) {
+$thumbJpg = ($_GET['f'] ?? '') === 'jpg';
+if ($thumbW > 0 && $imageType === '' && $imagePath === '' && preg_match('/^[A-Za-z0-9_.-]{4,80}$/', (string)$imageId) && function_exists($thumbJpg ? 'imagejpeg' : 'imagewebp')) {
     $thumbW = in_array($thumbW, [96, 200, 400, 800], true) ? $thumbW : 400;
+    $thumbExt = $thumbJpg ? '.jpg' : '.webp';
     $cacheDir = dirname(__DIR__) . '/uploads/cache/img';
-    $cacheFile = $cacheDir . '/' . sha1($imageId) . '_' . $thumbW . '.webp';
-    $sendThumb = function (string $file) {
-        $etag = '"' . basename($file, '.webp') . '"';
+    $cacheFile = $cacheDir . '/' . sha1($imageId) . '_' . $thumbW . $thumbExt;
+    $sendThumb = function (string $file) use ($thumbExt, $thumbJpg) {
+        $etag = '"' . basename($file, $thumbExt) . ($thumbJpg ? '-j' : '') . '"';
         header('Cache-Control: public, max-age=31536000, immutable');
         header('ETag: ' . $etag);
         if (trim((string)($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) { http_response_code(304); exit(); }
         while (ob_get_level()) ob_end_clean();
-        header('Content-Type: image/webp');
+        header('Content-Type: ' . ($thumbJpg ? 'image/jpeg' : 'image/webp'));
         header('Content-Length: ' . filesize($file));
         readfile($file);
         exit();
@@ -112,12 +115,16 @@ if ($thumbW > 0 && $imageType === '' && $imagePath === '' && preg_match('/^[A-Za
                 $sw = imagesx($src); $sh = imagesy($src);
                 $tw = min($thumbW, $sw); $th = max(1, (int)round($sh * $tw / max(1, $sw)));
                 $dst = imagecreatetruecolor($tw, $th);
-                imagealphablending($dst, false); imagesavealpha($dst, true);
-                imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+                if ($thumbJpg) {
+                    imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));   // JPEG has no see-through: white behind
+                } else {
+                    imagealphablending($dst, false); imagesavealpha($dst, true);
+                    imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+                }
                 imagecopyresampled($dst, $src, 0, 0, 0, 0, $tw, $th, $sw, $sh);
                 if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
                 $tmp = $cacheFile . '.' . getmypid() . '.tmp';
-                if (@imagewebp($dst, $tmp, 78) && @rename($tmp, $cacheFile)) { imagedestroy($src); imagedestroy($dst); $sendThumb($cacheFile); }
+                if (($thumbJpg ? @imagejpeg($dst, $tmp, 82) : @imagewebp($dst, $tmp, 78)) && @rename($tmp, $cacheFile)) { imagedestroy($src); imagedestroy($dst); $sendThumb($cacheFile); }
                 @unlink($tmp);
                 imagedestroy($src); imagedestroy($dst);
             }

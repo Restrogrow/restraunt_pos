@@ -59,6 +59,15 @@
       '.wo-b{max-width:84%;padding:7px 10px 6px;border-radius:10px;font-size:.86rem;line-height:1.45;color:#111b21;box-shadow:0 1px .5px rgba(11,20,26,.13);word-wrap:break-word}',
       '.wo-b.in{align-self:flex-end;background:#d9fdd3;border-top-right-radius:2px}.wo-b.out{align-self:flex-start;background:#fff;border-top-left-radius:2px}.wo-b.sys{align-self:center;background:#fff3c4;font-size:.75rem;color:#54656f}',
       '.wo-typing{align-self:flex-start;padding:8px 12px;border-radius:10px;background:#fff;color:#667781;font-size:.8rem}',
+      // replies with buttons / a list / a photo, drawn like WhatsApp does (config/wa_order_engine.php woBtns / woList)
+      '.wo-rich{align-self:flex-start;max-width:84%;display:grid;gap:2px}.wo-rich .wo-b{max-width:none}',
+      '.wo-rich img{display:block;width:100%;max-height:180px;object-fit:cover;border-radius:6px;margin:-1px 0 6px}',
+      '.wo-rb{display:block;width:100%;padding:9px 10px;border:0;border-radius:10px;background:#fff;color:#027eb5;font:inherit;font-size:.86rem;font-weight:600;text-align:center;cursor:pointer;box-shadow:0 1px .5px rgba(11,20,26,.13)}',
+      '.wo-rb:hover{background:#f5f6f6}.wo-rb:disabled{color:#8696a0;cursor:default}',
+      '.wo-rl{display:none;background:#fff;border-radius:10px;box-shadow:0 1px .5px rgba(11,20,26,.13);overflow:hidden}.wo-rl.open{display:block}',
+      '.wo-rl small{display:block;padding:8px 12px 4px;color:#008069;font-size:.72rem;font-weight:700;text-transform:uppercase}',
+      '.wo-rl button{display:block;width:100%;padding:9px 12px;border:0;border-top:1px solid #f0f2f5;background:#fff;text-align:left;font:inherit;cursor:pointer}.wo-rl button:hover{background:#f5f6f6}',
+      '.wo-rl b{display:block;font-size:.86rem;color:#111b21}.wo-rl span{display:block;font-size:.76rem;color:#667781;margin-top:1px}',
       '.wo-chips{display:flex;gap:6px;overflow-x:auto;padding:6px 10px;background:#f0f2f5;scrollbar-width:none}.wo-chips button{flex:none;padding:6px 11px;border:1px solid #d1d7db;border-radius:999px;background:#fff;font:inherit;font-size:.78rem;cursor:pointer;color:#111b21}',
       '.wo-in{display:flex;gap:8px;padding:8px 10px;background:#f0f2f5}.wo-in input{flex:1;min-width:0;padding:10px 14px;border:0;border-radius:999px;font:inherit;font-size:.9rem;outline:none}',
       '.wo-in button{width:42px;height:42px;flex:none;display:grid;place-items:center;border:0;border-radius:50%;background:#075e54;color:#fff;cursor:pointer}.wo-in button:disabled{opacity:.5}',
@@ -161,29 +170,46 @@
     }).join('');
   }
 
+  // the bot's photo URL points at the live site; in the dashboard the same file is served from here
+  function imgSrc(u) { var i = String(u || '').indexOf('/main/website/image.php'); return i < 0 ? u : '../website/image.php' + String(u).slice(i + '/main/website/image.php'.length); }
+  function plainOf(t) { return typeof t === 'string' ? t : String((t && t.text) || ''); }
+  // one bot reply: text, or a WhatsApp-style message with a photo, buttons or a list to tap
+  function rich(m, n) {
+    var t = m.t;
+    if (typeof t === 'string' || !t) return '<div class="wo-b ' + m.d + '">' + waFmt(t) + '</div>';
+    var h = '<div class="wo-rich"><div class="wo-b out">' + (t.image ? '<img src="' + esc(imgSrc(t.image)) + '" alt="">' : '') + waFmt(t.text || '') + '</div>';
+    (t.buttons || []).forEach(function (b) { h += '<button type="button" class="wo-rb" data-wo-tap="' + esc(b[0]) + '" data-title="' + esc(b[1]) + '">' + esc(b[1]) + '</button>'; });
+    if (t.list) {
+      h += '<button type="button" class="wo-rb" data-wo-list="' + n + '">☰ ' + esc(t.list.button) + '</button><div class="wo-rl" id="woRl' + n + '">' + (t.list.section ? '<small>' + esc(t.list.section) + '</small>' : '') +
+        (t.list.rows || []).map(function (r) { return '<button type="button" data-wo-tap="' + esc(r[0]) + '" data-title="' + esc(r[1]) + '"><b>' + esc(r[1]) + '</b>' + (r[2] ? '<span>' + esc(r[2]) + '</span>' : '') + '</button>'; }).join('') + '</div>';
+    }
+    return h + '</div>';
+  }
+
   function drawMsgs(typing) {
     var box = $('woMsgs');
     if (!box) return;
-    box.innerHTML = (chat.length ? chat.map(function (m) { return '<div class="wo-b ' + m.d + '">' + waFmt(m.t) + '</div>'; }).join('')
+    box.innerHTML = (chat.length ? chat.map(rich).join('')
       : '<div class="wo-b sys">Say <b>hi</b>, or type an order like “2 butter naan and 1 paneer tikka”.</div>') +
       (typing ? '<div class="wo-typing">typing…</div>' : '');
     box.scrollTop = box.scrollHeight;
   }
 
-  function send(text) {
+  // text typed, or a tapped button / list row (replyId; text = its title, as WhatsApp sends it)
+  function send(text, replyId) {
     text = String(text || '').trim();
-    if (!text || sending) return;
+    if ((!text && !replyId) || sending) return;
     sending = true;
     chat.push({ d: 'in', t: text });
     drawMsgs(true);
-    var inp = $('woText'); if (inp) inp.value = '';
-    post({ action: 'try', text: text, real: real ? 1 : 0 }).then(function (d) {
+    var inp = $('woText'); if (inp && !replyId) inp.value = '';
+    post({ action: 'try', text: text, reply_id: replyId || '', real: real ? 1 : 0 }).then(function (d) {
       sending = false;
       if (!d.success) { chat.push({ d: 'sys', t: d.message || 'Could not answer' }); drawMsgs(); return; }
       (d.replies || []).forEach(function (r) { chat.push({ d: 'out', t: r }); });
       if (!(d.replies || []).length) chat.push({ d: 'sys', t: 'The bot stays quiet here (handed to a person). Type “order” to start again.' });
       drawMsgs();
-      if (real && (d.replies || []).some(function (r) { return /Order placed/.test(r); })) { notify('Test order placed: see Orders', 'success'); load(); }
+      if (real && (d.replies || []).some(function (r) { return /Order placed/.test(plainOf(r)); })) { notify('Test order placed: see Orders', 'success'); load(); }
     }).catch(function () { sending = false; chat.push({ d: 'sys', t: 'No connection.' }); drawMsgs(); });
   }
 
@@ -201,9 +227,11 @@
   }
 
   document.addEventListener('click', function (e) {
-    var t = e.target.closest && e.target.closest('[data-wo],[data-wo-chip],[data-wo-copy],[data-wo-table],[data-wo-chat]');
+    var t = e.target.closest && e.target.closest('[data-wo],[data-wo-chip],[data-wo-copy],[data-wo-table],[data-wo-chat],[data-wo-tap],[data-wo-list]');
     if (!t) return;
     if (t.hasAttribute('data-wo-chip')) { send(t.getAttribute('data-wo-chip')); return; }
+    if (t.hasAttribute('data-wo-tap')) { send(t.getAttribute('data-title'), t.getAttribute('data-wo-tap')); return; }
+    if (t.hasAttribute('data-wo-list')) { var l = $('woRl' + t.getAttribute('data-wo-list')); if (l) { l.classList.toggle('open'); l.scrollIntoView({ block: 'nearest' }); } return; }
     if (t.hasAttribute('data-wo-copy')) { navigator.clipboard.writeText(t.getAttribute('data-wo-copy')).then(function () { notify('Link copied', 'success'); }); return; }
     if (t.hasAttribute('data-wo-chat')) { openChatView(t.getAttribute('data-wo-chat')); return; }
     if (t.hasAttribute('data-wo-table')) {

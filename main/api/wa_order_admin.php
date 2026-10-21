@@ -109,7 +109,9 @@ try {
             woaOut(['success' => true, 'replies' => []]);
         }
         $text = trim((string)($in['text'] ?? ''));
-        if ($text === '') woaOut(['success' => false, 'message' => 'Type a message']);
+        // a tapped button / list row in the test chat: its id, with the title as the text (like WhatsApp sends it)
+        $replyId = trim(mb_substr((string)($in['reply_id'] ?? ''), 0, 200));
+        if ($text === '' && $replyId === '') woaOut(['success' => false, 'message' => 'Type a message']);
         $real = !empty($in['real']);
         // a real test order needs a phone the order checks accept: the restaurant's own number
         $phone = $tester;
@@ -123,7 +125,7 @@ try {
             $conn->prepare('UPDATE wa_order_sessions SET phone = ? WHERE restaurant_id = ? AND phone = ?')->execute([$phone, $rid, $tester]);
         }
         $t0 = microtime(true);
-        $replies = woHandle($conn, $rid, $phone, $text, ['simulate' => !$real, 'force' => true, 'name' => 'Test customer']);
+        $replies = woHandle($conn, $rid, $phone, $text, ['simulate' => !$real, 'force' => true, 'name' => 'Test customer', 'reply_id' => $replyId]);
         if ($real) $conn->prepare('UPDATE wa_order_sessions SET phone = ? WHERE restaurant_id = ? AND phone = ? AND state <> "placed"')->execute([$tester, $rid, $phone]);
         woaOut(['success' => true, 'replies' => $replies, 'ms' => (int)((microtime(true) - $t0) * 1000), 'ai' => aiGeminiAvailable()]);
     }
