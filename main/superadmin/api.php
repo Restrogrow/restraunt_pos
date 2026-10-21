@@ -636,10 +636,15 @@ try {
         )");
       }
       $admins = $conn->query("SELECT * FROM branch_admins ORDER BY created_at DESC")->fetchAll();
+      // every admin's branches in one query (it was one per admin)
+      $linksByAdmin = [];
+      foreach ($conn->query("SELECT brl.branch_admin_id, brl.restaurant_id, brl.label, u.restaurant_name FROM branch_restaurant_links brl LEFT JOIN users u ON u.restaurant_id = brl.restaurant_id ORDER BY brl.id")->fetchAll() as $l) {
+        $aid = (int)$l['branch_admin_id'];
+        unset($l['branch_admin_id']);
+        $linksByAdmin[$aid][] = $l;
+      }
       foreach ($admins as &$a) {
-        $linkStmt = $conn->prepare("SELECT brl.restaurant_id, brl.label, u.restaurant_name FROM branch_restaurant_links brl LEFT JOIN users u ON u.restaurant_id = brl.restaurant_id WHERE brl.branch_admin_id = ?");
-        $linkStmt->execute([$a['id']]);
-        $a['links'] = $linkStmt->fetchAll();
+        $a['links'] = $linksByAdmin[(int)$a['id']] ?? [];
       }
       echo json_encode(['success' => true, 'admins' => $admins]);
       break;

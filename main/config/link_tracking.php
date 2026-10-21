@@ -158,31 +158,45 @@ if (!function_exists('tlEnsure')) {
             FROM link_clicks WHERE restaurant_id = ? AND link_id IN ($in)$dw GROUP BY link_id");
         $st->execute($p);
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $out[(int)$r['link_id']] = ['clicks' => (int)$r['clicks'], 'people' => (int)$r['people'], 'mobile' => (int)$r['mobile'], 'last_click' => $r['last_click']];
+        // orders tagged with each link (website orders), counted once each: one query for all the links
+        $bySrc = [];
+        try {
+            $srcs = array_values(array_unique(array_map('tlSrc', $links)));
+            $q = $conn->prepare("SELECT m.src, COUNT(*) n, COALESCE(SUM(o.total), 0) s FROM marketing_order_src m JOIN orders o ON o.id = m.order_id
+                WHERE m.restaurant_id = ? AND m.src IN (" . implode(',', array_fill(0, count($srcs), '?')) . ") AND o.order_status <> 'Cancelled' AND o.deleted_at IS NULL"
+                . ($since ? ' AND o.created_at >= ?' : '') . ' GROUP BY m.src');
+            $q->execute(array_merge([$rid], $srcs, $since ? [$since] : []));
+            foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $bySrc[strtolower($r['src'])] = $r;   // src column is case-insensitive
+        } catch (PDOException $e) { /* marketing_order_src not made yet */ }
         foreach ($links as $l) {
             $id = (int)$l['id'];
-            $out[$id] = ($out[$id] ?? ['clicks' => 0, 'people' => 0, 'mobile' => 0, 'last_click' => null]) + ['orders' => 0, 'sales' => 0.0];
-            // orders tagged with the link (website orders), counted once each
-            try {
-                $q = $conn->prepare("SELECT COUNT(*) n, COALESCE(SUM(o.total), 0) s FROM marketing_order_src m JOIN orders o ON o.id = m.order_id
-                    WHERE m.restaurant_id = ? AND m.src = ? AND o.order_status <> 'Cancelled' AND o.deleted_at IS NULL" . ($since ? ' AND o.created_at >= ?' : ''));
-                $q->execute(array_filter([$rid, tlSrc($l), $since], fn($v) => $v !== null));
-                $r = $q->fetch(PDO::FETCH_ASSOC);
-                $out[$id]['orders'] = (int)$r['n'];
-                $out[$id]['sales'] = (float)$r['s'];
-            } catch (PDOException $e) { /* marketing_order_src not made yet */ }
+            $r = $bySrc[strtolower(tlSrc($l))] ?? null;
+            $out[$id] = ($out[$id] ?? ['clicks' => 0, 'people' => 0, 'mobile' => 0, 'last_click' => null]) + ['orders' => (int)($r['n'] ?? 0), 'sales' => (float)($r['s'] ?? 0)];
         }
         return $out;
     }
 
     /** Clicks per day for one link, last $days days (for a small chart). */
     function tlDaily(PDO $conn, string $rid, int $linkId, int $days = 14): array {
-        $from = date('Y-m-d', strtotime('-' . ($days - 1) . ' days'));
-        $st = $conn->prepare('SELECT day, COUNT(*) n FROM link_clicks WHERE restaurant_id = ? AND link_id = ? AND day >= ? GROUP BY day');
-        $st->execute([$rid, $linkId, $from]);
+        return tlDailyMany($conn, $rid, [$linkId], $days)[$linkId];
+    }
+
+    /** tlDaily() for many links in one query (lists of links): [linkId => [n, n, …]]. */
+    function tlDailyMany(PDO $conn, string $rid, array $linkIds, int $days = 14): array {
+        $linkIds = array_values(array_unique(array_map('intval', $linkIds)));
         $m = [];
-        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $m[$r['day']] = (int)$r['n'];
-        $o = [];
-        for ($i = $days - 1; $i >= 0; $i--) { $d = date('Y-m-d', strtotime("-$i days")); $o[] = $m[$d] ?? 0; }
-        return $o;
+        if ($linkIds) {
+            $from = date('Y-m-d', strtotime('-' . ($days - 1) . ' days'));
+            $st = $conn->prepare('SELECT link_id, day, COUNT(*) n FROM link_clicks WHERE restaurant_id = ? AND link_id IN (' . implode(',', array_fill(0, count($linkIds), '?')) . ') AND day >= ? GROUP BY link_id, day');
+            $st->execute(array_merge([$rid], $linkIds, [$from]));
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $m[(int)$r['link_id']][$r['day']] = (int)$r['n'];
+        }
+        $out = [];
+        foreach ($linkIds as $id) {
+            $o = [];
+            for ($i = $days - 1; $i >= 0; $i--) { $d = date('Y-m-d', strtotime("-$i days")); $o[] = $m[$id][$d] ?? 0; }
+            $out[$id] = $o;
+        }
+        return $out;
     }
 }

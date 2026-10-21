@@ -61,40 +61,62 @@ try {
     };
 
     // results for a set of designs: visits, orders and sales per campaign tag / coupon
+    // A few queries for the whole list: it used to be up to 6 per design (200 designs), one of them a LIKE over every visit.
     $results = function (array $designs) use ($q, $rid, $conn) {
         $out = [];
         $notCancelled = "o.order_status NOT IN ('Cancelled','Rejected')";
+        $lc = fn($s) => mb_strtolower((string)$s);   // src / coupon columns compare without case, as the old per-design queries did
+        $in = fn(array $a) => implode(',', array_fill(0, count($a), '?'));
+        $srcs = array_values(array_unique(array_filter(array_map(fn($d) => (string)$d['src'], $designs), 'strlen')));
+        $codes = array_values(array_unique(array_filter(array_map(fn($d) => (string)$d['coupon_code'], $designs), 'strlen')));
+        $visitKeys = $tagged = $couponOrders = $links = [];
+        if ($srcs) {
+            // each tagged visit once: its ?src= value (cut out in SQL), visitor and day
+            $seen = mkTry(function () use ($q, $rid) {
+                return $q("SELECT DISTINCT SUBSTRING_INDEX(page_url, 'src=', -1) s, visitor_ip ip, DATE(visited_at) d
+                    FROM page_visits WHERE restaurant_id = ? AND page_url LIKE '%src=%'", [$rid])->fetchAll(PDO::FETCH_ASSOC);
+            }) ?? [];
+            // same match as the old LIKE '%src=<tag>%': the text after src= starts with the tag
+            foreach ($srcs as $s) foreach ($seen as $v) if (str_starts_with($lc($v['s']), $lc($s))) $visitKeys[$lc($s)][$v['ip'] . '|' . $v['d']] = true;
+            foreach ((mkTry(function () use ($q, $rid, $srcs, $in, $notCancelled) {
+                return $q("SELECT m.src, COUNT(*) n, COALESCE(SUM(o.total),0) s FROM marketing_order_src m JOIN orders o ON o.id = m.order_id
+                    WHERE m.restaurant_id = ? AND m.src IN (" . $in($srcs) . ") AND $notCancelled GROUP BY m.src", array_merge([$rid], $srcs))->fetchAll(PDO::FETCH_ASSOC);
+            }) ?? []) as $r) $tagged[$lc($r['src'])] = $r;
+            foreach ((mkTry(function () use ($q, $rid, $srcs, $in) {
+                return $q("SELECT * FROM tracked_links WHERE restaurant_id = ? AND kind = 'mk' AND ref IN (" . $in($srcs) . ")", array_merge([$rid], $srcs))->fetchAll(PDO::FETCH_ASSOC);
+            }) ?? []) as $l) $links[$lc($l['ref'])] ??= $l;
+        }
+        if ($codes) {
+            // every coupon order once, with the tag it came from; each design then counts its own below
+            $since = min(array_map(fn($d) => (string)$d['created_at'], array_filter($designs, fn($d) => (string)$d['coupon_code'] !== '')));
+            $couponOrders = mkTry(function () use ($q, $rid, $codes, $in, $since, $notCancelled) {
+                return $q("SELECT o.coupon_code, o.total, o.created_at, m.src FROM orders o LEFT JOIN marketing_order_src m ON m.order_id = o.id
+                    WHERE o.restaurant_id = ? AND o.coupon_code IN (" . $in($codes) . ") AND o.created_at >= ? AND $notCancelled", array_merge([$rid], $codes, [$since]))->fetchAll(PDO::FETCH_ASSOC);
+            }) ?? [];
+        }
+        $stats = $links ? tlStats($conn, $rid, array_values($links)) : [];
+        $sparks = $links ? tlDailyMany($conn, $rid, array_column($links, 'id'), 14) : [];
+
         foreach ($designs as $d) {
-            $src = (string)$d['src']; $code = (string)$d['coupon_code']; $since = $d['created_at'];
+            $src = (string)$d['src']; $code = (string)$d['coupon_code']; $since = (string)$d['created_at'];
             $r = ['visits' => 0, 'orders' => 0, 'sales' => 0.0, 'coupon_orders' => 0];
             if ($src !== '') {
-                $like = '%src=' . str_replace(['%', '_'], ['\\%', '\\_'], $src) . '%';
-                $r['visits'] = (int)(mkTry(function () use ($q, $rid, $like) {
-                    return $q("SELECT COUNT(DISTINCT visitor_ip, DATE(visited_at)) FROM page_visits WHERE restaurant_id = ? AND page_url LIKE ?", [$rid, $like])->fetchColumn();
-                }) ?? 0);
-                $row = mkTry(function () use ($q, $rid, $src, $notCancelled) {
-                    return $q("SELECT COUNT(*) n, COALESCE(SUM(o.total),0) s FROM marketing_order_src m JOIN orders o ON o.id = m.order_id WHERE m.restaurant_id = ? AND m.src = ? AND $notCancelled", [$rid, $src])->fetch(PDO::FETCH_ASSOC);
-                });
-                if ($row) { $r['orders'] = (int)$row['n']; $r['sales'] = (float)$row['s']; }
+                $r['visits'] = count($visitKeys[$lc($src)] ?? []);
+                if ($row = $tagged[$lc($src)] ?? null) { $r['orders'] = (int)$row['n']; $r['sales'] = (float)$row['s']; }
             }
             if ($code !== '') {
-                $row = mkTry(function () use ($q, $rid, $code, $since, $src, $notCancelled) {
-                    // coupon orders that the link didn't already count
-                    return $q("SELECT COUNT(*) n, COALESCE(SUM(o.total),0) s FROM orders o
-                        LEFT JOIN marketing_order_src m ON m.order_id = o.id AND m.src = ?
-                        WHERE o.restaurant_id = ? AND o.coupon_code = ? AND o.created_at >= ? AND $notCancelled AND m.order_id IS NULL", [$src, $rid, $code, $since])->fetch(PDO::FETCH_ASSOC);
-                });
-                if ($row) { $r['coupon_orders'] = (int)$row['n']; $r['orders'] += (int)$row['n']; $r['sales'] += (float)$row['s']; }
+                // coupon orders since the design was made that its own link didn't already count
+                foreach ($couponOrders as $o) {
+                    if ($lc($o['coupon_code']) !== $lc($code) || (string)$o['created_at'] < $since || ($o['src'] !== null && $lc($o['src']) === $lc($src))) continue;
+                    $r['coupon_orders']++; $r['orders']++; $r['sales'] = round($r['sales'] + (float)$o['total'], 2);
+                }
             }
             // taps on the design's short link (restrogrow.com/<slug>/go/<code>, also behind its QR code)
-            if ($src !== '') {
-                $tl = mkTry(function () use ($q, $rid, $src) { return $q("SELECT * FROM tracked_links WHERE restaurant_id = ? AND kind = 'mk' AND ref = ?", [$rid, $src])->fetch(PDO::FETCH_ASSOC); });
-                if ($tl) {
-                    $ts = tlStats($conn, $rid, [$tl])[(int)$tl['id']] ?? [];
-                    $r['clicks'] = (int)($ts['clicks'] ?? 0); $r['people'] = (int)($ts['people'] ?? 0); $r['last_click'] = $ts['last_click'] ?? null;
-                    $r['spark'] = tlDaily($conn, $rid, (int)$tl['id'], 14);
-                    $r['short'] = tlShortUrl($conn, $rid, $tl['code']);
-                }
+            if ($src !== '' && ($tl = $links[$lc($src)] ?? null)) {
+                $ts = $stats[(int)$tl['id']] ?? [];
+                $r['clicks'] = (int)($ts['clicks'] ?? 0); $r['people'] = (int)($ts['people'] ?? 0); $r['last_click'] = $ts['last_click'] ?? null;
+                $r['spark'] = $sparks[(int)$tl['id']] ?? [];
+                $r['short'] = tlShortUrl($conn, $rid, $tl['code']);
             }
             $out[(int)$d['id']] = $r;
         }

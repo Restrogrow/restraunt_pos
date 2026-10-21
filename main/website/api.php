@@ -793,13 +793,23 @@ try {
             $stmt->execute([':phone' => $phone, ':rid' => $restaurantId]);
             $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            foreach ($orders as &$order) {
-                $itemsStmt = $conn->prepare("SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes, oi.menu_item_id, mi.item_type, mi.item_image 
-                                           FROM order_items oi 
+            // every order's dishes in one query (it was one query per order)
+            $itemsByOrder = [];
+            if ($orders) {
+                $orderIds = array_map(fn($o) => (int)$o['id'], $orders);
+                $itemsStmt = $conn->prepare("SELECT oi.order_id, oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes, oi.menu_item_id, mi.item_type, mi.item_image
+                                           FROM order_items oi
                                            LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
-                                           WHERE oi.order_id = :order_id");
-                $itemsStmt->execute([':order_id' => $order['id']]);
-                $order['items'] = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+                                           WHERE oi.order_id IN (" . implode(',', array_fill(0, count($orderIds), '?')) . ") ORDER BY oi.id");
+                $itemsStmt->execute($orderIds);
+                foreach ($itemsStmt->fetchAll(PDO::FETCH_ASSOC) as $it) {
+                    $oid = (int)$it['order_id'];
+                    unset($it['order_id']);
+                    $itemsByOrder[$oid][] = $it;
+                }
+            }
+            foreach ($orders as &$order) {
+                $order['items'] = $itemsByOrder[(int)$order['id']] ?? [];
                 $order['has_feedback'] = (bool)$order['has_feedback'];
                 // A column holding binary data (e.g. an uploaded payment proof) or broken
                 // text made json_encode return false: the customer then got an empty reply

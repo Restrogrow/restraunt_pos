@@ -38,40 +38,45 @@ try {
         }, $linked);
     }
 
-    $statStmt = $pdo->prepare("
-        SELECT
+    // each figure for every branch at once, grouped by restaurant (it was 5 queries per branch)
+    $rids = array_column($linked, 'restaurant_id');
+    $per = function (string $sql) use ($pdo, $rids): array {
+        if (!$rids) return [];
+        $st = $pdo->prepare(str_replace('%IN%', implode(',', array_fill(0, count($rids), '?')), $sql));
+        $st->execute($rids);
+        $out = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $out[strtoupper((string)$r['rid'])] = $r;
+        return $out;
+    };
+    $stats = $per("
+        SELECT restaurant_id AS rid,
           COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() AND payment_status = 'Paid' THEN total END), 0) AS today_revenue,
           COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() AND order_status NOT IN ('Cancelled','Rejected') THEN 1 END), 0) AS today_orders,
           COALESCE(SUM(CASE WHEN order_status IN ('Pending','Accepted','Preparing','Ready') THEN 1 END), 0) AS open_orders,
           COALESCE(SUM(CASE WHEN created_at >= CURDATE() - INTERVAL 6 DAY AND payment_status = 'Paid' THEN total END), 0) AS week_revenue
         FROM orders
-        WHERE restaurant_id = ? AND deleted_at IS NULL
+        WHERE restaurant_id IN (%IN%) AND deleted_at IS NULL GROUP BY restaurant_id
     ");
-    $kotStmt = $pdo->prepare("SELECT COUNT(*) FROM kot WHERE restaurant_id = ? AND kot_status IN ('Pending','Preparing')");
-    $menuStmt = $pdo->prepare("SELECT COUNT(*) FROM menu_items WHERE restaurant_id = ?");
-    $tableStmt = $pdo->prepare("SELECT COUNT(*) AS total, COALESCE(SUM(is_available = 0), 0) AS occupied FROM tables WHERE restaurant_id = ?");
-    $staffStmt = $pdo->prepare("SELECT COUNT(*) FROM staff WHERE restaurant_id = ? AND is_active = 1");
+    $kots = $per("SELECT restaurant_id AS rid, COUNT(*) n FROM kot WHERE restaurant_id IN (%IN%) AND kot_status IN ('Pending','Preparing') GROUP BY restaurant_id");
+    $menus = $per("SELECT restaurant_id AS rid, COUNT(*) n FROM menu_items WHERE restaurant_id IN (%IN%) GROUP BY restaurant_id");
+    $tables = $per("SELECT restaurant_id AS rid, COUNT(*) AS total, COALESCE(SUM(is_available = 0), 0) AS occupied FROM tables WHERE restaurant_id IN (%IN%) GROUP BY restaurant_id");
+    $staffs = $per("SELECT restaurant_id AS rid, COUNT(*) n FROM staff WHERE restaurant_id IN (%IN%) AND is_active = 1 GROUP BY restaurant_id");
 
     foreach ($linked as $b) {
-        $rid = $b['restaurant_id'];
-        $statStmt->execute([$rid]);
-        $s = $statStmt->fetch(PDO::FETCH_ASSOC);
-        $kotStmt->execute([$rid]);
-        $menuStmt->execute([$rid]);
-        $tableStmt->execute([$rid]);
-        $t = $tableStmt->fetch(PDO::FETCH_ASSOC);
-        $staffStmt->execute([$rid]);
+        $k = strtoupper((string)$b['restaurant_id']);
+        $s = $stats[$k] ?? [];
+        $t = $tables[$k] ?? [];
 
         $row = $b + [
-            'today_revenue' => (float)$s['today_revenue'],
-            'today_orders' => (int)$s['today_orders'],
-            'open_orders' => (int)$s['open_orders'],
-            'week_revenue' => (float)$s['week_revenue'],
-            'active_kot' => (int)$kotStmt->fetchColumn(),
-            'menu_items' => (int)$menuStmt->fetchColumn(),
-            'tables_total' => (int)$t['total'],
-            'tables_occupied' => (int)$t['occupied'],
-            'staff' => (int)$staffStmt->fetchColumn(),
+            'today_revenue' => (float)($s['today_revenue'] ?? 0),
+            'today_orders' => (int)($s['today_orders'] ?? 0),
+            'open_orders' => (int)($s['open_orders'] ?? 0),
+            'week_revenue' => (float)($s['week_revenue'] ?? 0),
+            'active_kot' => (int)($kots[$k]['n'] ?? 0),
+            'menu_items' => (int)($menus[$k]['n'] ?? 0),
+            'tables_total' => (int)($t['total'] ?? 0),
+            'tables_occupied' => (int)($t['occupied'] ?? 0),
+            'staff' => (int)($staffs[$k]['n'] ?? 0),
         ];
         $branches[] = $row;
         $totals['revenue'] += $row['today_revenue'];

@@ -80,16 +80,23 @@ if (!function_exists('ensureTodaysSpecialTable')) {
         $sinceMidnight = $now->getTimestamp() - $midnight->getTimestamp();
         $dbNow = strtotime((string)$conn->query('SELECT NOW()')->fetchColumn());
         $dayStartDb = date('Y-m-d H:i:s', $dbNow - $sinceMidnight);
-        $count = $conn->prepare("SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi
-            JOIN orders o ON o.id = oi.order_id
-            WHERE o.restaurant_id = ? AND oi.menu_item_id = ? AND o.created_at >= ?
-              AND o.order_status NOT IN ('Cancelled', 'Rejected') AND o.deleted_at IS NULL");
+        // sold today for every dish with a daily limit, in one query (this runs on each menu load)
+        $limited = array_values(array_unique(array_map(fn($r) => (int)$r['menu_item_id'], array_filter($rows, fn($r) => (int)$r['daily_limit'] > 0))));
+        $soldBy = [];
+        if ($limited) {
+            $count = $conn->prepare("SELECT oi.menu_item_id, COALESCE(SUM(oi.quantity), 0) n FROM order_items oi
+                JOIN orders o ON o.id = oi.order_id
+                WHERE o.restaurant_id = ? AND oi.menu_item_id IN (" . implode(',', array_fill(0, count($limited), '?')) . ") AND o.created_at >= ?
+                  AND o.order_status NOT IN ('Cancelled', 'Rejected') AND o.deleted_at IS NULL
+                GROUP BY oi.menu_item_id");
+            $count->execute(array_merge([$restaurantId], $limited, [$dayStartDb]));
+            foreach ($count->fetchAll(PDO::FETCH_ASSOC) as $c) $soldBy[(int)$c['menu_item_id']] = (int)$c['n'];
+        }
 
         $items = [];
         foreach ($rows as $r) {
             $limit = (int)$r['daily_limit'] ?: null;
-            $sold = 0;
-            if ($limit) { $count->execute([$restaurantId, (int)$r['menu_item_id'], $dayStartDb]); $sold = (int)$count->fetchColumn(); }
+            $sold = $limit ? ($soldBy[(int)$r['menu_item_id']] ?? 0) : 0;
             $items[] = ['menu_item_id' => (int)$r['menu_item_id'], 'note' => (string)($r['note'] ?? ''), 'daily_limit' => $limit, 'sold_today' => $sold];
         }
         return ['weekday_name' => $now->format('l'), 'ends_ts' => $midnight->getTimestamp() + 86400, 'items' => $items];

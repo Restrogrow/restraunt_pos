@@ -94,9 +94,10 @@ try {
                 foreach ($q("SELECT * FROM tracked_links WHERE restaurant_id = ? AND kind = 'gbp_post' AND ref IN ($in)", array_merge([$rid], $refs))->fetchAll(PDO::FETCH_ASSOC) as $l) $links[$l['ref']] = $l;
             }
             $stats = tlStats($conn, $rid, array_values($links));
+            $sparks = tlDailyMany($conn, $rid, array_column($links, 'id'), 14);   // one query for every post's chart
             foreach ($posts as &$p) {
                 $l = $p['link_ref'] ? ($links[$p['link_ref']] ?? null) : null;
-                $p['results'] = $l ? ($stats[(int)$l['id']] ?? []) + ['short' => tlShortUrl($conn, $rid, $l['code']), 'spark' => tlDaily($conn, $rid, (int)$l['id'], 14)] : null;
+                $p['results'] = $l ? ($stats[(int)$l['id']] ?? []) + ['short' => tlShortUrl($conn, $rid, $l['code']), 'spark' => $sparks[(int)$l['id']] ?? []] : null;
                 unset($p['link_ref']);
             }
             unset($p);

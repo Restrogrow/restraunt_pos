@@ -875,10 +875,17 @@ try {
         $st->execute($p);
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
         // where "Email" sends it: the billed-to email, else the restaurant's
-        $ue = $conn->prepare('SELECT email FROM users WHERE restaurant_id = ? LIMIT 1');
+        // the restaurants' emails in one query (it was one per invoice)
+        $emails = [];
+        $rids = array_values(array_unique(array_column($rows, 'restaurant_id')));
+        if ($rids) {
+            $ue = $conn->prepare('SELECT restaurant_id, email FROM users WHERE restaurant_id IN (' . implode(',', array_fill(0, count($rids), '?')) . ') ORDER BY id');
+            $ue->execute($rids);
+            foreach ($ue->fetchAll(PDO::FETCH_ASSOC) as $u) $emails[strtoupper((string)$u['restaurant_id'])] ??= (string)$u['email'];
+        }
         foreach ($rows as &$r) {
             $bt = json_decode((string)$r['billed_to'], true) ?: [];
-            if (empty($bt['email'])) { $ue->execute([$r['restaurant_id']]); $bt['email'] = (string)$ue->fetchColumn(); }
+            if (empty($bt['email'])) $bt['email'] = $emails[strtoupper((string)$r['restaurant_id'])] ?? '';
             $r['email'] = $bt['email'];
             unset($r['billed_to']);
         }
