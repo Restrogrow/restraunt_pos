@@ -155,12 +155,23 @@ function rgGeminiChatbotReply(PDO $conn, int $leadId, string $question): string
  * What the restrogrow.com assistant knows. Kept to what the public website says (pricing section, trial)
  * and features that are built (docs/FEATURES.md). Update this when prices or plans change.
  */
+/** The free trial length the website shows (Super Admin › Settings › trial days; config/onboarding.php). */
+function rgChatbotTrialDays(): int
+{
+    static $d = null;
+    if ($d === null) {
+        try { require_once __DIR__ . '/onboarding.php'; $d = obTrialDays(getConnection()); } catch (Throwable $e) { $d = 30; }
+    }
+    return $d;
+}
+
 function rgChatbotKnowledge(): string
 {
+    $trial = rgChatbotTrialDays();
     return <<<TXT
 RestroGrow is an all-in-one restaurant system made in India: POS billing, the restaurant's own website with online ordering, kitchen screens, loyalty, WhatsApp and Android apps. Works on any phone, tablet or computer; nothing to install for the website and POS.
 
-PRICING (from the website, per month): Small Restaurant ₹2,999 (1–5 tables: POS, KOT, online ordering, basic reports, email support). Growing Restaurant ₹4,999 (6–20 tables, most popular: adds staff management, advanced analytics, table reservations, priority support, custom training). Multiple Locations ₹9,999 (2+ restaurants: multi-location, central reports, dedicated account manager, phone + WhatsApp support, custom features). 7-day free trial, no credit card, setup takes about 5 minutes, no setup fee. For yearly plans, discounts or a custom quote: talk to the team.
+PRICING (from the website, per month): Small Restaurant ₹2,999 (1–5 tables: POS, KOT, online ordering, basic reports, email support). Growing Restaurant ₹4,999 (6–20 tables, most popular: adds staff management, advanced analytics, table reservations, priority support, custom training). Multiple Locations ₹9,999 (2+ restaurants: multi-location, central reports, dedicated account manager, phone + WhatsApp support, custom features). {$trial}-day free trial, no credit card, setup takes about 5 minutes, no setup fee. For yearly plans, discounts or a custom quote: talk to the team.
 
 FEATURES:
 - POS & orders: fast billing, dine-in/takeaway/delivery, KOT to the kitchen, hold and resume bills, split payments, discounts, add-ons, combos, GST bills on thermal printers (58/80mm, Bluetooth or network), works offline and syncs later.
@@ -184,13 +195,16 @@ TXT;
 function rgChatbotFallback(string $q): array
 {
     $t = mb_strtolower($q);
-    $sug = ['What does it cost?', 'Is there a free trial?', 'Book a demo'];
+    $trial = rgChatbotTrialDays();
+    $sug = ['What does it cost?', 'Show me the app', 'Book a demo'];
     if (preg_match('/price|pricing|cost|charge|fee|plan|kitna|rate|₹|rs\b|paise/u', $t))
-        return ['reply' => "Plans are per month: **Small Restaurant ₹2,999** (1–5 tables), **Growing Restaurant ₹4,999** (6–20 tables, most popular) and **Multiple Locations ₹9,999** (2+ outlets). Every plan starts with a **7-day free trial**, no card needed.", 'suggestions' => ['What is included?', 'Book a demo', 'Is there a free trial?'], 'ask_contact' => true];
-    if (preg_match('/trial|free|try/u', $t))
-        return ['reply' => "Yes! You get a **7-day free trial**, no credit card needed, and setup takes about 5 minutes. Tap **Start Free Trial** at the top of the page.", 'suggestions' => ['What does it cost?', 'What is included?', 'Book a demo'], 'ask_contact' => false];
-    if (preg_match('/demo|call|meet|talk|contact|sales|number|phone/u', $t))
-        return ['reply' => "Happy to show you around! Leave your number here and our team will call you, or reach us at **+91 63775 68749** (call/WhatsApp) or restrogrow@gmail.com.", 'suggestions' => ['What does it cost?', 'What is included?'], 'ask_contact' => true];
+        return ['reply' => "Plans are per month: **Small Restaurant ₹2,999** (1–5 tables), **Growing Restaurant ₹4,999** (6–20 tables, most popular) and **Multiple Locations ₹9,999** (2+ outlets). Every plan starts with a **$trial-day free trial**, no card needed.", 'suggestions' => ['What is included?', 'Show me the app', 'Book a demo'], 'ask_contact' => false, 'show' => 'plans'];
+    if (preg_match('/trial|free|try|start|sign ?up/u', $t))
+        return ['reply' => "Yes! You get a **$trial-day free trial**, no credit card needed, and setup takes about 5 minutes.", 'suggestions' => ['What does it cost?', 'Show me the app', 'Book a demo'], 'ask_contact' => false, 'show' => 'trial'];
+    if (preg_match('/demo|call|meet|talk|contact|sales|number|phone|baat/u', $t))
+        return ['reply' => "Happy to show you around! Pick what suits you: we call you, or you WhatsApp or call us right now.", 'suggestions' => ['What does it cost?', 'Show me the app'], 'ask_contact' => false, 'show' => 'demo'];
+    if (preg_match('/look|see|show|screen|photo|picture|dikha|app\b/u', $t))
+        return ['reply' => "Here's how RestroGrow looks. Swipe through, and tap a picture to see it big.", 'suggestions' => ['What does it cost?', 'Book a demo'], 'ask_contact' => false, 'show' => 'screens', 'screens' => ['dashboard', 'website', 'loyalty', 'reports']];
     if (preg_match('/whatsapp/u', $t))
         return ['reply' => "RestroGrow works with WhatsApp: customers can **order by chatting** (English, Hindi or Hinglish) and the order goes straight to your kitchen, plus order updates, campaigns and loyalty gifts on WhatsApp.", 'suggestions' => ['What does it cost?', 'Book a demo'], 'ask_contact' => false];
     if (preg_match('/swiggy|zomato/u', $t))
@@ -217,20 +231,66 @@ function rgChatbotSmartReply(PDO $conn, int $leadId, string $question, bool $has
         . "Style: warm, short and clear: 1–3 short sentences, or a short '- ' list when listing features. Use **bold** for key facts (prices, trial). No headings, at most one emoji. "
         . "Reply in the visitor's language (Hindi / Hinglish if they write that way).\n"
         . "suggestions: 2–3 short follow-up questions the visitor might tap next (max 32 characters each, in their language).\n"
-        . "ask_contact: true only when they show buying interest (price for their case, demo, setup, 'how do I start', talking to someone)"
-        . ($hasContact ? ", but they already shared their contact details, so set it false and say the team will reach out." : ".") . "\n"
+        . "show: a card the chat draws under your reply, with buttons and pictures, so keep the reply short when you pick one:\n"
+        . "- plans: they ask about price / plans / cost (shows the 3 plans with a free-trial button; don't list all prices again in the text)\n"
+        . "- trial: they want to start, sign up or try it\n"
+        . "- demo: buying interest: a demo, a call, talking to someone, setup help, price for their own case"
+        . ($hasContact ? " (they already gave their number: the card only shows WhatsApp / call buttons; say the team will call them)" : " (the card has a 'Call me back' button)") . "\n"
+        . "- screens: they ask what it looks like, to see the app, or about a feature that has a screen; also set screens (up to 3 of: dashboard = POS & dashboard, website = the restaurant's ordering website, loyalty = loyalty & rewards, customers = customer list, offers = coupons, reports = sales reports, feedback = reviews)\n"
+        . "- none: anything else\n"
+        . "visitor_name / visitor_restaurant: only if the visitor tells their own name or restaurant name in THIS message, else empty.\n"
+        . ($hasContact ? "They ALREADY gave their phone number: never ask for it again or for a call-back request; just say the team will call them.\n"
+            : "If they type a phone number, the chat saves it for a call back by itself.\n")
         . "Never ask for passwords, card details or OTPs.\n\nKNOWLEDGE:\n" . rgChatbotKnowledge();
     $schema = ['type' => 'OBJECT', 'properties' => [
         'reply' => ['type' => 'STRING'],
         'suggestions' => ['type' => 'ARRAY', 'items' => ['type' => 'STRING']],
-        'ask_contact' => ['type' => 'BOOLEAN'],
-    ], 'required' => ['reply', 'suggestions', 'ask_contact']];
+        'show' => ['type' => 'STRING', 'enum' => RG_CHAT_CARDS],
+        'screens' => ['type' => 'ARRAY', 'items' => ['type' => 'STRING', 'enum' => array_keys(RG_CHAT_SCREENS)]],
+        'visitor_name' => ['type' => 'STRING'],
+        'visitor_restaurant' => ['type' => 'STRING'],
+    ], 'required' => ['reply', 'suggestions', 'show']];
     $r = aiGeminiJson($system, $question, $schema, $turns, $conn, 'chatbot');
-    if (!$r || trim((string)($r['reply'] ?? '')) === '') {
-        $f = rgChatbotFallback($question);
-        if ($hasContact) $f['ask_contact'] = false;
-        return $f;
-    }
+    if (!$r || trim((string)($r['reply'] ?? '')) === '') return rgChatbotCard(rgChatbotFallback($question), $hasContact);
     $sug = array_values(array_filter(array_map(fn($s) => mb_substr(trim((string)$s), 0, 40), (array)($r['suggestions'] ?? []))));
-    return ['reply' => mb_substr(trim((string)$r['reply']), 0, 1500), 'suggestions' => array_slice($sug, 0, 3), 'ask_contact' => !$hasContact && !empty($r['ask_contact'])];
+    return rgChatbotCard(['reply' => mb_substr(trim((string)$r['reply']), 0, 1500), 'suggestions' => array_slice($sug, 0, 3),
+        'show' => (string)($r['show'] ?? 'none'), 'screens' => (array)($r['screens'] ?? []),
+        'visitor_name' => mb_substr(trim((string)($r['visitor_name'] ?? '')), 0, 120), 'visitor_restaurant' => mb_substr(trim((string)($r['visitor_restaurant'] ?? '')), 0, 160)], $hasContact);
+}
+
+/** Cards the chat can draw under a reply (index.html) and the product screenshots they can show (assets/images/chat/). */
+const RG_CHAT_CARDS = ['none', 'plans', 'trial', 'demo', 'screens'];
+const RG_CHAT_SCREENS = ['dashboard' => 'POS & dashboard', 'website' => 'Your ordering website', 'loyalty' => 'Loyalty & rewards', 'customers' => 'Customer list',
+    'offers' => 'Coupons & offers', 'reports' => 'Sales reports', 'feedback' => 'Reviews & feedback'];
+
+/** Clean up a reply's card: a known card, real screens (a few by default), ask_contact kept for older pages. */
+function rgChatbotCard(array $r, bool $hasContact): array
+{
+    $show = in_array($r['show'] ?? '', RG_CHAT_CARDS, true) ? $r['show'] : 'none';
+    $screens = array_values(array_unique(array_filter((array)($r['screens'] ?? []), fn($s) => isset(RG_CHAT_SCREENS[$s]))));
+    if ($show === 'screens' && !$screens) $screens = ['dashboard', 'website', 'loyalty'];
+    $r['show'] = $show;
+    $r['screens'] = $show === 'screens' ? array_slice($screens, 0, 4) : [];
+    $r['ask_contact'] = $show === 'demo' && !$hasContact;
+    $r['trial_days'] = rgChatbotTrialDays();
+    return $r;
+}
+
+/** A phone number typed in the chat ("call me on 98765 43210"): the number as typed, or '' (10–15 digits). */
+function rgChatbotFindPhone(string $text): string
+{
+    if (!preg_match_all('/\+?\d[\d\s\-().]{7,20}\d/u', $text, $m)) return '';
+    foreach ($m[0] as $cand) {
+        $digits = preg_replace('/\D+/', '', $cand);
+        if (strlen($digits) >= 10 && strlen($digits) <= 15) return trim($cand);
+    }
+    return '';
+}
+
+/** "I'm Rahul from Spice Hut, 98765 43210" → ['Rahul', 'Spice Hut'] (only the clear ways of saying it). */
+function rgChatbotFindName(string $text): array
+{
+    $name = preg_match('/\b(?:i am|i\'m|im|my name is|name is|this is|mera naam|naam)\s+([a-z][a-z.\' ]{1,40}?)(?=\s*(?:,|\.|from|and|here|hai|\d|$))/iu', $text, $m) ? trim($m[1]) : '';
+    $rest = preg_match('/\b(?:from|restaurant(?: name)?(?: is)?|my restaurant is|hotel|cafe)\s+([a-z0-9][a-z0-9&\'. ]{1,60}?)(?=\s*(?:,|\.|and|\d|$))/iu', $text, $m) ? trim($m[1]) : '';
+    return [mb_convert_case($name, MB_CASE_TITLE, 'UTF-8'), $rest];
 }

@@ -95,7 +95,9 @@ try {
         $phone = trim((string)($input['phone'] ?? ''));
         $phoneDigits = preg_replace('/\D+/', '', $phone);
         if (($input['consent'] ?? null) !== true) chatbotOut(['success' => false, 'message' => 'Please agree to be contacted.'], 400);
-        if ($name === '' || mb_strlen($name) > 120) chatbotOut(['success' => false, 'message' => 'Please enter your name.'], 400);
+        // the name is optional (people stopped at a long form); keep one said earlier in the chat
+        if ($name === '') $name = $lead['name'] !== CHAT_ANON ? (string)$lead['name'] : CHAT_ANON;
+        if (mb_strlen($name) > 120) chatbotOut(['success' => false, 'message' => 'Please enter a shorter name.'], 400);
         if (mb_strlen($restaurant) > 160) chatbotOut(['success' => false, 'message' => 'Restaurant name is too long.'], 400);
         if (!preg_match('/^[+0-9().\-\s]{7,30}$/D', $phone) || strlen($phoneDigits) < 10 || strlen($phoneDigits) > 15) chatbotOut(['success' => false, 'message' => 'Please enter a valid phone number.'], 400);
         if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254)) chatbotOut(['success' => false, 'message' => 'Please check the email address.'], 400);
@@ -108,10 +110,10 @@ try {
             mailNewLead($conn, 'website chatbot', ['name' => $name, 'restaurant' => $restaurant, 'phone' => $phone, 'email' => $email,
                 'message' => implode("\n", array_map(fn($m) => '• ' . $m, array_reverse($said->fetchAll(PDO::FETCH_COLUMN))))]);
         } catch (Throwable $e) { error_log('chatbot lead email: ' . $e->getMessage()); }
-        $first = explode(' ', $name)[0];
-        $reply = "Thanks $first! 🙌 Our team will call you on **$phone** soon, usually within a few hours. Meanwhile, ask me anything else about RestroGrow.";
+        $first = $name !== CHAT_ANON ? ' ' . explode(' ', $name)[0] : '';
+        $reply = "Thanks$first! 🙌 Our team will call you on **$phone** soon, usually within a few hours. Meanwhile, ask me anything else about RestroGrow.";
         $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)")->execute([$leadId, $reply]);
-        chatbotOut(['success' => true, 'reply' => $reply, 'suggestions' => ['What is included?', 'Is there a free trial?']]);
+        chatbotOut(['success' => true, 'reply' => $reply, 'has_contact' => true, 'show' => 'none', 'suggestions' => ['Show me the app', 'What does it cost?', 'Is there a free trial?']]);
     }
 
     if ($action === 'message') {
@@ -122,10 +124,42 @@ try {
             chatbotOut(['success' => false, 'message' => 'Messages must be between 1 and 500 characters.'], 400);
         }
         $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'visitor', ?)")->execute([$leadId, $message]);
+
+        // a number typed straight into the chat ("call me on 98765 43210") is a call-back request: save it and
+        // stop asking (the bot used to keep asking because only the form counted)
+        $typedPhone = $hasContact ? '' : rgChatbotFindPhone($message);
+        if ($typedPhone !== '') {
+            [$saidName, $saidRest] = rgChatbotFindName($message);
+            $name = $saidName !== '' ? $saidName : (string)$lead['name'];
+            $conn->prepare('UPDATE chatbot_leads SET name = ?, restaurant_name = IF(? <> \'\', ?, restaurant_name), phone = ?, consent_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+                ->execute([mb_substr($name, 0, 120), $saidRest, mb_substr($saidRest, 0, 160), mb_substr($typedPhone, 0, 30), $leadId]);
+            try {
+                require_once __DIR__ . '/../config/mail_engine.php';
+                $said = $conn->prepare("SELECT message FROM chatbot_messages WHERE lead_id = ? AND sender = 'visitor' ORDER BY id DESC LIMIT 4");
+                $said->execute([$leadId]);
+                mailNewLead($conn, 'website chatbot', ['name' => $name, 'restaurant' => $saidRest, 'phone' => $typedPhone, 'email' => '',
+                    'message' => implode("\n", array_map(fn($m) => '• ' . $m, array_reverse($said->fetchAll(PDO::FETCH_COLUMN))))]);
+            } catch (Throwable $e) { error_log('chatbot typed-number lead email: ' . $e->getMessage()); }
+            $first = $name !== CHAT_ANON ? ' ' . explode(' ', $name)[0] : '';
+            $reply = "Got it, thanks$first! 🙌 Our team will call you on **$typedPhone** soon, usually within a few hours. We only use it to talk to you about RestroGrow."
+                . ($name === CHAT_ANON ? "\nWhat's your name, and your restaurant's name? (optional)" : '');
+            $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)")->execute([$leadId, $reply]);
+            chatbotOut(['success' => true, 'reply' => $reply, 'has_contact' => true, 'ask_contact' => false, 'show' => 'none', 'screens' => [],
+                'suggestions' => ['Show me the app', 'What does it cost?', 'Is there a free trial?']]);
+        }
+
         $r = rgChatbotSmartReply($conn, $leadId, $message, $hasContact);
+        // a name or restaurant said along the way ("I'm Rahul from Spice Hut") fills in an anonymous chat
+        if (($r['visitor_name'] ?? '') !== '' && $lead['name'] === CHAT_ANON) {
+            $conn->prepare('UPDATE chatbot_leads SET name = ? WHERE id = ?')->execute([$r['visitor_name'], $leadId]);
+        }
+        if (($r['visitor_restaurant'] ?? '') !== '') {
+            $conn->prepare("UPDATE chatbot_leads SET restaurant_name = ? WHERE id = ? AND COALESCE(restaurant_name, '') = ''")->execute([$r['visitor_restaurant'], $leadId]);
+        }
+        unset($r['visitor_name'], $r['visitor_restaurant']);
         $conn->prepare("INSERT INTO chatbot_messages (lead_id, sender, message) VALUES (?, 'assistant', ?)")->execute([$leadId, $r['reply']]);
         $conn->prepare('UPDATE chatbot_leads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$leadId]);
-        chatbotOut(['success' => true] + $r);
+        chatbotOut(['success' => true, 'has_contact' => $hasContact] + $r);
     }
 
     if (($action === 'voiceStart' || $action === 'voice') && !CHAT_VOICE_ON) {

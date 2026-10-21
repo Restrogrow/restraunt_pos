@@ -982,6 +982,45 @@
     .rgc-lead .go:disabled { opacity: .6; }
     .rgc-lead .later { background: #f4eee5; color: var(--mute); }
     .rgc-lead .rgc-e { margin: 0 0 8px; color: #b42318; font-size: 12.5px; }
+    .rgc-lead .rgc-note { margin: 2px 0 10px; font-size: 11.5px; line-height: 1.4; color: var(--mute); }
+    .rgc-lead .rgc-note a { color: var(--ad); }
+
+    /* cards under an answer (show: plans / trial / demo / screens from main/api/chatbot.php) */
+    .rgc-card { align-self: stretch; animation: rgcIn .3s ease-out; }
+    .rgc-plans { display: grid; gap: 8px; }
+    .rgc-plan { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #fff; border: 1.5px solid var(--line); }
+    .rgc-plan.hot { border-color: var(--a); background: linear-gradient(135deg, #fff, #fff4ec); }
+    .rgc-plan .ic { width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 11px; background: var(--al); font-size: 19px; }
+    .rgc-plan .t { flex: 1; min-width: 0; }
+    .rgc-plan .t b { display: block; font-size: 14px; color: var(--ink); }
+    .rgc-plan .t span { font-size: 12px; color: var(--mute); }
+    .rgc-plan .p { text-align: right; font: 800 17px/1.1 'Archivo', 'Public Sans', sans-serif; color: var(--ink); }
+    .rgc-plan .p small { display: block; font: 600 11px 'Public Sans', sans-serif; color: var(--mute); }
+    .rgc-plan .tag { position: absolute; top: -9px; right: 12px; padding: 2px 8px; border-radius: 999px; background: var(--a); color: #fff; font: 700 10.5px 'Public Sans', sans-serif; }
+    .rgc-trial { margin: 10px 2px 0; font-size: 12.5px; font-weight: 600; color: var(--ad); }
+    .rgc-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .rgc-btn { flex: 1 1 140px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 44px; padding: 0 14px; border: 0; border-radius: 12px; font: 700 14px 'Public Sans', sans-serif; text-decoration: none; cursor: pointer; transition: transform .1s, filter .15s; }
+    .rgc-btn:active { transform: scale(.97); }
+    .rgc-btn.go { background: linear-gradient(135deg, #e0622a, var(--a)); color: #fff; box-shadow: 0 8px 18px -10px rgba(143,51,8,.8); }
+    .rgc-btn.go:hover { filter: brightness(1.06); }
+    .rgc-btn.wa { background: #25d366; color: #fff; }
+    .rgc-btn.soft { background: #fff; color: var(--ad); border: 1.5px solid #ead3c2; }
+    .rgc-btn svg { width: 18px; height: 18px; flex: none; }
+    .rgc-hero { padding: 16px; border-radius: 16px; color: #fff; background: radial-gradient(120% 140% at 100% 0%, #e2712f, transparent 60%), linear-gradient(135deg, #8f3308, #c1440e); }
+    .rgc-hero b { display: block; font: 800 18px/1.25 'Archivo', 'Public Sans', sans-serif; }
+    .rgc-hero span { display: block; margin-top: 4px; font-size: 12.5px; opacity: .9; }
+    .rgc-hero ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+    .rgc-hero li::before { content: '✓ '; font-weight: 800; }
+    .rgc-hero .rgc-btn.go { background: #fff; color: var(--ad); box-shadow: none; }
+    .rgc-shots { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+    .rgc-shot { flex: none; width: 200px; scroll-snap-align: start; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; cursor: zoom-in; text-align: left; font: inherit; }
+    .rgc-shot img { display: block; width: 100%; height: 132px; object-fit: cover; object-position: top; background: #f4eee5; }
+    .rgc-shot span { display: block; padding: 8px 10px; font: 700 12.5px 'Public Sans', sans-serif; color: var(--ink); }
+    .rgc-zoom { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; background: rgba(20,14,10,.96); animation: rgcIn .2s ease-out; }
+    .rgc-zoom img { flex: 1; min-height: 0; width: 100%; object-fit: contain; padding: 14px; }
+    .rgc-zoom div { display: flex; align-items: center; gap: 10px; padding: 12px 14px; color: #fff; font: 700 14px 'Public Sans', sans-serif; }
+    .rgc-zoom div span { flex: 1; }
+    .rgc-zoom button { height: 38px; padding: 0 14px; border: 0; border-radius: 10px; background: rgba(255,255,255,.16); color: #fff; font: 700 13px 'Public Sans', sans-serif; cursor: pointer; }
 
     .rgc-in { display: flex; align-items: flex-end; gap: 8px; margin: 0 12px 6px; padding: 6px 6px 6px 14px; border: 1.5px solid #e6d9c8; border-radius: 18px; background: #fff; transition: border-color .15s, box-shadow .15s; }
     .rgc-in:focus-within { border-color: var(--a); box-shadow: 0 0 0 3px rgba(193,68,14,.12); }
@@ -1061,7 +1100,17 @@
       // voice call paused for now (docs/FEATURES.md); true shows the Talk buttons again (also CHAT_VOICE_ON in main/api/chatbot.php)
       var VOICE_ON = false;
       var TALK_CHIP = '🎙 Talk on voice';
-      var START_CHIPS = (VOICE_ON ? [TALK_CHIP] : []).concat(['What does it cost?', 'Is there a free trial?', 'WhatsApp ordering?', 'Does it work on my phone?', 'Book a demo']);
+      var START_CHIPS = (VOICE_ON ? [TALK_CHIP] : []).concat(['📱 Show me the app', '💰 What does it cost?', '🎁 Is there a free trial?', '💬 WhatsApp ordering?', '📞 Book a demo']);
+      // what the cards show (same keys as RG_CHAT_SCREENS in main/config/chatbot_store.php)
+      var SHOTS = { dashboard: 'POS & dashboard', website: 'Your ordering website', loyalty: 'Loyalty & rewards', customers: 'Customer list', offers: 'Coupons & offers', reports: 'Sales reports', feedback: 'Reviews & feedback' };
+      var PLANS = [['🍽️', 'Small Restaurant', '1–5 tables', '2,999'], ['🚀', 'Growing Restaurant', '6–20 tables', '4,999', 'Most popular'], ['🏢', 'Multiple Locations', '2+ outlets', '9,999']];
+      var SIGNUP = 'main/admin/login.php?tab=signup', PHONE = '+916377568749';
+      var WA = 'https://wa.me/916377568749?text=' + encodeURIComponent('Hi RestroGrow! I\'d like to know more for my restaurant.');
+      var IC = {
+        wa: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9 0-1.4.7-2 1-2.3.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>',
+        call: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>',
+        go: '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      };
       try { token = localStorage.getItem(KEY) || ''; } catch (e) {}
 
       function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -1095,7 +1144,7 @@
           var b = document.createElement('button');
           b.type = 'button'; b.className = 'rgc-chip' + (/demo|call|baat/i.test(q) && !hasContact ? ' cta' : ''); b.textContent = q;
           if (q === TALK_CHIP) b.className = 'rgc-chip cta';
-          b.addEventListener('click', function () { if (q === TALK_CHIP) { startVoice(); return; } if (/book a (free )?demo|demo chahiye|call me/i.test(q) && !hasContact) { clearChips(); add(q, 'me'); leadCard(true); } else ask(q); });
+          b.addEventListener('click', function () { if (q === TALK_CHIP) { startVoice(); return; } ask(q); });
           c.appendChild(b);
         });
         msgs.appendChild(c); scroll();
@@ -1120,8 +1169,56 @@
       }
       function welcome() {
         add('Hi! 👋 I\'m the **RestroGrow assistant**. Ask me anything about billing, your restaurant website, WhatsApp ordering, loyalty or prices. English, Hindi or Hinglish is fine.', 'bot');
+        card({ show: 'screens', screens: ['dashboard', 'website', 'loyalty', 'reports'] });
         chips(START_CHIPS);
       }
+      function box(html) {
+        var c = document.createElement('div');
+        c.className = 'rgc-card';
+        c.innerHTML = html;
+        msgs.appendChild(c); scroll();
+        return c;
+      }
+      function btns(list) {
+        return '<div class="rgc-btns">' + list.join('') + '</div>';
+      }
+      var B = {
+        trial: function () { return '<a class="rgc-btn go" href="' + SIGNUP + '">Start free trial ' + IC.go + '</a>'; },
+        demo: function () { return '<button type="button" class="rgc-btn soft" data-rgc="callback">📞 Call me back</button>'; },
+        wa: function () { return '<a class="rgc-btn wa" href="' + WA + '" target="_blank" rel="noopener">' + IC.wa + 'WhatsApp us</a>'; },
+        call: function () { return '<a class="rgc-btn soft" href="tel:' + PHONE + '">' + IC.call + 'Call now</a>'; }
+      };
+      // the card the server picked for this answer (show: plans / trial / demo / screens)
+      function card(d) {
+        var days = d.trial_days || 0, c;
+        if (d.show === 'plans') {
+          c = box('<div class="rgc-plans">' + PLANS.map(function (p) {
+            return '<div class="rgc-plan' + (p[4] ? ' hot' : '') + '">' + (p[4] ? '<i class="tag">' + esc(p[4]) + '</i>' : '') + '<span class="ic">' + p[0] + '</span><span class="t"><b>' + esc(p[1]) + '</b><span>' + esc(p[2]) + '</span></span><span class="p">₹' + p[3] + '<small>/month</small></span></div>';
+          }).join('') + '</div><p class="rgc-trial">🎁 ' + (days ? days + '-day ' : '') + 'free trial on every plan · no card · no setup fee</p>' + btns([B.trial(), hasContact ? B.wa() : B.demo()]));
+        } else if (d.show === 'trial') {
+          c = box('<div class="rgc-hero"><b>🎁 Try RestroGrow free' + (days ? ' for ' + days + ' days' : '') + '</b><span>Your POS, website and QR menu ready in about 5 minutes.</span>' +
+            '<ul><li>No credit card</li><li>No setup fee</li><li>Your own ordering website included</li></ul>' + btns([B.trial()]) + '</div>');
+        } else if (d.show === 'demo') {
+          c = box(btns(hasContact ? [B.wa(), B.call()] : [B.demo(), B.wa(), B.call()]));
+        } else if (d.show === 'screens' && d.screens && d.screens.length) {
+          c = box('<div class="rgc-shots">' + d.screens.filter(function (k) { return SHOTS[k]; }).map(function (k) {
+            return '<button type="button" class="rgc-shot" data-shot="' + k + '"><img src="assets/images/chat/' + k + '.jpg" alt="' + esc(SHOTS[k]) + '" loading="lazy"><span>' + esc(SHOTS[k]) + '</span></button>';
+          }).join('') + '</div>');
+        }
+        return c;
+      }
+      function zoom(k) {
+        var z = document.createElement('div');
+        z.className = 'rgc-zoom';
+        z.innerHTML = '<img src="assets/images/chat/' + k + '.jpg" alt="' + esc(SHOTS[k]) + '"><div><span>' + esc(SHOTS[k]) + '</span><a class="rgc-btn go" style="flex:none" href="' + SIGNUP + '">Try it free</a><button type="button">Close</button></div>';
+        panel.appendChild(z);
+        z.addEventListener('click', function (e) { if (e.target.tagName !== 'A') z.remove(); });
+      }
+      msgs.addEventListener('click', function (e) {
+        var s = e.target.closest('[data-shot]');
+        if (s) { zoom(s.getAttribute('data-shot')); return; }
+        if (e.target.closest('[data-rgc="callback"]')) { if (hasContact) { add('You\'re all set: our team will call you soon. 🙌', 'bot'); return; } if (!leadShown) leadCard(true); else { var f = msgs.querySelector('.rgc-lead input[name=phone]'); if (f) f.focus(); } }
+      });
       function ask(text) {
         text = String(text || '').trim();
         if (!text || busy) return;
@@ -1133,7 +1230,9 @@
           // a short natural pause, so instant answers don't feel jumpy
           setTimeout(function () {
             typing(false); add(d.reply, 'bot');
-            if (d.ask_contact && !hasContact && !leadShown) leadCard(false); else chips(d.suggestions);
+            if (d.has_contact) { hasContact = true; leadShown = true; msgs.querySelectorAll('.rgc-lead').forEach(function (f) { f.remove(); }); }
+            card(d);
+            chips(d.suggestions);
             done();
           }, Math.max(0, 450 - (Date.now() - t0)));
         }).catch(function (e) {
@@ -1149,22 +1248,23 @@
         leadShown = true; clearChips();
         var c = document.createElement('form');
         c.className = 'rgc-lead';
+        // just the number is enough (a long form with a must-tick box lost people); name and restaurant optional
         c.innerHTML = '<b>' + (fromButton ? 'Book a free demo 📞' : 'Want us to call you?') + '</b><small>Our team calls you, shows RestroGrow on your phone, and sets it up for your restaurant. Free.</small>' +
-          '<div class="rgc-2"><input name="name" placeholder="Your name" autocomplete="name" maxlength="120" required><input name="phone" type="tel" inputmode="tel" placeholder="Phone / WhatsApp" autocomplete="tel" maxlength="20" required></div>' +
-          '<input name="restaurant" placeholder="Restaurant name (optional)" autocomplete="organization" maxlength="160">' +
-          '<label class="rgc-ok"><input type="checkbox" name="ok" required><span>RestroGrow may contact me about this. <a href="privacy-policy/" target="_blank" rel="noopener">Privacy Policy</a></span></label>' +
-          '<p class="rgc-e" hidden></p><div class="rgc-lb"><button type="submit" class="go">Call me back</button><button type="button" class="later">Not now</button></div>';
+          '<input name="phone" type="tel" inputmode="tel" placeholder="Your phone / WhatsApp number" autocomplete="tel" maxlength="20" required>' +
+          '<div class="rgc-2"><input name="name" placeholder="Name (optional)" autocomplete="name" maxlength="120"><input name="restaurant" placeholder="Restaurant (optional)" autocomplete="organization" maxlength="160"></div>' +
+          '<p class="rgc-e" hidden></p><div class="rgc-lb"><button type="submit" class="go">📞 Call me back</button><button type="button" class="later">Not now</button></div>' +
+          '<p class="rgc-note" style="margin:8px 0 0">By tapping Call me back you agree RestroGrow may call or WhatsApp you about this. <a href="privacy-policy/" target="_blank" rel="noopener">Privacy</a></p>';
         msgs.appendChild(c); scroll();
-        setTimeout(function () { var f = c.querySelector('input[name=name]'); if (f && window.innerWidth > 520) f.focus(); }, 50);
-        c.querySelector('.later').addEventListener('click', function () { c.remove(); chips(['What does it cost?', 'What is included?']); });
+        setTimeout(function () { var f = c.querySelector('input[name=phone]'); if (f && window.innerWidth > 520) f.focus(); }, 50);
+        c.querySelector('.later').addEventListener('click', function () { c.remove(); leadShown = false; chips(['📱 Show me the app', '💰 What does it cost?']); });
         c.addEventListener('submit', function (ev) {
           ev.preventDefault();
           var b = c.querySelector('.go'), er = c.querySelector('.rgc-e');
           b.disabled = true; b.textContent = 'Saving…'; er.hidden = true;
           ensureToken().then(function () {
-            return post({ action: 'lead', token: token, name: c.name.value, phone: c.phone.value, restaurant_name: c.restaurant.value, consent: c.ok.checked });
+            return post({ action: 'lead', token: token, name: c.name.value, phone: c.phone.value, restaurant_name: c.restaurant.value, consent: true });
           }).then(function (d) { hasContact = true; c.remove(); add(d.reply, 'bot'); chips(d.suggestions); }).catch(function (e) {
-            b.disabled = false; b.textContent = 'Call me back'; er.textContent = e.message; er.hidden = false;
+            b.disabled = false; b.textContent = '📞 Call me back'; er.textContent = e.message; er.hidden = false;
           });
         });
       }
@@ -1177,7 +1277,7 @@
           hasContact = !!d.has_contact; leadShown = hasContact;
           if (!d.messages.length) { welcome(); return; }
           d.messages.forEach(function (m) { add(m.message, m.sender === 'visitor' ? 'me' : 'bot', m.channel === 'voice' ? 'vc' : ''); });
-          chips((VOICE_ON ? [TALK_CHIP] : ['What is included?']).concat(['What does it cost?', hasContact ? 'Is there a free trial?' : 'Book a demo']));
+          chips((VOICE_ON ? [TALK_CHIP] : ['📱 Show me the app']).concat(['💰 What does it cost?', hasContact ? '🎁 Is there a free trial?' : '📞 Book a demo']));
         }).catch(function () { typing(false); token = ''; try { localStorage.removeItem(KEY); } catch (e) {} welcome(); });
       }
       function open() {
