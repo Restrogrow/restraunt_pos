@@ -93,6 +93,8 @@ function mcpCall(PDO $conn, array $tok, string $name, array $args): array
         require_once __DIR__ . '/../api/subscription_middleware.php';
         $sub = checkSubscriptionAccess($conn, (int)$tok['user_id'], $rid);
         if (!empty($sub['blocked'])) return $fail('This RestroGrow account is ' . ($sub['reason'] === 'disabled' ? 'switched off' : 'expired') . '. Renew it in the RestroGrow dashboard to use it here.');
+        require_once __DIR__ . '/../config/access_control.php';
+        if (!accessPageOn($conn, $rid, 'aiAppsPage')) return $fail('ChatGPT & Claude is switched off for this restaurant. Ask RestroGrow support to switch it on.');
         $s = ownerMgrSettings($conn, $rid);
         ownerMgrUseTz($conn, $s);
         $client = mcpClient($conn, $tok['client_id']);

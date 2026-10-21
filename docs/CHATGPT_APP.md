@@ -48,10 +48,19 @@ Write (scope `write`): `set_dish_availability`, `update_dish` (name, description
 
 ## Try it (owner's to-do: Super Admin › Tools › My to-do › AI apps)
 
-ChatGPT: Settings › Apps & Connectors › Advanced settings › Developer mode on › Create:
-name RestroGrow, URL `https://restrogrow.com/mcp`, Authentication OAuth › Create › log in (demo / demo) › Allow.
+Owners find the steps in the dashboard: **Growth › ChatGPT & Claude** (`assets/js/ai-apps-studio.js`,
+`api/ai_apps_admin.php`): ChatGPT / Claude tabs, the address with a Copy button, example questions, the connected
+apps with Disconnect (rgUndo), and the safety points. Super Admin › Restaurants › Access › "ChatGPT & Claude" switches
+the page, the Allow screen and every tool off for a restaurant. Super Admin › Usage counts AI sessions.
 
-Claude: Settings › Connectors › Add custom connector › `https://restrogrow.com/mcp` › Connect.
+ChatGPT (paid plan only: Developer mode is not on Free): Settings › Apps & Connectors › Advanced settings (bottom) ›
+Developer mode on › Create: name RestroGrow, URL `https://restrogrow.com/mcp`, Authentication OAuth › tick I trust this
+application › Create › log in (demo / demo) › Allow › new chat › + › More (or Developer mode) › RestroGrow.
+
+Claude: Settings › Connectors › Add custom connector › `https://restrogrow.com/mcp` › Add › Connect.
+
+The demo account (demo / demo) is not read-only: it holds only sample data, reset it from Super Admin › Tools › Demo
+restaurant. Owners always connect with their own login.
 
 Test prompts (also for the OpenAI review):
 1. "How were my sales this week compared to last week?"
@@ -76,7 +85,5 @@ Without approval, owners can still connect through Developer mode.
 
 ## Later
 
-- Owner's "Connected AI apps" list with a Disconnect button in the dashboard (`mcpConnections()` and `mcpDisconnect()`
-  are ready in `config/mcp_oauth.php`).
 - ChatGPT widgets (order cards, menu list with photos) through the Apps SDK UI resources.
 - More tools: coupons, reservations, customers, stock, staff.

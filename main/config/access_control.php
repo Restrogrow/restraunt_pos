@@ -60,6 +60,8 @@ function accessModules(): array {
             'whatsappPage'          => ['WhatsApp', ['whatsapp_admin.php']],
             'waOrderPage'           => ['WhatsApp ordering', ['wa_order_admin.php']],
             'ownerManagerPage'      => ['AI manager', ['owner_manager_admin.php']],
+            // off also blocks connecting and every tool in ChatGPT / Claude (mcp/server.php, oauth/authorize.php)
+            'aiAppsPage'            => ['ChatGPT & Claude', ['ai_apps_admin.php']],
             'customerSegmentsPage'  => ['Customer segments', ['get_customer_segments.php']],
             'referralsPage'         => ['Referrals', ['get_referrals.php']],
             'growthReportsPage'     => ['Growth reports', ['get_growth_reports.php', 'get_growth_overview.php', 'get_growth_clv.php']],

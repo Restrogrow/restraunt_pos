@@ -90,6 +90,8 @@ if (!$isOwner) {
 
 $rid = (string)$_SESSION['restaurant_id'];
 $userId = (int)$_SESSION['user_id'];
+require_once __DIR__ . '/../config/access_control.php';
+if (!accessPageOn($conn, $rid, 'aiAppsPage')) oaError('ChatGPT & Claude is switched off for this restaurant. Ask RestroGrow support to switch it on.');
 if (empty($_SESSION['mcp_csrf'])) $_SESSION['mcp_csrf'] = bin2hex(random_bytes(16));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

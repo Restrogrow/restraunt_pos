@@ -1658,6 +1658,7 @@ document.addEventListener("DOMContentLoaded", () => {
         whatsappPage: ['loadWhatsappAdmin'],
         waOrderPage: ['loadWaOrderStudio'],          // Growth › WhatsApp ordering (wa-order-studio.js)
         ownerManagerPage: ['loadOwnerManagerStudio'], // Growth › AI manager (owner-manager-studio.js)
+        aiAppsPage: ['loadAiApps'],                   // Growth › ChatGPT & Claude (ai-apps-studio.js)
         ridersPage: ['loadRidersBoard'],              // Delivery › Riders (riders-board.js)
         customerSegmentsPage: ['loadCustomerSegments'],
         referralsPage: ['loadReferrals'],

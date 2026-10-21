@@ -86,6 +86,7 @@ function usFeatures(): array
         'wa_messages'  => ['WhatsApp messages', 'Customers & growth', 'forum', ['whatsappPage'], ['wa_outbox', 'created_at', "status = 'sent'", 'sent']],
         'wa_campaigns' => ['WhatsApp campaigns', 'Customers & growth', 'campaign', ['whatsappPage'], ['wa_campaigns', 'created_at', '', 'campaigns']],
         'ai_manager'   => ['AI manager report', 'Customers & growth', 'auto_awesome', ['ownerManagerPage'], ['om_briefs', 'created_at', '', 'reports']],
+        'ai_apps'      => ['ChatGPT & Claude', 'Customers & growth', 'add_link', ['aiAppsPage'], ['mcp_tokens', 'created_at', "kind = 'access'", 'AI sessions']],
         'segments'     => ['Customer segments', 'Customers & growth', 'category', ['customerSegmentsPage'], null],
         // marketing and website
         'website'      => ['Website visits', 'Website & marketing', 'language', [], ['page_visits', 'visited_at', '', 'visits']],
