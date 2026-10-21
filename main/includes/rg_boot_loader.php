@@ -38,7 +38,15 @@ if (!empty($rgBootCfg['enabled'])):
   #rgBoot .rgb-box { width: min(300px, 70vw); display: grid; place-items: center; gap: 22px; }
   #rgBoot .l-bounce .lg { width: 100%; }
   #rgBoot .rgb-cap { font: 500 12.5px "Poppins", "Segoe UI", system-ui, sans-serif; color: var(--stage-ink); opacity: .55; letter-spacing: .02em; }
-  @media (prefers-color-scheme: dark) { #rgBoot { --stage-bg: #121016; --stage-ink: #FBF6F1; --stage-dim: #26222B; --stage-dim-2: #1B1820; } }
+  /* phone / computer in dark mode: the colours go on .stage too (rg-loaders.css sets the light ones there,
+     which used to leave the black wordmark on a black screen); warm glow, cream letters, glowing G */
+  @media (prefers-color-scheme: dark) {
+    #rgBoot, #rgBoot .stage { --stage-bg: #121016; --stage-ink: #FBF6F1; --stage-dim: #26222B; --stage-dim-2: #1B1820; }
+    #rgBoot { background: radial-gradient(60% 42% at 50% 47%, rgba(252, 83, 1, .16), rgba(252, 83, 1, 0) 72%), linear-gradient(180deg, #19141D 0%, #0E0C12 100%); }
+    #rgBoot .gmark { filter: drop-shadow(0 0 12px rgba(252, 83, 1, .55)); }
+    #rgBoot .shadow { background: #FC5301; filter: blur(2px); }
+    #rgBoot .rgb-cap { color: #FBF6F1; opacity: .62; }
+  }
   @media (prefers-reduced-motion: reduce) { #rgBoot .gpos, #rgBoot .shadow { animation: none !important; } }
 </style>
 <div id="rgBoot" class="rgl-root" role="status" aria-live="polite" aria-label="Loading">
