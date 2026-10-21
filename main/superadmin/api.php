@@ -312,6 +312,8 @@ try {
       $hash = password_hash($password, PASSWORD_DEFAULT);
       $stmt = $conn->prepare('UPDATE users SET password = :p WHERE id = :id');
       $stmt->execute([':p' => $hash, ':id' => $id]);
+      require_once __DIR__ . '/../config/mcp_oauth.php';
+      mcpRevokeUser($conn, $id);
       echo json_encode(['success' => true, 'message' => 'Password reset']);
       break;
 

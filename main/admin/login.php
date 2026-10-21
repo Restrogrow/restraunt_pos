@@ -17,6 +17,10 @@ $googleButton = $googleReady ? '<div class="or-divider"><span>or</span></div>'
     . '<a class="btn-google" href="../api/google_login.php?for=owner">'
     . '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>'
     . '<span>Continue with Google</span></a>' : '';
+// logging in to connect ChatGPT / Claude (oauth/authorize.php): back to its "Allow" screen afterwards
+$mcpNext = preg_match('/^[a-f0-9]{32}$/', (string)($_GET['oauth'] ?? '')) ? '../oauth/authorize.php?req=' . $_GET['oauth'] : '';
+if ($mcpNext !== '') $_SESSION['mcp_next'] = $_GET['oauth'];
+else unset($_SESSION['mcp_next']);
 
 // Check if user is already logged in and session is valid
 if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_id']) || isset($_SESSION['branch_admin_id'])) && isset($_SESSION['username']) && isset($_SESSION['restaurant_id'])) {
@@ -39,7 +43,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         }
     } else {
         // Admin user
-        header('Location: ../views/dashboard.php');
+        header('Location: ' . ($mcpNext !== '' && ($_SESSION['user_type'] ?? '') === 'admin' ? $mcpNext : '../views/dashboard.php'));
         exit();
     }
 }
@@ -1399,6 +1403,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 if (result.success) {
                     showMessage('Login successful!', 'success');
                     var redirectUrl = result.redirect || '../views/dashboard.php';
+                    var mcpNext = <?php echo json_encode($mcpNext); ?>;
+                    if (mcpNext && result.data && result.data.user_type === 'admin') { window.location.href = mcpNext; return; }
                     try {
                         sessionStorage.setItem('forceDashboard', '1');
                         localStorage.removeItem('admin_active_page');
@@ -1631,6 +1637,8 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                     showMessage('Your restaurant is ready! Opening your dashboard…', 'success');
                     if (result.signed_in === false) { setTimeout(() => { switchTab('login'); suEl('loginUsername').value = email; }, 1200); return; }
                     const to = result.redirect || '../views/dashboard.php';
+                    const mcpNext = <?php echo json_encode($mcpNext); ?>;
+                    if (mcpNext) { window.location.href = mcpNext; return; }
                     window.location.href = to + (to.indexOf('?') > -1 ? '&' : '?') + 'welcome=1';
                     return;
                 }

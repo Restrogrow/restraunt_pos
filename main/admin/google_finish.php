@@ -28,6 +28,10 @@ try {
         googleOwnerBack(['google_signup' => 1]);
     }
     [$redirect] = googleLoginStartSession($conn, $account);
+    // logging in to connect ChatGPT / Claude (login.php?oauth=…): back to the "Allow" screen
+    $mcpNext = (string)($_SESSION['mcp_next'] ?? '');
+    unset($_SESSION['mcp_next']);
+    if (($_SESSION['user_type'] ?? '') === 'admin' && preg_match('/^[a-f0-9]{32}$/', $mcpNext)) $redirect = '../oauth/authorize.php?req=' . $mcpNext;
     header('Location: ' . $redirect);
     exit;
 } catch (Throwable $e) {

@@ -1064,7 +1064,10 @@ function handleChangePassword() {
     } else {
         $updateStmt = $pdo->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
         $result = $updateStmt->execute([$hashedPassword, $userId]);
-        if ($result) { require_once __DIR__ . '/../config/activity_log.php'; logActivity($pdo, ($_SESSION['restaurant_id'] ?? null), 'settings.password', 'Changed the owner password'); }
+        if ($result) {
+            require_once __DIR__ . '/../config/activity_log.php'; logActivity($pdo, ($_SESSION['restaurant_id'] ?? null), 'settings.password', 'Changed the owner password');
+            require_once __DIR__ . '/../config/mcp_oauth.php'; mcpRevokeUser($pdo, (int)$userId);
+        }
     }
     
     if ($result) {
@@ -2237,6 +2240,7 @@ function handleResetPassword() {
         // Update password
         $updateStmt = $pdo->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
         $updateResult = $updateStmt->execute([$hashedPassword, $tokenData['user_id']]);
+        if ($updateResult) { require_once __DIR__ . '/../config/mcp_oauth.php'; mcpRevokeUser($pdo, (int)$tokenData['user_id']); }
         
         if (!$updateResult) {
             throw new Exception('Failed to update password. Please try again.');
@@ -2370,6 +2374,8 @@ function handleResetPasswordOtp() {
 
     $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
     $pdo->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?")->execute([$hashedPassword, $user['id']]);
+    require_once __DIR__ . '/../config/mcp_oauth.php';
+    mcpRevokeUser($pdo, (int)$user['id']);
 
     // Invalidate any pending email-link reset tokens too, since the
     // password just changed via this path.

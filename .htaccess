@@ -17,6 +17,11 @@ SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
 </FilesMatch>
 RewriteRule ^(docs|tests|scripts)(/|$) - [F,L]
 
+# AI apps (ChatGPT, Claude): the MCP server and its OAuth discovery documents (main/mcp, main/oauth)
+RewriteRule ^mcp/?$ main/mcp/server.php [L]
+RewriteRule ^\.well-known/oauth-protected-resource(/mcp)?/?$ main/oauth/metadata.php?doc=resource [L]
+RewriteRule ^\.well-known/(oauth-authorization-server|openid-configuration)(/.*)?$ main/oauth/metadata.php?doc=server [L]
+
 # Allow direct access to admin/api scripts (main/ directory)
 RewriteRule ^main/ - [L]
 
