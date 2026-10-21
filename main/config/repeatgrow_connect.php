@@ -94,12 +94,13 @@ if (!function_exists('rgcBase')) {
 
     /**
      * WhatsApp ordering (config/wa_order_engine.php) also needs webhooks:manage + contacts:read.
-     * RepeatGrow refuses the whole connection if asked for a scope its RestroGrow client doesn't allow,
-     * so they are only asked for once REPEATGROW_CONNECT_ORDERING=1 is set in .env (after RepeatGrow allows them).
+     * RepeatGrow refuses the whole connection if asked for a scope its RestroGrow client doesn't allow; since
+     * 2026-10-21 its client allows all five (checked live), so they are always asked for.
+     * REPEATGROW_CONNECT_ORDERING=0 in .env asks for the first three only (if RepeatGrow ever narrows them again).
      */
     function rgcScopes(): array {
         $s = ['messages:send', 'templates:read', 'templates:write'];
-        if ((string)env('REPEATGROW_CONNECT_ORDERING', '') === '1') { $s[] = 'webhooks:manage'; $s[] = 'contacts:read'; }
+        if ((string)env('REPEATGROW_CONNECT_ORDERING', '1') !== '0') { $s[] = 'webhooks:manage'; $s[] = 'contacts:read'; }
         return $s;
     }
 
