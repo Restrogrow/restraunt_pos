@@ -121,8 +121,11 @@
         '<div class="wo-card"><h3>' + ic('chat') + 'Customer chats</h3><p class="wo-sub">Latest WhatsApp orders. Chats marked “needs you” asked for a person: reply here.</p><div class="wo-chats" id="woChats">' + chatsHtml() + '</div></div>' +
       '</div><div style="display:grid;gap:16px">' +
         // setup steps
-        '<div class="wo-card"><h3>' + ic('checklist') + 'Set up in 3 steps</h3><div class="wo-steps">' + steps.map(function (x) {
-          return '<div class="wo-step' + (x[0] ? ' done' : '') + '">' + ic(x[0] ? 'check_circle' : 'circle') + '<div><b>' + esc(x[1]) + '</b><br>' + esc(x[2]) + '</div></div>';
+        '<div class="wo-card"><h3>' + ic('checklist') + 'Set up in 3 steps</h3><div class="wo-steps">' + steps.map(function (x, i) {
+          // step 2 not done: why the last try failed (api/wa_order_admin.php woWebhookNote) and a button to try again
+          var fix = i === 1 && !x[0] && wa.connected ? (s.webhook_note ? '<div style="margin-top:6px;color:#b91c1c">' + esc(s.webhook_note) + '</div>' : '') +
+            (D.can_edit ? '<button type="button" class="btn btn-secondary" data-wo="link" style="margin-top:8px">' + ic('link') + 'Link now</button>' : '') : '';
+          return '<div class="wo-step' + (x[0] ? ' done' : '') + '">' + ic(x[0] ? 'check_circle' : 'circle') + '<div><b>' + esc(x[1]) + '</b><br>' + esc(x[2]) + fix + '</div></div>';
         }).join('') + '</div></div>' +
         // links
         '<div class="wo-card"><h3>' + ic('qr_code_2') + 'Share it</h3>' +
@@ -220,6 +223,13 @@
         t.disabled = false;
         notify(d.message || (d.success ? 'Saved' : 'Could not save'), d.success ? 'success' : 'error');
         if (d.success) load();
+      }).catch(function () { t.disabled = false; notify('No connection', 'error'); });
+    } else if (a === 'link') {
+      t.disabled = true;
+      post({ action: 'link' }).then(function (d) {
+        t.disabled = false;
+        notify(d.message || (d.success ? 'Linked' : 'Could not link'), d.success ? 'success' : 'error');
+        load();
       }).catch(function () { t.disabled = false; notify('No connection', 'error'); });
     } else if (a === 'reply') {
       var inp = $('woReplyText'), txt = inp ? inp.value.trim() : '';

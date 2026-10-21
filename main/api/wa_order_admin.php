@@ -67,7 +67,11 @@ try {
         $chats->execute([$rid]);
         woaOut(['success' => true,
             'settings' => ['enabled' => $cfg['enabled'], 'order_types' => $cfg['order_types'], 'allowed_types' => $cfg['allowed_types'], 'greeting' => $cfg['greeting'],
-                'suggest_extras' => $cfg['suggest_extras'], 'webhook_ready' => $cfg['webhook_id'] !== '' && $cfg['webhook_secret'] !== ''],
+                'suggest_extras' => $cfg['suggest_extras'], 'webhook_ready' => $cfg['webhook_id'] !== '' && $cfg['webhook_secret'] !== '',
+                'webhook_note' => (function () use ($conn, $rid) {
+                    try { $n = $conn->prepare('SELECT webhook_note FROM wa_order_settings WHERE restaurant_id = ?'); $n->execute([$rid]); return (string)$n->fetchColumn(); }
+                    catch (Throwable $e) { return ''; }   // column comes with the first failed link
+                })()],
             'whatsapp' => ['connected' => $connected, 'mode' => $wa['mode'], 'via' => $wa['connected_via'], 'number' => $wa['rg_phone'], 'local' => waDryRun()],
             'ai' => aiGeminiAvailable(),
             'restaurant' => (string)($cfg['restaurant']['restaurant_name'] ?? ''),
@@ -88,6 +92,14 @@ try {
         $note = '';
         if (!empty($in['enabled'])) $note = woRegisterWebhook($conn, $rid);
         woaOut(['success' => true, 'message' => 'Saved' . ($note !== '' ? '. ' . $note : '')]);
+    }
+
+    // checklist step 2 › Link now: register the incoming-message webhook again and say what happened
+    if ($action === 'link') {
+        if (!$canSettings) woaOut(['success' => false, 'message' => 'Only the owner or a manager can change this.'], 403);
+        $note = woRegisterWebhook($conn, $rid);
+        $ready = woSettings($conn, $rid)['webhook_id'] !== '';
+        woaOut(['success' => $ready, 'message' => $note !== '' ? $note : 'WhatsApp messages are linked.']);
     }
 
     if ($action === 'try') {
@@ -141,6 +153,8 @@ function woRegisterWebhook(PDO $conn, string $rid): string
     $c = waConnection($wa);
     $base = preg_replace('#/api/[^/]+$#', '/api', woApiBase() . '/x');
     $url = $base . '/wa_webhook.php?rid=' . rawurlencode($rid);
+    // RepeatGrow only accepts https; behind the host's proxy PHP can think the request was http
+    if (!preg_match('#^http://(localhost|127\.0\.0\.1)[:/]#', $url)) $url = preg_replace('#^http://#', 'https://', $url);
     $ch = curl_init(preg_replace('#/messages/?$#', '/webhooks', $c['url']));
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_TIMEOUT => 12,
         CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $c['key']],
@@ -151,8 +165,22 @@ function woRegisterWebhook(PDO $conn, string $rid): string
     $d = json_decode((string)$res, true) ?: [];
     $id = (string)($d['data']['id'] ?? '');
     $secret = (string)($d['data']['secret'] ?? '');
-    if ($code === 403 || $code === 401) return 'Reconnect RepeatGrow to give RestroGrow permission to receive messages (Settings › WhatsApp › Connect).';
-    if ($id === '' || $secret === '') return 'Could not link WhatsApp messages yet (' . rgcError($d, 'error ' . $code) . ').';
+    if ($code === 403 || $code === 401) return woWebhookNote($conn, $rid, 'RepeatGrow did not allow RestroGrow to receive messages (' . rgcError($d, 'error ' . $code) . '). Reconnect RepeatGrow in Growth › WhatsApp, then press Link now.');
+    if ($id === '' || $secret === '') return woWebhookNote($conn, $rid, 'Could not link WhatsApp messages yet (' . rgcError($d, $code ? 'error ' . $code : 'no answer from RepeatGrow') . ').');
     $conn->prepare('UPDATE wa_order_settings SET webhook_id = ?, webhook_secret = ? WHERE restaurant_id = ?')->execute([$id, waKeySeal($secret), $rid]);
+    woWebhookNote($conn, $rid, '');
     return 'WhatsApp messages are linked.';
+}
+
+/** Why linking failed last time, kept so step 2 of the checklist can show it ('' clears it). Returns the note. */
+function woWebhookNote(PDO $conn, string $rid, string $note): string
+{
+    try {
+        $conn->prepare('UPDATE wa_order_settings SET webhook_note = ? WHERE restaurant_id = ?')->execute([$note !== '' ? mb_substr($note, 0, 300) : null, $rid]);
+    } catch (Throwable $e) {
+        try { $conn->exec('ALTER TABLE wa_order_settings ADD COLUMN webhook_note VARCHAR(300) NULL'); } catch (Throwable $e2) { /* added meanwhile */ }
+        try { $conn->prepare('UPDATE wa_order_settings SET webhook_note = ? WHERE restaurant_id = ?')->execute([$note !== '' ? mb_substr($note, 0, 300) : null, $rid]); } catch (Throwable $e3) {}
+    }
+    if ($note !== '') error_log("wa ordering webhook ($rid): $note");
+    return $note;
 }
