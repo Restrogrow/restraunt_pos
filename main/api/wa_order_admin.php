@@ -165,7 +165,17 @@ function woRegisterWebhook(PDO $conn, string $rid): string
     $d = json_decode((string)$res, true) ?: [];
     $id = (string)($d['data']['id'] ?? '');
     $secret = (string)($d['data']['secret'] ?? '');
-    if ($code === 403 || $code === 401) return woWebhookNote($conn, $rid, 'RepeatGrow did not allow RestroGrow to receive messages (' . rgcError($d, 'error ' . $code) . '). Reconnect RepeatGrow in Growth › WhatsApp, then press Link now.');
+    if ($code === 403 || $code === 401) {
+        // what the saved key can do and when it was made (RepeatGrow GET /me), so a stale key is plain to see
+        $me = curl_init(preg_replace('#/messages/?$#', '/me', $c['url']));
+        curl_setopt_array($me, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 8, CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $c['key']]]);
+        $scopes = (array)((json_decode((string)curl_exec($me), true) ?: [])['data']['key']['scopes'] ?? []);
+        curl_close($me);
+        $since = !empty($wa['connected_at']) ? ' (connected ' . date('j M, g:i a', strtotime((string)$wa['connected_at'])) . ')' : '';
+        return woWebhookNote($conn, $rid, 'RepeatGrow did not allow RestroGrow to receive messages (' . rgcError($d, 'error ' . $code) . '). '
+            . 'The saved RepeatGrow key' . $since . ' can only: ' . ($scopes ? implode(', ', $scopes) : 'unknown') . '. '
+            . 'Press Connect RepeatGrow in Growth › WhatsApp, approve, then press Link now here.');
+    }
     if ($id === '' || $secret === '') return woWebhookNote($conn, $rid, 'Could not link WhatsApp messages yet (' . rgcError($d, $code ? 'error ' . $code : 'no answer from RepeatGrow') . ').');
     $conn->prepare('UPDATE wa_order_settings SET webhook_id = ?, webhook_secret = ? WHERE restaurant_id = ?')->execute([$id, waKeySeal($secret), $rid]);
     woWebhookNote($conn, $rid, '');
