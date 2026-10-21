@@ -110,3 +110,6 @@ main/uploads/cache/*
 
 # Super Admin call recordings: private, stay on the server only
 main/uploads/lead_recordings/
+
+# Local Android build output of the order-watch module
+app/modules/order-watch/android/build/
