@@ -23,6 +23,20 @@ function rgcBack(string $result, string $msg = ''): void {
     exit;
 }
 
+/** Like rgcBack(), but the browser goes now and this script keeps running (same as process_website_order.php). */
+function rgcRedirectNow(string $result): void {
+    ignore_user_abort(true);
+    header('Location: ../views/dashboard.php?wa=' . rawurlencode($result), true, 302);
+    header('Content-Length: 0');
+    header('Connection: close');
+    if (function_exists('fastcgi_finish_request')) { fastcgi_finish_request(); return; }
+    if (function_exists('litespeed_finish_request')) { litespeed_finish_request(); return; }
+    if (function_exists('apache_setenv')) { @apache_setenv('no-gzip', '1'); }
+    @ini_set('zlib.output_compression', '0');
+    while (ob_get_level() > 0) { @ob_end_flush(); }
+    @flush();
+}
+
 try {
     $conn = getConnection();
     ensureWhatsappSchema($conn);
@@ -60,9 +74,13 @@ try {
             rg_phone = VALUES(rg_phone), connected_via = 'connect', connected_at = NOW(), lost_at = NULL, templates_retry = 0")
          ->execute([$rid, waKeySeal((string)$data['api_key']), mb_substr((string)($data['account']['name'] ?? 'RepeatGrow'), 0, 120),
                     mb_substr((string)($data['account']['id'] ?? ''), 0, 64), mb_substr((string)($data['phone_number'] ?? ''), 0, 30)]);
-    // send every template for review now; a rate limit or error is picked up by the next check
+    // back to the dashboard first: sending every template to Meta takes long, and the owner used to sit on a
+    // blank page, refresh, and get "link already used" (the connection was saved all the same)
+    rgcRedirectNow('connected');
+    // then send every template for review; a rate limit or error is picked up by the next check
+    @set_time_limit(300);
     try { waTemplatesCreate($conn, $rid); } catch (Throwable $e) { error_log('repeatgrow_connect.php templates: ' . $e->getMessage()); }
-    rgcBack('connected');
+    exit;
 } catch (Throwable $e) {
     error_log('repeatgrow_connect.php: ' . $e->getMessage());
     rgcBack('failed', 'Something went wrong. Please try again.');
