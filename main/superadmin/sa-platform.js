@@ -12,6 +12,18 @@
   var num = function (n) { return Number(n || 0).toLocaleString('en-IN'); };
   var day = function (d) { if (!d) return '-'; var t = new Date(String(d).replace(' ', 'T')); return isNaN(t) ? esc(d) : t.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); };
   var when = function (d) { if (!d) return '-'; var t = new Date(String(d).replace(' ', 'T')); return isNaN(t) ? esc(d) : t.toLocaleString('en-IN', Object.assign({ day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }, t.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {})); };
+  // where a lead came from and where they are (config/site_visitors.php: lead_attribution)
+  var fromTag = function (f) {
+    if (!f) return '';
+    var place = [f.city, f.region, f.country].filter(function (x, i, a) { return x && a.indexOf(x) === i; }).join(', ');
+    var src = [f.source && f.source !== 'Unknown' ? f.source : '', f.campaign, f.medium].filter(Boolean).join(' · ');
+    var bits = [];
+    if (src) bits.push('<span title="How they first found RestroGrow' + (f.last_source && f.last_source !== f.source ? '; came back from ' + esc(f.last_source) : '') + '">🔗 ' + esc(src) + '</span>');
+    if (place) bits.push('<span title="From their internet address (a close guess)">📍 ' + esc(place) + '</span>');
+    if (+f.pages_before) bits.push('<span title="Pages read on restrogrow.com before getting in touch">' + (+f.pages_before) + ' page' + (+f.pages_before > 1 ? 's' : '') + (+f.sessions_before > 1 ? ', ' + f.sessions_before + ' visits' : '') + (f.days_to_convert > 0 ? ', over ' + f.days_to_convert + ' day' + (f.days_to_convert > 1 ? 's' : '') : '') + '</span>');
+    if (f.landing) bits.push('<span title="First page they opened">↳ ' + esc(f.landing === '/' ? 'Home' : f.landing) + '</span>');
+    return bits.length ? '<small class="sp-from">' + bits.join('') + '</small>' : '';
+  };
   var ago = function (d) {
     if (!d) return 'never';
     var t = new Date(String(d).replace(' ', 'T')), s = (Date.now() - t) / 1000;
@@ -215,7 +227,7 @@
         (d.rows.length ? '<div class="sp-list">' + d.rows.map(function (r) {
           var due = r.follow_up_on && r.follow_up_on <= today && ['won', 'lost'].indexOf(r.stage) < 0;
           return '<div class="sp-li sp-lead"><span class="sa-ini">' + esc((r.name || '?').charAt(0).toUpperCase()) + '</span><div><b>' + esc(r.name) + (r.restaurant_name_hint ? ' <span class="sp-muted">· ' + esc(r.restaurant_name_hint) + '</span>' : '') + '</b>' +
-            '<small>' + [r.phone, r.email].filter(Boolean).map(esc).join(' · ') + ' · ' + when(r.created_at) + '</small>' + (r.message ? '<p>' + esc(r.message) + '</p>' : '') + (r.lead_notes ? '<p class="sp-note"><span class="material-symbols-rounded">sticky_note_2</span>' + esc(r.lead_notes) + '</p>' : '') + '</div>' +
+            '<small>' + [r.phone, r.email].filter(Boolean).map(esc).join(' · ') + ' · ' + when(r.created_at) + '</small>' + fromTag(r.from) + (r.message ? '<p>' + esc(r.message) + '</p>' : '') + (r.lead_notes ? '<p class="sp-note"><span class="material-symbols-rounded">sticky_note_2</span>' + esc(r.lead_notes) + '</p>' : '') + '</div>' +
             '<div class="sp-lead-r"><span class="badge ' + ({ new: 'badge-info', won: 'badge-success', lost: 'badge-danger' }[r.stage] || 'badge-warning') + '">' + esc(stageName(r.stage)) + '</span>' +
             (r.follow_up_on ? '<small class="' + (due ? 'sp-due' : 'sp-muted') + '">Follow up ' + day(r.follow_up_on) + '</small>' : '') +
             '<div class="sa-acts">' + (r.phone ? '<a class="sa-more-btn" href="tel:' + esc(r.phone) + '" title="Call"><span class="material-symbols-rounded">call</span></a><a class="sa-more-btn" target="_blank" rel="noopener" href="' + waLink(r.phone, 'Hi ' + r.name + ', this is RestroGrow. Thanks for your enquiry!') + '" title="WhatsApp"><span class="material-symbols-rounded">chat</span></a>' : '') +
@@ -408,7 +420,7 @@
         (d.rows.length ? '<div class="sp-list">' + d.rows.map(function (r) {
           var badge = { new: 'badge-info', contacted: 'badge-warning', qualified: 'badge-success', closed: 'badge-danger' }[r.status] || 'badge-info';
           return '<div class="sp-li sp-lead sp-chat-lead"><span class="sa-ini">' + esc((r.name || '?').charAt(0).toUpperCase()) + '</span><div><b>' + esc(r.name) + ' <span class="sp-muted">· ' + esc(r.restaurant_name) + '</span></b>' +
-            '<small>' + esc(r.phone) + ' · ' + esc(r.email) + ' · ' + when(r.updated_at) + '</small><p class="sp-chat-preview">' + esc(r.last_message || 'No messages yet') + '</p></div>' +
+            '<small>' + esc(r.phone) + ' · ' + esc(r.email) + ' · ' + when(r.updated_at) + '</small>' + fromTag(r.from) + '<p class="sp-chat-preview">' + esc(r.last_message || 'No messages yet') + '</p></div>' +
             '<div class="sp-lead-r"><span class="badge ' + badge + '">' + esc(chatStatusName(r.status)) + '</span><small>' + num(r.message_count) + ' messages</small>' + (+r.voice_count ? '<small class="sp-voice-tag">Voice call · ' + num(r.voice_count) + ' lines</small>' : '') +
             '<button class="btn btn-outline btn-sm" type="button" data-sp-chat-open="' + (+r.id) + '">View conversation</button></div></div>';
         }).join('') + '</div>' : empty('forum', chatLeadQuery ? 'No chat leads match your search' : 'No website chat leads yet')) + '</div></div>';

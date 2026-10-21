@@ -53,6 +53,8 @@ function obEnsure(PDO $conn): void
             KEY idx_funnel_token (token),
             KEY idx_funnel_phone (phone)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // the website visitor who signed up (config/site_visitors.php): an unfinished sign-up's lead still knows its source
+        if (!$conn->query("SHOW COLUMNS FROM signup_funnel LIKE 'vid'")->fetch()) $conn->exec('ALTER TABLE signup_funnel ADD COLUMN vid CHAR(20) NULL');
     } catch (PDOException $e) { error_log('[onboarding] tables: ' . $e->getMessage()); }
 }
 
@@ -94,11 +96,12 @@ function obFunnel(PDO $conn, string $token, string $step, array $extra = []): vo
         $st->execute([$token, $step]);
         if ($st->fetchColumn()) return;
         $phone = isset($extra['phone']) ? substr(preg_replace('/\D/', '', (string)$extra['phone']), 0, 20) : null;
-        $conn->prepare('INSERT INTO signup_funnel (token, step, phone, country, restaurant_name, restaurant_id, source, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        require_once __DIR__ . '/site_visitors.php';
+        $conn->prepare('INSERT INTO signup_funnel (token, step, phone, country, restaurant_name, restaurant_id, source, ip, vid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
             ->execute([$token, $step, $phone ?: null, isset($extra['country']) ? mb_substr((string)$extra['country'], 0, 60) : null,
                        isset($extra['restaurant_name']) ? mb_substr((string)$extra['restaurant_name'], 0, 150) : null,
                        $extra['restaurant_id'] ?? null, isset($extra['source']) ? substr((string)$extra['source'], 0, 20) : null,
-                       substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45)]);
+                       substr(geoClientIp(), 0, 45), siteVid() ?: null]);
     } catch (Throwable $e) {
         error_log('[onboarding] funnel: ' . $e->getMessage());
     }
@@ -225,7 +228,7 @@ function obSweep(PDO $conn): array
     $out = ['leads' => 0, 'nudges' => 0];
 
     // 1) a phone that got a code (or was verified) 45+ minutes ago, but no account: a lead to call
-    $st = $conn->query("SELECT f.token, f.phone, MAX(f.created_at) at, MAX(CASE WHEN f.step = 'verified' THEN 1 ELSE 0 END) verified,
+    $st = $conn->query("SELECT f.token, f.phone, MAX(f.created_at) at, MAX(CASE WHEN f.step = 'verified' THEN 1 ELSE 0 END) verified, MAX(f.vid) vid, MAX(f.ip) ip,
             (SELECT d.restaurant_name FROM signup_funnel d WHERE d.token = f.token AND d.step = 'details' LIMIT 1) rname
         FROM signup_funnel f
         WHERE f.step IN ('code_sent', 'verified') AND f.phone IS NOT NULL AND f.created_at BETWEEN NOW() - INTERVAL 7 DAY AND NOW() - INTERVAL 45 MINUTE
@@ -245,6 +248,9 @@ function obSweep(PDO $conn): array
         // email '' (not NULL): some databases have contact_queries.email NOT NULL
         $conn->prepare("INSERT INTO contact_queries (name, email, phone, message, status, stage, restaurant_name_hint) VALUES (?, '', ?, ?, 'new', 'new', ?)")
              ->execute([$f['rname'] ?: 'Unfinished sign-up', (string)$f['phone'], $msg, $f['rname'] ?: null]);
+        // where they came from: the visitor id and IP saved while they were signing up (this runs from a cron)
+        require_once __DIR__ . '/site_visitors.php';
+        siteAttribute($conn, 'contact', (string)$conn->lastInsertId(), (string)($f['vid'] ?? ''), (string)($f['ip'] ?? ''));
         obFunnel($conn, (string)$f['token'], 'lead', ['phone' => $f['phone']]);   // handled: never looked at again
         mailNewLead($conn, 'unfinished sign-up', ['name' => $f['rname'] ?: 'Unfinished sign-up', 'phone' => $f['phone'], 'message' => $msg]);
         $out['leads']++;

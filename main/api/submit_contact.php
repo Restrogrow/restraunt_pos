@@ -145,6 +145,9 @@ try {
     error_log("Contact form insert attempt - Result: " . ($result ? 'true' : 'false') . ", RowCount: $rowCount, InsertId: $insertId");
     
     if ($result && $insertId) {
+        // where this person came from and where they are (Super Admin › Leads; config/site_visitors.php)
+        require_once __DIR__ . '/../config/site_visitors.php';
+        siteAttribute($conn, 'contact', (string)$insertId);
         // tell the team, and tell the person we got it
         try {
             require_once __DIR__ . '/../config/mail_engine.php';

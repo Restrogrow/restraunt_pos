@@ -103,6 +103,8 @@ try {
         if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254)) chatbotOut(['success' => false, 'message' => 'Please check the email address.'], 400);
         $conn->prepare('UPDATE chatbot_leads SET name = ?, restaurant_name = ?, email = ?, phone = ?, consent_at = CURRENT_TIMESTAMP WHERE id = ?')
             ->execute([$name, $restaurant, $email, $phone, $leadId]);
+        require_once __DIR__ . '/../config/site_visitors.php';
+        siteAttribute($conn, 'chat', (string)$leadId);
         try {
             require_once __DIR__ . '/../config/mail_engine.php';
             $said = $conn->prepare("SELECT message FROM chatbot_messages WHERE lead_id = ? AND sender = 'visitor' ORDER BY id DESC LIMIT 4");
@@ -133,6 +135,8 @@ try {
             $name = $saidName !== '' ? $saidName : (string)$lead['name'];
             $conn->prepare('UPDATE chatbot_leads SET name = ?, restaurant_name = IF(? <> \'\', ?, restaurant_name), phone = ?, consent_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
                 ->execute([mb_substr($name, 0, 120), $saidRest, mb_substr($saidRest, 0, 160), mb_substr($typedPhone, 0, 30), $leadId]);
+            require_once __DIR__ . '/../config/site_visitors.php';
+            siteAttribute($conn, 'chat', (string)$leadId);
             try {
                 require_once __DIR__ . '/../config/mail_engine.php';
                 $said = $conn->prepare("SELECT message FROM chatbot_messages WHERE lead_id = ? AND sender = 'visitor' ORDER BY id DESC LIMIT 4");

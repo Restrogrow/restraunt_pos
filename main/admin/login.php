@@ -801,6 +801,10 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
         .su-perks b { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #dcfce7; color: #15803d; font-size: 12px; }
         @media (max-width: 480px) { .su-steps li span { display: none; } .su-steps li { justify-content: center; } }
     </style>
+<?php if ($openSignup || $googleSignup): ?>
+    <!-- the sign-up page counts in Website analytics, and links the new restaurant to where it came from (config/site_visitors.php) -->
+    <script src="../../assets/rg-analytics.js" defer></script>
+<?php endif; ?>
 </head>
 <body>
     <div class="login-wrapper">

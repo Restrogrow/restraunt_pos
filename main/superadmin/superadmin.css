@@ -175,6 +175,9 @@ input:focus, select:focus, textarea:focus { border-color: #93c5fd; box-shadow: 0
 .sp-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 30px 16px; color: var(--muted); font-size: .9rem; text-align: center; }
 .sp-empty .material-symbols-rounded { font-size: 36px; color: #cbd5e1; }
 .sp-muted { color: var(--muted); font-weight: 500; }
+/* where a lead came from (sa-platform.js fromTag) */
+.sp-li small.sp-from { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; color: #475569; }
+.sp-from span { white-space: nowrap; }
 .sp-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
 .sp-cols > .card { margin-bottom: 20px; }
 .sp-bars { display: flex; align-items: flex-end; gap: 6px; height: 150px; padding-top: 8px; }

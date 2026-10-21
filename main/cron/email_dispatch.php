@@ -26,6 +26,15 @@ try {
     $swept = mailSweep($conn, in_array('--force', $argv ?? [], true));
     [$sent, $failed] = mailDispatch($conn, 100);
     echo date('c') . " emails sent: $sent, failed: $failed, made by the sweep: " . json_encode($swept) . "\n";
+    // the website's location database (config/geo_ip.php): a fresh copy once a month, after the emails
+    try { require_once __DIR__ . '/../config/geo_ip.php'; if ($g = geoUpdateIfOld()) echo date('c') . ' location database: ' . $g[1] . "\n"; } catch (Throwable $e) { error_log('email_dispatch geo: ' . $e->getMessage()); }
+    // visitors' IP addresses are kept 12 months (privacy policy); city / country stay for the reports
+    try {
+        $conn->exec('UPDATE site_visits SET ip = NULL WHERE ip IS NOT NULL AND day < CURDATE() - INTERVAL 365 DAY LIMIT 5000');
+        $conn->exec('UPDATE site_visitors SET ip = NULL WHERE ip IS NOT NULL AND last_seen < NOW() - INTERVAL 365 DAY LIMIT 5000');
+        $conn->exec('UPDATE lead_attribution SET ip = NULL WHERE ip IS NOT NULL AND created_at < NOW() - INTERVAL 365 DAY LIMIT 5000');
+        $conn->exec('DELETE FROM ip_geo WHERE looked_at < NOW() - INTERVAL 365 DAY LIMIT 5000');
+    } catch (Throwable $e) { /* tables made on the first website visit */ }
 } catch (Throwable $e) {
     fwrite(STDERR, date('c') . ' email dispatch failed: ' . $e->getMessage() . "\n");
     exit(1);

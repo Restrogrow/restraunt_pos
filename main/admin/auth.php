@@ -790,6 +790,9 @@ function handleSignup() {
         } catch (Throwable $e) { error_log('signup extras: ' . $e->getMessage()); }
         obFunnel($pdo, (string)($_POST['signup_token'] ?? ''), 'created', ['phone' => $phone, 'country' => $country, 'restaurant_name' => $restaurantName,
                  'restaurant_id' => $restaurantId, 'source' => $viaGoogle ? 'google' : 'phone']);
+        // which website visit brought this restaurant (Instagram, Google, a campaign…), and from where
+        require_once __DIR__ . '/../config/site_visitors.php';
+        siteAttribute($pdo, 'signup', (string)$restaurantId);
     }
 
     if ($result) {

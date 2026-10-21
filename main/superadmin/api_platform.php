@@ -282,7 +282,10 @@ try {
         leadRecEnsure($conn);
         $recs = [];
         foreach ($conn->query("SELECT id, lead_id, original_name, size_bytes, created_at FROM lead_recordings ORDER BY id")->fetchAll(PDO::FETCH_ASSOC) as $rc) $recs[$rc['lead_id']][] = $rc;
-        foreach ($rows as &$row) $row['recordings'] = $recs[$row['id']] ?? [];
+        // where each lead came from and where they are (config/site_visitors.php)
+        require_once __DIR__ . '/../config/site_visitors.php';
+        $from = siteAttributionsFor($conn, 'contact', array_column($rows, 'id'));
+        foreach ($rows as &$row) { $row['recordings'] = $recs[$row['id']] ?? []; $row['from'] = $from[(string)$row['id']] ?? null; }
         unset($row);
         $recTotal = $conn->query("SELECT COUNT(*) AS n, COUNT(DISTINCT lead_id) AS leads FROM lead_recordings WHERE lead_id > 0")->fetch(PDO::FETCH_ASSOC);
         out(['rows' => $rows, 'counts' => $counts, 'recordings' => ['files' => (int)$recTotal['n'], 'leads' => (int)$recTotal['leads'], 'chunk_bytes' => leadRecChunkBytes()]]);
@@ -449,7 +452,12 @@ try {
             FROM chatbot_leads l $whereSql ORDER BY l.updated_at DESC, l.id DESC LIMIT 300");
         $stmt->execute($params);
         $counts = $conn->query("SELECT status, COUNT(*) AS n FROM chatbot_leads GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
-        out(['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'counts' => $counts]);
+        $chatRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        require_once __DIR__ . '/../config/site_visitors.php';
+        $from = siteAttributionsFor($conn, 'chat', array_column($chatRows, 'id'));
+        foreach ($chatRows as &$cr) $cr['from'] = $from[(string)$cr['id']] ?? null;
+        unset($cr);
+        out(['rows' => $chatRows, 'counts' => $counts]);
 
     case 'chatConversation':
         require_once __DIR__ . '/../config/chatbot_store.php';
