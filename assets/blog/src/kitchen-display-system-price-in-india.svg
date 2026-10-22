@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-labelledby="t d">
+  <title id="t">A kitchen display screen with new, cooking and ready order columns</title>
+  <desc id="d">Cover image for the RestroGrow blog post "Kitchen Display System Price". Illustration by RestroGrow (restrogrow.com).</desc>
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.18"/></filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBF6F1"/><stop offset="1" stop-color="#FFF1E8"/></linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="930" cy="330" r="270" fill="#FFE3D5"/>
+  <rect x="0" y="0" width="16" height="630" fill="#FC5301"/>
+  <g font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+    <rect x="80" y="118" width="180" height="44" rx="22" fill="#FC5301"/>
+    <text x="92" y="148" font-size="21" font-weight="700" fill="#fff">Kitchen tech</text>
+    <text x="80" y="258" font-size="68" font-weight="800" fill="#00000C">Kitchen Display</text><text x="80" y="340" font-size="68" font-weight="800" fill="#00000C">System Price</text>
+    <rect x="80" y="424" width="90" height="8" rx="4" fill="#FC5301"/>
+    <text x="80" y="560" font-size="26" font-weight="800" fill="#00000C">Restro<tspan fill="#FC5301">Grow</tspan></text>
+    <text x="232" y="560" font-size="26" fill="#555">Blog</text>
+    <g transform="translate(720 160)" filter="url(#sh)"><rect x="0" y="0" width="400" height="260" rx="18" fill="#00000C"/><rect x="16" y="16" width="368" height="228" rx="8" fill="#1d1d24"/><g transform="translate(30 32)"><rect width="104" height="190" rx="8" fill="#fff"/><rect width="104" height="30" rx="8" fill="#4CAF50"/><text x="52" y="21" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">READY</text><rect x="12" y="44" width="80" height="10" rx="5" fill="#ccc"/><rect x="12" y="70" width="56" height="10" rx="5" fill="#ccc"/><rect x="12" y="96" width="80" height="10" rx="5" fill="#ccc"/><rect x="12" y="122" width="56" height="10" rx="5" fill="#ccc"/><rect x="12" y="148" width="80" height="10" rx="5" fill="#ccc"/></g><g transform="translate(150 32)"><rect width="104" height="190" rx="8" fill="#fff"/><rect width="104" height="30" rx="8" fill="#FC5301"/><text x="52" y="21" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">COOKING</text><rect x="12" y="44" width="80" height="10" rx="5" fill="#ccc"/><rect x="12" y="70" width="56" height="10" rx="5" fill="#ccc"/><rect x="12" y="96" width="80" height="10" rx="5" fill="#ccc"/><rect x="12" y="122" width="56" height="10" rx="5" fill="#ccc"/><rect x="12" y="148" width="80" height="10" rx="5" fill="#ccc"/></g><g transform="translate(270 32)"><rect width="104" height="190" rx="8" fill="#fff"/><rect width="104" height="30" rx="8" fill="#2196F3"/><text x="52" y="21" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">NEW</text><rect x="12" y="44" width="80" height="10" rx="5" fill="#ccc"/><rect x="12" y="70" width="56" height="10" rx="5" fill="#ccc"/><rect x="12" y="96" width="80" height="10" rx="5" fill="#ccc"/><rect x="12" y="122" width="56" height="10" rx="5" fill="#ccc"/><rect x="12" y="148" width="80" height="10" rx="5" fill="#ccc"/></g><rect x="170" y="260" width="60" height="70" fill="#00000C"/><rect x="110" y="320" width="180" height="20" rx="10" fill="#00000C"/></g>
+    <text id="rg-brand" x="1172" y="606" text-anchor="end" font-size="20" font-weight="600" fill="#00000C" fill-opacity="0.55">restrogrow.com</text>
+  </g>
+</svg>

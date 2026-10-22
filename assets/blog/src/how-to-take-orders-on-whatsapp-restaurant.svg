@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-labelledby="t d">
+  <title id="t">A phone showing a restaurant taking a biryani order in a WhatsApp chat</title>
+  <desc id="d">Cover image for the RestroGrow blog post "Take Food Orders on WhatsApp". Illustration by RestroGrow (restrogrow.com).</desc>
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.18"/></filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBF6F1"/><stop offset="1" stop-color="#FFF1E8"/></linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="930" cy="330" r="270" fill="#FFE3D5"/>
+  <rect x="0" y="0" width="16" height="630" fill="#FC5301"/>
+  <g font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+    <rect x="80" y="118" width="193" height="44" rx="22" fill="#FC5301"/>
+    <text x="92" y="148" font-size="21" font-weight="700" fill="#fff">Direct orders</text>
+    <text x="80" y="258" font-size="68" font-weight="800" fill="#00000C">Take Food Orders</text><text x="80" y="340" font-size="68" font-weight="800" fill="#00000C">on WhatsApp</text>
+    <rect x="80" y="424" width="90" height="8" rx="4" fill="#FC5301"/>
+    <text x="80" y="560" font-size="26" font-weight="800" fill="#00000C">Restro<tspan fill="#FC5301">Grow</tspan></text>
+    <text x="232" y="560" font-size="26" fill="#555">Blog</text>
+    <g transform="translate(830 110)" filter="url(#sh)"><rect x="0" y="0" width="230" height="420" rx="34" fill="#00000C"/><rect x="14" y="40" width="202" height="340" rx="10" fill="#fff"/><rect x="85" y="16" width="60" height="8" rx="4" fill="#333"/><g transform="translate(14 40)"><rect x="0" y="0" width="202" height="46" fill="#075E54"/><circle cx="26" cy="23" r="14" fill="#fff"/><text x="50" y="29" font-size="16" font-weight="700" fill="#fff">Spice Kitchen</text><rect x="10" y="62" width="150" height="40" rx="10" fill="#eee"/><text x="20" y="88" font-size="14" fill="#222">Menu please </text><rect x="40" y="114" width="152" height="64" rx="10" fill="#DCF8C6"/><text x="50" y="140" font-size="14" fill="#222">Here is our menu.</text><text x="50" y="162" font-size="14" fill="#222">Order by 9 PM!</text><rect x="10" y="190" width="160" height="40" rx="10" fill="#eee"/><text x="20" y="216" font-size="14" fill="#222">2 biryani, 1 raita</text><rect x="40" y="242" width="152" height="40" rx="10" fill="#DCF8C6"/><text x="50" y="268" font-size="14" fill="#222">Confirmed ✓ ₹540</text></g></g>
+    <text id="rg-brand" x="1172" y="606" text-anchor="end" font-size="20" font-weight="600" fill="#00000C" fill-opacity="0.55">restrogrow.com</text>
+  </g>
+</svg>

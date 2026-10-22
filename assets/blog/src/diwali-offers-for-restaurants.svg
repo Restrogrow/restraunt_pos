@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-labelledby="t d">
+  <title id="t">A lit diya with a gift box, for Diwali restaurant offers</title>
+  <desc id="d">Cover image for the RestroGrow blog post "Diwali Offers for Restaurants". Illustration by RestroGrow (restrogrow.com).</desc>
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.18"/></filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBF6F1"/><stop offset="1" stop-color="#FFF1E8"/></linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="930" cy="330" r="270" fill="#FFE3D5"/>
+  <rect x="0" y="0" width="16" height="630" fill="#FC5301"/>
+  <g font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+    <rect x="80" y="118" width="271" height="44" rx="22" fill="#FC5301"/>
+    <text x="92" y="148" font-size="21" font-weight="700" fill="#fff">Diwali 2026 · 8 Nov</text>
+    <text x="80" y="258" font-size="68" font-weight="800" fill="#00000C">Diwali Offers</text><text x="80" y="340" font-size="68" font-weight="800" fill="#00000C">for Restaurants</text>
+    <rect x="80" y="424" width="90" height="8" rx="4" fill="#FC5301"/>
+    <text x="80" y="560" font-size="26" font-weight="800" fill="#00000C">Restro<tspan fill="#FC5301">Grow</tspan></text>
+    <text x="232" y="560" font-size="26" fill="#555">Blog</text>
+    <g transform="translate(760 150)"><g transform="translate(40 40)"><path d="M0 -18 L6 -6 L18 0 L6 6 L0 18 L-6 6 L-18 0 L-6 -6Z" fill="#FC5301" opacity="0.7"/></g><g transform="translate(300 20)"><path d="M0 -24 L8 -8 L24 0 L8 8 L0 24 L-8 8 L-24 0 L-8 -8Z" fill="#FC5301" opacity="0.7"/></g><g transform="translate(330 120)"><path d="M0 -15 L5 -5 L15 0 L5 5 L0 15 L-5 5 L-15 0 L-5 -5Z" fill="#FC5301" opacity="0.7"/></g><g transform="translate(20 170)"><path d="M0 -21 L7 -7 L21 0 L7 7 L0 21 L-7 7 L-21 0 L-7 -7Z" fill="#FC5301" opacity="0.7"/></g><g transform="translate(280 260)"><path d="M0 -18 L6 -6 L18 0 L6 6 L0 18 L-6 6 L-18 0 L-6 -6Z" fill="#FC5301" opacity="0.7"/></g><g transform="translate(160 170)" filter="url(#sh)"><path d="M-130 60 Q0 200 130 60 Z" fill="#B23A00"/><ellipse cx="0" cy="60" rx="130" ry="26" fill="#FC5301"/><path d="M0 50 C-30 0 -10 -50 0 -90 C10 -50 30 0 0 50 Z" fill="#FFC107"/><path d="M0 40 C-14 10 -6 -16 0 -40 C6 -16 14 10 0 40 Z" fill="#FFF3C4"/></g><g transform="translate(240 230)" filter="url(#sh)"><rect x="0" y="0" width="120" height="96" rx="8" fill="#00000C"/><rect x="52" y="0" width="16" height="96" fill="#FC5301"/><rect x="-8" y="-20" width="136" height="26" rx="6" fill="#00000C"/><rect x="52" y="-20" width="16" height="26" fill="#FC5301"/></g></g>
+    <text id="rg-brand" x="1172" y="606" text-anchor="end" font-size="20" font-weight="600" fill="#00000C" fill-opacity="0.55">restrogrow.com</text>
+  </g>
+</svg>

@@ -78,6 +78,110 @@ if (!function_exists('blogEnsure')) {
                 $ins->execute([$c[0], $c[1], $c[2], $i]);
             }
         }
+        try {
+            blogApplyFixes($conn);
+            blogAutoPublishStarters($conn);
+            blogFillCovers($conn);
+        } catch (Throwable $e) {
+            error_log('[blog] upkeep: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * One-time content fixes to live posts, each run once (tracked in blog_fixes).
+     * not-cheap-2026-10: RestroGrow is not marketed as a cheap POS, so the price and "where RestroGrow fits"
+     * bits come out of the cheapest-software and free-Android posts (the same edit as their starter files).
+     */
+    function blogApplyFixes(PDO $conn): void
+    {
+        $conn->exec("CREATE TABLE IF NOT EXISTS blog_fixes (
+            k VARCHAR(60) NOT NULL PRIMARY KEY,
+            done_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $done = array_flip($conn->query('SELECT k FROM blog_fixes')->fetchAll(PDO::FETCH_COLUMN));
+        $fixes = [
+            'not-cheap-2026-10' => [
+                'cheapest-restaurant-billing-software-india' => [
+                    ['#<li>\s*<strong>RestroGrow:</strong>.*?</li>\s*#s', ''],
+                    ['#<p>\s*To be clear:\s*<strong>RestroGrow is not the cheapest option.*?</p>\s*#s', ''],
+                    ['#an all-in-one like RestroGrow#', 'an all-in-one system with your own ordering website'],
+                ],
+                'free-restaurant-billing-software-for-android' => [
+                    ['#<h2[^>]*>\s*6\.\s*Where RestroGrow fits\s*</h2>\s*<p>.*?</p>\s*#s', ''],
+                ],
+            ],
+        ];
+        foreach ($fixes as $key => $posts) {
+            if (isset($done[$key])) continue;
+            foreach ($posts as $slug => $edits) {
+                $st = $conn->prepare('SELECT id, content FROM blog_posts WHERE slug = ?');
+                $st->execute([$slug]);
+                $row = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$row) continue;
+                $html = (string)$row['content'];
+                foreach ($edits as [$re, $to]) $html = preg_replace($re, $to, $html) ?? $html;
+                if ($html !== $row['content']) {
+                    $conn->prepare('UPDATE blog_posts SET content = ?, reading_minutes = ? WHERE id = ?')
+                        ->execute([$html, blogReadingMinutes($html), $row['id']]);
+                }
+            }
+            $conn->prepare('INSERT IGNORE INTO blog_fixes (k) VALUES (?)')->execute([$key]);
+        }
+    }
+
+    /**
+     * Posts with no cover get the ready-made one from assets/blog/<slug>.webp (made by scripts/blog-covers),
+     * with the alt text from its SVG source. A cover chosen in Super Admin is never replaced.
+     */
+    function blogFillCovers(PDO $conn): void
+    {
+        $dir = dirname(__DIR__, 2) . '/assets/blog';
+        $rows = $conn->query("SELECT id, slug FROM blog_posts WHERE cover_image IS NULL OR cover_image = ''")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $r) {
+            if (!is_file("$dir/{$r['slug']}.webp")) continue;
+            $alt = '';
+            $svg = @file_get_contents("$dir/src/{$r['slug']}.svg");
+            if ($svg && preg_match('#<title[^>]*>([^<]*)</title>#', $svg, $m)) $alt = html_entity_decode($m[1], ENT_QUOTES, 'UTF-8');
+            $conn->prepare('UPDATE blog_posts SET cover_image = ?, cover_alt = COALESCE(NULLIF(cover_alt, \'\'), ?) WHERE id = ?')
+                ->execute(['/assets/blog/' . $r['slug'] . '.webp', mb_substr($alt, 0, 200) ?: null, $r['id']]);
+        }
+    }
+
+    /** Starter posts whose header says "status: published" go live by themselves (no Super Admin step). */
+    function blogAutoPublishStarters(PDO $conn): void
+    {
+        foreach (blogStartersMissing($conn) as $p) {
+            if (($p['status'] ?? '') === 'published') blogImportStarter($conn, $p);
+        }
+    }
+
+    /** Adds one starter post (as a draft, or published when its header says so). */
+    function blogImportStarter(PDO $conn, array $p): void
+    {
+        static $cats = null;
+        if ($cats === null) $cats = array_column($conn->query('SELECT id, slug FROM blog_categories')->fetchAll(PDO::FETCH_ASSOC), 'id', 'slug');
+        $content = blogSanitizeHtml($p['content']);
+        $publish = ($p['status'] ?? '') === 'published';
+        $row = [
+            'title' => mb_substr($p['title'], 0, 200),
+            'slug' => blogUniqueSlug($conn, $p['slug']),
+            'excerpt' => mb_substr($p['excerpt'] ?? '', 0, 400) ?: mb_substr(blogPlainText($content), 0, 200),
+            'content' => $content,
+            'category_id' => $cats[$p['category'] ?? ''] ?? null,
+            'tags' => mb_substr($p['tags'] ?? '', 0, 500) ?: null,
+            'focus_keyword' => mb_strtolower(mb_substr($p['focus_keyword'] ?? '', 0, 120)) ?: null,
+            'keywords' => mb_substr($p['keywords'] ?? '', 0, 600) ?: null,
+            'meta_title' => mb_substr($p['meta_title'] ?? '', 0, 160) ?: null,
+            'meta_description' => mb_substr($p['meta_description'] ?? '', 0, 320) ?: null,
+            'status' => $publish ? 'published' : 'draft',
+            'published_at' => $publish ? date('Y-m-d H:i:s', strtotime((string)($p['publish_at'] ?? '')) ?: time()) : null,
+            'author_name' => 'RestroGrow team',
+            'reading_minutes' => blogReadingMinutes($content),
+        ];
+        $row['seo_score'] = blogSeoReport($row)['score'];
+        $conn->prepare('INSERT INTO blog_posts (' . implode(', ', array_keys($row)) . ') VALUES (' . implode(', ', array_fill(0, count($row), '?')) . ')')->execute(array_values($row));
+        if ($row['focus_keyword']) $conn->prepare("UPDATE blog_keywords SET status = ? WHERE keyword = ? AND status IN ('idea', 'planned')")->execute([$publish ? 'written' : 'planned', $row['focus_keyword']]);
+        $conn->prepare('INSERT IGNORE INTO blog_starter_imports (slug) VALUES (?)')->execute([$p['slug']]);
     }
 
     function blogSiteUrl(): string
@@ -99,12 +203,13 @@ if (!function_exists('blogEnsure')) {
         return ($https ? 'https' : 'http') . '://' . $host;
     }
 
-    /** A cover / image path saved as "uploads/blog/…" becomes a full address; full addresses stay. */
+    /** A cover / image path saved as "uploads/blog/…" becomes a full address; "/assets/…" is from the site root; full addresses stay. */
     function blogImageUrl(?string $path): string
     {
         $path = trim((string)$path);
         if ($path === '') return '';
         if (preg_match('#^https?://#i', $path)) return $path;
+        if (strpos($path, '/assets/') === 0) return blogWebBase() . $path;
         return blogWebBase() . '/main/' . ltrim($path, '/');
     }
 
