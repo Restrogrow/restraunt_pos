@@ -14,6 +14,8 @@
 
   var API = '../api/whatsapp_admin.php';
   var D = null, tab = 'auto', open = null, draft = null, logFilter = 'all', pendingDisconnect = false, pollT = null;
+  // a link can open a tab directly: dashboard.php?page=whatsappPage&wa_tab=missed
+  (function () { var w = new URLSearchParams(location.search).get('wa_tab'); if (['auto', 'camp', 'missed', 'log', 'settings'].indexOf(w) >= 0) tab = w; })();
   // ready campaigns: [name, audience, message, gift kind, gift value, icon, what it is for, min order, valid days]
   var PRESETS = [
     ['We miss you', 'lapsed30', 'Hi {name}, it has been a while! Come back to {restaurant} this week for {reward}. Use code {code} before {valid_till}. Order here: {link}', 'flat', 75, 'favorite', 'Bring back customers who have not ordered for a month. Works best of all.', 299, 7],
@@ -234,10 +236,53 @@
       }).join('') + '</div>' : (draft ? '' : '<div class="lsa-empty" style="margin-top:12px"><span class="material-symbols-rounded">campaign</span><b>No campaigns yet</b><span>Start from a ready idea: “We miss you” brings back quiet customers best.</span></div>'));
   }
 
+  /* ── missed calls ── */
+  function mcResult(c) {
+    if (c.result === 'queued') return c.sent ? pill('sent') + (c.clicked ? ' <span class="wa-pill ok">Tapped link</span>' : '') : pill('queued');
+    return '<span class="wa-pill muted" title="' + esc(c.note) + '">' + esc({ off: 'Off', not_ready: 'Not ready', stopped: 'Replied STOP', repeat: 'Already sent', bad_number: 'No number' }[c.result] || c.result) + '</span>';
+  }
+  function missedTab() {
+    var m = D.missed, k = m.kpis, own = D.settings.mode === 'own';
+    var intro = '<div class="wa-intro"><span class="material-symbols-rounded">call</span><div><b>Missed a call? The caller gets your order link on WhatsApp.</b> ' +
+      'In the rush nobody can pick up every call, and a customer who can’t get through often orders somewhere else. With this on, they get a WhatsApp from your number a moment later: sorry we missed you, here is the link to order. ' +
+      'One message per number every 12 hours, never after 3 hours, and never to someone who replied STOP.</div></div>';
+    if (!own) return intro + '<div class="wa-lock"><span class="material-symbols-rounded">lock</span><b>Missed-call messages need your own WhatsApp number</b><p>Connect your RepeatGrow account in Settings, so the message comes from your restaurant’s own WhatsApp.</p><button type="button" class="btn btn-primary" data-wa-tab="settings">Open Settings</button></div>';
+    if (!linked() && !D.settings.key_last4 && D.connect.available) return intro + connectBanner();
+    var tplName = m.template_name || (slug() + '_missed_call');
+    var card = '<div class="wa-card' + (m.enabled ? ' on' : '') + ' open" data-wa-kind="missed_call">' +
+      '<div class="wa-card-top"><span class="wa-ic material-symbols-rounded">call</span><div class="wa-card-t"><b>Missed-call message</b><small>' + tplChip(m) + '</small></div>' +
+        '<label class="up-switch"><input type="checkbox" data-wa-auto-toggle="missed_call"' + (m.enabled ? ' checked' : '') + '><span></span></label></div>' +
+      '<div class="wa-ed"><div class="wa-ed-l">' +
+        '<label class="wa-lbl">Message<textarea data-wa-f="message" rows="4" maxlength="700">' + esc(m.message) + '</textarea></label>' +
+        '<div class="wa-varbar">' + ['restaurant', 'link', 'name'].map(function (k2) { return '<button type="button" data-wa-var="{' + k2 + '}" title="' + esc(k2 === 'name' ? 'Their first name if they ordered before, else “there”' : D.vars[k2]) + '">{' + k2 + '}</button>'; }).join('') + '</div>' +
+        (linked() ? linkedBox(m)
+          : '<div class="ls-grid" style="margin-top:12px"><label>Approved template name<input data-wa-f="template_name" value="' + esc(m.template_name) + '" placeholder="' + esc(tplName) + '"></label>' +
+            '<label>Language<select data-wa-f="language">' + [['en', 'English'], ['en_US', 'English (US)'], ['hi', 'Hindi']].map(function (l) { return '<option value="' + l[0] + '"' + (m.language === l[0] ? ' selected' : '') + '>' + l[1] + '</option>'; }).join('') + '</select></label></div>' +
+            templateBox(tplName, m.message)) +
+      '</div><div class="wa-ed-r">' + phone(fill(m.message, { name: 'there' })) +
+        '<div class="wa-ed-acts"><button type="button" class="btn btn-secondary" data-wa-mc-test><span class="material-symbols-rounded">call</span> Pretend a missed call</button>' +
+        '<button type="button" class="btn btn-primary" data-wa-save="missed_call"><span class="material-symbols-rounded">save</span> Save</button></div></div></div></div>';
+    var steps = '<div class="ls-box wa-mc-setup"><b class="wa-mc-h">Set it up once (about 15 minutes)</b><ol class="wa-mc-steps">' +
+      '<li><b>Take a calling service that reports missed calls.</b> For example Exotel, MyOperator, Knowlarity or Servetel. Ask them to forward your restaurant number to their number when you are busy or don’t pick up, or put their number on Google and your menu. They charge for this separately.</li>' +
+      '<li><b>Paste this link in their settings</b> where they ask for a webhook, URL callback or missed-call API for unanswered calls:' +
+        '<div class="wa-mc-url"><code>' + esc(m.url) + '</code><button type="button" class="lsa-edit" data-wa-copy="' + esc(m.url) + '">Copy<span class="material-symbols-rounded">content_copy</span></button>' +
+        '<button type="button" class="lsa-edit" data-wa-mc-key title="Makes a new link. The old one stops working.">New link<span class="material-symbols-rounded">key</span></button></div>' +
+        '<small>Keep this link private: anyone who has it can make your number send this message.</small></li>' +
+      '<li><b>Check it.</b> Turn the message on, then tap <b>Pretend a missed call</b>: your test phone (Settings) gets the message. Then call your number from another phone and don’t pick up.</li>' +
+      '<li><b>Tell your customers.</b> Add one line to your menu and Google listing: <i>“Missed our call? We’ll send you our menu on WhatsApp.”</i> WhatsApp’s rules ask that people know they may get a message, and they can always reply STOP.</li>' +
+      '</ol></div>';
+    var nums = '<div class="ls-kpis wa-mc-kpis"><div><b>' + k.calls + '</b><span>Missed calls (30 days)</span></div><div><b>' + k.sent + '</b><span>Got the link</span></div><div><b>' + k.clicked + '</b><span>Tapped the link</span></div></div>';
+    var list = m.calls.length ? '<div class="wa-log">' + m.calls.map(function (c) {
+        return '<div class="wa-log-row"><div class="wa-log-who"><b>' + esc(c.phone) + (c.test ? ' <span class="wa-chip muted">Test</span>' : '') + '</b><small>' + esc(String(c.at || '').slice(5, 16)) + '</small></div><p>' + esc(c.note || '') + '</p><div class="wa-log-st">' + mcResult(c) + '</div></div>';
+      }).join('') + '</div>'
+      : '<div class="lsa-empty"><span class="material-symbols-rounded">call</span><b>No missed calls yet</b><span>Once your calling service is set up, every missed call shows here with what happened.</span></div>';
+    return intro + card + steps + nums + '<b class="wa-mc-h" style="display:block;margin:16px 0 8px">Latest missed calls</b>' + list;
+  }
+
   /* ── log ── */
   function logTab() {
     var L = D.log.filter(function (l) { return logFilter === 'all' || l.status === logFilter; });
-    var names = {}; D.auto.forEach(function (a) { names[a.kind] = a.label; }); names.campaign = 'Campaign';
+    var names = {}; D.auto.forEach(function (a) { names[a.kind] = a.label; }); names.campaign = 'Campaign'; names.missed_call = 'Missed call';
     return '<div class="wa-logbar"><div class="lsp-range">' + [['all', 'All'], ['sent', 'Sent'], ['queued', 'Queued'], ['failed', 'Failed'], ['skipped', 'Skipped']].map(function (f) { return '<button type="button" data-wa-filter="' + f[0] + '"' + (f[0] === logFilter ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>' +
       '<div style="display:flex;gap:8px"><button type="button" class="btn btn-secondary" data-wa-dispatch><span class="material-symbols-rounded">sync</span> Send waiting now</button>' + (D.kpis.failed ? '<button type="button" class="btn btn-secondary" data-wa-retry><span class="material-symbols-rounded">replay</span> Retry failed</button>' : '') + '</div></div>' +
       (L.length ? '<div class="wa-log">' + L.map(function (l) {
@@ -280,13 +325,15 @@
         '<div class="wa-ring" style="--p:' + pct + '"><div><b>' + pct + '%</b><span>reachable</span></div></div>' +
         '<div class="ls-kpis"><div><b>' + k.optin + '</b><span>Opted in of ' + k.customers + '</span></div><div><b>' + k.sent + '</b><span>Sent (30 days)</span></div>' +
           (k.receipts || D.dry_run ? '<div><b>' + RGStats.pct(k.read, k.sent) + '</b><span>Read</span></div>' : '') + '<div><b>' + (k.clicked || 0) + '</b><span>Link taps</span></div><div><b>' + money(k.revenue) + '</b><span>Orders from messages</span></div></div></div>' +
-      '<div class="ls-tabs">' + [['auto', 'Automatic messages', 'bolt'], ['camp', 'Campaigns', 'campaign'], ['log', 'Message log', 'forum'], ['settings', 'Settings', 'settings']].map(function (t) {
+      '<div class="ls-tabs">' + [['auto', 'Automatic messages', 'bolt'], ['camp', 'Campaigns', 'campaign'], ['missed', 'Missed calls', 'call'], ['log', 'Message log', 'forum'], ['settings', 'Settings', 'settings']].map(function (t) {
         return '<button type="button" class="ls-tab' + (t[0] === tab ? ' on' : '') + '" data-wa-tab="' + t[0] + '"><span class="material-symbols-rounded">' + t[2] + '</span>' + t[1] + (t[0] === 'log' && k.failed ? ' <em class="wa-badge">' + k.failed + '</em>' : '') + '</button>';
       }).join('') + '</div>' +
-      '<div id="waTab">' + (tab === 'auto' ? autoTab() : tab === 'camp' ? campTab() : tab === 'log' ? logTab() : setTab()) + '</div>';
+      '<div id="waTab">' + (tab === 'auto' ? autoTab() : tab === 'camp' ? campTab() : tab === 'missed' ? missedTab() : tab === 'log' ? logTab() : setTab()) + '</div>';
   }
 
-  function readAuto(card) { var a = D.auto.filter(function (x) { return x.kind === card.getAttribute('data-wa-kind'); })[0]; card.querySelectorAll('[data-wa-f]').forEach(function (f) { a[f.getAttribute('data-wa-f')] = f.value; }); return a; }
+  // a gift message, or the missed-call message (its own tab)
+  function findAuto(kind) { return kind === 'missed_call' ? D.missed : D.auto.filter(function (x) { return x.kind === kind; })[0]; }
+  function readAuto(card) { var a = findAuto(card.getAttribute('data-wa-kind')); card.querySelectorAll('[data-wa-f]').forEach(function (f) { a[f.getAttribute('data-wa-f')] = f.value; }); return a; }
   function readDraft() { var box = document.querySelector('.wa-compose'); if (!box) return; box.querySelectorAll('[data-wc]').forEach(function (f) { draft[f.getAttribute('data-wc')] = f.value; }); }
   function saveAuto(a, btn, extra) {
     if (btn) btn.disabled = true;
@@ -345,6 +392,17 @@
     }
     if ((t = e.target.closest('[data-wa-cancel]'))) { post({ action: 'cancel', id: +t.getAttribute('data-wa-cancel') }).then(function () { notify('Campaign stopped', 'success'); load(); }); return; }
     if ((t = e.target.closest('[data-wa-filter]'))) { logFilter = t.getAttribute('data-wa-filter'); draw(); return; }
+    // Missed calls: save what's typed, then pretend a missed call from the test phone
+    if ((t = e.target.closest('[data-wa-mc-test]'))) {
+      var mcA = readAuto(t.closest('[data-wa-kind]')); t.disabled = true;
+      saveAuto(mcA, null, true).then(function () { return post({ action: 'missed_test' }); }).then(function (d) { t.disabled = false; notify(d.message || (d.success ? 'Done' : 'Could not test'), d.success ? 'success' : 'error'); load(); });
+      return;
+    }
+    if ((t = e.target.closest('[data-wa-mc-key]'))) {
+      t.disabled = true;
+      post({ action: 'missed_key' }).then(function (d) { notify(d.success ? 'New link made. Paste it in your calling service again: the old one stopped working.' : 'Could not make a new link', d.success ? 'success' : 'error'); load(); });
+      return;
+    }
     if ((t = e.target.closest('[data-wa-dispatch]'))) { t.disabled = true; post({ action: 'dispatch' }).then(function (d) { notify(d.success ? (d.dispatched.sent + ' sent' + (d.dispatched.failed ? ', ' + d.dispatched.failed + ' failed' : '')) : 'Could not send', d.success ? 'success' : 'error'); load(); }); return; }
     if ((t = e.target.closest('[data-wa-retry]'))) { t.disabled = true; post({ action: 'retry' }).then(function (d) { notify(d.success ? d.requeued + ' queued again' : 'Could not retry', d.success ? 'success' : 'error'); load(); }); return; }
     if ((t = e.target.closest('[data-wa-mode]'))) { D.settings.mode = t.getAttribute('data-wa-mode'); draw(); return; }
@@ -388,7 +446,7 @@
     var t = e.target;
     if (t.id === 'waOn') { saveSettings(null, true); return; }
     if (t.hasAttribute('data-wa-auto-toggle')) {
-      var a = D.auto.filter(function (x) { return x.kind === t.getAttribute('data-wa-auto-toggle'); })[0]; a.enabled = t.checked ? 1 : 0;
+      var a = findAuto(t.getAttribute('data-wa-auto-toggle')); a.enabled = t.checked ? 1 : 0;
       saveAuto(a).then(function () { draw(); }); return;
     }
     if (t.closest('.wa-compose')) { readDraft(); draw(); }

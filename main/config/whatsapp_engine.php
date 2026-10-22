@@ -55,6 +55,8 @@ if (!function_exists('ensureWhatsappSchema')) {
             'challenge'   => ['Challenge done', 'flag', 'Challenge complete, {name}! {restaurant} has {reward} for you. Use code {code} before {valid_till}.'],
             'streak'      => ['Weekly streak', 'local_fire_department', 'What a streak, {name}! {restaurant} has {reward} for you. Use code {code} before {valid_till}.'],
             'vip'         => ['Member welcome gift', 'diamond', 'Welcome to the club, {name}! Your member gift at {restaurant}: {reward}. Use code {code} before {valid_till}.'],
+            // not a gift: sent when the restaurant misses a call (waMissedCall, own tab on the page)
+            'missed_call' => ['Missed call', 'call', 'Sorry we missed your call at {restaurant}! You can order here in a minute: {link} Or reply to this message and we will call you back.'],
         ];
     }
     // Variables a message can use, in the order the owner may write them
@@ -143,8 +145,21 @@ if (!function_exists('ensureWhatsappSchema')) {
         if (!in_array('message_id', array_column($conn->query("SHOW INDEX FROM wa_outbox WHERE Key_name = 'idx_wa_msg'")->fetchAll(PDO::FETCH_ASSOC), 'Column_name'), true))
             $conn->exec('ALTER TABLE wa_outbox ADD INDEX idx_wa_msg (message_id)');
         $wcols = array_column($conn->query('SHOW COLUMNS FROM wa_settings')->fetchAll(PDO::FETCH_ASSOC), 'Field');
-        foreach (['status_hook_id' => 'VARCHAR(80) NULL', 'status_hook_secret' => 'VARCHAR(300) NULL'] as $col => $def)
+        foreach (['status_hook_id' => 'VARCHAR(80) NULL', 'status_hook_secret' => 'VARCHAR(300) NULL', 'mc_key' => 'VARCHAR(64) NULL'] as $col => $def)
             if (!in_array($col, $wcols, true)) $conn->exec("ALTER TABLE wa_settings ADD COLUMN $col $def");
+        // calls the restaurant missed (api/missed_call.php): what happened to each one
+        $conn->exec("CREATE TABLE IF NOT EXISTS wa_missed_calls (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            restaurant_id VARCHAR(50) NOT NULL,
+            phone VARCHAR(20) NOT NULL,
+            source VARCHAR(20) NOT NULL DEFAULT 'call',
+            result VARCHAR(20) NOT NULL,
+            note VARCHAR(160) NULL,
+            outbox_id INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_mc_rest (restaurant_id, created_at),
+            INDEX idx_mc_phone (restaurant_id, phone, created_at)
+        )");
         waKeysEncryptAll($conn);
     }
 
@@ -324,7 +339,8 @@ if (!function_exists('ensureWhatsappSchema')) {
     /** The owner's setup for each message type, defaults filled in. */
     function waAutoConfig(PDO $conn, string $rid): array {
         $out = [];
-        foreach (waKinds() as $k => $d) $out[$k] = ['kind' => $k, 'label' => $d[0], 'icon' => $d[1], 'enabled' => 1, 'template_name' => '', 'language' => 'en', 'message' => $d[2],
+        // gifts start switched on; the missed-call message stays off until the owner sets it up
+        foreach (waKinds() as $k => $d) $out[$k] = ['kind' => $k, 'label' => $d[0], 'icon' => $d[1], 'enabled' => $k === 'missed_call' ? 0 : 1, 'template_name' => '', 'language' => 'en', 'message' => $d[2],
             // no row yet (e.g. just connected): no template made for it so far
             'template_status' => null, 'template_reason' => null, 'pending_template' => null, 'template_text' => null, 'pending_text' => null,
             'template_version' => 0, 'template_vars' => null, 'pending_vars' => null];
@@ -607,6 +623,78 @@ if (!function_exists('ensureWhatsappSchema')) {
         }
     }
 
+    /* ───────────── Missed calls ───────────── */
+
+    /** Secret part of this restaurant's missed-call webhook link (made once; "New link" replaces it). */
+    function waMissedCallKey(PDO $conn, string $rid, bool $renew = false): string {
+        $st = $conn->prepare('SELECT mc_key FROM wa_settings WHERE restaurant_id = ?');
+        $st->execute([$rid]);
+        $key = (string)$st->fetchColumn();
+        if ($key === '' || $renew) {
+            $key = bin2hex(random_bytes(16));
+            $conn->prepare('INSERT INTO wa_settings (restaurant_id, mc_key) VALUES (?, ?) ON DUPLICATE KEY UPDATE mc_key = VALUES(mc_key)')->execute([$rid, $key]);
+        }
+        return $key;
+    }
+
+    /** The link a calling service (Exotel, MyOperator, Knowlarity…) calls when a call goes unanswered. */
+    function waMissedCallUrl(PDO $conn, string $rid): string {
+        $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+        $app = preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host)
+            // local copy: this computer's own address (only for the "Pretend a missed call" test)
+            ? 'http://' . $host . preg_replace('#/main/.*$#', '', (string)($_SERVER['SCRIPT_NAME'] ?? '')) . '/main/api'
+            : (rtrim((string)env('APP_API_BASE', ''), '/') ?: (rtrim((string)env('APP_URL', ''), '/') ?: 'https://restrogrow.com') . '/main/api');
+        return $app . '/missed_call.php?rid=' . rawurlencode($rid) . '&key=' . waMissedCallKey($conn, $rid);
+    }
+
+    /**
+     * A call to the restaurant went unanswered: WhatsApp the caller the order link (once per 12 hours
+     * per number). Every call is logged in wa_missed_calls with what happened. Returns [result, note].
+     * result: queued | off | not_ready | stopped | repeat | bad_number
+     */
+    function waMissedCall(PDO $conn, string $rid, string $rawPhone, string $source = 'call'): array {
+        ensureWhatsappSchema($conn);
+        require_once __DIR__ . '/order_abuse_guard.php';
+        $phone = orderAbuseNormalizePhone(preg_replace('/[^\d+]/', '', $rawPhone)) ?? '';
+        $log = function (string $result, string $note, ?int $outbox = null) use ($conn, $rid, $phone, $rawPhone, $source) {
+            $conn->prepare('INSERT INTO wa_missed_calls (restaurant_id, phone, source, result, note, outbox_id) VALUES (?, ?, ?, ?, ?, ?)')
+                 ->execute([$rid, mb_substr($phone !== '' ? $phone : preg_replace('/\D/', '', $rawPhone), 0, 20), $source, $result, mb_substr($note, 0, 160), $outbox]);
+            return [$result, $note];
+        };
+        if ($phone === '' || strlen(preg_replace('/\D/', '', $phone)) < 8) return $log('bad_number', 'No caller number (hidden or private)');
+        $s = waSettings($conn, $rid);
+        $a = waAutoConfig($conn, $rid)['missed_call'];
+        if (!$s['enabled'] || !$a['enabled']) return $log('off', 'Missed-call messages are switched off');
+        require_once __DIR__ . '/access_control.php';
+        if (!accessPageOn($conn, $rid, 'whatsappPage')) return $log('off', 'WhatsApp is switched off for this restaurant');
+        if ($s['mode'] !== 'own') return $log('not_ready', 'Needs your own WhatsApp number (Settings)');
+        // a customer who replied STOP never gets this either
+        $c = $conn->prepare('SELECT id, customer_name, wa_stopped_at FROM customers WHERE restaurant_id = ? AND phone = ? ORDER BY id LIMIT 1');
+        $c->execute([$rid, $phone]);
+        $cust = $c->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($cust && !empty($cust['wa_stopped_at'])) return $log('stopped', 'This customer replied STOP on WhatsApp');
+        $recent = $conn->prepare("SELECT COUNT(*) FROM wa_missed_calls WHERE restaurant_id = ? AND phone = ? AND result = 'queued' AND created_at >= NOW() - INTERVAL 12 HOUR");
+        $recent->execute([$rid, $phone]);
+        if ($source !== 'test' && (int)$recent->fetchColumn() > 0) return $log('repeat', 'Already sent the link in the last 12 hours');
+        $r = waRestaurant($conn, $rid);
+        $first = $cust ? trim(explode(' ', trim((string)$cust['customer_name']))[0] ?? '') : '';
+        $vars = ['name' => $first !== '' ? $first : 'there', 'restaurant' => $r['name'], 'link' => WA_LINK_SLOT,
+                 'reward' => '', 'code' => '', 'valid_till' => '', 'min_order' => '', 'tier' => '', 'count' => ''];
+        $b = waBuild($s, $a, $a['message'], $vars);
+        if (!$b) return $log('not_ready', ($a['template_status'] ?? '') === 'pending' ? 'Message is waiting for WhatsApp approval' : 'Message has no approved WhatsApp template yet');
+        // the call row first: its id makes this message unique in the outbox
+        [$res] = $log('queued', 'Order link sent on WhatsApp');
+        $callId = (int)$conn->lastInsertId();
+        $conn->prepare("INSERT IGNORE INTO wa_outbox (restaurant_id, kind, ref_type, ref_id, customer_id, phone, name, template_name, language, params, body, status, send_after)
+            VALUES (?, 'missed_call', 'call', ?, ?, ?, ?, ?, ?, ?, ?, 'queued', NOW())")
+             ->execute([$rid, $callId, $cust['id'] ?? null, $phone, $cust['customer_name'] ?? null, $b['template_name'], $b['language'],
+                        json_encode($b['params'], JSON_UNESCAPED_UNICODE), mb_substr($b['body'], 0, 1000)]);
+        $outboxId = (int)$conn->lastInsertId();
+        waFillLinkSlot($conn, $rid, $outboxId, 'wa_auto', 'missed_call', 'WhatsApp · missed call');
+        $conn->prepare('UPDATE wa_missed_calls SET outbox_id = ? WHERE id = ?')->execute([$outboxId ?: null, $callId]);
+        return [$res, 'Order link sent on WhatsApp'];
+    }
+
     /* ───────────── Templates through Connect RepeatGrow ───────────── */
 
     /** Example values Meta sees when reviewing a template. */
@@ -637,18 +725,20 @@ if (!function_exists('ensureWhatsappSchema')) {
         try {
         foreach (waAutoConfig($conn, $rid) as $kind => $a) {
             if ($kinds !== null && !in_array($kind, $kinds, true)) continue;
+            if ($kinds === null && $kind === 'missed_call' && !$a['enabled']) continue;   // only once the owner turns missed calls on
             [$text, $vars] = waTemplateFromMessage($a['message']);
             if ($text === ($a['template_text'] ?? null) && in_array($a['template_status'] ?? null, ['approved', 'pending'], true)) { $out['unchanged']++; continue; }
             if ($text === ($a['pending_text'] ?? null)) { $out['unchanged']++; continue; }   // in review, or turned down: change the wording first
             $isUpdate = ($a['template_status'] ?? null) === 'approved' && !empty($a['template_name']);
             $version = $isUpdate ? (int)($a['template_version'] ?? 0) + 1 : (int)($a['template_version'] ?? 0);
-            $name = $slug . '_' . $kind . '_gift' . ($version > 0 ? '_v' . ($version + 1) : '');
+            $suffix = $kind === 'missed_call' ? '' : '_gift';
+            $name = $slug . '_' . $kind . $suffix . ($version > 0 ? '_v' . ($version + 1) : '');
             $sampleVals = array_map(function ($k) use ($samples) { return (string)$samples[$k]; }, $vars);
             [$ok, $res, $http] = rgcCreateTemplate($s['api_key'], $name, $a['language'] ?: 'en', $text, $sampleVals);
             if (!$ok && $http === 409) {
                 // RepeatGrow already has this name with other wording (e.g. after reconnecting): use the next version
                 $version++;
-                $name = $slug . '_' . $kind . '_gift_v' . ($version + 1);
+                $name = $slug . '_' . $kind . $suffix . '_v' . ($version + 1);
                 [$ok, $res, $http] = rgcCreateTemplate($s['api_key'], $name, $a['language'] ?: 'en', $text, $sampleVals);
             }
             if (!$ok) { $out['errors'][$kind] = $res; continue; }
@@ -817,6 +907,11 @@ if (!function_exists('ensureWhatsappSchema')) {
             foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $m) {
                 if (isset($stopped[$m['phone']])) continue;
                 $retry = false;
+                // "sorry we missed your call" only makes sense soon after the call (not the next morning)
+                if ($m['kind'] === 'missed_call' && strtotime((string)$m['created_at']) < time() - 3 * 3600) {
+                    $upd->execute(['skipped', 'Too late: the call was more than 3 hours ago', null, null, null, $m['id']]);
+                    continue;
+                }
                 if ($m['kind'] === 'campaign' && $s['weekly_cap'] > 0) {
                     $cap->execute([$rid, $m['phone']]);
                     if ((int)$cap->fetchColumn() >= $s['weekly_cap']) { $upd->execute(['skipped', 'Weekly limit for this customer', null, null, null, $m['id']]); continue; }

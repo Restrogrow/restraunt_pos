@@ -64,6 +64,9 @@ try {
             $used[$x['kind']] = ['orders' => (int)$x['orders'], 'revenue' => (float)$x['revenue']];
         }
         $autos = loyaltyAutomations($conn, $rid);
+        $allAuto = waAutoConfig($conn, $rid);
+        $mc = $allAuto['missed_call'];
+        unset($allAuto['missed_call']);   // has its own tab (Missed calls), not a gift message
         $auto = array_values(array_map(function ($a) use ($stats, $used, $autos, $conn, $rid) {
             [$tpl, $vars] = waTemplateFromMessage($a['message']);
             // the preview shows the gift this automation really gives
@@ -72,7 +75,18 @@ try {
             $a['needs_update'] = !empty($a['template_status']) && $tpl !== $a['template_text'] && $tpl !== $a['pending_text'];
             return $a + ['sample_reward' => $sampleReward, 'template_text' => $tpl, 'template_vars' => $vars, 'stats' => $stats[$a['kind']] ?? (object)[], 'orders' => $used[$a['kind']] ?? ['orders' => 0, 'revenue' => 0],
                 'funnel' => $funnel[$a['kind']] ?? ['delivered' => 0, 'read' => 0, 'clicked' => 0]];
-        }, waAutoConfig($conn, $rid)));
+        }, $allAuto));
+        // Missed calls tab: the message, its template, the webhook link, the last calls and 30-day numbers
+        [$mcTpl] = waTemplateFromMessage($mc['message']);
+        $mcCalls = $q('SELECT m.phone, m.source, m.result, m.note, m.created_at, o.status, o.clicked_at FROM wa_missed_calls m LEFT JOIN wa_outbox o ON o.id = m.outbox_id
+            WHERE m.restaurant_id = ? ORDER BY m.id DESC LIMIT 25', [$rid])->fetchAll(PDO::FETCH_ASSOC);
+        $mcSum = $q("SELECT COUNT(*) calls, SUM(m.result = 'queued') queued, SUM(o.status = 'sent') sent, SUM(o.clicked_at IS NOT NULL) clicked FROM wa_missed_calls m
+            LEFT JOIN wa_outbox o ON o.id = m.outbox_id WHERE m.restaurant_id = ? AND m.source <> 'test' AND m.created_at >= NOW() - INTERVAL 30 DAY", [$rid])->fetch(PDO::FETCH_ASSOC);
+        $missed = $mc + ['template_text' => $mcTpl, 'needs_update' => !empty($mc['template_status']) && $mcTpl !== $mc['template_text'] && $mcTpl !== $mc['pending_text'],
+            'url' => waMissedCallUrl($conn, $rid),
+            'calls' => array_map(function ($c) { return ['phone' => substr($c['phone'], 0, 2) . '******' . substr($c['phone'], -2), 'test' => $c['source'] === 'test', 'result' => $c['result'],
+                'note' => $c['note'], 'sent' => $c['status'] === 'sent', 'clicked' => !empty($c['clicked_at']), 'at' => $c['created_at']]; }, $mcCalls),
+            'kpis' => ['calls' => (int)$mcSum['calls'], 'queued' => (int)$mcSum['queued'], 'sent' => (int)$mcSum['sent'], 'clicked' => (int)$mcSum['clicked']]];
         $campaigns = $q("SELECT c.*, (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.status = 'sent') sent,
                 (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.status = 'failed') failed,
                 (SELECT COUNT(*) FROM wa_outbox o WHERE o.restaurant_id = c.restaurant_id AND o.ref_type = 'campaign' AND o.ref_id = c.id AND o.delivered_at IS NOT NULL) delivered,
@@ -102,7 +116,7 @@ try {
             'platform' => ['available' => env('REPEATGROW_API_URL') && env('REPEATGROW_API_KEY') && $pt['name'] !== '', 'template' => $pt['name'], 'text' => $pt['text']],
             'kpis' => ['customers' => (int)$k['total'], 'optin' => (int)$k['optin'], 'sent' => (int)$sum['sent'], 'failed' => (int)$sum['failed'], 'queued' => (int)$sum['queued'], 'revenue' => $rev,
                        'delivered' => (int)$sum['delivered'], 'read' => (int)$sum['seen'], 'clicked' => (int)$sum['clicked'], 'receipts' => $receipts],
-            'auto' => $auto, 'vars' => waVars(),
+            'auto' => $auto, 'missed' => $missed, 'vars' => waVars(),
             'audiences' => array_map(function ($key, $a) use ($conn, $rid) { return ['key' => $key, 'label' => $a[0], 'count' => waAudienceCount($conn, $rid, $key)]; }, array_keys(waAudiences()), waAudiences()),
             'campaigns' => array_map(function ($c) { return ['id' => (int)$c['id'], 'name' => $c['name'], 'audience' => $c['audience'], 'template_name' => $c['template_name'], 'language' => $c['language'],
                 'message' => $c['message'], 'gift_kind' => $c['gift_kind'], 'gift_value' => (float)$c['gift_value'], 'gift_item_id' => $c['gift_item_id'] ? (int)$c['gift_item_id'] : null,
@@ -166,7 +180,9 @@ try {
         if (isset($in['message'])) {
             $msg = trim(mb_substr((string)$in['message'], 0, 700));
             if ($msg === '') waOut(['success' => false, 'message' => 'Write the message'], 400);
-            if (strpos($msg, '{code}') === false) waOut(['success' => false, 'message' => 'Keep {code} in the message so the customer gets their gift code'], 400);
+            if ($kind === 'missed_call') {
+                if (strpos($msg, '{link}') === false) waOut(['success' => false, 'message' => 'Keep {link} in the message so the caller can order'], 400);
+            } elseif (strpos($msg, '{code}') === false) waOut(['success' => false, 'message' => 'Keep {code} in the message so the customer gets their gift code'], 400);
             waSaveMessage($conn, $rid, $kind, $msg);
             // connected: the new wording goes to Meta for review by itself
             if ($s['connected_via'] === 'connect') {
@@ -193,6 +209,7 @@ try {
             $auto = waAutoConfig($conn, $rid);
             $kind = (string)($in['kind'] ?? '');
             if (!isset($auto[$kind])) waOut(['success' => false, 'message' => 'Unknown message'], 400);
+            if ($kind === 'missed_call' && $s['mode'] !== 'own') waOut(['success' => false, 'message' => 'Missed-call messages need your own WhatsApp number. Connect it in Settings.'], 400);
             $b = waBuild($s, $auto[$kind], $auto[$kind]['message'], $vars);
             if (!$b) {
                 $st0 = $auto[$kind]['template_status'] ?? '';
@@ -257,6 +274,16 @@ try {
     }
 
     if ($action === 'dispatch') waOut(['success' => true, 'dispatched' => waDispatch($conn, $rid, 25)]);
+
+    // Missed calls: a new webhook link (the old one stops working), and a pretend missed call from the test phone
+    if ($action === 'missed_key') { waMissedCallKey($conn, $rid, true); waOut(['success' => true, 'url' => waMissedCallUrl($conn, $rid)]); }
+    if ($action === 'missed_test') {
+        if ($s['test_phone'] === '') waOut(['success' => false, 'message' => 'Add your own phone number under Settings first'], 400);
+        [$result, $note] = waMissedCall($conn, $rid, $s['test_phone'], 'test');
+        if ($result !== 'queued') waOut(['success' => false, 'message' => $note], 400);
+        $d = waDispatch($conn, $rid, 5);
+        waOut(['success' => true, 'message' => waDryRun() ? 'Test only: on this computer nothing is sent. Check the list below.' : ($d['sent'] ? 'Sent to your phone' : 'Queued. It goes out within a minute (or after quiet hours).')]);
+    }
 
     if ($action === 'templates_create') {
         $kinds = isset($in['kinds']) && is_array($in['kinds']) ? array_values(array_intersect($in['kinds'], array_keys(waKinds()))) : null;

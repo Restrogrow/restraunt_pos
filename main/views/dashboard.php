@@ -4386,6 +4386,18 @@ function toggleGatewayMode() {
         .wa-mode i.ok { background: #ecfdf5; color: #047857; }
         .wa-mode.on { border-color: #25d366; background: #f0fdf4; } .wa-mode.on .material-symbols-rounded { color: #128c7e; }
         @media (max-width: 900px) { .wa-ed { grid-template-columns: 1fr; } .wa-modes { grid-template-columns: 1fr; } .wa-log-row { grid-template-columns: 1fr auto; } .wa-log-row p { grid-column: 1 / -1; grid-row: 2; } }
+        /* Missed calls tab */
+        .wa-mc-setup { margin-top: 14px; }
+        .wa-mc-h { font-size: .95rem; color: #111827; }
+        .wa-mc-steps { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 12px; font-size: .86rem; line-height: 1.55; color: #374151; }
+        .wa-mc-steps b { color: #111827; }
+        .wa-mc-steps small { display: block; margin-top: 4px; color: #6b7280; }
+        .wa-mc-url { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+        .wa-mc-url code { flex: 1 1 320px; min-width: 0; padding: 9px 11px; border-radius: 10px; background: #f3f4f6; border: 1px solid #e5e7eb; font-size: .76rem; color: #111827; word-break: break-all; }
+        .wa-mc-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+        .wa-mc-kpis div { padding: 12px 14px; border-radius: 12px; background: #f9fafb; border: 1px solid #eef0f3; }
+        .wa-mc-kpis b { display: block; font-size: 1.3rem; color: #111827; }
+        .wa-mc-kpis span { color: #6b7280 !important; font-size: .78rem; }
       </style>
       <div class="page-header">
         <h1>WhatsApp</h1>
