@@ -31,6 +31,13 @@ require_once __DIR__ . '/../config/rider_engine.php';
 
 try {
     $conn = getConnection();
+    // times and "today" in the restaurant's own zone, the same as its dashboards
+    try {
+        require_once __DIR__ . '/../config/timezone_utils.php';
+        $tzq = $conn->prepare('SELECT timezone FROM users WHERE restaurant_id = ? LIMIT 1');
+        $tzq->execute([$rid]);
+        applyRestaurantTimezone((string)($tzq->fetchColumn() ?: 'Asia/Kolkata'), $conn);
+    } catch (Throwable $e) { /* older schema without users.timezone: IST, as before */ }
     riderEnsure($conn);
     $ownOn = riderSettings($conn, $rid)['own_riders'];
 
@@ -67,7 +74,7 @@ try {
             'restaurant' => ['name' => $rest['restaurant_name'] ?? '', 'phone' => $rest['phone'] ?? '', 'address' => $rest['address'] ?? '', 'currency' => ($rest['currency_symbol'] ?? '') ?: '₹'],
             'mine' => $mine, 'open' => $open, 'done_today' => $done, 'cash_in_hand' => round((float)$cash->fetchColumn(), 2),
             'delivered_today' => count($done),
-            // every time above is server time without a zone (the DB session is pinned to IST)
+            // every time above is restaurant-local time without a zone; this is that zone's offset
             'tz' => date('P')]);
     }
 

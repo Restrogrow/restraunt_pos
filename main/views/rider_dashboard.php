@@ -150,17 +150,23 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   function post(b) { return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
   function tel(p) { return 'tel:' + String(p || '').replace(/[^\d+]/g, ''); }
   // server times carry no zone; read them in the server's (D.tz, e.g. +05:30), not the phone's
-  function when(s) { return s ? new Date(String(s).replace(' ', 'T') + ((D && D.tz) || '+05:30')) : null; }
+  function when(s) {
+    if (!s) return null;
+    var t = String(s).replace(' ', 'T');
+    return new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : t + ((D && D.tz) || '+05:30'));
+  }
   function ago(s) {
     var d = when(s); if (!d || isNaN(d)) return '';
     var m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
     return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min ago';
   }
   function clock(s) { var d = when(s); return d && !isNaN(d) ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''; }
+  function isCash(d) { var m = String(d.payment_method || '').toLowerCase(); return m === '' || m.indexOf('cash') !== -1 || m.indexOf('cod') !== -1; }
   function paidHow(d) {
     if (d.cod_amount) return 'cash ' + money(d.cod_amount) + ' collected';
-    var m = String(d.payment_method || '').toLowerCase();
-    return m === 'cash' ? 'paid in cash' : m ? 'paid · ' + esc(d.payment_method) : 'paid';
+    if (Number(d.wallet_paid || 0) >= Number(d.total || 0) && Number(d.total) > 0) return 'paid by wallet';
+    if (isCash(d)) return 'paid in cash at the restaurant';
+    return 'paid · ' + esc(d.payment_method);
   }
 
   function steps(status) {
@@ -174,16 +180,18 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     var st = STEP[d.delivery_status] || STEP.Assigned;
     var next = open ? null : ({ Assigned: ['Picked_Up', 'I picked up the order'], Pending: ['Picked_Up', 'I picked up the order'], Preparing: ['Picked_Up', 'I picked up the order'], Picked_Up: ['In_Transit', 'Start the ride'], In_Transit: ['Delivered', 'Delivered'] })[d.delivery_status];
     var cod = d.cod_due > 0;
-    var kitchen = d.order_status === 'Ready' ? 'food is ready' : 'kitchen: ' + esc(String(d.order_status).toLowerCase());
+    var kitchen = d.order_status === 'Ready' ? ' · food is ready' : d.order_status ? ' · kitchen: ' + esc(String(d.order_status).toLowerCase()) : '';
     // your delivery: since it was given to you; an open one: since it was ordered
     var since = !open && d.assigned_at ? 'assigned ' + ago(d.assigned_at) : 'ordered ' + ago(d.created_at);
     return '<div class="card' + (open ? ' open' : '') + '">' +
-      '<div class="top"><div><b>' + esc(d.customer_name || 'Customer') + '</b><small>' + esc(d.order_number) + ' · ' + since + ' · ' + kitchen + '</small></div>' +
+      '<div class="top"><div><b>' + esc(d.customer_name || 'Customer') + '</b><small>' + esc(d.order_number) + ' · ' + since + kitchen + '</small></div>' +
         '<span class="pill" style="background:' + st[1] + '"><span class="ms">' + st[2] + '</span>' + (open ? 'Open' : st[0]) + '</span></div>' +
       (open ? '' : steps(d.delivery_status)) +
       '<div class="row"><span class="ms">location_on</span><div>' + esc(d.address || 'No address given') + (d.landmark ? '<small>Near ' + esc(d.landmark) + '</small>' : '') + '</div></div>' +
       (d.items ? '<div class="row items"><span class="ms">restaurant</span><div>' + esc(d.items) + '</div></div>' : '') +
-      '<div class="cash' + (cod ? '' : ' paid') + '"><span class="ms">' + (cod ? 'payments' : 'check_circle') + '</span>' + (cod ? 'Collect ' + money(d.cod_due) + ' in cash' : d.payment_status === 'Paid' ? 'Already paid, collect nothing' : 'Paid online, collect nothing') + '</div>' +
+      (cod ? '<div class="cash"><span class="ms">payments</span>Collect ' + money(d.cod_due) + ' in cash</div>' :
+        d.payment_status === 'Paid' ? '<div class="cash paid"><span class="ms">check_circle</span>Already paid, collect nothing</div>' :
+        '<div class="cash"><span class="ms">error</span>Payment not received yet. Check with the restaurant before handing over.</div>') +
       '<div class="acts">' + (d.maps_url ? '<a class="btn" href="' + esc(d.maps_url) + '" target="_blank" rel="noopener"><span class="ms">navigation</span>Directions</a>' : '<span></span>') +
       (d.customer_phone ? '<a class="btn" href="' + tel(d.customer_phone) + '"><span class="ms">call</span>Call customer</a>' : '<span></span>') +
       (open ? '<button class="btn big" data-claim="' + d.id + '"><span class="ms">add_task</span>Take this delivery</button>' :
@@ -207,19 +215,31 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     $('side').innerHTML = h;
     track(D.mine.some(function (d) { return ['Assigned', 'Picked_Up', 'In_Transit'].indexOf(d.delivery_status) !== -1; }));
   }
+  function notice(icon, text) { $('mine').innerHTML = '<div class="empty"><span class="ms">' + icon + '</span>' + text + '</div>'; }
   function load() {
-    return fetch(API, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
-      if (!d.success) {
-        if (/log in/i.test(d.message || '')) { location.href = '../admin/login.php'; return; }
-        // nothing from the last load stays clickable, and location sharing stops
-        D = null; $('side').innerHTML = ''; track(false);
-        $('mine').innerHTML = '<div class="empty"><span class="ms">info</span>' + esc(d.message || 'Something went wrong.') + '</div>';
-        return;
-      }
-      D = d; draw();
-    }).catch(function () {
+    return fetch(API, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
+      return r.text().then(function (t) {
+        var d = null;
+        try { d = JSON.parse(t); } catch (e) { /* an HTML error page */ }
+        if (r.status === 401 || (d && /log in/i.test(d.message || '') && !d.success)) { location.href = '../admin/login.php'; return; }
+        if (r.status === 403 && d) {
+          // really not allowed now (role or own riders turned off): nothing old stays on screen
+          D = null; $('side').innerHTML = ''; track(false);
+          $('sNow').textContent = $('sDone').textContent = $('sCash').textContent = '–';
+          notice('info', esc(d.message || 'This screen is not available.'));
+          return;
+        }
+        if (!d || !d.success) {
+          // a server hiccup: keep the last list and location sharing, try again on the next poll
+          $('locText').textContent = 'The server had a problem. Trying again…';
+          if (!D) notice('cloud_off', 'Could not load your deliveries.<br>Trying again in a moment.');
+          return;
+        }
+        D = d; draw();
+      });
+    }, function () {
       $('locText').textContent = 'No internet. Trying again…';
-      if (!D) $('mine').innerHTML = '<div class="empty"><span class="ms">wifi_off</span>No internet right now.<br>Your deliveries show up as soon as you are back online.</div>';
+      if (!D) notice('wifi_off', 'No internet right now.<br>Your deliveries show up as soon as you are back online.');
     });
   }
 
