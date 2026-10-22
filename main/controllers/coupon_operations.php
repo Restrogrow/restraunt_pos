@@ -41,6 +41,27 @@ try {
         )");
     }
 
+    // Older live tables can miss columns the form saves; add any that are missing.
+    try {
+        $have = [];
+        foreach ($conn->query("SHOW COLUMNS FROM coupons")->fetchAll(PDO::FETCH_ASSOC) as $c) $have[$c['Field']] = true;
+        $need = [
+            'discount_type' => "ENUM('percent','flat') NOT NULL DEFAULT 'percent'",
+            'minimum_order_amount' => 'DECIMAL(10,2) DEFAULT 0.00',
+            'max_uses' => 'INT DEFAULT 0',
+            'current_uses' => 'INT DEFAULT 0',
+            'valid_from' => 'DATE DEFAULT NULL',
+            'valid_until' => 'DATE DEFAULT NULL',
+            'is_active' => 'TINYINT(1) DEFAULT 1',
+            'description' => "VARCHAR(255) DEFAULT ''",
+        ];
+        foreach ($need as $col => $def) {
+            if (!isset($have[$col])) $conn->exec("ALTER TABLE coupons ADD COLUMN `$col` $def");
+        }
+    } catch (PDOException $e) {
+        error_log('coupon_operations.php: could not check coupon columns: ' . $e->getMessage());
+    }
+
     require_once __DIR__ . '/../config/coupon_helpers.php';
     ensureCouponMilestoneColumn($conn);
     // Milestone offer: shown on the cart progress bar and auto-applied once the
@@ -145,8 +166,13 @@ try {
         default:
             throw new Exception('Invalid action');
     }
+} catch (PDOException $e) {
+    error_log("DB error in coupon_operations.php: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Could not save the coupon (database error). Please try again.']);
 } catch (Exception $e) {
+    // Validation messages are written for the owner, so show them as they are.
     error_log("Error in coupon_operations.php: " . $e->getMessage());
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
