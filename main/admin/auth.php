@@ -93,7 +93,19 @@ try {
         // Apply rate limiting to sensitive auth actions before handling
         switch ($action) {
             case 'login':
-                applyAuthRateLimit('login');
+                // The demo's public logins get their own, roomier limit: visitors switch between the
+                // demo roles (owner, manager, waiter, chef, rider…) far faster than 5 logins a minute.
+                require_once __DIR__ . '/../config/demo_restaurant.php';
+                if (isDemoLogin((string)($_POST['username'] ?? ''), (string)($_POST['password'] ?? ''))) {
+                    $demoLimit = checkRateLimit('demo_login_' . getRateLimitIdentifier(), 60, 60);
+                    if (!$demoLimit['allowed']) {
+                        http_response_code(429);
+                        echo json_encode(['success' => false, 'message' => $demoLimit['message'], 'retry_after' => $demoLimit['retry_after']]);
+                        exit;
+                    }
+                } else {
+                    applyAuthRateLimit('login');
+                }
                 break;
             case 'signup':
                 applyAuthRateLimit('signup');

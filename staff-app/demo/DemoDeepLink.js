@@ -4,7 +4,7 @@
 // (restrogrow.com/demo) can link straight to every screen. Does nothing in the phone app.
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { DEMO_LOGIN } from '../config/api';
+import { DEMO_LOGIN, apiGet } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { navigationRef } from '../navigationRef';
 
@@ -31,18 +31,54 @@ function fromUrl() {
 }
 
 export default function DemoDeepLink() {
-  const { user, login, checkingSession } = useAuth();
+  const { user, login, logout, checkingSession } = useAuth();
   const want = useRef(fromUrl());
 
-  // log in as the asked role once (even if another demo role is still signed in), then open the screen
+  // log in as the asked role once (even if another demo role is still signed in), then open the screen.
+  // Switching roles: the server replaces the session on login (strict sessions), so a request the old
+  // role's screens still have in flight can come back with a fresh empty session and log the new role
+  // out. So close the old role first, let its requests settle, and check the new session took.
   const started = useRef(false);
+  const switchedAt = useRef(0);
+  const relogins = useRef(0);
   const [ready, setReady] = useState(!want.current.as);
   useEffect(() => {
     const as = want.current.as;
     if (!as || checkingSession || started.current) return;
     started.current = true;
-    login(DEMO_STAFF[as], DEMO_STAFF_PASSWORD).catch(() => {}).finally(() => setReady(true));
-  }, [checkingSession, login]);
+    const email = DEMO_STAFF[as];
+    const isWanted = (u) => !!u && String(u.email || '').toLowerCase() === email;
+    (async () => {
+      if (isWanted(user)) return;
+      if (user) {
+        await logout();
+        await new Promise((r) => setTimeout(r, 600));
+      }
+      for (let i = 0; i < 3; i += 1) {
+        try {
+          await login(email, DEMO_STAFF_PASSWORD);
+          const s = await apiGet('/admin/get_session.php');
+          if (s?.success && isWanted(s.data)) return;
+        } catch (e) {
+          // try again below
+        }
+        await new Promise((r) => setTimeout(r, 800));
+      }
+    })().finally(() => {
+      switchedAt.current = Date.now();
+      setReady(true);
+    });
+  }, [checkingSession, login, logout, user]);
+
+  // A request the old role sent before the switch can still land afterwards and end the new session.
+  // For a short while after a switch, log the asked role back in if that happens.
+  useEffect(() => {
+    const as = want.current.as;
+    if (!as || !ready || user || checkingSession) return;
+    if (Date.now() - switchedAt.current > 30000 || relogins.current >= 3) return;
+    relogins.current += 1;
+    login(DEMO_STAFF[as], DEMO_STAFF_PASSWORD).catch(() => {});
+  }, [user, ready, checkingSession, login]);
 
   useEffect(() => {
     const screen = want.current.screen;

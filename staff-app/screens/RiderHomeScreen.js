@@ -126,14 +126,19 @@ export default function RiderHomeScreen() {
   const lastSent = useRef(0);
   const watcher = useRef(null);
 
+  // keep the last good answer; an error reply (e.g. a session that just ended) must not replace it
+  const hasData = useRef(false);
   const load = useCallback(async () => {
     try {
       const d = await apiGet('/api/rider_app.php');
-      setData(d);
+      if (!d || d.success === false) throw new Error(d?.message || 'Could not load your deliveries');
+      const list = (x) => (Array.isArray(x) ? x : []);
+      setData({ ...d, mine: list(d.mine), open: list(d.open), done_today: list(d.done_today) });
+      hasData.current = true;
     } catch (e) {
-      if (!data) feedback.errorFrom(e, 'Could not load your deliveries');
+      if (!hasData.current) feedback.errorFrom(e, 'Could not load your deliveries');
     }
-  }, [data]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
