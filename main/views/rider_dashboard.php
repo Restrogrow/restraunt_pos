@@ -147,7 +147,11 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function money(n) { return cur + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
   function toast(t) { var e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function () { e.style.display = 'none'; }, 3500); }
-  function post(b) { return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
+  function post(b) {
+    return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) })
+      .then(function (r) { return r.json().catch(function () { return { success: false, message: 'The server had a problem. Please try again.' }; }); },
+            function () { return { success: false, message: 'No internet. Please try again.' }; });
+  }
   function tel(p) { return 'tel:' + String(p || '').replace(/[^\d+]/g, ''); }
   // server times carry no zone; read them in the server's (D.tz, e.g. +05:30), not the phone's
   function when(s) {
@@ -161,23 +165,25 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min ago';
   }
   function clock(s) { var d = when(s); return d && !isNaN(d) ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''; }
-  function isCash(d) { var m = String(d.payment_method || '').toLowerCase(); return m === '' || m.indexOf('cash') !== -1 || m.indexOf('cod') !== -1; }
+  // is_cash / wallet_covered / is_paid come from the server (rider_engine.php), so this never guesses
   function paidHow(d) {
     if (d.cod_amount) return 'cash ' + money(d.cod_amount) + ' collected';
-    if (Number(d.wallet_paid || 0) >= Number(d.total || 0) && Number(d.total) > 0) return 'paid by wallet';
-    if (isCash(d)) return 'paid in cash at the restaurant';
+    if (d.wallet_covered) return 'paid by wallet';
+    if (!d.is_paid) return '<span style="color:var(--warn)">not paid yet</span>';
+    if (d.is_cash) return 'paid in cash at the restaurant';
     return 'paid · ' + esc(d.payment_method);
   }
 
   function steps(status) {
-    var at = ORDER.indexOf(status); // Pending / Preparing: no step reached yet
+    var at = Math.max(0, ORDER.indexOf(status)); // only your own deliveries show steps: Pending / Preparing = assigned to you
     return '<div class="steps">' + ['Assigned', 'Picked up', 'On the way', 'Delivered'].map(function (l, i) {
       return '<div class="' + (i <= at ? 'on' : '') + (i === at ? ' now' : '') + '">' + l + '</div>';
     }).join('') + '</div>';
   }
 
   function card(d, open) {
-    var st = STEP[d.delivery_status] || STEP.Assigned;
+    // your own delivery that the kitchen hasn't released yet still reads as yours to pick up
+    var st = open ? STEP.Pending : (STEP[d.delivery_status] && ORDER.indexOf(d.delivery_status) !== -1 ? STEP[d.delivery_status] : STEP.Assigned);
     var next = open ? null : ({ Assigned: ['Picked_Up', 'I picked up the order'], Pending: ['Picked_Up', 'I picked up the order'], Preparing: ['Picked_Up', 'I picked up the order'], Picked_Up: ['In_Transit', 'Start the ride'], In_Transit: ['Delivered', 'Delivered'] })[d.delivery_status];
     var cod = d.cod_due > 0;
     var kitchen = d.order_status === 'Ready' ? ' · food is ready' : d.order_status ? ' · kitchen: ' + esc(String(d.order_status).toLowerCase()) : '';
@@ -190,7 +196,7 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
       '<div class="row"><span class="ms">location_on</span><div>' + esc(d.address || 'No address given') + (d.landmark ? '<small>Near ' + esc(d.landmark) + '</small>' : '') + '</div></div>' +
       (d.items ? '<div class="row items"><span class="ms">restaurant</span><div>' + esc(d.items) + '</div></div>' : '') +
       (cod ? '<div class="cash"><span class="ms">payments</span>Collect ' + money(d.cod_due) + ' in cash</div>' :
-        d.payment_status === 'Paid' ? '<div class="cash paid"><span class="ms">check_circle</span>Already paid, collect nothing</div>' :
+        d.is_paid ? '<div class="cash paid"><span class="ms">check_circle</span>' + (d.wallet_covered ? 'Paid by wallet' : 'Already paid') + ', collect nothing</div>' :
         '<div class="cash"><span class="ms">error</span>Payment not received yet. Check with the restaurant before handing over.</div>') +
       '<div class="acts">' + (d.maps_url ? '<a class="btn" href="' + esc(d.maps_url) + '" target="_blank" rel="noopener"><span class="ms">navigation</span>Directions</a>' : '<span></span>') +
       (d.customer_phone ? '<a class="btn" href="' + tel(d.customer_phone) + '"><span class="ms">call</span>Call customer</a>' : '<span></span>') +
@@ -203,6 +209,12 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   function draw() {
     cur = (D.restaurant && D.restaurant.currency) || '₹';
     $('sNow').textContent = D.mine.length; $('sDone').textContent = D.delivered_today; $('sCash').textContent = money(D.cash_in_hand);
+    if (D.enabled === false) {
+      // the restaurant switched off its own riders: say so rather than "nothing to deliver"
+      $('side').innerHTML = ''; track(false);
+      notice('pause_circle', esc(D.message || 'Your restaurant is not using its own riders right now.'));
+      return;
+    }
     $('mine').innerHTML = '<h2>Your deliveries <span class="n">' + D.mine.length + '</span></h2>' + (D.mine.length ? D.mine.map(function (d) { return card(d, false); }).join('') :
       '<div class="empty"><span class="ms">inventory_2</span>Nothing to deliver right now.<br>New deliveries show up here by themselves.</div>');
     var h = '';

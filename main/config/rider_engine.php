@@ -121,12 +121,17 @@ if (!function_exists('riderEnsure')) {
         }, $st->fetchAll(PDO::FETCH_ASSOC));
     }
 
+    /** Paid in cash (counter or on delivery), as opposed to online, card or UPI. */
+    function riderIsCash(array $o): bool
+    {
+        $m = strtolower((string)($o['payment_method'] ?? ''));
+        return $m === '' || $m === 'cash' || strpos($m, 'cod') !== false || strpos($m, 'cash') !== false;
+    }
+
     /** Cash still to collect for an order: unpaid cash-on-delivery orders. */
     function riderCodDue(array $o): float
     {
-        $m = strtolower((string)($o['payment_method'] ?? ''));
-        $isCash = $m === '' || $m === 'cash' || strpos($m, 'cod') !== false || strpos($m, 'cash') !== false;
-        return ($isCash && ($o['payment_status'] ?? '') !== 'Paid') ? round((float)$o['total'] - (float)($o['wallet_paid'] ?? 0), 2) : 0.0;
+        return (riderIsCash($o) && ($o['payment_status'] ?? '') !== 'Paid') ? round((float)$o['total'] - (float)($o['wallet_paid'] ?? 0), 2) : 0.0;
     }
 
     /** Delivery orders for a restaurant, a rider (their own), or open ones nobody has. */
@@ -161,6 +166,10 @@ if (!function_exists('riderEnsure')) {
             $r['rider_staff_id'] = $r['rider_staff_id'] !== null ? (int)$r['rider_staff_id'] : null;
             $r['address'] = trim((string)($r['delivery_address'] ?: $r['customer_address']));
             $r['cod_due'] = $r['cod_collected_at'] ? 0 : riderCodDue($r);
+            // how it was paid, so screens never guess: cash, fully covered by the wallet, or paid
+            $r['is_cash'] = riderIsCash($r);
+            $r['wallet_covered'] = (float)$r['total'] > 0 && (float)($r['wallet_paid'] ?? 0) >= (float)$r['total'];
+            $r['is_paid'] = $r['payment_status'] === 'Paid' || $r['wallet_covered'] || $r['cod_collected_at'] !== null;
             $r['maps_url'] = ($r['address_lat'] && $r['address_lng'])
                 ? 'https://www.google.com/maps/dir/?api=1&destination=' . $r['address_lat'] . ',' . $r['address_lng']
                 : ($r['address'] !== '' ? 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($r['address']) : null);
