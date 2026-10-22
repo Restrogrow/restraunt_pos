@@ -15,6 +15,31 @@ $conn = getConnection();
 seoEnsure($conn);
 $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 $sa = gaServiceAccount();
+$ready = seoGoogleReady($conn);
+$oauthRow = seoScRow($conn, SEO_SA_RID);
+$oauth = !empty($oauthRow['refresh_token']);
+
+// Connect Google: Google's sign-in, back through api/google_seo_callback.php (same OAuth client as the restaurants' SEO page)
+if (isset($_GET['connect'])) {
+    if (!seoScOAuthReady()) {
+        $_SESSION['sa_seo_flash'] = ['Google sign-in is not set up on this server (GOOGLE_SEO_CLIENT_ID / GOOGLE_SEO_CLIENT_SECRET in main/.env).', true];
+        header('Location: seo.php?tab=setup');
+        exit;
+    }
+    $state = bin2hex(random_bytes(16));
+    $_SESSION['seo_sc_sa_state'] = $state;
+    header('Location: ' . seoScAuthUrl($state));
+    exit;
+}
+if (isset($_GET['google'])) {
+    $msg = ['connected' => ['Google connected. Numbers load below; index status fills in over a few minutes.', false],
+        'cancelled' => ['Google sign-in was cancelled.', true], 'expired' => ['The sign-in took too long. Click Connect Google again.', true],
+        'no_refresh' => ['Google did not give a lasting sign-in. Remove RestroGrow from the third-party access list of your Google account and connect again.', true]][$_GET['google']] ?? ['Google sign-in failed. Try again.', true];
+    if ($_GET['google'] === 'connected') { seoClearCache($conn); $conn->exec('DELETE FROM seo_url_status'); }
+    $_SESSION['sa_seo_flash'] = $msg;
+    header('Location: seo.php?tab=' . ($_GET['google'] === 'connected' ? 'overview' : 'setup'));
+    exit;
+}
 
 // background refresh, a few pages per call (the page calls this until nothing is left)
 if (isset($_GET['step'])) {
@@ -22,11 +47,11 @@ if (isset($_GET['step'])) {
     $out = ['audited' => 0, 'inspected' => 0, 'error' => ''];
     try {
         $out['audited'] = seoAuditStale($conn, 4);
-        if ($sa) $out['inspected'] = seoInspectStale($conn, 3);
+        if ($ready) $out['inspected'] = seoInspectStale($conn, 3);
     } catch (Throwable $e) { $out['error'] = $e->getMessage(); }
     $urls = seoOwnUrls($conn);
     $fresh = fn(string $t) => (int)$conn->query("SELECT COUNT(*) FROM $t WHERE checked_at > DATE_SUB(NOW(), INTERVAL 1 DAY)")->fetchColumn();
-    $out['remaining'] = max(0, count($urls) - $fresh('seo_page_audit')) + ($sa ? max(0, count($urls) - $fresh('seo_url_status')) : 0);
+    $out['remaining'] = max(0, count($urls) - $fresh('seo_page_audit')) + ($ready ? max(0, count($urls) - $fresh('seo_url_status')) : 0);
     echo json_encode($out);
     exit;
 }
@@ -44,6 +69,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->exec('DELETE FROM seo_url_status');
             $conn->exec('DELETE FROM seo_page_audit');
             $flash = 'Checking every page again. It runs in the background; keep this tab open for a minute.';
+        } elseif ($act === 'disconnect') {
+            $conn->prepare('DELETE FROM seo_search_console WHERE restaurant_id = ?')->execute([SEO_SA_RID]);
+            seoClearCache($conn);
+            $flash = 'Google disconnected.';
         } elseif ($act === 'site') {
             $site = trim((string)($_POST['gsc_site'] ?? ''));
             if (!preg_match('#^(sc-domain:[a-z0-9.-]+|https?://[^\s]+/)$#i', $site)) throw new RuntimeException('Use sc-domain:restrogrow.com for a domain property, or the full address ending in / for a URL-prefix property.');
@@ -65,9 +94,9 @@ $tab = in_array($_GET['tab'] ?? 'overview', ['overview', 'keywords', 'pages', 'i
 $qs = fn(array $o) => 'seo.php?' . http_build_query(array_merge(['d' => $days, 'tab' => $tab], $o));
 
 $rep = null; $repErr = '';
-if ($sa && $tab !== 'setup') { try { $rep = seoReport($conn, $days); } catch (Throwable $e) { $repErr = $e->getMessage(); } }
+if ($ready && $tab !== 'setup') { try { $rep = seoReport($conn, $days); } catch (Throwable $e) { $repErr = $e->getMessage(); } }
 $sitemaps = []; $smErr = '';
-if ($sa && in_array($tab, ['issues', 'setup'], true)) { try { $sitemaps = seoSitemaps($conn); } catch (Throwable $e) { $smErr = $e->getMessage(); } }
+if ($ready && in_array($tab, ['issues', 'setup'], true)) { try { $sitemaps = seoSitemaps($conn); } catch (Throwable $e) { $smErr = $e->getMessage(); } }
 $views = seoViews($conn, $days);
 $urls = seoOwnUrls($conn);
 $status = $conn->query('SELECT * FROM seo_url_status')->fetchAll(PDO::FETCH_ASSOC | PDO::FETCH_UNIQUE);
@@ -191,7 +220,7 @@ $indexed = count(array_filter($urls, fn($u) => ($status[$u]['verdict'] ?? '') ==
     <p class="sub">How restrogrow.com's own pages do in Google: keywords, positions, clicks, which pages are indexed, and what to fix. Restaurant websites are left out. Google numbers are about 2 days behind and refresh every 6 hours.</p>
   </div>
   <?php if ($flash): ?><div class="flash<?php echo $flashErr ? ' err' : ''; ?>" role="status"><?php echo $h($flash); ?></div><?php endif; ?>
-  <?php if (!$sa): ?><div class="flash err">Search Console is not connected yet, so only our own views and the page checks show. See <a href="<?php echo $h($qs(['tab' => 'setup'])); ?>">Setup</a> (5 minutes).</div>
+  <?php if (!$ready): ?><div class="flash err">Search Console is not connected yet, so only our own views and the page checks show. <a href="seo.php?connect=1">Connect Google</a> (sign in with teamrestrogrow@gmail.com).</div>
   <?php elseif ($repErr && $tab !== 'setup'): ?><div class="flash err"><?php echo $h($repErr); ?></div><?php endif; ?>
 
   <div class="bar-row">
@@ -204,7 +233,7 @@ $indexed = count(array_filter($urls, fn($u) => ($status[$u]['verdict'] ?? '') ==
       <nav class="seg" aria-label="Period">
         <?php foreach ([7 => '7 days', 28 => '28 days', 90 => '3 months'] as $d => $l): ?><a href="<?php echo $h($qs(['d' => $d])); ?>"<?php echo $days === $d ? ' aria-current="true"' : ''; ?>><?php echo $l; ?></a><?php endforeach; ?>
       </nav>
-      <?php if ($sa): ?><form method="post" class="inline"><input type="hidden" name="action" value="refresh"><input type="hidden" name="d" value="<?php echo $days; ?>"><input type="hidden" name="tab" value="<?php echo $h($tab); ?>"><button class="btn">Refresh</button></form><?php endif; ?>
+      <?php if ($ready): ?><form method="post" class="inline"><input type="hidden" name="action" value="refresh"><input type="hidden" name="d" value="<?php echo $days; ?>"><input type="hidden" name="tab" value="<?php echo $h($tab); ?>"><button class="btn">Refresh</button></form><?php endif; ?>
     </div>
   </div>
   <p id="prog" aria-live="polite"></p>
@@ -250,7 +279,7 @@ $indexed = count(array_filter($urls, fn($u) => ($status[$u]['verdict'] ?? '') ==
     <p class="hint">Every search where Google showed one of our pages. Position 1–10 is page 1. Change compares with the <?php echo $days; ?> days before (↑ = moved up).</p>
     <?php if ($kws): ?><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Search</th><th>Our page</th><th class="num">Clicks</th><th class="num">Shown</th><th class="num">Click rate</th><th class="num">Position</th><th class="num">Change</th></tr></thead><tbody>
       <?php foreach ($kws as $k): ?><tr><td><?php echo $h($k['query']); ?></td><td><?php echo $h($k['page']); ?></td><td class="num"><?php echo $n($k['clicks']); ?></td><td class="num"><?php echo $n($k['impressions']); ?></td><td class="num"><?php echo $pct($k['ctr']); ?></td><td class="num"><?php echo $pos($k['position']); ?></td><td class="num"><?php echo $posChange($k['position'], $k['prev_position']); ?></td></tr><?php endforeach; ?>
-    </tbody></table></div><?php else: ?><p class="empty"><?php echo $sa ? 'No keywords for this period.' : 'Connect Search Console in Setup to see keywords.'; ?></p><?php endif; ?>
+    </tbody></table></div><?php else: ?><p class="empty"><?php echo $ready ? 'No keywords for this period.' : 'Connect Google in Setup to see keywords.'; ?></p><?php endif; ?>
   </section>
 
 <?php elseif ($tab === 'pages'): ?>
@@ -289,13 +318,15 @@ $indexed = count(array_filter($urls, fn($u) => ($status[$u]['verdict'] ?? '') ==
 <?php else: ?>
   <section class="panel">
     <h2>Connect Google Search Console</h2>
-    <?php if ($sa): ?><p class="hint"><span class="pill ok">Google key found</span> &nbsp;Service account: <span class="mono"><?php echo $h($sa['client_email']); ?></span></p><?php endif; ?>
-    <ol class="steps">
-      <li><?php if ($sa): ?>The Google key is already uploaded (Website analytics uses the same one).<?php else: ?>Upload a Google service-account JSON key in <a href="site_analytics.php?tab=settings">Website analytics › Settings</a> (the same key powers Google Analytics there).<?php endif; ?></li>
-      <li>In Google Cloud, open the same project and turn on <b>Google Search Console API</b> (APIs &amp; Services › Library).</li>
-      <li>Open <a href="https://search.google.com/search-console/users" target="_blank" rel="noopener">Search Console › Settings › Users and permissions</a> for restrogrow.com, click <b>Add user</b>, paste <span class="mono"><?php echo $h($sa['client_email'] ?? 'the service account email'); ?></span> and choose <b>Restricted</b>.</li>
-      <li>Come back here and press Refresh. Keywords show at once; index status fills in over a few minutes.</li>
-    </ol>
+    <?php if ($oauth): ?>
+      <p class="hint"><span class="pill ok">Connected</span> &nbsp;as <b><?php echo $h($oauthRow['google_email'] ?: 'a Google account'); ?></b><?php echo !empty($oauthRow['connected_at']) ? ' since ' . $h(date('j M Y', strtotime($oauthRow['connected_at']))) : ''; ?>.<?php if (!empty($oauthRow['last_error'])): ?> <span class="pill no"><?php echo $h($oauthRow['last_error']); ?></span><?php endif; ?></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="seo.php?connect=1">Connect again</a>
+      <form method="post" class="inline"><input type="hidden" name="action" value="disconnect"><input type="hidden" name="tab" value="setup"><button class="btn">Disconnect</button></form></div>
+    <?php else: ?>
+      <p class="hint">Click the button and sign in with <b>teamrestrogrow@gmail.com</b> (an owner of restrogrow.com in Search Console). Google asks for read-only access; nothing in Search Console can be changed from here.</p>
+      <div><a class="btn primary" href="seo.php?connect=1">Connect Google</a></div>
+    <?php endif; ?>
+    <p class="hint">Other way, without signing in: a service-account key uploaded in <a href="site_analytics.php?tab=settings">Website analytics › Settings</a><?php echo $sa ? ' (found: <span class="mono">' . $h($sa['client_email']) . '</span>)' : ''; ?>, with its email added to Search Console as a Restricted user. Connect Google is used when both are there.</p>
   </section>
   <section class="panel">
     <h2>Search Console property</h2>

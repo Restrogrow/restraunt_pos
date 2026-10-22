@@ -1,6 +1,7 @@
 <?php
 /**
- * Google sends the owner back here after "Connect Google" (dashboard › SEO › Search performance).
+ * Google sends the owner back here after "Connect Google" (dashboard › SEO › Search performance),
+ * and the Super Admin after Super Admin › SEO › Connect Google.
  * Checks the state from api/seo_sc.php?view=connect, swaps the code for tokens (kept encrypted,
  * see config/seo_search_console.php) and returns to the SEO page.
  * This address must be an authorised redirect URI on the OAuth client.
@@ -9,16 +10,32 @@ require_once __DIR__ . '/../config/session_config.php';
 startSecureSession();
 require_once __DIR__ . '/../config/authorization_config.php';
 
-$back = function (string $result) {
-    header('Location: ../views/dashboard.php?seo_sc=' . urlencode($result) . '#seoPage');
-    exit;
-};
-if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) { header('Location: ../admin/login.php'); exit; }
-$rid = (string)$_SESSION['restaurant_id'];
-$expected = $_SESSION['seo_sc_state'] ?? '';
-$stateRid = $_SESSION['seo_sc_state_rid'] ?? '';
-unset($_SESSION['seo_sc_state'], $_SESSION['seo_sc_state_rid']);
-session_write_close();
+// Super Admin › SEO › Connect Google uses the same OAuth client and this same address; its tokens are kept
+// under the restaurant_id "__superadmin__" (config/site_seo.php reads them for restrogrow.com's own data)
+$saFlow = !empty($_SESSION['superadmin_id']) && !empty($_SESSION['seo_sc_sa_state'])
+    && hash_equals((string)$_SESSION['seo_sc_sa_state'], (string)($_GET['state'] ?? ''));
+if ($saFlow) {
+    $back = function (string $result) {
+        header('Location: ../superadmin/seo.php?tab=setup&google=' . urlencode($result));
+        exit;
+    };
+    $rid = '__superadmin__';
+    $expected = (string)$_SESSION['seo_sc_sa_state'];
+    $stateRid = $rid;
+    unset($_SESSION['seo_sc_sa_state']);
+    session_write_close();
+} else {
+    $back = function (string $result) {
+        header('Location: ../views/dashboard.php?seo_sc=' . urlencode($result) . '#seoPage');
+        exit;
+    };
+    if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) { header('Location: ../admin/login.php'); exit; }
+    $rid = (string)$_SESSION['restaurant_id'];
+    $expected = $_SESSION['seo_sc_state'] ?? '';
+    $stateRid = $_SESSION['seo_sc_state_rid'] ?? '';
+    unset($_SESSION['seo_sc_state'], $_SESSION['seo_sc_state_rid']);
+    session_write_close();
+}
 
 if (!empty($_GET['error'])) $back($_GET['error'] === 'access_denied' ? 'cancelled' : 'error');
 if ($expected === '' || !hash_equals($expected, (string)($_GET['state'] ?? '')) || $stateRid !== $rid) $back('expired');

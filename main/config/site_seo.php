@@ -4,9 +4,12 @@
  * blog, legal pages); restaurant websites on restrogrow.com are left out.
  *
  *  - Google Search Console: clicks, impressions, CTR and position, keywords and their pages, sitemaps,
- *    and each page's index status (URL Inspection API). Uses the service-account key already uploaded in
- *    Website analytics (config/.ga-service-account.json); its email must be added as a user on the
- *    Search Console property (Settings › Users and permissions, "Restricted" is enough).
+ *    and each page's index status (URL Inspection API). Access, either:
+ *      a) Connect Google (Super Admin › SEO › Setup): sign in with an account that owns the property; uses the
+ *         same OAuth client as the restaurants' SEO page (GOOGLE_SEO_CLIENT_ID), tokens kept as "__superadmin__"
+ *         in seo_search_console; or
+ *      b) the service-account key uploaded in Website analytics (config/.ga-service-account.json), with its
+ *         email added as a user on the Search Console property ("Restricted" is enough).
  *  - Our own page views per page (site_visits, the same tracking as Website analytics).
  *  - An on-page check of every page (title, description, canonical, noindex, H1, image alt text, length).
  *
@@ -14,6 +17,9 @@
  * and refreshed a few at a time so the page stays fast.
  */
 require_once __DIR__ . '/site_analytics.php';
+require_once __DIR__ . '/seo_search_console.php';
+
+const SEO_SA_RID = '__superadmin__';   // Super Admin's own Connect Google tokens in seo_search_console
 
 const SEO_GSC_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly';
 // RestroGrow's own pages (Search Console page filter, RE2 syntax)
@@ -48,6 +54,10 @@ function seoEnsure(PDO $c): void
 
 /* ───────── Google access ───────── */
 
+function seoOauthConnected(PDO $c): bool { return !empty(seoScRow($c, SEO_SA_RID)['refresh_token']); }
+/** True when Search Console can be read: Connect Google done, or a service-account key uploaded. */
+function seoGoogleReady(PDO $c): bool { return seoOauthConnected($c) || gaServiceAccount() !== null; }
+
 function seoToken(PDO $c, array $sa): string
 {
     $cached = json_decode((string)saGet($c, 'gsc_token_cache', ''), true);
@@ -64,11 +74,14 @@ function seoToken(PDO $c, array $sa): string
 
 function seoApi(PDO $c, string $method, string $url, ?array $body = null): array
 {
-    $sa = gaServiceAccount();
-    if (!$sa) throw new RuntimeException('No Google key yet. Upload the service-account JSON key in Website analytics › Settings, then add its email to Search Console.');
+    $oauth = seoOauthConnected($c);
+    $sa = $oauth ? null : gaServiceAccount();
+    if (!$oauth && !$sa) throw new RuntimeException('Search Console is not connected. Open Setup and click Connect Google.');
+    $token = $oauth ? seoScToken($c, SEO_SA_RID) : seoToken($c, $sa);
+    if (!$token) throw new RuntimeException('The Google sign-in has expired. Open Setup and click Connect Google again.');
     $ch = curl_init($url);
     $opts = [CURLOPT_CUSTOMREQUEST => $method, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 25,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . seoToken($c, $sa)]];
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $token]];
     if ($body !== null) $opts[CURLOPT_POSTFIELDS] = json_encode($body);
     $ca = function_exists('env') ? (string)env('AI_CAINFO', '') : '';
     if ($ca !== '' && is_readable($ca)) $opts[CURLOPT_CAINFO] = $ca;
@@ -81,7 +94,8 @@ function seoApi(PDO $c, string $method, string $url, ?array $body = null): array
     if (!empty($res['error'])) {
         $m = (string)($res['error']['message'] ?? 'Google refused the request');
         if (in_array((int)($res['error']['code'] ?? 0), [401, 403], true)) {
-            $m = 'The Google key has no access to ' . seoSite($c) . '. In Search Console › Settings › Users and permissions, add ' . $sa['client_email'] . ' (Restricted is enough). (' . $m . ')';
+            $who = $oauth ? ((seoScRow($c, SEO_SA_RID)['google_email'] ?? '') ?: 'the connected Google account') : $sa['client_email'];
+            $m = $who . ' has no access to ' . seoSite($c) . '. ' . ($oauth ? 'Connect Google again with an account that owns the property (teamrestrogrow@gmail.com).' : 'In Search Console › Settings › Users and permissions, add it (Restricted is enough).') . ' (' . $m . ')';
         }
         throw new RuntimeException($m);
     }
