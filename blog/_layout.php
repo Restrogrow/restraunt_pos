@@ -110,6 +110,7 @@ function blogFooter(): void
       </ul></div>
       <div class="footer-section"><h4>Company</h4><ul>
         <li><a href="<?php echo bh($base); ?>/about/">About Us</a></li><li><a href="<?php echo bh($base); ?>/blog/">Blog</a></li><li><a href="<?php echo bh($base); ?>/faq/">FAQ</a></li><li><a href="<?php echo bh($base); ?>/blog/feed.xml">RSS feed</a></li>
+        <li><a href="https://repeatgrow.com/" target="_blank" rel="noopener" title="Repeat Grow, our WhatsApp CRM">WhatsApp CRM: Repeat Grow</a></li>
       </ul></div>
       <div class="footer-section"><h4>Legal</h4><ul>
         <li><a href="<?php echo bh($base); ?>/privacy-policy/">Privacy Policy</a></li><li><a href="<?php echo bh($base); ?>/terms-of-service/">Terms of Service</a></li>
