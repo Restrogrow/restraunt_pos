@@ -63,7 +63,7 @@ function obTrialDays(PDO $conn): int
 {
     try {
         require_once __DIR__ . '/platform_engine.php';
-        return max(1, min(365, (int)(pfSettings($conn)['trial_days'] ?? 30)));
+        return max(1, min(365, (int)(pfSettings($conn)['trial_days'] ?? 7)));
     } catch (Throwable $e) {
         return 30;
     }

@@ -279,7 +279,7 @@ try {
       // the country's own time zone and tax name/rate, same as self-signup
       applyCountryDefaults($conn, $restaurant_id, $country);
       // free trial length comes from Settings (Trial period)
-      try { $td = (int)(pfSettings($conn)['trial_days'] ?? 30); $conn->prepare("UPDATE users SET subscription_status = 'trial', trial_end_date = DATE_ADD(CURDATE(), INTERVAL ? DAY) WHERE restaurant_id = ?")->execute([max(1, $td), $restaurant_id]); } catch (Throwable $e) { error_log('[superadmin] trial date: ' . $e->getMessage()); }
+      try { $td = (int)(pfSettings($conn)['trial_days'] ?? 7); $conn->prepare("UPDATE users SET subscription_status = 'trial', trial_end_date = DATE_ADD(CURDATE(), INTERVAL ? DAY) WHERE restaurant_id = ?")->execute([max(1, $td), $restaurant_id]); } catch (Throwable $e) { error_log('[superadmin] trial date: ' . $e->getMessage()); }
       echo json_encode(['success' => true, 'message' => 'Restaurant created', 'restaurant_id' => $restaurant_id]);
       break;
 

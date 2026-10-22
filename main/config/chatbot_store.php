@@ -160,7 +160,7 @@ function rgChatbotTrialDays(): int
 {
     static $d = null;
     if ($d === null) {
-        try { require_once __DIR__ . '/onboarding.php'; $d = obTrialDays(getConnection()); } catch (Throwable $e) { $d = 30; }
+        try { require_once __DIR__ . '/onboarding.php'; $d = obTrialDays(getConnection()); } catch (Throwable $e) { $d = 7; }
     }
     return $d;
 }

@@ -16,7 +16,7 @@ Website link everywhere: **https://restrogrow.com**
 - **Support types:** Email + Live support
 - **Phone:** don't add unless the user says so
 - **API available:** Yes
-- **Free trial:** No · **Free plan:** No · **Free demo:** Yes
+- **Free trial:** Yes, 7 days, no card needed · **Free plan:** No · **Free demo:** Yes
 - **Customization:** Yes · **AI features:** Yes · **Mobile browser:** Yes
 - **Deployment:** Cloud based · Web app (+ mobile app)
 - **Pricing model:** Monthly + Yearly subscription

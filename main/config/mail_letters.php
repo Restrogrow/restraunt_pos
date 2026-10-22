@@ -70,7 +70,7 @@ if (!function_exists('letterEnsure')) {
             'my_email'     => (string)(env('MAIL_FROM_SALES', '') ?: SMTP_FROM_EMAIL),
             'price'        => $fmt($s['plan_price'] ?? '') . ' / month',
             'price_yearly' => $fmt($s['plan_price_yearly'] ?? '') . ' / year',
-            'trial_days'   => (string)($s['trial_days'] ?? '30'),
+            'trial_days'   => (string)($s['trial_days'] ?? '7'),
             'website'      => 'restrogrow.com',
         ];
     }

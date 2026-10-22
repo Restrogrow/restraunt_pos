@@ -6,7 +6,7 @@
  */
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: public, max-age=600');
-$out = ['trial_days' => 30];
+$out = ['trial_days' => 7];
 try {
     require_once __DIR__ . '/../db_connection.php';
     require_once __DIR__ . '/../config/onboarding.php';

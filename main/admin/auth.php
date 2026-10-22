@@ -785,7 +785,7 @@ function handleSignup() {
     // Hash password
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-    // Insert new user with 30-day trial period, currency derived from chosen country
+    // Insert new user with the free trial (Super Admin › Platform › trial days, 7 by default), currency derived from chosen country
     $insertStmt = $pdo->prepare("
         INSERT INTO users (username, email, password, restaurant_id, restaurant_name, country, phone, currency_symbol, subscription_status, trial_end_date, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(CURRENT_DATE(), INTERVAL " . obTrialDays($pdo) . " DAY), NOW(), NOW())

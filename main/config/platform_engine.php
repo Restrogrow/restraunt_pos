@@ -91,7 +91,7 @@ function pfSettings(PDO $conn): array
 {
     pfEnsure($conn);
     $d = [
-        'trial_days' => '30', 'plan_price' => '999', 'plan_price_yearly' => '9990', 'auto_renewal' => '1',
+        'trial_days' => '7', 'plan_price' => '999', 'plan_price_yearly' => '9990', 'auto_renewal' => '1',
         'renewal_notice_days' => '7',
         'biz_name' => 'RestroGrow', 'biz_address' => '', 'biz_gstin' => '', 'biz_email' => '', 'biz_phone' => '',
         'gst_percent' => '18', 'prices_include_gst' => '1', 'invoice_prefix' => 'RG', 'biz_upi' => '', 'biz_bank' => '',

@@ -7,7 +7,7 @@ require_once __DIR__ . '/../config/google_login.php';
 startSecureSession();
 $googleReady = googleLoginReady();
 // one free-trial length everywhere (Super Admin › Settings › trial days; config/onboarding.php)
-$trialDays = 30;
+$trialDays = 7;
 try { require_once __DIR__ . '/../db_connection.php'; require_once __DIR__ . '/../config/onboarding.php'; $trialDays = obTrialDays(getConnection()); } catch (Throwable $e) {}
 $openSignup = ($_GET['tab'] ?? '') === 'signup';
 // came back from Google with no account yet (admin/google_finish.php): sign-up without the WhatsApp code
