@@ -87,6 +87,10 @@ RewriteRule ^([a-z0-9-]+)/sitemap\.xml$ main/website/sitemap.php?restaurant=$1 [
 # Tracked short links from campaigns, posters, QR codes and Google posts (main/website/go.php, config/link_tracking.php)
 RewriteRule ^([a-z0-9-]+)/go/([A-Za-z0-9]{4,12})$ main/website/go.php?c=$2 [L,QSA]
 
+# Restaurant links that changed: the old address keeps its Google traffic (301 to the new one)
+# Pin Point Family Restaurant moved from /new-pin-point-family-restaurant (42 Google clicks, then 404 on 17 Oct 2026)
+RewriteRule ^new-pin-point-family-restaurant(/.*)?$ /pin-point-family-restaurant$1 [R=301,L]
+
 # Restaurant short URLs (e.g., /restaurant-name)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
