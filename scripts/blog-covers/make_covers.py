@@ -166,6 +166,35 @@ def calculator(x, y):
     s += '</g>'
     return s
 
+def menu_inner():
+    b = f'<rect x="0" y="0" width="202" height="46" fill="{OR}"/><text x="101" y="30" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">Spice Kitchen</text>'
+    for i, (n, p) in enumerate((('Paneer Tikka', '249'), ('Dal Makhani', '199'), ('Garlic Naan', '45'))):
+        y = 60 + i * 70
+        b += f'<rect x="10" y="{y}" width="182" height="58" rx="10" fill="#f6f6f6"/><rect x="18" y="{y+8}" width="42" height="42" rx="8" fill="{OR2}"/>'
+        b += f'<text x="70" y="{y+26}" font-size="13" font-weight="700" fill="#222">{n}</text><text x="70" y="{y+46}" font-size="13" fill="#555">₹{p}</text>'
+        b += f'<rect x="158" y="{y+16}" width="28" height="26" rx="8" fill="{OR}"/><text x="172" y="{y+35}" text-anchor="middle" font-size="16" font-weight="800" fill="#fff">+</text>'
+    b += f'<rect x="16" y="282" width="170" height="44" rx="22" fill="{BK}"/><text x="101" y="310" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">Order now · 0% fee</text>'
+    return b
+
+def checklist(x, y):
+    s = f'<g transform="translate({x+50} {y+20})" filter="url(#sh)"><rect x="0" y="0" width="320" height="380" rx="20" fill="#fff"/>'
+    s += f'<rect x="110" y="-14" width="100" height="30" rx="10" fill="{BK}"/>'
+    for i, t in enumerate(('No commission', 'UPI + COD', 'Orders to KOT', 'Own domain', 'Your customer data')):
+        yy = 50 + i * 64
+        s += f'<rect x="28" y="{yy}" width="34" height="34" rx="8" fill="{OR}"/><path d="M36 {yy+17} l7 8 l13 -15" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>'
+        s += f'<text x="78" y="{yy+24}" font-size="20" font-weight="600" fill="{BK}">{t}</text>'
+    s += '</g>'
+    return s
+
+def zero_pct(x, y):
+    s = f'<g transform="translate({x+30} {y+30})">'
+    s += f'<g filter="url(#sh)"><circle cx="190" cy="170" r="160" fill="#fff"/></g>'
+    s += f'<text x="190" y="215" text-anchor="middle" font-size="140" font-weight="800" fill="{OR}">0%</text>'
+    s += f'<text x="190" y="262" text-anchor="middle" font-size="22" font-weight="700" fill="{BK}">commission</text>'
+    s += f'<g transform="translate(250 270)" filter="url(#sh)"><rect width="150" height="60" rx="14" fill="{BK}"/><text x="75" y="39" text-anchor="middle" font-size="22" font-weight="700" fill="#fff">Direct order</text></g>'
+    s += '</g>'
+    return s
+
 COVERS = [
     ('kot-full-form-restaurant', 'Restaurant basics', ['KOT Full Form', 'and How It Works'], 'A printed KOT (kitchen order ticket) for table 6 listing dishes and a less spicy note', lambda: kot(720, 110)),
     ('kot-printer-price-in-india', 'Price guide 2026', ['KOT Printer Price', 'in India'], 'A thermal KOT printer printing a kitchen order ticket', lambda: printer(720, 120)),
@@ -182,6 +211,9 @@ COVERS = [
     ('restaurant-billing-software-price-in-india', 'Price guide 2026', ['Billing Software', 'Price in India'], 'A calculator adding up the first-year cost of restaurant billing software', lambda: calculator(720, 110)),
     ('diwali-offers-for-restaurants', 'Diwali 2026 · 8 Nov', ['Diwali Offers', 'for Restaurants'], 'A lit diya with a gift box, for Diwali restaurant offers', lambda: diya(700, 110)),
     ('what-is-restro-meaning', 'Restaurant basics', ['What Is a', 'Restro?'], 'A restaurant storefront with a RESTRO signboard', lambda: storefront(710, 110)),
+    ('own-online-ordering-website-for-restaurant', 'Direct orders', ['Your Own Online', 'Ordering Website'], 'A phone showing a restaurant ordering website with menu items and an Order now button', lambda: phone(730, 110, menu_inner())),
+    ('online-ordering-system-for-restaurants-in-india', 'Buyer checklist 2026', ['Online Ordering', 'System for India'], 'A checklist for choosing a restaurant online ordering system: no commission, UPI and COD, orders to KOT, own domain, customer data', lambda: checklist(720, 110)),
+    ('zero-commission-food-ordering', 'Direct orders', ['Zero Commission', 'Food Ordering'], 'A zero percent commission badge with a direct order label', lambda: zero_pct(700, 110)),
 ]
 
 

@@ -139,3 +139,15 @@ Batch 2 is written in `main/config/blog_starters/` (import from Super Admin › 
 | 15-restro-meaning | restro meaning / what is restro | Search Console: "restro" 3,215 impressions at position 7, only 6 clicks; "what is restro" 52 at 8.5 |
 
 Next after these: petpooja alternative, swiggy commission for cloud kitchen, is fssai license mandatory for cloud kitchen, kot system in restaurant, best bluetooth thermal printer for restaurant billing.
+
+## Batch 3: direct ordering (22 Oct 2026)
+
+Goal: rank for "own ordering platform" searches. We don't claim "India's No. 1" anywhere (unprovable; against ASCI advertising rules).
+
+| File | Keyword | Angle |
+|---|---|---|
+| 16-own-ordering-website | online ordering website for restaurant | What it needs, 3 ways to get one, setup, moving regulars |
+| 17-online-ordering-system-india | online ordering system for restaurants in india | 12-point buyer checklist, red flags |
+| 18-zero-commission | zero commission food ordering | ₹500 order maths, 30-day plan, mistakes |
+
+All starters 11–18 score 100 on the editor's SEO checklist. Next in this cluster: "restaurant website builder india", "commission free food delivery app for restaurants", "how to reduce zomato commission", "custom domain for restaurant website".

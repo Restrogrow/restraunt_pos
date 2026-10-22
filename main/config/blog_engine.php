@@ -111,6 +111,24 @@ if (!function_exists('blogEnsure')) {
                 ],
             ],
         ];
+        // starter-refresh: posts 11-15 went live before their SEO pass (keyword in title, description, first
+        // paragraph and a heading, an outside link); copy the improved starter text over the live posts once
+        $refresh = 'starter-refresh-2026-10-22';
+        if (!isset($done[$refresh])) {
+            $bySlug = array_column(blogStarters(), null, 'slug');
+            foreach (['how-to-make-qr-code-menu-for-restaurant', 'free-restaurant-billing-software-offline', 'restaurant-billing-software-price-in-india',
+                      'diwali-offers-for-restaurants', 'what-is-restro-meaning'] as $slug) {
+                $p = $bySlug[$slug] ?? null;
+                if (!$p) continue;
+                $content = blogSanitizeHtml($p['content']);
+                $conn->prepare('UPDATE blog_posts SET content = ?, focus_keyword = ?, meta_title = ?, meta_description = ?, reading_minutes = ? WHERE slug = ?')
+                    ->execute([$content, mb_strtolower($p['focus_keyword'] ?? '') ?: null, $p['meta_title'] ?? null, $p['meta_description'] ?? null, blogReadingMinutes($content), $slug]);
+                $st = $conn->prepare('SELECT * FROM blog_posts WHERE slug = ?');
+                $st->execute([$slug]);
+                if ($row = $st->fetch(PDO::FETCH_ASSOC)) $conn->prepare('UPDATE blog_posts SET seo_score = ? WHERE id = ?')->execute([blogSeoReport($row)['score'], $row['id']]);
+            }
+            $conn->prepare('INSERT IGNORE INTO blog_fixes (k) VALUES (?)')->execute([$refresh]);
+        }
         foreach ($fixes as $key => $posts) {
             if (isset($done[$key])) continue;
             foreach ($posts as $slug => $edits) {
@@ -144,6 +162,10 @@ if (!function_exists('blogEnsure')) {
             if ($svg && preg_match('#<title[^>]*>([^<]*)</title>#', $svg, $m)) $alt = html_entity_decode($m[1], ENT_QUOTES, 'UTF-8');
             $conn->prepare('UPDATE blog_posts SET cover_image = ?, cover_alt = COALESCE(NULLIF(cover_alt, \'\'), ?) WHERE id = ?')
                 ->execute(['/assets/blog/' . $r['slug'] . '.webp', mb_substr($alt, 0, 200) ?: null, $r['id']]);
+            // the SEO score counts the cover, so work it out again now that there is one
+            $st = $conn->prepare('SELECT * FROM blog_posts WHERE id = ?');
+            $st->execute([$r['id']]);
+            if ($row = $st->fetch(PDO::FETCH_ASSOC)) $conn->prepare('UPDATE blog_posts SET seo_score = ? WHERE id = ?')->execute([blogSeoReport($row)['score'], $r['id']]);
         }
     }
 
