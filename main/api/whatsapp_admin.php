@@ -44,6 +44,7 @@ try {
 
         $q = function ($sql, $args) use ($conn) { $st = $conn->prepare($sql); $st->execute($args); return $st; };
         try { waEnsureStatusHook($conn, $rid); } catch (Throwable $e) { error_log('wa status hook: ' . $e->getMessage()); }
+        try { rgcRefreshPhone($conn, $rid, $s); } catch (Throwable $e) { error_log('wa phone refresh: ' . $e->getMessage()); }
         $stats = [];
         // delivered / read (RepeatGrow receipts) and link clicks, per automatic message (30 days)
         $funnel = [];

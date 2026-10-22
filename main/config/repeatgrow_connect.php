@@ -191,6 +191,24 @@ if (!function_exists('rgcBase')) {
 
     function rgcRevoke(string $key): void { rgcRequest('POST', '/api/v1/keys/revoke-self', $key, []); }
 
+    /** The owner can switch numbers inside RepeatGrow after connecting: read the current one
+     *  from /api/v1/me (at most every 5 minutes) and save it when it changed. */
+    function rgcRefreshPhone(PDO $conn, string $rid, array &$s): void {
+        if ($s['mode'] !== 'own' || $s['api_key'] === '' || rgcBlocked()) return;
+        $stamp = __DIR__ . '/../tmp/rg_phone_' . md5($rid);
+        if (is_file($stamp) && filemtime($stamp) > time() - 300) return;
+        @touch($stamp);
+        [$http, $d] = rgcRequest('GET', '/api/v1/me', $s['api_key']);
+        $data = $d['data'] ?? $d;
+        if ($http !== 200 || !array_key_exists('phone_number', $data)) return;
+        $phone = mb_substr((string)($data['phone_number'] ?? ''), 0, 30);
+        $name = (string)($data['account']['name'] ?? '');
+        if ($phone === $s['rg_phone'] && ($name === '' || $name === $s['account_name'])) return;
+        $conn->prepare("UPDATE wa_settings SET rg_phone = ?, account_name = COALESCE(NULLIF(?, ''), account_name) WHERE restaurant_id = ?")->execute([$phone !== '' ? $phone : null, $name, $rid]);
+        $s['rg_phone'] = $phone;
+        if ($name !== '') $s['account_name'] = $name;
+    }
+
     /** RepeatGrow / Meta status → ours */
     function rgcStatus(string $s): string {
         $s = strtoupper($s);
