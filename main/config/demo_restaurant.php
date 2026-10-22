@@ -915,7 +915,7 @@ function demoRiderTopUp(PDO $pdo, string $rid, int $staffId, int $mine, int $ope
         $dishes = $pdo->prepare('SELECT id, item_name_en, base_price FROM menu_items WHERE restaurant_id = ? AND base_price > 0 ORDER BY RAND() LIMIT 12');
         $dishes->execute([$rid]);
         $dishes = $dishes->fetchAll(PDO::FETCH_ASSOC);
-        $people = $pdo->prepare('SELECT name, phone FROM customers WHERE restaurant_id = ? AND phone IS NOT NULL ORDER BY RAND() LIMIT 6');
+        $people = $pdo->prepare('SELECT customer_name AS name, phone FROM customers WHERE restaurant_id = ? AND phone IS NOT NULL ORDER BY RAND() LIMIT 6');
         $people->execute([$rid]);
         $people = $people->fetchAll(PDO::FETCH_ASSOC);
         if (!$dishes || !$people) return false;
