@@ -4090,7 +4090,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="item-info">
               <span class="menu-name">${escapeHtml(item.menu_name_translated || item.menu_name)}</span>
               <span class="prep-time">${item.preparation_time} min</span>
-              <span class="availability ${item.is_available ? 'available' : 'unavailable'}">${item.is_available ? 'In Stock' : 'Out of Stock'}</span>
+              <span class="availability ${Number(item.is_available) === 1 ? 'available' : 'unavailable'}">${Number(item.is_available) === 1 ? 'In Stock' : 'Out of Stock'}</span>
             </div>
           </div>
         </div>`;
@@ -4114,7 +4114,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="item-info">
             <span class="menu-name">${escapeHtml(item.menu_name)}</span>
             <span class="prep-time">${item.preparation_time} min</span>
-            <span class="availability ${item.is_available ? 'available' : 'unavailable'}">${item.is_available ? 'In Stock' : 'Out of Stock'}</span>
+            <span class="availability ${Number(item.is_available) === 1 ? 'available' : 'unavailable'}">${Number(item.is_available) === 1 ? 'In Stock' : 'Out of Stock'}</span>
             ${isHidden ? '<span class="availability unavailable">Hidden from POS/Website</span>' : ''}
           </div>
         </div>
@@ -4126,6 +4126,10 @@ document.addEventListener("DOMContentLoaded", () => {
           <button class="btn-edit" onclick="toggleMenuItemHidden(${item.id}, ${isHidden})">
             <span class="material-symbols-rounded">${isHidden ? 'visibility' : 'visibility_off'}</span>
             ${isHidden ? 'Unhide' : 'Hide'}
+          </button>
+          <button class="btn-edit" onclick="toggleMenuItemStock(${item.id}, ${Number(item.is_available) === 1})">
+            <span class="material-symbols-rounded">${Number(item.is_available) === 1 ? 'remove_shopping_cart' : 'add_shopping_cart'}</span>
+            ${Number(item.is_available) === 1 ? 'Out of stock' : 'In stock'}
           </button>
           <button class="btn-delete" onclick="deleteMenuItem(${item.id}, ${jsArg(item.item_name_translated || item.item_name_en)})">
             <span class="material-symbols-rounded">delete</span>
@@ -4159,6 +4163,30 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       console.error('Error toggling menu item visibility:', error);
       showNotification('Error updating item visibility', 'error');
+    }
+  };
+
+  // Mark a dish in / out of stock straight from its card (set_available).
+  window.toggleMenuItemStock = async function(itemId, currentlyAvailable) {
+    try {
+      const formData = new FormData();
+      formData.append('action', 'set_available');
+      formData.append('menuItemId', itemId);
+      formData.append('isAvailable', currentlyAvailable ? 0 : 1);
+      const response = await fetch('../controllers/menu_items_operations_base64.php', {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      if (result.success) {
+        showNotification(currentlyAvailable ? 'Marked out of stock' : 'Back in stock', 'success');
+        loadMenuItems();
+      } else {
+        showNotification(result.message || 'Failed to update stock', 'error');
+      }
+    } catch (error) {
+      console.error('Error toggling menu item stock:', error);
+      showNotification('Error updating stock', 'error');
     }
   };
 

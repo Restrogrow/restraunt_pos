@@ -76,6 +76,7 @@ export default function MenuItemScreen({ route, navigation }) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [togglingHidden, setTogglingHidden] = useState(false);
+  const [togglingStock, setTogglingStock] = useState(false);
 
   const [name, setName] = useState('');
   const [menuId, setMenuId] = useState('');
@@ -329,6 +330,26 @@ export default function MenuItemScreen({ route, navigation }) {
       feedback.errorFrom(e, 'Could not update the dish');
     } finally {
       setTogglingHidden(false);
+    }
+  };
+
+  const toggleStock = async () => {
+    const on = item.is_available == 1 ? 0 : 1;
+    setTogglingStock(true);
+    try {
+      const res = await apiPostForm('/controllers/menu_items_operations_base64.php', {
+        action: 'set_available',
+        menuItemId: item.id,
+        isAvailable: on,
+      });
+      if (!res.success) throw new Error(res.message || 'Could not update item');
+      setItem((it) => ({ ...it, is_available: on }));
+      emitMenuChange('update', { id: item.id, is_available: on });
+      feedback.success(on ? 'Back in stock' : 'Marked out of stock');
+    } catch (e) {
+      feedback.errorFrom(e, 'Could not update the dish');
+    } finally {
+      setTogglingStock(false);
     }
   };
 
@@ -609,6 +630,21 @@ export default function MenuItemScreen({ route, navigation }) {
             ))}
           </View>
         ) : null}
+
+        <Pressable
+          style={({ pressed }) => [styles.hideButton, pressed && { opacity: 0.9 }]}
+          onPress={toggleStock}
+          disabled={togglingStock}
+        >
+          {togglingStock ? (
+            <ActivityIndicator color={colors.inkSoft} size="small" />
+          ) : (
+            <>
+              <Ionicons name={available_ ? 'remove-circle-outline' : 'checkmark-circle-outline'} size={16} color={colors.inkSoft} />
+              <Text style={styles.hideButtonText}>{available_ ? 'Mark Out of Stock' : 'Mark In Stock'}</Text>
+            </>
+          )}
+        </Pressable>
 
         <Pressable
           style={({ pressed }) => [styles.hideButton, pressed && { opacity: 0.9 }]}
