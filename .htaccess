@@ -16,6 +16,13 @@ SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
     Require all denied
 </FilesMatch>
 RewriteRule ^(docs|tests|scripts)(/|$) - [F,L]
+# One address for Google: www.restrogrow.com pages redirect to restrogrow.com (Search Console showed
+# both copies in results). Only page views (GET/HEAD) move; API calls, webhooks and the MCP/OAuth
+# endpoints keep working on www so nothing that posts to www breaks.
+RewriteCond %{HTTP_HOST} ^www\.restrogrow\.com$ [NC]
+RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+RewriteCond %{REQUEST_URI} !^/(main|mcp|\.well-known)(/|$)
+RewriteRule ^(.*)$ https://restrogrow.com/$1 [R=301,L]
 
 # AI apps (ChatGPT, Claude): the MCP server and its OAuth discovery documents (main/mcp, main/oauth)
 RewriteRule ^mcp/?$ main/mcp/server.php [L]

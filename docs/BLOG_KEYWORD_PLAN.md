@@ -123,3 +123,19 @@ how to make qr code menu for restaurant | info | 2 | 7 | Free method, table card
 is fssai license mandatory for cloud kitchen | info | 2 | 17 | Tier, cost, documents, what Swiggy asks. Medium
 can we claim gst on restaurant bills | info | 3 | 4 | Yes/no with examples. Medium
 ```
+
+## Status and batch 2 (22 Oct 2026)
+
+All 10 first posts are live and **indexed** (checked one by one in Search Console on 22 Oct 2026). Early signals from Search Console (21 Jul – 20 Oct 2026): "kot" at position 5.3, "kot meaning" 6.1, "kot full form" 8.2; the Zomato commission post has 99 impressions.
+
+Batch 2 is written in `main/config/blog_starters/` (import from Super Admin › Blog, add a cover, publish two a week):
+
+| File | Keyword | Why now |
+|---|---|---|
+| 11-qr-code-menu | how to make qr code menu for restaurant | Medium; sells table QR ordering |
+| 12-offline-billing | free restaurant billing software offline | Easy; RestroGrow has offline billing |
+| 13-billing-software-price | restaurant billing software price in india | Signal 25; commercial intent |
+| 14-diwali-restaurant-offers | diwali offers for restaurants | Seasonal: publish before 26 Oct (Diwali is 8 Nov 2026) |
+| 15-restro-meaning | restro meaning / what is restro | Search Console: "restro" 3,215 impressions at position 7, only 6 clicks; "what is restro" 52 at 8.5 |
+
+Next after these: petpooja alternative, swiggy commission for cloud kitchen, is fssai license mandatory for cloud kitchen, kot system in restaurant, best bluetooth thermal printer for restaurant billing.
