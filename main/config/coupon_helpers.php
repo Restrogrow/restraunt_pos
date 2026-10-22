@@ -23,6 +23,39 @@ if (!function_exists('ensureCouponMilestoneColumn')) {
 }
 
 /**
+ * Columns an older live coupons table can miss (it was created before some of them existed).
+ * Run through rgEnsureOnce(), so it checks once per deploy, not on every request.
+ */
+if (!function_exists('ensureCouponColumns')) {
+    function ensureCouponColumns($conn) {
+        try {
+            $have = [];
+            foreach ($conn->query("SHOW COLUMNS FROM coupons")->fetchAll(PDO::FETCH_ASSOC) as $c) $have[$c['Field']] = true;
+            $need = [
+                'discount_type' => "ENUM('percent','flat') NOT NULL DEFAULT 'percent'",
+                'minimum_order_amount' => 'DECIMAL(10,2) DEFAULT 0.00',
+                'max_uses' => 'INT DEFAULT 0',
+                'current_uses' => 'INT DEFAULT 0',
+                'valid_from' => 'DATE DEFAULT NULL',
+                'valid_until' => 'DATE DEFAULT NULL',
+                'is_active' => 'TINYINT(1) DEFAULT 1',
+                'description' => "VARCHAR(255) DEFAULT ''",
+            ];
+            foreach ($need as $col => $def) {
+                if (!isset($have[$col])) $conn->exec("ALTER TABLE coupons ADD COLUMN `$col` $def");
+            }
+        } catch (PDOException $e) {
+            error_log('coupon_helpers.php: could not check coupon columns: ' . $e->getMessage());
+        }
+    }
+}
+
+/** A coupon form mistake, written for the owner: shown as it is. */
+if (!class_exists('CouponInputError')) {
+    class CouponInputError extends Exception {}
+}
+
+/**
  * Private coupons (Offers > Scratch card rewards): owner_phone set = only that
  * customer may use it, and it is never listed publicly.
  */

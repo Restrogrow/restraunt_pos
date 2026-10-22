@@ -197,14 +197,18 @@ if (!function_exists('rgcBase')) {
         if ($s['mode'] !== 'own' || $s['api_key'] === '' || rgcBlocked()) return;
         $stamp = __DIR__ . '/../tmp/rg_phone_' . md5($rid);
         if (is_file($stamp) && filemtime($stamp) > time() - 300) return;
-        @touch($stamp);
+        // no answer: try again in a minute rather than five (the stamp counts as 4 minutes old)
+        @touch($stamp, time() - 240);
         [$http, $d] = rgcRequest('GET', '/api/v1/me', $s['api_key']);
         $data = $d['data'] ?? $d;
         if ($http !== 200 || !array_key_exists('phone_number', $data)) return;
-        $phone = mb_substr((string)($data['phone_number'] ?? ''), 0, 30);
+        // no number this moment usually means it is being reconnected: keep the one we show
+        if ($data['phone_number'] === null || $data['phone_number'] === '') return;
+        @touch($stamp);
+        $phone = mb_substr((string)$data['phone_number'], 0, 30);
         $name = (string)($data['account']['name'] ?? '');
         if ($phone === $s['rg_phone'] && ($name === '' || $name === $s['account_name'])) return;
-        $conn->prepare("UPDATE wa_settings SET rg_phone = ?, account_name = COALESCE(NULLIF(?, ''), account_name) WHERE restaurant_id = ?")->execute([$phone !== '' ? $phone : null, $name, $rid]);
+        $conn->prepare("UPDATE wa_settings SET rg_phone = ?, account_name = COALESCE(NULLIF(?, ''), account_name) WHERE restaurant_id = ?")->execute([$phone, $name, $rid]);
         $s['rg_phone'] = $phone;
         if ($name !== '') $s['account_name'] = $name;
     }

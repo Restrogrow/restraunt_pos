@@ -247,7 +247,10 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
           if (!D) notice('cloud_off', 'Could not load your deliveries.<br>Trying again in a moment.');
           return;
         }
-        D = d; draw();
+        D = d;
+        // a good answer clears an earlier "server had a problem" / "no internet" from the location line
+        if (watch === null) $('locText').textContent = 'Location sharing starts when you pick up an order.';
+        draw();
       });
     }, function () {
       $('locText').textContent = 'No internet. Trying again…';

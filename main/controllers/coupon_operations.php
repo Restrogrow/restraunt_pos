@@ -41,41 +41,22 @@ try {
         )");
     }
 
-    // Older live tables can miss columns the form saves; add any that are missing.
-    try {
-        $have = [];
-        foreach ($conn->query("SHOW COLUMNS FROM coupons")->fetchAll(PDO::FETCH_ASSOC) as $c) $have[$c['Field']] = true;
-        $need = [
-            'discount_type' => "ENUM('percent','flat') NOT NULL DEFAULT 'percent'",
-            'minimum_order_amount' => 'DECIMAL(10,2) DEFAULT 0.00',
-            'max_uses' => 'INT DEFAULT 0',
-            'current_uses' => 'INT DEFAULT 0',
-            'valid_from' => 'DATE DEFAULT NULL',
-            'valid_until' => 'DATE DEFAULT NULL',
-            'is_active' => 'TINYINT(1) DEFAULT 1',
-            'description' => "VARCHAR(255) DEFAULT ''",
-        ];
-        foreach ($need as $col => $def) {
-            if (!isset($have[$col])) $conn->exec("ALTER TABLE coupons ADD COLUMN `$col` $def");
-        }
-    } catch (PDOException $e) {
-        error_log('coupon_operations.php: could not check coupon columns: ' . $e->getMessage());
-    }
-
     require_once __DIR__ . '/../config/coupon_helpers.php';
+    require_once __DIR__ . '/../config/schema_cache.php';
+    rgEnsureOnce('ensureCouponColumns', $conn);
     ensureCouponMilestoneColumn($conn);
     // Milestone offer: shown on the cart progress bar and auto-applied once the
     // order reaches the minimum — so it needs a minimum order amount.
     $isMilestone = !empty($_POST['is_milestone']) ? 1 : 0;
     if ($isMilestone && in_array($action, ['add', 'update'], true) && (float)($_POST['minimum_order_amount'] ?? 0) <= 0) {
-        throw new Exception('A milestone offer needs a minimum order amount');
+        throw new CouponInputError('A milestone offer needs a minimum order amount');
     }
 
     switch ($action) {
         case 'add':
             $code = strtoupper(trim($_POST['coupon_code'] ?? ''));
             // letters, numbers, - and _ only: other characters broke the coupon cards on the website
-            if (!preg_match('/^[A-Z0-9_-]{2,30}$/', $code)) throw new Exception('Coupon code: use 2–30 letters, numbers, - or _ (no spaces)');
+            if (!preg_match('/^[A-Z0-9_-]{2,30}$/', $code)) throw new CouponInputError('Coupon code: use 2–30 letters, numbers, - or _ (no spaces)');
             $type = $_POST['discount_type'] ?? 'percent';
             $value = (float)($_POST['discount_value'] ?? 0);
             $minOrder = (float)($_POST['minimum_order_amount'] ?? 0);
@@ -85,17 +66,17 @@ try {
             $desc = trim($_POST['description'] ?? '');
 
             // Validate inputs — guard against negative values and invalid dates
-            if (!$code || $value <= 0) throw new Exception('Coupon code and discount value are required');
+            if (!$code || $value <= 0) throw new CouponInputError('Coupon code and discount value are required');
             if (!in_array($type, ['percent', 'flat'])) $type = 'percent';
-            if ($type === 'percent' && $value > 100) throw new Exception('Percentage discount cannot exceed 100%');
-            if ($minOrder < 0) throw new Exception('Minimum order amount cannot be negative');
-            if ($maxUses < 0) throw new Exception('Max uses cannot be negative');
-            if ($validFrom && $validUntil && $validFrom > $validUntil) throw new Exception('Valid from date must be before or equal to valid until date');
+            if ($type === 'percent' && $value > 100) throw new CouponInputError('Percentage discount cannot exceed 100%');
+            if ($minOrder < 0) throw new CouponInputError('Minimum order amount cannot be negative');
+            if ($maxUses < 0) throw new CouponInputError('Max uses cannot be negative');
+            if ($validFrom && $validUntil && $validFrom > $validUntil) throw new CouponInputError('Valid from date must be before or equal to valid until date');
 
             // Check duplicate
             $check = $conn->prepare("SELECT id FROM coupons WHERE restaurant_id = ? AND coupon_code = ?");
             $check->execute([$restaurant_id, $code]);
-            if ($check->fetch()) throw new Exception('Coupon code already exists');
+            if ($check->fetch()) throw new CouponInputError('Coupon code already exists');
 
             $stmt = $conn->prepare("INSERT INTO coupons (restaurant_id, coupon_code, discount_type, discount_value, minimum_order_amount, max_uses, valid_from, valid_until, description, is_milestone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$restaurant_id, $code, $type, $value, $minOrder, $maxUses, $validFrom, $validUntil, $desc, $isMilestone]);
@@ -106,11 +87,11 @@ try {
 
         case 'update':
             $id = (int)($_POST['id'] ?? 0);
-            if ($id <= 0) throw new Exception('Invalid coupon id');
+            if ($id <= 0) throw new CouponInputError('Invalid coupon id');
 
             $code = strtoupper(trim($_POST['coupon_code'] ?? ''));
             // letters, numbers, - and _ only: other characters broke the coupon cards on the website
-            if (!preg_match('/^[A-Z0-9_-]{2,30}$/', $code)) throw new Exception('Coupon code: use 2–30 letters, numbers, - or _ (no spaces)');
+            if (!preg_match('/^[A-Z0-9_-]{2,30}$/', $code)) throw new CouponInputError('Coupon code: use 2–30 letters, numbers, - or _ (no spaces)');
             $type = $_POST['discount_type'] ?? 'percent';
             $value = (float)($_POST['discount_value'] ?? 0);
             $minOrder = (float)($_POST['minimum_order_amount'] ?? 0);
@@ -120,17 +101,17 @@ try {
             $desc = trim($_POST['description'] ?? '');
 
             // Validate inputs — guard against negative values and invalid dates
-            if (!$code || $value <= 0) throw new Exception('Coupon code and discount value are required');
+            if (!$code || $value <= 0) throw new CouponInputError('Coupon code and discount value are required');
             if (!in_array($type, ['percent', 'flat'])) $type = 'percent';
-            if ($type === 'percent' && $value > 100) throw new Exception('Percentage discount cannot exceed 100%');
-            if ($minOrder < 0) throw new Exception('Minimum order amount cannot be negative');
-            if ($maxUses < 0) throw new Exception('Max uses cannot be negative');
-            if ($validFrom && $validUntil && $validFrom > $validUntil) throw new Exception('Valid from date must be before or equal to valid until date');
+            if ($type === 'percent' && $value > 100) throw new CouponInputError('Percentage discount cannot exceed 100%');
+            if ($minOrder < 0) throw new CouponInputError('Minimum order amount cannot be negative');
+            if ($maxUses < 0) throw new CouponInputError('Max uses cannot be negative');
+            if ($validFrom && $validUntil && $validFrom > $validUntil) throw new CouponInputError('Valid from date must be before or equal to valid until date');
 
             // Check duplicate (exclude self)
             $check = $conn->prepare("SELECT id FROM coupons WHERE restaurant_id = ? AND coupon_code = ? AND id != ?");
             $check->execute([$restaurant_id, $code, $id]);
-            if ($check->fetch()) throw new Exception('Coupon code already exists');
+            if ($check->fetch()) throw new CouponInputError('Coupon code already exists');
 
             $stmt = $conn->prepare("UPDATE coupons SET coupon_code=?, discount_type=?, discount_value=?, minimum_order_amount=?, max_uses=?, valid_from=?, valid_until=?, description=?, is_milestone=? WHERE id=? AND restaurant_id=?");
             $stmt->execute([$code, $type, $value, $minOrder, $maxUses, $validFrom, $validUntil, $desc, $isMilestone, $id, $restaurant_id]);
@@ -141,7 +122,7 @@ try {
 
         case 'delete':
             $id = (int)($_POST['id'] ?? 0);
-            if ($id <= 0) throw new Exception('Invalid coupon id');
+            if ($id <= 0) throw new CouponInputError('Invalid coupon id');
             $cc = $conn->prepare('SELECT coupon_code FROM coupons WHERE id = ? AND restaurant_id = ?'); $cc->execute([$id, $restaurant_id]); $ccode = $cc->fetchColumn();
             $stmt = $conn->prepare("DELETE FROM coupons WHERE id = ? AND restaurant_id = ?");
             $stmt->execute([$id, $restaurant_id]);
@@ -152,7 +133,7 @@ try {
         case 'toggle':
             $id = (int)($_POST['id'] ?? 0);
             $active = (int)($_POST['is_active'] ?? 1);
-            if ($id <= 0) throw new Exception('Invalid coupon id');
+            if ($id <= 0) throw new CouponInputError('Invalid coupon id');
             $stmt = $conn->prepare("UPDATE coupons SET is_active = ? WHERE id = ? AND restaurant_id = ?");
             $stmt->execute([$active, $id, $restaurant_id]);
             if ($stmt->rowCount()) {
@@ -164,15 +145,18 @@ try {
             break;
 
         default:
-            throw new Exception('Invalid action');
+            throw new CouponInputError('Invalid action');
     }
 } catch (PDOException $e) {
     error_log("DB error in coupon_operations.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Could not save the coupon (database error). Please try again.']);
-} catch (Exception $e) {
-    // Validation messages are written for the owner, so show them as they are.
-    error_log("Error in coupon_operations.php: " . $e->getMessage());
+} catch (CouponInputError $e) {
+    // form mistakes are written for the owner, so show them as they are
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+} catch (Exception $e) {
+    error_log("Error in coupon_operations.php: " . $e->getMessage());
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']);
 }

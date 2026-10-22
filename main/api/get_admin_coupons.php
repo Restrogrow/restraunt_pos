@@ -45,6 +45,8 @@ try {
     }
 
     require_once __DIR__ . '/../config/coupon_helpers.php';
+    require_once __DIR__ . '/../config/schema_cache.php';
+    rgEnsureOnce('ensureCouponColumns', $conn);
     ensureCouponMilestoneColumn($conn);
     ensureCouponOwnerColumn($conn);
     // Scratch card reward codes (owner_phone set) live under Offers > Scratch card

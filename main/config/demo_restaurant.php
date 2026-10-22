@@ -934,39 +934,47 @@ function demoRiderTopUp(PDO $pdo, string $rid, int $staffId, int $mine, int $ope
             if ($step === 'Delivered' && date('Y-m-d', $ts) !== date('Y-m-d', $now)) $ts = strtotime('today') + 60 * ($n + 1);
             $created = date('Y-m-d H:i:s', $ts);
             $lines = array_slice($dishes, ($n * 2) % max(1, count($dishes) - 1), mt_rand(1, 3));
-            $subtotal = 0.0;
-            foreach ($lines as &$l) { $l['q'] = mt_rand(1, 2); $subtotal += (float)$l['base_price'] * $l['q']; }
-            unset($l);
-            $deliveryCharge = (float)(mt_rand(2, 6) * 8);
-            $tax = round($subtotal * 0.05, 2);
-            $total = round($subtotal + $tax + $deliveryCharge + 20, 2);
-            $c = $people[$n % count($people)];
-            $address = mt_rand(10, 999) . ', ' . $areas[mt_rand(0, count($areas) - 1)] . ', Bengaluru';
-            $orderId = demoInsert($pdo, 'orders', [
-                'restaurant_id' => $rid, 'order_number' => 'ORD-' . date('Ymd', $ts) . '-R' . substr((string)mt_rand(100000, 999999), 0, 5),
-                'customer_name' => $c['name'], 'customer_phone' => $c['phone'], 'order_type' => 'Delivery',
-                'payment_method' => $method, 'payment_status' => $method === 'Online' || $step === 'Delivered' ? 'Paid' : 'Pending',
-                'order_status' => $status, 'source' => 'website', 'subtotal' => $subtotal, 'tax' => $tax, 'total' => $total,
-                'delivery_charge' => $deliveryCharge, 'delivery_address' => $address, 'customer_address' => $address,
-                'table_id' => null, 'coupon_code' => null, 'discount_amount' => 0, 'notes' => null,
-                'prep_minutes' => 20, 'estimated_ready_at' => date('Y-m-d H:i:s', $ts + 20 * 60),
-                'created_at' => $created, 'updated_at' => $created,
-            ]);
-            if (!$orderId) continue;
-            foreach ($lines as $l) {
-                demoInsert($pdo, 'order_items', ['order_id' => $orderId, 'menu_item_id' => $l['id'], 'item_name' => $l['item_name_en'], 'quantity' => $l['q'],
-                                                 'unit_price' => $l['base_price'], 'total_price' => (float)$l['base_price'] * $l['q'], 'created_at' => $created]);
+            // all or nothing: a half-built order would show up for every visitor
+            $pdo->beginTransaction();
+            try {
+                $subtotal = 0.0;
+                foreach ($lines as &$l) { $l['q'] = mt_rand(1, 2); $subtotal += (float)$l['base_price'] * $l['q']; }
+                unset($l);
+                $deliveryCharge = (float)(mt_rand(2, 6) * 8);
+                $tax = round($subtotal * 0.05, 2);
+                $total = round($subtotal + $tax + $deliveryCharge + 20, 2);
+                $c = $people[$n % count($people)];
+                $address = mt_rand(10, 999) . ', ' . $areas[mt_rand(0, count($areas) - 1)] . ', Bengaluru';
+                $orderId = demoInsert($pdo, 'orders', [
+                    'restaurant_id' => $rid, 'order_number' => 'ORD-' . date('Ymd', $ts) . '-R' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 7)),
+                    'customer_name' => $c['name'], 'customer_phone' => $c['phone'], 'order_type' => 'Delivery',
+                    'payment_method' => $method, 'payment_status' => $method === 'Online' || $step === 'Delivered' ? 'Paid' : 'Pending',
+                    'order_status' => $status, 'source' => 'website', 'subtotal' => $subtotal, 'tax' => $tax, 'total' => $total,
+                    'delivery_charge' => $deliveryCharge, 'delivery_address' => $address, 'customer_address' => $address,
+                    'table_id' => null, 'coupon_code' => null, 'discount_amount' => 0, 'notes' => null,
+                    'prep_minutes' => 20, 'estimated_ready_at' => date('Y-m-d H:i:s', $ts + 20 * 60),
+                    'created_at' => $created, 'updated_at' => $created,
+                ]);
+                if (!$orderId) { $pdo->rollBack(); continue; }
+                foreach ($lines as $l) {
+                    demoInsert($pdo, 'order_items', ['order_id' => $orderId, 'menu_item_id' => $l['id'], 'item_name' => $l['item_name_en'], 'quantity' => $l['q'],
+                                                     'unit_price' => $l['base_price'], 'total_price' => (float)$l['base_price'] * $l['q'], 'created_at' => $created]);
+                }
+                if ($step === 'Waiting') { $pdo->commit(); continue; } // no rider yet: shows under "Waiting for a rider"
+                $at = fn(int $min) => date('Y-m-d H:i:s', min($now, $ts + $min * 60));
+                demoInsert($pdo, 'delivery_tracking', [
+                    'restaurant_id' => $rid, 'order_id' => $orderId, 'delivery_address' => $address, 'delivery_status' => $step,
+                    'rider_staff_id' => $rider['id'], 'rider_name' => $rider['member_name'], 'rider_phone' => $rider['phone'], 'assigned_at' => $at(4),
+                    'picked_up_at' => in_array($step, ['In_Transit', 'Delivered'], true) ? $at(10) : null,
+                    'in_transit_at' => in_array($step, ['In_Transit', 'Delivered'], true) ? $at(11) : null,
+                    'delivered_at' => $step === 'Delivered' ? $at(35) : null,
+                    'created_at' => $created,
+                ]);
+                $pdo->commit();
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                throw $e;
             }
-            if ($step === 'Waiting') continue; // no rider yet: shows under "Waiting for a rider"
-            $at = fn(int $min) => date('Y-m-d H:i:s', min($now, $ts + $min * 60));
-            demoInsert($pdo, 'delivery_tracking', [
-                'restaurant_id' => $rid, 'order_id' => $orderId, 'delivery_address' => $address, 'delivery_status' => $step,
-                'rider_staff_id' => $rider['id'], 'rider_name' => $rider['member_name'], 'rider_phone' => $rider['phone'], 'assigned_at' => $at(4),
-                'picked_up_at' => in_array($step, ['In_Transit', 'Delivered'], true) ? $at(10) : null,
-                'in_transit_at' => in_array($step, ['In_Transit', 'Delivered'], true) ? $at(11) : null,
-                'delivered_at' => $step === 'Delivered' ? $at(35) : null,
-                'created_at' => $created,
-            ]);
         }
         return (bool)$plan;
     } finally {

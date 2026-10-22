@@ -31,7 +31,7 @@ function fromUrl() {
 }
 
 export default function DemoDeepLink() {
-  const { user, login, logout, checkingSession } = useAuth();
+  const { user, login, logout, loggedOutAt, checkingSession } = useAuth();
   const want = useRef(fromUrl());
 
   // log in as the asked role once (even if another demo role is still signed in), then open the screen.
@@ -76,9 +76,11 @@ export default function DemoDeepLink() {
     const as = want.current.as;
     if (!as || !ready || user || checkingSession) return;
     if (Date.now() - switchedAt.current > 30000 || relogins.current >= 3) return;
+    // the visitor tapped Log out themselves: leave them on the login screen
+    if (loggedOutAt.current > switchedAt.current) return;
     relogins.current += 1;
     login(DEMO_STAFF[as], DEMO_STAFF_PASSWORD).catch(() => {});
-  }, [user, ready, checkingSession, login]);
+  }, [user, ready, checkingSession, login, loggedOutAt]);
 
   useEffect(() => {
     const screen = want.current.screen;

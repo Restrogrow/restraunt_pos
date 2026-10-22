@@ -134,6 +134,10 @@ try { $conn->query("SELECT id FROM coupons LIMIT 1"); } catch (PDOException $e) 
         )");
     } catch (PDOException $e2) {}
 }
+// an older coupons table can miss columns (config/coupon_helpers.php)
+require_once __DIR__ . '/../config/coupon_helpers.php';
+require_once __DIR__ . '/../config/schema_cache.php';
+rgEnsureOnce('ensureCouponColumns', $conn);
 
 try {
   switch ($action) {

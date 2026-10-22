@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { apiGet, apiPostForm } from '../config/api';
 import { getDeviceId } from '../config/deviceId';
 import { clearApiCache } from '../hooks/useApiData';
@@ -12,6 +12,8 @@ const SESSION_POLL_MS = 20000;
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  // when someone last logged out on purpose (the browser demo must not log them straight back in)
+  const loggedOutAt = useRef(0);
 
   // silent=true is used by the background poll below — a network blip there
   // shouldn't boot the owner to the login screen mid-shift, only an explicit
@@ -92,6 +94,7 @@ export function AuthProvider({ children }) {
   }, [checkSession]);
 
   const logout = useCallback(async () => {
+    loggedOutAt.current = Date.now();
     try {
       await apiPostForm('/admin/auth.php', { action: 'logout' });
     } catch (e) {
@@ -102,7 +105,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, checkingSession, login, loginWithGoogle, logout, refresh: checkSession }}>
+    <AuthContext.Provider value={{ user, checkingSession, login, loginWithGoogle, logout, loggedOutAt, refresh: checkSession }}>
       {children}
     </AuthContext.Provider>
   );
