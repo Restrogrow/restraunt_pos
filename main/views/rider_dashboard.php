@@ -53,7 +53,6 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 
   main.wrap { padding-top:18px; padding-bottom:calc(40px + env(safe-area-inset-bottom)); display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:22px; align-items:start; }
   .col { display:grid; gap:12px; min-width:0; }
-  aside.col { position:sticky; top:16px; }
   h2 { margin:6px 2px 0; font-size:15px; display:flex; align-items:center; gap:8px; }
   h2 .n { background:var(--chip); color:var(--soft); font-size:12px; font-weight:600; padding:1px 9px; border-radius:999px; }
 
@@ -105,7 +104,6 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 
   @media (max-width: 860px) {
     main.wrap { grid-template-columns:1fr; gap:14px; padding-top:14px; }
-    aside.col { position:static; }
   }
   @media (max-width: 520px) {
     .wrap { padding:0 14px; }
@@ -151,16 +149,22 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   function toast(t) { var e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function () { e.style.display = 'none'; }, 3500); }
   function post(b) { return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
   function tel(p) { return 'tel:' + String(p || '').replace(/[^\d+]/g, ''); }
-  function when(s) { return s ? new Date(String(s).replace(' ', 'T')) : null; }
+  // server times carry no zone; read them in the server's (D.tz, e.g. +05:30), not the phone's
+  function when(s) { return s ? new Date(String(s).replace(' ', 'T') + ((D && D.tz) || '+05:30')) : null; }
   function ago(s) {
     var d = when(s); if (!d || isNaN(d)) return '';
     var m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
     return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min ago';
   }
   function clock(s) { var d = when(s); return d && !isNaN(d) ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''; }
+  function paidHow(d) {
+    if (d.cod_amount) return 'cash ' + money(d.cod_amount) + ' collected';
+    var m = String(d.payment_method || '').toLowerCase();
+    return m === 'cash' ? 'paid in cash' : m ? 'paid · ' + esc(d.payment_method) : 'paid';
+  }
 
   function steps(status) {
-    var at = ORDER.indexOf(status); if (at < 0) at = 0;
+    var at = ORDER.indexOf(status); // Pending / Preparing: no step reached yet
     return '<div class="steps">' + ['Assigned', 'Picked up', 'On the way', 'Delivered'].map(function (l, i) {
       return '<div class="' + (i <= at ? 'on' : '') + (i === at ? ' now' : '') + '">' + l + '</div>';
     }).join('') + '</div>';
@@ -170,14 +174,16 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     var st = STEP[d.delivery_status] || STEP.Assigned;
     var next = open ? null : ({ Assigned: ['Picked_Up', 'I picked up the order'], Pending: ['Picked_Up', 'I picked up the order'], Preparing: ['Picked_Up', 'I picked up the order'], Picked_Up: ['In_Transit', 'Start the ride'], In_Transit: ['Delivered', 'Delivered'] })[d.delivery_status];
     var cod = d.cod_due > 0;
-    var kitchen = d.order_status === 'Ready' ? 'Food is ready' : 'Kitchen: ' + esc(String(d.order_status).toLowerCase());
+    var kitchen = d.order_status === 'Ready' ? 'food is ready' : 'kitchen: ' + esc(String(d.order_status).toLowerCase());
+    // your delivery: since it was given to you; an open one: since it was ordered
+    var since = !open && d.assigned_at ? 'assigned ' + ago(d.assigned_at) : 'ordered ' + ago(d.created_at);
     return '<div class="card' + (open ? ' open' : '') + '">' +
-      '<div class="top"><div><b>' + esc(d.customer_name || 'Customer') + '</b><small>' + esc(d.order_number) + ' · ' + ago(d.created_at) + '</small></div>' +
+      '<div class="top"><div><b>' + esc(d.customer_name || 'Customer') + '</b><small>' + esc(d.order_number) + ' · ' + since + ' · ' + kitchen + '</small></div>' +
         '<span class="pill" style="background:' + st[1] + '"><span class="ms">' + st[2] + '</span>' + (open ? 'Open' : st[0]) + '</span></div>' +
       (open ? '' : steps(d.delivery_status)) +
       '<div class="row"><span class="ms">location_on</span><div>' + esc(d.address || 'No address given') + (d.landmark ? '<small>Near ' + esc(d.landmark) + '</small>' : '') + '</div></div>' +
-      (d.items ? '<div class="row items"><span class="ms">restaurant</span><div>' + esc(d.items) + '<small>' + kitchen + '</small></div></div>' : '') +
-      '<div class="cash' + (cod ? '' : ' paid') + '"><span class="ms">' + (cod ? 'payments' : 'check_circle') + '</span>' + (cod ? 'Collect ' + money(d.cod_due) + ' in cash' : 'Already paid, collect nothing') + '</div>' +
+      (d.items ? '<div class="row items"><span class="ms">restaurant</span><div>' + esc(d.items) + '</div></div>' : '') +
+      '<div class="cash' + (cod ? '' : ' paid') + '"><span class="ms">' + (cod ? 'payments' : 'check_circle') + '</span>' + (cod ? 'Collect ' + money(d.cod_due) + ' in cash' : d.payment_status === 'Paid' ? 'Already paid, collect nothing' : 'Paid online, collect nothing') + '</div>' +
       '<div class="acts">' + (d.maps_url ? '<a class="btn" href="' + esc(d.maps_url) + '" target="_blank" rel="noopener"><span class="ms">navigation</span>Directions</a>' : '<span></span>') +
       (d.customer_phone ? '<a class="btn" href="' + tel(d.customer_phone) + '"><span class="ms">call</span>Call customer</a>' : '<span></span>') +
       (open ? '<button class="btn big" data-claim="' + d.id + '"><span class="ms">add_task</span>Take this delivery</button>' :
@@ -195,7 +201,7 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     if (D.self_pick && D.open.length) h += '<h2>Waiting for a rider <span class="n">' + D.open.length + '</span></h2>' + D.open.map(function (d) { return card(d, true); }).join('');
     if (D.done_today.length) h += '<h2>Delivered today <span class="n">' + D.done_today.length + '</span></h2><div class="card done-list">' + D.done_today.map(function (d) {
       return '<div class="done"><span class="ms">check_circle</span><span>' + esc(d.customer_name || 'Customer') + '<small>' + esc(d.order_number) + (d.delivered_at ? ' · ' + clock(d.delivered_at) : '') + '</small></span>' +
-        '<b>' + money(d.total) + '<small>' + (d.cod_amount ? 'cash ' + money(d.cod_amount) : 'paid online') + '</small></b></div>';
+        '<b>' + money(d.total) + '<small>' + paidHow(d) + '</small></b></div>';
     }).join('') + '</div>';
     if (D.restaurant && D.restaurant.phone) h += '<a class="btn wide" href="' + tel(D.restaurant.phone) + '"><span class="ms">storefront</span>Call the restaurant</a>';
     $('side').innerHTML = h;
@@ -203,9 +209,18 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   }
   function load() {
     return fetch(API, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
-      if (!d.success) { if (/log in/i.test(d.message || '')) location.href = '../admin/login.php'; else $('mine').innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
+      if (!d.success) {
+        if (/log in/i.test(d.message || '')) { location.href = '../admin/login.php'; return; }
+        // nothing from the last load stays clickable, and location sharing stops
+        D = null; $('side').innerHTML = ''; track(false);
+        $('mine').innerHTML = '<div class="empty"><span class="ms">info</span>' + esc(d.message || 'Something went wrong.') + '</div>';
+        return;
+      }
       D = d; draw();
-    }).catch(function () { $('locText').textContent = 'No internet. Trying again…'; });
+    }).catch(function () {
+      $('locText').textContent = 'No internet. Trying again…';
+      if (!D) $('mine').innerHTML = '<div class="empty"><span class="ms">wifi_off</span>No internet right now.<br>Your deliveries show up as soon as you are back online.</div>';
+    });
   }
 
   // live location while a delivery is under way

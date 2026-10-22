@@ -66,7 +66,9 @@ try {
         riderOut(['success' => true, 'enabled' => true, 'me' => ['id' => $me, 'name' => $myName], 'self_pick' => $settings['self_pick'],
             'restaurant' => ['name' => $rest['restaurant_name'] ?? '', 'phone' => $rest['phone'] ?? '', 'address' => $rest['address'] ?? '', 'currency' => ($rest['currency_symbol'] ?? '') ?: '₹'],
             'mine' => $mine, 'open' => $open, 'done_today' => $done, 'cash_in_hand' => round((float)$cash->fetchColumn(), 2),
-            'delivered_today' => count($done)]);
+            'delivered_today' => count($done),
+            // every time above is server time without a zone (the DB session is pinned to IST)
+            'tz' => date('P')]);
     }
 
     $in = json_decode(file_get_contents('php://input'), true);
