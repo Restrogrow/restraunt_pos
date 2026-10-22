@@ -34,6 +34,7 @@ if (isset($_GET['connect'])) {
 if (isset($_GET['google'])) {
     $msg = ['connected' => ['Google connected. Numbers load below; index status fills in over a few minutes.', false],
         'cancelled' => ['Google sign-in was cancelled.', true], 'expired' => ['The sign-in took too long. Click Connect Google again.', true],
+        'no_scope' => ['Google was not given access to Search Console data. Click Connect Google again and tick the box for Search Console on the Google page.', true],
         'no_refresh' => ['Google did not give a lasting sign-in. Remove RestroGrow from the third-party access list of your Google account and connect again.', true]][$_GET['google']] ?? ['Google sign-in failed. Try again.', true];
     if ($_GET['google'] === 'connected') { seoClearCache($conn); $conn->exec('DELETE FROM seo_url_status'); }
     $_SESSION['sa_seo_flash'] = $msg;

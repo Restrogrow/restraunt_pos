@@ -93,6 +93,11 @@ function seoApi(PDO $c, string $method, string $url, ?array $body = null): array
     $res = json_decode((string)$out, true) ?: [];
     if (!empty($res['error'])) {
         $m = (string)($res['error']['message'] ?? 'Google refused the request');
+        if ($oauth && stripos($m, 'insufficient authentication scopes') !== false) {
+            // signed in without ticking the Search Console box: forget that sign-in so Setup offers Connect Google again
+            $c->prepare('DELETE FROM seo_search_console WHERE restaurant_id = ?')->execute([SEO_SA_RID]);
+            throw new RuntimeException('Google was not given access to Search Console data. Open Setup, click Connect Google and tick the Search Console box on the Google page.');
+        }
         if (in_array((int)($res['error']['code'] ?? 0), [401, 403], true)) {
             $who = $oauth ? ((seoScRow($c, SEO_SA_RID)['google_email'] ?? '') ?: 'the connected Google account') : $sa['client_email'];
             $m = $who . ' has no access to ' . seoSite($c) . '. ' . ($oauth ? 'Connect Google again with an account that owns the property (teamrestrogrow@gmail.com).' : 'In Search Console › Settings › Users and permissions, add it (Restricted is enough).') . ' (' . $m . ')';

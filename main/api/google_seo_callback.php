@@ -49,6 +49,9 @@ try {
     $r = seoScExchange($code);
     if ($r['code'] !== 200 || empty($r['json']['access_token'])) { error_log('SEO Search Console connect: ' . $r['raw']); $back('error'); }
     $t = $r['json'];
+    // Google lets people untick the Search Console box on the consent page; without it every call fails
+    // ("insufficient authentication scopes"), so don't keep such a sign-in
+    if (isset($t['scope']) && strpos((string)$t['scope'], SEO_SC_SCOPE) === false) $back('no_scope');
     $old = seoScRow($conn, $rid);
     // a refresh token comes only on the first consent; keep the old one if Google sent none
     $refresh = !empty($t['refresh_token']) ? seoScSeal($t['refresh_token']) : ($old['refresh_token'] ?? null);
