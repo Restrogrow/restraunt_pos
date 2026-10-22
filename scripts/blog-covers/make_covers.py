@@ -219,3 +219,19 @@ if __name__ == '__main__':
         with open(os.path.join(OUT, slug + '.svg'), 'w', encoding='utf-8', newline='\n') as fh:
             fh.write(cover(slug, kicker, lines, alt, motif))
     print(f'{len(COVERS)} covers written to {OUT}')
+
+
+def home_share():
+    """Share image for the homepage (og:image), saved as assets/blog/og-home.svg, then turned into og-home.jpg."""
+    svg = cover('og-home', 'Restaurant software', ['Restaurant POS,', 'KOT & Online Orders'],
+                'RestroGrow restaurant POS: billing, KOT and your own online ordering on a phone',
+                lambda: phone(730, 110, receipt_inner()))
+    svg = svg.replace('Blog</text>', '</text>')
+    path = os.path.join(ROOT, 'assets', 'blog', 'og-home.svg')
+    with open(path, 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(svg)
+    print('home share image written to', path)
+
+
+if __name__ == '__main__':
+    home_share()
