@@ -37,6 +37,18 @@ function googleLoginClient(): array
 
 function googleLoginReady(): bool { return googleLoginClient()['id'] !== ''; }
 
+/**
+ * Google emails allowed into Super Admin (superadmin/google_finish.php). SUPERADMIN_GOOGLE_EMAILS in .env
+ * (comma list) replaces the default; SUPERADMIN_GOOGLE_EMAILS=none switches Google sign-in off for Super Admin.
+ */
+function googleLoginSuperadminEmails(): array
+{
+    $list = googleLoginEnv('SUPERADMIN_GOOGLE_EMAILS');
+    if (strtolower($list) === 'none') return [];
+    $emails = $list !== '' ? explode(',', $list) : ['restrogrow@gmail.com', 'teamrestrogrow@gmail.com'];
+    return array_values(array_filter(array_map(fn($e) => strtolower(trim($e)), $emails)));
+}
+
 /** Is this request on a local computer (XAMPP)? */
 function googleLoginIsLocal(): bool
 {
@@ -96,6 +108,8 @@ function googleLoginHttp(string $url, ?array $post = null): array
     $ch = curl_init($url);
     $opts = [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_CONNECTTIMEOUT => 6];
     if ($post !== null) $opts += [CURLOPT_POST => true, CURLOPT_POSTFIELDS => http_build_query($post)];
+    $ca = googleLoginEnv('AI_CAINFO');   // local XAMPP has no CA bundle
+    if ($ca !== '' && is_readable($ca)) $opts[CURLOPT_CAINFO] = $ca;
     curl_setopt_array($ch, $opts);
     $body = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);

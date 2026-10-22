@@ -26,11 +26,13 @@ function googleBackTo(?array $state, string $page, array $query): string
         // the login page they started from (its path already includes this site's folder)
         return "$scheme://{$state['h']}" . $ret . (str_contains($ret, '?') ? '&' : '?') . $q;
     }
-    return googleLoginMainBase() . ($page === 'finish' ? '/main/admin/google_finish.php?' : '/main/admin/login.php?') . $q;
+    $dir = $for === 'superadmin' ? 'superadmin' : 'admin';
+    return googleLoginMainBase() . "/main/$dir/" . ($page === 'finish' ? 'google_finish.php?' : 'login.php?') . $q;
 }
 
 if (!$state) {
-    header('Location: ' . googleLoginMainBase() . '/main/admin/login.php?google_error=' . urlencode('That sign-in link expired. Please try again.'));
+    $dir = ($_COOKIE['rg_google_sa'] ?? '') !== '' ? 'superadmin' : 'admin';   // set by google_login.php for Super Admin
+    header('Location: ' . googleLoginMainBase() . "/main/$dir/login.php?google_error=" . urlencode('That sign-in link expired. Please try again.'));
     exit;
 }
 if (!empty($_GET['error'])) {
@@ -46,6 +48,9 @@ try {
     $for = $state['f'];
     if ($for === 'customer') {
         $token = googleLoginIssueToken($conn, 'customer', $state['rid'], $profile + ['ret' => $state['r'] ?? '/', 'back' => $state['b'] ?? ($state['r'] ?? '/')]);
+    } elseif ($for === 'superadmin') {
+        // the browser key goes with the pass: google_finish.php checks it against this browser's cookie
+        $token = googleLoginIssueToken($conn, 'superadmin', null, $profile + ['k' => (string)($state['k'] ?? '')]);
     } else {
         $token = googleLoginIssueToken($conn, $for === 'app' ? 'app' : 'owner', null, $profile);
     }

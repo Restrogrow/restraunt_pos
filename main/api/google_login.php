@@ -2,6 +2,7 @@
 /**
  * Start "Continue with Google" (see config/google_login.php).
  *   ?for=owner                                   dashboard login (owners and staff)
+ *   ?for=superadmin                              Super Admin login (allowed team emails only)
  *   ?for=customer&rid=RES…&host=…&ret=/path      a restaurant website (its own domain too)
  *   ?for=app&app=restrogrow://google-auth        the Partner app
  */
@@ -23,8 +24,14 @@ if (!googleLoginReady()) googleStartFail('Google sign-in is not switched on yet.
 $for = (string)($_GET['for'] ?? '');
 $state = ['f' => $for];
 
+$browserKey = '';
 if ($for === 'owner') {
     // nothing else needed
+} elseif ($for === 'superadmin') {
+    if (!googleLoginSuperadminEmails()) googleStartFail('Google sign-in is switched off for Super Admin.');
+    // ties the sign-in to this browser: google_finish.php only accepts the pass next to this cookie
+    $browserKey = bin2hex(random_bytes(16));
+    $state['k'] = $browserKey;
 } elseif ($for === 'customer') {
     $rid = trim((string)($_GET['rid'] ?? ''));
     $host = strtolower(trim((string)($_GET['host'] ?? '')));
@@ -50,5 +57,9 @@ if ($for === 'owner') {
     googleStartFail('This sign-in link is not valid.');
 }
 
+// Super Admin only: the browser key (checked by google_finish.php); also tells the callback where an
+// expired sign-in began, since an expired signed state can't be read. Any other sign-in clears it.
+setcookie('rg_google_sa', $browserKey, ['expires' => $browserKey !== '' ? time() + 1800 : 1, 'path' => '/',
+    'secure' => !googleLoginIsLocal(), 'httponly' => true, 'samesite' => 'Lax']);
 header('Location: ' . googleLoginAuthUrl($state));
 exit;

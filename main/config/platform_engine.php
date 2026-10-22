@@ -120,7 +120,7 @@ function pfAssertCanRenewOnline(PDO $conn, string $restaurantId): void
     $st = $conn->prepare('SELECT country FROM users WHERE restaurant_id = ? ORDER BY id LIMIT 1');
     $st->execute([$restaurantId]);
     if (!restaurantIsIndia((string)$st->fetchColumn())) {
-        throw new Exception('Online renewal is available for restaurants in India only. Please contact RestroGrow support (WhatsApp +91 63775 68749 or restrogrow@gmail.com) to renew.');
+        throw new Exception('Online renewal is available for restaurants in India only. Please contact RestroGrow support (WhatsApp +91 63775 68749 or support@restrogrow.com) to renew.');
     }
 }
 
@@ -161,7 +161,11 @@ function pfAudit(PDO $conn, string $action, ?string $target = null, $details = n
     }
 }
 
-/** When a restaurant's plan / trial ends: renewal date, else trial end, else 30 days after sign-up. */
+/**
+ * When a restaurant's plan / trial ends: renewal date, else trial end, else 30 days after sign-up.
+ * The 30 is for old rows with no dates (made when the trial was 30 days); new sign-ups always get a
+ * trial_end_date from the trial setting. The one rule for every Super Admin screen: don't copy it.
+ */
 function pfExpirySql(string $alias = 'u'): string
 {
     return "COALESCE($alias.renewal_date, $alias.trial_end_date, DATE_ADD(DATE($alias.created_at), INTERVAL 30 DAY))";

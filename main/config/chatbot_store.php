@@ -111,7 +111,7 @@ function rgGeminiChatbotReply(PDO $conn, int $leadId, string $question): string
 
     $requestBody = [
         'systemInstruction' => ['parts' => [[
-            'text' => 'You are the RestroGrow website product assistant. RestroGrow is restaurant POS and management software. The website lists POS billing, order management, KOT management with real-time order sync to the kitchen, tables, staff dashboards, online ordering, payments, reservations, and sales reports. It offers a 7-day free trial with no credit card required, says setup takes 5 minutes, and has no setup fee. Answer the visitor’s specific question directly; mention the trial or contact details only when relevant. Do not invent current prices, discounts, integrations, policies, guarantees, hardware support, kitchen workflows, or other product capabilities. If a detail is not established above, say you are not sure and suggest contacting restrogrow@gmail.com or +91 63775 68749. Reply in the visitor’s language when possible. Keep replies to 2–4 short sentences in plain text, with no Markdown or bullet lists. Never ask for passwords, payment card details, or authentication codes.'
+            'text' => 'You are the RestroGrow website product assistant. RestroGrow is restaurant POS and management software. The website lists POS billing, order management, KOT management with real-time order sync to the kitchen, tables, staff dashboards, online ordering, payments, reservations, and sales reports. It offers a 7-day free trial with no credit card required, says setup takes 5 minutes, and has no setup fee. Answer the visitor’s specific question directly; mention the trial or contact details only when relevant. Do not invent current prices, discounts, integrations, policies, guarantees, hardware support, kitchen workflows, or other product capabilities. If a detail is not established above, say you are not sure and suggest contacting support@restrogrow.com or +91 63775 68749. Reply in the visitor’s language when possible. Keep replies to 2–4 short sentences in plain text, with no Markdown or bullet lists. Never ask for passwords, payment card details, or authentication codes.'
         ]]],
         'contents' => $contents,
         'generationConfig' => ['temperature' => 0.5, 'maxOutputTokens' => 300, 'thinkingConfig' => ['thinkingBudget' => 0]]
@@ -187,7 +187,7 @@ FEATURES:
 - Apps: Partner app for owners (Android), staff app, works on tablets.
 - Swiggy/Zomato order sync: not available yet (planned).
 
-CONTACT: email restrogrow@gmail.com, phone/WhatsApp +91 63775 68749. To try it: start the free trial on the website (Start Free Trial button) or ask for a free demo call.
+CONTACT: email support@restrogrow.com, phone/WhatsApp +91 63775 68749. To try it: start the free trial on the website (Start Free Trial button) or ask for a free demo call.
 TXT;
 }
 

@@ -108,7 +108,8 @@ Re-create everything with `php main/database/seed_multibranch_demo.php` (this al
 
 | Address | Used for |
 |---|---|
-| **restrogrow@gmail.com** | Public contact on the website (footer, contact section, about and policy pages, Google structured data). Default sender in `main/config/email_config.php`. Fallback restaurant email on policy pages. Shown in the chatbot's error message and in the "send login details" WhatsApp text in Super Admin. |
+| **support@restrogrow.com** | Public contact on the website (footer, contact section, about, loyalty and policy pages, Google structured data). Fallback restaurant email on policy pages. Shown by the chatbot, on the dashboard's Renew button, in the "contact support" message for online renewal, and in the "send login details" WhatsApp text in Super Admin. |
+| **restrogrow@gmail.com** | Default email sender (SMTP login) in `main/config/email_config.php`, unless `.env` sets another. Allowed to sign in to Super Admin with Google. |
 | **sujaysarraf55@gmail.com** | Super Admin password-reset links (hard-coded) |
 | **teamrestrogrow@gmail.com** | Team Google account. The Google Cloud organisation for Google Business is `teamrestrogrow-org` (project `restrogrow-gmb`). |
 | asfluencernandkishor@gmail.com | Default "To" in Super Admin › Settings › Email check (test sender) |

@@ -81,7 +81,10 @@
         stat('workspace_premium', '#7c3aed', 'Paying', num(c.paying), num(c.on_trial) + ' on trial') +
         stat('trending_down', '#dc2626', 'Lost in 30 days', num(d.churn_30d), num(c.lapsed) + ' lapsed or disabled in total') +
         '</div><div class="stats-grid">' +
-        stat('swap_horiz', '#0891b2', 'Trial to paid', d.conversion + '%', num(d.ever_paid) + ' restaurants have paid') +
+        // ever_paid = restaurants with at least one successful payment of more than ₹0 (online or recorded by hand);
+        // "Activate 30 days" writes ₹0 rows, so those plans don't count
+        stat('swap_horiz', '#0891b2', 'Trial to paid', d.conversion + '%', +d.ever_paid ? num(d.ever_paid) + ' of ' + num(c.total) + ' have paid'
+          : (+c.paying ? 'No payments yet · ' + num(c.paying) + ' switched on by hand' : 'No restaurant has paid yet')) +
         stat('receipt_long', '#d97706', 'Orders today (all)', num(d.today.n), inr(d.today.s) + ' sales') +
         stat('calendar_month', '#2563eb', 'Orders this month', num(d.this_month.n), inr(d.this_month.s) + ' sales') +
         stat('sell', '#16a34a', 'Plan price', inr(d.plan_price), 'per month (Settings)') +
@@ -115,7 +118,7 @@
         var dl = +r.days_left;
         return '<tr><td><div class="sa-rest" data-sp360="' + r.id + '"><span class="sa-ini">' + esc((r.restaurant_name || '?').charAt(0)) + '</span><div><b>' + esc(r.restaurant_name) + '</b><small>' + esc(r.owner_name || r.username) + (r.phone ? ' · ' + esc(r.phone) : '') + '</small></div></div></td>' +
           '<td><span class="badge ' + (r.subscription_status === 'active' ? 'badge-success' : 'badge-info') + '">' + esc(r.subscription_status === 'active' ? 'Paid plan' : 'Trial') + '</span></td>' +
-          '<td><b>' + day(r.expires_on) + '</b><br><span class="badge ' + (dl < 0 ? 'badge-danger' : dl <= 3 ? 'badge-warning' : 'badge-info') + '">' + (dl < 0 ? 'ended ' + (-dl) + ' days ago' : dl === 0 ? 'ends today' : dl + ' days left') + '</span></td>' +
+          '<td><b>' + day(r.expires_on) + '</b><br><span class="badge ' + (dl < 0 ? 'badge-danger' : dl <= 3 ? 'badge-warning' : 'badge-info') + '">' + (dl < 0 ? 'ended ' + (-dl) + (dl === -1 ? ' day' : ' days') + ' ago' : dl === 0 ? 'ends today' : dl + (dl === 1 ? ' day' : ' days') + ' left') + '</span></td>' +
           '<td>' + (r.last_paid ? day(r.last_paid) : '<span class="sp-muted">never</span>') + (+r.open_links ? '<br><small class="sp-muted">' + r.open_links + ' link sent, unpaid</small>' : '') + '</td>' +
           '<td><div class="sa-acts"><button class="btn btn-primary btn-sm" data-sp-link="' + esc(r.restaurant_id) + '"><span class="material-symbols-rounded">add_link</span>Payment link</button>' +
           (r.phone ? '<button class="btn btn-outline btn-sm" data-sp-remind="' + r.id + '"><span class="material-symbols-rounded">chat</span>Remind</button>' : '') +
@@ -167,9 +170,9 @@
         stat('redeem', '#7c3aed', 'Times used', num(rows.reduce(function (a, c) { return a + (+c.current_uses || 0); }, 0))) + '</div>' +
         '<div class="card"><div class="card-body">' + (rows.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Code</th><th>Restaurant</th><th>Discount</th><th>Min order</th><th>Used</th><th>Valid</th><th>Status</th><th></th></tr></thead><tbody>' + rows.map(function (c) {
           var expired = c.valid_until && c.valid_until < today;
-          return '<tr><td><code class="sp-code">' + esc(c.coupon_code) + '</code>' + (c.description ? '<br><small class="sp-muted">' + esc(c.description) + '</small>' : '') + '</td><td>' + esc(c.restaurant_name || c.restaurant_id) + '</td>' +
+          return '<tr><td class="sp-wrap"><code class="sp-code">' + esc(c.coupon_code) + '</code>' + (c.description ? '<br><small class="sp-muted">' + esc(c.description) + '</small>' : '') + '</td><td class="sp-wrap">' + esc(c.restaurant_name || c.restaurant_id) + '</td>' +
             '<td><b>' + (c.discount_type === 'percent' ? (+c.discount_value) + '%' : inr(c.discount_value)) + '</b></td><td>' + (+c.minimum_order_amount ? inr(c.minimum_order_amount) : '-') + '</td>' +
-            '<td>' + num(c.current_uses) + (+c.max_uses ? ' / ' + num(c.max_uses) : '') + '</td><td>' + (c.valid_from ? day(c.valid_from) : '') + (c.valid_until ? ' → ' + day(c.valid_until) : (c.valid_from ? '' : 'Always')) + '</td>' +
+            '<td>' + num(c.current_uses) + (+c.max_uses ? ' / ' + num(c.max_uses) : '') + '</td><td>' + (c.valid_from || c.valid_until ? (c.valid_from ? day(c.valid_from) : 'Now') + '<br><small class="sp-muted">' + (c.valid_until ? 'to ' + day(c.valid_until) : 'no end date') + '</small>' : 'Always') + '</td>' +
             '<td>' + (expired ? '<span class="badge badge-danger">Expired</span>' : +c.is_active ? '<span class="badge badge-success">On</span>' : '<span class="badge badge-warning">Off</span>') + '</td>' +
             '<td><div class="sa-acts"><button class="btn btn-outline btn-sm" data-sp-cedit="' + c.id + '">Edit</button><button class="btn btn-outline btn-sm" data-sp-ctoggle="' + c.id + '">' + (+c.is_active ? 'Turn off' : 'Turn on') + '</button>' +
             '<button class="sa-more-btn" data-sp-cdel="' + c.id + '" title="Delete" aria-label="Delete"><span class="material-symbols-rounded">delete</span></button></div></td></tr>';

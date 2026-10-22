@@ -12,18 +12,32 @@ body { background: radial-gradient(900px 400px at 100% -10%, #e0ecff 0, transpar
 
 /* sidebar */
 .sidebar { width: 252px; display: flex; flex-direction: column; margin: 12px; height: calc(100vh - 24px); border-radius: 22px; background: linear-gradient(180deg, #111827, #0b1220); box-shadow: 0 20px 40px -24px rgba(0,0,0,.6); }
-.sidebar-header { display: flex; align-items: center; gap: 10px; padding: 18px 18px 14px; border-bottom: 1px solid rgba(255,255,255,.07); }
-.sa-logo { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; font-weight: 800; letter-spacing: -.02em; }
+.sidebar-header { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 20px 18px 14px; border-bottom: 1px solid rgba(255,255,255,.07); }
+/* RestroGrow wordmark from the loader masks: white ink + brand-orange G */
+.sa-logo { position: relative; display: block; width: 150px; aspect-ratio: 600 / 106; }
+.sa-logo i { position: absolute; inset: 0; }
+.sa-logo-ink { -webkit-mask: url("../assets/loaders/logo-ink.png") center / 100% 100% no-repeat; mask: url("../assets/loaders/logo-ink.png") center / 100% 100% no-repeat; background: #fff; }
+.sa-logo-g { -webkit-mask: url("../assets/loaders/logo-g.png") center / 100% 100% no-repeat; mask: url("../assets/loaders/logo-g.png") center / 100% 100% no-repeat; background: #FC5301; }
 .sidebar-header h2 { display: flex; flex-direction: column; font-size: 1rem; line-height: 1.2; }
 .sidebar-header h2 small { color: #94a3b8; font-size: .72rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-.sidebar-menu { flex: 1; padding: 8px 10px; overflow-y: auto; }
+/* only the menu scrolls (logo and log-out stay put), with a thin dark scrollbar */
+.sidebar { overflow: hidden; }
+.sidebar-menu { flex: 1; min-height: 0; padding: 8px 6px 8px 10px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+/* Chrome on Windows draws arrow buttons with the standard properties, so they're for Firefox only */
+@supports not selector(::-webkit-scrollbar) { .sidebar-menu { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.14) transparent; } }
+.sidebar-menu::-webkit-scrollbar { width: 6px; }
+.sidebar-menu::-webkit-scrollbar-button { display: none; }
+.sidebar-menu::-webkit-scrollbar-track { background: transparent; }
+.sidebar-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 99px; }
+.sidebar-menu:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,.26); }
 .sa-nav-h { margin: 14px 10px 6px; color: #64748b; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.menu-item { margin: 2px 0; padding: 10px 12px; border-radius: 12px; color: #cbd5e1; transition: background .15s, color .15s; }
-.menu-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+/* .menu-link = the Tools links to separate pages; same look as the in-page .menu-item */
+.menu-item, .menu-link { margin: 2px 0; padding: 10px 12px; border-radius: 12px; color: #cbd5e1; transition: background .15s, color .15s; }
+.menu-item:hover, .menu-link:hover { background: rgba(255,255,255,.06); color: #fff; }
 .menu-item.active { background: #2563eb; color: #fff; box-shadow: 0 8px 18px -10px rgba(37,99,235,.9); }
 .menu-item.active::before { display: none; }
-.menu-item .icon { font-size: 20px; }
-.menu-item .text { font-size: .9rem; font-weight: 600; }
+.menu-item .icon, .menu-link .icon { font-size: 20px; }
+.menu-item .text, .menu-link .text { font-size: .9rem; font-weight: 600; }
 .sidebar-menu .badge-new { background: rgba(255,255,255,.14); color: #fff; }
 #saErrorBadge { background: #ef4444 !important; }
 .sa-user { padding: 14px; border-top: 1px solid rgba(255,255,255,.07); }
@@ -127,7 +141,22 @@ input:focus, select:focus, textarea:focus { border-color: #93c5fd; box-shadow: 0
 .sa-more-menu button:hover { background: var(--soft); } .sa-more-menu button:disabled { opacity: .4; cursor: default; }
 .sa-more-menu button .material-symbols-rounded { font-size: 19px; color: var(--faint); }
 .sa-more-menu .danger { color: #dc2626; } .sa-more-menu .danger .material-symbols-rounded { color: #dc2626; }
-.sa-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
+.sa-pager { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 16px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.sa-pager:empty { display: none; }
+.sa-pg-info { color: var(--muted); font-size: .85rem; }
+.sa-pg-info b { color: var(--ink); font-weight: 700; }
+.sa-pg-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.sa-pg-size { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .8rem; font-weight: 600; }
+.sa-pg-size select { height: 34px; padding: 0 28px 0 10px; border: 1.5px solid var(--border); border-radius: 10px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%236b7280' stroke-width='1.6'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 10px center; -webkit-appearance: none; appearance: none; font: inherit; font-size: .82rem; font-weight: 600; color: var(--ink); cursor: pointer; }
+.sa-pg-size select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--ring); }
+.sa-pg-nav { display: flex; align-items: center; gap: 4px; padding: 3px; border: 1.5px solid var(--border); border-radius: 12px; background: #fff; }
+.sa-pg { min-width: 32px; height: 30px; padding: 0 8px; display: inline-grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--ink); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; transition: background .12s, color .12s; }
+.sa-pg:hover:not(:disabled):not(.on) { background: var(--soft); }
+.sa-pg.on { background: var(--primary); color: #fff; box-shadow: 0 4px 10px -4px rgba(37,99,235,.6); }
+.sa-pg:disabled { color: #d1d5db; cursor: not-allowed; }
+.sa-pg:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.sa-pg .material-symbols-rounded { font-size: 20px; }
+.sa-pg-gap { min-width: 20px; text-align: center; color: var(--faint); font-size: .82rem; }
 
 @media (max-width: 900px) {
   .sidebar { margin: 0; height: 100vh; border-radius: 0 22px 22px 0; }
@@ -163,11 +192,110 @@ input:focus, select:focus, textarea:focus { border-color: #93c5fd; box-shadow: 0
 /* badges next to titles and in the sidebar: aligned, not floating */
 .page-header h1 { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .sa-h-badge { align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-size: .75rem; font-weight: 800; letter-spacing: 0; line-height: 1; }
-.menu-item .text { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.menu-item .text .badge-new { margin-left: auto; flex-shrink: 0; height: 20px; min-width: 20px; padding: 0 7px; border-radius: 999px; line-height: 20px; text-align: center; font-size: .68rem; text-transform: none; letter-spacing: 0; vertical-align: baseline; }
+.menu-item .text, .menu-link .text { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.menu-item .text .badge-new, .menu-link .text .badge-new { margin-left: auto; flex-shrink: 0; height: 20px; min-width: 20px; padding: 0 7px; border-radius: 999px; line-height: 20px; text-align: center; font-size: .68rem; text-transform: none; letter-spacing: 0; vertical-align: baseline; }
 #saErrorBadge { font-size: .68rem !important; padding: 0 7px !important; border-radius: 999px !important; }
 #errorMonitorPage td { max-width: 220px; } #errorMonitorPage td:nth-child(5) { max-width: 170px; }
 #errorMonitorPage th, #errorMonitorPage td { padding-left: 10px; padding-right: 10px; }
+
+td.sp-wrap { white-space: normal; min-width: 150px; max-width: 260px; }
+
+/* restaurant avatar: coloured initial, or the logo on top of it (saAvatar in dashboard.php) */
+.sa-ini { --h: 220; position: relative; overflow: hidden; background: hsl(var(--h) 85% 95%); color: hsl(var(--h) 55% 38%); }
+.sa-ini img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 3px; background: #fff; }
+.sa-ini.has-logo { box-shadow: inset 0 0 0 1px var(--border); background: #fff; }
+.sa-row-off .sa-ini img { filter: grayscale(1); opacity: .6; }
+
+/* type-to-search restaurant picker (Menu from photos) */
+.sa-pick { position: relative; max-width: 460px; }
+.sa-pick > .material-symbols-rounded { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); font-size: 20px; pointer-events: none; }
+.sa-pick input { width: 100%; height: 44px; padding-left: 40px; }
+.sa-pick-list { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; max-height: 360px; overflow-y: auto; padding: 6px; border: 1px solid var(--border); border-radius: 14px; background: #fff; box-shadow: 0 18px 40px -16px rgba(15,23,42,.3); }
+.sa-pick-list button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 10px; background: none; font: inherit; text-align: left; cursor: pointer; }
+.sa-pick-list button.hi, .sa-pick-list button:hover { background: #eff6ff; }
+.sa-pick-list .sa-ini { width: 32px; height: 32px; border-radius: 10px; font-size: .82rem; --h: 220; background: hsl(var(--h) 85% 95%); color: hsl(var(--h) 55% 38%); }
+.sa-pick-list b { display: block; color: var(--ink); font-size: .88rem; }
+.sa-pick-list small { display: block; color: var(--muted); font-size: .74rem; }
+.sa-pick-empty { padding: 14px; color: var(--muted); font-size: .85rem; text-align: center; }
+
+/* Error monitor: Sentry status row */
+.sa-sentry { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; box-shadow: var(--shadow); }
+.sa-sentry-ic { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; background: #f5f3ff; color: #7c3aed; font-size: 23px; }
+
+/* ═══ Restaurants list ═══ */
+#restaurantsPage .card-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.sa-rf button { display: inline-flex; align-items: center; gap: 6px; }
+.sa-rf .n { min-width: 20px; padding: 1px 6px; border-radius: 999px; background: rgba(0,0,0,.06); color: #6b7280; font-size: .7rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+.sa-rf .n:empty { display: none; }
+.sa-rf button.on .n { background: var(--primary); color: #fff; }
+.sa-rf [data-sa-rf="ending"] .n:not(:empty) { background: #fef3c7; color: #b45309; }
+.sa-rf [data-sa-rf="expired"] .n:not(:empty) { background: #fee2e2; color: #b91c1c; }
+.sa-rf button.on .n:not(:empty) { background: var(--primary); color: #fff; }
+.sa-rtools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sa-sort { position: relative; display: flex; align-items: center; }
+.sa-sort .material-symbols-rounded { position: absolute; left: 10px; color: var(--faint); font-size: 19px; pointer-events: none; }
+.sa-sort select { height: 40px; padding: 0 30px 0 36px; border: 1.5px solid var(--border); border-radius: 12px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%236b7280' stroke-width='1.6'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 11px center; -webkit-appearance: none; appearance: none; font: inherit; font-size: .84rem; font-weight: 600; color: var(--ink); cursor: pointer; }
+.sa-sort select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--ring); }
+#restaurantsPage .sa-search input { width: 260px; }
+.sa-th-hint { margin-left: 4px; color: var(--faint); font-size: .66rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
+
+#restaurantsTable { transition: opacity .15s; }
+#restaurantsTable.sa-loading tbody, #subTable.sa-loading tbody { opacity: .45; pointer-events: none; }
+#subTable td { padding-top: 13px; padding-bottom: 13px; vertical-align: middle; }
+#subTable .sa-ini { --h: 220; background: hsl(var(--h) 85% 95%); color: hsl(var(--h) 55% 38%); }
+#subTable .sa-rest { cursor: pointer; } #subTable .sa-rest:hover b { color: var(--primary); }
+#subscriptionsPage .card-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.sub-acts { justify-content: flex-end; }
+.sub-acts .sub-go { color: #15803d; } .sub-acts .sub-go:hover { border-color: #86efac; background: #f0fdf4; }
+.sub-stop-txt { color: #b91c1c; } .sub-stop-txt:hover { border-color: #fecaca; background: #fef2f2; }
+#subBulk .sub-go { color: #15803d; }
+.sub-acts .sub-stop { color: #9ca3af; } .sub-acts .sub-stop:hover { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+#restaurantsTable td { padding-top: 14px; padding-bottom: 14px; vertical-align: middle; }
+#restaurantsTable tbody tr { transition: background .12s; }
+#restaurantsTable tbody tr:hover { background: #fafbff; }
+#restaurantsTable .sa-ini { --h: 220; background: hsl(var(--h) 85% 95%); color: hsl(var(--h) 55% 38%); border-radius: 12px; }
+#restaurantsTable .sa-rest { min-width: 240px; cursor: pointer; }
+#restaurantsTable .sa-rest:hover b { color: var(--primary); }
+#restaurantsTable .sa-rest small { margin-top: 1px; }
+.sa-meta { display: flex !important; align-items: center; gap: 2px; color: var(--faint) !important; font-size: .74rem !important; }
+.sa-meta .material-symbols-rounded { font-size: 14px; margin-left: -2px; }
+.sa-row-off .sa-ini { filter: grayscale(1); opacity: .6; }
+.sa-row-off .sa-rest b { color: var(--muted); }
+
+/* plan: dot + label, detail underneath */
+.sa-plan { min-width: 140px; }
+.sa-plan b { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+.sa-plan b i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.sa-plan small { display: block; margin: 4px 0 0 2px; color: var(--muted); font-size: .76rem; white-space: nowrap; }
+.sa-plan.good b { background: #ecfdf5; color: #047857; }
+.sa-plan.trial b { background: #eff6ff; color: #1d4ed8; }
+.sa-plan.warn b { background: #fffbeb; color: #b45309; } .sa-plan.warn small { color: #b45309; font-weight: 600; }
+.sa-plan.bad b { background: #fef2f2; color: #b91c1c; } .sa-plan.bad small { color: #b91c1c; }
+.sa-plan.off b { background: #f3f4f6; color: #6b7280; }
+
+/* features: one row of icon switches + the access chip */
+.sa-fts { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.sa-ft { width: 32px; height: 32px; display: grid; place-items: center; border: 1.5px solid var(--border); border-radius: 9px; background: #fff; color: #c0c5cf; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
+.sa-ft .material-symbols-rounded { font-size: 18px; }
+.sa-ft:hover { border-color: #93c5fd; color: #6b7280; }
+.sa-ft.on { border-color: #bfdbfe; background: #eff6ff; color: #2563eb; }
+.sa-ft.on:hover { border-color: #60a5fa; }
+.sa-ft:focus-visible, .sa-acc:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.sa-acc { height: 32px; margin-left: 4px; padding: 0 10px 0 8px; display: inline-flex; align-items: center; gap: 4px; border: 1.5px solid #bbf7d0; border-radius: 9px; background: #f0fdf4; color: #15803d; font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer; }
+.sa-acc .material-symbols-rounded { font-size: 16px; }
+.sa-acc.part { border-color: #fde68a; background: #fffbeb; color: #b45309; }
+.sa-acc:hover { filter: brightness(.97); }
+/* laptop widths: icon-only Admin button, shorter access chip, so the row fits without sideways scroll */
+@media (max-width: 1440px) {
+  #restaurantsTable .sa-acts .btn-primary { width: 34px; padding: 0; gap: 0; font-size: 0; }
+  #restaurantsTable .sa-acts .btn-primary .material-symbols-rounded { font-size: 19px; }
+  #restaurantsTable .sa-rest { min-width: 200px; }
+  /* let the name and city line wrap instead of pushing the buttons off the edge */
+  #restaurantsTable td:nth-child(2) { white-space: normal; }
+  .sa-meta { flex-wrap: wrap; }
+  .sa-fts { gap: 4px; } .sa-ft { width: 30px; height: 30px; }
+}
+@media (max-width: 900px) { #restaurantsPage .sa-search input { width: 100%; } .sa-rtools { width: 100%; } .sa-rtools .sa-search { flex: 1; } }
 
 /* ═══ platform screens (sa-platform.js, sp-*) ═══ */
 .sp-body { min-width: 0; }

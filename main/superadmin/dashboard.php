@@ -192,8 +192,8 @@ require_once __DIR__ . '/../config/countries.php';
     <!-- Sidebar -->
     <div class="sidebar">
       <div class="sidebar-header">
-        <span class="sa-logo">RG</span>
-        <h2>RestroGrow<small>Superadmin</small></h2>
+        <span class="sa-logo" role="img" aria-label="RestroGrow"><i class="sa-logo-ink"></i><i class="sa-logo-g"></i></span>
+        <h2><small>Superadmin</small></h2>
       </div>
       <div class="sidebar-menu">
         <div class="sa-nav-h">Overview</div>
@@ -272,7 +272,7 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="text">Invoices & GST</span>
         </div>
         <div class="menu-item" data-page="invoiceGen">
-          <span class="material-symbols-rounded icon">post_add</span>
+          <span class="material-symbols-rounded icon">description</span>
           <span class="text">Invoice generator</span>
         </div>
 
@@ -326,7 +326,7 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="text">Website analytics</span>
         </a>
         <a class="menu-link" href="seo.php">
-          <span class="material-symbols-rounded icon">travel_explore</span>
+          <span class="material-symbols-rounded icon">trending_up</span>
           <span class="text">SEO</span>
         </a>
         <a class="menu-link" href="undo_designs.php">
@@ -406,8 +406,17 @@ require_once __DIR__ . '/../config/countries.php';
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="sa-filters"><div class="sa-seg" id="saRestFilter"><button type="button" class="on" data-sa-rf="all">All</button><button type="button" data-sa-rf="active">Active</button><button type="button" data-sa-rf="inactive">Disabled</button><button type="button" data-sa-rf="trial">On trial</button><button type="button" data-sa-rf="expired">Trial expired</button></div></div>
-            <div class="sa-search"><span class="material-symbols-rounded">search</span><input id="saSearch" placeholder="Name, login or ID"></div>
+            <div class="sa-filters"><div class="sa-seg sa-rf" id="saRestFilter">
+              <?php foreach (['all' => 'All', 'paying' => 'Paying', 'trial' => 'On trial', 'ending' => 'Ending in 7 days', 'expired' => 'Expired', 'disabled' => 'Disabled'] as $k => $l): ?>
+              <button type="button"<?php echo $k === 'all' ? ' class="on"' : ''; ?> data-sa-rf="<?php echo $k; ?>"><?php echo $l; ?><span class="n" data-sa-rfn="<?php echo $k; ?>"></span></button>
+              <?php endforeach; ?>
+            </div></div>
+            <div class="sa-rtools">
+              <label class="sa-sort" title="Sort"><span class="material-symbols-rounded">swap_vert</span><select id="saSort" aria-label="Sort restaurants">
+                <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option><option value="ending">Plan ending soonest</option>
+              </select></label>
+              <div class="sa-search"><span class="material-symbols-rounded">search</span><input id="saSearch" type="search" placeholder="Name, login, ID, phone, city"></div>
+            </div>
           </div>
           <div class="card-body">
             <div id="spBulk" class="sp-bulk" hidden></div>
@@ -415,17 +424,13 @@ require_once __DIR__ . '/../config/countries.php';
               <table id="restaurantsTable">
                 <thead>
                   <tr>
-                    <th class="sp-ck"><input type="checkbox" id="spCkAll" aria-label="Select all on this page"></th><th>Restaurant</th><th>Features (click to switch)</th><th>Trial</th><th>Status</th><th></th>
+                    <th class="sp-ck"><input type="checkbox" id="spCkAll" aria-label="Select all on this page"></th><th>Restaurant</th><th>Plan</th><th>Features <small class="sa-th-hint">click to switch</small></th><th></th>
                   </tr>
                 </thead>
                 <tbody id="restaurantsTbody"></tbody>
               </table>
             </div>
-            <div class="sa-pager">
-              <button class="btn btn-outline" id="prevPage" disabled><span class="material-symbols-rounded">chevron_left</span>Previous</button>
-              <div id="pageInfo" style="color:var(--muted)">Page 1</div>
-              <button class="btn btn-outline" id="nextPage" disabled>Next<span class="material-symbols-rounded">chevron_right</span></button>
-            </div>
+            <div class="sa-pager" id="saPager"></div>
           </div>
         </div>
       </div>
@@ -445,9 +450,13 @@ require_once __DIR__ . '/../config/countries.php';
           <div class="card-body">
             <div class="form-group">
               <label>Restaurant</label>
-              <select id="menuRestaurantSelect" style="width:100%;max-width:400px;">
-                <option value="">Select a restaurant...</option>
-              </select>
+              <div class="sa-pick" id="menuPick">
+                <span class="material-symbols-rounded">search</span>
+                <input id="menuPickInput" type="text" autocomplete="off" placeholder="Type a restaurant name, login, ID or city" role="combobox" aria-expanded="false" aria-controls="menuPickList">
+                <div class="sa-pick-list" id="menuPickList" role="listbox" hidden></div>
+              </div>
+              <!-- the chosen restaurant (the menu code below reads it and listens for "change") -->
+              <select id="menuRestaurantSelect" hidden><option value="">Select a restaurant...</option></select>
             </div>
           </div>
         </div>
@@ -506,39 +515,33 @@ require_once __DIR__ . '/../config/countries.php';
           </div>
         </div>
         <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Active Subscriptions</div>
-            <div class="stat-value" id="subActive">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Trial Users</div>
-            <div class="stat-value" id="subTrial">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Expired</div>
-            <div class="stat-value" id="subExpired">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Total Revenue (Monthly)</div>
-            <div class="stat-value" id="subRevenue">₹0</div>
-          </div>
+          <div class="stat-card" data-icon="workspace_premium" style="--c:#16a34a"><div class="stat-label">Paying</div><div class="stat-value" id="subActive">0</div></div>
+          <div class="stat-card" data-icon="hourglass_top" style="--c:#2563eb"><div class="stat-label">On trial</div><div class="stat-value" id="subTrial">0</div></div>
+          <div class="stat-card" data-icon="cancel" style="--c:#dc2626"><div class="stat-label">Expired</div><div class="stat-value" id="subExpired">0</div></div>
+          <div class="stat-card" data-icon="currency_rupee" style="--c:#7c3aed"><div class="stat-label">Received (last 30 days)</div><div class="stat-value" id="subRevenue">₹0</div></div>
         </div>
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">Subscription Details</div>
-            <input id="subSearch" placeholder="Search restaurants..." style="width:300px;">
+          <div class="card-header" id="subHead">
+            <div class="sa-filters"><div class="sa-seg sa-rf" id="subFilter">
+              <?php foreach (['all' => 'All', 'paying' => 'Paying', 'trial' => 'On trial', 'ending' => 'Ending in 7 days', 'expired' => 'Expired', 'disabled' => 'Disabled'] as $k => $l): ?>
+              <button type="button"<?php echo $k === 'all' ? ' class="on"' : ''; ?> data-sub-f="<?php echo $k; ?>"><?php echo $l; ?><span class="n" data-sub-n="<?php echo $k; ?>"></span></button>
+              <?php endforeach; ?>
+            </div></div>
+            <div class="sa-search"><span class="material-symbols-rounded">search</span><input id="subSearch" type="search" placeholder="Name, login, ID, phone, city"></div>
           </div>
           <div class="card-body">
+            <div id="subBulk" class="sp-bulk" hidden></div>
             <div style="overflow-x:auto;">
-              <table>
+              <table id="subTable">
                 <thead>
                   <tr>
-                    <th>Restaurant</th><th>Status</th><th>Trial Ends</th><th>Renewal Date</th><th>Actions</th>
+                    <th class="sp-ck"><input type="checkbox" id="subCkAll" aria-label="Select all on this page"></th><th>Restaurant</th><th>Plan</th><th>Trial ends</th><th>Paid until</th><th></th>
                   </tr>
                 </thead>
                 <tbody id="subscriptionsTbody"></tbody>
               </table>
             </div>
+            <div class="sa-pager" id="subPager"></div>
           </div>
         </div>
       </div>
@@ -807,7 +810,7 @@ require_once __DIR__ . '/../config/countries.php';
           <div class="card-body">
             <div class="form-group">
               <label>Trial Period (Days)</label>
-              <input type="number" id="trialDays" value="30" min="1" max="365">
+              <input type="number" id="trialDays" value="7" min="1" max="365">
             </div>
             <div class="form-group">
               <label>Subscription Price (₹)</label>
@@ -883,11 +886,7 @@ require_once __DIR__ . '/../config/countries.php';
                 </tbody>
               </table>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
-              <button class="btn btn-outline" id="prevResetPage">Prev</button>
-              <div id="resetPageInfo" style="color:var(--muted)">Page 1</div>
-              <button class="btn btn-outline" id="nextResetPage">Next</button>
-            </div>
+            <div class="sa-pager" id="resetPager"></div>
           </div>
         </div>
         <div class="card">
@@ -1064,8 +1063,8 @@ require_once __DIR__ . '/../config/countries.php';
           </div>
         </div>
         <!-- Sentry (config/sentry.php + config/sentry_browser.php) -->
-        <div class="stat-card" id="saSentryCard" style="padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-          <span class="material-symbols-rounded" style="font-size:28px;color:#7c3aed;">monitoring</span>
+        <div class="sa-sentry" id="saSentryCard">
+          <span class="material-symbols-rounded sa-sentry-ic">monitoring</span>
           <div style="flex:1 1 240px;min-width:0;">
             <div style="font-weight:700;">Sentry error monitoring <span id="saSentryState" class="badge" style="margin-left:6px;">Checking…</span></div>
             <div class="sa-sub" id="saSentryInfo" style="margin-top:2px;">Server errors, failed requests (500) and dashboard JavaScript errors from every restaurant go to Sentry.</div>
@@ -1421,6 +1420,34 @@ require_once __DIR__ . '/../config/countries.php';
     // Global variables
     let saPage = 1, saLimit = 10, saQuery = '', saPages = 1;
     const saRestaurantsMap = {};
+
+    // Pager under a table: "Showing 11–20 of 42 restaurants", page numbers, rows per page.
+    // o: {page, total, limit, noun, go(page), setLimit(limit), sizes?} (sizes: rows-per-page choices the API allows)
+    function saPager(el, o) {
+      if (!el) return;
+      const pages = Math.max(1, Math.ceil(o.total / o.limit));
+      const from = o.total ? (o.page - 1) * o.limit + 1 : 0, to = Math.min(o.total, o.page * o.limit);
+      // 1 … 4 5 6 … 12: first, last, and two either side of the current page
+      const nums = [];
+      for (let p = 1; p <= pages; p++) {
+        if (p === 1 || p === pages || Math.abs(p - o.page) <= 1 || (o.page <= 3 && p <= 4) || (o.page >= pages - 2 && p >= pages - 3)) nums.push(p);
+        else if (nums[nums.length - 1] !== '…') nums.push('…');
+      }
+      const btn = (p, label, dis, cls = '') => `<button type="button" class="sa-pg ${cls}" data-pg="${p}"${dis ? ' disabled' : ''}>${label}</button>`;
+      el.innerHTML =
+        `<div class="sa-pg-info">${o.total ? `Showing <b>${from.toLocaleString()}–${to.toLocaleString()}</b> of <b>${o.total.toLocaleString()}</b> ${o.noun}` : `No ${o.noun}`}</div>`
+        + `<div class="sa-pg-right">`
+        + `<label class="sa-pg-size">Rows<select>${(o.sizes || [10, 25, 50, 100]).map(n => `<option${n === o.limit ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`
+        + (pages > 1 ? `<nav class="sa-pg-nav" aria-label="Pages">`
+          + btn(o.page - 1, '<span class="material-symbols-rounded">chevron_left</span>', o.page <= 1, 'arrow')
+          + nums.map(p => p === '…' ? '<span class="sa-pg-gap">…</span>' : btn(p, p, false, p === o.page ? 'on' : '')).join('')
+          + btn(o.page + 1, '<span class="material-symbols-rounded">chevron_right</span>', o.page >= pages, 'arrow')
+          + `</nav>` : '')
+        + `</div>`;
+      el.querySelectorAll('.sa-pg').forEach(b => b.addEventListener('click', () => { const p = +b.dataset.pg; if (p >= 1 && p <= pages && p !== o.page) o.go(p); }));
+      el.querySelector('select').addEventListener('change', e => o.setLimit(+e.target.value));
+      el.querySelector('.sa-pg.on')?.setAttribute('aria-current', 'page');
+    }
     let paymentSearchTerm = '', paymentStatus = '';
     const showSuperAlert = (message, type = 'info') => {
       if (window.Swal) {
@@ -1498,7 +1525,7 @@ require_once __DIR__ . '/../config/countries.php';
         const d = await res.json();
         if(d.success && d.restaurants){
           const html = d.restaurants.map(r => `
-            <div class="sa-recent-row"><span class="sa-ini">${saEsc((r.restaurant_name || '?').trim().charAt(0).toUpperCase())}</span>
+            <div class="sa-recent-row">${saAvatar(r)}
               <div><b>${saEsc(r.restaurant_name)}</b><small>${saEsc(r.restaurant_id)} · added ${r.created_at?.split(' ')[0] || ''}</small></div>
               ${Number(r.is_active) === 1 ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Disabled</span>'}
               <button class="btn btn-outline btn-sm" onclick="openAdminPanel(${r.id})">Open</button>
@@ -1509,20 +1536,41 @@ require_once __DIR__ . '/../config/countries.php';
       } catch(e) { console.error('Error loading activity:', e); }
     }
 
-    // Restaurants: rows drawn by saRenderRestaurants() (filter chips work on the loaded page)
-    let saLastRows = [], saRestFilter = 'all';
+    // Restaurants: the filter tabs, sort and search all run on the server (every page, not just the one on screen)
+    let saLastRows = [], saRestFilter = 'all', saSort = 'newest', saFetchSeq = 0;
+    const SA_TYPES = { restaurant: 'Restaurant', cafe: 'Café', dhaba: 'Dhaba', cloud_kitchen: 'Cloud kitchen', bakery: 'Bakery', bar: 'Bar', qsr: 'Fast food', other: 'Other' };
+    const saDate = d => d ? new Date(d.replace(' ', 'T')).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    function saAgo(d) {
+      const days = Math.floor((Date.now() - new Date(d.replace(' ', 'T'))) / 864e5);
+      return days <= 0 ? 'today' : days === 1 ? 'yesterday' : days < 30 ? `${days} days ago` : days < 365 ? `${Math.floor(days / 30)} mo ago` : `${Math.floor(days / 365)} yr ago`;
+    }
+    // same name, same colour, every time
+    function saHue(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+    // the restaurant's logo when it has one (initial underneath, shown if the image fails), else a coloured initial
+    function saAvatar(r) {
+      const ini = saEsc((r.restaurant_name || '?').trim().charAt(0).toUpperCase());
+      const img = Number(r.has_logo) ? `<img src="../api/image.php?type=logo&id=${encodeURIComponent(r.id)}&v=${encodeURIComponent(r.logo_v || '')}" alt="" loading="lazy" onerror="this.remove()">` : '';
+      return `<span class="sa-ini${img ? ' has-logo' : ''}" style="--h:${saHue(r.restaurant_name)}">${ini}${img}</span>`;
+    }
+    // one line about where the plan stands: kind (for colour), label, detail
+    function saPlan(r) {
+      const days = Number(r.plan_days), n = Math.abs(days), dd = `${n} day${n === 1 ? '' : 's'}`;
+      // switched off because the plan lapsed (not by hand): Disabled like the tab it's counted in, and say why
+      if (Number(r.is_active) !== 1 && r.subscription_status === 'expired') return ['off', 'Disabled', 'Plan ended · not paid'];
+      if (Number(r.is_active) !== 1 || r.subscription_status === 'disabled') return ['off', 'Disabled', 'Switched off'];
+      if (r.subscription_status === 'expired' || days < 0) return ['bad', r.subscription_status === 'trial' ? 'Trial ended' : 'Expired', days < 0 ? `${dd} ago` : 'Plan expired'];
+      if (r.subscription_status === 'active') return [days <= 7 ? 'warn' : 'good', 'Paying', days <= 7 ? (days === 0 ? 'Renews today' : `Renews in ${dd}`) : `Renews ${saDate(r.plan_end)}`];
+      return [days <= 3 ? 'warn' : 'trial', 'Trial', days === 0 ? 'Ends today' : `${dd} left`];
+    }
     function saRenderRestaurants() {
       const tbody = document.getElementById('restaurantsTbody');
-      const rows = saLastRows.filter(r => {
-        const active = Number(r.is_active) === 1;
-        if (saRestFilter === 'active') return active;
-        if (saRestFilter === 'inactive') return !active;
-        if (saRestFilter === 'trial') return r.trial_status === 'Active';
-        if (saRestFilter === 'expired') return r.trial_status === 'Expired';
-        return true;
-      });
-      if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="material-symbols-rounded icon">storefront</div>${saLastRows.length ? 'No restaurant on this page matches this filter.' : 'No restaurants found.'}</div></td></tr>`; return; }
-      const feat = (on, icon, label, call, title) => `<button type="button" class="sa-feat${on ? ' on' : ''}" onclick="${call}" title="${title} · click to switch ${on ? 'off' : 'on'}"><span class="material-symbols-rounded">${icon}</span>${label}</button>`;
+      const rows = saLastRows;
+      if (!rows.length) {
+        const msg = saQuery ? `No restaurant matches “${saEsc(saQuery)}”.` : saRestFilter !== 'all' ? 'No restaurants in this group right now.' : 'No restaurants yet.';
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="material-symbols-rounded icon">${saQuery ? 'search_off' : 'storefront'}</div>${msg}</div></td></tr>`;
+        return;
+      }
+      const feat = (on, icon, label, call) => `<button type="button" class="sa-ft${on ? ' on' : ''}" onclick="${call}" title="${label}: ${on ? 'on' : 'off'} · click to switch ${on ? 'off' : 'on'}" aria-label="${label} ${on ? 'on' : 'off'}" aria-pressed="${on}"><span class="material-symbols-rounded">${icon}</span></button>`;
       tbody.innerHTML = rows.map(r => {
         const isActive = Number(r.is_active) === 1;
         const pgType = r.payment_gateway_type || 'cash_only';
@@ -1531,23 +1579,26 @@ require_once __DIR__ . '/../config/countries.php';
         const whatsappOn = Number(r.whatsapp_orders) === 1;
         const galleryOn = Number(r.photo_gallery_enabled) === 1;
         const mealSubsOn = Number(r.meal_subscriptions_enabled) === 1;
-        const trial = r.trial_status === 'Active' ? `<span class="badge ${Number(r.days_left) <= 7 ? 'badge-warning' : 'badge-success'}">${r.days_left} days left</span>`
-          : r.trial_status === 'Disabled' ? '<span class="badge badge-info">Paid / no trial</span>' : '<span class="badge badge-danger">Expired</span>';
-        const ini = (r.restaurant_name || '?').trim().charAt(0).toUpperCase();
+        const off = Number(r.access_off);
+        const [kind, label, detail] = saPlan(r);
+        const meta = [r.city, SA_TYPES[r.business_type]].filter(Boolean).map(saEsc).join(' · ');
         return `
-          <tr>
+          <tr class="${isActive ? '' : 'sa-row-off'}">
             <td class="sp-ck"><input type="checkbox" class="sp-ck-row" value="${r.id}" aria-label="Select ${saEsc(r.restaurant_name)}"></td>
-            <td><div class="sa-rest sp-open360" data-sp360="${r.id}" title="Open everything about this restaurant"><span class="sa-ini">${saEsc(ini)}</span><div><b>${saEsc(r.restaurant_name)}</b><small>${saEsc(r.username)} · <code>${saEsc(r.restaurant_id)}</code></small><small>Added ${r.created_at?.split(' ')[0] || ''}</small></div></div></td>
-            <td><div class="sa-feats">
-              ${feat(online, 'credit_card', online ? 'Online pay' : 'Cash only', `togglePaymentGateway(${r.id}, '${pgType}')`, 'Payment gateway')}
-              ${feat(showInstall, 'install_mobile', 'Install app', `toggleInstallApp(${r.id}, ${showInstall})`, 'Install app button')}
-              ${feat(whatsappOn, 'chat', 'WhatsApp orders', `toggleWhatsappOrders(${r.id}, ${whatsappOn})`, 'WhatsApp orders')}
-              ${feat(galleryOn, 'photo_library', 'Gallery', `toggleGalleryEnabled(${r.id}, ${galleryOn})`, 'Photo gallery')}
-              ${feat(mealSubsOn, 'lunch_dining', 'Meal plans', `toggleMealSubscriptionsEnabled(${r.id}, ${mealSubsOn})`, 'Meal subscriptions')}
-              ${feat(!Number(r.access_off), 'tune', Number(r.access_off) ? `Access: ${r.access_off} off` : 'Access: all', `openAccess(${r.id})`, 'Which dashboard sections this restaurant gets')}
+            <td><div class="sa-rest sp-open360" data-sp360="${r.id}" title="Open everything about this restaurant">${saAvatar(r)}<div>
+              <b>${saEsc(r.restaurant_name)}</b>
+              <small>${saEsc(r.username)} · <code>${saEsc(r.restaurant_id)}</code></small>
+              <small class="sa-meta">${meta ? `<span class="material-symbols-rounded">location_on</span>${meta} · ` : ''}<span title="Added ${saDate(r.created_at)}">added ${saAgo(r.created_at)}</span></small>
+            </div></div></td>
+            <td><div class="sa-plan ${kind}"><b><i></i>${label}</b><small>${detail}</small></div></td>
+            <td><div class="sa-fts">
+              ${feat(online, 'credit_card', online ? 'Online payments' : 'Online payments (cash only now)', `togglePaymentGateway(${r.id}, '${pgType}')`)}
+              ${feat(showInstall, 'install_mobile', 'Install app button', `toggleInstallApp(${r.id}, ${showInstall})`)}
+              ${feat(whatsappOn, 'chat', 'WhatsApp orders', `toggleWhatsappOrders(${r.id}, ${whatsappOn})`)}
+              ${feat(galleryOn, 'photo_library', 'Photo gallery', `toggleGalleryEnabled(${r.id}, ${galleryOn})`)}
+              ${feat(mealSubsOn, 'lunch_dining', 'Meal plans', `toggleMealSubscriptionsEnabled(${r.id}, ${mealSubsOn})`)}
+              <button type="button" class="sa-acc${off ? ' part' : ''}" onclick="openAccess(${r.id})" title="Which dashboard sections this restaurant gets"><span class="material-symbols-rounded">tune</span>${off ? `${off} off` : 'All access'}</button>
             </div></td>
-            <td>${trial}</td>
-            <td>${isActive ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Disabled</span>'}</td>
             <td><div class="sa-acts">
               <button class="sa-more-btn" onclick="openWebsite('${r.restaurant_id}')" title="Open the restaurant's website" aria-label="Website"><span class="material-symbols-rounded">language</span></button>
               <button class="btn btn-primary btn-sm" onclick="openAdminPanel(${r.id})" title="Open its dashboard"><span class="material-symbols-rounded">dashboard</span>Admin</button>
@@ -1569,7 +1620,7 @@ require_once __DIR__ . '/../config/countries.php';
     // filter chips, the More menus, dashboard shortcuts
     document.addEventListener('click', function (e) {
       const f = e.target.closest('[data-sa-rf]');
-      if (f) { saRestFilter = f.dataset.saRf; document.querySelectorAll('[data-sa-rf]').forEach(b => b.classList.toggle('on', b === f)); saRenderRestaurants(); return; }
+      if (f) { saRestFilter = f.dataset.saRf; saPage = 1; document.querySelectorAll('[data-sa-rf]').forEach(b => b.classList.toggle('on', b === f)); fetchRestaurants(false); return; }
       const m = e.target.closest('[data-sa-more]');
       document.querySelectorAll('.sa-more.open').forEach(x => { if (!m || x !== m.parentElement) x.classList.remove('open'); });
       if (m) { const box = m.parentElement; box.classList.toggle('open'); if (box.classList.contains('open')) { const rc = m.getBoundingClientRect(), mn = box.querySelector('.sa-more-menu'); mn.style.top = Math.min(rc.bottom + 6, innerHeight - mn.offsetHeight - 8) + 'px'; mn.style.left = Math.max(8, rc.right - mn.offsetWidth) + 'px'; } return; }
@@ -1586,11 +1637,21 @@ require_once __DIR__ . '/../config/countries.php';
     });
 
     // Restaurants
-    async function fetchRestaurants(){
+    // counts = false when only the page, search, sort or tab changed (the tab counts don't depend on those);
+    // they still refresh at least once a minute, for changes made elsewhere
+    let saCountsAt = 0;
+    async function fetchRestaurants(counts = true){
       try {
-        const qs = `action=getRestaurants&page=${saPage}&limit=${saLimit}${saQuery?`&q=${encodeURIComponent(saQuery)}`:''}`;
+        if (Date.now() - saCountsAt > 60000) counts = true;
+        if (counts) saCountsAt = Date.now();
+        const qs = `action=getRestaurants${counts ? '&with_counts=1' : ''}&page=${saPage}&limit=${saLimit}&sort=${saSort}${saRestFilter !== 'all' ? `&status=${saRestFilter}` : ''}${saQuery?`&q=${encodeURIComponent(saQuery)}`:''}`;
+        const seq = ++saFetchSeq;
+        document.getElementById('restaurantsTable')?.classList.add('sa-loading');
         const res = await fetch('api.php?'+qs);
         const data = await res.json();
+        if (seq !== saFetchSeq) return;   // a newer search/filter already went out: don't draw this older answer over it
+        document.getElementById('restaurantsTable')?.classList.remove('sa-loading');
+        Object.entries(data.status_counts || {}).forEach(([k, v]) => { const el = document.querySelector(`[data-sa-rfn="${k}"]`); if (el) el.textContent = v.toLocaleString('en-IN'); });
 
         if (data.session_expired) {
           showSuperAlert('Your session expired. Please log in again.', 'warning');
@@ -1604,7 +1665,7 @@ require_once __DIR__ . '/../config/countries.php';
         const requestedPages = Math.max(1, Math.ceil((data.total||0)/saLimit));
         if (saPage > requestedPages) {
           saPage = requestedPages;
-          return fetchRestaurants();
+          return fetchRestaurants(counts);
         }
 
         (data.restaurants||[]).forEach(r => { saRestaurantsMap[r.id] = r; });
@@ -1614,18 +1675,11 @@ require_once __DIR__ . '/../config/countries.php';
         const total = data.total||0;
         const pages = Math.max(1, Math.ceil(total/saLimit));
         saPages = pages;
-        document.getElementById('pageInfo').textContent = `Page ${saPage} of ${pages}`;
-        document.getElementById('prevPage').disabled = saPage<=1;
-        document.getElementById('nextPage').disabled = saPage>=pages;
+        saPager(document.getElementById('saPager'), { page: saPage, total, limit: saLimit, noun: total === 1 ? 'restaurant' : 'restaurants',
+          go: p => { saPage = p; fetchRestaurants(false); }, setLimit: n => { saLimit = n; saPage = 1; fetchRestaurants(false); } });
       } catch(e) {
         console.error('Error:', e);
-        // Buttons are born `disabled` in the HTML and only get re-enabled
-        // on the success path above — without this, any failed fetch here
-        // (network hiccup, non-JSON response, etc.) left them permanently
-        // stuck disabled for the rest of the session. Restore them to match
-        // the last known-good page/pages instead of leaving Prev/Next dead.
-        document.getElementById('prevPage').disabled = saPage<=1;
-        document.getElementById('nextPage').disabled = saPage>=saPages;
+        document.getElementById('restaurantsTable')?.classList.remove('sa-loading');
         showSuperAlert('Could not load restaurants. Please try again.', 'error');
       }
     }
@@ -1702,7 +1756,7 @@ require_once __DIR__ . '/../config/countries.php';
       if (!d.success) { showSuperAlert(d.message || 'Error', 'error'); return; }
       
       const links = d.links || [];
-      const allRes = await fetch('api.php?action=getRestaurants&limit=200');
+      const allRes = await fetch('api.php?action=getRestaurants&limit=500');
       const allData = await allRes.json();
       const restaurants = allData.restaurants || [];
 
@@ -1745,7 +1799,7 @@ require_once __DIR__ . '/../config/countries.php';
       container.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">Loading...</div>';
       cbamModal.classList.add('active');
       
-      const allRes = await fetch('api.php?action=getRestaurants&limit=200');
+      const allRes = await fetch('api.php?action=getRestaurants&limit=500');
       const allData = await allRes.json();
       const restaurants = allData.restaurants || [];
       container.innerHTML = restaurants.map(r => 
@@ -2013,16 +2067,16 @@ require_once __DIR__ . '/../config/countries.php';
         + `🔑 Password: ${password}\n\n`
         + `Hop in and check out your dashboard - manage your menu, track orders, and watch your restaurant grow, all from one place.\n\n`
         + `Want to change anything or have a question? We're just a message away:\n`
-        + `📧 restrogrow@gmail.com\n\n`
+        + `📧 support@restrogrow.com\n\n`
         + `Thanks for choosing us - excited to see your restaurant thrive! 🍽️✨`;
 
       window.open('https://wa.me/' + fullPhone + '?text=' + encodeURIComponent(message), '_blank');
     }
 
     // Search and pagination
-    document.getElementById('saSearch')?.addEventListener('input', (e)=>{ saQuery = e.target.value.trim(); saPage = 1; fetchRestaurants(); });
-    document.getElementById('prevPage')?.addEventListener('click', ()=>{ if(saPage>1){ saPage--; fetchRestaurants(); }});
-        document.getElementById('nextPage')?.addEventListener('click', ()=>{ if(saPage<saPages){ saPage++; fetchRestaurants(); }});
+    let saSearchTimer = 0;
+    document.getElementById('saSearch')?.addEventListener('input', (e)=>{ clearTimeout(saSearchTimer); saSearchTimer = setTimeout(() => { saQuery = e.target.value.trim(); saPage = 1; fetchRestaurants(false); }, 250); });
+    document.getElementById('saSort')?.addEventListener('change', (e)=>{ saSort = e.target.value; saPage = 1; fetchRestaurants(false); });
     // Export CSV: every restaurant that matches the search (all pages), from the API rather than the table on screen
     document.getElementById('btnExport')?.addEventListener('click', async ()=>{
       const cell = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
@@ -2085,15 +2139,8 @@ require_once __DIR__ . '/../config/countries.php';
             }).join('');
           }
           const total = data.total || 0;
-          const pages = Math.max(1, Math.ceil(total/resetLimit));
-          const pageInfo = document.getElementById('resetPageInfo');
-          if (pageInfo) {
-            pageInfo.textContent = `Page ${resetPage} of ${pages}`;
-          }
-          const prevBtn = document.getElementById('prevResetPage');
-          const nextBtn = document.getElementById('nextResetPage');
-          if (prevBtn) prevBtn.disabled = resetPage <= 1;
-          if (nextBtn) nextBtn.disabled = resetPage >= pages;
+          saPager(document.getElementById('resetPager'), { page: resetPage, total, limit: resetLimit, noun: total === 1 ? 'reset link' : 'reset links', sizes: [10, 25, 50],
+            go: p => { resetPage = p; loadPasswordResetData(); }, setLimit: n => { resetLimit = n; resetPage = 1; loadPasswordResetData(); } });
         } else {
           const message = data.message || 'Error loading data';
           tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);">' + message + '</td></tr>';
@@ -2103,8 +2150,6 @@ require_once __DIR__ . '/../config/countries.php';
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);">Error: ' + e.message + '</td></tr>';
       }
     }
-    document.getElementById('prevResetPage')?.addEventListener('click', ()=>{ if(resetPage>1){ resetPage--; loadPasswordResetData(); }});
-    document.getElementById('nextResetPage')?.addEventListener('click', ()=>{ resetPage++; loadPasswordResetData(); });
 
     // ==================== PAYMENT LINKS ====================
     let plRestaurantFilter = '', plStatusFilter = '';
@@ -2152,7 +2197,7 @@ require_once __DIR__ . '/../config/countries.php';
 
     async function populateRestaurantFilter() {
       try {
-        const res = await fetch('api.php?action=getRestaurants&limit=200');
+        const res = await fetch('api.php?action=getRestaurants&limit=500');
         const d = await res.json();
         if (d.success) {
           const select = document.getElementById('plRestaurantFilter');
@@ -2439,16 +2484,44 @@ require_once __DIR__ . '/../config/countries.php';
     // ==================== MENUS ====================
     let selectedRestaurantId = '';
 
-    async function loadMenuRestaurants() {
-      try {
-        const res = await fetch('api.php?action=getRestaurants&limit=200');
-        const d = await res.json();
-        const select = document.getElementById('menuRestaurantSelect');
-        if (!select) return;
-        select.innerHTML = '<option value="">Select a restaurant...</option>' +
-          (d.restaurants || []).map(r => `<option value="${r.restaurant_id}">${saEsc(r.restaurant_name)} (${r.restaurant_id})</option>`).join('');
-        document.getElementById('menuCategoriesSection').style.display = 'none';
-      } catch(e) { console.error('loadMenuRestaurants:', e); }
+    // Restaurant picker: type to search the server (every restaurant, not a capped list), pick with mouse or arrows + Enter
+    function saRestaurantPicker(input, list, onPick) {
+      let rows = [], hi = -1, timer = 0, seq = 0;
+      const draw = () => {
+        list.innerHTML = rows.length ? rows.map((r, i) => `<button type="button" role="option" class="${i === hi ? 'hi' : ''}" data-i="${i}">
+            ${saAvatar(r)}
+            <span><b>${saEsc(r.restaurant_name)}</b><small>${saEsc(r.username)} · ${saEsc(r.restaurant_id)}${r.city ? ' · ' + saEsc(r.city) : ''}</small></span></button>`).join('')
+          : '<div class="sa-pick-empty">No restaurant found</div>';
+        list.hidden = false; input.setAttribute('aria-expanded', 'true');
+      };
+      const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); hi = -1; };
+      const search = async () => {
+        const s = ++seq;
+        const d = await fetch(`api.php?action=getRestaurants&limit=8&q=${encodeURIComponent(input.value.trim())}`).then(x => x.json()).catch(() => ({}));
+        if (s !== seq) return;
+        rows = d.restaurants || []; hi = rows.length ? 0 : -1; draw();
+      };
+      const pick = i => { const r = rows[i]; if (!r) return; input.value = r.restaurant_name; close(); onPick(r); };
+      input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(search, 200); });
+      input.addEventListener('focus', () => { input.select(); search(); });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!rows.length) return; hi = (hi + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length; draw(); }
+        else if (e.key === 'Enter') { e.preventDefault(); pick(hi); }
+        else if (e.key === 'Escape') close();
+      });
+      list.addEventListener('mousedown', e => { const b = e.target.closest('[data-i]'); if (b) { e.preventDefault(); pick(+b.dataset.i); } });
+      input.addEventListener('blur', () => setTimeout(close, 120));
+    }
+    saRestaurantPicker(document.getElementById('menuPickInput'), document.getElementById('menuPickList'), r => {
+      const select = document.getElementById('menuRestaurantSelect');
+      select.innerHTML = `<option value="${saEsc(r.restaurant_id)}" selected>${saEsc(r.restaurant_name)}</option>`;
+      select.dispatchEvent(new Event('change'));
+    });
+
+    function loadMenuRestaurants() {
+      document.getElementById('menuRestaurantSelect').innerHTML = '<option value="">Select a restaurant...</option>';
+      document.getElementById('menuPickInput').value = '';
+      document.getElementById('menuCategoriesSection').style.display = 'none';
     }
 
     document.getElementById('menuRestaurantSelect')?.addEventListener('change', async (e) => {
@@ -2735,71 +2808,113 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
     }
     document.querySelector('.sidebar-overlay')?.addEventListener('click', toggleSidebar);
 
-    // Subscriptions page
-    let subAllRestaurants = [];
-    let subSearchQuery = '';
+    // Subscriptions page: same server-side tabs, search and pages as Restaurants (saPlan for the plan line)
+    let subSearchQuery = '', subFilter = 'all', subPage = 1, subLimit = 25, subSeq = 0;
 
-    async function loadSubscriptions() {
+    let subCountsAt = 0;   // as Restaurants: counts on changes, else at least once a minute
+    async function loadSubscriptions(counts = true) {
+      const seq = ++subSeq;
+      document.getElementById('subTable')?.classList.add('sa-loading');
+      if (Date.now() - subCountsAt > 60000) counts = true;
+      if (counts) subCountsAt = Date.now();
       try {
-        let all = [];
-        let page = 1;
-        const limit = 50;
-        while (true) {
-          const res = await fetch(`api.php?action=getRestaurants&limit=${limit}&page=${page}`);
-          const data = await res.json();
-          all = all.concat(data.restaurants || []);
-          const total = data.total || 0;
-          if (all.length >= total || !(data.restaurants || []).length) break;
-          page++;
+        const qs = `action=getRestaurants${counts ? '&with_counts=1' : ''}&sort=ending&page=${subPage}&limit=${subLimit}${subFilter !== 'all' ? `&status=${subFilter}` : ''}${subSearchQuery ? `&q=${encodeURIComponent(subSearchQuery)}` : ''}`;
+        const data = await (await fetch('api.php?' + qs)).json();
+        if (seq !== subSeq) return;
+        const total = data.total || 0;
+        if (subPage > 1 && subPage > Math.ceil(total / subLimit)) { subPage = Math.max(1, Math.ceil(total / subLimit)); return loadSubscriptions(counts); }
+        const c = data.status_counts || {};
+        Object.entries(c).forEach(([k, v]) => { const el = document.querySelector(`[data-sub-n="${k}"]`); if (el) el.textContent = v.toLocaleString('en-IN'); });
+        if (c.paying !== undefined) {
+          document.getElementById('subActive').textContent = c.paying.toLocaleString('en-IN');
+          document.getElementById('subTrial').textContent = c.trial.toLocaleString('en-IN');
+          document.getElementById('subExpired').textContent = c.expired.toLocaleString('en-IN');
         }
-        subAllRestaurants = all;
-        renderSubscriptions();
+        renderSubscriptions(data.restaurants || []);
+        saPager(document.getElementById('subPager'), { page: subPage, total, limit: subLimit, noun: total === 1 ? 'restaurant' : 'restaurants',
+          go: p => { subPage = p; loadSubscriptions(false); }, setLimit: n => { subLimit = n; subPage = 1; loadSubscriptions(false); } });
       } catch(e) {
         console.error('Load subscriptions error:', e);
       }
+      if (seq === subSeq) document.getElementById('subTable')?.classList.remove('sa-loading');
     }
 
-    function renderSubscriptions() {
+    function renderSubscriptions(rows) {
       const tbody = document.getElementById('subscriptionsTbody');
       if (!tbody) return;
-      const q = subSearchQuery.toLowerCase();
-      const filtered = q ? subAllRestaurants.filter(r =>
-        (r.restaurant_name || '').toLowerCase().includes(q) ||
-        (r.restaurant_id || '').toLowerCase().includes(q) ||
-        (r.username || '').toLowerCase().includes(q)
-      ) : subAllRestaurants;
-      tbody.innerHTML = filtered.map(r => {
-        const status = r.trial_status || 'Unknown';
-        const subStatus = r.subscription_status || 'unknown';
-        const statusClass = status === 'Active' ? 'badge-success' : (status === 'Expired' ? 'badge-danger' : 'badge-warning');
-        const statusIcon = status === 'Active' ? '✅' : (status === 'Expired' ? '❌' : '⏳');
-        return `<tr>
-          <td><strong>${saEsc(r.restaurant_name)}</strong><br><small style="color:#6b7280;">${r.restaurant_id}</small></td>
-          <td><span class="badge ${statusClass}">${statusIcon} ${status}</span><br><small style="color:#6b7280;">${subStatus}</small></td>
-          <td>${r.trial_end_date || '--'}</td>
-          <td>${r.renewal_date || '--'}<br><small style="color:#6b7280;">${r.days_left || 0} days left</small></td>
-          <td style="white-space:nowrap;">
-            <button class="btn btn-sm btn-success" onclick="activateSubscription(${r.id})" title="Activate 30 days">✓ Activate</button>
-            <button class="btn btn-sm btn-primary" onclick="customDuration(${r.id})" title="Custom duration">📅 Custom</button>
-            <button class="btn btn-sm btn-danger" onclick="expireSubscription(${r.id})" title="Mark expired">✗ Expire</button>
-          </td>
+      const when = d => d ? `<b>${saDate(d)}</b>` : '<span class="sp-muted">—</span>';
+      tbody.innerHTML = rows.map(r => {
+        const [kind, label, detail] = saPlan(r);
+        return `<tr class="${Number(r.is_active) === 1 ? '' : 'sa-row-off'}">
+          <td class="sp-ck"><input type="checkbox" class="sub-ck" value="${r.id}" aria-label="Select ${saEsc(r.restaurant_name)}"></td>
+          <td><div class="sa-rest sp-open360" data-sp360="${r.id}" title="Open everything about this restaurant">${saAvatar(r)}<div><b>${saEsc(r.restaurant_name)}</b><small>${saEsc(r.username)} · <code>${saEsc(r.restaurant_id)}</code></small></div></div></td>
+          <td><div class="sa-plan ${kind}"><b><i></i>${label}</b><small>${detail}</small></div></td>
+          <td>${when(r.trial_end_date)}</td>
+          <td>${when(r.renewal_date)}</td>
+          <td><div class="sa-acts sub-acts">
+            <button class="btn btn-outline btn-sm sub-go" onclick="activateSubscription(${r.id})" title="Mark as paid for the next 30 days"><span class="material-symbols-rounded">check_circle</span>Activate 30 days</button>
+            <button class="btn btn-outline btn-sm" onclick="customDuration(${r.id})" title="Pick how many days"><span class="material-symbols-rounded">calendar_month</span>Custom</button>
+            <button class="sa-more-btn sub-stop" onclick="expireSubscription(${r.id})" title="Mark the plan as expired" aria-label="Expire plan"><span class="material-symbols-rounded">block</span></button>
+          </div></td>
         </tr>`;
-      }).join('') || '<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">No restaurants found</td></tr>';
+      }).join('') || `<tr><td colspan="6"><div class="empty-state"><div class="material-symbols-rounded icon">${subSearchQuery ? 'search_off' : 'workspace_premium'}</div>${subSearchQuery ? `No restaurant matches “${saEsc(subSearchQuery)}”.` : 'No restaurants in this group right now.'}</div></td></tr>`;
+      subRefreshBulk();
     }
 
+    // Bulk on Subscriptions: tick rows, then Activate 30 days / Extend / Expire for all of them (api_platform.php bulk)
+    const subPicked = () => [...document.querySelectorAll('.sub-ck:checked')].map(x => +x.value);
+    function subRefreshBulk() {
+      const bar = document.getElementById('subBulk'), ids = subPicked(), all = document.querySelectorAll('.sub-ck'), ck = document.getElementById('subCkAll');
+      if (ck) { ck.checked = ids.length > 0 && ids.length === all.length; ck.indeterminate = ids.length > 0 && ids.length < all.length; }
+      bar.hidden = !ids.length;
+      if (!ids.length) return;
+      bar.innerHTML = `<b>${ids.length} selected</b>
+        <button class="btn btn-outline btn-sm sub-go" data-sub-bulk="activate"><span class="material-symbols-rounded">check_circle</span>Activate 30 days</button>
+        <button class="btn btn-outline btn-sm" data-sub-bulk="extend"><span class="material-symbols-rounded">calendar_month</span>Extend by days…</button>
+        <button class="btn btn-outline btn-sm sub-stop-txt" data-sub-bulk="expire"><span class="material-symbols-rounded">block</span>Mark expired</button>
+        <button class="btn btn-outline btn-sm" data-sub-bulk="clear">Clear</button>`;
+    }
+    document.getElementById('subscriptionsPage')?.addEventListener('change', e => {
+      if (e.target.id === 'subCkAll') document.querySelectorAll('.sub-ck').forEach(x => { x.checked = e.target.checked; });
+      if (e.target.id === 'subCkAll' || e.target.classList.contains('sub-ck')) subRefreshBulk();
+    });
+    document.getElementById('subBulk')?.addEventListener('click', async e => {
+      const b = e.target.closest('[data-sub-bulk]'); if (!b) return;
+      const ids = subPicked(), act = b.dataset.subBulk, n = `${ids.length} restaurant${ids.length === 1 ? '' : 's'}`;
+      if (act === 'clear') { document.querySelectorAll('.sub-ck').forEach(x => { x.checked = false; }); subRefreshBulk(); return; }
+      const body = { ids, do: act };
+      if (act === 'extend') {
+        const r = await Swal.fire({ title: 'Extend by how many days?', text: `Adds days to the current end date of ${n} (or from today if it already ended).`, input: 'number', inputValue: 30,
+          inputAttributes: { min: 1, max: 365 }, showCancelButton: true, confirmButtonColor: '#2563eb', inputValidator: x => !(+x >= 1 && +x <= 365) ? 'Enter 1 to 365' : null });
+        if (!r.isConfirmed) return;
+        body.days = +r.value;
+      } else if (!await showSuperConfirm(act === 'activate' ? `Mark ${n} as paid for the next 30 days?` : `Mark the plan of ${n} as expired?`, act === 'activate' ? 'Activate 30 days' : 'Mark expired')) return;
+      try {
+        const d = await (await fetch('api_platform.php?action=bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+        if (!d.success) throw new Error(d.message || 'Something went wrong');
+        showSuperAlert(d.message, 'success');
+        loadSubscriptions(); loadSubscriptionStats();
+      } catch (err) { showSuperAlert(err.message, 'error'); }
+    });
+
+    let subSearchTimer = 0;
     document.getElementById('subSearch')?.addEventListener('input', (e) => {
-      subSearchQuery = e.target.value.trim();
-      renderSubscriptions();
+      clearTimeout(subSearchTimer);
+      subSearchTimer = setTimeout(() => { subSearchQuery = e.target.value.trim(); subPage = 1; loadSubscriptions(false); }, 250);
+    });
+    document.getElementById('subFilter')?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-sub-f]'); if (!b) return;
+      subFilter = b.dataset.subF; subPage = 1;
+      document.querySelectorAll('[data-sub-f]').forEach(x => x.classList.toggle('on', x === b));
+      loadSubscriptions(false);
     });
 
     async function loadSubscriptionStats() {
       try {
         const res = await fetch('api.php?action=getSubscriptionStats');
         const data = await res.json();
+        // counts come from loadSubscriptions (same rules as the Restaurants tabs); this is only the money received
         if (data.success && data.stats) {
-          document.getElementById('subActive').textContent = data.stats.active;
-          document.getElementById('subTrial').textContent = data.stats.trial;
-          document.getElementById('subExpired').textContent = data.stats.expired;
           document.getElementById('subRevenue').textContent = '₹' + Number(data.stats.monthly_revenue).toLocaleString();
         }
       } catch(e) {}
@@ -2897,13 +3012,15 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
         if (!tbody) return;
         tbody.innerHTML = (data.payments||[]).map(p => {
           const statusClass = p.payment_status === 'success' ? 'badge-success' : (p.payment_status === 'failed' ? 'badge-danger' : 'badge-warning');
+          const statusText = { success: 'Paid', failed: 'Failed', pending: 'Pending' }[String(p.payment_status).toLowerCase()] || p.payment_status || '—';
+          const at = p.created_at ? new Date(p.created_at.replace(' ', 'T')) : null;
           return `<tr>
-            <td><small>${p.transaction_id || '--'}</small></td>
-            <td>${saEsc(p.restaurant_name) || p.restaurant_id || '--'}</td>
-            <td>₹${Number(p.amount || 0).toLocaleString()}</td>
-            <td>${p.subscription_type || '--'}</td>
-            <td><span class="badge ${statusClass}">${p.payment_status || '--'}</span></td>
-            <td><small>${p.created_at || '--'}</small></td>
+            <td><code class="sp-code">${saEsc(p.transaction_id || '—')}</code></td>
+            <td><b>${saEsc(p.restaurant_name || '—')}</b><br><small class="sp-muted">${saEsc(p.restaurant_id || '')}</small></td>
+            <td><b>₹${Number(p.amount || 0).toLocaleString('en-IN')}</b></td>
+            <td>${{ monthly: 'Monthly', yearly: 'Yearly' }[p.subscription_type] || saEsc(p.subscription_type || '—')}</td>
+            <td><span class="badge ${statusClass}">${statusText}</span></td>
+            <td>${at ? `${saDate(p.created_at)}<br><small class="sp-muted">${at.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</small>` : '—'}</td>
           </tr>`;
         }).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:#999;">No payments found</td></tr>';
       } catch(e) {
@@ -2925,12 +3042,10 @@ Current categories already in this system: ${cats.length > 0 ? cats.join(', ') :
     document.getElementById('paymentSearch')?.addEventListener('input', loadPaymentHistory);
     document.getElementById('paymentStatusFilter')?.addEventListener('change', loadPaymentHistory);
 
-    // Restore last visited page
-    const savedPage = localStorage.getItem('saCurrentPage');
-    if (savedPage) {
-      const target = document.querySelector(`.menu-item[data-page="${savedPage}"]`);
-      if (target) target.click();
-    }
+    // Open the page named in the link (dashboard.php#restaurants) if it is a real page, else the last visited one
+    const saPageItem = name => name ? document.querySelector(`.menu-item[data-page="${name.replace(/[^A-Za-z]/g, '')}"]`) : null;
+    const savedTarget = saPageItem(location.hash.slice(1)) || saPageItem(localStorage.getItem('saCurrentPage'));
+    if (savedTarget) savedTarget.click();
   </script>
 </body>
 </html>

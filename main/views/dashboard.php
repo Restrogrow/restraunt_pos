@@ -3222,7 +3222,7 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
         $gwMode = $payment_gateway_mode ?? 'own';
         $gwLive = ($phonepe_environment ?? 'SANDBOX') === 'PRODUCTION';
         $gwKeys = trim($phonepe_merchant_id ?? '') !== '' && trim($phonepe_salt_key ?? '') !== '';
-        if (!$gwIndia) { $gwState = ['off', 'Online payments: contact support', 'Online payment through PhonePe works for restaurants in India only. Customers can pay cash, or by your payment QR at the counter. To take online payments in ' . html_entity_decode((string)$country) . ', contact RestroGrow support on WhatsApp +91 63775 68749 or restrogrow@gmail.com.']; }
+        if (!$gwIndia) { $gwState = ['off', 'Online payments: contact support', 'Online payment through PhonePe works for restaurants in India only. Customers can pay cash, or by your payment QR at the counter. To take online payments in ' . html_entity_decode((string)$country) . ', contact RestroGrow support on WhatsApp +91 63775 68749 or support@restrogrow.com.']; }
         elseif (!$gwOn) { $gwState = ['off', 'Online payments are off', 'Customers pay cash, or by UPI QR at the counter. Online payment (UPI, cards, net banking through PhonePe) is switched on for your restaurant by RestroGrow support.']; }
         elseif ($gwMode === 'platform') { $gwState = ['ok', 'Online payments are on', 'Through the RestroGrow platform account. Nothing to set up; money reaches your bank in 2 working days.']; }
         elseif (!$gwKeys) { $gwState = ['warn', 'Add your PhonePe keys', 'Online payments are allowed, but your own PhonePe Client ID and Secret aren’t saved yet, so customers can’t pay online.']; }
@@ -7186,7 +7186,7 @@ function toggleGatewayMode() {
           <p style="margin:0 0 1rem;color:#374151;font-size:.95rem;line-height:1.6;">To renew for a restaurant outside India, contact our support team. We'll share the price and how to pay in your country.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
             <a href="https://wa.me/916377568749?text=<?php echo rawurlencode('Hi, I want to renew RestroGrow for ' . ($restaurant_name ?? 'my restaurant') . ' (' . ($restaurant_id ?? '') . ').'); ?>" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:12px 18px;border-radius:12px;background:#16a34a;color:#fff;font-weight:700;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:20px;">chat</span>WhatsApp support</a>
-            <a href="mailto:restrogrow@gmail.com?subject=<?php echo rawurlencode('Renew RestroGrow – ' . ($restaurant_id ?? '')); ?>" style="display:inline-flex;align-items:center;gap:6px;padding:12px 18px;border-radius:12px;background:#1e293b;color:#fff;font-weight:700;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:20px;">mail</span>Email support</a>
+            <a href="mailto:support@restrogrow.com?subject=<?php echo rawurlencode('Renew RestroGrow – ' . ($restaurant_id ?? '')); ?>" style="display:inline-flex;align-items:center;gap:6px;padding:12px 18px;border-radius:12px;background:#1e293b;color:#fff;font-weight:700;text-decoration:none;"><span class="material-symbols-rounded" style="font-size:20px;">mail</span>Email support</a>
           </div>
           <p style="margin:1rem 0 0;"><a href="#" onclick="event.preventDefault();closeSubscriptionModal();" style="color:#e17055;text-decoration:underline;font-size:.8rem;">Maybe later</a></p>
         </div>

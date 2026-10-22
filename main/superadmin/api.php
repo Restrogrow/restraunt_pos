@@ -151,31 +151,45 @@ try {
       $where = '';
       $params = [];
       $conds = [];
+      // city / business_type come from the 3-step sign-up; older databases may not have them yet
+      // (checked once, then remembered in the schema cache; only "both there" is remembered)
+      if (rgSchemaKnown('cols:users:city,business_type')) {
+        $hasCols = ['city', 'business_type'];
+      } else {
+        $hasCols = $conn->query("SHOW COLUMNS FROM users WHERE Field IN ('city', 'business_type')")->fetchAll(PDO::FETCH_COLUMN);
+        if (count($hasCols) === 2) rgSchemaRemember('cols:users:city,business_type');
+      }
+      $extraCols = $hasCols ? implode(', ', $hasCols) . ',' : '';
       if ($q !== '') {
         // Native prepared statements (PDO::ATTR_EMULATE_PREPARES is false)
         // don't allow the same named placeholder to repeat, so each LIKE
         // needs its own :qN bound to the same value.
-        $conds[] = "(username LIKE :q1 OR restaurant_name LIKE :q2 OR restaurant_id LIKE :q3)";
-        $params[':q1'] = "%$q%";
-        $params[':q2'] = "%$q%";
-        $params[':q3'] = "%$q%";
+        $searchCols = array_merge(['username', 'restaurant_name', 'restaurant_id', 'phone', 'email'], in_array('city', $hasCols, true) ? ['city'] : []);
+        $likes = [];
+        foreach ($searchCols as $i => $col) { $likes[] = "$col LIKE :q$i"; $params[":q$i"] = "%$q%"; }
+        $conds[] = '(' . implode(' OR ', $likes) . ')';
       }
       // Optional plan filter (Super Admin app): paying, trial, ending (within 7 days), expired, disabled
-      $planEnd = "COALESCE(renewal_date, trial_end_date, DATE_ADD(DATE(created_at), INTERVAL 30 DAY))";
+      $planEnd = pfExpirySql('users');   // the shared plan-end rule (config/platform_engine.php)
       $statusSql = [
         'paying'   => "is_active = 1 AND subscription_status = 'active' AND $planEnd >= CURDATE()",
         'trial'    => "is_active = 1 AND subscription_status = 'trial' AND $planEnd >= CURDATE()",
-        'ending'   => "is_active = 1 AND subscription_status <> 'disabled' AND $planEnd BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
+        // only live plans (paying or trial): one marked expired with a date still ahead is in Expired, not here too
+        'ending'   => "is_active = 1 AND subscription_status IN ('active', 'trial') AND $planEnd BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
         'expired'  => "is_active = 1 AND subscription_status <> 'disabled' AND (subscription_status = 'expired' OR $planEnd < CURDATE())",
         'disabled' => "(is_active = 0 OR subscription_status = 'disabled')",
       ];
       $status = $_GET['status'] ?? '';
       if (isset($statusSql[$status])) $conds[] = '(' . $statusSql[$status] . ')';
       if ($conds) $where = 'WHERE ' . implode(' AND ', $conds);
-
-
-
-
+      $sorts = [
+        'newest' => 'created_at DESC',
+        'oldest' => 'created_at ASC',
+        'name'   => 'restaurant_name ASC',
+        // plans about to end first, then the ones that ended most recently; disabled restaurants last
+        'ending' => "(is_active = 0 OR subscription_status = 'disabled'), ($planEnd < CURDATE()), ABS(DATEDIFF($planEnd, CURDATE())) ASC",
+      ];
+      $orderBy = $sorts[$_GET['sort'] ?? ''] ?? $sorts['newest'];
 
       $sql = "SELECT
                 id, username, restaurant_id, restaurant_name, is_active, created_at,
@@ -190,15 +204,20 @@ try {
                 payment_gateway_type,
                 phone,
                 country,
-                GREATEST(DATEDIFF(COALESCE(renewal_date, trial_end_date, DATE_ADD(DATE(created_at), INTERVAL 30 DAY)), CURRENT_DATE()), 0) AS days_left,
+                $extraCols
+                (COALESCE(restaurant_logo, '') <> '' OR logo_data IS NOT NULL) AS has_logo,
+                UNIX_TIMESTAMP(updated_at) AS logo_v,
+                $planEnd AS plan_end,
+                DATEDIFF($planEnd, CURRENT_DATE()) AS plan_days,
+                GREATEST(DATEDIFF($planEnd, CURRENT_DATE()), 0) AS days_left,
                 CASE
                   WHEN subscription_status = 'disabled' THEN 'Disabled'
                   WHEN subscription_status = 'expired' THEN 'Expired'
-                  WHEN CURRENT_DATE() < COALESCE(renewal_date, trial_end_date, DATE_ADD(DATE(created_at), INTERVAL 30 DAY)) THEN 'Active'
+                  WHEN CURRENT_DATE() < $planEnd THEN 'Active'
                   ELSE 'Expired'
                 END AS trial_status
               FROM users $where
-              ORDER BY created_at DESC
+              ORDER BY $orderBy, id DESC
               LIMIT :limit OFFSET :offset";
       try {
           $stmt = $conn->prepare($sql);
@@ -225,10 +244,25 @@ try {
       $total = (int)($countStmt->fetch()['c'] ?? 0);
 
       $restaurants = $stmt->fetchAll();
+      // sections switched off per restaurant (Access): one query for the whole page, not one per row
+      $offByRid = [];
+      if ($restaurants) {
+        try {
+          accessEnsureTable($conn);
+          $rids = array_column($restaurants, 'restaurant_id');
+          $acc = $conn->prepare('SELECT restaurant_id, off_pages FROM restaurant_access WHERE restaurant_id IN (' . implode(',', array_fill(0, count($rids), '?')) . ')');
+          $acc->execute($rids);
+          $allPages = accessAllPages();
+          foreach ($acc->fetchAll(PDO::FETCH_ASSOC) as $a) {
+            $list = json_decode((string)$a['off_pages'], true);
+            $offByRid[$a['restaurant_id']] = is_array($list) ? count(array_intersect($allPages, $list)) : 0;
+          }
+        } catch (PDOException $e) {}
+      }
       foreach ($restaurants as &$row) {
         $rowCountry = getCountryByName($row['country'] ?? '');
         $row['dial_code'] = $rowCountry['dial_code'] ?? '+91';
-        $row['access_off'] = count(accessOffPages($conn, (string)$row['restaurant_id']));
+        $row['access_off'] = $offByRid[$row['restaurant_id']] ?? 0;
       }
       unset($row);
 
@@ -722,8 +756,10 @@ try {
         throw new Exception('Invalid payload');
       }
       if ($action_type === 'activate') {
-        // Activate for default 30 days
-        $stmt = $conn->prepare("UPDATE users SET subscription_status='active', renewal_date=DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), is_active=1, disabled_at=NULL, subscription_updated_at=NOW() WHERE id=?");
+        // Activate for default 30 days; a paid plan that already runs longer (e.g. yearly) keeps its later date
+        $stmt = $conn->prepare("UPDATE users SET subscription_status='active',
+            renewal_date = CASE WHEN subscription_status = 'active' AND renewal_date > DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY) THEN renewal_date ELSE DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY) END,
+            is_active=1, disabled_at=NULL, subscription_updated_at=NOW() WHERE id=?");
         $stmt->execute([$id]);
         // Log payment placeholder
         $restStmt = $conn->prepare("SELECT restaurant_id, restaurant_name FROM users WHERE id=?");
@@ -788,11 +824,9 @@ try {
       break;
 
     case 'getSubscriptionStats':
-      $active = (int)$conn->query("SELECT COUNT(*) FROM users WHERE subscription_status='active' AND (renewal_date IS NULL OR renewal_date >= CURDATE())")->fetchColumn();
-      $trial = (int)$conn->query("SELECT COUNT(*) FROM users WHERE subscription_status='trial' AND (trial_end_date IS NULL OR trial_end_date >= CURDATE())")->fetchColumn();
-      $expired = (int)$conn->query("SELECT COUNT(*) FROM users WHERE subscription_status='expired' OR subscription_status='trial' AND trial_end_date < CURDATE()")->fetchColumn();
+      // money received only: the paying / trial / expired counts come from getRestaurants&with_counts=1 (one set of rules)
       $monthlyRev = (float)$conn->query("SELECT COALESCE(SUM(amount),0) FROM subscription_payments WHERE payment_status='success' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)")->fetchColumn();
-      echo json_encode(['success'=>true, 'stats'=>['active'=>$active, 'trial'=>$trial, 'expired'=>$expired, 'monthly_revenue'=>$monthlyRev]]);
+      echo json_encode(['success'=>true, 'stats'=>['monthly_revenue'=>$monthlyRev]]);
       break;
 
 break;

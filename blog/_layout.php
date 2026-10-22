@@ -119,7 +119,7 @@ function blogFooter(): void
     </div>
     <div class="footer-bottom">
       <p>&copy; <?php echo date('Y'); ?> Restro Grow. All rights reserved.</p>
-      <p class="footer-contact-line"><a href="mailto:restrogrow@gmail.com">restrogrow@gmail.com</a> <a href="tel:+916377568749">+91 63775 68749</a></p>
+      <p class="footer-contact-line"><a href="mailto:support@restrogrow.com">support@restrogrow.com</a> <a href="tel:+916377568749">+91 63775 68749</a></p>
     </div>
   </div>
 </footer>

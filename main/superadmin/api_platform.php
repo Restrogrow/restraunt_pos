@@ -971,13 +971,44 @@ try {
             $st = $conn->prepare("UPDATE users SET is_active = 1, subscription_status = 'trial', renewal_date = DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), disabled_at = NULL WHERE id IN ($ph) AND is_active = 0");
             $st->execute($ids);
             $msg = 'Enabled';
+        } elseif ($do === 'activate') {
+            // same as the single "Activate 30 days" in Subscriptions (api.php updateSubscription): paid for 30 days from today,
+            // with a ₹0 manual payment row so the history shows who switched it on. Restaurants already active
+            // until today + 30 days or later are left alone: a yearly plan isn't cut short, and clicking twice
+            // adds no second history row
+            $rows = $conn->prepare("SELECT id, restaurant_id FROM users WHERE id IN ($ph)
+                AND NOT (subscription_status = 'active' AND is_active = 1 AND renewal_date >= DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY))");
+            $rows->execute($ids);
+            $todo = $rows->fetchAll(PDO::FETCH_ASSOC);
+            $changed = 0;
+            if ($todo) {
+                $tph = implode(',', array_fill(0, count($todo), '?'));
+                $st = $conn->prepare("UPDATE users SET subscription_status = 'active', renewal_date = DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), is_active = 1, disabled_at = NULL, subscription_updated_at = NOW() WHERE id IN ($tph)");
+                $st->execute(array_column($todo, 'id'));
+                $pay = $conn->prepare("INSERT INTO subscription_payments (user_id, restaurant_id, transaction_id, amount, subscription_type, duration_months, payment_status, payment_method, notes) VALUES (?, ?, ?, 0, 'monthly', 1, 'success', 'manual', 'Bulk activate')");
+                foreach ($todo as $r) $pay->execute([$r['id'], $r['restaurant_id'], 'ADMIN_' . time() . '_' . $r['id']]);
+                $changed = $st->rowCount();
+            }
+            $msg = 'Activated for 30 days';
+        } elseif ($do === 'expire') {
+            // same as the single Expire: plan marked expired, restaurant left on so it can still pay
+            $st = $conn->prepare("UPDATE users SET subscription_status = 'expired', is_active = 1, subscription_updated_at = NOW() WHERE id IN ($ph)");
+            $st->execute($ids);
+            $msg = 'Marked expired';
         } else {
             throw new Exception('Unknown action');
         }
-        $names = $conn->prepare("SELECT restaurant_id FROM users WHERE id IN ($ph)");
-        $names->execute($ids);
-        pfAudit($conn, 'bulk.' . $do, count($ids) . ' restaurants', ['ids' => implode(',', $names->fetchAll(PDO::FETCH_COLUMN)), 'feature' => $in['feature'] ?? null, 'on' => $in['on'] ?? null, 'days' => $in['days'] ?? null]);
-        out(['message' => $msg . ' for ' . $st->rowCount() . ' of ' . count($ids) . ' restaurants', 'changed' => $st->rowCount()]);
+        // the audit names only the restaurants this touched (activate may skip some)
+        $auditIds = isset($todo) ? array_map('intval', array_column($todo, 'id')) : $ids;
+        $restIds = [];
+        if ($auditIds) {
+            $names = $conn->prepare('SELECT restaurant_id FROM users WHERE id IN (' . implode(',', array_fill(0, count($auditIds), '?')) . ')');
+            $names->execute($auditIds);
+            $restIds = $names->fetchAll(PDO::FETCH_COLUMN);
+        }
+        pfAudit($conn, 'bulk.' . $do, count($auditIds) . ' restaurants', ['ids' => implode(',', $restIds), 'feature' => $in['feature'] ?? null, 'on' => $in['on'] ?? null, 'days' => $in['days'] ?? null]);
+        $changed = $changed ?? $st->rowCount();   // activate counts its own (it may skip every row)
+        out(['message' => $msg . ' for ' . $changed . ' of ' . count($ids) . ' restaurants', 'changed' => $changed]);
 
     /* ───────── email check: a fun "offer accepted" email sent with the live SMTP settings ───────── */
     case 'testEmail':
