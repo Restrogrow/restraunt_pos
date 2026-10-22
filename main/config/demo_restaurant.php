@@ -948,6 +948,7 @@ function demoRiderTopUp(PDO $pdo, string $rid, int $staffId, int $mine, int $ope
                 'payment_method' => $method, 'payment_status' => $method === 'Online' || $step === 'Delivered' ? 'Paid' : 'Pending',
                 'order_status' => $status, 'source' => 'website', 'subtotal' => $subtotal, 'tax' => $tax, 'total' => $total,
                 'delivery_charge' => $deliveryCharge, 'delivery_address' => $address, 'customer_address' => $address,
+                'table_id' => null, 'coupon_code' => null, 'discount_amount' => 0, 'notes' => null,
                 'prep_minutes' => 20, 'estimated_ready_at' => date('Y-m-d H:i:s', $ts + 20 * 60),
                 'created_at' => $created, 'updated_at' => $created,
             ]);

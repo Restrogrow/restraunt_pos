@@ -46,7 +46,15 @@ try {
         $open = $settings['self_pick'] ? riderDeliveries($conn, $rid, ['open' => true, 'active' => true]) : [];
         // the public demo always has deliveries to show (config/demo_restaurant.php)
         require_once __DIR__ . '/../config/demo_restaurant.php';
-        if ($rid === DEMO_RESTAURANT_ID && demoRiderTopUp($conn, $rid, $me, count($mine), $settings['self_pick'] ? count($open) : 1, count($done))) {
+        $topped = false;
+        $topupError = null;
+        try {
+            $topped = $rid === DEMO_RESTAURANT_ID && demoRiderTopUp($conn, $rid, $me, count($mine), $settings['self_pick'] ? count($open) : 1, count($done));
+        } catch (Throwable $e) {
+            error_log('demo rider top-up: ' . $e->getMessage());
+            $topupError = $e->getMessage(); // TEMP: demo restaurant only, while checking it on live
+        }
+        if ($topped) {
             $mine = riderDeliveries($conn, $rid, ['rider' => $me, 'active' => true]);
             $done = riderDeliveries($conn, $rid, ['rider' => $me, 'done_today' => true]);
             $open = $settings['self_pick'] ? riderDeliveries($conn, $rid, ['open' => true, 'active' => true]) : [];
@@ -59,7 +67,7 @@ try {
         riderOut(['success' => true, 'enabled' => true, 'me' => ['id' => $me, 'name' => $myName], 'self_pick' => $settings['self_pick'],
             'restaurant' => ['name' => $rest['restaurant_name'] ?? '', 'phone' => $rest['phone'] ?? '', 'address' => $rest['address'] ?? '', 'currency' => ($rest['currency_symbol'] ?? '') ?: '₹'],
             'mine' => $mine, 'open' => $open, 'done_today' => $done, 'cash_in_hand' => round((float)$cash->fetchColumn(), 2),
-            'delivered_today' => count($done)]);
+            'delivered_today' => count($done)] + ($topupError !== null ? ['topup_error' => $topupError] : []));
     }
 
     $in = json_decode(file_get_contents('php://input'), true);
