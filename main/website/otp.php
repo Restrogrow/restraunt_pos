@@ -138,17 +138,17 @@ function handleSendOtp($pdo) {
         INSERT INTO whatsapp_otp_codes (restaurant_id, phone, purpose, code_hash, expires_at)
         VALUES (?, ?, ?, ?, ?)
     ")->execute([$restaurantId, $phone, $purpose, $codeHash, $expiresAt]);
+    $rowId = (int)$pdo->lastInsertId();
 
-    // Send AFTER the row is committed — if RepeatGrow fails, the row still
-    // exists but is unreachable (expires naturally), rather than the user
-    // having a "valid" code that was never actually delivered.
+    // Send AFTER the row is committed; if RepeatGrow fails, sendOtpOrForget() removes the row so the
+    // guest can ask again right away instead of waiting out the resend timer for a code that never came.
     // the number gets the restaurant's country code (+977 for a Nepal restaurant); owner signup has no
     // restaurant yet, so it sends the country picked on the signup form
     require_once __DIR__ . '/../config/countries.php';
     $country = $restaurantId === 'SIGNUP'
         ? getCountryByName(trim((string)($_POST['country'] ?? '')))
         : restaurantCountryInfo($pdo, $restaurantId);
-    sendWhatsappOtpViaRepeatGrow($phone, $code, $country);
+    sendOtpOrForget($pdo, $rowId, $phone, $code, $country);
 
     echo json_encode(array_merge([
         'success' => true,

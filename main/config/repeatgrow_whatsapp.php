@@ -189,7 +189,22 @@ function sendWhatsappOtpViaRepeatGrow(string $phone, string $code, ?array $count
 
     $errMsg = $data['error']['message'] ?? ('RepeatGrow API error (HTTP ' . $httpCode . ')');
     error_log('sendWhatsappOtpViaRepeatGrow: ' . $errMsg . ' | to=' . $payload['to'] . ' type=' . $payload['type']);   // not the payload: it carries the OTP code
-    throw new Exception('Could not send the WhatsApp message: ' . $errMsg);
+    // The raw Meta text ("(#132001) Template name does not exist…") means nothing to a customer; it stays in the log
+    throw new Exception("We couldn't send the WhatsApp code right now. Please try again in a few minutes.");
+}
+
+/**
+ * Sends the code for a row just added to whatsapp_otp_codes. If WhatsApp fails, the row is removed again:
+ * otherwise the 60-second resend wait would start for a code that never arrived, and the next try would
+ * say "please wait" instead of sending.
+ */
+function sendOtpOrForget($pdo, int $rowId, string $phone, string $code, ?array $country): void {
+    try {
+        sendWhatsappOtpViaRepeatGrow($phone, $code, $country);
+    } catch (Throwable $e) {
+        try { $pdo->prepare('DELETE FROM whatsapp_otp_codes WHERE id = ?')->execute([$rowId]); } catch (Throwable $ignored) {}
+        throw $e instanceof Exception ? $e : new Exception("We couldn't send the WhatsApp code right now. Please try again in a few minutes.");
+    }
 }
 
 /**
@@ -246,10 +261,11 @@ function issuePurposeOtp($pdo, string $restaurantId, string $phone, string $purp
         INSERT INTO whatsapp_otp_codes (restaurant_id, phone, purpose, code_hash, expires_at)
         VALUES (?, ?, ?, ?, ?)
     ")->execute([$restaurantId, $phone, $purpose, $codeHash, $expiresAt]);
+    $rowId = (int)$pdo->lastInsertId();
 
     // the code goes to the number in the restaurant's own country (+977 for a Nepal restaurant)
     require_once __DIR__ . '/countries.php';
-    sendWhatsappOtpViaRepeatGrow($phone, $code, restaurantCountryInfo($pdo, $restaurantId));
+    sendOtpOrForget($pdo, $rowId, $phone, $code, restaurantCountryInfo($pdo, $restaurantId));
 
     return ['sent' => true, 'wait' => null];
 }
