@@ -92,7 +92,7 @@
     '.rgn-ov{place-items:end center;padding:0}',
     '.rgn-modal{max-width:none;border-radius:24px 24px 0 0;padding:26px 20px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.9,.3,1)}',
     '.rgn-handle{display:block}',
-    '.rgn-row{flex-direction:column-reverse}',
+    '.rgn-modal .rgn-row{flex-direction:column-reverse}',
     '.rgn-btn{flex:none;height:50px}',
     '}',
     '@media (prefers-reduced-motion:reduce){.rgn-card,.rgn-glass,.rgn-island,.rgn-snack,.rgn-load,.rgn-modal{transition:opacity .2s!important}.rgn-big,.rgn-load .rgn-i{animation:none}}'
