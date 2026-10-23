@@ -4,8 +4,9 @@
  * which table), sent to api/create_waiter_request.php. Calls show in Waiter Requests, the waiter
  * dashboard and the Partner app.
  *
- * Shown only when the owner has it on (Waiter Requests › switch), dine-in is on and the restaurant
- * has tables. A table QR code (?table=T4, remembered as $qr_table by header.php) fills the table in;
+ * Available only when the owner has it on (Waiter Requests › switch), dine-in is on and the restaurant
+ * has tables. Even then the button shows only to guests eating in: they came from a table QR, or
+ * picked Dine In (home page order tabs, or the order type on the cart page). A table QR code (?table=T4, remembered as $qr_table by header.php) fills the table in;
  * otherwise the guest picks it. Included near the end of each customer page (after header.php).
  */
 if (empty($restaurant_id)) return;
@@ -30,6 +31,7 @@ $wcH = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 ?>
 <style>
   .rgcw-fab { position: fixed; right: 14px; bottom: calc(var(--rgcw-bottom, 92px) + env(safe-area-inset-bottom, 0px)); z-index: 990; display: inline-flex; align-items: center; gap: 8px; height: 50px; padding: 0 18px 0 14px; border: 0; border-radius: 999px; background: #111827; color: #fff; font: 600 14.5px/1 'Poppins', system-ui, sans-serif; box-shadow: 0 14px 30px -10px rgba(17,24,39,.55); cursor: pointer; transition: transform .18s ease, bottom .2s ease, background .2s; -webkit-tap-highlight-color: transparent; }
+  .rgcw-fab[hidden] { display: none; }
   .rgcw-fab:active { transform: scale(.95); }
   .rgcw-fab .rgcw-ic { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--primary-red, #e11d48); flex: none; }
   .rgcw-fab svg { width: 18px; height: 18px; }
@@ -72,7 +74,7 @@ $wcH = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   @media (prefers-reduced-motion: reduce) { .rgcw-fab, .rgcw-sheet, .rgcw-back { transition: none; } .rgcw-fab .rgcw-ring, .rgcw-check { animation: none; } }
 </style>
 
-<button type="button" class="rgcw-fab" id="rgcwFab" aria-haspopup="dialog" aria-controls="rgcwSheet">
+<button type="button" class="rgcw-fab" id="rgcwFab" aria-haspopup="dialog" aria-controls="rgcwSheet"<?php if (!$wcTable && empty($qr_table)) echo ' hidden'; ?>>
   <span class="rgcw-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
   <span id="rgcwFabText">Call waiter<?php if ($wcTable): ?> <small>· <?php echo $wcH($wcTable['table_number']); ?></small><?php endif; ?></span>
   <i class="rgcw-ring" aria-hidden="true"></i>
@@ -135,7 +137,19 @@ $wcH = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
       if (p === 'fixed' || p === 'sticky') bars.push(el);
     });
   }
+  // Only guests eating in see the button: a table QR, or Dine In picked on the cart page (its
+  // order type radios) or on the home page (saved as dvaniOrderType).
+  function dineIn() {
+    if (TABLE) return true;
+    try { if (sessionStorage.getItem('qrTable')) return true; } catch (e) {}
+    var r = document.querySelector('input[name="orderType"]:checked');
+    if (r) return r.value === 'Dine-in';
+    try { return localStorage.getItem('dvaniOrderType') === 'dinein'; } catch (e) { return false; }
+  }
   function place() {
+    var show = dineIn();
+    fab.hidden = !show;
+    if (!show) return;
     var h = window.innerHeight, top = h;
     bars.forEach(function (el) {
       if (!el.isConnected) return;
@@ -148,6 +162,7 @@ $wcH = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   }
   scan(); place();
   window.addEventListener('resize', place);
+  document.addEventListener('click', function () { setTimeout(place, 50); }, true);
   setInterval(place, 1200);
   setInterval(function () { scan(); place(); }, 8000);
   window.addEventListener('load', function () { scan(); place(); });
