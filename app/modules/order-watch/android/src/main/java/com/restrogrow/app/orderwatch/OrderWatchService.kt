@@ -144,25 +144,33 @@ class OrderWatchService : Service() {
 
     private fun pollLoop(baseUrl: String) {
         var seenIds: HashSet<Int>? = null
+        // Last status per order still in the list: a pre-order (Scheduled) that goes live flips
+        // to Pending on the same id, which the new-id check alone never alerts for.
+        val lastStatus = HashMap<Int, String>()
         while (!stopped.get()) {
             try {
                 val orders = fetchOrders(baseUrl)
                 if (orders != null) {
-                    if (seenIds == null) {
+                    val seen = seenIds
+                    if (seen == null) {
                         // first successful poll seeds the baseline so a service
                         // restart doesn't re-alert for orders already sitting
                         // in the list
                         seenIds = orders.map { it.id }.toHashSet()
                     } else {
-                        val fresh = orders.filter { it.id !in seenIds }
-                        for (o in fresh) {
-                            seenIds.add(o.id)
+                        for (o in orders) {
+                            val isNew = o.id !in seen
+                            val wentLive = !isNew && o.status == "Pending" && lastStatus[o.id] == "Scheduled"
+                            if (!isNew && !wentLive) continue
+                            seen.add(o.id)
                             if (AppStateFlag.foregrounded) continue // JS watcher owns alerting now
                             if (HandledStore.isHandled(this, o.id)) continue
                             postOrderNotification(o)
                             if (o.status == "Pending") startRing(o.id)
                         }
                     }
+                    lastStatus.clear()
+                    for (o in orders) lastStatus[o.id] = o.status
                 }
                 enforceRingCap()
             } catch (e: Exception) {
@@ -319,7 +327,9 @@ class OrderWatchService : Service() {
     private fun fetchOrders(baseUrl: String): List<OrderRow>? {
         var conn: HttpURLConnection? = null
         return try {
-            val url = "$baseUrl/api/get_orders.php?limit=50&date=${todayIso()}"
+            // active=1: every open order whatever day it was placed (same list as the in-app
+            // watcher), so a pre-order placed days ago is seen when it goes live
+            val url = "$baseUrl/api/get_orders.php?limit=50&active=1&date=${todayIso()}"
             conn = URL(url).openConnection() as HttpURLConnection
             conn.requestMethod = "GET"
             conn.connectTimeout = 8000
@@ -367,6 +377,7 @@ class OrderWatchService : Service() {
                                 var type = ""
                                 var total = ""
                                 var status = ""
+                                var source = ""
                                 reader.beginObject()
                                 while (reader.hasNext()) {
                                     when (reader.nextName()) {
@@ -376,11 +387,15 @@ class OrderWatchService : Service() {
                                         "order_type" -> type = readStringLenient(reader)
                                         "total" -> total = readStringLenient(reader)
                                         "order_status" -> status = readStringLenient(reader)
+                                        "source" -> source = readStringLenient(reader)
                                         else -> reader.skipValue()
                                     }
                                 }
                                 reader.endObject()
-                                if (id > 0) {
+                                // POS bills (a KOT's unpaid open bill and held carts are Pending
+                                // too) are made at the counter: nothing to accept, never alert.
+                                // Same rule as the in-app OrderAlertWatcher.
+                                if (id > 0 && source != "pos") {
                                     out.add(OrderRow(id, number, customerName, type, total, status))
                                 }
                             }

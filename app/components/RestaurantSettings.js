@@ -138,8 +138,11 @@ export default function RestaurantSettings({ section, editable }) {
   const save = async () => {
     setSaving(true);
     try {
+      // Only what was changed here: re-sending a whole section from a form loaded earlier would
+      // undo anything changed meanwhile elsewhere (e.g. the Dine-in / Delivery switches on Orders).
       const body = {};
       fields.forEach((k) => {
+        if (JSON.stringify(form[k]) === JSON.stringify(saved[k])) return;
         const v = form[k];
         if (k === 'opening_hours') body[k] = JSON.stringify(v);
         else if (typeof v === 'boolean') body[k] = v ? 1 : 0;

@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { Component, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Dimensions, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, Dimensions, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import {
@@ -268,8 +268,23 @@ function useAppLock(active) {
   const [checking, setChecking] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const appState = useRef(AppState.currentState);
+  // The fingerprint/Face ID/PIN prompt itself moves the app out of 'active' (Face ID: inactive;
+  // Android's PIN fallback: background) — its own return must not start another prompt.
+  const authInProgress = useRef(false);
+
+  const runAuth = useCallback(async () => {
+    authInProgress.current = true;
+    try {
+      return await authenticate();
+    } catch (e) {
+      return false;
+    } finally {
+      authInProgress.current = false;
+    }
+  }, []);
 
   const runLock = useCallback(async () => {
+    if (authInProgress.current) return;
     const on = await getBiometricLockEnabled();
     const supported = on && (await isBiometricSupported());
     if (!supported) {
@@ -279,9 +294,9 @@ function useAppLock(active) {
     }
     setChecking(false);
     setLocked(true);
-    const ok = await authenticate();
+    const ok = await runAuth();
     setLocked(!ok);
-  }, []);
+  }, [runAuth]);
 
   // Only starts once there's an actual session to protect — otherwise a
   // fresh install would get a pointless fingerprint prompt before the
@@ -294,9 +309,11 @@ function useAppLock(active) {
   useEffect(() => {
     if (!active) return;
     const sub = AppState.addEventListener('change', (next) => {
-      const wasBackground = appState.current.match(/inactive|background/);
+      // only a real trip to the background re-locks: 'inactive' alone is the Face ID prompt,
+      // Control Center or an incoming-call banner, not leaving the app
+      const wasBackground = appState.current === 'background';
       appState.current = next;
-      if (wasBackground && next === 'active') {
+      if (wasBackground && next === 'active' && !authInProgress.current) {
         runLock();
       }
     });
@@ -305,17 +322,22 @@ function useAppLock(active) {
 
   const retry = useCallback(async () => {
     setRetrying(true);
-    const ok = await authenticate();
+    const ok = await runAuth();
     setLocked(!ok);
     setRetrying(false);
-  }, []);
+  }, [runAuth]);
 
   return { locked, checking, retry, retrying };
 }
 
 function LockScreen({ onRetry, retrying }) {
+  // drawn over the app, so the back button must not reach the screens underneath
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
   return (
-    <View style={lockStyles.wrap}>
+    <View style={[StyleSheet.absoluteFill, lockStyles.wrap]}>
       <View style={lockStyles.iconWrap}>
         <Ionicons name="finger-print" size={34} color={colors.primary} />
       </View>
@@ -429,23 +451,33 @@ function RootNavigator() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : locked ? (
-        <LockScreen onRetry={retry} retrying={retrying} />
       ) : (
-        <Tab.Navigator
-          key={(user.access_off || []).join(',')}
-          tabBar={(props) => <TabBar {...props} />}
-          screenOptions={{
-            headerShown: false,
-            sceneStyle: { backgroundColor: colors.bg },
-          }}
-        >
-          <Tab.Screen name="Home" component={HomeScreen} />
-          <Tab.Screen name="Orders" component={OrdersStack} />
-          {canSee('POS') ? <Tab.Screen name="POS" component={Gated.POS} /> : null}
-          <Tab.Screen name="Menu" component={MenuStack} />
-          <Tab.Screen name="More" component={MoreStack} />
-        </Tab.Navigator>
+        // The lock screen covers the tabs instead of replacing them: unmounting the navigator on
+        // every return from the background threw away the POS cart (and its open bill), a dish
+        // being edited, a photo just picked from the gallery and the open order.
+        <View style={{ flex: 1 }}>
+          <View
+            style={{ flex: 1 }}
+            importantForAccessibility={locked ? 'no-hide-descendants' : 'auto'}
+            accessibilityElementsHidden={locked}
+          >
+            <Tab.Navigator
+              key={(user.access_off || []).join(',')}
+              tabBar={(props) => <TabBar {...props} />}
+              screenOptions={{
+                headerShown: false,
+                sceneStyle: { backgroundColor: colors.bg },
+              }}
+            >
+              <Tab.Screen name="Home" component={HomeScreen} />
+              <Tab.Screen name="Orders" component={OrdersStack} />
+              {canSee('POS') ? <Tab.Screen name="POS" component={Gated.POS} /> : null}
+              <Tab.Screen name="Menu" component={MenuStack} />
+              <Tab.Screen name="More" component={MoreStack} />
+            </Tab.Navigator>
+          </View>
+          {locked ? <LockScreen onRetry={retry} retrying={retrying} /> : null}
+        </View>
       )}
     </>
   );

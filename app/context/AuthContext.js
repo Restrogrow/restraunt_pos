@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { apiGet, apiPostForm } from '../config/api';
 import { getDeviceId } from '../config/deviceId';
 import { clearApiCache } from '../hooks/useApiData';
+import { stopOrderWatch } from 'order-watch';
 import { isForeground, onAppForeground } from '../utils/foreground';
 
 const AuthContext = createContext(null);
@@ -16,12 +17,22 @@ export function AuthProvider({ children }) {
   // silent=true is used by the background poll below — a network blip there
   // shouldn't boot the owner to the login screen mid-shift, only an explicit
   // "not logged in" response from the server should.
+  // Resolves to the signed-in user (or null) so login() can tell whether it really worked.
   const checkSession = useCallback(async (silent = false) => {
     try {
       const res = await apiGet('/admin/get_session.php');
-      setUser(res.success ? res.data : null);
+      if (res.success) {
+        setUser(res.data);
+        return res.data;
+      }
+      // get_session.php answers "not logged in" with HTTP 200; a 5xx {success:false} is the
+      // server failing (database blip), which is no reason to sign anyone out.
+      if (res.httpStatus >= 500) throw new Error(res.message || 'Server error');
+      setUser(null);
+      return null;
     } catch (e) {
       if (!silent) setUser(null);
+      return null;
     } finally {
       setCheckingSession(false);
     }
@@ -30,6 +41,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     checkSession();
   }, [checkSession]);
+
+  // Signed out (logout, or the session ended on the server): stop the Android background order
+  // watcher too. OrderWatchBridge can't do it — it is only mounted while someone is signed in.
+  useEffect(() => {
+    if (!checkingSession && !user) stopOrderWatch();
+  }, [user, checkingSession]);
 
   // Settings like the dine-in/delivery toggles can change from another
   // device (the website, or a second POS tablet) — poll softly so a change
@@ -77,7 +94,8 @@ export function AuthProvider({ children }) {
     // showing all order-type toggles as off or silently skipping GST on the
     // first order rung up right after logging in. Fetch the real session
     // immediately instead of trusting the login response's own data.
-    await checkSession();
+    const signedIn = await checkSession();
+    if (!signedIn) throw new Error("You're logged in, but your restaurant details couldn't be loaded. Please try again.");
     return res.data;
   }, [checkSession]);
 
@@ -87,7 +105,8 @@ export function AuthProvider({ children }) {
     const res = await apiPostForm('/admin/auth.php', { action: 'googleLogin', token, platform: 'app', device_id: deviceId });
     if (!res.success) throw new Error(res.message || 'Google sign-in failed');
     clearApiCache();
-    await checkSession();
+    const signedIn = await checkSession();
+    if (!signedIn) throw new Error("You're signed in, but your restaurant details couldn't be loaded. Please try again.");
     return res.data;
   }, [checkSession]);
 

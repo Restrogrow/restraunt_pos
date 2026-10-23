@@ -47,6 +47,11 @@ export function useApiData(fetcher, { pollInterval = 0, cacheKey = null, refetch
 
     try {
       const result = await fetcher();
+      // A server-side failure ({success:false}: 401/403/500 from the endpoint) is an error, not
+      // data — storing it would blank a screen showing good data ("No new orders") and cache it.
+      if (result && typeof result === 'object' && result.success === false) {
+        throw new Error(result.message || 'Something went wrong');
+      }
       if (keyRef.current !== key) return; // the screen moved on (other tab/date) meanwhile
       setDataState(result);
       if (key) {
@@ -80,6 +85,7 @@ export function useApiData(fetcher, { pollInterval = 0, cacheKey = null, refetch
         .then((raw) => {
           if (cancelled || !raw) return;
           const value = JSON.parse(raw);
+          if (value && value.success === false) return; // a failure cached by an older version
           if (!memory.has(cacheKey)) {
             memory.set(cacheKey, value);
             setDataState(value);

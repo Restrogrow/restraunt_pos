@@ -549,14 +549,32 @@ export default function POSScreen({ route }) {
       feedback.info(`Bill ${openBill.number} is already saved and in the kitchen. Use KOT for new dishes and Pay when the guest leaves.`);
       return;
     }
+    // A held order keeps only the dishes and add-ons (resume_held loads nothing else back), and
+    // pos_operations.php checks a hold as dishes + add-ons + tax — so combos can't be held, and
+    // discounts / points / rewards are left off the held bill and applied again at payment.
+    if (cart.some((c) => c.isCombo)) {
+      feedback.info('A bill with a combo can’t be held yet. Send it to the kitchen with KOT instead.');
+      return;
+    }
+    const hadDiscount = taken + manualAmount > 0;
+    const payload = buildCartPayload();
+    const heldTax = gstEnabled ? round2(subtotal * (taxPercent / 100)) : 0;
+    payload.subtotal = subtotal.toFixed(2);
+    payload.tax = heldTax.toFixed(2);
+    payload.total = round2(subtotal + heldTax).toFixed(2);
+    payload.couponCode = '';
+    delete payload.redeemPoints;
+    delete payload.manualDiscount;
+    delete payload.manualDiscountType;
+    delete payload.manualDiscountValue;
     setHolding(true);
     try {
       const res = await apiPostForm('/controllers/pos_operations.php', {
         action: 'hold_order',
-        ...buildCartPayload(),
+        ...payload,
       });
       if (!res.success) throw new Error(res.message || 'Could not hold order');
-      feedback.success(`Held as ${res.order_number}. Bring it back from Held orders.`);
+      feedback.success(`Held as ${res.order_number}. Bring it back from Held orders.${hadDiscount ? ' Add the discount again when you take payment.' : ''}`);
       resetCart();
     } catch (e) {
       feedback.errorFrom(e, 'Could not hold the order');

@@ -32,6 +32,13 @@ const TABS = [
   { key: 'deleted', label: 'Deleted', icon: 'trash-outline', deletedOnly: true, emptyTitle: 'No deleted orders', emptySubtitle: 'Orders deleted by the owner or manager are kept here for record.' },
 ];
 const LIVE_STATUSES = ['Pending', 'Scheduled', 'Accepted', 'Preparing', 'Ready', 'Served'];
+// A held POS cart is an order row too (Pending, notes 'Order on hold') but it isn't an order
+// yet: it lives under POS › Held orders, and accepting/rejecting it here broke resuming it.
+const isHeldCart = (o) => o.source === 'pos' && o.notes === 'Order on hold';
+// A POS bill sent with the KOT button stays Pending (open, unpaid) but is already in the
+// kitchen: nothing to accept, so it shows under Cooking rather than New.
+const liveTabFor = (o) =>
+  o.order_status === 'Pending' && o.source === 'pos' ? 'cooking' : TABS.find((t) => t.statuses?.includes(o.order_status))?.key;
 
 const CAN_DELETE_ROLES = ['admin', 'administrator', 'manager', 'branch admin'];
 const canDeleteRole = (role) => CAN_DELETE_ROLES.includes(String(role || '').toLowerCase());
@@ -104,12 +111,12 @@ export default function OrdersScreen({ navigation, route }) {
   );
   const search = useApiData(searchFetcher, { cacheKey: debounced.length >= 2 ? `orders:search:${debounced}` : null });
 
-  const liveOrders = useMemo(() => (live.data?.orders || []).filter((o) => LIVE_STATUSES.includes(o.order_status)), [live.data]);
+  const liveOrders = useMemo(() => (live.data?.orders || []).filter((o) => LIVE_STATUSES.includes(o.order_status) && !isHeldCart(o)), [live.data]);
   const counts = useMemo(() => {
     const c = { new: 0, cooking: 0, ready: 0 };
     liveOrders.forEach((o) => {
-      const t = TABS.find((x) => x.statuses?.includes(o.order_status));
-      if (t && c[t.key] !== undefined) c[t.key] += 1;
+      const k = liveTabFor(o);
+      if (k && c[k] !== undefined) c[k] += 1;
     });
     return c;
   }, [liveOrders]);
@@ -125,7 +132,7 @@ export default function OrdersScreen({ navigation, route }) {
   const visible = useMemo(() => {
     if (tab.deletedOnly) return other.data?.orders || [];
     if (tab.byDate) return (other.data?.orders || []).filter((o) => tab.statuses.includes(o.order_status));
-    return liveOrders.filter((o) => tab.statuses.includes(o.order_status));
+    return liveOrders.filter((o) => liveTabFor(o) === tab.key);
   }, [tab, other.data, liveOrders]);
 
   useEffect(() => {

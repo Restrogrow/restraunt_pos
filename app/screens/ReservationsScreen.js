@@ -62,20 +62,30 @@ export default function ReservationsScreen({ navigation }) {
     }
     setBusy(r.id);
     try {
-      const res = await apiPostForm('/controllers/reservation_operations.php', {
-        action: 'update',
+      // status only: re-sending the whole booking through 'update' ran it through the add/edit
+      // form rules (10-digit phone, HTML-escaping the name again on every save)
+      let res = await apiPostForm('/controllers/reservation_operations.php', {
+        action: 'update_status',
         reservationId: r.id,
-        reservationDate: r.reservation_date,
-        timeSlot: r.time_slot,
-        noOfGuests: r.no_of_guests,
-        mealType: r.meal_type || 'Lunch',
-        customerName: r.customer_name,
-        phone: r.phone || '',
-        email: r.email || '',
-        specialRequest: r.special_request || '',
-        selectTable: r.table_id || '',
         status: to,
       });
+      // a server from before update_status: fall back to the full update
+      if (!res.success && /invalid action/i.test(res.message || '')) {
+        res = await apiPostForm('/controllers/reservation_operations.php', {
+          action: 'update',
+          reservationId: r.id,
+          reservationDate: r.reservation_date,
+          timeSlot: r.time_slot,
+          noOfGuests: r.no_of_guests,
+          mealType: r.meal_type || 'Lunch',
+          customerName: r.customer_name,
+          phone: r.phone || '',
+          email: r.email || '',
+          specialRequest: r.special_request || '',
+          selectTable: r.table_id || '',
+          status: to,
+        });
+      }
       if (!res.success) throw new Error(res.message || 'Could not update the booking');
       setData((prev) => (prev ? { ...prev, data: (prev.data || []).map((x) => (x.id === r.id ? { ...x, status: to } : x)) } : prev));
       feedback.success(`${r.customer_name}: ${STATUS[to]?.label || to}`);

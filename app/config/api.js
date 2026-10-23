@@ -58,6 +58,16 @@ async function request(path, options = {}) {
     throw new Error(data.message || friendlyStatusMessage(res.status));
   }
 
+  // Lets callers tell "the server said no" (401/403) from "the server broke" (5xx) on a
+  // {success:false} body. Non-enumerable, so it never ends up in a cached JSON copy.
+  if (data && typeof data === 'object') {
+    try {
+      Object.defineProperty(data, 'httpStatus', { value: res.status, enumerable: false });
+    } catch (e) {
+      // frozen/odd body — status just isn't available
+    }
+  }
+
   return data;
 }
 

@@ -22,6 +22,9 @@ function todayKey() {
 // wherever — not just while the Orders tab happens to be on screen.
 export default function OrderAlertWatcher() {
   const seenIds = useRef(null); // null until the first poll seeds a baseline
+  // id -> status at the last poll: a pre-order (Scheduled) that goes live turns Pending on the
+  // same id, which the "never seen this id" check alone would never ring for
+  const lastStatus = useRef(new Map());
 
   useEffect(() => {
     ensureNotificationPermission().catch(() => {});
@@ -40,6 +43,8 @@ export default function OrderAlertWatcher() {
         const orders = res.orders || [];
         setLiveCount('newOrders', orders.filter((o) => o.order_status === 'Pending' && o.source !== 'pos').length);
         const currentIds = new Set(orders.map((o) => o.id));
+        const prevStatus = lastStatus.current;
+        lastStatus.current = new Map(orders.map((o) => [o.id, o.order_status]));
 
         if (seenIds.current === null) {
           // First poll this session — seed the baseline only. Otherwise
@@ -49,7 +54,9 @@ export default function OrderAlertWatcher() {
           return;
         }
 
-        const freshOrders = orders.filter((o) => !seenIds.current.has(o.id));
+        const freshOrders = orders.filter(
+          (o) => !seenIds.current.has(o.id) || (o.order_status === 'Pending' && prevStatus.get(o.id) === 'Scheduled')
+        );
         seenIds.current = currentIds;
         if (freshOrders.length === 0) return;
 
