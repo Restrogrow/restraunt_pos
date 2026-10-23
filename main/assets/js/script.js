@@ -14084,6 +14084,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 window.refreshPreview = function() {
   const iframe = document.getElementById('livePreview');
+  if (iframe && window.swapPreviewTo) {
+    var u = iframe.src;
+    try { if (iframe.contentWindow.location.href.indexOf('http') === 0) u = iframe.contentWindow.location.href; } catch (e) {}
+    window.swapPreviewTo(u);
+    return;
+  }
   if (iframe) {
     const src = iframe.src;
     iframe.src = '';
@@ -14361,9 +14367,93 @@ async function initWebsiteThemeEditor() {
       // than one of these listeners, and a second reload must not undo the first)
       var want = frame.getAttribute('data-want');
       if (want && Date.now() < +(frame.getAttribute('data-want-until') || 0)) cur = want;
-      frame.src = previewUrlFor(cur);
-      var dot = document.getElementById('pvUnsavedDot');
-      if (dot) dot.style.display = previewSaved !== null && JSON.stringify(collectPreviewTheme()) !== previewSaved ? 'inline-block' : 'none';
+      swapPreviewTo(previewUrlFor(cur));
+      if (window.updateThemeDirty) window.updateThemeDirty();
+    }
+    // A reload goes into a hidden second preview: once it has loaded and is scrolled to the
+    // same spot, it replaces the old one. No white flash, and the preview stays where you were.
+    // shared on window: the editor can be set up twice, and both copies must use one preview
+    var pvSwap = window.__pvSwap || (window.__pvSwap = { next: null, seq: 0 });
+    function swapPreviewTo(url) {
+      var cur = document.getElementById('livePreview');
+      if (!cur) return;
+      // the same page is already on its way (two listeners can ask for one change)
+      if (pvSwap.next && pvSwap.url === url) return;
+      pvSwap.url = url;
+      var wrap = cur.parentNode;
+      var seq = ++pvSwap.seq;
+      var y = 0, anchor = null;
+      try { y = cur.contentWindow.scrollY || 0; anchor = previewAnchor(cur.contentDocument); } catch (e) {}
+      if (pvSwap.next && pvSwap.next.parentNode) pvSwap.next.parentNode.removeChild(pvSwap.next);
+      if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
+      var nx = document.createElement('iframe');
+      nx.title = cur.title || 'Website preview';
+      nx.setAttribute('data-base', cur.getAttribute('data-base') || '');
+      nx.style.cssText = cur.style.cssText;
+      nx.style.position = 'absolute';
+      nx.style.left = '0';
+      nx.style.top = '0';
+      nx.style.visibility = 'hidden';
+      nx.style.pointerEvents = 'none';
+      pvSwap.next = nx;
+      nx.addEventListener('load', function onFirstLoad() {
+        nx.removeEventListener('load', onFirstLoad);
+        if (seq !== pvSwap.seq) return;
+        var start = Date.now(), lastH = -1, stableSince = 0;
+        // the menu fills in after the page loads: wait until the page stops growing (or 1.5 s),
+        // then scroll to the same spot, so nothing moves after the swap
+        (function settle() {
+          if (seq !== pvSwap.seq) return;
+          try {
+            var w = nx.contentWindow, d = nx.contentDocument;
+            var h = d.documentElement.scrollHeight, now = Date.now();
+            if (h !== lastH) { lastH = h; stableSince = now; }
+            if (now - start < 1500 && (now - stableSince < 180 || y > h - w.innerHeight)) { setTimeout(settle, 50); return; }
+            scrollToAnchor(nx, anchor, y);
+          } catch (e) {}
+          requestAnimationFrame(function () {
+            if (seq !== pvSwap.seq) return;
+            var live = document.getElementById('livePreview') || cur;
+            nx.style.cssText = live.style.cssText;
+            ['data-want', 'data-want-until'].forEach(function (a) { if (live.hasAttribute(a)) nx.setAttribute(a, live.getAttribute(a)); });
+            live.removeAttribute('id');
+            nx.id = 'livePreview';
+            if (live.parentNode) live.parentNode.removeChild(live);
+            pvSwap.next = null;
+            keepPreviewChoices(nx);
+            // parts of the page (today's specials, combos…) fill in a moment later: keep the
+            // same section in view for a little while, unless you scroll the preview yourself
+            var touched = false, until = Date.now() + 2500;
+            try { ['wheel', 'touchstart', 'mousedown', 'keydown'].forEach(function (ev) { nx.contentWindow.addEventListener(ev, function () { touched = true; }, { passive: true }); }); } catch (e) {}
+            (function hold() {
+              if (touched || Date.now() > until || document.getElementById('livePreview') !== nx) return;
+              scrollToAnchor(nx, anchor, y);
+              setTimeout(hold, 120);
+            })();
+          });
+        })();
+      });
+      nx.src = url;
+      wrap.appendChild(nx);
+    }
+    window.swapPreviewTo = swapPreviewTo;
+    // The part of the page at the top of the preview: the smallest element with an id that
+    // crosses the top edge, and how far above the edge it starts
+    function previewAnchor(doc) {
+      if (!doc || !doc.body) return null;
+      var best = null, bestH = Infinity;
+      doc.querySelectorAll('body [id]').forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.height > 40 && r.top <= 8 && r.bottom > 8 && r.height < bestH) { best = el; bestH = r.height; }
+      });
+      return best ? { id: best.id, off: best.getBoundingClientRect().top } : null;
+    }
+    function scrollToAnchor(frame, anchor, y) {
+      var w = frame.contentWindow, d = frame.contentDocument;
+      var el = anchor && d.getElementById(anchor.id);
+      var target = el ? w.scrollY + el.getBoundingClientRect().top - anchor.off : y;
+      target = Math.max(0, Math.min(target, d.documentElement.scrollHeight - w.innerHeight));
+      if (Math.abs(w.scrollY - target) > 1) w.scrollTo(0, target);
     }
     window.setPreviewMode = function(mode) {
       window.previewMode = mode === 'live' ? 'live' : 'current';
@@ -14379,7 +14469,7 @@ async function initWebsiteThemeEditor() {
     function schedulePreviewReload() {
       if (window.previewMode === 'live') return;
       clearTimeout(previewReloadTimer);
-      previewReloadTimer = setTimeout(reloadPreviewForMode, 450);
+      previewReloadTimer = setTimeout(reloadPreviewForMode, 250);
     }
     window.schedulePreviewReload = schedulePreviewReload;
     // Typing (name, bottom bar labels…) refreshes the preview once you pause
@@ -14388,7 +14478,7 @@ async function initWebsiteThemeEditor() {
       if (!e.target.closest || !e.target.closest('#websiteThemePage') || e.target.type !== 'text') return;
       if (window.previewMode === 'live') return;
       clearTimeout(previewTypeTimer);
-      previewTypeTimer = setTimeout(reloadPreviewForMode, 700);
+      previewTypeTimer = setTimeout(reloadPreviewForMode, 500);
     });
     // Any layout choice in Website Appearance refreshes the Current preview
     document.addEventListener('click', function(e) {
@@ -14416,10 +14506,7 @@ async function initWebsiteThemeEditor() {
       if (e.target.closest && e.target.closest('#websiteThemePage') && (e.target.tagName === 'SELECT' || e.target.type === 'radio' || e.target.type === 'color')) schedulePreviewReload();
     });
     // Keep the unsaved choices while clicking around inside the Current preview
-    (function() {
-      var frame = document.getElementById('livePreview');
-      if (!frame) return;
-      if (!frame.getAttribute('data-base')) frame.setAttribute('data-base', frame.getAttribute('src'));
+    function keepPreviewChoices(frame) {
       frame.addEventListener('load', function() {
         if (window.previewMode === 'live') return;
         try {
@@ -14427,9 +14514,15 @@ async function initWebsiteThemeEditor() {
           if (href.indexOf('http') === 0 && href.indexOf('preview_theme=') === -1) frame.contentWindow.location.replace(previewUrlFor(href));
         } catch (e) {}
       });
+    }
+    (function() {
+      var frame = document.getElementById('livePreview');
+      if (!frame) return;
+      if (!frame.getAttribute('data-base')) frame.setAttribute('data-base', frame.getAttribute('src'));
+      keepPreviewChoices(frame);
       setTimeout(function() { previewSaved = JSON.stringify(collectPreviewTheme()); window.setPreviewMode(window.previewMode); }, 1500);
     })();
-    window.markPreviewSaved = function() { previewSaved = JSON.stringify(collectPreviewTheme()); var d = document.getElementById('pvUnsavedDot'); if (d) d.style.display = 'none'; };
+    window.markPreviewSaved = function() { previewSaved = JSON.stringify(collectPreviewTheme()); if (window.setThemeBaseline) window.setThemeBaseline(); };
 
     // ── Live preview on a phone: a private link (QR); the unsaved choices are sent
     // whenever they change, and the phone reloads itself (website/theme_live.php) ──
@@ -15457,6 +15550,8 @@ if (!window.customBgThemes) {
       
       // Load banners
       loadBanners();
+      // what's saved now = the starting point for "unsaved changes" (after the form settles)
+      setTimeout(function () { if (window.setThemeBaseline) window.setThemeBaseline(); }, 300);
     } else {
       // API returned but no settings - still show the grid with defaults
       populateBgThemeGrid('');
@@ -15582,6 +15677,123 @@ if (!window.customBgThemes) {
       });
     }
     
+    // Everything the Save button sends, in one place: Save uses it, and comparing it with what
+    // was last saved/loaded tells whether there are unsaved changes.
+    function collectThemePayload() {
+            var pr = document.getElementById('primaryRed');
+            var dr = document.getElementById('darkRed');
+            var py = document.getElementById('primaryYellow');
+            var cc = document.getElementById('checkoutColor');
+            var bgInput = document.getElementById('backgroundThemeInput');
+            var lcRadios = document.querySelectorAll('input[name="layoutColumns"]');
+            var lcVal = 2;
+            for (var ri = 0; ri < lcRadios.length; ri++) {
+              if (lcRadios[ri].checked) { lcVal = parseInt(lcRadios[ri].value); break; }
+            }
+            // Get logo shape
+            var logoShape = 'circle';
+            var shapeRadios = document.querySelectorAll('input[name="logoShape"]');
+            for (var si = 0; si < shapeRadios.length; si++) {
+              if (shapeRadios[si].checked) { logoShape = shapeRadios[si].value; break; }
+            }
+            // Get logo size
+            var sizeSlider = document.getElementById('logoSizeSlider');
+            var logoSize = sizeSlider ? parseInt(sizeSlider.value) : 90;
+
+            var rid = document.querySelector('meta[name=restaurant-id]') ? 
+              document.querySelector('meta[name=restaurant-id]').content : null;
+            if (!rid) {
+              rid = document.getElementById('restaurantId') ? document.getElementById('restaurantId').textContent.trim() : null;
+            }
+            var sq = rid ? '?action=save&restaurant_id=' + encodeURIComponent(rid) : '?action=save';
+
+            var siteFontEl = document.getElementById('siteFontSelect');
+            var cardStyleEl = document.getElementById('cardStyleInput');
+            var themePresetEl = document.getElementById('themePresetInput');
+            var siteNameSaveEl = document.getElementById('siteNameInput');
+            var navIconStyleSaveEl = document.getElementById('navIconStyleInput');
+            var navLabelsPayload = {};
+            NAV_LABEL_SLOTS.forEach(function(slot) {
+              var el = navLabelInputEl(slot);
+              if (el && el.value.trim()) navLabelsPayload[slot] = el.value.trim();
+            });
+            var faviconUrlSaveEl = document.getElementById('faviconUrlInput');
+            var payload = {
+              site_name: siteNameSaveEl ? siteNameSaveEl.value.trim() : '',
+              nav_icon_style: navIconStyleSaveEl ? navIconStyleSaveEl.value : 'classic',
+              nav_labels: navLabelsPayload,
+              favicon_url: faviconUrlSaveEl ? faviconUrlSaveEl.value.trim() : '',
+              primary_red: pr ? pr.value : '#F70000',
+              dark_red: dr ? dr.value : '#DA020E',
+              primary_yellow: py ? py.value : '#FFD100',
+              banner_image: null,
+              layout_columns: lcVal,
+              background_theme: bgInput ? bgInput.value : null,
+              logo_shape: logoShape,
+              logo_size: logoSize,
+              font_family: siteFontEl ? siteFontEl.value : 'Poppins',
+              card_style: cardStyleEl ? cardStyleEl.value : 'rounded',
+              theme_preset: themePresetEl && themePresetEl.value ? themePresetEl.value : null,
+              checkout_color: cc ? cc.value : null,
+              layout_style: currentLayoutStyleVal(),
+              header_style: currentHeaderStyleVal(),
+              menu_nav_position: currentMenuNavPositionVal(),
+              menu_card_style: currentMenuCardStyleVal(),
+              home_card_style: currentHomeCardStyleVal(),
+              profile_style: currentProfileStyleVal(),
+              nav_bar_style: currentNavBarStyleVal(),
+              profile_opts: currentProfileOpts(),
+              category_heading_bg: currentCategoryHeadingVal(),
+              category_pic_style: currentCategoryPicStyleVal(),
+              bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined
+            };
+      return { payload: payload, sq: sq };
+    }
+
+    // ── Unsaved changes: Save is greyed out until something changes; leaving asks first ──
+    var themeBaseline = null;
+    function themeSnapshot() {
+      try { return JSON.stringify(collectThemePayload().payload); } catch (e) { return null; }
+    }
+    window.setThemeBaseline = function () { themeBaseline = themeSnapshot(); window.updateThemeDirty(); };
+    window.themeIsDirty = function () { return themeBaseline !== null && themeSnapshot() !== themeBaseline; };
+    window.updateThemeDirty = function () {
+      var btn = document.getElementById('saveWebsiteThemeBtn');
+      if (!btn || btn.dataset.saving === '1') return;
+      var dirty = window.themeIsDirty();
+      if (themeBaseline === null) { // settings didn't load: leave Save usable
+        btn.disabled = false;
+        btn.classList.remove('wt-clean');
+        return;
+      }
+      btn.disabled = !dirty;
+      btn.classList.toggle('wt-clean', !dirty);
+      btn.innerHTML = dirty ? '<span class="material-symbols-rounded">save</span>Save changes' : '<span class="material-symbols-rounded">check</span>All changes saved';
+      var note = document.getElementById('wtUnsavedNote');
+      if (!note && btn.parentNode) {
+        note = document.createElement('span');
+        note.id = 'wtUnsavedNote';
+        note.className = 'wt-unsaved';
+        note.innerHTML = '<i></i>Unsaved changes';
+        btn.parentNode.insertBefore(note, btn);
+      }
+      if (note) note.style.display = dirty ? '' : 'none';
+      var dot = document.getElementById('pvUnsavedDot');
+      if (dot) dot.style.display = dirty ? 'inline-block' : 'none';
+    };
+    (function () {
+      var page = document.getElementById('websiteThemePage');
+      if (!page || page.dataset.dirtyWatch) return;
+      page.dataset.dirtyWatch = '1';
+      var t = 0;
+      // after the page's own handlers have run (some choices set hidden inputs on click)
+      var later = function () { clearTimeout(t); t = setTimeout(window.updateThemeDirty, 60); };
+      ['input', 'change', 'click'].forEach(function (ev) { page.addEventListener(ev, later, true); });
+      window.addEventListener('beforeunload', function (e) {
+        if (window.themeIsDirty && window.themeIsDirty()) { e.preventDefault(); e.returnValue = ''; }
+      });
+    })();
+
     // Mark as initialized
     // Save theme settings (colors, layout, logo shape/size)
     var saveThemeBtn = document.getElementById('saveWebsiteThemeBtn');
@@ -15590,77 +15802,13 @@ if (!window.customBgThemes) {
       saveThemeBtn.addEventListener('click', async function() {
         var btn = this;
         var origHtml = btn.innerHTML;
+        btn.dataset.saving = '1';
         btn.disabled = true;
         btn.innerHTML = '<span class="loading-spinner"></span> Saving...';
 
         try {
-          var pr = document.getElementById('primaryRed');
-          var dr = document.getElementById('darkRed');
-          var py = document.getElementById('primaryYellow');
-          var cc = document.getElementById('checkoutColor');
-          var bgInput = document.getElementById('backgroundThemeInput');
-          var lcRadios = document.querySelectorAll('input[name="layoutColumns"]');
-          var lcVal = 2;
-          for (var ri = 0; ri < lcRadios.length; ri++) {
-            if (lcRadios[ri].checked) { lcVal = parseInt(lcRadios[ri].value); break; }
-          }
-          // Get logo shape
-          var logoShape = 'circle';
-          var shapeRadios = document.querySelectorAll('input[name="logoShape"]');
-          for (var si = 0; si < shapeRadios.length; si++) {
-            if (shapeRadios[si].checked) { logoShape = shapeRadios[si].value; break; }
-          }
-          // Get logo size
-          var sizeSlider = document.getElementById('logoSizeSlider');
-          var logoSize = sizeSlider ? parseInt(sizeSlider.value) : 90;
-
-          var rid = document.querySelector('meta[name=restaurant-id]') ? 
-            document.querySelector('meta[name=restaurant-id]').content : null;
-          if (!rid) {
-            rid = document.getElementById('restaurantId') ? document.getElementById('restaurantId').textContent.trim() : null;
-          }
-          var sq = rid ? '?action=save&restaurant_id=' + encodeURIComponent(rid) : '?action=save';
-
-          var siteFontEl = document.getElementById('siteFontSelect');
-          var cardStyleEl = document.getElementById('cardStyleInput');
-          var themePresetEl = document.getElementById('themePresetInput');
-          var siteNameSaveEl = document.getElementById('siteNameInput');
-          var navIconStyleSaveEl = document.getElementById('navIconStyleInput');
-          var navLabelsPayload = {};
-          NAV_LABEL_SLOTS.forEach(function(slot) {
-            var el = navLabelInputEl(slot);
-            if (el && el.value.trim()) navLabelsPayload[slot] = el.value.trim();
-          });
-          var faviconUrlSaveEl = document.getElementById('faviconUrlInput');
-          var payload = {
-            site_name: siteNameSaveEl ? siteNameSaveEl.value.trim() : '',
-            nav_icon_style: navIconStyleSaveEl ? navIconStyleSaveEl.value : 'classic',
-            nav_labels: navLabelsPayload,
-            favicon_url: faviconUrlSaveEl ? faviconUrlSaveEl.value.trim() : '',
-            primary_red: pr ? pr.value : '#F70000',
-            dark_red: dr ? dr.value : '#DA020E',
-            primary_yellow: py ? py.value : '#FFD100',
-            banner_image: null,
-            layout_columns: lcVal,
-            background_theme: bgInput ? bgInput.value : null,
-            logo_shape: logoShape,
-            logo_size: logoSize,
-            font_family: siteFontEl ? siteFontEl.value : 'Poppins',
-            card_style: cardStyleEl ? cardStyleEl.value : 'rounded',
-            theme_preset: themePresetEl && themePresetEl.value ? themePresetEl.value : null,
-            checkout_color: cc ? cc.value : null,
-            layout_style: currentLayoutStyleVal(),
-            header_style: currentHeaderStyleVal(),
-            menu_nav_position: currentMenuNavPositionVal(),
-            menu_card_style: currentMenuCardStyleVal(),
-            home_card_style: currentHomeCardStyleVal(),
-            profile_style: currentProfileStyleVal(),
-            nav_bar_style: currentNavBarStyleVal(),
-            profile_opts: currentProfileOpts(),
-            category_heading_bg: currentCategoryHeadingVal(),
-            category_pic_style: currentCategoryPicStyleVal(),
-            bestseller_style: window.readBestsellerStyleForm ? window.readBestsellerStyleForm() : undefined
-          };
+          var built = collectThemePayload();
+          var payload = built.payload, sq = built.sq;
 
           var res = await fetch('../website/theme_api.php' + sq, {
             method: 'POST',
@@ -15697,8 +15845,10 @@ if (!window.customBgThemes) {
             alert('Error saving theme settings');
           }
         } finally {
+          btn.dataset.saving = '';
           btn.disabled = false;
           btn.innerHTML = origHtml;
+          window.updateThemeDirty();
         }
       });
     }

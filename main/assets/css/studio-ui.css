@@ -618,6 +618,9 @@
 #websiteThemePage .wt-savebar-msg .material-symbols-rounded { font-size: 19px; color: #93c5fd; }
 #websiteThemePage .wt-savebar .btn-secondary { background: transparent; border-color: rgba(255,255,255,.25); color: #fff; }
 #websiteThemePage .wt-savebar .btn-secondary:hover { background: rgba(255,255,255,.1); }
+#websiteThemePage .wt-savebar .wt-unsaved { flex: 1 0 100%; display: inline-flex; align-items: center; gap: 7px; margin: 0 0 2px; white-space: nowrap; font-size: .82rem; font-weight: 600; color: #fcd34d; }
+#websiteThemePage .wt-savebar .wt-unsaved i { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.25); }
+#websiteThemePage .wt-savebar .btn-save:disabled.wt-clean { background: rgba(255,255,255,.12); border-color: transparent; color: rgba(255,255,255,.55); box-shadow: none; cursor: default; opacity: 1; }
 
 @media (max-width: 700px) {
   #websiteThemePage .wt-card, #websiteThemePage .bs-style-card { padding: 14px; }
