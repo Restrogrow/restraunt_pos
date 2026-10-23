@@ -233,6 +233,176 @@ function demoMenuData(): array {
 }
 
 /**
+ * Nutrition per serving for every demo dish (dish details › "Nutritional info" and "What's inside").
+ * dish => [protein g, fat g, carbs g, fibre g, health tags, ingredients (one per line, optional note after " - ")].
+ * The grams add up to the calories in demoMenuData() (4 kcal per g of protein/carbs, 9 per g of fat).
+ */
+function demoNutritionData(): array {
+    return [
+        'Masala Dosa' => [8, 14, 56, 4, ['gluten_free'], "Rice & urad dal batter - fermented overnight, light on the stomach\nPotato masala - onion, mustard seeds, turmeric\nCoconut chutney - healthy fats from fresh coconut\nSambar - lentils and vegetables for protein and fibre\nCurry leaves"],
+        'Idli Vada' => [11, 12, 47, 4, ['gluten_free'], "Steamed rice idli - no oil, easy to digest\nUrad dal vada - plant protein\nSambar - toor dal with drumstick and vegetables\nCoconut chutney"],
+        'Kanda Poha' => [6, 8, 43, 3, ['vegan', 'gluten_free'], "Flattened rice - light, iron-fortified\nPeanuts - protein and good fats\nOnion\nCurry leaves & mustard seeds\nLemon - vitamin C"],
+        'Egg Bhurji Pav' => [20, 20, 37, 2, ['high_protein'], "Farm eggs (3) - complete protein\nOnion, tomato & green chilli\nButter\nPav (2)"],
+        'Tomato Shorba' => [3, 6, 18, 3, ['low_calorie', 'gluten_free'], "Ripe tomatoes - lycopene and vitamin C\nRoasted cumin\nFresh ginger - good for digestion\nA little cream"],
+        'Chicken Clear Soup' => [20, 5, 8, 1, ['high_protein', 'low_calorie', 'low_carb', 'low_fat', 'gluten_free', 'dairy_free'], "Chicken broth - slow-simmered from bones\nShredded chicken breast - lean protein\nSeasonal greens\nCracked black pepper"],
+        'Paneer Tikka' => [20, 22, 10, 2, ['high_protein', 'low_carb', 'keto', 'gluten_free'], "Paneer - excellent source of protein and calcium\nHung curd - probiotic marinade\nBell peppers & onion - vitamin C\nKashmiri chilli & ajwain\nMint chutney"],
+        'Hara Bhara Kebab' => [7, 12, 31, 6, ['high_fibre'], "Spinach - rich in iron and fibre\nGreen peas - plant protein\nPotato\nGinger & green chilli\nCashew"],
+        'Chilli Paneer' => [17, 24, 19, 2, ['high_protein'], "Paneer - protein and calcium\nCapsicum & onion\nSoy sauce\nGreen chillies\nCornflour coating"],
+        'Veg Spring Rolls' => [5, 13, 36, 3, ['vegan', 'dairy_free'], "Cabbage & carrot\nSpring onion\nGlass noodles\nSpring roll pastry\nSweet chilli dip"],
+        'Punjabi Samosa' => [5, 17, 35, 3, ['vegan'], "Potato & green peas\nWhole spices - cumin, coriander, amchur\nFlaky pastry\nTamarind & mint chutney"],
+        'Chicken 65' => [30, 26, 14, 1, ['high_protein'], "Boneless chicken - lean protein\nCurry leaves\nGreen chillies & ginger-garlic\nRice flour coating\nLime"],
+        'Chicken Tikka' => [42, 20, 7, 1, ['high_protein', 'low_carb', 'keto', 'gluten_free'], "Boneless chicken thigh - 42 g protein per plate\nYogurt marinade - probiotic\nKashmiri red chilli\nGinger-garlic\nMustard oil - cooked in the tandoor, not fried"],
+        'Tandoori Chicken' => [48, 25, 8, 1, ['high_protein', 'low_carb', 'keto', 'gluten_free'], "Bone-in chicken - roasted, not fried\nYogurt - probiotic marinade\nGinger-garlic\nHouse tandoori masala\nLemon & onion rings"],
+        'Mutton Seekh Kebab' => [32, 28, 10, 1, ['high_protein', 'low_carb', 'gluten_free', 'dairy_free'], "Minced mutton - protein, iron and B12\nOnion & green chilli\nFresh ginger\nGaram masala\nGrilled on skewers"],
+        'Amritsari Fish' => [28, 20, 24, 2, ['high_protein', 'gluten_free', 'dairy_free'], "Basa fillet - lean protein\nGram flour batter - naturally gluten free\nCarom seeds (ajwain)\nChaat masala & lemon"],
+        'Paneer Butter Masala' => [18, 36, 21, 3, ['high_protein', 'gluten_free'], "Paneer - protein and calcium\nTomato gravy\nButter & fresh cream\nCashew paste\nKasuri methi"],
+        'Kadai Paneer' => [19, 32, 18, 4, ['high_protein', 'low_carb', 'gluten_free'], "Paneer - protein and calcium\nCapsicum & onion - vitamin C\nTomato\nFreshly pounded coriander & red chilli"],
+        'Palak Paneer' => [19, 28, 14, 5, ['high_protein', 'high_fibre', 'low_carb', 'gluten_free'], "Spinach - rich in iron, folate and fibre\nPaneer - protein and calcium\nGarlic\nA little cream"],
+        'Malai Kofta' => [12, 38, 33, 3, [], "Paneer & potato dumplings\nDry fruits - cashew and raisins\nCashew-tomato gravy\nFresh cream"],
+        'Dal Makhani' => [14, 20, 38, 9, ['high_fibre', 'gluten_free'], "Whole black urad - plant protein and fibre\nRajma\nTomato\nButter & cream - slow-cooked overnight"],
+        'Dal Tadka' => [13, 9, 36, 8, ['high_fibre', 'gluten_free'], "Yellow toor & moong dal - plant protein and fibre\nGhee tempering\nCumin & garlic\nDried red chillies"],
+        'Pindi Chole' => [13, 12, 45, 11, ['high_fibre', 'vegan', 'gluten_free'], "Chickpeas - plant protein and 11 g fibre\nTea leaves - for the dark colour\nWhole spices\nAmchur & pomegranate seed"],
+        'Butter Chicken' => [38, 36, 16, 2, ['high_protein', 'gluten_free'], "Tandoori chicken - 38 g protein\nTomato gravy\nButter & cashew\nKasuri methi\nFresh cream"],
+        'Chicken Tikka Masala' => [40, 32, 17, 3, ['high_protein', 'gluten_free'], "Chargrilled chicken tikka - lean protein\nOnion-tomato masala\nBell peppers\nWhole spices"],
+        'Kadai Chicken' => [40, 30, 12, 3, ['high_protein', 'low_carb', 'keto', 'gluten_free', 'dairy_free'], "Chicken - 40 g protein\nCapsicum & tomato\nCoarse kadai masala\nCooked in an iron kadai"],
+        'Mutton Rogan Josh' => [38, 40, 12, 2, ['high_protein', 'low_carb', 'keto', 'gluten_free'], "Mutton - protein, iron and B12\nKashmiri chilli\nFennel & dry ginger\nRatan jot\nWhole spices"],
+        'Kerala Fish Curry' => [32, 28, 12, 2, ['high_protein', 'low_carb', 'gluten_free', 'dairy_free'], "Seer fish - lean protein and omega-3\nCoconut milk\nKokum\nCurry leaves & green chilli"],
+        'Egg Curry' => [17, 26, 14, 3, ['high_protein', 'low_carb', 'gluten_free', 'dairy_free'], "Boiled eggs (2) - complete protein\nOnion-tomato gravy\nGaram masala"],
+        'Chicken Dum Biryani' => [38, 24, 78, 3, ['high_protein', 'gluten_free'], "Aged basmati rice\nMasala chicken - 38 g protein\nFried onions & mint\nSaffron\nRaita & salan on the side"],
+        'Mutton Biryani' => [36, 28, 80, 3, ['high_protein', 'gluten_free'], "Aged basmati rice\nTender mutton - protein and iron\nWhole spices & saffron\nRaita on the side"],
+        'Veg Dum Biryani' => [14, 18, 76, 6, ['gluten_free'], "Basmati rice\nSeasonal vegetables - fibre\nPaneer - protein\nWhole spices & saffron\nRaita on the side"],
+        'Rajma Chawal' => [17, 10, 80, 13, ['high_fibre', 'vegan', 'gluten_free'], "Kidney beans - plant protein and 13 g fibre\nOnion-tomato masala\nSteamed basmati rice\nOnion salad"],
+        'Jeera Rice' => [5, 7, 54, 1, ['gluten_free'], "Basmati rice\nCumin seeds\nGhee"],
+        'Curd Rice' => [8, 8, 46, 1, ['gluten_free'], "Rice\nFresh curd - probiotic, cools the stomach\nMustard & curry leaf tempering\nGinger\nPomegranate"],
+        'Butter Naan' => [7, 8, 40, 2, [], "Refined flour\nYogurt\nButter"],
+        'Garlic Naan' => [8, 9, 44, 2, [], "Refined flour\nFresh garlic\nCoriander\nButter"],
+        'Cheese Naan' => [13, 15, 48, 2, [], "Refined flour\nMozzarella & processed cheese - extra protein\nGreen chilli\nButter"],
+        'Tandoori Roti' => [4, 1, 24, 4, ['vegan', 'high_fibre', 'low_fat', 'low_calorie'], "Whole wheat - fibre and slow carbs\nWater & salt\nNo oil - baked in the clay oven"],
+        'Laccha Paratha' => [6, 12, 42, 4, [], "Whole wheat flour\nGhee - for the flaky layers"],
+        'Amritsari Kulcha' => [8, 13, 53, 3, [], "Refined flour\nSpiced potato & onion\nButter"],
+        'Veg Thali' => [26, 34, 118, 14, ['high_protein', 'high_fibre'], "Paneer of the day - protein\nDal makhani - fibre\nSeasonal sabzi\nJeera rice & 2 rotis\nRaita & salad\nGulab jamun"],
+        'Non-Veg Thali' => [44, 38, 114, 11, ['high_protein', 'high_fibre'], "Butter chicken - 30 g protein\nDal - fibre\nSeasonal sabzi\nJeera rice & 2 rotis\nRaita & salad\nGulab jamun"],
+        'Masala Chai' => [3, 4, 16, 0, ['low_calorie', 'gluten_free'], "Assam tea\nMilk\nFresh ginger & cardamom\nSugar"],
+        'Filter Coffee' => [4, 5, 15, 0, ['low_calorie', 'gluten_free'], "Coffee-chicory decoction\nFrothy hot milk\nSugar"],
+        'Sweet Lassi' => [8, 8, 34, 0, ['gluten_free'], "Churned yogurt - probiotic and protein\nSugar\nMalai"],
+        'Masala Chaas' => [3, 3, 7, 0, ['low_calorie', 'low_fat', 'low_sugar', 'gluten_free'], "Buttermilk - probiotic, aids digestion\nRoasted cumin\nGinger & coriander"],
+        'Fresh Lime Soda' => [0, 0, 23, 0, ['vegan', 'low_fat', 'gluten_free', 'dairy_free'], "Fresh lime - vitamin C\nChilled soda\nSugar or salt, as you like"],
+        'Cold Coffee' => [8, 14, 41, 0, ['gluten_free'], "Coffee\nChilled milk\nVanilla ice cream"],
+        'Gulab Jamun' => [5, 14, 46, 1, [], "Khoya (milk solids)\nCardamom & rose syrup"],
+        'Rasmalai' => [9, 14, 32, 0, ['gluten_free'], "Chenna - milk protein\nSaffron-cardamom milk\nPistachio"],
+        'Kesar Pista Kulfi' => [7, 14, 25, 0, ['gluten_free'], "Slow-reduced milk\nSaffron\nPistachio"],
+        'Gajar Halwa' => [7, 18, 43, 4, ['gluten_free'], "Carrots - vitamin A and fibre\nMilk & ghee\nCashews & raisins\nCardamom"],
+        'Phirni' => [6, 9, 34, 1, ['gluten_free'], "Ground rice\nMilk\nCardamom\nAlmonds"],
+    ];
+}
+
+/**
+ * Nutrition on every dish, and Meal plans (tiffin subscriptions) switched on with fitness plans,
+ * a weekly menu and a few subscribers. Runs after the main build, outside its transaction (it may add
+ * columns). The website look is not touched. $items: dish name => ['id' => ...].
+ */
+function demoHealthSetup(PDO $pdo, string $rid, string $assetDir, array $items): void {
+    $read = fn(string $file) => @file_get_contents(rtrim($assetDir, '/\\') . '/' . $file) ?: null;
+
+    // ── Nutritional info + What's inside ──
+    require_once __DIR__ . '/ingredient_helpers.php';
+    if (ensureMenuNutritionColumns($pdo) && ensureMenuIngredientsColumn($pdo)) {
+        $up = $pdo->prepare('UPDATE menu_items SET protein_g = ?, fat_g = ?, carbs_g = ?, fibre_g = ?, health_tags = ?, ingredients = ? WHERE id = ? AND restaurant_id = ?');
+        foreach (demoNutritionData() as $dish => [$protein, $fat, $carbs, $fibre, $tags, $ingr]) {
+            if (!isset($items[$dish])) continue;
+            $tags = array_values(array_intersect(array_keys(MENU_HEALTH_TAGS), $tags));
+            $up->execute([$protein ?: null, $fat ?: null, $carbs ?: null, $fibre ?: null, $tags ? implode(',', $tags) : null,
+                          cleanIngredients($ingr), $items[$dish]['id'], $rid]);
+        }
+    }
+
+    // ── Meal plans ──
+    require_once __DIR__ . '/meal_subscription_schema.php';
+    ensureMealSubscriptionTables($pdo);
+    $q = $pdo->query("SHOW COLUMNS FROM users LIKE 'meal_subscriptions_enabled'");
+    if (!($q && $q->fetch())) $pdo->exec('ALTER TABLE users ADD COLUMN meal_subscriptions_enabled TINYINT(1) NOT NULL DEFAULT 0');
+    $pdo->prepare('UPDATE users SET meal_subscriptions_enabled = 1 WHERE restaurant_id = ?')->execute([$rid]);
+
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare('DELETE p FROM meal_plan_payments p JOIN customer_meal_subscriptions s ON s.id = p.subscription_id WHERE s.restaurant_id = ?')->execute([$rid]);
+        foreach (['customer_meal_subscriptions', 'meal_plan_weekly_menu_items', 'meal_plan_weekly_menu', 'meal_plans'] as $t) {
+            $pdo->prepare("DELETE FROM `$t` WHERE restaurant_id = ?")->execute([$rid]);
+        }
+
+        // [name, description, scope, meals, price, bonus meals, photo]
+        $plans = [];
+        foreach ([
+            ['High Protein Lunch', 'A fresh high-protein lunch box every day: tandoori chicken or paneer tikka, dal, salad and a whole-wheat roti. Around 40 g protein and 550 kcal a meal, with protein, carbs and fat on every dish.', 'lunch', 20, 4999, 2, 'tandoori-chicken.jpg'],
+            ['Weight Loss Plan', 'Calorie-counted lunch and dinner under 500 kcal each: grilled tikkas, clear soups, dal and greens, no fried food and no refined flour. Ideal with a gym routine.', 'both', 24, 5499, 0, 'chicken-tikka.jpg'],
+            ['Veg Fit Thali', 'Pure-veg balanced thali: paneer or chole, dal, sabzi, salad, curd and tandoori roti. 25 g+ plant and dairy protein, high in fibre.', 'lunch', 30, 6999, 3, 'veg-thali.jpg'],
+            ['Muscle Gain Monthly', 'Lunch and dinner for the whole month for serious training: double chicken, eggs, paneer, rice and dal. 50 g+ protein and around 800 kcal a meal.', 'both', 60, 14999, 6, 'butter-chicken.jpg'],
+        ] as $sort => [$name, $desc, $scope, $meals, $price, $bonus, $photo]) {
+            $plans[$name] = ['id' => demoInsert($pdo, 'meal_plans', [
+                'restaurant_id' => $rid, 'plan_name' => $name, 'description' => $desc, 'meal_scope' => $scope, 'total_meal_credits' => $meals,
+                'price' => $price, 'bonus_credits' => $bonus, 'is_active' => 1, 'sort_order' => $sort,
+                'image_data' => $read($photo), 'image_mime_type' => 'image/jpeg',
+            ]), 'scope' => $scope, 'credits' => $meals + $bonus, 'price' => $price];
+        }
+
+        // Weekly menu, Monday (1) to Saturday (6); Sunday off. [lunch dishes, lunch note, dinner dishes, dinner note]
+        $week = [
+            1 => [['Tandoori Chicken', 'Dal Tadka', 'Tandoori Roti'], 'About 45 g protein · 560 kcal', ['Chicken Clear Soup', 'Palak Paneer', 'Tandoori Roti'], 'About 40 g protein · 520 kcal'],
+            2 => [['Paneer Tikka', 'Pindi Chole', 'Curd Rice'], 'About 35 g protein · 590 kcal', ['Kerala Fish Curry', 'Jeera Rice'], 'About 37 g protein · 600 kcal'],
+            3 => [['Chicken Tikka', 'Dal Makhani', 'Tandoori Roti'], 'About 52 g protein · 620 kcal', ['Tomato Shorba', 'Kadai Paneer', 'Tandoori Roti'], 'About 26 g protein · 520 kcal'],
+            4 => [['Kadai Chicken', 'Rajma Chawal'], 'About 52 g protein · 680 kcal', ['Egg Curry', 'Dal Tadka', 'Tandoori Roti'], 'About 34 g protein · 520 kcal'],
+            5 => [['Mutton Seekh Kebab', 'Dal Tadka', 'Tandoori Roti'], 'About 49 g protein · 600 kcal', ['Chicken Tikka Masala', 'Tandoori Roti'], 'About 44 g protein · 640 kcal'],
+            6 => [['Chicken Dum Biryani', 'Masala Chaas'], 'Cheat-day biryani · about 41 g protein', ['Palak Paneer', 'Dal Tadka', 'Tandoori Roti'], 'About 36 g protein · 520 kcal'],
+        ];
+        $photoOf = [];
+        foreach (demoMenuData() as [, , , , $dishes]) foreach ($dishes as $d) $photoOf[$d[0]] = $d[7] . '.jpg';
+        foreach ($week as $day => [$lunch, $lunchNote, $dinner, $dinnerNote]) {
+            foreach (['lunch' => [$lunch, $lunchNote], 'dinner' => [$dinner, $dinnerNote]] as $time => [$dishes, $note]) {
+                demoInsert($pdo, 'meal_plan_weekly_menu', ['restaurant_id' => $rid, 'day_of_week' => $day, 'meal_time' => $time, 'menu_text' => $note, 'is_active' => 1]);
+                foreach ($dishes as $p => $dish) {
+                    demoInsert($pdo, 'meal_plan_weekly_menu_items', ['restaurant_id' => $rid, 'day_of_week' => $day, 'meal_time' => $time, 'item_name' => $dish,
+                        'image_data' => $read($photoOf[$dish]), 'image_mime_type' => 'image/jpeg', 'sort_order' => $p, 'is_active' => 1]);
+                }
+            }
+        }
+
+        // Subscribers: [customer, plan, status, meals used, started days ago, payment method]
+        $cust = $pdo->prepare('SELECT id, customer_name, phone FROM customers WHERE restaurant_id = ? AND customer_name = ?');
+        $areas = ['HAL 2nd Stage', 'Domlur Layout', 'Indiranagar 1st Stage', 'Jeevan Bima Nagar', 'CMH Road', 'Defence Colony', 'Ulsoor', 'Kodihalli'];
+        foreach ([
+            ['Aarav Sharma', 'Muscle Gain Monthly', 'active', 22, 12, 'UPI'], ['Diya Patel', 'Weight Loss Plan', 'active', 9, 6, 'UPI'],
+            ['Kabir Mehta', 'High Protein Lunch', 'active', 14, 17, 'Card'], ['Isha Nair', 'Veg Fit Thali', 'active', 11, 13, 'UPI'],
+            ['Vivaan Gupta', 'High Protein Lunch', 'paused', 6, 10, 'Cash'], ['Meera Joshi', 'Weight Loss Plan', 'completed', 24, 20, 'UPI'],
+            ['Rohan Iyer', 'Muscle Gain Monthly', 'active', 4, 2, 'Card'], ['Ananya Reddy', 'Veg Fit Thali', 'pending_payment', 0, 0, 'UPI'],
+        ] as $n => [$cname, $plan, $status, $used, $ago, $method]) {
+            $cust->execute([$rid, $cname]);
+            $c = $cust->fetch(PDO::FETCH_ASSOC);
+            if (!$c || empty($plans[$plan]['id'])) continue;
+            $pl = $plans[$plan];
+            $start = date('Y-m-d', strtotime("-$ago days"));
+            $made = date('Y-m-d 10:15:00', strtotime('-' . ($ago + 1) . ' days'));
+            $subId = demoInsert($pdo, 'customer_meal_subscriptions', [
+                'restaurant_id' => $rid, 'customer_id' => $c['id'], 'meal_plan_id' => $pl['id'], 'plan_name_snapshot' => $plan,
+                'meal_scope_snapshot' => $pl['scope'], 'credits_total' => $pl['credits'], 'credits_used' => $used, 'amount_paid' => $pl['price'],
+                'delivery_address' => (101 + $n * 37) . ', ' . $areas[$n % count($areas)] . ', Bengaluru', 'delivery_phone' => $c['phone'],
+                'status' => $status, 'paused_at' => $status === 'paused' ? date('Y-m-d 09:00:00', strtotime('-2 days')) : null,
+                'start_date' => $status === 'pending_payment' ? date('Y-m-d', strtotime('+1 day')) : $start, 'created_at' => $made,
+            ]);
+            demoInsert($pdo, 'meal_plan_payments', [
+                'restaurant_id' => $rid, 'subscription_id' => $subId, 'amount' => $pl['price'], 'payment_method' => $method,
+                'payment_status' => $status === 'pending_payment' ? 'Pending' : 'Success',
+                'reference_number' => $method === 'Cash' ? null : 'T' . date('ymd', strtotime($made)) . str_pad((string)(crc32($cname) % 1000000), 6, '0', STR_PAD_LEFT),
+                'created_at' => $made,
+            ]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
+/**
  * The demo's website offers and loyalty, run after the main build: offer banners, combos,
  * menu filter chips, "goes well with" suggestions, points + autopilot gifts, spin wheel,
  * challenges and the Spice Club VIP plans. $items: dish name => ['id' => ...].
@@ -876,6 +1046,9 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
     foreach (demoOfferSetup($items) as $part) {
         try { $part($pdo, $rid); } catch (Throwable $e) { error_log('demo offers: ' . $e->getMessage()); }
     }
+
+    // Nutrition on every dish + Meal plans (for showing healthy / fitness restaurants)
+    try { demoHealthSetup($pdo, $rid, $assetDir, $items); } catch (Throwable $e) { error_log('demo health: ' . $e->getMessage()); }
 
     // Super Admin › Restaurants › Access: loyalty (studio, referrals, spin wheel) starts switched off;
     // whatever Super Admin set since is kept
