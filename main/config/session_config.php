@@ -133,7 +133,7 @@ function resetLoginIdentity() {
     foreach (['user_id', 'staff_id', 'branch_admin_id', 'username', 'email', 'restaurant_id', 'restaurant_name', 'user_type', 'role',
               'linked_restaurants', 'currency_symbol', 'timezone', 'tax_percent', 'tax_name', 'enable_gst', 'country', 'phonepe_mode',
               'seo_sc_state', 'seo_sc_state_rid', 'gbp_state', 'gbp_state_rid', 'auto_login_token', 'auto_login_restaurant_id',
-              'pending_payment_link_id'] as $k) {
+              'pending_payment_link_id', '_acct_checked_at', '_acct_pw'] as $k) {
         unset($_SESSION[$k]);
     }
 }
@@ -148,6 +148,59 @@ function regenerateSessionAfterLogin() {
 
 if (session_status() === PHP_SESSION_NONE) {
     startSecureSession();
+}
+
+/**
+ * A login lasts 400 days, so about once a minute check the account behind it is still allowed in:
+ * a staff member paused, deleted or moved, a restaurant or branch admin switched off, or a password
+ * changed (on another device, or by a reset) ends this login. A changed staff role is picked up
+ * instead. Only the login keys go (resetLoginIdentity); Super Admin and the website's customer login
+ * stay. The demo restaurant is skipped (its visitors switch roles all the time), and a database
+ * error leaves the session as it is.
+ */
+function sessionAccountStillValid(PDO $conn): bool {
+    if (!empty($_SESSION['staff_id'])) {
+        $st = $conn->prepare('SELECT s.is_active, s.role, s.restaurant_id, s.password, u.is_active AS rest_active
+            FROM staff s LEFT JOIN users u ON u.restaurant_id = s.restaurant_id WHERE s.id = ? LIMIT 1');
+        $st->execute([(int)$_SESSION['staff_id']]);
+        $r = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$r || !(int)$r['is_active'] || (string)$r['restaurant_id'] !== (string)($_SESSION['restaurant_id'] ?? '')
+            || ($r['rest_active'] !== null && !(int)$r['rest_active'])) return false;
+        if ((string)$r['role'] !== '' && ($_SESSION['role'] ?? '') !== $r['role']) $_SESSION['role'] = $r['role'];
+        $pw = (string)$r['password'];
+    } elseif (!empty($_SESSION['user_id'])) {
+        // the owner's own account (the session's restaurant can be a linked branch they switched to)
+        $st = $conn->prepare('SELECT is_active, password FROM users WHERE id = ? LIMIT 1');
+        $st->execute([(int)$_SESSION['user_id']]);
+        $r = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$r || !(int)$r['is_active']) return false;
+        $pw = (string)$r['password'];
+    } elseif (!empty($_SESSION['branch_admin_id'])) {
+        $st = $conn->prepare('SELECT is_active, password_hash FROM branch_admins WHERE id = ? LIMIT 1');
+        $st->execute([(int)$_SESSION['branch_admin_id']]);
+        $r = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$r || !(int)$r['is_active']) return false;
+        $pw = (string)$r['password_hash'];
+    } else {
+        return true;
+    }
+    // a short fingerprint of the password hash, never the hash itself
+    $print = substr(hash('sha256', $pw), 0, 16);
+    if (!isset($_SESSION['_acct_pw'])) $_SESSION['_acct_pw'] = $print;
+    return hash_equals((string)$_SESSION['_acct_pw'], $print);
+}
+
+if (session_status() === PHP_SESSION_ACTIVE
+    && (!empty($_SESSION['staff_id']) || !empty($_SESSION['user_id']) || !empty($_SESSION['branch_admin_id']))
+    && ($_SESSION['restaurant_id'] ?? '') !== 'RESSGI002'
+    && time() - (int)($_SESSION['_acct_checked_at'] ?? 0) >= 60) {
+    require_once __DIR__ . '/../db_connection.php';   // file scope: db_connection.php's globals stay global
+    try {
+        $_SESSION['_acct_checked_at'] = time();
+        if (!sessionAccountStillValid(getConnection())) resetLoginIdentity();
+    } catch (Throwable $e) {
+        error_log('session account check: ' . $e->getMessage());
+    }
 }
 
 // Sections Super Admin switched off for this restaurant (config/access_control.php): their own APIs answer 403.
