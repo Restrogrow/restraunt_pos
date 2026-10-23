@@ -39,7 +39,11 @@ try {
         }
     }
 
-    $restaurant_id = $_SESSION['restaurant_id'] ?? ($_GET['restaurant_id'] ?? null);
+    // the website page's restaurant first (session restaurant_id isn't set on slug / custom-domain
+    // pages, and is the owner's own for a dashboard login); the customer must be logged in to it below
+    $restaurant_id = (isset($_GET['restaurant_id']) && is_string($_GET['restaurant_id']) && trim($_GET['restaurant_id']) !== '')
+        ? trim($_GET['restaurant_id'])
+        : ($_SESSION['customer_restaurant_id'] ?? ($_SESSION['restaurant_id'] ?? null));
     if (!is_string($restaurant_id)) $restaurant_id = null;
     if (!$restaurant_id) {
         echo json_encode(['success' => false, 'message' => 'Restaurant not identified', 'data' => []], JSON_UNESCAPED_UNICODE);

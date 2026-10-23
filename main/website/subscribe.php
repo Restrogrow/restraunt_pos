@@ -39,10 +39,11 @@ if (!empty($restaurant_id) && function_exists('getConnection')) {
             $business_qr_image_url = '../api/image.php?type=business_qr&id=' . urlencode($gwRow['id']);
         }
         if ($gwRow) {
-            $gwMode = $gwRow['payment_gateway_mode'] ?? 'own';
-            if ($gwMode === 'platform' || ($gwMode === 'own' && !empty($gwRow['phonepe_merchant_id']))) {
-                $phonepe_configured = true;
-            }
+            // same rule as the cart page and the order API: keys usable, India only, not cash-only
+            // (a stored merchant id alone used to offer a payment that could never open)
+            require_once __DIR__ . '/../config/phonepe_verify.php';
+            $gwCfg = phonepeCallbackConfig($restaurant_id);
+            $phonepe_configured = ($payment_gateway_type ?? 'cash_only') !== 'cash_only' && ($gwCfg['ready'] || $gwCfg['demo']);
         }
     } catch (Exception $e) {
     }
@@ -175,7 +176,7 @@ body { font-family: var(--site-font); background: #e8ecf2; color: #1a1b1f; min-h
       <div class="form-group">
         <label>Payment Method</label>
         <select id="paymentMethod" onchange="onPaymentMethodChange()">
-          <option value="Cash">Cash</option>
+          <?php if ((int)($cod_enabled ?? 1) === 1 || (!$phonepe_configured && !$business_qr_available)): ?><option value="Cash">Cash</option><?php endif; /* COD off in Settings: online only, unless nothing else is set up */ ?>
           <?php if ($phonepe_configured): ?><option value="UPI / NetBanking">Pay Online (UPI/Cards/NetBanking)</option><?php endif; ?>
           <?php if ($business_qr_available): ?><option value="QR Payment">Pay Online (Scan QR)</option><?php endif; ?>
         </select>
@@ -233,6 +234,7 @@ function onPaymentMethodChange() {
   if (!qrBlock) return;
   qrBlock.style.display = document.getElementById('paymentMethod').value === 'QR Payment' ? 'block' : 'none';
 }
+onPaymentMethodChange();   // QR can be the first choice (Cash is hidden when COD is off)
 
 var proofInputEl = document.getElementById('paymentProofInput');
 if (proofInputEl) {
@@ -466,6 +468,7 @@ document.getElementById('subscribeForm').addEventListener('submit', function(e) 
 
   var fd = new FormData();
   fd.append('action', 'create_subscription');
+  fd.append('restaurant_id', window.restaurantId || '');
   fd.append('mealPlanId', PLAN_ID);
   fd.append('deliveryPhone', phone);
   fd.append('deliveryAddress', address);

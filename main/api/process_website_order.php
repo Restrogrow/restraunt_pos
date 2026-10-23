@@ -114,15 +114,9 @@ if (empty($items) && empty($combos_in)) {
 }
 
 // ── Abuse protection ────────────────────────────────────────────────────────
-// The phone is a guest checkout's only identity — reject implausible ones.
+// The phone is a guest checkout's only identity — it is checked against the
+// restaurant's country once the database is open (start of the try below).
 require_once __DIR__ . '/../config/order_abuse_guard.php';
-$phoneCheck = orderAbuseValidatePhone($customer_phone);
-if (!$phoneCheck['valid']) {
-    ob_end_clean();
-    echo json_encode(['success' => false, 'message' => $phoneCheck['message']], JSON_UNESCAPED_UNICODE);
-    exit();
-}
-$customer_phone = $phoneCheck['value']; // store normalized 10-digit form
 
 $abuse_ip = orderAbuseGetClientIp();
 // INET6_ATON returns NULL on a malformed IP, which would silently NULL the
@@ -151,6 +145,22 @@ try {
     $restaurant_id = trim((string)($_GET['restaurant_id'] ?? '')) !== ''
         ? trim((string)$_GET['restaurant_id'])
         : ($_SESSION['restaurant_id'] ?? 'RES001');
+
+    // Reject implausible phones by the restaurant's country: 10 digits from 6-9 in
+    // India, the local number length elsewhere (a UAE mobile has 9 digits)
+    $restaurantCountry = null;
+    try {
+        $ctySt = $conn->prepare('SELECT country FROM users WHERE restaurant_id = ? LIMIT 1');
+        $ctySt->execute([$restaurant_id]);
+        $restaurantCountry = $ctySt->fetchColumn() ?: null;
+    } catch (PDOException $e) { /* no country column yet: India */ }
+    $phoneCheck = orderAbuseValidatePhone($customer_phone, $restaurantCountry);
+    if (!$phoneCheck['valid']) {
+        ob_end_clean();
+        echo json_encode(['success' => false, 'message' => $phoneCheck['message']], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+    $customer_phone = $phoneCheck['value']; // store the normalized form
 
     // ── Abuse protection (needs DB + restaurant) ───────────────────────────
     // Restaurant-wide velocity cap: total website orders (any customer, any
@@ -249,17 +259,21 @@ try {
     // status, min order/packaging, COD/payment gateway, opening hours,
     // KM-delivery settings, GST, WhatsApp) — each one a full network round
     // trip to the DB before the customer's order could even start being
-    // validated. Falls back to a reduced column set if a newer migration
-    // (km-delivery, cod_enabled, etc.) hasn't been run on this DB yet.
-    try {
-        $userStmt = $conn->prepare("SELECT subscription_status, minimum_order_value, packaging_charge, cod_enabled, payment_gateway_mode, phonepe_merchant_id, (business_qr_code_data IS NOT NULL) AS has_business_qr, opening_hours, timezone, enable_km_delivery, delivery_rate_per_km, delivery_radius_km, restaurant_lat, restaurant_lng, enable_gst, tax_name, tax_percent, whatsapp_orders, phone, enable_dinein, enable_takeaway, enable_delivery FROM users WHERE restaurant_id = ? LIMIT 1");
-        $userStmt->execute([$restaurant_id]);
-        $restaurantRow = $userStmt->fetch(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        $userStmt = $conn->prepare("SELECT subscription_status, minimum_order_value, packaging_charge, opening_hours, timezone, enable_gst, tax_name, tax_percent, whatsapp_orders, phone, enable_dinein, enable_takeaway, enable_delivery FROM users WHERE restaurant_id = ? LIMIT 1");
-        $userStmt->execute([$restaurant_id]);
-        $restaurantRow = $userStmt->fetch(PDO::FETCH_ASSOC);
-    }
+    // validated. Only the columns this database really has are asked for: a
+    // newer migration (km-delivery, cod_enabled, ...) missing on one server
+    // used to send every order through a reduced fallback query that also
+    // dropped the business-QR flag (every QR order refused), COD-off and
+    // per-km delivery pricing. A missing column now just keeps its default.
+    $wantedCols = ['subscription_status', 'minimum_order_value', 'packaging_charge', 'cod_enabled', 'payment_gateway_mode', 'phonepe_merchant_id',
+        'opening_hours', 'timezone', 'enable_km_delivery', 'delivery_rate_per_km', 'delivery_radius_km', 'restaurant_lat', 'restaurant_lng',
+        'enable_gst', 'tax_name', 'tax_percent', 'whatsapp_orders', 'phone', 'enable_dinein', 'enable_takeaway', 'enable_delivery'];
+    $haveCols = [];
+    foreach ($conn->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_ASSOC) as $col) $haveCols[$col['Field']] = true;
+    $selectCols = array_values(array_filter($wantedCols, function ($c) use ($haveCols) { return isset($haveCols[$c]); }));
+    if (isset($haveCols['business_qr_code_data'])) $selectCols[] = '(business_qr_code_data IS NOT NULL) AS has_business_qr';
+    $userStmt = $conn->prepare('SELECT ' . ($selectCols ? implode(', ', $selectCols) : 'restaurant_id') . ' FROM users WHERE restaurant_id = ? LIMIT 1');
+    $userStmt->execute([$restaurant_id]);
+    $restaurantRow = $userStmt->fetch(PDO::FETCH_ASSOC);
 
     // Reject orders for restaurants whose subscription has lapsed. The
     // customer website already blocks browsing in this state (header.php),
@@ -316,17 +330,22 @@ try {
         echo json_encode(['success' => false, 'message' => 'Paying by QR is not available here. Please choose another way to pay.'], JSON_UNESCAPED_UNICODE);
         exit();
     }
-    if ($payment_method === 'UPI / NetBanking') {
-        // online payment really available here (keys set, India, not switched to cash-only by Super Admin)?
+    // Online payment really available here (keys set, India, not switched to cash-only by
+    // Super Admin)? Same rule as the cart page (cart.php $phonepe_configured), used both for
+    // UPI orders and for deciding whether "COD off" can be honoured below.
+    $onlinePaymentReady = function () use ($conn, $restaurant_id) {
+        static $ready = null;
+        if ($ready !== null) return $ready;
         require_once __DIR__ . '/../config/phonepe_verify.php';
         $ppCfg = phonepeCallbackConfig($restaurant_id);
         $gwType = '';
         try { $gt = $conn->prepare('SELECT payment_gateway_type FROM users WHERE restaurant_id = ? LIMIT 1'); $gt->execute([$restaurant_id]); $gwType = (string)$gt->fetchColumn(); } catch (Throwable $e) {}
-        if ($gwType === '' || $gwType === 'cash_only' || (!$ppCfg['ready'] && !$ppCfg['demo'])) {   // same rule as the cart page (header.php)
-            ob_end_clean();
-            echo json_encode(['success' => false, 'message' => 'Online payment is not available at this restaurant right now. Please choose cash or another way to pay.'], JSON_UNESCAPED_UNICODE);
-            exit();
-        }
+        return $ready = !($gwType === '' || $gwType === 'cash_only' || (!$ppCfg['ready'] && !$ppCfg['demo']));
+    };
+    if ($payment_method === 'UPI / NetBanking' && !$onlinePaymentReady()) {
+        ob_end_clean();
+        echo json_encode(['success' => false, 'message' => 'Online payment is not available at this restaurant right now. Please choose cash or another way to pay.'], JSON_UNESCAPED_UNICODE);
+        exit();
     }
 
     // Enforce COD availability server-side. The client already hides the Cash
@@ -334,7 +353,10 @@ try {
     $codEnabled = true;
     $codRow = $restaurantRow;
     if ($codRow && isset($codRow['cod_enabled']) && (int)$codRow['cod_enabled'] === 0) {
-        $hasOnlinePayment = !empty($codRow['phonepe_merchant_id']) || (int)($codRow['has_business_qr'] ?? 0) === 1;
+        // Online payment counts only when the customer can really use it (the cart's rule):
+        // a stored merchant id with the gateway off used to refuse Cash while the cart
+        // offered nothing else, so nobody could order.
+        $hasOnlinePayment = (int)($codRow['has_business_qr'] ?? 0) === 1 || $onlinePaymentReady();
         // Never fully block checkout: if no online payment method is
         // configured either, keep accepting Cash as the only option.
         $codEnabled = !$hasOnlinePayment;
@@ -463,6 +485,28 @@ if ($orderType === 'delivery') {
     // rejects orders whose address falls outside the configured radius.
     if ($order_type === 'Delivery') {
         $kmRow = $restaurantRow;
+        // Delivery radius (Settings), for every pricing model — it used to be checked only with
+        // per-km pricing, so a 5 km restaurant took orders from 30 km away. Only when both
+        // places have map coordinates (an address typed without a map pin is not refused).
+        $radiusAll = (float)($kmRow['delivery_radius_km'] ?? 0);
+        $rLat = isset($kmRow['restaurant_lat']) && $kmRow['restaurant_lat'] !== null ? (float)$kmRow['restaurant_lat'] : null;
+        $rLng = isset($kmRow['restaurant_lng']) && $kmRow['restaurant_lng'] !== null ? (float)$kmRow['restaurant_lng'] : null;
+        if ($radiusAll > 0 && $rLat && $rLng && $address_lat && $address_lng) {
+            $dLatR = deg2rad($address_lat - $rLat);
+            $dLonR = deg2rad($address_lng - $rLng);
+            $aR = sin($dLatR / 2) ** 2 + cos(deg2rad($rLat)) * cos(deg2rad($address_lat)) * sin($dLonR / 2) ** 2;
+            $distR = 6371 * 2 * atan2(sqrt($aR), sqrt(1 - $aR));
+            if ($distR > $radiusAll) {
+                ob_end_clean();
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => "Sorry, we don't deliver to your address. Your location is " . round($distR, 1) . " km away, but our delivery radius is only " . $radiusAll . " km.",
+                    'error_code' => 'OUTSIDE_DELIVERY_RADIUS'
+                ], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+        }
         if ($kmRow && !empty($kmRow['enable_km_delivery'])) {
             $ratePerKm = (float)($kmRow['delivery_rate_per_km'] ?? 0);
             $radiusKm = (float)($kmRow['delivery_radius_km'] ?? 0);
@@ -563,8 +607,10 @@ $conn->beginTransaction();
     
     // Validate coupon if provided (WITH row lock to prevent race condition)
     if (!empty($coupon_code)) {
-        $cpnStmt = $conn->prepare("SELECT * FROM coupons WHERE restaurant_id = ? AND coupon_code = ? AND is_active = 1 AND (valid_from IS NULL OR valid_from <= CURDATE()) AND (valid_until IS NULL OR valid_until >= CURDATE()) AND (max_uses = 0 OR current_uses < max_uses) LIMIT 1 FOR UPDATE");
-        $cpnStmt->execute([$restaurant_id, $coupon_code]);
+        // valid dates are the restaurant's own calendar days (this connection's CURDATE() is India time)
+        $todayLocal = (new DateTime('now', $restaurantTz))->format('Y-m-d');
+        $cpnStmt = $conn->prepare("SELECT * FROM coupons WHERE restaurant_id = ? AND coupon_code = ? AND is_active = 1 AND (valid_from IS NULL OR valid_from <= ?) AND (valid_until IS NULL OR valid_until >= ?) AND (max_uses = 0 OR current_uses < max_uses) LIMIT 1 FOR UPDATE");
+        $cpnStmt->execute([$restaurant_id, $coupon_code, $todayLocal, $todayLocal]);
         $coupon = $cpnStmt->fetch(PDO::FETCH_ASSOC);
         // Coupons switched off by Super Admin: only personal reward codes (loyalty, scratch card) still apply
         require_once __DIR__ . '/../config/access_control.php';
@@ -633,15 +679,24 @@ $conn->beginTransaction();
     }
 
     $variationsByItem = [];
+    $soldOutVariations = [];
     if (!empty($menuItemIds)) {
         $placeholders = implode(',', array_fill(0, count($menuItemIds), '?'));
         // Also scoped to these menu items, which are already scoped to this
         // restaurant above, so a variation can't be borrowed from another
         // restaurant's item either.
-        $varStmt = $conn->prepare("SELECT menu_item_id, variation_name, price FROM menu_item_variations WHERE menu_item_id IN ($placeholders)");
-        $varStmt->execute($menuItemIds);
+        // is_available: a size marked sold out is refused below (the menu hides it, but one
+        // already sitting in a cart used to go through)
+        try {
+            $varStmt = $conn->prepare("SELECT menu_item_id, variation_name, price, is_available FROM menu_item_variations WHERE menu_item_id IN ($placeholders)");
+            $varStmt->execute($menuItemIds);
+        } catch (PDOException $e) {
+            $varStmt = $conn->prepare("SELECT menu_item_id, variation_name, price, 1 AS is_available FROM menu_item_variations WHERE menu_item_id IN ($placeholders)");
+            $varStmt->execute($menuItemIds);
+        }
         foreach ($varStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $variationsByItem[(int)$row['menu_item_id']][$row['variation_name']] = (float)$row['price'];
+            if ($row['is_available'] !== null && (int)$row['is_available'] === 0) $soldOutVariations[(int)$row['menu_item_id']][$row['variation_name']] = true;
         }
     }
 
@@ -738,6 +793,14 @@ $conn->beginTransaction();
             ob_end_clean();
             echo json_encode(['success' => false, 'code' => 'item_changed', 'item_id' => $menuItemId,
                 'message' => mb_substr(strip_tags((string)($menuRow['item_name_en'] ?? 'A dish')), 0, 80) . ' has changed (' . mb_substr(strip_tags($variationName), 0, 40) . ' is no longer offered). Please add it to your cart again.'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+
+        if ($variationName !== '' && isset($soldOutVariations[$menuItemId][$variationName])) {
+            $conn->rollBack();
+            ob_end_clean();
+            echo json_encode(['success' => false, 'code' => 'item_unavailable', 'item_id' => $menuItemId,
+                'message' => mb_substr(strip_tags((string)($menuRow['item_name_en'] ?? 'A dish')), 0, 80) . ' (' . mb_substr(strip_tags($variationName), 0, 40) . ') is sold out right now. Please remove it from your cart and try again.'], JSON_UNESCAPED_UNICODE);
             exit();
         }
 
@@ -986,7 +1049,7 @@ $conn->beginTransaction();
     $taxPercent = 5.00;
     try {
         $gstRow = $restaurantRow;
-        $gstEnabled = $gstRow ? (bool)$gstRow['enable_gst'] : true;
+        $gstEnabled = ($gstRow && isset($gstRow['enable_gst'])) ? (bool)$gstRow['enable_gst'] : true;   // same default as the cart (header.php)
         if ($gstRow && !empty($gstRow['tax_name'])) $taxName = $gstRow['tax_name'];
         if ($gstRow && isset($gstRow['tax_percent']) && $gstRow['tax_percent'] !== null) $taxPercent = (float)$gstRow['tax_percent'];
     } catch (Throwable $e) {

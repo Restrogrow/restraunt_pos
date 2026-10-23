@@ -281,7 +281,7 @@ try {
     }
     
     // Validate reservation ID for update and delete actions
-    if (in_array($action, ['update', 'delete']) && $reservationId <= 0) {
+    if (in_array($action, ['update', 'update_status', 'delete']) && $reservationId <= 0) {
         throw new Exception('Invalid reservation ID');
     }
     
@@ -339,6 +339,47 @@ try {
             }
             break;
             
+        case 'update_status':
+            // Status only (the app's Confirm / Seat / Done / Decline / No show buttons). Going through
+            // 'update' meant re-sending the whole booking: its add/edit form rules then refused
+            // online bookings whose phone isn't exactly 10 digits, and every save HTML-escaped the
+            // name and special request once more (O'Brien -> O&#039;Brien -> O&amp;#039;Brien).
+            $allowedStatuses = ['Pending', 'Confirmed', 'Checked In', 'Completed', 'Cancelled', 'No Show'];
+            if (!in_array($status, $allowedStatuses, true)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Invalid status'], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+            $checkStmt = $conn->prepare("SELECT id, status, customer_name FROM reservations WHERE id = ? AND restaurant_id = ?");
+            $checkStmt->execute([$reservationId, $restaurant_id]);
+            $oldReservation = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$oldReservation) {
+                throw new Exception('Reservation not found');
+            }
+
+            $updateStmt = $conn->prepare("UPDATE reservations SET status = ?, updated_at = NOW() WHERE id = ? AND restaurant_id = ?");
+            $result = $updateStmt->execute([$status, $reservationId, $restaurant_id]);
+            if (!$result) {
+                throw new Exception('Failed to update reservation');
+            }
+
+            if ($status !== $oldReservation['status'] && in_array($status, ['Confirmed', 'Cancelled'], true)) {
+                try {
+                    require_once __DIR__ . '/../config/mail_engine.php';
+                    mailBooking($conn, (int)$reservationId, $status);
+                } catch (Throwable $e) { error_log('booking email: ' . $e->getMessage()); }
+            }
+            echo json_encode([
+                'success' => true,
+                'message' => 'Reservation updated successfully',
+                'data' => [
+                    'id' => $reservationId,
+                    'status' => $status,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]
+            ], JSON_UNESCAPED_UNICODE);
+            break;
+
         case 'update':
             // Check if reservation exists and belongs to this restaurant
             $checkStmt = $conn->prepare("SELECT id, status FROM reservations WHERE id = ? AND restaurant_id = ?");

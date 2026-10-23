@@ -187,6 +187,7 @@ function resumeSub(id) { setSubAction(id, 'resume_subscription'); }
 function setSubAction(id, action) {
   var fd = new FormData();
   fd.append('action', action);
+  fd.append('restaurant_id', window.restaurantId || '');
   fd.append('subscriptionId', id);
   fetch('../controllers/meal_subscription_operations.php', { method: 'POST', body: fd })
     .then(function(r) { return r.json(); })
@@ -208,6 +209,7 @@ function addSkip(id) {
 
   var fd = new FormData();
   fd.append('action', 'add_skip_date');
+  fd.append('restaurant_id', window.restaurantId || '');
   fd.append('subscriptionId', id);
   fd.append('skipDate', date);
   fetch('../controllers/meal_subscription_operations.php', { method: 'POST', body: fd })
@@ -226,6 +228,7 @@ function addSkip(id) {
 function removeSkip(id, date) {
   var fd = new FormData();
   fd.append('action', 'remove_skip_date');
+  fd.append('restaurant_id', window.restaurantId || '');
   fd.append('subscriptionId', id);
   fd.append('skipDate', date);
   fetch('../controllers/meal_subscription_operations.php', { method: 'POST', body: fd })

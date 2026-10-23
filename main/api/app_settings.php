@@ -154,6 +154,22 @@ try {
         exit;
     }
 
+    // Same rule as auth.php's toggleOrderType: the restaurant always takes at least one kind of order.
+    $typeCols = array_values(array_filter(['enable_delivery', 'enable_takeaway', 'enable_dinein'], fn($c) => isset($have[$c])));
+    if (count($typeCols) === 3 && array_intersect($typeCols, array_keys($_POST))) {
+        $cur = $conn->prepare('SELECT enable_delivery, enable_takeaway, enable_dinein FROM users WHERE id = ?');
+        $cur->execute([$userId]);
+        $projected = $cur->fetch(PDO::FETCH_ASSOC) ?: [];
+        foreach ($typeCols as $c) {
+            if (array_key_exists($c, $_POST)) $projected[$c] = appSettingValue($c, 'bool', $_POST[$c]);
+        }
+        if (!((int)($projected['enable_delivery'] ?? 0) || (int)($projected['enable_takeaway'] ?? 0) || (int)($projected['enable_dinein'] ?? 0))) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'At least one order type must stay enabled']);
+            exit;
+        }
+    }
+
     require_once __DIR__ . '/../config/activity_log.php';
     $before = activityUserRow($conn, $userId);
     $vals[] = $userId;

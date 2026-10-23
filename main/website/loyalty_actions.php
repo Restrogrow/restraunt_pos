@@ -225,10 +225,13 @@ try {
             $settings = getGrowthSettings($conn, $restaurantId);
             $tiers = loyaltyTiers($conn, $restaurantId);
             $m = loyaltyMember($conn, $restaurantId, $customer, $settings, $tiers);
-            if (!getLoggedInCustomer($conn, $restaurantId)) $m = loyaltyGuestView($m);
+            $isGuest = !getLoggedInCustomer($conn, $restaurantId);
+            if ($isGuest) $m = loyaltyGuestView($m);
             echo json_encode([
                 'success' => true,
                 'enrolled' => true,
+                // a guest sees their points but can't spend them (checkout needs a login): the cart hides "use points"
+                'guest' => $isGuest,
                 'loyalty_enabled' => (bool)$settings['loyalty_enabled'],
                 'referral_enabled' => (bool)$settings['referral_enabled'],
                 'points_balance' => $m['points_balance'],

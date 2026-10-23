@@ -10,6 +10,21 @@
  */
 ?>
 <script>
+// The table from a QR scan (sessionStorage qrTable, set by cart.php) belongs to
+// one restaurant and lasts a few hours (header.php's QR_TABLE_KEEP_SECONDS): all
+// restaurants share this browser storage, so another restaurant's table, or an
+// old one, must not turn this visit into a dine-in order (or show Call waiter).
+(function () {
+  try {
+    var m = document.querySelector('meta[name="restaurant-id"]');
+    var rid = m && m.content;
+    if (!rid || !sessionStorage.getItem('qrTable')) return;
+    var at = parseInt(sessionStorage.getItem('qrTableAt') || '0', 10);
+    if (sessionStorage.getItem('qrTableRid') !== rid || !at || Date.now() - at > 4 * 3600 * 1000) {
+      ['qrTable', 'qrTableRid', 'qrTableAt'].forEach(function (k) { sessionStorage.removeItem(k); });
+    }
+  } catch (e) {}
+})();
 (function () {
   try {
     var m = document.querySelector('meta[name="restaurant-id"]');

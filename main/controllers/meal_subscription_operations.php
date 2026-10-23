@@ -48,7 +48,14 @@ try {
         }
     }
 
-    $restaurant_id = $_SESSION['restaurant_id'] ?? ($_POST['restaurant_id'] ?? null);
+    // The restaurant whose website sent this (subscribe.php / my-subscription.php post it), then
+    // the one the customer is logged in to. $_SESSION['restaurant_id'] came first before: it is
+    // never set on slug / custom-domain pages and holds the owner's own restaurant for a
+    // dashboard login, so subscribing failed or went to the wrong restaurant. Safe to take
+    // from the request: everything below needs a customer logged in to that same restaurant.
+    $restaurant_id = (isset($_POST['restaurant_id']) && is_string($_POST['restaurant_id']) && trim($_POST['restaurant_id']) !== '')
+        ? trim($_POST['restaurant_id'])
+        : ($_SESSION['customer_restaurant_id'] ?? ($_SESSION['restaurant_id'] ?? null));
     if (!$restaurant_id) {
         throw new Exception('Restaurant not identified');
     }
@@ -127,16 +134,39 @@ function handleCreateSubscription($conn, $restaurant_id, $customer_id) {
         throw new Exception('Invalid payment method');
     }
 
+    // The restaurant's payment settings, same rules as a website order (process_website_order.php):
+    // online payment only where it can really be used, QR only with a business QR, and no Cash
+    // when COD is switched off (unless nothing else is set up)
+    $payRow = [];
+    try {
+        $pr = $conn->prepare("SELECT * FROM users WHERE restaurant_id = ? LIMIT 1");
+        $pr->execute([$restaurant_id]);
+        $payRow = $pr->fetch(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {}
+    require_once __DIR__ . '/../config/phonepe_verify.php';
+    $ppCfg = phonepeCallbackConfig($restaurant_id);
+    $gwType = (string)($payRow['payment_gateway_type'] ?? '');
+    $onlineReady = !($gwType === '' || $gwType === 'cash_only' || (!$ppCfg['ready'] && !$ppCfg['demo']));
+    $hasQr = isset($payRow['business_qr_code_data']);   // IS NOT NULL, as the subscribe page checks it
+    if ($paymentMethod === 'UPI / NetBanking' && !$onlineReady) {
+        throw new Exception('Online payment is not available at this restaurant right now. Please choose another way to pay.');
+    }
+    if ($paymentMethod === 'QR Payment' && !$hasQr) {
+        throw new Exception('Paying by QR is not available here. Please choose another way to pay.');
+    }
+    if ($paymentMethod === 'Cash' && isset($payRow['cod_enabled']) && (int)$payRow['cod_enabled'] === 0 && ($onlineReady || $hasQr)) {
+        throw new Exception('Cash is not accepted for meal plans here. Please choose an online payment method.');
+    }
+    unset($payRow);
+
     // Customer-chosen delivery start date - defaults to tomorrow (matching
     // subscribe.php's pre-filled date input) when missing/invalid, and can
     // never be earlier than tomorrow so kitchen isn't asked to start same-day.
-    $tomorrow = new DateTime('tomorrow');
+    // (tomorrow on the restaurant's own clock)
+    $tomorrow = mealPlanToday($conn, $restaurant_id, 1);
     $startDateInput = trim($_POST['startDate'] ?? '');
     $startDateObj = DateTime::createFromFormat('Y-m-d', $startDateInput);
-    if (!$startDateObj || $startDateObj->format('Y-m-d') !== $startDateInput || $startDateObj < $tomorrow) {
-        $startDateObj = $tomorrow;
-    }
-    $startDate = $startDateObj->format('Y-m-d');
+    $startDate = ($startDateObj && $startDateObj->format('Y-m-d') === $startDateInput && $startDateInput >= $tomorrow) ? $startDateInput : $tomorrow;
 
     $planStmt = $conn->prepare("SELECT * FROM meal_plans WHERE id = ? AND restaurant_id = ? AND is_active = 1 LIMIT 1");
     $planStmt->execute([$mealPlanId, $restaurant_id]);
@@ -238,14 +268,24 @@ function handleResume($conn, $customer_id, $subscriptionId) {
 }
 
 function handleAddSkipDate($conn, $customer_id, $subscriptionId, $skipDate) {
-    loadOwnSubscription($conn, $customer_id, $subscriptionId);
+    $sub = loadOwnSubscription($conn, $customer_id, $subscriptionId);
     $d = DateTime::createFromFormat('Y-m-d', $skipDate);
     if (!$d || $d->format('Y-m-d') !== $skipDate) {
         throw new Exception('Invalid date');
     }
-    $today = new DateTime('today');
-    if ($d < $today) {
+    if ($skipDate < mealPlanToday($conn, $sub['restaurant_id'])) {   // the restaurant's own today
         throw new Exception('Cannot skip a date in the past');
+    }
+    // that day's delivery already went to the kitchen (cron / "Generate Today's Deliveries"): too late to skip
+    try {
+        $made = $conn->prepare("SELECT 1 FROM orders WHERE subscription_id = ? AND delivery_date = ? LIMIT 1");
+        $made->execute([$subscriptionId, $skipDate]);
+        $alreadyMade = (bool)$made->fetchColumn();
+    } catch (PDOException $e) {
+        $alreadyMade = false;   // no subscription columns on orders yet: nothing generated
+    }
+    if ($alreadyMade) {
+        throw new Exception("That day's meal is already being prepared, so it can't be skipped now. Please call the restaurant.");
     }
     $stmt = $conn->prepare("INSERT IGNORE INTO meal_subscription_skip_dates (subscription_id, skip_date) VALUES (?, ?)");
     $stmt->execute([$subscriptionId, $skipDate]);

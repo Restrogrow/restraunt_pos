@@ -35,9 +35,26 @@ if (!function_exists('orderAbuseNormalizePhone')) {
      * Validate the customer phone submitted at checkout. Guests give no other
      * identity, so a garbage phone both breaks callbacks/tracking and lets a
      * joker scatter fake orders across endless numbers. Enforce exactly 10
-     * digits starting 6-9 (Indian mobile), allow +91 / 0 prefixes.
+     * digits starting 6-9 (Indian mobile), allow +91 / 0 prefixes. Outside
+     * India: the local number length of the restaurant's country
+     * (config/countries.php), the same rule the checkout form uses.
      */
-    function orderAbuseValidatePhone($phone) {
+    function orderAbuseValidatePhone($phone, $country = null) {
+        require_once __DIR__ . '/countries.php';
+        if (!restaurantIsIndia($country)) {
+            $c = getCountryByName($country);
+            $min = (int)($c['phone_min'] ?? 7);
+            $max = (int)($c['phone_max'] ?? 15);
+            $digits = preg_replace('/\D+/', '', (string)$phone);
+            $dial = preg_replace('/\D+/', '', (string)($c['dial_code'] ?? ''));
+            if ($dial !== '' && strlen($digits) > $max && strpos($digits, $dial) === 0) $digits = substr($digits, strlen($dial));
+            if (strlen($digits) > $max && $digits[0] === '0') $digits = substr($digits, 1);
+            if ($digits === '' || strlen($digits) < $min || strlen($digits) > $max) {
+                $len = $min === $max ? $min . '-digit' : $min . '-' . $max . ' digit';
+                return ['valid' => false, 'message' => 'Please enter a valid ' . $len . ' mobile number.'];
+            }
+            return ['valid' => true, 'value' => $digits];
+        }
         $digits = orderAbuseNormalizePhone($phone);
         if ($digits === null || strlen($digits) !== 10 || $digits[0] < '6') {
             return ['valid' => false, 'message' => 'Please enter a valid 10-digit mobile number.'];

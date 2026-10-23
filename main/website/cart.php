@@ -1385,6 +1385,7 @@ function loadMenuItems() {
           }
           itemsById = {};
           cleanCart();
+          repriceCart();
           renderCart();
           // a saved reward / poster offer whose minimum depends on the cart total: check again now the prices are known
           if (availableCoupons.length) applySavedReward();
@@ -1524,6 +1525,76 @@ function cleanCart() {
     }
   }
 }
+
+/* Prices in the cart are saved when a dish goes in (size price, add-ons). The order is
+   billed at today's prices (process_website_order.php), so bring them up to date from
+   the menu just loaded, and say so when one changed — the cart used to show the old
+   price while a different total was charged. */
+function noticePriceChanges(changes) {
+  if (!changes.length) return;
+  var msg = (changes.length === 1 ? 'A price in your cart has changed: ' : 'Some prices in your cart have changed: ') +
+    changes.slice(0, 4).join('; ') + (changes.length > 4 ? '; and ' + (changes.length - 4) + ' more' : '') + '. Your total shows the current prices.';
+  showModal('Prices updated', msg);
+}
+
+function repriceCart() {
+  if (!flatItems || flatItems.length === 0) return;
+  var changes = [];
+  for (var k in cartItems) {
+    var raw = cartItems[k];
+    if (!raw || typeof raw !== 'object' || raw.isAddon || raw.isCombo || !raw.varName) continue;
+    var item = getItemByKey(k);
+    if (!item || !item.variations) continue;
+    for (var v = 0; v < item.variations.length; v++) {
+      var vr = item.variations[v];
+      if (vr.variation_name !== raw.varName) continue;
+      var now = parseFloat(vr.variation_price || vr.price || 0);
+      if (Math.abs(now - parseFloat(raw.varPrice || 0)) > 0.004) {
+        changes.push((item.item_name_translated || item.item_name_en || item.name || 'A dish') + ' (' + raw.varName + ') ' +
+          getCurrency() + parseFloat(raw.varPrice || 0).toFixed(2) + ' → ' + getCurrency() + now.toFixed(2));
+        raw.varPrice = now;
+      }
+      break;
+    }
+  }
+  if (changes.length) saveCart();
+  noticePriceChanges(changes);
+}
+
+function repriceAddons() {
+  if (!addonsList || addonsList.length === 0) return;
+  var priceOf = {};
+  for (var i = 0; i < addonsList.length; i++) priceOf[addonsList[i].id] = parseFloat(addonsList[i].addon_price || addonsList[i].price || 0);
+  var changes = [];
+  // add-ons ordered on their own (cart key addon_<id>)
+  for (var k in cartItems) {
+    var raw = cartItems[k];
+    if (!raw || typeof raw !== 'object' || !raw.isAddon) continue;
+    var id = parseInt(k.replace('addon_', ''), 10);
+    if (priceOf[id] !== undefined && Math.abs(priceOf[id] - parseFloat(raw.addonPrice || 0)) > 0.004) {
+      changes.push((raw.addonName || 'Add-on') + ' ' + getCurrency() + parseFloat(raw.addonPrice || 0).toFixed(2) + ' → ' + getCurrency() + priceOf[id].toFixed(2));
+      raw.addonPrice = priceOf[id];
+    }
+  }
+  if (changes.length) saveCart();
+  // add-ons picked for a dish (_itemAddons)
+  try {
+    var all = JSON.parse(localStorage.getItem('_itemAddons') || '{}') || {};
+    var touched = false;
+    for (var key in all) {
+      (all[key] || []).forEach(function(a) {
+        var id2 = parseInt(a.id, 10);
+        if (priceOf[id2] !== undefined && Math.abs(priceOf[id2] - parseFloat(a.price || 0)) > 0.004) {
+          changes.push((a.name || 'Add-on') + ' ' + getCurrency() + parseFloat(a.price || 0).toFixed(2) + ' → ' + getCurrency() + priceOf[id2].toFixed(2));
+          a.price = priceOf[id2];
+          touched = true;
+        }
+      });
+    }
+    if (touched) localStorage.setItem('_itemAddons', JSON.stringify(all));
+  } catch (e) {}
+  if (changes.length) { if (flatItems.length) renderCart(); noticePriceChanges(changes); }
+}
 // --- End Add-ons Helpers ---
 
 var addonsList = [];
@@ -1535,6 +1606,7 @@ function fetchAddons() {
     .then(function(data) {
       if (data.success && data.data) {
         addonsList = data.data;
+        repriceAddons();
         renderGlobalAddons();
       }
     })
@@ -2229,7 +2301,8 @@ function loadLoyaltyBalance() {
   fetch('loyalty_actions.php?action=summary&restaurant_id=' + encodeURIComponent(rid) + '&phone=' + encodeURIComponent(phone))
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (!data.success || !data.enrolled || !data.loyalty_enabled) return;
+      // spending points needs a login (process_website_order.php): a guest who just ordered sees no "use points" box
+      if (!data.success || !data.enrolled || !data.loyalty_enabled || data.guest || !window.loggedInCustomer) return;
       loyaltyProgramEnabled = true;
       loyaltyBalance = data.points_balance || 0;
       loyaltyRedeemValuePerPoint = data.redeem_value_per_point || 0;
@@ -2770,10 +2843,9 @@ function proceedCheckout() {
   if (isOpen && window.openingHours && window.restaurantOpen === undefined) {
     isOpen = isRestaurantOpen(window.openingHours);
   }
-  if (!isOpen) {
-    showClosedModal();
-    return;
-  }
+  // Closed right now: the order can still be scheduled for a time we're open (the order API
+  // accepts those), so the checkout opens with "Schedule for later" instead of a dead end
+  window.__restaurantClosedNow = !isOpen;
   var cart = getCartTotal();
   if (MIN_ORDER > 0 && cart.totalPrice < MIN_ORDER) {
     showModal('Minimum Order', getCurrency() + MIN_ORDER.toFixed(2) + ' minimum. Please add more items.');
@@ -2963,7 +3035,10 @@ function showCheckoutModal(cartData) {
   var savedOrderType = 'delivery';
   if (qrTable) {
     savedOrderType = 'dinein';
+    // remembered for this restaurant only, for a few hours (cart_scope.php clears it otherwise)
     sessionStorage.setItem('qrTable', qrTable);
+    sessionStorage.setItem('qrTableRid', document.querySelector('meta[name=restaurant-id]')?.content || '');
+    if (urlParams.get('table') || !sessionStorage.getItem('qrTableAt')) sessionStorage.setItem('qrTableAt', String(Date.now()));
   } else {
     savedOrderType = localStorage.getItem('dvaniOrderType') || 'delivery';
   }
@@ -3089,6 +3164,12 @@ function showCheckoutModal(cartData) {
         otOptions.push(ot);
       }
     }
+  }
+  // The remembered type (shared by every restaurant in this browser) may be one this
+  // restaurant has switched off: then preselect the first type it offers, so the
+  // checkout never opens with nothing chosen
+  if (otOptions.length && !otOptions.some(function(o) { return o.key === savedOrderType; })) {
+    savedOrderType = otOptions[0].key;
   }
   for (var oi = 0; oi < otOptions.length; oi++) {
     var opt = otOptions[oi];
@@ -3234,7 +3315,12 @@ function showCheckoutModal(cartData) {
   // picking it fresh would - otherwise the on-screen total would look wrong
   // (no delivery fee shown) even though the server bills it correctly.
   if (hasSavedAddress && cd.addressLat && cd.addressLng) {
-    applySelectedAddress(cd.addressLat, cd.addressLng, cd.address, '');
+    applySelectedAddress(cd.addressLat, cd.addressLng, cd.address, cd.pincode || '');
+  } else if (hasSavedAddress) {
+    // saved without a map location: the order API charges per-km delivery for the far edge of the area
+    document.getElementById('chkPincodeAuto').value = cd.pincode || '';
+    setDeliveryCharge(deliveryQuote('', '').charge);
+    lookupDeliveryZone(cd.pincode || '');
   }
 
   // Order type click handler
@@ -3278,6 +3364,14 @@ function showCheckoutModal(cartData) {
           if (statusEl) statusEl.style.display = 'none';
           var infoEl = document.getElementById('deliveryInfo');
           if (infoEl) infoEl.style.display = 'none';
+        } else {
+          // back to Delivery: the fee for the address already chosen comes back
+          var latNow = document.getElementById('chkAddressLat')?.value || '';
+          var lngNow = document.getElementById('chkAddressLng')?.value || '';
+          if (document.getElementById('chkAddressFormatted')?.value) {
+            setDeliveryCharge(deliveryQuote(latNow, lngNow).charge);
+            lookupDeliveryZone(document.getElementById('chkPincodeAuto')?.value || '');
+          }
         }
       }
       // Update payment label based on order type
@@ -3321,6 +3415,13 @@ function showCheckoutModal(cartData) {
       if (scheduledAtInput) scheduledAtInput.style.display = later ? '' : 'none';
       if (scheduleHint) scheduleHint.style.display = later ? '' : 'none';
     });
+  }
+  if (window.__restaurantClosedNow) {
+    var nowOpt = modal.querySelector('.schedule-option[data-sched="now"]');
+    var laterOpt = modal.querySelector('.schedule-option[data-sched="later"]');
+    if (nowOpt) nowOpt.style.display = 'none';
+    if (laterOpt) laterOpt.click();
+    if (scheduleHint) scheduleHint.textContent = "We're closed right now. Pick a time during our opening hours (at least 15 minutes from now, within the next 7 days) and we'll prepare your order then.";
   }
 
   // Set initial pincode and address section visibility
@@ -3388,12 +3489,16 @@ function processOrder(cartData) {
   var payment = document.getElementById('chkPayment').value;
   var orderTypeRadio = document.querySelector('input[name="orderType"]:checked');
   var orderType = orderTypeRadio ? orderTypeRadio.value : null;
-  // If ordering from a table QR code, always use Dine-in (handle any edge cases)
+  // A table QR code preselects Dine-in, but the type the customer picked wins (it used to be
+  // forced to Dine-in even after they chose Delivery). Nothing picked: the only / first type
+  // this restaurant offers, never a type it has switched off.
   var qrTableCheck = sessionStorage.getItem('qrTable') || '';
-  if (qrTableCheck) {
-    orderType = 'Dine-in';
+  if (!orderType) {
+    var firstOt = document.querySelector('input[name="orderType"]');
+    orderType = qrTableCheck && (window.enableDinein == 1 || window.enableDinein === true) ? 'Dine-in' : (firstOt ? firstOt.value : null);
   }
-  if (!orderType) orderType = 'Takeaway';
+  if (!orderType) { showModal('Error', 'Please choose Delivery, Takeaway or Dine in'); return; }
+  if (orderType !== 'Dine-in') qrTableCheck = '';
   var tableId = orderType === 'Dine-in' ? document.getElementById('chkTableId')?.value || '' : '';
   if (tableId === '') tableId = null;
   // For QR orders, also try to get table ID from sessionStorage if select hasn't loaded yet
@@ -3449,6 +3554,14 @@ function processOrder(cartData) {
       if (btn) { btn.textContent = 'Place Order'; btn.disabled = false; }
       return;
     }
+    // Same checks the order API makes: outside the delivery radius, or per-km pricing without a map location
+    var dq = deliveryQuote(document.getElementById('chkAddressLat')?.value || '', document.getElementById('chkAddressLng')?.value || '');
+    if (dq.outside || dq.needLocation) {
+      showModal('Delivery Error', dq.outside
+        ? "Sorry, we don't deliver to this address: it is " + dq.dist.toFixed(1) + ' km away and we deliver up to ' + dq.radius + ' km.'
+        : 'Please pick your delivery location on the map so we can work out the delivery charge.');
+      return;
+    }
   }
 
   if (MIN_ORDER > 0 && cartData.totalPrice < MIN_ORDER && !qrTableCheck) {
@@ -3459,6 +3572,10 @@ function processOrder(cartData) {
   }
 
   var scheduleTypeRadio = document.querySelector('input[name="scheduleType"]:checked');
+  if (window.__restaurantClosedNow && !(scheduleTypeRadio && scheduleTypeRadio.value === 'later')) {
+    showClosedModal();
+    return;
+  }
   var scheduledAtValue = '';
   if (scheduleTypeRadio && scheduleTypeRadio.value === 'later') {
     var scheduledAtRaw = document.getElementById('chkScheduledAt')?.value || '';
@@ -3478,7 +3595,8 @@ function processOrder(cartData) {
     name: name, phone: phone, email: email, address: address,
     addressLat: document.getElementById('chkAddressLat')?.value || '',
     addressLng: document.getElementById('chkAddressLng')?.value || '',
-    landmark: document.getElementById('chkLandmark')?.value.trim() || ''
+    landmark: document.getElementById('chkLandmark')?.value.trim() || '',
+    pincode: document.getElementById('chkPincodeAuto')?.value || ''   // pincode delivery zone on the next order
   });
 
   var items = [];
@@ -4054,6 +4172,66 @@ function resetSelectedAddress() {
   if (infoEl) { infoEl.style.display = 'none'; }
   var previewEl = document.getElementById('deliveryMapPreview');
   if (previewEl) { previewEl.style.display = 'none'; }
+  if (typeof updateOrderTotal === 'function') updateOrderTotal(0);   // the old address's fee must not stay in the total
+}
+
+// Shared by both the text-search autocomplete and the map picker
+/**
+ * The delivery charge for an address, worked out exactly like process_website_order.php
+ * bills it, so the total on screen is the total charged:
+ *  - per-km pricing on: distance × rate (also when no radius is set); outside the radius
+ *    the order is refused; no map location → the far edge of the area (radius × rate)
+ *  - per-km pricing off: no charge here (a pincode zone fee is added by lookupDeliveryZone)
+ * Also says whether the address is outside the delivery radius (the order API refuses those).
+ */
+function deliveryQuote(lat, lng) {
+  var radius = parseFloat(window.deliveryRadius) || 0;
+  var restLat = parseFloat(window.restaurantLat);
+  var restLng = parseFloat(window.restaurantLng);
+  var rate = parseFloat(window.deliveryRatePerKm) || 0;
+  var isKm = window.enableKmDelivery == 1 || window.enableKmDelivery === true;
+  var q = { charge: 0, dist: null, outside: false, needLocation: false, km: isKm, radius: radius, rate: rate };
+  var hasLoc = !!(parseFloat(lat) && parseFloat(lng));
+  if (restLat && restLng && hasLoc) {
+    q.dist = haversineDistance(restLat, restLng, parseFloat(lat), parseFloat(lng));
+    q.outside = radius > 0 && q.dist > radius;
+  }
+  if (!isKm) return q;
+  if (q.dist !== null) {
+    if (!q.outside) q.charge = Math.round(q.dist * rate * 100) / 100;
+  } else if (radius > 0 && rate > 0) {
+    q.charge = Math.round(radius * rate * 100) / 100;
+  } else if (rate > 0) {
+    q.needLocation = true;
+  }
+  return q;
+}
+
+function setDeliveryCharge(charge) {
+  var chargeEl = document.getElementById('deliveryCharge');
+  if (chargeEl) chargeEl.value = charge;
+  if (typeof updateOrderTotal === 'function') updateOrderTotal(charge);
+}
+
+// Pincode delivery zones (Settings > Delivery zones): when the picked address's postcode has an
+// active zone, its fee is added (the order API bills the zone's fee from the database). No zone
+// for the postcode: nothing changes, the order still goes through without a zone fee.
+function lookupDeliveryZone(postcode) {
+  var zoneIdEl = document.getElementById('deliveryZoneId');
+  if (zoneIdEl) zoneIdEl.value = '';
+  if (!postcode || window.enableKmDelivery == 1 || window.enableKmDelivery === true) return;
+  var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
+  fetch('../api/check_pincode.php?pincode=' + encodeURIComponent(postcode) + '&restaurant_id=' + encodeURIComponent(rid))
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (!(res && res.success && res.available && res.zone)) return;
+      if ((document.getElementById('chkPincodeAuto') || {}).value !== postcode) return;   // address changed meanwhile
+      if (zoneIdEl) zoneIdEl.value = res.zone.id;
+      setDeliveryCharge(parseFloat(res.zone.delivery_charge) || 0);
+      var infoEl = document.getElementById('deliveryInfo');
+      if (infoEl) infoEl.innerHTML += '<div style="margin-top:6px;font-size:13px;">' + esc(res.zone.zone_name || 'Delivery') + ': delivery fee <strong>' + getCurrency() + (parseFloat(res.zone.delivery_charge) || 0).toFixed(2) + '</strong></div>';
+    })
+    .catch(function() {});
 }
 
 // Shared by both the text-search autocomplete and the map picker
@@ -4063,46 +4241,27 @@ function applySelectedAddress(lat, lng, formatted, postcode) {
   document.getElementById('chkAddressFormatted').value = formatted || '';
   document.getElementById('chkAddressLat').value = lat;
   document.getElementById('chkAddressLng').value = lng;
-  // TEMPORARY: pincode/zone matching is disabled for order placement (see
-  // processOrder). Just stash the postcode for later - don't run the zone
-  // lookup or force the manual pincode box open once an address is picked.
   document.getElementById('chkPincodeAuto').value = postcode || '';
 
   updateDeliveryMapPreview(lat, lng);
+
+  // Charge exactly as the order API will bill it (see deliveryQuote)
+  var q = deliveryQuote(lat, lng);
+  setDeliveryCharge(q.charge);
+  lookupDeliveryZone(postcode || '');
 
   // Show delivery info with selected address
   var infoEl = document.getElementById('deliveryInfo');
   if (infoEl) {
     var distanceHtml = '';
-    var radius = parseFloat(window.deliveryRadius) || 0;
-    var restLat = parseFloat(window.restaurantLat);
-    var restLng = parseFloat(window.restaurantLng);
-    var isKmDelivery = window.enableKmDelivery == 1 || window.enableKmDelivery === true;
-    if (radius > 0 && restLat && restLng) {
-      var dist = haversineDistance(restLat, restLng, lat, lng);
-      if (dist <= radius) {
-        if (isKmDelivery) {
-          // Auto-calculated distance-based charge, shown to the customer up
-          // front. The restaurant still confirms/edits the final amount when
-          // they accept the order, since straight-line distance is only an
-          // estimate of the real delivery route.
-          var rate = parseFloat(window.deliveryRatePerKm) || 0;
-          var kmCharge = Math.round(dist * rate * 100) / 100;
-          var chargeEl = document.getElementById('deliveryCharge');
-          if (chargeEl) chargeEl.value = kmCharge;
-          if (typeof updateOrderTotal === 'function') updateOrderTotal(kmCharge);
-          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ Within delivery area (' + dist.toFixed(1) + ' km / ' + radius + ' km max)<br>Delivery Charge: <strong>' + getCurrency() + kmCharge.toFixed(2) + '</strong> (' + dist.toFixed(1) + ' km × ' + getCurrency() + rate + '/km)</div>';
-        } else {
-          distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ Within delivery area (' + dist.toFixed(1) + ' km / ' + radius + ' km max)</div>';
-        }
-      } else {
-        if (isKmDelivery) {
-          var chargeEl2 = document.getElementById('deliveryCharge');
-          if (chargeEl2) chargeEl2.value = '0';
-          if (typeof updateOrderTotal === 'function') updateOrderTotal(0);
-        }
-        distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#f8d7da;color:#721c24;border-radius:6px;font-size:13px;"><strong>⚠ Sorry, we don\'t deliver here</strong><br>Distance: ' + dist.toFixed(1) + ' km (max ' + radius + ' km)</div>';
-      }
+    if (q.dist !== null && q.outside) {
+      distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#f8d7da;color:#721c24;border-radius:6px;font-size:13px;"><strong>⚠ Sorry, we don\'t deliver here</strong><br>Distance: ' + q.dist.toFixed(1) + ' km (max ' + q.radius + ' km)</div>';
+    } else if (q.dist !== null && (q.radius > 0 || q.km)) {
+      // Straight-line distance is only an estimate of the real route; the restaurant
+      // can still adjust the amount when they accept the order.
+      distanceHtml = '<div style="margin-top:6px;padding:6px 10px;background:#d4edda;color:#155724;border-radius:6px;font-size:13px;">✓ ' +
+        (q.radius > 0 ? 'Within delivery area (' + q.dist.toFixed(1) + ' km / ' + q.radius + ' km max)' : q.dist.toFixed(1) + ' km away') +
+        (q.km ? '<br>Delivery Charge: <strong>' + getCurrency() + q.charge.toFixed(2) + '</strong> (' + q.dist.toFixed(1) + ' km × ' + getCurrency() + q.rate + '/km)' : '') + '</div>';
     }
     infoEl.style.display = 'block';
     infoEl.innerHTML = '<strong>✓ Address selected</strong><br>' + esc(formatted || '') + '<br><span style="font-size:11px;color:#999">Lat: ' + String(lat).substring(0,8) + ', Lng: ' + String(lng).substring(0,8) + '</span>' + distanceHtml;

@@ -121,8 +121,11 @@ try {
     session_write_close();
     if (!is_string($restaurant_id)) $restaurant_id = 'RES001';
     // a guest booking while Reservations is switched off by Super Admin (logged-in staff are stopped by the section guard)
+    // ... or while the owner has Reservations switched off in Settings (the booking page redirects
+    // away then, but an open / cached page or a direct call could still book)
     require_once __DIR__ . '/../config/access_control.php';
-    if (!isLoggedIn() && !accessPageOn($conn, $restaurant_id, 'reservationsPage')) {
+    require_once __DIR__ . '/../config/reservation_helpers.php';
+    if (!isLoggedIn() && !reservationsFeatureEnabled($conn, $restaurant_id)) {
         echo json_encode(['success' => false, 'message' => 'Table booking is not available here.']);
         exit;
     }

@@ -69,11 +69,8 @@ if ($has_id_param) {
     $restaurant_id = $_SESSION['restaurant_id'];
 }
 
-// Handle table parameter from QR code scanning
-$qr_table = isset($_GET['table']) && trim($_GET['table']) !== '' ? trim($_GET['table']) : (isset($_SESSION['qr_table']) ? $_SESSION['qr_table'] : null);
-if ($qr_table) {
-    $_SESSION['qr_table'] = $qr_table;
-}
+// Table from a QR code scan (?table=T4): resolved further down, once the restaurant is known
+$qr_table = null;
 
 // Handle referral code from a shared loyalty link (?ref=CODE), persisted
 // through navigation the same way qr_table is, so it survives from landing
@@ -170,8 +167,14 @@ if ($restaurant_id) {
 $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, country, tax_name, tax_percent, timezone, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, custom_domain, embed_enabled, delivery_radius_km, restaurant_lat, restaurant_lng, enable_km_delivery, delivery_rate_per_km, subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
                 $stmt->execute([$restaurant_id]);
             } catch (Exception $e2) {
-                // Fallback: new columns (delivery_radius_km, etc.) may not exist - query without them
-                $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_symbol, address, description, description_format, phone, email, opening_hours, minimum_order_value, packaging_charge, enable_gst, payment_gateway_type, show_install_app, google_maps_link, owner_name, instagram_link, facebook_link, twitter_link, youtube_link, linkedin_link, enable_delivery, enable_takeaway, enable_dinein, custom_domain, embed_enabled, subscription_status FROM users WHERE restaurant_id = ? LIMIT 1");
+                // Fallback: a newer column (delivery_radius_km, etc.) is missing on this database - ask
+                // only for the columns it has, so one missing column doesn't also drop the tax rate,
+                // country or COD setting (the cart then showed 5% GST while the order was billed the real rate)
+                $hdrCols = ['id', 'restaurant_name', 'restaurant_logo', 'currency_symbol', 'country', 'tax_name', 'tax_percent', 'timezone', 'address', 'description', 'description_format', 'phone', 'email', 'opening_hours', 'minimum_order_value', 'packaging_charge', 'enable_gst', 'payment_gateway_type', 'show_install_app', 'google_maps_link', 'owner_name', 'instagram_link', 'facebook_link', 'twitter_link', 'youtube_link', 'linkedin_link', 'enable_delivery', 'enable_takeaway', 'enable_dinein', 'cod_enabled', 'custom_domain', 'embed_enabled', 'delivery_radius_km', 'restaurant_lat', 'restaurant_lng', 'enable_km_delivery', 'delivery_rate_per_km', 'subscription_status'];
+                $hdrHave = [];
+                foreach ($conn->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_ASSOC) as $hc) $hdrHave[$hc['Field']] = true;
+                $hdrSel = array_map(function ($c) use ($hdrHave) { return isset($hdrHave[$c]) ? $c : "NULL AS $c"; }, $hdrCols);
+                $stmt = $conn->prepare("SELECT " . implode(', ', $hdrSel) . " FROM users WHERE restaurant_id = ? LIMIT 1");
                 $stmt->execute([$restaurant_id]);
             }
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -462,6 +465,24 @@ if (!empty($opening_hours)) {
         require_once __DIR__ . '/../config/opening_hours.php';
         $restaurant_open = rgIsOpenNow($hours, $restaurant_tz);
     }
+}
+
+// Table from a QR code scan (?table=T4), remembered for this restaurant only and for a few hours
+// (QR_TABLE_KEEP_SECONDS). It used to be one session value for every restaurant, kept as long as
+// the session (400 days): one scan put every later visit, anywhere, into dine-in at that table.
+if (!defined('QR_TABLE_KEEP_SECONDS')) define('QR_TABLE_KEEP_SECONDS', 4 * 3600);
+$qrTableParam = isset($_GET['table']) && is_string($_GET['table']) ? trim($_GET['table']) : '';
+if ($qrTableParam !== '' && $restaurant_id) {
+    $_SESSION['qr_table'] = ['rid' => (string)$restaurant_id, 'table' => $qrTableParam, 'at' => time()];
+}
+$qrSaved = $_SESSION['qr_table'] ?? null;
+if (is_array($qrSaved) && $restaurant_id && ($qrSaved['rid'] ?? '') === (string)$restaurant_id
+    && time() - (int)($qrSaved['at'] ?? 0) < QR_TABLE_KEEP_SECONDS && (string)($qrSaved['table'] ?? '') !== '') {
+    $qr_table = (string)$qrSaved['table'];
+} elseif ($qrTableParam !== '') {
+    $qr_table = $qrTableParam;
+} elseif ($qrSaved !== null && (!is_array($qrSaved) || time() - (int)($qrSaved['at'] ?? 0) >= QR_TABLE_KEEP_SECONDS)) {
+    unset($_SESSION['qr_table']);   // expired, or the old unscoped form
 }
 
 $host = $_SERVER['HTTP_HOST'] ?? '';
