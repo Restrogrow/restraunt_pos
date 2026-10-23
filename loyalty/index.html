@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restaurant Loyalty Program on WhatsApp | Restro Grow Loyalty &amp; Growth</title>
-    <meta name="description" content="Turn first-time diners into regulars. Points, cashback or stamp cards, gifts that send themselves on WhatsApp, scratch cards and VIP levels — for every order at your counter, tables and website.">
+    <meta name="description" content="Turn first-time diners into regulars. Points, cashback or stamp cards, gifts that send themselves on WhatsApp, scratch cards and VIP levels, for every order at your counter, tables and website.">
     <meta name="keywords" content="restaurant loyalty program, restaurant rewards, WhatsApp loyalty, cafe stamp card, restaurant cashback, repeat customers restaurant, birthday offers restaurant, restaurant CRM India">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://restrogrow.com/loyalty/">
 
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://restrogrow.com/loyalty/">
-    <meta property="og:title" content="Loyalty &amp; Growth — bring every customer back | Restro Grow">
+    <meta property="og:title" content="Loyalty &amp; Growth: bring every customer back | Restro Grow">
     <meta property="og:description" content="Points, gifts that send themselves on WhatsApp, scratch cards and VIP levels. One loyalty program for your counter, tables and website.">
-    <meta property="og:image" content="https://restrogrow.com/assets/blog/og-home.jpg">
+    <meta property="og:image" content="https://restrogrow.com/loyalty/img/c_member.webp">
     <meta property="og:site_name" content="Restro Grow">
     <meta property="og:locale" content="en_IN">
     <meta name="twitter:card" content="summary_large_image">
@@ -31,219 +31,261 @@
 
     <link rel="icon" type="image/png" href="../favicon.png">
     <link rel="apple-touch-icon" href="../favicon.png">
+    <link rel="preload" href="img/c_member.webp" as="image" type="image/webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="../style.css?v=3.1">
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=Caveat:wght@500;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet"></noscript>
 
     <style>
-        /* ── Loyalty page: same "order ticket" look as the home page (style.css tokens) ── */
-        .ly-ico { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-        .ly-section { padding: 96px 0; }
+        /* ── Loyalty page. style.css tokens, same family as the meal-plans and about pages. ── */
+        :root { --gold: #f2b544; --plum: #2a1846; --plum-2: #6d3bd6; --wa: #1faa53; --hand: 'Caveat', 'Segoe Print', cursive; }
+        .ly-ico { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .ly-section { padding: 104px 0; position: relative; }
         .ly-section.raised { background: var(--paper-raised); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
         .ly-section.ink { background: var(--ink); color: var(--paper); }
-        .ly-section.ink .section-title { color: var(--paper); }
-        .ly-section.ink .section-subtitle { color: rgba(245, 239, 226, .72); }
-        .ly-kicker { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; font-family: var(--font-mono); font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
-        .ly-kicker::before { content: ''; width: 18px; height: 2px; background: currentColor; }
-        .ly-head { max-width: 720px; margin: 0 auto 56px; text-align: center; }
-        .ly-head .ly-kicker { justify-content: center; }
+        .ly-kicker { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; font-family: var(--font-mono); font-size: .76rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+        .ly-kicker::before { content: ''; width: 20px; height: 2px; background: currentColor; }
+        .ink .ly-kicker, .ly-hero .ly-kicker { color: var(--gold); }
+        .ly-h2 { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.05; letter-spacing: -.03em; color: var(--ink); }
+        .ink .ly-h2 { color: var(--paper); }
+        .ly-h2 em { font-style: normal; color: var(--accent); }
+        .ink .ly-h2 em { color: var(--gold); }
+        .ly-sub { margin-top: 16px; font-size: 1.12rem; line-height: 1.6; color: var(--ink-soft); max-width: 40em; }
+        .ink .ly-sub { color: rgba(245, 239, 226, .72); }
+        .ly-head { max-width: 760px; margin-bottom: 56px; }
+        .ly-head.center { margin-left: auto; margin-right: auto; text-align: center; }
+        .ly-head.center .ly-kicker { justify-content: center; }
+        .ly-head.center .ly-sub { margin-left: auto; margin-right: auto; }
+        .ly-btn { display: inline-flex; align-items: center; gap: 10px; padding: 16px 26px; border-radius: 12px; font-weight: 700; font-size: 1rem; text-decoration: none; border: 2px solid transparent; transition: transform .2s; cursor: pointer; font-family: inherit; }
+        .ly-btn:hover { transform: translateY(-2px); }
+        .ly-btn.primary { background: var(--accent); color: #fff; box-shadow: 0 10px 24px -10px rgba(193, 68, 14, .7); }
+        .ly-btn.ghost { color: var(--paper); border-color: rgba(245, 239, 226, .3); background: transparent; }
+        .ly-btn.ghost:hover { border-color: var(--paper); }
+        .ly-btn.wa { background: var(--wa); color: #fff; }
+        .ly-btn svg { width: 18px; height: 18px; }
+        .ly-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
 
         /* hero */
-        .ly-hero { margin-top: 72px; padding: 84px 0 96px; position: relative; overflow: hidden;
-            background: radial-gradient(700px 420px at 92% 10%, var(--accent-wash), transparent 70%), var(--paper); }
-        .ly-hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
-        .ly-hero .hero-title { font-size: clamp(2.3rem, 4.6vw, 3.6rem); }
-        .ly-hero .hero-title em { font-style: normal; color: var(--accent); }
-        .ly-lead { font-size: 1.18rem; color: var(--ink-soft); line-height: 1.65; max-width: 34em; margin-bottom: 28px; }
-        .ly-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
-        .ly-ctas .btn { padding: 15px 26px; border-radius: 12px; font-weight: 700; font-size: 1rem; }
-        .ly-ticks { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 26px; list-style: none; color: var(--ink-soft); font-size: .95rem; }
-        .ly-ticks li { display: flex; align-items: center; gap: 8px; }
-        .ly-ticks svg { width: 18px; height: 18px; color: var(--success); }
-
-        /* hero visual: the customer's loyalty card + a WhatsApp gift */
-        .ly-visual { position: relative; display: flex; justify-content: flex-end; padding: 10px 40px 56px 0; }
-        .ly-phone { width: 300px; border-radius: 38px; padding: 12px; background: var(--ink); box-shadow: var(--shadow-deep); transform: rotate(-2deg); }
-        .ly-screen { border-radius: 28px; overflow: hidden; background: #fffcf5; }
-        .ly-screen-top { padding: 22px 20px 54px; background: linear-gradient(150deg, #c1440e, #e2712f); color: #fffcf5; }
-        .ly-screen-top small { display: block; font-size: .72rem; opacity: .85; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
-        .ly-screen-top b { display: block; margin-top: 2px; font-family: var(--font-display); font-size: 1.25rem; }
-        .ly-card { margin: -40px 14px 0; padding: 16px; border-radius: 18px; background: #fff; box-shadow: var(--shadow-card); }
-        .ly-card-row { display: flex; justify-content: space-between; align-items: baseline; }
-        .ly-card-row span { font-size: .75rem; color: var(--ink-faint); font-weight: 600; }
-        .ly-points { font-family: var(--font-mono); font-size: 2rem; font-weight: 700; color: var(--ink); letter-spacing: -.04em; }
-        .ly-tier { padding: 3px 9px; border-radius: 99px; background: #fdf3e7; color: #a8530e; font-size: .7rem; font-weight: 800; letter-spacing: .04em; }
-        .ly-bar { height: 8px; margin: 10px 0 6px; border-radius: 99px; background: var(--paper-deep); overflow: hidden; }
-        .ly-bar i { display: block; height: 100%; width: 72%; border-radius: inherit; background: linear-gradient(90deg, #c1440e, #e2712f); }
-        .ly-card p { font-size: .75rem; color: var(--ink-soft); }
-        .ly-stamps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 14px 14px 6px; }
-        .ly-stamps i { aspect-ratio: 1; border-radius: 50%; border: 2px dashed var(--line-strong); display: grid; place-items: center; font-style: normal; font-size: .7rem; color: var(--ink-faint); }
-        .ly-stamps i.on { border: 0; background: var(--accent); color: #fff; font-weight: 800; }
-        .ly-stamp-note { margin: 0 14px 14px; font-size: .72rem; color: var(--ink-faint); text-align: center; }
-        .ly-gift { margin: 4px 14px 16px; padding: 12px; border-radius: 14px; border: 1.5px dashed #e2712f; background: #fff7ef; display: flex; gap: 10px; align-items: center; }
-        .ly-gift svg { flex: none; width: 28px; height: 28px; color: var(--accent); }
-        .ly-gift b { display: block; font-size: .82rem; }
-        .ly-gift code { font-family: var(--font-mono); font-size: .78rem; color: var(--accent-dark); font-weight: 700; }
-        .ly-wa { position: absolute; z-index: 2; right: -6px; bottom: -34px; width: 250px; padding: 12px 14px; border-radius: 16px 16px 4px 16px; background: #dcf8c6; color: #1f2c1a; box-shadow: var(--shadow-lift); transform: rotate(2deg); font-size: .84rem; line-height: 1.45; }
-        .ly-wa b { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: .75rem; color: #128c3f; }
+        .ly-hero { margin-top: 72px; padding: 80px 0 90px; background: var(--ink); color: var(--paper); overflow: hidden; position: relative; }
+        .ly-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(800px 520px at 88% 30%, rgba(109, 59, 214, .35), transparent 60%), radial-gradient(600px 400px at 0% 100%, rgba(242, 181, 68, .16), transparent 60%); pointer-events: none; }
+        .ly-hero-grid { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+        .ly-hero h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(2.6rem, 5.6vw, 4.6rem); line-height: .98; letter-spacing: -.04em; color: var(--paper); }
+        .ly-hero h1 .u { color: var(--gold); position: relative; white-space: nowrap; }
+        .ly-hero h1 .u svg { position: absolute; left: 0; bottom: -.16em; width: 100%; height: .28em; color: var(--gold); }
+        .ly-lead { margin: 26px 0 32px; font-size: 1.2rem; line-height: 1.6; color: rgba(245, 239, 226, .78); max-width: 32em; }
+        .ly-where { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 36px; }
+        .ly-where span { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; background: rgba(245, 239, 226, .07); border: 1px solid rgba(245, 239, 226, .14); font-size: .88rem; color: rgba(245, 239, 226, .85); }
+        .ly-where b { color: var(--gold); }
+        .ly-stage { position: relative; height: 600px; }
+        .ly-phone { position: absolute; border-radius: 36px; padding: 9px; background: #000; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .9), 0 0 0 1px rgba(255, 255, 255, .1); }
+        .ly-phone img { display: block; width: 100%; height: auto; border-radius: 28px; }
+        .ly-phone.main { width: 260px; left: 50%; top: 0; transform: translateX(-60%) rotate(-3deg); z-index: 2; height: 560px; overflow: hidden; }
+        .ly-phone.main img { height: 100%; object-fit: cover; object-position: top left; }
+        .ly-phone.side { width: 210px; right: 0; top: 120px; transform: rotate(5deg); z-index: 1; }
+        .ly-wa { position: absolute; z-index: 3; left: -10px; bottom: 30px; width: 270px; padding: 12px 14px; border-radius: 16px 16px 16px 4px; background: #dcf8c6; color: #1f2c1a; box-shadow: 0 24px 40px -18px rgba(0, 0, 0, .7); transform: rotate(-2deg); font-size: .86rem; line-height: 1.45; }
+        .ly-wa b { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: .74rem; color: #128c3f; }
         .ly-wa time { display: block; margin-top: 4px; text-align: right; font-size: .68rem; color: #5b6b55; }
-        .ly-float b { font-family: var(--font-body) !important; font-size: .95rem !important; }
-        .ly-float { position: absolute; z-index: 2; left: 0; top: 120px; padding: 10px 14px; border-radius: 14px; background: var(--paper-raised); border: 1px solid var(--line); box-shadow: var(--shadow-card); font-size: .8rem; transform: rotate(-4deg); }
-        .ly-float b { display: block; font-family: var(--font-mono); font-size: 1.1rem; color: var(--success); }
+        .ly-note { position: absolute; z-index: 3; right: 20px; top: 640px; font-family: var(--hand); font-size: 1.5rem; color: var(--gold); transform: rotate(-3deg); }
 
         /* why */
-        .ly-why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .ly-why-card { padding: 28px; border-radius: 18px; background: rgba(245, 239, 226, .06); border: 1px solid rgba(245, 239, 226, .14); }
-        .ly-why-card .n { font-family: var(--font-mono); font-size: .8rem; color: #e2712f; font-weight: 700; }
-        .ly-why-card h3 { margin: 8px 0 8px; font-family: var(--font-display); font-size: 1.25rem; color: var(--paper); }
-        .ly-why-card p { color: rgba(245, 239, 226, .72); }
+        .ly-why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        .ly-why-card { padding: 30px; border-radius: 22px; background: var(--paper-raised); border: 1px solid var(--line); }
+        .ly-why-card .big { font-family: var(--font-display); font-weight: 900; font-size: 2.6rem; letter-spacing: -.03em; color: var(--accent); line-height: 1; }
+        .ly-why-card h3 { margin: 14px 0 8px; font-family: var(--font-display); font-size: 1.25rem; }
+        .ly-why-card p { color: var(--ink-soft); }
 
-        /* programs */
-        .ly-programs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .ly-prog { position: relative; padding: 30px 26px; border-radius: 20px; background: var(--paper-raised); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s; }
-        .ly-prog:hover { transform: translateY(-4px); box-shadow: var(--shadow-lift); }
-        .ly-prog .ico { width: 52px; height: 52px; margin-bottom: 18px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-wash); color: var(--accent); }
-        .ly-prog h3 { font-family: var(--font-display); font-size: 1.35rem; margin-bottom: 8px; }
-        .ly-prog p { color: var(--ink-soft); margin-bottom: 16px; }
-        .ly-eg { padding: 12px 14px; border-radius: 12px; background: var(--paper); border: 1px dashed var(--line-strong); font-family: var(--font-mono); font-size: .84rem; color: var(--ink); }
-        .ly-tiers { margin-top: 22px; padding: 22px 26px; border-radius: 20px; background: var(--paper-raised); border: 1px solid var(--line); display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
-        .ly-tiers h3 { font-family: var(--font-display); font-size: 1.15rem; }
-        .ly-tiers p { color: var(--ink-soft); flex: 1 1 320px; }
-        .ly-tier-row { display: flex; gap: 8px; flex-wrap: wrap; }
-        .ly-tier-row span { padding: 6px 12px; border-radius: 99px; font-size: .8rem; font-weight: 800; }
+        /* programs (switcher) */
+        .ly-prog-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+        .ly-tabs { display: inline-flex; gap: 6px; padding: 6px; border-radius: 14px; background: var(--paper-deep); margin-bottom: 26px; }
+        .ly-tabs button { padding: 11px 20px; border: 0; border-radius: 10px; background: transparent; font: inherit; font-weight: 700; font-size: .95rem; color: var(--ink-soft); cursor: pointer; }
+        .ly-tabs button.on { background: var(--paper-raised); color: var(--ink); box-shadow: var(--shadow-sm); }
+        .ly-prog-text h3 { font-family: var(--font-display); font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; margin-bottom: 10px; }
+        .ly-prog-text p { color: var(--ink-soft); font-size: 1.08rem; margin-bottom: 18px; }
+        .ly-eg { display: inline-block; padding: 12px 16px; border-radius: 12px; background: var(--paper); border: 1px dashed var(--line-strong); font-family: var(--font-mono); font-size: .9rem; }
+        .ly-best { margin-top: 14px; font-size: .9rem; color: var(--ink-faint); }
+        .ly-cardbox { display: grid; place-items: center; padding: 40px 20px; border-radius: 28px; background: radial-gradient(400px 300px at 70% 20%, rgba(109, 59, 214, .25), transparent 70%), var(--plum); }
+        .lc { width: 100%; max-width: 340px; padding: 22px; border-radius: 22px; color: #fff; background: linear-gradient(150deg, #3a2266, #1d1233); border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 30px 60px -24px rgba(0, 0, 0, .8); transition: transform .3s; }
+        .lc-top { display: flex; justify-content: space-between; align-items: center; font-size: .78rem; opacity: .8; }
+        .lc-tier { padding: 4px 10px; border-radius: 99px; background: var(--gold); color: #2a1846; font-weight: 800; font-size: .72rem; opacity: 1; }
+        .lc-big { margin: 14px 0 4px; font-family: var(--font-display); font-weight: 900; font-size: 2.8rem; letter-spacing: -.03em; line-height: 1; }
+        .lc-big small { font-size: 1rem; font-weight: 600; opacity: .7; letter-spacing: 0; }
+        .lc-worth { color: var(--gold); font-weight: 700; font-size: .92rem; }
+        .lc-bar { height: 8px; margin: 14px 0 6px; border-radius: 99px; background: rgba(255, 255, 255, .15); overflow: hidden; }
+        .lc-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f2b544, #ffd98a); transition: width .5s; }
+        .lc-foot { font-size: .8rem; opacity: .8; }
+        .lc-stamps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 16px 0 8px; }
+        .lc-stamps i { aspect-ratio: 1; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, .35); display: grid; place-items: center; font-style: normal; font-size: .9rem; }
+        .lc-stamps i.on { border: 0; background: var(--gold); color: #2a1846; font-weight: 800; }
 
         /* autopilot */
-        .ly-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
-        .ly-auto-item { display: flex; gap: 14px; padding: 20px; border-radius: 16px; background: var(--paper-raised); border: 1px solid var(--line); }
-        .ly-auto-item .ico { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--ink); color: var(--paper); }
-        .ly-auto-item h3 { font-family: var(--font-display); font-size: 1.05rem; margin-bottom: 4px; }
-        .ly-auto-item p { color: var(--ink-soft); font-size: .93rem; line-height: 1.5; }
-        .ly-auto-item .when { display: inline-block; margin-top: 8px; font-family: var(--font-mono); font-size: .74rem; color: var(--accent); font-weight: 600; }
+        .ly-auto-wrap { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: start; }
+        .ly-auto { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .ly-auto-item { padding: 18px; border-radius: 18px; background: rgba(245, 239, 226, .05); border: 1px solid rgba(245, 239, 226, .12); }
+        .ly-auto-item .e { font-size: 1.5rem; }
+        .ly-auto-item h3 { margin: 8px 0 4px; font-family: var(--font-display); font-size: 1.05rem; color: var(--paper); }
+        .ly-auto-item p { font-size: .9rem; color: rgba(245, 239, 226, .68); line-height: 1.45; }
+        .ly-auto-item .when { display: inline-block; margin-top: 10px; padding: 3px 9px; border-radius: 99px; background: rgba(242, 181, 68, .14); font-family: var(--font-mono); font-size: .7rem; color: var(--gold); font-weight: 600; }
+        .ly-chat { position: sticky; top: 100px; border-radius: 24px; background: #0b141a; overflow: hidden; border: 1px solid rgba(245, 239, 226, .12); }
+        .ly-chat-top { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: #1f2c33; color: #e9edef; }
+        .ly-chat-top .av { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; font-weight: 800; color: #fff; }
+        .ly-chat-top b { display: block; font-size: .95rem; }
+        .ly-chat-top small { font-size: .74rem; color: #8696a0; }
+        .ly-chat-body { padding: 18px; display: grid; gap: 10px; min-height: 360px; background: #0b141a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='3' cy='3' r='1.1' fill='%23182229'/%3E%3C/svg%3E"); }
+        .bub { max-width: 86%; padding: 9px 12px 6px; border-radius: 4px 12px 12px 12px; background: #202c33; color: #e9edef; font-size: .9rem; line-height: 1.45; }
+        .bub code { font-family: var(--font-mono); font-weight: 700; color: #ffd98a; }
+        .bub time { display: block; text-align: right; font-size: .66rem; color: #8696a0; margin-top: 2px; }
+        .bub.me { justify-self: end; background: #005c4b; border-radius: 12px 4px 12px 12px; }
+        .bub .tag { display: block; font-size: .7rem; font-weight: 700; color: #f2b544; margin-bottom: 2px; }
 
-        /* split rows */
-        .ly-split { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
-        .ly-split + .ly-split { margin-top: 88px; }
-        .ly-split h2 { font-family: var(--font-display); font-size: 2.1rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; margin-bottom: 14px; }
-        .ly-split > div > p { color: var(--ink-soft); font-size: 1.08rem; margin-bottom: 18px; }
-        .ly-list { list-style: none; display: grid; gap: 12px; }
-        .ly-list li { display: flex; gap: 12px; align-items: flex-start; }
-        .ly-list svg { flex: none; width: 22px; height: 22px; margin-top: 2px; color: var(--accent); }
+        /* simulator */
+        .ly-sim { display: grid; grid-template-columns: 340px 1fr; gap: 32px; align-items: start; }
+        .sim-phone { border-radius: 36px; padding: 10px; background: #000; box-shadow: var(--shadow-deep); }
+        .sim-screen { border-radius: 28px; overflow: hidden; background: #f6f3fb; min-height: 560px; }
+        .sim-head { padding: 18px 18px 60px; background: linear-gradient(150deg, #3a2266, #1d1233); color: #fff; }
+        .sim-head small { font-size: .74rem; opacity: .7; }
+        .sim-head b { display: block; font-family: var(--font-display); font-size: 1.2rem; }
+        .sim-card { margin: -46px 14px 0; padding: 16px; border-radius: 18px; background: #fff; box-shadow: 0 14px 30px -16px rgba(42, 24, 70, .5); }
+        .sim-card .row { display: flex; justify-content: space-between; align-items: center; font-size: .76rem; color: #7b7590; font-weight: 600; }
+        .sim-pts { font-family: var(--font-display); font-weight: 900; font-size: 2.3rem; letter-spacing: -.03em; color: #1d1233; transition: color .3s; }
+        .sim-tier { padding: 3px 10px; border-radius: 99px; font-size: .7rem; font-weight: 800; }
+        .t-silver { background: #ece9f3; color: #5b5470; } .t-gold { background: #fdf0d2; color: #8a5a00; } .t-plat { background: #1d1233; color: #fff; }
+        .sim-bar { height: 8px; margin: 10px 0 6px; border-radius: 99px; background: #eee9f6; overflow: hidden; }
+        .sim-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6d3bd6, #a77bff); transition: width .5s; }
+        .sim-next { font-size: .76rem; color: #6b6585; }
+        .sim-list { margin: 12px 14px; display: grid; gap: 8px; }
+        .sim-gift { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: #fff; border: 1.5px dashed #c9b6f2; font-size: .8rem; animation: popIn .4s ease; }
+        .sim-gift .e { font-size: 1.3rem; }
+        .sim-gift b { display: block; color: #1d1233; font-size: .84rem; }
+        .sim-gift code { font-family: var(--font-mono); font-size: .74rem; color: #6d3bd6; font-weight: 700; }
+        .sim-empty { margin: 14px; font-size: .8rem; color: #8a84a0; text-align: center; padding: 16px 10px; border-radius: 14px; background: #fff; }
+        @keyframes popIn { from { opacity: 0; transform: scale(.94) translateY(6px); } to { opacity: 1; transform: none; } }
+        .sim-ctrl h3 { font-family: var(--font-display); font-size: 1.3rem; margin-bottom: 6px; color: var(--paper); }
+        .sim-ctrl > p { color: rgba(245, 239, 226, .7); margin-bottom: 18px; }
+        .sim-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .sim-btns button { display: flex; gap: 12px; align-items: center; text-align: left; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(245, 239, 226, .16); background: rgba(245, 239, 226, .05); color: var(--paper); font: inherit; cursor: pointer; transition: border-color .2s, background .2s; }
+        .sim-btns button:hover { border-color: var(--gold); background: rgba(242, 181, 68, .08); }
+        .sim-btns .e { font-size: 1.5rem; }
+        .sim-btns b { display: block; font-size: .95rem; }
+        .sim-btns small { color: rgba(245, 239, 226, .6); font-size: .8rem; }
+        .sim-log { margin-top: 18px; padding: 14px 18px; border-radius: 16px; background: rgba(245, 239, 226, .05); border: 1px solid rgba(245, 239, 226, .12); min-height: 120px; font-size: .9rem; }
+        .sim-log .t { font-family: var(--font-mono); font-size: .7rem; color: var(--gold); letter-spacing: .08em; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
+        .sim-log div.e { padding: 5px 0; border-bottom: 1px solid rgba(245, 239, 226, .08); color: rgba(245, 239, 226, .85); animation: popIn .3s ease; }
+        .sim-log div.e:last-child { border-bottom: 0; }
+        .sim-reset { margin-top: 12px; background: none; border: 0; color: rgba(245, 239, 226, .6); font: inherit; font-size: .88rem; cursor: pointer; text-decoration: underline; }
+        .flash { animation: fl 1s ease; }
+        @keyframes fl { 0%, 40% { color: #6d3bd6; transform: scale(1.06); } 100% { transform: none; } }
+
+        /* games */
+        .ly-games { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; align-items: end; }
+        .ly-game { text-align: center; }
+        .ly-game .dev { margin: 0 auto 20px; width: 240px; border-radius: 30px; padding: 8px; background: #000; box-shadow: var(--shadow-deep); }
+        .ly-game .dev img { display: block; width: 100%; height: auto; border-radius: 23px; }
+        .ly-game h3 { font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 6px; }
+        .ly-game p { color: var(--ink-soft); font-size: .96rem; max-width: 22em; margin: 0 auto; }
+        .ly-budget { margin-top: 36px; display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 18px 22px; border-radius: 18px; background: var(--paper-raised); border: 1px solid var(--line); text-align: center; color: var(--ink-soft); }
+        .ly-budget b { color: var(--ink); }
+
+        /* counter */
+        .ly-split { display: grid; grid-template-columns: 1fr 1.2fr; gap: 56px; align-items: center; }
+        .ly-split h2 { margin-bottom: 14px; }
+        .ly-list { list-style: none; display: grid; gap: 12px; margin-top: 22px; }
+        .ly-list li { display: flex; gap: 12px; align-items: flex-start; color: var(--ink-soft); }
+        .ly-list svg { flex: none; width: 22px; height: 22px; margin-top: 1px; color: var(--success); }
         .ly-list b { color: var(--ink); }
-        .ly-list span { color: var(--ink-soft); }
-        .ly-panel { padding: 26px; border-radius: 22px; background: var(--paper-raised); border: 1px solid var(--line); box-shadow: var(--shadow-card); }
-
-        /* games panel */
-        .ly-scratch { position: relative; height: 150px; border-radius: 16px; overflow: hidden; display: grid; place-items: center; text-align: center; background: #fff7ef; border: 1px solid #f3c9a4; }
-        .ly-scratch b { font-family: var(--font-display); font-size: 1.6rem; color: var(--accent); }
-        .ly-scratch small { display: block; color: var(--ink-soft); }
-        .ly-scratch::after { content: 'Scratch'; position: absolute; inset: 0 0 0 64%; display: grid; place-items: center; background: repeating-linear-gradient(135deg, #b9b2a5 0 8px, #c9c2b5 8px 16px); color: #fff; font-weight: 800; letter-spacing: .04em; clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%); }
-        .ly-challenge { margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line-soft); }
-        .ly-challenge + .ly-challenge { margin-top: 10px; }
-        .ly-challenge-top { display: flex; justify-content: space-between; font-size: .88rem; font-weight: 700; }
-        .ly-challenge-top span { font-family: var(--font-mono); color: var(--ink-faint); font-weight: 600; }
-        .ly-challenge .ly-bar { margin: 8px 0 0; }
-
-        /* whatsapp panel */
-        .ly-chat { padding: 18px; border-radius: 22px; background: #ece5dd; border: 1px solid var(--line); box-shadow: var(--shadow-card); display: grid; gap: 10px; }
-        .ly-bubble { max-width: 88%; padding: 10px 12px; border-radius: 12px 12px 12px 4px; background: #fff; font-size: .9rem; line-height: 1.45; box-shadow: 0 1px 0 rgba(0,0,0,.06); }
-        .ly-bubble b { display: block; margin-bottom: 2px; font-size: .72rem; color: #128c3f; letter-spacing: .02em; }
-        .ly-bubble time { display: block; margin-top: 3px; text-align: right; font-size: .68rem; color: #8a8a8a; }
-        .ly-bubble.me { justify-self: end; border-radius: 12px 12px 4px 12px; background: #dcf8c6; }
-
-        /* counter panel */
-        .ly-pos { font-size: .92rem; }
-        .ly-pos-head { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px dashed var(--line-strong); }
-        .ly-pos-head .av { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-wash); color: var(--accent); font-weight: 800; }
-        .ly-pos-head b { display: block; }
-        .ly-pos-head small { color: var(--ink-faint); font-family: var(--font-mono); }
-        .ly-pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .ly-pos-grid div { padding: 12px; border-radius: 12px; background: var(--paper); text-align: center; }
-        .ly-pos-grid span { display: block; font-size: .72rem; color: var(--ink-faint); font-weight: 600; }
-        .ly-pos-grid b { font-family: var(--font-mono); font-size: 1.2rem; }
-        .ly-pos-gift { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: #fff7ef; border: 1px dashed #e2712f; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .ly-pos-gift button { padding: 7px 12px; border: 0; border-radius: 9px; background: var(--accent); color: #fff; font-weight: 700; font: inherit; font-size: .82rem; }
+        .ly-win { position: relative; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: var(--shadow-deep); border: 1px solid var(--line); }
+        .ly-win img { display: block; width: 100%; height: auto; }
+        .ly-win-bar { display: flex; gap: 6px; padding: 10px 14px; background: #ece7de; }
+        .ly-win-bar i { width: 10px; height: 10px; border-radius: 50%; background: #d3c9b9; }
+        .ly-callout { position: absolute; right: 16px; top: 46%; padding: 8px 12px; border-radius: 12px; background: var(--ink); color: var(--paper); font-family: var(--hand); font-size: 1.3rem; box-shadow: var(--shadow-card); transform: rotate(-3deg); }
 
         /* results */
         .ly-results { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        .ly-result { padding: 24px; border-radius: 18px; background: var(--paper-raised); border: 1px solid var(--line); }
-        .ly-result .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 14px; background: var(--success-wash); color: var(--success); }
-        .ly-result h3 { font-family: var(--font-display); font-size: 1.05rem; margin-bottom: 6px; }
+        .ly-result { padding: 24px; border-radius: 20px; background: var(--paper); border: 1px solid var(--line); }
+        .ly-result .e { font-size: 1.6rem; }
+        .ly-result h3 { margin: 10px 0 6px; font-family: var(--font-display); font-size: 1.08rem; }
         .ly-result p { color: var(--ink-soft); font-size: .93rem; line-height: 1.5; }
-        .ly-soon { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 99px; background: var(--paper-deep); color: var(--ink-soft); font-size: .68rem; font-weight: 800; vertical-align: middle; letter-spacing: .03em; }
+        .ly-soon { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 99px; background: var(--paper-deep); color: var(--ink-soft); font-size: .66rem; font-weight: 800; vertical-align: middle; letter-spacing: .03em; }
 
         /* steps */
-        .ly-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: st; }
-        .ly-step { position: relative; padding: 30px 26px 26px; border-radius: 20px; background: var(--paper-raised); border: 1px solid var(--line); }
-        .ly-step::before { counter-increment: st; content: counter(st, decimal-leading-zero); font-family: var(--font-mono); font-size: 2.2rem; font-weight: 700; color: var(--accent); opacity: .9; }
+        .ly-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: st; }
+        .ly-step { padding: 30px 26px 26px; border-radius: 22px; background: var(--paper-raised); border: 1px solid var(--line); }
+        .ly-step::before { counter-increment: st; content: counter(st, decimal-leading-zero); font-family: var(--font-mono); font-size: 2.2rem; font-weight: 700; color: var(--accent); }
         .ly-step h3 { margin: 8px 0 6px; font-family: var(--font-display); font-size: 1.2rem; }
         .ly-step p { color: var(--ink-soft); }
 
         /* faq */
-        .ly-faq { max-width: 820px; margin: 0 auto; display: grid; gap: 12px; }
+        .ly-faq-wrap { display: grid; grid-template-columns: .8fr 1.2fr; gap: 56px; }
+        .ly-faq { display: grid; gap: 10px; }
         .ly-faq details { padding: 18px 22px; border-radius: 16px; background: var(--paper-raised); border: 1px solid var(--line); }
-        .ly-faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; }
+        .ly-faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; font-family: var(--font-display); font-weight: 700; font-size: 1.04rem; }
         .ly-faq summary::-webkit-details-marker { display: none; }
         .ly-faq summary::after { content: '+'; font-family: var(--font-mono); font-size: 1.3rem; line-height: 1; color: var(--accent); transition: transform .2s; }
         .ly-faq details[open] summary::after { transform: rotate(45deg); }
         .ly-faq details p { margin-top: 10px; color: var(--ink-soft); }
 
-        /* final cta */
-        .ly-cta { margin: 0 20px 96px; }
-        .ly-cta-box { max-width: 1160px; margin: 0 auto; padding: 64px 40px; border-radius: 28px; text-align: center; color: var(--paper); background: radial-gradient(600px 300px at 85% 0%, rgba(226, 113, 47, .45), transparent 70%), var(--ink); }
-        .ly-cta-box h2 { font-family: var(--font-display); font-size: clamp(1.8rem, 3.4vw, 2.6rem); font-weight: 800; letter-spacing: -.02em; margin-bottom: 12px; }
-        .ly-cta-box p { color: rgba(245, 239, 226, .75); font-size: 1.1rem; margin-bottom: 26px; }
-        .ly-cta-box .btn-secondary { background: transparent; color: var(--paper); border-color: rgba(245, 239, 226, .35); }
-        .ly-cta-box .ly-ctas { justify-content: center; }
+        /* final */
+        .ly-final { margin: 0 20px 96px; border-radius: 32px; padding: 88px 48px; text-align: center; color: var(--paper); background: radial-gradient(700px 360px at 85% 0%, rgba(109, 59, 214, .45), transparent 70%), radial-gradient(600px 300px at 0% 100%, rgba(242, 181, 68, .25), transparent 70%), var(--ink); }
+        .ly-final h2 { font-family: var(--font-display); font-weight: 900; font-size: clamp(2.2rem, 4.6vw, 3.6rem); line-height: 1.02; letter-spacing: -.03em; max-width: 14em; margin: 0 auto; }
+        .ly-final p { margin: 18px auto 30px; font-size: 1.15rem; color: rgba(245, 239, 226, .78); max-width: 34em; }
+        .ly-final .ly-ctas { justify-content: center; }
 
-        .ly-reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+        .ly-sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: none; gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(36, 29, 22, .96); backdrop-filter: blur(8px); transform: translateY(110%); transition: transform .3s; }
+        .ly-sticky.show { transform: none; }
+        .ly-sticky a { flex: 1; justify-content: center; padding: 13px 10px; font-size: .92rem; }
+
+        .footer-social{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}.footer-social a{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);color:inherit;opacity:.85;transition:background .2s,opacity .2s,transform .2s}.footer-social a:hover{background:#ff6b35;color:#fff;opacity:1;transform:translateY(-2px)}.footer-social svg{width:18px;height:18px;fill:currentColor}@media(max-width:768px){.footer-social{justify-content:center}}
+
+        .ly-reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
         .ly-reveal.in { opacity: 1; transform: none; }
-        @media (prefers-reduced-motion: reduce) { .ly-reveal { opacity: 1; transform: none; transition: none; } .ly-prog, .ly-prog:hover { transition: none; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .ly-reveal { opacity: 1; transform: none; transition: none; } .sim-gift, .sim-log div.e, .flash { animation: none; } }
 
-        @media (max-width: 980px) {
-            .ly-hero-grid, .ly-split { grid-template-columns: 1fr; gap: 40px; }
-            .ly-split .ly-visual-first { order: -1; }
-            .ly-visual { justify-content: center; padding-right: 0; }
-            .ly-float { left: 4%; }
-            .ly-why, .ly-programs, .ly-steps { grid-template-columns: 1fr; }
+        @media (max-width: 1100px) {
+            .ly-hero-grid { grid-template-columns: 1fr; }
+            .ly-stage { max-width: 560px; width: 100%; margin: 0 auto; }
+            .ly-sim { grid-template-columns: 1fr; }
+            .ly-sim .sim-phone { max-width: 340px; margin: 0 auto; width: 100%; }
             .ly-results { grid-template-columns: repeat(2, 1fr); }
         }
-        @media (max-width: 560px) {
-            .ly-section { padding: 68px 0; }
-            .ly-hero { padding: 56px 0 72px; }
+        @media (max-width: 900px) {
+            .ly-prog-wrap, .ly-auto-wrap, .ly-split, .ly-faq-wrap { grid-template-columns: 1fr; gap: 40px; }
+            .ly-why, .ly-steps { grid-template-columns: 1fr; }
+            .ly-games { grid-template-columns: 1fr; gap: 48px; }
+            .ly-chat { position: static; }
+        }
+        @media (max-width: 640px) {
+            .ly-section { padding: 72px 0; }
+            .ly-hero { padding: 48px 0 64px; }
+            .ly-stage { height: 470px; }
+            .ly-phone.main { width: 200px; height: 430px; left: 4%; transform: rotate(-3deg); border-radius: 28px; padding: 7px; }
+            .ly-phone.main img { border-radius: 22px; }
+            .ly-phone.side { width: 150px; top: 90px; border-radius: 24px; padding: 6px; }
+            .ly-phone.side img { border-radius: 19px; }
+            .ly-wa { left: 0; bottom: 0; width: 240px; font-size: .8rem; }
+            .ly-note { display: none; }
+            .ly-tabs { display: flex; }
+            .ly-tabs button { flex: 1; padding: 10px 8px; }
+            .ly-auto { grid-template-columns: 1fr; }
+            .sim-btns { grid-template-columns: 1fr; }
             .ly-results { grid-template-columns: 1fr; }
-            .ly-phone { width: 270px; }
-            .ly-wa { position: relative; right: auto; bottom: auto; width: auto; margin-top: -10px; transform: none; }
-            .ly-visual { flex-direction: column; align-items: center; }
-            .ly-float { display: none; }
-            .ly-split h2 { font-size: 1.7rem; }
-            .ly-cta-box { padding: 44px 22px; }
-            .ly-cta { margin: 0 12px 68px; }
+            .ly-final { margin: 0 12px 80px; padding: 56px 22px; }
+            .ly-sticky { display: flex; }
+            .footer { padding-bottom: 90px; }
         }
     </style>
 <script src="/assets/rg-analytics.js" async></script>
 </head>
 <body>
-    <!-- icons used on this page -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
         <symbol id="l-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
-        <symbol id="l-star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
-        <symbol id="l-wallet" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.2"/></symbol>
-        <symbol id="l-stamp" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.3 2.3 4.7-5"/></symbol>
-        <symbol id="l-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
-        <symbol id="l-hand" viewBox="0 0 24 24"><path d="M7 11V6a2 2 0 0 1 4 0v5"/><path d="M11 10V4a2 2 0 0 1 4 0v6"/><path d="M15 10V6a2 2 0 0 1 4 0v7a8 8 0 0 1-8 8h-1a6 6 0 0 1-5.2-3l-2.3-4a1.8 1.8 0 0 1 3-2L7 14"/></symbol>
-        <symbol id="l-repeat" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></symbol>
-        <symbol id="l-up" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></symbol>
-        <symbol id="l-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></symbol>
-        <symbol id="l-cake" viewBox="0 0 24 24"><path d="M4 21V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9"/><path d="M4 15c2 1.5 4 1.5 6 0s4-1.5 6 0 3 1 4 0"/><path d="M2 21h20M12 10V7"/><path d="M12 7a1.5 1.5 0 0 0 1.5-1.5C13.5 4 12 3 12 3s-1.5 1-1.5 2.5A1.5 1.5 0 0 0 12 7z"/></symbol>
-        <symbol id="l-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></symbol>
-        <symbol id="l-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+        <symbol id="l-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
         <symbol id="l-chat" viewBox="0 0 24 24"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></symbol>
-        <symbol id="l-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></symbol>
-        <symbol id="l-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
-        <symbol id="l-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></symbol>
-        <symbol id="l-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+        <symbol id="l-play" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></symbol>
+        <symbol id="s-in" viewBox="0 0 24 24"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.84-2.05 3.79-2.05C20.6 8.65 21 11.2 21 14.5V21h-4v-5.8c0-1.4-.03-3.2-1.95-3.2-1.95 0-2.25 1.52-2.25 3.1V21H9z"/></symbol>
+        <symbol id="s-ig" viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92C2.21 15.58 2.2 15.2 2.2 12s.01-3.58.07-4.85C2.42 3.92 3.94 2.37 7.15 2.27 8.42 2.21 8.8 2.2 12 2.2zm0 4.86a4.94 4.94 0 1 0 0 9.88 4.94 4.94 0 0 0 0-9.88zm0 8.15a3.21 3.21 0 1 1 0-6.42 3.21 3.21 0 0 1 0 6.42zm5.14-9.5a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3z"/></symbol>
+        <symbol id="s-x" viewBox="0 0 24 24"><path d="M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.2L2 3h6.33l4.37 5.78zm-1.08 16.18h1.7L7.4 4.74H5.58z"/></symbol>
+        <symbol id="s-yt" viewBox="0 0 24 24"><path d="M23 7.2a3 3 0 0 0-2.1-2.12C19.04 4.6 12 4.6 12 4.6s-7.04 0-8.9.48A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.12c1.86.48 8.9.48 8.9.48s7.04 0 8.9-.48A3 3 0 0 0 23 16.8a31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8zM9.75 15.02V8.98L15.5 12z"/></symbol>
     </svg>
 
     <nav class="navbar">
@@ -255,10 +297,10 @@
             <ul class="nav-menu">
                 <li><a href="../index.html#features">Features</a></li>
                 <li><a href="../loyalty/" style="color: var(--accent); font-weight: 700;">Loyalty</a></li>
+                <li><a href="../meal-plans/">Meal Plans</a></li>
                 <li><a href="../index.html#pricing">Pricing</a></li>
                 <li><a href="../about/">About</a></li>
                 <li><a href="../blog/">Blog</a></li>
-                <li><a href="../faq/">FAQ</a></li>
                 <li><a href="../index.html#contact">Contact</a></li>
                 <li><a href="../main/admin/login.php" class="btn-nav">Login</a></li>
             </ul>
@@ -268,232 +310,221 @@
         </div>
     </nav>
 
-    <!-- Hero -->
-    <section class="ly-hero">
+    <!-- ═══ Hero ═══ -->
+    <header class="ly-hero">
         <div class="container ly-hero-grid">
             <div>
                 <p class="ly-kicker">Loyalty &amp; Growth</p>
-                <h1 class="hero-title">Turn first-time diners into <em>regulars.</em></h1>
-                <p class="ly-lead">Points, gifts and WhatsApp messages that bring your customers back — and run on their own. One loyalty program for your counter, your tables and your website.</p>
+                <h1>Turn first-time diners into <span class="u">regulars.<svg viewBox="0 0 200 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 9C50 3 120 2 198 7" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></span></h1>
+                <p class="ly-lead">Points, gifts and WhatsApp messages that bring your customers back, and run on their own. One loyalty program for your counter, your tables and your website.</p>
                 <div class="ly-ctas">
-                    <a href="../main/admin/login.php?tab=signup" class="btn btn-primary">Start <span data-trial-days>7</span>-day free trial</a>
-                    <a href="#what-you-get" class="btn btn-secondary">See what you get</a>
+                    <a href="../main/admin/login.php?tab=signup" class="ly-btn primary"><span>Start <span data-trial-days>7</span>-day free trial</span> <svg class="ly-ico"><use href="#l-arrow"/></svg></a>
+                    <a href="#try-it" class="ly-btn ghost"><svg class="ly-ico" style="fill:currentColor;stroke:none"><use href="#l-play"/></svg> Try it live</a>
                 </div>
-                <ul class="ly-ticks">
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg>No app for customers to download</li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg>Works with orders you already take</li>
-                    <li><svg class="ly-ico"><use href="#l-check"/></svg>Customer numbers stay yours</li>
-                </ul>
+                <div class="ly-where">
+                    <span><b>✓</b> No app to download</span>
+                    <span><b>✓</b> Counter, table QR &amp; website</span>
+                    <span><b>✓</b> Customer numbers stay yours</span>
+                </div>
             </div>
-
-            <div class="ly-visual" aria-label="Example: a customer's loyalty card and a WhatsApp gift">
-                <div class="ly-float">Birthday gift<b>Sent automatically ✓</b></div>
-                <div class="ly-phone">
-                    <div class="ly-screen">
-                        <div class="ly-screen-top"><small>Your restaurant</small><b>Hi Priya 👋</b></div>
-                        <div class="ly-card">
-                            <div class="ly-card-row"><span>Your points</span><span class="ly-tier">GOLD</span></div>
-                            <div class="ly-points">1,240</div>
-                            <div class="ly-bar"><i></i></div>
-                            <p>260 more points for a free dessert</p>
-                        </div>
-                        <div class="ly-stamps" aria-label="Stamp card: 3 of 5">
-                            <i class="on">1</i><i class="on">2</i><i class="on">3</i><i>4</i><i>5</i>
-                        </div>
-                        <p class="ly-stamp-note">2 more visits — your 5th coffee is on us</p>
-                        <div class="ly-gift">
-                            <svg class="ly-ico"><use href="#l-gift"/></svg>
-                            <div><b>Birthday gift: ₹150 off</b><code>BDAY-PRIYA</code></div>
-                        </div>
-                    </div>
-                </div>
+            <div class="ly-stage" aria-label="Real Restro Grow screens: a customer's rewards page and the spin-the-wheel game, with a WhatsApp gift message">
+                <span class="ly-note">↑ a prize after every order</span>
+                <div class="ly-phone main"><img src="img/c_member.webp" width="420" height="1100" alt="Real rewards page: 340 points worth ₹170, Gold level, progress to Platinum and free dishes to redeem" fetchpriority="high"></div>
+                <div class="ly-phone side"><img src="img/c_wheel.webp" width="400" height="707" alt="Real spin-the-wheel game after an order, showing ₹50 off won" loading="lazy"></div>
                 <div class="ly-wa">
-                    <b><svg class="ly-ico" style="width:14px;height:14px"><use href="#l-chat"/></svg>WhatsApp</b>
+                    <b><svg class="ly-ico" style="width:14px;height:14px"><use href="#l-chat"/></svg>WhatsApp · Your restaurant</b>
                     Happy birthday Priya! 🎂 Here's ₹150 off your next order. Code <strong>BDAY-PRIYA</strong>, valid 7 days.
                     <time>9:00 am</time>
                 </div>
             </div>
         </div>
-    </section>
+    </header>
 
-    <!-- Why -->
-    <section class="ly-section ink">
+    <!-- ═══ Why ═══ -->
+    <section class="ly-section">
         <div class="container">
             <div class="ly-head">
                 <p class="ly-kicker">Why loyalty</p>
-                <h2 class="section-title">Your best marketing is the customer who already came.</h2>
-                <p class="section-subtitle">Winning a new customer costs ads and commissions. Bringing back someone who already liked your food costs a small gift.</p>
+                <h2 class="ly-h2">Your best marketing is <em>the customer who already came.</em></h2>
+                <p class="ly-sub">Winning a new customer costs ads and commissions. Bringing back someone who already liked your food costs a small gift.</p>
             </div>
             <div class="ly-why">
-                <div class="ly-why-card ly-reveal"><span class="n">01</span><h3>Delivery apps keep the customer</h3><p>On aggregators the customer's number belongs to the app. With Restro Grow every order with a phone number builds your own customer list.</p></div>
-                <div class="ly-why-card ly-reveal"><span class="n">02</span><h3>Most first visits are also the last</h3><p>A customer who isn't reminded forgets you. A gift on their birthday, or after a few quiet weeks, gives them a reason to return.</p></div>
-                <div class="ly-why-card ly-reveal"><span class="n">03</span><h3>You don't have time to run it</h3><p>No cards to print, no Excel, no messages to send by hand. You set the rules once — the gifts go out on their own.</p></div>
+                <div class="ly-why-card ly-reveal"><span class="big">📵</span><h3>Delivery apps keep the customer</h3><p>On aggregators the customer's number belongs to the app. With Restro Grow every order with a phone number builds your own customer list.</p></div>
+                <div class="ly-why-card ly-reveal"><span class="big">👋</span><h3>Most first visits are the last</h3><p>A customer who isn't reminded forgets you. A gift on their birthday, or after a few quiet weeks, gives them a reason to return.</p></div>
+                <div class="ly-why-card ly-reveal"><span class="big">⏱️</span><h3>You don't have time to run it</h3><p>No cards to print, no Excel, no messages to send by hand. Set the rules once and the gifts go out on their own.</p></div>
             </div>
         </div>
     </section>
 
-    <!-- Programs -->
-    <section class="ly-section" id="what-you-get">
-        <div class="container">
-            <div class="ly-head">
+    <!-- ═══ Programs ═══ -->
+    <section class="ly-section raised" id="what-you-get">
+        <div class="container ly-prog-wrap">
+            <div class="ly-prog-text">
                 <p class="ly-kicker">Pick your program</p>
-                <h2 class="section-title">Three ways for customers to earn</h2>
-                <p class="section-subtitle">Choose the one that fits your place. Switch any time from your dashboard.</p>
+                <h2 class="ly-h2" style="margin-bottom:26px">Three ways to earn. <em>Switch any time.</em></h2>
+                <div class="ly-tabs" role="tablist">
+                    <button type="button" class="on" data-prog="points">Points</button>
+                    <button type="button" data-prog="cashback">Cashback</button>
+                    <button type="button" data-prog="stamps">Stamp card</button>
+                </div>
+                <div id="progText"></div>
+                <p class="ly-best">VIP levels (Silver, Gold, Platinum) sit on top of any program, so regulars earn faster.</p>
             </div>
-            <div class="ly-programs">
-                <div class="ly-prog ly-reveal">
-                    <div class="ico"><svg class="ly-ico"><use href="#l-star"/></svg></div>
-                    <h3>Points</h3>
-                    <p>Customers earn points on every rupee and spend them on a discount or a free dish you choose.</p>
-                    <div class="ly-eg">₹100 spent = 10 points<br>500 points = free dessert</div>
-                </div>
-                <div class="ly-prog ly-reveal">
-                    <div class="ico"><svg class="ly-ico"><use href="#l-wallet"/></svg></div>
-                    <h3>Cashback</h3>
-                    <p>A share of every completed order goes back into the customer's wallet, to use on their next visit.</p>
-                    <div class="ly-eg">5% back on every order<br>₹42 in wallet → next bill</div>
-                </div>
-                <div class="ly-prog ly-reveal">
-                    <div class="ico"><svg class="ly-ico"><use href="#l-stamp"/></svg></div>
-                    <h3>Stamp card</h3>
-                    <p>One stamp per order. A full card gives a reward. Perfect for cafés, bakeries and quick bites.</p>
-                    <div class="ly-eg">Buy 5 coffees<br>the 6th is free</div>
-                </div>
-            </div>
-            <div class="ly-tiers ly-reveal">
-                <h3>VIP levels on top</h3>
-                <p>Regulars move up levels as they spend, and each level can earn faster. Your best customers feel noticed — because they are.</p>
-                <div class="ly-tier-row">
-                    <span style="background:#f1ece3;color:#6b5d4b">Silver</span>
-                    <span style="background:#fdf3e7;color:#a8530e">Gold</span>
-                    <span style="background:#241d16;color:#f5efe2">Platinum</span>
-                </div>
-            </div>
+            <div class="ly-cardbox"><div class="lc" id="progCard"></div></div>
         </div>
     </section>
 
-    <!-- Autopilot -->
-    <section class="ly-section raised">
+    <!-- ═══ Simulator ═══ -->
+    <section class="ly-section ink" id="try-it">
         <div class="container">
             <div class="ly-head">
-                <p class="ly-kicker">Autopilot</p>
-                <h2 class="section-title">Gifts that send themselves</h2>
-                <p class="section-subtitle">Turn on the moments you want. Each customer gets their own one-time gift code — at the right time, without you lifting a finger.</p>
+                <p class="ly-kicker">Try it yourself</p>
+                <h2 class="ly-h2">Be the customer. <em>Watch them come back.</em></h2>
+                <p class="ly-sub">Tap the buttons to place orders as Priya. Points add up, she levels up, and gifts land on her WhatsApp, all on their own.</p>
             </div>
-            <div class="ly-auto">
-                <div class="ly-auto-item ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-hand"/></svg></div><div><h3>Welcome gift</h3><p>A thank-you after the first order, so the second one comes sooner.</p><span class="when">After order #1</span></div></div>
-                <div class="ly-auto-item ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-repeat"/></svg></div><div><h3>Every few orders</h3><p>A reward on every 5th (or 10th) order — your choice.</p><span class="when">Every Nth order</span></div></div>
-                <div class="ly-auto-item ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-up"/></svg></div><div><h3>Level up</h3><p>A gift when a customer reaches Gold or Platinum.</p><span class="when">New VIP level</span></div></div>
-                <div class="ly-auto-item ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-users"/></svg></div><div><h3>Refer a friend</h3><p>When a friend places their first order, both of them get a gift.</p><span class="when">Friend's first order</span></div></div>
-                <div class="ly-auto-item ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-cake"/></svg></div><div><h3>Birthday</h3><p>A treat a few days before their birthday, while they're planning.</p><span class="when">Days before birthday</span></div></div>
-                <div class="ly-auto-item ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-heart"/></svg></div><div><h3>Anniversary</h3><p>Couples remember where they celebrated. Remind them.</p><span class="when">Days before anniversary</span></div></div>
-                <div class="ly-auto-item ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-clock"/></svg></div><div><h3>We miss you</h3><p>A customer who hasn't ordered for a while gets a reason to come back.</p><span class="when">No order for N days</span></div></div>
+            <div class="ly-sim">
+                <div class="sim-phone"><div class="sim-screen">
+                    <div class="sim-head"><small>Spice Garden · Rewards</small><b>Hi Priya 👋</b></div>
+                    <div class="sim-card">
+                        <div class="row"><span>Your points</span><span class="sim-tier t-silver" id="simTier">SILVER</span></div>
+                        <div class="sim-pts" id="simPts">0</div>
+                        <div class="row" style="justify-content:flex-start;gap:6px"><span id="simWorth">Worth ₹0</span></div>
+                        <div class="sim-bar"><i id="simBar" style="width:0%"></i></div>
+                        <div class="sim-next" id="simNext">Spend ₹3,000 to reach Gold</div>
+                    </div>
+                    <div class="sim-list" id="simGifts"><div class="sim-empty">No gifts yet. Place an order →</div></div>
+                </div></div>
+                <div class="sim-ctrl">
+                    <h3>What happens next?</h3>
+                    <p>Every order earns 10 points per ₹100. Gold at ₹3,000 spent, Platinum at ₹8,000. A gift on her 1st and every 5th order.</p>
+                    <div class="sim-btns">
+                        <button type="button" data-sim="counter"><span class="e">🧾</span><span><b>Bill at the counter</b><small>₹450 paid at the POS</small></span></button>
+                        <button type="button" data-sim="web"><span class="e">🛵</span><span><b>Order on your website</b><small>₹780 delivery order</small></span></button>
+                        <button type="button" data-sim="table"><span class="e">📱</span><span><b>Table QR order</b><small>₹1,200 family dinner</small></span></button>
+                        <button type="button" data-sim="quiet"><span class="e">💤</span><span><b>30 quiet days</b><small>She hasn't ordered in a while</small></span></button>
+                        <button type="button" data-sim="bday"><span class="e">🎂</span><span><b>Birthday next week</b><small>She shared it at checkout</small></span></button>
+                        <button type="button" data-sim="redeem"><span class="e">🍮</span><span><b>Redeem 200 points</b><small>For a free dessert</small></span></button>
+                    </div>
+                    <div class="sim-log" aria-live="polite"><div class="t">What just happened</div><div id="simLog"><div class="e">Tap an order to start.</div></div></div>
+                    <button type="button" class="sim-reset" id="simReset">↺ Start again</button>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Games / WhatsApp / Counter -->
+    <!-- ═══ Autopilot ═══ -->
+    <section class="ly-section ink" style="padding-top:0">
+        <div class="container ly-auto-wrap">
+            <div>
+                <p class="ly-kicker">Autopilot</p>
+                <h2 class="ly-h2" style="margin-bottom:14px">Gifts that <em>send themselves.</em></h2>
+                <p class="ly-sub" style="margin-bottom:30px">Turn on the moments you want. Each customer gets their own one-time gift code at the right time, without you lifting a finger.</p>
+                <div class="ly-auto">
+                    <div class="ly-auto-item ly-reveal"><span class="e">🤝</span><h3>Welcome gift</h3><p>A thank-you after the first order, so the second comes sooner.</p><span class="when">After order #1</span></div>
+                    <div class="ly-auto-item ly-reveal"><span class="e">🏆</span><h3>Every few orders</h3><p>A reward on every 5th (or 10th) order, your choice.</p><span class="when">Every Nth order</span></div>
+                    <div class="ly-auto-item ly-reveal"><span class="e">⭐</span><h3>Level up</h3><p>A gift when a customer reaches Gold or Platinum.</p><span class="when">New VIP level</span></div>
+                    <div class="ly-auto-item ly-reveal"><span class="e">👯</span><h3>Refer a friend</h3><p>When a friend places their first order, both get a gift.</p><span class="when">Friend's first order</span></div>
+                    <div class="ly-auto-item ly-reveal"><span class="e">🎂</span><h3>Birthday</h3><p>A treat a few days before, while they're planning.</p><span class="when">Days before birthday</span></div>
+                    <div class="ly-auto-item ly-reveal"><span class="e">💞</span><h3>Anniversary</h3><p>Couples remember where they celebrated. Remind them.</p><span class="when">Days before anniversary</span></div>
+                    <div class="ly-auto-item ly-reveal"><span class="e">💌</span><h3>We miss you</h3><p>A customer who's gone quiet gets a reason to return.</p><span class="when">No order for N days</span></div>
+                    <div class="ly-auto-item ly-reveal"><span class="e">📣</span><h3>Campaigns</h3><p>A festival offer or new-menu message to the customers you pick.</p><span class="when">Whenever you like</span></div>
+                </div>
+            </div>
+            <div class="ly-chat ly-reveal" aria-label="Example WhatsApp messages sent automatically">
+                <div class="ly-chat-top"><span class="av">SG</span><div><b>Spice Garden</b><small>Business account</small></div></div>
+                <div class="ly-chat-body">
+                    <div class="bub"><span class="tag">Welcome gift</span>Thanks for your first order, Rahul! 🙏 Here's ₹50 off the next one. Code <code>WELCOME-RAH</code><time>Mon 8:12 pm</time></div>
+                    <div class="bub"><span class="tag">Level up</span>You're now Gold ✨ You earn 1.5× points on every order from today.<time>Fri 1:40 pm</time></div>
+                    <div class="bub"><span class="tag">We miss you</span>Hi Rahul, it's been a while! 😊 Here's ₹100 off your next order. Code <code>MISSYOU-RAH</code>, valid till Sunday.<time>6:30 pm</time></div>
+                    <div class="bub me">Perfect, ordering tonight 🙌<time>6:42 pm</time></div>
+                    <div class="bub"><span class="tag">Stamp card</span>You're 1 visit away from your free coffee ☕ See you soon!<time>Tue 11:00 am</time></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ Games ═══ -->
     <section class="ly-section">
         <div class="container">
-            <div class="ly-split">
-                <div>
-                    <p class="ly-kicker">Games</p>
-                    <h2>Make coming back fun</h2>
-                    <p>A little play keeps your restaurant on their mind — and every prize stays inside a budget you set.</p>
-                    <ul class="ly-list">
-                        <li><svg class="ly-ico"><use href="#l-gift"/></svg><div><b>Scratch card or spin wheel</b> <span>after checkout, with the prizes and limits you choose.</span></div></li>
-                        <li><svg class="ly-ico"><use href="#l-target"/></svg><div><b>Monthly challenges</b> <span>— visit 4 times, spend ₹2,000, or try your new dish, and win.</span></div></li>
-                        <li><svg class="ly-ico"><use href="#l-repeat"/></svg><div><b>Weekly streaks</b> <span>reward customers who order every week.</span></div></li>
-                    </ul>
-                </div>
-                <div class="ly-panel ly-reveal" aria-label="Example: scratch card and challenges">
-                    <div class="ly-scratch"><div><small>You won</small><b>Free Gulab Jamun</b><small>on your next order</small></div></div>
-                    <div class="ly-challenge"><div class="ly-challenge-top">Visit 4 times this month <span>3 / 4</span></div><div class="ly-bar"><i style="width:75%"></i></div></div>
-                    <div class="ly-challenge"><div class="ly-challenge-top">Try the new Paneer Tikka Roll <span>0 / 1</span></div><div class="ly-bar"><i style="width:4%"></i></div></div>
-                </div>
+            <div class="ly-head center">
+                <p class="ly-kicker">Games</p>
+                <h2 class="ly-h2">Make coming back <em>fun.</em></h2>
+                <p class="ly-sub">A little play keeps your restaurant on their mind. These are the real screens your customers see.</p>
             </div>
-
-            <div class="ly-split">
-                <div class="ly-chat ly-reveal ly-visual-first" aria-label="Example WhatsApp messages">
-                    <div class="ly-bubble"><b>YOUR RESTAURANT</b>Hi Rahul, it's been a while! 😊 Here's ₹100 off your next order — code <strong>MISSYOU-RAH</strong>, valid till Sunday.<time>6:30 pm</time></div>
-                    <div class="ly-bubble me">Perfect, ordering tonight 🙌<time>6:42 pm</time></div>
-                    <div class="ly-bubble"><b>YOUR RESTAURANT</b>You're 1 visit away from your free coffee ☕ See you soon!<time>Tue 11:00 am</time></div>
-                </div>
-                <div>
-                    <p class="ly-kicker">WhatsApp</p>
-                    <h2>Delivered where your customers already are</h2>
-                    <p>Every gift is sent on WhatsApp to customers who said yes at checkout. No SMS nobody reads, no app nobody installs.</p>
-                    <ul class="ly-list">
-                        <li><svg class="ly-ico"><use href="#l-check"/></svg><div><b>Automatic gift messages</b> <span>for every reward above.</span></div></li>
-                        <li><svg class="ly-ico"><use href="#l-check"/></svg><div><b>Campaigns</b> <span>— send a festival offer or a new-menu message to the customers you pick.</span></div></li>
-                        <li><svg class="ly-ico"><use href="#l-check"/></svg><div><b>Opt-in built in</b> <span>— customers agree at checkout, and you see every message in a log.</span></div></li>
-                    </ul>
-                </div>
+            <div class="ly-games">
+                <div class="ly-game ly-reveal"><div class="dev"><img src="img/c_scratch.webp" width="400" height="350" alt="Real scratch card showing ₹50 off won, with a one-time code" loading="lazy"></div><h3>Scratch card</h3><p>Shown after checkout. Rub the foil, win the prize you set.</p></div>
+                <div class="ly-game ly-reveal"><div class="dev"><img src="img/c_wheel.webp" width="400" height="707" alt="Real spin-the-wheel game with prizes and a won code" loading="lazy"></div><h3>Spin the wheel</h3><p>Same prizes and chances, with a bigger moment.</p></div>
+                <div class="ly-game ly-reveal"><div class="dev"><img src="img/c_challenges.webp" width="400" height="556" alt="Real monthly challenges with progress and rewards" loading="lazy"></div><h3>Challenges &amp; streaks</h3><p>Visit 4 times, spend ₹2,000, try the new dish, or order every week.</p></div>
             </div>
+            <div class="ly-budget ly-reveal">🎯 <span><b>Every prize stays inside a monthly budget you set.</b> Each code is tied to one phone number and works once.</span></div>
+        </div>
+    </section>
 
-            <div class="ly-split">
-                <div>
-                    <p class="ly-kicker">At the counter</p>
-                    <h2>Loyalty that works at billing too</h2>
-                    <p>Most loyalty apps only count online orders. Ours counts the bill at your counter, the QR order at the table and the order on your website — in one place.</p>
-                    <ul class="ly-list">
-                        <li><svg class="ly-ico"><use href="#l-check"/></svg><div><b>Type the phone number</b> <span>and see points, stamps, wallet, level and gifts.</span></div></li>
-                        <li><svg class="ly-ico"><use href="#l-check"/></svg><div><b>Earned the moment they pay</b> <span>— no waiting, no double counting.</span></div></li>
-                        <li><svg class="ly-ico"><use href="#l-check"/></svg><div><b>A QR to claim their account</b> <span>so walk-in customers can order online later.</span></div></li>
-                    </ul>
-                </div>
-                <div class="ly-panel ly-pos ly-reveal" aria-label="Example: a customer at the POS">
-                    <div class="ly-pos-head"><span class="av">AK</span><div><b>Amit Kumar · Gold</b><small>98•••••210 · 14 visits</small></div></div>
-                    <div class="ly-pos-grid">
-                        <div><span>Points</span><b>860</b></div>
-                        <div><span>Worth</span><b>₹86</b></div>
-                        <div><span>Stamps</span><b>4/5</b></div>
-                    </div>
-                    <div class="ly-pos-gift"><div><b>Gift ready:</b> ₹100 off (every 10th order)</div><button type="button" tabindex="-1">Apply</button></div>
-                </div>
+    <!-- ═══ Counter ═══ -->
+    <section class="ly-section raised">
+        <div class="container ly-split">
+            <div>
+                <p class="ly-kicker">At the counter</p>
+                <h2 class="ly-h2">Loyalty that works <em>at billing too.</em></h2>
+                <p class="ly-sub">Most loyalty apps only count online orders. Ours counts the bill at your counter, the QR order at the table and the order on your website, in one place.</p>
+                <ul class="ly-list">
+                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Type the phone number</b> and see points, stamps, wallet, level and gifts.</span></li>
+                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>Use points on the bill</b> in one tap, earned the moment they pay.</span></li>
+                    <li><svg class="ly-ico"><use href="#l-check"/></svg><span><b>A QR to claim their account,</b> so walk-in customers can order online later.</span></li>
+                </ul>
+            </div>
+            <div class="ly-win ly-reveal">
+                <div class="ly-win-bar"><i></i><i></i><i></i></div>
+                <img src="../about/img/posPage.webp" width="1280" height="900" alt="Real Restro Grow POS: the customer's 100 points applied as ₹50 off the bill" loading="lazy">
+                <span class="ly-callout">points off the bill ✓</span>
             </div>
         </div>
     </section>
 
-    <!-- Results -->
-    <section class="ly-section raised">
+    <!-- ═══ Results ═══ -->
+    <section class="ly-section">
         <div class="container">
             <div class="ly-head">
                 <p class="ly-kicker">Know it's working</p>
-                <h2 class="section-title">See what loyalty brings in</h2>
-                <p class="section-subtitle">Every gift is tracked from the moment it's sent to the bill it brought back.</p>
+                <h2 class="ly-h2">See what loyalty <em>brings in.</em></h2>
+                <p class="ly-sub">Every gift is tracked from the moment it's sent to the bill it brought back.</p>
             </div>
             <div class="ly-results">
-                <div class="ly-result ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-chart"/></svg></div><h3>Revenue from gifts</h3><p>How much each gift type brought back, not just how many you sent.</p></div>
-                <div class="ly-result ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-users"/></svg></div><h3>Customer groups</h3><p>Regulars, new, slipping away, big spenders — see who is who.</p></div>
-                <div class="ly-result ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-lock"/></svg></div><h3>Gifts that can't be shared</h3><p>Each code is tied to one customer's phone and works once.</p></div>
-                <div class="ly-result ly-reveal"><div class="ico"><svg class="ly-ico"><use href="#l-phone"/></svg></div><h3>Card in the phone wallet <span class="ly-soon">COMING SOON</span></h3><p>A loyalty card in Google Wallet and Apple Wallet that updates itself.</p></div>
+                <div class="ly-result ly-reveal"><span class="e">💰</span><h3>Revenue from gifts</h3><p>How much each gift type brought back, not just how many you sent.</p></div>
+                <div class="ly-result ly-reveal"><span class="e">👥</span><h3>Customer groups</h3><p>Regulars, new, slipping away, big spenders: see who is who.</p></div>
+                <div class="ly-result ly-reveal"><span class="e">🔒</span><h3>Gifts that can't be shared</h3><p>Each code is tied to one customer's phone and works once.</p></div>
+                <div class="ly-result ly-reveal"><span class="e">📲</span><h3>Card in the phone wallet <span class="ly-soon">COMING SOON</span></h3><p>A loyalty card in Google Wallet and Apple Wallet that updates itself.</p></div>
             </div>
         </div>
     </section>
 
-    <!-- Steps -->
-    <section class="ly-section">
+    <!-- ═══ Steps ═══ -->
+    <section class="ly-section raised">
         <div class="container">
-            <div class="ly-head">
+            <div class="ly-head center">
                 <p class="ly-kicker">Getting started</p>
-                <h2 class="section-title">Live in an afternoon</h2>
+                <h2 class="ly-h2">Live in <em>an afternoon.</em></h2>
             </div>
             <div class="ly-steps">
-                <div class="ly-step ly-reveal"><h3>Choose your program</h3><p>Points, cashback or stamps — and what a reward is worth.</p></div>
+                <div class="ly-step ly-reveal"><h3>Choose your program</h3><p>Points, cashback or stamps, and what a reward is worth.</p></div>
                 <div class="ly-step ly-reveal"><h3>Turn on your gifts</h3><p>Welcome, birthday, we-miss-you… switch on the ones you want and write the message.</p></div>
                 <div class="ly-step ly-reveal"><h3>Keep taking orders</h3><p>Every order with a phone number earns. Gifts go out on their own; you watch the results.</p></div>
             </div>
         </div>
     </section>
 
-    <!-- FAQ -->
-    <section class="ly-section raised">
-        <div class="container">
-            <div class="ly-head"><p class="ly-kicker">Questions</p><h2 class="section-title">Good to know</h2></div>
+    <!-- ═══ FAQ ═══ -->
+    <section class="ly-section">
+        <div class="container ly-faq-wrap">
+            <div>
+                <p class="ly-kicker">Questions</p>
+                <h2 class="ly-h2">Good to know</h2>
+                <p class="ly-sub">Something else? Message us on WhatsApp and talk to a person.</p>
+                <a href="https://wa.me/916377568749?text=Hi%2C%20I%20want%20to%20know%20about%20Loyalty%20on%20Restro%20Grow" target="_blank" rel="noopener" class="ly-btn wa" style="margin-top:22px"><svg class="ly-ico"><use href="#l-chat"/></svg> Chat on WhatsApp</a>
+            </div>
             <div class="ly-faq">
-                <details><summary>Do my customers need to download an app?</summary><p>No. They earn with their phone number. They can check their points on your restaurant's website, and gifts arrive on WhatsApp.</p></details>
-                <details><summary>Which orders count?</summary><p>Orders at your counter (POS), QR orders at the table and orders on your website — any order with the customer's phone number.</p></details>
+                <details open><summary>Do my customers need to download an app?</summary><p>No. They earn with their phone number. They can check their points on your restaurant's website, and gifts arrive on WhatsApp.</p></details>
+                <details><summary>Which orders count?</summary><p>Orders at your counter (POS), QR orders at the table and orders on your website: any order with the customer's phone number.</p></details>
                 <details><summary>Do I need WhatsApp to use loyalty?</summary><p>No. Points, cashback, stamps, gifts and games all work without it. Connecting WhatsApp lets the gift messages and campaigns go out automatically.</p></details>
                 <details><summary>Can I control how much I give away?</summary><p>Yes. You set what each reward is worth, a minimum order, how long a gift is valid and the prize budget for games.</p></details>
                 <details><summary>Can customers misuse gift codes?</summary><p>Each gift code belongs to one customer's phone number and works once, so it can't be forwarded to a group.</p></details>
@@ -501,15 +532,13 @@
         </div>
     </section>
 
-    <!-- CTA -->
-    <section class="ly-cta">
-        <div class="ly-cta-box">
-            <h2>Give your customers a reason to come back.</h2>
-            <p>Start your <span data-trial-days>7</span>-day free trial. Set up your loyalty program today.</p>
-            <div class="ly-ctas">
-                <a href="../main/admin/login.php?tab=signup" class="btn btn-primary">Start free trial</a>
-                <a href="../index.html#contact" class="btn btn-secondary">Talk to us</a>
-            </div>
+    <!-- ═══ Final ═══ -->
+    <section class="ly-final">
+        <h2>Give your customers a reason to come back.</h2>
+        <p>Start your <span data-trial-days>7</span>-day free trial and set up your loyalty program today.</p>
+        <div class="ly-ctas">
+            <a href="../main/admin/login.php?tab=signup" class="ly-btn primary"><span>Start free trial</span> <svg class="ly-ico"><use href="#l-arrow"/></svg></a>
+            <a href="https://wa.me/916377568749?text=Hi%2C%20I%20want%20to%20know%20about%20Loyalty%20on%20Restro%20Grow" target="_blank" rel="noopener" class="ly-btn ghost"><svg class="ly-ico"><use href="#l-chat"/></svg> Talk to us</a>
         </div>
     </section>
 
@@ -522,6 +551,12 @@
                         <span>Restro Grow</span>
                     </div>
                     <p>Complete restaurant management solution for modern restaurants.</p>
+                    <div class="footer-social" aria-label="Follow RestroGrow">
+                        <a href="https://www.linkedin.com/company/restro-grow/" target="_blank" rel="noopener me" aria-label="RestroGrow on LinkedIn" title="LinkedIn"><svg aria-hidden="true"><use href="#s-in"/></svg></a>
+                        <a href="https://www.instagram.com/restrogrow/" target="_blank" rel="noopener me" aria-label="RestroGrow on Instagram" title="Instagram"><svg aria-hidden="true"><use href="#s-ig"/></svg></a>
+                        <a href="https://x.com/restrogrow" target="_blank" rel="noopener me" aria-label="RestroGrow on X (Twitter)" title="X (Twitter)"><svg aria-hidden="true"><use href="#s-x"/></svg></a>
+                        <a href="https://www.youtube.com/@RestroGrow" target="_blank" rel="noopener me" aria-label="RestroGrow on YouTube" title="YouTube"><svg aria-hidden="true"><use href="#s-yt"/></svg></a>
+                    </div>
                 </div>
                 <div class="footer-section">
                     <h4>Product</h4>
@@ -540,6 +575,7 @@
                         <li><a href="../blog/">Blog</a></li>
                         <li><a href="../faq/">FAQ</a></li>
                         <li><a href="../index.html#contact">Contact Us</a></li>
+                        <li><a href="https://repeatgrow.com/" target="_blank" rel="noopener" title="Repeat Grow, our WhatsApp CRM">WhatsApp CRM: Repeat Grow</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
@@ -562,6 +598,11 @@
         </div>
     </footer>
 
+    <div class="ly-sticky" id="sticky">
+        <a href="https://wa.me/916377568749?text=Hi%2C%20I%20want%20to%20know%20about%20Loyalty%20on%20Restro%20Grow" target="_blank" rel="noopener" class="ly-btn wa"><svg class="ly-ico"><use href="#l-chat"/></svg> WhatsApp</a>
+        <a href="../main/admin/login.php?tab=signup" class="ly-btn primary">Free trial</a>
+    </div>
+
     <script src="../script.js?v=3.0"></script>
     <script>
         // trial length from Super Admin settings; year; fade-in as sections scroll into view
@@ -574,6 +615,86 @@
                 entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
             }, { rootMargin: '0px 0px -8% 0px' });
             els.forEach(function (e) { io.observe(e); });
+        })();
+        (function () {
+            var bar = document.getElementById('sticky'), hero = document.querySelector('.ly-hero');
+            if (!('IntersectionObserver' in window)) return;
+            new IntersectionObserver(function (en) { bar.classList.toggle('show', !en[0].isIntersecting); }).observe(hero);
+        })();
+
+        // program switcher: what the customer sees for each kind of program
+        (function () {
+            var P = {
+                points: { h: 'Points', p: 'Customers earn points on every rupee and spend them on a discount or a free dish you choose.', eg: '₹100 spent = 10 points · 500 points = free dessert',
+                    card: '<div class="lc-top"><span>Spice Garden · Rewards</span><span class="lc-tier">GOLD</span></div><div class="lc-big">1,240 <small>points</small></div><div class="lc-worth">Worth ₹124 off your next order</div><div class="lc-bar"><i style="width:72%"></i></div><div class="lc-foot">260 more points for a free dessert</div>' },
+                cashback: { h: 'Cashback', p: 'A share of every completed order goes back into the customer\'s wallet, to use on their next visit.', eg: '5% back on every order · ₹42 in wallet → next bill',
+                    card: '<div class="lc-top"><span>Spice Garden · Wallet</span><span class="lc-tier">GOLD</span></div><div class="lc-big">₹42 <small>in wallet</small></div><div class="lc-worth">5% back on every order</div><div class="lc-bar"><i style="width:42%"></i></div><div class="lc-foot">Last order: ₹840 → ₹42 back</div>' },
+                stamps: { h: 'Stamp card', p: 'One stamp per order. A full card gives a reward. Perfect for cafés, bakeries and quick bites.', eg: 'Buy 5 coffees · the 6th is free',
+                    card: '<div class="lc-top"><span>Brew Bar · Stamp card</span><span class="lc-tier">SILVER</span></div><div class="lc-stamps"><i class="on">☕</i><i class="on">☕</i><i class="on">☕</i><i class="on">☕</i><i>5</i><i>🎁</i></div><div class="lc-worth">4 of 5 stamps</div><div class="lc-foot" style="margin-top:6px">1 more visit, your next coffee is on us</div>' }
+            };
+            function show(k) {
+                document.querySelectorAll('.ly-tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.prog === k); });
+                document.getElementById('progText').innerHTML = '<h3>' + P[k].h + '</h3><p>' + P[k].p + '</p><span class="ly-eg">' + P[k].eg + '</span>';
+                var c = document.getElementById('progCard'); c.innerHTML = P[k].card; c.style.transform = 'scale(.97)'; setTimeout(function () { c.style.transform = ''; }, 150);
+            }
+            document.querySelectorAll('.ly-tabs button').forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.prog); }); });
+            show('points');
+        })();
+
+        /* Simulator: one customer's points, level and gifts, drawn the way the real rewards page shows
+           them. 10 points per ₹100 (1 point = ₹0.10 here), Gold at ₹3,000, Platinum at ₹8,000 spent,
+           Gold earns 1.5×, Platinum 2×. Nothing is sent anywhere. */
+        (function () {
+            var s;
+            function fresh() { s = { pts: 0, spent: 0, orders: 0, tier: 'silver', gifts: [] }; }
+            fresh();
+            var inr = function (n) { return '₹' + Math.round(n).toLocaleString('en-IN'); };
+            var codeN = 0;
+            function code(p) { codeN++; return p + '-' + (4200 + codeN * 37).toString(36).toUpperCase(); }
+            function log(text) {
+                var l = document.getElementById('simLog');
+                if (!l.dataset.used) { l.innerHTML = ''; l.dataset.used = 1; }
+                var d = document.createElement('div'); d.className = 'e'; d.innerHTML = text; l.insertBefore(d, l.firstChild);
+                while (l.children.length > 4) l.removeChild(l.lastChild);
+            }
+            function gift(e, title, c) { s.gifts.unshift({ e: e, t: title, c: c }); if (s.gifts.length > 3) s.gifts.pop(); }
+            function rate() { return s.tier === 'plat' ? 2 : s.tier === 'gold' ? 1.5 : 1; }
+            function draw(flash) {
+                var el = document.getElementById('simPts'); el.textContent = Math.round(s.pts).toLocaleString('en-IN');
+                if (flash) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+                document.getElementById('simWorth').textContent = 'Worth ' + inr(s.pts / 10) + ' off';
+                var t = document.getElementById('simTier');
+                t.className = 'sim-tier ' + (s.tier === 'plat' ? 't-plat' : s.tier === 'gold' ? 't-gold' : 't-silver');
+                t.textContent = s.tier === 'plat' ? 'PLATINUM' : s.tier === 'gold' ? 'GOLD' : 'SILVER';
+                var goal = s.tier === 'silver' ? 3000 : 8000, from = s.tier === 'silver' ? 0 : 3000;
+                document.getElementById('simBar').style.width = s.tier === 'plat' ? '100%' : Math.min(100, (s.spent - from) / (goal - from) * 100) + '%';
+                document.getElementById('simNext').textContent = s.tier === 'plat' ? 'Top level reached · 2× points' : 'Spend ' + inr(goal - s.spent) + ' more to reach ' + (s.tier === 'silver' ? 'Gold' : 'Platinum');
+                document.getElementById('simGifts').innerHTML = s.gifts.length ? s.gifts.map(function (g) { return '<div class="sim-gift"><span class="e">' + g.e + '</span><span><b>' + g.t + '</b><code>' + g.c + '</code></span></div>'; }).join('') : '<div class="sim-empty">No gifts yet. Place an order →</div>';
+            }
+            function order(amount, where) {
+                var earned = Math.floor(amount / 100) * 10 * rate();
+                s.pts += earned; s.spent += amount; s.orders++;
+                log('<b>' + where + '</b> ' + inr(amount) + ' → +' + earned + ' points' + (rate() > 1 ? ' (' + rate() + '× ' + (s.tier === 'plat' ? 'Platinum' : 'Gold') + ')' : '') + '.');
+                if (s.orders === 1) { var c1 = code('WELCOME'); gift('🤝', '₹50 off your next order', c1); log('💬 WhatsApp: <b>welcome gift</b> sent, code ' + c1 + '.'); }
+                if (s.orders % 5 === 0) { var c5 = code('ORDER' + s.orders); gift('🏆', 'Free dessert on order #' + s.orders, c5); log('💬 WhatsApp: <b>every-5th-order gift</b>, code ' + c5 + '.'); }
+                if (s.tier === 'silver' && s.spent >= 3000) { s.tier = 'gold'; var cg = code('GOLD'); gift('⭐', 'Welcome to Gold: ₹100 off', cg); log('⭐ <b>Level up to Gold</b>, 1.5× points from now. Gift sent on WhatsApp.'); }
+                if (s.tier === 'gold' && s.spent >= 8000) { s.tier = 'plat'; var cp = code('PLAT'); gift('💎', 'Welcome to Platinum: free main', cp); log('💎 <b>Level up to Platinum</b>, 2× points from now.'); }
+                draw(true);
+            }
+            var acts = {
+                counter: function () { order(450, '🧾 Counter bill'); },
+                web: function () { order(780, '🛵 Website order'); },
+                table: function () { order(1200, '📱 Table QR order'); },
+                quiet: function () { var c = code('MISSYOU'); gift('💌', '₹100 off, we miss you', c); log('💬 30 days quiet → <b>we-miss-you gift</b> sent on WhatsApp, code ' + c + '.'); draw(); },
+                bday: function () { var c = code('BDAY'); gift('🎂', 'Birthday treat: free gulab jamun', c); log('💬 7 days before her birthday → <b>birthday gift</b> on WhatsApp, code ' + c + '.'); draw(); },
+                redeem: function () {
+                    if (s.pts < 200) return log('Needs 200 points. Priya has ' + Math.round(s.pts) + ': place a few orders first.');
+                    s.pts -= 200; gift('🍮', 'Free dessert (200 points)', code('REDEEM')); log('🍮 Redeemed 200 points for a free dessert. Works at the counter or online.'); draw(true);
+                }
+            };
+            document.querySelectorAll('[data-sim]').forEach(function (b) { b.addEventListener('click', function () { acts[b.dataset.sim](); }); });
+            document.getElementById('simReset').addEventListener('click', function () { fresh(); codeN = 0; var l = document.getElementById('simLog'); l.innerHTML = '<div class="e">Back to the start. Tap an order.</div>'; delete l.dataset.used; draw(); });
+            draw();
         })();
     </script>
 </body>
