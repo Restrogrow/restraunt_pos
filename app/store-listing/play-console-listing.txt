@@ -1,0 +1,52 @@
+Google Play Console me hamara Android app "Restrogrow Partner" upload karna hai, Internal testing track pe. Chrome me teamrestrogrow@gmail.com se login hai, usi account ka Play Console use karo.
+
+FILE
+- AAB: C:\Users\INDIA\OneDrive\Desktop\RestroGrow-Partner-1.2.1.aab
+- Package: com.restrogrow.app | Version 1.2.1 (versionCode 21) | min Android 7.0 | signed with our own upload key (Play App Signing ON rakho, Google ki default)
+
+KAAM (isi kram me)
+1. play.google.com/console kholo. Agar developer account nahi bana / verification pending hai to ruk kar mujhe batao, khud account mat banao, koi payment mat karo.
+2. Create app:
+   - App name: Restrogrow Partner
+   - Default language: English (United States)
+   - App or game: App | Free or paid: Free
+   - Declarations (Developer Program Policies, US export laws) ke checkbox mujhse pooch ke hi tick karna.
+3. Testing > Internal testing > Testers: ek email list "RestroGrow team" banao, isme teamrestrogrow@gmail.com, restrogrow@gmail.com, nischaykumar108@gmail.com daalo. Save.
+4. Internal testing > Create new release > upload the AAB above.
+   - Release name: 1.2.1
+   - Release notes (en-US): "Wi-Fi printers now print straight from the phone. Long bills print reliably on small printers. Login, welcome screen and order fixes."
+   - Save > Review release > Start rollout to Internal testing.
+5. Testers tab se "Copy link" (opt-in URL) mujhe do. Isse Samsung phone pe Play Store se install hoga.
+
+APP CONTENT (Policy > App content) - jitna ho sake bharo, unsure ho to mujhse poocho
+- Privacy policy URL: https://restrogrow.com/privacy-policy/
+- App access: login required. Reviewers ke liye demo login: username "demo", password "demo" (public demo restaurant, fake data).
+- Ads: No ads.
+- Content rating questionnaire: category "Utility / Productivity / Business", koi violence/sexual/gambling content nahi, users aapas me chat nahi karte (restaurant staff tool).
+- Target audience: 18+ only. Not designed for children.
+- News app: No. Government app: No. Financial features: No (payment collect karne ka tool hai restaurant ke liye, app khud loan/bank service nahi deta).
+- Health: No.
+- Data safety (draft, mujhe dikha ke submit karna):
+  - Data encrypted in transit: Yes (HTTPS).
+  - Users can request deletion: Yes (support@restrogrow.com).
+  - Collected: Name, Email, Phone number (restaurant owner/staff account), customer names/phones/addresses entered by the restaurant for orders, App activity (orders), Device IDs for push notifications, Approximate/precise location (only for delivery features), Photos (menu photos the restaurant uploads), Audio (voice input, optional).
+  - Shared with third parties: No (sirf hamare apne server restrogrow.com pe).
+- Permissions jo app maangta hai (Data safety / sensitive permissions ke sawalon ke liye): Bluetooth (thermal bill printer), Camera (QR scan / menu photos), Microphone (voice input), Location (delivery), Notifications + wake lock + boot (new order ring alert), Biometric (fingerprint login).
+
+STORE LISTING (Grow > Store presence > Main store listing) - draft save karo, publish nahi
+- Short description (max 80): Run your restaurant from your phone: orders, kitchen, tables, billing, reports.
+- Full description:
+  Restrogrow Partner is the mobile app for restaurants using RestroGrow.
+  - Get a loud ring for every new online order, even when the phone is locked, and accept it in one tap.
+  - Take counter and table orders, send tickets to the kitchen and print bills on Bluetooth or Wi-Fi thermal printers (Hindi and other languages print correctly).
+  - Manage tables, menu items, stock, customers, bookings and delivery riders.
+  - See today's sales, best-selling dishes and reports for any dates.
+  Everything stays in sync with your RestroGrow website and dashboard. Log in with the same account you use on restrogrow.com.
+- App category: Business. Contact email: support@restrogrow.com. Website: https://restrogrow.com
+- Graphics: app icon 512x512, feature graphic 1024x500 aur kam se kam 2 phone screenshots chahiye. Agar mere paas ready nahi hain to bata dena, main bana dunga - khud fake images mat lagana.
+
+ZAROORI NIYAM
+- Production me release MAT karna, sirf Internal testing.
+- Koi bhi agreement / policy / terms accept karne se pehle mujhse poocho.
+- Koi password, card ya payment detail mat daalna.
+- Kaam ke end me batao: kya ho gaya, kya baaki hai, aur Internal testing opt-in link.
