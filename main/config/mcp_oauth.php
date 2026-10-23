@@ -176,12 +176,30 @@ function mcpClient(PDO $conn, string $clientId): ?array
     return ['client_id' => $clientId, 'name' => $name, 'redirect_uris' => $uris, 'kind' => 'cimd'];
 }
 
-/** "ChatGPT", "Claude" … for the consent screen. */
+/** 'ChatGPT' / 'Claude' when a redirect host really is theirs (exact domain or a subdomain of it), else ''. */
+function mcpBrandForHost(string $host): string
+{
+    $host = strtolower(rtrim($host, '.'));
+    $is = function (array $domains) use ($host) {
+        foreach ($domains as $d) if ($host === $d || str_ends_with($host, '.' . $d)) return true;
+        return false;
+    };
+    if ($is(['chatgpt.com', 'openai.com'])) return 'ChatGPT';
+    if ($is(['claude.ai', 'claude.com', 'anthropic.com'])) return 'Claude';
+    return '';
+}
+
+/**
+ * "ChatGPT", "Claude" … for the consent screen. Pass only the redirect URI the code will go to: the brand
+ * is shown only when EVERY given URI is on that brand's own domain (a client registering chatgpt.com plus
+ * evil.net, or chatgpt.com.evil.net, used to be labelled "ChatGPT" while the code went to evil.net).
+ */
 function mcpClientLabel(array $c): string
 {
-    $host = strtolower((string)parse_url((string)($c['redirect_uris'][0] ?? ''), PHP_URL_HOST));
-    if (str_contains($host, 'chatgpt.com') || str_contains($host, 'openai.com')) return 'ChatGPT';
-    if (str_contains($host, 'claude.ai') || str_contains($host, 'claude.com') || str_contains($host, 'anthropic.com')) return 'Claude';
+    $brands = [];
+    foreach ((array)($c['redirect_uris'] ?? []) as $u) $brands[] = mcpBrandForHost((string)parse_url((string)$u, PHP_URL_HOST));
+    $brands = array_unique($brands);
+    if (count($brands) === 1 && $brands[0] !== '') return $brands[0];
     return trim((string)($c['name'] ?? '')) ?: 'An AI app';
 }
 

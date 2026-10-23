@@ -183,16 +183,17 @@ if (!function_exists('loginLogIsNewDevice')) {
 
 if (!function_exists('loginLogIsBlocked')) {
     /**
-     * Blocklist check. IMPORTANT: unlike the per-restaurant login_logs view,
-     * the blocklist is intentionally GLOBAL — a brute-forcing IP gets
-     * rejected everywhere, not just for the restaurant whose owner blocked
-     * it. Returns the blocking row (for logging which rule fired) or null.
+     * Blocklist check for a login into $restaurantId. Per restaurant: a block
+     * only stops logins into the restaurant whose owner made it. It used to be
+     * global, so any owner (or anyone using the public demo login) could cut
+     * every restaurant off from a shared or proxy IP. Returns the blocking row
+     * (for logging which rule fired) or null.
      */
-    function loginLogIsBlocked($conn, $ip) {
+    function loginLogIsBlocked($conn, $ip, $restaurantId) {
         try {
             loginLogEnsureTables($conn);
-            $stmt = $conn->prepare("SELECT id, reason, blocked_by FROM blocked_ips WHERE ip_address = ? LIMIT 1");
-            $stmt->execute([$ip]);
+            $stmt = $conn->prepare("SELECT id, reason, blocked_by FROM blocked_ips WHERE ip_address = ? AND restaurant_id = ? LIMIT 1");
+            $stmt->execute([$ip, (string)$restaurantId]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             return $row ?: null;
         } catch (Exception $e) {

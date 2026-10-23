@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($sa && password_verify($password, $sa['password_hash'])) {
             // Clear failed attempts on success
             if (function_exists('clearFailedAttempts')) {
-                clearFailedAttempts(getRateLimitIdentifier());
+                clearFailedAttempts(getAuthRateLimitIdentifier(), $username);
             }
             $_SESSION['superadmin_id'] = $sa['id'];
             $_SESSION['superadmin_username'] = $sa['username'];
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Track failed login attempt
             if (function_exists('trackFailedAttempt')) {
-                trackFailedAttempt(getRateLimitIdentifier());
+                trackFailedAttempt(getAuthRateLimitIdentifier(), $username);
             }
             $error = 'Invalid credentials';
         }

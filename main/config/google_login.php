@@ -204,7 +204,8 @@ function googleLoginFindAccount(PDO $conn, string $email): ?array
     $users = $st->fetchAll(PDO::FETCH_ASSOC);
     if (count($users) === 1) return ['type' => 'admin', 'row' => $users[0]];
     if (count($users) > 1) throw new RuntimeException('More than one restaurant uses ' . $email . '. Please log in with your username.');
-    $st = $conn->prepare('SELECT s.*, u.restaurant_name FROM staff s LEFT JOIN users u ON u.restaurant_id = s.restaurant_id WHERE LOWER(s.email) = ? AND s.is_active = 1 ORDER BY s.id LIMIT 2');
+    // staff of a switched-off restaurant stay out, like its owner (u.is_active)
+    $st = $conn->prepare('SELECT s.*, u.restaurant_name FROM staff s JOIN users u ON u.restaurant_id = s.restaurant_id AND u.is_active = 1 WHERE LOWER(s.email) = ? AND s.is_active = 1 ORDER BY s.id LIMIT 2');
     $st->execute([$email]);
     $staff = $st->fetchAll(PDO::FETCH_ASSOC);
     if (count($staff) === 1) return ['type' => 'staff', 'row' => $staff[0]];

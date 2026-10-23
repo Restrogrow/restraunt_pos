@@ -10,6 +10,12 @@ if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Authentication required']);
     exit;
 }
+// delivery zones and their charges are a restaurant setting: not for floor, kitchen or rider logins
+if (!hasPermission(PERMISSION_MANAGE_SETTINGS)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You don’t have permission to change delivery zones.']);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

@@ -51,25 +51,22 @@ if (file_exists(__DIR__ . '/../db_connection.php')) {
 }
 
 // ── IP blocklist gate ──
-// Checked before anything else (even before rate limiting) so a blocked IP
-// gets nothing — not a password probe, not a lockout countdown, nothing.
-// Intentionally global (not per-restaurant): a brute-forcing IP is an
-// attack on the platform, not on one restaurant.
-try {
-    $isLoginAttempt = ($_POST['action'] ?? '') === 'login';
-    if ($isLoginAttempt && function_exists('getConnection')) {
-        $conn = getConnection();
-        $blockRow = loginLogIsBlocked($conn, loginLogClientIp());
-        if ($blockRow) {
-            loginLogWrite($conn, ['outcome' => 'blocked_ip', 'username' => $_POST['username'] ?? null]);
-            ob_clean();
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Access denied. Your network has been blocked. Contact support if you believe this is a mistake.'], JSON_UNESCAPED_UNICODE);
-            exit();
-        }
+// Per restaurant (Logs › Block IP): run by handleLogin() once it knows which
+// restaurant the account belongs to, before the session is written. It used to
+// run here for every login, so one owner's block cut that IP off from every
+// restaurant on the platform (and the public demo login could block anyone).
+function authBlockedIpGate(PDO $pdo, $restaurantId, $username) {
+    try {
+        if (!loginLogIsBlocked($pdo, loginLogClientIp(), $restaurantId)) return;
+        loginLogWrite($pdo, ['restaurant_id' => $restaurantId, 'outcome' => 'blocked_ip', 'username' => $username]);
+    } catch (Exception $blockErr) {
+        error_log('auth.php: blocklist gate skipped (fail-open): ' . $blockErr->getMessage());
+        return;
     }
-} catch (Exception $blockErr) {
-    error_log('auth.php: blocklist gate skipped (fail-open): ' . $blockErr->getMessage());
+    ob_clean();
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Access denied. Your network has been blocked. Contact support if you believe this is a mistake.'], JSON_UNESCAPED_UNICODE);
+    exit();
 }
 
 try {
@@ -97,7 +94,7 @@ try {
                 // demo roles (owner, manager, waiter, chef, rider…) far faster than 5 logins a minute.
                 require_once __DIR__ . '/../config/demo_restaurant.php';
                 if (isDemoLogin((string)($_POST['username'] ?? ''), (string)($_POST['password'] ?? ''))) {
-                    $demoLimit = checkRateLimit('demo_login_' . getRateLimitIdentifier(), 60, 60);
+                    $demoLimit = checkRateLimit('demo_login_' . getAuthRateLimitIdentifier(), 60, 60);
                     if (!$demoLimit['allowed']) {
                         http_response_code(429);
                         echo json_encode(['success' => false, 'message' => $demoLimit['message'], 'retry_after' => $demoLimit['retry_after']]);
@@ -342,9 +339,10 @@ function handleLogin() {
     }
 
     if ($user && password_verify($password, $user['password'])) {
+        authBlockedIpGate($pdo, $user['restaurant_id'], $username);
         // Admin/User login success — clear failed attempts
         if (function_exists('clearFailedAttempts')) {
-            clearFailedAttempts(getRateLimitIdentifier());
+            clearFailedAttempts(getAuthRateLimitIdentifier(), $username);
         }
         
         // ── Audit: successful admin login + new-device detection ──
@@ -410,15 +408,31 @@ function handleLogin() {
     
     // If not found in users table, check staff table
     // Try email first, then phone as username
-    $staffStmt = $pdo->prepare("SELECT s.*, u.restaurant_name FROM staff s LEFT JOIN users u ON s.restaurant_id = u.restaurant_id WHERE (s.email = ? OR s.phone = ?) AND s.is_active = 1 LIMIT 1");
+    // Staff emails/phones are only unique within a restaurant, so every match is
+    // tried and the one whose password fits is used (LIMIT 1 used to pick an
+    // arbitrary row: another restaurant could add the same email and take over
+    // or block the login). Two matches with the same password: refused.
+    // Only restaurants that aren't switched off (u.is_active): staff of a disabled
+    // restaurant can't log in, same as its owner.
+    $staffStmt = $pdo->prepare("SELECT s.*, u.restaurant_name FROM staff s JOIN users u ON s.restaurant_id = u.restaurant_id AND u.is_active = 1 WHERE (s.email = ? OR s.phone = ?) AND s.is_active = 1 ORDER BY s.id LIMIT 20");
     $staffStmt->execute([$username, $username]);
-    $staff = $staffStmt->fetch(PDO::FETCH_ASSOC);
+    $staffMatches = array_values(array_filter($staffStmt->fetchAll(PDO::FETCH_ASSOC), function ($row) use ($password) {
+        return password_verify($password, (string)$row['password']);
+    }));
     $staffStmt = null; // Free statement
-    
-    if ($staff && password_verify($password, $staff['password'])) {
+    if (count($staffMatches) > 1) {
+        error_log(sprintf('auth.php: staff login "%s" matches %d accounts in different restaurants — refused', $username, count($staffMatches)));
+        ob_clean();
+        echo json_encode(['success' => false, 'message' => 'This email or phone is used by more than one restaurant. Ask your restaurant owner to change it on your staff account.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+    $staff = $staffMatches[0] ?? null;
+
+    if ($staff) {
+        authBlockedIpGate($pdo, $staff['restaurant_id'], $username);
         // Staff login success — clear failed attempts
         if (function_exists('clearFailedAttempts')) {
-            clearFailedAttempts(getRateLimitIdentifier());
+            clearFailedAttempts(getAuthRateLimitIdentifier(), $username);
         }
         
         // ── Audit: successful staff login + new-device detection ──
@@ -535,9 +549,27 @@ function handleLogin() {
     if ($branchAdmin && password_verify($password, $branchAdmin['password_hash'])) {
         // Branch admin login success — clear failed attempts
         if (function_exists('clearFailedAttempts')) {
-            clearFailedAttempts(getRateLimitIdentifier());
+            clearFailedAttempts(getAuthRateLimitIdentifier(), $username);
         }
-        
+
+        // Get linked restaurants (switched-off restaurants left out, like their own staff logins).
+        // Fetched before the audit below: it used to read $linked before this ran, so branch-admin
+        // logins never reached the login log.
+        $linkStmt = $pdo->prepare("
+            SELECT brl.restaurant_id, brl.label, u.restaurant_name
+            FROM branch_restaurant_links brl
+            JOIN users u ON u.restaurant_id = brl.restaurant_id AND u.is_active = 1
+            WHERE brl.branch_admin_id = ?
+        ");
+        $linkStmt->execute([$branchAdmin['id']]);
+        $linked = $linkStmt->fetchAll(PDO::FETCH_ASSOC);
+        $linkStmt = null;
+
+        if (empty($linked)) {
+            throw new Exception('No linked restaurants found for this account');
+        }
+        authBlockedIpGate($pdo, $linked[0]['restaurant_id'], $username);
+
         // ── Audit: successful branch-admin login + new-device detection ──
         try {
             $firstLinked = $linked[0]['restaurant_id'] ?? null;
@@ -554,20 +586,6 @@ function handleLogin() {
             }
         } catch (Exception $logErr) {
             error_log('auth.php: login log (branch admin success) failed: ' . $logErr->getMessage());
-        }
-        // Get linked restaurants
-        $linkStmt = $pdo->prepare("
-            SELECT brl.restaurant_id, brl.label, u.restaurant_name 
-            FROM branch_restaurant_links brl 
-            JOIN users u ON u.restaurant_id = brl.restaurant_id 
-            WHERE brl.branch_admin_id = ?
-        ");
-        $linkStmt->execute([$branchAdmin['id']]);
-        $linked = $linkStmt->fetchAll(PDO::FETCH_ASSOC);
-        $linkStmt = null;
-
-        if (empty($linked)) {
-            throw new Exception('No linked restaurants found for this account');
         }
 
         resetLoginIdentity();
@@ -606,8 +624,8 @@ function handleLogin() {
     }
 
     // Track failed login attempt for progressive lockout
-    if (function_exists('trackFailedAttempt') && function_exists('getRateLimitIdentifier')) {
-        trackFailedAttempt(getRateLimitIdentifier());
+    if (function_exists('trackFailedAttempt') && function_exists('getAuthRateLimitIdentifier')) {
+        trackFailedAttempt(getAuthRateLimitIdentifier(), $username);
     }
     
     // ── Audit: failed login attempt ──
@@ -631,7 +649,7 @@ function handleLogin() {
         // trackFailedAttempt wrote to disk)
         $justLocked = false;
         $rateLimitDir = __DIR__ . '/../tmp/rate_limits';
-        $safeId = preg_replace('/[^a-zA-Z0-9_-]/', '_', getRateLimitIdentifier());
+        $safeId = preg_replace('/[^a-zA-Z0-9_-]/', '_', getAuthRateLimitIdentifier());
         $lockFile = $rateLimitDir . '/' . $safeId . '_lockout.json';
         if (file_exists($lockFile) && (time() - filemtime($lockFile)) < 5) {
             $justLocked = true;
@@ -2037,9 +2055,14 @@ function handleForgotPassword() {
     }
     
     // Generate reset link
-    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    $resetLink = $protocol . '://' . $host . dirname($_SERVER['PHP_SELF']) . '/reset_password.php?token=' . $token;
+    // Never from the Host header: any domain pointed at us reaches this script (restaurant own domains),
+    // so a forged Host used to put the token in a link to the attacker's site. Same rule as customer_auth.php.
+    $host = strtolower(preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+    if (in_array($host, ['localhost', '127.0.0.1'], true)) {
+        $resetLink = 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/reset_password.php?token=' . $token;
+    } else {
+        $resetLink = rtrim((string)(env('APP_URL', '') ?: 'https://restrogrow.com'), '/') . '/main/admin/reset_password.php?token=' . $token;
+    }
     
     // Include email configuration if available
     if (file_exists(__DIR__ . '/../config/email_config.php')) {

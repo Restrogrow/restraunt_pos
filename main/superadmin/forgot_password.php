@@ -63,9 +63,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
                 
                 // Generate reset link
-                $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-                $host = $_SERVER['HTTP_HOST'];
-                $resetLink = $protocol . '://' . $host . dirname($_SERVER['PHP_SELF']) . '/reset_password.php?token=' . $token;
+                // Never from the Host header (a forged Host put the Super Admin reset token in a link to
+                // someone else's site): restrogrow.com, or this computer when testing locally
+                $host = strtolower(preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+                $resetLink = in_array($host, ['localhost', '127.0.0.1'], true)
+                    ? 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/reset_password.php?token=' . $token
+                    : rtrim((string)(env('APP_URL', '') ?: 'https://restrogrow.com'), '/') . '/main/superadmin/reset_password.php?token=' . $token;
                 
                 // Send email to sujaysarraf55@gmail.com
                 $to = 'sujaysarraf55@gmail.com';

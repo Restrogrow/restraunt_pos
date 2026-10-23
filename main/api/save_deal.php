@@ -16,6 +16,12 @@ if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Authentication required']);
     exit;
 }
+// deals change what the menu sells: owner / manager only
+if (!hasPermission(PERMISSION_MANAGE_MENU)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You don’t have permission to change deals.']);
+    exit;
+}
 
 try {
     $conn = getConnection();

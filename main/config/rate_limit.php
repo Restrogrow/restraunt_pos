@@ -32,11 +32,12 @@ function checkRateLimit($identifier, $maxRequests = 60, $timeWindow = 60) {
     $lockoutFile = $rateLimitDir . '/' . $safeIdentifier . '_lockout.json';
     
     // Also check for base IP lockout (for auth rate limiter which prefixes with type like 'login_ip_xxx')
-    // This ensures trackFailedAttempt() lockouts are enforced even when applyAuthRateLimit() prefixes the identifier
+    // This ensures trackFailedAttempt() lockouts are enforced even when applyAuthRateLimit() prefixes the identifier.
+    // Login attempts only: Forgot password, reset and sign-up / OTP codes stay open while locked out, since
+    // the lockout message sends people to Forgot password (it used to answer 429 there too).
     $baseLockoutFile = null;
-    if (strpos($identifier, 'ip_') !== false || strpos($identifier, 'login_') === 0 || strpos($identifier, 'signup_') === 0 || strpos($identifier, 'forgotPwd_') === 0 || strpos($identifier, 'resetPwd_') === 0) {
-        $ipOnly = 'ip_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-        $ipSafe = preg_replace('/[^a-zA-Z0-9_-]/', '_', $ipOnly);
+    if (strpos($identifier, 'login_') === 0 || strpos($identifier, 'demo_login_') === 0) {
+        $ipSafe = preg_replace('/[^a-zA-Z0-9_-]/', '_', getAuthRateLimitIdentifier());
         $baseLockoutFile = $rateLimitDir . '/' . $ipSafe . '_lockout.json';
     }
     
@@ -113,8 +114,12 @@ function checkRateLimit($identifier, $maxRequests = 60, $timeWindow = 60) {
  * after a few typos; 10 wrong tries still stops anyone guessing passwords.
  * Every attempt is also mirrored into the login_logs audit table by
  * auth.php, so the Logs screen shows the full strike pattern.)
+ *
+ * $subject (optional): the username that was tried. A later successful login clears only that
+ * username's strikes (clearFailedAttempts()), so logging into your OWN account no longer wipes the
+ * strikes run up guessing someone else's password.
  */
-function trackFailedAttempt($identifier) {
+function trackFailedAttempt($identifier, $subject = null) {
     $rateLimitDir = __DIR__ . '/../tmp/rate_limits';
     if (!is_dir($rateLimitDir)) {
         mkdir($rateLimitDir, 0755, true);
@@ -132,13 +137,13 @@ function trackFailedAttempt($identifier) {
         }
     }
     
-    // Remove attempts older than 15 minutes
+    // Remove attempts older than 15 minutes (an attempt is a timestamp, or [t, subject hash])
     $data['attempts'] = array_values(array_filter($data['attempts'], function($t) use ($now) {
-        return ($now - $t) < 900; // 15 minutes
+        return ($now - (is_array($t) ? (int)($t[0] ?? 0) : (int)$t)) < 900; // 15 minutes
     }));
-    
+
     // Add this failed attempt
-    $data['attempts'][] = $now;
+    $data['attempts'][] = $subject !== null && $subject !== '' ? [$now, rateLimitSubjectHash($subject)] : $now;
     $data['count'] = count($data['attempts']);
     
     // If 10+ failed attempts in 15 minutes, lock for 30 minutes
@@ -156,14 +161,32 @@ function trackFailedAttempt($identifier) {
     }
 }
 
+function rateLimitSubjectHash($subject) {
+    return substr(hash('sha256', 'rl|' . strtolower(trim((string)$subject))), 0, 16);
+}
+
 /**
  * Clear failed attempts counter (on successful login)
+ * With $subject: only that username's strikes go (see trackFailedAttempt()); a lockout file is left
+ * alone, it can't be active anyway when a login just got through checkRateLimit().
  */
-function clearFailedAttempts($identifier) {
+function clearFailedAttempts($identifier, $subject = null) {
     $rateLimitDir = __DIR__ . '/../tmp/rate_limits';
     $safeIdentifier = preg_replace('/[^a-zA-Z0-9_-]/', '_', $identifier);
-    
+
     $failedFile = $rateLimitDir . '/' . $safeIdentifier . '_failed.json';
+    if ($subject !== null && $subject !== '') {
+        if (!file_exists($failedFile)) return;
+        $data = json_decode((string)file_get_contents($failedFile), true);
+        if (!$data || !isset($data['attempts'])) return;
+        $h = rateLimitSubjectHash($subject);
+        $data['attempts'] = array_values(array_filter($data['attempts'], function ($t) use ($h) {
+            return !(is_array($t) && ($t[1] ?? '') === $h);
+        }));
+        $data['count'] = count($data['attempts']);
+        file_put_contents($failedFile, json_encode($data));
+        return;
+    }
     if (file_exists($failedFile)) {
         @unlink($failedFile);
     }
@@ -197,8 +220,15 @@ function getRateLimitIdentifier() {
     if (isset($_SESSION['user_id'])) {
         return 'user_' . $_SESSION['user_id'];
     }
-    
-    // Fall back to IP address
+    return getAuthRateLimitIdentifier();
+}
+
+/**
+ * IP-only identifier for logins, lockouts and password resets. Never the session: keyed on the
+ * logged-in user_id, an attacker signed into their own account got a bucket whose lockout file
+ * checkRateLimit() never read, so the 10-wrong-tries lockout never applied to them.
+ */
+function getAuthRateLimitIdentifier() {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
     // X-Forwarded-For is only trustworthy when the request actually came
@@ -273,7 +303,7 @@ function applyAuthRateLimit($type = 'login') {
     $limit = $limits[$type];
     
     // Use a combined identifier: type + IP (so login and forgotPwd counters are separate)
-    $baseId = getRateLimitIdentifier();
+    $baseId = getAuthRateLimitIdentifier(); // IP, never the session (see getAuthRateLimitIdentifier())
     $identifier = $type . '_' . $baseId;
     
     $result = checkRateLimit($identifier, $limit['max'], $limit['window']);

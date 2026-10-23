@@ -25,6 +25,12 @@ if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
     echo json_encode(['success' => false, 'message' => 'Authentication required']);
     exit;
 }
+// campaigns, gift codes, the API key and customer phones: owner / manager only (a waiter or rider must not blast customers)
+if (!hasPermission(PERMISSION_MANAGE_LOYALTY)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You don’t have permission to manage WhatsApp.']);
+    exit;
+}
 $rid = $_SESSION['restaurant_id'];
 session_write_close();
 

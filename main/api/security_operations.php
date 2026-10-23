@@ -27,6 +27,13 @@ if (getUserRole() !== ROLE_ADMIN) {
     exit();
 }
 
+// the public demo restaurant: anyone can log in as its owner, so no blocking from there
+require_once __DIR__ . '/../config/demo_restaurant.php';
+if (isDemoRestaurantSession()) {
+    echo json_encode(['success' => false, 'message' => 'This is turned off in the demo restaurant.'], JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
 if (file_exists(__DIR__ . '/../db_connection.php')) {
     require_once __DIR__ . '/../db_connection.php';
 } else {

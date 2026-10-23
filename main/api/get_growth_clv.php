@@ -13,7 +13,7 @@ header('Content-Type: application/json');
 // The customer website stores the restaurant it shows in the same session,
 // so restaurant_id alone doesn't mean a dashboard login.
 require_once __DIR__ . '/../config/authorization_config.php';
-requireLogin(true);
+requirePermission(PERMISSION_VIEW_REPORTS); // growth figures and customer lists: owner / manager only, not floor or kitchen staff
 
 $restaurant_id = $_SESSION['restaurant_id'];
 session_write_close(); // read-only endpoint

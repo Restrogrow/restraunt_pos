@@ -26,6 +26,12 @@ if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
     echo json_encode(['success' => false, 'message' => 'Please log in again.']);
     exit;
 }
+// marketing (posters, captions, designs): owner / manager only
+if (!hasPermission(PERMISSION_MANAGE_LOYALTY)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You don’t have permission to use Marketing.']);
+    exit;
+}
 $rid = (string)$_SESSION['restaurant_id'];
 session_write_close();
 require_once __DIR__ . '/../db_connection.php';

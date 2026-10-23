@@ -97,10 +97,10 @@ try {
         $st->execute([':u' => $saUser]);
         $sa = $st->fetch(PDO::FETCH_ASSOC);
         if (!$sa || !password_verify($saPass, $sa['password_hash'])) {
-            if (function_exists('trackFailedAttempt')) trackFailedAttempt(getRateLimitIdentifier());
+            if (function_exists('trackFailedAttempt')) trackFailedAttempt(getAuthRateLimitIdentifier(), $saUser);
             saOut(['success' => false, 'message' => 'Incorrect username or password']);
         }
-        if (function_exists('clearFailedAttempts')) clearFailedAttempts(getRateLimitIdentifier());
+        if (function_exists('clearFailedAttempts')) clearFailedAttempts(getAuthRateLimitIdentifier(), $saUser);
         saStartSession($sa);
         $token = bin2hex(random_bytes(32));
         $conn->prepare('INSERT INTO sa_app_tokens (superadmin_id, token_hash, pw_fingerprint, device) VALUES (?, ?, ?, ?)')
@@ -120,7 +120,7 @@ try {
         $fresh = $row && strtotime($row['last_used_at']) > time() - SA_TOKEN_DAYS * 86400;
         if (!$row || !$fresh || !hash_equals($row['pw_fingerprint'], saPwFingerprint($row['password_hash']))) {
             if ($row) $conn->prepare('DELETE FROM sa_app_tokens WHERE id = ?')->execute([$row['tid']]);
-            if (function_exists('trackFailedAttempt')) trackFailedAttempt(getRateLimitIdentifier());
+            if (function_exists('trackFailedAttempt')) trackFailedAttempt(getAuthRateLimitIdentifier());
             saOut(['success' => false, 'message' => 'Please sign in again']);
         }
         $conn->prepare('UPDATE sa_app_tokens SET last_used_at = NOW() WHERE id = ?')->execute([$row['tid']]);

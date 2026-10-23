@@ -21,6 +21,12 @@ if (!isLoggedIn() || empty($_SESSION['restaurant_id'])) {
     echo json_encode(['success' => false, 'message' => 'Authentication required']);
     exit;
 }
+// scratch-card prizes and budget: owner / manager only
+if (!hasPermission(PERMISSION_MANAGE_LOYALTY)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You don’t have permission to manage the scratch card.']);
+    exit;
+}
 $restaurantId = $_SESSION['restaurant_id'];
 session_write_close(); // only reads the session — release its lock
 

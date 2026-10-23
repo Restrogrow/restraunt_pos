@@ -31,7 +31,7 @@ try {
     if (($p['k'] ?? '') === '' || !hash_equals((string)$p['k'], $key)) googleSaBack('Please start the Google sign-in again from this browser.');
     setcookie('rg_google_sa', '', ['expires' => 1, 'path' => '/', 'secure' => !googleLoginIsLocal(), 'httponly' => true, 'samesite' => 'Lax']);
     if (!in_array($p['email'], googleLoginSuperadminEmails(), true)) {
-        if (function_exists('trackFailedAttempt')) trackFailedAttempt(getRateLimitIdentifier());
+        if (function_exists('trackFailedAttempt')) trackFailedAttempt(getAuthRateLimitIdentifier(), $p['email']);
         pfAudit($conn, 'login.google_refused', $p['email']);
         googleSaBack($p['email'] . ' does not have Super Admin access.');
     }
@@ -58,7 +58,7 @@ try {
         $sa = ['id' => (int)$conn->lastInsertId(), 'username' => $username];
     }
 
-    if (function_exists('clearFailedAttempts')) clearFailedAttempts(getRateLimitIdentifier());
+    if (function_exists('clearFailedAttempts')) clearFailedAttempts(getAuthRateLimitIdentifier(), $p['email']);
     $_SESSION['superadmin_id'] = $sa['id'];
     $_SESSION['superadmin_username'] = $sa['username'];
     regenerateSessionAfterLogin();

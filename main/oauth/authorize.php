@@ -76,7 +76,10 @@ $req = $st->fetch(PDO::FETCH_ASSOC);
 if (!$req) oaError('This connect link has expired.');
 $client = mcpClient($conn, $req['client_id']);
 if (!$client) oaError('This app is not registered with RestroGrow.');
-$app = mcpClientLabel($client);
+// named after where THIS code goes, not the client's first registered address; any other app also shows its host
+$returnHost = strtolower((string)parse_url((string)$req['redirect_uri'], PHP_URL_HOST));
+$app = mcpClientLabel(['name' => $client['name'] ?? '', 'redirect_uris' => [$req['redirect_uri']]]);
+if (mcpBrandForHost($returnHost) === '') $app = mb_substr($app, 0, 60) . ' (' . $returnHost . ')';
 $appH = htmlspecialchars($app);
 
 $isOwner = isSessionValid() && ($_SESSION['user_type'] ?? '') === 'admin' && !empty($_SESSION['user_id']) && !empty($_SESSION['restaurant_id']);
@@ -114,7 +117,7 @@ $u->execute([$userId, $rid]);
 $me = $u->fetch(PDO::FETCH_ASSOC) ?: [];
 $write = str_contains($req['scope'], 'write');
 oaPage('Allow ' . $app, '<h1>Allow ' . $appH . ' to manage your restaurant?</h1>'
-    . '<div class="who">Restaurant: <b>' . htmlspecialchars((string)($me['restaurant_name'] ?? $rid)) . '</b><br>Logged in as ' . htmlspecialchars((string)(($me['email'] ?? '') ?: ($me['username'] ?? ''))) . '</div>'
+    . '<div class="who">Restaurant: <b>' . htmlspecialchars((string)($me['restaurant_name'] ?? $rid)) . '</b><br>Logged in as ' . htmlspecialchars((string)(($me['email'] ?? '') ?: ($me['username'] ?? ''))) . '<br>Sends you back to <b>' . htmlspecialchars($returnHost) . '</b></div>'
     . '<p>' . $appH . ' will be able to:</p><ul><li>See your sales, reports, orders and menu</li>'
     . ($write ? '<li>Add dishes, change prices and switch dishes on or off</li><li>Accept, update or cancel orders</li>' : '') . '</ul>'
     . '<p class="small">' . $appH . ' asks you before it changes anything. You can disconnect any time from ' . $appH . "'s settings.</p>"
