@@ -205,3 +205,140 @@ if (!function_exists('ensureMealSubscriptionTables')) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 }
+
+/*
+ * Changes both sides make to a subscription (the customer on my-subscription.php, staff on
+ * admin/meal_subscriptions.php), kept here so the two always follow the same rules, and the
+ * details both lists show (next delivery, payment, recent deliveries) worked out the same way.
+ */
+
+if (!function_exists('mealSubAddSkip')) {
+    function mealSubAddSkip($conn, array $sub, $skipDate) {
+        $d = DateTime::createFromFormat('Y-m-d', (string)$skipDate);
+        if (!$d || $d->format('Y-m-d') !== $skipDate) {
+            throw new Exception('Invalid date');
+        }
+        if (!in_array($sub['status'], ['active', 'paused'], true)) {
+            throw new Exception('Only an active or paused subscription can skip days');
+        }
+        if ($skipDate < mealPlanToday($conn, $sub['restaurant_id'])) {   // the restaurant's own today
+            throw new Exception('Cannot skip a date in the past');
+        }
+        // that day's delivery already went to the kitchen (cron / "Generate Today's Deliveries"): too late to skip
+        try {
+            $made = $conn->prepare("SELECT 1 FROM orders WHERE subscription_id = ? AND delivery_date = ? LIMIT 1");
+            $made->execute([(int)$sub['id'], $skipDate]);
+            $alreadyMade = (bool)$made->fetchColumn();
+        } catch (PDOException $e) {
+            $alreadyMade = false;   // no subscription columns on orders yet: nothing generated
+        }
+        if ($alreadyMade) {
+            throw new Exception("That day's meal is already being prepared, so it can't be skipped now.");
+        }
+        $conn->prepare("INSERT IGNORE INTO meal_subscription_skip_dates (subscription_id, skip_date) VALUES (?, ?)")
+             ->execute([(int)$sub['id'], $skipDate]);
+    }
+}
+
+if (!function_exists('mealSubRemoveSkip')) {
+    function mealSubRemoveSkip($conn, array $sub, $skipDate) {
+        $conn->prepare("DELETE FROM meal_subscription_skip_dates WHERE subscription_id = ? AND skip_date = ?")
+             ->execute([(int)$sub['id'], (string)$skipDate]);
+    }
+}
+
+if (!function_exists('mealSubUpdateDelivery')) {
+    /**
+     * New delivery address / phone. Today's delivery still waiting in the kitchen goes to the new
+     * address too. A changed address drops the old map pin unless a new one comes with it.
+     */
+    function mealSubUpdateDelivery($conn, array $sub, $address, $phone, $lat = null, $lng = null) {
+        $address = trim((string)$address);
+        $phone = trim((string)$phone);
+        if ($address === '') throw new Exception('Delivery address is required');
+        if (!preg_match('/^\+?[0-9 \-]{7,20}$/', $phone)) throw new Exception('Please enter a valid phone number');
+        if (in_array($sub['status'], ['completed', 'cancelled'], true)) {
+            throw new Exception('This subscription has ended');
+        }
+        if ($lat === null && $address === trim((string)$sub['delivery_address'])) {
+            $lat = $sub['delivery_lat'];   // only the phone changed: keep the pin
+            $lng = $sub['delivery_lng'];
+        }
+        $conn->prepare("UPDATE customer_meal_subscriptions SET delivery_address = ?, delivery_phone = ?, delivery_lat = ?, delivery_lng = ? WHERE id = ?")
+             ->execute([$address, $phone, $lat, $lng, (int)$sub['id']]);
+        try {
+            $conn->prepare("UPDATE orders SET customer_address = ?, customer_phone = ?
+                WHERE subscription_id = ? AND delivery_date >= ? AND order_status = 'Pending'")
+                 ->execute([$address, $phone, (int)$sub['id'], mealPlanToday($conn, $sub['restaurant_id'])]);
+        } catch (PDOException $e) { /* no subscription columns on orders yet */ }
+    }
+}
+
+if (!function_exists('mealSubAttachDetails')) {
+    /**
+     * Adds to each subscription row: credits_remaining, skip_dates (today on), payment_status and
+     * payment_method (latest payment), next_delivery (Y-m-d or null) and deliveries (latest 10).
+     */
+    function mealSubAttachDetails($conn, $restaurant_id, array $subs) {
+        if (!$subs) return $subs;
+        $today = mealPlanToday($conn, $restaurant_id);
+        $ids = array_map('intval', array_column($subs, 'id'));
+        $in = implode(',', array_fill(0, count($ids), '?'));
+
+        $skips = [];
+        $st = $conn->prepare("SELECT subscription_id, skip_date FROM meal_subscription_skip_dates WHERE subscription_id IN ($in) AND skip_date >= ? ORDER BY skip_date ASC");
+        $st->execute(array_merge($ids, [$today]));
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $skips[$r['subscription_id']][] = $r['skip_date'];
+
+        $pay = [];
+        $st = $conn->prepare("SELECT subscription_id, payment_status, payment_method FROM meal_plan_payments WHERE subscription_id IN ($in) ORDER BY id ASC");
+        $st->execute($ids);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $pay[$r['subscription_id']] = $r;   // the latest wins
+
+        $deliveries = [];
+        $madeDays = [];
+        try {
+            $st = $conn->prepare("SELECT subscription_id, delivery_date, meal_time, order_status, order_number FROM orders
+                WHERE restaurant_id = ? AND subscription_id IN ($in) ORDER BY delivery_date DESC, meal_time ASC");
+            $st->execute(array_merge([$restaurant_id], $ids));
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $sid = $r['subscription_id'];
+                $madeDays[$sid][$r['delivery_date']] = true;
+                if (count($deliveries[$sid] ?? []) < 10) $deliveries[$sid][] = $r;
+            }
+        } catch (PDOException $e) { /* no subscription columns on orders yet */ }
+
+        // the days of the week each meal time has a menu: deliveries are only made on those
+        $menuDays = ['lunch' => [], 'dinner' => []];
+        try {
+            $st = $conn->prepare("SELECT day_of_week, meal_time FROM meal_plan_weekly_menu WHERE restaurant_id = ? AND is_active = 1");
+            $st->execute([$restaurant_id]);
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $menuDays[$r['meal_time']][(int)$r['day_of_week']] = true;
+        } catch (PDOException $e) {}
+
+        foreach ($subs as &$s) {
+            $sid = $s['id'];
+            $s['credits_remaining'] = max(0, (int)$s['credits_total'] - (int)$s['credits_used']);
+            $s['skip_dates'] = $skips[$sid] ?? [];
+            $s['payment_status'] = $pay[$sid]['payment_status'] ?? null;
+            $s['payment_method'] = $pay[$sid]['payment_method'] ?? null;
+            $s['deliveries'] = $deliveries[$sid] ?? [];
+            $s['next_delivery'] = null;
+            if ($s['status'] === 'active' && $s['credits_remaining'] > 0) {
+                $scope = $s['meal_scope_snapshot'];
+                $times = $scope === 'both' ? ['lunch', 'dinner'] : [$scope];
+                $d = new DateTime(max($today, (string)($s['start_date'] ?? '')));
+                for ($i = 0; $i < 60; $i++, $d->modify('+1 day')) {
+                    $ds = $d->format('Y-m-d');
+                    if (isset($madeDays[$sid][$ds]) || in_array($ds, $s['skip_dates'], true)) continue;
+                    $dow = (int)$d->format('w');
+                    foreach ($times as $t) {
+                        if (isset($menuDays[$t][$dow])) { $s['next_delivery'] = $ds; break 2; }
+                    }
+                }
+            }
+        }
+        unset($s);
+        return $subs;
+    }
+}

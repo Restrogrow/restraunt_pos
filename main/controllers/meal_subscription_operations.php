@@ -2,7 +2,7 @@
 /**
  * Customer Meal Subscription Operations Controller
  * Handles a logged-in customer subscribing to a meal plan, and managing
- * their subscription (pause/resume/skip dates). All actions are scoped to
+ * their subscription (pause/resume/skip dates/delivery address). All actions are scoped to
  * the session's own customer_id - never a client-supplied one - the same
  * rule get_addons.php documents for restaurant_id.
  */
@@ -96,6 +96,9 @@ try {
             break;
         case 'remove_skip_date':
             handleRemoveSkipDate($conn, $customer_id, (int)($_POST['subscriptionId'] ?? 0), trim($_POST['skipDate'] ?? ''));
+            break;
+        case 'update_delivery':
+            handleUpdateDelivery($conn, $customer_id, (int)($_POST['subscriptionId'] ?? 0));
             break;
         default:
             throw new Exception('Invalid action');
@@ -269,32 +272,18 @@ function handleResume($conn, $customer_id, $subscriptionId) {
 
 function handleAddSkipDate($conn, $customer_id, $subscriptionId, $skipDate) {
     $sub = loadOwnSubscription($conn, $customer_id, $subscriptionId);
-    $d = DateTime::createFromFormat('Y-m-d', $skipDate);
-    if (!$d || $d->format('Y-m-d') !== $skipDate) {
-        throw new Exception('Invalid date');
-    }
-    if ($skipDate < mealPlanToday($conn, $sub['restaurant_id'])) {   // the restaurant's own today
-        throw new Exception('Cannot skip a date in the past');
-    }
-    // that day's delivery already went to the kitchen (cron / "Generate Today's Deliveries"): too late to skip
-    try {
-        $made = $conn->prepare("SELECT 1 FROM orders WHERE subscription_id = ? AND delivery_date = ? LIMIT 1");
-        $made->execute([$subscriptionId, $skipDate]);
-        $alreadyMade = (bool)$made->fetchColumn();
-    } catch (PDOException $e) {
-        $alreadyMade = false;   // no subscription columns on orders yet: nothing generated
-    }
-    if ($alreadyMade) {
-        throw new Exception("That day's meal is already being prepared, so it can't be skipped now. Please call the restaurant.");
-    }
-    $stmt = $conn->prepare("INSERT IGNORE INTO meal_subscription_skip_dates (subscription_id, skip_date) VALUES (?, ?)");
-    $stmt->execute([$subscriptionId, $skipDate]);
+    mealSubAddSkip($conn, $sub, $skipDate);
     echo json_encode(['success' => true, 'message' => 'That date will be skipped'], JSON_UNESCAPED_UNICODE);
 }
 
 function handleRemoveSkipDate($conn, $customer_id, $subscriptionId, $skipDate) {
-    loadOwnSubscription($conn, $customer_id, $subscriptionId);
-    $stmt = $conn->prepare("DELETE FROM meal_subscription_skip_dates WHERE subscription_id = ? AND skip_date = ?");
-    $stmt->execute([$subscriptionId, $skipDate]);
+    $sub = loadOwnSubscription($conn, $customer_id, $subscriptionId);
+    mealSubRemoveSkip($conn, $sub, $skipDate);
     echo json_encode(['success' => true, 'message' => 'Skip removed'], JSON_UNESCAPED_UNICODE);
+}
+
+function handleUpdateDelivery($conn, $customer_id, $subscriptionId) {
+    $sub = loadOwnSubscription($conn, $customer_id, $subscriptionId);
+    mealSubUpdateDelivery($conn, $sub, $_POST['deliveryAddress'] ?? '', $_POST['deliveryPhone'] ?? '');
+    echo json_encode(['success' => true, 'message' => 'Delivery details updated'], JSON_UNESCAPED_UNICODE);
 }

@@ -65,7 +65,7 @@ try {
 
     $sql = "SELECT s.id, s.customer_id, c.customer_name, c.phone, s.plan_name_snapshot, s.meal_scope_snapshot,
                    s.credits_total, s.credits_used, s.amount_paid, s.delivery_address, s.delivery_phone,
-                   s.delivery_lat, s.delivery_lng, s.status, s.paused_at, s.created_at
+                   s.delivery_lat, s.delivery_lng, s.status, s.paused_at, s.start_date, s.created_at
             FROM customer_meal_subscriptions s
             JOIN customers c ON c.id = s.customer_id
             WHERE s.restaurant_id = ?";
@@ -86,23 +86,11 @@ try {
     $stmt->execute($params);
     $subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    if ($subscriptions) {
-        $ids = array_column($subscriptions, 'id');
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $skipStmt = $conn->prepare("SELECT subscription_id, skip_date FROM meal_subscription_skip_dates WHERE subscription_id IN ($placeholders) AND skip_date >= CURDATE() ORDER BY skip_date ASC");
-        $skipStmt->execute($ids);
-        $skipsBySub = [];
-        foreach ($skipStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $skipsBySub[$row['subscription_id']][] = $row['skip_date'];
-        }
-        foreach ($subscriptions as &$sub) {
-            $sub['credits_remaining'] = max(0, (int)$sub['credits_total'] - (int)$sub['credits_used']);
-            $sub['skip_dates'] = $skipsBySub[$sub['id']] ?? [];
-        }
-        unset($sub);
-    }
+    // credits left, skips, payment, next delivery and recent deliveries: the same as the customer sees
+    $subscriptions = mealSubAttachDetails($conn, $restaurant_id, $subscriptions);
 
-    echo json_encode(['success' => true, 'data' => $subscriptions, 'count' => count($subscriptions)], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => true, 'data' => $subscriptions, 'count' => count($subscriptions),
+                      'today' => mealPlanToday($conn, $restaurant_id)], JSON_UNESCAPED_UNICODE);
 
 } catch (PDOException $e) {
     error_log("PDO Error in get_meal_subscriptions.php: " . $e->getMessage());

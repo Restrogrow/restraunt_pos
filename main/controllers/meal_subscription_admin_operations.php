@@ -1,8 +1,9 @@
 <?php
 /**
  * Admin-side meal subscription management: pause/resume a customer's
- * subscription on their behalf, adjust credits for support cases, and
- * manually trigger today's delivery generation for this restaurant.
+ * subscription on their behalf, skip days and change the delivery address
+ * for them, adjust credits for support cases, mark the payment received,
+ * cancel, and manually trigger today's delivery generation for this restaurant.
  * Mirrors main/controllers/addon_operations.php's structure.
  */
 
@@ -64,8 +65,8 @@ try {
         throw new Exception('Action is required');
     }
 
-    // giving credits or a new plan away is for the owner and managers, not every staff login
-    if (in_array($action, ['adjust_credits', 'admin_create_subscription'], true) && !in_array(getUserRole(), [ROLE_ADMIN, ROLE_MANAGER], true)) {
+    // credits, a new plan, money received and ending a plan are for the owner and managers, not every staff login
+    if (in_array($action, ['adjust_credits', 'admin_create_subscription', 'mark_paid', 'cancel_subscription'], true) && !in_array(getUserRole(), [ROLE_ADMIN, ROLE_MANAGER], true)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Only the owner or a manager can do this.'], JSON_UNESCAPED_UNICODE);
         exit();
@@ -80,6 +81,25 @@ try {
             break;
         case 'adjust_credits':
             handleAdjustCredits($conn, $restaurant_id, (int)($_POST['subscriptionId'] ?? 0), (int)($_POST['delta'] ?? 0));
+            break;
+        case 'add_skip_date':
+            mealSubAddSkip($conn, loadRestaurantSubscription($conn, $restaurant_id, (int)($_POST['subscriptionId'] ?? 0)), trim($_POST['skipDate'] ?? ''));
+            echo json_encode(['success' => true, 'message' => 'That date will be skipped'], JSON_UNESCAPED_UNICODE);
+            break;
+        case 'remove_skip_date':
+            mealSubRemoveSkip($conn, loadRestaurantSubscription($conn, $restaurant_id, (int)($_POST['subscriptionId'] ?? 0)), trim($_POST['skipDate'] ?? ''));
+            echo json_encode(['success' => true, 'message' => 'Skip removed'], JSON_UNESCAPED_UNICODE);
+            break;
+        case 'update_delivery':
+            mealSubUpdateDelivery($conn, loadRestaurantSubscription($conn, $restaurant_id, (int)($_POST['subscriptionId'] ?? 0)),
+                $_POST['deliveryAddress'] ?? '', $_POST['deliveryPhone'] ?? '');
+            echo json_encode(['success' => true, 'message' => 'Delivery details updated'], JSON_UNESCAPED_UNICODE);
+            break;
+        case 'mark_paid':
+            handleMarkPaid($conn, $restaurant_id, (int)($_POST['subscriptionId'] ?? 0));
+            break;
+        case 'cancel_subscription':
+            handleAdminCancel($conn, $restaurant_id, (int)($_POST['subscriptionId'] ?? 0));
             break;
         case 'generate_today':
             handleGenerateToday($conn, $restaurant_id);
@@ -149,6 +169,37 @@ function handleAdjustCredits($conn, $restaurant_id, $subscriptionId, $delta) {
     }
     $conn->prepare("UPDATE customer_meal_subscriptions SET credits_used = ? WHERE id = ?")->execute([$newUsed, $subscriptionId]);
     echo json_encode(['success' => true, 'message' => 'Credits adjusted', 'credits_used' => $newUsed], JSON_UNESCAPED_UNICODE);
+}
+
+// Staff got the money (cash, QR, or a PhonePe payment that never confirmed): the payment counts
+// as received and a plan still waiting on it starts.
+function handleMarkPaid($conn, $restaurant_id, $subscriptionId) {
+    $sub = loadRestaurantSubscription($conn, $restaurant_id, $subscriptionId);
+    if ($sub['status'] === 'cancelled') {
+        throw new Exception('This subscription was cancelled');
+    }
+    $st = $conn->prepare("SELECT id FROM meal_plan_payments WHERE subscription_id = ? AND restaurant_id = ? ORDER BY id DESC LIMIT 1");
+    $st->execute([$subscriptionId, $restaurant_id]);
+    $payId = (int)$st->fetchColumn();
+    if ($payId) {
+        $conn->prepare("UPDATE meal_plan_payments SET payment_status = 'Success', notes = CONCAT(COALESCE(notes, ''), IF(COALESCE(notes, '') = '', '', ' | '), 'Marked paid by staff') WHERE id = ?")
+             ->execute([$payId]);
+    } else {
+        $conn->prepare("INSERT INTO meal_plan_payments (restaurant_id, subscription_id, amount, payment_method, payment_status, notes) VALUES (?, ?, ?, 'Cash', 'Success', 'Marked paid by staff')")
+             ->execute([$restaurant_id, $subscriptionId, $sub['amount_paid']]);
+    }
+    $conn->prepare("UPDATE customer_meal_subscriptions SET status = 'active' WHERE id = ? AND status = 'pending_payment'")->execute([$subscriptionId]);
+    echo json_encode(['success' => true, 'message' => 'Payment marked as received'], JSON_UNESCAPED_UNICODE);
+}
+
+// Ends the plan: no more deliveries are made for it. Any refund is settled with the customer directly.
+function handleAdminCancel($conn, $restaurant_id, $subscriptionId) {
+    $sub = loadRestaurantSubscription($conn, $restaurant_id, $subscriptionId);
+    if (in_array($sub['status'], ['completed', 'cancelled'], true)) {
+        throw new Exception('This subscription has already ended');
+    }
+    $conn->prepare("UPDATE customer_meal_subscriptions SET status = 'cancelled', paused_at = NULL WHERE id = ?")->execute([$subscriptionId]);
+    echo json_encode(['success' => true, 'message' => 'Subscription cancelled'], JSON_UNESCAPED_UNICODE);
 }
 
 function handleGenerateToday($conn, $restaurant_id) {

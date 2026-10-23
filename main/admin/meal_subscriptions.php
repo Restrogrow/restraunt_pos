@@ -89,6 +89,23 @@ try {
         .toast.success { background: #10b981; }
         .toast.error { background: #ef4444; }
 
+        .btn-manage { background: #eef2ff; color: #3730a3; }
+        .btn-secondary-sm { background: #f3f4f6; color: #374151; }
+        .btn-danger { background: #fee2e2; color: #991b1b; }
+        .sub-meta { color: #888; font-size: 11.5px; margin-top: 3px; }
+        .pay-pill { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-top: 4px; }
+        .pay-pill.Success { background: #d1fae5; color: #065f46; }
+        .pay-pill.Pending { background: #fef3c7; color: #92400e; }
+        .pay-pill.Failed, .pay-pill.Refunded { background: #fee2e2; color: #991b1b; }
+        .skip-chip .x { color: #ef4444; font-weight: 700; cursor: pointer; margin-left: 4px; }
+        .mg-section { border-top: 1px solid #f0f0f0; padding-top: 14px; margin-top: 14px; }
+        .mg-section:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+        .mg-section h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #333; }
+        .mg-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .mg-row input, .mg-section textarea { padding: 8px 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 13px; font-family: 'Poppins', sans-serif; }
+        .mg-section textarea { width: 100%; margin-bottom: 8px; }
+        .mg-hist { font-size: 12px; color: #555; }
+        .mg-hist div { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f5f5f5; }
         .gen-result { margin-top: 12px; padding: 10px 14px; border-radius: 8px; background: #f0f7f5; font-size: 12.5px; color: #1a3934; display: none; }
 
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; padding: 20px; }
@@ -162,6 +179,17 @@ try {
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- Manage one subscription: skips, delivery details, credits, payment, cancel, recent deliveries -->
+    <div class="modal-overlay" id="manageModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 id="mgTitle">Manage</h2>
+                <button class="modal-close" onclick="closeManage()">&times;</button>
+            </div>
+            <div class="modal-body" id="mgBody"></div>
         </div>
     </div>
 
@@ -251,6 +279,11 @@ try {
         var scopeLabels = { lunch: 'Lunch Only', dinner: 'Dinner Only', both: 'Lunch + Dinner' };
         var statusLabels = { active: 'Active', paused: 'Paused', pending_payment: 'Payment Pending', completed: 'Completed', cancelled: 'Cancelled' };
         var debounceTimer = null;
+        // owner / manager: credits, payment received and cancel (the server checks this too)
+        var CAN_MANAGE_MONEY = <?php echo json_encode(in_array(getUserRole(), [ROLE_ADMIN, ROLE_MANAGER], true)); ?>;
+        var payLabels = { Success: 'Paid', Pending: 'Payment pending', Failed: 'Payment failed', Refunded: 'Refunded' };
+        var subsById = {};
+        var serverToday = '';
 
         function showToast(msg, type) {
             var t = document.getElementById('toast');
@@ -270,19 +303,24 @@ try {
             debounceTimer = setTimeout(loadSubscriptions, 300);
         }
 
-        function loadSubscriptions() {
+        function loadSubscriptions(quiet) {
             var body = document.getElementById('subTableBody');
-            body.innerHTML = '<tr><td colspan="7" class="loading"><i class="fa fa-spinner fa-spin"></i> Loading...</td></tr>';
+            if (!quiet) body.innerHTML = '<tr><td colspan="7" class="loading"><i class="fa fa-spinner fa-spin"></i> Loading...</td></tr>';
 
             var search = document.getElementById('searchInput').value.trim();
             var status = document.getElementById('statusFilter').value;
             var url = '../api/get_meal_subscriptions.php?search=' + encodeURIComponent(search) + '&status=' + encodeURIComponent(status);
 
-            fetch(url)
+            fetch(url, { cache: 'no-store' })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
+                        if (data.today) serverToday = data.today;
+                        subsById = {};
+                        (data.data || []).forEach(function(s) { subsById[s.id] = s; });
                         renderTable(data.data || []);
+                        var open = document.getElementById('manageModal').dataset.subId;
+                        if (open && document.getElementById('manageModal').classList.contains('active') && subsById[open]) renderManage(subsById[open]);
                     } else {
                         body.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fa fa-exclamation-circle"></i><h3>Failed to load</h3></td></tr>';
                     }
@@ -303,11 +341,18 @@ try {
             subs.forEach(function(s) {
                 html += '<tr id="sub-row-' + s.id + '">';
                 html += '<td><b>' + escapeHtml(s.customer_name) + '</b><br><span style="color:#999">' + escapeHtml(s.phone) + '</span></td>';
-                html += '<td>' + escapeHtml(s.plan_name_snapshot) + '<br><span style="color:#999">' + (scopeLabels[s.meal_scope_snapshot] || s.meal_scope_snapshot) + '</span></td>';
-                html += '<td class="credit-cell"><b>' + s.credits_remaining + '</b> / ' + s.credits_total + ' left</td>';
+                html += '<td>' + escapeHtml(s.plan_name_snapshot) + '<br><span style="color:#999">' + (scopeLabels[s.meal_scope_snapshot] || s.meal_scope_snapshot) + '</span>';
+                if (s.start_date && s.start_date > todayStr()) html += '<div class="sub-meta"><i class="fa fa-calendar"></i> Starts ' + escapeHtml(niceDate(s.start_date)) + '</div>';
+                if (s.status === 'active') html += '<div class="sub-meta"><i class="fa fa-truck"></i> Next: ' + (s.next_delivery ? escapeHtml(niceDate(s.next_delivery)) : 'not scheduled') + '</div>';
+                html += '</td>';
+                html += '<td class="credit-cell"><b>' + s.credits_remaining + '</b> / ' + s.credits_total + ' left';
+                if (s.payment_status) html += '<br><span class="pay-pill ' + escapeHtml(s.payment_status) + '">' + escapeHtml(payLabels[s.payment_status] || s.payment_status) + '</span>';
+                html += '</td>';
                 html += '<td><span class="status-badge ' + s.status + '">' + (statusLabels[s.status] || s.status) + '</span></td>';
                 html += '<td>';
-                (s.skip_dates || []).forEach(function(d) { html += '<span class="skip-chip">' + escapeHtml(d) + '</span>'; });
+                (s.skip_dates || []).forEach(function(d) {
+                    html += '<span class="skip-chip">' + escapeHtml(niceDate(d)) + '<span class="x" title="Remove skip" onclick="removeSkip(' + s.id + ',\'' + escapeHtml(d) + '\')">&times;</span></span>';
+                });
                 if (!s.skip_dates || !s.skip_dates.length) html += '<span style="color:#ccc">-</span>';
                 html += '</td>';
                 html += '<td style="max-width:200px;">' + escapeHtml(s.delivery_address || '-');
@@ -315,14 +360,13 @@ try {
                     html += '<br><a href="https://www.google.com/maps?q=' + s.delivery_lat + ',' + s.delivery_lng + '" target="_blank" rel="noopener" style="font-size:11px;color:#1a3934;font-weight:600;text-decoration:none;"><i class="fa fa-map-marker-alt"></i> Open in Google Maps</a>';
                 }
                 html += '</td>';
-                html += '<td>';
+                html += '<td style="white-space:nowrap;">';
                 if (s.status === 'active') {
-                    html += '<button class="btn btn-pause btn-sm" onclick="pauseSub(' + s.id + ')"><i class="fa fa-pause"></i> Pause</button>';
+                    html += '<button class="btn btn-pause btn-sm" onclick="pauseSub(' + s.id + ')"><i class="fa fa-pause"></i> Pause</button> ';
                 } else if (s.status === 'paused') {
-                    html += '<button class="btn btn-resume btn-sm" onclick="resumeSub(' + s.id + ')"><i class="fa fa-play"></i> Resume</button>';
-                } else {
-                    html += '<span style="color:#ccc">-</span>';
+                    html += '<button class="btn btn-resume btn-sm" onclick="resumeSub(' + s.id + ')"><i class="fa fa-play"></i> Resume</button> ';
                 }
+                html += '<button class="btn btn-manage btn-sm" onclick="openManage(' + s.id + ')"><i class="fa fa-sliders"></i> Manage</button>';
                 html += '</td>';
                 html += '</tr>';
             });
@@ -332,22 +376,150 @@ try {
         function pauseSub(id) { setSubAction(id, 'pause_subscription'); }
         function resumeSub(id) { setSubAction(id, 'resume_subscription'); }
 
-        function setSubAction(id, action) {
+        function setSubAction(id, action, extra) {
             var fd = new FormData();
             fd.append('action', action);
             fd.append('subscriptionId', id);
+            Object.keys(extra || {}).forEach(function(k) { fd.append(k, extra[k]); });
             fetch(API_URL, { method: 'POST', body: fd })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
                         showToast(data.message, 'success');
-                        loadSubscriptions();
+                        loadSubscriptions(true);
                     } else {
                         showToast(data.message || 'Action failed', 'error');
                     }
                 })
                 .catch(function() { showToast('Network error. Please try again.', 'error'); });
         }
+
+        // the restaurant's today (from the server)
+        function todayStr() {
+            if (serverToday) return serverToday;
+            var d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        }
+        function niceDate(ymd) {
+            if (!ymd) return '';
+            if (ymd === todayStr()) return 'Today';
+            var p = String(ymd).split('-');
+            return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+        }
+        function deliveryLabel(st) {
+            if (st === 'Served' || st === 'Completed') return 'Delivered';
+            if (st === 'Cancelled' || st === 'Rejected') return 'Cancelled';
+            return st || 'Pending';
+        }
+
+        function removeSkip(id, date) { setSubAction(id, 'remove_skip_date', { skipDate: date }); }
+
+        /* ---------- Manage modal ---------- */
+        function openManage(id) {
+            var s = subsById[id];
+            if (!s) return;
+            var m = document.getElementById('manageModal');
+            m.dataset.subId = id;
+            renderManage(s);
+            m.classList.add('active');
+        }
+        function closeManage() { document.getElementById('manageModal').classList.remove('active'); }
+
+        function renderManage(s) {
+            // keep what staff are typing when a refresh redraws the modal
+            var typed = {};
+            ['mgSkip', 'mgAddr', 'mgPhone', 'mgCredits'].forEach(function(k) { var el = document.getElementById(k); if (el) typed[k] = el.value; });
+            var sameSub = document.getElementById('mgBody').dataset.subId === String(s.id);
+            var ended = s.status === 'completed' || s.status === 'cancelled';
+            document.getElementById('mgTitle').textContent = (s.customer_name || 'Customer') + ' · ' + s.plan_name_snapshot;
+            var h = '';
+            h += '<div class="mg-section"><div style="font-size:13px;color:#555;">';
+            h += '<span class="status-badge ' + s.status + '">' + (statusLabels[s.status] || s.status) + '</span> ';
+            h += '<b>' + s.credits_remaining + '</b> of ' + s.credits_total + ' meals left';
+            if (s.status === 'active') h += ' · Next: <b>' + (s.next_delivery ? escapeHtml(niceDate(s.next_delivery)) : 'not scheduled') + '</b>';
+            h += '<br>' + escapeHtml(s.payment_method || '') + ' · ' + escapeHtml(CURRENCY + s.amount_paid);
+            if (s.payment_status) h += ' <span class="pay-pill ' + escapeHtml(s.payment_status) + '">' + escapeHtml(payLabels[s.payment_status] || s.payment_status) + '</span>';
+            h += '</div></div>';
+
+            if (s.status === 'active' || s.status === 'paused') {
+                h += '<div class="mg-section"><h3>Skip a day</h3><div class="mg-row">';
+                h += '<input type="date" id="mgSkip" min="' + todayStr() + '"><button class="btn btn-primary btn-sm" onclick="mgAddSkip(' + s.id + ')">Skip</button></div>';
+                if ((s.skip_dates || []).length) {
+                    h += '<div style="margin-top:8px;">';
+                    s.skip_dates.forEach(function(d) { h += '<span class="skip-chip">' + escapeHtml(niceDate(d)) + '<span class="x" onclick="removeSkip(' + s.id + ',\'' + escapeHtml(d) + '\')">&times;</span></span>'; });
+                    h += '</div>';
+                }
+                h += '</div>';
+            }
+
+            if (!ended) {
+                h += '<div class="mg-section"><h3>Delivery details</h3>';
+                h += '<textarea id="mgAddr" rows="3">' + escapeHtml(s.delivery_address || '') + '</textarea>';
+                h += '<div class="mg-row"><input type="tel" id="mgPhone" value="' + escapeHtml(s.delivery_phone || '') + '" placeholder="Phone" style="flex:1;">';
+                h += '<button class="btn btn-primary btn-sm" onclick="mgSaveDelivery(' + s.id + ')">Save</button></div></div>';
+            }
+
+            if (CAN_MANAGE_MONEY) {
+                h += '<div class="mg-section"><h3>Meals (credits)</h3><div class="mg-row">';
+                h += '<input type="number" id="mgCredits" placeholder="e.g. 2 or -1" style="width:130px;">';
+                h += '<button class="btn btn-secondary-sm btn-sm" onclick="mgAdjust(' + s.id + ')">Add / remove meals</button></div>';
+                h += '<div class="sub-meta">A positive number gives meals back (e.g. a missed delivery), a negative one takes them off.</div></div>';
+
+                if (!ended && s.payment_status !== 'Success') {
+                    h += '<div class="mg-section"><h3>Payment</h3><button class="btn btn-resume btn-sm" onclick="mgMarkPaid(' + s.id + ')"><i class="fa fa-check"></i> Mark payment received</button></div>';
+                }
+                if (!ended) {
+                    h += '<div class="mg-section"><h3>End plan</h3><button class="btn btn-danger btn-sm" onclick="mgCancel(' + s.id + ')"><i class="fa fa-ban"></i> Cancel subscription</button>';
+                    h += '<div class="sub-meta">No more meals are sent. Settle any refund with the customer directly.</div></div>';
+                }
+            }
+
+            if ((s.deliveries || []).length) {
+                h += '<div class="mg-section"><h3>Recent deliveries</h3><div class="mg-hist">';
+                s.deliveries.forEach(function(d) {
+                    h += '<div><span>' + escapeHtml(niceDate(d.delivery_date)) + ' · ' + escapeHtml(d.meal_time || '') + ' · ' + escapeHtml(d.order_number || '') + '</span><b>' + escapeHtml(deliveryLabel(d.order_status)) + '</b></div>';
+                });
+                h += '</div></div>';
+            }
+            var body = document.getElementById('mgBody');
+            body.innerHTML = h;
+            body.dataset.subId = String(s.id);
+            if (sameSub) Object.keys(typed).forEach(function(k) { var el = document.getElementById(k); if (el && typed[k] !== undefined) el.value = typed[k]; });
+        }
+
+        function mgAddSkip(id) {
+            var d = document.getElementById('mgSkip').value;
+            if (!d) { showToast('Pick a date first', 'error'); return; }
+            document.getElementById('mgSkip').value = '';
+            setSubAction(id, 'add_skip_date', { skipDate: d });
+        }
+        function mgSaveDelivery(id) {
+            setSubAction(id, 'update_delivery', { deliveryAddress: document.getElementById('mgAddr').value, deliveryPhone: document.getElementById('mgPhone').value });
+        }
+        function mgAdjust(id) {
+            var n = parseInt(document.getElementById('mgCredits').value, 10);
+            if (!n) { showToast('Enter a number like 2 or -1', 'error'); return; }
+            document.getElementById('mgCredits').value = '';
+            setSubAction(id, 'adjust_credits', { delta: n });
+        }
+        function mgMarkPaid(id) {
+            if (!window.confirm('Mark this plan\'s payment as received?')) return;
+            setSubAction(id, 'mark_paid');
+        }
+        function mgCancel(id) {
+            if (!window.confirm('Cancel this subscription? No more meals will be sent.')) return;
+            setSubAction(id, 'cancel_subscription');
+        }
+
+        // Changes the customer makes on their side (pause, skips, new address) and deliveries going
+        // out show here without a reload: refresh every 30 seconds while the page is open.
+        setInterval(function() {
+            if (document.hidden) return;
+            var a = document.activeElement;
+            if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.closest('.modal-overlay')) return;
+            if (document.getElementById('newSubModal').classList.contains('active')) return;
+            loadSubscriptions(true);
+        }, 30000);
 
         function generateToday() {
             var btn = document.getElementById('generateTodayBtn');
