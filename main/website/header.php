@@ -374,7 +374,7 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
             });
         }
     }
-    if ($pvRaw !== null && $pvRaw !== '' && strlen($pvRaw) < 4000) {
+    if ($pvRaw !== null && $pvRaw !== '' && strlen($pvRaw) < 8000) {
         $pv = json_decode($pvRaw, true);
         if (is_array($pv)) {
             $hex = function ($v) { return is_string($v) && preg_match('/^#[0-9a-fA-F]{6}$/', $v) ? $v : null; };
@@ -405,6 +405,15 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
             if (in_array($pv['category_pic_style'] ?? '', THEME_CATEGORY_PIC_STYLES, true)) $category_pic_style = $pv['category_pic_style'];
             if (array_key_exists('category_heading_bg', $pv)) $category_heading_bg = $hex($pv['category_heading_bg']);
             if (in_array($pv['logo_shape'] ?? '', ['circle', 'square', 'rounded'], true)) $logo_shape = $pv['logo_shape'];
+            if (isset($pv['logo_size']) && (int)$pv['logo_size'] >= 50 && (int)$pv['logo_size'] <= 150) $logo_size = (int)$pv['logo_size'];
+            if (isset($pv['bestseller_style']) && is_array($pv['bestseller_style'])) $bestseller_style = getBestsellerStyle($pv['bestseller_style']);
+            // a picked background (a link or a file on this site; uploaded pictures are too big
+            // for the address, the dashboard puts those in itself)
+            if (isset($pv['background_theme']) && is_string($pv['background_theme']) && strlen($pv['background_theme']) < 1000
+                && ($pv['background_theme'] === '' || (preg_match('#^(https?://|/|\.\./|assets/|uploads/)#i', $pv['background_theme'])
+                    && preg_match('#^[A-Za-z0-9:/._~%?&=+@,;-]+$#', $pv['background_theme'])))) {
+                $background_theme = $pv['background_theme'];
+            }
             $cols = (int)($pv['layout_columns'] ?? 0);
             if ($cols >= 1 && $cols <= 3) $preview_theme['layout_columns'] = $cols;
         }

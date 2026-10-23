@@ -14346,6 +14346,10 @@ async function initWebsiteThemeEditor() {
       try { t.profile_opts = currentProfileOpts(); } catch (e) {}
       try { t.category_pic_style = currentCategoryPicStyleVal(); } catch (e) {}
       try { var hb = currentCategoryHeadingVal(); t.category_heading_bg = hb || null; } catch (e) {}
+      var ls = document.getElementById('logoSizeSlider'); if (ls) t.logo_size = parseInt(ls.value, 10) || 90;
+      try { if (window.readBestsellerStyleForm) t.bestseller_style = window.readBestsellerStyleForm(); } catch (e) {}
+      // an uploaded picture (data:) is too big for the address; applyLivePreview puts it in
+      var bg = document.getElementById('backgroundThemeInput'); if (bg && bg.value.indexOf('data:') !== 0) t.background_theme = bg.value;
       return t;
     }
     var previewSaved = null; // what's saved (JSON), to show the "unsaved" dot
@@ -14421,6 +14425,8 @@ async function initWebsiteThemeEditor() {
             if (live.parentNode) live.parentNode.removeChild(live);
             pvSwap.next = null;
             keepPreviewChoices(nx);
+            // put the instant-only changes (uploaded background, logo size…) on the new page too
+            try { applyLivePreview(); } catch (e) {}
             // parts of the page (today's specials, combos…) fill in a moment later: keep the
             // same section in view for a little while, unless you scroll the preview yourself
             var touched = false, until = Date.now() + 2500;
