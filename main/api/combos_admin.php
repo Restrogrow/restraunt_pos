@@ -10,6 +10,8 @@
  *   POST {action:'order', ids:[...]}       order on the website
  *   POST multipart action=upload, image    a combo photo -> uploads/combos/...
  */
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin(); // the companion app's dev web preview (logged-in requests)
 require_once __DIR__ . '/../config/session_config.php';
 startSecureSession();
 require_once __DIR__ . '/../config/authorization_config.php';

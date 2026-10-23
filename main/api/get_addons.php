@@ -19,7 +19,8 @@ if ($isAdminRequest) {
 }
 
 header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Origin: *');
+require_once __DIR__ . '/../config/cors_helper.php';
+allowAppOrigin(true); // the app's web preview gets credentials; public callers keep "*"
 header('Access-Control-Allow-Methods: GET');
 header('Access-Control-Allow-Headers: Content-Type');
 

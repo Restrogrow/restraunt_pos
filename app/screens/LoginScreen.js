@@ -67,6 +67,7 @@ export default function LoginScreen() {
   const [otpCode, setOtpCode] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownTimer = useRef(null);
+  const passwordRef = useRef(null);
 
   // the app preview only where there's room for it above the form
   const { height } = useWindowDimensions();
@@ -203,18 +204,23 @@ export default function LoginScreen() {
                     autoCorrect={false}
                     value={username}
                     onChangeText={setUsername}
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current && passwordRef.current.focus()}
                   />
                 </View>
 
                 <View style={styles.field}>
                   <Ionicons name="lock-closed-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
                   <TextInput
+                    ref={passwordRef}
                     style={styles.input}
                     placeholder="Password"
                     placeholderTextColor={colors.muted}
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
+                    returnKeyType="go"
+                    onSubmitEditing={onSubmit}
                   />
                   <Pressable onPress={() => setShowPassword((s) => !s)} hitSlop={10}>
                     <Ionicons
@@ -245,6 +251,7 @@ export default function LoginScreen() {
                     autoFocus
                     value={otpCode}
                     onChangeText={(v) => setOtpCode(v.replace(/\D/g, ''))}
+                    onSubmitEditing={onSubmit}
                   />
                 </View>
 

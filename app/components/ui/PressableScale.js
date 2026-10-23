@@ -58,7 +58,7 @@ export default function PressableScale({
       disabled={disabled}
       hitSlop={hitSlop}
       accessibilityLabel={accessibilityLabel}
-      accessibilityRole={accessibilityRole}
+      accessibilityRole={accessibilityRole || undefined}
       accessibilityState={{ disabled: !!disabled }}
       testID={testID}
     >

@@ -80,7 +80,7 @@ try {
         return count($rows);
     }, 0);
     $kot = (int)dhTry(function () use ($q, $rid) { return $q("SELECT COUNT(*) FROM kot WHERE restaurant_id = ? AND kot_status IN ('Pending', 'Preparing')", [$rid])->fetchColumn(); }, 0);
-    $staleKot = (int)dhTry(function () use ($q, $rid) { return $q("SELECT COUNT(*) FROM kot WHERE restaurant_id = ? AND kot_status IN ('Pending', 'Preparing') AND created_at < NOW() - INTERVAL 6 HOUR", [$rid])->fetchColumn(); }, 0);
+    $staleKot = (int)dhTry(function () use ($q, $rid) { return $q("SELECT COUNT(*) FROM kot WHERE restaurant_id = ? AND kot_status IN ('Pending', 'Preparing', 'Ready') AND created_at < NOW() - INTERVAL 6 HOUR", [$rid])->fetchColumn(); }, 0);
 
     // tables: busy = an open kitchen ticket (same rule as Tables)
     $tables = dhTry(function () use ($q, $rid) { return $q("SELECT COUNT(*) total, SUM(EXISTS (SELECT 1 FROM kot k WHERE k.table_id = t.id AND k.restaurant_id = t.restaurant_id AND k.kot_status IN ('Pending', 'Preparing'))) busy FROM tables t WHERE t.restaurant_id = ?", [$rid])->fetch(PDO::FETCH_ASSOC); }, ['total' => 0, 'busy' => 0]);

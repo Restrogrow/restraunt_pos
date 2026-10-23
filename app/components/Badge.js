@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, font, radius, statusStyles } from '../theme';
 
-export default function Badge({ label, tone }) {
-  const { fg, bg } = statusStyles[label] || { fg: colors.inkSoft, bg: colors.border };
+export default function Badge({ label, tone, status }) {
+  const { fg, bg } = statusStyles[status || label] || { fg: colors.inkSoft, bg: colors.border };
   const dotColor = tone || fg;
 
   return (

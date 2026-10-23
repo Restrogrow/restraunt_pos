@@ -847,6 +847,7 @@ export default function POSScreen({ route }) {
                   onPress={() => onPressItem(item)}
                   scale={0.96}
                   feedback="none"
+                  accessibilityRole={Platform.OS === 'web' ? null : 'button'}
                   accessibilityLabel={`${item.item_name_en}, ${priceLabelFor(item)}${qtyInCart ? `, ${qtyInCart} in cart` : ''}`}
                 >
                   {withPhotos ? (

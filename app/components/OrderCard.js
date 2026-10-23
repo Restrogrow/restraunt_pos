@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { colors, font, radius, shadow, spacing, statusStyles } from '../theme';
-import { itemsSummary, money, realName, timeAgo } from '../utils/format';
+import { itemsSummary, money, realName, serveActionLabel, statusLabel, timeAgo } from '../utils/format';
 import PressableScale from './ui/PressableScale';
 
 // The one quick action a card offers for each live status. Pending opens the order instead
@@ -33,6 +33,8 @@ function OrderCard({ order, currency, onPress, onAction, onLongPress, busy, show
       onPress={onPress}
       onLongPress={onLongPress}
       scale={0.985}
+      // the card holds its own buttons, and a browser won't nest a <button> inside another
+      accessibilityRole={Platform.OS === 'web' ? null : 'button'}
       accessibilityLabel={`Order ${o.order_number}, ${o.order_status}, ${money(o.total, currency)}`}
     >
       <View style={styles.top}>
@@ -60,7 +62,7 @@ function OrderCard({ order, currency, onPress, onAction, onLongPress, busy, show
         {showStatus ? (
           <View style={[styles.status, { backgroundColor: deleted ? colors.dangerBg : st.bg }]}>
             <View style={[styles.dot, { backgroundColor: deleted ? colors.danger : st.fg }]} />
-            <Text style={[styles.statusText, { color: deleted ? colors.danger : st.fg }]}>{deleted ? 'Deleted' : o.order_status}</Text>
+            <Text style={[styles.statusText, { color: deleted ? colors.danger : st.fg }]}>{deleted ? 'Deleted' : statusLabel(o.order_status, o.order_type)}</Text>
           </View>
         ) : null}
       </View>
@@ -100,8 +102,8 @@ function OrderCard({ order, currency, onPress, onAction, onLongPress, busy, show
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Ionicons name={action.icon} size={14} color="#fff" />
-                <Text style={styles.actionText}>{action.label}</Text>
+                <Ionicons name={action.to === 'Served' && o.order_type === 'Delivery' ? 'bicycle-outline' : action.to === 'Served' && o.order_type === 'Takeaway' ? 'bag-handle-outline' : action.icon} size={14} color="#fff" />
+                <Text style={styles.actionText}>{action.to === 'Served' ? serveActionLabel(o.order_type, true) : action.label}</Text>
               </>
             )}
           </PressableScale>

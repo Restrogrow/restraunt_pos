@@ -98,3 +98,29 @@ export function itemsSummary(items, max = 3) {
   const more = list.length - max;
   return shown.join(', ') + (more > 0 ? ` +${more} more` : '');
 }
+
+// The same order steps read differently by order type, as on the website's order cards:
+// takeaway Served = Picked up; delivery Ready = Ready for pickup (by the rider),
+// Served = Out for delivery, Completed = Delivered.
+export function statusLabel(status, orderType) {
+  if (orderType === 'Takeaway') {
+    if (status === 'Ready') return 'Ready for pickup';
+    if (status === 'Served') return 'Picked up';
+  }
+  if (orderType === 'Delivery') {
+    if (status === 'Ready') return 'Ready for pickup';
+    if (status === 'Served') return 'Out for delivery';
+    if (status === 'Completed') return 'Delivered';
+  }
+  return status;
+}
+
+// Button text for moving an order on from Ready / Served (`short` for the tight order cards).
+export function serveActionLabel(orderType, short) {
+  if (orderType === 'Takeaway') return short ? 'Picked up' : 'Mark picked up';
+  if (orderType === 'Delivery') return short ? 'Send out' : 'Send out for delivery';
+  return 'Mark served';
+}
+export function completeActionLabel(orderType) {
+  return orderType === 'Delivery' ? 'Mark delivered' : 'Mark completed';
+}

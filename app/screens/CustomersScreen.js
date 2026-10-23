@@ -14,7 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { useApiData } from '../hooks/useApiData';
 import { useLayout } from '../hooks/useLayout';
 import { colors, font, radius, shadow, spacing } from '../theme';
-import { dayLabel, money } from '../utils/format';
+import { dayLabel, money, realName } from '../utils/format';
 
 const SORTS = [
   { key: 'spent', label: 'Top spenders', fn: (a, b) => (Number(b.total_spent) || 0) - (Number(a.total_spent) || 0) },
@@ -34,7 +34,8 @@ export default function CustomersScreen({ navigation }) {
 
   const fetcher = useCallback(() => apiGet('/api/get_customers.php?limit=200'), []);
   const { data, loading, refreshing, error, refresh } = useApiData(fetcher, { pollInterval: 60000, cacheKey: 'customers', refetchOnFocus: true });
-  const all = data?.data || [];
+  // walk-in sales without a name or phone are many people, not one customer
+  const all = useMemo(() => (data?.data || []).filter((c) => realName(c.customer_name) || String(c.phone || '').replace(/\D/g, '')), [data]);
 
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();

@@ -11,7 +11,7 @@ import Sheet from '../components/ui/Sheet';
 import { SkeletonBlock } from '../components/ui/Skeleton';
 import { useLayout } from '../hooks/useLayout';
 import { haptic } from '../utils/haptics';
-import { money, realName, splitNotes, timeAgo } from '../utils/format';
+import { completeActionLabel, money, realName, serveActionLabel, splitNotes, statusLabel, timeAgo } from '../utils/format';
 import { apiGet, apiPostForm } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
@@ -504,6 +504,7 @@ export default function OrderDetailScreen({ route, navigation }) {
       setOrder(next);
       navigation.setParams({ order: next });
       if (to === 'Rejected' || to === 'Cancelled') feedback.info(DONE_MESSAGE[to]);
+      else if (to === 'Served' || (to === 'Completed' && isDelivery)) feedback.success(statusLabel(to, order.order_type));
       else feedback.success(DONE_MESSAGE[to] || `Marked ${to.toLowerCase()}`);
     } catch (e) {
       // Network failures get a message a busy counter worker can act on; server messages
@@ -589,7 +590,7 @@ export default function OrderDetailScreen({ route, navigation }) {
         <View style={[styles.card, shadow.sm]}>
           <View style={styles.orderInfoTop}>
             <Text style={styles.orderNumber} numberOfLines={1}>Order No: {order.order_number || `#${order.id}`}</Text>
-            <Badge label={order.order_status} />
+            <Badge label={statusLabel(order.order_status, order.order_type)} status={order.order_status} />
           </View>
           {dateTime ? <Text style={styles.orderDate}>{dateTime} · {timeAgo(order.created_at)}</Text> : null}
           {order.prep_minutes ? (
@@ -808,7 +809,9 @@ export default function OrderDetailScreen({ route, navigation }) {
                   {updatingTo === a.to ? (
                     <ActivityIndicator color={danger ? colors.danger : '#fff'} size="small" />
                   ) : (
-                    <Text style={[styles.primaryButtonText, danger && { color: colors.danger }]}>{a.label}</Text>
+                    <Text style={[styles.primaryButtonText, danger && { color: colors.danger }]}>
+                      {a.to === 'Served' ? serveActionLabel(order.order_type) : a.to === 'Completed' ? completeActionLabel(order.order_type) : a.label}
+                    </Text>
                   )}
                 </PressableScale>
               );
