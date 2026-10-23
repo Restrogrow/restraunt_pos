@@ -16,6 +16,7 @@
 // older monospace text version, kept only for anything that still wants a
 // plain-text receipt; nothing on screen uses it.
 import { apiPostJson } from '../config/api';
+import { checkNetworkPrinter, sendToNetworkPrinter } from './networkPrinter';
 
 function padLine(left, right, width) {
   left = String(left == null ? '' : left);
@@ -297,26 +298,17 @@ export async function convertReceiptImageToEscPos({ base64Png, dotWidth = 384 })
   return base64ToBytes(res.data);
 }
 
+// The installed app talks to the printer directly over the restaurant's Wi-Fi;
+// the web build goes through the server (utils/networkPrinter[.web].js).
 export async function printToNetworkPrinter({ ip, port, bytes }) {
   if (!ip) throw new Error('No printer configured — set the printer IP in Settings first');
-  const res = await apiPostJson('/api/print_network.php', {
-    ip,
-    port: port ? Number(port) : 9100,
-    data: bytesToBase64(bytes),
-  });
-  if (!res.success) throw new Error(res.message || 'Print failed');
-  return res;
+  return sendToNetworkPrinter({ ip: String(ip).trim(), port: port ? Number(port) : 9100, bytes });
 }
 
 // Opens and immediately closes the TCP socket — no data sent — so the UI can
 // show a real "Connected" state before committing to a print.
 export async function testNetworkPrinter({ ip, port }) {
   if (!ip) throw new Error('Enter the printer IP first');
-  const res = await apiPostJson('/api/print_network.php', {
-    ip,
-    port: port ? Number(port) : 9100,
-    test: true,
-  });
-  if (!res.success) throw new Error(res.message || 'Could not connect to printer');
+  const res = await checkNetworkPrinter({ ip: String(ip).trim(), port: port ? Number(port) : 9100 });
   return res;
 }

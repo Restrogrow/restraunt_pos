@@ -136,16 +136,23 @@ try {
 
 $xL = $bytesPerRow & 0xFF;
 $xH = ($bytesPerRow >> 8) & 0xFF;
-$yL = $dstH & 0xFF;
-$yH = ($dstH >> 8) & 0xFF;
 
 $escInit = chr(0x1B) . chr(0x40); // ESC @ — initialize printer
 $escAlignCenter = chr(0x1B) . chr(0x61) . chr(0x01); // ESC a 1 — center the raster image
-$rasterHeader = chr(0x1D) . chr(0x76) . chr(0x30) . chr(0x00) . chr($xL) . chr($xH) . chr($yL) . chr($yH); // GS v 0
 $feed = chr(0x1B) . chr(0x64) . chr(3); // ESC d 3 — feed 3 lines
 $cut = chr(0x1D) . chr(0x56) . chr(0x00); // GS V 0 — full cut
 
-$bytes = $escInit . $escAlignCenter . $rasterHeader . $raster . $feed . $cut;
+// The bitmap goes out as bands of up to 128 rows, each its own GS v 0 image. One image the
+// height of a long bill (2000+ rows) overflows the small buffer of cheap 58mm printers, which
+// then stop halfway or print garbage; bands print back to back with no visible seam.
+$band = 128;
+$bytes = $escInit . $escAlignCenter;
+for ($y = 0; $y < $dstH; $y += $band) {
+    $rows = min($band, $dstH - $y);
+    $bytes .= chr(0x1D) . chr(0x76) . chr(0x30) . chr(0x00) . chr($xL) . chr($xH) . chr($rows & 0xFF) . chr(($rows >> 8) & 0xFF); // GS v 0
+    $bytes .= substr($raster, $y * $bytesPerRow, $rows * $bytesPerRow);
+}
+$bytes .= $feed . $cut;
 
 echo json_encode([
     'success' => true,
