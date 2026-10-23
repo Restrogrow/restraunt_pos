@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiffin &amp; Meal Plan Subscriptions for Restaurants | Restro Grow</title>
+    <meta name="description" content="Sell monthly tiffin and meal plans from your own website. Customers pay upfront, skip days and change their address themselves, and every day's meals reach your kitchen automatically.">
+    <meta name="keywords" content="tiffin subscription software, meal plan subscription, tiffin service app, monthly meal plan restaurant, cloud kitchen subscription, diet meal plan delivery India">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://restrogrow.com/meal-plans/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://restrogrow.com/meal-plans/">
+    <meta property="og:title" content="Meal Plans — run a tiffin subscription business | Restro Grow">
+    <meta property="og:description" content="Monthly plans paid upfront, deliveries that reach your kitchen on their own, and customers who manage their own plan.">
+    <meta property="og:image" content="https://restrogrow.com/assets/blog/og-home.jpg">
+    <meta property="og:site_name" content="Restro Grow">
+    <meta property="og:locale" content="en_IN">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Restro Grow Meal Plans",
+        "url": "https://restrogrow.com/meal-plans/",
+        "description": "Tiffin and meal-plan subscriptions for restaurants: plans, weekly menu, online payment, automatic daily kitchen orders and self-service for customers.",
+        "isPartOf": { "@type": "WebSite", "name": "Restro Grow", "url": "https://restrogrow.com" }
+    }
+    </script>
+
+    <link rel="icon" type="image/png" href="../favicon.png">
+    <link rel="apple-touch-icon" href="../favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="../style.css?v=3.1">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
+
+    <style>
+        /* ── Meal Plans page: same "order ticket" look as the home and loyalty pages (style.css tokens) ── */
+        .mp-ico { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .mp-section { padding: 96px 0; }
+        .mp-section.raised { background: var(--paper-raised); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+        .mp-section.ink { background: var(--ink); color: var(--paper); }
+        .mp-section.ink .section-title { color: var(--paper); }
+        .mp-section.ink .section-subtitle { color: rgba(245, 239, 226, .72); }
+        .mp-kicker { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; font-family: var(--font-mono); font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+        .mp-kicker::before { content: ''; width: 18px; height: 2px; background: currentColor; }
+        .mp-head { max-width: 720px; margin: 0 auto 56px; text-align: center; }
+        .mp-head .mp-kicker { justify-content: center; }
+
+        /* hero */
+        .mp-hero { margin-top: 72px; padding: 84px 0 96px; position: relative; overflow: hidden;
+            background: radial-gradient(700px 420px at 92% 10%, var(--accent-wash), transparent 70%), var(--paper); }
+        .mp-hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
+        .mp-hero .hero-title { font-size: clamp(2.3rem, 4.6vw, 3.6rem); }
+        .mp-hero .hero-title em { font-style: normal; color: var(--accent); }
+        .mp-lead { font-size: 1.18rem; color: var(--ink-soft); line-height: 1.65; max-width: 34em; margin-bottom: 28px; }
+        .mp-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+        .mp-ctas .btn { padding: 15px 26px; border-radius: 12px; font-weight: 700; font-size: 1rem; }
+        .mp-ticks { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 26px; list-style: none; color: var(--ink-soft); font-size: .95rem; }
+        .mp-ticks li { display: flex; align-items: center; gap: 8px; }
+        .mp-ticks svg { width: 18px; height: 18px; color: var(--success); }
+
+        .mp-visual { position: relative; display: flex; justify-content: flex-end; padding: 10px 40px 40px 0; }
+        .mp-phone { width: 300px; border-radius: 38px; padding: 12px; background: var(--ink); box-shadow: var(--shadow-deep); transform: rotate(-2deg); }
+        .mp-screen { border-radius: 28px; overflow: hidden; background: #fffcf5; padding-bottom: 14px; }
+        .mp-screen-top { padding: 22px 20px 54px; background: linear-gradient(150deg, #1b5e3d, #2f8a5c); color: #fffcf5; }
+        .mp-screen-top small { display: block; font-size: .72rem; opacity: .85; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
+        .mp-screen-top b { display: block; margin-top: 2px; font-family: var(--font-display); font-size: 1.2rem; }
+        .mp-card { margin: -40px 14px 0; padding: 16px; border-radius: 18px; background: #fff; box-shadow: var(--shadow-card); }
+        .mp-card-row { display: flex; justify-content: space-between; align-items: baseline; }
+        .mp-card-row span { font-size: .75rem; color: var(--ink-faint); font-weight: 600; }
+        .mp-big { font-family: var(--font-mono); font-size: 2rem; font-weight: 700; color: var(--ink); letter-spacing: -.04em; }
+        .mp-big small { font-size: .9rem; color: var(--ink-faint); letter-spacing: 0; }
+        .mp-pill { padding: 3px 9px; border-radius: 99px; background: #e3f4ea; color: #1b5e3d; font-size: .7rem; font-weight: 800; letter-spacing: .04em; }
+        .mp-bar { height: 8px; margin: 10px 0 6px; border-radius: 99px; background: var(--paper-deep); overflow: hidden; }
+        .mp-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1b5e3d, #2f8a5c); transition: width .4s; }
+        .mp-line { margin: 10px 14px 0; padding: 10px 12px; border-radius: 12px; background: var(--paper); font-size: .78rem; color: var(--ink-soft); display: flex; gap: 8px; align-items: center; }
+        .mp-line b { color: var(--ink); }
+        .mp-line svg { width: 16px; height: 16px; color: #1b5e3d; flex: none; }
+        .mp-float { position: absolute; z-index: 2; left: 0; top: 110px; padding: 10px 14px; border-radius: 14px; background: var(--paper-raised); border: 1px solid var(--line); box-shadow: var(--shadow-card); font-size: .8rem; transform: rotate(-4deg); }
+        .mp-float b { display: block; font-size: .95rem; color: var(--success); }
+        .mp-float2 { top: auto; bottom: 10px; left: 30px; transform: rotate(3deg); }
+
+        /* why */
+        .mp-why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .mp-why-card { padding: 28px; border-radius: 18px; background: rgba(245, 239, 226, .06); border: 1px solid rgba(245, 239, 226, .14); }
+        .mp-why-card .n { font-family: var(--font-mono); font-size: .8rem; color: #e2712f; font-weight: 700; }
+        .mp-why-card h3 { margin: 8px 0 8px; font-family: var(--font-display); font-size: 1.25rem; color: var(--paper); }
+        .mp-why-card p { color: rgba(245, 239, 226, .72); }
+
+        /* ── live demo ── */
+        .mp-demo { display: grid; grid-template-columns: 330px 1fr; gap: 28px; align-items: start; }
+        .mp-try { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: -28px auto 32px; max-width: 900px; }
+        .mp-try button { padding: 8px 14px; border-radius: 99px; border: 1px dashed var(--line-strong); background: var(--paper-raised); color: var(--ink); font: inherit; font-size: .86rem; font-weight: 600; cursor: pointer; }
+        .mp-try button:hover { border-color: var(--accent); color: var(--accent); }
+        .mp-side-label { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-family: var(--font-mono); font-size: .76rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+        .mp-side-label i { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px var(--success-wash); }
+
+        .d-phone { border-radius: 34px; padding: 10px; background: var(--ink); box-shadow: var(--shadow-deep); }
+        .d-screen { border-radius: 26px; overflow: hidden; background: #fff; min-height: 560px; }
+        .d-top { display: flex; align-items: center; gap: 10px; padding: 14px 14px 12px; border-bottom: 1px solid #eee; font-weight: 700; font-size: .95rem; }
+        .d-top span { width: 30px; height: 30px; border-radius: 8px; background: #1b5e3d; color: #fff; display: grid; place-items: center; font-size: .9rem; }
+        .d-body { padding: 12px; }
+        .d-card { border: 2px solid #e8e0d8; border-radius: 16px; padding: 14px; }
+        .d-name { font-weight: 700; font-size: .98rem; }
+        .d-status { display: inline-block; margin: 6px 0 8px; padding: 2px 9px; border-radius: 20px; font-size: .7rem; font-weight: 700; }
+        .st-active { background: #d1fae5; color: #065f46; } .st-paused { background: #fef3c7; color: #92400e; } .st-pending { background: #e5e7eb; color: #374151; }
+        .d-meals { font-size: .78rem; color: #666; }
+        .d-meals b { color: #1a1b1f; }
+        .d-info { margin: 10px 0; padding: 8px 10px; border-radius: 12px; background: #faf8f6; font-size: .76rem; color: #555; }
+        .d-info > div { display: flex; gap: 8px; padding: 4px 0; align-items: flex-start; }
+        .d-info svg { width: 14px; height: 14px; color: #1b5e3d; flex: none; margin-top: 2px; }
+        .d-info b { color: #1a1b1f; }
+        .d-info .grow { flex: 1; min-width: 0; }
+        .d-link { background: none; border: 0; color: #c1440e; font: inherit; font-weight: 700; font-size: .74rem; cursor: pointer; padding: 0; }
+        .d-pay { font-size: .66rem; font-weight: 700; padding: 1px 7px; border-radius: 10px; }
+        .pay-ok { background: #d1fae5; color: #065f46; } .pay-wait { background: #fef3c7; color: #92400e; }
+        .d-btn { width: 100%; padding: 9px; border: 0; border-radius: 9px; font: inherit; font-weight: 700; font-size: .8rem; cursor: pointer; }
+        .d-pause { background: #fef3c7; color: #92400e; } .d-resume { background: #d1fae5; color: #065f46; }
+        .d-skip { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; font-size: .74rem; color: #555; font-weight: 600; }
+        .d-days { display: flex; gap: 5px; margin-top: 6px; }
+        .d-days button { flex: 1; padding: 6px 0; border-radius: 8px; border: 1.5px solid #e5e7eb; background: #fff; font: inherit; font-size: .66rem; font-weight: 700; color: #374151; cursor: pointer; line-height: 1.2; }
+        .d-days button.off { background: #fee2e2; border-color: #fca5a5; color: #991b1b; text-decoration: line-through; }
+        .d-days button.made { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+        .d-days button.sun { opacity: .45; cursor: not-allowed; }
+        .d-hist { margin-top: 10px; padding-top: 8px; border-top: 1px solid #f0f0f0; font-size: .72rem; }
+        .d-hist div { display: flex; justify-content: space-between; padding: 3px 0; color: #555; }
+        .d-hist b { color: #065f46; }
+        .d-edit { display: none; margin-top: 6px; }
+        .d-edit.open { display: block; }
+        .d-edit select { width: 100%; padding: 7px; border-radius: 8px; border: 1.5px solid #ddd; font: inherit; font-size: .74rem; }
+
+        .r-panel { border-radius: 22px; background: var(--paper-raised); border: 1px solid var(--line); box-shadow: var(--shadow-card); overflow: hidden; }
+        .r-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--line-soft); }
+        .r-head b { font-family: var(--font-display); font-size: 1.1rem; }
+        .r-gen { padding: 9px 14px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; font-size: .84rem; cursor: pointer; }
+        .r-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+        .r-table th { text-align: left; padding: 10px 14px; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); border-bottom: 1px solid var(--line-soft); }
+        .r-table td { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+        .r-table tr.me td { background: #fffaf2; }
+        .r-sub { color: var(--ink-faint); font-size: .74rem; }
+        .r-chip { display: inline-block; margin: 2px 3px 0 0; padding: 2px 7px; border-radius: 10px; background: #f3f4f6; font-size: .68rem; }
+        .r-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 20px; border-top: 1px solid var(--line-soft); background: var(--paper); }
+        .r-actions button { padding: 8px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper-raised); font: inherit; font-size: .8rem; font-weight: 700; color: var(--ink); cursor: pointer; }
+        .r-actions button:hover { border-color: var(--accent); color: var(--accent); }
+        .r-actions button:disabled { opacity: .45; cursor: not-allowed; }
+        .r-kot { margin: 0 20px 18px; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--line-strong); font-family: var(--font-mono); font-size: .78rem; display: none; }
+        .r-kot.show { display: block; }
+
+        .mp-feed { margin-top: 18px; padding: 14px 18px; border-radius: 16px; background: var(--ink); color: var(--paper); font-size: .86rem; min-height: 96px; }
+        .mp-feed .t { font-family: var(--font-mono); font-size: .72rem; color: #e2712f; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
+        .mp-feed div.e { padding: 4px 0; border-bottom: 1px solid rgba(245, 239, 226, .1); animation: mpIn .35s ease; }
+        .mp-feed div.e:last-child { border-bottom: 0; }
+        .mp-feed .who { display: inline-block; min-width: 92px; font-weight: 700; color: #9fe0b8; }
+        .mp-feed .who.r { color: #f5b98a; }
+        @keyframes mpIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+        .flash { animation: mpFlash 1.2s ease; }
+        @keyframes mpFlash { 0%, 40% { background: #fff1c2; box-shadow: 0 0 0 3px #fde68a; } 100% { background: transparent; box-shadow: none; } }
+
+        /* steps */
+        .mp-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; counter-reset: st; }
+        .mp-step { padding: 28px 22px 24px; border-radius: 20px; background: var(--paper-raised); border: 1px solid var(--line); }
+        .mp-step::before { counter-increment: st; content: counter(st, decimal-leading-zero); font-family: var(--font-mono); font-size: 2rem; font-weight: 700; color: var(--accent); }
+        .mp-step h3 { margin: 8px 0 6px; font-family: var(--font-display); font-size: 1.12rem; }
+        .mp-step p { color: var(--ink-soft); font-size: .95rem; }
+
+        /* two sides */
+        .mp-split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .mp-col { padding: 30px; border-radius: 22px; background: var(--paper-raised); border: 1px solid var(--line); }
+        .mp-col h3 { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 1.35rem; margin-bottom: 16px; }
+        .mp-col h3 span { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-wash); color: var(--accent); }
+        .mp-list { list-style: none; display: grid; gap: 12px; }
+        .mp-list li { display: flex; gap: 12px; align-items: flex-start; }
+        .mp-list svg { flex: none; width: 20px; height: 20px; margin-top: 3px; color: var(--success); }
+        .mp-list b { color: var(--ink); }
+        .mp-list span { color: var(--ink-soft); }
+
+        /* example plans */
+        .mp-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .mp-plan { position: relative; padding: 28px 24px; border-radius: 20px; background: var(--paper-raised); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+        .mp-plan.hot { border-color: var(--accent); box-shadow: var(--shadow-lift); }
+        .mp-plan .tag { position: absolute; top: -11px; left: 22px; padding: 3px 10px; border-radius: 99px; background: var(--accent); color: #fff; font-size: .7rem; font-weight: 800; letter-spacing: .04em; }
+        .mp-plan h3 { font-family: var(--font-display); font-size: 1.25rem; }
+        .mp-plan .scope { color: var(--ink-faint); font-size: .86rem; margin-bottom: 14px; }
+        .mp-plan .price { font-family: var(--font-mono); font-size: 2rem; font-weight: 700; letter-spacing: -.03em; }
+        .mp-plan .per { color: var(--ink-soft); font-size: .86rem; margin-bottom: 14px; }
+        .mp-plan ul { list-style: none; display: grid; gap: 6px; font-size: .9rem; color: var(--ink-soft); }
+        .mp-plan li::before { content: '✓ '; color: var(--success); font-weight: 800; }
+        .mp-note { text-align: center; margin-top: 18px; color: var(--ink-faint); font-size: .86rem; }
+
+        /* who it is for */
+        .mp-for { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+        .mp-for div { padding: 22px 16px; border-radius: 18px; background: var(--paper-raised); border: 1px solid var(--line); text-align: center; }
+        .mp-for .e { font-size: 1.8rem; }
+        .mp-for b { display: block; margin: 8px 0 4px; font-family: var(--font-display); }
+        .mp-for span { color: var(--ink-soft); font-size: .86rem; }
+
+        /* faq */
+        .mp-faq { max-width: 820px; margin: 0 auto; display: grid; gap: 12px; }
+        .mp-faq details { padding: 18px 22px; border-radius: 16px; background: var(--paper-raised); border: 1px solid var(--line); }
+        .mp-faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; }
+        .mp-faq summary::-webkit-details-marker { display: none; }
+        .mp-faq summary::after { content: '+'; font-family: var(--font-mono); font-size: 1.3rem; line-height: 1; color: var(--accent); transition: transform .2s; }
+        .mp-faq details[open] summary::after { transform: rotate(45deg); }
+        .mp-faq details p { margin-top: 10px; color: var(--ink-soft); }
+
+        /* final cta */
+        .mp-cta { margin: 0 20px 96px; }
+        .mp-cta-box { max-width: 1160px; margin: 0 auto; padding: 64px 40px; border-radius: 28px; text-align: center; color: var(--paper); background: radial-gradient(600px 300px at 85% 0%, rgba(47, 138, 92, .5), transparent 70%), var(--ink); }
+        .mp-cta-box h2 { font-family: var(--font-display); font-size: clamp(1.8rem, 3.4vw, 2.6rem); font-weight: 800; letter-spacing: -.02em; margin-bottom: 12px; }
+        .mp-cta-box p { color: rgba(245, 239, 226, .75); font-size: 1.1rem; margin-bottom: 26px; }
+        .mp-cta-box .btn-secondary { background: transparent; color: var(--paper); border-color: rgba(245, 239, 226, .35); }
+        .mp-cta-box .mp-ctas { justify-content: center; }
+
+        .mp-reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+        .mp-reveal.in { opacity: 1; transform: none; }
+        @media (prefers-reduced-motion: reduce) { .mp-reveal { opacity: 1; transform: none; transition: none; } .flash, .mp-feed div.e { animation: none; } }
+
+        @media (max-width: 1080px) {
+            .mp-demo { grid-template-columns: 1fr; }
+            .mp-demo .d-phone { max-width: 340px; margin: 0 auto; }
+            .mp-steps { grid-template-columns: repeat(2, 1fr); }
+            .mp-for { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 980px) {
+            .mp-hero-grid, .mp-split { grid-template-columns: 1fr; gap: 40px; }
+            .mp-visual { justify-content: center; padding-right: 0; }
+            .mp-why, .mp-plans { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .mp-section { padding: 68px 0; }
+            .mp-hero { padding: 56px 0 72px; }
+            .mp-phone { width: 270px; }
+            .mp-float { display: none; }
+            .mp-steps, .mp-for { grid-template-columns: 1fr; }
+            .r-table .hide-s { display: none; }
+            .r-table th, .r-table td { padding: 10px; }
+            .mp-col { padding: 22px; }
+            .mp-cta-box { padding: 44px 22px; }
+            .mp-cta { margin: 0 12px 68px; }
+        }
+    </style>
+<script src="/assets/rg-analytics.js" async></script>
+</head>
+<body>
+    <!-- icons used on this page -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <symbol id="m-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+        <symbol id="m-truck" viewBox="0 0 24 24"><path d="M1 4h14v12H1z"/><path d="M15 9h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+        <symbol id="m-wallet" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.2"/></symbol>
+        <symbol id="m-pin" viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+        <symbol id="m-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+        <symbol id="m-store" viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></symbol>
+        <symbol id="m-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    </svg>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="../index.html" class="nav-brand">
+                <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="brand-logo">
+                <span class="brand-text">Restro Grow</span>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="../index.html#features">Features</a></li>
+                <li><a href="../loyalty/">Loyalty</a></li>
+                <li><a href="../meal-plans/" style="color: var(--accent); font-weight: 700;">Meal Plans</a></li>
+                <li><a href="../index.html#pricing">Pricing</a></li>
+                <li><a href="../about/">About</a></li>
+                <li><a href="../faq/">FAQ</a></li>
+                <li><a href="../index.html#contact">Contact</a></li>
+                <li><a href="../main/admin/login.php" class="btn-nav">Login</a></li>
+            </ul>
+            <button class="nav-toggle" aria-label="Toggle menu">
+                <svg class="mp-ico" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="mp-hero">
+        <div class="container mp-hero-grid">
+            <div>
+                <p class="mp-kicker">Meal Plans &amp; Tiffin</p>
+                <h1 class="hero-title">Get paid for the month. <em>Cook to a plan.</em></h1>
+                <p class="mp-lead">Sell lunch and dinner plans on your own website. Customers pay upfront, then skip days, pause and change their address themselves. Every morning their meals reach your kitchen on their own.</p>
+                <div class="mp-ctas">
+                    <a href="#live-demo" class="btn btn-primary">Try the live demo</a>
+                    <a href="../main/admin/login.php?tab=signup" class="btn btn-secondary">Start <span data-trial-days>7</span>-day free trial</a>
+                </div>
+                <ul class="mp-ticks">
+                    <li><svg class="mp-ico"><use href="#m-check"/></svg>No app for customers to download</li>
+                    <li><svg class="mp-ico"><use href="#m-check"/></svg>UPI, QR or cash</li>
+                    <li><svg class="mp-ico"><use href="#m-check"/></svg>No phone calls to change a day</li>
+                </ul>
+            </div>
+
+            <div class="mp-visual" aria-label="Example: a customer's meal plan on their phone">
+                <div class="mp-float">Today's 38 tiffins<b>Sent to kitchen ✓</b></div>
+                <div class="mp-phone">
+                    <div class="mp-screen">
+                        <div class="mp-screen-top"><small>My subscription</small><b>Veg Thali · Monthly</b></div>
+                        <div class="mp-card">
+                            <div class="mp-card-row"><span>Meals left</span><span class="mp-pill">ACTIVE</span></div>
+                            <div class="mp-big">18 <small>of 26</small></div>
+                            <div class="mp-bar"><i style="width:31%"></i></div>
+                        </div>
+                        <div class="mp-line"><svg class="mp-ico"><use href="#m-truck"/></svg><span>Next delivery: <b>Tomorrow, lunch</b></span></div>
+                        <div class="mp-line"><svg class="mp-ico"><use href="#m-wallet"/></svg><span>₹3,499 paid by UPI</span></div>
+                        <div class="mp-line"><svg class="mp-ico"><use href="#m-cal"/></svg><span>Skipped: <b>Sat 1 Nov</b> (going home)</span></div>
+                    </div>
+                </div>
+                <div class="mp-float mp-float2">Customer skipped Saturday<b>Meal kept for later ✓</b></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why -->
+    <section class="mp-section ink">
+        <div class="container">
+            <div class="mp-head">
+                <p class="mp-kicker">Why meal plans</p>
+                <h2 class="section-title">One customer, thirty meals, one payment.</h2>
+                <p class="section-subtitle">A tiffin customer orders every day without being asked, and pays you before the month starts.</p>
+            </div>
+            <div class="mp-why">
+                <div class="mp-why-card mp-reveal"><span class="n">01</span><h3>Money in advance</h3><p>Plans are paid upfront by UPI, QR or cash. Better cash flow, and no daily chasing for small payments.</p></div>
+                <div class="mp-why-card mp-reveal"><span class="n">02</span><h3>Know tomorrow's count</h3><p>You know how many lunches and dinners to make, so you buy and cook the right amount and waste less.</p></div>
+                <div class="mp-why-card mp-reveal"><span class="n">03</span><h3>No register, no calls</h3><p>Customers skip, pause and change their address themselves. Meals left are counted for you, not in a notebook.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live demo -->
+    <section class="mp-section" id="live-demo">
+        <div class="container">
+            <div class="mp-head">
+                <p class="mp-kicker">Live demo</p>
+                <h2 class="section-title">Click anything. Both sides update.</h2>
+                <p class="section-subtitle">Left is your customer's phone, right is your dashboard. What one side changes, the other sees straight away.</p>
+            </div>
+            <div class="mp-try" aria-label="Things to try">
+                <button type="button" data-try="skip">Customer skips a day</button>
+                <button type="button" data-try="pause">Customer pauses</button>
+                <button type="button" data-try="address">Customer changes address</button>
+                <button type="button" data-try="gen">Restaurant sends today's meals</button>
+                <button type="button" data-try="credit">Restaurant gives a meal back</button>
+                <button type="button" data-try="reset">Start again</button>
+            </div>
+
+            <div class="mp-demo">
+                <div>
+                    <div class="mp-side-label"><i></i>Customer · on their phone</div>
+                    <div class="d-phone"><div class="d-screen">
+                        <div class="d-top"><span>←</span>My Subscription</div>
+                        <div class="d-body" id="cust"></div>
+                    </div></div>
+                </div>
+                <div>
+                    <div class="mp-side-label"><i></i>Restaurant · your dashboard</div>
+                    <div class="r-panel">
+                        <div class="r-head"><b>Meal Subscriptions</b><button type="button" class="r-gen" id="rGen">Send today's meals to kitchen</button></div>
+                        <div style="overflow-x:auto;"><table class="r-table">
+                            <thead><tr><th>Customer</th><th>Plan</th><th>Meals</th><th>Status</th><th class="hide-s">Skips</th><th class="hide-s">Deliver to</th></tr></thead>
+                            <tbody id="rows"></tbody>
+                        </table></div>
+                        <div class="r-kot" id="kot"></div>
+                        <div class="r-actions" id="ractions"></div>
+                    </div>
+                    <div class="mp-feed" aria-live="polite"><div class="t">What just happened</div><div id="feed"><div class="e">Try a button above, or tap anything on either side.</div></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="mp-section raised">
+        <div class="container">
+            <div class="mp-head">
+                <p class="mp-kicker">How it works</p>
+                <h2 class="section-title">Set it up once. It runs every day.</h2>
+            </div>
+            <div class="mp-steps">
+                <div class="mp-step mp-reveal"><h3>Make your plans</h3><p>Lunch, dinner or both. Number of meals, price, bonus meals and a photo. As many plans as you like.</p></div>
+                <div class="mp-step mp-reveal"><h3>Set the weekly menu</h3><p>What's in the tiffin each day, Monday to Sunday, with dish photos. Days without a menu are days off.</p></div>
+                <div class="mp-step mp-reveal"><h3>Customers subscribe</h3><p>On your website they pick a plan, start date and address, then pay by UPI, QR or cash.</p></div>
+                <div class="mp-step mp-reveal"><h3>Meals go to the kitchen</h3><p>Every day each customer's meal becomes an order with a kitchen ticket, and one meal is counted off.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Both sides -->
+    <section class="mp-section">
+        <div class="container">
+            <div class="mp-head">
+                <p class="mp-kicker">Everyone in control</p>
+                <h2 class="section-title">Your customer handles the small things. You see everything.</h2>
+            </div>
+            <div class="mp-split">
+                <div class="mp-col mp-reveal">
+                    <h3><span><svg class="mp-ico"><use href="#m-user"/></svg></span>Your customer can</h3>
+                    <ul class="mp-list">
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Skip any day</b> <span>— going out or travelling? The meal stays in their plan for later.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Pause and resume</b> <span>— for a holiday, without losing a single meal.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Change address and phone</b> <span>— moving to the office? Today's waiting meal follows the new address.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>See meals left and the next delivery</b> <span>— no "how many are left?" calls.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Track every delivery</b> <span>— received, preparing, delivered.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Renew in one tap</b> <span>— when the plan ends.</span></div></li>
+                    </ul>
+                </div>
+                <div class="mp-col mp-reveal">
+                    <h3><span><svg class="mp-ico"><use href="#m-store"/></svg></span>You can</h3>
+                    <ul class="mp-list">
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>See every subscriber</b> <span>— meals left, next delivery, payment, skips and address.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Do it for them</b> <span>— skip a day, pause or change the address when a customer calls.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Give meals back</b> <span>— for a late or missed delivery, in one click.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Mark cash and QR payments received</b> <span>— and see who still has to pay.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Sign up walk-in customers</b> <span>— from the counter, with or without an account.</span></div></li>
+                        <li><svg class="mp-ico"><use href="#m-check"/></svg><div><b>Owner and manager only</b> <span>— staff can't give away meals or end a plan.</span></div></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Example plans -->
+    <section class="mp-section raised">
+        <div class="container">
+            <div class="mp-head">
+                <p class="mp-kicker">Example plans</p>
+                <h2 class="section-title">What your plans page could look like</h2>
+                <p class="section-subtitle">You choose the names, meals and prices. These are only examples.</p>
+            </div>
+            <div class="mp-plans">
+                <div class="mp-plan mp-reveal"><h3>Office Lunch</h3><p class="scope">Lunch only · Mon–Fri</p><div class="price">₹2,199</div><p class="per">22 meals · ₹100 a meal</p><ul><li>Dal, sabzi, 4 roti, rice</li><li>Delivered by 1 pm</li><li>Skip any day</li></ul></div>
+                <div class="mp-plan hot mp-reveal"><span class="tag">MOST POPULAR</span><h3>Home Thali</h3><p class="scope">Lunch + dinner · Mon–Sat</p><div class="price">₹4,999</div><p class="per">26 days + 2 bonus</p><ul><li>Two meals every day</li><li>Weekly changing menu</li><li>Pause for holidays</li></ul></div>
+                <div class="mp-plan mp-reveal"><h3>High Protein</h3><p class="scope">Lunch only · Mon–Sat</p><div class="price">₹5,499</div><p class="per">24 meals · gym diet</p><ul><li>Protein and calories shown</li><li>Paneer, chicken, eggs</li><li>Pay by UPI</li></ul></div>
+            </div>
+            <p class="mp-note">Prices and dishes above are examples. Set your own from your dashboard.</p>
+        </div>
+    </section>
+
+    <!-- Who it is for -->
+    <section class="mp-section">
+        <div class="container">
+            <div class="mp-head">
+                <p class="mp-kicker">Made for</p>
+                <h2 class="section-title">Anyone who feeds the same people every day</h2>
+            </div>
+            <div class="mp-for">
+                <div class="mp-reveal"><span class="e">🍱</span><b>Tiffin services</b><span>Replace the register and the WhatsApp list.</span></div>
+                <div class="mp-reveal"><span class="e">🏢</span><b>Office lunch</b><span>Fixed daily orders for teams.</span></div>
+                <div class="mp-reveal"><span class="e">💪</span><b>Diet &amp; fitness meals</b><span>Monthly protein and weight-loss plans.</span></div>
+                <div class="mp-reveal"><span class="e">🎓</span><b>Students &amp; PGs</b><span>Home-style food near colleges.</span></div>
+                <div class="mp-reveal"><span class="e">🍳</span><b>Cloud kitchens</b><span>Steady orders without app commission.</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mp-section raised">
+        <div class="container">
+            <div class="mp-head"><p class="mp-kicker">Questions</p><h2 class="section-title">Good to know</h2></div>
+            <div class="mp-faq">
+                <details><summary>Do my customers need to download an app?</summary><p>No. They subscribe and manage their plan on your restaurant's website, from any phone.</p></details>
+                <details><summary>How are meals counted?</summary><p>One meal is counted off for each delivery day. A skipped day, a paused day or a day without a menu doesn't count. When meals run out, the plan ends and the customer can renew.</p></details>
+                <details><summary>Can a customer skip today?</summary><p>Yes, until today's meal goes to the kitchen. After that the day can't be skipped, so your kitchen never cooks for nothing.</p></details>
+                <details><summary>How do customers pay?</summary><p>Online by UPI or card, by scanning your QR code, or in cash. You can mark cash and QR payments as received from your dashboard.</p></details>
+                <details><summary>Do I need to create orders every day?</summary><p>No. Each morning the day's meals become orders on their own, with kitchen tickets, alongside your normal orders. There's also a button to send them yourself.</p></details>
+                <details><summary>Can I offer refunds or end a plan?</summary><p>Yes. The owner or a manager can end a plan, and no more meals are sent. Any refund is settled with the customer directly.</p></details>
+                <details><summary>How do I switch Meal Plans on?</summary><p>Start your free trial and message us. We'll switch Meal Plans on for your restaurant and help you set up your first plan.</p></details>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="mp-cta">
+        <div class="mp-cta-box">
+            <h2>Start your tiffin business on your own website.</h2>
+            <p>Start your <span data-trial-days>7</span>-day free trial, and we'll set up your first meal plan with you.</p>
+            <div class="mp-ctas">
+                <a href="../main/admin/login.php?tab=signup" class="btn btn-primary">Start free trial</a>
+                <a href="https://wa.me/916377568749?text=Hi%2C%20I%20want%20to%20know%20about%20Meal%20Plans%20on%20Restro%20Grow" target="_blank" rel="noopener" class="btn btn-secondary">Chat on WhatsApp</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-brand">
+                        <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="footer-logo">
+                        <span>Restro Grow</span>
+                    </div>
+                    <p>Complete restaurant management solution for modern restaurants.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="../index.html#features">Features</a></li>
+                        <li><a href="../loyalty/">Loyalty &amp; Growth</a></li>
+                        <li><a href="../meal-plans/">Meal Plans</a></li>
+                        <li><a href="../index.html#pricing">Pricing</a></li>
+                        <li><a href="../main/admin/login.php">Login</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="../about/">About Us</a></li>
+                        <li><a href="../blog/">Blog</a></li>
+                        <li><a href="../faq/">FAQ</a></li>
+                        <li><a href="../index.html#contact">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="../privacy-policy/">Privacy Policy</a></li>
+                        <li><a href="../terms-of-service/">Terms of Service</a></li>
+                        <li><a href="../refund-policy/">Refund &amp; Return Policy</a></li>
+                        <li><a href="../cookie-policy/">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; <span class="js-year">2026</span> Restro Grow. All rights reserved.</p>
+                <p style="margin-top: 8px; font-size: 0.9rem;">
+                    <a href="mailto:support@restrogrow.com" style="color: inherit; opacity: .75; text-decoration: none; margin-right: 16px;">support@restrogrow.com</a>
+                    <a href="tel:+916377568749" style="color: inherit; opacity: .75; text-decoration: none;">+91 63775 68749</a>
+                </p>
+            </div>
+        </div>
+    </footer>
+    <script src="../script.js?v=3.0"></script>
+    <script>
+        // trial length from Super Admin settings; year; fade-in as sections scroll into view
+        fetch('../main/api/public_info.php').then(function (r) { return r.json(); }).then(function (d) { if (d && d.trial_days) document.querySelectorAll('[data-trial-days]').forEach(function (e) { e.textContent = d.trial_days; }); }).catch(function () {});
+        document.querySelectorAll('.js-year').forEach(function (e) { e.textContent = new Date().getFullYear(); });
+        (function () {
+            var els = document.querySelectorAll('.mp-reveal');
+            if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
+            var io = new IntersectionObserver(function (entries) {
+                entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+            }, { rootMargin: '0px 0px -8% 0px' });
+            els.forEach(function (e) { io.observe(e); });
+        })();
+
+        /* ── Live demo: one shared state drawn on both sides, the way the real customer page and
+           dashboard share one subscription. Nothing is sent anywhere. ── */
+        (function () {
+            var DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            var ADDRESSES = ['B-204, Green Park Apartments, Sector 21', 'Office: 5th floor, Cyber Tower, MG Road', 'Room 12, Sunrise PG, College Road'];
+            var today = new Date(); today.setHours(0, 0, 0, 0);
+            function addDays(n) { var d = new Date(today); d.setDate(d.getDate() + n); return d; }
+            function key(d) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+            function nice(d) { return key(d) === key(today) ? 'Today' : DAY[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()]; }
+            var days = []; for (var i = 0; i < 7; i++) days.push(addDays(i));   // the next 7 days
+
+            var s, others;
+            function fresh() {
+                s = { status: 'active', total: 26, used: 8, paid: false, method: 'Cash', addr: 0, skips: {}, made: {}, hist: [
+                    { d: addDays(-2), t: 'Delivered' }, { d: addDays(-1), t: 'Delivered' } ] };
+                others = [
+                    { n: 'Rahul Verma', p: 'Office Lunch', left: '14 / 22', st: 'active', sk: '-', a: 'Infinity Tower, Floor 3' },
+                    { n: 'Sneha Iyer', p: 'High Protein', left: '6 / 24', st: 'paused', sk: '-', a: '17, Lake View Road' }
+                ];
+            }
+            fresh();
+
+            function left() { return s.total - s.used; }
+            function nextDelivery() {
+                if (s.status !== 'active' || left() <= 0) return null;
+                for (var i = 0; i < 30; i++) { var d = addDays(i); if (d.getDay() === 0 || s.skips[key(d)] || s.made[key(d)]) continue; return d; }
+                return null;
+            }
+            function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+            function feed(who, text) {
+                var f = document.getElementById('feed');
+                var first = f.querySelector('.e:not([data-x])'); if (first && !f.dataset.used) { f.innerHTML = ''; f.dataset.used = 1; }
+                var row = document.createElement('div'); row.className = 'e'; row.dataset.x = 1;
+                row.innerHTML = '<span class="who' + (who === 'Restaurant' ? ' r' : '') + '">' + who + '</span>' + text;
+                f.insertBefore(row, f.firstChild);
+                while (f.children.length > 4) f.removeChild(f.lastChild);
+            }
+            function flash(ids) {
+                ids.forEach(function (id) { var el = document.getElementById(id); if (!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); });
+            }
+
+            function draw() {
+                var nd = nextDelivery();
+                var stCls = s.status === 'active' ? 'st-active' : 'st-paused';
+                var stTxt = s.status === 'active' ? 'Active' : 'Paused';
+                var skipList = Object.keys(s.skips).map(function (k) { return s.skips[k]; }).sort(function (a, b) { return a - b; });
+
+                // customer phone
+                var h = '<div class="d-card">';
+                h += '<div class="d-name">Home Thali · Monthly</div><span class="d-status ' + stCls + '" id="cSt">' + stTxt + '</span>';
+                h += '<div class="mp-bar"><i style="width:' + Math.round(s.used / s.total * 100) + '%"></i></div>';
+                h += '<div class="d-meals" id="cMeals"><b>' + left() + '</b> of ' + s.total + ' meals left · Lunch + Dinner</div>';
+                h += '<div class="d-info">';
+                h += '<div id="cNext"><svg class="mp-ico"><use href="#m-truck"/></svg><div class="grow">' + (s.status === 'paused' ? 'Paused — no meals until you resume' : 'Next delivery: <b>' + (nd ? nice(nd) : 'not scheduled') + '</b>') + '</div></div>';
+                h += '<div id="cPay"><svg class="mp-ico"><use href="#m-wallet"/></svg><div class="grow">' + s.method + ' · ₹4,999 <span class="d-pay ' + (s.paid ? 'pay-ok">Paid' : 'pay-wait">Payment pending') + '</span></div></div>';
+                h += '<div id="cAddr"><svg class="mp-ico"><use href="#m-pin"/></svg><div class="grow"><b>' + esc(ADDRESSES[s.addr]) + '</b><br>98765 43210</div><button class="d-link" type="button" data-act="editAddr">Change</button></div>';
+                h += '<div class="d-edit" id="cEdit"><select data-act="pickAddr">' + ADDRESSES.map(function (a, i) { return '<option value="' + i + '"' + (i === s.addr ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('') + '</select></div>';
+                h += '</div>';
+                h += '<button type="button" class="d-btn ' + (s.status === 'active' ? 'd-pause" data-act="pause">⏸ Pause subscription' : 'd-resume" data-act="resume">▶ Resume subscription') + '</button>';
+                h += '<div class="d-skip">Tap a day to skip it<div class="d-days" id="cDays">';
+                days.forEach(function (d, i) {
+                    var k = key(d), cls = d.getDay() === 0 ? 'sun' : s.made[k] ? 'made' : s.skips[k] ? 'off' : '';
+                    h += '<button type="button" class="' + cls + '" data-act="skip" data-i="' + i + '" title="' + (d.getDay() === 0 ? 'No menu on Sunday' : s.made[k] ? 'Already in the kitchen' : '') + '">' + (i === 0 ? 'Today' : DAY[d.getDay()]) + '<br>' + d.getDate() + '</button>';
+                });
+                h += '</div></div>';
+                h += '<div class="d-hist" id="cHist"><b style="color:#555">Recent deliveries</b>';
+                s.hist.slice().reverse().slice(0, 3).forEach(function (x) { h += '<div><span>' + nice(x.d) + ' · Lunch + Dinner</span><b' + (x.t === 'Delivered' ? '' : ' style="color:#92400e"') + '>' + x.t + '</b></div>'; });
+                h += '</div></div>';
+                document.getElementById('cust').innerHTML = h;
+
+                // restaurant dashboard
+                var r = '<tr class="me" id="rRow"><td><b>Priya Sharma</b><div class="r-sub">98765 43210</div></td>';
+                r += '<td>Home Thali<div class="r-sub">Next: ' + (nd ? nice(nd) : '—') + '</div></td>';
+                r += '<td id="rMeals"><b>' + left() + '</b> / ' + s.total + '<div><span class="d-pay ' + (s.paid ? 'pay-ok">Paid' : 'pay-wait">Pending') + '</span></div></td>';
+                r += '<td><span class="d-status ' + stCls + '" id="rSt">' + stTxt + '</span></td>';
+                r += '<td class="hide-s" id="rSkips">' + (skipList.length ? skipList.map(function (d) { return '<span class="r-chip">' + nice(d) + '</span>'; }).join('') : '-') + '</td>';
+                r += '<td class="hide-s" id="rAddr" style="max-width:190px">' + esc(ADDRESSES[s.addr]) + '</td></tr>';
+                others.forEach(function (o) {
+                    r += '<tr><td><b>' + o.n + '</b></td><td>' + o.p + '</td><td>' + o.left + '</td><td><span class="d-status ' + (o.st === 'active' ? 'st-active">Active' : 'st-paused">Paused') + '</span></td><td class="hide-s">' + o.sk + '</td><td class="hide-s">' + o.a + '</td></tr>';
+                });
+                document.getElementById('rows').innerHTML = r;
+
+                var a = '<span style="font-size:.78rem;color:var(--ink-faint);align-self:center;margin-right:4px">Priya:</span>';
+                a += '<button type="button" data-act="credit">+1 meal back</button>';
+                a += '<button type="button" data-act="paid"' + (s.paid ? ' disabled' : '') + '>Mark cash received</button>';
+                a += '<button type="button" data-act="rskip">Skip next day for her</button>';
+                a += '<button type="button" data-act="' + (s.status === 'active' ? 'rpause">Pause' : 'rresume">Resume') + '</button>';
+                document.getElementById('ractions').innerHTML = a;
+            }
+
+            var act = {
+                skip: function (i, who) {
+                    var d = days[i], k = key(d);
+                    if (d.getDay() === 0) return feed(who || 'Customer', 'Sunday has no menu, so there is nothing to skip.');
+                    if (s.made[k]) return feed(who || 'Customer', "Today's meal is already in the kitchen, so it can't be skipped now.");
+                    if (s.skips[k]) { delete s.skips[k]; draw(); flash(['cDays', 'rSkips', 'rRow']); return feed(who || 'Customer', 'wants ' + nice(d) + ' after all → back on the restaurant\'s list.'); }
+                    s.skips[k] = d; draw(); flash(['cDays', 'rSkips', 'rRow', 'cNext']);
+                    feed(who || 'Customer', 'skipped ' + nice(d) + ' → restaurant sees it, no meal is cooked, the meal stays in the plan.');
+                },
+                pause: function () { s.status = 'paused'; draw(); flash(['cSt', 'rSt', 'rRow']); feed('Customer', 'paused the plan → restaurant sees "Paused", no meals are made, nothing is lost.'); },
+                resume: function () { s.status = 'active'; draw(); flash(['cSt', 'rSt', 'rRow', 'cNext']); feed('Customer', 'resumed → meals start again from the next menu day.'); },
+                rpause: function () { s.status = 'paused'; draw(); flash(['cSt', 'rSt', 'cNext']); feed('Restaurant', 'paused Priya\'s plan after her call → her phone shows "Paused".'); },
+                rresume: function () { s.status = 'active'; draw(); flash(['cSt', 'rSt', 'cNext']); feed('Restaurant', 'resumed Priya\'s plan → her next delivery shows on her phone.'); },
+                editAddr: function () { document.getElementById('cEdit').classList.toggle('open'); },
+                pickAddr: function (v) { s.addr = +v; draw(); flash(['cAddr', 'rAddr', 'rRow']); feed('Customer', 'changed the address → the rider\'s next order goes to "' + esc(ADDRESSES[s.addr]) + '".'); },
+                credit: function () { if (s.used > 0) s.used--; draw(); flash(['cMeals', 'rMeals']); feed('Restaurant', 'gave 1 meal back for a late delivery → Priya sees ' + left() + ' meals left.'); },
+                paid: function () { s.paid = true; draw(); flash(['cPay', 'rMeals']); feed('Restaurant', 'marked the cash as received → Priya\'s phone shows "Paid".'); },
+                rskip: function (who) {
+                    // the next day that can still be skipped (tomorrow first: today may already be cooking)
+                    for (var i = 1; i < days.length; i++) { var d = days[i]; if (d.getDay() !== 0 && !s.made[key(d)] && !s.skips[key(d)]) return act.skip(i, who || 'Restaurant'); }
+                },
+                gen: function () {
+                    var k = key(today);
+                    if (s.made[k]) return feed('Restaurant', "Today's meals are already in the kitchen.");
+                    var kot = document.getElementById('kot');
+                    if (s.status !== 'active' || s.skips[k] || today.getDay() === 0 || left() <= 0) {
+                        kot.className = 'r-kot show'; kot.innerHTML = 'KITCHEN · ' + nice(today) + '<br>Priya Sharma — not today (' + (s.status !== 'active' ? 'paused' : s.skips[k] ? 'skipped' : today.getDay() === 0 ? 'no Sunday menu' : 'no meals left') + ')';
+                        return feed('Restaurant', 'sent today\'s meals → Priya is ' + (s.status !== 'active' ? 'paused' : 'skipping today') + ', so no meal is made and none is counted.');
+                    }
+                    s.made[k] = true; s.used++; s.hist.push({ d: today, t: 'Received' }); draw();
+                    kot.className = 'r-kot show'; kot.innerHTML = 'KITCHEN TICKET · SUB-' + (1000 + s.used) + '<br>Priya Sharma · Lunch + Dinner<br>' + esc(ADDRESSES[s.addr]);
+                    flash(['cHist', 'cMeals', 'rMeals', 'kot']);
+                    feed('Restaurant', 'sent today\'s meals → kitchen ticket printed, 1 meal counted off, Priya sees it under "Recent deliveries".');
+                    setTimeout(function () { var last = s.hist[s.hist.length - 1]; if (last.t === 'Received') { last.t = 'Delivered'; draw(); flash(['cHist']); feed('Rider', 'delivered → Priya\'s phone shows "Delivered".'); } }, 2600);
+                },
+                reset: function () { fresh(); document.getElementById('kot').className = 'r-kot'; draw(); var f = document.getElementById('feed'); f.innerHTML = '<div class="e">Back to the start. Try a button above.</div>'; delete f.dataset.used; }
+            };
+
+            document.getElementById('live-demo').addEventListener('click', function (e) {
+                var b = e.target.closest('[data-act], [data-try]');
+                if (!b || b.disabled || b.tagName === 'SELECT') return;
+                if (b.dataset.act) {
+                    if (b.dataset.act === 'skip') act.skip(+b.dataset.i);
+                    else if (act[b.dataset.act]) act[b.dataset.act]();
+                    return;
+                }
+                var t = b.dataset.try;
+                if (t === 'skip') return act.rskip('Customer');
+                if (t === 'pause') return s.status === 'active' ? act.pause() : act.resume();
+                if (t === 'address') { s.addr = (s.addr + 1) % ADDRESSES.length; return act.pickAddr(s.addr); }
+                if (t === 'gen' || t === 'credit' || t === 'reset') return act[t]();
+            });
+            document.getElementById('rGen').addEventListener('click', function () { act.gen(); });
+            document.getElementById('live-demo').addEventListener('change', function (e) { if (e.target.dataset.act === 'pickAddr') act.pickAddr(e.target.value); });
+            draw();
+        })();
+    </script>
+</body>
+</html>
