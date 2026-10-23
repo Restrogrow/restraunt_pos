@@ -10,7 +10,7 @@
   'use strict';
 
   var CSS = '' +
-    '.rgn{margin:8px 0 16px;padding:14px;border-radius:20px;background:linear-gradient(180deg,#f7fbf8,#fff);border:1px solid #e6f2ea}' +
+    '.rgn{container-type:inline-size;margin:8px 0 16px;padding:14px;border-radius:20px;background:linear-gradient(180deg,#f7fbf8,#fff);border:1px solid #e6f2ea}' +
     '.rgn-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}' +
     '.rgn-head b{font-size:16px;font-weight:800;color:#111827}' +
     '.rgn-head b.caps{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6b7280}' +
@@ -19,14 +19,16 @@
     '.rgn-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11.5px;font-weight:700}' +
     '.rgn-tag svg{width:12px;height:12px}' +
     '.rgn-tag.diet{background:#eef2ff;color:#3730a3}' +
-    '.rgn-row{display:flex;gap:8px;align-items:stretch}' +
-    '.rgn-kcal{flex:0 0 auto;min-width:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:10px 12px;border-radius:16px;background:#111827;color:#fff}' +
-    '.rgn-kcal svg{width:15px;height:15px;color:#fb923c;margin-bottom:2px}' +
+    // calories on their own strip, the nutrients in an even row under it (2 x 2 when narrow)
+    '.rgn-row{display:flex;flex-direction:column;gap:8px}' +
+    '.rgn-kcal{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:16px;background:#111827;color:#fff}' +
+    '.rgn-kcal svg{width:18px;height:18px;color:#fb923c;flex-shrink:0}' +
     '.rgn-kcal b{font-size:20px;font-weight:800;line-height:1.1}' +
-    '.rgn-kcal span{font-size:11.5px;color:#9ca3af}' +
-    '.rgn-mac{flex:1;min-width:0;display:flex;align-items:stretch;padding:8px 2px;border-radius:16px;background:#fff;border:1px solid #e5efe8}' +
-    '.rgn-mac>div{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 4px;text-align:center}' +
+    '.rgn-kcal span{font-size:12.5px;color:#9ca3af}' +
+    '.rgn-mac{display:flex;flex-wrap:wrap;align-items:stretch;padding:8px 2px;border-radius:16px;background:#fff;border:1px solid #e5efe8}' +
+    '.rgn-mac>div{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;text-align:center}' +
     '.rgn-mac>div+div{border-left:1.5px solid #eef2ef}' +
+    '@container (max-width:280px){.rgn-mac>div{flex:1 1 40%}.rgn-mac>div:nth-child(3){border-left:0}.rgn-mac>div:nth-child(n+3){border-top:1.5px solid #eef2ef;margin-top:4px;padding-top:8px}}' +
     '.rgn-mac i{display:block;width:8px;height:8px;border-radius:50%;margin-bottom:4px}' +
     '.rgn-mac b{font-size:15.5px;font-weight:800;color:#111827;line-height:1.2}' +
     '.rgn-mac span{font-size:11.5px;color:#6b7280}' +
@@ -101,7 +103,7 @@
       }
       if (kcal || macros.length) {
         out += '<div class="rgn-row">';
-        if (kcal) out += '<div class="rgn-kcal">' + SVG.flame + '<b>' + kcal + '</b><span>kcal</span></div>';
+        if (kcal) out += '<div class="rgn-kcal">' + SVG.flame + '<b>' + Math.round(kcal) + '</b><span>kcal</span></div>';
         if (macros.length) out += '<div class="rgn-mac">' + macros.map(function (m) { return '<div><i style="background:' + MAC_COL[m[1]] + '"></i><b>' + m[0] + 'g</b><span>' + m[1] + '</span></div>'; }).join('') + '</div>';
         out += '</div>';
         // Where the energy comes from (protein & carbs 4 kcal/g, fat 9 kcal/g)
