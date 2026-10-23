@@ -15081,11 +15081,13 @@ async function initWebsiteThemeEditor() {
       document.querySelectorAll('.delete-banner-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const bannerId = e.currentTarget.getAttribute('data-id');
+          // keep the button now: after the confirm popup e.currentTarget is null
+          const delBtn = e.currentTarget;
+          const bannerId = delBtn.getAttribute('data-id');
           if (!(await showSweetConfirm('Are you sure you want to delete this banner?', 'Delete Banner'))) return;
           
           try {
-            e.currentTarget.disabled = true;
+            delBtn.disabled = true;
             const sq = rid ? `?action=delete_banner&banner_id=${bannerId}&restaurant_id=${encodeURIComponent(rid)}` : `?action=delete_banner&banner_id=${bannerId}`;
             const formData = new FormData();
             formData.append('banner_id', bannerId);
@@ -15095,10 +15097,13 @@ async function initWebsiteThemeEditor() {
             if (data.success) {
               showNotification('Banner deleted successfully', 'success');
               loadBanners();
+              if (window.refreshPreview) window.refreshPreview();
             } else {
+              delBtn.disabled = false;
               showNotification(data.message || 'Failed to delete banner', 'error');
             }
           } catch (err) {
+            delBtn.disabled = false;
             showNotification('Network error. Please try again.', 'error');
           }
         });
