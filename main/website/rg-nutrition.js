@@ -27,14 +27,17 @@
     '.rgn-mac{flex:1;min-width:0;display:flex;align-items:stretch;padding:8px 2px;border-radius:16px;background:#fff;border:1px solid #e5efe8}' +
     '.rgn-mac>div{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 4px;text-align:center}' +
     '.rgn-mac>div+div{border-left:1.5px solid #eef2ef}' +
-    // Phones: the one line gets too tight, so calories and each nutrient become 5 equal boxes, 3 + 2
+    // Phones: the same one row as desktop, but 5 equal boxes (calories too) that shrink to fit
     '@media (max-width:600px){' +
-      '.rgn-row{flex-wrap:wrap;justify-content:center}' +
+      '.rgn{container-type:inline-size}' +
+      '.rgn-row{gap:5px}' +
       '.rgn-mac{display:contents}' +
-      '.rgn-kcal,.rgn-mac>div{flex:0 0 calc((100% - 16px) / 3);min-width:0;min-height:76px;padding:10px 4px;border-radius:16px;box-sizing:border-box}' +
+      '.rgn-kcal,.rgn-mac>div{flex:1 1 0;min-width:0;padding:9px 2px;border-radius:14px;box-sizing:border-box;text-align:center}' +
       '.rgn-mac>div{background:#fff;border:1px solid #e5efe8}' +
       '.rgn-mac>div+div{border-left:1px solid #e5efe8}' +
-      '.rgn-kcal b,.rgn-mac b{font-size:16px}' +
+      '.rgn-kcal b,.rgn-mac b{font-size:clamp(12px,5cqw,16px);white-space:nowrap}' +
+      '.rgn-kcal span,.rgn-mac span{font-size:clamp(9.5px,3.6cqw,11.5px)}' +
+      '.rgn-kcal svg{width:13px;height:13px}' +
     '}' +
     '.rgn-mac i{display:block;width:8px;height:8px;border-radius:50%;margin-bottom:4px}' +
     '.rgn-mac b{font-size:15.5px;font-weight:800;color:#111827;line-height:1.2}' +
@@ -111,7 +114,7 @@
       if (kcal || macros.length) {
         out += '<div class="rgn-row">';
         if (kcal) out += '<div class="rgn-kcal">' + SVG.flame + '<b>' + Math.round(kcal) + '</b><span>kcal</span></div>';
-        if (macros.length) out += '<div class="rgn-mac">' + macros.map(function (m) { return '<div><i style="background:' + MAC_COL[m[1]] + '"></i><b>' + m[0] + 'g</b><span>' + m[1] + '</span></div>'; }).join('') + '</div>';
+        if (macros.length) out += '<div class="rgn-mac">' + macros.map(function (m) { return '<div><i style="background:' + MAC_COL[m[1]] + '"></i><b>' + (m[0] >= 100 ? Math.round(m[0]) : m[0]) + 'g</b><span>' + m[1] + '</span></div>'; }).join('') + '</div>';
         out += '</div>';
         // Where the energy comes from (protein & carbs 4 kcal/g, fat 9 kcal/g)
         var e = [[p, 4, 'protein'], [c, 4, 'carbs'], [f, 9, 'fat']].filter(function (x) { return x[0]; });
