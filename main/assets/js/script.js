@@ -15768,16 +15768,9 @@ if (!window.customBgThemes) {
       }
       btn.disabled = !dirty;
       btn.classList.toggle('wt-clean', !dirty);
-      btn.innerHTML = dirty ? '<span class="material-symbols-rounded">save</span>Save changes' : '<span class="material-symbols-rounded">check</span>All changes saved';
-      var note = document.getElementById('wtUnsavedNote');
-      if (!note && btn.parentNode) {
-        note = document.createElement('span');
-        note.id = 'wtUnsavedNote';
-        note.className = 'wt-unsaved';
-        note.innerHTML = '<i></i>Unsaved changes';
-        btn.parentNode.insertBefore(note, btn);
-      }
-      if (note) note.style.display = dirty ? '' : 'none';
+      // the button itself says it: an amber dot + "Save changes", or a grey "Saved"
+      btn.innerHTML = dirty ? '<i class="wt-dot" aria-hidden="true"></i>Save changes' : '<span class="material-symbols-rounded">check</span>Saved';
+      btn.title = dirty ? 'You have unsaved changes' : 'Nothing to save';
       var dot = document.getElementById('pvUnsavedDot');
       if (dot) dot.style.display = dirty ? 'inline-block' : 'none';
     };

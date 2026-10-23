@@ -2421,14 +2421,14 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
               <button type="button" class="btn btn-primary btn-save" id="saveWebsiteThemeBtn"><span class="material-symbols-rounded">save</span>Save Theme</button>
               <button type="button" class="btn btn-secondary" id="resetWebsiteThemeBtn">
                 <span class="material-symbols-rounded">restart_alt</span>
-                Reset to Default
+                Reset<span class="wt-long">to Default</span>
               </button>
               <a href="<?php echo $basePath; ?>/<?php
                 $restaurant_slug = strtolower($restaurant_name);
                 $restaurant_slug = preg_replace('/[^a-z0-9]+/', '-', $restaurant_slug);
                 $restaurant_slug = trim($restaurant_slug, '-');
                 echo urlencode($restaurant_slug);
-              ?>" class="btn btn-secondary" target="_blank"><span class="material-symbols-rounded">open_in_new</span>Open website</a>
+              ?>" class="btn btn-secondary" target="_blank"><span class="material-symbols-rounded">open_in_new</span>Open<span class="wt-long">website</span></a>
             </div>
           </div>
           
