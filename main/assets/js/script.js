@@ -14387,7 +14387,11 @@ async function initWebsiteThemeEditor() {
       var wrap = cur.parentNode;
       var seq = ++pvSwap.seq;
       var y = 0, anchor = null;
-      try { y = cur.contentWindow.scrollY || 0; anchor = previewAnchor(cur.contentDocument); } catch (e) {}
+      try {
+        // same page: stay where you were; another page (home -> menu): start at the top
+        var samePage = new URL(url, location.href).pathname.replace(/\/$/, '') === cur.contentWindow.location.pathname.replace(/\/$/, '');
+        if (samePage) { y = cur.contentWindow.scrollY || 0; anchor = previewAnchor(cur.contentDocument); }
+      } catch (e) {}
       if (pvSwap.next && pvSwap.next.parentNode) pvSwap.next.parentNode.removeChild(pvSwap.next);
       if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
       var nx = document.createElement('iframe');
@@ -14483,33 +14487,36 @@ async function initWebsiteThemeEditor() {
     document.addEventListener('input', function(e) {
       if (!e.target.closest || !e.target.closest('#websiteThemePage') || e.target.type !== 'text') return;
       if (window.previewMode === 'live') return;
+      showPreviewPageFor(e.target);
       clearTimeout(previewTypeTimer);
       previewTypeTimer = setTimeout(reloadPreviewForMode, 500);
     });
+    // Show the page a setting is for: Menu page settings open the menu, Home page ones the home
+    // page, Profile Page options the profile (with a sample customer); the rest keep the page
+    function showPreviewPageFor(el) {
+      var frame = document.getElementById('livePreview');
+      if (!frame || !el || !el.closest) return;
+      var home = (frame.getAttribute('data-base') || frame.src).split('?')[0].replace(/\/$/, '');
+      var href = '';
+      try { href = frame.contentWindow.location.href.split('?')[0].replace(/\/$/, ''); } catch (err) {}
+      var want = null;
+      if (el.closest('#profileDesignBox')) want = home + '/profile?preview_demo=1';
+      else if (el.closest('#wtg-menu')) want = /\/menu$/.test(href) ? null : home + '/menu';
+      else if (el.closest('#wtg-home') || /\/profile$/.test(href)) want = href === home ? null : home;
+      if (!want) return;
+      frame.setAttribute('data-want', want);
+      frame.setAttribute('data-want-until', Date.now() + 3000);
+      if (window.previewMode === 'live') window.setPreviewMode('current');
+    }
     // Any layout choice in Website Appearance refreshes the Current preview
     document.addEventListener('click', function(e) {
       var opt = e.target.closest && e.target.closest('#websiteThemePage label[class$="-opt"], #websiteThemePage label[class*="-opt "], #websiteThemePage input[type="radio"]');
       if (!opt) return;
-      // Show the page the choice is for: Profile Page options open the profile (with a
-      // sample customer), everything else is about the home page
-      var frame = document.getElementById('livePreview');
-      if (frame) {
-        var home = (frame.getAttribute('data-base') || frame.src).split('?')[0].replace(/\/$/, '');
-        var onProfile = false;
-        try { onProfile = /\/profile(\?|$)/.test(frame.contentWindow.location.href); } catch (err) {}
-        if (opt.closest('#profileDesignBox')) {
-          frame.setAttribute('data-want', home + '/profile?preview_demo=1');
-          frame.setAttribute('data-want-until', Date.now() + 3000);
-          if (window.previewMode === 'live') window.setPreviewMode('current');
-        } else if (onProfile) {
-          frame.setAttribute('data-want', home);
-          frame.setAttribute('data-want-until', Date.now() + 3000);
-        }
-      }
+      showPreviewPageFor(opt);
       schedulePreviewReload();
     });
     document.addEventListener('change', function(e) {
-      if (e.target.closest && e.target.closest('#websiteThemePage') && (e.target.tagName === 'SELECT' || e.target.type === 'radio' || e.target.type === 'color')) schedulePreviewReload();
+      if (e.target.closest && e.target.closest('#websiteThemePage') && (e.target.tagName === 'SELECT' || e.target.type === 'radio' || e.target.type === 'color' || e.target.type === 'checkbox')) { showPreviewPageFor(e.target); schedulePreviewReload(); }
     });
     // Keep the unsaved choices while clicking around inside the Current preview
     function keepPreviewChoices(frame) {
