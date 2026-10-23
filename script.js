@@ -1,13 +1,16 @@
-// Load SweetAlert2 dynamically if not already present
+// Load SweetAlert2 (77 KB) only once the page has finished loading, so it doesn't compete with
+// the first paint on phones; alerts are only shown after a form is submitted.
 (function ensureSweetAlert(){
-    if (!window.Swal) {
+    if (window.Swal) return;
+    // relative to this file, so pages in sub-folders (/faq/, /privacy-policy/) find it too
+    const here = document.currentScript && document.currentScript.src ? new URL('.', document.currentScript.src).href : '';
+    const load = () => {
         const script = document.createElement('script');
-        // relative to this file, so pages in sub-folders (/faq/, /privacy-policy/) find it too
-        const here = document.currentScript && document.currentScript.src ? new URL('.', document.currentScript.src).href : '';
         script.src = here + 'main/assets/js/sweetalert2.all.min.js';
-        script.defer = true;
         document.head.appendChild(script);
-    }
+    };
+    const later = () => (window.requestIdleCallback ? requestIdleCallback(load, { timeout: 4000 }) : setTimeout(load, 1500));
+    if (document.readyState === 'complete') later(); else window.addEventListener('load', later);
 })();
 
 function showFrontendAlert(message, type = 'info', options = {}) {
@@ -19,30 +22,23 @@ function showFrontendAlert(message, type = 'info', options = {}) {
             ...options
         });
     }
-    return window.showFrontendAlert(message);
+    alert(message); // SweetAlert not loaded yet (it loads after the page)
+    return Promise.resolve();
 }
 
 ﻿// Navigation Toggle with debugging
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing navigation...');
     const navToggle = document.querySelector('.nav-toggle');
     const navMenu = document.querySelector('.nav-menu');
     
-    console.log('navToggle found:', navToggle);
-    console.log('navMenu found:', navMenu);
     
     if (navToggle) {
-        console.log('Adding click event to navToggle');
         navToggle.addEventListener('click', function(e) {
-            console.log('Hamburger menu clicked!');
             e.preventDefault();
             e.stopPropagation();
             
             if (navMenu) {
-                const isActive = navMenu.classList.contains('active');
-                console.log('Menu is currently:', isActive ? 'active' : 'inactive');
                 navMenu.classList.toggle('active');
-                console.log('Menu is now:', navMenu.classList.contains('active') ? 'active' : 'inactive');
             } else {
                 console.error('navMenu is null!');
             }
@@ -384,6 +380,14 @@ document.head.appendChild(style);
         });
     });
 
-    startAutoScroll();
+    // Only run the 50fps scroll while the strip is on screen; otherwise it keeps the phone's main thread busy for nothing.
+    if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+            if (entries[0].isIntersecting) startAutoScroll();
+            else if (intervalId) { clearInterval(intervalId); intervalId = null; }
+        }).observe(track);
+    } else {
+        startAutoScroll();
+    }
 })();
 

@@ -211,7 +211,8 @@
     <link rel="dns-prefetch" href="https://fonts.gstatic.com">
 
     <!-- Critical CSS -->
-    <link rel="stylesheet" href="style.css?v=3.1">
+    <link rel="stylesheet" href="style.css?v=3.2">
+    <link rel="preload" as="image" type="image/webp" imagesrcset="assets/images/restro-grow-dashboard-640.webp 640w, assets/images/restro-grow-dashboard-960.webp 960w, assets/images/restro-grow-dashboard-1280.webp 1280w" imagesizes="(max-width: 600px) 92vw, 560px">
 
     <!-- Optimized Font Loading: Archivo (display), Public Sans (body), IBM Plex Mono (numerals/POS nod) -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -252,7 +253,7 @@
     <nav class="navbar">
         <div class="container">
             <a href="./index.html" class="nav-brand">
-                <img src="assets/images/logo-transparent.png" alt="Restro Grow Logo" class="brand-logo">
+                <picture><source type="image/webp" srcset="assets/images/logo-transparent-300.webp"><img src="assets/images/logo-transparent.png" width="141" height="26" alt="Restro Grow Logo" class="brand-logo"></picture>
                 <span class="brand-text">Restro Grow</span>
             </a>
             <ul class="nav-menu">
@@ -313,7 +314,10 @@
                             <span class="device-url">restrogrow.com/admin &mdash; live</span>
                         </div>
                         <div class="device-screen">
-                            <img src="assets/images/restro-grow-dashboard.png?v=20261019" alt="Restro Grow Dashboard - Complete Restaurant Management System" class="dashboard-screenshot" />
+                            <picture>
+                                <source type="image/webp" srcset="assets/images/restro-grow-dashboard-640.webp 640w, assets/images/restro-grow-dashboard-960.webp 960w, assets/images/restro-grow-dashboard-1280.webp 1280w" sizes="(max-width: 600px) 92vw, 560px">
+                                <img src="assets/images/restro-grow-dashboard.png?v=20261019" width="1554" height="772" fetchpriority="high" decoding="async" alt="Restro Grow Dashboard - Complete Restaurant Management System" class="dashboard-screenshot" />
+                            </picture>
                         </div>
                     </div>
                 </div>
@@ -806,7 +810,7 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <div class="footer-brand">
-                        <img src="assets/images/logo-transparent.png" alt="Restro Grow Logo" class="footer-logo">
+                        <picture><source type="image/webp" srcset="assets/images/logo-transparent-300.webp"><img src="assets/images/logo-transparent.png" width="141" height="26" loading="lazy" alt="Restro Grow Logo" class="footer-logo"></picture>
                         <span>Restro Grow</span>
                     </div>
                     <p>Complete restaurant management solution for modern restaurants.</p>
@@ -854,7 +858,7 @@
         </div>
     </footer>
 
-    <script src="script.js?v=3.0"></script>
+    <script src="script.js?v=3.1"></script>
 
     <!-- RestroGrow chat assistant (data: main/api/chatbot.php; the word "AI" is kept off this widget on purpose). Ask straight away; details only for a call back / demo. -->
     <div id="rgc" aria-live="polite">

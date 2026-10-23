@@ -143,13 +143,20 @@ body {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.nav-brand > picture,
+.footer-brand > picture {
+    display: flex;
+}
+
 .nav-brand:hover .brand-logo {
     transform: rotate(-4deg);
 }
 
 /* The logo is a wordmark, so the text label beside it is redundant */
 .brand-logo + .brand-text,
-.footer-logo + span {
+.footer-logo + span,
+.nav-brand > picture + .brand-text,
+.footer-brand > picture + span {
     display: none;
 }
 
