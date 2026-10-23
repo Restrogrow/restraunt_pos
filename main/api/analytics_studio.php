@@ -25,7 +25,7 @@ if (!$conn instanceof PDO) { http_response_code(500); echo json_encode(['success
 $days = (int)($_GET['days'] ?? 30);
 if (!in_array($days, [7, 30, 90, 365], true)) $days = 30;
 
-const LIVE = "o.deleted_at IS NULL AND o.order_status NOT IN ('Cancelled','Rejected') AND NOT (COALESCE(o.notes,'') = 'Order on hold' AND o.order_status = 'Pending' AND o.payment_status = 'Pending')";
+const LIVE = "o.deleted_at IS NULL AND o.order_status NOT IN ('Cancelled','Rejected') AND o.payment_status <> 'Refunded' AND NOT (COALESCE(o.notes,'') = 'Order on hold' AND o.order_status = 'Pending' AND o.payment_status = 'Pending')";
 
 function q(PDO $c, string $sql, array $p = []) { $s = $c->prepare($sql); $s->execute($p); return $s; }
 function pct($cur, $prev) { $cur = (float)$cur; $prev = (float)$prev; if ($prev == 0) return $cur > 0 ? null : 0; return round(($cur - $prev) * 100 / $prev, 1); }

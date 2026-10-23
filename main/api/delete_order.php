@@ -91,8 +91,9 @@ try {
     // Completed orders are likewise kept: they represent served food, and
     // the Cancel status exists for orders that genuinely fell through.
     $status = $order['order_status'];
-    if ($order['payment_status'] === 'Paid') {
-        echo json_encode(['success' => false, 'message' => 'Paid orders cannot be deleted. Refund the payment instead.'], JSON_UNESCAPED_UNICODE);
+    // a part payment is real money too
+    if ($order['payment_status'] === 'Paid' || $order['payment_status'] === 'Partially Paid') {
+        echo json_encode(['success' => false, 'message' => ($order['payment_status'] === 'Paid' ? 'Paid' : 'Partly paid') . ' orders cannot be deleted. Refund the payment instead.'], JSON_UNESCAPED_UNICODE);
         exit();
     }
     if ($status === 'Completed') {
@@ -112,6 +113,15 @@ try {
         WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL
     ");
     $upd->execute([getActorName(), $reason !== '' ? $reason : null, $orderId, $restaurant_id]);
+    if ($upd->rowCount() > 0) {
+        // the kitchen stops cooking a deleted order, and its table frees up
+        try {
+            $conn->prepare("UPDATE kot SET kot_status = 'Cancelled', updated_at = CURRENT_TIMESTAMP
+                WHERE order_id = ? AND restaurant_id = ? AND kot_status NOT IN ('Completed', 'Cancelled')")->execute([$orderId, $restaurant_id]);
+        } catch (PDOException $e) {
+            error_log('delete_order.php: KOT cascade for order ' . $orderId . ': ' . $e->getMessage());
+        }
+    }
     require_once __DIR__ . '/../config/inventory_engine.php';
     invKick($conn, $restaurant_id);   // a deleted order's stock goes back
 

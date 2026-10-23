@@ -63,6 +63,13 @@ try {
     if (empty($action)) {
         throw new Exception('Action is required');
     }
+
+    // Waiters and cashiers use the table map; adding, renaming and removing tables is for the owner and managers
+    if (!in_array(getUserRole(), [ROLE_ADMIN, ROLE_MANAGER], true)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Only the owner or a manager can change tables.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
     
     // Validate required fields for add and update actions
     if (in_array($action, ['add', 'update'])) {
@@ -176,6 +183,13 @@ try {
                 throw new Exception('Table not found');
             }
             
+            // A table with guests (open bill or kitchen ticket) stays until it's free
+            require_once __DIR__ . '/../config/table_busy.php';
+            if (isset(rgBusyTables($conn, (string)$restaurant_id)[$tableId])) {
+                echo json_encode(['success' => false, 'message' => 'This table has an open order, so it can’t be deleted now.'], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+
             // Delete table
             $deleteStmt = $conn->prepare("DELETE FROM tables WHERE id = ? AND restaurant_id = ?");
             $result = $deleteStmt->execute([$tableId, $restaurant_id]);

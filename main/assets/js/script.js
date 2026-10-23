@@ -10820,7 +10820,7 @@ async function completeKOT(kotId) {
     const data = await response.json();
     
     if (data.success) {
-      showNotification(`KOT completed! Order #${data.order_number} created.`, 'success');
+      showNotification(data.order_number ? `KOT completed! Order #${data.order_number} created.` : 'KOT completed. The order is in Orders.', 'success');
       loadKOTOrders(); // Reload KOT orders immediately
       if (typeof window.renderTableMap === 'function' && document.getElementById('tableMapContainer')) {
         setTimeout(renderTableMap, 500);

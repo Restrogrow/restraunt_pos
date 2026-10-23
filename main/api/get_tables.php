@@ -119,7 +119,9 @@ if (!isset($_SESSION['restaurant_id']) && (!isset($_SESSION['user_id']) && !isse
     }
 }
 
-$restaurant_id = $requested_restaurant_id ?? $_SESSION['restaurant_id'] ?? null;
+// A logged-in user always sees their own restaurant's tables (a query restaurant_id is only for the
+// public QR flow), so one restaurant's staff can't list another's.
+$restaurant_id = (isLoggedIn() && !empty($_SESSION['restaurant_id'])) ? $_SESSION['restaurant_id'] : ($requested_restaurant_id ?? $_SESSION['restaurant_id'] ?? null);
 session_write_close(); // read-only endpoint
 
 if (!$restaurant_id) {

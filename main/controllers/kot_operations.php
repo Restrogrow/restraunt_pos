@@ -152,6 +152,18 @@ if (!function_exists('advanceLinkedOrderWithKitchen')) {
     }
 }
 
+if (!function_exists('kotNotifyReady')) {
+    /** "Order ready" push to the waiters; never fails the kitchen's request. */
+    function kotNotifyReady($conn, $restaurant_id, int $orderId) {
+        try {
+            require_once __DIR__ . '/../config/push_notification.php';
+            notifyWaitersOrderReady($conn, (string)$restaurant_id, $orderId);
+        } catch (Throwable $e) {
+            error_log('kot_operations.php: waiter notification failed (non-fatal): ' . $e->getMessage());
+        }
+    }
+}
+
 if (!function_exists('linkWebsiteKotToOrder')) {
     /**
      * Website dine-in tickets ("Order #ORD-… - Website Order") belong to an
@@ -436,8 +448,9 @@ function handleUpdateKOTStatus() {
         }
         
         // Check if KOT status is already being processed (prevent duplicate processing)
-        // If status is already "Ready" or "Completed", don't process again
-        if ($kot['kot_status'] === 'Ready' || $kot['kot_status'] === 'Completed') {
+        // A repeated "Ready" on a ticket that's already Ready / Completed with its order made is a no-op;
+        // Cancelled / Completed still go through the transition check below (a Ready ticket can be cancelled)
+        if ($status === 'Ready' && ($kot['kot_status'] === 'Ready' || $kot['kot_status'] === 'Completed')) {
             if (!empty($kot['order_id'])) {
                 // Order already exists, just update status if needed
                 $conn->commit();
@@ -581,6 +594,7 @@ function handleUpdateKOTStatus() {
                 
                 $conn->commit();
                 invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
+                kotNotifyReady($conn, $restaurant_id, (int)$order_id);
                 
                 echo json_encode([
                     'success' => true,
@@ -594,6 +608,10 @@ function handleUpdateKOTStatus() {
         
         $conn->commit();
         invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
+        // the food on this ticket is ready: tell the waiters (after commit, like update_order_status.php)
+        if ($status === 'Ready' && $kot['kot_status'] !== 'Ready' && !empty($kot['order_id'])) {
+            kotNotifyReady($conn, $restaurant_id, (int)$kot['order_id']);
+        }
         if ($status === 'Cancelled') {
             require_once __DIR__ . '/../config/activity_log.php';
             logActivity($conn, $restaurant_id, 'kot.cancel', 'Cancelled kitchen ticket ' . ($kot['kot_number'] ?? '#' . $kot_id), [], 'kot', $kot_id);
@@ -825,7 +843,9 @@ function handleCompleteKOT() {
         
         echo json_encode([
             'success' => true,
-            'message' => 'Order served and KOT completed successfully'
+            'message' => 'Order served and KOT completed successfully',
+            'order_id' => $order_id,
+            'order_number' => $order_number
         ]);
         
     } catch (Exception $e) {

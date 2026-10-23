@@ -59,6 +59,12 @@ try {
 
     $restaurant_id = $_SESSION['restaurant_id'];
     session_write_close(); // read-only endpoint; the report queries below can be slow
+
+    // "today", "this week" and the chosen dates are the restaurant's own days (CURDATE() / NOW() follow it)
+    require_once __DIR__ . '/../config/timezone_utils.php';
+    $tzStmt = $conn->prepare("SELECT timezone FROM users WHERE restaurant_id = ? LIMIT 1");
+    $tzStmt->execute([$restaurant_id]);
+    applyRestaurantTimezone($tzStmt->fetchColumn() ?: 'Asia/Kolkata', $conn);
     $period = is_string($_GET['period'] ?? null) ? $_GET['period'] : 'today';
     $type = is_string($_GET['type'] ?? null) ? $_GET['type'] : 'sales';
     $startDate = is_string($_GET['start_date'] ?? null) ? $_GET['start_date'] : '';
@@ -118,6 +124,9 @@ try {
     // wave of rejected spam orders would show up as revenue.
     $dateCondition .= " AND o.order_status NOT IN ('Cancelled', 'Rejected')";
     $dateConditionNoAlias .= " AND order_status NOT IN ('Cancelled', 'Rejected')";
+    // A refunded order's money went back to the customer: not a sale either
+    $dateCondition .= " AND o.payment_status <> 'Refunded'";
+    $dateConditionNoAlias .= " AND payment_status <> 'Refunded'";
 
     // Soft-deleted orders are hidden from every sales figure — deleting an
     // order is how an owner removes a mistaken entry from the books. They

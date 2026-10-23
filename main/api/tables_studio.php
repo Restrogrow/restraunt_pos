@@ -31,11 +31,16 @@ try {
         $q = $conn->query("SHOW COLUMNS FROM areas LIKE '$col'");
         if (!($q && $q->fetch())) $conn->exec("ALTER TABLE areas ADD COLUMN `$col` $def");
     }
+    // the restaurant's own day and clock (today's sales, reservations, busy timers)
+    require_once __DIR__ . '/../config/timezone_utils.php';
+    $tzq = $conn->prepare('SELECT timezone FROM users WHERE restaurant_id = ? LIMIT 1');
+    $tzq->execute([$rid]);
+    applyRestaurantTimezone($tzq->fetchColumn() ?: 'Asia/Kolkata', $conn);
+    // busy: an unpaid open order or a ticket still in the kitchen (config/table_busy.php)
+    require_once __DIR__ . '/../config/table_busy.php';
     $busyIds = function () use ($conn, $rid) {
-        $k = $conn->prepare("SELECT table_id, MIN(created_at) since, SUM(total) total FROM kot WHERE restaurant_id = ? AND kot_status IN ('Pending', 'Preparing') AND table_id IS NOT NULL GROUP BY table_id");
-        $k->execute([$rid]);
         $out = [];
-        foreach ($k->fetchAll(PDO::FETCH_ASSOC) as $r) $out[(int)$r['table_id']] = ['since' => $r['since'], 'total' => (float)$r['total']];
+        foreach (rgBusyTables($conn, (string)$rid) as $tid => $b) $out[(int)$tid] = ['since' => $b['since'], 'total' => (float)$b['total']];
         return $out;
     };
     $ownArea = function ($id) use ($conn, $rid) { $q = $conn->prepare('SELECT id FROM areas WHERE id = ? AND restaurant_id = ?'); $q->execute([(int)$id, $rid]); return (bool)$q->fetchColumn(); };
@@ -80,6 +85,8 @@ try {
 
     $in = json_decode(file_get_contents('php://input'), true) ?: [];
     $action = (string)($in['action'] ?? '');
+    // waiters and cashiers use the table map; adding, renaming and removing tables is for the owner and managers
+    if (!in_array(getUserRole(), [ROLE_ADMIN, ROLE_MANAGER], true)) tsOut(['success' => false, 'message' => 'Only the owner or a manager can change tables.'], 403);
 
     if ($action === 'save') {
         $id = (int)($in['id'] ?? 0);

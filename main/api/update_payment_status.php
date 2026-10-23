@@ -83,6 +83,33 @@ try {
             $conn->prepare('UPDATE orders SET payment_method = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND restaurant_id = ?')->execute([$method, $orderId, $restaurant_id]);
         }
 
+        // The Payments page counts the payments table, so the money moves there too
+        if (!empty($result['transitioned']) && ($status === 'Paid' || $status === 'Refunded')) {
+            $ord = $conn->prepare('SELECT total, payment_method, order_type, table_id FROM orders WHERE id = ? AND restaurant_id = ?');
+            $ord->execute([$orderId, $restaurant_id]);
+            $ordRow = $ord->fetch(PDO::FETCH_ASSOC) ?: [];
+            if ($status === 'Paid') {
+                // a waiting gateway / cash-on-delivery row is now collected, and whatever is still
+                // missing (open bill, rest of a part payment) is recorded with the chosen method
+                $conn->prepare("UPDATE payments SET payment_status = 'Success' WHERE order_id = ? AND restaurant_id = ? AND payment_status = 'Pending'")->execute([$orderId, $restaurant_id]);
+                $paid = $conn->prepare("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE order_id = ? AND restaurant_id = ? AND payment_status = 'Success'");
+                $paid->execute([$orderId, $restaurant_id]);
+                $rest = round((float)($ordRow['total'] ?? 0) - (float)$paid->fetchColumn(), 2);
+                if ($rest > 0) {
+                    $payMethod = $method !== '' ? $method : (string)($ordRow['payment_method'] ?? '');
+                    if ($payMethod === '' || $payMethod === 'Due') $payMethod = 'Cash';
+                    $conn->prepare("INSERT INTO payments (restaurant_id, order_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, 'Success')")->execute([$restaurant_id, $orderId, $rest, $payMethod]);
+                }
+                // a dine-in bill settled: its kitchen tickets are done and the table frees up
+                if (($ordRow['order_type'] ?? '') === 'Dine-in' && !empty($ordRow['table_id'])) {
+                    require_once __DIR__ . '/../config/table_busy.php';
+                    rgCloseOrderKots($conn, (string)$restaurant_id, $orderId);
+                }
+            } else {
+                $conn->prepare("UPDATE payments SET payment_status = 'Refunded' WHERE order_id = ? AND restaurant_id = ? AND payment_status = 'Success'")->execute([$orderId, $restaurant_id]);
+            }
+        }
+
         $conn->commit();
 
         require_once __DIR__ . '/../config/activity_log.php';

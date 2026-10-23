@@ -70,7 +70,7 @@ try {
                             FROM orders
                             WHERE restaurant_id = ?
                             AND DATE(created_at) = ?
-                            AND order_status NOT IN ('Cancelled', 'Rejected')
+                            AND order_status NOT IN ('Cancelled', 'Rejected') AND payment_status <> 'Refunded'
                             AND NOT (payment_method = 'QR Payment' AND payment_status != 'Paid')
                             AND deleted_at IS NULL AND NOT (COALESCE(notes, '') = 'Order on hold' AND order_status = 'Pending' AND payment_status = 'Pending')");
     $stmt->execute([$restaurant_id, $today]);
@@ -82,7 +82,7 @@ try {
                            FROM orders 
                            WHERE restaurant_id = ? 
                            AND DATE(created_at) = ?
-                           AND order_status NOT IN ('Cancelled', 'Rejected')
+                           AND order_status NOT IN ('Cancelled', 'Rejected') AND payment_status <> 'Refunded'
                            AND deleted_at IS NULL AND NOT (COALESCE(notes, '') = 'Order on hold' AND order_status = 'Pending' AND payment_status = 'Pending')");
     $stmt->execute([$restaurant_id, $today]);
     $ordersData = $stmt->fetch();
@@ -157,7 +157,7 @@ try {
                            JOIN orders o ON oi.order_id = o.id
                            WHERE o.restaurant_id = ?
                            AND DATE(o.created_at) = ?
-                           AND o.order_status NOT IN ('Cancelled', 'Rejected')
+                           AND o.order_status NOT IN ('Cancelled', 'Rejected') AND o.payment_status <> 'Refunded'
                            AND o.deleted_at IS NULL AND NOT (COALESCE(o.notes, '') = 'Order on hold' AND o.order_status = 'Pending' AND o.payment_status = 'Pending')
                            GROUP BY oi.item_name
                            ORDER BY total_qty DESC

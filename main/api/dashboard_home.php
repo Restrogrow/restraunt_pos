@@ -33,13 +33,16 @@ function dhTry(callable $f, $fallback) { try { return $f(); } catch (Throwable $
 try {
     $conn = getConnection();
     $q = function (string $sql, array $a = []) use ($conn) { $st = $conn->prepare($sql); $st->execute($a); return $st; };
-    $SALE = "restaurant_id = ? AND deleted_at IS NULL AND order_status NOT IN ('Cancelled', 'Rejected')
+    $SALE = "restaurant_id = ? AND deleted_at IS NULL AND order_status NOT IN ('Cancelled', 'Rejected') AND payment_status <> 'Refunded'
              AND NOT (payment_method = 'QR Payment' AND payment_status != 'Paid')
              AND NOT (COALESCE(notes, '') = 'Order on hold' AND order_status = 'Pending' AND payment_status = 'Pending')";
     $SALE_O = preg_replace('/\b(restaurant_id|deleted_at|order_status|payment_method|payment_status|notes)\b/', 'o.$1', $SALE);   // same rule, for joins
 
     $u = $q('SELECT restaurant_name, currency_symbol, opening_hours, timezone FROM users WHERE restaurant_id = ? LIMIT 1', [$rid])->fetch(PDO::FETCH_ASSOC) ?: [];
     $cur = (string)($u['currency_symbol'] ?? '') ?: '₹';
+    // "today" is the restaurant's own day (CURDATE() / NOW() below follow it)
+    require_once __DIR__ . '/../config/timezone_utils.php';
+    applyRestaurantTimezone($u['timezone'] ?? 'Asia/Kolkata', $conn);
 
     // today vs yesterday (to this time)
     $today = $q("SELECT COALESCE(SUM(total), 0) s, COUNT(*) n FROM orders WHERE $SALE AND created_at >= CURDATE()", [$rid])->fetch(PDO::FETCH_ASSOC);

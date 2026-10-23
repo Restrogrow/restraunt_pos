@@ -75,16 +75,15 @@ try {
     $stmt->execute([$restaurant_id]);
     $tables = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Get active KOTs (Pending or Preparing status) with table_id - no date filter to catch overnight KOTs
-    $kotStmt = $conn->prepare("SELECT table_id, kot_number, created_at, total, kot_status FROM kot WHERE restaurant_id = ? AND kot_status IN ('Pending', 'Preparing') AND table_id IS NOT NULL");
-    $kotStmt->execute([$restaurant_id]);
-    $activeKots = $kotStmt->fetchAll(PDO::FETCH_ASSOC);
-    $kotByTable = [];
-    foreach ($activeKots as $k) {
-        $tid = $k['table_id'];
-        if (!isset($kotByTable[$tid])) $kotByTable[$tid] = [];
-        $kotByTable[$tid][] = $k;
-    }
+    // the restaurant's own day and clock (reservations "today", busy timers)
+    require_once __DIR__ . '/../config/timezone_utils.php';
+    $tzStmt = $conn->prepare("SELECT timezone FROM users WHERE restaurant_id = ? LIMIT 1");
+    $tzStmt->execute([$restaurant_id]);
+    applyRestaurantTimezone($tzStmt->fetchColumn() ?: 'Asia/Kolkata', $conn);
+
+    // Busy tables: an unpaid open order or a ticket still in the kitchen (config/table_busy.php)
+    require_once __DIR__ . '/../config/table_busy.php';
+    $busyByTable = rgBusyTables($conn, (string)$restaurant_id);
 
     // Get today's reservations (confirmed)
     $resStmt = $conn->prepare("SELECT table_id, customer_name, reservation_date, time_slot FROM reservations WHERE restaurant_id = ? AND status = 'Confirmed' AND reservation_date = CURDATE()");
@@ -100,7 +99,7 @@ try {
     $result = [];
     foreach ($tables as $table) {
         $tid = $table['id'];
-        $hasActiveKot = isset($kotByTable[$tid]);
+        $hasActiveKot = isset($busyByTable[$tid]);
         $hasReservation = isset($resByTable[$tid]);
 
         $status = 'free';
@@ -110,17 +109,12 @@ try {
 
         if ($hasActiveKot) {
             $status = 'occupied';
-            $kots = $kotByTable[$tid];
-            $kotInfo = $kots;
-            // Calculate timer from earliest KOT
-            $earliestKot = null;
-            foreach ($kots as $k) {
-                if (!$earliestKot || $k['created_at'] < $earliestKot['created_at']) $earliestKot = $k;
-            }
-            if ($earliestKot) {
-                $created = strtotime($earliestKot['created_at']);
+            $kotInfo = $busyByTable[$tid]['kots'];
+            // Timer from the earliest open order / ticket
+            if ($busyByTable[$tid]['since']) {
+                $created = strtotime($busyByTable[$tid]['since']);
                 $diff = time() - $created;
-                $mins = floor($diff / 60);
+                $mins = max(0, floor($diff / 60));
                 if ($mins < 60) $orderTimer = $mins . ' min';
                 else $orderTimer = floor($mins / 60) . 'h ' . ($mins % 60) . 'm';
             }
