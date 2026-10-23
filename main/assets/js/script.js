@@ -1697,6 +1697,8 @@ document.addEventListener("DOMContentLoaded", () => {
           setTimeout(function () {
             if (pageEl && pageEl.querySelector('.page-content')) {
               var content = pageEl.querySelector('.page-content');
+              // Meal plans, subscribers, blocklist and catering open in a frame: it has no text of its own here
+              if (content.querySelector('iframe')) return;
               if (!content.children.length || content.textContent.trim() === '' || content.innerHTML.indexOf('Loading') > -1) {
                 showPageError(pageId, 'timeout', new Error('Content did not load within 8 seconds'));
               }
