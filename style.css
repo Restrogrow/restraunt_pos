@@ -350,9 +350,10 @@ body {
 }
 
 .hero-text {
-    opacity: 0;
+    /* Visible from the first frame (only slides up): starting at opacity 0 made phones and
+       PageSpeed wait for the animation before the headline counted as painted. */
     transform: translateY(16px);
-    animation: hero-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+    animation: hero-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .hero-image {
@@ -368,7 +369,7 @@ body {
 }
 
 @keyframes hero-rise {
-    to { opacity: 1; transform: translateY(0); }
+    to { transform: translateY(0); }
 }
 
 .hero-title {
