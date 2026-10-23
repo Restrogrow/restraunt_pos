@@ -176,8 +176,11 @@ function Slide({ s, width, heroH }) {
 }
 
 export default function WelcomeScreen({ onDone }) {
-  const { width, height } = useWindowDimensions();
+  const { width: windowW, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // one slide = the app's own width, not the window's: in a browser the app sits in a narrow
+  // phone frame, and window-wide slides put the preview card off to the side, out of view
+  const [width, setWidth] = useState(windowW);
   const listRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const [index, setIndex] = useState(0);
@@ -237,6 +240,13 @@ export default function WelcomeScreen({ onDone }) {
         })}
         onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
         scrollEventThrottle={16}
+        onLayout={(e) => {
+          const w = Math.round(e.nativeEvent.layout.width);
+          if (w > 0 && w !== width) {
+            setWidth(w);
+            listRef.current?.scrollTo({ x: w * index, animated: false });
+          }
+        }}
         style={styles.list}
       >
         {SLIDES.map((item) => <Slide key={item.key} s={item} width={width} heroH={heroH} />)}

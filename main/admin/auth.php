@@ -612,7 +612,7 @@ function handleLogin() {
     
     // ── Audit: failed login attempt ──
     // logged AFTER trackFailedAttempt so the log row can reflect whether
-    // this attempt triggered a lockout (>= 3 strikes in the window).
+    // this attempt triggered a lockout (>= 10 strikes in the window).
     try {
         $conn2 = function_exists('getConnection') ? getConnection() : $pdo;
         $failedStmt = $conn2->prepare("SELECT restaurant_id FROM users WHERE username = ? OR email = ? LIMIT 1");

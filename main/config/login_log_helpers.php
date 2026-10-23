@@ -8,7 +8,7 @@
  * Admins can block abusive IPs with one tap in the app's Logs screen.
  *
  * Lockout policy (enforced in rate_limit.php, mirrored here for logging):
- * 3 failed attempts within 15 minutes -> 30-minute lockout. Every attempt
+ * 10 failed attempts within 15 minutes -> 30-minute lockout. Every attempt
  * after the 3rd still logs, so brute-force patterns are fully visible.
  */
 
