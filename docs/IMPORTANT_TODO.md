@@ -299,3 +299,22 @@ is one record; Google shows NPR and Nepal.
 
 Before starting each, write down the "before" numbers (order count per channel, repeat rate, average bill)
 so the result can be shown in Analytics and in sales demos.
+
+---
+
+## Open jobs (24 October 2026)
+
+Left over from the 24 Oct session (session auto-logout fix, meal plan self-service, new Meal Plans / About / Loyalty pages). Tick them off here when done.
+
+| # | Job | Who | Notes |
+|---|-----|-----|-------|
+| 1 | **Old locked-out trial owners** | Owner decides | Expired trials switched off (`users.is_active = 0`) by the old sweep can now log in to renew. Either a one-time unlock on the live database, or Super Admin › Restaurants › Enable one by one. Nothing has been changed on live yet. |
+| 2 | **Partner app 1.2.2 to Play** | Owner / Play Console | Replace the 1.2.1 bundle with 1.2.2 (versionCode 22, `RestroGrow-Partner-1.2.2.aab` on the Desktop) in Production and Internal testing, then "Send changes for review". `app/android/app/build.gradle` has the 1.2.2 bump uncommitted: check whether it should be committed. |
+| 3 | **Paying restaurants auto-expired** | Owner | Paid plans now expire 3 days after the renewal date. Check Super Admin for restaurants that switched off because of it and extend the ones that paid. |
+| 4 | **Homepage speed on phones** | Owner | Re-run pagespeed.web.dev (mobile) on https://restrogrow.com/. Target 90+, last result 87 before the latest fixes. |
+| 5 | **PHP security patch (PHP2Shell)** | Hostinger support | Live runs PHP 8.2.34; the fix for CVE-2026-109618 / 109619 is 8.2.35. Can't be fixed in code; ask Hostinger to update. |
+| 6 | **Rotate the RepeatGrow API key** | Owner | A key was pasted in a chat on 24 Oct. If it was the real one, make a new key in RepeatGrow and put it in the live `.env`. |
+| 7 | **Reset the live demo restaurant** | Owner | Super Admin › demo reset. Live demo has Meal Plans switched off, so `/spice-garden-indiranagar/plans` sends visitors to the menu. A reset switches it on with sample plans and subscribers (needed for client demos of /meal-plans/). |
+| 8 | **"Meals" vs "days" on Lunch + Dinner plans** | Code | One credit is one delivery day. `website/plans.php` now shows "24 days · 48 meals"; `website/subscribe.php` and `website/my-subscription.php` (and the admin Subscribers list) still say "24 meals" for Lunch + Dinner plans. |
+| 9 | **Phone wallet card** | Team + code | Code exists (`config/wallet_card.php`) but needs the Apple / Google Wallet keys in the live `.env`. Once a card really works: drop "Coming soon" on `/loyalty/` and mention it again on `/about/`. |
+| 10 | **Check tasteofbanaras.in/plans on a phone** | Owner | New plans page design is live there; the site's bot check blocked the automated look, so it was only checked in the HTML. |
