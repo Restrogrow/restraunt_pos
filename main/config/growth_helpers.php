@@ -517,6 +517,8 @@ function reverseLoyaltyForOrder(PDO $conn, string $restaurant_id, int $order_id,
 
     // Stamp card (loyalty_engine.php loyaltyAddStamp): the stamp this order earned goes too
     reverseStampForOrder($conn, $restaurant_id, $order_id, $reason);
+    // ...and the welcome / milestone / level-up / referral gifts it set off
+    reverseOrderGifts($conn, $restaurant_id, $order_id);
 
     $pointsEarned = (int)($order['loyalty_points_earned'] ?? 0);
     $pointsRedeemed = (int)($order['loyalty_points_redeemed'] ?? 0);
@@ -617,6 +619,38 @@ function reverseStampForOrder(PDO $conn, string $restaurant_id, int $order_id, s
     } catch (PDOException $e) {
         // stamp tables not made yet (program never used): nothing to take back
         if (strpos($e->getMessage(), "doesn't exist") === false) error_log("Stamp reversal failed for order $order_id: " . $e->getMessage());
+    }
+}
+
+/**
+ * Take back the gifts a refunded order set off (welcome, milestone, level-up, referral: their
+ * loyalty_rewards_issued.order_id). A gift still unused is switched off and its record removed, so
+ * the customer can earn it again with a real order; one already used stays. A referral these gifts
+ * completed goes back to pending.
+ */
+function reverseOrderGifts(PDO $conn, string $restaurant_id, int $order_id): void {
+    try {
+        $st = $conn->prepare("SELECT r.id, r.source, r.period_key, r.coupon_code, COALESCE(cp.current_uses, 0) used
+            FROM loyalty_rewards_issued r
+            LEFT JOIN coupons cp ON cp.restaurant_id = r.restaurant_id AND cp.coupon_code = r.coupon_code
+            WHERE r.restaurant_id = ? AND r.order_id = ? AND r.source IN ('welcome', 'milestone', 'tier_up', 'referral')");
+        $st->execute([$restaurant_id, $order_id]);
+        $referrals = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $g) {
+            if ((int)$g['used'] > 0) continue;   // already enjoyed: nothing left to take back
+            $conn->prepare("UPDATE coupons SET is_active = 0 WHERE restaurant_id = ? AND coupon_code = ?")->execute([$restaurant_id, $g['coupon_code']]);
+            $conn->prepare("DELETE FROM loyalty_rewards_issued WHERE id = ?")->execute([$g['id']]);
+            if ($g['source'] === 'referral' && preg_match('/^refd?(\d+)$/', (string)$g['period_key'], $m)) $referrals[(int)$m[1]] = true;
+        }
+        foreach (array_keys($referrals) as $refId) {
+            $conn->prepare("UPDATE referrals SET status = 'pending', completed_at = NULL WHERE id = ? AND restaurant_id = ? AND status = 'completed'")
+                 ->execute([$refId, $restaurant_id]);
+        }
+    } catch (PDOException $e) {
+        // loyalty tables or the order_id column not made yet: no gifts recorded against orders
+        if (strpos($e->getMessage(), "doesn't exist") === false && strpos($e->getMessage(), 'Unknown column') === false) {
+            error_log("Gift reversal failed for order $order_id: " . $e->getMessage());
+        }
     }
 }
 

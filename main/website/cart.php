@@ -1595,6 +1595,39 @@ function repriceAddons() {
   } catch (e) {}
   if (changes.length) { if (flatItems.length) renderCart(); noticePriceChanges(changes); }
 }
+// Combo lines keep the price from when they went in (rg-combos.js: combo price + the extra for each
+// pick). Work it out again from today's combos, the same way, so the cart matches what is billed.
+function repriceCombos(rid) {
+  var hasCombo = false;
+  for (var k0 in cartItems) if (cartItems[k0] && cartItems[k0].isCombo) { hasCombo = true; break; }
+  if (!hasCombo) return;
+  fetch('api.php?action=getCombos&restaurant_id=' + encodeURIComponent(rid), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var list = (d && d.combos) || [];
+      if (!list.length) return;   // couldn't load (or none live): checkout still checks every combo
+      var byId = {};
+      list.forEach(function(c) { byId[c.id] = c; });
+      var changes = [];
+      for (var k in cartItems) {
+        var raw = cartItems[k];
+        if (!raw || typeof raw !== 'object' || !raw.isCombo) continue;
+        var c = byId[raw.comboId];
+        if (!c) continue;
+        var picks = raw.picks || {};
+        var now = (c.slots || []).reduce(function(t, sl) {
+          var ch = (sl.choices || []).filter(function(o) { return o.id === picks[sl.id]; })[0] || (sl.choices || [])[0] || {};
+          return t + (+ch.extra || 0);
+        }, +c.price || 0);
+        if (Math.abs(now - parseFloat(raw.varPrice || 0)) > 0.004) {
+          changes.push((raw.name || 'Combo') + ' ' + getCurrency() + parseFloat(raw.varPrice || 0).toFixed(2) + ' → ' + getCurrency() + now.toFixed(2));
+          raw.varPrice = now;
+        }
+      }
+      if (changes.length) { saveCart(); if (flatItems.length) renderCart(); noticePriceChanges(changes); }
+    })
+    .catch(function() {});
+}
 // --- End Add-ons Helpers ---
 
 var addonsList = [];
@@ -1611,6 +1644,7 @@ function fetchAddons() {
       }
     })
     .catch(function() {});
+  repriceCombos(rid);
 }
 
 function renderGlobalAddons() {

@@ -22,7 +22,7 @@ require_once __DIR__ . '/growth_helpers.php';
 require_once __DIR__ . '/coupon_helpers.php';
 require_once __DIR__ . '/order_abuse_guard.php';
 
-if (!defined('LOYALTY_ENGINE_VERSION')) define('LOYALTY_ENGINE_VERSION', 2);   // 2: customers.wa_stopped_at (WhatsApp STOP)
+if (!defined('LOYALTY_ENGINE_VERSION')) define('LOYALTY_ENGINE_VERSION', 3);   // 2: customers.wa_stopped_at (WhatsApp STOP); 3: loyalty_rewards_issued.order_id
 if (!defined('LOYALTY_PROGRAM_TYPES')) define('LOYALTY_PROGRAM_TYPES', ['cashback', 'points', 'stamps']);
 
 if (!function_exists('ensureLoyaltyEngineSchema')) {
@@ -98,6 +98,8 @@ if (!function_exists('ensureLoyaltyEngineSchema')) {
             INDEX idx_lri_rest (restaurant_id, created_at),
             INDEX idx_lri_code (coupon_code)
         )");
+        // the order that earned an order-triggered gift (welcome, milestone, level-up, referral), so a refund can take it back
+        $addCol('loyalty_rewards_issued', 'order_id', 'INT NULL');
 
         $conn->exec('CREATE TABLE IF NOT EXISTS loyalty_engine_version (v INT NOT NULL)');
         $conn->exec('DELETE FROM loyalty_engine_version');
@@ -129,7 +131,8 @@ if (!function_exists('ensureLoyaltyEngineSchema')) {
      * Safe inside the caller's transaction (no table changes).
      */
     function loyaltyIssueReward(PDO $conn, string $rid, int $customerId, string $phone, string $source, string $periodKey,
-                                string $kind, float $value, float $minOrder, int $validDays, ?int $itemId = null, ?string $label = null): ?array {
+                                string $kind, float $value, float $minOrder, int $validDays, ?int $itemId = null, ?string $label = null,
+                                ?int $orderId = null): ?array {
         $phone = orderAbuseNormalizePhone($phone) ?? $phone;
         $cur = (string)($conn->query('SELECT currency_symbol FROM users WHERE restaurant_id = ' . $conn->quote($rid) . ' LIMIT 1')->fetchColumn() ?: '₹');
         $type = 'flat';
@@ -174,6 +177,12 @@ if (!function_exists('ensureLoyaltyEngineSchema')) {
             // Lost a race to an identical gift: take the coupon back
             $conn->prepare('DELETE FROM coupons WHERE restaurant_id = ? AND coupon_code = ?')->execute([$rid, $code]);
             return null;
+        }
+        if ($orderId) {
+            // separate step: a database without the column yet still gets the gift
+            try {
+                $conn->prepare('UPDATE loyalty_rewards_issued SET order_id = ? WHERE restaurant_id = ? AND coupon_code = ?')->execute([$orderId, $rid, $code]);
+            } catch (PDOException $e) {}
         }
         return ['code' => $code, 'label' => $label, 'value' => $value, 'type' => $type, 'expires_on' => $until, 'source' => $source];
     }

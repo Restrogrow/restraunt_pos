@@ -105,7 +105,8 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
         if (!$a['enabled']) return null;
         if ($a['reward_kind'] === 'item' && empty($a['reward_item_id'])) return null;
         $g = loyaltyIssueReward($conn, $rid, (int)$customer['id'], (string)$customer['phone'], $a['type'], $periodKey,
-            $a['reward_kind'], (float)$a['reward_value'], (float)$a['min_order'], (int)$a['valid_days'], $a['reward_item_id'] ?: null);
+            $a['reward_kind'], (float)$a['reward_value'], (float)$a['min_order'], (int)$a['valid_days'], $a['reward_item_id'] ?: null,
+            null, isset($vars['order_id']) ? (int)$vars['order_id'] : null);
         if (!$g) return null;
         $name = trim(explode(' ', (string)($customer['customer_name'] ?? ''))[0]) ?: 'there';
         $rest = (string)($conn->query('SELECT restaurant_name FROM users WHERE restaurant_id = ' . $conn->quote($rid) . ' LIMIT 1')->fetchColumn() ?: '');
@@ -131,15 +132,16 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
         $completed = (int)$completed;
         $spent = max((float)$spent, (float)$c['total_spent']);
 
-        if ($completed === 1) loyaltyAutoGift($conn, $rid, $A['welcome'], $c, 'once');
+        $oid = (int)$order['id'];   // recorded with each gift so a refund of this order can take it back
+        if ($completed === 1) loyaltyAutoGift($conn, $rid, $A['welcome'], $c, 'once', ['order_id' => $oid]);
         $n = max(2, (int)$A['milestone']['param']);
-        if ($completed > 0 && $completed % $n === 0) loyaltyAutoGift($conn, $rid, $A['milestone'], $c, 'order' . $completed, ['count' => $completed]);
+        if ($completed > 0 && $completed % $n === 0) loyaltyAutoGift($conn, $rid, $A['milestone'], $c, 'order' . $completed, ['count' => $completed, 'order_id' => $oid]);
 
         // Level up: the level now vs before this order's spend
         $now = getCustomerTier($conn, $rid, $spent);
         $before = getCustomerTier($conn, $rid, max(0, $spent - (float)$order['total']));
         if ($now && (!$before || $before['tier_name'] !== $now['tier_name'])) {
-            loyaltyAutoGift($conn, $rid, $A['tier_up'], $c, 'tier-' . $now['tier_name'], ['tier' => $now['tier_name']]);
+            loyaltyAutoGift($conn, $rid, $A['tier_up'], $c, 'tier-' . $now['tier_name'], ['tier' => $now['tier_name'], 'order_id' => $oid]);
         }
 
         // Referral gifts for both friends (cashback / stamps programs)
@@ -151,8 +153,8 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
                 $conn->prepare("UPDATE referrals SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$ref['id']]);
                 $st->execute([(int)$ref['referrer_customer_id']]);
                 $referrer = $st->fetch(PDO::FETCH_ASSOC);
-                if ($referrer) loyaltyAutoGift($conn, $rid, $A['referral'], $referrer, 'ref' . $ref['id']);
-                loyaltyAutoGift($conn, $rid, $A['referral'], $c, 'refd' . $ref['id']);
+                if ($referrer) loyaltyAutoGift($conn, $rid, $A['referral'], $referrer, 'ref' . $ref['id'], ['order_id' => $oid]);
+                loyaltyAutoGift($conn, $rid, $A['referral'], $c, 'refd' . $ref['id'], ['order_id' => $oid]);
             }
         }
 
