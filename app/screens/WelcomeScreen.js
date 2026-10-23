@@ -196,7 +196,7 @@ export default function WelcomeScreen({ onDone }) {
   };
   const next = () => {
     if (last) return finish();
-    listRef.current?.scrollToIndex({ index: index + 1, animated: true });
+    listRef.current?.scrollTo({ x: width * (index + 1), animated: true });
     setIndex(index + 1);
   };
 
@@ -218,21 +218,29 @@ export default function WelcomeScreen({ onDone }) {
         ) : null}
       </View>
 
-      <Animated.FlatList
+      {/* a plain ScrollView, not a FlatList: all four slides stay drawn, so the next one is
+          never blank while it slides in */}
+      <Animated.ScrollView
         ref={listRef}
-        data={SLIDES}
-        keyExtractor={(s) => s.key}
         horizontal
         pagingEnabled
         bounces={false}
+        removeClippedSubviews={false}
         showsHorizontalScrollIndicator={false}
-        renderItem={({ item }) => <Slide s={item} width={width} heroH={heroH} />}
-        getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false })}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
+          useNativeDriver: false,
+          // browsers don't send a momentum-end event, so settle the page here too
+          listener: (e) => {
+            const x = e.nativeEvent.contentOffset.x;
+            if (Math.abs(x / width - Math.round(x / width)) < 0.02) setIndex(Math.round(x / width));
+          },
+        })}
         onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
         scrollEventThrottle={16}
         style={styles.list}
-      />
+      >
+        {SLIDES.map((item) => <Slide key={item.key} s={item} width={width} heroH={heroH} />)}
+      </Animated.ScrollView>
 
       <View style={styles.bottom}>
         <View style={styles.dots}>
