@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Stylesheet and hero image first, ahead of the long SEO tags, so phones start fetching them in the first bytes -->
+    <link rel="stylesheet" href="style.css?v=3.3">
+    <link rel="preload" as="image" type="image/webp" imagesrcset="assets/images/restro-grow-dashboard-640.webp 640w, assets/images/restro-grow-dashboard-960.webp 960w, assets/images/restro-grow-dashboard-1280.webp 1280w" imagesizes="(max-width: 600px) 92vw, 560px">
 
     <!-- Primary Meta Tags -->
     <title>Restro Grow: Restaurant POS, KOT &amp; Online Ordering Software</title>
@@ -211,8 +214,6 @@
     <link rel="dns-prefetch" href="https://fonts.gstatic.com">
 
     <!-- Critical CSS -->
-    <link rel="stylesheet" href="style.css?v=3.3">
-    <link rel="preload" as="image" type="image/webp" imagesrcset="assets/images/restro-grow-dashboard-640.webp 640w, assets/images/restro-grow-dashboard-960.webp 960w, assets/images/restro-grow-dashboard-1280.webp 1280w" imagesizes="(max-width: 600px) 92vw, 560px">
 
     <!-- Optimized Font Loading: Archivo (display), Public Sans (body), IBM Plex Mono (numerals/POS nod) -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -858,7 +859,7 @@
         </div>
     </footer>
 
-    <script src="script.js?v=3.1"></script>
+    <script src="script.js?v=3.2"></script>
 
     <!-- RestroGrow chat assistant (data: main/api/chatbot.php; the word "AI" is kept off this widget on purpose). Ask straight away; details only for a call back / demo. -->
     <div id="rgc" aria-live="polite">

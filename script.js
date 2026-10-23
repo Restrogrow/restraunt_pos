@@ -1,29 +1,29 @@
-// Load SweetAlert2 (77 KB) only once the page has finished loading, so it doesn't compete with
-// the first paint on phones; alerts are only shown after a form is submitted.
-(function ensureSweetAlert(){
-    if (window.Swal) return;
-    // relative to this file, so pages in sub-folders (/faq/, /privacy-policy/) find it too
-    const here = document.currentScript && document.currentScript.src ? new URL('.', document.currentScript.src).href : '';
-    const load = () => {
-        const script = document.createElement('script');
-        script.src = here + 'main/assets/js/sweetalert2.all.min.js';
-        document.head.appendChild(script);
-    };
-    const later = () => (window.requestIdleCallback ? requestIdleCallback(load, { timeout: 4000 }) : setTimeout(load, 1500));
-    if (document.readyState === 'complete') later(); else window.addEventListener('load', later);
-})();
-
-function showFrontendAlert(message, type = 'info', options = {}) {
-    if (window.Swal) {
-        return Swal.fire({
-            icon: type,
-            text: message,
-            confirmButtonColor: '#d97706',
-            ...options
+// SweetAlert2 (77 KB) is fetched only when an alert is actually shown (after a form is sent), so
+// phones never download or parse it just to view the page.
+// relative to this file, so pages in sub-folders (/faq/, /privacy-policy/) find it too
+const sweetAlertSrc = (document.currentScript && document.currentScript.src ? new URL('.', document.currentScript.src).href : '') + 'main/assets/js/sweetalert2.all.min.js';
+let sweetAlertLoading = null;
+function loadSweetAlert() {
+    if (window.Swal) return Promise.resolve();
+    if (!sweetAlertLoading) {
+        sweetAlertLoading = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = sweetAlertSrc;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
         });
     }
-    alert(message); // SweetAlert not loaded yet (it loads after the page)
-    return Promise.resolve();
+    return sweetAlertLoading;
+}
+
+function showFrontendAlert(message, type = 'info', options = {}) {
+    return loadSweetAlert().then(() => Swal.fire({
+        icon: type,
+        text: message,
+        confirmButtonColor: '#d97706',
+        ...options
+    })).catch(() => { alert(message); });
 }
 
 ﻿// Navigation Toggle with debugging
@@ -312,8 +312,9 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Testimonials Auto-Scroll with Dots
-(function() {
+// Testimonials Auto-Scroll with Dots. Set up after the page has loaded: measuring a card's width
+// while the page is still being built forces an extra layout pass right in the first paint.
+function initTestimonials() {
     var track = document.getElementById('testimonialsTrack');
     var dotsContainer = document.getElementById('testimonialsDots');
     if (!track || !dotsContainer) return;
@@ -389,5 +390,6 @@ document.head.appendChild(style);
     } else {
         startAutoScroll();
     }
-})();
+}
+if (document.readyState === 'complete') initTestimonials(); else window.addEventListener('load', initTestimonials);
 
