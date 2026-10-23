@@ -178,11 +178,14 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
             $a = $A[$type];
             if (!$a['enabled']) continue;
             $days = max(0, min(30, (int)$a['param']));
-            // the date this year (or next, near New Year) falls within the next N days
-            $st = $conn->prepare("SELECT * FROM customers WHERE restaurant_id = ? AND `$type` IS NOT NULL AND (
-                    DATEDIFF(STR_TO_DATE(CONCAT(YEAR(CURDATE()), DATE_FORMAT(`$type`, '-%m-%d')), '%Y-%m-%d'), CURDATE()) BETWEEN 0 AND ?
-                 OR DATEDIFF(STR_TO_DATE(CONCAT(YEAR(CURDATE()) + 1, DATE_FORMAT(`$type`, '-%m-%d')), '%Y-%m-%d'), CURDATE()) BETWEEN 0 AND ?) LIMIT 500");
-            $st->execute([$rid, $days, $days]);
+            // the date this year (or next, near New Year) falls within the next N days; customers who already
+            // have this occasion's gift are left out (same period key as below), so the 500 are always new ones
+            $st = $conn->prepare("SELECT c.* FROM customers c WHERE c.restaurant_id = ? AND c.`$type` IS NOT NULL AND (
+                    DATEDIFF(STR_TO_DATE(CONCAT(YEAR(CURDATE()), DATE_FORMAT(c.`$type`, '-%m-%d')), '%Y-%m-%d'), CURDATE()) BETWEEN 0 AND ?
+                 OR DATEDIFF(STR_TO_DATE(CONCAT(YEAR(CURDATE()) + 1, DATE_FORMAT(c.`$type`, '-%m-%d')), '%Y-%m-%d'), CURDATE()) BETWEEN 0 AND ?)
+                AND NOT EXISTS (SELECT 1 FROM loyalty_rewards_issued r WHERE r.customer_id = c.id AND r.source = ?
+                    AND r.period_key = CAST(YEAR(CURDATE()) + (DATE_FORMAT(CURDATE(), '%m-%d') > DATE_FORMAT(c.`$type`, '%m-%d')) AS CHAR)) LIMIT 500");
+            $st->execute([$rid, $days, $days, $type]);
             foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $c) {
                 $mmdd = date('m-d', strtotime($c[$type]));
                 $periodYear = (date('m-d') > $mmdd) ? $year + 1 : $year;
@@ -196,10 +199,13 @@ if (!function_exists('loyaltyAutopilotDefaults')) {
         if ($a['enabled']) {
             $days = max(7, (int)$a['param']);
             // quiet for N days (but not more than N + 90: those are long gone), one gift per quiet spell
-            $st = $conn->prepare("SELECT c.*, MAX(o.created_at) last_order FROM customers c
+            // (customers who already have this quiet spell's gift are left out, so the 500 are always new ones)
+            $st = $conn->prepare("SELECT q.* FROM (SELECT c.*, MAX(o.created_at) last_order FROM customers c
                 JOIN orders o ON o.restaurant_id = c.restaurant_id AND o.customer_phone = c.phone AND o.order_status = 'Completed' AND o.deleted_at IS NULL
                 WHERE c.restaurant_id = ? GROUP BY c.id
-                HAVING last_order < NOW() - INTERVAL ? DAY AND last_order >= NOW() - INTERVAL ? DAY LIMIT 500");
+                HAVING last_order < NOW() - INTERVAL ? DAY AND last_order >= NOW() - INTERVAL ? DAY) q
+                WHERE NOT EXISTS (SELECT 1 FROM loyalty_rewards_issued r WHERE r.customer_id = q.id AND r.source = 'winback'
+                    AND r.period_key = CONCAT('after', DATE_FORMAT(q.last_order, '%Y%m%d'))) LIMIT 500");
             $st->execute([$rid, $days, $days + 90]);
             foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $c) {
                 $conn->beginTransaction();

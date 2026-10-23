@@ -106,6 +106,27 @@ function handleInitiate($conn, $restaurantId, $customer) {
         if (!$config['ready'] && !$config['demo']) {
             throw new Exception('online payment not set up for ' . $restaurantId);
         }
+        if (!$config['demo']) {
+            // an earlier try may have gone through, or still be open in another tab: never start a second
+            // payment next to one PhonePe calls pending (15 minutes), it could be paid too and not be recorded
+            ppAttemptsEnsure($conn);
+            $tries = $conn->prepare("SELECT txn, created_at > NOW() - INTERVAL 15 MINUTE AS recent FROM payment_attempts WHERE kind = 'meal' AND ref_id = ? AND status = 'Pending' ORDER BY created_at DESC LIMIT 5");
+            $tries->execute([$payment['id']]);
+            $openRecent = false;
+            foreach ($tries->fetchAll(PDO::FETCH_ASSOC) as $t) {
+                $out = ppSettle($conn, $t['txn'])['outcome'];
+                if (in_array($out, ['paid', 'already'], true) || (in_array($out, ['pending', 'unverified'], true) && (int)$t['recent'])) {
+                    $openRecent = true;
+                    break;
+                }
+            }
+            if ($openRecent) {
+                // back to the page, which checks this payment with PhonePe and shows where it stands
+                header('Location: ' . mySubscriptionUrl($restaurantId, ['subscription_id' => $subscriptionId]));
+                exit();
+            }
+        }
+
         $transactionId = ppTxnId('PPS_', (string)$subscriptionId);
 
         // every try is kept (payment_attempts), so a late success of an earlier try is never lost

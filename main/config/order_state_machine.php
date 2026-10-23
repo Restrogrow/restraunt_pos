@@ -226,10 +226,12 @@ function validateAndUpdateOrderStatus(
         try {
             $orderRestaurantId = $restaurantId ?? ($order['restaurant_id'] ?? null);
             if ($orderRestaurantId) {
-                $detailStmt = $conn->prepare('SELECT customer_phone, total FROM orders WHERE id = ?');
+                $detailStmt = $conn->prepare('SELECT * FROM orders WHERE id = ?');
                 $detailStmt->execute([$orderId]);
                 $detail = $detailStmt->fetch(PDO::FETCH_ASSOC);
-                if ($detail && !empty($detail['customer_phone'])) {
+                // a meal-plan delivery (₹0, paid with plan credits) earns nothing: no stamps, milestones or referral
+                $isPlanDelivery = $detail && (($detail['source'] ?? '') === 'subscription' || !empty($detail['subscription_id']) || (float)$detail['total'] <= 0);
+                if ($detail && !empty($detail['customer_phone']) && !$isPlanDelivery) {
                     // Loyalty on every channel (website, POS, table): a POS / waiter
                     // order's phone gets a customer record the first time, so it earns too.
                     // The program type decides what's earned (points here; stamps and
@@ -288,6 +290,26 @@ function validateAndUpdateOrderStatus(
             }
         } catch (PDOException $e) {
             error_log('Customer spend reversal failed for order ' . $orderId . ': ' . $e->getMessage());
+        }
+
+        // A meal-plan delivery (subscription_delivery_generator.php) used one credit for its day: give it back
+        // once nothing of that day is still on (a "both" plan has a lunch and a dinner order on one credit).
+        // Runs once: an order is cancelled only once, and the last one of the day is the one that refunds.
+        try {
+            $ms = $conn->prepare("SELECT subscription_id, delivery_date FROM orders WHERE id = ?");
+            $ms->execute([$orderId]);
+            $md = $ms->fetch(PDO::FETCH_ASSOC);
+            if ($md && !empty($md['subscription_id']) && !empty($md['delivery_date'])) {
+                $left = $conn->prepare("SELECT COUNT(*) FROM orders WHERE subscription_id = ? AND delivery_date = ? AND order_status NOT IN ('Cancelled', 'Rejected')");
+                $left->execute([(int)$md['subscription_id'], $md['delivery_date']]);
+                if ((int)$left->fetchColumn() === 0) {
+                    $conn->prepare("UPDATE customer_meal_subscriptions SET credits_used = GREATEST(credits_used - 1, 0),
+                            status = IF(status = 'completed', 'active', status) WHERE id = ?")->execute([(int)$md['subscription_id']]);
+                }
+            }
+        } catch (PDOException $e) {
+            // no subscription columns on this database yet: nothing to give back
+            if (strpos($e->getMessage(), 'Unknown column') === false) error_log('Meal credit refund failed for order ' . $orderId . ': ' . $e->getMessage());
         }
 
         // Cascade to the linked KOT (kot.order_id — see kot_operations.php's

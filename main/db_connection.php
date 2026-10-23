@@ -218,15 +218,29 @@ function createDatabaseConnection() {
                     @mkdir(__DIR__ . '/tmp', 0755, true);
                 }
                 if (@touch($trialSweepLock)) {
+                    // Only the status changes: is_active stays 1 so the owner can still log in and
+                    // renew (the website stops taking orders on 'expired'). A trial Super Admin
+                    // extended (renewal_date later than trial_end_date) runs until that date.
                     try {
-                        $pdo->exec("UPDATE users SET subscription_status = 'expired', is_active = 0
+                        $pdo->exec("UPDATE users SET subscription_status = 'expired'
                                    WHERE subscription_status = 'trial'
                                    AND trial_end_date IS NOT NULL
                                    AND trial_end_date < CURRENT_DATE()
+                                   AND (renewal_date IS NULL OR renewal_date < CURRENT_DATE())
                                    LIMIT 100");  // Limit to prevent long-running queries
                     } catch (PDOException $e) {
                         // Silently fail if columns don't exist or other error
                         error_log("Error auto-expiring trials: " . $e->getMessage());
+                    }
+                    // Paid plans end 3 days (grace) after renewal_date; same rule: still able to log in and pay
+                    try {
+                        $pdo->exec("UPDATE users SET subscription_status = 'expired'
+                                   WHERE subscription_status = 'active'
+                                   AND renewal_date IS NOT NULL
+                                   AND renewal_date < CURRENT_DATE() - INTERVAL 3 DAY
+                                   LIMIT 100");
+                    } catch (PDOException $e) {
+                        error_log("Error auto-expiring plans: " . $e->getMessage());
                     }
                 }
             }

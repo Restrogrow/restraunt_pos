@@ -103,7 +103,9 @@ try {
             $staffRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
             if (!empty($staffRow['restaurant_id'])) {
-                $restStmt = $conn->prepare("SELECT restaurant_name, currency_symbol, restaurant_logo, business_qr_code_path, address, country, show_business_id, business_id_label, business_id_no, enable_delivery, enable_takeaway, enable_dinein, cod_enabled FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
+                // enable_gst/tax_percent/tax_name: the app's POS works its tax out from these, and
+                // pos_operations.php rejects any tax that differs from the restaurant's own setting
+                $restStmt = $conn->prepare("SELECT restaurant_name, currency_symbol, restaurant_logo, business_qr_code_path, address, phone, country, show_business_id, business_id_label, business_id_no, enable_delivery, enable_takeaway, enable_dinein, cod_enabled, enable_gst, tax_name, tax_percent FROM users WHERE restaurant_id = :restaurant_id LIMIT 1");
                 $restStmt->execute([':restaurant_id' => $staffRow['restaurant_id']]);
                 $restRow = $restStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
@@ -131,12 +133,13 @@ try {
         $trialEndDate = $row['trial_end_date'];
         $today = date('Y-m-d');
 
-        if ($subscriptionStatus === 'trial' && $trialEndDate < $today) {
+        // same rule as the sweep in db_connection.php: status only (the owner can still log in and renew),
+        // and a trial Super Admin extended past trial_end_date runs until renewal_date
+        if ($subscriptionStatus === 'trial' && $trialEndDate < $today && (empty($row['renewal_date']) || $row['renewal_date'] < $today)) {
             try {
-                $updateStmt = $conn->prepare("UPDATE users SET subscription_status = 'expired', is_active = 0 WHERE id = :id");
+                $updateStmt = $conn->prepare("UPDATE users SET subscription_status = 'expired' WHERE id = :id AND subscription_status = 'trial'");
                 $updateStmt->execute([':id' => $_SESSION['user_id']]);
                 $row['subscription_status'] = 'expired';
-                $row['is_active'] = 0;
             } catch (PDOException $e) {
                 error_log("Error updating trial expiry: " . $e->getMessage());
             }

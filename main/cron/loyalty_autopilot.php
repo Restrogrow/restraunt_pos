@@ -38,6 +38,9 @@ try {
     ensureLoyaltyAutopilotSchema($conn);
     $rids = $conn->query("SELECT DISTINCT a.restaurant_id FROM loyalty_automations a JOIN growth_settings g ON g.restaurant_id = a.restaurant_id
                           WHERE a.enabled = 1 AND a.type IN ('birthday', 'anniversary', 'winback') AND g.loyalty_enabled = 1")->fetchAll(PDO::FETCH_COLUMN);
+    // not for restaurants whose plan ended or was switched off (filtered here: the tables' collations may differ)
+    $live = array_flip($conn->query("SELECT restaurant_id FROM users WHERE is_active = 1 AND COALESCE(subscription_status, '') NOT IN ('expired', 'disabled')")->fetchAll(PDO::FETCH_COLUMN));
+    $rids = array_values(array_filter($rids, function ($rid) use ($live) { return isset($live[$rid]); }));
     $total = 0;
     foreach ($rids as $rid) {
         try { $total += loyaltyRunSweep($conn, $rid); } catch (Throwable $e) { error_log("loyalty_autopilot cron $rid: " . $e->getMessage()); }

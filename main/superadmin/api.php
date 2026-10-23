@@ -327,8 +327,8 @@ try {
       $active = (int)($data['is_active'] ?? 1);
       if ($id <= 0) throw new Exception('Invalid id');
       if ($active === 1) {
-        // Re-enable: set renewal_date +30d and status trial
-        $stmt = $conn->prepare("UPDATE users SET is_active=1, subscription_status='trial', renewal_date = DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), disabled_at=NULL WHERE id=:id");
+        // Re-enable: set renewal_date +30d and status trial (trial_end_date too: the trial-expiry sweep reads it)
+        $stmt = $conn->prepare("UPDATE users SET is_active=1, subscription_status='trial', renewal_date = DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), trial_end_date = DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), disabled_at=NULL WHERE id=:id");
         $stmt->execute([':id'=>$id]);
         $info = $conn->prepare('SELECT renewal_date FROM users WHERE id=:id');
         $info->execute([':id'=>$id]);

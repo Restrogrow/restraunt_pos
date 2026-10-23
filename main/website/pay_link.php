@@ -60,8 +60,14 @@ if ($link && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') =
         $recent = $conn->prepare("SELECT COUNT(*) FROM payment_attempts WHERE kind = 'link' AND ref_id = ? AND created_at > NOW() - INTERVAL 1 HOUR");
         $recent->execute([$link['id']]);
         $config = phonepeCallbackConfig(null, true);
+        // a try started in the last 15 minutes that PhonePe still calls pending (open in another tab or
+        // phone): a second one could be paid too, and the second payment would not be recorded
+        $open = $conn->prepare("SELECT COUNT(*) FROM payment_attempts WHERE kind = 'link' AND ref_id = ? AND status = 'Pending' AND created_at > NOW() - INTERVAL 15 MINUTE");
+        $open->execute([$link['id']]);
         if ((int)$recent->fetchColumn() >= 12) {
             $error = 'Too many tries. Please wait a few minutes and try again.';
+        } elseif (!$config['demo'] && (int)$open->fetchColumn() > 0) {
+            $error = 'A payment for this link was started in the last 15 minutes and is not finished yet. Finish it on that screen, or try again in 15 minutes.';
         } elseif (!$config['ready'] && !$config['demo']) {
             $error = 'Online payment is not available right now. Please contact RestroGrow.';
         } else {

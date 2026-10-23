@@ -93,7 +93,7 @@ if (!function_exists('ppSettle')) {
 
     /* ── customer website order ── */
     function ppSettleOrder(PDO $conn, string $txn): string {
-        $st = $conn->prepare("SELECT p.id, p.order_id, p.amount, p.payment_status, p.created_at, o.restaurant_id, o.order_status
+        $st = $conn->prepare("SELECT p.id, p.order_id, p.amount, p.payment_status, p.created_at, o.restaurant_id, o.order_status, o.payment_method AS order_method
             FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.transaction_id = ? AND p.payment_method = 'Online' LIMIT 1");
         $st->execute([$txn]);
         $p = $st->fetch(PDO::FETCH_ASSOC);
@@ -114,7 +114,15 @@ if (!function_exists('ppSettle')) {
                         error_log('PhonePe: order ' . $p['order_id'] . ' was paid after cancellation (txn ' . $txn . ') — refund needed');
                     } else {
                         $r = validateAndUpdatePaymentStatus($conn, (int)$p['order_id'], 'Paid');
-                        if (!empty($r['transitioned'])) $confirm = (int)$p['order_id'];
+                        if (!empty($r['transitioned'])) {
+                            if ($p['order_method'] === 'Cash') {
+                                // the customer switched to cash (phonepe_order_payment.php action=cash) while this try was
+                                // still open, then paid anyway: the kitchen already has the order, so no second ticket
+                                $conn->prepare("UPDATE orders SET payment_method = 'UPI / NetBanking', notes = CONCAT(COALESCE(notes, ''), ' [Paid online after choosing cash: do not collect cash]') WHERE id = ?")->execute([$p['order_id']]);
+                            } else {
+                                $confirm = (int)$p['order_id'];
+                            }
+                        }
                     }
                 }
                 $conn->commit();

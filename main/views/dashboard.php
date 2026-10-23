@@ -8299,7 +8299,10 @@ let selectedSubscriptionPlan = 'monthly';
 let selectedPaymentMethod = 'phonepe';
 let selectedAmount = <?php echo json_encode($rgPlanM ?? 999); ?>;
 
+// true while the plan has ended (expired / disabled): the owner can log in, but only to renew
+var subscriptionLocked = false;
 function closeSubscriptionModal() {
+  if (subscriptionLocked) return;
   document.getElementById('renewalModal').style.display = 'none';
 }
 
@@ -8553,7 +8556,12 @@ async function checkSubscriptionOnLoad() {
         trialInfo.dataset.state = 'bad';
         trialInfo.innerHTML = 'Subscription expired · <a href="#" onclick="showSubscriptionModal();return false;" style="color:#dc2626;text-decoration:underline;">Renew now</a>';
         trialInfo.style.display = 'block';
-        // Show renewal modal automatically after short delay
+        // Plan ended: the renewal window stays up (no "Maybe later"); logging out still works
+        subscriptionLocked = true;
+        document.querySelectorAll('#renewalModal a[onclick*="closeSubscriptionModal"]').forEach(a => {
+          a.textContent = 'Log out';
+          a.onclick = function (e) { e.preventDefault(); if (typeof logout === 'function') logout(); };
+        });
         setTimeout(() => showSubscriptionModal(), 1000);
       } else if (data.days_left >= 0) {
         trialInfo.dataset.state = 'ok';

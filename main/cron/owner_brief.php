@@ -21,7 +21,10 @@ try {
     // speed indexes the database is missing (once; config/db_indexes.php)
     try { require_once __DIR__ . '/../config/db_indexes.php'; dbEnsureIndexes($conn); } catch (Throwable $e) { error_log('owner_brief indexes: ' . $e->getMessage()); }
     $sent = 0;
+    // not for restaurants whose plan ended or was switched off (filtered here: the tables' collations differ)
+    $live = array_flip($conn->query("SELECT restaurant_id FROM users WHERE is_active = 1 AND COALESCE(subscription_status, '') NOT IN ('expired', 'disabled')")->fetchAll(PDO::FETCH_COLUMN));
     foreach ($conn->query('SELECT restaurant_id FROM om_settings WHERE enabled = 1')->fetchAll(PDO::FETCH_COLUMN) as $rid) {
+        if (!isset($live[$rid])) continue;
         try {
             if (ownerMgrSendIfDue($conn, (string)$rid)) $sent++;
         } catch (Throwable $e) {

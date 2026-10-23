@@ -515,6 +515,9 @@ function reverseLoyaltyForOrder(PDO $conn, string $restaurant_id, int $order_id,
         return;
     }
 
+    // Stamp card (loyalty_engine.php loyaltyAddStamp): the stamp this order earned goes too
+    reverseStampForOrder($conn, $restaurant_id, $order_id, $reason);
+
     $pointsEarned = (int)($order['loyalty_points_earned'] ?? 0);
     $pointsRedeemed = (int)($order['loyalty_points_redeemed'] ?? 0);
     if ($pointsEarned <= 0 && $pointsRedeemed <= 0) {
@@ -565,6 +568,55 @@ function reverseLoyaltyForOrder(PDO $conn, string $restaurant_id, int $order_id,
                 )->execute([$restaurant_id, $customerId, $order_id, $pointsRedeemed, $newBalance, "Order #$order_id $reason — redeemed points refunded"]);
             }
         }
+    }
+}
+
+/**
+ * Take back the stamp an order earned (it was refunded). If that stamp completed the card, the
+ * reward code it made is switched off when still unused and the card goes back to one short of
+ * full; a reward already used can't be taken back, so the card stays as it is. Once per order
+ * (a ledger row with change_count < 0 and a "Refund" note marks it done).
+ */
+function reverseStampForOrder(PDO $conn, string $restaurant_id, int $order_id, string $reason): void {
+    try {
+        $st = $conn->prepare("SELECT customer_id FROM loyalty_stamp_ledger WHERE restaurant_id = ? AND order_id = ? AND change_count > 0 LIMIT 1");
+        $st->execute([$restaurant_id, $order_id]);
+        $customerId = (int)$st->fetchColumn();
+        if (!$customerId) return;
+        $done = $conn->prepare("SELECT 1 FROM loyalty_stamp_ledger WHERE restaurant_id = ? AND order_id = ? AND note LIKE 'Refund%' LIMIT 1");
+        $done->execute([$restaurant_id, $order_id]);
+        if ($done->fetchColumn()) return;
+
+        $c = $conn->prepare("SELECT stamps FROM customers WHERE id = ? AND restaurant_id = ? FOR UPDATE");
+        $c->execute([$customerId, $restaurant_id]);
+        $stamps = $c->fetchColumn();
+        if ($stamps === false) return;
+        $stamps = (int)$stamps;
+
+        // did this order's stamp fill the card?
+        $full = $conn->prepare("SELECT change_count FROM loyalty_stamp_ledger WHERE restaurant_id = ? AND order_id = ? AND change_count < 0 LIMIT 1");
+        $full->execute([$restaurant_id, $order_id]);
+        $goal = -(int)$full->fetchColumn();
+        $change = -1;
+        if ($goal > 0) {
+            $rw = $conn->prepare("SELECT r.coupon_code, COALESCE(cp.current_uses, 0) used FROM loyalty_rewards_issued r
+                LEFT JOIN coupons cp ON cp.restaurant_id = r.restaurant_id AND cp.coupon_code = r.coupon_code
+                WHERE r.restaurant_id = ? AND r.source = 'stamps' AND r.period_key = ? LIMIT 1");
+            $rw->execute([$restaurant_id, 'order' . $order_id]);
+            $reward = $rw->fetch(PDO::FETCH_ASSOC);
+            if ($reward && (int)$reward['used'] > 0) return;   // reward already enjoyed: nothing left to take back
+            if ($reward) {
+                $conn->prepare("UPDATE coupons SET is_active = 0 WHERE restaurant_id = ? AND coupon_code = ?")->execute([$restaurant_id, $reward['coupon_code']]);
+            }
+            $change = $goal - 1;   // the card goes back to one short of full
+        }
+        $newStamps = max(0, $stamps + $change);
+        $conn->prepare("UPDATE customers SET stamps = ? WHERE id = ?")->execute([$newStamps, $customerId]);
+        $conn->prepare("INSERT INTO loyalty_stamp_ledger (restaurant_id, customer_id, order_id, change_count, balance_after, note) VALUES (?, ?, ?, ?, ?, ?)")
+             ->execute([$restaurant_id, $customerId, $order_id, $newStamps - $stamps, $newStamps, "Refund: order #$order_id $reason"]);
+    } catch (PDOException $e) {
+        // stamp tables not made yet (program never used): nothing to take back
+        if (strpos($e->getMessage(), "doesn't exist") === false) error_log("Stamp reversal failed for order $order_id: " . $e->getMessage());
     }
 }
 

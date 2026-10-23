@@ -857,6 +857,12 @@ function handleCreateKOT($conn, $restaurant_id) {
         if ($kotId) {
             $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$orderId, $kotId]);
         }
+        // An open dine-in bill paid in full: its earlier tickets are done and the table frees up
+        // (a ticket made by this Pay, for dishes added now, still goes to the kitchen)
+        if ($openOrder && $isPaidUpFront && $posPaymentStatus === 'Paid' && $orderType === 'Dine-in' && $tableIdParam) {
+            require_once __DIR__ . '/../config/table_busy.php';
+            rgCloseOrderKots($conn, (string)$restaurant_id, (int)$orderId, (int)$kotId);
+        }
         if ($posRef !== '') {
             if ($offlineAt && !$openOrder) {   // a new bill made offline keeps its time
                 $conn->prepare("UPDATE orders SET created_at = ?, notes = TRIM(CONCAT(IFNULL(notes, ''), '\n[Offline bill]')) WHERE id = ?")->execute([$offlineAt, $orderId]);
@@ -865,20 +871,22 @@ function handleCreateKOT($conn, $restaurant_id) {
             $conn->prepare('INSERT INTO pos_sync_log (pos_ref, restaurant_id, order_id) VALUES (?, ?, ?)')->execute([$posRef, $restaurant_id, $orderId]);
         }
 
+        // Use the coupon inside the same transaction, only while it still has a use left: the check
+        // above didn't lock the row, so another till or the website may have taken the last use since
+        if ($coupon && $discountAmount > 0) {
+            $useCpn = $conn->prepare("UPDATE coupons SET current_uses = current_uses + 1 WHERE id = ? AND (max_uses = 0 OR current_uses < max_uses)");
+            $useCpn->execute([$coupon['id']]);
+            if ($useCpn->rowCount() === 0) {
+                $conn->rollBack();
+                echo json_encode(['success' => false, 'message' => 'This coupon was just used up. Remove it and try again.'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        }
+
         // Commit transaction
         $conn->commit();
         try { invKick($conn, $restaurant_id); }   // stock, sold-out dishes, low-stock alerts
         catch (Throwable $e) { error_log('handleCreateKOT invKick: ' . $e->getMessage()); }
-
-        // Redeem the coupon only after the KOT is safely committed — mirrors
-        // process_website_order.php's redemption-after-persist ordering.
-        if ($coupon && $discountAmount > 0) {
-            try {
-                $conn->prepare("UPDATE coupons SET current_uses = current_uses + 1 WHERE id = ?")->execute([$coupon['id']]);
-            } catch (Exception $e) {
-                error_log("Could not increment coupon usage for coupon id " . $coupon['id'] . ": " . $e->getMessage());
-            }
-        }
 
         $loyaltyOut = null;
         if ($posCustomer && $isPaidUpFront) {

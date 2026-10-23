@@ -48,11 +48,20 @@ try {
     ensureMealSubscriptionTables($conn);
     ensureOrdersSubscriptionColumns($conn);
 
-    // Optional ?date=YYYY-MM-DD override for testing; defaults to today.
-    $dateStr = isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date']) ? $_GET['date'] : date('Y-m-d');
+    // Optional ?date=YYYY-MM-DD override for testing; defaults to today on each restaurant's own clock.
+    $dateOverride = isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date']) ? $_GET['date'] : null;
+    $dateStr = $dateOverride ?: date('Y-m-d');
 
-    $restaurantsStmt = $conn->query("SELECT DISTINCT restaurant_id FROM customer_meal_subscriptions WHERE status = 'active'");
-    $restaurantIds = $restaurantsStmt->fetchAll(PDO::FETCH_COLUMN);
+    // only restaurants that are live (plan not ended / switched off) and still offer meal plans
+    // (no meal_subscriptions_enabled column yet = the feature is off everywhere, see mealSubscriptionsFeatureEnabled)
+    $restaurantIds = [];
+    if ($conn->query("SHOW COLUMNS FROM users LIKE 'meal_subscriptions_enabled'")->fetch()) {
+        // (filtered in PHP: the tables' collations may differ)
+        $live = array_flip($conn->query("SELECT restaurant_id FROM users WHERE is_active = 1 AND COALESCE(subscription_status, '') NOT IN ('expired', 'disabled')
+            AND meal_subscriptions_enabled = 1")->fetchAll(PDO::FETCH_COLUMN));
+        $restaurantsStmt = $conn->query("SELECT DISTINCT restaurant_id FROM customer_meal_subscriptions WHERE status = 'active'");
+        $restaurantIds = array_values(array_filter($restaurantsStmt->fetchAll(PDO::FETCH_COLUMN), function ($rid) use ($live) { return isset($live[$rid]); }));
+    }
 
     echo "Generating subscription deliveries for {$dateStr}\n";
     echo "Restaurants with active subscriptions: " . count($restaurantIds) . "\n\n";
@@ -60,8 +69,9 @@ try {
     $totals = ['generated' => 0, 'skipped_date' => 0, 'skipped_no_menu' => 0, 'skipped_already_generated' => 0, 'errors' => 0];
 
     foreach ($restaurantIds as $restaurantId) {
-        $result = generateSubscriptionDeliveriesForDate($conn, $restaurantId, $dateStr);
-        echo "  {$restaurantId}: generated={$result['generated']} skipped_date={$result['skipped_date']} skipped_no_menu={$result['skipped_no_menu']} already_generated={$result['skipped_already_generated']} errors={$result['errors']}\n";
+        $day = $dateOverride ?: mealPlanToday($conn, $restaurantId);
+        $result = generateSubscriptionDeliveriesForDate($conn, $restaurantId, $day);
+        echo "  {$restaurantId} ({$day}): generated={$result['generated']} skipped_date={$result['skipped_date']} skipped_no_menu={$result['skipped_no_menu']} already_generated={$result['skipped_already_generated']} errors={$result['errors']}\n";
         foreach ($totals as $k => $v) {
             $totals[$k] += $result[$k];
         }

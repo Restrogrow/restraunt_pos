@@ -35,7 +35,10 @@ header('Content-Type: text/plain');
 try {
     $conn = getConnection();
     ensureWhatsappSchema($conn);
-    $rids = $conn->query('SELECT restaurant_id FROM wa_settings WHERE enabled = 1')->fetchAll(PDO::FETCH_COLUMN);
+    // restaurants whose plan ended or was switched off send nothing (filtered here: the tables' collations may differ)
+    $live = array_flip($conn->query("SELECT restaurant_id FROM users WHERE is_active = 1 AND COALESCE(subscription_status, '') NOT IN ('expired', 'disabled')")->fetchAll(PDO::FETCH_COLUMN));
+    $isLive = function ($rid) use ($live) { return isset($live[$rid]); };
+    $rids = array_values(array_filter($conn->query('SELECT restaurant_id FROM wa_settings WHERE enabled = 1')->fetchAll(PDO::FETCH_COLUMN), $isLive));
     $sent = 0; $failed = 0;
     foreach ($rids as $rid) {
         try {
@@ -61,7 +64,7 @@ try {
     require_once __DIR__ . '/../config/vip_membership.php';
     ensureWalletCardSchema($conn);
     $cards = 0;
-    foreach ($conn->query('SELECT restaurant_id FROM growth_settings WHERE card_enabled = 1')->fetchAll(PDO::FETCH_COLUMN) as $crid) {
+    foreach (array_filter($conn->query('SELECT restaurant_id FROM growth_settings WHERE card_enabled = 1')->fetchAll(PDO::FETCH_COLUMN), $isLive) as $crid) {
         try { $cards += walletCardsSync($conn, $crid, 100); } catch (Throwable $e) { error_log("wallet cards cron $crid: " . $e->getMessage()); }
     }
     echo "Wallet cards updated: {$cards}

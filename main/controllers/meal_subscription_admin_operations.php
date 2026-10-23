@@ -64,6 +64,13 @@ try {
         throw new Exception('Action is required');
     }
 
+    // giving credits or a new plan away is for the owner and managers, not every staff login
+    if (in_array($action, ['adjust_credits', 'admin_create_subscription'], true) && !in_array(getUserRole(), [ROLE_ADMIN, ROLE_MANAGER], true)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Only the owner or a manager can do this.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
     switch ($action) {
         case 'pause_subscription':
             handleAdminPause($conn, $restaurant_id, (int)($_POST['subscriptionId'] ?? 0));
@@ -145,7 +152,7 @@ function handleAdjustCredits($conn, $restaurant_id, $subscriptionId, $delta) {
 }
 
 function handleGenerateToday($conn, $restaurant_id) {
-    $dateStr = date('Y-m-d');
+    $dateStr = mealPlanToday($conn, $restaurant_id);   // the restaurant's own today, not the server's
     $result = generateSubscriptionDeliveriesForDate($conn, $restaurant_id, $dateStr);
     echo json_encode([
         'success' => true,

@@ -34,6 +34,26 @@ if (!function_exists('mealSubscriptionsFeatureEnabled')) {
     }
 }
 
+if (!function_exists('mealPlanToday')) {
+    /**
+     * Today's date on the restaurant's own clock (users.timezone, Asia/Kolkata if unset):
+     * which day's deliveries to make, the earliest start date and the earliest skip date.
+     * $offsetDays = 1 gives tomorrow.
+     */
+    function mealPlanToday($conn, $restaurant_id, $offsetDays = 0) {
+        $tz = 'Asia/Kolkata';
+        try {
+            $stmt = $conn->prepare("SELECT timezone FROM users WHERE restaurant_id = ? LIMIT 1");
+            $stmt->execute([$restaurant_id]);
+            $t = (string)$stmt->fetchColumn();
+            if ($t !== '' && in_array($t, timezone_identifiers_list(), true)) $tz = $t;
+        } catch (Exception $e) { /* no timezone column: India */ }
+        $d = new DateTime('today', new DateTimeZone($tz));
+        if ($offsetDays) $d->modify(($offsetDays > 0 ? '+' : '') . (int)$offsetDays . ' days');
+        return $d->format('Y-m-d');
+    }
+}
+
 if (!function_exists('ensureMealPlanTables')) {
     function ensureMealPlanTables($conn) {
         $conn->exec("CREATE TABLE IF NOT EXISTS meal_plans (

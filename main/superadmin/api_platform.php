@@ -265,7 +265,9 @@ try {
         $d = (int)($in['days'] ?? 0);
         if ($d < 1 || $d > 365) throw new Exception('Days must be 1 to 365');
         $conn->prepare("UPDATE users u SET u.renewal_date = DATE_ADD(GREATEST($exp, CURDATE()), INTERVAL ? DAY), u.is_active = 1, u.disabled_at = NULL,
-            u.subscription_status = IF(u.subscription_status IN ('expired','disabled'), 'trial', u.subscription_status), u.subscription_updated_at = NOW() WHERE u.id = ?")->execute([$d, $r['id']]);
+            u.subscription_status = IF(u.subscription_status IN ('expired','disabled'), 'trial', u.subscription_status),
+            u.trial_end_date = IF(u.subscription_status = 'trial', u.renewal_date, u.trial_end_date),   /* the trial-expiry sweep reads trial_end_date (assignments run left to right) */
+            u.subscription_updated_at = NOW() WHERE u.id = ?")->execute([$d, $r['id']]);
         pfAudit($conn, 'renewal.extend', $r['restaurant_name'] . ' (' . $r['restaurant_id'] . ')', ['days' => $d]);
         out(['message' => "Extended by $d days"]);
 
@@ -959,7 +961,10 @@ try {
         } elseif ($do === 'extend') {
             $d = (int)($in['days'] ?? 0);
             if ($d < 1 || $d > 365) throw new Exception('Days must be 1 to 365');
-            $st = $conn->prepare("UPDATE users u SET u.renewal_date = DATE_ADD(GREATEST($exp, CURDATE()), INTERVAL ? DAY), u.subscription_updated_at = NOW() WHERE u.id IN ($ph)");
+            // same as the single Extend: an ended plan comes back as a trial until the new date
+            $st = $conn->prepare("UPDATE users u SET u.renewal_date = DATE_ADD(GREATEST($exp, CURDATE()), INTERVAL ? DAY), u.is_active = 1, u.disabled_at = NULL,
+                u.subscription_status = IF(u.subscription_status IN ('expired','disabled'), 'trial', u.subscription_status),
+                u.trial_end_date = IF(u.subscription_status = 'trial', u.renewal_date, u.trial_end_date), u.subscription_updated_at = NOW() WHERE u.id IN ($ph)");
             $st->execute(array_merge([$d], $ids));
             $msg = "Extended by $d days";
         } elseif ($do === 'disable') {
@@ -968,7 +973,7 @@ try {
             $msg = 'Disabled';
         } elseif ($do === 'enable') {
             // same as the single Enable: back on, 30 days from today
-            $st = $conn->prepare("UPDATE users SET is_active = 1, subscription_status = 'trial', renewal_date = DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), disabled_at = NULL WHERE id IN ($ph) AND is_active = 0");
+            $st = $conn->prepare("UPDATE users SET is_active = 1, subscription_status = 'trial', renewal_date = DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), trial_end_date = DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY), disabled_at = NULL WHERE id IN ($ph) AND is_active = 0");
             $st->execute($ids);
             $msg = 'Enabled';
         } elseif ($do === 'activate') {

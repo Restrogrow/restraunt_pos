@@ -47,7 +47,7 @@ function checkSubscriptionAccess($conn, $user_id, $restaurant_id) {
         }
 
         // Auto-update expired trials
-        if ($subscriptionStatus === 'trial' && $trialEndDate && $trialEndDate < $currentDate) {
+        if ($subscriptionStatus === 'trial' && $trialEndDate && $trialEndDate < $currentDate && (!$renewalDate || $renewalDate < $currentDate)) {
             try {
                 $updateStmt = $conn->prepare("UPDATE users SET subscription_status = 'expired' WHERE id = ? AND subscription_status = 'trial'");
                 $updateStmt->execute([$user_id]);
@@ -57,8 +57,8 @@ function checkSubscriptionAccess($conn, $user_id, $restaurant_id) {
             }
         }
 
-        if ($subscriptionStatus === 'active' && $renewalDate && $renewalDate < $currentDate) {
-            // Subscription expired - mark as expired
+        if ($subscriptionStatus === 'active' && $renewalDate && $renewalDate < date('Y-m-d', strtotime('-3 days'))) {
+            // Subscription expired (3 days of grace after renewal_date, as in db_connection.php's sweep)
             try {
                 $updateStmt = $conn->prepare("UPDATE users SET subscription_status = 'expired' WHERE id = ? AND subscription_status = 'active'");
                 $updateStmt->execute([$user_id]);
