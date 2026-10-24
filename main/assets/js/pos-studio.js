@@ -5,8 +5,10 @@
  *
  *  - Bar: search ("/" focuses it, Enter adds the only match, Esc clears), Grid / List view
  *    (remembered on this device), Veg / Non-veg chips, and one row of category chips.
- *  - "All": dishes grouped under their category; a category chip jumps to its section (no reload)
- *    and the chip of the section in view lights up. A search or type filter shows one flat grid.
+ *  - "All": every dish in one grid, no category headings. "By category": dishes grouped under their
+ *    category; a category chip jumps to its section (no reload) and the chip of the section in view
+ *    lights up. Which of the two was used last is remembered on this device. A category chip in
+ *    "All", a search or a type filter shows one flat grid.
  *  - Tiles: photo (or a coloured letter), veg mark, name, price ("From ..." for dishes with sizes),
  *    a big + to add; once in the cart the + becomes − qty + (dishes with sizes show the count and
  *    open the size picker instead).
@@ -22,7 +24,8 @@
   var TYPES = [['', 'All'], ['Veg', 'Veg'], ['Non Veg', 'Non-veg'], ['Egg', 'Egg'], ['Drink', 'Drinks']];
   var TINTS = [['#FFEDD5', '#C2410C'], ['#DCFCE7', '#15803D'], ['#DBEAFE', '#1D4ED8'], ['#FCE7F3', '#BE185D'], ['#EDE9FE', '#6D28D9'], ['#FEF9C3', '#A16207'], ['#CFFAFE', '#0E7490']];
   var view = 'grid';
-  try { view = localStorage.getItem('rg_pos_view') === 'list' ? 'list' : 'grid'; } catch (e) {}
+  var allFlat = true;   // "All" (one grid) or "By category" (grouped)
+  try { view = localStorage.getItem('rg_pos_view') === 'list' ? 'list' : 'grid'; allFlat = localStorage.getItem('rg_pos_all') !== 'grouped'; } catch (e) {}
 
   function el(id) { return document.getElementById(id); }
   function setSelect(id, v) { var s = el(id); if (!s) return; s.value = v; s.dispatchEvent(new Event('change', { bubbles: true })); }
@@ -81,7 +84,8 @@
     var menuSel = el('posMenuFilter'), sel = menuSel ? menuSel.value : '';
     var opts = menuSel ? [].slice.call(menuSel.options).filter(function (o) { return o.value; }) : [];
     var on = sel || activeGroup;
-    bar.querySelector('.ps-cats').innerHTML = '<button type="button" class="' + (!on ? 'on' : '') + '" data-ps-menu="">' + ic('apps') + 'All' + (total ? ' <em>' + total + '</em>' : '') + '</button>' +
+    bar.querySelector('.ps-cats').innerHTML = '<button type="button" class="' + (!on && allFlat ? 'on' : '') + '" data-ps-menu="" data-ps-all="flat">' + ic('apps') + 'All' + (total ? ' <em>' + total + '</em>' : '') + '</button>' +
+      '<button type="button" class="' + (!on && !allFlat ? 'on' : '') + '" data-ps-menu="" data-ps-all="grouped">' + ic('view_agenda') + 'By category</button>' +
       opts.map(function (o) { return '<button type="button" class="' + (on === o.value ? 'on' : '') + '" data-ps-menu="' + esc(o.value) + '">' + esc(o.textContent) + (counts[o.value] ? ' <em>' + counts[o.value] + '</em>' : '') + '</button>'; }).join('') +
       (window.rgPosAddons && window.rgPosAddons.list().length ? '<button type="button" class="' + (on === '__addons' ? 'on' : '') + '" data-ps-menu="__addons">' + ic('add_circle') + 'Add-ons <em>' + window.rgPosAddons.list().length + '</em></button>' : '');
     var t = (el('posTypeFilter') || {}).value || '';
@@ -161,7 +165,7 @@
     grouping = true;
     if (gridObs) gridObs.disconnect();   // moving tiles is itself a change: don't react to our own moves
     grid.querySelectorAll('.ps-group-h, .pa-tile').forEach(function (h) { h.remove(); });
-    var grouped = !!(tiles.length && !q && !menu);
+    var grouped = !!(tiles.length && !q && !menu && !allFlat);
     if (grouped) {
       var order = [], by = {};
       tiles.forEach(function (t) { var k = t.getAttribute('data-menu') || ''; if (!by[k]) { by[k] = []; order.push(k); } by[k].push(t); });
@@ -241,14 +245,25 @@
     if (b.hasAttribute('data-ps-menu')) {
       var k = b.getAttribute('data-ps-menu'), grid = el('posMenuItems'), s = el('posSearchInput');
       var q = ((s || {}).value || '').trim();
-      // in "All", a category jumps to its section; otherwise it filters, as before
+      var all = b.getAttribute('data-ps-all');
+      if (all) {   // "All" (one grid) or "By category" (grouped)
+        allFlat = all === 'flat';
+        try { localStorage.setItem('rg_pos_all', all); } catch (er) {}
+        if (q && s) { s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true })); }
+        activeGroup = '';
+        if ((el('posMenuFilter') || {}).value) setSelect('posMenuFilter', ''); else group();
+        var sc0 = scroller(); if (sc0) sc0.scrollTo({ top: 0, behavior: 'smooth' });
+        paintBar(); return;
+      }
+      // in "By category", a category jumps to its section; otherwise it filters, as before
       if (k && !q && !(el('posMenuFilter') || {}).value && grid && grid.classList.contains('ps-grouped') && jumpTo(k)) {
         activeGroup = k;
         b.parentNode.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
         return;
       }
-      if (k === '__addons') {   // not a real category: show All, then jump to the add-ons
+      if (k === '__addons') {   // not a real category: show By category, then jump to the add-ons
         pendingJump = k; activeGroup = k;
+        if (allFlat) { allFlat = false; if (!q && !(el('posMenuFilter') || {}).value) { group(); paintBar(); return; } }
         if (q && s) { s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true })); }
         if ((el('posMenuFilter') || {}).value) setSelect('posMenuFilter', ''); else if (!q) { pendingJump = ''; jumpTo(k); }
         paintBar(); return;
