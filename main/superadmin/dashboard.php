@@ -1745,6 +1745,7 @@ require_once __DIR__ . '/../config/countries.php';
             <td style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-outline" onclick="toggleBranchAdmin(${a.id}, ${a.is_active ? 0 : 1})">${a.is_active ? 'Disable' : 'Enable'}</button>
               <button class="btn btn-outline" onclick="editBranchLinks(${a.id})">Edit Links</button>
+              <button class="btn btn-outline" onclick="setBranchAdminPassword(${a.id}, '${saEsc(a.username)}')">Set password</button>
               <button class="btn btn-outline" onclick="editBrand(${a.id})">${brand ? 'Edit brand' : 'Make brand'}</button>
             </td>
           </tr>`;
@@ -1821,6 +1822,23 @@ require_once __DIR__ . '/../config/countries.php';
         showSuperAlert(out.message || 'Done', out.success ? 'success' : 'error');
         loadBranchAdmins();
       }
+    };
+
+    window.setBranchAdminPassword = async function(id, username) {
+      if (!window.Swal) return;
+      const { value: pw } = await Swal.fire({
+        title: 'New password for ' + username,
+        input: 'password',
+        inputPlaceholder: 'At least 8 characters',
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        confirmButtonColor: '#111827',
+        inputValidator: v => (!v || v.length < 8) ? 'Use at least 8 characters' : undefined
+      });
+      if (!pw) return;
+      const res = await fetch('api.php?action=setBranchAdminPassword', { method:'POST', body: JSON.stringify({id, password: pw}), headers: {'Content-Type': 'application/json'} });
+      const d = await res.json();
+      showSuperAlert(d.message || (d.success ? 'Password changed' : 'Error'), d.success ? 'success' : 'error');
     };
 
     window.editBranchLinks = async function(id) {

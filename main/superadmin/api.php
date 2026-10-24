@@ -716,6 +716,17 @@ try {
       echo json_encode(['success' => true, 'message' => $active ? 'Branch admin enabled' : 'Branch admin disabled']);
       break;
 
+    case 'setBranchAdminPassword':
+      $data = json_decode(file_get_contents('php://input'), true) ?? [];
+      $id = (int)($data['id'] ?? 0);
+      $password = (string)($data['password'] ?? '');
+      if ($id <= 0) throw new Exception('Invalid id');
+      if (strlen($password) < 8) throw new Exception('Use at least 8 characters');
+      $stmt = $conn->prepare("UPDATE branch_admins SET password_hash = ? WHERE id = ?");
+      $stmt->execute([password_hash($password, PASSWORD_DEFAULT), $id]);
+      echo json_encode(['success' => $stmt->rowCount() > 0, 'message' => $stmt->rowCount() > 0 ? 'Password changed. They can log in with it now.' : 'Branch admin not found or same password']);
+      break;
+
     // Brands: one website address (and optionally one payment gateway) for a multi-branch owner's outlets (config/brand.php)
     case 'getBrands':
       require_once __DIR__ . '/../config/brand.php';
