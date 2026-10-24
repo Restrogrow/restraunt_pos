@@ -91,8 +91,12 @@ try {
 
 $token = apiKeyFromRequest();
 if ($token === '') apiErr(401, 'missing_key', 'Send your API key: Authorization: Bearer rg_live_… Create one in the RestroGrow dashboard › API keys.', ['WWW-Authenticate: Bearer']);
-$tok = apiKeyVerify($conn, $token);
-if (!$tok) apiErr(401, 'invalid_key', 'This API key is wrong, revoked or expired.', ['WWW-Authenticate: Bearer error="invalid_token"']);
+$tok = apiKeyVerify($conn, $token, $why);
+if (!$tok) {
+    if ($why === 'key_paused') apiErr(403, 'key_paused', 'This API key is paused. The owner can resume it in the RestroGrow dashboard › API keys.');
+    if ($why === 'ip_not_allowed') apiErr(403, 'ip_not_allowed', 'This API key does not work from your IP address (' . apiKeyClientIp() . '). The owner can add it in the RestroGrow dashboard › API keys › Edit.');
+    apiErr(401, 'invalid_key', 'This API key is wrong, revoked or expired.', ['WWW-Authenticate: Bearer error="invalid_token"']);
+}
 $rid = $tok['restaurant_id'];
 
 $rl = checkRateLimit('mcp_' . $rid, API_RATE_LIMIT, 60);
@@ -110,7 +114,7 @@ if ($tool === null) {
     // GET /me: which restaurant and what this key may do
     $st = $conn->prepare('SELECT restaurant_name FROM users WHERE id = ?');
     $st->execute([$tok['user_id']]);
-    apiOut(200, ['success' => true, 'data' => ['restaurant_id' => $rid, 'restaurant' => (string)$st->fetchColumn(), 'key' => ['id' => $tok['key_id'], 'name' => $tok['key_name'], 'permissions' => $tok['perms']],
+    apiOut(200, ['success' => true, 'data' => ['restaurant_id' => $rid, 'restaurant' => (string)$st->fetchColumn(), 'key' => ['id' => $tok['key_id'], 'name' => $tok['key_name'], 'permissions' => $tok['perms'], 'valid_until' => $tok['expires_at']],
         'rate_limit_per_minute' => API_RATE_LIMIT], 'summary' => 'Key "' . $tok['key_name'] . '" can: ' . implode(', ', $tok['perms'])]);
 }
 if (!in_array($perm, $tok['perms'], true)) apiErr(403, 'missing_permission', "This key has no \"$perm\" permission. Make a key with it in the RestroGrow dashboard › API keys.");

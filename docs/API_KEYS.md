@@ -22,7 +22,14 @@ document is built from the routes and tool schemas, so it follows by itself.
 
 - Format `rg_live_` + 40 hex. Only the SHA-256 is stored (table `api_keys`, created on first use). Shown once.
 - Owner only creates / revokes (manager with settings permission can look). At most 20 live keys per restaurant.
-- Optional expiry: 30 / 90 / 365 days. Revoked keys stay listed 30 days.
+- Valid until: never, 7 / 30 / 90 / 365 days or a picked date (through 23:59:59 that day, at most 5 years ahead).
+- Edit (name, permissions, valid until, allowed IPs) keeps the same secret.
+- Rotate: new row with a new secret and the same settings (`rotated_from` = old id); the old key is revoked now or its
+  `expires_at` is cut to 1 h / 24 h ahead. The list shows it as "Old key · stops in …" with Stop now.
+- Pause / resume (`paused_at`): calls get 403 `key_paused`. Allowed IPs (`allowed_ips`, exact IPv4/IPv6, CF-Connecting-IP
+  first): others get 403 `ip_not_allowed`. `use_count` + `last_used_at` go up on every call.
+- Revoked keys stay listed 90 days; revoked or expired keys can be deleted. Columns added after the first live push
+  (allowed_ips, use_count, paused_at, rotated_from) are added by `apiKeysEnsure()` itself.
 - A key stops working when revoked, expired, the owner account is switched off or no longer owns the restaurant,
   the plan is blocked, or Super Admin › Restaurants › Access switches off **API keys** (module `api`, page `apiKeysPage`).
 - Unlike ChatGPT connections, a password change does **not** revoke keys (developer keys are long-lived on purpose;
@@ -38,7 +45,7 @@ On /mcp a key lists only the tools its permissions allow (`tools/list` is filter
 
 - 120 calls a minute per restaurant, shared with /mcp (`checkRateLimit('mcp_<rid>')`).
 - `{"success":true,"data":…,"summary":"…"}` or `{"success":false,"error":{"code","message"}}`;
-  codes: missing_key / invalid_key 401, missing_permission / api_off / account_blocked 403, not_found 404,
+  codes: missing_key / invalid_key 401, missing_permission / key_paused / ip_not_allowed / api_off / account_blocked 403, not_found 404,
   method_not_allowed 405, invalid_request 422, rate_limited 429.
 - Activity log actor: `API key "<name>"`, role `API key`.
 

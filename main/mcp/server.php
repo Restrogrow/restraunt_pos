@@ -30,7 +30,11 @@ try {
 // an OAuth token from ChatGPT / Claude, or an owner's API key (config/api_keys.php) for Claude Code, Cursor and other agents
 require_once __DIR__ . '/../config/api_keys.php';
 $token = apiKeyFromRequest();
-$tok = $token === '' ? null : (apiKeyLooksLike($token) ? apiKeyVerify($conn, $token) : mcpVerifyAccess($conn, $token));
+$tok = $token === '' ? null : (apiKeyLooksLike($token) ? apiKeyVerify($conn, $token, $why) : mcpVerifyAccess($conn, $token));
+if (!$tok && apiKeyLooksLike($token) && in_array($why ?? '', ['key_paused', 'ip_not_allowed'], true)) {
+    mcpJson(403, ['jsonrpc' => '2.0', 'error' => ['code' => -32001, 'message' => $why === 'key_paused' ? 'This RestroGrow API key is paused. The owner can resume it in the dashboard › API keys.'
+        : 'This RestroGrow API key does not work from this IP address (' . apiKeyClientIp() . ').'], 'id' => null]);
+}
 if (!$tok) {
     mcpJson(401, ['jsonrpc' => '2.0', 'error' => ['code' => -32001, 'message' => 'Connect your RestroGrow account first.'], 'id' => null],
         [$token !== '' ? mcpChallenge('invalid_token', 'The token is expired or was revoked.') : mcpChallenge()]);

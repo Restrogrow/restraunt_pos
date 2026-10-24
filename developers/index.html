@@ -155,7 +155,7 @@
   "data": {
     "restaurant_id": "RESSGI002",
     "restaurant": "Spice Garden Indiranagar",
-    "key": { "id": 7, "name": "Stock sync", "permissions": ["menu:read", "menu:write"] },
+    "key": { "id": 7, "name": "Stock sync", "permissions": ["menu:read", "menu:write"], "valid_until": "2026-12-31 23:59:59" },
     "rate_limit_per_minute": 120
   },
   "summary": "Key \"Stock sync\" can: menu:read, menu:write"
@@ -167,10 +167,25 @@
 X-API-Key: rg_live_YOUR_KEY</code></pre>
                 <ul>
                     <li>A key works for <b>one restaurant</b>: the one whose owner created it. Ids from other restaurants answer <code>404</code>.</li>
-                    <li>Keys can be set to expire after 30 days, 90 days or 1 year, or last until revoked.</li>
-                    <li>Keep keys on your server. Never put a key in a public web page, a mobile app or a public Git repository. If one leaks, revoke it in <b>API keys</b>: it stops working at once.</li>
+                    <li>Keep keys on your server. Never put a key in a public web page, a mobile app or a public Git repository.</li>
                     <li>Bodies are JSON: send <code>Content-Type: application/json</code>. Money is in the restaurant's currency (see <a href="#ep-restaurant">GET /restaurant</a>); times are in the restaurant's timezone.</li>
                 </ul>
+
+                <h3>Managing keys</h3>
+                <p>The owner manages every key in the dashboard › <b>API keys</b>:</p>
+                <div class="dv-table"><table>
+                    <thead><tr><th>Option</th><th>What it does</th></tr></thead>
+                    <tbody>
+                        <tr><td><b>Valid until</b></td><td>Never, 7 days, 30 days, 90 days, 1 year or a date you pick (works through the end of that day). <code>GET /me</code> returns it as <code>valid_until</code> (<code>null</code> = never).</td></tr>
+                        <tr><td><b>Edit</b></td><td>Change the name, permissions, valid-until date or allowed IPs. The key itself stays the same, so nothing breaks.</td></tr>
+                        <tr><td><b>Rotate</b></td><td>Get a new secret with the same settings. The old key stops right away, in 1 hour or in 24 hours, so you can swap it in your code without downtime.</td></tr>
+                        <tr><td><b>Allowed IPs</b></td><td>Optional: the key works only from these IP addresses. Others get <code>403 ip_not_allowed</code>.</td></tr>
+                        <tr><td><b>Pause / Resume</b></td><td>Stop a key for a while without losing it. Calls get <code>403 key_paused</code>.</td></tr>
+                        <tr><td><b>Revoke</b></td><td>The key stops working for good, at once. Do this if a key leaks.</td></tr>
+                        <tr><td><b>Delete</b></td><td>Remove a revoked or expired key from the list.</td></tr>
+                    </tbody>
+                </table></div>
+                <p class="dv-muted">The page also shows when each key was last used and how many calls it made. A restaurant can have up to 20 working keys.</p>
 
                 <h2 id="permissions">Permissions</h2>
                 <p>Each endpoint needs one permission. A key without it gets <code>403 missing_permission</code>.</p>
@@ -226,6 +241,7 @@ X-API-Key: rg_live_YOUR_KEY</code></pre>
                         <tr><td>400</td><td><code>bad_json</code></td><td>The body is not a JSON object</td></tr>
                         <tr><td>401</td><td><code>missing_key</code>, <code>invalid_key</code></td><td>No key, or it is wrong, revoked or expired</td></tr>
                         <tr><td>403</td><td><code>missing_permission</code></td><td>The key lacks the permission this endpoint needs</td></tr>
+                        <tr><td>403</td><td><code>key_paused</code>, <code>ip_not_allowed</code></td><td>The owner paused the key, or it doesn't work from your IP address</td></tr>
                         <tr><td>403</td><td><code>account_blocked</code>, <code>api_off</code>, <code>forbidden</code></td><td>Plan expired, account switched off, or this feature is off for the restaurant</td></tr>
                         <tr><td>404</td><td><code>not_found</code></td><td>No such endpoint, dish or order (in this restaurant)</td></tr>
                         <tr><td>405</td><td><code>method_not_allowed</code></td><td>The path exists, but not with this method</td></tr>
@@ -377,7 +393,7 @@ X-API-Key: rg_live_YOUR_KEY</code></pre>
                 <ul>
                     <li>Keys are stored only as a SHA-256 hash; RestroGrow can't show a key again after it's created.</li>
                     <li>Every change made with a key shows in the owner's <b>Activity log</b> with the key's name.</li>
-                    <li>Only the restaurant owner can create or revoke keys. A key stops working when it's revoked or expires, or when the owner account is switched off.</li>
+                    <li>Only the restaurant owner can create, edit, rotate, pause or revoke keys. A key stops working when it's revoked, expired or paused, used from an IP that isn't allowed, or when the owner account is switched off.</li>
                     <li>Found a security problem? Email <a href="mailto:support@restrogrow.com">support@restrogrow.com</a>.</li>
                 </ul>
             </main>
