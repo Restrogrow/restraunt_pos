@@ -7,6 +7,7 @@
  */
 require_once __DIR__ . '/../config/brand.php';
 require_once __DIR__ . '/brand_router.php';
+if (!isset($brand, $conn) || !is_array($brand)) { http_response_code(404); exit; }   // only ever included by the router
 
 $brandNext = isset($brandNext) && isset(BRAND_PAGES[$brandNext]) ? $brandNext : '';
 $outlets = brandOutlets($conn, (int)$brand['id'], true);
