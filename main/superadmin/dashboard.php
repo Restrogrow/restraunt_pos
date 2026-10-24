@@ -1745,6 +1745,7 @@ require_once __DIR__ . '/../config/countries.php';
             <td style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-outline" onclick="toggleBranchAdmin(${a.id}, ${a.is_active ? 0 : 1})">${a.is_active ? 'Disable' : 'Enable'}</button>
               <button class="btn btn-outline" onclick="editBranchLinks(${a.id})">Edit Links</button>
+              <button class="btn btn-outline" onclick="renameBranchAdmin(${a.id})">Rename</button>
               <button class="btn btn-outline" onclick="setBranchAdminPassword(${a.id}, '${saEsc(a.username)}')">Set password</button>
               ${a.is_active ? `<button class="btn btn-primary" onclick="loginAsBranchAdmin(${a.id})">Log in</button>` : ''}
               <button class="btn btn-outline" onclick="editBrand(${a.id})">${brand ? 'Edit brand' : 'Make brand'}</button>
@@ -1823,6 +1824,22 @@ require_once __DIR__ . '/../config/countries.php';
         showSuperAlert(out.message || 'Done', out.success ? 'success' : 'error');
         loadBranchAdmins();
       }
+    };
+
+    window.renameBranchAdmin = async function(id) {
+      const res0 = await fetch('api.php?action=getBranchAdmins'); const d0 = await res0.json();
+      const a = (d0.admins || []).find(x => x.id === id); if (!a || !window.Swal) return;
+      const { value: v } = await Swal.fire({
+        title: 'Rename multi-branch owner',
+        html: `<input id="baUser" class="swal2-input" placeholder="Login name" value="${saEsc(a.username)}"><input id="baName" class="swal2-input" placeholder="Name shown, e.g. Taste of Banaras Group" value="${saEsc(a.display_name || '')}">`,
+        showCancelButton: true, confirmButtonText: 'Save', confirmButtonColor: '#111827',
+        preConfirm: () => ({ username: document.getElementById('baUser').value.trim(), display_name: document.getElementById('baName').value.trim() })
+      });
+      if (!v) return;
+      const res = await fetch('api.php?action=updateBranchAdmin', { method:'POST', body: JSON.stringify({id, ...v}), headers: {'Content-Type': 'application/json'} });
+      const d = await res.json();
+      if (d.success) loadBranchAdmins();
+      showSuperAlert(d.message || (d.success ? 'Saved' : 'Error'), d.success ? 'success' : 'error');
     };
 
     window.loginAsBranchAdmin = async function(id) {

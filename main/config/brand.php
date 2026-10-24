@@ -411,6 +411,9 @@ function brandSaveOutletsOwner(PDO $conn, array $brand, array $list): void
         $tmp->execute([(int)$brand['id']]);
         $up = $conn->prepare('UPDATE brand_outlets SET url_key = ?, label = ?, sort_order = ?, gateway = ?, is_listed = ? WHERE brand_id = ? AND restaurant_id = ?');
         foreach ($rows as $r) $up->execute($r);
+        // the owner's outlet switcher (branch_restaurant_links.label) uses the same outlet names
+        $lab = $conn->prepare('UPDATE branch_restaurant_links SET label = ? WHERE branch_admin_id = ? AND restaurant_id = ?');
+        foreach ($rows as $r) $lab->execute([$r[1], (int)$brand['branch_admin_id'], $r[6]]);
         $conn->commit();
     } catch (Throwable $e) {
         if ($conn->inTransaction()) $conn->rollBack();

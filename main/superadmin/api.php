@@ -729,6 +729,21 @@ try {
       echo json_encode(['success' => true, 'url' => $base_path . '/main/admin/auto_login.php']);
       break;
 
+    case 'updateBranchAdmin':
+      // Rename: the login name and the name shown for a multi-branch owner
+      $data = json_decode(file_get_contents('php://input'), true) ?? [];
+      $id = (int)($data['id'] ?? 0);
+      $username = trim((string)($data['username'] ?? ''));
+      $displayName = trim(strip_tags((string)($data['display_name'] ?? '')));
+      if ($id <= 0) throw new Exception('Invalid id');
+      if (strlen($username) < 3 || strlen($username) > 50) throw new Exception('Login name must be 3 to 50 characters');
+      $taken = $conn->prepare("SELECT 1 FROM branch_admins WHERE username = ? AND id <> ? UNION SELECT 1 FROM users WHERE username = ? OR email = ? LIMIT 1");
+      $taken->execute([$username, $id, $username, $username]);
+      if ($taken->fetchColumn()) throw new Exception('That login name is already used by another account');
+      $conn->prepare("UPDATE branch_admins SET username = ?, display_name = ? WHERE id = ?")->execute([$username, $displayName !== '' ? mb_substr($displayName, 0, 100) : null, $id]);
+      echo json_encode(['success' => true, 'message' => 'Saved. They log in as ' . $username . ' from now on.']);
+      break;
+
     case 'setBranchAdminPassword':
       $data = json_decode(file_get_contents('php://input'), true) ?? [];
       $id = (int)($data['id'] ?? 0);
