@@ -47,7 +47,7 @@ function menuExtrasTools(): array
         $t(mcpDef('reorder_sections', 'Reorder menu sections', 'Set the order of the menu sections: give section ids in the wanted order.',
             ['section_ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'minItems' => 1, 'maxItems' => 100]], ['section_ids'], 'write', 'Reordering…', 'Order saved'),
             'menu:write', ['POST', 'menu/sections/order']),
-        $t(mcpDef('delete_section', 'Delete a menu section', 'Delete an empty menu section. Move or delete its dishes first; a section with dishes is never deleted (that would delete the dishes and their sales history).',
+        $t(mcpDef('delete_section', 'Delete a menu section', 'Delete a menu section with its dishes. Dishes never ordered are deleted; dishes that were ordered move to a hidden, switched-off "Removed dishes" section so past orders and sales reports stay complete.',
             ['section_id' => ['type' => 'integer']], ['section_id'], 'delete', 'Deleting the section…', 'Section deleted'),
             'menu:write', ['POST', 'menu/sections/{section_id}/delete']),
         $t(mcpDef('list_addons', 'Add-ons', 'Add-ons (extras like Extra Cheese) with id, name, price and whether they are on. Add-ons apply to the whole menu.',
@@ -105,36 +105,11 @@ function menuExtrasRun(PDO $conn, array $ctx, string $name, array $a): array
 
         case 'delete_dish':
             $d = $dish();
-            $used = 0;
-            foreach (['order_items', 'kot_items'] as $tbl) {
-                try {
-                    $st = $conn->prepare("SELECT COUNT(*) FROM $tbl WHERE menu_item_id = ?");
-                    $st->execute([$d['id']]);
-                    $used += (int)$st->fetchColumn();
-                } catch (PDOException $e) { /* table missing on this database */ }
-            }
-            if ($used) {
-                mxEnsureHidden($conn);
-                $conn->prepare('UPDATE menu_items SET is_hidden = 1, is_available = 0, updated_at = NOW() WHERE id = ? AND restaurant_id = ?')->execute([$d['id'], $rid]);
-                $log('menu.hide', 'Hid ' . $d['item_name_en'] . ' (was ordered before, so its history is kept)', 'menu_item', $d['id']);
-                return ['🙈 ' . $d['item_name_en'] . ' was ordered before, so it is hidden instead of deleted: gone from the menu everywhere, but its sales history stays. show_dish brings it back.',
-                    ['item_id' => (int)$d['id'], 'deleted' => false, 'hidden' => true]];
-            }
-            $conn->beginTransaction();
-            try {
-                // rows that point at the dish without a foreign key
-                foreach (['bestsellers' => 'menu_item_id', 'todays_specials' => 'menu_item_id', 'upsell_pairs' => 'menu_item_id', 'combo_slot_options' => 'menu_item_id'] as $tbl => $col) {
-                    try { $conn->prepare("DELETE FROM $tbl WHERE $col = ?")->execute([$d['id']]); } catch (PDOException $e) { /* not on this database */ }
-                }
-                try { $conn->prepare('DELETE FROM upsell_pairs WHERE suggest_item_id = ?')->execute([$d['id']]); } catch (PDOException $e) {}
-                $conn->prepare('DELETE FROM menu_items WHERE id = ? AND restaurant_id = ?')->execute([$d['id'], $rid]);
-                $conn->commit();
-            } catch (Throwable $e) {
-                if ($conn->inTransaction()) $conn->rollBack();
-                throw $e;
-            }
-            $log('menu.delete', 'Deleted dish ' . $d['item_name_en'] . ' (price ' . $m($d['base_price']) . ')', 'menu_item', $d['id']);
-            return ['🗑️ Deleted ' . $d['item_name_en'] . ' (it was never ordered).', ['item_id' => (int)$d['id'], 'deleted' => true, 'hidden' => false]];
+            require_once __DIR__ . '/../../config/menu_delete.php';
+            $r = menuSafeDeleteDish($conn, $rid, $d);
+            if ($r['hidden']) $log('menu.hide', 'Hid ' . $d['item_name_en'] . ' (asked to delete; it was ordered before, so its history is kept)', 'menu_item', $d['id']);
+            else $log('menu.delete', 'Deleted dish ' . $d['item_name_en'] . ' (price ' . $m($d['base_price']) . ')', 'menu_item', $d['id']);
+            return [($r['hidden'] ? '🙈 ' : '🗑️ ') . $r['message'], ['item_id' => (int)$d['id'], 'deleted' => !$r['hidden'], 'hidden' => $r['hidden']]];
 
         case 'show_dish':
             $d = $dish();
@@ -232,15 +207,10 @@ function menuExtrasRun(PDO $conn, array $ctx, string $name, array $a): array
 
         case 'delete_section':
             $s = $section((int)($a['section_id'] ?? 0));
-            $c = $conn->prepare('SELECT COUNT(*) FROM menu_items WHERE menu_id = ? AND restaurant_id = ?');
-            $c->execute([$s['id'], $rid]);
-            if ($n = (int)$c->fetchColumn()) throw new McpToolError($s['menu_name'] . " still has $n dish(es). Move them (move_dish) or delete them (delete_dish) first.");
-            $conn->beginTransaction();
-            try { $conn->prepare('DELETE FROM deals WHERE menu_id = ? AND restaurant_id = ?')->execute([$s['id'], $rid]); } catch (PDOException $e) { /* no deals table */ }
-            $conn->prepare('DELETE FROM menu WHERE id = ? AND restaurant_id = ?')->execute([$s['id'], $rid]);
-            $conn->commit();
-            $log('menu.category_delete', 'Deleted empty menu section ' . $s['menu_name'], 'menu', $s['id']);
-            return ['🗑️ Deleted the empty section ' . $s['menu_name'] . '.', ['section_id' => (int)$s['id'], 'deleted' => true]];
+            require_once __DIR__ . '/../../config/menu_delete.php';
+            $r = menuSafeDeleteSection($conn, $rid, (int)$s['id'], (string)$s['menu_name']);
+            $log('menu.category_delete', 'Deleted menu section ' . $s['menu_name'] . ($r['kept'] ? ' (' . $r['kept'] . ' ordered dishes kept, hidden in ' . MENU_ARCHIVE_SECTION . ')' : ''), 'menu', $s['id']);
+            return ['🗑️ ' . $r['message'], ['section_id' => (int)$s['id'], 'deleted' => true, 'dishes_deleted' => $r['deleted'], 'dishes_kept_hidden' => $r['kept']]];
 
         case 'list_addons':
             mxEnsureAddons($conn);

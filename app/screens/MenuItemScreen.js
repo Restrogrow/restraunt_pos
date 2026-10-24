@@ -290,7 +290,7 @@ export default function MenuItemScreen({ route, navigation }) {
   const confirmDelete = async () => {
     const ok = await feedback.confirm({
       title: `Delete ${item.item_name_en}?`,
-      message: "It's removed from your POS and website. This can't be undone. To stop selling it for a while, switch it to sold out or hide it instead.",
+      message: "It's removed from your POS and website. If it was ever ordered, it's hidden instead so your sales history stays. To stop selling it for a while, switch it to sold out or hide it instead.",
       confirmText: 'Delete',
       danger: true,
     });
@@ -306,7 +306,8 @@ export default function MenuItemScreen({ route, navigation }) {
       });
       if (!res.success) throw new Error(res.message || 'Could not delete item');
       emitMenuChange('delete', { id: item.id });
-      feedback.info(`${item.item_name_en} deleted`);
+      // ordered before: the server hides it instead, so its sales history stays (main/config/menu_delete.php)
+      feedback.info(res.hidden ? res.message : `${item.item_name_en} deleted`);
       navigation.goBack();
     } catch (e) {
       feedback.errorFrom(e, 'Could not delete the dish');

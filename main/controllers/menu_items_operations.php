@@ -279,27 +279,18 @@ function handleDeleteMenuItem($conn, $restaurant_id, $menuItemId) {
         throw new Exception('Menu item not found');
     }
     
-    // Delete the image file if exists
-    if ($menuItem['item_image'] && file_exists($menuItem['item_image'])) {
-        unlink($menuItem['item_image']);
-    }
-    
-    // Delete menu item
-    $deleteStmt = $conn->prepare("DELETE FROM menu_items WHERE id = ? AND restaurant_id = ?");
-    $result = $deleteStmt->execute([$menuItemId, $restaurant_id]);
-    
-    if ($result) {
-        echo json_encode([
-            'success' => true,
-            'message' => 'Menu item deleted successfully',
-            'data' => [
-                'id' => $menuItemId,
-                'item_name_en' => $menuItem['item_name_en']
-            ]
-        ], JSON_UNESCAPED_UNICODE);
-    } else {
-        throw new Exception('Failed to delete menu item');
-    }
+    // ordered before: hidden, not deleted, so its past orders stay (config/menu_delete.php)
+    require_once __DIR__ . '/../config/menu_delete.php';
+    $r = menuSafeDeleteDish($conn, (string)$restaurant_id, $menuItem);
+    echo json_encode([
+        'success' => true,
+        'hidden' => $r['hidden'],
+        'message' => $r['message'],
+        'data' => [
+            'id' => $menuItemId,
+            'item_name_en' => $menuItem['item_name_en']
+        ]
+    ], JSON_UNESCAPED_UNICODE);
 }
 
 function handleFileUpload($file, $uploadDir) {

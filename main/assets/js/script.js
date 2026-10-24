@@ -2838,7 +2838,8 @@ document.addEventListener("DOMContentLoaded", () => {
       html: rgUndo.label('Deleted menu', menuName),
       hide: rgUndo.rows('.menu-card[data-menu-id="' + menuId + '"]'),
       request: { url: '../controllers/menu_operations.php', body: { action: 'delete', menuId: menuId } },
-      onDone: function () { loadMenus(); },
+      // dishes that were ordered before move to the hidden "Removed dishes" section: say so
+      onDone: function (d) { loadMenus(); if (d && d.kept) showNotification(d.message, 'info'); },
       onError: function (msg) { showNotification(msg, "error"); }
     });
   };
@@ -4267,7 +4268,8 @@ document.addEventListener("DOMContentLoaded", () => {
       html: rgUndo.label('Deleted', menuItemName),
       hide: rgUndo.rows('.menu-item-card[data-item-id="' + menuItemId + '"]'),
       request: { url: '../controllers/menu_items_operations_base64.php', body: { action: 'delete', menuItemId: menuItemId } },
-      onDone: function () { loadMenuItems(); },
+      // a dish that was ordered before is hidden, not deleted (its sales history stays): say so
+      onDone: function (d) { loadMenuItems(); if (d && d.hidden) showNotification(d.message, 'info'); },
       onError: function (msg) { showNotification(msg, "error"); }
     });
   };

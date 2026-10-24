@@ -248,25 +248,21 @@ try {
                 throw new Exception('Menu not found');
             }
             
-            // Delete menu
-            $deleteStmt = $conn->prepare("DELETE FROM menu WHERE id = ? AND restaurant_id = ?");
-            $result = $deleteStmt->execute([$menuId, $restaurant_id]);
-            
-            if ($result) {
-                require_once __DIR__ . '/../config/activity_log.php';
-                logActivity($conn, $restaurant_id, 'menu.category_delete', 'Deleted category ' . $menu['menu_name'], [], 'menu', $menuId);
-                // Return success response
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Menu deleted successfully',
-                    'data' => [
-                        'id' => $menuId,
-                        'name' => $menu['menu_name']
-                    ]
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                throw new Exception('Failed to delete menu');
-            }
+            // its dishes went with it (menu_items cascade on menu), and with them their past order lines:
+            // ordered dishes now move to a hidden "Removed dishes" section instead (config/menu_delete.php)
+            require_once __DIR__ . '/../config/menu_delete.php';
+            $r = menuSafeDeleteSection($conn, (string)$restaurant_id, (int)$menuId, (string)$menu['menu_name']);
+            require_once __DIR__ . '/../config/activity_log.php';
+            logActivity($conn, $restaurant_id, 'menu.category_delete', 'Deleted category ' . $menu['menu_name'] . ($r['kept'] ? ' (' . $r['kept'] . ' ordered dishes kept, hidden in ' . MENU_ARCHIVE_SECTION . ')' : ''), ['deleted_dishes' => $r['deleted'], 'kept_dishes' => $r['kept']], 'menu', $menuId);
+            echo json_encode([
+                'success' => true,
+                'kept' => $r['kept'],
+                'message' => $r['message'],
+                'data' => [
+                    'id' => $menuId,
+                    'name' => $menu['menu_name']
+                ]
+            ], JSON_UNESCAPED_UNICODE);
             break;
             
         case 'reorder':

@@ -473,29 +473,23 @@ function handleDeleteMenuItemBase64($conn, $restaurant_id, $menuItemId) {
         throw new Exception('Menu item not found');
     }
     
-    // Delete the image file if it exists
-    if (!empty($menuItem['item_image']) && file_exists($menuItem['item_image'])) {
-        unlink($menuItem['item_image']);
-    }
-    
-    // Delete menu item
-    $deleteStmt = $conn->prepare("DELETE FROM menu_items WHERE id = ? AND restaurant_id = ?");
-    $result = $deleteStmt->execute([$menuItemId, $restaurant_id]);
-    
-    if ($result) {
-        require_once __DIR__ . '/../config/activity_log.php';
-        logActivity($conn, $restaurant_id, 'menu.delete', 'Deleted dish ' . $menuItem['item_name_en'] . ' (price ' . number_format((float)$menuItem['base_price'], 2) . ')', ['price' => (float)$menuItem['base_price']], 'menu_item', $menuItemId);
-        echo json_encode([
-            'success' => true,
-            'message' => 'Menu item deleted successfully',
-            'data' => [
-                'id' => $menuItemId,
-                'item_name_en' => $menuItem['item_name_en']
-            ]
-        ], JSON_UNESCAPED_UNICODE);
-    } else {
-        throw new Exception('Failed to delete menu item');
-    }
+    // a dish that was ever ordered is hidden, not deleted: deleting it would also delete its past order lines
+    // (order_items / kot_items cascade on menu_items). config/menu_delete.php
+    require_once __DIR__ . '/../config/menu_delete.php';
+    $r = menuSafeDeleteDish($conn, (string)$restaurant_id, $menuItem);
+
+    require_once __DIR__ . '/../config/activity_log.php';
+    if ($r['hidden']) logActivity($conn, $restaurant_id, 'menu.hide', 'Hid dish ' . $menuItem['item_name_en'] . ' (asked to delete; it was ordered before, so its history is kept)', [], 'menu_item', $menuItemId);
+    else logActivity($conn, $restaurant_id, 'menu.delete', 'Deleted dish ' . $menuItem['item_name_en'] . ' (price ' . number_format((float)$menuItem['base_price'], 2) . ')', ['price' => (float)$menuItem['base_price']], 'menu_item', $menuItemId);
+    echo json_encode([
+        'success' => true,
+        'hidden' => $r['hidden'],
+        'message' => $r['message'],
+        'data' => [
+            'id' => $menuItemId,
+            'item_name_en' => $menuItem['item_name_en']
+        ]
+    ], JSON_UNESCAPED_UNICODE);
 }
 
 function handleBase64Image($base64String) {
