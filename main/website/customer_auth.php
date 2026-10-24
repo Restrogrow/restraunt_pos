@@ -367,6 +367,12 @@ function handleCustomerForgotPassword($pdo) {
             $okHost = strtolower(preg_replace('#^https?://#', '', trim((string)$cd->fetchColumn()), 1)) === $host && $host !== '';
         } catch (PDOException $e) { $okHost = false; }
     }
+    if (!$okHost) {
+        // an outlet of a brand: the brand's own domain is ours too (config/brand.php)
+        require_once __DIR__ . '/../config/brand.php';
+        $bo = brandOfRestaurant($pdo, (string)$restaurantId);
+        $okHost = $bo && $bo['brand']['domain_live'] && brandNormalizeDomain($host) === $bo['brand']['custom_domain'];
+    }
     $resetBase = $okHost ? $protocol . '://' . ($_SERVER['HTTP_HOST'] ?? $host) . dirname($_SERVER['PHP_SELF'])
                          : rtrim((string)(env('APP_URL', '') ?: 'https://restrogrow.com'), '/') . '/main/website';
     $resetLink = $resetBase . '/reset_password.php?token=' . $token . '&restaurant_id=' . urlencode($restaurantId);

@@ -4764,7 +4764,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // that the customer website already supports is used. Only fall back to
     // "?restaurant_id=" when neither is available.
     var baseUrl;
-    if (window.restaurantCustomDomain && window.restaurantEmbedEnabled) {
+    if (window.restaurantBrandUrl) {
+      baseUrl = window.rgBrandPageUrl('menu');   // a brand outlet: brand.com/<outlet>/menu (config/brand.php)
+    } else if (window.restaurantCustomDomain && window.restaurantEmbedEnabled) {
       var domain = window.restaurantCustomDomain.replace(/^https?:\/\//, '');
       var scheme = window.location.protocol + '//';
       baseUrl = scheme + domain + '/menu';

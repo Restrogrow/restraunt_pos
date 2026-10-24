@@ -45,6 +45,9 @@ if ($for === 'owner') {
     $own = strtolower(preg_replace('#^https?://|/.*$#', '', trim((string)($row['custom_domain'] ?? ''))));
     $allowed = ['restrogrow.com', 'www.restrogrow.com', strtolower($_SERVER['HTTP_HOST'] ?? '')];
     if ($own !== '') { $allowed[] = $own; $allowed[] = preg_replace('/^www\./', '', $own); $allowed[] = 'www.' . preg_replace('/^www\./', '', $own); }
+    // an outlet of a brand: back to the brand's own domain too (config/brand.php)
+    require_once __DIR__ . '/../config/brand.php';
+    if (($bo = brandOfRestaurant(getConnection(), $rid)) && $bo['brand']['domain_live']) { $allowed[] = $bo['brand']['custom_domain']; $allowed[] = 'www.' . $bo['brand']['custom_domain']; }
     if (!in_array($host, $allowed, true)) $host = strtolower($_SERVER['HTTP_HOST'] ?? 'restrogrow.com');
     $path = fn($p) => ($p !== '' && $p[0] === '/' && !str_starts_with($p, '//') && !preg_match('/[\r\n]/', $p)) ? mb_substr($p, 0, 300) : '/';
     // r: where to go once logged in; b: the login page, for "cancelled" and error messages

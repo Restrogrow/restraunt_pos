@@ -295,6 +295,9 @@ try {
 // Sections Super Admin switched off for this restaurant (Restaurants › Access): hidden below and blocked in showPage()
 require_once __DIR__ . '/../config/access_control.php';
 try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant_id']); } catch (Throwable $e) { $accessOff = []; }
+// An outlet of a brand: its website is at the brand's address (config/brand.php); '' for other restaurants
+require_once __DIR__ . '/../config/brand.php';
+try { $rgBrandSiteUrl = (string)(brandRestaurantUrl(getConnection(), (string)$_SESSION['restaurant_id']) ?? ''); } catch (Throwable $e) { $rgBrandSiteUrl = ''; }
 ?>
 <?php $googleMapsApiKey = function_exists('googleMapsApiKey') ? googleMapsApiKey() : ''; ?>
 <!DOCTYPE html>
@@ -414,6 +417,9 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
     window.globalCurrencySymbol = <?php echo json_encode($currency_symbol, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
     window.restaurantCustomDomain = <?php echo json_encode($restaurant_custom_domain, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
     window.restaurantEmbedEnabled = <?php echo json_encode((bool)$restaurant_embed_enabled, JSON_HEX_TAG); ?>;
+    // a brand outlet's website address (relative on the platform, https:// on the brand's own domain), else ''
+    window.restaurantBrandUrl = <?php echo json_encode($rgBrandSiteUrl, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+    window.rgBrandPageUrl = function (page) { var u = window.restaurantBrandUrl; if (!u) return ''; return (/^https?:/.test(u) ? u : location.origin + u) + (page ? '/' + page : ''); };
     <?php
     // Pretty-URL slug for the customer website, derived from restaurant_name
     // exactly like restaurantPageUrl() in main/website/header.php.
@@ -1462,7 +1468,9 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
         </li>
         <li class="nav-item">
           <a href="<?php 
-            if (!empty($restaurant_custom_domain) && $restaurant_embed_enabled) {
+            if ($rgBrandSiteUrl !== '') {
+                echo htmlspecialchars($rgBrandSiteUrl, ENT_QUOTES, 'UTF-8');
+            } elseif (!empty($restaurant_custom_domain) && $restaurant_embed_enabled) {
                 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
                 $domain = preg_replace('#^https?://#', '', $restaurant_custom_domain);
                 echo $scheme . '://' . $domain . '/';
@@ -1568,7 +1576,9 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
           <span class="dh-updated" id="dashboardTime"></span>
           <button type="button" class="btn btn-secondary dh-icon" onclick="loadDashboardStats(true)" title="Refresh" aria-label="Refresh"><span class="material-symbols-rounded">refresh</span></button>
           <a class="btn btn-secondary" href="<?php
-            if (!empty($restaurant_custom_domain) && $restaurant_embed_enabled) {
+            if ($rgBrandSiteUrl !== '') {
+                echo htmlspecialchars($rgBrandSiteUrl, ENT_QUOTES, 'UTF-8');
+            } elseif (!empty($restaurant_custom_domain) && $restaurant_embed_enabled) {
                 echo htmlspecialchars('https://' . preg_replace('#^https?://#', '', $restaurant_custom_domain) . '/', ENT_QUOTES, 'UTF-8');
             } else {
                 echo htmlspecialchars($basePath . '/' . urlencode(trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($restaurant_name)), '-')), ENT_QUOTES, 'UTF-8');

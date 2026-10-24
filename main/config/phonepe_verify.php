@@ -83,6 +83,13 @@ if (!function_exists('phonepeCallbackConfig')) {
                         if ($secret !== '') $own = ['id' => $row['phonepe_merchant_id'], 'secret' => $secret, 'env' => strtoupper((string)($row['phonepe_environment'] ?? '')) === 'SANDBOX' ? 'SANDBOX' : 'PRODUCTION'];
                     }
                 } catch (Throwable $e) { /* no columns yet: platform keys */ }
+                // an outlet of a brand that uses the brand's gateway: the brand's keys (config/brand.php); a brand
+                // without keys yet leaves each outlet on its own setting
+                try {
+                    require_once __DIR__ . '/brand.php';
+                    $bo = brandOfRestaurant(getConnection(), (string)$restaurantId);
+                    if ($bo && ($bo['outlet']['gateway'] ?? 'brand') === 'brand' && ($bk = brandGatewayKeys($bo['brand']))) $own = $bk;
+                } catch (Throwable $e) { error_log('phonepeCallbackConfig brand: ' . $e->getMessage()); }
             }
             if ($own) {
                 $clientId = $own['id']; $clientSecret = $own['secret']; $isSandbox = $own['env'] === 'SANDBOX'; $source = 'own';
@@ -253,6 +260,17 @@ if (!function_exists('ppTxnId')) {
     function ppTxnId(string $prefix, string $hint = ''): string {
         $hint = preg_replace('/[^A-Za-z0-9-]/', '', $hint);
         return substr($prefix . ($hint !== '' ? $hint . '_' : '') . bin2hex(random_bytes(10)), 0, 63);
+    }
+}
+
+if (!function_exists('ppBrandWebhookCreds')) {
+    /** The one webhook a brand's PhonePe account sends to (?bid=), for all outlets that use the brand gateway. */
+    function ppBrandWebhookCreds(int $brandId): ?array {
+        $k = ppSecretKey();
+        if ($k === null || $brandId <= 0) return null;
+        $app = rtrim((string)env('APP_URL', ''), '/') ?: 'https://restrogrow.com';
+        return ['url' => $app . '/main/api/phonepe_webhook.php?bid=' . $brandId, 'username' => 'restrogrow',
+                'password' => substr(hash_hmac('sha256', 'pp-webhook|brand|' . $brandId, $k), 0, 24)];
     }
 }
 

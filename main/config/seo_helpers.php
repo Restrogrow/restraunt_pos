@@ -95,8 +95,10 @@ function seoDefaults(array $r, array $s = []): array
 /** Absolute URL of a site page: the restaurant's own domain when it has one, else restrogrow.com/<slug>. */
 function seoPageUrl(string $page): string
 {
-    global $custom_domain, $embed_enabled, $is_custom_domain;
+    global $custom_domain, $embed_enabled, $is_custom_domain, $rg_brand_ctx;
     $slug = $page === 'home' ? '' : $page;
+    // an outlet of a brand: brand.com/<outlet>/<page> or restrogrow.com/<brand>/<outlet>/<page> (config/brand.php)
+    if (!empty($rg_brand_ctx)) return brandOutletUrl($rg_brand_ctx['brand'], $rg_brand_ctx['outlet'], $slug, true);
     $host = $_SERVER['HTTP_HOST'] ?? 'restrogrow.com';
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || !preg_match('/^(localhost|127\.0\.0\.1)/', $host) ? 'https' : 'http';
     if (!empty($custom_domain) && !empty($embed_enabled)) return 'https://' . preg_replace('#^https?://|/+$#', '', $custom_domain) . '/' . $slug;
@@ -187,6 +189,9 @@ function seoAutoHidden(?PDO $conn, string $rid, string $name): bool
 function seoHeadTags(string $page): string
 {
     $c = seoContext(); $r = $c['r']; $s = $c['s'];
+    // an outlet of a brand: the brand's Analytics / Pixel / Search Console codes when the outlet has none (config/brand.php)
+    global $rg_brand_ctx;
+    if (!empty($rg_brand_ctx)) foreach (['ga_id', 'meta_pixel_id', 'gsc_verification'] as $k) if (empty($s[$k]) && !empty($rg_brand_ctx['brand'][$k])) $s[$k] = $rg_brand_ctx['brand'][$k];
     $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
     $desc = trim((string)($s['pages'][$page]['description'] ?? '')) ?: ($c['d'][$page]['description'] ?? '');
     $title = seoTitle($page, $r['name']);

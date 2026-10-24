@@ -25,7 +25,8 @@
     tableUrl: function (tableNumber) {
       var rid = (document.querySelector('meta[name="restaurant-id"]') || {}).content || window.restaurant_id || '';
       var base;
-      if (window.restaurantCustomDomain && window.restaurantEmbedEnabled) base = window.location.protocol + '//' + window.restaurantCustomDomain.replace(/^https?:\/\//, '') + '/menu';
+      if (window.restaurantBrandUrl) base = window.rgBrandPageUrl('menu');   // a brand outlet (config/brand.php)
+      else if (window.restaurantCustomDomain && window.restaurantEmbedEnabled) base = window.location.protocol + '//' + window.restaurantCustomDomain.replace(/^https?:\/\//, '') + '/menu';
       else if (window.restaurantWebsiteSlug) base = window.location.origin + window.location.pathname.substring(0, window.location.pathname.indexOf('/main/')) + '/' + encodeURIComponent(window.restaurantWebsiteSlug) + '/menu';
       else base = window.location.origin + window.location.pathname.substring(0, window.location.pathname.indexOf('/main/') + 6) + 'website/menu.php?restaurant_id=' + encodeURIComponent(rid);
       return base + (base.indexOf('?') > -1 ? '&' : '?') + 'table=' + encodeURIComponent(tableNumber);

@@ -82,6 +82,12 @@ function getLoggedInCustomer($pdo, $restaurant_id) {
         unset($_SESSION['customer_id'], $_SESSION['customer_restaurant_id']);
     }
 
+    // Logged in at another outlet of the same brand: stay logged in here (customerBrandCarry)
+    if (!empty($_SESSION['customer_id']) && !empty($_SESSION['customer_restaurant_id']) && $_SESSION['customer_restaurant_id'] !== $restaurant_id) {
+        $carried = customerBrandCarry($pdo, (int)$_SESSION['customer_id'], (string)$_SESSION['customer_restaurant_id'], (string)$restaurant_id);
+        if ($carried) return $carried;
+    }
+
     // No active session - try the remember-me cookie.
     if (empty($_COOKIE[CUSTOMER_REMEMBER_COOKIE])) return null;
     $parts = explode(':', $_COOKIE[CUSTOMER_REMEMBER_COOKIE], 2);
@@ -99,6 +105,17 @@ function getLoggedInCustomer($pdo, $restaurant_id) {
         ");
         $stmt->execute([$selector, $restaurant_id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            // a remember-me cookie from another outlet of the same brand: log in here as the same person
+            $other = $pdo->prepare("SELECT rt.validator_hash, rt.expires_at, c.id, c.restaurant_id FROM customer_remember_tokens rt JOIN customers c ON c.id = rt.customer_id
+                WHERE rt.selector = ? AND c.password_hash IS NOT NULL LIMIT 1");
+            $other->execute([$selector]);
+            $o = $other->fetch(PDO::FETCH_ASSOC);
+            if ($o && strtotime($o['expires_at']) >= time() && password_verify($validator, $o['validator_hash'])
+                && ($carried = customerBrandCarry($pdo, (int)$o['id'], (string)$o['restaurant_id'], (string)$restaurant_id))) {
+                return $carried;
+            }
+        }
 
         if (!$row || strtotime($row['expires_at']) < time() || !password_verify($validator, $row['validator_hash'])) {
             // Invalid/expired/mismatched token - clear the cookie so we stop trying.
@@ -124,6 +141,50 @@ function getLoggedInCustomer($pdo, $restaurant_id) {
         ];
     } catch (PDOException $e) {
         error_log('getLoggedInCustomer (remember lookup): ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * One login for all outlets of a brand (config/brand.php): a customer logged in at outlet A who opens outlet B of the
+ * same brand is logged in at B too. B's customer with the same phone (else email) is used, or made, with A's password
+ * so the login form works at B as well. Points and wallet stay per outlet. Returns B's customer row, or null when the
+ * two restaurants are not outlets of one brand.
+ */
+function customerBrandCarry($pdo, int $customerId, string $fromRid, string $toRid) {
+    if ($fromRid === '' || $toRid === '' || $fromRid === $toRid) return null;
+    try {
+        require_once __DIR__ . '/../config/brand.php';
+        $a = brandOfRestaurant($pdo, $fromRid);
+        $b = brandOfRestaurant($pdo, $toRid);
+        if (!$a || !$b || (int)$a['brand']['id'] !== (int)$b['brand']['id']) return null;
+        $st = $pdo->prepare("SELECT id, customer_name, phone, email, password_hash FROM customers WHERE id = ? AND restaurant_id = ? AND password_hash IS NOT NULL LIMIT 1");
+        $st->execute([$customerId, $fromRid]);
+        $src = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$src) return null;
+        $row = null;
+        foreach (['phone', 'email'] as $col) {
+            if (empty($src[$col])) continue;
+            $f = $pdo->prepare("SELECT id, restaurant_id, customer_name, phone, email, password_hash FROM customers WHERE restaurant_id = ? AND $col = ? LIMIT 1");
+            $f->execute([$toRid, $src[$col]]);
+            if ($row = $f->fetch(PDO::FETCH_ASSOC)) break;
+        }
+        if ($row) {
+            if (empty($row['password_hash'])) $pdo->prepare("UPDATE customers SET password_hash = ? WHERE id = ?")->execute([$src['password_hash'], $row['id']]);
+            if (empty($row['email']) && !empty($src['email'])) {
+                try { $pdo->prepare("UPDATE customers SET email = ? WHERE id = ?")->execute([$src['email'], $row['id']]); } catch (PDOException $e) { /* email used by another customer here */ }
+            }
+        } else {
+            if (empty($src['phone'])) return null;   // customers need a phone at every outlet
+            $pdo->prepare("INSERT INTO customers (restaurant_id, customer_name, phone, email, password_hash) VALUES (?, ?, ?, ?, ?)")
+                ->execute([$toRid, $src['customer_name'], $src['phone'], $src['email'] ?: null, $src['password_hash']]);
+            $row = ['id' => (int)$pdo->lastInsertId(), 'restaurant_id' => $toRid, 'customer_name' => $src['customer_name'], 'phone' => $src['phone'], 'email' => $src['email']];
+        }
+        $_SESSION['customer_id'] = (int)$row['id'];
+        $_SESSION['customer_restaurant_id'] = $toRid;
+        return ['id' => (int)$row['id'], 'restaurant_id' => $toRid, 'customer_name' => $row['customer_name'], 'phone' => $row['phone'], 'email' => $row['email'] ?: $src['email']];
+    } catch (Throwable $e) {
+        error_log('customerBrandCarry: ' . $e->getMessage());
         return null;
     }
 }

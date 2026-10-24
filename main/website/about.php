@@ -259,6 +259,7 @@ body {
 </style>
 </head>
 <body>
+<?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>
 <div class="phone-frame">
   <div class="bg-wrapper">
     <div class="header-bar">

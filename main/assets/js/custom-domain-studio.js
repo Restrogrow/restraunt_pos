@@ -30,6 +30,7 @@
   // keep the rest of the dashboard (QR codes, "Customer Website" link) in step with the switch
   function syncGlobals() {
     var d = S.data;
+    if (d.brand) return;   // a brand outlet: the links come from the brand (window.restaurantBrandUrl)
     window.restaurantCustomDomain = d.domain || '';
     window.restaurantEmbedEnabled = !!d.enabled;
     var link = document.querySelector('.nav-link[target="_blank"] .nav-label');
@@ -178,6 +179,15 @@
   function render() {
     if (!root) return;
     if (!S.data) { root.innerHTML = '<div class="sx-loading"><span></span><span></span><span></span></div>'; return; }
+    var b = S.data.brand;
+    if (b) {
+      // an outlet of a brand: one address for all outlets, set by the owner on the Branches page (config/brand.php)
+      root.innerHTML = '<div class="sx-empty">' + ic('storefront') + '<b>Part of the brand ' + esc(b.name) + '</b>' +
+        '<span>This outlet’s website is <a href="' + esc(b.address) + '" target="_blank" rel="noopener">' + esc(b.address.replace(/^https?:\/\//, '')) + '</a>. ' +
+        'All outlets share ' + (b.own_domain ? 'the domain ' + esc(b.own_domain) : 'the address ' + esc(b.picker.replace(/^https?:\/\//, ''))) + ', where customers pick their outlet. ' +
+        'The owner changes the domain for all outlets on the Branches page.</span></div>';
+      return;
+    }
     root.innerHTML = hero() + tabs() + (S.tab === 'domain' ? domainPanel() : embedPanel());
     if (S.tab === 'embed') {
       var f = document.getElementById('cdPreview');

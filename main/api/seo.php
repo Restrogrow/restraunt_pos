@@ -74,6 +74,9 @@ try {
     $root = rtrim(str_replace('\\', '/', dirname(dirname(dirname($_SERVER['SCRIPT_NAME'])))), '/');
     $ownDomain = !empty($u['custom_domain']) && !empty($u['embed_enabled']) ? preg_replace('#^https?://|/+$#', '', trim($u['custom_domain'])) : '';
     $site = $ownDomain ? "https://$ownDomain" : "$scheme://$host$root/$slug";
+    // an outlet of a brand: the brand's address (config/brand.php)
+    require_once __DIR__ . '/../config/brand.php';
+    if ($b = brandRestaurantUrl($conn, (string)$rid, '', true)) $site = $b;
 
     // dishes: photo / description coverage, the popular ones for the AI
     $dq = $conn->prepare("SELECT item_name_en, COALESCE(item_image, '') <> '' AS has_photo, CHAR_LENGTH(TRIM(COALESCE(item_description_en, ''))) >= 20 AS has_desc

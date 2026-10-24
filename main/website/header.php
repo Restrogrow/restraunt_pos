@@ -19,6 +19,17 @@ function createRestaurantSlug($name) {
     return $slug;
 }
 
+/** The website page being served: '' (home), 'menu', 'cart' … (from the page file, also when custom-domain.php
+ *  included it); null when header.php runs for something else (manifest.php, a payment script). */
+function rgCurrentPageName(): ?string {
+    require_once __DIR__ . '/../config/brand.php';
+    foreach (get_included_files() as $f) {
+        $k = array_search(basename($f), BRAND_PAGES, true);
+        if ($k !== false) return (string)$k;
+    }
+    return null;
+}
+
 function findRestaurantBySlug($conn, $slug) {
     // A slug is the name's lowercase a-z0-9 runs joined by "-", so the
     // matching restaurant's name must contain those runs in order. Narrow the
@@ -125,6 +136,19 @@ if ($has_slug_param && !$has_id_param) {
         require_once __DIR__ . '/db_config.php';
         if (function_exists('getConnection')) {
             $conn = getConnection();
+            // restrogrow.com/<brand> (or /<brand>/menu): a brand's outlet picker (website/brand_router.php)
+            require_once __DIR__ . '/brand_router.php';
+            if ($rgSlugBrand = brandBySlug($conn, $restaurant_slug)) {
+                ob_end_clean();
+                $rgPage = rgCurrentPageName() ?? '';
+                if ($rgSlugBrand['domain_live']) { header('Location: ' . brandBaseUrl($rgSlugBrand, true) . '/' . $rgPage . brandKeepQuery(), true, 301); exit(); }
+                $rgRoute = brandResolve($conn, $rgSlugBrand, $rgPage);
+                if ($rgRoute['type'] === 'redirect') { header('Location: ' . $rgRoute['url'], true, 302); exit(); }
+                $brand = $rgSlugBrand;
+                $brandNext = $rgRoute['next'] ?? '';
+                include __DIR__ . '/brand_picker.php';
+                exit();
+            }
             $restaurant_info = findRestaurantBySlug($conn, $restaurant_slug);
             if ($restaurant_info) {
                 $restaurant_id = $restaurant_info['restaurant_id'];
@@ -485,6 +509,23 @@ if (is_array($qrSaved) && $restaurant_id && ($qrSaved['rid'] ?? '') === (string)
     unset($_SESSION['qr_table']);   // expired, or the old unscoped form
 }
 
+// An outlet of a brand lives at the brand's address (brand.com/<outlet>/… or restrogrow.com/<brand>/<outlet>/…):
+// any other address of it (restrogrow.com/<name>, main/website/menu.php?restaurant_id=) moves there, query kept
+// (?table=T3, ?order_id= after a payment). website/brand_router.php, config/brand.php
+require_once __DIR__ . '/brand_router.php';
+$rg_brand_ctx = !empty($restaurant_id) ? brandOfRestaurant($conn ?? getConnection(), (string)$restaurant_id) : null;
+$rg_page_base = '';
+if ($rg_brand_ctx) {
+    $rgPage = rgCurrentPageName();
+    if ($rgPage !== null && !defined('RG_BRAND_ROUTED') && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+        ob_end_clean();
+        $rgAbs = $rg_brand_ctx['brand']['domain_live'] && !brandByHostIsThis($rg_brand_ctx['brand']);
+        header('Location: ' . brandOutletUrl($rg_brand_ctx['brand'], $rg_brand_ctx['outlet'], $rgPage, $rgAbs) . brandKeepQuery(), true, 301);
+        exit;
+    }
+    $rg_page_base = brandOutletUrl($rg_brand_ctx['brand'], $rg_brand_ctx['outlet']);
+}
+
 $host = $_SERVER['HTTP_HOST'] ?? '';
 if (strpos($host, ':') !== false) $host = explode(':', $host)[0];
 $is_custom_domain = $host !== 'restrogrow.com' && $host !== 'www.restrogrow.com' && $host !== 'localhost' && $host !== '127.0.0.1' && strpos($host, 'hstgr.io') === false && !preg_match('/\.ngrok-free\.(app|dev)$/', $host);
@@ -555,8 +596,13 @@ $navLabels = getNavLabels($nav_labels_json ?? null);
  * Otherwise uses the slug-based URL on the main platform.
  */
 function restaurantPageUrl($page = '') {
-    global $restaurant_slug, $is_custom_domain, $restaurant_id, $custom_domain, $embed_enabled;
-    
+    global $restaurant_slug, $is_custom_domain, $restaurant_id, $custom_domain, $embed_enabled, $rg_brand_ctx;
+
+    // an outlet of a brand: brand.com/<outlet>/<page> or restrogrow.com/<brand>/<outlet>/<page> (config/brand.php)
+    if (!empty($rg_brand_ctx)) {
+        return brandOutletUrl($rg_brand_ctx['brand'], $rg_brand_ctx['outlet'], (string)$page);
+    }
+
     // If someone is already on their custom domain, use relative URLs
     if ($is_custom_domain) {
         return $page ? '/' . $page : '/';

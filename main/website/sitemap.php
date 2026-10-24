@@ -23,6 +23,15 @@ try { $conn = getConnection(); } catch (Throwable $e) { http_response_code(503);
 seoEnsure($conn);
 $live = "restaurant_name IS NOT NULL AND restaurant_name <> '' AND COALESCE(is_active, 1) = 1 AND COALESCE(subscription_status, '') NOT IN ('expired', 'disabled')";
 
+require_once __DIR__ . '/../config/brand.php';
+brandEnsure($conn);
+// restrogrow.com/<brand>/sitemap.xml: a brand without its own domain (website/brand_router.php)
+if (!empty($_GET['restaurant']) && ($b = brandBySlug($conn, strtolower(trim((string)$_GET['restaurant']))))) {
+    require_once __DIR__ . '/brand_router.php';
+    brandSitemap($conn, $b);
+    exit;
+}
+
 // index of all restaurants
 if (isset($_GET['index'])) {
     $rows = $conn->query("SELECT u.restaurant_id, u.restaurant_name, MAX(u.updated_at) AS updated_at, MAX(COALESCE(s.noindex, 0)) AS noindex,
@@ -30,9 +39,14 @@ if (isset($_GET['index'])) {
         FROM users u LEFT JOIN seo_settings s ON s.restaurant_id = u.restaurant_id WHERE $live GROUP BY u.restaurant_id, u.restaurant_name")->fetchAll(PDO::FETCH_ASSOC);
     echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
     $seen = [];
+    // brands without their own domain list their outlets under restrogrow.com/<brand>/; their outlets are not listed one by one
+    $inBrand = array_flip($conn->query('SELECT restaurant_id FROM brand_outlets')->fetchAll(PDO::FETCH_COLUMN));
+    foreach ($conn->query('SELECT slug FROM brands WHERE is_active = 1 AND NOT (domain_enabled = 1 AND custom_domain IS NOT NULL)')->fetchAll(PDO::FETCH_COLUMN) as $bs) {
+        echo '<sitemap><loc>' . $x("$scheme://$host$root/$bs/sitemap.xml") . "</loc></sitemap>\n";
+    }
     foreach ($rows as $r) {
         $slug = $slugOf($r['restaurant_name']);
-        if ($slug === '' || isset($seen[$slug]) || $r['noindex'] || $r['own_domain']) continue;
+        if ($slug === '' || isset($seen[$slug]) || $r['noindex'] || $r['own_domain'] || isset($inBrand[(string)$r['restaurant_id']])) continue;
         if (seoAutoHidden($conn, $r['restaurant_id'], (string)$r['restaurant_name'])) continue; // demo, test, nearly empty menu
         $seen[$slug] = true;
         echo '<sitemap><loc>' . $x("$scheme://$host$root/$slug/sitemap.xml") . '</loc>' . ($r['updated_at'] ? '<lastmod>' . date('Y-m-d', strtotime($r['updated_at'])) . '</lastmod>' : '') . "</sitemap>\n";

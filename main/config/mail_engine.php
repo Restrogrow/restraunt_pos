@@ -137,6 +137,9 @@ if (!function_exists('mailQueue')) {
         }
         if (!empty($r['logo_url'])) $r['_logo'] = $r['logo_url'];
         $site = !empty($r['custom_domain']) ? 'https://' . $r['custom_domain'] : (!empty($r['username']) ? mailAppUrl() . '/' . rawurlencode($r['username']) : '');
+        // an outlet of a brand: the brand's address (config/brand.php)
+        require_once __DIR__ . '/brand.php';
+        try { if ($rid && ($b = brandRestaurantUrl($conn, (string)$rid, '', true))) $site = $b; } catch (Throwable $e) {}
         return ['name' => (string)($r['restaurant_name'] ?? 'Your restaurant'), 'logo' => !empty($r['_logo']) ? $r['_logo'] : ((!empty($r['restaurant_logo']) || !empty($r['logo_data'])) ? mailAppUrl() . '/main/api/image.php?type=logo&id=' . (int)$r['id'] : ''),
             'logo_wide' => false, 'color' => '#c1440e', 'from_name' => mb_substr((string)($r['restaurant_name'] ?? 'Restaurant'), 0, 60) . ' via RestroGrow',
             'reply_to' => filter_var((string)($r['email'] ?? ''), FILTER_VALIDATE_EMAIL) ? (string)$r['email'] : '',

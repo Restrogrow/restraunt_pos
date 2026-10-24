@@ -1,6 +1,8 @@
 // ── Dynamic URL generator (replicates PHP restaurantPageUrl() at runtime) ──
 // This prevents stale cached HTML from breaking navigation on SW-served pages.
 function restaurantPageUrl(page) {
+    // An outlet of a brand: brand.com/<outlet>/<page> or /<brand>/<outlet>/<page> (PHP sets the base, config/brand.php)
+    if (window.websitePageBase) return window.websitePageBase + (page ? '/' + page : '');
     // Primary: window var set by PHP inline script on fresh pages
     var slug = window.websiteRestaurantSlug;
     var id = window.websiteRestaurantId;

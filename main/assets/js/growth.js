@@ -6,6 +6,7 @@ function growthCur() {
 
 function growthBuildLoyaltyPageUrl() {
   var rid = document.querySelector('meta[name="restaurant-id"]')?.content || window.restaurant_id || '';
+  if (window.restaurantBrandUrl) return window.rgBrandPageUrl('loyalty');   // a brand outlet (config/brand.php)
   if (window.restaurantCustomDomain && window.restaurantEmbedEnabled) {
     var domain = window.restaurantCustomDomain.replace(/^https?:\/\//, '');
     return window.location.protocol + '//' + domain + '/loyalty';

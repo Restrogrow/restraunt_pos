@@ -249,6 +249,8 @@ function money($n, $c) { return $c . number_format($n, $n == floor($n) ? 0 : 2);
   </section>
   <?php endif; ?>
   <?php endif; ?>
+  <!-- Brand website: one address and payment gateway for all outlets (assets/js/brand-studio.js, api/brand_admin.php) -->
+  <section id="brandBox" aria-label="Brand website"></section>
 </main>
 
 <div class="overlay" id="switching"><div>Opening branch…</div></div>
@@ -288,5 +290,6 @@ function money($n, $c) { return $c . number_format($n, $n == floor($n) ? 0 : 2);
     });
   });
 </script>
+<script src="../assets/js/brand-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/brand-studio.js'); ?>"></script>
 </body>
 </html>

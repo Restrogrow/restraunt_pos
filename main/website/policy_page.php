@@ -225,6 +225,9 @@ function renderPolicyPage($type) {
 
 function restaurantPageUrl($page = '') {
     global $restaurant_slug, $is_custom_domain, $restaurant_id;
+    // an outlet of a brand: the brand's address (config/brand.php)
+    require_once __DIR__ . '/../config/brand.php';
+    if ($restaurant_id && function_exists('getConnection') && ($b = brandRestaurantUrl(getConnection(), (string)$restaurant_id, (string)$page))) return $b;
     if ($is_custom_domain) {
         return $page ? '/' . $page : '/';
     }

@@ -1945,6 +1945,7 @@ body {
 <script>
 window.websiteRestaurantId = <?php echo json_encode($restaurant_id ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.websiteRestaurantSlug = <?php echo json_encode($restaurant_slug ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.websitePageBase = <?php echo json_encode($rg_page_base ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>; // a brand outlet's address (config/brand.php)
 window.globalCurrencySymbol = <?php echo json_encode($currency_symbol ?? '₹', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 window.restaurantCountry = <?php echo json_encode($country ?? 'India', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 window.restaurantDialCode = <?php echo json_encode($phone_dial_code ?? '+91', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
@@ -1978,6 +1979,7 @@ window.socialLinks = {
 <script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
+<?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>
 <div class="phone-frame">
 
   <div class="theme-bg<?php echo $header_style === 'minimal' ? ' header-minimal' : ''; echo $hx_style ? ' hx hx-' . $hx_style : ''; echo !empty($hx_story_photos) ? ' has-slides' : ''; echo in_array($hx_style, THEME_HEADER_LIGHT_STYLES, true) ? ' hx-light' : ''; ?>" id="homeSection" style="<?php

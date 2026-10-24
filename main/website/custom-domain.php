@@ -29,6 +29,26 @@ function normalizeCustomDomain($d) {
 }
 
 $domainNormalized = normalizeCustomDomain($domain);
+
+// A brand's own domain (several outlets on one site): the outlet picker at /, each outlet at /<outlet>/<page>
+// (website/brand_router.php, config/brand.php). Pages are included here, at the top level, like below.
+require_once __DIR__ . '/brand_router.php';
+$rgBrand = rgIsCustomHost($domain) ? brandByHost($conn, $domain) : null;
+if ($rgBrand) {
+    $rgPath = trim((string)(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''), '/');
+    if ($rgPath === 'sitemap.xml') { brandSitemap($conn, $rgBrand); exit; }
+    if ($rgPath === 'robots.txt') { brandRobots($rgBrand); exit; }
+    if (preg_match('#^go/([A-Za-z0-9]{4,12})$#', $rgPath, $gm)) { $_GET['c'] = $gm[1]; include __DIR__ . '/go.php'; exit; }
+    if (in_array(pathinfo($rgPath, PATHINFO_EXTENSION), ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'ico', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'webp', 'pdf', 'zip', 'mp4', 'webm', 'json'])) return false;
+    $rgRoute = brandResolve($conn, $rgBrand, $rgPath);
+    if ($rgRoute['type'] === 'redirect') { header('Location: ' . $rgRoute['url'], true, 302); exit; }
+    if ($rgRoute['type'] === 'picker') { $brand = $rgBrand; $brandNext = $rgRoute['next'] ?? ''; include __DIR__ . '/brand_picker.php'; exit; }
+    if ($rgRoute['type'] === 'file') { brandPrepareOutlet($rgBrand, $rgRoute['outlet']); include $rgRoute['file']; exit; }
+    http_response_code(404);
+    include __DIR__ . '/404.php';
+    exit;
+}
+
 $customDomainRow = null;
 if ($domainNormalized !== '') {
     $stmt = $conn->prepare("SELECT restaurant_id, custom_domain FROM users WHERE embed_enabled = 1 AND custom_domain IS NOT NULL AND custom_domain != ''");
@@ -110,6 +130,25 @@ if ($customDomainRow) {
 // Not a custom domain — this is the main domain, handle normally
 $parsedUrl = parse_url($_SERVER['REQUEST_URI']);
 $path = isset($parsedUrl['path']) ? trim($parsedUrl['path'], '/') : '';
+
+// A brand without its own domain: restrogrow.com/<brand>/<outlet>[/<page>] (restrogrow.com/<brand> and
+// /<brand>/<page> are sent to the page files by .htaccess and handled in header.php)
+$rgRel = trim(substr('/' . $path, strlen(brandSiteRoot())), '/');   // without the local copy's /menuwebsite
+$rgSeg = explode('/', $rgRel, 2);
+if ($rgSeg[0] !== '' && ($rgBrand = brandBySlug($conn, $rgSeg[0]))) {
+    if ($rgBrand['domain_live']) {
+        // the brand has its own domain now: same page there
+        header('Location: ' . brandBaseUrl($rgBrand, true) . '/' . ($rgSeg[1] ?? '') . brandKeepQuery(), true, 301);
+        exit;
+    }
+    $rgRoute = brandResolve($conn, $rgBrand, $rgSeg[1] ?? '');
+    if ($rgRoute['type'] === 'redirect') { header('Location: ' . $rgRoute['url'], true, 302); exit; }
+    if ($rgRoute['type'] === 'picker') { $brand = $rgBrand; $brandNext = $rgRoute['next'] ?? ''; include __DIR__ . '/brand_picker.php'; exit; }
+    if ($rgRoute['type'] === 'file') { brandPrepareOutlet($rgBrand, $rgRoute['outlet']); include $rgRoute['file']; exit; }
+    http_response_code(404);
+    include __DIR__ . '/404.php';
+    exit;
+}
 
 $pageMap = [
     '' => 'index.php',

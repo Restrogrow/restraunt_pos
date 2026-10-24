@@ -67,6 +67,15 @@ if ($restaurantId && function_exists('getConnection')) {
 
 $startUrl = $slug ? $siteRoot . $slug : $siteRoot . 'main/website/index.php' . ($restaurantId ? '?restaurant_id=' . urlencode($restaurantId) : '');
 
+// an outlet of a brand: one app for the whole brand, named after it, opening on the outlet picker (config/brand.php)
+try {
+    require_once __DIR__ . '/../config/brand.php';
+    if ($restaurantId && function_exists('getConnection') && ($bo = brandOfRestaurant(getConnection(), (string)$restaurantId))) {
+        $name = $bo['brand']['name'];
+        $startUrl = brandPickerUrl($bo['brand']);
+    }
+} catch (Throwable $e) { /* keep the outlet's own app */ }
+
 header('Content-Type: application/json');
 
 echo json_encode([

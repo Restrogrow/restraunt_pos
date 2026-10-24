@@ -752,11 +752,11 @@ require_once __DIR__ . '/../config/countries.php';
               <table>
                 <thead>
                   <tr>
-                    <th>ID</th><th>Username</th><th>Display Name</th><th>Linked Restaurants</th><th>Status</th><th>Created</th><th>Actions</th>
+                    <th>ID</th><th>Username</th><th>Display Name</th><th>Linked Restaurants</th><th>Brand</th><th>Status</th><th>Created</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="branchAdminsTbody">
-                  <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">Loading...</td></tr>
+                  <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);">Loading...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1718,25 +1718,34 @@ require_once __DIR__ . '/../config/countries.php';
     // Branch Admin functions
     window.loadBranchAdmins = async function() {
       try {
-        const res = await fetch('api.php?action=getBranchAdmins');
+        const [res, bres] = await Promise.all([fetch('api.php?action=getBranchAdmins'), fetch('api.php?action=getBrands')]);
         const d = await res.json();
+        const bd = await bres.json().catch(() => ({}));
         const tbody = document.getElementById('branchAdminsTbody');
         if (!d.success || !d.admins) {
-          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">Error loading</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);">Error loading</td></tr>';
           return;
         }
+        window.saBranchAdmins = d.admins;
+        window.saBrands = (bd && bd.brands) || [];
         tbody.innerHTML = d.admins.map(a => {
           const links = (a.links || []).map(l => `<span class="badge badge-info" style="margin:2px;font-size:0.7rem">${saEsc(l.label || l.restaurant_name || l.restaurant_id)}</span>`).join('') || '<span style="color:var(--muted)">None</span>';
+          const brand = window.saBrands.find(b => b.branch_admin_id === a.id);
+          const brandCell = brand
+            ? `<div style="font-weight:600">${saEsc(brand.name)}${brand.is_active ? '' : ' <span class="badge badge-danger">Off</span>'}</div><a href="${saEsc(brand.address)}" target="_blank" rel="noopener" style="font-size:0.75rem">${saEsc(brand.address.replace(/^https?:\/\//, ''))}</a><div style="font-size:0.72rem;color:var(--muted)">${brand.outlets.length} outlet(s)</div>`
+            : '<span style="color:var(--muted)">—</span>';
           return `<tr>
             <td>${a.id}</td>
             <td>${saEsc(a.username)}</td>
             <td>${a.display_name || '-'}</td>
             <td>${links}</td>
+            <td>${brandCell}</td>
             <td>${a.is_active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>'}</td>
             <td>${a.created_at ? a.created_at.split(' ')[0] : ''}</td>
             <td style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-outline" onclick="toggleBranchAdmin(${a.id}, ${a.is_active ? 0 : 1})">${a.is_active ? 'Disable' : 'Enable'}</button>
               <button class="btn btn-outline" onclick="editBranchLinks(${a.id})">Edit Links</button>
+              <button class="btn btn-outline" onclick="editBrand(${a.id})">${brand ? 'Edit brand' : 'Make brand'}</button>
             </td>
           </tr>`;
         }).join('');
@@ -1748,6 +1757,70 @@ require_once __DIR__ . '/../config/countries.php';
       const d = await res.json();
       if (d.success) { loadBranchAdmins(); showSuperAlert(d.message || 'Updated', 'success'); }
       else showSuperAlert(d.message || 'Error', 'error');
+    };
+
+    // Make / edit the brand of a multi-branch owner: name, restrogrow.com/<address>, which outlets and their addresses
+    // (config/brand.php). The owner sets the domain and the payment gateway from their Branches page.
+    window.editBrand = async function(adminId) {
+      if (!window.Swal) return;
+      const admin = (window.saBranchAdmins || []).find(a => a.id === adminId);
+      if (!admin) return;
+      const brand = (window.saBrands || []).find(b => b.branch_admin_id === adminId);
+      const inBrand = {};
+      (brand ? brand.outlets : []).forEach(o => { inBrand[o.restaurant_id] = o; });
+      const slugify = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const guessName = (admin.display_name || '').replace(/\s*(owner|admin|group)\s*$/i, '').trim() || ((admin.links[0] || {}).restaurant_name || '').split(' ').slice(0, 2).join(' ');
+      const name0 = brand ? brand.name : guessName;
+      const shortName = (full) => { const n = String(full || ''); const b = name0.trim(); return b && n.toLowerCase().indexOf(b.toLowerCase()) === 0 ? (n.slice(b.length).replace(/^[\s,–-]+/, '') || n) : n; };
+      const rows = (admin.links || []).map(l => {
+        const o = inBrand[l.restaurant_id];
+        const label = o ? o.label : (l.label || shortName(l.restaurant_name));
+        const key = o ? o.url_key : slugify(label);
+        return `<tr data-rid="${saEsc(l.restaurant_id)}">
+          <td style="padding:4px"><input type="checkbox" class="bo-on" ${o || !brand ? 'checked' : ''}></td>
+          <td style="padding:4px;font-size:0.8rem">${saEsc(l.restaurant_name || l.restaurant_id)}</td>
+          <td style="padding:4px"><input class="swal2-input bo-label" style="margin:0;height:34px;font-size:0.85rem;width:130px" value="${saEsc(label)}"></td>
+          <td style="padding:4px"><input class="swal2-input bo-key" style="margin:0;height:34px;font-size:0.85rem;width:130px" value="${saEsc(key)}"></td>
+          <td style="padding:4px"><input type="radio" name="bo-default" class="bo-def" ${(brand ? brand.default_restaurant_id === l.restaurant_id : l === admin.links[0]) ? 'checked' : ''}></td>
+        </tr>`;
+      }).join('');
+      const html = `<div style="text-align:left;font-size:0.85rem">
+          <label>Brand name</label><input id="bName" class="swal2-input" style="margin:4px 0 10px;width:100%" value="${saEsc(name0)}" placeholder="Spice Garden">
+          <label>Address on restrogrow.com (works without their own domain)</label>
+          <div style="display:flex;align-items:center;gap:6px;margin:4px 0 10px"><span style="color:var(--muted)">restrogrow.com/</span><input id="bSlug" class="swal2-input" style="margin:0;flex:1" value="${saEsc(brand ? brand.slug : slugify(name0))}"></div>
+          <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px"><input type="checkbox" id="bActive" ${!brand || brand.is_active ? 'checked' : ''}> Brand website on</label>
+          <div style="font-weight:600;margin:6px 0">Outlets <span style="font-weight:400;color:var(--muted)">(name shown in the outlet picker, and its address part: /<i>address</i>/menu)</span></div>
+          <div style="overflow-x:auto"><table style="width:100%"><thead><tr><th></th><th>Restaurant</th><th>Name</th><th>Address part</th><th title="Opens first when someone visits">Main</th></tr></thead><tbody>${rows}</tbody></table></div>
+          ${brand ? `<p style="margin-top:10px;color:var(--muted)">Live at <a href="${saEsc(brand.address)}" target="_blank" rel="noopener">${saEsc(brand.address)}</a>${brand.custom_domain ? ' · own domain ' + saEsc(brand.custom_domain) + (brand.domain_enabled ? ' (on)' : ' (not switched on yet)') : ''}</p>` : '<p style="margin-top:10px;color:var(--muted)">The owner adds their own domain and payment gateway from their Branches page.</p>'}
+        </div>`;
+      const r = await Swal.fire({
+        title: brand ? 'Edit brand' : 'Make a brand for ' + saEsc(admin.display_name || admin.username),
+        html, width: 720, showCancelButton: true, showDenyButton: !!brand, denyButtonText: 'Remove brand', confirmButtonText: 'Save', confirmButtonColor: '#111827',
+        preConfirm: async () => {
+          const outlets = [];
+          let def = '';
+          document.querySelectorAll('.swal2-container tr[data-rid]').forEach(tr => {
+            if (tr.querySelector('.bo-def').checked) def = tr.dataset.rid;
+            if (!tr.querySelector('.bo-on').checked) return;
+            outlets.push({ restaurant_id: tr.dataset.rid, label: tr.querySelector('.bo-label').value, url_key: tr.querySelector('.bo-key').value });
+          });
+          const body = { id: brand ? brand.id : 0, branch_admin_id: adminId, name: document.getElementById('bName').value, slug: document.getElementById('bSlug').value,
+            is_active: document.getElementById('bActive').checked, default_restaurant_id: def, outlets };
+          const res = await fetch('api.php?action=saveBrand', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+          const out = await res.json().catch(() => ({ success: false, message: 'Could not save' }));
+          if (!out.success) { Swal.showValidationMessage(out.message || 'Could not save'); return false; }
+          return out;
+        }
+      });
+      if (r.isConfirmed && r.value) { showSuperAlert('Brand saved: ' + r.value.brand.address, 'success'); loadBranchAdmins(); }
+      if (r.isDenied && brand) {
+        const c = await Swal.fire({ title: 'Remove the brand ' + saEsc(brand.name) + '?', text: 'The outlets go back to their own separate websites. Their menus, orders and customers are not touched.', showCancelButton: true, confirmButtonText: 'Remove', confirmButtonColor: '#b91c1c' });
+        if (!c.isConfirmed) return;
+        const res = await fetch('api.php?action=deleteBrand', { method: 'POST', body: JSON.stringify({ id: brand.id }), headers: { 'Content-Type': 'application/json' } });
+        const out = await res.json();
+        showSuperAlert(out.message || 'Done', out.success ? 'success' : 'error');
+        loadBranchAdmins();
+      }
     };
 
     window.editBranchLinks = async function(id) {

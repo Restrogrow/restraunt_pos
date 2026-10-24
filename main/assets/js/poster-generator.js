@@ -1028,6 +1028,7 @@
       || window.restaurant_id
       || (document.getElementById('restaurantId') || {}).textContent
       || '';
+    if (window.restaurantBrandUrl) return window.rgBrandPageUrl('menu');   // a brand outlet (config/brand.php)
     if (window.restaurantCustomDomain && window.restaurantEmbedEnabled) {
       var domain = window.restaurantCustomDomain.replace(/^https?:\/\//, '');
       return window.location.protocol + '//' + domain + '/menu';

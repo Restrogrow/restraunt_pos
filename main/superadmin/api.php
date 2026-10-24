@@ -716,6 +716,40 @@ try {
       echo json_encode(['success' => true, 'message' => $active ? 'Branch admin enabled' : 'Branch admin disabled']);
       break;
 
+    // Brands: one website address (and optionally one payment gateway) for a multi-branch owner's outlets (config/brand.php)
+    case 'getBrands':
+      require_once __DIR__ . '/../config/brand.php';
+      brandEnsure($conn);
+      $out = [];
+      foreach ($conn->query('SELECT id FROM brands ORDER BY id DESC')->fetchAll(PDO::FETCH_COLUMN) as $bid) {
+        if ($b = brandGet($conn, (int)$bid)) $out[] = brandOut($conn, $b);
+      }
+      echo json_encode(['success' => true, 'brands' => $out]);
+      break;
+
+    case 'saveBrand':
+      require_once __DIR__ . '/../config/brand.php';
+      $data = json_decode(file_get_contents('php://input'), true) ?? [];
+      try {
+        $bid = brandSaveAdmin($conn, $data);
+      } catch (InvalidArgumentException $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        break;
+      }
+      echo json_encode(['success' => true, 'message' => 'Brand saved', 'brand' => brandOut($conn, brandGet($conn, $bid))]);
+      break;
+
+    case 'deleteBrand':
+      require_once __DIR__ . '/../config/brand.php';
+      brandEnsure($conn);
+      $data = json_decode(file_get_contents('php://input'), true) ?? [];
+      $bid = (int)($data['id'] ?? 0);
+      // the outlets go back to being separate restaurants at their own addresses
+      $conn->prepare('DELETE FROM brand_outlets WHERE brand_id = ?')->execute([$bid]);
+      $conn->prepare('DELETE FROM brands WHERE id = ?')->execute([$bid]);
+      echo json_encode(['success' => true, 'message' => 'Brand removed. Its outlets are separate restaurants again.']);
+      break;
+
     case 'getLinkedRestaurants':
       $id = (int)($_GET['id'] ?? 0);
       if ($id <= 0) throw new Exception('Invalid id');

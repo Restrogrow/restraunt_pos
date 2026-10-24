@@ -1333,6 +1333,7 @@ window.__previewTheme = <?php echo json_encode($preview_theme ?? null); ?>;
 // Custom picture for the "All" category button (Website Appearance), or null
 window.allCategoryIcon = <?php echo json_encode($all_category_icon ?? null); ?>;
 window.websiteRestaurantSlug = <?php echo json_encode($restaurant_slug ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+window.websitePageBase = <?php echo json_encode($rg_page_base ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>; // a brand outlet's address (config/brand.php)
 window.websiteTableNumber = <?php echo json_encode($qr_table ?? '', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 // Restore table from sessionStorage if URL param missing but previously set (e.g., coming back from cart)
 (function() {
@@ -1368,6 +1369,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
 <script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
+<?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>
 <div class="phone-frame">
   <div class="bg-wrapper">
     <div class="pr-share-header">

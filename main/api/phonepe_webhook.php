@@ -35,6 +35,9 @@ try {
     $pu = (string)env('PHONEPE_WEBHOOK_USERNAME', ''); $pw = (string)env('PHONEPE_WEBHOOK_PASSWORD', '');
     if ($pu !== '' && $pw !== '') $expected[] = hash('sha256', $pu . ':' . $pw);
     if ($rid !== '' && ($c = ppWebhookCreds($rid))) $expected[] = hash('sha256', $c['username'] . ':' . $c['password']);
+    // a brand's own PhonePe account (config/brand.php): one webhook for all its outlets
+    $bid = (int)($_GET['bid'] ?? 0);
+    if ($bid > 0 && ($c = ppBrandWebhookCreds($bid))) $expected[] = hash('sha256', $c['username'] . ':' . $c['password']);
     if ($expected) {
         $ok = false;
         foreach ($expected as $e) if ($auth !== '' && hash_equals($e, $auth)) $ok = true;

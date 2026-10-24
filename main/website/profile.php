@@ -1176,6 +1176,7 @@ body { background: #e3e6ea; }
 <script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
 </head>
 <body>
+<?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>
 <?php
 // Gallery / dashboard previews (?preview_demo=1 together with ?preview_theme=...): a
 // made-up customer so each look can be seen filled in. Only for that page view —

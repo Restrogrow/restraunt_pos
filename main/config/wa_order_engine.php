@@ -98,6 +98,7 @@ if (!function_exists('woHandle')) {
                 packaging_charge, minimum_order_value, currency_symbol, custom_domain FROM users WHERE restaurant_id = ? LIMIT 1');
         $u->execute([$rid]);
         $rest = $u->fetch(PDO::FETCH_ASSOC) ?: [];
+        $rest['restaurant_id'] = $rid;   // woMenuUrl() needs it for a brand outlet's address
         $types = array_values(array_filter(explode(',', (string)($r['order_types'] ?? 'dinein,takeaway,delivery'))));
         $allowed = [];
         foreach (['dinein' => 'enable_dinein', 'takeaway' => 'enable_takeaway', 'delivery' => 'enable_delivery'] as $t => $col) {
@@ -439,6 +440,9 @@ if (!function_exists('woHandle')) {
     function woMenuUrl(array $cfg): string
     {
         $r = $cfg['restaurant'];
+        // an outlet of a brand: the brand's address (config/brand.php)
+        require_once __DIR__ . '/brand.php';
+        try { if (!empty($r['restaurant_id']) && ($b = brandRestaurantUrl(getConnection(), (string)$r['restaurant_id'], '', true))) return $b; } catch (Throwable $e) {}
         if (!empty($r['custom_domain'])) return 'https://' . $r['custom_domain'];
         return !empty($r['username']) ? 'https://restrogrow.com/' . rawurlencode((string)$r['username']) : '';
     }
