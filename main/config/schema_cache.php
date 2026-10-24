@@ -36,9 +36,10 @@ if (!function_exists('rgHasColumn')) {
         $key = 'c:' . $table . '.' . $column;
         if (rgSchemaKnown($key)) return true;
         try {
-            $st = $conn->prepare('SHOW COLUMNS FROM `' . str_replace('`', '', $table) . '` LIKE ?');
-            $st->execute([$column]);
-            $yes = $st->rowCount() > 0;
+            // information_schema, not SHOW ... LIKE ?: native prepares (EMULATE_PREPARES off) refuse ? in SHOW
+            $st = $conn->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+            $st->execute([$table, $column]);
+            $yes = (bool)$st->fetchColumn();
         } catch (Throwable $e) { $yes = false; }
         if ($yes) rgSchemaRemember($key);
         return $yes;
@@ -48,7 +49,7 @@ if (!function_exists('rgHasColumn')) {
         $key = 't:' . $table;
         if (rgSchemaKnown($key)) return true;
         try {
-            $st = $conn->prepare('SHOW TABLES LIKE ?');
+            $st = $conn->prepare('SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1');
             $st->execute([$table]);
             $yes = (bool)$st->fetchColumn();
         } catch (Throwable $e) { $yes = false; }
