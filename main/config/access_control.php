@@ -119,6 +119,12 @@ function accessPresets(): array {
     ];
 }
 
+/** "Coupons", "Tables" … for a page id (the page id itself if unknown). */
+function accessPageLabel(string $page): string {
+    foreach (accessModules() as $m) if (isset($m[3][$page])) return $m[3][$page][0];
+    return $page;
+}
+
 /** Every page id that can be switched off. */
 function accessAllPages(): array {
     $all = [];

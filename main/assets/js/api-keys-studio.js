@@ -50,9 +50,12 @@
     '.ak-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px}.ak-row label{display:flex;flex-direction:column;gap:5px;font-size:.82rem;font-weight:600;color:#374151;flex:1;min-width:180px}',
     '.ak-row input,.ak-row select{padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:10px;font:inherit;font-size:.9rem;color:#111827;background:#fff;width:100%;box-sizing:border-box}',
     '.ak-row .ak-hint{font-weight:400;color:#6b7280;font-size:.76rem}',
-    '.ak-perms{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin:6px 0 12px}',
-    '.ak-perm{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1.5px solid #eef0f3;border-radius:12px;cursor:pointer;font-size:.86rem;color:#374151;line-height:1.4;background:#fff}',
-    '.ak-perm.on{border-color:#ff6b35;background:#fff7f3}.ak-perm input{margin-top:3px;accent-color:#ff6b35}.ak-perm b{display:block;color:#111827}.ak-perm code{font-size:.72rem;color:#9ca3af}',
+    '.ak-perms{border:1px solid #eef0f3;border-radius:12px;margin:6px 0 12px;overflow:hidden}',
+    '.ak-prow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-top:1px solid #f3f4f6}.ak-prow:first-child{border-top:0}',
+    '.ak-prow-t{flex:1;min-width:0}.ak-prow-t b{display:block;font-size:.88rem;color:#111827}.ak-prow-t span{font-size:.76rem;color:#6b7280}',
+    '.ak-perm{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1.5px solid #e5e7eb;border-radius:999px;cursor:pointer;font-size:.8rem;font-weight:600;color:#4b5563;background:#fff;white-space:nowrap}',
+    '.ak-perm.on{border-color:#ff6b35;background:#fff7f3;color:#c2410c}.ak-perm input{margin:0;accent-color:#ff6b35}.ak-perm.na{visibility:hidden}',
+    '.ak-pcount{font-size:.76rem;color:#6b7280;margin-left:auto}',
     '.ak-presets{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.8rem;color:#6b7280}',
     '.ak-btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;font-size:.86rem;cursor:pointer;background:#ff6b35;color:#fff;white-space:nowrap}.ak-btn .material-symbols-rounded{font-size:18px}',
     '.ak-btn.ghost{background:#f3f4f6;color:#374151}.ak-btn.danger{background:#fef2f2;color:#b91c1c}.ak-btn.sm{padding:6px 10px;font-size:.78rem}.ak-btn.sm .material-symbols-rounded{font-size:16px}.ak-btn[disabled]{opacity:.6;cursor:default}',
@@ -100,8 +103,19 @@
       + codeBox('curl ' + D.base_url + '/me \\\n  -H "Authorization: Bearer ' + k + '"', 'akSnip');
   }
 
+  // one tag per area: "Menu · change" (orange) or "Menu · see"
   function permChips(perms) {
-    return perms.map(function (p) { return '<span class="ak-chip' + (/:write$/.test(p) ? ' w' : '') + '">' + esc(p) + '</span>'; }).join('');
+    if (D.perms.every(function (p) { return perms.indexOf(p.id) >= 0; })) return '<span class="ak-chip w">Full access: see and change everything</span>';
+    var seen = {}, out = [];
+    D.perms.forEach(function (p) {
+      if (seen[p.area]) return;
+      var w = perms.indexOf(p.area && D.perms.filter(function (x) { return x.area === p.area && /:write$/.test(x.id); }).map(function (x) { return x.id; })[0]) >= 0;
+      var r = D.perms.some(function (x) { return x.area === p.area && /:read$/.test(x.id) && perms.indexOf(x.id) >= 0; });
+      if (!w && !r) return;
+      seen[p.area] = true;
+      out.push('<span class="ak-chip' + (w ? ' w' : '') + '">' + esc(p.area) + ' · ' + (w ? 'change' : 'see') + '</span>');
+    });
+    return out.join('');
   }
 
   function left(m) {
@@ -139,6 +153,24 @@
     if (form.exp === 'date') return form.date;
     return inDays(parseInt(form.exp, 10));
   }
+  // one row per area: See (…:read) and Change (…:write) side by side
+  function permRows(sel) {
+    var areas = [], byArea = {};
+    D.perms.forEach(function (p) {
+      if (!byArea[p.area]) { byArea[p.area] = {}; areas.push(p.area); }
+      byArea[p.area][/:write$/.test(p.id) ? 'w' : 'r'] = p;
+    });
+    var box = function (p, label) {
+      if (!p) return '<label class="ak-perm na"><input type="checkbox" disabled>' + label + '</label>';
+      var on = sel.indexOf(p.id) >= 0;
+      return '<label class="ak-perm' + (on ? ' on' : '') + '" title="' + esc(p.id) + ': ' + esc(p.what) + '"><input type="checkbox" value="' + esc(p.id) + '"' + (on ? ' checked' : '') + '>' + label + '</label>';
+    };
+    return areas.map(function (a) {
+      var r = byArea[a].r, w = byArea[a].w;
+      return '<div class="ak-prow"><div class="ak-prow-t"><b>' + esc(a) + '</b><span>' + esc((w || r).what) + '</span></div>' + box(r, 'See') + box(w, 'Change') + '</div>';
+    }).join('');
+  }
+
   function formHtml() {
     var f = form, opts = [['never', 'Never (until I revoke it)'], ['7', '7 days'], ['30', '30 days'], ['90', '90 days'], ['365', '1 year'], ['date', 'Pick a date…']];
     return '<div id="akForm">'
@@ -146,10 +178,7 @@
       + '<label>Valid until<select id="akExp">' + opts.map(function (o) { return '<option value="' + o[0] + '"' + (f.exp === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'
       + (f.exp === 'date' ? '<label>Last day it works<input id="akDate" type="date" min="' + esc(D.today) + '" value="' + esc(f.date) + '"></label>' : '') + '</div>'
       + '<div class="ak-presets">Permissions: <button class="ak-btn ghost sm" type="button" data-ak-preset="read">Read only</button><button class="ak-btn ghost sm" type="button" data-ak-preset="all">Everything</button><button class="ak-btn ghost sm" type="button" data-ak-preset="none">Clear</button></div>'
-      + '<div class="ak-perms">' + D.perms.map(function (p) {
-        var on = f.perms.indexOf(p.id) >= 0;
-        return '<label class="ak-perm' + (on ? ' on' : '') + '"><input type="checkbox" value="' + esc(p.id) + '"' + (on ? ' checked' : '') + '><span><b>' + esc(p.label) + '</b>' + esc(p.what) + '<br><code>' + esc(p.id) + '</code></span></label>';
-      }).join('') + '</div>'
+      + '<div class="ak-perms">' + permRows(f.perms) + '</div>'
       + '<div class="ak-row"><label>Allowed IP addresses <span class="ak-hint">Optional. Leave empty to allow any address. Separate with commas.</span>'
       + '<input id="akIps" value="' + esc(f.ips) + '" placeholder="e.g. 203.0.113.7, 198.51.100.20"></label></div>'
       + (D.your_ip ? '<p class="ak-small" style="margin:-6px 0 12px">Your address right now: <code>' + esc(D.your_ip) + '</code> <button class="ak-btn ghost sm" type="button" data-ak-myip>' + ic('add') + 'Add it</button></p>' : '')
@@ -282,7 +311,15 @@
   document.addEventListener('change', function (e) {
     if (!$('akRoot') || !$('akRoot').contains(e.target)) return;
     var box = e.target.closest('.ak-perm');
-    if (box) { box.classList.toggle('on', e.target.checked); return; }
+    if (box) {
+      box.classList.toggle('on', e.target.checked);
+      var v = e.target.value, row = box.parentNode, pair;
+      // changing something needs seeing it: Change on turns See on, See off turns Change off
+      if (/:write$/.test(v) && e.target.checked) pair = row.querySelector('input[value="' + v.replace(':write', ':read') + '"]');
+      if (/:read$/.test(v) && !e.target.checked) pair = row.querySelector('input[value="' + v.replace(':read', ':write') + '"]');
+      if (pair && pair.checked !== e.target.checked) { pair.checked = e.target.checked; pair.parentNode.classList.toggle('on', pair.checked); }
+      return;
+    }
     if (e.target.id === 'akExp') { readForm(); draw(); }
   });
 

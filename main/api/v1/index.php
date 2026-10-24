@@ -19,11 +19,13 @@ header('Access-Control-Allow-Methods: GET, POST, PATCH, OPTIONS');
 header('Access-Control-Allow-Headers: Authorization, X-API-Key, Content-Type');
 header('Access-Control-Expose-Headers: Retry-After, X-RateLimit-Limit');
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') { http_response_code(204); exit; }
+ob_start();
 
 const API_RATE_LIMIT = 120;   // calls a minute per restaurant (shared with /mcp keys)
 
 function apiOut(int $status, array $body, array $headers = []): void
 {
+    while (ob_get_level()) ob_end_clean();   // stray output from included code (a blank line …) would spoil the JSON
     http_response_code($status);
     header('Content-Type: application/json; charset=UTF-8');
     header('Cache-Control: no-store');
@@ -37,8 +39,22 @@ function apiErr(int $status, string $code, string $message, array $headers = [])
     apiOut($status, ['success' => false, 'error' => ['code' => $code, 'message' => $message]], $headers);
 }
 
-/** method + path → [tool, permission, path params]. The route list is also the OpenAPI document (apiOpenApi()). */
+/** [method, path, tool, permission, tag]: the core routes plus every module's (mcp/tools/). Also the OpenAPI document. */
 function apiRoutes(): array
+{
+    require_once __DIR__ . '/../../mcp/tools.php';
+    $core = array_map(fn($r) => $r + [4 => apiCoreTag($r[1])], apiCoreRoutes());
+    $mods = [];
+    foreach (mcpModuleTools() as $name => $t) if ($t['route']) $mods[] = [$t['route'][0], $t['route'][1], $name, $t['perm'], $t['route'][2] ?? ucfirst($t['module'])];
+    return array_merge($core, $mods);
+}
+
+function apiCoreTag(string $path): string
+{
+    return ['me' => 'Key', 'restaurant' => 'Restaurant', 'menu' => 'Menu', 'orders' => 'Orders', 'reports' => 'Reports'][explode('/', $path)[0]] ?? 'Other';
+}
+
+function apiCoreRoutes(): array
 {
     return [
         ['GET', 'me', null, null],
@@ -68,7 +84,10 @@ if ($path === 'openapi.json' && $method === 'GET') {
 $route = null;
 $params = [];
 $knownPath = false;
-foreach (apiRoutes() as $r) {
+$routes = apiRoutes();
+// fixed paths first: menu/sections/order must not be taken for menu/sections/{id}
+usort($routes, fn($a, $b) => substr_count($a[1], '{') <=> substr_count($b[1], '{'));
+foreach ($routes as $r) {
     $re = '#^' . preg_replace('#\\\{([a-z_]+)\\\}#', '(?P<$1>[^/]+)', preg_quote($r[1], '#')) . '$#';
     if (!preg_match($re, $path, $m)) continue;
     $knownPath = true;
@@ -128,13 +147,18 @@ if ($method === 'GET') {
     $args = $raw === '' ? [] : json_decode($raw, true);
     if (!is_array($args)) apiErr(400, 'bad_json', 'Send a JSON object body with Content-Type: application/json.');
 }
-foreach (['limit', 'item_id', 'order_id', 'prep_minutes'] as $k) if (isset($args[$k]) && is_string($args[$k]) && is_numeric($args[$k])) $args[$k] = (int)$args[$k];
-if (isset($args['only_switched_off']) && is_string($args['only_switched_off'])) $args['only_switched_off'] = in_array(strtolower($args['only_switched_off']), ['1', 'true', 'yes'], true);
-foreach ($params as $k => $v) $args[$k] = in_array($k, ['item_id', 'order_id'], true) ? (int)$v : $v;
-if (isset($params['item_id']) && $args['item_id'] <= 0) apiErr(404, 'not_found', 'item_id must be a number.');
-if (isset($params['order_id']) && $args['order_id'] <= 0) apiErr(404, 'not_found', 'order_id must be a number. For the number on the bill use /orders/number/{order_number}.');
+foreach ($params as $k => $v) $args[$k] = $v;
+// query strings and path parts arrive as text: turn them into the types the tool's schema asks for
+$schema = (array)(array_column(mcpToolDefs(), null, 'name')[$tool]['inputSchema']['properties'] ?? []);
+foreach ($args as $k => $v) {
+    if (!is_string($v) || !isset($schema[$k]['type'])) continue;
+    $type = $schema[$k]['type'];
+    if ($type === 'integer' && preg_match('/^-?\d+$/', $v)) $args[$k] = (int)$v;
+    elseif ($type === 'number' && is_numeric($v)) $args[$k] = (float)$v;
+    elseif ($type === 'boolean') $args[$k] = in_array(strtolower($v), ['1', 'true', 'yes'], true);
+    elseif (isset($params[$k]) && in_array($type, ['integer', 'number'], true)) apiErr(404, 'not_found', "$k must be a number." . ($k === 'order_id' ? ' For the number on the bill use /orders/number/{order_number}.' : ''));
+}
 
-require_once __DIR__ . '/../../mcp/tools.php';
 try {
     $s = ownerMgrSettings($conn, $rid);
     ownerMgrUseTz($conn, $s);
@@ -159,8 +183,8 @@ function apiOpenApi(): array
     $tools = array_column(mcpToolDefs(), null, 'name');
     $err = ['$ref' => '#/components/responses/Error'];
     $paths = [];
-    foreach (apiRoutes() as [$m, $p, $tool, $perm]) {
-        $op = ['security' => [['bearer' => []]], 'responses' => ['200' => ['$ref' => '#/components/responses/Ok'], '401' => $err, '403' => $err, '404' => $err, '422' => $err, '429' => $err]];
+    foreach (apiRoutes() as [$m, $p, $tool, $perm, $tag]) {
+        $op = ['tags' => [$tag], 'security' => [['bearer' => []]], 'responses' => ['200' => ['$ref' => '#/components/responses/Ok'], '401' => $err, '403' => $err, '404' => $err, '422' => $err, '429' => $err]];
         if ($tool === null) {
             $op += ['operationId' => 'me', 'summary' => 'This key', 'description' => 'The restaurant this key belongs to and its permissions. Needs no permission.'];
         } else {

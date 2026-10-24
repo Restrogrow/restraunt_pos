@@ -18,14 +18,32 @@
 if (defined('API_KEYS_LOADED')) return;
 define('API_KEYS_LOADED', true);
 
-/** permission => [label, what it allows] */
+/** permission => [label, what it allows, area]. The dashboard shows them by area, read and change side by side. */
 const API_PERMS = [
-    'restaurant:read' => ['Restaurant details', 'Name, currency, timezone and menu sections'],
-    'menu:read'       => ['Read menu', 'Dishes, prices, sizes and which are switched on'],
-    'menu:write'      => ['Change menu', 'Add dishes, edit names and prices, switch dishes on or off'],
-    'orders:read'     => ['Read orders', 'Orders with dishes, customer name and phone, payment'],
-    'orders:write'    => ['Change orders', 'Accept, prepare, mark ready, complete, cancel or reject orders'],
-    'reports:read'    => ['Read reports', 'Sales, top dishes, peak hours, payments and other reports'],
+    'restaurant:read'   => ['Restaurant details', 'Name, currency, timezone and menu sections', 'Restaurant'],
+    'menu:read'         => ['Read menu', 'Dishes, prices, sizes, sections, add-ons', 'Menu'],
+    'menu:write'        => ['Change menu', 'Add, edit, hide or delete dishes; photos, sizes, sections, add-ons', 'Menu'],
+    'orders:read'       => ['Read orders', 'Orders with dishes, customer name and phone, payment', 'Orders'],
+    'orders:write'      => ['Change orders', 'Accept, prepare, mark ready, complete, cancel or reject orders', 'Orders'],
+    'reports:read'      => ['Read reports', 'Sales, top dishes, peak hours, payments and other reports', 'Reports'],
+    'website:read'      => ['Read website', 'Theme, banners, about, hours, policy pages, SEO', 'Website'],
+    'website:write'     => ['Change website', 'Theme and colours, banners, logo, about, hours, policy pages, SEO', 'Website'],
+    'offers:read'       => ['Read offers', "Coupons, combos, today's special, scratch card, wallet settings", 'Offers'],
+    'offers:write'      => ['Change offers', 'Create, edit, switch or delete coupons, combos and specials; scratch card and wallet settings', 'Offers'],
+    'loyalty:read'      => ['Read loyalty', 'Points, cashback or stamps rules, rewards, tiers (no customer data)', 'Loyalty'],
+    'loyalty:write'     => ['Change loyalty', 'Change the loyalty programme, rewards and tiers', 'Loyalty'],
+    'tables:read'       => ['Read tables', 'Areas, tables with live status, waiter calls', 'Tables'],
+    'tables:write'      => ['Change tables', 'Add, edit or delete tables and areas; answer waiter calls', 'Tables'],
+    'reservations:read' => ['Read reservations', 'Bookings with guest name and phone', 'Reservations'],
+    'reservations:write'=> ['Change reservations', 'Add bookings, confirm, seat, complete, cancel', 'Reservations'],
+    'staff:read'        => ['Read staff', 'Staff names, roles, phone, active or paused (never passwords)', 'Staff'],
+    'staff:write'       => ['Change staff', 'Add staff, change roles, pause or remove them', 'Staff'],
+    'stock:read'        => ['Read stock', 'Stock items, levels, low stock', 'Stock'],
+    'stock:write'       => ['Change stock', 'Add items, restock, record wastage, set counts', 'Stock'],
+    'delivery:read'     => ['Read delivery zones', 'Delivery pincodes, charges and times', 'Delivery'],
+    'delivery:write'    => ['Change delivery zones', 'Add, edit, switch or delete delivery zones', 'Delivery'],
+    'catering:read'     => ['Read catering', 'Catering requests and price tiers', 'Catering'],
+    'catering:write'    => ['Change catering', 'Confirm, quote or decline requests; price tiers', 'Catering'],
 ];
 
 /** The permission each MCP tool needs when it is called with an API key (mcp/tools.php). */
@@ -59,7 +77,7 @@ function apiKeysEnsure(PDO $conn): void
         name VARCHAR(80) NOT NULL,
         key_hash CHAR(64) NOT NULL UNIQUE,
         key_hint VARCHAR(40) NOT NULL,
-        perms VARCHAR(255) NOT NULL,
+        perms VARCHAR(1000) NOT NULL,
         allowed_ips VARCHAR(500) NOT NULL DEFAULT '',
         expires_at DATETIME NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -71,7 +89,10 @@ function apiKeysEnsure(PDO $conn): void
         INDEX (restaurant_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     // the live table was made before these columns existed (2026-10-24)
-    $have = array_column($conn->query('SHOW COLUMNS FROM api_keys')->fetchAll(PDO::FETCH_ASSOC), 'Field');
+    $cols = array_column($conn->query('SHOW COLUMNS FROM api_keys')->fetchAll(PDO::FETCH_ASSOC), 'Type', 'Field');
+    $have = array_keys($cols);
+    // 255 was too short once every area got its own permissions (2026-10-24)
+    if (($cols['perms'] ?? '') === 'varchar(255)') $conn->exec('ALTER TABLE api_keys MODIFY perms VARCHAR(1000) NOT NULL');
     $add = ['allowed_ips' => "VARCHAR(500) NOT NULL DEFAULT '' AFTER perms", 'use_count' => 'INT UNSIGNED NOT NULL DEFAULT 0 AFTER last_used_at',
         'paused_at' => 'DATETIME NULL AFTER use_count', 'rotated_from' => 'INT NULL AFTER revoked_at'];
     foreach ($add as $col => $def) if (!in_array($col, $have, true)) $conn->exec("ALTER TABLE api_keys ADD COLUMN $col $def");

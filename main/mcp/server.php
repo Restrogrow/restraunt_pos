@@ -10,6 +10,7 @@ require_once __DIR__ . '/../config/mcp_oauth.php';
 require_once __DIR__ . '/../config/rate_limit.php';
 require_once __DIR__ . '/../db_connection.php';
 mcpCors();
+ob_start();
 
 const MCP_PROTOCOLS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 
@@ -80,7 +81,7 @@ function mcpHandle(PDO $conn, array $tok, array $msg): ?array
             require_once __DIR__ . '/tools.php';
             $tools = mcpToolDefs();
             // an API key lists only the tools its permissions allow
-            if (isset($tok['perms'])) $tools = array_values(array_filter($tools, fn($t) => in_array(API_TOOL_PERMS[$t['name']] ?? '', $tok['perms'], true)));
+            if (isset($tok['perms'])) { $info = mcpToolInfo(); $tools = array_values(array_filter($tools, fn($t) => in_array($info[$t['name']]['perm'] ?? '', $tok['perms'], true))); }
             return $ok(['tools' => $tools]);
         case 'tools/call':
             require_once __DIR__ . '/tools.php';

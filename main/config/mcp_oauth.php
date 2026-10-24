@@ -98,6 +98,7 @@ function mcpHash(string $t): string { return hash('sha256', $t); }
 
 function mcpJson(int $status, array $body, array $headers = []): void
 {
+    while (ob_get_level()) ob_end_clean();   // stray output from included code would spoil the JSON
     http_response_code($status);
     header('Content-Type: application/json');
     header('Cache-Control: no-store');

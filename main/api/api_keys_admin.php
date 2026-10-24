@@ -87,7 +87,7 @@ try {
         akOut(['success' => false, 'message' => 'Unknown action'], 400);
     }
     $perms = [];
-    foreach (API_PERMS as $k => [$label, $what]) $perms[] = ['id' => $k, 'label' => $label, 'what' => $what];
+    foreach (API_PERMS as $k => [$label, $what, $area]) $perms[] = ['id' => $k, 'label' => $label, 'what' => $what, 'area' => $area];
     // always the main site's address (also when the dashboard is opened locally): that is where the API lives
     akOut(['success' => true, 'is_owner' => $isOwner, 'base_url' => 'https://restrogrow.com/api/v1', 'mcp_url' => 'https://restrogrow.com/mcp',
         'docs_url' => 'https://restrogrow.com/developers', 'perms' => $perms, 'max_keys' => API_KEYS_MAX, 'your_ip' => apiKeyClientIp(),

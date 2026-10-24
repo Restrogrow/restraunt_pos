@@ -6,7 +6,8 @@
  * (config/owner_manager.php); changes go through the same rules as the dashboard (order state machine,
  * restaurant-scoped updates, activity log). Read tools need the "read" scope, changes need "write"; with an API key
  * each tool needs its own permission instead (API_TOOL_PERMS in config/api_keys.php). The REST API (api/v1) runs these too.
- * Reports follow Super Admin › Restaurants › Access (reportsPage); menu and orders are always on.
+ * Reports follow Super Admin › Restaurants › Access (reportsPage); menu and orders are always on; module tools name
+ * the page they belong to and are refused while it is off. Module tool sets live in mcp/tools/ (MCP_MODULES).
  */
 require_once __DIR__ . '/../config/owner_manager.php';
 require_once __DIR__ . '/../config/access_control.php';
@@ -18,8 +19,66 @@ const MCP_REPORTS = ['top_dishes', 'slow_dishes', 'dish', 'peak_hours', 'payment
 
 class McpToolError extends Exception {}
 
+/**
+ * More tool sets, one file each in mcp/tools/ (website, menu extras, offers, loyalty, operations). A module file
+ * defines <key>Tools(): a list of ['def' => mcpDef(...), 'perm' => API permission, 'page' => access page id or null,
+ * 'route' => [METHOD, 'rest/path/{param}'] or null], and <key>Run(PDO, array $ctx, string $name, array $args): [text, data].
+ */
+const MCP_MODULES = ['menuExtras' => 'menu_extras.php', 'offers' => 'offers.php', 'website' => 'website.php', 'loyalty' => 'loyalty.php', 'ops' => 'operations.php'];
+
+/** One tool definition. $kind: read, write (safe to repeat), create (adds something) or delete (removes / can't undo). */
+function mcpDef(string $name, string $title, string $desc, array $props, array $req, string $kind, string $busy, string $done): array
+{
+    $ann = ['readOnlyHint' => $kind === 'read', 'destructiveHint' => $kind === 'delete', 'idempotentHint' => in_array($kind, ['read', 'write'], true), 'openWorldHint' => false];
+    $scope = $kind === 'read' ? 'read' : 'write';
+    return [
+        'name' => $name, 'title' => $title, 'description' => $desc,
+        'inputSchema' => ['type' => 'object', 'properties' => (object)$props] + ($req ? ['required' => $req] : []) + ['additionalProperties' => false],
+        'annotations' => $ann + ['title' => $title],
+        'securitySchemes' => [['type' => 'oauth2', 'scopes' => [$scope]]],
+        '_meta' => ['securitySchemes' => [['type' => 'oauth2', 'scopes' => [$scope]]], 'openai/toolInvocation/invoking' => $busy, 'openai/toolInvocation/invoked' => $done],
+    ];
+}
+
+/** Every module's tool entries, keyed by tool name (each also carries 'module'). */
+function mcpModuleTools(): array
+{
+    static $all = null;
+    if ($all !== null) return $all;
+    $all = [];
+    foreach (MCP_MODULES as $key => $file) {
+        $path = __DIR__ . '/tools/' . $file;
+        if (!is_file($path)) continue;
+        require_once $path;
+        foreach (($key . 'Tools')() as $t) $all[$t['def']['name']] = $t + ['module' => $key, 'page' => null, 'route' => null];
+    }
+    return $all;
+}
+
+/** tool name => ['perm' => API key permission, 'page' => access page that must be on (or null)]. */
+function mcpToolInfo(): array
+{
+    require_once __DIR__ . '/../config/api_keys.php';
+    $info = [];
+    foreach (API_TOOL_PERMS as $name => $perm) $info[$name] = ['perm' => $perm, 'page' => null];
+    foreach (mcpModuleTools() as $name => $t) $info[$name] = ['perm' => $t['perm'], 'page' => $t['page']];
+    return $info;
+}
+
+/** Money with the restaurant's currency, for module answers. */
+function mcpMoney(array $ctx, $n): string
+{
+    return ownerMgrMoney($ctx['settings'], (float)$n);
+}
+
 /** The tool list for tools/list. */
 function mcpToolDefs(): array
+{
+    return array_merge(mcpCoreToolDefs(), array_values(array_map(fn($t) => $t['def'], mcpModuleTools())));
+}
+
+/** The first tools: restaurant, sales and reports, orders, basic menu. */
+function mcpCoreToolDefs(): array
 {
     $period = ['type' => 'string', 'enum' => OM_PERIODS, 'description' => 'Time range, in the restaurant\'s own timezone.'];
     $ro = ['readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false];
@@ -56,7 +115,7 @@ function mcpToolDefs(): array
              'price' => ['type' => 'number', 'minimum' => 0], 'type' => ['type' => 'string', 'enum' => MCP_DISH_TYPES],
              'sizes' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string'], 'price' => ['type' => 'number', 'minimum' => 0]], 'required' => ['name', 'price']]]],
             ['item_id'], $rw, 'write', 'Saving the dish…', 'Dish saved'),
-        $t('add_dish', 'Add a dish', 'Add a new dish to the menu. The section (e.g. Starters, Main Course) is created if it does not exist yet. Photos and sizes are added later from the RestroGrow dashboard.',
+        $t('add_dish', 'Add a dish', 'Add a new dish to the menu. The section (e.g. Starters, Main Course) is created if it does not exist yet. Add a photo with set_dish_photo and sizes with set_dish_sizes.',
             ['name' => ['type' => 'string', 'minLength' => 2, 'maxLength' => 150], 'price' => ['type' => 'number', 'minimum' => 0], 'section' => ['type' => 'string', 'minLength' => 2, 'maxLength' => 80],
              'type' => ['type' => 'string', 'enum' => MCP_DISH_TYPES, 'default' => 'Veg'], 'description' => ['type' => 'string', 'maxLength' => 1000],
              'prep_minutes' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 180], 'available' => ['type' => 'boolean', 'default' => true]],
@@ -75,14 +134,26 @@ function mcpRunTool(PDO $conn, array $ctx, string $name, array $a): array
     $s = $ctx['settings'];
     $defs = array_column(mcpToolDefs(), null, 'name');
     if (!isset($defs[$name])) throw new McpToolError("Unknown tool: $name");
+    $info = mcpToolInfo()[$name] ?? ['perm' => '', 'page' => null];
     if (isset($ctx['perms'])) {
         // an API key (config/api_keys.php): the owner ticked what it may do
-        require_once __DIR__ . '/../config/api_keys.php';
-        $perm = API_TOOL_PERMS[$name] ?? '';
-        if (!in_array($perm, $ctx['perms'], true)) throw new McpToolError("This API key has no \"$perm\" permission. The owner can make a key with it in the RestroGrow dashboard › API keys.");
+        if (!in_array($info['perm'], $ctx['perms'], true)) throw new McpToolError("This API key has no \"{$info['perm']}\" permission. The owner can make a key with it in the RestroGrow dashboard › API keys.");
     } else {
         $scope = $defs[$name]['securitySchemes'][0]['scopes'][0];
         if (!in_array($scope, $ctx['scopes'], true)) throw new McpToolError('RestroGrow was connected without permission to make changes. Disconnect and connect again, then press Allow.');
+    }
+    // a section Super Admin switched off for this restaurant (Restaurants › Access) is off here too
+    if ($info['page'] && !accessPageOn($conn, $rid, $info['page'])) {
+        $label = accessPageLabel($info['page']);
+        throw new McpToolError("$label is switched off for this restaurant. Ask RestroGrow support to switch it on.");
+    }
+    $mod = mcpModuleTools()[$name] ?? null;
+    if ($mod) {
+        try {
+            return ($mod['module'] . 'Run')($conn, $ctx, $name, $a);
+        } catch (InvalidArgumentException $e) {
+            throw new McpToolError($e->getMessage());   // checks shared with the dashboard speak this way
+        }
     }
     $m = fn($n) => ownerMgrMoney($s, (float)$n);
     $period = in_array($a['period'] ?? '', OM_PERIODS, true) ? $a['period'] : null;
@@ -261,7 +332,7 @@ function mcpRunTool(PDO $conn, array $ctx, string $name, array $a): array
                     max(0, min(180, (int)($a['prep_minutes'] ?? 0))), array_key_exists('available', $a) && !$a['available'] ? 0 : 1, $price]);
             $newId = (int)$conn->lastInsertId();
             logActivity($conn, $rid, 'menu.add', 'Added ' . $dish . ' (' . $m($price) . ') to ' . $menu['menu_name'], ['via' => $ctx['app']], 'menu_item', $newId, mcpActor($ctx));
-            return ['✅ Added ' . $dish . ' (' . $type . ', ' . $m($price) . ') to ' . $menu['menu_name'] . ($newSection ? ' (new section)' : '') . '. Add a photo from the RestroGrow dashboard › Menu.',
+            return ['✅ Added ' . $dish . ' (' . $type . ', ' . $m($price) . ') to ' . $menu['menu_name'] . ($newSection ? ' (new section)' : '') . '. Add a photo with set_dish_photo.',
                 ['item_id' => $newId, 'section' => $menu['menu_name'], 'new_section' => $newSection]];
 
         case 'update_order_status':

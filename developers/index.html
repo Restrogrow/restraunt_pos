@@ -70,6 +70,9 @@
         .dv-m { font-family: Inter, sans-serif; font-size: .72rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; color: #fff; letter-spacing: .03em; }
         .dv-m.get { background: #16a34a; } .dv-m.post { background: #2563eb; } .dv-m.patch { background: #d97706; }
         .dv-p { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .74rem; font-weight: 600; background: #fff1ea; color: #c2410c; padding: 3px 8px; border-radius: 999px; }
+        .dv-tag { font-size: 1.15rem; margin: 30px 0 6px; color: var(--dark, #111827); scroll-margin-top: 90px; }
+        .dv-ep .dv-desc { margin: 4px 0 8px; }
+        .dv-ep details summary { cursor: pointer; font-size: .86rem; color: #6b7280; margin: 4px 0 10px; }
         @media (max-width: 900px) {
             .dv-grid { grid-template-columns: 1fr; gap: 0; }
             .dv-side { display: none; }
@@ -125,6 +128,7 @@
                     <a href="#ep-order-status">POST /orders/{id}/status</a>
                     <a href="#ep-sales">GET /reports/sales</a>
                     <a href="#ep-report">GET /reports/{report}</a>
+                    <a href="#all-endpoints">All endpoints (every area) →</a>
                     <b>More</b>
                     <a href="#openapi">OpenAPI spec</a>
                     <a href="#safety">Security</a>
@@ -134,7 +138,7 @@
             <main class="dv-main">
                 <p class="dv-kicker">RestroGrow API · v1</p>
                 <h1 id="overview">RestroGrow API</h1>
-                <p class="dv-lead">Read and change a RestroGrow restaurant from your own code, Claude Code, Cursor or any AI agent: the menu, orders and sales reports. Each API key has only the permissions the restaurant owner chose.</p>
+                <p class="dv-lead">Read and change a RestroGrow restaurant from your own code, Claude Code, Cursor or any AI agent: menu, orders, reports, website, offers, loyalty, tables, reservations, staff, stock, delivery zones and catering. Each API key has only the permissions the restaurant owner chose.</p>
 
                 <div class="dv-cards">
                     <div><span class="material-symbols-rounded">link</span><b>Base URL</b><code>https://restrogrow.com/api/v1</code></div>
@@ -188,7 +192,7 @@ X-API-Key: rg_live_YOUR_KEY</code></pre>
                 <p class="dv-muted">The page also shows when each key was last used and how many calls it made. A restaurant can have up to 20 working keys.</p>
 
                 <h2 id="permissions">Permissions</h2>
-                <p>Each endpoint needs one permission. A key without it gets <code>403 missing_permission</code>.</p>
+                <p>Each endpoint needs one permission. A key without it gets <code>403 missing_permission</code>. Menu permissions also cover photos, sizes, sections, add-ons and hiding or deleting dishes. Payments and customer details are not part of the API.</p>
                 <div class="dv-table"><table>
                     <thead><tr><th>Permission</th><th>Allows</th><th>Endpoints</th></tr></thead>
                     <tbody>
@@ -198,6 +202,15 @@ X-API-Key: rg_live_YOUR_KEY</code></pre>
                         <tr><td><code>orders:read</code></td><td>Orders with dishes, customer name and phone, payment</td><td>GET /orders, GET /orders/{id}, GET /orders/number/{number}</td></tr>
                         <tr><td><code>orders:write</code></td><td>Move orders along: accept, prepare, ready, complete, cancel, reject</td><td>POST /orders/{id}/status</td></tr>
                         <tr><td><code>reports:read</code></td><td>Sales and ready-made reports</td><td>GET /reports/sales, GET /reports/{report}</td></tr>
+                        <tr><td><code>website:read</code> / <code>website:write</code></td><td>Theme and colours, logo, photo and offer banners, about, opening hours, order types, policy pages, SEO</td><td>/website…</td></tr>
+                        <tr><td><code>offers:read</code> / <code>offers:write</code></td><td>Coupons, combos, today's special, scratch card and wallet settings (never customer wallets)</td><td>/offers…</td></tr>
+                        <tr><td><code>loyalty:read</code> / <code>loyalty:write</code></td><td>Loyalty programme rules (points, cashback, stamps), rewards, tiers. No customer data</td><td>/loyalty…</td></tr>
+                        <tr><td><code>tables:read</code> / <code>tables:write</code></td><td>Areas, tables with live status, waiter calls</td><td>/tables…</td></tr>
+                        <tr><td><code>reservations:read</code> / <code>reservations:write</code></td><td>Bookings: add, confirm, seat, complete, cancel</td><td>/reservations…</td></tr>
+                        <tr><td><code>staff:read</code> / <code>staff:write</code></td><td>Staff list, add, change role, pause, remove (never passwords; no Admin staff)</td><td>/staff…</td></tr>
+                        <tr><td><code>stock:read</code> / <code>stock:write</code></td><td>Stock items, restock, wastage, counts</td><td>/stock…</td></tr>
+                        <tr><td><code>delivery:read</code> / <code>delivery:write</code></td><td>Delivery zones by pincode</td><td>/delivery/zones…</td></tr>
+                        <tr><td><code>catering:read</code> / <code>catering:write</code></td><td>Catering requests and price tiers</td><td>/catering…</td></tr>
                     </tbody>
                 </table></div>
                 <p class="dv-muted"><code>GET /me</code> works with any key.</p>
@@ -226,6 +239,7 @@ X-API-Key: rg_live_YOUR_KEY</code></pre>
                         <tr><td><code>list_orders</code>, <code>get_order</code></td><td>orders:read</td></tr>
                         <tr><td><code>update_order_status</code></td><td>orders:write</td></tr>
                         <tr><td><code>get_sales_summary</code>, <code>get_report</code></td><td>reports:read</td></tr>
+                        <tr><td>…and one tool for every endpoint in <a href="#all-endpoints">All endpoints</a> (website, offers, loyalty, tables, reservations, staff, stock, delivery, catering)</td><td>that endpoint's permission</td></tr>
                     </tbody>
                 </table></div>
                 <p class="dv-muted">ChatGPT and claude.ai users don't need a key: they connect with the owner's login from <b>Growth › ChatGPT &amp; Claude</b> in the dashboard.</p>
@@ -386,6 +400,10 @@ X-API-Key: rg_live_YOUR_KEY</code></pre>
                     </tbody></table></div>
                 </div>
 
+                <h2 id="all-endpoints">All endpoints</h2>
+                <p class="dv-muted">Every endpoint, read live from the <a href="/api/v1/openapi.json">OpenAPI spec</a>, so this list is always up to date. Paths are relative to <code>https://restrogrow.com/api/v1</code>. GET endpoints take their fields as query parameters; the others take a JSON body. A <code>{…}</code> part of the path is filled in with that value.</p>
+                <div id="dvAll"><p class="dv-muted">Loading the endpoint list…</p></div>
+
                 <h2 id="openapi">OpenAPI spec</h2>
                 <p>The full machine-readable description is at <a href="/api/v1/openapi.json"><code>https://restrogrow.com/api/v1/openapi.json</code></a> (OpenAPI 3.1). Import it into Postman, Insomnia or a code generator, or give it to an AI agent.</p>
 
@@ -451,5 +469,50 @@ X-API-Key: rg_live_YOUR_KEY</code></pre>
 
     <script src="../script.js?v=2.2"></script>
 <script>document.querySelectorAll(".js-year").forEach(function (e) { e.textContent = new Date().getFullYear(); });</script>
+<script>
+// "All endpoints": built from /api/v1/openapi.json (one card per endpoint, grouped by area)
+(function () {
+  var box = document.getElementById('dvAll');
+  if (!box) return;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function type(sc) {
+    if (!sc) return '';
+    if (sc.enum) return sc.enum.map(function (v) { return '<code>' + esc(v === '' ? '""' : v) + '</code>'; }).join(' ');
+    var t = sc.type || 'object';
+    if (t === 'array') t = 'array of ' + (sc.items && sc.items.type ? sc.items.type : 'object');
+    var r = [];
+    if (sc.minimum != null) r.push('≥ ' + sc.minimum);
+    if (sc.maximum != null) r.push('≤ ' + sc.maximum);
+    if (sc.maxLength) r.push('max ' + sc.maxLength + ' chars');
+    return esc(t) + (r.length ? ' <span class="dv-muted">(' + r.join(', ') + ')</span>' : '');
+  }
+  function rows(list) {
+    return '<div class="dv-table"><table><thead><tr><th>Field</th><th>Type</th><th></th></tr></thead><tbody>' + list.map(function (f) {
+      return '<tr><td><code>' + esc(f.name) + '</code>' + (f.required ? ' *' : '') + '</td><td>' + type(f.schema) + '</td><td>' + esc((f.schema && f.schema.description) || '') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+  }
+  fetch('../api/v1/openapi.json').then(function (r) { return r.json(); }).then(function (spec) {
+    var groups = {}, order = [];
+    Object.keys(spec.paths).forEach(function (path) {
+      Object.keys(spec.paths[path]).forEach(function (m) {
+        var op = spec.paths[path][m], tag = (op.tags && op.tags[0]) || 'Other';
+        if (!groups[tag]) { groups[tag] = []; order.push(tag); }
+        groups[tag].push({ m: m.toUpperCase(), path: path, op: op });
+      });
+    });
+    box.innerHTML = order.map(function (tag) {
+      return '<h3 class="dv-tag" id="area-' + esc(tag.toLowerCase()) + '">' + esc(tag) + '</h3>' + groups[tag].map(function (e) {
+        var op = e.op, fields = (op.parameters || []).map(function (p) { return { name: p.name, required: p.in === 'path', schema: p.schema }; });
+        var body = op.requestBody && op.requestBody.content['application/json'].schema;
+        if (body) Object.keys(body.properties || {}).forEach(function (k) { fields.push({ name: k, required: (body.required || []).indexOf(k) >= 0, schema: body.properties[k] }); });
+        var desc = String(op.description || '').split('Permission:')[0].trim();
+        return '<div class="dv-ep"><h3><span class="dv-m ' + e.m.toLowerCase() + '">' + e.m + '</span>' + esc(e.path) + (op['x-permission'] ? ' <span class="dv-p">' + esc(op['x-permission']) + '</span>' : '') + '</h3>'
+          + '<p class="dv-desc"><b>' + esc(op.summary || '') + '.</b> ' + esc(desc) + '</p>'
+          + (fields.length ? '<details><summary>' + fields.length + ' field' + (fields.length > 1 ? 's' : '') + '</summary>' + rows(fields) + '</details>' : '') + '</div>';
+      }).join('');
+    }).join('');
+  }).catch(function () { box.innerHTML = '<p class="dv-muted">Could not load the list. Open <a href="/api/v1/openapi.json">openapi.json</a> directly.</p>'; });
+})();
+</script>
 </body>
 </html>

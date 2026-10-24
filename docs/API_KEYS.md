@@ -36,9 +36,28 @@ document is built from the routes and tool schemas, so it follows by itself.
   owners revoke them on the page).
 - Header: `Authorization: Bearer rg_live_…` or `X-API-Key: rg_live_…`.
 
+## Areas (2026-10-24, second round)
+
+Besides the first tools (restaurant, menu, orders, reports in mcp/tools.php) every area is a module in `main/mcp/tools/`:
+`menu_extras.php` (photos, delete/hide dishes, sizes, sections, add-ons), `offers.php` (coupons, combos, today's special,
+scratch card, wallet settings), `website.php` (theme, profile, logo, banners, offer banners, policy pages, SEO),
+`loyalty.php` (programme, rewards, tiers; no customer data), `operations.php` (tables, areas, waiter calls,
+reservations, staff, stock, delivery zones, catering). Each entry gives its MCP definition (`mcpDef`), permission,
+access page (refused while Super Admin has that section off) and REST route; the router, OpenAPI document, MCP
+tools/list and the docs page's "All endpoints" (rendered from openapi.json) all pick it up. Left out on purpose:
+payments and customer details.
+
+Safety rules beyond the dashboard: a dish that was ever ordered is hidden, never deleted (order_items and kot_items
+cascade on menu_items, so the dashboard's delete wipes its sales history); a section is deleted only when empty;
+busy tables are never deleted; reservations refuse a double booking; staff can't be made Admin and passwords are never
+returned or changed; policy pages lose scripts; images from links are fetched only from public addresses
+(`config/api_media.php`, uses AI_CAINFO locally). Profile field checks are shared with the apps
+(`config/app_setting_fields.php`).
+
 ## Permissions
 
-`restaurant:read`, `menu:read`, `menu:write`, `orders:read`, `orders:write`, `reports:read` (`API_PERMS`).
+`restaurant:read`, `menu:*`, `orders:*`, `reports:read`, `website:*`, `offers:*`, `loyalty:*`, `tables:*`, `reservations:*`,
+`staff:*`, `stock:*`, `delivery:*`, `catering:*` (read / write; `API_PERMS`, column `perms` widened to 1000 chars by itself).
 On /mcp a key lists only the tools its permissions allow (`tools/list` is filtered) and the call is checked again.
 
 ## Limits and answers
