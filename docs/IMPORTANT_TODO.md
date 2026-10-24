@@ -294,6 +294,28 @@ is one record; Google shows NPR and Nepal.
 
 ---
 
+## 7. United States (next: start 26 Oct 2026)
+
+Asked on 25 Oct 2026: "in US also let's start". Same order as Nepal: research, product gaps, a /us/ page, indexing, content and links.
+
+**Already there:** United States in the country list (+1, USD, $, 10-digit phones) and new US restaurants get America/New_York and "Sales Tax" switched off (`config/countries.php:18,127`). The bill rules (`config/bill_rules.php`) and country-aware phones, WhatsApp links, emails and SEO tags from the Nepal work apply to the US too. Search Console already shows the US: 2 clicks, 1,302 impressions (Dec 2025 to Oct 2026), mostly not buyer searches.
+
+| # | Job | Who | Notes |
+|---|---|---|---|
+| 1 | US market and competitor research: Toast, Square, Clover, Owner.com, ChowNow, Popmenu, SpotOn; what US owners search; Search Console US queries and pages | Claude | Report doc like the Nepal one |
+| 2 | Card payments for US restaurants (Stripe) | Claude + You | PhonePe is India only; needs a Stripe account (you) |
+| 3 | Tips on the bill (POS, website, receipt) | Claude | US diners expect a tip line (15 / 18 / 20%) |
+| 4 | Sales tax by state / city rate per restaurant | Claude | One rate per restaurant works today; check if that is enough |
+| 5 | US date and time format on bills and reports (MM/DD/YYYY, 12-hour) | Claude | |
+| 6 | US time zones (Eastern, Central, Mountain, Pacific) at sign-up and in Settings | Claude | Same server time zone gap as Nepal (#6 row 4) |
+| 7 | SMS / WhatsApp marketing opt-in rules (TCPA: clear consent, STOP) | Claude | WhatsApp is less used in the US: SMS matters more |
+| 8 | /us/ landing page in USD, "commission-free online ordering" angle (vs DoorDash / Uber Eats), hreflang en-US, sitemap, request indexing | Claude | Never "cheapest" |
+| 9 | USD prices for the US plans | You | Decide the prices |
+| 10 | Listings: Capterra, G2, GetApp, Software Advice (US); Google Business Profile | You | Answers in BACKLINK_KIT.md |
+| 11 | Add the US to the growth tracker and its daily update (`country=usa`, `gl=us`) | Claude | Done 25 Oct: US tab with these jobs |
+
+---
+
 ## Order of work (suggested)
 1. Feature 1 with a shared test number on the demo restaurant (no voice notes yet) → then real numbers.
 2. Feature 2 (reuses feature 1's webhook and AI setup).
