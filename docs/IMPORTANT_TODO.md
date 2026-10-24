@@ -264,6 +264,8 @@ tax name/rate (`getCountryLocalDefaults`, tax switched on only in India), Settin
 the country and warns restaurants still on India's clock, the subscription price is always the Super Admin one (and
 paid only to RestroGrow's PhonePe), and PhonePe is hidden for every restaurant outside India ("contact support").
 
+**Done 25 Oct 2026:** rows 5 (prices include tax + service charge in `config/bill_rules.php`, used by the POS, website and WhatsApp orders; "Tax Invoice", fiscal-year bill numbers "2083/84-0142" and BS dates in `config/bill_numbers.php` + `config/nepali_date.php`; the online-order invoice shows tax and service charge), 6, 7, 8, 9, 10, 11, 12, 13 (Nepali in the language list), 15, 17, and the /nepal/ landing page. Still open: 4 (time zone on the server), the buyer's PAN field in the POS pay window (the server already accepts `buyerPan`), 14, 16, 18 (eSewa/Khalti/Fonepay APIs; a QR works today), 19 (IRD certification, needs a Nepal agent).
+
 Still to do, in suggested order (file:line pointers are from the scan):
 
 | # | Gap | Where | What goes wrong |

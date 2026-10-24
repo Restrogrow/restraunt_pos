@@ -1,3 +1,16 @@
+// Phone length by the restaurant's country (window.restaurantPhoneMin/Max/DialCode from header.php; India when unknown)
+function localPhoneDigits(phone) {
+    var d = String(phone || '').replace(/\D/g, ''), cc = String(window.restaurantDialCode || '+91').replace(/\D/g, ''), max = window.restaurantPhoneMax || 10;
+    if (d.length > max && d.indexOf(cc) === 0) d = d.slice(cc.length);
+    if (d.length === max + 1 && d.charAt(0) === '0') d = d.slice(1);
+    return d;
+}
+function phoneLengthOk(d) { return d.length >= (window.restaurantPhoneMin || 10) && d.length <= (window.restaurantPhoneMax || 10); }
+function phoneLengthMessage() {
+    var a = window.restaurantPhoneMin || 10, b = window.restaurantPhoneMax || 10;
+    return 'Please enter a valid ' + (a === b ? a : a + '–' + b) + '-digit phone number.';
+}
+
 // ── Dynamic URL generator (replicates PHP restaurantPageUrl() at runtime) ──
 // This prevents stale cached HTML from breaking navigation on SW-served pages.
 function restaurantPageUrl(page) {
@@ -681,9 +694,9 @@ function setupReservationFormValidation() {
             if (phone === '') {
                 clearFieldErrorWebsite('reservationPhone');
             } else {
-                const phoneDigits = phone.replace(/\D/g, '');
-                if (phoneDigits.length !== 10) {
-                    showFieldErrorWebsite('reservationPhone', 'Phone number must be exactly 10 digits. Please enter a valid 10-digit phone number.');
+                const phoneDigits = localPhoneDigits(phone);
+                if (!phoneLengthOk(phoneDigits)) {
+                    showFieldErrorWebsite('reservationPhone', phoneLengthMessage());
                 } else {
                     clearFieldErrorWebsite('reservationPhone');
                 }
@@ -695,9 +708,9 @@ function setupReservationFormValidation() {
             if (phone === '') {
                 showFieldErrorWebsite('reservationPhone', 'Phone number is required');
             } else {
-                const phoneDigits = phone.replace(/\D/g, '');
-                if (phoneDigits.length !== 10) {
-                    showFieldErrorWebsite('reservationPhone', 'Phone number must be exactly 10 digits. Please enter a valid 10-digit phone number.');
+                const phoneDigits = localPhoneDigits(phone);
+                if (!phoneLengthOk(phoneDigits)) {
+                    showFieldErrorWebsite('reservationPhone', phoneLengthMessage());
                 } else {
                     clearFieldErrorWebsite('reservationPhone');
                 }
@@ -957,9 +970,9 @@ function setupReservationForm() {
             showFieldErrorWebsite('reservationPhone', 'Phone number is required');
             hasErrors = true;
         } else {
-            const phoneDigits = phone.replace(/\D/g, '');
-            if (phoneDigits.length !== 10) {
-                showFieldErrorWebsite('reservationPhone', 'Phone number must be exactly 10 digits. Please enter a valid 10-digit phone number.');
+            const phoneDigits = localPhoneDigits(phone);
+            if (!phoneLengthOk(phoneDigits)) {
+                showFieldErrorWebsite('reservationPhone', phoneLengthMessage());
                 hasErrors = true;
             }
         }

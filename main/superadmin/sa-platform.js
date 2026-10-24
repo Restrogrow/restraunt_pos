@@ -134,9 +134,11 @@
     }).catch(function (e) { box.innerHTML = empty('error', esc(e.message)); });
   }
   var spRenewRows = {};
-  function waLink(phone, text) {
-    var digits = String(phone || '').replace(/\D/g, '');
-    if (digits.length === 10) digits = '91' + digits;
+  // dial = the restaurant's dial code ("+977"); 91 when the country is unknown
+  function waLink(phone, text, dial) {
+    var digits = String(phone || '').replace(/\D/g, ''), cc = String(dial || '').replace(/\D/g, '') || '91';
+    if (digits.length === 10) digits = cc + digits;
+    else if (cc !== '91' && digits.length >= 6 && !(digits.indexOf(cc) === 0 && digits.length - cc.length >= 8)) digits = cc + digits.replace(/^0/, '');
     return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(text);
   }
   function openPaymentLink(rid, amount) {
@@ -762,7 +764,8 @@
       var dl = +r.days_left;
       var text = 'Hi ' + (r.owner_name || r.restaurant_name) + ', this is RestroGrow. Your ' + (r.subscription_status === 'active' ? 'plan' : 'free trial') + ' for ' + r.restaurant_name + (dl < 0 ? ' ended on ' : dl === 0 ? ' ends today, ' : ' ends on ') + day(r.expires_on) +
         '. Renew to keep your website, orders and POS running. Reply here and we will send you the payment link.';
-      window.open(waLink(r.phone, text), '_blank', 'noopener');
+      var rest = (typeof saRestaurantsMap !== 'undefined' ? saRestaurantsMap : {})[r.id];
+      window.open(waLink(r.phone, text, rest && rest.dial_code), '_blank', 'noopener');
       post('logReminder', { id: r.id }).catch(function () {});
       return;
     }

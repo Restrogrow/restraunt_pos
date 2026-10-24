@@ -38,7 +38,7 @@ function getDefaultPrivacyPolicyHtml($restaurant_name, $restaurant_owner, $resta
     $name = htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8');
     $owner = htmlspecialchars($restaurant_owner ?: 'Not specified', ENT_QUOTES, 'UTF-8');
     $email = htmlspecialchars($restaurant_email ?: 'support@restrogrow.com', ENT_QUOTES, 'UTF-8');
-    $phone = htmlspecialchars($restaurant_phone ?: '+91 6377568749', ENT_QUOTES, 'UTF-8');
+    $phone = htmlspecialchars($restaurant_phone ?: 'Please write to us at the email above', ENT_QUOTES, 'UTF-8');
     $cookieUrl = htmlspecialchars($cookie_policy_url, ENT_QUOTES, 'UTF-8');
     return <<<HTML
 <p>At {$name}, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our restaurant management and ordering platform.</p>
@@ -125,7 +125,7 @@ function getDefaultTermsOfServiceHtml($restaurant_name, $restaurant_owner, $rest
     $name = htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8');
     $owner = htmlspecialchars($restaurant_owner ?: 'Not specified', ENT_QUOTES, 'UTF-8');
     $email = htmlspecialchars($restaurant_email ?: 'support@restrogrow.com', ENT_QUOTES, 'UTF-8');
-    $phone = htmlspecialchars($restaurant_phone ?: '+91 6377568749', ENT_QUOTES, 'UTF-8');
+    $phone = htmlspecialchars($restaurant_phone ?: 'Please write to us at the email above', ENT_QUOTES, 'UTF-8');
     $ownedByLine = $restaurant_owner ? ' (Owned by ' . htmlspecialchars($restaurant_owner, ENT_QUOTES, 'UTF-8') . ')' : '';
     return <<<HTML
 <p>Welcome to {$name}{$ownedByLine}. These Terms of Service ("Terms") govern your access to and use of our restaurant management and ordering platform. By accessing or using our services, you agree to be bound by these Terms.</p>
@@ -210,7 +210,7 @@ function getDefaultRefundPolicyHtml($restaurant_name, $restaurant_owner, $restau
     $name = htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8');
     $owner = htmlspecialchars($restaurant_owner ?: 'Not specified', ENT_QUOTES, 'UTF-8');
     $email = htmlspecialchars($restaurant_email ?: 'support@restrogrow.com', ENT_QUOTES, 'UTF-8');
-    $phone = htmlspecialchars($restaurant_phone ?: '+91 6377568749', ENT_QUOTES, 'UTF-8');
+    $phone = htmlspecialchars($restaurant_phone ?: 'Please write to us at the email above', ENT_QUOTES, 'UTF-8');
     return <<<HTML
 <p>At {$name}, all orders are made to order. Please read this Refund Policy carefully before placing an order.</p>
 
@@ -252,7 +252,7 @@ function getDefaultShippingPolicyHtml($restaurant_name, $restaurant_owner, $rest
     $name = htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8');
     $owner = htmlspecialchars($restaurant_owner ?: 'Not specified', ENT_QUOTES, 'UTF-8');
     $email = htmlspecialchars($restaurant_email ?: 'support@restrogrow.com', ENT_QUOTES, 'UTF-8');
-    $phone = htmlspecialchars($restaurant_phone ?: '+91 6377568749', ENT_QUOTES, 'UTF-8');
+    $phone = htmlspecialchars($restaurant_phone ?: 'Please write to us at the email above', ENT_QUOTES, 'UTF-8');
     $ownedByLine = $restaurant_owner ? ' (Owned by ' . htmlspecialchars($restaurant_owner, ENT_QUOTES, 'UTF-8') . ')' : '';
     return <<<HTML
 <p>At {$name}{$ownedByLine}, we are committed to delivering your orders promptly and efficiently. This Shipping & Delivery Policy explains our delivery practices and what you can expect when you order from us.</p>
@@ -297,7 +297,7 @@ function getDefaultCookiePolicyHtml($restaurant_name, $restaurant_owner, $restau
     $name = htmlspecialchars($restaurant_name, ENT_QUOTES, 'UTF-8');
     $owner = htmlspecialchars($restaurant_owner ?: 'Not specified', ENT_QUOTES, 'UTF-8');
     $email = htmlspecialchars($restaurant_email ?: 'support@restrogrow.com', ENT_QUOTES, 'UTF-8');
-    $phone = htmlspecialchars($restaurant_phone ?: '+91 6377568749', ENT_QUOTES, 'UTF-8');
+    $phone = htmlspecialchars($restaurant_phone ?: 'Please write to us at the email above', ENT_QUOTES, 'UTF-8');
     return <<<HTML
 <p>This Cookie Policy explains how {$name} uses cookies and similar tracking technologies when you visit our website and use our platform. It explains what these technologies are and why we use them, as well as your rights to control our use of them.</p>
 

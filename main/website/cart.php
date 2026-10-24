@@ -1226,6 +1226,9 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
 window.enableGst = <?php echo json_encode($enable_gst ?? 1, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.taxName = <?php echo json_encode($tax_name ?? 'GST', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 window.taxPercent = <?php echo json_encode((float)($tax_percent ?? 5.00), JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+<?php require_once __DIR__ . '/../config/bill_rules.php'; $cartBillRule = !empty($restaurant_id) ? billRules(getConnection(), (string)$restaurant_id) : ['inclusive' => false, 'service_percent' => 0]; ?>
+window.pricesIncludeTax = <?php echo $cartBillRule['inclusive'] ? 'true' : 'false'; ?>; // prices include tax / service charge (config/bill_rules.php)
+window.serviceChargePercent = <?php echo json_encode($cartBillRule['service_percent']); ?>;
 window.restaurantCountry = <?php echo json_encode($country ?? 'India', JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 window.restaurantDialCode = <?php echo json_encode($phone_dial_code ?? '+91', JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantPhoneMin = <?php echo json_encode((int)($phone_min_digits ?? 10), JSON_HEX_TAG); ?>;
@@ -2987,7 +2990,24 @@ function refreshCheckoutTotal() {
 
   var showGst = window.enableGst == 1 || window.enableGst === true;
   var taxable = baseAmt;
-  var gst = showGst ? taxable * ((typeof window.taxPercent === 'number' ? window.taxPercent : 5) / 100) : 0;
+  // the restaurant's bill rule, same as api/process_website_order.php (config/bill_rules.php): tax on top or
+  // inside the menu price, and a service charge
+  var tRate = showGst ? (typeof window.taxPercent === 'number' ? window.taxPercent : 5) / 100 : 0;
+  var sRate = Math.max(0, Math.min(30, parseFloat(window.serviceChargePercent) || 0)) / 100;
+  var r2 = function (n) { return Math.round((n + Number.EPSILON) * 100) / 100; };
+  var svc, gst, billTotal;
+  taxable = r2(Math.max(0, taxable));
+  if (window.pricesIncludeTax === true) {
+    var net = r2(taxable / ((1 + sRate) * (1 + tRate)));
+    svc = r2(net * sRate); gst = r2(taxable - net - svc); billTotal = taxable;
+  } else {
+    svc = r2(taxable * sRate); gst = r2((taxable + svc) * tRate); billTotal = r2(taxable + svc + gst);
+  }
+  var scRow = document.getElementById('scRow');
+  if (scRow) {
+    scRow.style.display = svc > 0 ? 'flex' : 'none';
+    document.getElementById('scAmount').textContent = getCurrency() + svc.toFixed(2);
+  }
 
   var gstRow = document.getElementById('gstRow');
   var gstAmount = document.getElementById('gstAmount');
@@ -3014,7 +3034,7 @@ function refreshCheckoutTotal() {
     }
   }
 
-  var finalTotal = taxable + gst + pkgCharge + delCharge;
+  var finalTotal = billTotal + pkgCharge + delCharge;
   var finalDisplay = document.getElementById('finalTotalDisplay');
   if (finalDisplay) {
     finalDisplay.textContent = getCurrency() + finalTotal.toFixed(2);
@@ -3158,7 +3178,8 @@ function showCheckoutModal(cartData) {
   html += '<span>Delivery Fee</span><span id="deliveryFeeAmount">' + getCurrency() + '0.00</span>';
   html += '</div>';
   var enableGst = window.enableGst == 1 || window.enableGst === true;
-  var taxLabel = (window.taxName || 'GST') + ' (' + parseFloat(typeof window.taxPercent === 'number' ? window.taxPercent : 5) + '%)';
+  var taxLabel = (window.taxName || 'GST') + ' (' + parseFloat(typeof window.taxPercent === 'number' ? window.taxPercent : 5) + '%)'; if (window.pricesIncludeTax === true) taxLabel += ' incl.';
+  html += '<div id="scRow" class="summary-row" style="display:none;"><span>Service charge (' + (parseFloat(window.serviceChargePercent) || 0) + '%)</span><span id="scAmount"></span></div>';
   html += '<div id="gstRow" class="summary-row" style="display:' + (enableGst ? 'flex' : 'none') + ';">';
   html += '<span>' + taxLabel + '</span><span id="gstAmount">' + getCurrency() + '0.00</span>';
   html += '</div>';
@@ -4049,7 +4070,14 @@ function redirectToWhatsApp(info) {
     (itemsSummary ? 'Items: ' + itemsSummary + '\n' : '') +
     'Total: ' + getCurrency() + parseFloat(info.total).toFixed(2) + '\n\n' +
     'Check admin panel for full details.';
-  window.open('https://wa.me/' + info.phone + '?text=' + encodeURIComponent(msg), '_blank');
+  // the restaurant's number with its dial code (91 when the country is unknown)
+  var wa = String(info.phone).replace(/\D/g, ''), cc = String(window.restaurantDialCode || '').replace(/\D/g, '') || '91';
+  var pMin = window.restaurantPhoneMin || 10, pMax = window.restaurantPhoneMax || 10;
+  if (!(wa.length > pMax && wa.indexOf(cc) === 0 && wa.length - cc.length >= pMin)) {
+    if (wa.charAt(0) === '0' && wa.length - 1 >= pMin && wa.length - 1 <= pMax) wa = wa.slice(1);
+    if (wa.length >= pMin && wa.length <= pMax) wa = cc + wa;
+  }
+  window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
 function goToProfile() {

@@ -124,7 +124,7 @@ if (!function_exists('mailQueue')) {
     {
         return ['name' => 'RestroGrow', 'logo' => mailAppUrl() . '/main/assets/images/logo-transparent.png', 'logo_wide' => true,
             'color' => '#c1440e', 'from_name' => 'RestroGrow', 'reply_to' => (string)(env('MAIL_FROM_SUPPORT', '') ?: SMTP_FROM_EMAIL),
-            'footer' => 'RestroGrow · Restaurant software made in India · restrogrow.com', 'phone' => '+91 63775 68749'];
+            'footer' => 'RestroGrow · Restaurant software for India and Nepal · restrogrow.com', 'phone' => '+91 63775 68749'];
     }
 
     function mailRestaurantBrand(PDO $conn, string $rid): array
@@ -144,7 +144,7 @@ if (!function_exists('mailQueue')) {
             'logo_wide' => false, 'color' => '#c1440e', 'from_name' => mb_substr((string)($r['restaurant_name'] ?? 'Restaurant'), 0, 60) . ' via RestroGrow',
             'reply_to' => filter_var((string)($r['email'] ?? ''), FILTER_VALIDATE_EMAIL) ? (string)$r['email'] : '',
             'footer' => trim(($r['restaurant_name'] ?? '') . ($r['address'] ? ' · ' . $r['address'] : '')), 'phone' => (string)($r['phone'] ?? ''), 'site' => $site,
-            'owner_email' => (string)($r['email'] ?? '')];
+            'owner_email' => (string)($r['email'] ?? ''), 'cur' => trim((string)($r['currency_symbol'] ?? '')) !== '' ? (string)$r['currency_symbol'] : '₹'];
     }
 
     function mailE(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
@@ -439,7 +439,7 @@ if (!function_exists('mailQueue')) {
     // ── customers ──
     function mailOrderFacts(PDO $conn, int $orderId): ?array
     {
-        if (($pv = mailPreviewing()) !== null) return $pv['order'];
+        if (($pv = mailPreviewing()) !== null) return $pv['order'] + ['_cur' => '₹', '_tax_name' => 'Tax'];
         $st = $conn->prepare('SELECT o.*, t.table_number FROM orders o LEFT JOIN tables t ON t.id = o.table_id WHERE o.id = ?');
         $st->execute([$orderId]);
         $o = $st->fetch(PDO::FETCH_ASSOC);
@@ -454,6 +454,12 @@ if (!function_exists('mailQueue')) {
             $email = (string)$c->fetchColumn();
         }
         $o['to'] = $email;
+        // the restaurant's own currency and tax name (Rs. and VAT in Nepal)
+        $cs = $conn->prepare('SELECT currency_symbol, tax_name FROM users WHERE restaurant_id = ? LIMIT 1');
+        $cs->execute([$o['restaurant_id']]);
+        $cr = $cs->fetch(PDO::FETCH_ASSOC) ?: [];
+        $o['_cur'] = trim((string)($cr['currency_symbol'] ?? '')) !== '' ? (string)$cr['currency_symbol'] : '₹';
+        $o['_tax_name'] = trim((string)($cr['tax_name'] ?? '')) !== '' ? (string)$cr['tax_name'] : 'Tax';
         return $o;
     }
 
@@ -462,15 +468,15 @@ if (!function_exists('mailQueue')) {
         $lines = array_map(fn($i) => [$i['item_name'] . ($i['variation_name'] && !in_array($i['variation_name'], ['Add-on', 'Combo'], true) ? ' (' . $i['variation_name'] . ')' : ''), (int)$i['quantity'], (float)$i['total_price']],
             array_values(array_filter($o['items'], fn($i) => (float)$i['total_price'] > 0)));
         $disc = (float)($o['discount_amount'] ?? 0) + (float)($o['loyalty_discount_amount'] ?? 0) + (float)($o['vip_discount'] ?? 0);
-        $tot = [['Subtotal', '₹' . number_format((float)$o['subtotal'], 2)]];
-        if ($disc > 0) $tot[] = ['Discount', '-₹' . number_format($disc, 2)];
-        if ((float)$o['tax'] > 0) $tot[] = ['Tax', '₹' . number_format((float)$o['tax'], 2)];
-        if ((float)($o['delivery_charge'] ?? 0) > 0) $tot[] = ['Delivery', '₹' . number_format((float)$o['delivery_charge'], 2)];
+        $tot = [['Subtotal', $o['_cur'] . number_format((float)$o['subtotal'], 2)]];
+        if ($disc > 0) $tot[] = ['Discount', '-' . $o['_cur'] . number_format($disc, 2)];
+        if ((float)$o['tax'] > 0) $tot[] = [$o['_tax_name'], $o['_cur'] . number_format((float)$o['tax'], 2)];
+        if ((float)($o['delivery_charge'] ?? 0) > 0) $tot[] = ['Delivery', $o['_cur'] . number_format((float)$o['delivery_charge'], 2)];
         // packing and other charges are in the total but have no column of their own
         $other = round((float)$o['total'] - ((float)$o['subtotal'] - $disc + (float)$o['tax'] + (float)($o['delivery_charge'] ?? 0)), 2);
-        if ($other >= 0.5) $tot[] = ['Packing & other charges', '₹' . number_format($other, 2)];
-        $tot[] = ['Total', '₹' . number_format((float)$o['total'], 2), true];
-        return mailItemsTable($lines, '₹', $tot);
+        if ($other >= 0.5) $tot[] = ['Packing & other charges', $o['_cur'] . number_format($other, 2)];
+        $tot[] = ['Total', $o['_cur'] . number_format((float)$o['total'], 2), true];
+        return mailItemsTable($lines, $o['_cur'], $tot);
     }
 
     /** The customer's "order confirmed" and the restaurant's "new order" (replaces the old plain emails). */
@@ -483,7 +489,7 @@ if (!function_exists('mailQueue')) {
         $where = $o['table_number'] ? 'Table ' . $o['table_number'] : (string)$o['order_type'];
         if ($o['to'] !== '') {
             mailQueue($conn, 'order_confirmed', $o['to'], 'Order confirmed · ' . $o['order_number'] . ' · ' . $b['name'],
-                mailLayout($b, ['title' => 'Thank you, your order is confirmed!', 'preheader' => 'Order ' . $o['order_number'] . ' · ₹' . number_format((float)$o['total'], 2),
+                mailLayout($b, ['title' => 'Thank you, your order is confirmed!', 'preheader' => 'Order ' . $o['order_number'] . ' · ' . $o['_cur'] . number_format((float)$o['total'], 2),
                     'intro' => '<p style="margin:0">Hi ' . mailE(trim(explode(' ', (string)$o['customer_name'])[0]) ?: 'there') . ', <b>' . mailE($b['name']) . '</b> has your order. We\'ll email you when it\'s ready.</p>',
                     'rows' => [['Order', (string)$o['order_number']], ['Type', $where], ['Payment', (string)$o['payment_method'] . ' · ' . (string)$o['payment_status']]],
                     'table' => mailOrderTable($o), 'button' => $b['site'] ? ['Order again', $b['site']] : null,
@@ -491,8 +497,8 @@ if (!function_exists('mailQueue')) {
                 ['restaurant_id' => $rid, 'brand' => $b, 'dedupe' => 'confirmed:' . $orderId, 'to_name' => (string)$o['customer_name']]);
         }
         if ($b['owner_email'] !== '') {
-            mailQueue($conn, 'order_alert', $b['owner_email'], '🔔 New order ' . $o['order_number'] . ' · ₹' . number_format((float)$o['total'], 2),
-                mailLayout(mailPlatformBrand(), ['title' => 'New order received', 'preheader' => $where . ' · ₹' . number_format((float)$o['total'], 2),
+            mailQueue($conn, 'order_alert', $b['owner_email'], '🔔 New order ' . $o['order_number'] . ' · ' . $o['_cur'] . number_format((float)$o['total'], 2),
+                mailLayout(mailPlatformBrand(), ['title' => 'New order received', 'preheader' => $where . ' · ' . $o['_cur'] . number_format((float)$o['total'], 2),
                     'intro' => '<p style="margin:0"><b>' . mailE((string)$o['customer_name']) . '</b>' . ($o['customer_phone'] ? ' (' . mailE((string)$o['customer_phone']) . ')' : '') . ' placed an order.</p>',
                     'rows' => [['Order', (string)$o['order_number']], ['Type', $where], ['Payment', (string)$o['payment_method'] . ' · ' . (string)$o['payment_status']]],
                     'table' => mailOrderTable($o), 'button' => ['Open orders', mailAppUrl() . '/main/views/dashboard.php?page=ordersPage']]),
@@ -514,7 +520,7 @@ if (!function_exists('mailQueue')) {
             'Rejected' => ['Your order couldn\'t be taken', 'Sorry, the restaurant couldn\'t take this order right now.']][$s] ?? null;
         if ($s === 'Completed') {
             mailQueue($conn, 'order_receipt', $o['to'], 'Your bill from ' . $b['name'] . ' · ' . $o['order_number'],
-                mailLayout($b, ['title' => 'Thank you for visiting! 🙏', 'preheader' => 'Your e-bill: ₹' . number_format((float)$o['total'], 2),
+                mailLayout($b, ['title' => 'Thank you for visiting! 🙏', 'preheader' => 'Your e-bill: ' . $o['_cur'] . number_format((float)$o['total'], 2),
                     'intro' => '<p style="margin:0">Here is your bill from <b>' . mailE($b['name']) . '</b>. Hope to see you again soon.</p>',
                     'rows' => [['Order', (string)$o['order_number']], ['Date', date('d M Y, h:i A', strtotime((string)$o['created_at']))], ['Paid by', (string)$o['payment_method']]],
                     'table' => mailOrderTable($o), 'button' => $b['site'] ? ['Order online next time', $b['site']] : null]),
@@ -525,7 +531,7 @@ if (!function_exists('mailQueue')) {
         if (!$msg || ($o['order_type'] === 'Dine-in' && !in_array($s, ['Cancelled', 'Rejected'], true))) return;
         mailQueue($conn, 'order_status', $o['to'], $msg[0] . ' · ' . $o['order_number'],
             mailLayout($b, ['title' => $msg[0], 'preheader' => $msg[1], 'intro' => '<p style="margin:0">' . mailE($msg[1]) . '</p>',
-                'rows' => [['Order', (string)$o['order_number']], ['Total', '₹' . number_format((float)$o['total'], 2)]],
+                'rows' => [['Order', (string)$o['order_number']], ['Total', $o['_cur'] . number_format((float)$o['total'], 2)]],
                 'small' => 'Questions? Call ' . $b['name'] . ($b['phone'] ? ' on ' . $b['phone'] : '') . '.']),
             ['restaurant_id' => (string)$o['restaurant_id'], 'brand' => $b, 'dedupe' => 'status:' . $orderId . ':' . $s]);
     }
@@ -548,7 +554,7 @@ if (!function_exists('mailQueue')) {
             mailLayout($b, ['title' => 'Your order is on the way 🛵', 'preheader' => ($rider ? $rider . ' is bringing it to you.' : 'It has left the restaurant.'),
                 'intro' => '<p style="margin:0">' . ($rider ? '<b>' . mailE($rider) . '</b> picked up your order from <b>' . mailE($b['name']) . '</b> and is on the way.' : 'Your order has left <b>' . mailE($b['name']) . '</b> and is on the way.') . ' Watch it come to you live.</p>',
                 'rows' => array_values(array_filter([['Order', (string)$o['order_number']], $rider ? ['Delivery partner', $rider . (!empty($t['rider_phone']) ? ' · ' . $t['rider_phone'] : '')] : null,
-                    ['To pay', (stripos((string)$o['payment_method'], 'cash') !== false && $o['payment_status'] !== 'Paid') ? '₹' . number_format((float)$o['total'], 2) . ' in cash' : 'Paid']])),
+                    ['To pay', (stripos((string)$o['payment_method'], 'cash') !== false && $o['payment_status'] !== 'Paid') ? $o['_cur'] . number_format((float)$o['total'], 2) . ' in cash' : 'Paid']])),
                 'button' => $track ? ['Track my order', $track] : null,
                 'small' => 'Questions? Call ' . $b['name'] . ($b['phone'] ? ' on ' . $b['phone'] : '') . '.']),
             ['restaurant_id' => (string)$o['restaurant_id'], 'brand' => $b, 'dedupe' => 'onway:' . $orderId]);
@@ -648,7 +654,7 @@ if (!function_exists('mailQueue')) {
             mailLayout($br, ['title' => $why, 'preheader' => $g['label'] . ' with code ' . $g['coupon_code'],
                 'intro' => '<p style="margin:0">Hi ' . mailE(trim(explode(' ', (string)$g['customer_name'])[0]) ?: 'there') . ', here is <b>' . mailE((string)$g['label']) . '</b> from <b>' . mailE($br['name']) . '</b>.</p>'
                     . '<div style="margin:18px 0 0;padding:16px;border:2px dashed #c1440e;border-radius:14px;text-align:center"><div style="font-size:12px;color:#7a6e61;letter-spacing:1px">YOUR CODE</div><div style="font:800 26px Arial,sans-serif;color:#241d16;letter-spacing:2px">' . mailE((string)$g['coupon_code']) . '</div>'
-                    . '<div style="font-size:13px;color:#7a6e61">' . ($g['expires_on'] ? 'Valid till ' . date('d M Y', strtotime((string)$g['expires_on'])) : '') . ((float)$g['min_order'] > 0 ? ' · on orders above ₹' . number_format((float)$g['min_order']) : '') . '</div></div>',
+                    . '<div style="font-size:13px;color:#7a6e61">' . ($g['expires_on'] ? 'Valid till ' . date('d M Y', strtotime((string)$g['expires_on'])) : '') . ((float)$g['min_order'] > 0 ? ' · on orders above ' . $br['cur'] . number_format((float)$g['min_order']) : '') . '</div></div>',
                 'button' => $br['site'] ? ['Use it now', $br['site']] : null]),
             ['restaurant_id' => $g['restaurant_id'], 'brand' => $br, 'dedupe' => 'gift:' . $g['id']]);
     }

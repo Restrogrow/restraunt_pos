@@ -32,8 +32,8 @@
 
   /* ── Program ── */
   var TYPES = [
-    ['cashback', 'Cashback', 'account_balance_wallet', 'A % of every order back in their wallet', 'Simple and loved in India. Customers spend it on their next order.'],
-    ['points', 'Points', 'toll', 'Points per ₹ spent, swapped for rewards', 'Flexible: discounts, free dishes and levels.'],
+    ['cashback', 'Cashback', 'account_balance_wallet', 'A % of every order back in their wallet', 'Simple and well liked. Customers spend it on their next order.'],
+    ['points', 'Points', 'toll', 'Points per ' + (window.globalCurrencySymbol || '₹') + ' spent, swapped for rewards', 'Flexible: discounts, free dishes and levels.'],
     ['stamps', 'Stamp card', 'approval', 'One stamp per order, a reward when the card is full', 'Best for frequent visits: cafés, quick bites.']
   ];
   function programHtml() {

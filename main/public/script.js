@@ -4193,7 +4193,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updatePOSCartSummary() {
     const subtotal = posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
     const showGst = window.enableGst == 1 || window.enableGst === true;
-    const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
+    const tax = showGst ? subtotal * ((window.taxPercent != null && window.taxPercent !== "" ? +window.taxPercent : 5) / 100) : 0;
     const total = showGst ? (subtotal + tax) : subtotal;
 
     document.getElementById("cartSubtotal").textContent = formatCurrency(subtotal);
@@ -4265,7 +4265,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       const subtotal = posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
       const showGst = window.enableGst == 1 || window.enableGst === true;
-      const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
+      const tax = showGst ? subtotal * ((window.taxPercent != null && window.taxPercent !== "" ? +window.taxPercent : 5) / 100) : 0;
       const total = subtotal + tax;
       const selectedTable = document.getElementById("selectPosTable").value;
       
@@ -4314,7 +4314,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       const subtotal = posCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
       const showGst = window.enableGst == 1 || window.enableGst === true;
-      const tax = showGst ? subtotal * ((window.taxPercent || 5) / 100) : 0;
+      const tax = showGst ? subtotal * ((window.taxPercent != null && window.taxPercent !== "" ? +window.taxPercent : 5) / 100) : 0;
       const total = subtotal + tax;
       const selectedTable = document.getElementById("selectPosTable").value;
       

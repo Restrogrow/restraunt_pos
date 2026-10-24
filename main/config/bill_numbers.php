@@ -67,3 +67,33 @@ function rgBillNo(PDO $conn, $restaurantId, int $orderId): ?int
         return null;
     }
 }
+
+/**
+ * How the bill number is printed. Nepal: per fiscal year (1 Shrawan to the end of Asar), as "2083/84-142",
+ * where 142 counts the bills of that fiscal year, plus the Bikram Sambat date. Elsewhere: the plain number.
+ * Returns ['label' => …, 'date_bs' => '2083-07-08' or null, 'fiscal_year' => '2083/84' or null].
+ */
+function rgBillLabel(PDO $conn, $restaurantId, int $orderId, ?int $billNo): array
+{
+    $plain = ['label' => $billNo !== null ? (string)$billNo : '', 'date_bs' => null, 'fiscal_year' => null];
+    if ($billNo === null) return $plain;
+    try {
+        require_once __DIR__ . '/countries.php';
+        $c = restaurantCountryInfo($conn, (string)$restaurantId);
+        if (($c['iso2'] ?? '') !== 'NP') return $plain;
+        require_once __DIR__ . '/nepali_date.php';
+        $st = $conn->prepare('SELECT created_at FROM orders WHERE id = ?');
+        $st->execute([$orderId]);
+        $created = (string)$st->fetchColumn();
+        $fy = $created !== '' ? npFiscalYear($created) : null;
+        $fyStart = $fy ? npFiscalYearStart($fy) : null;
+        if (!$fy || !$fyStart) return $plain;
+        $before = $conn->prepare('SELECT COALESCE(MAX(bill_no), 0) FROM orders WHERE restaurant_id = ? AND bill_no IS NOT NULL AND created_at < ?');
+        $before->execute([$restaurantId, $fyStart . ' 00:00:00']);
+        $n = max(1, $billNo - (int)$before->fetchColumn());
+        return ['label' => $fy . '-' . str_pad((string)$n, 4, '0', STR_PAD_LEFT), 'date_bs' => npBsFormat($created), 'fiscal_year' => $fy];
+    } catch (Throwable $e) {
+        error_log('rgBillLabel order ' . $orderId . ': ' . $e->getMessage());
+        return $plain;
+    }
+}

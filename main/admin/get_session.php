@@ -183,6 +183,9 @@ try {
         'enable_gst' => $row['enable_gst'] ?? 1,
         'tax_name' => $row['tax_name'] ?? 'GST',
         'tax_percent' => isset($row['tax_percent']) ? (float)$row['tax_percent'] : 5.00,
+        // prices include tax / service charge (config/bill_rules.php)
+        'prices_include_tax' => ($br = (function () use ($conn) { require_once __DIR__ . '/../config/bill_rules.php'; return $conn instanceof PDO ? billRules($conn, (string)($_SESSION['restaurant_id'] ?? '')) : ['inclusive' => false, 'service_percent' => 0]; })())['inclusive'] ? 1 : 0,
+        'service_charge_percent' => $br['service_percent'],
         'enable_delivery' => $row['enable_delivery'] ?? 1,
         'enable_takeaway' => $row['enable_takeaway'] ?? 1,
         'enable_dinein' => $row['enable_dinein'] ?? 1,

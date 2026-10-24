@@ -1238,6 +1238,13 @@ function handleUpdateRestaurantSettings() {
         require_once __DIR__ . '/../config/activity_log.php'; $__before = activityUserRow($pdo, $userId);
         $updateStmt = $pdo->prepare("UPDATE users SET restaurant_name = ?, email = ?, phone = ?, address = ?, description = ?, description_format = ?, opening_hours = ?, phonepe_merchant_id = ?, phonepe_salt_key = ?, phonepe_environment = ?, minimum_order_value = ?, google_maps_link = ?, owner_name = ?, enable_gst = ?, tax_name = ?, tax_percent = ?, instagram_link = ?, facebook_link = ?, twitter_link = ?, youtube_link = ?, linkedin_link = ?, enable_delivery = ?, enable_takeaway = ?, enable_dinein = ?, enable_reservations = ?, cod_enabled = ?, enable_language = ?, packaging_charge = ?, delivery_radius_km = ?, enable_km_delivery = ?, delivery_rate_per_km = ?, show_business_id = ?, business_id_label = ?, business_id_no = ?, updated_at = NOW() WHERE id = ?");
         $result = $updateStmt->execute([$restaurantName, $email, $phone, $address, $description, $descriptionFormat, $openingHours, $phonepeMerchantId, $phonepeSaltKey, $phonepeEnvironment, $minimumOrderValue, $googleMapsLink, $ownerName, $enableGst, $taxName, $taxPercent, $instagramLink, $facebookLink, $twitterLink, $youtubeLink, $linkedinLink, $enableDelivery, $enableTakeaway, $enableDinein, $enableReservations, $codEnabled, $enableLanguage, $packagingCharge, $deliveryRadius, $enableKmDelivery, $deliveryRatePerKm, $showBusinessId, $businessIdLabel, $businessIdNo, $userId]);
+        // bill rule (config/bill_rules.php): only when the Settings form sends it, so other callers keep it
+        if ($result && isset($_POST['prices_include_tax'])) {
+            require_once __DIR__ . '/../config/bill_rules.php';
+            billRulesEnsure($pdo);
+            $pdo->prepare('UPDATE users SET prices_include_tax = ?, service_charge_percent = ? WHERE id = ?')
+                ->execute([(int)$_POST['prices_include_tax'] === 1 ? 1 : 0, max(0, min(30, round((float)($_POST['service_charge_percent'] ?? 0), 2))), $userId]);
+        }
         if ($result) { $__chg = activitySettingsChanged($__before, activityUserRow($pdo, $userId)); if ($__chg) logActivity($pdo, ($_SESSION['restaurant_id'] ?? null), 'settings.restaurant', 'Changed settings: ' . implode(', ', $__chg)); }
     } catch (PDOException $e) {
         $msg = $e->getMessage();

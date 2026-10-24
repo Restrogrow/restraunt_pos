@@ -210,6 +210,13 @@ function phoneToInternational(string $phone, ?array $country): ?string {
     return '+' . $cc . $d;
 }
 
+/** The restaurant's dial code and phone length for page scripts (wa.me links, phone checks); India when unknown. */
+function countryJsGlobals(?array $country): string {
+    $c = $country ?: ['dial_code' => '+91', 'phone_min' => 10, 'phone_max' => 10, 'iso2' => 'IN'];
+    return 'window.restaurantDialCode = ' . json_encode($c['dial_code']) . '; window.restaurantPhoneMin = ' . (int)$c['phone_min']
+        . '; window.restaurantPhoneMax = ' . (int)$c['phone_max'] . '; window.restaurantCountryCode = ' . json_encode($c['iso2'] ?? 'IN') . ';';
+}
+
 /** Is this restaurant's country India (or not set, which means India)? Online payments by PhonePe work only there. */
 function restaurantIsIndia(?string $countryName): bool {
     $n = trim((string)$countryName);

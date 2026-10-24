@@ -99,6 +99,8 @@ if (!function_exists('woHandle')) {
         $u->execute([$rid]);
         $rest = $u->fetch(PDO::FETCH_ASSOC) ?: [];
         $rest['restaurant_id'] = $rid;   // woMenuUrl() needs it for a brand outlet's address
+        require_once __DIR__ . '/bill_rules.php';
+        $rest['_bill'] = billRules($conn, $rid);   // tax inside the price / service charge, as on the website
         $types = array_values(array_filter(explode(',', (string)($r['order_types'] ?? 'dinein,takeaway,delivery'))));
         $allowed = [];
         foreach (['dinein' => 'enable_dinein', 'takeaway' => 'enable_takeaway', 'delivery' => 'enable_delivery'] as $t => $col) {
@@ -368,8 +370,9 @@ if (!function_exists('woHandle')) {
         // same as api/process_website_order.php: packing on every order, tax on the dishes only
         $pack = (float)($r['packaging_charge'] ?? 0);
         $rate = (int)($r['enable_gst'] ?? 0) === 1 ? (float)($r['tax_percent'] ?? 5) : 0;
-        $tax = round($sub * $rate / 100, 2);
-        return ['subtotal' => $sub, 'packaging' => $pack, 'tax' => $tax, 'tax_name' => (string)($r['tax_name'] ?: 'GST'), 'tax_rate' => $rate, 'total' => round($sub + $pack + $tax, 2)];
+        $bill = isset($r['_bill']) ? billMath($sub, $r['_bill']) : ['tax' => round($sub * $rate / 100, 2), 'service_charge' => 0, 'total' => round($sub + round($sub * $rate / 100, 2), 2)];
+        return ['subtotal' => $sub, 'packaging' => $pack, 'tax' => $bill['tax'], 'service_charge' => $bill['service_charge'], 'tax_name' => (string)($r['tax_name'] ?: 'GST'), 'tax_rate' => $rate,
+            'total' => round($bill['total'] + $pack, 2)];
     }
 
     function woMoney(array $cfg, float $n): string
@@ -641,7 +644,17 @@ if (!function_exists('woHandle')) {
      * $opt: name (from WhatsApp), simulate (bool), table (from a QR route), force (the owner's test chat, even when switched off),
      * reply_id (the id of a tapped button / list row; $text is then its title).
      */
-    function woHandle(PDO $conn, string $rid, string $phone, string $text, array $opt = []): array
+    /** The number as the website saves it (no country code: 98… in Nepal, 98… in India), so one customer stays one record. */
+function woLocalPhone(PDO $conn, string $rid, string $phone): string {
+    require_once __DIR__ . '/countries.php';
+    $c = restaurantCountryInfo($conn, $rid) ?: getCountryByName('India');
+    $d = preg_replace('/\D/', '', $phone);
+    $cc = preg_replace('/\D/', '', (string)($c['dial_code'] ?? '+91'));
+    if ($cc !== '' && strlen($d) > (int)($c['phone_max'] ?? 10) && strpos($d, $cc) === 0) $d = substr($d, strlen($cc));
+    return $d !== '' ? $d : $phone;
+}
+
+function woHandle(PDO $conn, string $rid, string $phone, string $text, array $opt = []): array
     {
         $cfg = woSettings($conn, $rid);
         if (!$cfg['enabled'] && empty($opt['simulate']) && empty($opt['force'])) return [];   // force: the owner's test chat
@@ -1050,7 +1063,7 @@ if (!function_exists('woHandle')) {
                 'addons' => [], 'notes' => $l['note'] ?: ''];
         }
         $payload = [
-            'customer_name' => $s['name'], 'customer_phone' => $phone, 'customer_email' => '',
+            'customer_name' => $s['name'], 'customer_phone' => woLocalPhone($conn, $rid, $phone), 'customer_email' => '',
             'customer_address' => $s['order_type'] === 'delivery' ? (string)$s['address'] : '',
             'order_type' => woTypeLabel((string)$s['order_type']), 'table_id' => $s['order_type'] === 'dinein' ? (int)$s['table_id'] : null,
             'items' => $items, 'total' => $t['total'], 'total_payable' => $t['total'], 'payment_method' => 'Cash', 'notes' => $notes, 'whatsapp_optin' => 1,

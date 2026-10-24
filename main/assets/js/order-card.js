@@ -9,6 +9,14 @@
   'use strict';
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var money = function (v) { return typeof window.formatCurrency === 'function' ? window.formatCurrency(v) : (window.globalCurrencySymbol || '₹') + (+v || 0).toFixed(2); };
+  // wa.me number: a local number gets the restaurant's dial code (91 when the country is unknown)
+  function waNum(v) {
+    var d = String(v || '').replace(/\D/g, ''), cc = String(window.restaurantDialCode || '').replace(/\D/g, '') || '91';
+    var min = window.restaurantPhoneMin || 10, max = window.restaurantPhoneMax || 10;
+    if (d.length > max && d.indexOf(cc) === 0 && d.length - cc.length >= min) return d;
+    if (d.charAt(0) === '0' && d.length - 1 >= min && d.length - 1 <= max) d = d.slice(1);
+    return d.length >= min && d.length <= max ? cc + d : d;
+  }
   var ic = function (n) { return '<span class="material-symbols-rounded">' + n + '</span>'; };
   var TYPE_ICON = { 'delivery': 'two_wheeler', 'takeaway': 'shopping_bag', 'dine-in': 'restaurant', 'dine in': 'restaurant', 'dinein': 'restaurant' };
   var STATUS = {
@@ -126,7 +134,7 @@
     var round = '';
     if (window.whatsappEnabled && window.whatsappPhone) {
       var txt = (st === 'Pending' ? 'New ' : '') + 'Order #' + (o.order_number || id) + '\nCustomer: ' + (o.customer_name || '') + '\nPhone: ' + (o.customer_phone || '') + '\nType: ' + type + '\nTotal: ' + money(o.total);
-      round += '<a class="o2-rb o2-wa" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp" href="https://wa.me/' + esc(window.whatsappPhone) + '?text=' + encodeURIComponent(txt) + '">' + ic('chat') + '</a>';
+      round += '<a class="o2-rb o2-wa" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp" href="https://wa.me/' + esc(waNum(window.whatsappPhone)) + '?text=' + encodeURIComponent(txt) + '">' + ic('chat') + '</a>';
     }
     if (tel) round += '<a class="o2-rb" title="Call ' + esc(o.customer_phone) + '" aria-label="Call customer" href="tel:' + esc(tel) + '">' + ic('call') + '</a>';
     round += '<button type="button" class="o2-rb" title="Print" aria-label="Print" onclick="printOrder(' + id + ')">' + ic('print') + '</button>';
@@ -195,7 +203,7 @@
     if (ps !== 'Paid' && ps !== 'Refunded' && !stopped && st !== 'Pending') small += '<button type="button" class="oc-sbtn oc-paid" onclick="markOrderPaid(' + id + ', this)">' + ic('payments') + 'Mark paid</button>';
     if (online && window.whatsappEnabled && window.whatsappPhone) {
       var txt = (st === 'Pending' ? 'New ' : '') + 'Order #' + (o.order_number || id) + '\nCustomer: ' + (o.customer_name || '') + '\nPhone: ' + (o.customer_phone || '') + '\nType: ' + type + '\nTotal: ' + money(o.total);
-      small += '<a class="oc-sbtn oc-wa" target="_blank" rel="noopener" href="https://wa.me/' + esc(window.whatsappPhone) + '?text=' + encodeURIComponent(txt) + '">' + ic('chat') + 'WhatsApp</a>';
+      small += '<a class="oc-sbtn oc-wa" target="_blank" rel="noopener" href="https://wa.me/' + esc(waNum(window.whatsappPhone)) + '?text=' + encodeURIComponent(txt) + '">' + ic('chat') + 'WhatsApp</a>';
     }
     if (!stopped && !done && !(online && st === 'Pending')) small += '<button type="button" class="oc-sbtn oc-cancel" onclick="updateOrderStatus(' + id + ', \'Cancelled\')">' + ic('block') + 'Cancel</button>';
 

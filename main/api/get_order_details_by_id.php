@@ -114,6 +114,10 @@ try {
     // bill number that counts up per restaurant (config/bill_numbers.php)
     require_once __DIR__ . '/../config/bill_numbers.php';
     $order['bill_no'] = rgBillNo($conn, $order['restaurant_id'], (int)$order['id']);
+    // Nepal: the number per fiscal year and the Bikram Sambat date (config/bill_numbers.php)
+    $lbl = rgBillLabel($conn, $order['restaurant_id'], (int)$order['id'], $order['bill_no']);
+    $order['bill_label'] = $lbl['label'];
+    $order['bill_date_bs'] = $lbl['date_bs'];
 
     // Payment proof status (screenshot itself is served separately via
     // image.php?type=payment_proof — never inline it here as a BLOB, since

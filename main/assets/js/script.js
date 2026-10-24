@@ -8385,6 +8385,25 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   };
 
+  // Service charge, tax and total after discounts, by the restaurant's bill rule: tax added on top, or
+  // already inside the menu price (Nepal), plus an optional service charge. Same maths as billMath() in
+  // config/bill_rules.php, which checks every bill. Settings: window.pricesIncludeTax, window.serviceChargePercent.
+  window.rgBillMath = function (taxable) {
+    const r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+    const showGst = window.enableGst == 1 || window.enableGst === true;
+    const t = showGst ? (parseFloat(window.taxPercent ?? 5) || 0) / 100 : 0;
+    const s = Math.max(0, Math.min(30, parseFloat(window.serviceChargePercent) || 0)) / 100;
+    taxable = r2(Math.max(0, taxable));
+    if (window.pricesIncludeTax == 1 || window.pricesIncludeTax === true) {
+      const net = r2(taxable / ((1 + s) * (1 + t)));
+      const sc = r2(net * s);
+      return { net, serviceCharge: sc, tax: r2(taxable - net - sc), total: taxable, inclusive: true };
+    }
+    const sc = r2(taxable * s);
+    const tax = r2((taxable + sc) * t);
+    return { net: taxable, serviceCharge: sc, tax, total: r2(taxable + sc + tax), inclusive: false };
+  };
+
   // One place where a POS bill's money is worked out, so the cart summary, the
   // Pay window and the printed bill can never disagree. Every discount — the
   // cashier's manual discount (assets/js/pos-discount.js), the customer's reward
@@ -8398,8 +8417,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const taken = pcPrice ? (pcPrice.coupon + pcPrice.pointsDiscount) : 0;   // customer's reward + points first
     const manual = window.rgPosDiscount ? window.rgPosDiscount.pricing(subtotal, taken) : null;   // then the cashier's own
     const taxable = Math.max(0, subtotal - taken - (manual ? manual.amount : 0));
-    const tax = showGst ? taxable * ((window.taxPercent ?? 5) / 100) : 0;
-    const total = taxable + tax;
+    const bill = window.rgBillMath(taxable);
+    const tax = bill.tax, total = bill.total, serviceCharge = bill.serviceCharge, inclusive = bill.inclusive;
     return {
       subtotal, showGst, pcPrice, manual,
       coupon: pcPrice ? pcPrice.coupon : 0,
@@ -8411,7 +8430,7 @@ document.addEventListener("DOMContentLoaded", () => {
       manualType: manual ? manual.type : 'amount',
       manualValue: manual ? manual.value : 0,
       manualLabel: manual ? manual.label : '',
-      taxable, tax, total
+      taxable, tax, total, serviceCharge, inclusive
     };
   };
 
@@ -8586,9 +8605,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
       const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
-      const showGst = window.enableGst == 1 || window.enableGst === true;
-      const tax = showGst ? subtotal * ((window.taxPercent ?? 5) / 100) : 0;
-      const total = subtotal + tax;
+      const { tax, total } = window.rgBillMath(subtotal);
       const selectPosTable = document.getElementById("selectPosTable");
       const selectedTable = selectPosTable ? selectPosTable.value : '';
 
@@ -9071,6 +9088,13 @@ document.addEventListener("DOMContentLoaded", () => {
       <div style="display:flex;justify-content:space-between;font-size:12px;"><span>${label}</span><span>${currency}${amt.toFixed(2)}</span></div>
     `).join('');
 
+    // Nepal VAT bill: "Tax Invoice", the Bikram Sambat date, and the taxable amount / service charge lines
+    const isNepal = window.restaurantCountryCode === 'NP';
+    const discTotal = (payResult.discounts || []).reduce((s, d) => s + (+d[1] || 0), 0);
+    const bm = window.rgBillMath ? window.rgBillMath(Math.max(0, subtotal - discTotal)) : { net: subtotal, serviceCharge: 0, inclusive: false };
+    const billExtraRows = [];
+    if (bm.inclusive && (showGst || bm.serviceCharge > 0)) billExtraRows.push(['Taxable amount', bm.net]);
+    if (bm.serviceCharge > 0) billExtraRows.push(['Service charge (' + (parseFloat(window.serviceChargePercent) || 0) + '%)', bm.serviceCharge]);
     const billHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bill #${kotNumber}</title>
       <style>
         ${window.getThermalReceiptCSS()}
@@ -9099,8 +9123,9 @@ document.addEventListener("DOMContentLoaded", () => {
         ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
         ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
         ${restaurantInfo.showBusinessId && restaurantInfo.businessIdNo ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.businessIdLabel || 'PAN')}: ${escapeHtml(restaurantInfo.businessIdNo)}</div>` : ''}
+        ${isNepal ? '<div class="bill-tag">TAX INVOICE</div>' : ''}
         <div class="bill-tag">BILL #${escapeHtml(String(kotNumber))}</div>
-        <div style="font-size:11px;color:#6b7280;margin-top:4px;">${dateStr} | ${timeStr}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">${payResult.billDateBs ? escapeHtml(payResult.billDateBs) + ' BS | ' : ''}${dateStr} | ${timeStr}</div>
       </div>
 
       <div class="info-box">
@@ -9119,8 +9144,10 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="totals">
         <div><span>Subtotal</span><span>${currency}${subtotal.toFixed(2)}</span></div>
         ${(payResult.discounts || []).map(([l, a]) => `<div><span>${escapeHtml(l)}</span><span>-${currency}${a.toFixed(2)}</span></div>`).join('')}
+        ${billExtraRows.map(([l, a]) => `<div><span>${escapeHtml(l)}</span><span>${currency}${a.toFixed(2)}</span></div>`).join('')}
         ${showGst ? `<div><span>${escapeHtml(window.taxName || 'Tax')} (${window.taxPercent ?? 5}%)</span><span>${currency}${tax.toFixed(2)}</span></div>` : ''}
         <div class="grand"><span>Total</span><span>${currency}${total.toFixed(2)}</span></div>
+        ${bm.inclusive ? '<div style="font-size:10px;color:#6b7280;justify-content:center;">Prices include ' + escapeHtml(window.taxName || 'tax') + (bm.serviceCharge > 0 ? ' and service charge' : '') + '</div>' : ''}
         ${payResult.walletPaid > 0 ? `<div><span>Paid from wallet</span><span>-${currency}${payResult.walletPaid.toFixed(2)}</span></div>` : ''}
       </div>
 
@@ -9170,7 +9197,9 @@ document.addEventListener("DOMContentLoaded", () => {
         total: total,
         afterTotal: afterTotal,
         paymentMethod: payResult.paymentMethod,
-        notes: billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : [],
+        notes: [].concat(isNepal ? ['TAX INVOICE' + (payResult.billDateBs ? ' · ' + payResult.billDateBs + ' BS' : '')] : [],
+          billExtraRows.map(([l, a]) => l + ': ' + a.toFixed(2)),
+          billLoyaltyLine(payResult) ? [billLoyaltyLine(payResult)] : []),
         logoRaster: billImages.logoRaster,
         qrRaster: billImages.qrRaster,
         qrLabel: 'Scan to Pay'
@@ -9301,7 +9330,9 @@ document.addEventListener("DOMContentLoaded", () => {
         window._kotSentForCurrentOrder = false;
 
         const showMsg = typeof showMessage !== 'undefined' ? showMessage : (window.showNotification || alert);
-        const billNo = result.bill_no || result.kot_number || result.order_number;   // bill_no counts up 1, 2, 3 per restaurant
+        // bill_no counts up 1, 2, 3 per restaurant; Nepal prints it per fiscal year ("2083/84-0142") with the BS date
+        const billNo = result.bill_label || result.bill_no || result.kot_number || result.order_number;
+        payResult.billDateBs = result.bill_date_bs || '';
         if (result.offline) showMsg(`Saved offline as bill ${result.order_number}. It syncs when the internet is back.`, "info");
         else showMsg(`Payment saved (${payResult.paymentStatus}) - ${result.kot_number ? 'KOT #' + result.kot_number : 'Bill ' + result.order_number}`, "success");
         window.posResetBill();
@@ -9391,9 +9422,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!delta.items.length && !delta.addons && !delta.combos.length) { showMsg("Everything on this bill is already in the kitchen.", "info"); return; }
 
     const subtotal = cart.reduce((sum, item) => sum + window.posLineTotal(item), 0);
-    const showGst = window.enableGst == 1 || window.enableGst === true;
-    const tax = showGst ? subtotal * ((window.taxPercent ?? 5) / 100) : 0;
-    const total = subtotal + tax;
+    const { tax, total } = window.rgBillMath(subtotal);
     const selectPosTable = document.getElementById("selectPosTable");
     const selectedTable = selectPosTable ? selectPosTable.value : '';
     const pcust = window.rgPosCustomer ? window.rgPosCustomer.get() : null;
@@ -11334,7 +11363,8 @@ window.printOrder = async function(orderId) {
       <div class="bill-meta">
         <div class="info-line"><span class="label">${tableOrType.includes('Table') ? 'DineIn' : 'Order'}</span><span class="value">${escapeHtml(tableOrType)}</span></div>
         <div class="info-line"><span class="label">Date</span><span class="value">${dateStr} | ${timeStr}</span></div>
-        <div class="info-line"><span class="label">Bill</span><span class="value">#${escapeHtml(order.bill_no || order.order_number || order.id)}</span></div>
+        ${window.restaurantCountryCode === 'NP' ? '<div class="info-line"><span class="label">TAX INVOICE</span><span class="value">' + (order.bill_date_bs ? escapeHtml(order.bill_date_bs) + ' BS' : '') + '</span></div>' : ''}
+        <div class="info-line"><span class="label">Bill</span><span class="value">#${escapeHtml(order.bill_label || order.bill_no || order.order_number || order.id)}</span></div>
         <div class="info-line"><span class="label">Invoice</span><span class="value">#INV-${String(order.created_at || "").slice(0, 10).replace(/-/g, "")}-${escapeHtml(String(order.order_number || order.id))}</span></div>
         <div class="info-line"><span class="label">Order No</span><span class="value">#${escapeHtml(order.id || order.order_number)}</span></div>
       </div>
@@ -11365,13 +11395,25 @@ window.printOrder = async function(orderId) {
 
       <div class="totals">
         <div class="total-row gross">
-          <span class="label">GROSS AMOUNT</span>
-          <span class="value">${formatCurrency(subtotal + tax)}</span>
+          <span class="label">SUBTOTAL</span>
+          <span class="value">${formatCurrency(subtotal)}</span>
         </div>
         ${discount > 0 ? `
         <div class="total-row">
           <span class="label">Discount</span>
           <span class="value">-${formatCurrency(discount)}</span>
+        </div>
+        ` : ''}
+        ${(parseFloat(order.service_charge) || 0) > 0 ? `
+        <div class="total-row">
+          <span class="label">Service charge</span>
+          <span class="value">${formatCurrency(parseFloat(order.service_charge))}</span>
+        </div>
+        ` : ''}
+        ${tax > 0 ? `
+        <div class="total-row">
+          <span class="label">${escapeHtml(window.taxName || 'Tax')}${window.pricesIncludeTax ? ' (included)' : ''}</span>
+          <span class="value">${formatCurrency(tax)}</span>
         </div>
         ` : ''}
         <div class="total-row grand">
@@ -11406,7 +11448,7 @@ window.printOrder = async function(orderId) {
         address: restaurantInfo.address,
         phone: restaurantInfo.phone,
         email: restaurantInfo.email,
-        billNo: order.bill_no || order.order_number || order.id,
+        billNo: order.bill_label || order.bill_no || order.order_number || order.id,
         createdAt: order.created_at,
         billTo: order.customer_name || (order.table_name || order.table_number ? 'Table ' + (order.table_name || order.table_number) + (order.area_name ? ' - ' + order.area_name : '') : (order.order_type || 'Walk-in')),
         items: items.map(it => ({
@@ -12488,6 +12530,14 @@ async function loadSettingsData() {
         if (taxPercentInput && user.tax_percent !== undefined && user.tax_percent !== null) taxPercentInput.value = user.tax_percent;
         window.taxName = user.tax_name || 'GST';
         window.taxPercent = user.tax_percent !== undefined && user.tax_percent !== null ? parseFloat(user.tax_percent) : 5;
+        // prices include tax / service charge (config/bill_rules.php)
+        if (user.prices_include_tax !== undefined) {
+          window.pricesIncludeTax = user.prices_include_tax == 1;
+          window.serviceChargePercent = parseFloat(user.service_charge_percent) || 0;
+          var pitEl = document.getElementById('pricesIncludeTaxToggle'), scEl = document.getElementById('serviceChargeInput');
+          if (pitEl) pitEl.checked = window.pricesIncludeTax;
+          if (scEl) scEl.value = window.serviceChargePercent || '';
+        }
       }
 
       // Set Show Business ID toggle from saved database settings
@@ -12657,7 +12707,8 @@ function setupSettingsForms() {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&enable_km_delivery=${encodeURIComponent(document.getElementById('enableKmDeliveryToggle')?.checked ? '1' : '0')}&delivery_rate_per_km=${encodeURIComponent(document.getElementById('deliveryRatePerKm')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&tax_name=${encodeURIComponent(document.getElementById('taxName')?.value || 'GST')}&tax_percent=${encodeURIComponent(document.getElementById('taxPercentInput')?.value || '5')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&enable_reservations=${encodeURIComponent(document.getElementById('enableReservationsToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}&show_business_id=${encodeURIComponent(document.getElementById('showBusinessIdToggle')?.checked ? '1' : '0')}&business_id_label=${encodeURIComponent(document.getElementById('businessIdLabelInput')?.value || '')}&business_id_no=${encodeURIComponent(document.getElementById('businessIdNoInput')?.value || '')}`
+          body: `action=updateRestaurantSettings&restaurant_name=${encodeURIComponent(restaurantName)}&email=${encodeURIComponent(restaurantEmail || '')}&phone=${encodeURIComponent(restaurantPhone || '')}&address=${encodeURIComponent(restaurantAddress || '')}&description=${encodeURIComponent(restaurantDescription || '')}&description_format=${encodeURIComponent(document.getElementById('descriptionFormatSettings')?.value || 'paragraph')}&opening_hours=${encodeURIComponent(JSON.stringify(openingHours))}&minimum_order_value=${encodeURIComponent(document.getElementById('minimumOrderValue')?.value || '350')}&packaging_charge=${encodeURIComponent(document.getElementById('packagingCharge')?.value || '0')}&delivery_radius_km=${encodeURIComponent(document.getElementById('deliveryRadius')?.value || '0')}&enable_km_delivery=${encodeURIComponent(document.getElementById('enableKmDeliveryToggle')?.checked ? '1' : '0')}&delivery_rate_per_km=${encodeURIComponent(document.getElementById('deliveryRatePerKm')?.value || '0')}&restaurant_lat=${encodeURIComponent(document.getElementById('restaurantAddressLat')?.value || '')}&restaurant_lng=${encodeURIComponent(document.getElementById('restaurantAddressLng')?.value || '')}&enable_gst=${encodeURIComponent(document.getElementById('enableGstToggle')?.checked ? '1' : '0')}&tax_name=${encodeURIComponent(document.getElementById('taxName')?.value || 'GST')}&tax_percent=${encodeURIComponent(document.getElementById('taxPercentInput')?.value || '5')}&enable_language=${encodeURIComponent(document.getElementById('enableLanguageToggle')?.checked ? '1' : '0')}&google_maps_link=${encodeURIComponent(document.getElementById('restaurantGoogleMapsLink')?.value || '')}&owner_name=${encodeURIComponent(document.getElementById('ownerName')?.value || '')}&instagram_link=${encodeURIComponent(document.getElementById('instagramLink')?.value || '')}&facebook_link=${encodeURIComponent(document.getElementById('facebookLink')?.value || '')}&twitter_link=${encodeURIComponent(document.getElementById('twitterLink')?.value || '')}&youtube_link=${encodeURIComponent(document.getElementById('youtubeLink')?.value || '')}&linkedin_link=${encodeURIComponent(document.getElementById('linkedinLink')?.value || '')}&enable_delivery=${encodeURIComponent(document.getElementById('enableDeliveryToggle')?.checked ? '1' : '0')}&enable_takeaway=${encodeURIComponent(document.getElementById('enableTakeawayToggle')?.checked ? '1' : '0')}&enable_dinein=${encodeURIComponent(document.getElementById('enableDineinToggle')?.checked ? '1' : '0')}&enable_reservations=${encodeURIComponent(document.getElementById('enableReservationsToggle')?.checked ? '1' : '0')}&cod_enabled=${encodeURIComponent(document.getElementById('enableCodToggle')?.checked ? '1' : '0')}&show_business_id=${encodeURIComponent(document.getElementById('showBusinessIdToggle')?.checked ? '1' : '0')}&business_id_label=${encodeURIComponent(document.getElementById('businessIdLabelInput')?.value || '')}&business_id_no=${encodeURIComponent(document.getElementById('businessIdNoInput')?.value || '')}` +
+            (document.getElementById('pricesIncludeTaxToggle') ? `&prices_include_tax=${document.getElementById('pricesIncludeTaxToggle').checked ? '1' : '0'}&service_charge_percent=${encodeURIComponent(document.getElementById('serviceChargeInput')?.value || '0')}` : '')
         });
         
         const result = await response.json();

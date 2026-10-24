@@ -197,6 +197,9 @@ function seoHeadTags(string $page): string
     $title = seoTitle($page, $r['name']);
     $url = seoPageUrl($page);
     $img = !empty($s['share_image']) ? seoMainUrl($s['share_image']) : seoAbs($r['logo']);
+    // the restaurant's country for Google (Nepal: en_NP, NP, NPR); India when not set
+    require_once __DIR__ . '/countries.php';
+    $cty = ($c['conn'] ? restaurantCountryInfo($c['conn'], (string)$r['id']) : null) ?: ['iso2' => 'IN', 'currency_code' => 'INR'];
     $h = [];
     $h[] = '<meta name="description" content="' . $e($desc) . '">';
     if (!empty($s['keywords'])) $h[] = '<meta name="keywords" content="' . $e($s['keywords']) . '">';
@@ -209,7 +212,7 @@ function seoHeadTags(string $page): string
     $h[] = '<meta property="og:title" content="' . $e($title) . '">';
     $h[] = '<meta property="og:description" content="' . $e($desc) . '">';
     $h[] = '<meta property="og:url" content="' . $e($url) . '">';
-    $h[] = '<meta property="og:locale" content="en_IN">';
+    $h[] = '<meta property="og:locale" content="en_' . $cty['iso2'] . '">';
     if ($img) { $h[] = '<meta property="og:image" content="' . $e($img) . '">'; $h[] = '<meta name="twitter:image" content="' . $e($img) . '">'; }
     $h[] = '<meta name="twitter:card" content="' . ($img ? 'summary_large_image' : 'summary') . '">';
     $h[] = '<meta name="twitter:title" content="' . $e($title) . '">';
@@ -224,7 +227,7 @@ function seoHeadTags(string $page): string
     if ($r['logo'] && ($lg = seoAbs($r['logo']))) $ld['logo'] = $lg;
     if ($r['phone']) $ld['telephone'] = $r['phone'];
     if ($r['address']) {
-        $ld['address'] = ['@type' => 'PostalAddress', 'streetAddress' => $r['address'], 'addressCountry' => 'IN'];
+        $ld['address'] = ['@type' => 'PostalAddress', 'streetAddress' => $r['address'], 'addressCountry' => $cty['iso2']];
         if ($city = seoCity($r['address'])) $ld['address']['addressLocality'] = $city;
         if (preg_match('/\b(\d{6})\b/', $r['address'], $m)) $ld['address']['postalCode'] = $m[1];
     }
@@ -253,7 +256,7 @@ function seoHeadTags(string $page): string
             $mq->execute([$r['id']]);
             $sections = [];
             foreach ($mq->fetchAll(PDO::FETCH_ASSOC) as $it) {
-                $item = ['@type' => 'MenuItem', 'name' => $it['item_name_en'], 'offers' => ['@type' => 'Offer', 'price' => number_format((float)$it['base_price'], 2, '.', ''), 'priceCurrency' => 'INR']];
+                $item = ['@type' => 'MenuItem', 'name' => $it['item_name_en'], 'offers' => ['@type' => 'Offer', 'price' => number_format((float)$it['base_price'], 2, '.', ''), 'priceCurrency' => $cty['currency_code']]];
                 $d2 = trim(strip_tags((string)$it['item_description_en']));
                 if ($d2 !== '') $item['description'] = mb_substr($d2, 0, 200);
                 $sections[$it['menu_name']][] = $item;

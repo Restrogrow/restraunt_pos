@@ -415,6 +415,9 @@ try { $rgBrandSiteUrl = (string)(brandRestaurantUrl(getConnection(), (string)$_S
     // Currency symbol loaded from server-side PHP (exactly like restaurant logo/name)
     // NO JavaScript updates needed - value is already correct in HTML from PHP
     window.globalCurrencySymbol = <?php echo json_encode($currency_symbol, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
+    <?php echo countryJsGlobals(restaurantCountryInfo(getConnection(), $restaurant_id)); ?>
+    <?php require_once __DIR__ . '/../config/bill_rules.php'; $bill_rule = billRules(getConnection(), (string)$restaurant_id); ?>
+    window.pricesIncludeTax = <?php echo $bill_rule['inclusive'] ? 'true' : 'false'; ?>; window.serviceChargePercent = <?php echo json_encode($bill_rule['service_percent']); ?>;
     window.restaurantCustomDomain = <?php echo json_encode($restaurant_custom_domain, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
     window.restaurantEmbedEnabled = <?php echo json_encode((bool)$restaurant_embed_enabled, JSON_HEX_TAG); ?>;
     // a brand outlet's website address (relative on the platform, https:// on the brand's own domain), else ''
@@ -5381,6 +5384,17 @@ function toggleGatewayMode() {
                   <input type="number" id="taxPercentInput" class="form-control" step="0.01" min="0" max="100" placeholder="e.g. 5" value="<?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$tax_percent, 2), '0'), '.')); ?>">
                 </div>
               </div>
+              <!-- tax inside the menu price (Nepal) and a service charge: config/bill_rules.php -->
+              <label class="st-toggle" style="margin-top:14px">
+                <span><b>Menu prices include tax</b><small>Your menu price already holds the tax and service charge, as Nepal rules expect. The bill works them out of the price, so the customer pays exactly the menu price.</small></span>
+                <span class="st-switch"><input type="checkbox" id="pricesIncludeTaxToggle" <?php echo !empty($bill_rule['inclusive']) ? "checked" : ""; ?>><i></i></span>
+              </label>
+              <div class="st-grid2" style="margin-top:10px">
+                <div class="st-field">
+                  <label for="serviceChargeInput">Service charge (%)</label>
+                  <input type="number" id="serviceChargeInput" class="form-control" step="0.01" min="0" max="30" placeholder="0 = none, Nepal usually 10" value="<?php echo htmlspecialchars(rtrim(rtrim(number_format((float)($bill_rule['service_percent'] ?? 0), 2), '0'), '.')); ?>">
+                </div>
+              </div>
             </div>
             <div class="st-card" data-st-form="restaurant">
               <label class="st-toggle">
@@ -5579,6 +5593,7 @@ function toggleGatewayMode() {
                     'kn' => 'ಕನ್ನಡ (Kannada)',
                     'ml' => 'മലയാളം (Malayalam)',
                     'pa' => 'ਪੰਜਾਬੀ (Punjabi)',
+                    'ne' => 'नेपाली (Nepali)',
                     'es' => 'Español (Spanish)',
                     'fr' => 'Français (French)',
                     'de' => 'Deutsch (German)',

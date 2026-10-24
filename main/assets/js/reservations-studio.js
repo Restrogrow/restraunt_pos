@@ -91,9 +91,16 @@
     else if (r.status === 'Checked In') { a.push(btn('go', 'task_alt', 'Complete', 'Completed')); }
     return a.join('');
   }
+  // wa.me number: a local number gets the restaurant's dial code (91 when the country is unknown)
+  function waNum(v) {
+    var d = String(v || '').replace(/\D/g, ''), cc = String(window.restaurantDialCode || '').replace(/\D/g, '') || '91';
+    var min = window.restaurantPhoneMin || 10, max = window.restaurantPhoneMax || 10;
+    if (d.length > max && d.indexOf(cc) === 0 && d.length - cc.length >= min) return d;
+    if (d.charAt(0) === '0' && d.length - 1 >= min && d.length - 1 <= max) d = d.slice(1);
+    return d.length >= min && d.length <= max ? cc + d : d;
+  }
   function card(r) {
-    var st = ST[r.status] || ['muted', 'event', r.status], late = lateBy(r), phone = String(r.phone || '').replace(/[^0-9+]/g, ''), wa = phone.replace(/^\+/, '');
-    if (wa.length === 10) wa = '91' + wa; else if (wa.length === 11 && wa.charAt(0) === '0') wa = '91' + wa.slice(1);
+    var st = ST[r.status] || ['muted', 'event', r.status], late = lateBy(r), phone = String(r.phone || '').replace(/[^0-9+]/g, ''), wa = waNum(phone);
     var open = r.status === 'Pending' || r.status === 'Confirmed' || r.status === 'Checked In';
     return '<article class="rv-card ' + st[0] + (late ? ' late' : '') + '" data-rv-id="' + r.id + '">' +
       '<div class="rv-time"><b>' + esc(niceTime(r.time_slot)) + '</b><small>' + esc(r.meal_type || '') + '</small></div>' +

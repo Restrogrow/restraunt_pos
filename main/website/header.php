@@ -678,6 +678,9 @@ if ($restaurant_id && (isset($_GET['src']) || isset($_GET['coupon']))) {
 // `function promptInstall(){}` declared there simply overwrites this one
 // (function redeclaration doesn't throw, unlike `let`/`const`), so this
 // fallback only actually matters on pages without their own copy.
+// the restaurant's dial code and phone length for the page scripts (wa.me links, phone checks)
+if (!empty($restaurant_id) && isset($conn)) echo '<script>' . countryJsGlobals(restaurantCountryInfo($conn, (string)$restaurant_id)) . '</script>' . "
+";
 if ($show_install_app) {
 ?>
 <script>

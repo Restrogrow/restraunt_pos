@@ -243,7 +243,15 @@
     return 'Purchase order ' + p.po_number + (name ? ' from ' + name.trim() : '') + '\n\n' + p.lines.map(function (l) { return '• ' + l.item_name + ': ' + qty(l.quantity, l.unit); }).join('\n') +
       (p.expected_date ? '\n\nNeeded by ' + day(p.expected_date) : '') + (p.notes ? '\n' + p.notes : '') + '\n\nPlease confirm. Thank you.';
   }
-  function waLink(p) { var ph = String(p.supplier_phone || '').replace(/\D/g, ''); if (ph.length === 10) ph = '91' + ph; return 'https://wa.me/' + ph + '?text=' + encodeURIComponent(poText(p)); }
+  // wa.me number: a local number gets the restaurant's dial code (91 when the country is unknown)
+  function waNum(v) {
+    var d = String(v || '').replace(/\D/g, ''), cc = String(window.restaurantDialCode || '').replace(/\D/g, '') || '91';
+    var min = window.restaurantPhoneMin || 10, max = window.restaurantPhoneMax || 10;
+    if (d.length > max && d.indexOf(cc) === 0 && d.length - cc.length >= min) return d;
+    if (d.charAt(0) === '0' && d.length - 1 >= min && d.length - 1 <= max) d = d.slice(1);
+    return d.length >= min && d.length <= max ? cc + d : d;
+  }
+  function waLink(p) { var ph = waNum(p.supplier_phone); return 'https://wa.me/' + ph + '?text=' + encodeURIComponent(poText(p)); }
 
   /* ── Suppliers ── */
   VIEWS.suppliers = function () {

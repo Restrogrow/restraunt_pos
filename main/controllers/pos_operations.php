@@ -617,20 +617,18 @@ function handleCreateKOT($conn, $restaurant_id) {
     $manualDiscount = min($manualDiscount, max(0, round($subtotal - $discountAmount - $loyaltyDiscount, 2)));
     $taxableAmount = max(0, round($subtotal - $discountAmount - $loyaltyDiscount - $manualDiscount, 2));
 
-    // Server-side tax validation
-    $expectedTotal = round($taxableAmount + $tax, 2);
-    if (abs($total - $expectedTotal) > 0.01) {
+    // Server-side tax validation: the restaurant's bill rule (tax on top or inside the price, service charge),
+    // the same one the POS screen uses (config/bill_rules.php)
+    require_once __DIR__ . '/../config/bill_rules.php';
+    $billRule = billRules($conn, $restaurant_id);
+    $gstEnabled = $billRule['tax_on'];
+    $taxPercent = $billRule['tax_percent'];
+    $billCalc = billMath($taxableAmount, $billRule);
+    if (abs($total - $billCalc['total']) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'Total mismatch: total does not match subtotal + tax'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    // Check if tax is enabled for this restaurant, and at what rate
-    $gstCheck = $conn->prepare("SELECT enable_gst, tax_percent FROM users WHERE restaurant_id = ? LIMIT 1");
-    $gstCheck->execute([$restaurant_id]);
-    $gstRow = $gstCheck->fetch(PDO::FETCH_ASSOC);
-    $gstEnabled = $gstRow ? (bool)$gstRow['enable_gst'] : true;
-    $taxPercent = ($gstRow && isset($gstRow['tax_percent']) && $gstRow['tax_percent'] !== null) ? (float)$gstRow['tax_percent'] : 5.00;
-    $expectedTax = $gstEnabled ? round($taxableAmount * ($taxPercent / 100), 2) : 0;
-    if (abs($tax - $expectedTax) > 0.01) {
+    if (abs($tax - $billCalc['tax']) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'Tax mismatch: calculated tax does not match expected value'], JSON_UNESCAPED_UNICODE);
         return;
     }
@@ -731,14 +729,15 @@ function handleCreateKOT($conn, $restaurant_id) {
             $kotSub = 0.0;
             foreach ($kitchenItems as $ki) $kotSub += (float)$ki['price'] * (int)$ki['quantity'];
             foreach ($kitchenCombos as $kc) $kotSub += $kc['unit'] * $kc['qty'];
-            $kotTax = $gstEnabled ? round($kotSub * ($taxPercent / 100), 2) : 0;
+            $kotCalc = billMath($kotSub, $billRule);
+            $kotTax = $kotCalc['tax'];
             $checkKotCols = $conn->query("SHOW COLUMNS FROM kot LIKE 'customer_phone'");
             if ($checkKotCols->rowCount() > 0) {
                 $stmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, customer_phone, customer_email, customer_address, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$restaurant_id, $kotNumber, $tableIdParam, $orderType, $customerName, $customerPhone, $customerEmail, $customerAddress, $kotSub, $kotTax, $kotSub + $kotTax, $ticketNotes]);
+                $stmt->execute([$restaurant_id, $kotNumber, $tableIdParam, $orderType, $customerName, $customerPhone, $customerEmail, $customerAddress, $kotSub, $kotTax, $kotCalc['total'], $ticketNotes]);
             } else {
                 $stmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$restaurant_id, $kotNumber, $tableIdParam, $orderType, $customerName, $kotSub, $kotTax, $kotSub + $kotTax, $ticketNotes]);
+                $stmt->execute([$restaurant_id, $kotNumber, $tableIdParam, $orderType, $customerName, $kotSub, $kotTax, $kotCalc['total'], $ticketNotes]);
             }
             $kotId = $conn->lastInsertId();
 
@@ -800,6 +799,7 @@ function handleCreateKOT($conn, $restaurant_id) {
             $orderId = (int)$conn->lastInsertId();
         }
 
+        billSaveExtras($conn, (int)$orderId, $billCalc['service_charge'], isset($_POST['buyerPan']) ? (string)$_POST['buyerPan'] : null, isset($_POST['buyerName']) ? (string)$_POST['buyerName'] : null);
         $orderItemIds = [];
         foreach ($cartItems as $i => $item) {
             $oiStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)");
@@ -915,6 +915,11 @@ function handleCreateKOT($conn, $restaurant_id) {
         // the bill number that counts up per restaurant (config/bill_numbers.php)
         require_once __DIR__ . '/../config/bill_numbers.php';
         $resp['bill_no'] = rgBillNo($conn, $restaurant_id, (int)$orderId);
+        // Nepal: the number per fiscal year ("2083/84-0142") and the Bikram Sambat date for the printed bill
+        $lbl = rgBillLabel($conn, $restaurant_id, (int)$orderId, $resp['bill_no']);
+        $resp['bill_label'] = $lbl['label'];
+        $resp['bill_date_bs'] = $lbl['date_bs'];
+        $resp['service_charge'] = $billCalc['service_charge'];
         // owner's activity log: discounts given at the POS, and bills made offline
         if ($discountAmount > 0 || $manualDiscount > 0 || $loyaltyPoints > 0 || $posRef !== '') try {
             require_once __DIR__ . '/../config/activity_log.php';
@@ -1025,19 +1030,14 @@ function handleHoldOrder($conn, $restaurant_id) {
         return;
     }
 
-    // Server-side tax validation
-    $expectedTotal = round($subtotal + $tax, 2);
-    if (abs($total - $expectedTotal) > 0.01) {
+    // Server-side tax validation (config/bill_rules.php, as for a paid bill)
+    require_once __DIR__ . '/../config/bill_rules.php';
+    $holdCalc = billMath($subtotal, billRules($conn, $restaurant_id));
+    if (abs($total - $holdCalc['total']) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'Total mismatch: total does not match subtotal + tax'], JSON_UNESCAPED_UNICODE);
         return;
     }
-    $gstCheck = $conn->prepare("SELECT enable_gst, tax_percent FROM users WHERE restaurant_id = ? LIMIT 1");
-    $gstCheck->execute([$restaurant_id]);
-    $gstRow = $gstCheck->fetch(PDO::FETCH_ASSOC);
-    $gstEnabled = $gstRow ? (bool)$gstRow['enable_gst'] : true;
-    $taxPercent = ($gstRow && isset($gstRow['tax_percent']) && $gstRow['tax_percent'] !== null) ? (float)$gstRow['tax_percent'] : 5.00;
-    $expectedTax = $gstEnabled ? round($subtotal * ($taxPercent / 100), 2) : 0;
-    if (abs($tax - $expectedTax) > 0.01) {
+    if (abs($tax - $holdCalc['tax']) > 0.01) {
         echo json_encode(['success' => false, 'message' => 'Tax mismatch: calculated tax does not match expected value'], JSON_UNESCAPED_UNICODE);
         return;
     }
@@ -1076,6 +1076,7 @@ function handleHoldOrder($conn, $restaurant_id) {
         $stmt->execute([$restaurant_id, $tableId ?: null, $orderNumber, $holdCust['customer_name'] ?? '', $holdCust['phone'] ?? null, $holdCust['email'] ?? null, $orderType, $subtotal, $tax, $total]);
         
         $orderId = $conn->lastInsertId();
+        billSaveExtras($conn, (int)$orderId, $holdCalc['service_charge']);
         
         // Insert order items
         $itemStmt = $conn->prepare("INSERT INTO order_items (order_id, menu_item_id, item_name, variation_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)");

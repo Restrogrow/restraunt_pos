@@ -119,9 +119,17 @@
     { icon: 'light', name: 'Chhath Puja', dates: ['2026-11-15', '2027-11-04', '2028-10-23', '2029-11-11', '2030-11-01', '2031-11-20'], type: 'festival', idea: 'Thekua and festive prasad-style sweets', poster: 'festive_special', fields: { headline: 'Happy Chhath Puja', subtext: 'Festive treats for the family', badge: 'Chhath Special' }, cap: 'festive', subject: 'Chhath Puja', tone: 'elegant' },
     { icon: 'auto_awesome', name: 'Guru Nanak Jayanti', dates: ['2026-11-24', '2027-11-14', '2028-11-02', '2029-11-21', '2030-11-10', '2031-11-28'], type: 'festival', idea: 'Langar-style thali; kada prasad', poster: 'festive_special', fields: { headline: 'Happy Gurpurab', subtext: 'A wholesome Punjabi thali', badge: 'Gurpurab Special' }, cap: 'festive', subject: 'Guru Nanak Jayanti', tone: 'elegant' },
 
+    // ── Nepal (np: shown to Nepal restaurants only). New Year = 1 Baisakh from config/nepali_date.php;
+    // Dashain's Vijaya Dashami and Tihar's Laxmi Puja fall with Dussehra and Diwali above ──
+    { icon: 'celebration', name: 'Nepali New Year', np: true, dates: ['2027-04-14', '2028-04-13', '2029-04-14', '2030-04-14', '2031-04-15'], type: 'festival', idea: 'New Year family set menu; sel roti and sweets', poster: 'festive_special', fields: { headline: 'Happy New Year', subtext: 'Celebrate the new year with us', badge: 'Naya Barsha' }, cap: 'festive', subject: 'Nepali New Year', tone: 'fun' },
+    { icon: 'temple_hindu', name: 'Dashain (Vijaya Dashami)', np: true, dates: ['2026-10-20', '2027-10-09', '2028-09-27', '2029-10-16', '2030-10-06', '2031-10-25'], type: 'festival', idea: 'Goat curry and family feast sets; party orders for tika day', poster: 'festive_special', fields: { headline: 'Happy Dashain', subtext: 'Family feasts for the festival', badge: 'Dashain Special' }, cap: 'festive', subject: 'Dashain', tone: 'fun' },
+    { icon: 'light', name: 'Tihar (Laxmi Puja)', np: true, dates: ['2026-11-08', '2027-10-29', '2028-10-17', '2029-11-05', '2030-10-26', '2031-11-14'], type: 'festival', idea: 'Sel roti and sweets boxes; deusi-bhailo party platters', poster: 'festive_special', fields: { headline: 'Happy Tihar', subtext: 'Sweets and festive feasts', badge: 'Tihar Special' }, cap: 'festive', subject: 'Tihar', tone: 'fun' },
+
     // ── Every week ──
     { icon: 'weekend', name: 'Weekend Special', weekly: 5, recurring: true, type: 'season', idea: 'A weekend-only combo or happy hours', poster: 'bold_discount', fields: { headline: 'Weekend Special', subtext: 'This Sat-Sun only', badge: 'Weekend Offer' }, cap: 'weekend', subject: 'our weekend special', tone: 'fun' }
   ];
+  // Nepal restaurants get the Nepal festivals; everyone else does not (window.restaurantCountryCode from countries.php)
+  OCCASIONS = OCCASIONS.filter(function (o) { return !o.np || window.restaurantCountryCode === 'NP'; });
 
   function dateOf(o) {
     if (o.dates) { var listed = nextListed(o.dates); if (listed || !o.f) return listed; }   // exact dates first, the fixed day after the list ends

@@ -603,6 +603,9 @@ if ($table_id !== null) {
     }
 }
 
+// bill rule columns are added before the transaction (an ALTER TABLE would end it)
+require_once __DIR__ . '/../config/bill_rules.php';
+billRulesEnsure($conn);
 $conn->beginTransaction();
     
     // Validate coupon if provided (WITH row lock to prevent race condition)
@@ -1062,8 +1065,11 @@ $conn->beginTransaction();
     // Tax is on the discounted subtotal only — packaging is NOT taxable
     $taxable = $subtotal - (float)$discount_amount - (float)$loyalty_discount_amount - (float)$vip_discount;
     if ($taxable < 0) $taxable = 0;
-    $tax = $gstEnabled ? round($taxable * ($taxPercent / 100), 2) : 0;
-    $grand_total = $taxable + $tax + $deliveryCharge + (float)$packaging_charge;
+    // tax on top or inside the price, and a service charge: the restaurant's bill rule (config/bill_rules.php)
+    require_once __DIR__ . '/../config/bill_rules.php';
+    $billCalc = billMath($taxable, billRules($conn, $restaurant_id));
+    $tax = $billCalc['tax'];
+    $grand_total = $billCalc['total'] + $deliveryCharge + (float)$packaging_charge;
     
     // Payment starts as Pending
     $paymentStatus = 'Pending';
@@ -1218,6 +1224,7 @@ $conn->beginTransaction();
         }
     }
     $order_id = $conn->lastInsertId();
+    billSaveExtras($conn, (int)$order_id, $billCalc['service_charge']);
 
     // Record the submitter IP for abuse blocking. Kept out of the INSERT so
     // order placement never breaks before the customer_ip migration
