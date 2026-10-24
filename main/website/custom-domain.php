@@ -35,7 +35,7 @@ $domainNormalized = normalizeCustomDomain($domain);
 require_once __DIR__ . '/brand_router.php';
 $rgBrand = rgIsCustomHost($domain) ? brandByHost($conn, $domain) : null;
 if ($rgBrand) {
-    $rgPath = trim((string)(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''), '/');
+    $rgPath = trim(substr((string)(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''), strlen(brandSiteRoot())), '/');   // without a local copy's /menuwebsite
     if ($rgPath === 'sitemap.xml') { brandSitemap($conn, $rgBrand); exit; }
     if ($rgPath === 'robots.txt') { brandRobots($rgBrand); exit; }
     if (preg_match('#^go/([A-Za-z0-9]{4,12})$#', $rgPath, $gm)) { $_GET['c'] = $gm[1]; include __DIR__ . '/go.php'; exit; }
@@ -67,7 +67,7 @@ if ($customDomainRow) {
     $_GET['restaurant_id'] = $restaurant_id;
 
     $parsedUrl = parse_url($_SERVER['REQUEST_URI']);
-    $path = isset($parsedUrl['path']) ? trim($parsedUrl['path'], '/') : '';
+    $path = isset($parsedUrl['path']) ? trim(substr('/' . trim($parsedUrl['path'], '/'), strlen(brandSiteRoot())), '/') : '';   // without a local copy's /menuwebsite (config/brand.php)
 
     // the restaurant's own sitemap and robots.txt (dashboard › SEO)
     if (preg_match('#(^|/)sitemap\.xml$#', $path)) { include __DIR__ . '/sitemap.php'; exit; }

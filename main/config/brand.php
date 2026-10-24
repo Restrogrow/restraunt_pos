@@ -231,14 +231,14 @@ function brandBaseUrl(array $brand, bool $absolute = false): string
 function brandOutletUrl(array $brand, array $outlet, string $page = '', bool $absolute = false): string
 {
     $tail = '/' . $outlet['url_key'] . ($page !== '' ? '/' . ltrim($page, '/') : '');
-    if (!$absolute && !empty($brand['domain_live']) && brandByHostIsThis($brand)) return $tail;
+    if (!$absolute && !empty($brand['domain_live']) && brandByHostIsThis($brand)) return brandSiteRoot() . $tail;   // '' on the live server
     return brandBaseUrl($brand, $absolute) . $tail;
 }
 
 /** The picker's address (brand.com/ or restrogrow.com/<slug>/). */
 function brandPickerUrl(array $brand, bool $absolute = false): string
 {
-    if (!$absolute && !empty($brand['domain_live']) && brandByHostIsThis($brand)) return '/';
+    if (!$absolute && !empty($brand['domain_live']) && brandByHostIsThis($brand)) return brandSiteRoot() . '/';
     return brandBaseUrl($brand, $absolute) . '/';
 }
 
@@ -261,9 +261,10 @@ function brandRestaurantUrl(PDO $conn, ?string $rid, string $page = '', bool $ab
 /** Why a brand address part can't be used, or ''. $kind 'brand' (restrogrow.com/<slug>) or 'outlet' (…/<url_key>). */
 function brandKeyProblem(PDO $conn, string $key, string $kind, int $brandId = 0): string
 {
+    brandEnsure($conn);
     $min = $kind === 'brand' ? 3 : 2;
     $max = $kind === 'brand' ? 60 : 40;
-    if (!preg_match('/^[a-z0-9]+(-[a-z0-9]+)*$/', $key) || strlen($key) < $min || strlen($key) > $max) return "Use $min–$max small letters, numbers and dashes, e.g. " . ($kind === 'brand' ? 'spice-garden' : 'indiranagar') . '.';
+    if (!preg_match('/^[a-z0-9]+(-[a-z0-9]+)*$/', $key) || strlen($key) < $min || strlen($key) > $max) return "Use {$min}–{$max} small letters, numbers and dashes, e.g. " . ($kind === 'brand' ? 'spice-garden' : 'indiranagar') . '.';
     if (in_array($key, BRAND_RESERVED, true)) return "\"$key\" is a word the website already uses. Pick another.";
     if ($kind === 'brand') {
         $root = dirname(__DIR__, 2);

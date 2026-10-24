@@ -119,7 +119,7 @@
   }
 
   function trackingCard() {
-    return '<div class="bs-card"><h3>' + ic('query_stats') + 'Tracking on the brand pages</h3><p class="bs-sub">For the outlet picker. Each outlet\'s own pages keep the codes set in that outlet\'s SEO settings.</p>' +
+    return '<div class="bs-card"><h3>' + ic('bar_chart') + 'Tracking on the brand pages</h3><p class="bs-sub">For the outlet picker. Each outlet\'s own pages keep the codes set in that outlet\'s SEO settings.</p>' +
       '<div class="bs-row"><label>Google Analytics ID<input type="text" id="bsGa" value="' + esc(B.ga_id || '') + '" placeholder="G-XXXXXXXXXX"></label>' +
       '<label>Meta Pixel ID<input type="text" id="bsPx" value="' + esc(B.meta_pixel_id || '') + '"></label>' +
       '<label>Search Console code<input type="text" id="bsGsc" value="' + esc(B.gsc_verification || '') + '" placeholder="the HTML tag code"></label></div>' +
