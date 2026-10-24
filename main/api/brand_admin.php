@@ -138,7 +138,7 @@ try {
     $out['payments'] = array_map(fn($o) => ['restaurant_id' => $o['restaurant_id'], 'label' => $o['label'], 'gateway' => $o['gateway'],
         'today' => $sum[$o['restaurant_id']]['today'] ?? ['amount' => 0, 'count' => 0], 'last_7_days' => $sum[$o['restaurant_id']]['last_7_days'] ?? ['amount' => 0, 'count' => 0],
         'this_month' => $sum[$o['restaurant_id']]['this_month'] ?? ['amount' => 0, 'count' => 0]], $outlets);
-    $out['outlet_details'] = array_map(fn($o) => ['restaurant_id' => $o['restaurant_id'], 'restaurant_name' => $o['restaurant_name'], 'open_now' => $o['open_now'], 'has_location' => $o['lat'] !== null, 'online_payments' => $o['online_payments']], $outlets);
+    $out['outlet_details'] = array_map(fn($o) => ['restaurant_id' => $o['restaurant_id'], 'restaurant_name' => $o['restaurant_name'], 'open_now' => $o['open_now'], 'has_location' => $o['lat'] !== null, 'online_payments' => $o['online_payments'], 'website_offline' => $o['website_offline']], $outlets);
     baOut(200, ['success' => true, 'brand' => $out]);
 } catch (Throwable $e) {
     error_log('brand_admin: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());

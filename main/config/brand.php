@@ -156,7 +156,7 @@ function brandOutlets(PDO $conn, int $brandId, bool $listedOnly = false): array
     if (!$rows) return [];
     // users read separately: brand_outlets and users may use different collations
     $ids = array_column($rows, 'restaurant_id');
-    $u = $conn->prepare('SELECT id, restaurant_id, restaurant_name, address, phone, restaurant_lat, restaurant_lng, restaurant_logo, opening_hours, timezone, is_active, payment_gateway_type
+    $u = $conn->prepare('SELECT id, restaurant_id, restaurant_name, address, phone, restaurant_lat, restaurant_lng, restaurant_logo, opening_hours, timezone, is_active, payment_gateway_type, subscription_status
         FROM users WHERE restaurant_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')');
     $u->execute($ids);
     $users = [];
@@ -165,6 +165,9 @@ function brandOutlets(PDO $conn, int $brandId, bool $listedOnly = false): array
     foreach ($rows as $o) {
         $r = $users[(string)$o['restaurant_id']] ?? null;
         if (!$r || (int)$r['is_active'] !== 1) continue;
+        // a plan that expired or was disabled takes the outlet's website offline (header.php): not in the picker either
+        $offline = in_array((string)($r['subscription_status'] ?? ''), ['expired', 'disabled'], true);
+        if ($offline && $listedOnly) continue;
         $o['id'] = (int)$o['id'];
         $o['brand_id'] = (int)$o['brand_id'];
         $o['sort_order'] = (int)$o['sort_order'];
@@ -177,6 +180,7 @@ function brandOutlets(PDO $conn, int $brandId, bool $listedOnly = false): array
         $o['user_id'] = (int)$r['id'];
         $o['has_logo'] = !empty($r['restaurant_logo']);
         $o['open_now'] = brandOpenNow($r);
+        $o['website_offline'] = $offline;
         $o['online_payments'] = ($r['payment_gateway_type'] ?? 'cash_only') !== 'cash_only';   // Super Admin switches online payments per outlet
         $out[] = $o;
     }

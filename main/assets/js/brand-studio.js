@@ -62,7 +62,7 @@
     (B.outlet_details || []).forEach(function (o) { det[o.restaurant_id] = o; });
     var rows = B.outlets.map(function (o, i) {
       var x = det[o.restaurant_id] || {};
-      var warn = (!x.has_location ? '<span class="bs-warn">No map location saved: "nearest" can\'t use it (outlet › Settings › Address).</span>' : '') +
+      var warn = (x.website_offline ? '<span class="bs-warn" style="color:#b91c1c">Website offline: this outlet’s plan expired or was switched off, so it is hidden from the picker.</span>' : '') + (!x.has_location ? '<span class="bs-warn">No map location saved: "nearest" can\'t use it (outlet › Settings › Address).</span>' : '') +
         (!x.online_payments ? '<span class="bs-warn">Online payments are off for this outlet (ask RestroGrow support).</span>' : '');
       return '<tr data-rid="' + esc(o.restaurant_id) + '">' +
         '<td style="white-space:nowrap"><button class="bs-mini" type="button" data-bs-up="' + i + '" title="Move up"' + (i ? '' : ' disabled') + '>' + ic('arrow_upward') + '</button></td>' +
