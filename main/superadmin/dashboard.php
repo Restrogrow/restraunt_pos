@@ -1746,6 +1746,7 @@ require_once __DIR__ . '/../config/countries.php';
               <button class="btn btn-outline" onclick="toggleBranchAdmin(${a.id}, ${a.is_active ? 0 : 1})">${a.is_active ? 'Disable' : 'Enable'}</button>
               <button class="btn btn-outline" onclick="editBranchLinks(${a.id})">Edit Links</button>
               <button class="btn btn-outline" onclick="setBranchAdminPassword(${a.id}, '${saEsc(a.username)}')">Set password</button>
+              ${a.is_active ? `<button class="btn btn-primary" onclick="loginAsBranchAdmin(${a.id})">Log in</button>` : ''}
               <button class="btn btn-outline" onclick="editBrand(${a.id})">${brand ? 'Edit brand' : 'Make brand'}</button>
             </td>
           </tr>`;
@@ -1822,6 +1823,13 @@ require_once __DIR__ . '/../config/countries.php';
         showSuperAlert(out.message || 'Done', out.success ? 'success' : 'error');
         loadBranchAdmins();
       }
+    };
+
+    window.loginAsBranchAdmin = async function(id) {
+      const res = await fetch('api.php?action=branchAdminLogin', { method:'POST', body: JSON.stringify({id}), headers: {'Content-Type': 'application/json'} });
+      const d = await res.json();
+      if (d.success && d.url) window.open(d.url, '_blank');
+      else showSuperAlert(d.message || 'Error', 'error');
     };
 
     window.setBranchAdminPassword = async function(id, username) {

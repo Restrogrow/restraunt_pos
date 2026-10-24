@@ -673,7 +673,7 @@ try {
           FOREIGN KEY (branch_admin_id) REFERENCES branch_admins(id) ON DELETE CASCADE
         )");
       }
-      $admins = $conn->query("SELECT * FROM branch_admins ORDER BY created_at DESC")->fetchAll();
+      $admins = $conn->query("SELECT id, username, display_name, is_active, created_by, created_at FROM branch_admins ORDER BY created_at DESC")->fetchAll();
       // every admin's branches in one query (it was one per admin)
       $linksByAdmin = [];
       foreach ($conn->query("SELECT brl.branch_admin_id, brl.restaurant_id, brl.label, u.restaurant_name FROM branch_restaurant_links brl LEFT JOIN users u ON u.restaurant_id = brl.restaurant_id ORDER BY brl.id")->fetchAll() as $l) {
@@ -714,6 +714,19 @@ try {
       $stmt = $conn->prepare("UPDATE branch_admins SET is_active = ? WHERE id = ?");
       $stmt->execute([$active, $id]);
       echo json_encode(['success' => true, 'message' => $active ? 'Branch admin enabled' : 'Branch admin disabled']);
+      break;
+
+    case 'branchAdminLogin':
+      // "Log in" on Branch admins: open the multi-branch owner's dashboard without their password (admin/auto_login.php)
+      $data = json_decode(file_get_contents('php://input'), true) ?? [];
+      $id = (int)($data['id'] ?? 0);
+      $stmt = $conn->prepare("SELECT id FROM branch_admins WHERE id = ? AND is_active = 1");
+      $stmt->execute([$id]);
+      if (!$stmt->fetchColumn()) throw new Exception('Branch admin not found or disabled');
+      $_SESSION['auto_login_branch_admin'] = ['id' => $id, 'expires' => time() + 300];
+      $base_path = dirname(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/')));
+      if ($base_path === '/' || $base_path === '\\') $base_path = '';
+      echo json_encode(['success' => true, 'url' => $base_path . '/main/admin/auto_login.php']);
       break;
 
     case 'setBranchAdminPassword':
