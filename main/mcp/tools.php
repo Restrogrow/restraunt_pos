@@ -4,7 +4,8 @@
  *
  * Every tool works on the one restaurant the token belongs to. Numbers come from the same SQL as the AI manager
  * (config/owner_manager.php); changes go through the same rules as the dashboard (order state machine,
- * restaurant-scoped updates, activity log). Read tools need the "read" scope, changes need "write".
+ * restaurant-scoped updates, activity log). Read tools need the "read" scope, changes need "write"; with an API key
+ * each tool needs its own permission instead (API_TOOL_PERMS in config/api_keys.php). The REST API (api/v1) runs these too.
  * Reports follow Super Admin › Restaurants › Access (reportsPage); menu and orders are always on.
  */
 require_once __DIR__ . '/../config/owner_manager.php';
@@ -74,8 +75,15 @@ function mcpRunTool(PDO $conn, array $ctx, string $name, array $a): array
     $s = $ctx['settings'];
     $defs = array_column(mcpToolDefs(), null, 'name');
     if (!isset($defs[$name])) throw new McpToolError("Unknown tool: $name");
-    $scope = $defs[$name]['securitySchemes'][0]['scopes'][0];
-    if (!in_array($scope, $ctx['scopes'], true)) throw new McpToolError('RestroGrow was connected without permission to make changes. Disconnect and connect again, then press Allow.');
+    if (isset($ctx['perms'])) {
+        // an API key (config/api_keys.php): the owner ticked what it may do
+        require_once __DIR__ . '/../config/api_keys.php';
+        $perm = API_TOOL_PERMS[$name] ?? '';
+        if (!in_array($perm, $ctx['perms'], true)) throw new McpToolError("This API key has no \"$perm\" permission. The owner can make a key with it in the RestroGrow dashboard › API keys.");
+    } else {
+        $scope = $defs[$name]['securitySchemes'][0]['scopes'][0];
+        if (!in_array($scope, $ctx['scopes'], true)) throw new McpToolError('RestroGrow was connected without permission to make changes. Disconnect and connect again, then press Allow.');
+    }
     $m = fn($n) => ownerMgrMoney($s, (float)$n);
     $period = in_array($a['period'] ?? '', OM_PERIODS, true) ? $a['period'] : null;
     $reports = function () use ($conn, $rid) {
@@ -271,7 +279,7 @@ function mcpPrice($v): float
 /** Who made a change, for the owner's activity log: "ChatGPT (owner)". */
 function mcpActor(array $ctx): array
 {
-    return ['name' => $ctx['app'], 'role' => 'AI app', 'staff_id' => null];
+    return ['name' => $ctx['app'], 'role' => isset($ctx['perms']) ? 'API key' : 'AI app', 'staff_id' => null];
 }
 
 function mcpFindOrder(PDO $conn, string $rid, array $a): array

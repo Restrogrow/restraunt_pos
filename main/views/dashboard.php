@@ -1454,6 +1454,13 @@ try { $accessOff = accessOffPages(getConnection(), (string)$_SESSION['restaurant
           <span class="nav-tooltip">Settings</span>
         </li>
         <li class="nav-item">
+          <a href="#" class="nav-link" data-page="apiKeysPage">
+            <span class="nav-icon material-symbols-rounded">key</span>
+            <span class="nav-label">API keys</span>
+          </a>
+          <span class="nav-tooltip">API keys</span>
+        </li>
+        <li class="nav-item">
           <a href="<?php 
             if (!empty($restaurant_custom_domain) && $restaurant_embed_enabled) {
                 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -4257,6 +4264,15 @@ function toggleGatewayMode() {
         <p>A morning report on WhatsApp, one-tap fixes, and answers to your questions</p>
       </div>
       <div id="omRoot"></div>
+    </div>
+
+    <!-- API keys for developers and AI agents (assets/js/api-keys-studio.js; the API: main/api/v1, docs at /developers) -->
+    <div id="apiKeysPage" class="page sx">
+      <div class="page-header">
+        <h1>API keys</h1>
+        <p>Let your developer, Claude Code or any AI agent work on your restaurant, with only the permissions you choose</p>
+      </div>
+      <div id="akRoot"></div>
     </div>
 
     <!-- Growth › ChatGPT & Claude (assets/js/ai-apps-studio.js; the app itself: main/mcp) -->
@@ -7514,6 +7530,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/wa-order-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/wa-order-studio.js'); ?>" defer></script>
   <script src="../assets/js/owner-manager-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/owner-manager-studio.js'); ?>" defer></script>
   <script src="../assets/js/ai-apps-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/ai-apps-studio.js'); ?>" defer></script>
+  <script src="../assets/js/api-keys-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/api-keys-studio.js'); ?>" defer></script>
   <script src="../assets/js/riders-board.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/riders-board.js'); ?>" defer></script>
   <script src="../assets/js/studio-ui.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/studio-ui.js'); ?>" defer></script>
   <script src="../assets/js/areas-studio.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/areas-studio.js'); ?>" defer></script>

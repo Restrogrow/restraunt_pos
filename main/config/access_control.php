@@ -97,6 +97,10 @@ function accessModules(): array {
         'feedback' => ['Feedback', 'reviews', 'Customer feedback', [
             'feedbackPage' => ['Feedback', ['get_feedback.php']],
         ]],
+        // off also stops every key on /api/v1 and /mcp (api/v1/index.php, mcp/server.php)
+        'api' => ['API keys', 'key', 'API keys for developers and AI agents (REST API, MCP)', [
+            'apiKeysPage' => ['API keys', ['api_keys_admin.php']],
+        ]],
         'website' => ['Website design', 'web', 'Theme, policy pages, embed on another site', [
             'websiteThemePage' => ['Website theme', []],
             'policyPagesPage'  => ['Policy pages', []],

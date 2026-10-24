@@ -2,8 +2,9 @@
 /**
  * RestroGrow MCP server: ChatGPT (Apps), Claude and other AI apps manage a restaurant through it.
  * Served at /mcp (root .htaccess). Streamable HTTP transport, JSON responses only (no SSE stream needed:
- * every call is answered straight away). Every request needs a bearer token from main/oauth/token.php;
- * without one the 401 tells the app where to log in (config/mcp_oauth.php). Tools: mcp/tools.php.
+ * every call is answered straight away). Every request needs a bearer token from main/oauth/token.php, or an
+ * owner's API key (config/api_keys.php); without one the 401 tells the app where to log in (config/mcp_oauth.php).
+ * Tools: mcp/tools.php.
  */
 require_once __DIR__ . '/../config/mcp_oauth.php';
 require_once __DIR__ . '/../config/rate_limit.php';
@@ -26,9 +27,10 @@ try {
     mcpJson(503, ['jsonrpc' => '2.0', 'error' => ['code' => -32000, 'message' => 'RestroGrow is busy, try again.'], 'id' => null]);
 }
 
-$auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-$token = preg_match('/^Bearer\s+(\S+)$/i', $auth, $mm) ? $mm[1] : '';
-$tok = $token !== '' ? mcpVerifyAccess($conn, $token) : null;
+// an OAuth token from ChatGPT / Claude, or an owner's API key (config/api_keys.php) for Claude Code, Cursor and other agents
+require_once __DIR__ . '/../config/api_keys.php';
+$token = apiKeyFromRequest();
+$tok = $token === '' ? null : (apiKeyLooksLike($token) ? apiKeyVerify($conn, $token) : mcpVerifyAccess($conn, $token));
 if (!$tok) {
     mcpJson(401, ['jsonrpc' => '2.0', 'error' => ['code' => -32001, 'message' => 'Connect your RestroGrow account first.'], 'id' => null],
         [$token !== '' ? mcpChallenge('invalid_token', 'The token is expired or was revoked.') : mcpChallenge()]);
@@ -72,7 +74,10 @@ function mcpHandle(PDO $conn, array $tok, array $msg): ?array
             return $ok(new stdClass());
         case 'tools/list':
             require_once __DIR__ . '/tools.php';
-            return $ok(['tools' => mcpToolDefs()]);
+            $tools = mcpToolDefs();
+            // an API key lists only the tools its permissions allow
+            if (isset($tok['perms'])) $tools = array_values(array_filter($tools, fn($t) => in_array(API_TOOL_PERMS[$t['name']] ?? '', $tok['perms'], true)));
+            return $ok(['tools' => $tools]);
         case 'tools/call':
             require_once __DIR__ . '/tools.php';
             return $ok(mcpCall($conn, $tok, (string)($params['name'] ?? ''), is_array($params['arguments'] ?? null) ? $params['arguments'] : []));
@@ -94,11 +99,13 @@ function mcpCall(PDO $conn, array $tok, string $name, array $args): array
         $sub = checkSubscriptionAccess($conn, (int)$tok['user_id'], $rid);
         if (!empty($sub['blocked'])) return $fail('This RestroGrow account is ' . ($sub['reason'] === 'disabled' ? 'switched off' : 'expired') . '. Renew it in the RestroGrow dashboard to use it here.');
         require_once __DIR__ . '/../config/access_control.php';
-        if (!accessPageOn($conn, $rid, 'aiAppsPage')) return $fail('ChatGPT & Claude is switched off for this restaurant. Ask RestroGrow support to switch it on.');
+        $isKey = isset($tok['perms']);
+        if (!accessPageOn($conn, $rid, $isKey ? 'apiKeysPage' : 'aiAppsPage')) return $fail(($isKey ? 'API keys are' : 'ChatGPT & Claude is') . ' switched off for this restaurant. Ask RestroGrow support to switch ' . ($isKey ? 'them' : 'it') . ' on.');
         $s = ownerMgrSettings($conn, $rid);
         ownerMgrUseTz($conn, $s);
-        $client = mcpClient($conn, $tok['client_id']);
-        $ctx = ['rid' => $rid, 'user_id' => (int)$tok['user_id'], 'scopes' => $tok['scopes'], 'settings' => $s, 'app' => $client ? mcpClientLabel($client) : 'AI app'];
+        $client = $isKey ? null : mcpClient($conn, $tok['client_id']);
+        $ctx = ['rid' => $rid, 'user_id' => (int)$tok['user_id'], 'scopes' => $tok['scopes'], 'settings' => $s, 'app' => $isKey ? apiKeyLabel($tok) : ($client ? mcpClientLabel($client) : 'AI app')]
+            + ($isKey ? ['perms' => $tok['perms']] : []);
         [$text, $data] = mcpRunTool($conn, $ctx, $name, $args);
         return ['content' => [['type' => 'text', 'text' => $text]], 'structuredContent' => (object)$data, 'isError' => false];
     } catch (McpToolError $e) {

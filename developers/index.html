@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RestroGrow API docs: API keys, REST API and MCP for developers</title>
+    <meta name="description" content="RestroGrow API for developers and AI agents: read and change a restaurant's menu, orders and reports with API keys and permissions. REST API, MCP server for Claude Code and Cursor, OpenAPI spec.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://restrogrow.com/developers/">
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://restrogrow.com/developers/">
+    <meta property="og:title" content="RestroGrow API docs">
+    <meta property="og:description" content="Menu, orders and reports from your own code or AI agent, with API keys and permissions.">
+    <meta property="og:image" content="https://restrogrow.com/assets/images/logo-transparent.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../favicon.png">
+    <link rel="apple-touch-icon" href="../favicon.png">
+    
+    <!-- Resource Hints for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Critical CSS -->
+    <link rel="stylesheet" href="../style.css?v=2.3">
+    
+    <!-- Optimized Font Loading -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"></noscript>
+
+    <style>
+        .dv-wrap { padding: 110px 0 80px; background: #fff; }
+        .dv-grid { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 48px; align-items: start; }
+        .dv-side { position: sticky; top: 96px; max-height: calc(100vh - 110px); overflow-y: auto; }
+        .dv-side-in { display: flex; flex-direction: column; gap: 2px; font-size: .88rem; }
+        .dv-side b { margin: 14px 0 4px; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--gray, #6b7280); }
+        .dv-side b:first-child { margin-top: 0; }
+        .dv-side a { color: var(--dark, #111827); text-decoration: none; padding: 5px 10px; border-radius: 8px; }
+        .dv-side a:hover { background: #fff3ee; color: var(--primary, #ff6b35); }
+        .dv-main { max-width: 820px; min-width: 0; color: #374151; line-height: 1.7; }
+        .dv-main h1 { font-size: 2.4rem; line-height: 1.15; margin: 0 0 12px; color: var(--dark, #111827); scroll-margin-top: 90px; }
+        .dv-main h2 { font-size: 1.5rem; margin: 48px 0 12px; padding-top: 8px; color: var(--dark, #111827); scroll-margin-top: 90px; }
+        .dv-main h3 { font-size: 1.1rem; margin: 22px 0 8px; color: var(--dark, #111827); }
+        .dv-main a { color: var(--primary, #ff6b35); }
+        .dv-main ul, .dv-main ol { padding-left: 22px; }
+        .dv-main li { margin: 4px 0; }
+        .dv-main code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86em; background: #f3f4f6; padding: 1px 6px; border-radius: 6px; color: #111827; overflow-wrap: anywhere; }
+        .dv-kicker { color: var(--primary, #ff6b35); font-weight: 700; font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 6px; }
+        .dv-lead { font-size: 1.12rem; color: #4b5563; margin: 0 0 22px; }
+        .dv-muted { color: #6b7280; font-size: .92rem; }
+        .dv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 20px 0 8px; }
+        .dv-cards > div { border: 1px solid #eef0f3; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; background: #fafafa; min-width: 0; }
+        .dv-cards .material-symbols-rounded { color: var(--primary, #ff6b35); }
+        .dv-cards b { color: var(--dark, #111827); }
+        .dv-cards code { overflow-wrap: normal; white-space: nowrap; font-size: .78rem; overflow: hidden; text-overflow: ellipsis; }
+        .dv-code { background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 14px 16px; overflow-x: auto; font-size: .84rem; line-height: 1.6; margin: 10px 0 14px; }
+        .dv-code code { background: none; color: inherit; padding: 0; font-size: inherit; white-space: pre; overflow-wrap: normal; }
+        .dv-out { background: #f8fafc; color: #0f172a; border: 1px solid #e2e8f0; }
+        .dv-steps li { margin: 6px 0; }
+        .dv-table { overflow-x: auto; margin: 10px 0 14px; border: 1px solid #eef0f3; border-radius: 12px; }
+        .dv-table table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+        .dv-table th, .dv-table td { text-align: left; padding: 9px 12px; border-top: 1px solid #f1f2f4; vertical-align: top; }
+        .dv-table thead th { border-top: 0; background: #fafafa; color: #111827; font-weight: 600; }
+        .dv-ep { border: 1px solid #eef0f3; border-radius: 16px; padding: 4px 20px 10px; margin: 18px 0; scroll-margin-top: 90px; }
+        .dv-ep h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1rem; }
+        .dv-m { font-family: Inter, sans-serif; font-size: .72rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; color: #fff; letter-spacing: .03em; }
+        .dv-m.get { background: #16a34a; } .dv-m.post { background: #2563eb; } .dv-m.patch { background: #d97706; }
+        .dv-p { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .74rem; font-weight: 600; background: #fff1ea; color: #c2410c; padding: 3px 8px; border-radius: 999px; }
+        @media (max-width: 900px) {
+            .dv-grid { grid-template-columns: 1fr; gap: 0; }
+            .dv-side { display: none; }
+            .dv-main h1 { font-size: 1.9rem; }
+            .dv-wrap { padding-top: 96px; }
+            .dv-ep { padding: 4px 14px 10px; }
+        }
+    </style>
+<script src="/assets/rg-analytics.js" async></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="../" class="nav-brand" style="text-decoration: none; display: flex; align-items: center; gap: 12px;">
+                <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="brand-logo">
+                <span class="brand-text">Restro Grow</span>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="../index.html#features">Features</a></li>
+                <li><a href="../index.html#benefits">Benefits</a></li>
+                <li><a href="../index.html#pricing">Pricing</a></li>
+                <li><a href="../index.html#contact">Contact</a></li>
+                <li><a href="../main/admin/login.php" class="btn-nav">Login</a></li>
+            </ul>
+            <button class="nav-toggle">
+                <span class="material-symbols-rounded">menu</span>
+            </button>
+        </div>
+    </nav>
+
+    <section class="dv-wrap">
+        <div class="container dv-grid">
+            <aside class="dv-side" aria-label="On this page">
+                <div class="dv-side-in">
+                    <b>Start</b>
+                    <a href="#overview">Overview</a>
+                    <a href="#quick-start">Quick start</a>
+                    <a href="#auth">Authentication</a>
+                    <a href="#permissions">Permissions</a>
+                    <a href="#ai-agents">AI agents (MCP)</a>
+                    <a href="#responses">Responses &amp; errors</a>
+                    <a href="#limits">Rate limits</a>
+                    <b>Endpoints</b>
+                    <a href="#ep-me">GET /me</a>
+                    <a href="#ep-restaurant">GET /restaurant</a>
+                    <a href="#ep-menu">GET /menu</a>
+                    <a href="#ep-add-dish">POST /menu/items</a>
+                    <a href="#ep-update-dish">PATCH /menu/items/{id}</a>
+                    <a href="#ep-availability">POST /menu/availability</a>
+                    <a href="#ep-orders">GET /orders</a>
+                    <a href="#ep-order">GET /orders/{id}</a>
+                    <a href="#ep-order-status">POST /orders/{id}/status</a>
+                    <a href="#ep-sales">GET /reports/sales</a>
+                    <a href="#ep-report">GET /reports/{report}</a>
+                    <b>More</b>
+                    <a href="#openapi">OpenAPI spec</a>
+                    <a href="#safety">Security</a>
+                </div>
+            </aside>
+
+            <main class="dv-main">
+                <p class="dv-kicker">RestroGrow API · v1</p>
+                <h1 id="overview">RestroGrow API</h1>
+                <p class="dv-lead">Read and change a RestroGrow restaurant from your own code, Claude Code, Cursor or any AI agent: the menu, orders and sales reports. Each API key has only the permissions the restaurant owner chose.</p>
+
+                <div class="dv-cards">
+                    <div><span class="material-symbols-rounded">link</span><b>Base URL</b><code>https://restrogrow.com/api/v1</code></div>
+                    <div><span class="material-symbols-rounded">smart_toy</span><b>MCP server</b><code>https://restrogrow.com/mcp</code></div>
+                    <div><span class="material-symbols-rounded">data_object</span><b>OpenAPI</b><a href="/api/v1/openapi.json"><code>/api/v1/openapi.json</code></a></div>
+                </div>
+
+                <h2 id="quick-start">Quick start</h2>
+                <ol class="dv-steps">
+                    <li>The restaurant owner logs in to RestroGrow and opens <b>API keys</b> in the left menu.</li>
+                    <li>They name the key, tick the permissions it needs and press <b>Create key</b>. The key (<code>rg_live_…</code>) is shown <b>once</b>: copy it somewhere safe.</li>
+                    <li>Call the API with the key:</li>
+                </ol>
+<pre class="dv-code"><code>curl https://restrogrow.com/api/v1/me \
+  -H "Authorization: Bearer rg_live_YOUR_KEY"</code></pre>
+<pre class="dv-code dv-out"><code>{
+  "success": true,
+  "data": {
+    "restaurant_id": "RESSGI002",
+    "restaurant": "Spice Garden Indiranagar",
+    "key": { "id": 7, "name": "Stock sync", "permissions": ["menu:read", "menu:write"] },
+    "rate_limit_per_minute": 120
+  },
+  "summary": "Key \"Stock sync\" can: menu:read, menu:write"
+}</code></pre>
+
+                <h2 id="auth">Authentication</h2>
+                <p>Send the key on every request, in either header:</p>
+<pre class="dv-code"><code>Authorization: Bearer rg_live_YOUR_KEY
+X-API-Key: rg_live_YOUR_KEY</code></pre>
+                <ul>
+                    <li>A key works for <b>one restaurant</b>: the one whose owner created it. Ids from other restaurants answer <code>404</code>.</li>
+                    <li>Keys can be set to expire after 30 days, 90 days or 1 year, or last until revoked.</li>
+                    <li>Keep keys on your server. Never put a key in a public web page, a mobile app or a public Git repository. If one leaks, revoke it in <b>API keys</b>: it stops working at once.</li>
+                    <li>Bodies are JSON: send <code>Content-Type: application/json</code>. Money is in the restaurant's currency (see <a href="#ep-restaurant">GET /restaurant</a>); times are in the restaurant's timezone.</li>
+                </ul>
+
+                <h2 id="permissions">Permissions</h2>
+                <p>Each endpoint needs one permission. A key without it gets <code>403 missing_permission</code>.</p>
+                <div class="dv-table"><table>
+                    <thead><tr><th>Permission</th><th>Allows</th><th>Endpoints</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>restaurant:read</code></td><td>Name, currency, timezone and menu sections</td><td>GET /restaurant</td></tr>
+                        <tr><td><code>menu:read</code></td><td>Dishes, prices, sizes, which are switched on</td><td>GET /menu</td></tr>
+                        <tr><td><code>menu:write</code></td><td>Add dishes, edit them, switch them on or off</td><td>POST /menu/items, PATCH /menu/items/{id}, POST /menu/availability</td></tr>
+                        <tr><td><code>orders:read</code></td><td>Orders with dishes, customer name and phone, payment</td><td>GET /orders, GET /orders/{id}, GET /orders/number/{number}</td></tr>
+                        <tr><td><code>orders:write</code></td><td>Move orders along: accept, prepare, ready, complete, cancel, reject</td><td>POST /orders/{id}/status</td></tr>
+                        <tr><td><code>reports:read</code></td><td>Sales and ready-made reports</td><td>GET /reports/sales, GET /reports/{report}</td></tr>
+                    </tbody>
+                </table></div>
+                <p class="dv-muted"><code>GET /me</code> works with any key.</p>
+
+                <h2 id="ai-agents">AI agents (MCP)</h2>
+                <p>The same key works on RestroGrow's MCP server, so AI agents can use RestroGrow as tools. The agent sees only the tools the key's permissions allow.</p>
+                <h3>Claude Code</h3>
+<pre class="dv-code"><code>claude mcp add --transport http restrogrow https://restrogrow.com/mcp \
+  --header "Authorization: Bearer rg_live_YOUR_KEY"</code></pre>
+                <p>Then ask: <i>“what sold best this week?”</i>, <i>“switch off Paneer Tikka, we ran out”</i>, <i>“add Mango Lassi for 129 to Beverages”</i>.</p>
+                <h3>Cursor, Windsurf, VS Code and other MCP apps</h3>
+<pre class="dv-code"><code>{
+  "mcpServers": {
+    "restrogrow": {
+      "url": "https://restrogrow.com/mcp",
+      "headers": { "Authorization": "Bearer rg_live_YOUR_KEY" }
+    }
+  }
+}</code></pre>
+                <div class="dv-table"><table>
+                    <thead><tr><th>MCP tool</th><th>Permission</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>get_restaurant</code></td><td>restaurant:read</td></tr>
+                        <tr><td><code>list_menu</code></td><td>menu:read</td></tr>
+                        <tr><td><code>add_dish</code>, <code>update_dish</code>, <code>set_dish_availability</code></td><td>menu:write</td></tr>
+                        <tr><td><code>list_orders</code>, <code>get_order</code></td><td>orders:read</td></tr>
+                        <tr><td><code>update_order_status</code></td><td>orders:write</td></tr>
+                        <tr><td><code>get_sales_summary</code>, <code>get_report</code></td><td>reports:read</td></tr>
+                    </tbody>
+                </table></div>
+                <p class="dv-muted">ChatGPT and claude.ai users don't need a key: they connect with the owner's login from <b>Growth › ChatGPT &amp; Claude</b> in the dashboard.</p>
+
+                <h2 id="responses">Responses &amp; errors</h2>
+                <p>Every answer is JSON. A success has <code>data</code> plus a one-line <code>summary</code> for people:</p>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { … }, "summary": "✅ Paneer Tikka updated: price ₹249 → ₹269." }</code></pre>
+                <p>A refusal has an <code>error</code> with a stable <code>code</code> and a message you can show:</p>
+<pre class="dv-code dv-out"><code>{ "success": false, "error": { "code": "missing_permission", "message": "This key has no \"menu:write\" permission. …" } }</code></pre>
+                <div class="dv-table"><table>
+                    <thead><tr><th>HTTP</th><th>code</th><th>Meaning</th></tr></thead>
+                    <tbody>
+                        <tr><td>400</td><td><code>bad_json</code></td><td>The body is not a JSON object</td></tr>
+                        <tr><td>401</td><td><code>missing_key</code>, <code>invalid_key</code></td><td>No key, or it is wrong, revoked or expired</td></tr>
+                        <tr><td>403</td><td><code>missing_permission</code></td><td>The key lacks the permission this endpoint needs</td></tr>
+                        <tr><td>403</td><td><code>account_blocked</code>, <code>api_off</code>, <code>forbidden</code></td><td>Plan expired, account switched off, or this feature is off for the restaurant</td></tr>
+                        <tr><td>404</td><td><code>not_found</code></td><td>No such endpoint, dish or order (in this restaurant)</td></tr>
+                        <tr><td>405</td><td><code>method_not_allowed</code></td><td>The path exists, but not with this method</td></tr>
+                        <tr><td>422</td><td><code>invalid_request</code></td><td>The values were refused, e.g. a negative price or a move the order can't make</td></tr>
+                        <tr><td>429</td><td><code>rate_limited</code></td><td>Too many calls: wait for <code>Retry-After</code> seconds</td></tr>
+                        <tr><td>500 / 503</td><td><code>server_error</code>, <code>unavailable</code></td><td>Our side: try again shortly</td></tr>
+                    </tbody>
+                </table></div>
+
+                <h2 id="limits">Rate limits</h2>
+                <p><b>120 calls a minute per restaurant</b>, shared by all its keys and AI connections. Over that you get <code>429</code> with a <code>Retry-After</code> header.</p>
+
+                <h2>Endpoints</h2>
+                <p class="dv-muted">Paths are relative to <code>https://restrogrow.com/api/v1</code>. <code>period</code> is one of <code>today</code>, <code>yesterday</code>, <code>this_week</code>, <code>last_week</code>, <code>last_7_days</code>, <code>this_month</code>, <code>last_month</code>, <code>last_30_days</code>.</p>
+
+                <div class="dv-ep" id="ep-me">
+                    <h3><span class="dv-m get">GET</span>/me</h3>
+                    <p>The restaurant this key belongs to and its permissions. Any key.</p>
+                </div>
+
+                <div class="dv-ep" id="ep-restaurant">
+                    <h3><span class="dv-m get">GET</span>/restaurant <span class="dv-p">restaurant:read</span></h3>
+                    <p>Name, currency, timezone and menu sections with their dish counts.</p>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { "restaurant": "Spice Garden Indiranagar", "currency": "₹", "timezone": "Asia/Kolkata",
+  "menu_sections": [ { "id": 239, "name": "Starters", "dishes": 10 } ] } }</code></pre>
+                </div>
+
+                <div class="dv-ep" id="ep-menu">
+                    <h3><span class="dv-m get">GET</span>/menu <span class="dv-p">menu:read</span></h3>
+                    <p>Dishes with id, section, type, price, sizes and whether they are switched on.</p>
+                    <div class="dv-table"><table><thead><tr><th>Query</th><th>Type</th><th></th></tr></thead><tbody>
+                        <tr><td><code>search</code></td><td>string</td><td>Part of a dish name</td></tr>
+                        <tr><td><code>section</code></td><td>string</td><td>Menu section, e.g. <code>Starters</code></td></tr>
+                        <tr><td><code>only_switched_off</code></td><td>boolean</td><td><code>true</code> = only dishes that are off</td></tr>
+                        <tr><td><code>limit</code></td><td>1–300</td><td>Default 100</td></tr>
+                    </tbody></table></div>
+<pre class="dv-code"><code>curl "https://restrogrow.com/api/v1/menu?search=paneer" -H "Authorization: Bearer rg_live_YOUR_KEY"</code></pre>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { "currency": "₹", "dishes": [
+  { "item_id": 1289, "name": "Paneer Tikka", "section": "Starters", "type": "Veg", "price": 249.0, "sizes": [], "switched_on": true },
+  { "item_id": 1291, "name": "Chilli Paneer", "section": "Starters", "type": "Veg", "price": 239.0,
+    "sizes": [ { "name": "Dry", "price": 239.0 }, { "name": "Gravy", "price": 259.0 } ], "switched_on": true } ] } }</code></pre>
+                </div>
+
+                <div class="dv-ep" id="ep-add-dish">
+                    <h3><span class="dv-m post">POST</span>/menu/items <span class="dv-p">menu:write</span></h3>
+                    <p>Add a dish. A new section is created if it doesn't exist. Answers <code>201</code>. Photos and sizes are added from the dashboard.</p>
+                    <div class="dv-table"><table><thead><tr><th>Body</th><th>Type</th><th></th></tr></thead><tbody>
+                        <tr><td><code>name</code> *</td><td>string</td><td>2–150 characters</td></tr>
+                        <tr><td><code>price</code> *</td><td>number</td><td>0 – 1,000,000</td></tr>
+                        <tr><td><code>section</code> *</td><td>string</td><td>e.g. <code>Beverages</code></td></tr>
+                        <tr><td><code>type</code></td><td>string</td><td><code>Veg</code> (default), <code>Non Veg</code>, <code>Egg</code>, <code>Drink</code>, <code>Dessert</code>, <code>Other</code></td></tr>
+                        <tr><td><code>description</code></td><td>string</td><td>Up to 1000 characters</td></tr>
+                        <tr><td><code>prep_minutes</code></td><td>0–180</td><td>Kitchen time</td></tr>
+                        <tr><td><code>available</code></td><td>boolean</td><td>Default <code>true</code></td></tr>
+                    </tbody></table></div>
+<pre class="dv-code"><code>curl -X POST https://restrogrow.com/api/v1/menu/items \
+  -H "Authorization: Bearer rg_live_YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Mango Lassi","price":129,"section":"Beverages","type":"Drink"}'</code></pre>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { "item_id": 1341, "section": "Beverages", "new_section": false },
+  "summary": "✅ Added Mango Lassi (Drink, ₹129) to Beverages. …" }</code></pre>
+                </div>
+
+                <div class="dv-ep" id="ep-update-dish">
+                    <h3><span class="dv-m patch">PATCH</span>/menu/items/{item_id} <span class="dv-p">menu:write</span></h3>
+                    <p>Change only the fields you send. A dish with sizes keeps its prices in <code>sizes</code>, not <code>price</code>. <code>POST</code> works too, for clients without PATCH.</p>
+                    <div class="dv-table"><table><thead><tr><th>Body</th><th>Type</th><th></th></tr></thead><tbody>
+                        <tr><td><code>name</code></td><td>string</td><td>Up to 150 characters</td></tr>
+                        <tr><td><code>description</code></td><td>string</td><td>Up to 1000 characters</td></tr>
+                        <tr><td><code>price</code></td><td>number</td><td>Dishes without sizes</td></tr>
+                        <tr><td><code>type</code></td><td>string</td><td>As in POST /menu/items</td></tr>
+                        <tr><td><code>sizes</code></td><td>array</td><td><code>[{"name":"Half","price":180},{"name":"Full","price":320}]</code>: existing size names</td></tr>
+                    </tbody></table></div>
+<pre class="dv-code"><code>curl -X PATCH https://restrogrow.com/api/v1/menu/items/1289 \
+  -H "Authorization: Bearer rg_live_YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"price":269}'</code></pre>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { "item_id": 1289, "changes": ["price ₹249 → ₹269"] }, "summary": "✅ Paneer Tikka updated: price ₹249 → ₹269." }</code></pre>
+                </div>
+
+                <div class="dv-ep" id="ep-availability">
+                    <h3><span class="dv-m post">POST</span>/menu/availability <span class="dv-p">menu:write</span></h3>
+                    <p>Switch 1–50 dishes on (orderable) or off (sold out). Ids not on this menu come back in <code>not_found</code>.</p>
+<pre class="dv-code"><code>curl -X POST https://restrogrow.com/api/v1/menu/availability \
+  -H "Authorization: Bearer rg_live_YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"item_ids":[1289,1291],"available":false}'</code></pre>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { "switched_on": false, "dishes": { "1289": "Paneer Tikka", "1291": "Chilli Paneer" }, "not_found": [] } }</code></pre>
+                </div>
+
+                <div class="dv-ep" id="ep-orders">
+                    <h3><span class="dv-m get">GET</span>/orders <span class="dv-p">orders:read</span></h3>
+                    <p>Orders in a period, newest first.</p>
+                    <div class="dv-table"><table><thead><tr><th>Query</th><th>Type</th><th></th></tr></thead><tbody>
+                        <tr><td><code>period</code></td><td>string</td><td>Default <code>today</code></td></tr>
+                        <tr><td><code>status</code></td><td>string</td><td><code>active</code> (Pending, Accepted, Preparing, Ready), or one of <code>Pending</code>, <code>Accepted</code>, <code>Preparing</code>, <code>Ready</code>, <code>Served</code>, <code>Completed</code>, <code>Cancelled</code>, <code>Rejected</code></td></tr>
+                        <tr><td><code>limit</code></td><td>1–50</td><td>Default 20</td></tr>
+                    </tbody></table></div>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { "period": "today", "currency": "₹", "orders": [
+  { "order_id": 26619, "order_number": "ORD-20261024-9723", "customer": "Rohan Iyer", "type": "Delivery", "source": "website",
+    "total": 540.0, "status": "Pending", "payment": "Paid", "payment_method": "UPI", "time": "2026-10-24 13:55:19" } ] } }</code></pre>
+                </div>
+
+                <div class="dv-ep" id="ep-order">
+                    <h3><span class="dv-m get">GET</span>/orders/{order_id} <span class="dv-p">orders:read</span></h3>
+                    <p>One order with its dishes, customer, payment and <code>can_move_to</code>: the statuses it can move to next. To look an order up by the number on the bill, use <code>GET /orders/number/{order_number}</code>.</p>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { "order_id": 26619, "order_number": "ORD-20261024-9723", "status": "Pending",
+  "can_move_to": ["Preparing", "Cancelled", "Accepted", "Rejected"], "customer": "Rohan Iyer", "phone": "9876543210",
+  "total": 540.0, "items": [ { "dish": "Paneer Tikka", "qty": 2, "amount": 498.0 } ] } }</code></pre>
+                </div>
+
+                <div class="dv-ep" id="ep-order-status">
+                    <h3><span class="dv-m post">POST</span>/orders/{order_id}/status <span class="dv-p">orders:write</span></h3>
+                    <p>Move an order to its next status, with the same rules as the dashboard. Cancelling or rejecting needs a <code>reason</code> (the customer sees it) and can't be undone.</p>
+                    <div class="dv-table"><table><thead><tr><th>Body</th><th>Type</th><th></th></tr></thead><tbody>
+                        <tr><td><code>status</code> *</td><td>string</td><td><code>Accepted</code>, <code>Preparing</code>, <code>Ready</code>, <code>Served</code>, <code>Completed</code>, <code>Cancelled</code>, <code>Rejected</code></td></tr>
+                        <tr><td><code>reason</code></td><td>string</td><td>Needed for Cancelled / Rejected</td></tr>
+                        <tr><td><code>prep_minutes</code></td><td>1–300</td><td>When accepting: kitchen time</td></tr>
+                    </tbody></table></div>
+<pre class="dv-code"><code>curl -X POST https://restrogrow.com/api/v1/orders/26619/status \
+  -H "Authorization: Bearer rg_live_YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"status":"Accepted","prep_minutes":20}'</code></pre>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { "order_id": 26619, "order_number": "ORD-20261024-9723", "status": "Accepted" },
+  "summary": "✅ Order #ORD-20261024-9723 is now Accepted (ready in about 20 minutes)." }</code></pre>
+                </div>
+
+                <div class="dv-ep" id="ep-sales">
+                    <h3><span class="dv-m get">GET</span>/reports/sales <span class="dv-p">reports:read</span></h3>
+                    <p>Sales, orders, average bill and orders by channel for a <code>period</code> (default <code>today</code>), compared with the period before.</p>
+<pre class="dv-code dv-out"><code>{ "success": true, "data": { "period": "this month", "currency": "₹", "sales": 454546.33, "orders": 673, "average_bill": 675.0,
+  "counter_orders": 377, "website_orders": 288, "whatsapp_orders": 0,
+  "compared_with": { "period": "same days last month", "sales": 237623.94, "orders": 334 }, "change_percent": 91 } }</code></pre>
+                </div>
+
+                <div class="dv-ep" id="ep-report">
+                    <h3><span class="dv-m get">GET</span>/reports/{report} <span class="dv-p">reports:read</span></h3>
+                    <p>A ready-made report as text in <code>data.text</code>. Query: <code>period</code> (default <code>last_7_days</code>); <code>dish</code> for the <code>dish</code> report.</p>
+                    <div class="dv-table"><table><thead><tr><th>report</th><th></th></tr></thead><tbody>
+                        <tr><td><code>top_dishes</code> / <code>slow_dishes</code></td><td>Best and least sold dishes</td></tr>
+                        <tr><td><code>dish</code></td><td>How much one dish sold (<code>?dish=Paneer Tikka</code>)</td></tr>
+                        <tr><td><code>peak_hours</code></td><td>Busiest hours and day</td></tr>
+                        <tr><td><code>payments</code> / <code>channels</code></td><td>Cash, UPI, card split / counter vs website vs WhatsApp</td></tr>
+                        <tr><td><code>customers</code> / <code>lapsed</code></td><td>New vs returning / regulars who stopped coming</td></tr>
+                        <tr><td><code>cancellations</code>, <code>today_so_far</code>, <code>advice</code></td><td>Cancelled orders, today's snapshot, what to do next</td></tr>
+                    </tbody></table></div>
+                </div>
+
+                <h2 id="openapi">OpenAPI spec</h2>
+                <p>The full machine-readable description is at <a href="/api/v1/openapi.json"><code>https://restrogrow.com/api/v1/openapi.json</code></a> (OpenAPI 3.1). Import it into Postman, Insomnia or a code generator, or give it to an AI agent.</p>
+
+                <h2 id="safety">Security</h2>
+                <ul>
+                    <li>Keys are stored only as a SHA-256 hash; RestroGrow can't show a key again after it's created.</li>
+                    <li>Every change made with a key shows in the owner's <b>Activity log</b> with the key's name.</li>
+                    <li>Only the restaurant owner can create or revoke keys. A key stops working when it's revoked or expires, or when the owner account is switched off.</li>
+                    <li>Found a security problem? Email <a href="mailto:support@restrogrow.com">support@restrogrow.com</a>.</li>
+                </ul>
+            </main>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-brand">
+                        <img src="../assets/images/logo-transparent.png" alt="Restro Grow Logo" class="footer-logo">
+                        <span>Restro Grow</span>
+                    </div>
+                    <p>Complete restaurant management solution for modern restaurants.</p>
+                    <!-- our profiles (also in the Organization sameAs for Google) -->
+                    <div class="footer-social" aria-label="Follow RestroGrow"><a href="https://www.linkedin.com/company/restro-grow/" target="_blank" rel="noopener me" aria-label="RestroGrow on LinkedIn" title="LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.84-2.05 3.79-2.05C20.6 8.65 21 11.2 21 14.5V21h-4v-5.8c0-1.4-.03-3.2-1.95-3.2-1.95 0-2.25 1.52-2.25 3.1V21H9z"/></svg></a><a href="https://www.instagram.com/restrogrow/" target="_blank" rel="noopener me" aria-label="RestroGrow on Instagram" title="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92C2.21 15.58 2.2 15.2 2.2 12s.01-3.58.07-4.85C2.42 3.92 3.94 2.37 7.15 2.27 8.42 2.21 8.8 2.2 12 2.2zm0 4.86a4.94 4.94 0 1 0 0 9.88 4.94 4.94 0 0 0 0-9.88zm0 8.15a3.21 3.21 0 1 1 0-6.42 3.21 3.21 0 0 1 0 6.42zm5.14-9.5a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3z"/></svg></a><a href="https://x.com/restrogrow" target="_blank" rel="noopener me" aria-label="RestroGrow on X (Twitter)" title="X (Twitter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.2L2 3h6.33l4.37 5.78zm-1.08 16.18h1.7L7.4 4.74H5.58z"/></svg></a><a href="https://www.youtube.com/@RestroGrow" target="_blank" rel="noopener me" aria-label="RestroGrow on YouTube" title="YouTube"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 7.2a3 3 0 0 0-2.1-2.12C19.04 4.6 12 4.6 12 4.6s-7.04 0-8.9.48A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.12c1.86.48 8.9.48 8.9.48s7.04 0 8.9-.48A3 3 0 0 0 23 16.8a31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8zM9.75 15.02V8.98L15.5 12z"/></svg></a></div>
+                    <style>.footer-social{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}.footer-social a{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);color:inherit;opacity:.85;transition:background .2s,opacity .2s,transform .2s}.footer-social a:hover{background:#ff6b35;color:#fff;opacity:1;transform:translateY(-2px)}.footer-social svg{width:18px;height:18px;fill:currentColor}@media(max-width:768px){.footer-social{justify-content:center}}</style>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="../index.html#features">Features</a></li>
+                        <li><a href="../index.html#pricing">Pricing</a></li>
+                        <li><a href="../main/admin/login.php">Login</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="../index.html#contact">Contact Us</a></li>
+                        <li><a href="../about/">About</a></li>
+                        <li><a href="../blog/">Blog</a></li>
+                        <li><a href="../faq/">FAQ</a></li>
+                        <li><a href="../developers/">Developers &amp; API</a></li>
+                        <li><a href="https://repeatgrow.com/" target="_blank" rel="noopener" title="Repeat Grow, our WhatsApp CRM">WhatsApp CRM: Repeat Grow</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="../privacy-policy/">Privacy Policy</a></li>
+                        <li><a href="../terms-of-service/">Terms of Service</a></li>
+                        <li><a href="../refund-policy/">Refund & Return Policy</a></li>
+                        <li><a href="../cookie-policy/">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; <span class="js-year">2026</span> Restro Grow. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../script.js?v=2.2"></script>
+<script>document.querySelectorAll(".js-year").forEach(function (e) { e.textContent = new Date().getFullYear(); });</script>
+</body>
+</html>

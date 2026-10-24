@@ -87,3 +87,5 @@ Without approval, owners can still connect through Developer mode.
 
 - ChatGPT widgets (order cards, menu list with photos) through the Apps SDK UI resources.
 - More tools: coupons, reservations, customers, stock, staff.
+
+Owners can also use these tools with an API key (Claude Code, Cursor, own code): see docs/API_KEYS.md.
