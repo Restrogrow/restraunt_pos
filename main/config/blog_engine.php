@@ -129,6 +129,19 @@ if (!function_exists('blogEnsure')) {
             }
             $conn->prepare('INSERT IGNORE INTO blog_fixes (k) VALUES (?)')->execute([$refresh]);
         }
+        // meta-refresh: the KOT and Swiggy / Zomato posts rank 5–8 but get few clicks; new search titles and
+        // descriptions from their starters, once (the post text stays as it is)
+        $meta = 'meta-refresh-2026-10-26';
+        if (!isset($done[$meta])) {
+            $bySlug = array_column(blogStarters(), null, 'slug');
+            foreach (['kot-full-form-restaurant', 'swiggy-joining-charges-for-restaurants', 'zomato-commission-rates'] as $slug) {
+                $p = $bySlug[$slug] ?? null;
+                if (!$p) continue;
+                $conn->prepare('UPDATE blog_posts SET meta_title = ?, meta_description = ? WHERE slug = ?')
+                    ->execute([$p['meta_title'] ?? null, $p['meta_description'] ?? null, $slug]);
+            }
+            $conn->prepare('INSERT IGNORE INTO blog_fixes (k) VALUES (?)')->execute([$meta]);
+        }
         foreach ($fixes as $key => $posts) {
             if (isset($done[$key])) continue;
             foreach ($posts as $slug => $edits) {
