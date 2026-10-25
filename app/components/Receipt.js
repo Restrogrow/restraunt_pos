@@ -27,6 +27,7 @@
 //   tableName, orderType            legacy table fields
 //   status           'Paid' | 'Partially Paid' | 'Unpaid' (bill); derived when absent
 //   kotStatus        KOT only, e.g. 'Pending'
+//   ticketLabel      KOT only: 'KOT' (default) or 'BOT' for a bar ticket (drinks made at the bar)
 //   customer         { name, phone } | null (falls back to customerName unless it
 //                    is a placeholder like 'Walk-in' / 'Table Customer')
 //   customerName     legacy
@@ -297,11 +298,13 @@ function Kot({ data, info }) {
   const items = data.items || [];
   const t = tableOf(data, 'Takeaway');
   const orderNo = data.orderNumber || data.billNo;
+  const bar = data.ticketLabel === 'BOT';
   return (
     <>
       <Header info={info} phoneLabel="Ph:" rule="double" />
 
-      <Text style={styles.kotTitle}>KOT</Text>
+      <Text style={styles.kotTitle}>{bar ? 'BOT' : 'KOT'}</Text>
+      {bar ? <Text style={styles.kotNumber}>Bar Order Ticket</Text> : null}
       {data.kotNumber ? <Text style={styles.kotNumber}>#{data.kotNumber}</Text> : null}
       <Dashes style={styles.sep} />
       <Text style={styles.kotDate}>{webDateTime(data.createdAt)}</Text>

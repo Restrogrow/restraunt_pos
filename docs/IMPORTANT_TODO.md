@@ -292,6 +292,53 @@ A Nepal restaurant's day, reports and timers follow Nepal time; its bill is a le
 prices, service charge, PAN, sequential numbers, BS date); every WhatsApp link and message reaches +977; one customer
 is one record; Google shows NPR and Nepal.
 
+### IRD approval plan (row 19, researched 25 Oct 2026, not built)
+
+RestroGrow is **not** IRD-approved. Never write "IRD approved" anywhere until the certificate exists. Sources are
+vendor and adviser pages (no official IRD text was readable online), so confirm every number with a Nepal tax
+consultant before acting.
+
+**Who needs it (IRD notices, check the current ones):** restaurants, hotels and canteens above Rs 5 crore turnover a
+year must bill with IRD-approved software (general businesses: Rs 20 crore, IRD notice 17 Apr 2026). CBMS real-time
+sync is reported for the larger ones (Rs 20–25 crore; sources differ). Below that, a VAT-registered restaurant must
+still give a bill for every sale: a numbered paper bill book, or IRD-listed software with its tax office's
+permission. A bill printed from unlisted software does not count. Fines from FY 2083/84: Rs 1–5 lakh, highest for
+software that lets bills be edited or deleted.
+
+**Two approvals:**
+1. *Software listing* (once, by us): Taxpayer Portal › Electronic Billing › Electronic Billing Software Listing, plus
+   a letter to the Inland Revenue Department, Lazimpat. Needs a PAN/VAT-registered business **in Nepal** (our own
+   Nepal company, or a Nepali partner who applies as the local provider), company documents, the user manual
+   (Nepali or English), sample bills, screenshots or a video, system design, a data-edit guarantee letter, backup and
+   recovery description, CBMS API access, and source code or a login if asked. IRD tests it and may ask for changes;
+   then it goes on the public list. Big changes to billing or tax logic need a fresh review.
+2. *User permission* (each restaurant): Taxpayer Portal › Electronic Billing User Permission at its own tax office,
+   with PAN and registration papers, a setup file, 20 sample bills in Excel, sales reports, an audit-trail report and
+   system details. A tax officer and an IT officer check it; the office head issues the permit.
+
+**Changes needed in RestroGrow (only for Nepal restaurants; India stays as it is):**
+| # | Change | Size |
+|---|---|---|
+| a | A bill can't be edited or deleted once issued: cancel only with a reason (kept on record), returns by credit note; order delete / bill edits blocked after issue | medium |
+| b | Credit notes / sales returns: own number series, linked to the original bill, with a reason | medium |
+| c | Reprints say "Copy of Original" with a print count (saved per bill) | small |
+| d | Audit trail: who, when, what for every bill, change, cancel and print; viewable and printable report | medium |
+| e | CBMS sync: send every bill and credit note to IRD's API (BS dates, buyer PAN), queue and retry when offline, sync status per bill | medium |
+| f | Buyer PAN / name on the bill (POS pay window field; the server already accepts `buyerPan`) | small |
+| g | Nepal sales book (VAT sales register), sales return book, exports to Excel / XML / PDF, backup and restore | medium |
+| h | **Server in Nepal** for cloud software, reported to IRD; a Nepal-registered hosting operator, each restaurant's data kept separate, a three-way data agreement | large (infrastructure) |
+| i | User manual in Nepali or English, sample bills, system design document | small |
+Already done: fiscal-year bill numbers, BS dates, VAT-inclusive prices + service charge, Tax Invoice wording.
+
+**Time (rough):** code a–g and i: 3–5 weeks. Nepal entity or partner: 1–3 months. Nepal server and agreements:
+2–4 weeks alongside. IRD review: not published; plan 1–3 months. Realistic total: **3–6 months**.
+**Cost (rough, verify):** Nepal hosting a few thousand NPR a month; consultant/partner fees; a Nepal company with
+foreign investment needs approval and minimum capital (check current FDI rules), so a Nepali partner is usually the
+cheaper, faster road.
+**Difficulty:** code medium; the Nepal server and the local legal presence are the hard part.
+**Meanwhile:** sell to restaurants below Rs 5 crore as POS, KOT/BOT, QR ordering and loyalty, and say plainly that
+the VAT bill comes from their bill book or approved billing until RestroGrow is approved.
+
 ---
 
 ## 7. United States (next: start 26 Oct 2026)

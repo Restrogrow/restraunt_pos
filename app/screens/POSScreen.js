@@ -426,6 +426,7 @@ export default function POSScreen({ route }) {
   // while the preview is open — can never change what's on the receipt.
   // opts.afterClose chains a second preview (Pay flow: KOT first, then the
   // bill) once this one is dismissed or printed. opts.items: only these lines (a KOT of new dishes).
+  // opts.ticketLabel: 'BOT' prints the bar's ticket (drinks) instead of the kitchen's.
   const offerPrint = (...args) => setBillPreview(buildPreview(...args));
   function buildPreview(title, kotNumber, paymentMethod, type, opts = {}) {
     const table = tables.find((t) => String(t.id) === String(tableId));
@@ -444,6 +445,7 @@ export default function POSScreen({ route }) {
       orderId: opts.orderId || null,
       billNo: opts.billNo || null,
       kotNumber,
+      ticketLabel: opts.ticketLabel,
       orderType: tableId ? 'Dine-in' : 'Takeaway',
       tableName: table?.table_number,
       tableLabel: table ? `${table.table_number}${table.area_name ? ` · ${table.area_name}` : ''}` : 'Takeaway',
@@ -542,6 +544,33 @@ export default function POSScreen({ route }) {
     if (openBill) f.openOrderId = openBill.id;
     return f;
   };
+
+  // create_kot sends drinks made at the bar on their own ticket (BOT) and says which dishes went
+  // there (bar_item_ids), so the lines split the same way for the two previews. A line it doesn't
+  // name (an order add-on, a combo) stays on the KOT, or goes on the BOT when only a BOT was sent.
+  // Returns [kotPreview, botPreview], null for a ticket that wasn't sent.
+  const ticketPreviews = (res, lines) => {
+    const bar = new Set((res.bar_item_ids || []).map(String));
+    const food = [];
+    const drinks = [];
+    lines.forEach((c) => (!c.isAddon && !c.isCombo && bar.has(String(c.id)) ? drinks : food).push(c));
+    const base = { orderNumber: res.order_number };
+    return [
+      res.kot_number ? buildPreview('KOT', res.kot_number, null, 'kot', { ...base, items: food }) : null,
+      res.bot_number ? buildPreview('BOT', res.bot_number, null, 'kot', { ...base, items: res.kot_number ? drinks : lines, ticketLabel: 'BOT' }) : null,
+    ];
+  };
+  // Opens the previews one after another (each one's afterClose opens the next).
+  const showPreviews = (list) => {
+    const [first, ...rest] = list.filter(Boolean);
+    if (first) setBillPreview({ ...first, afterClose: rest.length ? () => showPreviews(rest) : undefined });
+  };
+  // "Ticket KOT-…", "Ticket BOT-…" or "Tickets KOT-… and BOT-…"
+  const ticketText = (res) => {
+    const nums = [res.kot_number, res.bot_number].filter(Boolean);
+    return `Ticket${nums.length > 1 ? 's' : ''} ${nums.join(' and ')}`;
+  };
+  const ticketWord = (res) => [res.kot_number && 'KOT', res.bot_number && 'BOT'].filter(Boolean).join(', ');
 
   const holdOrder = async () => {
     if (cart.length === 0) return;
@@ -671,14 +700,14 @@ export default function POSScreen({ route }) {
       setOpenBill({ id: res.order_id, number: res.order_number });
       markAllSent();
       haptic.success();
-      const kotPreview = buildPreview('KOT', res.kot_number, null, 'kot', { orderNumber: res.order_number, items: delta.lines });
+      const tickets = ticketPreviews(res, delta.lines);
       const pick = await feedback.choose({
-        title: 'Sent to the kitchen',
-        message: `Ticket ${res.kot_number}. Bill ${res.order_number} stays open until it's paid: add more and tap KOT again, or Pay.`,
-        options: [{ label: 'Print KOT', value: 'kot', icon: 'print-outline' }],
+        title: res.kot_number ? `Sent to the kitchen${res.bot_number ? ' and bar' : ''}` : 'Sent to the bar',
+        message: `${ticketText(res)}. Bill ${res.order_number} stays open until it's paid: add more and tap KOT again, or Pay.`,
+        options: [{ label: `Print ${ticketWord(res).replace(', ', ' and ')}`, value: 'kot', icon: 'print-outline' }],
         cancelText: 'Done',
       });
-      if (pick === 'kot') setBillPreview(kotPreview);
+      if (pick === 'kot') showPreviews(tickets);
     } catch (e) {
       feedback.errorFrom(e, 'Could not send to the kitchen');
     } finally {
@@ -737,8 +766,8 @@ export default function POSScreen({ route }) {
       // Both previews snapshot the cart and totals, so build them before the cart is cleared.
       const totalPaid = total;
       const custName = custState.cust?.name;
-      const kotPreview = res.kot_number ? buildPreview('KOT', res.kot_number, null, 'kot', { orderNumber: res.order_number, items: openBill ? delta.lines : undefined }) : null;
-      const billPreviewData = buildPreview('Payment collected', res.kot_number || res.order_number, paymentMethod, 'bill', billOpts);
+      const tickets = ticketPreviews(res, openBill ? delta.lines : cart);
+      const billPreviewData = buildPreview('Payment collected', res.kot_number || res.bot_number || res.order_number, paymentMethod, 'bill', billOpts);
       resetCart();
       haptic.success();
       if (res.loyalty?.earned && custName) {
@@ -754,12 +783,12 @@ export default function POSScreen({ route }) {
         title: `Paid ${money(totalPaid, currency)}`,
         message: res.order_number ? `${res.order_number} is in Orders and counted in today's sales.${line ? `\n${line}` : ''}` : 'Sent to the kitchen.',
         options: [
-          ...(kotPreview ? [{ label: 'Print KOT and bill', value: 'both', icon: 'print-outline' }] : []),
+          ...(res.kot_number || res.bot_number ? [{ label: `Print ${ticketWord(res)} and bill`, value: 'both', icon: 'print-outline' }] : []),
           { label: 'Print bill', value: 'bill', icon: 'receipt-outline' },
         ],
         cancelText: 'Done',
       });
-      if (pick === 'both') setBillPreview({ ...kotPreview, afterClose: () => setBillPreview(billPreviewData) });
+      if (pick === 'both') showPreviews([...tickets, billPreviewData]);
       else if (pick === 'bill') setBillPreview(billPreviewData);
     } catch (e) {
       feedback.errorFrom(e, 'Could not take the payment');

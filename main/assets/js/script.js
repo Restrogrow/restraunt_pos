@@ -2751,16 +2751,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const hoursChip = menu.hours_label
         ? `<div class="mh-chip${menu.served_now === false ? ' off' : ''}"><span class="material-symbols-rounded">schedule</span>${escapeHtml(menu.hours_label)}${menu.served_now === false ? ' · not now' : ''}</div>`
         : '';
+      // kitchen or bar (assets/js/menu-stations.js): bar dishes print on a Bar Order Ticket
+      const isBarMenu = menu.prep_station === 'bar';
+      const stationData = escapeHtml(JSON.stringify({ id: menu.id, menu_name: menu.menu_name })).replace(/"/g, '&quot;');
+      const stationChip = isBarMenu ? `<div class="mh-chip ms-bar"><span class="material-symbols-rounded">local_bar</span>Made at the bar · BOT</div>` : '';
       return `
       <div class="menu-card" data-menu-id="${menu.id}">
         ${imageHtml}
         <h3>${escapeHtml(menu.menu_name)}</h3>
         <div class="menu-date">Created: ${formatDate(menu.created_at)}</div>
-        ${hoursChip}
+        ${hoursChip}${stationChip}
         <div class="menu-actions-card">
           <button class="btn-edit mh-btn" type="button" data-menu-hours="${hoursData}" title="When this category is served">
             <span class="material-symbols-rounded">schedule</span>
             Hours
+          </button>
+          <button class="btn-edit mh-btn" type="button" data-menu-station="${stationData}" title="Made in the kitchen (KOT) or at the bar (BOT)">
+            <span class="material-symbols-rounded">${isBarMenu ? 'local_bar' : 'soup_kitchen'}</span>
+            ${isBarMenu ? 'Bar' : 'Kitchen'}
           </button>
           <button class="btn-edit" onclick="editMenu(${menu.id}, ${jsArg(menu.menu_name)}, '${menuImageUrl || ''}')">
             <span class="material-symbols-rounded">edit</span>
@@ -9334,7 +9342,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const billNo = result.bill_label || result.bill_no || result.kot_number || result.order_number;
         payResult.billDateBs = result.bill_date_bs || '';
         if (result.offline) showMsg(`Saved offline as bill ${result.order_number}. It syncs when the internet is back.`, "info");
-        else showMsg(`Payment saved (${payResult.paymentStatus}) - ${result.kot_number ? 'KOT #' + result.kot_number : 'Bill ' + result.order_number}`, "success");
+        else showMsg(`Payment saved (${payResult.paymentStatus}) - ${[result.kot_number ? 'KOT #' + result.kot_number : '', result.bot_number ? 'BOT #' + result.bot_number : ''].filter(Boolean).join(', ') || 'Bill ' + result.order_number}`, "success");
         window.posResetBill();
 
         const showBill = async () => {
@@ -9343,9 +9351,9 @@ document.addEventListener("DOMContentLoaded", () => {
           showPrintPreview('Bill #' + billNo, billHtml);
         };
 
-        // a new kitchen ticket (dishes not sent before): its preview first, then the bill
-        if (result.kot_id && window.printKOT) {
-          window.printKOT(result.kot_id, showBill);
+        // new tickets (dishes not sent before): the KOT and the bar's BOT first, then the bill
+        if ((result.kot_id || result.bot_id) && window.printSentTickets) {
+          window.printSentTickets(result, showBill);
         } else if (result.offline && result.localKot && result.localKot.length && window.rgPosOffline) {
           window.rgPosOffline.printLocalKot(result.localKot, result.order_number, tableLabel, showBill);
         } else {
@@ -9459,8 +9467,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (result.offline) {
         showMsg(`Offline: kitchen ticket printed here. Bill ${result.order_number} stays open and syncs when the internet is back.`, "info");
         if (window.rgPosOffline) window.rgPosOffline.printLocalKot(result.localKot, result.order_number, tableLabel);
-      } else showMsg(`Sent to the kitchen (KOT #${result.kot_number}). Bill ${result.order_number} stays open until it's paid.`, "success");
-      if (result.kot_id && window.printKOT) window.printKOT(result.kot_id);
+      } else showMsg(`Sent${result.kot_number ? ` to the kitchen (KOT #${result.kot_number})` : ''}${result.kot_number && result.bot_number ? ' and' : ''}${result.bot_number ? ` to the bar (BOT #${result.bot_number})` : ''}. Bill ${result.order_number} stays open until it's paid.`, "success");
+      if ((result.kot_id || result.bot_id) && window.printSentTickets) window.printSentTickets(result);
       const ordersPage = document.getElementById('ordersPage');
       if (ordersPage && ordersPage.classList.contains('active') && typeof loadOrders !== 'undefined') loadOrders();
     } catch (e) {
@@ -10101,6 +10109,7 @@ window.logout = logout;
           playClickSound();
         }
         prevKotOrderCount = pendingKotCount;
+        window.rgKotHasBar = !!data.has_bar;   // Kitchen / Bar tabs (kot-studio.js)
         displayKOTOrders(data.kots);
       } else {
         const kotList = document.getElementById('kotList');
@@ -10297,7 +10306,7 @@ function escapeHtml(str) {
 // printer wired to this PC/browser, not to the restaurant account, so it's
 // kept in localStorage rather than the database.
 window.getPrinterSettings = function () {
-  var defaults = { widthMM: 80, mode: 'browser', networkIp: '', networkPort: 9100, serialBaud: 9600 };
+  var defaults = { widthMM: 80, mode: 'browser', networkIp: '', networkPort: 9100, serialBaud: 9600, barPrint: 'same', barNetworkIp: '', barNetworkPort: 9100 };
   try {
     var saved = JSON.parse(localStorage.getItem('printerSettings') || '{}');
     var merged = Object.assign({}, defaults, saved);
@@ -10305,14 +10314,27 @@ window.getPrinterSettings = function () {
     merged.mode = window.normalizePrinterMode(merged.mode);
     merged.networkPort = parseInt(merged.networkPort, 10) || 9100;
     merged.serialBaud = parseInt(merged.serialBaud, 10) || 9600;
+    merged.barPrint = ['same', 'network', 'none'].indexOf(merged.barPrint) !== -1 ? merged.barPrint : 'same';
+    merged.barNetworkPort = parseInt(merged.barNetworkPort, 10) || 9100;
     return merged;
   } catch (e) {
     return defaults;
   }
 };
 
+// merged into what's saved: a form that saves only its own fields keeps the others (the bar printer)
 window.savePrinterSettings = function (settings) {
-  localStorage.setItem('printerSettings', JSON.stringify(settings));
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem('printerSettings') || '{}') || {}; } catch (e) {}
+  localStorage.setItem('printerSettings', JSON.stringify(Object.assign(saved, settings)));
+};
+
+// Where a Bar Order Ticket (BOT) prints, set on Settings › Printer › Bar tickets:
+// 'same' = the printer above, 'network' = the bar's own network printer, 'none' = not printed (bar screen only)
+window.getBarPrintRoute = function () {
+  var s = window.getPrinterSettings();
+  if (s.barPrint === 'network' && s.barNetworkIp) return 'network';
+  return s.barPrint === 'none' ? 'none' : 'same';
 };
 
 // browser = print dialog; network / bluetooth / serial (USB) print straight away
@@ -10413,8 +10435,9 @@ window.rgFetchRetry = async function (url, opts) {
   throw last || new Error("Request failed");
 };
 
-window.printViaNetwork = async function (escPosBuilder) {
-  var settings = window.getPrinterSettings();
+// target: another network printer than the one in settings ({ ip, port, name }), e.g. the bar's
+window.printViaNetwork = async function (escPosBuilder, target) {
+  var settings = target ? { networkIp: target.ip, networkPort: parseInt(target.port, 10) || 9100 } : window.getPrinterSettings();
   if (!settings.networkIp) {
     showSweetAlert('No network printer address configured. Add one in Settings > Printer Settings.');
     return false;
@@ -10470,8 +10493,28 @@ document.addEventListener('DOMContentLoaded', function () {
   };
   showFields();
   modeSel.addEventListener('change', showFields);
+
+  // Bar tickets (BOT): the same printer, the bar's own network printer, or not printed
+  var barSel = document.getElementById('barPrintSelect');
+  if (barSel) {
+    window.fillBarPrinterFields(settings);
+    barSel.addEventListener('change', window.showBarPrinterFields);
+  }
   if (window.rgPrinter) window.rgPrinter.onChange(window.paintPrinterDeviceCard);
 });
+
+window.fillBarPrinterFields = function (s) {
+  var barSel = document.getElementById('barPrintSelect');
+  if (!barSel) return;
+  barSel.value = s.barPrint;
+  document.getElementById('barNetworkIp').value = s.barNetworkIp || '';
+  document.getElementById('barNetworkPort').value = s.barNetworkPort || 9100;
+  window.showBarPrinterFields();
+};
+window.showBarPrinterFields = function () {
+  var barSel = document.getElementById('barPrintSelect'), box = document.getElementById('barNetworkFields');
+  if (barSel && box) box.style.display = barSel.value === 'network' ? 'block' : 'none';
+};
 
 // The "Connect printer" card for Bluetooth / USB on the Printer settings pane.
 window.paintPrinterDeviceCard = function () {
@@ -10540,6 +10583,13 @@ window.savePrinterSettingsForm = function () {
     networkPort: parseInt(portInput.value, 10) || 9100,
     serialBaud: (baudSel && parseInt(baudSel.value, 10)) || 9600
   });
+  var barSel = document.getElementById('barPrintSelect');
+  if (barSel) {
+    var barIp = document.getElementById('barNetworkIp').value.trim();
+    // the bar's own printer needs its address; without one its tickets print on the printer above
+    window.savePrinterSettings({ barPrint: barSel.value === 'network' && !barIp ? 'same' : barSel.value, barNetworkIp: barIp, barNetworkPort: parseInt(document.getElementById('barNetworkPort').value, 10) || 9100 });
+    if (barSel.value === 'network' && !barIp) { barSel.value = 'same'; window.showBarPrinterFields(); }
+  }
   // a Bluetooth / USB printer picked before: open it now rather than at the first bill
   if (window.rgPrinter) window.rgPrinter.reconnect();
 
@@ -10910,7 +10960,8 @@ function kotOrderAddons(kot) {
   return m ? m[1].trim() : '';
 }
 
-window.printKOT = async function(kotId, onClose) {
+// opts.auto: printed by itself after a POS send (not the Print button)
+window.printKOT = async function(kotId, onClose, opts) {
   try {
     // Fetch KOT data for specific KOT
     const res = await rgFetchRetry('../api/get_kot.php' + (kotId ? '?kot_id=' + kotId : ''));
@@ -10918,6 +10969,16 @@ window.printKOT = async function(kotId, onClose) {
     if (!data.success) { showSweetAlert('Unable to load KOT'); return; }
     const kot = data.kot || (data.kots || []).find(k => String(k.id) === String(kotId));
     if (!kot) { showSweetAlert('KOT not found'); return; }
+    // a Bar Order Ticket (config/prep_stations.php): headed BOT, and sent to the bar printer
+    const isBot = kot.station === 'bar';
+    const label = isBot ? 'BOT' : 'KOT';
+    const accent = isBot ? '#6d28d9' : '#dc2626';
+    let barRoute = isBot ? window.getBarPrintRoute() : 'same';
+    if (barRoute === 'none') {
+      // the bar reads it on screen: nothing prints by itself, but the Print button still does
+      if (opts && opts.auto) { if (typeof onClose === 'function') onClose(); return; }
+      barRoute = 'same';
+    }
 
     // Fetch restaurant info
     let restaurantInfo = {
@@ -10985,18 +11046,18 @@ window.printKOT = async function(kotId, onClose) {
 
     const itemsCount = (kot.items || []).length;
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT #${kot.kot_number}</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${label} #${kot.kot_number}</title>
       <style>
         ${window.getThermalReceiptCSS()}
-        .header { text-align:center; border-bottom:3px double #dc2626; padding-bottom:10px; margin-bottom:12px; }
+        .header { text-align:center; border-bottom:3px double ${accent}; padding-bottom:10px; margin-bottom:12px; }
         .logo { margin-bottom:6px; }
-        .restaurant-name { font-size:18px; font-weight:800; color:#dc2626; text-transform:uppercase; letter-spacing:0.5px; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .restaurant-name { font-size:18px; font-weight:800; color:${accent}; text-transform:uppercase; letter-spacing:0.5px; font-family:'Segoe UI',Tahoma,sans-serif; }
         .restaurant-details { font-size:10px; color:#6b7280; line-height:1.4; margin-top:4px; font-family:'Segoe UI',Tahoma,sans-serif; }
-        .kot-banner { text-align:center; margin:12px 0; padding:10px; background:#fef2f2; border:2px solid #dc2626; }
-        .kot-banner h2 { font-size:28px; font-weight:900; color:#dc2626; letter-spacing:3px; margin-bottom:2px; font-family:'Segoe UI',Tahoma,sans-serif; }
+        .kot-banner { text-align:center; margin:12px 0; padding:10px; background:${isBot ? '#f5f3ff' : '#fef2f2'}; border:2px solid ${accent}; }
+        .kot-banner h2 { font-size:28px; font-weight:900; color:${accent}; letter-spacing:3px; margin-bottom:2px; font-family:'Segoe UI',Tahoma,sans-serif; }
         .kot-banner .kot-number { font-size:22px; font-weight:700; color:#111827; }
-        .kot-banner .kot-ser { font-size:10px; font-weight:600; color:#dc2626; margin-bottom:2px; }
-        .info-box { background:#f9fafb; padding:10px; margin-bottom:12px; border-left:4px solid #dc2626; font-size:12px; }
+        .kot-banner .kot-ser { font-size:10px; font-weight:600; color:${accent}; margin-bottom:2px; }
+        .info-box { background:#f9fafb; padding:10px; margin-bottom:12px; border-left:4px solid ${accent}; font-size:12px; }
         .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; }
         .info-item { display:flex; justify-content:space-between; }
         .info-label { color:#6b7280; font-weight:600; }
@@ -11017,7 +11078,9 @@ window.printKOT = async function(kotId, onClose) {
         ${restaurantInfo.address ? `<div class="restaurant-details">${escapeHtml(restaurantInfo.address)}</div>` : ''}
         ${restaurantInfo.phone ? `<div class="restaurant-details">Ph: ${escapeHtml(restaurantInfo.phone)}</div>` : ''}
       </div>
-        <h2>KOT</h2>
+      <div class="kot-banner">
+        ${isBot ? '<div class="kot-ser">BAR ORDER TICKET</div>' : ''}
+        <h2>${label}</h2>
         <div class="kot-number">#${escapeHtml(kot.kot_number || kot.id)}</div>
         <hr class="sep-line">
         <div style="font-size:11px; color:#6b7280;">${dateStr} | ${timeStr}</div>
@@ -11052,10 +11115,11 @@ window.printKOT = async function(kotId, onClose) {
     </body></html>`;
 
     const kotPrinterSettings = window.getPrinterSettings();
-    if (window.isDirectPrintMode(kotPrinterSettings.mode)) {
+    if (barRoute === 'network' || window.isDirectPrintMode(kotPrinterSettings.mode)) {
       // the phone app's KOT layout (escpos.js buildKotEscPos)
       const escBuilder = window.buildKotEscPos({
         charWidth: window.getPrinterCharWidth(kotPrinterSettings.widthMM),
+        bar: isBot,
         kotNumber: kot.kot_number || kot.id,
         createdAt: kot.created_at,
         table: kot.table_number ? 'Table ' + kot.table_number + (kot.area_name ? ' - ' + kot.area_name : '') : (kot.order_type || 'Takeaway'),
@@ -11069,16 +11133,32 @@ window.printKOT = async function(kotId, onClose) {
       // onFail shows the preview (and the bill after it, via onClose) when the printer isn't reachable
       let next = typeof onClose === 'function' ? onClose : null;
       const once = () => { const f = next; next = null; if (f) f(); };
-      const sent = await window.printDirect(escBuilder, () => showPrintPreview('KOT #' + kot.kot_number, html, once));
-      if (sent) once();
+      const preview = () => showPrintPreview(label + ' #' + kot.kot_number, html, once);
+      // the bar's own network printer (Settings › Printer › Bar tickets), whatever prints the bills
+      const sent = barRoute === 'network'
+        ? await window.printViaNetwork(escBuilder, { ip: kotPrinterSettings.barNetworkIp, port: kotPrinterSettings.barNetworkPort, name: 'bar printer' })
+        : await window.printDirect(escBuilder, preview);
+      if (sent) once(); else if (barRoute === 'network') preview();
       return;
     }
 
-    showPrintPreview('KOT #' + kot.kot_number, html, onClose);
+    showPrintPreview(label + ' #' + kot.kot_number, html, onClose);
   } catch (e) {
     console.error('Print error', e);
     showSweetAlert('Failed to print KOT');
   }
+};
+
+// Prints what a POS send made: the KOT, then the BOT (drinks, config/prep_stations.php), then `then`
+// (the bill). Either ticket may be missing (no food / no drinks this time).
+window.printSentTickets = function (result, then) {
+  const ids = [result && result.kot_id, result && result.bot_id].filter(Boolean);
+  const next = () => {
+    const id = ids.shift();
+    if (!id) { if (typeof then === 'function') then(); return; }
+    window.printKOT(id, next, { auto: true });
+  };
+  next();
 };
 
 

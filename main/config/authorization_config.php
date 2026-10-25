@@ -26,6 +26,7 @@ define('ROLE_WAITER', 'Waiter');
 define('ROLE_CHEF', 'Chef');
 define('ROLE_STAFF', 'Staff');
 define('ROLE_DELIVERY', 'Delivery');
+define('ROLE_BARTENDER', 'Bartender'); // the bar: the kitchen display with only bar tickets (BOT); get_kot.php / kot_operations.php keep it to them
 define('ROLE_CASHIER', 'Cashier');     // billing counter: POS, payments, orders (incl. online), customers, tables; no reports, menu, staff or settings   // delivery rider: only their own deliveries (config/rider_engine.php, api/rider_app.php)
 
 /**
@@ -104,6 +105,11 @@ function getRolePermissions($role) {
             PERMISSION_VIEW_KOT,
             PERMISSION_MANAGE_ORDERS, // Can update order status
         ],
+        ROLE_BARTENDER => [
+            PERMISSION_VIEW_DASHBOARD,
+            PERMISSION_VIEW_KOT,
+            PERMISSION_MANAGE_ORDERS,
+        ],
         ROLE_STAFF => [
             PERMISSION_VIEW_DASHBOARD,
             PERMISSION_VIEW_KOT,
@@ -131,6 +137,11 @@ function isWaiterSession(): bool
 function isOnlineOrderRow(array $o): bool
 {
     return ($o['source'] ?? '') === 'website' && in_array($o['order_type'] ?? '', ['Delivery', 'Takeaway'], true);
+}
+/** A bartender sees and moves only bar tickets (BOT). */
+function isBartenderSession(): bool
+{
+    return ($_SESSION['user_type'] ?? '') === 'staff' && strcasecmp((string)($_SESSION['role'] ?? ''), ROLE_BARTENDER) === 0;
 }
 function isDeliverySession(): bool
 {

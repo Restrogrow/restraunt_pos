@@ -128,10 +128,16 @@ if (!function_exists('advanceLinkedOrderWithKitchen')) {
      * time (Pending/Accepted → Preparing → Ready), so it never skips the
      * order state machine and never touches a finished or cancelled order.
      * Staff still mark Served/Completed (where loyalty points are awarded).
+     * An order with a kitchen ticket and a bar ticket (config/prep_stations.php)
+     * is Ready only when both are: until then it stays at Preparing.
      * Returns true when this call moved the order onto $target.
      */
-    function advanceLinkedOrderWithKitchen($conn, $orderId, $target, $restaurant_id) {
+    function advanceLinkedOrderWithKitchen($conn, $orderId, $target, $restaurant_id, $kotId = 0) {
         if (!$orderId || !function_exists('validateAndUpdateOrderStatus')) return false;
+        if ($target === 'Ready' && $kotId) {
+            require_once __DIR__ . '/../config/prep_stations.php';
+            if (stationOtherTicketsOpen($conn, (int)$orderId, (int)$kotId) > 0) $target = 'Preparing';
+        }
         $rank = ['Pending' => 0, 'Accepted' => 1, 'Preparing' => 2, 'Ready' => 3];
         if (!isset($rank[$target])) return false;
         $st = $conn->prepare("SELECT order_status FROM orders WHERE id = ? AND restaurant_id = ?");
@@ -153,11 +159,11 @@ if (!function_exists('advanceLinkedOrderWithKitchen')) {
 }
 
 if (!function_exists('kotNotifyReady')) {
-    /** "Order ready" push to the waiters; never fails the kitchen's request. */
-    function kotNotifyReady($conn, $restaurant_id, int $orderId) {
+    /** "Order ready" (or "Drinks ready" for a bar ticket) push to the waiters; never fails the kitchen's request. */
+    function kotNotifyReady($conn, $restaurant_id, int $orderId, string $station = '') {
         try {
             require_once __DIR__ . '/../config/push_notification.php';
-            notifyWaitersOrderReady($conn, (string)$restaurant_id, $orderId);
+            notifyWaitersOrderReady($conn, (string)$restaurant_id, $orderId, $station);
         } catch (Throwable $e) {
             error_log('kot_operations.php: waiter notification failed (non-fatal): ' . $e->getMessage());
         }
@@ -440,7 +446,7 @@ function handleUpdateKOTStatus() {
             $hasCustomerCols = false;
         }
         
-        if (!$kot) {
+        if (!$kot || (isBartenderSession() && ($kot['station'] ?? 'kitchen') !== 'bar')) {   // a bartender moves only bar tickets
             $conn->rollBack();
             http_response_code(404);
             echo json_encode(['success' => false, 'message' => 'KOT not found'], JSON_UNESCAPED_UNICODE);
@@ -491,7 +497,7 @@ function handleUpdateKOTStatus() {
         // A ticket that already belongs to an order (website dine-in) moves that
         // order along with the kitchen instead of leaving it at Pending
         if (!empty($kot['order_id']) && ($status === 'Preparing' || $status === 'Ready')) {
-            advanceLinkedOrderWithKitchen($conn, (int)$kot['order_id'], $status, $restaurant_id);
+            advanceLinkedOrderWithKitchen($conn, (int)$kot['order_id'], $status, $restaurant_id, $kot_id);
         }
 
         // If status is "Ready", create order from KOT
@@ -610,11 +616,11 @@ function handleUpdateKOTStatus() {
         invKick($conn, $restaurant_id);   // stock, sold-out dishes, low-stock alerts
         // the food on this ticket is ready: tell the waiters (after commit, like update_order_status.php)
         if ($status === 'Ready' && $kot['kot_status'] !== 'Ready' && !empty($kot['order_id'])) {
-            kotNotifyReady($conn, $restaurant_id, (int)$kot['order_id']);
+            kotNotifyReady($conn, $restaurant_id, (int)$kot['order_id'], (string)($kot['station'] ?? ''));
         }
         if ($status === 'Cancelled') {
             require_once __DIR__ . '/../config/activity_log.php';
-            logActivity($conn, $restaurant_id, 'kot.cancel', 'Cancelled kitchen ticket ' . ($kot['kot_number'] ?? '#' . $kot_id), [], 'kot', $kot_id);
+            logActivity($conn, $restaurant_id, 'kot.cancel', 'Cancelled ' . (($kot['station'] ?? '') === 'bar' ? 'bar' : 'kitchen') . ' ticket ' . ($kot['kot_number'] ?? '#' . $kot_id), [], 'kot', $kot_id);
         }
         echo json_encode(['success' => true, 'message' => 'KOT status updated successfully'], JSON_UNESCAPED_UNICODE);
         
@@ -680,7 +686,7 @@ function handleCompleteKOT() {
         $kot_stmt->execute([$kot_id, $restaurant_id]);
         $kot = $kot_stmt->fetch();
         
-        if (!$kot) {
+        if (!$kot || (isBartenderSession() && ($kot['station'] ?? 'kitchen') !== 'bar')) {
             throw new Exception('KOT not found');
         }
         linkWebsiteKotToOrder($conn, $kot, $restaurant_id);
@@ -693,7 +699,7 @@ function handleCompleteKOT() {
             // direct Pending → Ready jump is rejected by the state machine,
             // which used to leave website orders stuck at Pending
             // (an order that's already Ready or further along is left as it is)
-            $stateResult = ['success' => advanceLinkedOrderWithKitchen($conn, (int)$order_id, 'Ready', $restaurant_id)];
+            $stateResult = ['success' => advanceLinkedOrderWithKitchen($conn, (int)$order_id, 'Ready', $restaurant_id, $kot_id)];
 
             // Update KOT status to completed
             $update_kot_sql = "UPDATE kot SET kot_status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?";
@@ -705,7 +711,7 @@ function handleCompleteKOT() {
 
             if ($stateResult['success']) {
                 require_once __DIR__ . '/../config/push_notification.php';
-                notifyWaitersOrderReady($conn, $restaurant_id, (int)$order_id);
+                notifyWaitersOrderReady($conn, (string)$restaurant_id, (int)$order_id);
             }
 
             echo json_encode([

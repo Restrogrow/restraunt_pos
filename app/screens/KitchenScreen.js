@@ -8,17 +8,26 @@ import { feedback } from '../components/ui/Feedback';
 import FadeIn from '../components/ui/FadeIn';
 import PressableScale from '../components/ui/PressableScale';
 import { apiGet, apiPostForm } from '../config/api';
+import { getKitchenStation, setKitchenStation } from '../config/kitchenSettings';
 import { useApiData } from '../hooks/useApiData';
 import { useLayout } from '../hooks/useLayout';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { durationLabel, minutesSince, realName } from '../utils/format';
 
 const STAGES = [
-  { key: 'Pending', label: 'New', icon: 'receipt-outline', next: 'Preparing', action: 'Start cooking', actionIcon: 'flame' },
+  { key: 'Pending', label: 'New', icon: 'receipt-outline', next: 'Preparing', action: 'Start cooking', barAction: 'Start making', actionIcon: 'flame' },
   { key: 'Preparing', label: 'Cooking', icon: 'flame-outline', next: 'Ready', action: 'Ready', actionIcon: 'checkmark-done' },
   { key: 'Ready', label: 'Ready', icon: 'checkmark-done-outline', next: 'Completed', action: 'Picked up', actionIcon: 'checkmark-circle' },
 ];
 const STALE_MIN = 6 * 60;
+// Drinks made at the bar come as their own tickets (BOT, station 'bar'). The filter and the
+// KOT / BOT labels show only for a restaurant that has a bar (get_kot's has_bar).
+const STATIONS = [
+  { key: 'all', label: 'All' },
+  { key: 'kitchen', label: 'Kitchen', icon: 'restaurant-outline' },
+  { key: 'bar', label: 'Bar', icon: 'wine-outline' },
+];
+const isBar = (k) => k.station === 'bar';
 
 function ageTone(min) {
   if (min < 15) return { fg: colors.success, bg: colors.successBg };
@@ -34,6 +43,16 @@ export default function KitchenScreen({ navigation }) {
   const [stage, setStage] = useState('Pending');
   const [busy, setBusy] = useState(null);
   const [now, setNow] = useState(Date.now());
+  // All / Kitchen / Bar, remembered on this device (a phone at the bar stays on Bar)
+  const [station, setStation] = useState('all');
+  useEffect(() => {
+    getKitchenStation().then(setStation);
+  }, []);
+  const pickStation = (key) => {
+    LayoutAnimation.configureNext(LayoutAnimation.create(180, 'easeInEaseOut', 'opacity'));
+    setStation(key);
+    setKitchenStation(key).catch(() => {});
+  };
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
@@ -43,18 +62,20 @@ export default function KitchenScreen({ navigation }) {
   const fetcher = useCallback(() => apiGet('/api/get_kot.php'), []);
   const { data, loading, refreshing, error, refresh, setData, reload } = useApiData(fetcher, { pollInterval: 10000, cacheKey: 'kitchen', refetchOnFocus: true });
   const kots = data?.kots || [];
+  const hasBar = !!data?.has_bar || kots.some(isBar);
+  const shown = useMemo(() => (hasBar && station !== 'all' ? kots.filter((k) => (isBar(k) ? 'bar' : 'kitchen') === station) : kots), [kots, hasBar, station]);
 
   const counts = useMemo(() => {
     const c = { Pending: 0, Preparing: 0, Ready: 0 };
-    kots.forEach((k) => {
+    shown.forEach((k) => {
       if (c[k.kot_status] !== undefined) c[k.kot_status] += 1;
     });
     return c;
-  }, [kots]);
-  const stale = useMemo(() => kots.filter((k) => minutesSince(k.created_at, now) >= STALE_MIN), [kots, now]);
+  }, [shown]);
+  const stale = useMemo(() => shown.filter((k) => minutesSince(k.created_at, now) >= STALE_MIN), [shown, now]);
   const visible = useMemo(
-    () => kots.filter((k) => k.kot_status === stage).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))),
-    [kots, stage]
+    () => shown.filter((k) => k.kot_status === stage).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))),
+    [shown, stage]
   );
   const cur = STAGES.find((s) => s.key === stage);
 
@@ -65,7 +86,7 @@ export default function KitchenScreen({ navigation }) {
       if (!res.success) throw new Error(res.message || 'Could not update the ticket');
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setData((prev) => (prev ? { ...prev, kots: (prev.kots || []).map((k) => (k.id === kot.id ? { ...k, kot_status: to } : k)).filter((k) => k.kot_status !== 'Completed') } : prev));
-      feedback.success(to === 'Completed' ? 'Ticket closed' : `Ticket ${to === 'Preparing' ? 'cooking' : 'ready'}`);
+      feedback.success(to === 'Completed' ? 'Ticket closed' : `Ticket ${to === 'Preparing' ? (isBar(kot) ? 'being made' : 'cooking') : 'ready'}`);
       reload('background');
     } catch (e) {
       feedback.errorFrom(e, 'Could not update the ticket');
@@ -103,12 +124,13 @@ export default function KitchenScreen({ navigation }) {
     const tone = ageTone(min);
     const short = String(k.kot_number || '').split('-').pop();
     const name = realName(k.customer_name);
+    const bar = isBar(k);
     return (
       <FadeIn index={index} style={{ width: cols > 1 ? cardW : '100%' }}>
         <View style={[styles.card, shadow.sm, { borderTopColor: tone.fg }]}>
           <View style={styles.cardTop}>
-            <View style={styles.ticketNo}>
-              <Text style={styles.ticketNoText}>#{short}</Text>
+            <View style={[styles.ticketNo, bar && styles.ticketNoBar]}>
+              <Text style={styles.ticketNoText}>{hasBar ? `${bar ? 'BOT' : 'KOT'} ` : ''}#{short}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.where} numberOfLines={1}>
@@ -116,6 +138,12 @@ export default function KitchenScreen({ navigation }) {
                 {k.area_name ? ` · ${k.area_name}` : ''}
               </Text>
               {name ? <Text style={styles.who} numberOfLines={1}>{name}</Text> : null}
+              {bar ? (
+                <View style={styles.barChip}>
+                  <Ionicons name="wine-outline" size={12} color={colors.teal} />
+                  <Text style={styles.barChipText}>Bar</Text>
+                </View>
+              ) : null}
             </View>
             <View style={[styles.age, { backgroundColor: tone.bg }]}>
               <Ionicons name="time-outline" size={13} color={tone.fg} />
@@ -144,7 +172,7 @@ export default function KitchenScreen({ navigation }) {
           ) : null}
           <PressableScale style={[styles.go, stage === 'Ready' && { backgroundColor: colors.ink }]} onPress={() => move(k, cur.next)} disabled={busy === k.id} feedback="press">
             <Ionicons name={cur.actionIcon} size={17} color="#fff" />
-            <Text style={styles.goText}>{busy === k.id ? 'Saving…' : cur.action}</Text>
+            <Text style={styles.goText}>{busy === k.id ? 'Saving…' : (bar && cur.barAction) || cur.action}</Text>
           </PressableScale>
         </View>
       </FadeIn>
@@ -168,6 +196,20 @@ export default function KitchenScreen({ navigation }) {
           );
         })}
       </View>
+
+      {hasBar ? (
+        <View style={[styles.stations, { marginHorizontal: gutter }]}>
+          {STATIONS.map((s) => {
+            const on = s.key === station;
+            return (
+              <PressableScale key={s.key} feedback="select" style={[styles.stationChip, on && styles.stationChipOn]} onPress={() => pickStation(s.key)} accessibilityLabel={`Show ${s.key === 'all' ? 'all' : s.label.toLowerCase()} tickets`}>
+                {s.icon ? <Ionicons name={s.icon} size={14} color={on ? '#fff' : colors.inkSoft} /> : null}
+                <Text style={[styles.stationText, on && { color: '#fff' }]}>{s.label}</Text>
+              </PressableScale>
+            );
+          })}
+        </View>
+      ) : null}
 
       {stale.length ? (
         <PressableScale style={[styles.stale, { marginHorizontal: gutter }]} onPress={closeStale} scale={0.99}>
@@ -195,7 +237,7 @@ export default function KitchenScreen({ navigation }) {
           ListEmptyComponent={
             <EmptyState
               icon={cur.icon}
-              title={stage === 'Pending' ? 'No new tickets' : stage === 'Preparing' ? 'Nothing cooking' : 'Nothing waiting to go out'}
+              title={stage === 'Pending' ? 'No new tickets' : stage === 'Preparing' ? (hasBar && station === 'bar' ? 'Nothing being made' : 'Nothing cooking') : 'Nothing waiting to go out'}
               subtitle="Tickets from the POS and accepted orders show up here by themselves."
             />
           }
@@ -246,6 +288,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.inkSoft,
   },
+  stations: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: spacing.md,
+  },
+  stationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  stationChipOn: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  stationText: {
+    fontFamily: font.semiBold,
+    fontSize: 12.5,
+    color: colors.inkSoft,
+  },
   stale: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -282,6 +349,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  ticketNoBar: {
+    backgroundColor: colors.teal,
+  },
   ticketNoText: {
     fontFamily: font.bold,
     fontSize: 13,
@@ -296,6 +366,22 @@ const styles = StyleSheet.create({
     fontFamily: font.regular,
     fontSize: 12,
     color: colors.muted,
+  },
+  barChip: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: colors.tealBg,
+  },
+  barChipText: {
+    fontFamily: font.bold,
+    fontSize: 11,
+    color: colors.teal,
   },
   age: {
     flexDirection: 'row',

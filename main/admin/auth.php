@@ -486,6 +486,7 @@ function handleLogin() {
                 $redirect = '../views/waiter_dashboard.php';
                 break;
             case 'Chef':
+            case 'Bartender':   // the same screen, bar tickets only
                 $redirect = '../views/chef_dashboard.php';
                 break;
             case 'Manager':

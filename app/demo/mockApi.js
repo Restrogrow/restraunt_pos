@@ -77,7 +77,30 @@ const db = (() => {
     paymentMethods: f.paymentMethods,
     coupons: f.coupons,
     adminCoupons: f.adminCoupons,
-    kots: f.kots,
+    // the sample tickets are the kitchen's (KOT), plus one bar ticket (BOT) so the demo shows
+    // the Kitchen / Bar filter
+    kots: [
+      {
+        id: 9001,
+        kot_number: `BOT-${today.replace(/-/g, '')}-0001`,
+        station: 'bar',
+        table_id: null,
+        table_number: null,
+        area_name: null,
+        kot_status: 'Pending',
+        order_type: 'Takeaway',
+        customer_name: 'Takeaway',
+        created_at: at(4),
+        total: '220.00',
+        notes: '',
+        items: [
+          { item_name: 'Masala Chai', quantity: 2, notes: null, addons: [] },
+          { item_name: 'Fresh Lime Soda', quantity: 1, notes: 'Less ice', addons: [] },
+        ],
+        item_count: 2,
+      },
+      ...f.kots.map((k) => ({ ...k, station: 'kitchen' })),
+    ],
     customers: f.customers,
     loginLogs: f.loginLogs,
     calls: [],
@@ -314,6 +337,7 @@ function newOrderFromCart(f, kind) {
       table_number: table?.table_number || null,
       area_name: table?.area_name || null,
       kot_status: 'Pending',
+      station: 'kitchen',
       order_type: f.orderType,
       customer_name: f.customerName,
       created_at: order.created_at,
@@ -323,7 +347,8 @@ function newOrderFromCart(f, kind) {
       item_count: items.length,
     });
   }
-  return { success: true, order_number: num, kot_number: kotNum, order_id: id };
+  // the demo sends everything to the kitchen: no bar ticket
+  return { success: true, order_number: num, kot_number: kotNum, kot_id: kind !== 'hold' ? db.nextKot - 1 : null, bot_number: null, bot_id: null, bar_item_ids: [], order_id: id };
 }
 
 const ok = (extra = {}) => ({ success: true, ...extra });
@@ -395,7 +420,10 @@ function handle(path, method, q, f) {
       case '/api/get_payment_methods.php': return ok({ data: clone(db.paymentMethods) });
       case '/api/get_coupons.php': return ok({ coupons: clone(db.coupons) });
       case '/api/get_admin_coupons.php': return ok({ coupons: clone(db.adminCoupons) });
-      case '/api/get_kot.php': return ok({ kots: clone(db.kots.filter((k) => ['Pending', 'Preparing', 'Ready'].includes(k.kot_status))) });
+      case '/api/get_kot.php': {
+        const kots = db.kots.filter((k) => ['Pending', 'Preparing', 'Ready'].includes(k.kot_status));
+        return ok({ kots: clone(kots), has_bar: db.kots.some((k) => k.station === 'bar') });
+      }
       case '/api/get_waiter_requests.php': return ok({ requests: db.calls.map((c) => ({ ...c, minutes_ago: Math.floor((Date.now() - parse(c.created_at).getTime()) / 60000) })), total_requests: db.calls.length });
       case '/api/get_reservations.php': return ok({ data: clone(db.reservations.filter((r) => !q.date || r.reservation_date === q.date)) });
       case '/api/get_customers.php':

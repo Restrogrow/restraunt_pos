@@ -348,14 +348,17 @@
     return p;
   }
 
-  // o: { charWidth, kotNumber, createdAt, billNo, table, items: [{ name, quantity, sub? }], notes: [line] }
+  // o: { charWidth, kotNumber, createdAt, billNo, table, items: [{ name, quantity, sub? }], notes: [line], bar? }
+  // bar: a Bar Order Ticket (BOT) for drinks, headed BAR ORDER TICKET
   function buildKotEscPos(o) {
     var width = o.charWidth || 32;
     sawUnprintable = false;
     var p = new EscPosBuilder();
     var dash = function () { p.line('-'.repeat(width)); };
-    p.init().align('left');
-    if (o.kotNumber) { p.bold(true).line('KOT No: ' + o.kotNumber).bold(false); }
+    p.init();
+    if (o.bar) { p.align('center').bold(true).doubleHeight(true).line('BAR ORDER TICKET').doubleHeight(false).bold(false); dash(); }
+    p.align('left');
+    if (o.kotNumber) { p.bold(true).line((o.bar ? 'BOT' : 'KOT') + ' No: ' + o.kotNumber).bold(false); }
     p.line('Date: ' + fmtBillDateTime(o.createdAt));
     if (o.billNo) p.line('Bill No: ' + o.billNo);
     p.line('Table: ' + (o.table || 'Sale'));

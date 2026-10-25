@@ -68,7 +68,7 @@ function sendStaffPushNotification($conn, $restaurantId, array $roles, $title, $
  * thrown, since a missed notification shouldn't be treated like a failed
  * order update.
  */
-function notifyWaitersOrderReady(PDO $conn, string $restaurantId, int $orderId) {
+function notifyWaitersOrderReady(PDO $conn, string $restaurantId, int $orderId, string $station = '') {
     try {
         $detailStmt = $conn->prepare('SELECT order_number, order_type FROM orders WHERE id = ?');
         $detailStmt->execute([$orderId]);
@@ -80,8 +80,11 @@ function notifyWaitersOrderReady(PDO $conn, string $restaurantId, int $orderId) 
             $conn,
             $restaurantId,
             ['Waiter'],
-            'Order ready',
-            'Order #' . $detail['order_number'] . ' (' . $detail['order_type'] . ') is ready to serve',
+            // a Bar Order Ticket (config/prep_stations.php): the drinks are ready at the bar
+            $station === 'bar' ? 'Drinks ready' : 'Order ready',
+            $station === 'bar'
+                ? 'Drinks for order #' . $detail['order_number'] . ' (' . $detail['order_type'] . ') are ready at the bar'
+                : 'Order #' . $detail['order_number'] . ' (' . $detail['order_type'] . ') is ready to serve',
             '../views/waiter_dashboard.php',
             $orderId
         );

@@ -9,7 +9,7 @@
  */
 
 const OP_RES_STATUSES = ['Pending', 'Confirmed', 'Checked In', 'Completed', 'Cancelled', 'No Show'];
-const OP_STAFF_ROLES = ['Manager', 'Waiter', 'Chef', 'Cashier', 'Delivery'];   // Admin only from the dashboard
+const OP_STAFF_ROLES = ['Manager', 'Waiter', 'Chef', 'Bartender', 'Cashier', 'Delivery'];   // Admin only from the dashboard
 const OP_UNITS = ['kg', 'g', 'L', 'ml', 'pcs', 'dozen', 'box', 'packet', 'bottle', 'can', 'tray', 'bunch', 'unit'];
 const OP_CATERING_STATUSES = ['new', 'contacted', 'confirmed', 'completed', 'cancelled'];
 
@@ -577,10 +577,10 @@ function opEnsureAreas(PDO $conn): void
     }
 }
 
-/** Delivery / Cashier roles exist in the staff ENUM; Delivery needs own riders switched on. */
+/** Delivery / Cashier / Bartender roles exist in the staff ENUM; Delivery needs own riders switched on. */
 function opStaffRole(PDO $conn, string $rid, string $role): void
 {
-    if (in_array($role, ['Delivery', 'Cashier'], true)) {
+    if (in_array($role, ['Delivery', 'Cashier', 'Bartender'], true)) {
         require_once __DIR__ . '/../../config/staff_roles.php';
         staffRolesEnsure($conn);
     }

@@ -32,6 +32,7 @@ if (isSessionValid() && (isset($_SESSION['user_id']) || isset($_SESSION['staff_i
                 header('Location: ../views/waiter_dashboard.php');
                 exit();
             case 'Chef':
+            case 'Bartender':
                 header('Location: ../views/chef_dashboard.php');
                 exit();
             case 'Manager':

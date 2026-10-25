@@ -24,6 +24,7 @@ $logins = [
     'manager' => [demoStaffEmail('manager'), DEMO_STAFF_PASSWORD, 'Manager'],
     'waiter'  => [demoStaffEmail('waiter'), DEMO_STAFF_PASSWORD, 'Waiter'],
     'chef'    => [demoStaffEmail('chef'), DEMO_STAFF_PASSWORD, 'Kitchen (chef)'],
+    'bartender' => [demoStaffEmail('bartender'), DEMO_STAFF_PASSWORD, 'Bar (bartender)'],
     'rider'   => [demoStaffEmail('rider'), DEMO_STAFF_PASSWORD, 'Delivery rider'],
     'cashier' => [demoStaffEmail('cashier'), DEMO_STAFF_PASSWORD, 'Cashier'],
 ];
@@ -66,10 +67,11 @@ $staffScreens = [
     'manager' => [['Home', 'home'], ['Orders', 'orders'], ['POS', 'pos'], ['Menu', 'menu'], ['Kitchen', 'kitchen'], ['Tables', 'tables'], ['Waiter calls', 'waiter-calls'], ['Bookings', 'bookings'], ['Customers', 'customers'], ['Riders', 'riders'], ['Reports', 'reports'], ['Activity log', 'logs']],
     'waiter'  => [['Home', 'home'], ['Tables', 'tables'], ['POS', 'pos'], ['Orders', 'orders'], ['Kitchen', 'kitchen'], ['Waiter calls', 'waiter-calls'], ['Bookings', 'bookings'], ['Customers', 'customers']],
     'chef'    => [['Home', 'home'], ['Kitchen', 'kitchen'], ['Orders', 'orders'], ['Tables', 'tables']],
+    'bartender' => [['Home', 'home'], ['Bar', 'kitchen'], ['Orders', 'orders'], ['Tables', 'tables']],
     'cashier' => [['Home', 'home'], ['Orders', 'orders'], ['POS', 'pos'], ['Tables', 'tables'], ['Kitchen', 'kitchen'], ['Waiter calls', 'waiter-calls'], ['Bookings', 'bookings'], ['Customers', 'customers']],
     'rider'   => [['My deliveries', 'home']],
 ];
-$roleNames = ['manager' => 'Manager', 'waiter' => 'Waiter', 'chef' => 'Chef', 'cashier' => 'Cashier', 'rider' => 'Rider'];
+$roleNames = ['manager' => 'Manager', 'waiter' => 'Waiter', 'chef' => 'Chef', 'bartender' => 'Bartender', 'cashier' => 'Cashier', 'rider' => 'Rider'];
 ?>
 <!doctype html>
 <html lang="en">
@@ -151,12 +153,13 @@ $roleNames = ['manager' => 'Manager', 'waiter' => 'Waiter', 'chef' => 'Chef', 'c
   <section class="app" id="staff-web">
     <div class="app-h">
       <div><span class="kind">Web · restaurant staff</span><h2>Staff screens</h2>
-        <p>What the manager, waiters, kitchen, cashier and delivery riders see in the browser on their phones and tablets.</p>
+        <p>What the manager, waiters, kitchen, bar, cashier and delivery riders see in the browser on their phones and tablets.</p>
         <p class="cred">Password for all staff: <code><?php echo $h(DEMO_STAFF_PASSWORD); ?></code></p></div>
       <div class="btns">
         <button class="btn ghost" data-go="manager" type="button">Manager</button>
         <button class="btn ghost" data-go="waiter" type="button">Waiter</button>
         <button class="btn ghost" data-go="chef" type="button">Kitchen</button>
+        <button class="btn ghost" data-go="bartender" type="button">Bar</button>
         <button class="btn ghost" data-go="cashier" type="button">Cashier</button>
         <button class="btn ghost" data-go="rider" type="button">Rider</button>
       </div>

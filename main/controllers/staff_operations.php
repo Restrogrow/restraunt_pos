@@ -81,7 +81,7 @@ function handleAddStaff($conn, $restaurant_id) {
     $phone = trim($_POST['restaurantPhone'] ?? '');
     $password = $_POST['memberPassword'] ?? '';
     $role = trim($_POST['memberRole'] ?? 'Waiter');
-    if (in_array($role, ['Delivery', 'Cashier'], true)) {
+    if (in_array($role, ['Delivery', 'Cashier', 'Bartender'], true)) {
         // these roles are added to the staff table the first time they're used (config/staff_roles.php)
         require_once __DIR__ . '/../config/staff_roles.php';
         staffRolesEnsure($conn);
@@ -165,7 +165,7 @@ function handleUpdateStaff($conn, $restaurant_id) {
     $phone = trim($_POST['restaurantPhone'] ?? '');
     $password = $_POST['memberPassword'] ?? '';
     $role = trim($_POST['memberRole'] ?? 'Waiter');
-    if (in_array($role, ['Delivery', 'Cashier'], true)) {
+    if (in_array($role, ['Delivery', 'Cashier', 'Bartender'], true)) {
         // these roles are added to the staff table the first time they're used (config/staff_roles.php)
         require_once __DIR__ . '/../config/staff_roles.php';
         staffRolesEnsure($conn);

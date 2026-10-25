@@ -4,9 +4,12 @@
  * Writes ../controllers/kot_operations.php     action=update_kot_status (Pending -> Preparing -> Ready)
  *                                              action=complete_kot      (Ready -> done, order moves to Orders)
  *
- *   var kds = StaffKDS.create({ board, stages, stats, updated, onCounts: fn({pending,preparing,ready}) });
+ *   var kds = StaffKDS.create({ board, stages, stats, updated, bar?, onCounts: fn({pending,preparing,ready}) });
+ *   bar: true for a bartender (only bar tickets come back from get_kot.php; "Making" instead of "Cooking")
  *   kds.start();
  * Ticket timer: amber after 10 min, red after 20 min.
+ * Bar Order Tickets (BOT, station 'bar', config/prep_stations.php): a restaurant with a bar gets
+ * All / Kitchen / Bar buttons, remembered per device, so the bar's screen shows only drinks.
  */
 (function () {
   'use strict';
@@ -24,6 +27,8 @@
   };
 
   function stageOf(k) { return String(k.kot_status || k.status || 'Pending').toLowerCase(); }
+  function isBar(k) { return k.station === 'bar'; }
+  function label(k) { return isBar(k) ? 'BOT' : 'KOT'; }
   function shortNo(k) { var n = String(k.kot_number || k.id); var m = n.match(/(\d{3,5})$/); return m ? m[1] : n; }
   function addonText(it) {
     var a = it.addons;
@@ -35,6 +40,7 @@
 
   function ticket(k, fresh) {
     var st = stageOf(k), act = ACTION[st] || ACTION.pending;
+    if (isBar(k) && st === 'pending') act = { label: 'Start making', icon: 'local_bar', cls: act.cls, next: act.next };
     var type = String(k.order_type || '').toLowerCase();
     var isTable = !!k.table_number;
     var tile = isTable ? S.esc(k.table_number) : '<span class="material-symbols-rounded" aria-hidden="true">' + (type === 'delivery' ? 'two_wheeler' : 'shopping_bag') + '</span>';
@@ -55,9 +61,9 @@
         (note ? '<span class="kds-note"><span class="material-symbols-rounded" aria-hidden="true">sticky_note_2</span>' + S.esc(note) + '</span>' : '') + '</div></li>';
     }).join('');
     var tnote = k.notes && !/^\s*\[KOT:/.test(k.notes) ? '<p class="kds-note kds-tnote"><span class="material-symbols-rounded" aria-hidden="true">info</span>' + S.esc(k.notes) + '</p>' : '';
-    return '<article class="kds-t' + (fresh ? ' fresh' : '') + '" data-stage="' + st + '" data-id="' + (+k.id) + '" aria-label="KOT ' + S.esc(shortNo(k)) + ', ' + S.esc(title) + '">' +
+    return '<article class="kds-t' + (fresh ? ' fresh' : '') + (isBar(k) ? ' kds-bar' : '') + '" data-stage="' + st + '" data-id="' + (+k.id) + '" aria-label="' + label(k) + ' ' + S.esc(shortNo(k)) + ', ' + S.esc(title) + '">' +
       '<div class="kds-t-top"><div class="kds-tbl">' + tile + '</div>' +
-        '<div class="kds-id"><small>KOT #' + S.esc(shortNo(k)) + ' · ' + (k.items || []).length + ' item' + ((k.items || []).length === 1 ? '' : 's') + '</small><b>' + S.esc(title) + '</b>' + (sub ? '<span>' + S.esc(sub) + '</span>' : '') + '</div>' +
+        '<div class="kds-id"><small>' + (isBar(k) ? '<span class="material-symbols-rounded" aria-hidden="true">local_bar</span>' : '') + label(k) + ' #' + S.esc(shortNo(k)) + ' · ' + (k.items || []).length + ' item' + ((k.items || []).length === 1 ? '' : 's') + '</small><b>' + S.esc(title) + '</b>' + (sub ? '<span>' + S.esc(sub) + '</span>' : '') + '</div>' +
         S.ageHtml(k.created_at, WARN_MIN, LATE_MIN, '.kds-t') + '</div>' +
       who + '<ul class="kds-items">' + items + '</ul>' + tnote +
       '<button type="button" class="st-btn lg ' + act.cls + '" data-kds-act="' + (+k.id) + '" data-next="' + act.next + '"><span class="material-symbols-rounded" aria-hidden="true">' + act.icon + '</span>' + act.label + '</button>' +
@@ -70,6 +76,36 @@
       var VIEW_KEY = 'staffKdsView';
       var view = 'all';
       try { view = localStorage.getItem(VIEW_KEY) || 'all'; } catch (e) { }
+      // kitchen / bar: shown once get_kot.php says the restaurant has a bar
+      var STATION_KEY = 'staffKdsStation', station = '', hasBar = false, stationBox = null;
+      try { station = localStorage.getItem(STATION_KEY) || ''; } catch (e) { }
+      if (o.bar) {
+        station = 'bar';
+        COLS = COLS.map(function (c) { return c.key === 'preparing' ? { key: c.key, title: 'Making', icon: 'local_bar', empty: 'Nothing being made', emptyIcon: 'local_bar' } : c.key === 'ready' ? Object.assign({}, c, { empty: 'No drinks waiting' }) : c; });
+      }
+      function stationOk(k) { return !hasBar || !station || (station === 'bar') === isBar(k); }
+      function paintStations(src) {
+        if (!hasBar || o.bar) { if (stationBox) stationBox.hidden = true; return; }
+        if (!stationBox) {
+          stationBox = document.createElement('nav');
+          stationBox.className = 'kds-stations';
+          stationBox.setAttribute('aria-label', 'Kitchen or bar');
+          (o.stages || o.board).parentNode.insertBefore(stationBox, o.stages || o.board);
+          stationBox.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-station]');
+            if (!b) return;
+            station = b.getAttribute('data-station');
+            try { localStorage.setItem(STATION_KEY, station); } catch (er) { }
+            colSig = {}; known = null;
+            if (all) { paintStations(all); paint(all.filter(function (k) { return !busy[k.id] && stationOk(k); }), []); }
+          });
+        }
+        stationBox.hidden = false;
+        var n = function (v) { return src.filter(function (k) { return !v || (v === 'bar') === isBar(k); }).length; };
+        stationBox.innerHTML = [['', 'All', 'receipt_long'], ['kitchen', 'Kitchen', 'soup_kitchen'], ['bar', 'Bar', 'local_bar']].map(function (x) {
+          return '<button type="button" class="kds-station' + (station === x[0] ? ' on' : '') + '" data-station="' + x[0] + '" aria-pressed="' + (station === x[0]) + '"><span class="material-symbols-rounded" aria-hidden="true">' + x[2] + '</span>' + x[1] + '<em>' + n(x[0]) + '</em></button>';
+        }).join('');
+      }
 
       // board skeleton: three columns that keep their DOM between polls
       o.board.innerHTML = COLS.map(function (c) {
@@ -112,7 +148,7 @@
           var late = groups.pending.concat(groups.preparing).filter(function (k) { return S.since(k.created_at) >= LATE_MIN * 60; }).length;
           o.stats.innerHTML =
             stat('fiber_new', '#f59e0b', counts.pending, 'New') +
-            stat('local_fire_department', '#f97316', counts.preparing, 'Cooking') +
+            stat(o.bar ? 'local_bar' : 'local_fire_department', '#f97316', counts.preparing, o.bar ? 'Making' : 'Cooking') +
             stat('room_service', '#16a34a', counts.ready, 'Ready to serve') +
             stat('timer', late ? '#dc2626' : '#2563eb', oldest ? S.fmtAge(oldest) : '–', late ? late + ' over ' + LATE_MIN + ' min' : 'Longest wait');
         }
@@ -125,7 +161,9 @@
       api.load = function () {
         return S.getJSON('../api/get_kot.php?restaurant_id=' + S.rid).then(function (res) {
           if (!res || !res.success) throw new Error((res && res.message) || 'Could not load tickets');
-          var list = (res.kots || []).filter(function (k) { return !busy[k.id]; });
+          hasBar = !!res.has_bar;
+          paintStations(res.kots || []);
+          var list = (res.kots || []).filter(function (k) { return !busy[k.id] && stationOk(k); });
           var ids = list.filter(function (k) { return stageOf(k) === 'pending'; }).map(function (k) { return String(k.id); });
           var fresh = known ? ids.filter(function (id) { return known.indexOf(id) === -1; }) : [];
           known = (known || []).concat(ids).filter(function (v, i, a) { return a.indexOf(v) === i; }).slice(-300);
@@ -136,7 +174,7 @@
           if (fresh.length) {
             S.sound.play();
             var f = list.filter(function (k) { return String(k.id) === fresh[0]; })[0];
-            S.toast(fresh.length > 1 ? fresh.length + ' new kitchen tickets' : 'KOT #' + shortNo(f) + (f.table_number ? ' – Table ' + f.table_number : ''), 'warning', { title: 'New ticket', duration: 6000 });
+            S.toast(fresh.length > 1 ? fresh.length + ' new tickets' : label(f) + ' #' + shortNo(f) + (f.table_number ? ' – Table ' + f.table_number : ''), 'warning', { title: isBar(f) && fresh.length === 1 ? 'New bar ticket' : 'New ticket', duration: 6000 });
           }
           return list.length;
         }).catch(function (e) {
@@ -162,7 +200,7 @@
         req.then(function (res) {
           if (!res.success) throw new Error(res.message || 'Failed to update status');
           var no = t ? t.querySelector('.kds-id small').textContent.split('·')[0].trim() : 'Ticket';
-          S.toast(next === 'Preparing' ? no + ' – cooking started' : next === 'Ready' ? no + ' is ready. The waiter has been told.' : no + ' done – order moved to Orders', 'success');
+          S.toast(next === 'Preparing' ? no + (/^BOT/.test(no) ? ' – started at the bar' : ' – cooking started') : next === 'Ready' ? no + ' is ready. The waiter has been told.' : no + ' done – order moved to Orders', 'success');
         }).catch(function (e) {
           S.toast('Error: ' + (e.message || 'Failed to update status'), 'error');
         }).then(function () {

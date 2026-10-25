@@ -38,6 +38,7 @@ if (isset($_SESSION['staff_id']) && isset($_SESSION['role'])) {
             header('Location: waiter_dashboard.php');
             exit();
         case 'Chef':
+        case 'Bartender':
             header('Location: chef_dashboard.php');
             exit();
         case 'Manager':
@@ -5689,6 +5690,36 @@ function toggleGatewayMode() {
                 </div>
               </div>
             </div>
+            <!-- Bar Order Tickets (config/prep_stations.php): where the bar's tickets print; saved on this device -->
+            <div class="st-card" data-st-form="printer" id="barTicketsCard">
+              <div class="st-card-h"><b>Bar tickets (BOT)</b></div>
+              <p class="st-help">Drinks from a category set to <b>Made at the bar</b> (Menu › Categories › Kitchen / Bar) go on a Bar Order Ticket, not the KOT. Nothing is set to the bar until you choose it there.</p>
+              <div class="st-field">
+                <label>Print bar tickets on</label>
+                <select id="barPrintSelect" class="st-sr-select" aria-label="Print bar tickets on">
+                  <option value="same">The same printer</option>
+                  <option value="network">The bar's own network printer</option>
+                  <option value="none">Don't print</option>
+                </select>
+                <div class="st-choice" data-st-mirror="barPrintSelect">
+                  <button type="button" data-v="same"><b>Same printer</b><small>The printer above prints KOTs, BOTs and bills.</small></button>
+                  <button type="button" data-v="network"><b>The bar's own printer</b><small>A Wi-Fi / LAN thermal printer at the bar, by IP.</small></button>
+                  <button type="button" data-v="none"><b>Don't print</b><small>The bar reads them on the KOT page, Bar tab. The Print button still prints.</small></button>
+                </div>
+              </div>
+              <div id="barNetworkFields" style="display:none;">
+                <div class="st-grid2 st-sub">
+                  <div class="st-field">
+                    <label for="barNetworkIp">Bar printer IP address</label>
+                    <input type="text" id="barNetworkIp" placeholder="e.g. 192.168.1.51">
+                  </div>
+                  <div class="st-field">
+                    <label for="barNetworkPort">Port</label>
+                    <input type="number" id="barNetworkPort" value="9100" min="1" max="65535">
+                  </div>
+                </div>
+              </div>
+            </div>
             <details class="st-card st-details">
               <summary><span class="material-symbols-rounded">science</span>Don't have a printer yet?<span class="material-symbols-rounded st-chev">expand_more</span></summary>
               <p class="st-help">Run the bundled virtual printer to test the full print flow (including Network mode) with no hardware: open a terminal in <code>main/tools</code> and run <code>php virtual_printer_server.php</code>, then choose Network printer with address <code>127.0.0.1</code> and port <code>9100</code>. Every print job shows up in that terminal exactly as a real printer would receive it.</p>
@@ -7200,6 +7231,7 @@ function toggleGatewayMode() {
               <option value="Manager">Manager</option>
               <option value="Waiter">Waiter</option>
               <option value="Chef">Chef</option>
+              <option value="Bartender">Bartender (bar tickets only)</option>
               <option value="Cashier">Cashier</option>
               <option value="Delivery" id="memberRoleDelivery"<?php echo $ownRiders ? '' : ' hidden disabled'; ?>>Delivery rider</option>
             </select>
@@ -7581,6 +7613,7 @@ function toggleGatewayMode() {
   <script src="../assets/js/pos-combos.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-combos.js'); ?>" defer></script>
   <script src="../assets/js/pos-offline.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-offline.js'); ?>" defer></script>
   <script src="../assets/js/menu-hours.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-hours.js'); ?>" defer></script>
+  <script src="../assets/js/menu-stations.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/menu-stations.js'); ?>" defer></script>
   <script src="../assets/js/activity-log.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/activity-log.js'); ?>" defer></script>
   <script src="../assets/js/order-alerts.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/order-alerts.js'); ?>" defer></script>
   <script src="../assets/js/rg-modal.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/rg-modal.js'); ?>" defer></script>

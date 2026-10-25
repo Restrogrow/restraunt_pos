@@ -65,6 +65,12 @@ try {
     $itemCols = $conn->query("SHOW COLUMNS FROM kot_items")->fetchAll(PDO::FETCH_COLUMN);
     $addonsField = in_array('addons', $itemCols, true) ? 'ki.addons' : 'NULL AS addons';
     $addonNameField = in_array('addon_name', $itemCols, true) ? 'ki.addon_name' : 'NULL AS addon_name';
+    // kitchen or bar ticket (config/prep_stations.php); ?station=bar shows the bar's screen
+    require_once __DIR__ . '/../config/prep_stations.php';
+    $hasStation = stationReady($conn);
+    $stationField = $hasStation ? 'k.station' : "'kitchen' AS station";
+    $stationFilter = is_string($_GET['station'] ?? null) ? stationClean($_GET['station'], true) : null;
+    if (isBartenderSession()) $stationFilter = 'bar';   // the bar's own screen
     
     $whereClause = "k.restaurant_id = ?";
     $params = [$restaurant_id];
@@ -83,6 +89,10 @@ try {
         $whereClause .= " AND k.table_id = ?";
         $params[] = $tableFilter;
     }
+    if ($stationFilter && (!$kotIdFilter || isBartenderSession())) {
+        if ($hasStation) { $whereClause .= " AND k.station = ?"; $params[] = $stationFilter; }
+        elseif ($stationFilter === 'bar') $whereClause .= " AND 1 = 0";
+    }
     
     $sql = "SELECT 
                 k.id,
@@ -97,6 +107,7 @@ try {
                 k.tax,
                 k.total,
                 k.notes,
+                $stationField,
                 t.table_number,
                 a.area_name,
                 COUNT(ki.id) as item_count
@@ -147,7 +158,8 @@ try {
         $kots[] = $row;
     }
     
-    $response = ['success' => true, 'kots' => $kots];
+    // has_bar: the screens show Kitchen / Bar tabs only for a restaurant that sends drinks to a bar
+    $response = ['success' => true, 'kots' => $kots, 'has_bar' => $hasStation && (stationHasBar($conn, (string)$restaurant_id) || in_array('bar', array_column($kots, 'station'), true))];
     if ($kotIdFilter && !empty($kots)) {
         $response['kot'] = $kots[0];
     }

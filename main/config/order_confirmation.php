@@ -89,6 +89,13 @@ if (!function_exists('fireOrderConfirmedActions')) {
             // orders with a table), so pushing for Takeaway/Delivery orders
             // would send the chef to a dashboard with nothing to show for it.
             if ($kotCreated) {
+                // drinks made at the bar went on a Bar Order Ticket: the bartenders hear about it too
+                try {
+                    $botSt = $conn->prepare("SELECT 1 FROM kot WHERE order_id = ? AND station = 'bar' LIMIT 1");
+                    $botSt->execute([$orderId]);
+                    if ($botSt->fetchColumn()) sendStaffPushNotification($conn, $restaurant_id, ['Bartender'], '🍹 New bar ticket',
+                        'Order #' . $order['order_number'] . ' - ' . $order['order_type'] . ' - drinks to make', '../views/chef_dashboard.php', $orderId);
+                } catch (Throwable $e) { /* no bar tickets on this database */ }
                 sendStaffPushNotification(
                     $conn,
                     $restaurant_id,
@@ -304,24 +311,16 @@ if (!function_exists('createDineInKOT')) {
             return;
         }
 
-        $kotNumber = null;
-        $maxAttempts = 100;
-        $attempt = 0;
-        do {
-            $kotNumber = 'KOT-' . date('Ymd') . '-' . str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
-            try {
-                $checkStmt = $conn->prepare("SELECT COUNT(*) FROM kot WHERE kot_number = ? AND restaurant_id = ?");
-                $checkStmt->execute([$kotNumber, $restaurant_id]);
-                $exists = $checkStmt->fetchColumn() > 0;
-            } catch (PDOException $e) {
-                $exists = false;
-            }
-            $attempt++;
-            if ($attempt >= $maxAttempts) {
-                $kotNumber = 'KOT-' . date('YmdHis') . '-' . str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
-                break;
-            }
-        } while ($exists);
+        // Drinks made at the bar get their own Bar Order Ticket (config/prep_stations.php); the
+        // columns are only read here, never created (we're inside the caller's transaction)
+        require_once __DIR__ . '/prep_stations.php';
+        $barMap = stationBarItems($conn, (string)$restaurant_id, array_map(function ($it) { return (int)($it['id'] ?? 0); }, $items));
+        $groups = ['kitchen' => [], 'bar' => []];
+        foreach ($items as $item) {
+            if ((int)($item['id'] ?? 0) <= 0 && ($item['variation_name'] ?? '') === 'Combo') continue;   // a combo's priced line: its dishes follow
+            $groups[isset($barMap[(int)($item['id'] ?? 0)]) ? 'bar' : 'kitchen'][] = $item;
+        }
+        $split = $groups['kitchen'] && $groups['bar'];
 
         $kotNotes = 'Order #' . ($order_number ?? '') . ' - Website Order';
         if (!empty($notes)) {
@@ -329,21 +328,7 @@ if (!function_exists('createDineInKOT')) {
         }
 
         $checkKotCols = $conn->query("SHOW COLUMNS FROM kot LIKE 'customer_phone'");
-        if ($checkKotCols && $checkKotCols->rowCount() > 0) {
-            $kotStmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, customer_phone, customer_email, customer_address, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $kotStmt->execute([$restaurant_id, $kotNumber, $table_id, $order_type, $customer_name, $customer_phone, $customer_email, $customer_address, $subtotal, $tax, $grand_total, $kotNotes]);
-        } else {
-            $kotStmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $kotStmt->execute([$restaurant_id, $kotNumber, $table_id, $order_type, $customer_name, $subtotal, $tax, $grand_total, $kotNotes]);
-        }
-        $kotId = $conn->lastInsertId();
-
-        // Link the ticket to its order. Without this the kitchen's Ready /
-        // Complete actions saw "no order yet" and created a second, 'Paid'
-        // order from the ticket — double-counting the sale.
-        if ($kotHasOrderId && $orderId) {
-            $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$orderId, $kotId]);
-        }
+        $kotHasCustomer = $checkKotCols && $checkKotCols->rowCount() > 0;
 
         $kotItemsHasAddons = false;
         try {
@@ -351,53 +336,84 @@ if (!function_exists('createDineInKOT')) {
             $kotItemsHasAddons = $checkAddonsCol && $checkAddonsCol->rowCount() > 0;
         } catch (Exception $e) {}
 
-        foreach ($items as $item) {
-            // Lines without a dish: a combo's priced line stays off the ticket (its dishes follow, each
-            // noted "Combo: ..."); an order add-on goes on with no dish link (kot_items.menu_item_id
-            // points at menu_items, so 0 would break the whole ticket).
-            $menuItemId = (int)($item['id'] ?? 0);
-            if ($menuItemId <= 0) {
-                if (($item['variation_name'] ?? '') === 'Combo') continue;
-                $menuItemId = null;
-            }
-            $addonsJson = null;
-            if (!empty($item['addons']) && $kotItemsHasAddons) {
-                $addonsJson = json_encode($item['addons'], JSON_UNESCAPED_UNICODE);
-            }
-
-            // a no-dish line on a database where menu_item_id can't be empty: skip it, keep the ticket
-            if ($menuItemId === null) {
-                static $kotDishOptional = null;
-                if ($kotDishOptional === null) {
-                    try { $kotDishOptional = $conn->query("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kot_items' AND COLUMN_NAME = 'menu_item_id'")->fetchColumn() === 'YES'; }
-                    catch (Exception $e) { $kotDishOptional = false; }
-                }
-                if (!$kotDishOptional) continue;
+        foreach ($groups as $station => $stationItems) {
+            if (!$stationItems) continue;
+            $kotNumber = stationTicketNumber($conn, (string)$restaurant_id, $station);
+            // one ticket: the order's amounts; a KOT + BOT: each its own dishes (tax in the same share)
+            $tSub = $subtotal; $tTax = $tax; $tTotal = $grand_total;
+            if ($split) {
+                $tSub = 0.0;
+                foreach ($stationItems as $it) $tSub += (float)($it['price'] ?? 0) * (int)($it['quantity'] ?? 0);
+                $share = $subtotal > 0 ? $tSub / $subtotal : 0;
+                $tTax = round($tax * $share, 2);
+                $tTotal = round($tSub + $tTax, 2);
             }
 
-            if ($kotItemsHasAddons) {
-                $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $kotItemStmt->execute([
-                    $kotId,
-                    $menuItemId,
-                    (string)$item['name'],
-                    (int)$item['quantity'],
-                    (float)$item['price'],
-                    (float)($item['price'] * $item['quantity']),
-                    $addonsJson,
-                    $item['notes'] ?? null
-                ]);
+            if ($kotHasCustomer) {
+                $kotStmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, customer_phone, customer_email, customer_address, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $kotStmt->execute([$restaurant_id, $kotNumber, $table_id, $order_type, $customer_name, $customer_phone, $customer_email, $customer_address, $tSub, $tTax, $tTotal, $kotNotes]);
             } else {
-                $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $kotItemStmt->execute([
-                    $kotId,
-                    $menuItemId,
-                    (string)$item['name'],
-                    (int)$item['quantity'],
-                    (float)$item['price'],
-                    (float)($item['price'] * $item['quantity']),
-                    $item['notes'] ?? null
-                ]);
+                $kotStmt = $conn->prepare("INSERT INTO kot (restaurant_id, kot_number, table_id, order_type, customer_name, subtotal, tax, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $kotStmt->execute([$restaurant_id, $kotNumber, $table_id, $order_type, $customer_name, $tSub, $tTax, $tTotal, $kotNotes]);
+            }
+            $kotId = $conn->lastInsertId();
+            stationMarkTicket($conn, (int)$kotId, $station);
+
+            // Link the ticket to its order. Without this the kitchen's Ready /
+            // Complete actions saw "no order yet" and created a second, 'Paid'
+            // order from the ticket — double-counting the sale.
+            if ($kotHasOrderId && $orderId) {
+                $conn->prepare("UPDATE kot SET order_id = ? WHERE id = ?")->execute([$orderId, $kotId]);
+            }
+
+            foreach ($stationItems as $item) {
+                // Lines without a dish: a combo's priced line stays off the ticket (its dishes follow, each
+                // noted "Combo: ..."); an order add-on goes on with no dish link (kot_items.menu_item_id
+                // points at menu_items, so 0 would break the whole ticket).
+                $menuItemId = (int)($item['id'] ?? 0);
+                if ($menuItemId <= 0) {
+                    if (($item['variation_name'] ?? '') === 'Combo') continue;
+                    $menuItemId = null;
+                }
+                $addonsJson = null;
+                if (!empty($item['addons']) && $kotItemsHasAddons) {
+                    $addonsJson = json_encode($item['addons'], JSON_UNESCAPED_UNICODE);
+                }
+
+                // a no-dish line on a database where menu_item_id can't be empty: skip it, keep the ticket
+                if ($menuItemId === null) {
+                    static $kotDishOptional = null;
+                    if ($kotDishOptional === null) {
+                        try { $kotDishOptional = $conn->query("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kot_items' AND COLUMN_NAME = 'menu_item_id'")->fetchColumn() === 'YES'; }
+                        catch (Exception $e) { $kotDishOptional = false; }
+                    }
+                    if (!$kotDishOptional) continue;
+                }
+
+                if ($kotItemsHasAddons) {
+                    $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, addons, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $kotItemStmt->execute([
+                        $kotId,
+                        $menuItemId,
+                        (string)$item['name'],
+                        (int)$item['quantity'],
+                        (float)$item['price'],
+                        (float)($item['price'] * $item['quantity']),
+                        $addonsJson,
+                        $item['notes'] ?? null
+                    ]);
+                } else {
+                    $kotItemStmt = $conn->prepare("INSERT INTO kot_items (kot_id, menu_item_id, item_name, quantity, unit_price, total_price, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $kotItemStmt->execute([
+                        $kotId,
+                        $menuItemId,
+                        (string)$item['name'],
+                        (int)$item['quantity'],
+                        (float)$item['price'],
+                        (float)($item['price'] * $item['quantity']),
+                        $item['notes'] ?? null
+                    ]);
+                }
             }
         }
     }

@@ -123,6 +123,7 @@
       if (port) port.value = s.networkPort || 9100;
       var baud = document.getElementById('printerSerialBaud');
       if (baud) baud.value = String(s.serialBaud || 9600);
+      if (window.fillBarPrinterFields) window.fillBarPrinterFields(s);
       dirty.printer = false;
     }
     setTimeout(function () { syncMirrors(); syncWhen(); dirty = {}; var b = document.getElementById('stSavebar'); if (b) b.hidden = true; }, 600);

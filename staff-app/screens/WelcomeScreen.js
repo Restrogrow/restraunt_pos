@@ -30,7 +30,7 @@ const SLIDES = [
     icon: 'flame',
     grad: ['#FB7185', '#E11D48'],
     title: 'Kitchen\ntickets',
-    text: 'Chefs get every ticket the moment it is placed, and mark dishes ready in one tap.',
+    text: 'Chefs and bartenders get every ticket the moment it is placed, and mark it ready in one tap.',
     badges: [['time', 'KOT #12 · 8 min', '#E11D48'], ['checkmark-done', 'Ready to serve', colors.success]],
   },
   {

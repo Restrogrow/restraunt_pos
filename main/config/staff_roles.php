@@ -3,6 +3,7 @@
  * Staff roles added after the first ones (Admin, Manager, Waiter, Chef):
  *   Delivery  delivery rider (config/rider_engine.php)
  *   Cashier   the billing counter: POS, payments, orders incl. accepting online orders, customers, tables
+ *   Bartender the bar: the chef's screen with only Bar Order Tickets (BOT, config/prep_stations.php)
  * The live database's staff.role is an ENUM, so the new values are added on first use. Not inside a transaction.
  */
 if (!function_exists('staffRolesEnsure')) {
@@ -16,7 +17,7 @@ if (!function_exists('staffRolesEnsure')) {
             if (stripos($type, 'enum(') !== 0) return;
             $vals = substr($type, 5, -1);
             $add = '';
-            foreach (['Delivery', 'Cashier'] as $r) if (stripos($vals, "'$r'") === false) $add .= ",'$r'";
+            foreach (['Delivery', 'Cashier', 'Bartender'] as $r) if (stripos($vals, "'$r'") === false) $add .= ",'$r'";
             if ($add !== '') $conn->exec("ALTER TABLE staff MODIFY COLUMN role ENUM($vals$add) DEFAULT 'Waiter'");
         } catch (PDOException $e) {
             error_log('staffRolesEnsure: ' . $e->getMessage());

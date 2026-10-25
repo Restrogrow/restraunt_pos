@@ -141,6 +141,7 @@ export function buildReceiptLines({
   businessIdNo,
   orderNumber,
   kotNumber,
+  ticketLabel = 'KOT', // 'BOT' for a bar ticket
   orderType,
   tableName,
   customerName,
@@ -167,7 +168,8 @@ export function buildReceiptLines({
     // ── KOT: kitchen ticket, no prices/legal details ──
     // Header block like the reference KOT: "KOT No: 1", "Date: ...",
     // "Bill No: ...", "Table: ..." as compact left-aligned key rows.
-    if (kotNumber) push(`KOT No: ${kotNumber}`);
+    if (ticketLabel === 'BOT') push('BAR ORDER TICKET', { bold: true });
+    if (kotNumber) push(`${ticketLabel} No: ${kotNumber}`);
     push(`Date: ${fmtBillDateTime(createdAt)}`);
     if (orderNumber) push(`Bill No: ${orderNumber}`);
     push(`Table: ${tableName || orderType || 'Sale'}`);

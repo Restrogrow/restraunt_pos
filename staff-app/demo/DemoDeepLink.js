@@ -1,5 +1,5 @@
 // Browser demo only (built with EXPO_PUBLIC_DEMO_LOGIN=1, restrogrow.com/staff-app-demo): the staff
-// app runs against the real demo restaurant (Spice Garden Indiranagar). ?as=waiter|chef|manager logs in
+// app runs against the real demo restaurant (Spice Garden Indiranagar). ?as=waiter|chef|bartender|manager logs in
 // as that demo staff member, and &screen=tables (etc.) opens that screen, so the demo page
 // (restrogrow.com/demo) can link straight to every screen. Does nothing in the phone app.
 import { useEffect, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ export const DEMO_STAFF = {
   manager: 'neha@spicegardenindiranagar.com',
   waiter: 'ravi@spicegardenindiranagar.com',
   chef: 'suresh@spicegardenindiranagar.com',
+  bartender: 'tenzin@spicegardenindiranagar.com',
   rider: 'arjun@spicegardenindiranagar.com',
   cashier: 'kavita@spicegardenindiranagar.com',
 };

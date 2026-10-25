@@ -3,9 +3,11 @@ import { BottomTabBarHeightCallbackContext } from '@react-navigation/bottom-tabs
 import { useContext, useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
 import { colors, font, radius, shadow, spacing } from '../theme';
 import { haptic } from '../utils/haptics';
 import { useLiveCounts } from '../utils/liveCounts';
+import { staffRole } from '../utils/roles';
 
 // [active icon, inactive icon, label]
 const TABS = {
@@ -17,9 +19,11 @@ const TABS = {
   Kitchen: ['flame', 'flame-outline', 'Kitchen'],
   More: ['grid', 'grid-outline', 'More'],
 };
+// a bartender's Kitchen tab shows only bar tickets, so it reads "Bar"
+const BAR_TAB = ['wine', 'wine-outline', 'Bar'];
 
-function TabItem({ route, focused, onPress, onLongPress, badge }) {
-  const [on, off, label] = TABS[route.name] || ['ellipse', 'ellipse-outline', route.name];
+function TabItem({ route, focused, onPress, onLongPress, badge, bar }) {
+  const [on, off, label] = (bar && route.name === 'Kitchen' ? BAR_TAB : TABS[route.name]) || ['ellipse', 'ellipse-outline', route.name];
   const v = useRef(new Animated.Value(focused ? 1 : 0)).current;
   useEffect(() => {
     Animated.spring(v, { toValue: focused ? 1 : 0, useNativeDriver: true, speed: 22, bounciness: 8 }).start();
@@ -55,6 +59,8 @@ function TabItem({ route, focused, onPress, onLongPress, badge }) {
 export default function TabBar({ state, descriptors, navigation }) {
   const insets = useSafeAreaInsets();
   const { newOrders, calls, kitchenNew, ready } = useLiveCounts();
+  const { user } = useAuth();
+  const bar = staffRole(user) === 'bartender';
   // Reports this bar's real height so screens using useBottomTabBarHeight() keep their
   // content and floating buttons clear of it.
   const setTabBarHeight = useContext(BottomTabBarHeightCallbackContext);
@@ -88,6 +94,7 @@ export default function TabBar({ state, descriptors, navigation }) {
             <TabItem
               key={route.key}
               route={route}
+              bar={bar}
               focused={focused}
               badge={badge}
               onPress={onPress}

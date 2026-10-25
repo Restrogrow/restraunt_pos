@@ -11,7 +11,7 @@
   var esc = function (s) { return window.SX ? SX.esc(s) : String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var ic = function (n) { return '<span class="material-symbols-rounded">' + n + '</span>'; };
   var notify = function (m, t) { if (window.SX) SX.notify(m, t); };
-  var ROLE = { Manager: ['#7c3aed', 'shield_person'], Waiter: ['#0891b2', 'room_service'], Chef: ['#ea580c', 'skillet'], Cashier: ['#16a34a', 'point_of_sale'], Delivery: ['#db2777', 'two_wheeler'] };
+  var ROLE = { Manager: ['#7c3aed', 'shield_person'], Waiter: ['#0891b2', 'room_service'], Chef: ['#ea580c', 'skillet'], Bartender: ['#6d28d9', 'local_bar'], Cashier: ['#16a34a', 'point_of_sale'], Delivery: ['#db2777', 'two_wheeler'] };
   function look(r) { return ROLE[r] || ['#64748b', 'person']; }
   // "Neha (Koramangala)" -> "NE"; "Ravi Kumar" -> "RK"
   function initials(name) {

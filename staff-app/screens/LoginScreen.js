@@ -27,6 +27,7 @@ const NATIVE_DRIVER = Platform.OS !== 'web';
 const ROLES = [
   ['restaurant-outline', 'Waiters'],
   ['flame-outline', 'Chefs'],
+  ['wine-outline', 'Bartenders'],
   ['briefcase-outline', 'Managers'],
 ];
 
@@ -162,7 +163,7 @@ export default function LoginScreen() {
                   <View style={styles.demoBox}>
                     <Text style={styles.demoText}>Live demo of Spice Garden Indiranagar. Tap a role to log in as that staff member.</Text>
                     <View style={styles.demoRow}>
-                      {[['manager', 'Manager'], ['waiter', 'Waiter'], ['chef', 'Chef'], ['cashier', 'Cashier'], ['rider', 'Rider']].map(([key, label]) => (
+                      {[['manager', 'Manager'], ['waiter', 'Waiter'], ['chef', 'Chef'], ['bartender', 'Bartender'], ['cashier', 'Cashier'], ['rider', 'Rider']].map(([key, label]) => (
                         <Pressable
                           key={key}
                           style={styles.demoBtn}
@@ -290,8 +291,9 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   demoBox: { marginTop: spacing.md, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.primaryLight || '#FFF1EC', gap: spacing.sm },
   demoText: { fontFamily: font.medium, fontSize: 13, color: colors.text, lineHeight: 19 },
-  demoRow: { flexDirection: 'row', gap: spacing.sm },
-  demoBtn: { flex: 1, paddingVertical: 11, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center' },
+  // six roles: two rows of three
+  demoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  demoBtn: { flexGrow: 1, flexBasis: '30%', paddingVertical: 11, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center' },
   demoBtnText: { fontFamily: font.semiBold, fontSize: 14, color: '#fff' },
   fill: { flex: 1 },
   scroll: {

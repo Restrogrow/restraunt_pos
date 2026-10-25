@@ -143,12 +143,45 @@ try {
                 'served_now' => !isset(menuHoursClosedMap($conn, $restaurant_id)[$menuId])], JSON_UNESCAPED_UNICODE);
             break;
 
+        // Kitchen or bar (config/prep_stations.php): where a category's dishes are made, and any
+        // dish in it that's made somewhere else. Bar dishes print on a Bar Order Ticket (BOT).
+        case 'get_station':
+        case 'set_station':
+            require_once __DIR__ . '/../config/prep_stations.php';
+            if ($menuId <= 0) throw new Exception('Invalid menu ID');
+            if (!stationEnsureSchema($conn)) throw new Exception('Could not save. Please try again.');
+            $cat = $conn->prepare('SELECT id, menu_name, prep_station FROM menu WHERE id = ? AND restaurant_id = ?');
+            $cat->execute([$menuId, $restaurant_id]);
+            $menuRow = $cat->fetch(PDO::FETCH_ASSOC);
+            if (!$menuRow) throw new Exception('Menu not found');
+            if ($action === 'set_station') {
+                $station = stationClean($_POST['station'] ?? 'kitchen');
+                $conn->beginTransaction();
+                $conn->prepare('UPDATE menu SET prep_station = ?, updated_at = NOW() WHERE id = ? AND restaurant_id = ?')->execute([$station, $menuId, $restaurant_id]);
+                // per dish: 'kitchen' / 'bar' when it differs from the category, else NULL (follows it)
+                $upItem = $conn->prepare('UPDATE menu_items SET prep_station = ? WHERE id = ? AND menu_id = ? AND restaurant_id = ?');
+                foreach ((array)json_decode((string)($_POST['items'] ?? '{}'), true) as $itemId => $itemStation) {
+                    $own = stationClean($itemStation, true);
+                    $upItem->execute([$own === $station ? null : $own, (int)$itemId, $menuId, $restaurant_id]);
+                }
+                $conn->commit();
+                $menuRow['prep_station'] = $station;
+                require_once __DIR__ . '/../config/activity_log.php';
+                logActivity($conn, $restaurant_id, 'menu.station', $menuRow['menu_name'] . ' is made at the ' . $station, [], 'menu', $menuId);
+            }
+            $its = $conn->prepare('SELECT id, item_name_en AS name, prep_station FROM menu_items WHERE menu_id = ? AND restaurant_id = ? ORDER BY sort_order ASC, item_name_en ASC');
+            $its->execute([$menuId, $restaurant_id]);
+            echo json_encode(['success' => true, 'message' => $action === 'set_station' ? 'Saved' : '', 'menu_name' => $menuRow['menu_name'],
+                'station' => stationClean($menuRow['prep_station']), 'items' => $its->fetchAll(PDO::FETCH_ASSOC),
+                'has_bar' => stationHasBar($conn, (string)$restaurant_id)], JSON_UNESCAPED_UNICODE);
+            break;
+
         case 'add_subcategory':
         case 'update_subcategory':
         case 'delete_subcategory':
             handleSubcategoryAction($conn, $action, $restaurant_id);
             break;
-            
+
         case 'add':
             // Check if menu name already exists for this restaurant
             $checkStmt = $conn->prepare("SELECT COUNT(*) FROM menu WHERE menu_name = ? AND restaurant_id = ?");

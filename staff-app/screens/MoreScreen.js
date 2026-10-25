@@ -43,7 +43,7 @@ export default function MoreScreen({ navigation }) {
   const pick = (...keys) => keys.filter((k) => !has(k) && canSee(k) && tile[k] && navigation.getState().routeNames.includes(k)).map((k) => tile[k]);
 
   const groups = [
-    { title: role === 'chef' ? 'Kitchen' : 'Service', items: pick('Kitchen', 'Tables', 'WaiterCalls', 'Reservations') },
+    { title: role === 'bartender' ? 'Bar' : role === 'chef' ? 'Kitchen' : 'Service', items: pick('Kitchen', 'Tables', 'WaiterCalls', 'Reservations') },
     { title: 'Business', items: [...pick('Customers', ...(user?.own_riders ? ['Riders'] : []), 'Reports'), isOwnerish ? { key: 'Logs', icon: 'shield-checkmark', label: 'Security', sub: 'Logins, devices', tint: colors.inkSoft, bg: colors.border } : null].filter(Boolean) },
     {
       title: 'Settings',

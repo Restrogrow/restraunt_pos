@@ -6,8 +6,9 @@ import { patchKot, refreshLive, removeCall } from './liveStore';
 const smooth = () => LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
 
 const DONE_TEXT = { Preparing: 'Cooking started', Ready: 'Marked ready', Completed: 'Served' };
+const BAR_DONE_TEXT = { Preparing: 'Started making' }; // a bar ticket (BOT)
 
-// Move a kitchen ticket along New → Cooking → Ready → Completed (served / picked up).
+// Move a kitchen (or bar) ticket along New → Cooking → Ready → Completed (served / picked up).
 // The row moves at once; if the server refuses, the next refresh puts it back.
 export async function moveKot(kot, to) {
   smooth();
@@ -15,7 +16,7 @@ export async function moveKot(kot, to) {
   try {
     const res = await apiPostForm('/controllers/kot_operations.php', { action: 'update_kot_status', kotId: kot.id, status: to });
     if (!res.success) throw new Error(res.message || 'Could not update the ticket');
-    feedback.success(`${kot.table_number ? `Table ${kot.table_number}` : kot.order_type || 'Ticket'}: ${DONE_TEXT[to] || to}`);
+    feedback.success(`${kot.table_number ? `Table ${kot.table_number}` : kot.order_type || 'Ticket'}: ${(kot.station === 'bar' && BAR_DONE_TEXT[to]) || DONE_TEXT[to] || to}`);
     return true;
   } catch (e) {
     feedback.errorFrom(e, 'Could not update the ticket');

@@ -113,3 +113,8 @@ CREATE TABLE IF NOT EXISTS bestsellers (
   UNIQUE KEY uq_bestseller (restaurant_id, menu_item_id),
   KEY idx_restaurant_sort (restaurant_id, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Bar Order Tickets (BOT): kitchen or bar per category / dish, and per ticket (also auto-added by config/prep_stations.php) ──
+ALTER TABLE menu ADD COLUMN IF NOT EXISTS prep_station VARCHAR(10) NOT NULL DEFAULT 'kitchen';
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS prep_station VARCHAR(10) NULL DEFAULT NULL;
+ALTER TABLE kot ADD COLUMN IF NOT EXISTS station VARCHAR(10) NOT NULL DEFAULT 'kitchen';

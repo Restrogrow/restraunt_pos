@@ -7,8 +7,9 @@ import { setLiveCount } from './liveCounts';
 // call (Home's one-tap buttons, the Kitchen screen, the POS sending a ticket) patches it here at
 // once and asks for a fresh copy, so badges, Home and the other phones' alerts catch up in
 // seconds instead of waiting for the next poll.
+// kots hold the bar's tickets (BOT, station 'bar') too; hasBar = the restaurant sends drinks to a bar.
 
-let state = { kots: [], calls: [], loaded: false, online: true, updatedAt: 0 };
+let state = { kots: [], calls: [], hasBar: false, loaded: false, online: true, updatedAt: 0 };
 const listeners = new Set();
 let wantCalls = true;
 let inFlight = null;
@@ -42,13 +43,13 @@ export function getLive() {
   return state;
 }
 
-// chefs have no access to waiter calls; their feed skips that request
+// chefs and bartenders have no access to waiter calls; their feed skips that request
 export function configureLive({ calls }) {
   wantCalls = calls;
 }
 
 export function resetLive() {
-  state = { kots: [], calls: [], loaded: false, online: true, updatedAt: 0 };
+  state = { kots: [], calls: [], hasBar: false, loaded: false, online: true, updatedAt: 0 };
   listeners.forEach((l) => l());
 }
 
@@ -68,6 +69,7 @@ export function refreshLive() {
       if (!kot?.success) throw new Error(kot?.message || 'Could not load the kitchen');
       set({
         kots: kot.kots || [],
+        hasBar: !!kot.has_bar,
         calls: calls?.success ? calls.requests || [] : state.calls,
         loaded: true,
         online: true,

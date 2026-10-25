@@ -314,10 +314,11 @@ export default function POSScreen({ route }) {
   // coupon, tax, totals) so a resetCart() right after — or an item added
   // while the preview is open — can never change what's on the receipt.
   // opts.afterClose chains a second preview (Pay flow: KOT first, then the
-  // bill) once this one is dismissed or printed.
+  // bill) once this one is dismissed or printed. opts.items: only these lines (the
+  // drinks on a BOT); opts.ticketLabel: 'BOT' prints the bar's ticket instead of the kitchen's.
   const offerPrint = (...args) => setBillPreview(buildPreview(...args));
   function buildPreview(title, kotNumber, paymentMethod, type, opts = {}) {
-    const cartSnapshot = [...cart];
+    const cartSnapshot = [...(opts.items || cart)];
     const tableIdSnapshot = tableId;
     const subtotalSnapshot = subtotal;
     const discountSnapshot = discount;
@@ -337,6 +338,7 @@ export default function POSScreen({ route }) {
       businessIdNo: user?.show_business_id ? user?.business_id_no : null,
       orderNumber: opts.orderNumber || null,
       kotNumber,
+      ticketLabel: opts.ticketLabel,
       orderType: tableIdSnapshot ? 'Dine-in' : 'Takeaway',
       tableName,
       customerName: null,
@@ -369,6 +371,31 @@ export default function POSScreen({ route }) {
     couponCode: appliedCoupon?.coupon_code || '',
     notes: extraNotes || '',
   });
+
+  // create_kot sends drinks made at the bar on their own ticket (BOT) and says which dishes went
+  // there (bar_item_ids), so the cart splits the same way for the two previews; when only a BOT
+  // was sent, everything is on it. Returns [kotPreview, botPreview], null for a ticket not sent.
+  const ticketPreviews = (res, title) => {
+    const bar = new Set((res.bar_item_ids || []).map(String));
+    const drinks = cart.filter((c) => bar.has(String(c.id)));
+    const food = cart.filter((c) => !bar.has(String(c.id)));
+    const base = { orderNumber: res.order_number || null };
+    return [
+      res.kot_number ? buildPreview(title || 'KOT', res.kot_number, null, 'kot', { ...base, items: food }) : null,
+      res.bot_number ? buildPreview('BOT', res.bot_number, null, 'kot', { ...base, items: res.kot_number ? drinks : cart, ticketLabel: 'BOT' }) : null,
+    ];
+  };
+  // Opens the previews one after another (each one's afterClose opens the next).
+  const showPreviews = (list) => {
+    const [first, ...rest] = list.filter(Boolean);
+    if (first) setBillPreview({ ...first, afterClose: rest.length ? () => showPreviews(rest) : undefined });
+  };
+  // "Ticket KOT-…", "Ticket BOT-…" or "Tickets KOT-… and BOT-…"
+  const ticketText = (res) => {
+    const nums = [res.kot_number, res.bot_number].filter(Boolean);
+    return `Ticket${nums.length > 1 ? 's' : ''} ${nums.join(' and ')}`;
+  };
+  const ticketWord = (res) => [res.kot_number && 'KOT', res.bot_number && 'BOT'].filter(Boolean).join(', ');
 
   const holdOrder = async () => {
     if (cart.length === 0) return;
@@ -404,13 +431,14 @@ export default function POSScreen({ route }) {
       if (!res.success) throw new Error(res.message || 'Could not send to kitchen');
       haptic.success();
       refreshLive(); // Home, Kitchen and the chef's phone see the new ticket now
+      const tickets = ticketPreviews(res, 'KOT sent to kitchen');
       const pick = await feedback.choose({
-        title: 'Sent to the kitchen',
-        message: `Ticket ${res.kot_number}. The cart is kept, tap Pay when the guest pays.`,
-        options: [{ label: 'Print KOT', value: 'kot', icon: 'print-outline' }],
+        title: res.kot_number ? `Sent to the kitchen${res.bot_number ? ' and bar' : ''}` : 'Sent to the bar',
+        message: `${ticketText(res)}. The cart is kept, tap Pay when the guest pays.`,
+        options: [{ label: `Print ${ticketWord(res).replace(', ', ' and ')}`, value: 'kot', icon: 'print-outline' }],
         cancelText: 'Done',
       });
-      if (pick === 'kot') offerPrint('KOT sent to kitchen', res.kot_number, null, 'kot');
+      if (pick === 'kot') showPreviews(tickets);
     } catch (e) {
       feedback.errorFrom(e, 'Could not send to the kitchen');
     } finally {
@@ -440,10 +468,10 @@ export default function POSScreen({ route }) {
       refreshLive();
       // Snapshot BEFORE resetCart — offerPrint reads live discount/tax/total
       // state, which resetCart would zero out.
-      const billSnapshot = { kotNumber: res.kot_number, paymentMethod, orderNumber: res.order_number || null };
+      const billSnapshot = { kotNumber: res.kot_number || res.bot_number, paymentMethod, orderNumber: res.order_number || null };
       // Both previews snapshot the cart and totals, so build them before the cart is cleared.
       const totalPaid = total;
-      const kotPreview = buildPreview('KOT', res.kot_number, null, 'kot', { orderNumber: billSnapshot.orderNumber });
+      const tickets = ticketPreviews(res);
       const billPreviewData = buildPreview('Payment collected', billSnapshot.kotNumber, billSnapshot.paymentMethod, 'bill', { orderNumber: billSnapshot.orderNumber });
       resetCart();
       haptic.success();
@@ -451,12 +479,12 @@ export default function POSScreen({ route }) {
         title: `Paid ${money(totalPaid, currency)}`,
         message: res.order_number ? `${res.order_number} is in Orders and counted in today's sales.` : 'Sent to the kitchen.',
         options: [
-          { label: 'Print KOT and bill', value: 'both', icon: 'print-outline' },
+          ...(res.kot_number || res.bot_number ? [{ label: `Print ${ticketWord(res)} and bill`, value: 'both', icon: 'print-outline' }] : []),
           { label: 'Print bill only', value: 'bill', icon: 'receipt-outline' },
         ],
         cancelText: 'Done',
       });
-      if (pick === 'both') setBillPreview({ ...kotPreview, afterClose: () => setBillPreview(billPreviewData) });
+      if (pick === 'both') showPreviews([...tickets, billPreviewData]);
       else if (pick === 'bill') setBillPreview(billPreviewData);
     } catch (e) {
       feedback.errorFrom(e, 'Could not take the payment');

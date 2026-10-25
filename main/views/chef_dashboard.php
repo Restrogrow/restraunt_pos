@@ -11,13 +11,14 @@ require_once __DIR__ . '/../config/env_loader.php';
 requireLogin();
 requirePermission(PERMISSION_VIEW_DASHBOARD);
 
-// Verify user is a Chef
-if (!isset($_SESSION['staff_id']) || !isset($_SESSION['restaurant_id']) || $_SESSION['role'] !== ROLE_CHEF) {
+// Verify user is a Chef, or a Bartender (the same screen with only the bar's tickets, BOT)
+if (!isset($_SESSION['staff_id']) || !isset($_SESSION['restaurant_id']) || !in_array($_SESSION['role'], [ROLE_CHEF, ROLE_BARTENDER], true)) {
     header('Location: ../admin/login.php');
     exit();
 }
 
 $restaurant_id = $_SESSION['restaurant_id'];
+$isBar = $_SESSION['role'] === ROLE_BARTENDER;
 
 // Ticket timers run on the restaurant's clock, so the page tells the browser what time it is there.
 $timezone = $_SESSION['timezone'] ?? null;
@@ -55,7 +56,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
   <script src="../assets/js/quiet-console.js?v=<?php echo $v('js/quiet-console.js'); ?>"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
-    <title>Kitchen – <?php echo htmlspecialchars($restaurant_name); ?></title>
+    <title><?php echo $isBar ? 'Bar' : 'Kitchen'; ?> – <?php echo htmlspecialchars($restaurant_name); ?></title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,7 +67,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
 
     <script>
         window.STAFF = {
-            role: 'Chef',
+            role: <?php echo json_encode($isBar ? 'Bartender' : 'Chef'); ?>,
             restaurantId: <?php echo json_encode($restaurant_id); ?>,
             serverNow: <?php echo json_encode(date('Y-m-d H:i:s')); ?>
         };
@@ -78,10 +79,10 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
     <header class="st-top">
         <div class="st-top-in">
             <div class="st-brand">
-                <span class="st-logo chef" aria-hidden="true"><span class="material-symbols-rounded">skillet</span></span>
+                <span class="st-logo chef" aria-hidden="true"><span class="material-symbols-rounded"><?php echo $isBar ? 'local_bar' : 'skillet'; ?></span></span>
                 <div class="st-brand-t">
                     <b><?php echo htmlspecialchars($restaurant_name); ?></b>
-                    <small>Kitchen display</small>
+                    <small><?php echo $isBar ? 'Bar display' : 'Kitchen display'; ?></small>
                 </div>
             </div>
             <div class="st-top-r">
@@ -91,7 +92,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
                 <button type="button" class="st-alerts" id="enableAlertsBtn"><span class="material-symbols-rounded">notifications</span><span class="st-alerts-l">Turn on alerts</span></button>
                 <div class="st-user">
                     <span class="st-av" aria-hidden="true"><?php echo htmlspecialchars($initials); ?></span>
-                    <div class="st-user-t"><b><?php echo htmlspecialchars($staff_name); ?></b><small>Chef</small></div>
+                    <div class="st-user-t"><b><?php echo htmlspecialchars($staff_name); ?></b><small><?php echo $isBar ? 'Bartender' : 'Chef'; ?></small></div>
                 </div>
                 <a class="st-ibtn" id="stLogout" href="../controllers/staff_logout.php" aria-label="Log out" title="Log out"><span class="material-symbols-rounded">logout</span></a>
             </div>
@@ -102,7 +103,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
         <div class="st-head">
             <div class="st-head-l">
                 <span class="st-hello">Hi <?php echo htmlspecialchars($name_parts[0] ?? 'Chef'); ?> 👋</span>
-                <h1>Kitchen orders</h1>
+                <h1><?php echo $isBar ? 'Bar orders' : 'Kitchen orders'; ?></h1>
             </div>
             <div class="st-head-r kds-toolbar">
                 <span class="st-updated" id="lastRefresh">Auto-refreshing…</span>
@@ -126,6 +127,7 @@ $v = function ($f) { return @filemtime(__DIR__ . '/../assets/' . $f); };
                 stages: document.getElementById('kdsStages'),
                 stats: document.getElementById('kdsStats'),
                 updated: document.getElementById('lastRefresh'),
+                bar: <?php echo $isBar ? 'true' : 'false'; ?>,   // a bartender: bar tickets only, no Kitchen / Bar switch
                 onCounts: function (c) { StaffUI.titleCount(c.pending); }
             }).start();
 

@@ -59,14 +59,16 @@ function rgBusyTables(PDO $conn, string $rid): array
 
 /**
  * A dine-in bill that was already open is now settled: its kitchen tickets are done, so the table frees
- * up. $keepKotId is a ticket made by this same request (dishes added at Pay), which still goes to the kitchen.
+ * up. $keepKotIds are tickets made by this same request (dishes and drinks added at Pay, a KOT and a BOT),
+ * which still go to the kitchen and the bar.
  */
-function rgCloseOrderKots(PDO $conn, string $rid, int $orderId, int $keepKotId = 0): void
+function rgCloseOrderKots(PDO $conn, string $rid, int $orderId, $keepKotIds = []): void
 {
+    $keep = array_values(array_filter(array_map('intval', (array)$keepKotIds))) ?: [0];
     try {
         $conn->prepare("UPDATE kot SET kot_status = 'Completed', updated_at = CURRENT_TIMESTAMP
-            WHERE restaurant_id = ? AND order_id = ? AND id <> ? AND kot_status IN ('Pending', 'Preparing', 'Ready')")
-             ->execute([$rid, $orderId, $keepKotId]);
+            WHERE restaurant_id = ? AND order_id = ? AND id NOT IN (" . implode(',', array_fill(0, count($keep), '?')) . ") AND kot_status IN ('Pending', 'Preparing', 'Ready')")
+             ->execute(array_merge([$rid, $orderId], $keep));
     } catch (PDOException $e) {
         error_log('rgCloseOrderKots order ' . $orderId . ': ' . $e->getMessage());
     }

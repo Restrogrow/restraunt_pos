@@ -35,7 +35,7 @@ import { getPrinterSettings } from './config/printerSettings';
 import LoginScreen from './screens/LoginScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import { DEMO, DEMO_LOGIN } from './config/api';
-import { staffRole } from './utils/roles';
+import { makesTickets, staffRole } from './utils/roles';
 import HomeScreen from './screens/HomeScreen';
 import ShiftHomeScreen from './screens/ShiftHomeScreen';
 import RiderHomeScreen from './screens/RiderHomeScreen';
@@ -229,10 +229,12 @@ function MenuStack() {
 // Which pages each role gets, as bottom tabs and inside More. A page a role's login can't use
 // (the server would refuse it) isn't shown at all, rather than opening onto an error.
 //   chef:    Home · Kitchen · Orders · More
+//   bartender: the same as a chef; Kitchen shows only bar tickets (the tab reads "Bar")
 //   waiter:  Home · Tables · POS · Orders · More
 //   manager: Home · Orders · POS · Menu · More   (the partner app's layout, sales included)
 const LAYOUT = {
   chef: { tabs: ['Home', 'Kitchen', 'Orders', 'More'], more: ['Tables'] },
+  bartender: { tabs: ['Home', 'Kitchen', 'Orders', 'More'], more: ['Tables'] },
   waiter: { tabs: ['Home', 'Tables', 'POS', 'Orders', 'More'], more: ['Kitchen', 'WaiterCalls', 'Reservations', 'Customers'] },
   manager: { tabs: ['Home', 'Orders', 'POS', 'Menu', 'More'], more: ['Kitchen', 'Tables', 'WaiterCalls', 'Reservations', 'Customers', 'Riders', 'Reports', 'Logs'] },
   rider: { tabs: ['Home', 'More'], more: [] },
@@ -441,10 +443,10 @@ function RootNavigator() {
   // Mounted as soon as there's a logged-in user — independent of which tab
   // is open or whether the fingerprint lock screen is up — so what this role
   // must not miss still beeps no matter where in the app they are:
-  //   chef: new kitchen tickets · waiter: online orders, waiter calls, food ready · manager: orders, calls
+  //   chef: new kitchen tickets · bartender: new bar tickets · waiter: online orders, waiter calls, food ready · manager: orders, calls
   return (
     <>
-      {role !== 'chef' && role !== 'rider' ? <OrderAlertWatcher /> : null}
+      {!makesTickets(role) && role !== 'rider' ? <OrderAlertWatcher /> : null}
       {role !== 'rider' ? <LiveFeed role={role} /> : null}
       {role !== 'rider' ? <WebAudioUnlockBanner /> : null}
       {checkingLock ? (

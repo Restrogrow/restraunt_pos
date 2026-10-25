@@ -260,6 +260,18 @@ body.st-body .swal2-container { z-index: 100000 !important; }
 .kds-col[data-col="preparing"], .kds-stage[data-stage="preparing"] { --kc: #f97316; }
 .kds-col[data-col="ready"], .kds-stage[data-stage="ready"] { --kc: #16a34a; }
 .kds-stage[data-stage="all"] { --kc: #2563eb; }
+/* Kitchen / Bar (staff-kds.js): only for a restaurant that sends drinks to a bar on a BOT */
+.kds-stations { display: flex; gap: 6px; margin: 0 0 10px; padding: 6px; border: 1px solid var(--st-line); border-radius: 16px; background: #fff; overflow-x: auto; scrollbar-width: none; }
+.kds-stations[hidden] { display: none; }
+.kds-station { flex: 1 1 0; min-width: max-content; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 46px; padding: 0 12px; border: 0; border-radius: 12px; background: none; color: var(--st-ink2); font: inherit; font-size: .9rem; font-weight: 800; cursor: pointer; }
+.kds-station .material-symbols-rounded { font-size: 20px; }
+.kds-station em { min-width: 24px; height: 22px; padding: 0 7px; display: inline-grid; place-items: center; border-radius: 999px; background: #f3f4f6; font-size: .76rem; font-style: normal; }
+.kds-station.on { background: #111827; color: #fff; }
+.kds-station.on em { background: rgba(255,255,255,.2); color: #fff; }
+.kds-station[data-station="bar"].on { background: #6d28d9; }
+.kds-t.kds-bar { border-left: 4px solid #6d28d9; }
+.kds-t.kds-bar .kds-id small { display: inline-flex; align-items: center; gap: 3px; color: #6d28d9; }
+.kds-t.kds-bar .kds-id small .material-symbols-rounded { font-size: 14px; }
 .kds-col-h { position: sticky; top: var(--st-top-h); z-index: 5; display: flex; align-items: center; gap: 8px; padding: 14px 16px 10px; border-radius: var(--st-r-xl) var(--st-r-xl) 0 0; background: #eceff4; color: var(--st-ink); font-size: .95rem; font-weight: 800; }
 .kds-col-h i { width: 10px; height: 10px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--kc) 22%, transparent); }
 .kds-col-h em { margin-left: auto; min-width: 28px; height: 26px; padding: 0 9px; display: inline-grid; place-items: center; border-radius: 999px; background: #fff; color: var(--st-ink); font-size: .82rem; font-style: normal; }

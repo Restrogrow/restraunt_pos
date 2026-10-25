@@ -78,18 +78,19 @@ export function realName(name) {
   return n && !PLACEHOLDER_NAMES.includes(n.toLowerCase()) ? n : '';
 }
 
-// Order notes carry machine tags like "[KOT: KOT-20261015-4111]" and
+// Order notes carry machine tags like "[KOT: KOT-20261015-4111]", "[BOT: BOT-20261015-0012]" (the bar's ticket) and
 // "[Rejected (too_busy): Kitchen is too busy]". Split those out so people see plain text.
 export function splitNotes(notes) {
   const raw = String(notes || '');
   const kot = (raw.match(/\[KOT:\s*([^\]]+)\]/i) || [])[1] || '';
+  const bot = (raw.match(/\[BOT:\s*([^\]]+)\]/i) || [])[1] || '';
   const stop = (raw.match(/\[(?:Rejected|Cancelled)(?:\s*\([a-z_]+\))?:\s*([^\]]+)\]/i) || [])[1] || '';
   const text = raw
-    .replace(/\[KOT:[^\]]*\]/gi, '')
+    .replace(/\[[KB]OT:[^\]]*\]/gi, '')
     .replace(/\[(?:Rejected|Cancelled)[^\]]*\]/gi, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
-  return { text, kot: kot.trim(), stopReason: stop.trim() };
+  return { text, kot: kot.trim(), bot: bot.trim(), stopReason: stop.trim() };
 }
 
 export function itemsSummary(items, max = 3) {

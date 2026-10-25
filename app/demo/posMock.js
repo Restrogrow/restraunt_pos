@@ -94,7 +94,7 @@ export function posMock(path, method, q, f, db, newOrder) {
       Object.assign(open, { subtotal: Number(f.subtotal).toFixed(2), tax: Number(f.tax).toFixed(2), total: Number(f.total).toFixed(2) });
       if (!due) Object.assign(open, { payment_status: 'Paid', payment_method: f.paymentMethod, order_status: 'Ready' });
       const fresh = JSON.parse(f.kitchenItems || '[]');
-      res = { success: true, order_id: open.id, order_number: open.order_number, kot_number: fresh.length ? `KOT-${Math.floor(1000 + Math.random() * 8999)}` : null };
+      res = { success: true, order_id: open.id, order_number: open.order_number, kot_number: fresh.length ? `KOT-${Math.floor(1000 + Math.random() * 8999)}` : null, kot_id: null, bot_number: null, bot_id: null, bar_item_ids: [] };
     } else {
       res = newOrder({ ...f, kot_only: due ? '1' : '' }, due ? 'kot' : 'pay');
     }

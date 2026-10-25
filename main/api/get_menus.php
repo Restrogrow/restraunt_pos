@@ -166,6 +166,9 @@ try {
     require_once __DIR__ . '/../config/menu_hours.php';
     $hasHours = menuHoursEnsure($conn);
     if ($hasHours) $menuSelectCols .= ", avail_days, avail_from, avail_to";
+    // kitchen or bar (config/prep_stations.php): a "Bar" chip on the category card
+    require_once __DIR__ . '/../config/prep_stations.php';
+    if (stationReady($conn)) $menuSelectCols .= ", prep_station";
     if ($hasMenuTranslations) {
         $menuSelectCols .= ", translations";
     }

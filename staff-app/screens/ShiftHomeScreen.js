@@ -19,7 +19,7 @@ import { durationLabel, minutesSince, realName, timeAgo } from '../utils/format'
 import { useLiveCounts } from '../utils/liveCounts';
 import { refreshLive, useLive } from '../utils/liveStore';
 import { goOrders, goTo } from '../utils/nav';
-import { firstName, ROLE_INFO, staffRole } from '../utils/roles';
+import { firstName, makesTickets, ROLE_INFO, staffRole } from '../utils/roles';
 import { attendCall, moveKot } from '../utils/staffActions';
 import { useAccess } from '../utils/access';
 
@@ -52,14 +52,15 @@ function RowAction({ label, icon, tone = colors.primary, onPress, busy }) {
   );
 }
 
-// Home for waiters and chefs: what needs doing on this shift right now, with the next step one
+// Home for waiters, chefs and bartenders: what needs doing on this shift right now, with the next step one
 // tap away on each row. Kitchen tickets and waiter calls come from the app-wide live feed, so a
 // change on any phone shows here within seconds. Managers get the sales Home (HomeScreen).
 export default function ShiftHomeScreen({ navigation }) {
   const { user } = useAuth();
   const canSee = useAccess(); // sections Super Admin switched off (utils/access.js)
   const role = staffRole(user);
-  const isChef = role === 'chef';
+  const isChef = makesTickets(role); // a bartender's Home is a chef's, worded for the bar
+  const isBar = role === 'bartender';
   const info = ROLE_INFO[role];
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -123,11 +124,11 @@ export default function ShiftHomeScreen({ navigation }) {
 
   const hero = isChef
     ? {
-        label: 'Tickets to cook',
+        label: isBar ? 'Drinks to make' : 'Tickets to cook',
         big: String(queue.length),
-        hint: queue.length ? `Oldest has waited ${durationLabel(minutesSince(queue[0].created_at, now))}` : cooking.length ? `${cooking.length} on the stove, nothing new` : 'No new tickets. Nice and calm.',
+        hint: queue.length ? `Oldest has waited ${durationLabel(minutesSince(queue[0].created_at, now))}` : cooking.length ? `${cooking.length} ${isBar ? 'being made' : 'on the stove'}, nothing new` : 'No new tickets. Nice and calm.',
         stats: [
-          ['Cooking', String(cooking.length)],
+          [isBar ? 'Making' : 'Cooking', String(cooking.length)],
           ['Ready', String(ready.length)],
           ['Longest wait', oldest ? durationLabel(oldest) : '—'],
         ],
@@ -146,7 +147,7 @@ export default function ShiftHomeScreen({ navigation }) {
   const attention = (isChef
     ? [
         { n: late.length, icon: 'alarm', tone: colors.danger, bg: colors.dangerBg, title: (n) => `${n} ticket${n > 1 ? 's' : ''} waiting over ${LATE_MIN} min`, sub: late.slice(0, 3).map(where).join(', '), go: () => goTo(navigation, 'Kitchen', { stage: late[0]?.kot_status || 'Pending' }), screen: 'Kitchen' },
-        { n: ready.length, icon: 'checkmark-done', tone: colors.success, bg: colors.successBg, title: (n) => `${n} ready, waiting for pickup`, sub: 'Waiters are told when food is ready', go: () => goTo(navigation, 'Kitchen', { stage: 'Ready' }), screen: 'Kitchen' },
+        { n: ready.length, icon: 'checkmark-done', tone: colors.success, bg: colors.successBg, title: (n) => `${n} ready, waiting for pickup`, sub: `Waiters are told when ${isBar ? 'drinks are' : 'food is'} ready`, go: () => goTo(navigation, 'Kitchen', { stage: 'Ready' }), screen: 'Kitchen' },
       ]
     : [
         { n: counts.newOrders || 0, icon: 'notifications', tone: colors.danger, bg: colors.dangerBg, title: (n) => `${n} new order${n > 1 ? 's' : ''} to accept`, sub: 'Guests are waiting for your answer', go: () => goOrders(navigation, 'new') },
@@ -155,8 +156,8 @@ export default function ShiftHomeScreen({ navigation }) {
 
   const quick = isChef
     ? [
-        { icon: 'flame', label: 'Kitchen', c: ['#FB7185', '#E11D48'], go: () => goTo(navigation, 'Kitchen', { stage: 'Pending' }), screen: 'Kitchen' },
-        { icon: 'timer', label: 'Cooking', c: ['#A78BFA', '#7C3AED'], go: () => goTo(navigation, 'Kitchen', { stage: 'Preparing' }), screen: 'Kitchen' },
+        { icon: isBar ? 'wine' : 'flame', label: isBar ? 'Bar' : 'Kitchen', c: ['#FB7185', '#E11D48'], go: () => goTo(navigation, 'Kitchen', { stage: 'Pending' }), screen: 'Kitchen' },
+        { icon: 'timer', label: isBar ? 'Making' : 'Cooking', c: ['#A78BFA', '#7C3AED'], go: () => goTo(navigation, 'Kitchen', { stage: 'Preparing' }), screen: 'Kitchen' },
         { icon: 'checkmark-done', label: 'Ready', c: ['#34D399', '#059669'], go: () => goTo(navigation, 'Kitchen', { stage: 'Ready' }), screen: 'Kitchen' },
         { icon: 'receipt', label: 'Orders', c: ['#60A5FA', '#2563EB'], go: () => goOrders(navigation, 'cooking') },
       ]
@@ -342,7 +343,7 @@ export default function ShiftHomeScreen({ navigation }) {
         {/* chefs: what to make, added up */}
         {isChef && toCook.length ? (
           <FadeIn index={3}>
-            <Text style={styles.sectionTitle}>What to cook</Text>
+            <Text style={styles.sectionTitle}>{isBar ? 'What to make' : 'What to cook'}</Text>
             <View style={[styles.card, shadow.sm, styles.cookGrid]}>
               {toCook.map(([dish, qty]) => (
                 <View key={dish} style={styles.cookItem}>
@@ -358,10 +359,10 @@ export default function ShiftHomeScreen({ navigation }) {
         {isChef && (queue.length || cooking.length) ? (
           <FadeIn index={4}>
             <View style={styles.cardHead}>
-              <Text style={styles.sectionTitle}>Cooking queue</Text>
+              <Text style={styles.sectionTitle}>{isBar ? 'Bar queue' : 'Cooking queue'}</Text>
               {canSee('Kitchen') ? (
                 <PressableScale onPress={() => goTo(navigation, 'Kitchen', { stage: queue.length ? 'Pending' : 'Preparing' })} hitSlop={8}>
-                  <Text style={styles.link}>Open kitchen</Text>
+                  <Text style={styles.link}>{isBar ? 'Open bar' : 'Open kitchen'}</Text>
                 </PressableScale>
               ) : null}
             </View>
@@ -372,7 +373,7 @@ export default function ShiftHomeScreen({ navigation }) {
                 return (
                   <View key={k.id} style={[styles.row, i > 0 && styles.rowLine]}>
                     <View style={[styles.rowIcon, { backgroundColor: isNew ? colors.primaryLight : colors.purpleBg }]}>
-                      <Ionicons name={isNew ? 'receipt' : 'flame'} size={16} color={isNew ? colors.primary : colors.purple} />
+                      <Ionicons name={isNew ? 'receipt' : isBar ? 'wine' : 'flame'} size={16} color={isNew ? colors.primary : colors.purple} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={styles.rowTitleLine}>
@@ -382,7 +383,7 @@ export default function ShiftHomeScreen({ navigation }) {
                       <Text style={styles.rowSub} numberOfLines={2}>{itemsText(k) || `Ticket ${k.kot_number || ''}`}</Text>
                     </View>
                     {isNew ? (
-                      <RowAction label="Start" icon="flame" busy={busy === `k${k.id}`} onPress={() => act(`k${k.id}`, () => moveKot(k, 'Preparing'))} />
+                      <RowAction label="Start" icon={isBar ? 'wine' : 'flame'} busy={busy === `k${k.id}`} onPress={() => act(`k${k.id}`, () => moveKot(k, 'Preparing'))} />
                     ) : (
                       <RowAction label="Ready" icon="checkmark-done" tone={colors.success} busy={busy === `k${k.id}`} onPress={() => act(`k${k.id}`, () => moveKot(k, 'Ready'))} />
                     )}
@@ -398,7 +399,7 @@ export default function ShiftHomeScreen({ navigation }) {
             <View style={[styles.allGood, shadow.sm]}>
               <Ionicons name="checkmark-circle" size={22} color={colors.success} />
               <Text style={styles.allGoodText}>
-                {isChef ? 'Kitchen is clear. New tickets ring the moment they come in.' : 'All caught up. Calls and ready food will buzz your phone.'}
+                {isChef ? `${isBar ? 'Bar' : 'Kitchen'} is clear. New tickets ring the moment they come in.` : 'All caught up. Calls and ready food will buzz your phone.'}
               </Text>
             </View>
           </FadeIn>

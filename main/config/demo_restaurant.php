@@ -32,7 +32,7 @@ const DEMO_EMAIL_DOMAIN    = 'spicegardenindiranagar.com';
 // Staff: key (used by /demo and the Staff app demo, ?as=) => [name, email name, role]. Log in with password DEMO_STAFF_PASSWORD.
 const DEMO_STAFF = [
     'manager' => ['Neha Kapoor', 'neha', 'Manager'], 'waiter' => ['Ravi Kumar', 'ravi', 'Waiter'], 'waiter2' => ['Imran Khan', 'imran', 'Waiter'],
-    'chef' => ['Suresh Gowda', 'suresh', 'Chef'], 'chef2' => ['Lakshmi Iyer', 'lakshmi', 'Chef'],
+    'chef' => ['Suresh Gowda', 'suresh', 'Chef'], 'chef2' => ['Lakshmi Iyer', 'lakshmi', 'Chef'], 'bartender' => ['Tenzin Lama', 'tenzin', 'Bartender'],
     'rider' => ['Arjun Singh', 'arjun', 'Delivery'], 'rider2' => ['Faisal Ahmed', 'faisal', 'Delivery'], 'cashier' => ['Kavita Rao', 'kavita', 'Cashier'],
 ];
 const DEMO_CUSTOMER_NAMES = ['Aarav Sharma', 'Diya Patel', 'Rohan Iyer', 'Ananya Reddy', 'Kabir Mehta', 'Isha Nair', 'Vivaan Gupta', 'Meera Joshi',
@@ -565,6 +565,15 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
     date_default_timezone_set('Asia/Kolkata');
     $now = time();
 
+    // the bar: Beverages print on a Bar Order Ticket, chai and filter coffee stay in the kitchen
+    // (config/prep_stations.php; the columns are added here, before the transaction)
+    require_once __DIR__ . '/prep_stations.php';
+    stationEnsureSchema($pdo);
+    require_once __DIR__ . '/staff_roles.php';   // the Bartender (and Cashier, Delivery) staff roles
+    staffRolesEnsure($pdo);
+    $barMenus = ['Beverages'];
+    $kitchenDrinks = ['Masala Chai', 'Filter Coffee'];
+
     $pdo->beginTransaction();
     try {
         $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
@@ -618,6 +627,7 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
                 'restaurant_id' => $rid, 'menu_name' => $menuName, 'is_active' => 1, 'sort_order' => $mSort,
                 'menu_image' => 'db:menu_' . uniqid(), 'menu_image_data' => $read($mPhoto), 'menu_image_mime_type' => $mime($mPhoto),
                 'avail_days' => $mHours ? ($mHours[0] ?: null) : null, 'avail_from' => $mHours[1] ?? null, 'avail_to' => $mHours[2] ?? null,
+                'prep_station' => in_array($menuName, $barMenus, true) ? 'bar' : 'kitchen',
             ]);
             $subIds = [];
             foreach ($subs as $i => $sub) {
@@ -633,6 +643,7 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
                     'preparation_time' => $prep, 'is_available' => 1, 'base_price' => $base, 'has_variations' => $sizes ? 1 : 0,
                     'item_image' => 'db:' . uniqid('', true), 'image_data' => $read("$photo.jpg"), 'image_mime_type' => 'image/jpeg',
                     'sort_order' => ++$sort, 'calories' => $cal, 'is_hidden' => 0, 'description_format' => 'paragraph',
+                    'prep_station' => in_array($name, $kitchenDrinks, true) ? 'kitchen' : null,
                 ]);
                 $i = 0;
                 foreach ($sizes as $vn => $vp) {
@@ -753,7 +764,7 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
             'Old Airport Road', 'Ulsoor', 'Kodihalli', 'New Thippasandra',
         ];
         $seq = 0; $nOrders = 0; $todaySales = 0.0; $busy = [];
-        $makeOrder = function (int $ts, string $type, string $status, string $source) use (&$seq, &$nOrders, &$todaySales, &$busy, $pdo, $rid, $pool, $tables, $areas, $basket, $now) {
+        $makeOrder = function (int $ts, string $type, string $status, string $source) use (&$seq, &$nOrders, &$todaySales, &$busy, $pdo, $rid, $pool, $tables, $areas, $basket, $now, $items, $barMenus, $kitchenDrinks) {
             $hour = (int)date('G', $ts);
             $cust = mt_rand(1, 10) <= 7 || $type === 'Delivery' ? $pool[mt_rand(0, count($pool) - 1)] : null;
             $tableId = $type === 'Dine-in' ? $tables[mt_rand(0, count($tables) - 1)] : null;
@@ -788,17 +799,27 @@ function resetDemoRestaurant(PDO $pdo, string $assetDir, string $mainUrl): array
                 demoInsert($pdo, 'order_items', ['order_id' => $orderId, 'menu_item_id' => $l['id'], 'item_name' => $l['name'], 'quantity' => $l['q'],
                                                  'unit_price' => $l['price'], 'total_price' => $l['price'] * $l['q'], 'created_at' => $created]);
             }
-            // open orders: a kitchen ticket, and a dine-in table shows as taken
+            // open orders: a kitchen ticket (and a bar ticket for the drinks), and a dine-in table shows as taken
             if (in_array($status, ['Preparing', 'Ready', 'Served'], true)) {
-                $kotId = demoInsert($pdo, 'kot', [
-                    'restaurant_id' => $rid, 'kot_number' => 'KOT-' . date('Ymd', $ts) . '-' . str_pad((string)$seq, 4, '0', STR_PAD_LEFT),
-                    'table_id' => $tableId, 'order_type' => $type, 'customer_name' => $cust['name'] ?? 'Walk-in',
-                    'kot_status' => $status === 'Served' ? 'Completed' : $status, 'subtotal' => $subtotal, 'tax' => $tax, 'total' => $total,
-                    'created_at' => $created, 'order_id' => $orderId,
-                ]);
-                foreach ($lines as $l) {
-                    demoInsert($pdo, 'kot_items', ['kot_id' => $kotId, 'menu_item_id' => $l['id'], 'item_name' => $l['name'], 'quantity' => $l['q'],
-                                                   'unit_price' => $l['price'], 'total_price' => $l['price'] * $l['q']]);
+                $byStation = [];
+                foreach ($lines as $dish => $l) {
+                    $bar = in_array($items[$dish]['menu'] ?? '', $barMenus, true) && !in_array($dish, $kitchenDrinks, true);
+                    $byStation[$bar ? 'bar' : 'kitchen'][] = $l;
+                }
+                foreach ($byStation as $station => $stLines) {
+                    $stSub = 0.0;
+                    foreach ($stLines as $l) $stSub += $l['price'] * $l['q'];
+                    $share = $subtotal > 0 ? $stSub / $subtotal : 1;
+                    $kotId = demoInsert($pdo, 'kot', [
+                        'restaurant_id' => $rid, 'kot_number' => ($station === 'bar' ? 'BOT-' : 'KOT-') . date('Ymd', $ts) . '-' . str_pad((string)$seq, 4, '0', STR_PAD_LEFT),
+                        'table_id' => $tableId, 'order_type' => $type, 'customer_name' => $cust['name'] ?? 'Walk-in',
+                        'kot_status' => $status === 'Served' ? 'Completed' : $status, 'subtotal' => round($stSub, 2), 'tax' => round($tax * $share, 2), 'total' => round($stSub + $tax * $share, 2),
+                        'created_at' => $created, 'order_id' => $orderId, 'station' => $station,
+                    ]);
+                    foreach ($stLines as $l) {
+                        demoInsert($pdo, 'kot_items', ['kot_id' => $kotId, 'menu_item_id' => $l['id'], 'item_name' => $l['name'], 'quantity' => $l['q'],
+                                                       'unit_price' => $l['price'], 'total_price' => $l['price'] * $l['q']]);
+                    }
                 }
                 if ($tableId) $busy[$tableId] = true;
             }

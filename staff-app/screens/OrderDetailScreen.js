@@ -137,6 +137,41 @@ function Row({ label, value }) {
   );
 }
 
+// An order with drinks made at the bar has a BOT besides its KOT ([BOT: …] in its notes). Its
+// tickets, matched by those tags, when every one is still open (a completed ticket drops out of
+// get_kot); otherwise null and the whole order prints as one KOT, as before.
+async function barTicketsOf(order) {
+  const tags = String(order.notes || '').match(/\[[KB]OT:\s*[^\]]+\]/gi) || [];
+  if (!tags.some((t) => /^\[BOT/i.test(t))) return null;
+  const numbers = [...new Set(tags.map((t) => t.replace(/^\[[KB]OT:\s*/i, '').replace(/\]$/, '').trim()))];
+  try {
+    const res = await apiGet('/api/get_kot.php');
+    const tickets = numbers.map((n) => (res?.kots || []).find((k) => k.kot_number === n));
+    return tickets.every(Boolean) ? tickets : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// One ticket (KOT or BOT, with its own dishes) on top of the order's KOT print data.
+function ticketReceiptData(base, k) {
+  const bar = k.station === 'bar';
+  return {
+    ...base,
+    title: bar ? 'BOT Print' : 'KOT Print',
+    ticketLabel: bar ? 'BOT' : 'KOT',
+    kotNumber: k.kot_number,
+    kotStatus: k.kot_status,
+    items: (k.items || []).map((it) => ({
+      name: it.item_name,
+      quantity: Number(it.quantity) || 1,
+      price: Number(it.unit_price) || 0,
+      addons: (it.addons || []).map((a) => ({ name: a.name || a, price: Number(a.price) || 0 })),
+      notes: it.notes,
+    })),
+  };
+}
+
 export default function OrderDetailScreen({ route, navigation }) {
   const { order: initialOrder } = route.params;
   const [order, setOrder] = useState(initialOrder);
@@ -396,8 +431,13 @@ export default function OrderDetailScreen({ route, navigation }) {
     }
   };
 
-  const openKotPrint = () => {
-    setBillPreview({
+  // Opens the previews one after another (each one's afterClose opens the next).
+  const showPreviews = (list) => {
+    const [first, ...rest] = list;
+    if (first) setBillPreview({ ...first, afterClose: rest.length ? () => showPreviews(rest) : undefined });
+  };
+  const openKotPrint = async () => {
+    const whole = {
       type: 'kot',
       title: 'KOT Print',
       restaurantName: user?.restaurant_name || 'Receipt',
@@ -426,7 +466,10 @@ export default function OrderDetailScreen({ route, navigation }) {
       total: order.total,
       paymentMethod: order.payment_method,
       currency,
-    });
+    };
+    const tickets = await barTicketsOf(order);
+    if (tickets) showPreviews(tickets.map((k) => ticketReceiptData(whole, k)));
+    else setBillPreview(whole);
   };
 
   const dateTime = useMemo(() => formatOrderDateTime(order.created_at), [order.created_at]);
@@ -551,6 +594,12 @@ export default function OrderDetailScreen({ route, navigation }) {
             <View style={styles.kotChip}>
               <Ionicons name="flame-outline" size={13} color={colors.primary} />
               <Text style={styles.kotChipText}>Kitchen ticket {notes.kot}</Text>
+            </View>
+          ) : null}
+          {notes.bot ? (
+            <View style={[styles.kotChip, { backgroundColor: colors.tealBg }]}>
+              <Ionicons name="wine-outline" size={13} color={colors.teal} />
+              <Text style={[styles.kotChipText, { color: colors.teal }]}>Bar ticket {notes.bot}</Text>
             </View>
           ) : null}
         </View>
@@ -712,7 +761,11 @@ export default function OrderDetailScreen({ route, navigation }) {
       <BillPreviewModal
         visible={!!billPreview}
         data={billPreview}
-        onClose={() => setBillPreview(null)}
+        onClose={() => {
+          const chain = billPreview?.afterClose;
+          setBillPreview(null);
+          if (typeof chain === 'function') chain();
+        }}
       />
     </View>
   );
