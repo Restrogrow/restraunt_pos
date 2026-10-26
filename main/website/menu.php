@@ -22,7 +22,6 @@ if (isset($_GET['preview_card']) && in_array($_GET['preview_card'], THEME_MENU_C
 <title><?php echo htmlspecialchars(seoTitle('menu', 'Menu - ' . ($restaurant_name ?? '')), ENT_QUOTES, 'UTF-8'); ?></title>
 <?php echo seoHeadTags('menu'); ?>
 <?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'fontawesome']); ?>
-<?php require_once __DIR__ . '/rg_net.php'; echo rgNetScript(); ?>
 <?php if (!empty($font_family_google_param)) echo websiteThemeFontLink($font_family_google_param); ?>
 <style>
 :root {

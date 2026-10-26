@@ -68,6 +68,22 @@ php main/database/seed_multibranch_demo.php     # Spice Garden chain (sg_owner /
 - PDO with `ERRMODE_EXCEPTION`, non-persistent connections, prepared statements.
 - PHP files use `<?php` open tags, no short tags.
 
+## Customer website: speed and bad connections (every page, new ones too)
+
+Every customer page (`main/website/*.php` that includes `header.php`) gets these from `header.php` by itself; a new
+page only has to include `header.php` like the others.
+- **Retries:** `rg_net.php` goes first in `<head>`. `fetch()` of the site's own GET URLs tries again on a dropped
+  connection or a 502/503/504/429 (and waits while offline); POSTs are never sent twice. Use `rgFetchJson(url)` for
+  JSON (also retries a 12 s timeout or a non-JSON host error page) and `rgLoadFailed(el, 'the menu', retry)` when a
+  section still can't load: "Couldn't load … Try again", never a dead message or an empty grey box.
+- **No big photos in the page:** `header.php`'s page filter turns any `data:image` over ~15 KB into a cached WebP
+  file (`websiteInlineImageUrl()`, `main/uploads/cache/bg`). Still store uploads as files or `image.php` URLs.
+- **Small images:** show logos with `$restaurant_logo_img` (a 256 px WebP), dishes with `image.php?id=…&w=96/200/400/800`,
+  not the original upload.
+- **No jumping:** a row filled in after load (coupons, banners, combos, specials) must not push the page down. Decide on
+  the server whether it has anything (leave it out when not), keep its space when it has (`websiteBannerSlot()`), or
+  put the data into the page (`websiteCombosMount()`). Check phone layout shift (412 px wide) stays under 0.1.
+
 ## Payments
 
 - **PhonePe** is the only payment gateway integrated, and it takes Indian rupees: it is **India-only**. Check

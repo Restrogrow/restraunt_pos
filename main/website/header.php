@@ -794,8 +794,26 @@ if ($logged_in_customer) header('Cache-Control: no-cache, no-store, must-revalid
 // They used to be printed before <!DOCTYPE html>, which put every page in old "quirks mode" (wrong sizes
 // on phones) and broke JSON replies (manifest, payment status) that include this file.
 $rgEarlyHtml = (string)ob_get_clean();
+// Every website page (not JSON replies that include this file): the network safety net (rg_net.php: retries,
+// "You're offline" bar) goes first in <head>, so each page and any new one has it without adding anything.
+if (rgCurrentPageName() !== null) {
+    require_once __DIR__ . '/rg_net.php';
+    $rgEarlyHtml = rgNetScript() . "\n" . $rgEarlyHtml;
+}
 if (trim($rgEarlyHtml) !== '') {
     ob_start(function ($html) use ($rgEarlyHtml) {
+        // A photo saved inline (data: URI) over ~15 KB, wherever a page prints it (in HTML or in JSON with \/):
+        // a cached file instead (websiteInlineImageUrl), so pages stay small and the photo is cached
+        if (strpos($html, 'base64,') !== false) {
+            $html = preg_replace_callback('#data:image(\\\\?/)(png|jpe?g|webp|gif);base64,([A-Za-z0-9+=/\\\\]{20000,}+)#',
+                function ($m) {
+                    $esc = $m[1] !== '/';
+                    $uri = 'data:image/' . $m[2] . ';base64,' . str_replace('\\/', '/', $m[3]);
+                    $url = websiteInlineImageUrl($uri);
+                    if ($url === '') return $m[0];
+                    return $esc ? str_replace('/', '\\/', $url) : $url;
+                }, $html) ?? $html;
+        }
         $p = stripos($html, '<head');
         $e = $p === false ? false : strpos($html, '>', $p);
         return $e === false ? $html : substr($html, 0, $e + 1) . "

@@ -91,8 +91,6 @@ if ($header_style !== 'minimal' && !in_array($hx_style, THEME_HEADER_NO_PHOTO_ST
     echo '<link rel="preload" as="image" href="' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . '" fetchpriority="high">' . "\n";
 }
 echo websiteFontLinks(['poppins', 'fontawesome']);
-require_once __DIR__ . '/rg_net.php';
-echo rgNetScript();
 ?>
 <?php if (!empty($font_family_google_param)) echo websiteThemeFontLink($font_family_google_param); ?>
 <style>
