@@ -63,9 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Shiprocket: ' . $e->getMessage();
     }
     // back to a GET, so a refresh doesn't switch a restaurant again (config/prg.php)
-    prgRedirect('quick_delivery', ['message' => $message, 'error' => $error]);
+    // Test price: what was asked and what Shiprocket answered (to see why it says no)
+    $raw = $action === 'test_price' && isset($GLOBALS['qd_last_service']) ? mb_substr(json_encode($GLOBALS['qd_last_service'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0, 6000) : '';
+    prgRedirect('quick_delivery', ['message' => $message, 'error' => $error, 'raw' => $raw]);
 }
-['message' => $message, 'error' => $error] = prgTake('quick_delivery', ['message' => '', 'error' => '']);
+['message' => $message, 'error' => $error, 'raw' => $raw] = prgTake('quick_delivery', ['message' => '', 'error' => '', 'raw' => '']);
 
 // restaurants that could use it: India (or no country), not deleted; the ones with a map pin first
 $restaurants = $conn->query("SELECT u.restaurant_id, u.restaurant_name, u.city, u.restaurant_lat, u.restaurant_lng, u.address,
@@ -124,6 +126,8 @@ $hookToken = trim((string)env('QUICK_DELIVERY_WEBHOOK_TOKEN', '')) !== '';
 
   <?php if ($message): ?><div class="msg ok"><?php echo $h($message); ?></div><?php endif; ?>
   <?php if ($error): ?><div class="msg err"><?php echo $h($error); ?></div><?php endif; ?>
+  <?php if ($raw): ?><details<?php echo $error ? ' open' : ''; ?>><summary style="cursor:pointer;font-size:13px;color:#4b5563">Shiprocket's answer (what was asked and what came back)</summary>
+    <pre style="white-space:pre-wrap;word-break:break-all;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;font-size:12px;max-height:340px;overflow:auto"><?php echo $h($raw); ?></pre></details><?php endif; ?>
 
   <h2>Setup</h2>
   <table class="kv">

@@ -371,9 +371,20 @@ function qdBlocker(PDO $conn, string $rid, array $o): string
 /** The serviceability query for both map pins; returns the Shiprocket Quick option or throws. */
 function qdServiceability(PDO $conn, array $q): array
 {
-    $d = qdApi($conn, 'GET', '/courier/serviceability/?' . http_build_query($q));
+    try {
+        $d = qdApi($conn, 'GET', '/courier/serviceability/?' . http_build_query($q));
+    } catch (RuntimeException $e) {
+        $GLOBALS['qd_last_service'] = ['query' => $q, 'error' => $e->getMessage()];
+        throw $e;
+    }
+    // Super Admin › Test price shows this, so a "no rider" can be checked against what Shiprocket said
+    $GLOBALS['qd_last_service'] = ['query' => $q, 'answer' => $d];
     $list = $d['data']['available_courier_companies'] ?? ($d['data'] ?? []);
-    if (!is_array($list) || !$list) throw new RuntimeException('No Shiprocket Quick rider serves this address right now.');
+    if (!is_array($list) || !$list) {
+        // Shiprocket's own reason, when it gives one
+        $why = trim((string)(is_string($d['message'] ?? null) ? $d['message'] : ''));
+        throw new RuntimeException('No Shiprocket Quick rider serves this address right now' . ($why !== '' ? ' (Shiprocket: ' . $why . ')' : '') . '.');
+    }
     $pick = null;
     foreach ($list as $c) {
         if (!is_array($c)) continue;
