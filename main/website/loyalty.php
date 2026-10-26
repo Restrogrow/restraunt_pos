@@ -315,7 +315,7 @@ button { font-family: inherit; }
     <div class="lx-top">
       <a class="lx-round" href="<?php echo htmlspecialchars(restaurantPageUrl(), ENT_QUOTES, 'UTF-8'); ?>" aria-label="Home"><i class="fa fa-arrow-left"></i></a>
       <div class="lx-brand">
-        <?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php endif; ?>
+        <?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo_img, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php endif; ?>
         <span><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></span>
       </div>
       <a class="lx-round" href="<?php echo htmlspecialchars(restaurantPageUrl('menu'), ENT_QUOTES, 'UTF-8'); ?>" aria-label="Menu"><i class="fa fa-utensils"></i></a>

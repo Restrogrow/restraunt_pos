@@ -266,6 +266,44 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
     // Retrieve image from database
     try {
         if ($imageType === 'logo' && !empty($imageId)) {
+            // &w=128/256: a small WebP of an uploaded logo (often 500 KB+ but shown at ~90 px), made once and kept in
+            // uploads/cache/img under the logo's length + CRC, so a new logo gets a new file
+            $logoW = (int)($_GET['w'] ?? 0);
+            if (in_array($logoW, [128, 256], true) && function_exists('imagewebp')) {
+                try {
+                    $lk = $conn->prepare('SELECT LENGTH(logo_data) AS n, CRC32(logo_data) AS c FROM users WHERE id = ? AND logo_data IS NOT NULL LIMIT 1');
+                    $lk->execute([$imageId]);
+                    $lkr = $lk->fetch(PDO::FETCH_ASSOC);
+                    if ($lkr && (int)$lkr['n'] > 0) {
+                        $lf = dirname(__DIR__) . '/uploads/cache/img/logo_' . (int)$imageId . '_' . $lkr['n'] . '_' . $lkr['c'] . '_' . $logoW . '.webp';
+                        if (!is_file($lf)) {
+                            $ld = $conn->prepare('SELECT logo_data FROM users WHERE id = ? LIMIT 1');
+                            $ld->execute([$imageId]);
+                            $src = @imagecreatefromstring((string)$ld->fetchColumn());
+                            if ($src) {
+                                $sw = imagesx($src); $sh = imagesy($src);
+                                $tw = min($logoW, $sw); $th = max(1, (int)round($sh * $tw / max(1, $sw)));
+                                $dst = imagecreatetruecolor($tw, $th);
+                                imagealphablending($dst, false); imagesavealpha($dst, true);   // keep a see-through background
+                                imagecopyresampled($dst, $src, 0, 0, 0, 0, $tw, $th, $sw, $sh);
+                                if (!is_dir(dirname($lf))) @mkdir(dirname($lf), 0755, true);
+                                if (@imagewebp($dst, $lf . '.tmp', 85)) @rename($lf . '.tmp', $lf);
+                                imagedestroy($src); imagedestroy($dst);
+                            }
+                        }
+                        if (is_file($lf)) {
+                            while (ob_get_level()) ob_end_clean();
+                            header('Content-Type: image/webp');
+                            header('Content-Length: ' . filesize($lf));
+                            header('Cache-Control: public, max-age=86400');   // the URL stays the same when the logo changes
+                            readfile($lf);
+                            exit();
+                        }
+                    }
+                } catch (Throwable $e) {
+                    error_log('logo thumb: ' . $e->getMessage());   // fall back to the full logo below
+                }
+            }
             // Get restaurant logo
             try {
                 $stmt = $conn->prepare("SELECT logo_data, logo_mime_type, restaurant_logo FROM users WHERE id = ? LIMIT 1");

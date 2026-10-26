@@ -74,16 +74,22 @@
   }
 
   /* ───────── the row ───────── */
+  function show(list) {
+    combos = list || [];
+    mount.style.minHeight = '';   // the space the page kept for the row (websiteCombos())
+    if (!combos.length) { mount.hidden = true; return; }
+    injectCss(); draw();
+  }
   function load() {
     var r = rid();
     if (!r) return;
-    fetch('api.php?action=getCombos&restaurant_id=' + encodeURIComponent(r), { cache: 'no-store' })
-      .then(function (res) { return res.json(); })
-      .then(function (d) {
-        combos = (d && d.combos) || [];
-        if (!combos.length) { mount.hidden = true; return; }
-        injectCss(); draw();
-      }).catch(function () { mount.hidden = true; });
+    // the page already has them (index.php / menu.php): no request, and the row is drawn with the page
+    if (Array.isArray(window.rgCombosData)) { var pre = window.rgCombosData; window.rgCombosData = null; show(pre); return; }
+    if (mount.hasAttribute('data-none')) return;   // the server found none on sale
+    var url = 'api.php?action=getCombos&restaurant_id=' + encodeURIComponent(r);
+    (window.rgFetchJson ? window.rgFetchJson(url, { cache: 'no-store' }) : fetch(url, { cache: 'no-store' }).then(function (res) { return res.json(); }))
+      .then(function (d) { show((d && d.combos) || []); })
+      .catch(function () { show([]); });
   }
 
   function card(c, i) {

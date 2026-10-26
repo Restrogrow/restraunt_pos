@@ -855,11 +855,7 @@ try {
             // Offers > Combos & Deals: combos on sale right now, with their choices (config/combo_helpers.php)
             try {
                 require_once __DIR__ . '/../config/combo_helpers.php';
-                require_once __DIR__ . '/../config/access_control.php';
-                $combos = accessPageOn($conn, (string)$restaurantId, 'dealsPage') ? getCombos($conn, (string)$restaurantId, true) : [];
-                foreach ($combos as &$c) unset($c['is_active'], $c['sort_order'], $c['valid_from'], $c['days']);
-                unset($c);
-                echo json_encode(['success' => true, 'combos' => $combos], JSON_UNESCAPED_UNICODE);
+                echo json_encode(['success' => true, 'combos' => websiteCombos($conn, (string)$restaurantId)], JSON_UNESCAPED_UNICODE);
             } catch (Throwable $e) {
                 error_log('Error in getCombos: ' . $e->getMessage());
                 echo json_encode(['success' => true, 'combos' => []]);

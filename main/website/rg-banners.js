@@ -601,8 +601,13 @@
     }, 4000);
   }
 
-  fetch('theme_api.php?action=get_banners&restaurant_id=' + encodeURIComponent(rid))
-    .then(function (r) { return r.json(); })
+  // a slot the page kept open for banners (data-reserved, websiteBannerSlot()) that ends up with none: close it
+  function unreserve(m) {
+    if (!m.hasAttribute('data-reserved')) return;
+    m.removeAttribute('data-reserved'); m.style.display = ''; m.classList.remove('on'); m.innerHTML = '';
+  }
+  var url = 'theme_api.php?action=get_banners&restaurant_id=' + encodeURIComponent(rid);
+  (window.rgFetchJson ? window.rgFetchJson(url) : fetch(url).then(function (r) { return r.json(); }))
     .then(function (d) {
       var photos = (d && d.success && d.banners) || [];
       var offers = (d && d.success && d.offer_banners) || [];
@@ -612,8 +617,9 @@
           .concat(photos.filter(function (b) { return (b.placement || 'home_top') === place; }).map(function (b, i) {
             return '<img src="' + photoSrc(b) + '" alt="" loading="' + (i ? 'lazy' : 'eager') + '">';
           }));
-        if (slides.length) { build(m, slides); fit(m); }
+        if (slides.length) { m.removeAttribute('data-reserved'); m.style.display = ''; build(m, slides); fit(m); }
+        else unreserve(m);
       });
     })
-    .catch(function () {});
+    .catch(function () { mounts.forEach(unreserve); });
 })();

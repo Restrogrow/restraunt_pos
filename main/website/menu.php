@@ -22,6 +22,7 @@ if (isset($_GET['preview_card']) && in_array($_GET['preview_card'], THEME_MENU_C
 <title><?php echo htmlspecialchars(seoTitle('menu', 'Menu - ' . ($restaurant_name ?? '')), ENT_QUOTES, 'UTF-8'); ?></title>
 <?php echo seoHeadTags('menu'); ?>
 <?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'fontawesome']); ?>
+<?php require_once __DIR__ . '/rg_net.php'; echo rgNetScript(); ?>
 <?php if (!empty($font_family_google_param)) echo websiteThemeFontLink($font_family_google_param); ?>
 <style>
 :root {
@@ -1375,7 +1376,7 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
     <div class="pr-share-header">
       <button class="back-btn-cmon" onclick="goBack()"><i class="fa fa-arrow-circle-left"></i></button>
       <?php if ($restaurant_logo): ?>
-      <img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt="Logo" style="width:36px;height:36px;border-radius:<?php echo ($logo_shape ?? 'circle') === 'square' ? '8' : '50'; ?>%;object-fit:cover;flex-shrink:0">
+      <img src="<?php echo htmlspecialchars($restaurant_logo_img, ENT_QUOTES, 'UTF-8'); ?>" alt="Logo" style="width:36px;height:36px;border-radius:<?php echo ($logo_shape ?? 'circle') === 'square' ? '8' : '50'; ?>%;object-fit:cover;flex-shrink:0">
       <?php endif; ?>
       <div class="header-actions">
         <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;cursor:pointer;background:#f0fdf4;padding:2px 10px 2px 8px;border-radius:20px;border:1px solid #bbf7d0">
@@ -1419,9 +1420,9 @@ window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minute
       </div>
       <div class="main-content">
         <!-- Banners: Menu page — above the dishes -->
-        <div class="rg-banners" data-placement="menu_top" style="padding:10px 4px 12px"></div>
+        <?php echo websiteBannerSlot('menu_top', (function_exists('getConnection') && !empty($restaurant_id)) ? websiteBannerPlacements(getConnection(), $restaurant_id) : [], '10px 4px 12px'); ?>
         <!-- Combos & Deals (rg-combos.js; dashboard: Offers › Combos & Deals) -->
-        <section class="rgc" id="rgCombos" data-variant="menu" hidden></section>
+        <?php require_once __DIR__ . '/../config/combo_helpers.php'; echo websiteCombosMount(function_exists('getConnection') ? getConnection() : null, (string)($restaurant_id ?? ''), 'menu'); ?>
         <div class="category-overview">
           <h2 id="categoryTitle"><span class="skel-title-bar skeleton"></span></h2>
           <div class="subcategory-tabs" id="subcategoryTabs" style="display:none"></div>
@@ -3244,9 +3245,9 @@ function fetchAndRender() {
   // the columns are set before the dishes are drawn, so the grid doesn't jump
   var themeQ = 'action=get&restaurant_id=' + encodeURIComponent(window.websiteRestaurantId);
   Promise.all([
-    fetch(apiUrl('getMenus')).then(function(r) { return r.json(); }),
-    fetch(apiUrl('getMenuItems')).then(function(r) { return r.json(); }),
-    fetch('theme_api.php?' + themeQ).then(function(r) { return r.json(); }).catch(function() { return null; })
+    rgFetchJson(apiUrl('getMenus')),
+    rgFetchJson(apiUrl('getMenuItems')),
+    rgFetchJson('theme_api.php?' + themeQ, null, 2).catch(function() { return null; })
   ])
     .then(function(all) {
       var themeData = all[2];
@@ -3282,7 +3283,7 @@ function fetchAndRender() {
     })
     .catch(function(err) {
       console.error('Failed to load menu data:', err);
-      document.getElementById('productGrid').innerHTML = '<div style="text-align:center;padding:40px;color:#999">Failed to load menu items</div>';
+      rgLoadFailed(document.getElementById('productGrid'), 'the menu', fetchAndRender);
     });
 }
 

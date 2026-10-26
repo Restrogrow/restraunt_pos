@@ -153,6 +153,35 @@ function fetchOfferBanners($conn, $restaurant_id, $activeOnly) {
     return $rows;
 }
 
+/**
+ * The placements (home_top, menu_top …) that have a banner to show right now, so a page can keep their space
+ * from the start (rg-banners.js fills it in later) instead of the page jumping when they arrive. [] on error.
+ */
+function websiteBannerPlacements($conn, $restaurant_id): array {
+    $on = [];
+    try {
+        $st = $conn->prepare("SELECT DISTINCT COALESCE(NULLIF(placement, ''), 'home_top') FROM website_banners WHERE restaurant_id = ?");
+        $st->execute([$restaurant_id]);
+        foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $p) $on[$p] = true;
+    } catch (Throwable $e) { /* no placement column yet: the script still fills the slots */ }
+    try {
+        foreach (fetchOfferBanners($conn, $restaurant_id, true) as $b) $on[$b['placement'] ?: 'home_top'] = true;
+    } catch (Throwable $e) { /* no offer banners table yet */ }
+    return $on;
+}
+
+/**
+ * A banner slot for rg-banners.js; when it has banners, already the size the slideshow will be (16:7).
+ * $pad: the slot's own padding ('' = rg-banners.js's 10px 16px 4px).
+ */
+function websiteBannerSlot(string $placement, array $placements, string $pad = ''): string {
+    $p = htmlspecialchars($placement, ENT_QUOTES, 'UTF-8');
+    $padCss = htmlspecialchars('padding:' . ($pad !== '' ? $pad : '10px 16px 4px'), ENT_QUOTES, 'UTF-8');
+    if (empty($placements[$placement])) return '<div class="rg-banners" data-placement="' . $p . '"' . ($pad !== '' ? ' style="' . $padCss . '"' : '') . '></div>';
+    return '<div class="rg-banners on" data-placement="' . $p . '" data-reserved="1" style="display:block;' . $padCss . '">'
+         . '<div style="aspect-ratio:16/7;border-radius:16px;background:#f3f4f6"></div></div>';
+}
+
 // Where a website banner shows (Website Appearance > Banner Images)
 // 'story' = photos for the Story header style (not shown as a slideshow)
 const BANNER_PLACEMENTS = ['home_top', 'home_menu', 'menu_top', 'cart', 'story'];

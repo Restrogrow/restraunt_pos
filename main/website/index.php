@@ -91,6 +91,8 @@ if ($header_style !== 'minimal' && !in_array($hx_style, THEME_HEADER_NO_PHOTO_ST
     echo '<link rel="preload" as="image" href="' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . '" fetchpriority="high">' . "\n";
 }
 echo websiteFontLinks(['poppins', 'fontawesome']);
+require_once __DIR__ . '/rg_net.php';
+echo rgNetScript();
 ?>
 <?php if (!empty($font_family_google_param)) echo websiteThemeFontLink($font_family_google_param); ?>
 <style>
@@ -2016,7 +2018,7 @@ window.socialLinks = {
     <div class="hero-card">
     <div class="profile-section">
       <div class="profile-img-wrap<?php echo ($logo_shape ?? 'circle') === 'square' ? ' logo-square' : ''; ?>" style="width:<?php echo $logo_size ?? 90; ?>px;height:<?php echo $logo_size ?? 90; ?>px">
-        <img src="<?php echo htmlspecialchars($restaurant_logo ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?>">
+        <img src="<?php echo htmlspecialchars($restaurant_logo_img ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?>">
       </div>
     </div>
 
@@ -2050,7 +2052,7 @@ window.socialLinks = {
   </div>
 
   <!-- Banners: Home page — top (Website Appearance > Banner Images) -->
-  <div class="rg-banners" data-placement="home_top"></div>
+  <?php $bannerPlaces = (function_exists('getConnection') && !empty($restaurant_id)) ? websiteBannerPlacements(getConnection(), $restaurant_id) : []; echo websiteBannerSlot('home_top', $bannerPlaces); ?>
 
   <div class="order-tabs" id="menuSection">
     <?php if ($enable_delivery): ?><button class="order-tab <?php echo $enable_delivery ? 'active' : ''; ?>" onclick="switchOrder(this, 'delivery')">🛵 Delivery</button><?php endif; ?>
@@ -2058,13 +2060,28 @@ window.socialLinks = {
     <?php if ($enable_dinein): ?><button class="order-tab <?php echo !$enable_delivery && !$enable_takeaway && $enable_dinein ? 'active' : ''; ?>" onclick="switchOrder(this, 'dinein')">🍽️ Dine In</button><?php endif; ?>
   </div>
 
+<?php
+  // No live coupon at all (looser than api/get_coupons.php, so a real one is never left out): no carousel,
+  // instead of a placeholder that collapses after the page has drawn and moves everything below it up
+  $hasCoupons = true;
+  if (function_exists('getConnection') && $restaurant_id) {
+      try {
+          $cq = getConnection()->prepare("SELECT 1 FROM coupons WHERE restaurant_id = ? AND is_active = 1
+              AND (valid_from IS NULL OR valid_from <= CURDATE() + INTERVAL 1 DAY) AND (valid_until IS NULL OR valid_until >= CURDATE() - INTERVAL 1 DAY)
+              AND (max_uses = 0 OR current_uses < max_uses) LIMIT 1");
+          $cq->execute([$restaurant_id]);
+          $hasCoupons = (bool)$cq->fetchColumn();
+      } catch (Throwable $e) { $hasCoupons = true; }
+  }
+  if ($hasCoupons): ?>
   <div class="coupon-carousel" id="couponCarousel" aria-label="Offers">
     <div class="coupon-carousel-inner" id="couponCarouselInner">
-      <div class="skeleton" style="flex:0 0 90%;height:104px;border-radius:14px;scroll-snap-align:start"></div>
-      <div class="skeleton" style="flex:0 0 90%;height:104px;border-radius:14px;scroll-snap-align:start"></div>
+      <div class="skeleton" style="flex:0 0 90%;height:108px;border-radius:14px;scroll-snap-align:start"></div>
+      <div class="skeleton" style="flex:0 0 90%;height:108px;border-radius:14px;scroll-snap-align:start"></div>
     </div>
     <div class="coupon-dots" id="couponDots"></div>
   </div>
+  <?php endif; ?>
 
   <!-- Today's Special (Offers > Today's Special) -->
   <section class="tds" id="todaySpecial" hidden aria-label="Today's special"></section>
@@ -2092,10 +2109,10 @@ window.socialLinks = {
   </section>
 
   <!-- Combos & Deals (rg-combos.js; dashboard: Offers › Combos & Deals) -->
-  <section class="rgc" id="rgCombos" data-variant="home" hidden></section>
+  <?php require_once __DIR__ . '/../config/combo_helpers.php'; echo websiteCombosMount(function_exists('getConnection') ? getConnection() : null, (string)($restaurant_id ?? ''), 'home'); ?>
 
   <!-- Banners: Home page — above the menu -->
-  <div class="rg-banners" data-placement="home_menu"></div>
+  <?php echo websiteBannerSlot('home_menu', $bannerPlaces); ?>
   <div class="menu-list<?php echo ($home_card_style ?? 'classic') !== 'classic' ? ' hc-' . htmlspecialchars($home_card_style, ENT_QUOTES, 'UTF-8') : ''; ?>" id="menuList" data-price-style="<?php echo htmlspecialchars($bestseller_style['price_style'], ENT_QUOTES, 'UTF-8'); ?>">
     <div class="skel-cat-header skeleton"></div>
     <div class="skel-item"><div class="skel-img skeleton"></div><div class="skel-text"><div class="skel-title skeleton"></div><div class="skel-desc skeleton"></div><div class="skel-price skeleton"></div></div></div>
@@ -2175,7 +2192,7 @@ window.socialLinks = {
     <div class="qr-placeholder">
       <canvas id="qrCanvas" width="180" height="180"></canvas>
       <div class="qr-center-logo">
-        <img src="<?php echo htmlspecialchars($restaurant_logo ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>" alt="Logo">
+        <img src="<?php echo htmlspecialchars($restaurant_logo_img ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>" alt="Logo">
       </div>
     </div>
     <button class="share-btn" onclick="shareProfile()">Share</button>
@@ -2792,8 +2809,8 @@ function fetchAndRender() {
 
   // Categories and items are independent — fetch them in parallel
   Promise.all([
-    fetch(apiUrl('getMenus')).then(function(r) { return r.json(); }),
-    fetch(apiUrl('getMenuItems')).then(function(r) { return r.json(); })
+    rgFetchJson(apiUrl('getMenus')),
+    rgFetchJson(apiUrl('getMenuItems'))
   ])
     .then(function(results) {
       menus = results[0] || [];
@@ -2808,7 +2825,7 @@ function fetchAndRender() {
     })
     .catch(function(err) {
       console.error('Failed to load menu data:', err);
-      document.getElementById('menuList').innerHTML = '<div style="text-align:center;padding:40px;color:#999">Failed to load menu items</div>';
+      rgLoadFailed(document.getElementById('menuList'), 'the menu', fetchAndRender);
     });
 }
 
@@ -3360,8 +3377,7 @@ function fitTextToContainer(containerSel, textSel, maxFontSize, minFontSize) {
       showItemDetail(f.ci, f.ii); // dish details (sizes, add-ons, notes)
     };
   }
-  fetch('api.php?action=getTodaysSpecial&restaurant_id=' + encodeURIComponent(rid))
-    .then(function(r) { return r.json(); })
+  rgFetchJson('api.php?action=getTodaysSpecial&restaurant_id=' + encodeURIComponent(rid))
     .then(function(d) {
       var data = d && d.specials;
       if (!data || !data.items || !data.items.length) return;
@@ -3408,9 +3424,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function loadCouponCarousel() {
   var rid = document.querySelector('meta[name=restaurant-id]')?.content || '';
-  if (!rid) return;
-  fetch('../api/get_coupons.php?restaurant_id=' + encodeURIComponent(rid))
-    .then(function(r) { return r.json(); })
+  if (!rid || !document.getElementById('couponCarousel')) return;   // no coupons (left out by the server)
+  rgFetchJson('../api/get_coupons.php?restaurant_id=' + encodeURIComponent(rid))
     .then(function(data) {
       if (!data.success || !data.coupons || data.coupons.length === 0) {
         var carousel = document.getElementById('couponCarousel');
@@ -3455,7 +3470,11 @@ function loadCouponCarousel() {
       // Start auto-scroll after coupons are rendered
       startCouponAutoScroll();
     })
-    .catch(function() {});
+    .catch(function() {
+      // still no answer after the retries: drop the grey placeholders rather than leave them up
+      var carousel = document.getElementById('couponCarousel');
+      if (carousel) carousel.style.display = 'none';
+    });
 }
 
 // --- Bestsellers carousel (Offers > Bestsellers in the admin) ---

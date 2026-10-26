@@ -402,7 +402,7 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
 
   <?php if (!$order): ?>
     <div class="tk-find">
-      <?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php else: ?><div class="tk-find-ic"><span class="material-symbols-rounded">local_shipping</span></div><?php endif; ?>
+      <?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo_img, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php else: ?><div class="tk-find-ic"><span class="material-symbols-rounded">local_shipping</span></div><?php endif; ?>
       <h1>Track your order</h1>
       <p>Live status from <?php echo htmlspecialchars($restaurant_name ?? 'the restaurant', ENT_QUOTES, 'UTF-8'); ?></p>
     </div>
@@ -468,7 +468,7 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
 
     <div class="tk-sheet" id="tkMain">
       <div class="tk-rest">
-        <?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php endif; ?>
+        <?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo_img, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php endif; ?>
         <div class="nm"><b><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></b><small>#<?php echo htmlspecialchars($order['order_number']); ?> · <?php echo htmlspecialchars($tkType); ?></small></div>
         <div class="status-badge status-<?php echo strtolower($order['order_status']); ?>" id="orderStatusBadge"><span id="orderStatusText"><?php echo htmlspecialchars($statusLabels[$order['order_status']] ?? $order['order_status']); ?></span></div>
       </div>

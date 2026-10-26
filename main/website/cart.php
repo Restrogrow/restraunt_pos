@@ -1287,7 +1287,7 @@ function appendTableParam(url) {
     </div>
 
     <!-- Banners: Cart page — top -->
-    <div class="rg-banners" data-placement="cart" style="padding:12px 12px 0"></div>
+    <?php echo websiteBannerSlot('cart', (function_exists('getConnection') && !empty($restaurant_id)) ? websiteBannerPlacements(getConnection(), $restaurant_id) : [], '12px 12px 0'); ?>
 
     <!-- Content -->
     <div class="content" id="cartContent">

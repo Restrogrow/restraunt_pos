@@ -19,6 +19,41 @@ function createRestaurantSlug($name) {
     return $slug;
 }
 
+/**
+ * A data: URI photo as a file URL: decoded once into main/uploads/cache/bg (WebP, max 1600 px wide, or the
+ * original bytes when GD can't read it), named by its hash so a new photo gets a new URL and the old one can be
+ * cached for a year. '' when it can't be written (the caller then keeps the data: URI).
+ */
+function websiteInlineImageUrl(string $dataUri): string {
+    if (!preg_match('#^data:image/(jpeg|jpg|png|webp|gif);base64,#i', $dataUri, $m)) return '';
+    $hash = substr(sha1($dataUri), 0, 20);
+    $dir = __DIR__ . '/../uploads/cache/bg';
+    $url = rtrim(str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/main/website/index.php'))), '/') . '/uploads/cache/bg/';
+    foreach (['webp', strtolower($m[1]) === 'jpg' ? 'jpeg' : strtolower($m[1])] as $ext) {
+        if (is_file("$dir/$hash.$ext")) return $url . "$hash.$ext";
+    }
+    $raw = base64_decode(substr($dataUri, strlen($m[0])), true);
+    if ($raw === false || $raw === '') return '';
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) return '';
+    $src = function_exists('imagewebp') ? @imagecreatefromstring($raw) : false;
+    if ($src) {
+        $w = imagesx($src); $h = imagesy($src);
+        if ($w > 1600) {
+            $dst = imagecreatetruecolor(1600, max(1, (int)round($h * 1600 / $w)));
+            imagealphablending($dst, false); imagesavealpha($dst, true);
+            imagecopyresampled($dst, $src, 0, 0, 0, 0, 1600, imagesy($dst), $w, $h);
+            imagedestroy($src); $src = $dst;
+        }
+        $ok = @imagewebp($src, "$dir/$hash.webp.tmp", 80);
+        imagedestroy($src);
+        if ($ok && @rename("$dir/$hash.webp.tmp", "$dir/$hash.webp")) return $url . "$hash.webp";
+        @unlink("$dir/$hash.webp.tmp");
+    }
+    $ext = strtolower($m[1]) === 'jpg' ? 'jpeg' : strtolower($m[1]);
+    if (@file_put_contents("$dir/$hash.$ext.tmp", $raw) !== false && @rename("$dir/$hash.$ext.tmp", "$dir/$hash.$ext")) return $url . "$hash.$ext";
+    return '';
+}
+
 /** The website page being served: '' (home), 'menu', 'cart' … (from the page file, also when custom-domain.php
  *  included it); null when header.php runs for something else (manifest.php, a payment script). */
 function rgCurrentPageName(): ?string {
@@ -298,6 +333,10 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
     } catch (Exception $e) {
     }
     }
+    // the logo as the pages show it (~36-120 px): a 256 px WebP of an uploaded logo instead of the full file
+    // (image.php &w=). The full $restaurant_logo stays for the home-screen icon and link previews.
+    $restaurant_logo_img = (isset($restaurant_logo) && is_string($restaurant_logo) && strpos($restaurant_logo, 'image.php?type=logo&id=') === 0)
+        ? $restaurant_logo . '&w=256' : ($restaurant_logo ?? null);
     // Load website appearance settings (background, logo, brand colors, font) in one query
     // so they can be rendered server-side and applied before first paint (no flash of default colors).
     // Unconditional (even if $restaurant_id never resolved) - every website
@@ -341,8 +380,12 @@ $stmt = $conn->prepare("SELECT id, restaurant_name, restaurant_logo, currency_sy
                 if (!empty($themeRow['background_theme'])) {
                     // Only use DB value if it's a valid URL (starts with http), not an invalid placeholder
                     $dbBg = trim($themeRow['background_theme']);
-                    if (strpos($dbBg, 'http://') === 0 || strpos($dbBg, 'https://') === 0 || strpos($dbBg, 'data:') === 0) {
+                    if (strpos($dbBg, 'http://') === 0 || strpos($dbBg, 'https://') === 0) {
                         $background_theme = $dbBg;
+                    } elseif (strpos($dbBg, 'data:') === 0) {
+                        // a photo saved inline (data: URI, often 500 KB+) went into the page 3-4 times on every
+                        // visit: serve it as a cached file instead, so the page stays small and the photo is cached
+                        $background_theme = websiteInlineImageUrl($dbBg) ?: $dbBg;
                     }
                 }
                 $logo_shape = $themeRow['logo_shape'] ?? 'circle';

@@ -269,7 +269,7 @@ body {
 
     <div class="content">
       <div class="hero">
-        <img class="hero-img" src="<?php echo htmlspecialchars($restaurant_logo ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?>">
+        <img class="hero-img" src="<?php echo htmlspecialchars($restaurant_logo_img ?? $local_placeholder_svg, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?>">
         <h2><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></h2>
         <p class="tagline"><?php echo htmlspecialchars($restaurant_address ?? 'Good food, great vibes', ENT_QUOTES, 'UTF-8'); ?></p>
       </div>

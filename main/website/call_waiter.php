@@ -171,7 +171,9 @@ $wcH = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     var s = store();
     var recent = s && Date.now() - s.at < 120000;
     fab.classList.toggle('called', !!recent);
-    document.getElementById('rgcwFabText').innerHTML = recent ? 'Waiter called ✓' : 'Call waiter' + (TABLE ? ' <small>· ' + TABLE.replace(/[<>&]/g, '') + '</small>' : '');
+    var txt = document.getElementById('rgcwFabText');
+    if (!txt) return;
+    txt.innerHTML = recent ? 'Waiter called ✓' : 'Call waiter' + (TABLE ? ' <small>· ' + TABLE.replace(/[<>&]/g, '') + '</small>' : '');
   }
   calledState(); setInterval(calledState, 10000);
 

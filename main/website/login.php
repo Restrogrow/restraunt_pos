@@ -261,7 +261,7 @@ body.claim-mode #authTabs, body.claim-mode #loginForm, body.claim-mode #signupFo
     <div class="band-name"><?php echo htmlspecialchars($restaurant_name ?? 'Restaurant', ENT_QUOTES, 'UTF-8'); ?></div>
     <h2 id="authTitle">Welcome back</h2>
     <p id="authSub">Log in to track your orders and check out faster</p>
-    <div class="auth-logo"><?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php else: ?><span><?php echo htmlspecialchars(mb_strtoupper(mb_substr($restaurant_name ?? 'R', 0, 1)), ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?></div>
+    <div class="auth-logo"><?php if (!empty($restaurant_logo)): ?><img src="<?php echo htmlspecialchars($restaurant_logo_img, ENT_QUOTES, 'UTF-8'); ?>" alt=""><?php else: ?><span><?php echo htmlspecialchars(mb_strtoupper(mb_substr($restaurant_name ?? 'R', 0, 1)), ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?></div>
   </div>
 
   <div class="auth-sheet">

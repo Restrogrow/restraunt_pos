@@ -94,6 +94,41 @@ function comboLiveState(array $c, ?DateTime $at = null): array
 }
 
 /**
+ * The combos the customer website shows now (website/api.php getCombos, and put into the home / menu page so
+ * the row is drawn with the page instead of pushing the dishes down when it arrives). [] when Super Admin
+ * switched Combos & Deals off for the restaurant.
+ */
+function websiteCombos(PDO $conn, string $rid): array
+{
+    require_once __DIR__ . '/access_control.php';
+    $combos = accessPageOn($conn, $rid, 'dealsPage') ? getCombos($conn, $rid, true) : [];
+    foreach ($combos as &$c) unset($c['is_active'], $c['sort_order'], $c['valid_from'], $c['days']);
+    unset($c);
+    return $combos;
+}
+
+/**
+ * The Combos & Deals row for a page (website/rg-combos.js draws it): the combos go into the page and the row's
+ * space is kept ($variant 'home' ~408 px, 'menu' ~380 px), so the dishes below don't jump down when it is drawn.
+ * None on sale: hidden, and the script doesn't ask. A database error: the script asks api.php itself.
+ */
+function websiteCombosMount(?PDO $conn, string $rid, string $variant): string
+{
+    $v = $variant === 'menu' ? 'menu' : 'home';
+    $open = '<section class="rgc" id="rgCombos" data-variant="' . $v . '"';
+    if (!$conn || $rid === '') return $open . ' hidden></section>';
+    try {
+        $combos = websiteCombos($conn, $rid);
+    } catch (Throwable $e) {
+        error_log('websiteCombosMount: ' . $e->getMessage());
+        return $open . ' hidden></section>';
+    }
+    if (!$combos) return $open . ' hidden data-none></section>';
+    return $open . ' style="min-height:' . ($v === 'menu' ? 380 : 408) . 'px"></section>'
+         . '<script>window.rgCombosData = ' . json_encode($combos, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . ';</script>';
+}
+
+/**
  * Every combo of a restaurant with its slots and choices (dish name, image, type, price, available).
  * $liveOnly: only combos on sale now whose every slot still has an available dish (the website).
  */
