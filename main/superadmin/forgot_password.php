@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/../config/session_config.php';
+startSecureSession();
+require_once __DIR__ . '/../config/prg.php';
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/email_config.php';
 
@@ -137,7 +140,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log('Superadmin password reset error: ' . $e->getMessage());
         }
     }
+    // back to a GET, so a refresh doesn't send another reset email (config/prg.php)
+    prgRedirect('sa_forgot', ['message' => $message, 'error' => $error]);
 }
+['message' => $message, 'error' => $error] = prgTake('sa_forgot', ['message' => '', 'error' => '']);
 ?>
 <!DOCTYPE html>
 <html lang="en">

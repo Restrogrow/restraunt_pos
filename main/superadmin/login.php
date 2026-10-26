@@ -35,7 +35,9 @@ $googleReady = googleLoginReady();
 // came back from "Continue with Google" with a problem: google_finish.php leaves it in the session;
 // the Google callback puts it in the URL, so only its own fixed messages are shown (no text from a link)
 $error = (string)($_SESSION['sa_login_error'] ?? '');
-unset($_SESSION['sa_login_error']);
+// a wrong password comes back here with a GET (below), keeping the username typed
+$lastUser = (string)($_SESSION['sa_login_user'] ?? '');
+unset($_SESSION['sa_login_error'], $_SESSION['sa_login_user']);
 if ($error === '' && isset($_GET['google_error'])) {
     $known = ['That sign-in link expired. Please try again.', 'Google sign-in did not finish. Please try again.', 'Google sign-in failed. Please try again.',
         'Google could not confirm the sign-in', 'Google sign-in was for a different app', 'Unexpected sign-in issuer', 'Google sign-in expired, please try again',
@@ -77,6 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log('[superadmin login] ' . $e->getMessage());
         $error = 'Something went wrong. Try again in a minute.';
     }
+    // back to a GET, so a refresh doesn't send the password again
+    $_SESSION['sa_login_error'] = $error;
+    $_SESSION['sa_login_user'] = mb_substr($username, 0, 100);
+    header('Location: login.php', true, 303);
+    exit();
 }
 $h = fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
 ?>
@@ -265,13 +272,13 @@ $h = fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
           <div class="field">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             <input type="text" id="username" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Your username"
-                   value="<?php echo $h($_POST['username'] ?? ''); ?>"<?php echo empty($_POST['username']) ? ' autofocus' : ''; ?>>
+                   value="<?php echo $h($lastUser); ?>"<?php echo $lastUser === '' ? ' autofocus' : ''; ?>>
           </div>
 
           <label for="password">Password</label>
           <div class="field">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-            <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Your password"<?php echo empty($_POST['username']) ? '' : ' autofocus'; ?>>
+            <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Your password"<?php echo $lastUser === '' ? '' : ' autofocus'; ?>>
             <button type="button" class="eye" id="togglePw" aria-label="Show password" aria-pressed="false">
               <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
               <svg id="eyeShut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.2 6.2A17 17 0 0 0 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.8-1.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>

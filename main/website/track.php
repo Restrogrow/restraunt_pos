@@ -408,7 +408,7 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
     </div>
     <div class="content">
       <div class="card tk-search">
-        <form method="POST">
+        <form method="get"><!-- GET: a refresh shows the order again instead of asking to resend the form -->
           <div class="form-group">
             <label for="tkOrderNo">Order number</label>
             <div class="tk-field"><span class="material-symbols-rounded">receipt_long</span><input type="text" id="tkOrderNo" name="order_number" placeholder="e.g. ORD-20261012-1234" value="<?php echo htmlspecialchars($orderNumber, ENT_QUOTES, 'UTF-8'); ?>" required></div>

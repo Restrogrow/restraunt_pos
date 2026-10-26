@@ -202,5 +202,8 @@ $isAuthorized = isset($_SESSION['user_id']) || isset($_SESSION['superadmin_id'])
             ?>
         <?php endif; ?>
     </div>
+<?php if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'): ?>
+<script>/* the results show once; a refresh reloads the page instead of running this again */ if (window.history.replaceState) history.replaceState(null, '', location.href);</script>
+<?php endif; ?>
 </body>
 </html>

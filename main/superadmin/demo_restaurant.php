@@ -11,6 +11,7 @@ require_once __DIR__ . '/auth.php';
 require_superadmin();
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/demo_restaurant.php';
+require_once __DIR__ . '/../config/prg.php';
 
 $conn = getConnection();
 $assetDir = realpath(__DIR__ . '/../assets/demo_restaurant');
@@ -97,7 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Could not remove the demo restaurant: ' . $e->getMessage();
         }
     }
+    // back to a GET: a refresh must not reset or remove the demo again (config/prg.php)
+    prgRedirect('demo_restaurant', ['message' => $message, 'error' => $error]);
 }
+['message' => $message, 'error' => $error] = prgTake('demo_restaurant', ['message' => '', 'error' => '']);
 
 $owner = demoUsernameOwner($conn);
 $st = $conn->prepare('SELECT username, created_at FROM users WHERE restaurant_id = ? LIMIT 1');

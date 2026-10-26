@@ -268,6 +268,9 @@ header('Content-Type: text/html; charset=UTF-8');
             <strong>Note:</strong> This script is safe to run multiple times. It checks if indexes exist before creating them.
         </div>
     </div>
+<?php if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'): ?>
+<script>/* the results show once; a refresh reloads the page instead of running this again */ if (window.history.replaceState) history.replaceState(null, '', location.href);</script>
+<?php endif; ?>
 </body>
 </html>
 

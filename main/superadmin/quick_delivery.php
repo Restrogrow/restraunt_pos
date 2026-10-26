@@ -15,6 +15,7 @@ require_superadmin();
 require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../config/quick_delivery.php';
 require_once __DIR__ . '/../config/demo_restaurant.php';
+require_once __DIR__ . '/../config/prg.php';
 
 $conn = getConnection();
 qdEnsure($conn);
@@ -61,7 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $e) {
         $error = 'Shiprocket: ' . $e->getMessage();
     }
+    // back to a GET, so a refresh doesn't switch a restaurant again (config/prg.php)
+    prgRedirect('quick_delivery', ['message' => $message, 'error' => $error]);
 }
+['message' => $message, 'error' => $error] = prgTake('quick_delivery', ['message' => '', 'error' => '']);
 
 // restaurants that could use it: India (or no country), not deleted; the ones with a map pin first
 $restaurants = $conn->query("SELECT u.restaurant_id, u.restaurant_name, u.city, u.restaurant_lat, u.restaurant_lng, u.address,

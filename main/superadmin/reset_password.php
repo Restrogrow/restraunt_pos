@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/../config/session_config.php';
+startSecureSession();
+require_once __DIR__ . '/../config/prg.php';
 require_once __DIR__ . '/../db_connection.php';
 
 // Load rate limiter for auth endpoints
@@ -65,6 +68,12 @@ if (empty($token)) {
                 error_log('Superadmin password reset error: ' . $e->getMessage());
             }
         }
+        // back to a GET, so a refresh doesn't send the new password again (config/prg.php)
+        prgRedirect('sa_reset', ['error' => $error, 'success' => $success]);
+    } elseif (($flash = prgTake('sa_reset', ['error' => '', 'success' => false])) && ($flash['success'] || $flash['error'] !== '')) {
+        // the result of the form just sent (the token is gone after a successful change)
+        $success = (bool)$flash['success'];
+        $error = (string)$flash['error'];
     } else {
         // Verify token exists and is valid (GET request)
         try {

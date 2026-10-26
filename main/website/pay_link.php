@@ -52,7 +52,14 @@ if (isset($_GET['check'])) {
     exit();
 }
 
-$error = '';
+// a "Pay" that didn't open PhonePe comes back here with a GET and one of these (no form resubmission on refresh)
+const PL_ERRORS = [
+    'busy' => 'Too many tries. Please wait a few minutes and try again.',
+    'open' => 'A payment for this link was started in the last 15 minutes and is not finished yet. Finish it on that screen, or try again in 15 minutes.',
+    'off' => 'Online payment is not available right now. Please contact RestroGrow.',
+    'failed' => 'Could not open the payment page. Please try again in a minute.',
+];
+$error = PL_ERRORS[(string)($_GET['e'] ?? '')] ?? '';
 if ($link && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pay') {
     // a try that already went through must never be paid twice
     $link = plSettleOpen($conn, $link);
@@ -64,12 +71,13 @@ if ($link && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') =
         // phone): a second one could be paid too, and the second payment would not be recorded
         $open = $conn->prepare("SELECT COUNT(*) FROM payment_attempts WHERE kind = 'link' AND ref_id = ? AND status = 'Pending' AND created_at > NOW() - INTERVAL 15 MINUTE");
         $open->execute([$link['id']]);
+        $fail = '';
         if ((int)$recent->fetchColumn() >= 12) {
-            $error = 'Too many tries. Please wait a few minutes and try again.';
+            $fail = 'busy';
         } elseif (!$config['demo'] && (int)$open->fetchColumn() > 0) {
-            $error = 'A payment for this link was started in the last 15 minutes and is not finished yet. Finish it on that screen, or try again in 15 minutes.';
+            $fail = 'open';
         } elseif (!$config['ready'] && !$config['demo']) {
-            $error = 'Online payment is not available right now. Please contact RestroGrow.';
+            $fail = 'off';
         } else {
             $txn = ppTxnId('SPL_', (string)$link['restaurant_id']);
             ppAttemptAdd($conn, $txn, 'link', (int)$link['id'], (string)$link['restaurant_id'], (float)$link['amount']);
@@ -85,9 +93,12 @@ if ($link && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') =
             }
             $conn->prepare("UPDATE payment_attempts SET status = 'Failed', settled_at = NOW() WHERE txn = ?")->execute([$txn]);
             error_log('pay_link PhonePe refused: ' . $res['error']);
-            $error = 'Could not open the payment page. Please try again in a minute.';
+            $fail = 'failed';
         }
     }
+    // back to the link with a GET: a refresh shows the page, it doesn't press "Pay" again
+    header('Location: pay_link.php?' . http_build_query(array_filter(['t' => $token, 'e' => $fail ?? ''])), true, 303);
+    exit();
 }
 
 $back = isset($_GET['back']) && $link;

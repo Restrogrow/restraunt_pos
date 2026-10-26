@@ -593,6 +593,7 @@ function qdApplyStatus(PDO $conn, array $b, string $srStatus, array $agent = [],
 function qdRefresh(PDO $conn, array $b): array
 {
     if (empty($b['shipment_id']) || !in_array($b['status'], QD_LIVE, true)) return $b;
+    $status = ''; $agent = []; $url = '';
     try {
         $d = qdApi($conn, 'GET', '/courier/track/shipment/' . (int)$b['shipment_id']);
         $td = $d['tracking_data'] ?? (is_array($d) ? (array_values($d)[0]['tracking_data'] ?? []) : []);
@@ -600,9 +601,27 @@ function qdRefresh(PDO $conn, array $b): array
         $agent = is_array($tr['courier_agent_details'] ?? null) ? $tr['courier_agent_details'] : [];
         $status = (string)($tr['current_status'] ?? ($td['shipment_track_activities'][0]['activity'] ?? ''));
         $url = (string)($td['track_url'] ?? '');
-        qdApplyStatus($conn, $b, $status, ['name' => $agent['name'] ?? ($agent['agent_name'] ?? ''), 'phone' => $agent['phone'] ?? ($agent['mobile'] ?? ($agent['agent_phone'] ?? ''))], preg_match('#^https?://#', $url) ? $url : '');
     } catch (Throwable $e) {
         error_log('quick_delivery refresh ' . $b['id'] . ': ' . $e->getMessage());
+    }
+    // no tracking yet (common before pickup): the order's own status, GET /orders/show/{id}
+    // ("Get Specific Order Details" in Shiprocket's docs)
+    if ($status === '' && !empty($b['sr_order_id'])) {
+        try {
+            $o = qdApi($conn, 'GET', '/orders/show/' . (int)$b['sr_order_id'])['data'] ?? [];
+            $status = (string)($o['status'] ?? '');
+            $sh = $o['shipments'] ?? [];
+            if (isset($sh[0]) && is_array($sh[0])) $sh = $sh[0];
+            if (is_array($sh) && !empty($sh['awb']) && empty($b['awb'])) {
+                $conn->prepare('UPDATE qd_bookings SET awb = ? WHERE id = ?')->execute([mb_substr((string)$sh['awb'], 0, 40), $b['id']]);
+                $url = 'https://shiprocket.co/tracking/' . rawurlencode((string)$sh['awb']);
+            }
+        } catch (Throwable $e) {
+            error_log('quick_delivery order show ' . $b['id'] . ': ' . $e->getMessage());
+        }
+    }
+    if ($status !== '') {
+        qdApplyStatus($conn, $b, $status, ['name' => $agent['name'] ?? ($agent['agent_name'] ?? ''), 'phone' => $agent['phone'] ?? ($agent['mobile'] ?? ($agent['agent_phone'] ?? ''))], preg_match('#^https?://#', $url) ? $url : '');
     }
     return qdBooking($conn, (int)$b['order_id']) ?? $b;
 }

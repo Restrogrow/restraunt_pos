@@ -16,6 +16,7 @@ require_once __DIR__ . '/../config/authorization_config.php';
 requirePermission(PERMISSION_MANAGE_ORDERS);
 
 require_once __DIR__ . '/../config/order_abuse_guard.php';
+require_once __DIR__ . '/../config/prg.php';
 
 $restaurant_id = $_SESSION['restaurant_id'];
 $restaurant_name = $_SESSION['restaurant_name'] ?? 'Restaurant';
@@ -84,7 +85,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $messageType = 'err';
         }
     }
+    // back to a GET, so a refresh doesn't block / unblock again (config/prg.php)
+    prgRedirect('blocklist', ['message' => $message, 'messageType' => $messageType]);
 }
+['message' => $message, 'messageType' => $messageType] = prgTake('blocklist', ['message' => '', 'messageType' => 'ok']);
 
 // ── List ─────────────────────────────────────────────────────────────────────
 $blocks = [];
