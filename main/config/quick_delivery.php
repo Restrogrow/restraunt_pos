@@ -249,16 +249,45 @@ function qdReverse(float $lat, float $lng): array
     if ($api !== '') {
         $r = $get('https://api.geoapify.com/v1/geocode/reverse?' . http_build_query(['lat' => $lat, 'lon' => $lng, 'format' => 'json', 'apiKey' => $api]))['results'][0] ?? [];
         if ($pin($r['postcode'] ?? '') !== '') {
-            return $cache[$key] = ['pincode' => $pin($r['postcode']), 'state' => (string)($r['state'] ?? ''), 'city' => (string)($r['city'] ?? ($r['county'] ?? ''))];
+            // Geoapify leaves state out for Delhi (Shiprocket refuses a pickup without one): from the pincode then
+            $p = $pin($r['postcode']);
+            return $cache[$key] = ['pincode' => $p, 'state' => (string)($r['state'] ?? '') ?: qdStateOfPin($p), 'city' => (string)($r['city'] ?? ($r['county'] ?? ''))];
         }
     }
     // OpenStreetMap's Nominatim (free; a few calls a minute is well inside its limit)
     $a = $get('https://nominatim.openstreetmap.org/reverse?' . http_build_query(['lat' => $lat, 'lon' => $lng, 'format' => 'jsonv2', 'zoom' => 18, 'addressdetails' => 1]))['address'] ?? [];
     return $cache[$key] = [
         'pincode' => $pin($a['postcode'] ?? ''),
-        'state' => (string)($a['state'] ?? ''),
+        'state' => (string)($a['state'] ?? '') ?: qdStateOfPin($pin($a['postcode'] ?? '')),
         'city' => (string)($a['city'] ?? ($a['town'] ?? ($a['county'] ?? ($a['state_district'] ?? '')))),
     ];
+}
+
+/** The state an Indian pincode belongs to, from its first digits (India Post's postal circles); '' when unsure. */
+function qdStateOfPin(string $pin): string
+{
+    if (!preg_match('/^[1-9]\d{5}$/', $pin)) return '';
+    // 3-digit prefixes that break off from their 2-digit circle
+    $three = ['160' => 'Chandigarh', '194' => 'Ladakh', '246' => 'Uttarakhand', '247' => 'Uttarakhand', '248' => 'Uttarakhand', '249' => 'Uttarakhand',
+        '262' => 'Uttarakhand', '263' => 'Uttarakhand', '403' => 'Goa', '605' => 'Puducherry', '737' => 'Sikkim', '744' => 'Andaman and Nicobar Islands',
+        '790' => 'Arunachal Pradesh', '791' => 'Arunachal Pradesh', '792' => 'Arunachal Pradesh', '793' => 'Meghalaya', '794' => 'Meghalaya',
+        '795' => 'Manipur', '796' => 'Mizoram', '797' => 'Nagaland', '798' => 'Nagaland', '799' => 'Tripura',
+        '813' => 'Jharkhand', '814' => 'Jharkhand', '815' => 'Jharkhand', '816' => 'Jharkhand', '825' => 'Jharkhand', '826' => 'Jharkhand',
+        '827' => 'Jharkhand', '828' => 'Jharkhand', '829' => 'Jharkhand', '831' => 'Jharkhand', '832' => 'Jharkhand', '833' => 'Jharkhand',
+        '834' => 'Jharkhand', '835' => 'Jharkhand'];
+    if (isset($three[substr($pin, 0, 3)])) return $three[substr($pin, 0, 3)];
+    $two = ['11' => 'Delhi', '12' => 'Haryana', '13' => 'Haryana', '14' => 'Punjab', '15' => 'Punjab', '16' => 'Punjab', '17' => 'Himachal Pradesh',
+        '18' => 'Jammu and Kashmir', '19' => 'Jammu and Kashmir', '20' => 'Uttar Pradesh', '21' => 'Uttar Pradesh', '22' => 'Uttar Pradesh',
+        '23' => 'Uttar Pradesh', '24' => 'Uttar Pradesh', '25' => 'Uttar Pradesh', '26' => 'Uttar Pradesh', '27' => 'Uttar Pradesh', '28' => 'Uttar Pradesh',
+        '30' => 'Rajasthan', '31' => 'Rajasthan', '32' => 'Rajasthan', '33' => 'Rajasthan', '34' => 'Rajasthan', '36' => 'Gujarat', '37' => 'Gujarat',
+        '38' => 'Gujarat', '39' => 'Gujarat', '40' => 'Maharashtra', '41' => 'Maharashtra', '42' => 'Maharashtra', '43' => 'Maharashtra', '44' => 'Maharashtra',
+        '45' => 'Madhya Pradesh', '46' => 'Madhya Pradesh', '47' => 'Madhya Pradesh', '48' => 'Madhya Pradesh', '49' => 'Chhattisgarh', '50' => 'Telangana',
+        '51' => 'Andhra Pradesh', '52' => 'Andhra Pradesh', '53' => 'Andhra Pradesh', '56' => 'Karnataka', '57' => 'Karnataka', '58' => 'Karnataka',
+        '59' => 'Karnataka', '60' => 'Tamil Nadu', '61' => 'Tamil Nadu', '62' => 'Tamil Nadu', '63' => 'Tamil Nadu', '64' => 'Tamil Nadu', '67' => 'Kerala',
+        '68' => 'Kerala', '69' => 'Kerala', '70' => 'West Bengal', '71' => 'West Bengal', '72' => 'West Bengal', '73' => 'West Bengal', '74' => 'West Bengal',
+        '75' => 'Odisha', '76' => 'Odisha', '77' => 'Odisha', '78' => 'Assam', '80' => 'Bihar', '81' => 'Bihar', '82' => 'Bihar', '83' => 'Bihar',
+        '84' => 'Bihar', '85' => 'Bihar'];
+    return $two[substr($pin, 0, 2)] ?? '';
 }
 
 /**
