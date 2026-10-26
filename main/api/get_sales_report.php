@@ -236,6 +236,31 @@ try {
     ");
     $topItemsStmt->execute($topItemsParams);
     $topItems = $topItemsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Kitchen vs bar (config/prep_stations.php): what each sold, by where the dish is made now
+    // (a dish no longer on the menu counts as the kitchen's). Only for a restaurant with a bar.
+    $stations = null;
+    require_once __DIR__ . '/../config/prep_stations.php';
+    if (stationHasBar($conn, (string)$restaurant_id)) {
+        $stStmt = $conn->prepare("
+            SELECT COALESCE(mi.prep_station, m.prep_station, 'kitchen') AS station,
+                   SUM(oi.quantity) AS qty, SUM(oi.total_price) AS sales, COUNT(DISTINCT o.id) AS orders
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id AND mi.restaurant_id = o.restaurant_id
+            LEFT JOIN menu m ON m.id = mi.menu_id
+            WHERE o.restaurant_id = ? AND " . $dateCondition . "
+            GROUP BY station
+        ");
+        $stStmt->execute($topItemsParams);
+        $stations = ['kitchen' => ['qty' => 0, 'sales' => 0.0, 'orders' => 0], 'bar' => ['qty' => 0, 'sales' => 0.0, 'orders' => 0]];
+        foreach ($stStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $k = $r['station'] === 'bar' ? 'bar' : 'kitchen';
+            $stations[$k]['qty'] += (int)$r['qty'];
+            $stations[$k]['sales'] += (float)$r['sales'];
+            $stations[$k]['orders'] += (int)$r['orders'];
+        }
+    }
     
     // Get payment methods breakdown
     $paymentMethodsParams = array_merge([$restaurant_id], $dateParams, $paymentFilterParams);
@@ -356,6 +381,7 @@ try {
         'daily_sales' => $dailySales,
         'hourly_all' => $hourlyAll,
         'top_items' => $topItems,
+        'stations' => $stations,   // null: no bar
         'payment_methods' => $paymentMethods,
         'top_customers' => $topCustomers,
         'hourly_sales' => $hourlySales,

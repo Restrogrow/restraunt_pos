@@ -3485,6 +3485,11 @@ function toggleGatewayMode() {
             </div>
           </div>
         </div>
+        <!-- Kitchen vs bar: only for a restaurant with a bar (api/get_sales_report.php stations) -->
+        <div class="lg-card" id="reportStationsCard" hidden>
+          <div class="lg-card-h"><h2>Kitchen vs bar</h2></div>
+          <div id="reportStations" style="padding: 1rem;"></div>
+        </div>
       </div>
     </div>
 

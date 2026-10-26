@@ -418,6 +418,16 @@ export default function POSScreen({ route }) {
   // until payment — "Pay" — so the counter staff can still collect it, or
   // add items and fire another KOT for the same table. Only Pay (or Clear
   // Cart) empties the cart.
+  // KOT, BOT or KOT + BOT: what the button will send (each dish's station from get_menu_items.php)
+  const stationById = useMemo(() => {
+    const m = {};
+    menuItems.forEach((it) => { m[it.id] = it.station; });
+    return m;
+  }, [menuItems]);
+  const dishes = cart.filter((c) => !c.isAddon && !c.isCombo);
+  const sendBar = dishes.some((c) => stationById[c.id] === 'bar');
+  const sendKitchen = dishes.some((c) => stationById[c.id] !== 'bar') || cart.some((c) => c.isAddon || c.isCombo);
+  const sendWord = sendBar && sendKitchen ? 'KOT + BOT' : sendBar ? 'BOT' : 'KOT';
   const sendKOT = async () => {
     if (cart.length === 0) return;
     setSendingKot(true);
@@ -807,7 +817,7 @@ export default function POSScreen({ route }) {
               ) : (
                 <>
                   <Ionicons name="flame" size={16} color="#fff" />
-                  <Text style={styles.kotButtonText}>KOT</Text>
+                  <Text style={styles.kotButtonText}>{sendWord}</Text>
                 </>
               )}
             </PressableScale>

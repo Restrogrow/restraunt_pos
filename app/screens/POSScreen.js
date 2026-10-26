@@ -532,6 +532,18 @@ export default function POSScreen({ route }) {
     });
     return { items, combos: kCombos, addons: kAddons, lines: newLines };
   };
+  // KOT, BOT or KOT + BOT: what the button will send (each dish's station from get_menu_items.php)
+  const stationById = useMemo(() => {
+    const m = {};
+    menuItems.forEach((it) => { m[it.id] = it.station; });
+    return m;
+  }, [menuItems]);
+  const sendWord = () => {
+    const d = kitchenDelta();
+    const bar = d.items.some((i) => stationById[i.id] === 'bar');
+    const kitchen = d.items.some((i) => stationById[i.id] !== 'bar') || d.addons || d.combos.length > 0;
+    return bar && kitchen ? 'KOT + BOT' : bar ? 'BOT' : 'KOT';
+  };
   const markAllSent = () => {
     const m = {};
     cart.forEach((c) => { m[c.key] = c.quantity; });
@@ -1019,7 +1031,7 @@ export default function POSScreen({ route }) {
                 <Ionicons name="flame" size={16} color="#B45309" />
                 <Text style={styles.openBillText}>
                   <Text style={{ fontFamily: font.semiBold }}>Bill {openBill.number}</Text> is open: in the kitchen, not paid yet.
-                  {kitchenDelta().lines.length ? ' New dishes: tap KOT to send them.' : ''}
+                  {kitchenDelta().lines.length ? ` New dishes: tap ${sendWord()} to send them.` : ''}
                 </Text>
               </View>
             ) : null}
@@ -1198,7 +1210,7 @@ export default function POSScreen({ route }) {
               ) : (
                 <>
                   <Ionicons name="flame" size={16} color="#fff" />
-                  <Text style={styles.kotButtonText}>KOT</Text>
+                  <Text style={styles.kotButtonText}>{sendWord()}</Text>
                 </>
               )}
             </PressableScale>

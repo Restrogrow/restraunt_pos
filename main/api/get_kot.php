@@ -71,6 +71,10 @@ try {
     $stationField = $hasStation ? 'k.station' : "'kitchen' AS station";
     $stationFilter = is_string($_GET['station'] ?? null) ? stationClean($_GET['station'], true) : null;
     if (isBartenderSession()) $stationFilter = 'bar';   // the bar's own screen
+    // a chef sees only the kitchen's tickets once the bar has its own bartender (stationHasBartender)
+    $isChef = ($_SESSION['user_type'] ?? '') === 'staff' && strcasecmp((string)($_SESSION['role'] ?? ''), ROLE_CHEF) === 0;
+    $chefKitchenOnly = $isChef && $hasStation && stationHasBartender($conn, (string)$restaurant_id);
+    if ($chefKitchenOnly) $stationFilter = 'kitchen';
     
     $whereClause = "k.restaurant_id = ?";
     $params = [$restaurant_id];
@@ -89,7 +93,7 @@ try {
         $whereClause .= " AND k.table_id = ?";
         $params[] = $tableFilter;
     }
-    if ($stationFilter && (!$kotIdFilter || isBartenderSession())) {
+    if ($stationFilter && (!$kotIdFilter || isBartenderSession() || $chefKitchenOnly)) {
         if ($hasStation) { $whereClause .= " AND k.station = ?"; $params[] = $stationFilter; }
         elseif ($stationFilter === 'bar') $whereClause .= " AND 1 = 0";
     }
@@ -159,7 +163,8 @@ try {
     }
     
     // has_bar: the screens show Kitchen / Bar tabs only for a restaurant that sends drinks to a bar
-    $response = ['success' => true, 'kots' => $kots, 'has_bar' => $hasStation && (stationHasBar($conn, (string)$restaurant_id) || in_array('bar', array_column($kots, 'station'), true))];
+    // a kitchen-only chef gets no tabs (has_bar false): the bar has its own screen
+    $response = ['success' => true, 'kots' => $kots, 'has_bar' => !$chefKitchenOnly && $hasStation && (stationHasBar($conn, (string)$restaurant_id) || in_array('bar', array_column($kots, 'station'), true))];
     if ($kotIdFilter && !empty($kots)) {
         $response['kot'] = $kots[0];
     }

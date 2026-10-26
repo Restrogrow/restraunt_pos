@@ -13747,6 +13747,27 @@ async function loadReports() {
       }
     }
     
+    // Kitchen vs bar: sales by where the dish is made (shown only when the restaurant has a bar)
+    const stationsCard = document.getElementById('reportStationsCard');
+    const stationsDiv = document.getElementById('reportStations');
+    if (stationsCard && stationsDiv) {
+      const st = data.stations;
+      stationsCard.hidden = !st;
+      if (st) {
+        const all = (st.kitchen.sales + st.bar.sales) || 1;
+        stationsDiv.innerHTML = [['kitchen', 'Kitchen (KOT)', 'soup_kitchen'], ['bar', 'Bar (BOT)', 'local_bar']].map(([k, name, icon]) => `
+          <div style="padding: 0.75rem; border-bottom: 1px solid #eee;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;"><span class="material-symbols-rounded">${icon}</span>${name}</div>
+              <div style="font-weight: 700; color: var(--primary-red);">${formatCurrencyNoDecimals(st[k].sales)}</div>
+            </div>
+            <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">${st[k].qty} sold · in ${st[k].orders} orders · ${Math.round(st[k].sales * 100 / all)}% of item sales</div>
+            <div style="height: 6px; border-radius: 3px; background: #f1f1f1; margin-top: 0.5rem;"><div style="height: 100%; border-radius: 3px; width: ${Math.round(st[k].sales * 100 / all)}%; background: ${k === 'bar' ? '#7c3aed' : 'var(--primary-red, #ea580c)'};"></div></div>
+          </div>
+        `).join('') + '<div style="font-size: 0.8rem; color: #888; padding: 0.75rem 0.75rem 0;">Dish prices before tax and discounts, by where each dish is made today (Menu › Kitchen / Bar).</div>';
+      }
+    }
+
     // Update payment methods (use the element we already got)
     if (paymentMethodsDiv) {
       if (data.payment_methods && data.payment_methods.length > 0) {

@@ -85,6 +85,18 @@ function stationBarItems(PDO $conn, string $rid, array $menuItemIds): array {
     }
 }
 
+/**
+ * Does the restaurant have an active Bartender? Then the bar has its own screen, and a chef's
+ * screen (api/get_kot.php) shows only kitchen tickets. Without one the chef sees the bar's too.
+ */
+function stationHasBartender(PDO $conn, string $rid): bool {
+    try {
+        $s = $conn->prepare("SELECT 1 FROM staff WHERE restaurant_id = ? AND role = 'Bartender' AND is_active = 1 LIMIT 1");
+        $s->execute([$rid]);
+        return (bool)$s->fetchColumn();
+    } catch (Throwable $e) { return false; }
+}
+
 /** A unique ticket number: KOT-20261025-4821 for the kitchen, BOT-20261025-1093 for the bar. */
 function stationTicketNumber(PDO $conn, string $rid, string $station = 'kitchen'): string {
     $prefix = $station === 'bar' ? 'BOT' : 'KOT';
