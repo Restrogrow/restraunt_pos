@@ -1718,9 +1718,26 @@ function modernCardHtml(item) {
     '</div>' +
   '</div>';
 }
+// A dish with sizes that is already in the cart shows how many, like any other dish: "+" opens the sheet to
+// pick a size, "−" takes one off when only one size is in the cart (with several, the cart decides which)
+function variantInCartKeys(itemId) {
+  return Object.keys(cartItems).filter(function(k) { return k.indexOf(itemId + '_v') === 0 && cartItems[k] && (cartItems[k].qty || 0) > 0; });
+}
+function variantMinus(itemId) {
+  var keys = variantInCartKeys(itemId);
+  if (keys.length === 1) { removeFromCart(itemId, cartItems[keys[0]].varIdx != null ? cartItems[keys[0]].varIdx : keys[0].split('_v')[1]); return; }
+  showToast('This dish is in your cart in more than one size. Change it in the cart.', 'info');
+}
+function variantStepper(itemId, qty, cls) {
+  return '<div class="' + cls + '" onclick="event.stopPropagation()">' +
+    '<button type="button" aria-label="One less" onclick="event.stopPropagation();variantMinus(' + itemId + ')"><i class="fa fa-minus"></i></button>' +
+    '<span' + (cls === 'qty-inline' ? ' class="qty-num"' : '') + '>' + qty + '</span>' +
+    '<button type="button" aria-label="Add another" onclick="event.stopPropagation();showItemDetail(' + itemId + ')"><i class="fa fa-plus"></i></button></div>';
+}
 function renderModernCartRow(itemId, item) {
   var hasVar = item && item.has_variations && item.variations && item.variations.length > 0;
   // Dishes with sizes: Add opens the dish sheet to pick a size
+  if (hasVar && getItemTotalQty(itemId) > 0) return '<div class="mc-row">' + variantStepper(itemId, getItemTotalQty(itemId), 'mc-step') + '<button type="button" class="mc-add mc-added" onclick="event.stopPropagation()"><i class="fa fa-check"></i> Added</button></div>';
   if (hasVar) return '<button type="button" class="mc-add mc-add-full" onclick="event.stopPropagation();showItemDetail(' + itemId + ')"><i class="fa-solid fa-cart-shopping"></i> Add</button>';
   var inCart = getItemTotalQty(itemId);
   var q = inCart || modernPick[itemId] || 1;
@@ -1798,6 +1815,7 @@ function designAddCtrl(itemId, item) {
   if (item && item.is_available == 0) return '';
   var hasVar = item && item.has_variations && item.variations && item.variations.length > 0;
   var qty = getItemTotalQty(itemId);
+  if (hasVar && qty > 0) return variantStepper(itemId, qty, 'dc-step');
   if (hasVar) {
     return '<button type="button" class="dc-add" onclick="event.stopPropagation();showItemDetail(' + itemId + ')"><span class="lbl">ADD</span><i class="fa fa-plus" style="font-size:11px"></i>' +
       (window.menuCardStyle === 'list' ? '<small>customisable</small>' : '') + '</button>';
@@ -1871,6 +1889,7 @@ function renderCartBtn(itemId, item) {
   if (window.menuCardStyle === 'modern') return renderModernCartRow(itemId, item);
   var hasVar = item && item.has_variations && item.variations && item.variations.length > 0;
   var qty = getItemTotalQty(itemId);
+  if (hasVar && qty > 0) return variantStepper(itemId, qty, 'qty-inline');
   if (qty === 0 || hasVar) {
     return '<button class="add-btn" onclick="event.stopPropagation();showItemDetail(' + itemId + ')">Add To Cart</button>';
   }
@@ -2697,6 +2716,7 @@ function sheetAddToCart(itemId) {
     }
   }
   closeProductSheet();
+  if (window.__backToCartAfterAdd && item.id == window.__backToCartAfterAdd) { window.__backToCartAfterAdd = 0; goToCheckout(); }
 }
 
 // ── Offers bubble: quick filters set up in the dashboard (Offers > Offer Filters)
@@ -3281,6 +3301,8 @@ function fetchAndRender() {
       if (startIdx === FAV_CATEGORY) { renderSideNav(); updateNavActive(FAV_CATEGORY); }
       var dishParam = parseInt(getQueryParam('dish'), 10);
       if (dishParam) setTimeout(function() { showItemDetail(dishParam); }, 300);
+      // opened from the cart's "Choose": adding it goes back to the cart (sheetAddToCart)
+      window.__backToCartAfterAdd = getQueryParam('back') === 'cart' ? dishParam : 0;
     })
     .catch(function(err) {
       console.error('Failed to load menu data:', err);

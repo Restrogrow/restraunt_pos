@@ -86,6 +86,9 @@ page only has to include `header.php` like the others.
 - **Tracking links never carry the phone:** build them with `orderTrackCode()` (`config/order_track_link.php`):
   `track?order_number=…&k=…`. Old `customer_phone=` links still open, and the page strips the phone from the address bar.
 - **Cart badge** (`bottom_nav.php`) counts dishes, not order add-ons, and hides at 0; it corrects whatever a page writes.
+- **Also from `rg_net.php` on every page:** phone boxes (`type="tel"`) keep only digits and get the number keypad;
+  Esc closes the popup on top through its close button. Give new popups a close button with `aria-label="Close"`.
+- **Words:** information in grey, errors in red; nothing in Title Case; no "in a moment" text that can go stale.
 
 ## Payments
 

@@ -44,7 +44,7 @@ if ($orderNumber && $customerPhone) {
             $error = 'Order not found. Please check your order number and phone number.';
         } else {
             // Dish photo for the summary (dishes deleted since show without one)
-            $itemsStmt = $conn->prepare("SELECT oi.item_name, oi.quantity, oi.unit_price, oi.total_price, mi.item_image FROM order_items oi LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id WHERE oi.order_id = ?");
+            $itemsStmt = $conn->prepare("SELECT oi.item_name, oi.variation_name, oi.addons, oi.quantity, oi.unit_price, oi.total_price, mi.item_image FROM order_items oi LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id WHERE oi.order_id = ?");
             $itemsStmt->execute([$order['id']]);
             $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -568,7 +568,12 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
       ?>
       <div class="tk-item">
         <div class="tk-thumb"><?php if ($imgUrl): ?><img src="<?php echo htmlspecialchars($imgUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy"><?php else: ?><span class="material-symbols-rounded">restaurant</span><?php endif; ?></div>
-        <div class="tk-item-info"><b><?php echo htmlspecialchars($item['item_name']); ?></b><span><?php echo (int)$item['quantity']; ?> × <?php echo $currency . number_format((float)$item['unit_price'], 2); ?></span></div>
+        <div class="tk-item-info"><b><?php echo htmlspecialchars($item['item_name']); ?><?php
+          // the size and add-ons, as ordered ("Rasmalai (1 kg)")
+          if (!empty($item['variation_name']) && stripos($item['item_name'], (string)$item['variation_name']) === false) echo ' <small style="font-weight:500;color:#6b7280">(' . htmlspecialchars($item['variation_name']) . ')</small>';
+          $tkAddons = json_decode((string)($item['addons'] ?? ''), true);
+          if (is_array($tkAddons) && $tkAddons) { $tkAddonNames = array_filter(array_map(function ($a) { return is_array($a) ? (string)($a['name'] ?? '') : (string)$a; }, $tkAddons)); if ($tkAddonNames) echo '<small style="display:block;font-weight:500;color:#6b7280">+ ' . htmlspecialchars(implode(', ', $tkAddonNames)) . '</small>'; }
+        ?></b><span><?php echo (int)$item['quantity']; ?> × <?php echo $currency . number_format((float)$item['unit_price'], 2); ?></span></div>
         <div class="tk-item-price"><?php echo $currency . number_format((float)$item['total_price'], 2); ?></div>
       </div>
       <?php endforeach; ?>
@@ -647,7 +652,12 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
             ready:     ["You're almost there!", 'Order is ready!', take ? 'shopping_bag' : 'room_service', take ? 'Pick up your order' : 'Coming to your table', take ? 'shopping_bag' : 'room_service', 'Order is ready!', take ? 'Please pick up your order at the counter.' : 'It will be served at your table in a moment.'],
             done:      ['Enjoy your meal!', take ? 'Collected' : 'Served', 'check_circle', take ? 'Order collected' : 'Served at your table', 'check_circle', take ? 'Collected — enjoy!' : 'Served — enjoy!', 'Hope you enjoy it. You can rate it from your profile.']
         };
-        return W[st.k];
+        var w = W[st.k].slice();
+        // the "in a moment" words only while that is true: a while later they say what is going on instead
+        var since = Math.round((Date.now() - (scheduledFor || placedAt)) / 60000);
+        if (st.k === 'placed' && since >= 10) { w[3] = 'Waiting for the restaurant'; w[6] = 'This is taking longer than usual. You can call the restaurant to check.'; }
+        if (st.k === 'accepted') { w[3] = 'Confirmed by the restaurant'; if (since >= 20) w[6] = 'The restaurant has your order. Call them if you need an update.'; }
+        return w;
     }
     // ── Fun layer: scene per step, rotating lines, celebration ──
     var TIPS = {
@@ -682,6 +692,7 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
         document.getElementById('tkSceneFx').innerHTML = sceneFx(k);
     }
     function setTips(k) {
+        if ((k === 'placed' || k === 'accepted') && Date.now() - (scheduledFor || placedAt) > 20 * 60000) k = '';   // "starts in a moment" hours later reads wrong
         if (tipKey === k) return;
         tipKey = k; tipIdx = 0;
         var list = TIPS[k] || [];
@@ -718,6 +729,8 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
         el.textContent = m < 1 ? '· just now' : m < 60 ? '· ' + m + ' min ago' : (m < 1440 ? '· ' + Math.floor(m / 60) + ' h ' + (m % 60) + ' min ago' : '');
     }
     tickAgo(); setInterval(tickAgo, 30000);
+    // a scheduled order counts its waiting from the time it's for, not from when it was placed
+    var scheduledFor = <?php echo !empty($order['is_scheduled']) && !empty($order['scheduled_at']) ? (int)(strtotime($order['scheduled_at']) * 1000) : 0; ?>;
     function setRider(name, phone) {
         var card = document.getElementById('tkRider');
         if (!card || !name) return;
@@ -767,6 +780,13 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
         track.classList.toggle('final', final);
         track.classList.toggle('start', st.i === 0);
         track.setAttribute('aria-valuenow', st.i + 1);
+        // the first step reads the same as the badge: "Order confirmed" once the restaurant accepts
+        var firstLbl = track.querySelector('.tk-step span');
+        if (firstLbl) {
+            if (!firstLbl.getAttribute('data-placed')) firstLbl.setAttribute('data-placed', firstLbl.textContent);
+            var fl = (st.k === 'placed') ? firstLbl.getAttribute('data-placed') : 'Order confirmed';
+            if (firstLbl.textContent !== fl) firstLbl.textContent = fl;
+        }
         track.querySelectorAll('.tk-step').forEach(function(n, k) {
             n.className = 'tk-step' + (k < st.i ? ' done' : k === st.i ? ' on' + (final ? ' final' : '') : '');
             var want = k < st.i || (final && k === st.i) ? 'check' : n.getAttribute('data-icon');

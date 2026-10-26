@@ -1978,6 +1978,7 @@ function miniTrackHtml(o) {
   var steps = type === 'Delivery' ? [['Placed', 'fa-receipt'], ['Preparing', 'fa-fire-burner'], ['On the way', 'fa-motorcycle'], ['Delivered', 'fa-location-dot']]
     : type === 'Takeaway' ? [['Placed', 'fa-receipt'], ['Preparing', 'fa-fire-burner'], ['Pickup', 'fa-bag-shopping'], ['Collected', 'fa-hand-holding']]
     : [['Placed', 'fa-receipt'], ['Preparing', 'fa-fire-burner'], ['Ready', 'fa-bell-concierge'], ['Served', 'fa-utensils']];
+  if (status === 'Accepted' && i === 0) steps[0][0] = 'Confirmed';   // same word as the "Accepted" badge, not "Placed"
   var nodes = '', labels = '';
   steps.forEach(function(s, k) {
     var cls = k < i ? 'done' : (k === i ? 'on' : '');
@@ -2022,7 +2023,8 @@ function renderOrderCard(o) {
       }
       html += '<div class="order-item-info">';
       html += vegLabel(item.item_type);
-      html += '<span class="order-item-name">' + escapeHtml(item.item_name || 'Item') + '</span>';
+      var sizeName = item.variation_name && String(item.item_name || '').indexOf(item.variation_name) === -1 ? ' <small style="color:#6b7280;font-weight:500">(' + escapeHtml(item.variation_name) + ')</small>' : '';
+      html += '<span class="order-item-name">' + escapeHtml(item.item_name || 'Item') + sizeName + '</span>';
       html += '</div>';
       html += '<span class="order-item-qty">× ' + item.quantity + '</span>';
       html += '<span class="order-item-total">' + (window.globalCurrencySymbol || '\u20B9') + parseFloat(item.total_price || 0).toFixed(2) + '</span>';

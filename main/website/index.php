@@ -2299,6 +2299,23 @@ window.socialLinks = {
     <?php echo $indexNavItemsHtml; ?>
     <button class="login-btn" onclick="window.location.href='<?php echo restaurantPageUrl('profile'); ?>'" title="<?php echo htmlspecialchars($navLabels['profile'], ENT_QUOTES, 'UTF-8'); ?>" style="font-size:16px;padding:6px 10px;"><?php echo renderNavIconTag('profile', $navIcons, $navIconOverrides, false); ?></button>
   </div>
+  <!-- what's in the cart, after something is added (the Menu page has the same bar) -->
+  <a class="home-cart-bar" id="homeCartBar" href="<?php echo htmlspecialchars(restaurantPageUrl('cart'), ENT_QUOTES, 'UTF-8'); ?>" hidden>
+    <span class="hcb-label" id="homeCartBarLabel"></span>
+    <span class="hcb-btn">View Cart <i class="fa fa-arrow-right"></i></span>
+  </a>
+  <style>
+  .home-cart-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(74px + env(safe-area-inset-bottom, 0px)); z-index: 99;
+    width: calc(100% - 24px); max-width: 401px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 9px 9px 9px 16px; border-radius: 14px; text-decoration: none; color: #fff;
+    background: linear-gradient(135deg, var(--checkout-color, var(--primary-red, #7f1d1d)), var(--checkout-color-dark, var(--checkout-color, var(--primary-red, #5f1414))));
+    box-shadow: 0 10px 24px rgba(0,0,0,.18); animation: hcbIn .3s cubic-bezier(.22,1,.36,1); }
+  .home-cart-bar[hidden] { display: none; }
+  @keyframes hcbIn { from { transform: translate(-50%, 18px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+  .home-cart-bar .hcb-label { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .home-cart-bar .hcb-btn { background: #fff; color: var(--checkout-color, var(--primary-red, #7f1d1d)); font-weight: 800; font-size: 13.5px; border-radius: 10px; padding: 9px 13px; white-space: nowrap; display: flex; align-items: center; gap: 7px; }
+  body.has-home-cart-bar { padding-bottom: 64px; }
+  </style>
 </div>
 <?php require __DIR__ . '/bottom_nav_styles.php'; ?>
 <style>
@@ -2522,6 +2539,10 @@ function addToCart(itemId, varInfo) {
   } else {
     cartItems[itemId] = (cartItems[itemId] || 0) + 1;
   }
+  // first one of this dish: say so (the "+" on the card only turns into a number)
+  if (item && getItemTotalQty(parseInt(item.id, 10)) === 1 && typeof showToast === 'function') {
+    showToast('Added ' + escHtml(item.item_name_translated || item.item_name_en || item.name || 'item') + (varInfo && varInfo.varName ? ' (' + escHtml(varInfo.varName) + ')' : '') + ' to cart');
+  }
   updateCartBadge();
   var el = document.getElementById('qty-' + itemId);
   if (el) el.innerHTML = renderQtyControl(itemId, getItemById(itemId));
@@ -2571,13 +2592,29 @@ function loadCart() {
 }
 
 function updateCartBadge() {
-  var total = 0;
+  // dishes and combos count as items; order add-ons (gift wrap…) only add to the price, as on the cart page
+  var total = 0, price = 0;
   for (var k in cartItems) {
     var v = cartItems[k];
-    total += typeof v === 'number' ? v : (v.qty || 0);
+    if (typeof v === 'number') {
+      total += v;
+      var it = getItemById(k);
+      price += it ? (parseFloat(it.base_price || it.price || 0) || 0) * v : 0;
+    } else if (v && typeof v === 'object') {
+      var q = v.qty || 0;
+      if (!v.isAddon) total += q;
+      price += (parseFloat(v.isAddon ? v.addonPrice : v.varPrice) || 0) * q;
+    }
   }
   var badge = document.querySelector('.cart-badge');
-  if (badge) badge.textContent = total;
+  if (badge) { badge.textContent = total; badge.style.display = total > 0 ? '' : 'none'; }
+  // the "N items | ₹… View Cart" bar above the nav
+  var bar = document.getElementById('homeCartBar');
+  if (bar) {
+    bar.hidden = total <= 0;
+    document.body.classList.toggle('has-home-cart-bar', total > 0);
+    if (total > 0) document.getElementById('homeCartBarLabel').innerHTML = total + (total === 1 ? ' item' : ' items') + '<span style="opacity:.55;margin:0 6px">|</span>' + formatPrice(price);
+  }
 }
 
 function renderMenu() {

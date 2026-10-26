@@ -777,7 +777,7 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   margin-bottom: 8px;
 }
 .price-row .val { font-weight: 500; color: #1a1b1f; }
-.price-row .note { color: #c0392b; font-size: 12px; font-weight: 500; }
+.price-row .note { color: #6b7280; font-size: 12px; font-weight: 500; }   /* information, not an error: grey */
 .price-row.discount .val { color: #27ae60; }
 .price-row.discount span:first-child { color: #27ae60; }
 .divider { border: none; border-top: 1px solid #e5e5e5; margin: 8px 0; }
@@ -790,20 +790,27 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   color: #1a1b1f;
   margin-bottom: 10px;
 }
+.addon-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin: 2px 0; border-radius: 10px; cursor: pointer; font-size: 13px; transition: background .15s; }
+.addon-row:hover { background: #faf7f5; }
+.addon-row.on { background: color-mix(in srgb, var(--primary-red, #e17055) 7%, #fff); }
+.addon-row input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--primary-red, #e17055); cursor: pointer; }
+.addon-row .ar-name { flex: 1; min-width: 0; font-weight: 500; color: #374151; }
+.addon-row .ar-name small { color: #9ca3af; font-weight: 500; }
+.addon-row .ar-price { flex-shrink: 0; color: var(--primary-red, #e17055); font-weight: 600; white-space: nowrap; }
 .min-order-warning {
-  background: #fff0f0;
-  border: 2px solid #e74c3c;
+  background: #fff8e6;
+  border: 1px solid #f5d48a;
   border-radius: 10px;
   padding: 12px 14px;
   font-size: 13px;
-  color: #c0392b;
+  color: #8a5a00;
   font-weight: 600;
   line-height: 1.5;
   margin-bottom: 8px;
   text-align: center;
 }
 .min-order-warning i {
-  color: #e74c3c;
+  color: #d39200;
   font-size: 16px;
   margin-right: 4px;
 }
@@ -987,6 +994,7 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
 }
 .checkout-bar .checkout-btn:hover { opacity: .85; }
 .checkout-bar .checkout-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.checkout-bar .checkout-btn.need-more:disabled { opacity: 0.9; font-size: 13px; }
 
 /* Closed overlay */
 .closed-overlay {
@@ -1394,6 +1402,12 @@ function loadMenuItems() {
           renderCart();
           // a saved reward / poster offer whose minimum depends on the cart total: check again now the prices are known
           if (availableCoupons.length) applySavedReward();
+          // back from "Continue as guest" / log in, on the way to checkout: open it, no second tap on Checkout
+          var resume = false;
+          try { resume = sessionStorage.getItem('rgResumeCheckout') === '1'; sessionStorage.removeItem('rgResumeCheckout'); } catch (e) {}
+          var cameAs = !!window.loggedInCustomer;
+          try { cameAs = cameAs || sessionStorage.getItem('guestSessionActive') === '1'; } catch (e) {}
+          if (resume && cameAs && Object.keys(cartItems).length) setTimeout(proceedCheckout, 150);   // (back without choosing: no loop to login)
         });
     })
     .catch(function(err) { console.error('Failed to load menu items:', err); document.getElementById('cartContent').innerHTML = '<div class="card card-pad" style="text-align:center;padding:40px 20px;color:#e74c3c"><p>Failed to load menu. Please refresh.</p></div>'; });
@@ -1661,7 +1675,8 @@ function renderGlobalAddons() {
   if (cardEl) cardEl.style.display = addonsList.length > 0 ? '' : 'none';
   var sym = getCurrency();
   var html = '';
-  // Show available add-ons to click
+  // Each add-on is a tick box: ticked when it's on the order, a tap adds or removes it
+  var shown = {};
   if (addonsList.length > 0) {
     for (var i = 0; i < addonsList.length; i++) {
       var a = addonsList[i];
@@ -1669,36 +1684,24 @@ function renderGlobalAddons() {
       var aName = a.addon_name || a.name || 'Add-on';
       var aPrice = parseFloat(a.addon_price || a.price || 0);
       var id = a.id;
-      html += '<div class="addon-row" data-addon-id="' + id + '" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;margin:2px 0;border-radius:8px;cursor:pointer;transition:background 0.15s;font-size:13px">' +
-        '<span style="font-weight:500;color:#444">' + escapeHtml(aName) + '</span>' +
-        '<span style="color:var(--primary-red, #e17055);font-weight:600">+' + sym + aPrice.toFixed(2) + '</span>' +
-        '</div>';
+      var inCart = cartItems['addon_' + id];
+      var onQty = inCart && typeof inCart === 'object' ? (inCart.qty || 0) : 0;
+      shown['addon_' + id] = true;
+      html += '<label class="addon-row' + (onQty ? ' on' : '') + '" data-addon-id="' + id + '">' +
+        '<input type="checkbox"' + (onQty ? ' checked' : '') + '>' +
+        '<span class="ar-name">' + escapeHtml(aName) + (onQty > 1 ? ' <small>×' + onQty + '</small>' : '') + '</span>' +
+        '<span class="ar-price">+' + sym + aPrice.toFixed(2) + '</span>' +
+        '</label>';
     }
   }
-  // Show already selected addons
-  var addedAddons = [];
+  // add-ons on the order that the restaurant no longer lists: still shown, so they can be taken off
   var allKeys = Object.keys(cartItems);
   for (var ki = 0; ki < allKeys.length; ki++) {
     var raw = cartItems[allKeys[ki]];
-    if (raw && typeof raw === "object" && raw.isAddon) {
-      addedAddons.push({ key: allKeys[ki], raw: raw });
-    }
-  }
-  if (addedAddons.length > 0) {
-    html += '<div style="border-top:1px solid #f0e8e0;margin:6px 0;padding-top:6px"></div>';
-    for (var si = 0; si < addedAddons.length; si++) {
-      var item = addedAddons[si];
-      var key = item.key;
-      var raw = item.raw;
-      var qty = raw.qty || 0;
-      var price = raw.addonPrice || 0;
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px">' +
-        '<span style="font-weight:500;color:var(--primary-red, #e17055);flex:1">' + escapeHtml(raw.addonName || 'Add-on') + '</span>' +
-        '<span style="color:#999;font-size:12px">x' + qty + '</span>' +
-        '<span style="font-weight:600;color:#2d3436">' + sym + (price * qty).toFixed(2) + '</span>' +
-        '<button onclick="deleteItem(\'' + key + '\')" style="width:24px;height:24px;border:none;border-radius:4px;background:#fef2f2;color:#e74c3c;cursor:pointer;font-size:12px;display:grid;place-items:center;flex-shrink:0">\u2715</button>' +
-        '</div>';
-    }
+    if (!(raw && typeof raw === "object" && raw.isAddon) || shown[allKeys[ki]]) continue;
+    html += '<label class="addon-row on" data-addon-key="' + escapeHtml(allKeys[ki]) + '"><input type="checkbox" checked>' +
+      '<span class="ar-name">' + escapeHtml(raw.addonName || 'Add-on') + ((raw.qty || 0) > 1 ? ' <small>×' + raw.qty + '</small>' : '') + '</span>' +
+      '<span class="ar-price">+' + sym + ((raw.addonPrice || 0) * (raw.qty || 0)).toFixed(2) + '</span></label>';
   }
   if (!html) {
     container.innerHTML = '<div style="font-size:12px;color:#aaa;padding:4px 0">No add-ons available</div>';
@@ -1707,8 +1710,16 @@ function renderGlobalAddons() {
   container.innerHTML = html;
   var rows = container.querySelectorAll('.addon-row');
   for (var ri = 0; ri < rows.length; ri++) {
-    rows[ri].addEventListener('click', function() {
-      var id = parseInt(this.getAttribute('data-addon-id'), 10);
+    rows[ri].querySelector('input').addEventListener('change', function() {
+      var row = this.closest('.addon-row');
+      var key = row.getAttribute('data-addon-key') || ('addon_' + row.getAttribute('data-addon-id'));
+      if (!this.checked) {   // unticked: off the order
+        delete cartItems[key];
+        saveCart();
+        renderCart();
+        return;
+      }
+      var id = parseInt(row.getAttribute('data-addon-id'), 10);
       var a = null;
       for (var j = 0; j < addonsList.length; j++) {
         if (addonsList[j].id == id) { a = addonsList[j]; break; }
@@ -1735,7 +1746,7 @@ function addGlobalAddon(addonId, addonName, addonPrice) {
   }
   saveCart();
   renderCart();
-  showToast('Added ' + escapeHtml(addonName) + ' to cart', 'success');
+  showToast(escapeHtml(addonName) + ' added', 'success');
 }
 
 
@@ -2036,7 +2047,7 @@ function renderCart() {
         '</div>' : '') +
         '<div class="price-row">' +
           '<span>Delivery Fee</span>' +
-          (vipFreeDelivery(totalPrice) ? '<span class="val" style="color:#16a34a">Free for ' + escapeHtml(window.cartVip.name) + ' members</span>' : '<span class="note">Delivery fee is calculated after login</span>') +
+          (vipFreeDelivery(totalPrice) ? '<span class="val" style="color:#16a34a">Free for ' + escapeHtml(window.cartVip.name) + ' members</span>' : '<span class="note">Worked out at checkout</span>') +
         '</div>' +
         '<hr class="divider">' +
         '<div class="total-row">' +
@@ -2045,7 +2056,7 @@ function renderCart() {
         '</div>' +
         '<div class="price-row"><span class="note">Taxes and charges are added at checkout, before you pay.</span></div>' +
         (MIN_ORDER > 0 ? '<div class="min-order-warning" id="minOrderWarning">' +
-          '<i class="fa-solid fa-circle-exclamation"></i> Minimum Order Value Is ' + getCurrency() + MIN_ORDER.toFixed(2) + ' Please Add More Items To Proceed.' +
+          '<i class="fa-solid fa-circle-info"></i> Add ' + getCurrency() + Math.ceil(Math.max(0, MIN_ORDER - totalPrice)) + ' more to order. The minimum order is ' + getCurrency() + MIN_ORDER.toFixed(0) + '.' +
         '</div>' +
         (totalPrice < MIN_ORDER ? '<div class="min-order-bar"><div class="fill" style="width:' + Math.min(100, (totalPrice / MIN_ORDER) * 100) + '%"></div></div>' : '') : '') +
         ((discountAmount + loyaltyDiscountAmount + vipDiscountAmount) > 0 ? '<div class="bill-save"><i class="fa-solid fa-circle-check"></i>You\'re saving ' + getCurrency() + (discountAmount + loyaltyDiscountAmount + vipDiscountAmount).toFixed(0) + ' on this order</div>' : '') +
@@ -2073,14 +2084,21 @@ function renderCart() {
   renderUpsell(keys, totalPrice);
   var sym = getCurrency();
   document.getElementById('checkoutLabel').innerHTML = regQty + (regQty === 1 ? ' item' : ' items') + '<span style="opacity:.55;margin:0 6px;font-weight:400">|</span>' + sym + finalTotal.toFixed(2);
-  document.getElementById('checkoutBtn').disabled = true;
+  var chkBtn = document.getElementById('checkoutBtn');
+  chkBtn.disabled = true;
 
   if (MIN_ORDER <= 0 || totalPrice >= MIN_ORDER) {
     var warningEl = document.getElementById('minOrderWarning');
     if (warningEl) {
       warningEl.style.display = 'none';
     }
-    document.getElementById('checkoutBtn').disabled = false;
+    chkBtn.disabled = false;
+    chkBtn.classList.remove('need-more');
+    chkBtn.innerHTML = 'Checkout <i class="fa fa-arrow-right"></i>';
+  } else {
+    // below the minimum: the bar itself says what's missing (the note sits far down the page)
+    chkBtn.classList.add('need-more');
+    chkBtn.textContent = 'Add ' + sym + Math.ceil(MIN_ORDER - totalPrice) + ' more';
   }
 }
 
@@ -2160,7 +2178,8 @@ function upsellAdd(id, btn) {
 function upsellChoose(id) {
   trackUpsellEvent('add', id);
   var url = appendTableParam('<?php echo restaurantPageUrl('menu'); ?>');
-  window.location.href = url + (url.indexOf('?') === -1 ? '?' : '&') + 'dish=' + id;
+  // back=cart: once a size is added the menu brings the customer straight back here
+  window.location.href = url + (url.indexOf('?') === -1 ? '?' : '&') + 'dish=' + id + '&back=cart';
 }
 
 // Wallet balance for "Pay from wallet" at checkout (logged-in customers only)
@@ -2904,6 +2923,7 @@ function proceedCheckout() {
       // Preserve ?table=X (dine-in QR scan) across the login/signup/guest
       // detour, otherwise login.php would bounce a QR'd-in customer back to
       // cart.php with no table context.
+      try { sessionStorage.setItem('rgResumeCheckout', '1'); } catch (e) {}
       window.location.href = appendTableParam(window.loginUrl);
       return;
     }
@@ -3027,10 +3047,14 @@ function refreshCheckoutTotal() {
   var feeRow = document.getElementById('deliveryFeeRow');
   var feeAmount = document.getElementById('deliveryFeeAmount');
   if (feeRow && feeAmount) {
-    feeRow.style.display = isDelivery && (delCharge > 0 || vipFree) ? 'flex' : 'none';
+    // a delivery order always shows its delivery line, so the customer never wonders whether one is coming
+    feeRow.style.display = isDelivery ? 'flex' : 'none';
+    var hasAddr = !!((document.getElementById('chkAddressFormatted') || {}).value || (document.getElementById('chkPincode') || {}).value);
     if (vipFree) feeAmount.innerHTML = '<s style="color:#9ca3af">' + getCurrency() + checkoutDeliveryCharge.toFixed(2) + '</s> <b style="color:#16a34a">Free</b>';
     else if (isDelivery && delCharge > 0) {
       feeAmount.textContent = getCurrency() + delCharge.toFixed(2);
+    } else if (isDelivery) {
+      feeAmount.innerHTML = hasAddr ? '<b style="color:#16a34a">Free</b>' : '<span style="color:#6b7280">After you add the address</span>';
     }
   }
 

@@ -55,6 +55,8 @@
     '.rgn-island .rgn-m{overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .25s .2s}',
     '.rgn-island.rgn-in .rgn-m{opacity:1}',
     '.rgn-island.rgn-bump{animation:rgnBump .4s}',
+    '.rgn-island.rgn-in.rgn-wrap{height:auto;min-height:48px;padding:8px 18px 8px 12px;border-radius:22px;white-space:normal;line-height:1.35}',
+    '.rgn-island.rgn-wrap .rgn-m{text-overflow:clip}',
     '@keyframes rgnBump{40%{transform:translate(-50%,0) scale(1.06)}}',
     /* snackbar */
     '.rgn-snack{position:fixed;left:16px;bottom:var(--rgn-bottom,24px);z-index:100050;display:flex;align-items:center;gap:18px;min-width:300px;max-width:calc(100vw - 32px);padding:12px 8px 12px 16px;border-radius:10px;background:#1f2937;color:#fff;font-family:inherit;font-size:14px;box-shadow:0 10px 28px -6px rgba(0,0,0,.45);opacity:0;transform:translateY(24px);transition:opacity .25s,transform .3s cubic-bezier(.2,.9,.3,1.1)}',
@@ -199,7 +201,15 @@
     inject();
     var n = islandNode;
     var html = '<span class="rgn-i">' + icon(t) + '</span><span class="rgn-m">' + body(msg, o) + '</span>';
-    var fit = function () { n.style.width = Math.min(window.innerWidth - 24, n.querySelector('.rgn-m').scrollWidth + 62) + 'px'; };
+    // as wide as the whole message (icon + gap + text + the open padding of 12 + 18); a message too long for
+    // the screen wraps onto two lines instead of ending in "…"
+    var fit = function () {
+      var m = n.querySelector('.rgn-m'), ic = n.querySelector('.rgn-i');
+      n.classList.remove('rgn-wrap');
+      var need = Math.ceil(m.scrollWidth + (ic ? ic.offsetWidth : 20) + 10 + 30 + 4), max = window.innerWidth - 24;
+      if (need > max) n.classList.add('rgn-wrap');
+      n.style.width = Math.min(max, need) + 'px';
+    };
     if (n && !n._gone) {   // already open: swap the text, resize and give it a little bounce
       n.className = 'rgn-island rgn-in rgn-c-' + t; n.innerHTML = html;
       fit(); void n.offsetWidth; n.classList.add('rgn-bump');

@@ -838,7 +838,7 @@ try {
             $itemsByOrder = [];
             if ($orders) {
                 $orderIds = array_map(fn($o) => (int)$o['id'], $orders);
-                $itemsStmt = $conn->prepare("SELECT oi.order_id, oi.item_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes, oi.menu_item_id, mi.item_type, mi.item_image
+                $itemsStmt = $conn->prepare("SELECT oi.order_id, oi.item_name, oi.variation_name, oi.quantity, oi.unit_price, oi.total_price, oi.notes, oi.menu_item_id, mi.item_type, mi.item_image
                                            FROM order_items oi
                                            LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
                                            WHERE oi.order_id IN (" . implode(',', array_fill(0, count($orderIds), '?')) . ") ORDER BY oi.id");

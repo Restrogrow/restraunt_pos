@@ -13,6 +13,7 @@
  *  - rgLoadFailed(el, 'the menu', retry): "Couldn't load …" with a Try again button in el, which also tries
  *    again by itself when the connection comes back.
  *  - A small "You're offline" bar while the phone has no connection.
+ *  - Phone boxes (type="tel") get the number keypad and keep only digits.
  */
 if (!function_exists('rgNetScript')) {
     function rgNetScript(): string {
@@ -115,6 +116,31 @@ if (!function_exists('rgNetScript')) {
   window.addEventListener('online', function () { if (bar) note(false); });
   document.addEventListener('DOMContentLoaded', function () { if (navigator.onLine === false) note(true); });
 })();
+// Phone boxes (type="tel") on every page: the number keypad, and digits only, so a browser's saved username
+// can't end up as the phone number
+document.addEventListener('focusin', function (e) { var t = e.target; if (t && t.type === 'tel' && !t.inputMode) t.inputMode = 'numeric'; });
+document.addEventListener('input', function (e) {
+  var t = e.target;
+  if (!t || t.type !== 'tel' || t.hasAttribute('data-any-text')) return;
+  var v = t.value, d = v.replace(/\D/g, '');
+  if (d !== v) t.value = d;
+}, true);
+// Esc closes the popup on top (dish sheet, checkout, offer and other pop-ups), through its own close button
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
+  var open = Array.prototype.filter.call(document.querySelectorAll('.product-sheet-overlay.active, .modal-overlay, .coupon-overlay, .feedback-modal-overlay'), function (el) {
+    var cs = getComputedStyle(el);
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.05 && el.getClientRects().length > 0;
+  });
+  var top = open[open.length - 1];
+  if (!top) return;
+  var x = top.querySelector('.product-sheet-close, .modal-close, .close-btn, .btn-close, [aria-label="Close"]');
+  if (x) x.click();
+  else if (top.classList.contains('product-sheet-overlay') && typeof window.closeProductSheet === 'function') window.closeProductSheet();
+  else if (top.classList.contains('modal-overlay') && !top.id) top.remove();   // the pop-ups made on the fly close by removing them
+  else return;
+  e.preventDefault();
+});
 </script>
 JS;
     }
