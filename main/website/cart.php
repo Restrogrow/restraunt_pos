@@ -790,7 +790,7 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   color: #1a1b1f;
   margin-bottom: 10px;
 }
-.addon-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin: 2px 0; border-radius: 10px; cursor: pointer; font-size: 13px; transition: background .15s; }
+.addon-row { display: flex; width: 100%; box-sizing: border-box; align-items: center; gap: 10px; padding: 9px 10px; margin: 2px 0; border-radius: 10px; cursor: pointer; font-size: 13px; transition: background .15s; }
 .addon-row:hover { background: #faf7f5; }
 .addon-row.on { background: color-mix(in srgb, var(--primary-red, #e17055) 7%, #fff); }
 .addon-row input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--primary-red, #e17055); cursor: pointer; }
