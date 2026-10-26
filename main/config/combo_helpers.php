@@ -66,6 +66,12 @@ function ensureCombosTables(PDO $conn): void
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_combo_sales (restaurant_id, combo_id, created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // a combo's priced line has no dish: older databases have order_items.menu_item_id NOT NULL, which
+    // made every website order with a combo fail (same as admin/fix_order_items_menu_item_id_nullable.php)
+    try {
+        $col = $conn->query("SHOW COLUMNS FROM order_items LIKE 'menu_item_id'")->fetch(PDO::FETCH_ASSOC);
+        if ($col && strtoupper((string)$col['Null']) === 'NO') $conn->exec("ALTER TABLE order_items MODIFY menu_item_id INT(11) NULL DEFAULT NULL");
+    } catch (Throwable $e) { error_log('ensureCombosTables order_items.menu_item_id: ' . $e->getMessage()); }
 }
 
 /** Is the combo on sale at this moment? Returns [bool live, string why-not / when]. */
