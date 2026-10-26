@@ -22,7 +22,7 @@ if (isset($_GET['preview_card']) && in_array($_GET['preview_card'], THEME_MENU_C
 <title><?php echo htmlspecialchars(seoTitle('menu', 'Menu - ' . ($restaurant_name ?? '')), ENT_QUOTES, 'UTF-8'); ?></title>
 <?php echo seoHeadTags('menu'); ?>
 <?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'fontawesome']); ?>
-<?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
+<?php if (!empty($font_family_google_param)) echo websiteThemeFontLink($font_family_google_param); ?>
 <style>
 :root {
   --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
@@ -1365,8 +1365,8 @@ window.packagingCharge = <?php echo json_encode((float)$packaging_charge, JSON_H
 window.showInstallApp = <?php echo json_encode($show_install_app, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.restaurantTimezoneOffset = <?php echo json_encode($timezone_offset_minutes ?? 330, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 </script>
-<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
-<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>" defer></script>
+<script>document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))'); document.addEventListener('DOMContentLoaded', function () { if (window.RGNotify) RGNotify.setup({ toast: 'web' }); });</script>
 </head>
 <body>
 <?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>

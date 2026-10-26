@@ -17,7 +17,7 @@
 <link rel="icon" href="<?php echo htmlspecialchars($favicon_href ?? $local_favicon_svg, ENT_QUOTES, 'UTF-8'); ?>">
 <title>Cart - <?php echo htmlspecialchars($restaurant_name ?? 'Dvani Cafe & Grill', ENT_QUOTES, 'UTF-8'); ?></title>
 <?php require_once __DIR__ . '/font_links.php'; echo websiteFontLinks(['poppins', 'material-symbols', 'fontawesome']); ?>
-<?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
+<?php if (!empty($font_family_google_param)) echo websiteThemeFontLink($font_family_google_param); ?>
 <!-- Google Maps Places Autocomplete (Delivery address) -->
 <?php $googleMapsApiKey = function_exists('googleMapsApiKey') ? googleMapsApiKey() : ''; ?>
 <?php if ($googleMapsApiKey): ?>
@@ -1267,9 +1267,9 @@ function appendTableParam(url) {
   }
   return url;
 }</script>
-<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>" defer></script>
 <script src="rg-order-push.js?v=<?php echo @filemtime(__DIR__ . '/rg-order-push.js'); ?>" defer></script>
-<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
+<script>document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))'); document.addEventListener('DOMContentLoaded', function () { if (window.RGNotify) RGNotify.setup({ toast: 'web' }); });</script>
 </head>
 <body>
 <?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>

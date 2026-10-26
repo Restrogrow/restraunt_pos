@@ -86,9 +86,13 @@ if (isset($_GET['table']) && trim($_GET['table']) !== '') {
 // arrive with the page and are cached for a year, so the page never shows
 // unstyled text or missing icons while waiting on third-party CDNs.
 require_once __DIR__ . '/font_links.php';
+// the header photo is the biggest thing on screen: start it now, not after the CSS below is read
+if ($header_style !== 'minimal' && !in_array($hx_style, THEME_HEADER_NO_PHOTO_STYLES, true) && !empty($background_theme)) {
+    echo '<link rel="preload" as="image" href="' . htmlspecialchars($background_theme, ENT_QUOTES, 'UTF-8') . '" fetchpriority="high">' . "\n";
+}
 echo websiteFontLinks(['poppins', 'fontawesome']);
 ?>
-<?php if (!empty($font_family_google_param)): ?><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=<?php echo $font_family_google_param; ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet"><?php endif; ?>
+<?php if (!empty($font_family_google_param)) echo websiteThemeFontLink($font_family_google_param); ?>
 <style>
 :root {
   --primary-red: <?php echo htmlspecialchars($primary_red, ENT_QUOTES, 'UTF-8'); ?>;
@@ -1975,8 +1979,8 @@ window.socialLinks = {
   linkedin: <?php echo json_encode($linkedin_link, JSON_HEX_TAG | JSON_HEX_AMP); ?>
 };
 </script>
-<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
-<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>" defer></script>
+<script>document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))'); document.addEventListener('DOMContentLoaded', function () { if (window.RGNotify) RGNotify.setup({ toast: 'web' }); });</script>
 </head>
 <body>
 <?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>

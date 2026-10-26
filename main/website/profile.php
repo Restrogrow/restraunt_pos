@@ -1172,8 +1172,8 @@ body { background: #e3e6ea; }
 .pfc-sharp.pf-banner .profile-hero { border-radius: 0; }
 .pfs-hide .stats-grid { display: none; }
 </style>
-<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>"></script>
-<script>RGNotify.setup({ toast: 'web' }); document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))');</script>
+<script src="rg-notify.js?v=<?php echo @filemtime(__DIR__ . '/rg-notify.js'); ?>" defer></script>
+<script>document.documentElement.style.setProperty('--rgn-bottom-m', 'calc(84px + env(safe-area-inset-bottom))'); document.addEventListener('DOMContentLoaded', function () { if (window.RGNotify) RGNotify.setup({ toast: 'web' }); });</script>
 </head>
 <body>
 <?php if (!empty($rg_brand_ctx)) echo brandSwitcherBar($rg_brand_ctx); // a brand outlet: "Change outlet" (website/brand_router.php) ?>

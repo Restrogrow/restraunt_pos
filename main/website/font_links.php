@@ -56,4 +56,17 @@ if (!function_exists('websiteFontsBaseUrl')) {
         }
         return $out;
     }
+
+    /**
+     * The restaurant's theme font from Google Fonts (Playfair Display, Roboto…; header.php
+     * $font_family_google_param), loaded without holding up the first paint: the page draws
+     * in the fallback font and switches when it arrives (display=swap). Poppins never comes here.
+     */
+    function websiteThemeFontLink(string $googleParam): string {
+        $href = htmlspecialchars('https://fonts.googleapis.com/css2?family=' . $googleParam . ':wght@300;400;500;600;700&display=swap');
+        return '<link rel="preconnect" href="https://fonts.googleapis.com">'
+             . '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+             . '<link rel="preload" as="style" href="' . $href . '" onload="this.onload=null;this.rel=\'stylesheet\'">'
+             . '<noscript><link rel="stylesheet" href="' . $href . '"></noscript>';
+    }
 }
