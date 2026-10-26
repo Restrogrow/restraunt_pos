@@ -799,7 +799,7 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
 .mp-results button:hover { background: #f9fafb; }
 .mp-results button i { color: var(--primary-red, #e53935); margin-top: 2px; }
 .mp-empty { padding: 12px; font-size: 13px; color: #6b7280; }
-.pac-container { z-index: 10100 !important; }   /* Google's suggestions above the map picker */
+body .pac-container { z-index: 10100 !important; }   /* Google's suggestions above the map picker */
 .addon-row { display: flex; width: 100%; box-sizing: border-box; align-items: center; gap: 10px; padding: 9px 10px; margin: 2px 0; border-radius: 10px; cursor: pointer; font-size: 13px; transition: background .15s; }
 .addon-row:hover { background: #faf7f5; }
 .addon-row.on { background: color-mix(in srgb, var(--primary-red, #e17055) 7%, #fff); }
