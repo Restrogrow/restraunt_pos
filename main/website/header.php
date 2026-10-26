@@ -677,6 +677,8 @@ function restaurantPageUrl($page = '') {
 // Favicon — admin-set favicon_url override, else the uploaded restaurant logo,
 // else a local SVG placeholder (avoids external 404s if neither is set).
 $favicon_href = $favicon_url_override ?? $restaurant_logo ?? $local_favicon_svg;
+// the browser fetches the tab icon on every page: a 128 px copy of an uploaded logo, not the full file
+if (is_string($favicon_href) && strpos($favicon_href, 'image.php?type=logo&id=') === 0) $favicon_href .= '&w=128';
 
 $website_base_href = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
 $site_root = rtrim(dirname(dirname(dirname($_SERVER['SCRIPT_NAME']))), '/') . '/';

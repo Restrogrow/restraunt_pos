@@ -50,6 +50,13 @@ if ($restaurantId && function_exists('getConnection')) {
             if (!empty($row['logo_data']) && @getimagesizefromstring($row['logo_data']) !== false) {
                 $iconUrl = $siteRoot . 'main/api/image.php?type=logo&id=' . $row['id'];
                 $iconType = !empty($row['logo_mime_type']) ? $row['logo_mime_type'] : 'image/jpeg';
+                // a small WebP per size (website/image.php &w=): the browser fetches the app icon on every visit,
+                // and an uploaded logo is often 500 KB+
+                if (function_exists('imagewebp') && @imagecreatefromstring($row['logo_data'])) {
+                    $iconSized = [192 => $siteRoot . 'main/website/image.php?type=logo&id=' . $row['id'] . '&w=192',
+                                  512 => $siteRoot . 'main/website/image.php?type=logo&id=' . $row['id'] . '&w=512'];
+                    $iconType = 'image/webp';
+                }
             } elseif (!empty($row['restaurant_logo']) && strpos($row['restaurant_logo'], 'db:') !== 0) {
                 $iconUrl = $siteRoot . 'main/api/image.php?type=logo&id=' . $row['id'];
                 $ext = strtolower(pathinfo(parse_url($row['restaurant_logo'], PHP_URL_PATH) ?: $row['restaurant_logo'], PATHINFO_EXTENSION));
@@ -91,13 +98,13 @@ echo json_encode([
     'prefer_related_applications' => false,
     'icons' => [
         [
-            'src' => $iconUrl,
+            'src' => $iconSized[192] ?? $iconUrl,
             'sizes' => '192x192',
             'type' => $iconType,
             'purpose' => 'any maskable'
         ],
         [
-            'src' => $iconUrl,
+            'src' => $iconSized[512] ?? $iconUrl,
             'sizes' => '512x512',
             'type' => $iconType,
             'purpose' => 'any maskable'

@@ -266,10 +266,11 @@ if (strpos($imagePath, 'db:') === 0 || !empty($imageType)) {
     // Retrieve image from database
     try {
         if ($imageType === 'logo' && !empty($imageId)) {
-            // &w=128/256: a small WebP of an uploaded logo (often 500 KB+ but shown at ~90 px), made once and kept in
-            // uploads/cache/img under the logo's length + CRC, so a new logo gets a new file
+            // &w=128/192/256/512: a small WebP of an uploaded logo (often 500 KB+ but shown at ~90 px; 192 / 512 for
+            // the home-screen app icon), made once and kept in uploads/cache/img under the logo's length + CRC, so a
+            // new logo gets a new file
             $logoW = (int)($_GET['w'] ?? 0);
-            if (in_array($logoW, [128, 256], true) && function_exists('imagewebp')) {
+            if (in_array($logoW, [128, 192, 256, 512], true) && function_exists('imagewebp')) {
                 try {
                     $lk = $conn->prepare('SELECT LENGTH(logo_data) AS n, CRC32(logo_data) AS c FROM users WHERE id = ? AND logo_data IS NOT NULL LIMIT 1');
                     $lk->execute([$imageId]);
