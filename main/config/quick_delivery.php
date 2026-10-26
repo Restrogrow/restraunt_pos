@@ -157,7 +157,11 @@ function qdApi(PDO $conn, string $method, string $path, ?array $body = null): ar
     [$code, $d, $raw] = qdHttp($method, QD_API . $path, $body, qdToken($conn));
     if ($code === 401) [$code, $d, $raw] = qdHttp($method, QD_API . $path, $body, qdToken($conn, true));
     if ($code < 200 || $code >= 300) {
-        $msg = (string)($d['message'] ?? '');
+        $msg = $d['message'] ?? '';
+        // Shiprocket sometimes sends {"address":["…"]} as the message: keep only the words
+        if (is_string($msg) && is_array($j = json_decode($msg, true))) $msg = $j;
+        if (is_array($msg)) { $flat = []; array_walk_recursive($msg, function ($v) use (&$flat) { $flat[] = (string)$v; }); $msg = implode(' ', $flat); }
+        $msg = (string)$msg;
         if (!empty($d['errors']) && is_array($d['errors'])) {
             $first = array_values($d['errors'])[0];
             $msg .= ' ' . (is_array($first) ? implode(' ', $first) : (string)$first);
@@ -204,6 +208,41 @@ function qdReverse(float $lat, float $lng): array
     ];
 }
 
+/**
+ * Address line 1 / line 2 to try, in order, for Shiprocket ("Address line 1 should have House no /
+ * Flat no / Road no"): the address as written (pincode, state and "India" taken off line 1, since they
+ * have their own fields), then with its own first number in front ("No. 12, …"), then, only when it
+ * has no number at all, "<$kind> No. 1, …". The rider finds the place by the map pin and the phone.
+ */
+function qdAddressLines(string $address, string $kind, int $max): array
+{
+    $a = preg_replace('/(?<!\d)[1-9]\d{2}\s?\d{3}(?!\d)/', '', $address);   // the pincode
+    $a = preg_replace('/,?\s*\bIndia\b\.?\s*$/i', '', (string)$a);
+    $a = trim(preg_replace(['/\s*,\s*(,\s*)+/', '/\s{2,}/'], [', ', ' '], (string)$a), " ,-");
+    if ($a === '') $a = trim($address);
+    $split = function (string $line1) use ($max) {
+        if (mb_strlen($line1) <= $max) return [$line1, ''];
+        $cut = mb_strrpos(mb_substr($line1, 0, $max), ',') ?: $max;   // break at a comma when possible
+        return [trim(mb_substr($line1, 0, $cut), ' ,'), trim(mb_substr(mb_substr($line1, $cut), 0, 100), ' ,')];
+    };
+    $out = [$split($a)];
+    if (preg_match('/(?<![\w-])[A-Za-z]{0,3}-?\d+[A-Za-z]?(?:[\/-]\d+[A-Za-z]?)?(?![\w-])/', $a, $m)) {
+        $no = $m[0];
+        // "B-12, Barakhamba Road" → "No. B-12, Barakhamba Road"; "Near X, Shop 4B, Y" → "No. 4B, Near X, Shop 4B, Y"
+        if (stripos($a, $no) === 0) $out[] = $split('No. ' . $a);
+        elseif (!preg_match('/^\s*(no\.?|#)\s*/i', $a)) $out[] = $split('No. ' . $no . ', ' . $a);
+    } else {
+        $out[] = $split($kind . ' No. 1, ' . $a);
+    }
+    return $out;
+}
+
+/** Did Shiprocket refuse the address for having no house / flat / road number? */
+function qdAddressRefused(Throwable $e): bool
+{
+    return (bool)preg_match('/house\s*no|flat\s*no|road\s*no/i', $e->getMessage());
+}
+
 /** A 6-digit Indian pincode written in an address, or ''. */
 function qdPincodeIn(string $text): string
 {
@@ -248,8 +287,8 @@ function qdPickup(PDO $conn, string $rid): array
         'name' => mb_substr((string)$r['restaurant_name'], 0, 60),
         'email' => (string)($r['email'] ?: env('SHIPROCKET_EMAIL')),
         'phone' => qdPhone((string)$r['phone']),
-        'address' => mb_substr((string)$r['address'], 0, 80),
-        'address_2' => mb_strlen((string)$r['address']) > 80 ? mb_substr((string)$r['address'], 80, 80) : '',
+        'address' => '',   // set below from qdAddressLines()
+        'address_2' => '',
         'city' => (string)($r['city'] ?: ($geo['city'] ?? '')),
         'state' => (string)($geo['state'] ?? ''),
         'country' => 'India',
@@ -258,13 +297,21 @@ function qdPickup(PDO $conn, string $rid): array
         'long' => $lng,
     ];
     if (strlen($body['phone']) !== 10) throw new InvalidArgumentException('Add the restaurant\'s 10-digit phone number first (Settings).');
-    // Shiprocket wants "address" to have a house / shop number in it
-    if (!preg_match('/\d/', $body['address'])) $body['address'] = mb_substr('Shop, ' . $body['address'], 0, 80);
-    try {
-        qdApi($conn, 'POST', '/settings/company/addpickup', $body);
-    } catch (RuntimeException $e) {
-        // already there (a second server, or saved before a failure): use it
-        if (!preg_match('/already|exist/i', $e->getMessage())) throw new RuntimeException('Could not add the pickup address: ' . $e->getMessage());
+    // Shiprocket wants a house / shop number in address line 1: try the address as written, then
+    // with a number in front (qdAddressLines), until it takes one
+    $lines = qdAddressLines((string)$r['address'], 'Shop', 80);
+    foreach ($lines as $i => [$line1, $line2]) {
+        $body['address'] = $line1;
+        $body['address_2'] = $line2;
+        try {
+            qdApi($conn, 'POST', '/settings/company/addpickup', $body);
+            if ($i > 0) error_log("quick_delivery pickup $rid: Shiprocket wanted a shop number, sent \"$line1\"");
+            break;
+        } catch (RuntimeException $e) {
+            if (preg_match('/already|exist/i', $e->getMessage())) break;   // already there (a second server, or saved before a failure): use it
+            if (qdAddressRefused($e) && $i < count($lines) - 1) continue;
+            throw new RuntimeException('Could not add the pickup address: ' . $e->getMessage() . (qdAddressRefused($e) ? ' Add your shop or building number to the address in Settings › Location.' : ''));
+        }
     }
     qdSaveSettings($conn, $rid, ['pickup_name' => $name, 'pickup_sig' => $sig, 'pickup_pincode' => $pin, 'pickup_state' => (string)($geo['state'] ?? '')]);
     return [$name, $pin];
@@ -396,9 +443,8 @@ function qdBook(PDO $conn, string $rid, int $orderId, string $by = '', bool $aut
         }
         if (!$items) $items[] = ['name' => 'Food order ' . $o['order_number'], 'sku' => 'RG' . $orderId, 'units' => 1, 'selling_price' => (float)$o['total'], 'discount' => 0, 'tax' => 0, 'hsn' => ''];
 
-        $address = trim((string)$o['customer_address']);
         $name = trim((string)$o['customer_name']) ?: 'Customer';
-        $created = qdApi($conn, 'POST', '/orders/create/adhoc', [
+        $order = [
             // a cancelled Shiprocket order id can't be reused, so each try gets its own
             'order_id' => $o['order_number'] . ($tries ? '-' . ($tries + 1) : ''),
             'order_date' => date('Y-m-d H:i', strtotime((string)$o['created_at'])),
@@ -406,8 +452,8 @@ function qdBook(PDO $conn, string $rid, int $orderId, string $by = '', bool $aut
             'comment' => 'RestroGrow ' . $o['order_number'] . ($o['landmark'] ? ' · Landmark: ' . $o['landmark'] : ''),
             'billing_customer_name' => mb_substr($name, 0, 50),
             'billing_last_name' => '',
-            'billing_address' => mb_substr($address, 0, 190),
-            'billing_address_2' => mb_substr((string)($o['landmark'] ?? ''), 0, 100),
+            'billing_address' => '',   // set below from qdAddressLines()
+            'billing_address_2' => '',
             'billing_city' => (string)(($geo['city'] ?? '') ?: $r['city']),
             'billing_pincode' => $dropPin,
             'billing_state' => (string)(($geo['state'] ?? '') ?: qdSettings($conn, $rid)['pickup_state']),
@@ -420,7 +466,20 @@ function qdBook(PDO $conn, string $rid, int $orderId, string $by = '', bool $aut
             'shipping_charges' => 0, 'giftwrap_charges' => 0, 'transaction_charges' => 0, 'total_discount' => 0,
             'sub_total' => $cash > 0 ? $cash : round((float)$o['total'], 2),
             'length' => 20, 'breadth' => 20, 'height' => 10, 'weight' => 1,
-        ]);
+        ];
+        // the customer's address: as typed, then with a number in front if Shiprocket wants one
+        $landmark = trim((string)($o['landmark'] ?? ''));
+        $lines = qdAddressLines((string)$o['customer_address'], 'House', 150);
+        foreach ($lines as $i => [$line1, $line2]) {
+            $order['billing_address'] = $line1;
+            $order['billing_address_2'] = mb_substr(trim($line2 . ($landmark !== '' ? ($line2 !== '' ? ', ' : '') . 'Landmark: ' . $landmark : '')), 0, 100);
+            try {
+                $created = qdApi($conn, 'POST', '/orders/create/adhoc', $order);
+                break;
+            } catch (RuntimeException $e) {
+                if (!qdAddressRefused($e) || $i === count($lines) - 1) throw $e;
+            }
+        }
         $srOrder = (int)($created['order_id'] ?? 0);
         $shipment = (int)($created['shipment_id'] ?? 0);
         if (!$shipment) throw new RuntimeException((string)($created['message'] ?? 'Shiprocket did not create the order.'));
