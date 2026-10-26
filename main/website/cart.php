@@ -790,6 +790,16 @@ body .checkout-bar .checkout-btn:active { transform: scale(0.96); }
   color: #1a1b1f;
   margin-bottom: 10px;
 }
+.mp-search { position: relative; z-index: 1001; margin-bottom: 8px; }   /* above the Leaflet map panes (z-index 400) */
+.mp-search > i { position: absolute; left: 13px; top: 15px; font-size: 13px; color: #9ca3af; pointer-events: none; }
+.mp-search input { width: 100%; box-sizing: border-box; padding: 11px 12px 11px 36px; border: 1.5px solid #e5e7eb; border-radius: 12px; font-size: 14px; font-family: inherit; outline: none; background: #fafafa; }
+.mp-search input:focus { border-color: var(--primary-red, #e53935); background: #fff; }
+.mp-results { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5; max-height: 240px; overflow-y: auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 12px 28px rgba(0,0,0,.14); }
+.mp-results button { display: flex; gap: 10px; align-items: flex-start; width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid #f3f4f6; background: #fff; text-align: left; font-size: 13px; line-height: 1.35; color: #374151; cursor: pointer; font-family: inherit; }
+.mp-results button:hover { background: #f9fafb; }
+.mp-results button i { color: var(--primary-red, #e53935); margin-top: 2px; }
+.mp-empty { padding: 12px; font-size: 13px; color: #6b7280; }
+.pac-container { z-index: 10100 !important; }   /* Google's suggestions above the map picker */
 .addon-row { display: flex; width: 100%; box-sizing: border-box; align-items: center; gap: 10px; padding: 9px 10px; margin: 2px 0; border-radius: 10px; cursor: pointer; font-size: 13px; transition: background .15s; }
 .addon-row:hover { background: #faf7f5; }
 .addon-row.on { background: color-mix(in srgb, var(--primary-red, #e17055) 7%, #fff); }
@@ -4542,6 +4552,7 @@ function startOsmMapPicker(center) {
     };
     setTimeout(function() { map.invalidateSize(); }, 50);
     reverseGeocodeForPicker(center.lat, center.lng);
+    initMapPickerSearch(center);
   }).catch(function() {
     if (addrEl) addrEl.textContent = 'The map could not load. Please type your address or use your current location.';
   });
@@ -4570,7 +4581,8 @@ function openMapPicker() {
         '<button class="modal-close" type="button" onclick="closeMapPicker()">&times;</button>' +
       '</div>' +
       '<div class="modal-body">' +
-        '<p style="font-size:12px;color:#666;margin-bottom:8px;">Drag the pin, tap the map, or use your current location to set your exact delivery spot.</p>' +
+        '<div class="mp-search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="mapPickerSearch" autocomplete="off" enterkeyhint="search" placeholder="Search area, street or landmark" aria-label="Search a place on the map"><div class="mp-results" id="mapPickerResults" hidden></div></div>' +
+        '<p style="font-size:12px;color:#666;margin-bottom:8px;">Search, drag the pin, tap the map, or use your current location to set your exact delivery spot.</p>' +
         '<div id="mapPickerCanvas" style="width:100%;height:320px;border-radius:10px;overflow:hidden;background:#eee;"></div>' +
         '<div id="mapPickerAddress" style="margin-top:10px;font-size:13px;color:#333;min-height:18px;">Locating...</div>' +
         '<div class="btn-group" style="margin-top:14px;">' +
@@ -4605,6 +4617,76 @@ function openMapPicker() {
   });
 
   reverseGeocodeForPicker(startCenter.lat, startCenter.lng);
+  initMapPickerSearch(startCenter);
+}
+
+// ── Search box on the map picker: jump the pin to a typed place ──
+// With Google Maps: Google's place suggestions. Without (or if Places fails): OpenStreetMap's search, near the restaurant.
+function mapPickerGoTo(lat, lng, formatted, postcode) {
+  if (!mapPickerMap || !mapPickerMarker) return;
+  var p = { lat: lat, lng: lng };
+  mapPickerMap.setCenter(p);
+  mapPickerMap.setZoom(17);
+  mapPickerMarker.setPosition(p);
+  var addrEl = document.getElementById('mapPickerAddress');
+  if (formatted && addrEl) {
+    addrEl.dataset.formatted = formatted;
+    addrEl.dataset.postcode = postcode || '';
+    addrEl.textContent = formatted;
+  } else {
+    reverseGeocodeForPicker(lat, lng);
+  }
+}
+function initMapPickerSearch(near) {
+  var input = document.getElementById('mapPickerSearch');
+  var list = document.getElementById('mapPickerResults');
+  if (!input || !list) return;
+  if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+    try {
+      var ac = new google.maps.places.Autocomplete(input, { fields: ['formatted_address', 'geometry', 'address_components'] });
+      if (near && near.lat) ac.setBounds(new google.maps.LatLngBounds({ lat: near.lat - 0.3, lng: near.lng - 0.3 }, { lat: near.lat + 0.3, lng: near.lng + 0.3 }));
+      ac.addListener('place_changed', function() {
+        var pl = ac.getPlace();
+        if (!pl || !pl.geometry || !pl.geometry.location) return;
+        mapPickerGoTo(pl.geometry.location.lat(), pl.geometry.location.lng(), pl.formatted_address || input.value, extractPostcode(pl.address_components));
+      });
+      input.addEventListener('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });   // Enter picks the suggestion, not the form
+      return;
+    } catch (e) { /* fall through to OpenStreetMap search */ }
+  }
+  var timer = null, reqNo = 0;
+  function show(items, msg) {
+    if (!items || !items.length) { list.innerHTML = msg ? '<div class="mp-empty">' + esc(msg) + '</div>' : ''; list.hidden = !msg; return; }
+    list.innerHTML = items.map(function(it, i) { return '<button type="button" data-i="' + i + '"><i class="fa-solid fa-location-dot"></i><span>' + esc(it.display_name) + '</span></button>'; }).join('');
+    list.hidden = false;
+    Array.prototype.forEach.call(list.querySelectorAll('button'), function(b) {
+      b.addEventListener('click', function() {
+        var it = items[+b.getAttribute('data-i')];
+        input.value = it.display_name;
+        show(null);
+        mapPickerGoTo(parseFloat(it.lat), parseFloat(it.lon), it.display_name, (it.address && it.address.postcode) || '');
+      });
+    });
+  }
+  function search(q) {
+    var mine = ++reqNo;
+    var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=' + encodeURIComponent(q);
+    if (near && near.lat) url += '&viewbox=' + (near.lng - 0.5) + ',' + (near.lat + 0.5) + ',' + (near.lng + 0.5) + ',' + (near.lat - 0.5);
+    show(null, 'Searching…');
+    fetch(url, { headers: { 'Accept-Language': 'en' } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { if (mine === reqNo) show(Array.isArray(d) ? d : [], 'No places found. Try a nearby landmark, or move the pin.'); })
+      .catch(function() { if (mine === reqNo) show(null, 'Search is not working right now. Move the pin instead.'); });
+  }
+  input.addEventListener('input', function() {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    if (q.length < 3) { show(null); return; }
+    timer = setTimeout(function() { search(q); }, 450);
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); if (input.value.trim().length >= 2) search(input.value.trim()); }
+  });
 }
 
 function closeMapPicker() {
