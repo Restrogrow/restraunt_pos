@@ -137,7 +137,49 @@
   window.RGReason = RGReason;
 
   /* ───────────── the new-order popup ───────────── */
-  var O = null, prep = 0, dlv = 0, tick = null, busy = false;
+  var O = null, prep = 0, dlv = 0, tick = null, busy = false, watch = null;
+
+  // The owner often has the dashboard open in many tabs: each rings for a new order. When one tab
+  // accepts / rejects / closes it ("Later"), the others close it and stop ringing (BroadcastChannel,
+  // or the storage event in browsers without it). Another phone or PC answering it is caught by
+  // checking the order every 8 seconds while the popup is open.
+  var CH = 'rg-new-order', bc = null;
+  try { if ('BroadcastChannel' in window) bc = new BroadcastChannel(CH); } catch (e) { bc = null; }
+  function tell(id, kind) {
+    var msg = { id: +id, kind: kind, t: Date.now() };
+    try { if (bc) bc.postMessage(msg); else localStorage.setItem(CH, JSON.stringify(msg)); } catch (e) {}
+  }
+  function heard(msg) {
+    if (!msg || !msg.id) return;
+    // don't pop it up again here
+    if (+msg.id > (window._lastSeenOrderId || 0)) window._lastSeenOrderId = +msg.id;
+    if (!O || +O.id !== +msg.id || busy) return;
+    var num = O.order_number || O.id;
+    close();
+    if (msg.kind === 'accepted') notify('Order #' + num + ' was accepted on another screen', 'success');
+    else if (msg.kind === 'rejected') notify('Order #' + num + ' was rejected on another screen', 'info');
+    else if (msg.kind === 'answered') notify('Order #' + num + ' was ' + (msg.status ? String(msg.status).toLowerCase() : 'answered') + ' on another screen', 'info');
+    if (msg.kind !== 'later') reloadLists();
+  }
+  if (bc) bc.onmessage = function (e) { heard(e.data); };
+  window.addEventListener('storage', function (e) {
+    if (e.key !== CH || !e.newValue) return;
+    try { heard(JSON.parse(e.newValue)); } catch (er) {}
+  });
+  // another device answered it: the order is no longer Pending
+  function startWatch() {
+    clearInterval(watch);
+    watch = setInterval(function () {
+      if (!O || busy) return;
+      var id = O.id;
+      fetch('../api/get_order_details_by_id.php?id=' + encodeURIComponent(id), { cache: 'no-store', credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var st = d && d.success && d.order ? String(d.order.order_status || '') : '';
+          if (st && st !== 'Pending' && O && +O.id === +id && !busy) heard({ id: id, kind: 'answered', status: st });
+        }).catch(function () {});
+    }, 8000);
+  }
   var PREP = [5, 10, 15, 20, 30, 45];
   var T_MAX = 300, T_STEP = 5;
   // "Ready in": preparing time for every order, plus delivery time for delivery orders.
@@ -254,6 +296,7 @@
     if (ov) ov.classList.remove('show');
     document.body.style.overflow = '';
     clearInterval(tick); tick = null;
+    clearInterval(watch); watch = null;
     if (!keepRing && typeof window.stopNewOrderRing === 'function') window.stopNewOrderRing();
     window._currentNotifOrderId = null;
     O = null;
@@ -298,6 +341,7 @@
       document.body.style.overflow = 'hidden';
       clearInterval(tick);
       tick = setInterval(function () { var a = document.getElementById('noAgo'); if (a && O) a.textContent = ago(when(O.created_at)); }, 30000);
+      startWatch();
     },
     // k = 'prep' (preparing) or 'dlv' (delivery)
     setT: function (k, m) {
@@ -322,6 +366,7 @@
     prepCustom: function (v) { RGNewOrder.typeT('prep', v); },
     later: function (page) {
       var num = O ? (O.order_number || O.id) : '';
+      if (O) tell(O.id, 'later');
       close();
       if (num) notify('Order #' + num + ' is waiting in Online Orders', 'info');
       if (page) go(page);
@@ -335,7 +380,7 @@
         window._overlayProcessing = false;
         if (d && d.cancelled) return;
         notify(d && d.success ? 'Order #' + (o.order_number || id) + ' accepted' + (minutes ? ' · ready in ' + minutes + ' min' : '') + (dmin ? ' · delivery ' + dmin + ' min' : '') : ((d && d.message) || 'Could not accept the order'), d && d.success ? 'success' : 'error');
-        if (d && d.success) { reloadLists(); go('onlineOrdersPage'); }
+        if (d && d.success) { tell(id, 'accepted'); reloadLists(); go('onlineOrdersPage'); }
       };
       if (km && typeof window.acceptOrderWithDeliveryCharge === 'function') {
         // the delivery-charge prompt needs the popup out of the way
@@ -363,7 +408,7 @@
         setBusy('reject');
         post({ orderId: o.id, status: 'Rejected', reason: r.text, reason_code: r.code, strike: r.strike ? 1 : '' }).then(function (d) {
           window._overlayProcessing = false;
-          if (d.success) { close(); notify('Order #' + (o.order_number || o.id) + ' rejected: ' + r.text, 'info'); reloadLists(); go('onlineOrdersPage'); }
+          if (d.success) { tell(o.id, 'rejected'); close(); notify('Order #' + (o.order_number || o.id) + ' rejected: ' + r.text, 'info'); reloadLists(); go('onlineOrdersPage'); }
           else { setBusy(false); paint(); notify(d.message || 'Could not reject the order', 'error'); }
         });
       });
