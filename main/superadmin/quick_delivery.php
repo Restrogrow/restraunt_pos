@@ -59,9 +59,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 [, $pin] = qdPickup($conn, $rid);
                 $lat2 = (float)$r['restaurant_lat'] + 0.012; $lng2 = (float)$r['restaurant_lng'] + 0.008;
                 $drop = qdReverse($lat2, $lng2)['pincode'] ?? '';
-                $q = qdServiceability($conn, ['pickup_postcode' => $pin, 'delivery_postcode' => $drop ?: $pin, 'cod' => 0, 'weight' => 1, 'is_new_hyperlocal' => 1,
-                    'lat_from' => (float)$r['restaurant_lat'], 'long_from' => (float)$r['restaurant_lng'], 'lat_to' => $lat2, 'long_to' => $lng2]);
-                $message = $r['restaurant_name'] . ' → ~1.5 km away: ' . $q['courier_name'] . ' ₹' . number_format($q['rate'], 2) . ($q['eta'] !== '' ? ' (' . $q['eta'] . ')' : '') . '. Nothing was booked.';
+                $ask = ['pickup_postcode' => $pin, 'delivery_postcode' => $drop ?: $pin, 'cod' => 0, 'weight' => 1, 'is_new_hyperlocal' => 1,
+                    'lat_from' => (float)$r['restaurant_lat'], 'long_from' => (float)$r['restaurant_lng'], 'lat_to' => $lat2, 'long_to' => $lng2];
+                // cash on delivery too: Shiprocket may serve a prepaid ride and not a COD one
+                try { $c = qdServiceability($conn, ['cod' => 1] + $ask); $cod = 'COD ₹' . number_format($c['rate'], 2); }
+                catch (Throwable $e) { $cod = 'COD: ' . $e->getMessage(); }
+                $codSeen = $GLOBALS['qd_last_service'] ?? null;
+                $q = qdServiceability($conn, $ask);
+                $GLOBALS['qd_last_service'] = ['prepaid' => $GLOBALS['qd_last_service'] ?? null, 'cod' => $codSeen];
+                $message = $r['restaurant_name'] . ' → ~1.5 km away: ' . $q['courier_name'] . ' prepaid ₹' . number_format($q['rate'], 2) . ($q['eta'] !== '' ? ' (' . $q['eta'] . ')' : '') . '; ' . $cod . '. Nothing was booked.';
             }
         }
     } catch (InvalidArgumentException $e) {
