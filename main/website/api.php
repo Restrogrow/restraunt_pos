@@ -50,6 +50,36 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
  * stable tie-breaker); items without variations get []. A missing table just
  * means no variations.
  */
+// Menu search when nothing is spelled like the query: the closest dish names (ids, best first, at most 10).
+// Spellings of Indian dish names vary (rasgula / rasgulla / rossogolla, paneer / panir), so both sides drop
+// doubled letters and long vowels before comparing, then allow a small edit distance per word.
+function websiteSearchFuzzyIds(PDO $conn, string $rid, string $q, string $hiddenSql): array {
+    $norm = function (string $s): string {
+        $s = strtolower(preg_replace('/[^a-z]/i', '', $s));
+        $s = strtr($s, ['ee' => 'i', 'oo' => 'u', 'aa' => 'a', 'w' => 'v', 'z' => 'j', 'ph' => 'f', 'kh' => 'k', 'gh' => 'g', 'th' => 't', 'dh' => 'd', 'sh' => 's', 'ch' => 'c']);
+        return preg_replace('/(.)\1+/', '$1', $s);
+    };
+    $qn = $norm($q);
+    if (strlen($qn) < 3) return [];
+    $st = $conn->prepare("SELECT mi.id, mi.item_name_en FROM menu_items mi JOIN menu m ON mi.menu_id = m.id WHERE mi.restaurant_id = ? AND m.is_active = 1" . $hiddenSql . " LIMIT 1000");
+    $st->execute([$rid]);
+    $scored = [];
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $name = (string)$r['item_name_en'];
+        $best = 99;
+        // each word, and the whole name (for "gulabjamun" typed together)
+        foreach (array_merge(preg_split('/\s+/', $name), [$name]) as $w) {
+            $wn = $norm($w);
+            if ($wn === '') continue;
+            if (strpos($wn, $qn) !== false || (strlen($wn) >= 4 && strpos($qn, $wn) === 0)) { $best = 0; break; }
+            $best = min($best, levenshtein($qn, substr($wn, 0, strlen($qn) + 2)));
+        }
+        if ($best <= max(1, intdiv(strlen($qn), 4))) $scored[(int)$r['id']] = $best;
+    }
+    asort($scored);
+    return array_slice(array_keys($scored), 0, 10);
+}
+
 function attachVariationsToItems(PDO $conn, array &$items): void {
     $ids = [];
     foreach ($items as $it) {
@@ -657,9 +687,10 @@ try {
                 $query .= " LEFT JOIN subcategories sc ON mi.subcategory_id = sc.id";
             }
             
-            $query .= " WHERE (mi.item_name_en LIKE :search1 OR mi.item_description_en LIKE :search2 OR mi.item_category LIKE :search3)
-                      AND mi.restaurant_id = :rid AND m.is_active = 1" . $searchHiddenSql . "
-                      ORDER BY mi.item_name_en LIMIT 20";
+            $searchBase = $query . " WHERE %s AND mi.restaurant_id = :rid AND m.is_active = 1" . $searchHiddenSql;
+            // dishes whose name matches come before ones that only mention it in the description
+            $query = sprintf($searchBase, "(mi.item_name_en LIKE :search1 OR mi.item_description_en LIKE :search2 OR mi.item_category LIKE :search3)")
+                   . " ORDER BY (mi.item_name_en LIKE :search4) DESC, mi.item_name_en LIMIT 20";
             $like = '%' . $searchTerm . '%';
             try {
                 $stmt = $conn->prepare($query);
@@ -667,9 +698,19 @@ try {
                     ':search1' => $like,
                     ':search2' => $like,
                     ':search3' => $like,
+                    ':search4' => $like,
                     ':rid' => $restaurantId
                 ]);
                 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                // nothing spelled exactly like that: the dishes whose name is close ("rasgula" finds Rasgulla)
+                if (!$items) {
+                    $fuzzyIds = websiteSearchFuzzyIds($conn, (string)$restaurantId, str_replace(['\%', '\_'], ['%', '_'], $searchTerm), $searchHiddenSql);
+                    if ($fuzzyIds) {
+                        $stmt = $conn->prepare(sprintf($searchBase, 'mi.id IN (' . implode(',', $fuzzyIds) . ')') . ' ORDER BY FIELD(mi.id, ' . implode(',', $fuzzyIds) . ')');
+                        $stmt->execute([':rid' => $restaurantId]);
+                        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    }
+                }
                 
                 // Clean up any binary data and add translations
                 $searchLang = $lang;

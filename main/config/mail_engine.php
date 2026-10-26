@@ -17,6 +17,7 @@
 require_once __DIR__ . '/env_loader.php';
 require_once __DIR__ . '/email_config.php';
 require_once __DIR__ . '/demo_restaurant.php';
+require_once __DIR__ . '/order_track_link.php';
 
 if (!function_exists('mailQueue')) {
 
@@ -549,7 +550,7 @@ if (!function_exists('mailQueue')) {
         }
         $b = mailRestaurantBrand($conn, (string)$o['restaurant_id']);
         $rider = trim((string)($t['rider_name'] ?? ''));
-        $track = $b['site'] ? $b['site'] . '/track?order_number=' . rawurlencode((string)$o['order_number']) . '&customer_phone=' . rawurlencode((string)$o['customer_phone']) : null;
+        $track = $b['site'] ? $b['site'] . '/track?order_number=' . rawurlencode((string)$o['order_number']) . '&k=' . orderTrackCode((string)$o['order_number'], (string)$o['customer_phone']) : null;
         mailQueue($conn, 'order_status', $o['to'], 'Your order is on the way 🛵 · ' . $o['order_number'],
             mailLayout($b, ['title' => 'Your order is on the way 🛵', 'preheader' => ($rider ? $rider . ' is bringing it to you.' : 'It has left the restaurant.'),
                 'intro' => '<p style="margin:0">' . ($rider ? '<b>' . mailE($rider) . '</b> picked up your order from <b>' . mailE($b['name']) . '</b> and is on the way.' : 'Your order has left <b>' . mailE($b['name']) . '</b> and is on the way.') . ' Watch it come to you live.</p>',

@@ -102,17 +102,31 @@ if (!empty($show_install_app)) {
 </style>
 <?php require __DIR__ . '/bottom_nav_styles.php'; ?>
 <script>
+// The cart badge counts dishes (not order add-ons like "Gift wrap"), the same as the cart's "N items", and is
+// hidden at 0. Pages and scripts set it their own way, so this corrects it after any of them writes to it.
 (function(){
-  try {
-    var saved = localStorage.getItem('dvaniCart');
-    var items = saved ? JSON.parse(saved) : {};
+  var badge = document.getElementById('navCartBadge');
+  if (!badge) return;
+  function count() {
+    var items = {};
+    try { items = JSON.parse(localStorage.getItem('dvaniCart') || '{}') || {}; } catch (e) {}
     var total = 0;
     for (var k in items) {
       var v = items[k];
-      total += typeof v === 'number' ? v : (v.qty || 0);
+      if (v && typeof v === 'object' && v.isAddon) continue;
+      total += typeof v === 'number' ? v : ((v && v.qty) || 0);
     }
-    var badge = document.getElementById('navCartBadge');
-    if (badge) badge.textContent = total;
-  } catch(e) {}
+    return total;
+  }
+  function sync() {
+    var n = count();
+    if (badge.textContent !== String(n)) badge.textContent = n;
+    badge.style.display = n > 0 ? '' : 'none';
+  }
+  sync();
+  var t = null;
+  new MutationObserver(function() { clearTimeout(t); t = setTimeout(sync, 0); }).observe(badge, { childList: true, characterData: true, subtree: true });
+  window.addEventListener('storage', sync);
+  window.addEventListener('pageshow', sync);
 })();
 </script>

@@ -3150,14 +3150,22 @@ function showCheckoutModal(cartData) {
   html += '<h3>Order Summary</h3>';
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
+    var raw = cartItems[key];
+    // every line the total charges for is listed: order add-ons and combos too, and an item's own add-ons
+    if (raw && typeof raw === 'object' && (raw.isAddon || raw.isCombo)) {
+      var lq = raw.qty || 0, lp = parseFloat(raw.isAddon ? raw.addonPrice : raw.varPrice) || 0;
+      html += '<div class="summary-row"><span>' + esc(raw.isAddon ? (raw.addonName || 'Add-on') : (raw.name || 'Combo')) + ' x' + lq + '</span>';
+      html += '<span>' + getCurrency() + (lp * lq).toFixed(2) + '</span></div>';
+      continue;
+    }
     var item = getItemByKey(key);
     if (item) {
-      var raw = cartItems[key];
       var itemName = item.item_name_translated || item.item_name_en || item.name;
       if (raw && typeof raw === 'object' && raw.varName) itemName += ' (' + raw.varName + ')';
+      var addonNames = getAddonNamesString(key);
       html += '<div class="summary-row">';
-      html += '<span>' + esc(itemName) + ' x' + getCartQty(key) + '</span>';
-      html += '<span>' + getCurrency() + (getCartPrice(key) * getCartQty(key)).toFixed(2) + '</span>';
+      html += '<span>' + esc(itemName) + ' x' + getCartQty(key) + (addonNames ? '<small style="display:block;color:#888">' + esc(addonNames) + '</small>' : '') + '</span>';
+      html += '<span>' + getCurrency() + (((parseFloat(getCartPrice(key)) || 0) + getAddonTotalForItem(key)) * getCartQty(key)).toFixed(2) + '</span>';
       html += '</div>';
     }
   }
@@ -3494,8 +3502,13 @@ function showCheckoutModal(cartData) {
   }
   refreshCheckoutTotal();
 
+  // "Place Order" opens right where the Checkout bar was: a double tap on Checkout must not place the order
+  var placeBtn = document.querySelector('#checkoutForm button[type=submit]');
+  var openedAt = Date.now();
+  if (placeBtn) { placeBtn.disabled = true; setTimeout(function() { if (placeBtn.textContent === 'Place Order') placeBtn.disabled = false; }, 800); }
   document.getElementById('checkoutForm').addEventListener('submit', function(e) {
     e.preventDefault();
+    if (Date.now() - openedAt < 800) return;
     processOrder(cartData);
   });
 

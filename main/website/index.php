@@ -1798,10 +1798,13 @@ body {
   transition: all 0.2s ease;
   font-family: var(--site-font);
 }
+.variant-chips.need-pick { animation: rgPickShake .4s; }
+@keyframes rgPickShake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 .variant-chip.selected {
-  border-color: #2d3436;
-  background: #f0f7f5;
+  border-color: var(--primary-red, #2d3436);
+  background: color-mix(in srgb, var(--primary-red, #2d3436) 10%, #fff);
   color: #2d3436;
+  font-weight: 600;
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(45,52,54,0.15);
 }
@@ -2861,8 +2864,17 @@ function buildCategories() {
   }
 }
 
+// Spellings of dish names vary (rasgula / rasgulla, panir / paneer): compare without doubled letters and long vowels
+function rgLooseText(s) {
+  s = String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+  s = s.replace(/ee/g, 'i').replace(/oo/g, 'u').replace(/aa/g, 'a').replace(/w/g, 'v').replace(/z/g, 'j').replace(/([a-z])h/g, '$1');
+  return s.replace(/([a-z])\1+/g, '$1');
+}
+var homeSearchScrolled = false;
 document.querySelector('.gradient-search-input')?.addEventListener('input', function() {
   var q = this.value.toLowerCase().trim();
+  var lq = rgLooseText(q);
+  var anyVisible = false, firstHeader = null;
   document.querySelectorAll('.category-header, [id^="catItems"]').forEach(function(el) {
     if (!q) { el.style.display = ''; return; }
     if (el.classList.contains('category-header')) {
@@ -2871,7 +2883,8 @@ document.querySelector('.gradient-search-input')?.addEventListener('input', func
       var items = el.querySelectorAll('.menu-item');
       var hasVisible = false;
       items.forEach(function(item) {
-        var match = item.textContent.toLowerCase().includes(q);
+        var text = item.textContent.toLowerCase();
+        var match = text.includes(q) || (lq.length >= 3 && rgLooseText(text).includes(lq));
         item.style.display = match ? '' : 'none';
         if (match) hasVisible = true;
       });
@@ -2879,9 +2892,33 @@ document.querySelector('.gradient-search-input')?.addEventListener('input', func
       var header = el.previousElementSibling;
       if (header && header.classList.contains('category-header')) {
         header.style.display = hasVisible ? '' : 'none';
+        if (hasVisible && !firstHeader) firstHeader = header;
       }
+      if (hasVisible) anyVisible = true;
     }
   });
+  // say so when nothing matches, and bring the matches into view once (they sit below the offers)
+  var list = document.getElementById('menuList');
+  var none = document.getElementById('homeSearchNone');
+  if (list && !none) {
+    none = document.createElement('div');
+    none.id = 'homeSearchNone';
+    none.style.cssText = 'display:none;text-align:center;padding:28px 16px;color:#6b7280;font-size:14px';
+    list.parentNode.insertBefore(none, list);
+  }
+  if (none) {
+    none.style.display = q && !anyVisible ? '' : 'none';
+    if (q && !anyVisible) none.textContent = 'No dishes match “' + this.value.trim() + '”. Try a shorter word.';
+  }
+  if (!q) { homeSearchScrolled = false; return; }
+  var target = anyVisible ? firstHeader : none;
+  if (target && !homeSearchScrolled) {
+    homeSearchScrolled = true;
+    clearTimeout(window.__homeSearchT);
+    window.__homeSearchT = setTimeout(function() {
+      window.scrollTo({ top: Math.max(0, target.getBoundingClientRect().top + window.pageYOffset - 80), behavior: 'smooth' });
+    }, 350);
+  }
 });
 
 // --- Product Detail Bottom Sheet ---
@@ -3012,6 +3049,12 @@ function showItemDetail(ci, ii) {
   document.getElementById('productSheetContent').innerHTML = html;
   document.getElementById('productSheetOverlay').classList.add('active');
   document.body.classList.add('no-scroll');
+  // a size is always chosen (the first one on sale), so the price on the button is what gets added
+  if (hasVariants) {
+    for (var fv = 0; fv < item.variations.length; fv++) {
+      if (item.variations[fv].is_available != 0) { selectVariant(fv); break; }
+    }
+  }
 }
 
 function closeProductSheet(e) {
@@ -3085,7 +3128,12 @@ function sheetAddToCart() {
   var item = cat.items[sheetItemIdx];
   if (!item) return;
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-  if (hasVar && selectedVariant === null) return;
+  if (hasVar && selectedVariant === null) {
+    var chipsEl = document.getElementById('variantChips');
+    if (chipsEl) { chipsEl.scrollIntoView({ block: 'center', behavior: 'smooth' }); chipsEl.classList.remove('need-pick'); void chipsEl.offsetWidth; chipsEl.classList.add('need-pick'); }
+    if (typeof showToast === 'function') showToast('Choose a size first');
+    return;
+  }
   if (hasVar) {
     var v = item.variations[selectedVariant];
     addToCart(itemId, { varIdx: selectedVariant, varName: v.variation_name, varPrice: parseFloat(v.variation_price || v.price || 0) });

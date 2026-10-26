@@ -11,6 +11,12 @@ $customerPhone = $_POST['customer_phone'] ?? $_GET['customer_phone'] ?? '';
 // order_abuse_guard.php / process_website_order.php) — normalize the lookup
 // the same way so "+91 98XXX" vs "98XXX" both find the order.
 $customerPhone = orderAbuseNormalizePhone($customerPhone) ?? $customerPhone;
+// links we send carry a code instead of the phone (config/order_track_link.php)
+require_once __DIR__ . '/../config/order_track_link.php';
+$trackCode = (string)($_GET['k'] ?? '');
+if ($orderNumber && !$customerPhone && $trackCode !== '') {
+    try { $customerPhone = orderTrackPhoneFromCode(getConnection(), (string)$orderNumber, $trackCode) ?? ''; } catch (Throwable $e) { $customerPhone = ''; }
+}
 $error = '';
 $order = null;
 $tracking = null;
@@ -527,9 +533,13 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
       <div id="tkPush" hidden data-rg-push data-order="<?php echo htmlspecialchars($order['order_number'], ENT_QUOTES, 'UTF-8'); ?>" data-phone="<?php echo htmlspecialchars($customerPhone, ENT_QUOTES, 'UTF-8'); ?>"
            data-sw="<?php echo htmlspecialchars($website_base_href . 'sw.php', ENT_QUOTES, 'UTF-8'); ?>" data-scope="<?php echo htmlspecialchars($site_root, ENT_QUOTES, 'UTF-8'); ?>"
            data-icon="<?php echo htmlspecialchars((string)($restaurant_logo ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-           data-page="<?php echo htmlspecialchars(restaurantPageUrl('track') . '?order_number=' . rawurlencode($order['order_number']) . '&customer_phone=' . rawurlencode($customerPhone), ENT_QUOTES, 'UTF-8'); ?>"></div>
+           data-page="<?php echo htmlspecialchars(restaurantPageUrl('track') . '?order_number=' . rawurlencode($order['order_number']) . '&k=' . orderTrackCode($order['order_number'], $order['customer_phone']), ENT_QUOTES, 'UTF-8'); ?>"></div>
       <script src="rg-order-push.js?v=<?php echo @filemtime(__DIR__ . '/rg-order-push.js'); ?>" defer></script>
       <?php endif; ?>
+      <script>
+      // the address bar (and so any shared link or screenshot) shows the code, never the phone
+      try { var u = new URL(location.href); if (u.searchParams.has('customer_phone')) { u.searchParams.delete('customer_phone'); u.searchParams.set('k', <?php echo json_encode(orderTrackCode($order['order_number'], $order['customer_phone'])); ?>); history.replaceState(history.state, '', u.toString()); } } catch (e) {}
+      </script>
 
       <p id="liveNote" class="live-note on"><span class="live-dot"></span><span class="live-text">Live · updates automatically</span></p>
     </div>

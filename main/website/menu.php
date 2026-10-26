@@ -76,6 +76,8 @@ body {
 .pr-share-header { transition: margin-top 0.28s ease; }
 /* no automatic scroll-position nudging when the bar resizes the scroll area */
 .main-content { overflow-anchor: none; }
+/* searching: only the title and the results, no banners or combos above them */
+.main-content.is-searching > :not(.category-overview):not(#productGrid) { display: none !important; }
 /* Category buttons: press feedback and a small pop when one is selected */
 .side-nav-btn { transition: transform 0.18s ease, background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease; }
 .side-nav-btn:active { transform: scale(0.94); }
@@ -2678,7 +2680,7 @@ function sheetAddToCart(itemId) {
   var item = getSheetItem();
   if (!item) return;
   var hasVar = item.has_variations && item.variations && item.variations.length > 0;
-  if (hasVar && selectedVariant === null) return;
+  if (hasVar && selectedVariant === null) { showToast('Choose a size first'); return; }
   var noteBox = document.getElementById('sheetNoteBox');
   var noteKey = sheetCartKey(item), prevNote = splitItemNote(getItemNotes()[noteKey]);
   var cutEl = document.getElementById('sheetCutlery');
@@ -3528,7 +3530,12 @@ document.addEventListener('DOMContentLoaded', function() {
     searchInput.addEventListener('input', function() {
       if (searchBox) searchBox.classList.toggle('has-value', this.value !== '');
       var q = this.value.toLowerCase().trim();
+      var mainContent = document.querySelector('.main-content');
+      // while searching, only the results show: banners and combos step aside and the results start at the top
+      if (mainContent) mainContent.classList.toggle('is-searching', !!q);
       if (!q) {
+        clearTimeout(searchTimer);
+        ++searchReqId;
         currentSubcategoryId = null;
         renderProducts(currentMenuIdx);
         return;
@@ -3536,12 +3543,20 @@ document.addEventListener('DOMContentLoaded', function() {
       clearTimeout(searchTimer);
       searchTimer = setTimeout(function() {
         var reqId = ++searchReqId;
-        fetch(apiUrl('searchItems', 'q=' + encodeURIComponent(q)))
-          .then(function(r) { return r.json(); })
+        var grid = document.getElementById('productGrid');
+        var title = document.getElementById('categoryTitle');
+        var shown = searchInput.value.trim();
+        var subTabs = document.getElementById('subcategoryTabs');
+        if (subTabs) subTabs.style.display = 'none';
+        (window.rgFetchJson ? rgFetchJson(apiUrl('searchItems', 'q=' + encodeURIComponent(q))) : fetch(apiUrl('searchItems', 'q=' + encodeURIComponent(q))).then(function(r) { return r.json(); }))
           .then(function(items) {
             if (reqId !== searchReqId) return;
+            if (mainContent) mainContent.scrollTop = 0;
+            var sc = document.querySelector('.search-rapper'); if (sc && sc.getBoundingClientRect().top < 0) sc.scrollIntoView({ block: 'start' });
             if (!items || items.length === 0) {
-              document.getElementById('productGrid').innerHTML = '<div style="text-align:center;padding:40px;color:#999">No items found</div>';
+              title.textContent = 'No results';
+              grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:#6b7280;font-size:14px;line-height:1.5">No dishes match “' + escapeHtml(shown) + '”.<br>Try a shorter word, or browse the full menu.' +
+                '<div><button type="button" onclick="var i=document.querySelector(\'.search-input\');i.value=\'\';i.dispatchEvent(new Event(\'input\'))" style="margin-top:14px;padding:10px 18px;border:none;border-radius:999px;background:var(--primary-red,#7f1d1d);color:#fff;font-weight:600;font-size:13px;cursor:pointer">Show full menu</button></div></div>';
               return;
             }
             var grouped = {};
@@ -3551,24 +3566,16 @@ document.addEventListener('DOMContentLoaded', function() {
               grouped[menuName].push(items[i]);
             }
             var menuNames = Object.keys(grouped);
-            if (menuNames.length === 1) {
-              for (var j = 0; j < menuItems.length; j++) {
-                if (menuItems[j].name === menuNames[0]) {
-                  switchToMenu(j);
-                  return;
-                }
-              }
-            }
+            // only the matching dishes, even when they all sit in one category (that used to open the whole category)
             var html = '';
-            document.getElementById('categoryTitle').textContent = 'Search Results (' + items.length + ')';
+            title.textContent = items.length + (items.length === 1 ? ' result' : ' results') + ' for “' + shown + '”';
             for (var m = 0; m < menuNames.length; m++) {
               var list = grouped[menuNames[m]];
               var menuIdx = -1;
               for (var j = 0; j < menuItems.length; j++) {
                 if (menuItems[j].name === menuNames[m]) { menuIdx = j; break; }
               }
-              if (menuIdx === -1) continue;
-              html += '<div style="grid-column:1/-1;padding:8px 4px 2px;font-size:13px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer" onclick="switchToMenu(' + menuIdx + ')">' + menuNames[m] + ' <span style="font-size:11px;color:#aaa">↗</span></div>';
+              if (menuIdx !== -1) html += '<div style="grid-column:1/-1;padding:8px 4px 2px;font-size:13px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer" onclick="switchToMenu(' + menuIdx + ')">' + escapeHtml(menuNames[m]) + ' <span style="font-size:11px;color:#aaa">↗</span></div>';
               for (var i = 0; i < list.length; i++) {
                 var item = list[i];
                 var oos = item.is_available == 0;
@@ -3585,7 +3592,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             document.getElementById('productGrid').innerHTML = html;
           })
-          .catch(function(err) { console.error('Search failed:', err); });
+          .catch(function(err) {
+            if (reqId !== searchReqId) return;
+            console.error('Search failed:', err);
+            if (window.rgLoadFailed) rgLoadFailed(grid, 'search results', function() { searchInput.dispatchEvent(new Event('input')); });
+          });
       }, 400);
     });
   }

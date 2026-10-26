@@ -83,6 +83,9 @@ page only has to include `header.php` like the others.
 - **No jumping:** a row filled in after load (coupons, banners, combos, specials) must not push the page down. Decide on
   the server whether it has anything (leave it out when not), keep its space when it has (`websiteBannerSlot()`), or
   put the data into the page (`websiteCombosMount()`). Check phone layout shift (412 px wide) stays under 0.1.
+- **Tracking links never carry the phone:** build them with `orderTrackCode()` (`config/order_track_link.php`):
+  `track?order_number=…&k=…`. Old `customer_phone=` links still open, and the page strips the phone from the address bar.
+- **Cart badge** (`bottom_nav.php`) counts dishes, not order add-ons, and hides at 0; it corrects whatever a page writes.
 
 ## Payments
 

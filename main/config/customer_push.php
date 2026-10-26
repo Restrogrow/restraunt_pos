@@ -13,6 +13,7 @@
  *   cpNotify($conn, $orderId, $event = null)     send now ($event 'onway' when the rider picks it up)
  */
 require_once __DIR__ . '/web_push.php';
+require_once __DIR__ . '/order_track_link.php';
 
 if (!function_exists('cpNotify')) {
 
@@ -93,7 +94,7 @@ if (!function_exists('cpNotify')) {
 
         // the tracking page the customer turned this on from (their own address: custom domain or ours)
         $app = rtrim((string)(env('APP_URL', '') ?: 'https://restrogrow.com'), '/');
-        $track = $app . '/' . rawurlencode((string)$o['username']) . '/track?order_number=' . rawurlencode((string)$o['order_number']) . '&customer_phone=' . rawurlencode((string)$o['customer_phone']);
+        $track = $app . '/' . rawurlencode((string)$o['username']) . '/track?order_number=' . rawurlencode((string)$o['order_number']) . '&k=' . orderTrackCode((string)$o['order_number'], (string)$o['customer_phone']);
 
         $vapid = wpVapidKeys($conn);
         foreach ($subs as $s) {
