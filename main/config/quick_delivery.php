@@ -16,7 +16,8 @@
  * config/rider_engine.php), so the order screens and the customer's tracking page show it; the
  * rider's Picked up / On the way / Delivered move the order like one of the restaurant's own riders.
  *
- * .env: SHIPROCKET_EMAIL, SHIPROCKET_PASSWORD (the API user, Shiprocket › Settings › API),
+ * .env: SHIPROCKET_EMAIL, SHIPROCKET_PASSWORD (the API user, Shiprocket › Settings › API; or typed into
+ * Super Admin › Shiprocket Quick, saved sealed with WA_KEY_SECRET; .env wins when both are there),
  * QUICK_DELIVERY_WEBHOOK_TOKEN (optional, the webhook's security token), GEOAPIFY_API_KEY (the
  * drop's pincode and state from its map pin). Never for the demo restaurant, only in India.
  */
@@ -32,10 +33,61 @@ const QD_AUTO_MODES = ['off' => 'No, I book each rider', 'accept' => 'When I acc
 // a booking that is still on (not finished or cancelled)
 const QD_LIVE = ['booked', 'picked_up', 'on_the_way'];
 
-/** Are the Shiprocket login details in .env? */
+/** Are the Shiprocket login details set (.env, or saved in Super Admin)? */
 function qdConfigured(): bool
 {
-    return trim((string)env('SHIPROCKET_EMAIL', '')) !== '' && trim((string)env('SHIPROCKET_PASSWORD', '')) !== '';
+    return qdCreds()['email'] !== '' && qdCreds()['password'] !== '';
+}
+
+/** The API user: .env when both are there, else the one saved in Super Admin › Shiprocket Quick (sa_settings 'qd_login', password sealed). */
+function qdCreds(bool $reload = false): array
+{
+    static $c = null;
+    if ($c !== null && !$reload) return $c;
+    $email = trim((string)env('SHIPROCKET_EMAIL', '')); $pass = (string)env('SHIPROCKET_PASSWORD', '');
+    if ($email !== '' && trim($pass) !== '') return $c = ['email' => $email, 'password' => $pass, 'from' => 'env'];
+    $c = ['email' => '', 'password' => '', 'from' => ''];
+    try {
+        if (function_exists('getConnection')) {
+            $saved = json_decode((string)getConnection()->query("SELECT v FROM sa_settings WHERE k = 'qd_login'")->fetchColumn(), true);
+            if (is_array($saved) && !empty($saved['email'])) $c = ['email' => (string)$saved['email'], 'password' => qdOpen((string)($saved['password'] ?? '')), 'from' => 'saved'];
+        }
+    } catch (Throwable $e) { /* no sa_settings yet */ }
+    return $c;
+}
+
+/** Save (or with '' clear) the API user typed into Super Admin; the old token goes too. */
+function qdSaveCreds(PDO $conn, string $email, string $password): void
+{
+    qdEnsure($conn);
+    if ($email === '') $conn->exec("DELETE FROM sa_settings WHERE k = 'qd_login'");
+    else $conn->prepare("REPLACE INTO sa_settings (k, v) VALUES ('qd_login', ?)")->execute([json_encode(['email' => $email, 'password' => qdSeal($password)])]);
+    $conn->exec("DELETE FROM sa_settings WHERE k = 'qd_token'");
+    qdCreds(true);
+}
+
+/** Password at rest: AES-256-GCM with WA_KEY_SECRET (same as config/gbp_helpers.php); plain when that key is missing. */
+function qdKey(): ?string
+{
+    $k = trim((string)env('WA_KEY_SECRET', ''));
+    if ($k === '') return null;
+    $raw = base64_decode($k, true);
+    return ($raw !== false && strlen($raw) >= 32) ? substr($raw, 0, 32) : hash('sha256', $k, true);
+}
+function qdSeal(string $plain): string
+{
+    $k = qdKey();
+    if ($plain === '' || $k === null) return $plain;
+    $iv = random_bytes(12); $tag = '';
+    $ct = openssl_encrypt($plain, 'aes-256-gcm', $k, OPENSSL_RAW_DATA, $iv, $tag, '', 16);
+    return $ct === false ? $plain : 'enc:v1:' . base64_encode($iv . $tag . $ct);
+}
+function qdOpen(string $stored): string
+{
+    if (strpos($stored, 'enc:v1:') !== 0) return $stored;
+    $k = qdKey(); $raw = base64_decode(substr($stored, 7), true);
+    $p = ($k !== null && $raw !== false && strlen($raw) > 28) ? openssl_decrypt(substr($raw, 28), 'aes-256-gcm', $k, OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16)) : false;
+    return $p === false ? '' : $p;
 }
 
 /** Tables (safe to call often; not inside a transaction). */
@@ -142,10 +194,11 @@ function qdToken(PDO $conn, bool $fresh = false): string
         $saved = json_decode((string)$conn->query("SELECT v FROM sa_settings WHERE k = 'qd_token'")->fetchColumn(), true);
         if (is_array($saved) && !empty($saved['token']) && (int)($saved['exp'] ?? 0) > time()) return (string)$saved['token'];
     }
-    if (!qdConfigured()) throw new RuntimeException('Shiprocket is not set up yet: SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD are missing in .env.');
-    [$code, $d] = qdHttp('POST', QD_API . '/auth/login', ['email' => trim((string)env('SHIPROCKET_EMAIL')), 'password' => (string)env('SHIPROCKET_PASSWORD')]);
+    if (!qdConfigured()) throw new RuntimeException('Shiprocket is not set up yet: add the API user in Super Admin › Shiprocket Quick (or SHIPROCKET_EMAIL / SHIPROCKET_PASSWORD in .env).');
+    $cr = qdCreds();
+    [$code, $d] = qdHttp('POST', QD_API . '/auth/login', ['email' => $cr['email'], 'password' => $cr['password']]);
     if ($code !== 200 || empty($d['token'])) {
-        throw new RuntimeException('Shiprocket login failed' . (!empty($d['message']) ? ': ' . $d['message'] : ' (HTTP ' . $code . ')') . '. Check the API user in .env.');
+        throw new RuntimeException('Shiprocket login failed' . (!empty($d['message']) ? ': ' . $d['message'] : ' (HTTP ' . $code . ')') . '. Check the API user ' . ($cr['from'] === 'env' ? 'in .env.' : 'saved in Super Admin.'));
     }
     $conn->prepare("REPLACE INTO sa_settings (k, v) VALUES ('qd_token', ?)")->execute([json_encode(['token' => $d['token'], 'exp' => time() + 9 * 86400])]);
     return (string)$d['token'];
@@ -285,7 +338,7 @@ function qdPickup(PDO $conn, string $rid): array
     $body = [
         'pickup_location' => $name,
         'name' => mb_substr((string)$r['restaurant_name'], 0, 60),
-        'email' => (string)($r['email'] ?: env('SHIPROCKET_EMAIL')),
+        'email' => (string)($r['email'] ?: qdCreds()['email']),
         'phone' => qdPhone((string)$r['phone']),
         'address' => '',   // set below from qdAddressLines()
         'address_2' => '',
@@ -469,7 +522,7 @@ function qdBook(PDO $conn, string $rid, int $orderId, string $by = '', bool $aut
             'billing_pincode' => $dropPin,
             'billing_state' => (string)(($geo['state'] ?? '') ?: qdSettings($conn, $rid)['pickup_state']),
             'billing_country' => 'India',
-            'billing_email' => (string)($o['customer_email'] ?: ($r['email'] ?: env('SHIPROCKET_EMAIL'))),
+            'billing_email' => (string)($o['customer_email'] ?: ($r['email'] ?: qdCreds()['email'])),
             'billing_phone' => qdPhone((string)$o['customer_phone']),
             'shipping_is_billing' => true,
             'order_items' => $items,
@@ -687,7 +740,7 @@ function qdSweep(PDO $conn): array
     qdEnsure($conn);
     $n = ['booked' => 0, 'refreshed' => 0];
     if (!qdConfigured()) return $n;
-    $due = $conn->query("SELECT o.id, o.restaurant_id, o.order_status FROM orders o JOIN qd_restaurants q ON q.restaurant_id = o.restaurant_id AND q.enabled = 1 AND q.auto_mode <> 'off'
+    $due = $conn->query("SELECT o.id, o.restaurant_id, o.order_status FROM orders o JOIN qd_restaurants q ON q.restaurant_id = o.restaurant_id COLLATE utf8mb4_unicode_ci AND q.enabled = 1 AND q.auto_mode <> 'off'
         WHERE o.order_type = 'Delivery' AND o.deleted_at IS NULL AND o.created_at > NOW() - INTERVAL 6 HOUR
           AND ((q.auto_mode = 'accept' AND o.order_status IN ('Accepted','Preparing','Ready')) OR (q.auto_mode = 'ready' AND o.order_status = 'Ready'))
           AND NOT EXISTS (SELECT 1 FROM qd_bookings b WHERE b.order_id = o.id AND b.status <> 'failed')

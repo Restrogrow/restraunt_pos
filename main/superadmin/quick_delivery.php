@@ -4,7 +4,8 @@
  * (config/quick_delivery.php). Every ride is paid from that account's wallet, so a restaurant books
  * only once it is switched on here.
  *
- *   Test connection   logs in with SHIPROCKET_EMAIL / SHIPROCKET_PASSWORD (.env)
+ *   API user          typed here (saved sealed) when .env has no SHIPROCKET_EMAIL / SHIPROCKET_PASSWORD
+ *   Test connection   logs in with that API user
  *   Test price        a rider from a restaurant to a point ~1.5 km away (adds its pickup address; books nothing)
  *   Restaurants       on / off per restaurant (India, with a map pin), rides and spend in the last 30 days
  *   Rides             the last 60 bookings, with Shiprocket's status and any error
@@ -29,7 +30,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rid = (string)($_POST['rid'] ?? '');
     try {
         if (!hash_equals($csrf, (string)($_POST['csrf'] ?? ''))) throw new InvalidArgumentException('Your session changed. Please try again.');
-        if ($action === 'test_login') {
+        if ($action === 'save_login') {
+            $email = trim((string)($_POST['sr_email'] ?? '')); $pass = (string)($_POST['sr_password'] ?? '');
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $pass === '') throw new InvalidArgumentException('Enter the API user\'s email and password.');
+            qdSaveCreds($conn, $email, $pass);
+            qdToken($conn, true);
+            $message = 'Saved and logged in to Shiprocket as ' . $email . '. Now try "Test price" on a restaurant below.';
+        } elseif ($action === 'clear_login') {
+            qdSaveCreds($conn, '', '');
+            $message = 'Removed the saved Shiprocket API user.';
+        } elseif ($action === 'test_login') {
             qdToken($conn, true);
             $p = qdApi($conn, 'GET', '/settings/company/pickup');
             $n = count($p['data']['shipping_address'] ?? []);
@@ -64,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // back to a GET, so a refresh doesn't switch a restaurant again (config/prg.php)
     // Test price: what was asked and what Shiprocket answered (to see why it says no)
-    $raw = $action === 'test_price' && isset($GLOBALS['qd_last_service']) ? mb_substr(json_encode($GLOBALS['qd_last_service'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0, 6000) : '';
+    $raw = $action === 'test_price' && isset($GLOBALS['qd_last_service']) ? mb_substr(json_encode($GLOBALS['qd_last_service'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '', 0, 6000) : '';
     prgRedirect('quick_delivery', ['message' => $message, 'error' => $error, 'raw' => $raw]);
 }
 ['message' => $message, 'error' => $error, 'raw' => $raw] = prgTake('quick_delivery', ['message' => '', 'error' => '', 'raw' => '']);
@@ -131,7 +141,15 @@ $hookToken = trim((string)env('QUICK_DELIVERY_WEBHOOK_TOKEN', '')) !== '';
 
   <h2>Setup</h2>
   <table class="kv">
-    <tr><td>API user (.env)</td><td><?php echo qdConfigured() ? '<span class="pill p-ok">Set</span> <code>' . $h(env('SHIPROCKET_EMAIL')) . '</code>' : '<span class="pill p-bad">Missing</span> add <code>SHIPROCKET_EMAIL</code> and <code>SHIPROCKET_PASSWORD</code> to <code>main/.env</code>'; ?></td></tr>
+    <tr><td>API user</td><td><?php $cr = qdCreds(); echo qdConfigured() ? '<span class="pill p-ok">Set</span> <code>' . $h($cr['email']) . '</code> <small>' . ($cr['from'] === 'env' ? 'from .env' : 'saved here') . '</small>' : '<span class="pill p-bad">Missing</span> enter it below (or <code>SHIPROCKET_EMAIL</code> / <code>SHIPROCKET_PASSWORD</code> in <code>main/.env</code>)'; ?>
+      <?php if ($cr['from'] !== 'env'): ?>
+      <form method="post" autocomplete="off" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><input type="hidden" name="csrf" value="<?php echo $h($csrf); ?>"><input type="hidden" name="action" value="save_login">
+        <input type="email" name="sr_email" placeholder="API user email" value="<?php echo $h($cr['email']); ?>" required style="padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;min-width:220px">
+        <input type="password" name="sr_password" placeholder="API user password" autocomplete="new-password" required style="padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;min-width:200px">
+        <button class="btn primary" type="submit">Save &amp; test login</button></form>
+      <?php if ($cr['from'] === 'saved'): ?><form method="post"><input type="hidden" name="csrf" value="<?php echo $h($csrf); ?>"><input type="hidden" name="action" value="clear_login"><button class="btn off" type="submit" style="margin-top:6px">Remove saved login</button></form><?php endif; ?>
+      <br><small>Shiprocket › Settings › API › Configure › Create API User. Its email must differ from your main Shiprocket login.<?php echo qdKey() ? ' The password is stored encrypted.' : ' <b>WA_KEY_SECRET is missing, so the password is stored as plain text.</b>'; ?></small>
+      <?php endif; ?></td></tr>
     <tr><td>Map pins → pincodes</td><td><?php echo trim((string)env('GEOAPIFY_API_KEY', '')) !== '' ? '<span class="pill p-ok">Geoapify key set</span>' : '<span class="pill p-bad">Missing</span> <code>GEOAPIFY_API_KEY</code> (drops without a pincode in the address can\'t be booked)'; ?></td></tr>
     <tr><td>Status updates (cron)</td><td><?php echo $cronAt !== '' ? 'Last ran ' . $h(date('j M, g:i A', strtotime($cronAt))) : '<span class="pill p-bad">Not running</span>'; ?>
       <br><small>hPanel › Cron Jobs, every 2 minutes: <code>/usr/bin/php &lt;HOME&gt;/main/cron/quick_delivery.php</code></small></td></tr>
