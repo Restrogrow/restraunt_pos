@@ -346,7 +346,15 @@ try {
         }
         unset($item);
     }
-    
+
+    // kitchen or bar (config/prep_stations.php): the POS names its send button KOT / BOT from this
+    require_once __DIR__ . '/../config/prep_stations.php';
+    $barMap = $menuItems ? stationBarItems($conn, (string)$restaurant_id, array_column($menuItems, 'id')) : [];
+    foreach ($menuItems as &$item) {
+        $item['station'] = isset($barMap[(int)$item['id']]) ? 'bar' : 'kitchen';
+    }
+    unset($item);
+
     // Get unique categories for this restaurant
     $categoryStmt = $conn->prepare("SELECT DISTINCT item_category FROM menu_items WHERE restaurant_id = ? AND item_category IS NOT NULL AND item_category != '' ORDER BY item_category");
     $categoryStmt->execute([$restaurant_id]);

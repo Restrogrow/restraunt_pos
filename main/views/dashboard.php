@@ -1145,11 +1145,19 @@ try { $rgBrandSiteUrl = (string)(brandRestaurantUrl(getConnection(), (string)$_S
           <span class="nav-tooltip">Orders</span>
           <ul class="submenu">
             <li class="nav-item">
-              <a href="#" class="nav-link submenu-link" data-page="kotPage">
+              <a href="#" class="nav-link submenu-link" data-page="kotPage" data-kt-station="kitchen">
                 <span class="nav-icon material-symbols-rounded">restaurant_menu</span>
                 <span class="nav-label">KOT</span>
               </a>
               <span class="nav-tooltip">Kitchen Order Ticket</span>
+            </li>
+            <!-- the same tickets page on the bar's tab (assets/js/kot-studio.js, config/prep_stations.php) -->
+            <li class="nav-item">
+              <a href="#" class="nav-link submenu-link" data-page="kotPage" data-kt-station="bar">
+                <span class="nav-icon material-symbols-rounded">local_bar</span>
+                <span class="nav-label">BOT</span>
+              </a>
+              <span class="nav-tooltip">Bar Order Ticket</span>
             </li>
             <li class="nav-item">
               <a href="#" class="nav-link submenu-link" data-page="onlineOrdersPage">

@@ -7831,6 +7831,20 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Store all POS items for mobile modal
   let allPOSItems = [];
+  // menu item id => 'kitchen' | 'bar' (api/get_menu_items.php): bar dishes go on a BOT, not the KOT
+  const posStation = {};
+  // The send button says what it will make: KOT, BOT, or KOT + BOT (config/prep_stations.php)
+  function updatePOSSendLabel() {
+    const delta = window.posKitchenDelta ? window.posKitchenDelta(posCart) : { items: [], addons: false, combos: [] };
+    const bar = delta.items.some(i => posStation[i.id] === 'bar');
+    const kitchen = delta.items.some(i => posStation[i.id] !== 'bar') || delta.addons || (delta.combos || []).length > 0;
+    const label = bar && kitchen ? 'KOT + BOT' : (bar ? 'BOT' : 'KOT');
+    const icon = bar && !kitchen ? 'local_bar' : 'soup_kitchen';
+    const btn = document.getElementById('sendKotBtn');
+    if (btn) btn.innerHTML = `<span class="material-symbols-rounded">${icon}</span>${label}`;
+    const mob = document.getElementById('mobileSendKotBtn');
+    if (mob) mob.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${label}</span>`;
+  }
 
   // Debounced re-filter/re-render for the POS search box, so we don't
   // re-render the grid on every keystroke while the user is still typing.
@@ -7846,6 +7860,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function displayPOSMenuItems(items) {
     // Store items for mobile modal
     allPOSItems = items;
+    items.forEach(it => { posStation[it.id] = it.station; });
 
     renderPOSMenuGrid(filterPOSItemsBySearch(items));
 
@@ -8458,14 +8473,21 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     } else {
       const unsent = window.posKitchenDelta ? window.posKitchenDelta(posCart) : { items: [], addons: false };
-      const banner = window.posOpenBill ? `<div class="pk-bill"><span class="material-symbols-rounded">soup_kitchen</span><span><b>Bill ${escapeHtml(window.posOpenBill.number)}</b> is open: sent to the kitchen, not paid yet.${unsent.items.length || unsent.addons || (unsent.combos || []).length ? ' <em>New dishes: press KOT to send them.</em>' : ''}</span></div>` : '';
+      // where the sent dishes went (kitchen, bar or both) and what the button will send next
+      const sentBar = posCart.some(it => posStation[it.id] === 'bar' && (window.posSentQty ? window.posSentQty(it.cartKey || String(it.id)) : 0) > 0);
+      const sentKitchen = posCart.some(it => posStation[it.id] !== 'bar' && (window.posSentQty ? window.posSentQty(it.cartKey || String(it.id)) : 0) > 0);
+      const sentTo = sentBar && sentKitchen ? 'the kitchen and the bar' : (sentBar ? 'the bar' : 'the kitchen');
+      const unsentBar = unsent.items.some(i => posStation[i.id] === 'bar');
+      const unsentKitchen = unsent.items.some(i => posStation[i.id] !== 'bar') || unsent.addons || (unsent.combos || []).length > 0;
+      const nextBtn = unsentBar && unsentKitchen ? 'KOT + BOT' : (unsentBar ? 'BOT' : 'KOT');
+      const banner = window.posOpenBill ? `<div class="pk-bill"><span class="material-symbols-rounded">${sentBar && !sentKitchen ? 'local_bar' : 'soup_kitchen'}</span><span><b>Bill ${escapeHtml(window.posOpenBill.number)}</b> is open: sent to ${sentTo}, not paid yet.${unsentBar || unsentKitchen ? ` <em>New dishes: press ${nextBtn} to send them.</em>` : ''}</span></div>` : '';
       cartItemsContainer.innerHTML = banner + posCart.map(item => {
         const key = item.cartKey || item.id.toString();
         const sentQ = window.posSentQty ? window.posSentQty(key) : 0;
         return `
         <div class="cart-item">
           <div class="cart-item-info">
-            <div class="cart-item-name">${escapeHtml(item.name)}${item.isAddon ? ' <span class="pa-tag">Add-on</span>' : ''}${item.isCombo ? ' <span class="pa-tag pc-tag">Combo</span>' : ''}${sentQ > 0 ? ` <span class="pk-sent" title="Already sent to the kitchen">${sentQ >= item.quantity ? 'In kitchen' : sentQ + ' in kitchen'}</span>` : ''}</div>
+            <div class="cart-item-name">${escapeHtml(item.name)}${item.isAddon ? ' <span class="pa-tag">Add-on</span>' : ''}${item.isCombo ? ' <span class="pa-tag pc-tag">Combo</span>' : ''}${posStation[item.id] === 'bar' ? ' <span class="pa-tag" title="Made at the bar: goes on the BOT">Bar</span>' : ''}${sentQ > 0 ? (posStation[item.id] === 'bar' ? ` <span class="pk-sent" title="Already sent to the bar">${sentQ >= item.quantity ? 'At bar' : sentQ + ' at bar'}</span>` : ` <span class="pk-sent" title="Already sent to the kitchen">${sentQ >= item.quantity ? 'In kitchen' : sentQ + ' in kitchen'}</span>`) : ''}</div>
             <div class="cart-item-price">${formatCurrency(item.price)} each</div>
             ${item.isCombo ? '<div class="pc-what">' + escapeHtml(item.summary || '') + '</div>' : (window.rgPosAddons ? window.rgPosAddons.lineHtml(item, key) : '')}
           </div>
@@ -8480,6 +8502,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     updatePOSCartSummary();
+    updatePOSSendLabel();
     // the menu grid shows how many of each dish are in the cart (assets/js/pos-studio.js)
     try { window.dispatchEvent(new CustomEvent('rg-pos-cart', { detail: posCart.map(function (i) { return { id: i.id, q: i.quantity, k: i.cartKey || String(i.id) }; }) })); } catch (e) {}
   }

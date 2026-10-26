@@ -1779,7 +1779,7 @@ section.iv-auto { display: block; padding: 6px 16px; cursor: default; }
 .ps #processPaymentBtn { background: #16a34a; border-color: #16a34a; box-shadow: 0 10px 20px -12px rgba(22,163,74,.8); }
 .ps #processPaymentBtn:hover { background: #15803d; }
 .ps #holdOrderBtn { background: #fff; border: 1.5px solid var(--sx-line); color: #374151; }
-.ps #sendKotBtn { background: #111827; border-color: #111827; color: #fff; }
+.ps #sendKotBtn { background: #111827; border-color: #111827; color: #fff; white-space: nowrap; }
 @media (max-width: 1100px) { .ps .pos-container { grid-template-columns: minmax(0, 1fr) 330px; } }
 @media (max-width: 768px) {
   .ps .pos-container { height: auto; }

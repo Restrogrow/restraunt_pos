@@ -3,7 +3,7 @@
  * script.js displayKOTOrders() hands the loaded tickets to window.rgKotRender(kots).
  * Buttons call the same functions as before: printKOT, updateKOTStatus, completeKOT, cancelKOT.
  * Bar Order Tickets (BOT, station 'bar', config/prep_stations.php) show as BOT cards; a restaurant
- * with a bar (window.rgKotHasBar from get_kot.php has_bar) also gets All / Kitchen / Bar tabs.
+ * with a bar (window.rgKotHasBar from get_kot.php has_bar) opens them from the sidebar's BOT link; KOT shows only kitchen tickets.
  */
 (function () {
   'use strict';
@@ -62,10 +62,11 @@
       (st !== 'Completed' && st !== 'Cancelled' ? '<button type="button" class="kt-rb red" title="Cancel ' + (bar ? 'BOT' : 'KOT') + '" aria-label="Cancel ' + (bar ? 'BOT' : 'KOT') + '" onclick="cancelKOT(' + id + ')">' + ic('block') + '</button>' : '') + '</div></div>';
   }
 
-  // the station tab picked (kitchen / bar), only while the restaurant has a bar
+  // KOT or BOT: the sidebar's KOT and BOT links (views/dashboard.php, data-kt-station) each open
+  // only their own tickets; nothing set yet = the kitchen's
+  function station() { return state.station === 'bar' ? 'bar' : 'kitchen'; }
   function stationKots() {
-    if (!window.rgKotHasBar || !state.station) return state.kots;
-    return state.kots.filter(function (k) { return state.station === 'bar' ? isBar(k) : !isBar(k); });
+    return state.kots.filter(function (k) { return station() === 'bar' ? isBar(k) : !isBar(k); });
   }
 
   function chips() {
@@ -75,13 +76,21 @@
     if (!bar) { bar = document.createElement('div'); bar.id = 'rgKotStages'; bar.className = 'kt-stages'; list.parentNode.insertBefore(bar, list); }
     var pool = stationKots();
     var c = function (v) { return pool.filter(function (k) { return !v || statusOf(k) === v; }).length; };
-    var sc = function (v) { return state.kots.filter(function (k) { return !v || (v === 'bar' ? isBar(k) : !isBar(k)); }).length; };
-    var stations = window.rgKotHasBar ? '<div class="kt-stations" role="tablist" aria-label="Kitchen or bar">' + [['', 'All', 'receipt_long'], ['kitchen', 'Kitchen (KOT)', 'soup_kitchen'], ['bar', 'Bar (BOT)', 'local_bar']].map(function (x) {
-      return '<button type="button" role="tab" aria-selected="' + (state.station === x[0]) + '" class="kt-station' + (state.station === x[0] ? ' on' : '') + '" data-kt-station="' + x[0] + '">' + ic(x[2]) + x[1] + '<em>' + sc(x[0]) + '</em></button>';
-    }).join('') + '</div>' : '';
-    bar.innerHTML = stations + [['', 'All tickets', 'receipt_long'], ['Pending', 'New', 'fiber_new'], ['Preparing', 'In kitchen', 'skillet'], ['Ready', 'Ready', 'check_circle']].map(function (x) {
+    var making = station() === 'bar' ? ['At the bar', 'local_bar'] : ['In kitchen', 'skillet'];
+    bar.innerHTML = [['', 'All tickets', 'receipt_long'], ['Pending', 'New', 'fiber_new'], ['Preparing', making[0], making[1]], ['Ready', 'Ready', 'check_circle']].map(function (x) {
       return '<button type="button" class="kt-stage' + (state.stage === x[0] ? ' on' : '') + (x[0] ? ' s-' + x[0].toLowerCase() : '') + '" data-kt-stage="' + x[0] + '">' + ic(x[2]) + x[1] + '<em>' + c(x[0]) + '</em></button>';
     }).join('');
+  }
+
+  // the page title follows the link: KOT (kitchen) or BOT (bar)
+  var HEAD = {
+    kitchen: ['Kitchen Order Ticket (KOT)', 'View and manage kitchen orders'],
+    bar: ['Bar Order Ticket (BOT)', 'Drinks made at the bar, on their own ticket']
+  };
+  function heading(where) {
+    var h = document.querySelector('#kotPage .page-header h1'), p = document.querySelector('#kotPage .page-header p');
+    if (h) h.textContent = HEAD[where][0];
+    if (p) p.textContent = HEAD[where][1];
   }
 
   window.rgKotRender = function (kots) {
@@ -91,9 +100,12 @@
     chips();
     var pool = stationKots();
     var shown = pool.filter(function (k) { return !state.stage || statusOf(k) === state.stage; });
-    var where = !window.rgKotHasBar ? 'kitchen' : state.station === 'bar' ? 'bar' : state.station === 'kitchen' ? 'kitchen' : 'both';
-    var place = { kitchen: ['kitchen', 'the kitchen', 'soup_kitchen'], bar: ['bar', 'the bar', 'local_bar'], both: ['kitchen or bar', 'the kitchen and the bar', 'soup_kitchen'] }[where];
-    if (!pool.length) { list.innerHTML = '<div class="kt-empty">' + ic(place[2]) + '<b>No ' + place[0] + ' tickets right now</b><span>New orders sent to ' + place[1] + ' show up here.</span>' + (pool.length !== state.kots.length ? '<button type="button" data-kt-station="">Show all ' + state.kots.length + ' tickets</button>' : '') + '</div>'; return; }
+    var where = station();
+    heading(where);
+    var place = { kitchen: ['kitchen', 'the kitchen', 'soup_kitchen'], bar: ['bar', 'the bar', 'local_bar'] }[where];
+    // nothing made at the bar yet: say how to send drinks there
+    var hint = where === 'bar' && !window.rgKotHasBar ? 'Nothing is made at the bar yet. In Menu › Categories, press <b>Kitchen / Bar</b> on your drinks category and choose Bar.' : 'New orders sent to ' + place[1] + ' show up here.';
+    if (!pool.length) { list.innerHTML = '<div class="kt-empty">' + ic(place[2]) + '<b>No ' + place[0] + ' tickets right now</b><span>' + hint + '</span>' + '</div>'; return; }
     if (!shown.length) { list.innerHTML = '<div class="kt-empty">' + ic('filter_alt') + '<b>No ' + esc((STAGE[state.stage] || [state.stage])[0]).toLowerCase() + ' tickets</b><button type="button" data-kt-stage="">Show all ' + pool.length + ' tickets</button></div>'; return; }
     list.innerHTML = shown.map(function (k, i) { return card(k, i + 1); }).join('');
   };
