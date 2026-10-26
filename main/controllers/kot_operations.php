@@ -167,6 +167,9 @@ if (!function_exists('kotNotifyReady')) {
         } catch (Throwable $e) {
             error_log('kot_operations.php: waiter notification failed (non-fatal): ' . $e->getMessage());
         }
+        // a delivery order the kitchen just made ready: its Shiprocket Quick rider (config/quick_delivery.php)
+        require_once __DIR__ . '/../config/quick_delivery.php';
+        qdAfterOrderChange($conn, (string)$restaurant_id, $orderId);
     }
 }
 
@@ -712,6 +715,8 @@ function handleCompleteKOT() {
             if ($stateResult['success']) {
                 require_once __DIR__ . '/../config/push_notification.php';
                 notifyWaitersOrderReady($conn, (string)$restaurant_id, (int)$order_id);
+                require_once __DIR__ . '/../config/quick_delivery.php';
+                qdAfterOrderChange($conn, (string)$restaurant_id, (int)$order_id);   // its Shiprocket Quick rider
             }
 
             echo json_encode([

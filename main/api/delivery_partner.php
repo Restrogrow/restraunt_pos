@@ -69,6 +69,8 @@ try {
         $t = riderTrackingRow($conn, $rid, $orderId);
         if ($t['delivery_status'] === 'Delivered' && $partner !== '') throw new InvalidArgumentException('This order is already delivered');
         if ($partner !== '' && !empty($t['rider_staff_id'])) throw new InvalidArgumentException('One of your own riders has this order. Take it back from the rider first.');
+        // a Shiprocket Quick rider (api/quick_delivery.php) is changed only there
+        if (($t['partner'] ?? '') === 'shiprocket') throw new InvalidArgumentException('A Shiprocket Quick rider has this order. Cancel that rider first.');
 
         if ($partner === '') {
             $conn->prepare('UPDATE delivery_tracking SET partner = NULL, partner_track_url = NULL, rider_name = NULL, rider_phone = NULL WHERE id = ?')->execute([$t['id']]);

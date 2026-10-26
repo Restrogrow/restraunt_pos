@@ -500,7 +500,7 @@ body { font-family: var(--ui); background: #e7e9ec; color: var(--ink); min-heigh
         <div class="av" id="tkRiderInitial"><?php echo htmlspecialchars(mb_strtoupper(mb_substr((string)($tracking['rider_name'] ?? 'R'), 0, 1))); ?></div>
 <?php
         // booked with an outside app (Order details › Book a delivery partner, api/delivery_partner.php)
-        $tkPartners = ['uber' => 'Uber', 'rapido' => 'Rapido', 'porter' => 'Porter', 'borzo' => 'Borzo', 'ola' => 'Ola', 'other' => ''];
+        $tkPartners = ['uber' => 'Uber', 'rapido' => 'Rapido', 'porter' => 'Porter', 'borzo' => 'Borzo', 'ola' => 'Ola', 'shiprocket' => 'Shiprocket Quick', 'other' => ''];
         $tkPartner = $tkPartners[(string)($tracking['partner'] ?? '')] ?? '';
         $tkPartnerUrl = (string)($tracking['partner_track_url'] ?? '');
         if (!preg_match('#^https?://#i', $tkPartnerUrl)) $tkPartnerUrl = '';

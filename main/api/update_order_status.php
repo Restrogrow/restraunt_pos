@@ -223,6 +223,11 @@ try {
                 error_log('update_order_status.php: abuse strike failed (non-fatal): ' . $e->getMessage());
             }
         }
+        // Shiprocket Quick: book the rider when the restaurant books by itself, or cancel it with the order
+        if ($result['success']) {
+            require_once __DIR__ . '/../config/quick_delivery.php';
+            qdAfterStatus($conn, (string)$restaurant_id, (int)$orderId, $status, (string)($_SESSION['username'] ?? ''));
+        }
         if ($status === 'Ready') {
             try {
                 require_once __DIR__ . '/../config/push_notification.php';

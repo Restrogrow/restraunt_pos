@@ -349,6 +349,10 @@ require_once __DIR__ . '/../config/countries.php';
           <span class="material-symbols-rounded icon">storefront</span>
           <span class="text">Demo restaurant</span>
         </a>
+        <a class="menu-link" href="quick_delivery.php">
+          <span class="material-symbols-rounded icon">two_wheeler</span>
+          <span class="text">Shiprocket Quick</span>
+        </a>
       </div>
       <div class="sa-user">
         <div class="sa-user-row"><span class="sa-avatar"><?php echo htmlspecialchars(strtoupper(substr($_SESSION['superadmin_username'] ?? 'S', 0, 1))); ?></span><span><?php echo htmlspecialchars($_SESSION['superadmin_username'] ?? ''); ?><small>Superadmin</small></span></div>

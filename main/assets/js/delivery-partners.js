@@ -8,6 +8,9 @@
  * link are saved (api/delivery_partner.php) and the customer's tracking page shows them; "Send rider page"
  * gives the driver the existing rider page (Picked up → On the way → Delivered) on WhatsApp.
  *
+ * Above them, for a restaurant Super Admin switched it on for: a Shiprocket Quick rider booked through the
+ * API (Get price, Book rider, Cancel, status, and "book by itself" when the order is accepted or ready).
+ *
  * script.js puts <div class="rg-book-delivery"> in the Delivery box and calls rgBookDeliveryInit(order).
  */
 (function () {
@@ -23,7 +26,8 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function num(v) { var n = parseFloat(v); return isFinite(n) && n !== 0 ? n : null; }
   function isAndroid() { return /Android/i.test(navigator.userAgent || ''); }
-  function money(v) { return (window.currencySymbol || '₹') + Math.round(parseFloat(v) || 0); }
+  // window.currencySymbol can be the page's #currencySymbol field (an element), not the symbol
+  function money(v) { var s = window.currencySymbol; return (typeof s === 'string' && s ? s : (s && s.value) || '₹') + Math.round(parseFloat(v) || 0); }
 
   function points(o) {
     return { rLat: num(window.restaurantLat), rLng: num(window.restaurantLng), cLat: num(o.address_lat), cLng: num(o.address_lng) };
@@ -96,9 +100,9 @@
     var btn = 'display:inline-flex;align-items:center;gap:6px;border:0;border-radius:8px;padding:7px 12px;font:600 0.82rem Poppins,sans-serif;cursor:pointer;';
     var field = 'width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:7px;font:0.85rem Poppins,sans-serif;box-sizing:border-box;';
     var opts = Object.keys(partners).map(function (k) { return '<option value="' + k + '"' + (saved.partner === k ? ' selected' : '') + '>' + esc(partners[k]) + '</option>'; }).join('');
-    el.innerHTML =
+    el.innerHTML = '<div data-qd-box></div>' +
       '<div style="margin-top:0.75rem;padding:0.75rem;background:#fff;border:1px solid #bbf7d0;border-radius:8px;">' +
-        '<strong style="font-size:0.9rem;color:#14532d;">Book a delivery partner</strong>' +
+        '<strong style="font-size:0.9rem;color:#14532d;">' + (quick[o.id] ? 'Or book a delivery app yourself' : 'Book a delivery partner') + '</strong>' +
         '<p style="margin:4px 0 8px;font-size:0.78rem;color:#4b5563;">Tap an app: the drop details are copied, then the app opens. ' +
           (p.rLat && p.cLat ? '<b>Uber</b> opens with pickup and drop already filled in.' : '<b>Uber</b> fills the drop' + (p.rLat ? '' : ' (set your location in Settings › Location for the pickup)') + '.') +
           ' In the others, paste the drop.</p>' +
@@ -114,6 +118,7 @@
         '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #d1d5db;">' +
           '<div style="font-size:0.82rem;font-weight:600;color:#14532d;margin-bottom:6px;">After booking: who is delivering?</div>' +
           (saved.own_rider ? '<p style="margin:0;font-size:0.8rem;color:#92400e;">One of your own riders has this order.</p>' :
+          saved.partner === 'shiprocket' ? '<p style="margin:0;font-size:0.8rem;color:#4b5563;">A Shiprocket Quick rider has this order (above).</p>' :
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
             '<select data-bd-f="partner" style="' + field + '"><option value="">— App —</option>' + opts + '</select>' +
             '<input data-bd-f="rider_name" placeholder="Driver name" value="' + esc(saved.partner ? saved.rider_name : '') + '" style="' + field + '">' +
@@ -125,7 +130,7 @@
             '<button type="button" data-bd-wa style="' + btn + 'background:#25d366;color:#fff;" title="The driver gets the rider page to tap Picked up → On the way → Delivered">Send rider page on WhatsApp</button>' +
             (saved.partner ? '<button type="button" data-bd-clear style="' + btn + 'background:#fff;color:#b91c1c;border:1px solid #fecaca;">Remove</button>' : '') +
           '</div>') +
-          '<p data-bd-msg style="margin:6px 0 0;font-size:0.78rem;color:#166534;">' + (saved.partner ? 'Sent with ' + esc(partners[saved.partner] || saved.partner) + '. The customer sees the driver on their tracking page.' : '') + '</p>' +
+          '<p data-bd-msg style="margin:6px 0 0;font-size:0.78rem;color:#166534;">' + (saved.partner && saved.partner !== 'shiprocket' ? 'Sent with ' + esc(partners[saved.partner] || saved.partner) + '. The customer sees the driver on their tracking page.' : '') + '</p>' +
         '</div>' +
       '</div>';
   }
@@ -200,6 +205,94 @@
     });
   }
 
+  // ── Shiprocket Quick (api/quick_delivery.php, config/quick_delivery.php): a rider booked for you ──
+  var quick = {};   // order id => last GET answer, when switched on for the restaurant
+  var quickNote = {};   // order id => [message, is an error] shown once after the card is redrawn
+  function qdBox(o) { var el = box(o); return el ? el.querySelector('[data-qd-box]') : null; }
+  function qdPost(body) {
+    return fetch('../api/quick_delivery.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); });
+  }
+  function qdRender(o, d, note, bad) {
+    if (note === undefined && quickNote[o.id]) { note = quickNote[o.id][0]; bad = quickNote[o.id][1]; delete quickNote[o.id]; }
+    var el = qdBox(o);
+    if (!el || !d || !d.enabled) { if (el) el.innerHTML = ''; return; }
+    var b = d.booking, live = b && ['booking', 'booked', 'picked_up', 'on_the_way'].indexOf(b.status) > -1;
+    var btn = 'display:inline-flex;align-items:center;gap:6px;border:0;border-radius:8px;padding:7px 12px;font:600 0.82rem Poppins,sans-serif;cursor:pointer;';
+    var ic = function (n) { return '<span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">' + n + '</span>'; };
+    var head = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
+      '<strong style="font-size:0.9rem;color:#4c1d95;display:flex;align-items:center;gap:6px;">' + ic('two_wheeler') + 'Shiprocket Quick rider</strong>' +
+      (d.can_change ? '<label style="font-size:0.75rem;color:#4b5563;display:flex;align-items:center;gap:6px;">Book by itself' +
+        '<select data-qd-auto style="padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font:0.75rem Poppins,sans-serif;">' +
+        Object.keys(d.auto_modes || {}).map(function (k) { return '<option value="' + k + '"' + (d.auto_mode === k ? ' selected' : '') + '>' + esc(d.auto_modes[k]) + '</option>'; }).join('') +
+        '</select></label>' : '') + '</div>';
+    var body = '';
+    if (live) {
+      body = '<div style="margin-top:8px;font-size:0.85rem;color:#111827;"><b>' + esc(b.label) + '</b>' + (b.sr_status && b.sr_status !== b.label ? ' · ' + esc(b.sr_status) : '') +
+        (b.rate ? ' · ' + money(b.rate) : '') + (b.auto ? ' · booked automatically' : '') + '</div>' +
+        (b.rider_name || b.rider_phone ? '<div style="margin-top:4px;font-size:0.82rem;color:#374151;">' + ic('person') + ' ' + esc(b.rider_name || 'Rider') +
+          (b.rider_phone ? ' · <a href="tel:' + esc(b.rider_phone) + '" style="color:#4c1d95;font-weight:600;">' + esc(b.rider_phone) + '</a>' : '') + '</div>' : '') +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">' +
+          (b.track_url ? '<a href="' + esc(b.track_url) + '" target="_blank" rel="noopener" style="' + btn + 'background:#ede9fe;color:#4c1d95;text-decoration:none;">' + ic('location_on') + 'Track</a>' : '') +
+          '<button type="button" data-qd-refresh style="' + btn + 'background:#f1f5f9;color:#111827;">' + ic('refresh') + 'Refresh</button>' +
+          (b.can_cancel ? '<button type="button" data-qd-cancel style="' + btn + 'background:#fff;color:#b91c1c;border:1px solid #fecaca;">Cancel rider</button>' : '') +
+        '</div>';
+    } else if (b && b.status === 'delivered') {
+      body = '<p style="margin:8px 0 0;font-size:0.85rem;color:#166534;">' + ic('task_alt') + ' Delivered by the Shiprocket Quick rider' + (b.rate ? ' (' + money(b.rate) + ')' : '') + '.</p>';
+    } else if (d.blocker) {
+      body = '<p style="margin:8px 0 0;font-size:0.8rem;color:#6b7280;">' + esc(d.blocker) + '</p>';
+    } else {
+      body = (b && b.error ? '<p style="margin:8px 0 0;font-size:0.8rem;color:#b91c1c;">' + esc(b.error) + '</p>' : b && b.status === 'cancelled' ? '<p style="margin:8px 0 0;font-size:0.8rem;color:#6b7280;">The last rider was cancelled' + (b.sr_status ? ' (' + esc(b.sr_status) + ')' : '') + '.</p>' : '') +
+        '<p style="margin:8px 0 0;font-size:0.78rem;color:#4b5563;">A nearby rider picks up the food and delivers it; the customer sees the ride on their tracking page.' +
+          (cashToCollect(o) ? ' The rider collects ' + money(cashToCollect(o)) + ' in cash.' : '') + '</p>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">' +
+          '<button type="button" data-qd-quote style="' + btn + 'background:#f1f5f9;color:#111827;">' + ic('sell') + 'Get price</button>' +
+          '<button type="button" data-qd-book style="' + btn + 'background:#7c3aed;color:#fff;">' + ic('two_wheeler') + 'Book rider</button>' +
+        '</div>';
+    }
+    el.innerHTML = '<div style="margin-top:0.75rem;padding:0.75rem;background:#faf5ff;border:1px solid #ddd6fe;border-radius:8px;">' + head + body +
+      '<p data-qd-msg style="margin:6px 0 0;font-size:0.78rem;color:' + (bad ? '#b91c1c' : '#5b21b6') + ';">' + esc(note || '') + '</p></div>';
+  }
+  function qdLoad(o, note, bad) {
+    return fetch('../api/quick_delivery.php?order_id=' + encodeURIComponent(o.id), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var was = quick[o.id] !== undefined && !!quick[o.id];
+        quick[o.id] = d && d.success && d.enabled ? d : null;
+        if (was !== !!quick[o.id]) return load(o);   // the box appears or goes: redraw the whole card
+        qdRender(o, quick[o.id], note, bad);
+      })
+      .catch(function () {});
+  }
+  function qdWire(o) {
+    var el = box(o);
+    if (!el || el.dataset.qdWired) return;
+    el.dataset.qdWired = '1';
+    var busy = false;
+    var say = function (t, bad) { var m = el.querySelector('[data-qd-msg]'); if (m) { m.textContent = t; m.style.color = bad ? '#b91c1c' : '#5b21b6'; } };
+    el.addEventListener('change', function (ev) {
+      var s = ev.target.closest('[data-qd-auto]');
+      if (!s) return;
+      qdPost({ action: 'settings', auto_mode: s.value }).then(function (d) { say(d.success ? 'Saved: ' + s.options[s.selectedIndex].text + '.' : d.message, !d.success); }).catch(function () { say('Could not save. Check the internet.', true); });
+    });
+    el.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-qd-quote],[data-qd-book],[data-qd-cancel],[data-qd-refresh]');
+      if (!b || busy) return;
+      if (b.hasAttribute('data-qd-refresh')) { qdLoad(o); return; }
+      var action = b.hasAttribute('data-qd-quote') ? 'quote' : b.hasAttribute('data-qd-book') ? 'book' : 'cancel';
+      busy = true; b.disabled = true;
+      say(action === 'quote' ? 'Asking Shiprocket…' : action === 'book' ? 'Booking a rider… (this can take a few seconds)' : 'Cancelling…');
+      qdPost({ action: action, order_id: o.id }).then(function (d) {
+        if (action === 'quote') { say(d.message || '', !d.success); return; }
+        // booked or cancelled: redraw the whole card (the delivery-app part changes too), keeping the message
+        quickNote[o.id] = [d.message || '', !d.success];
+        delete quick[o.id];
+        return load(o);
+      }).catch(function () { say('Could not reach the server. Check the internet.', true); })
+        .then(function () { busy = false; b.disabled = false; });
+    });
+  }
+
   function load(o) {
     return fetch('../api/delivery_partner.php?order_id=' + encodeURIComponent(o.id), { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
@@ -207,6 +300,8 @@
         if (!d.success) { var el = box(o); if (el) el.innerHTML = ''; return; }   // no permission: show nothing
         render(o, d.delivery || {}, d.partners || {});
         wire(o);
+        qdWire(o);
+        if (quick[o.id] !== undefined) qdRender(o, quick[o.id]); else qdLoad(o);
       })
       .catch(function () {});
   }

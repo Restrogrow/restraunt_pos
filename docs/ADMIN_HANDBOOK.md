@@ -209,6 +209,7 @@ Settings live in `main/.env` on each server (never in git; `main/.env.example` l
 | Web push (browser alerts) | `VAPID_*` (optional) | ✅ Keys generate themselves into `push_vapid` | New-order alerts in the browser |
 | Apple and Google Wallet cards | `GOOGLE_WALLET_*`, `APPLE_*` | ❌ Missing. The buttons stay hidden. | Loyalty card on the phone |
 | Sentry | `SENTRY_DSN` | ✅ A default DSN is built into `config/sentry.php` | Error tracking |
+| Shiprocket Quick (local riders) | `SHIPROCKET_EMAIL`, `SHIPROCKET_PASSWORD`, `QUICK_DELIVERY_WEBHOOK_TOKEN` (optional) | ⏳ API user made (KYC done). Add the API password to the live `main/.env`, recharge the wallet, then Super Admin › Shiprocket Quick › Test connection and switch restaurants on. Pincodes come from the map pin (Geoapify key, else OpenStreetMap). | Order details › Delivery › Shiprocket Quick rider; books by itself on accept / ready |
 | Cron by URL | `CRON_SECRET_KEY` | ❌ Not set (crons run through the command line instead) | Running crons through a URL |
 | Other | `APP_URL`, `HEALTH_CHECK_KEY`, `RECONCILE_SECRET`, `TRUSTED_PROXY_IPS` | ❌ Not set (defaults are used) | Links in messages, detailed health check |
 
@@ -234,6 +235,7 @@ Not used: reCAPTCHA, Cloudinary (images are stored in the database and served by
 | Meal-plan deliveries | `/usr/bin/php <HOME>/main/cron/generate_subscription_deliveries.php` | daily 05:00 | check it's added |
 | Emails (reminders, retries) | `/usr/bin/php <HOME>/main/cron/email_dispatch.php` | every 10 min | Super Admin › Email › Settings & jobs shows if it runs |
 | AI manager morning report | `/usr/bin/php <HOME>/main/cron/owner_brief.php` | every 15 min | Super Admin › Email › Settings & jobs shows if it runs |
+| Shiprocket Quick riders (book due rides, follow live ones) | `/usr/bin/php <HOME>/main/cron/quick_delivery.php` | every 2 min | Super Admin › Shiprocket Quick shows when it last ran |
 
 - **Pages that set things up when opened.** Some setup runs the first time a Super Admin page is opened, not from a migration. On the live site all of these were done on 17 Oct 2026. Open them again after a fresh database or a new server:
 

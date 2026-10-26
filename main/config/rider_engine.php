@@ -144,6 +144,7 @@ if (!function_exists('riderEnsure')) {
         if (!empty($f['open'])) {
             $w[] = 'd.rider_staff_id IS NULL'; $w[] = "COALESCE(d.delivery_status, 'Pending') IN ('Pending', 'Preparing', 'Assigned')";
             $w[] = "o.order_status IN ('Accepted', 'Preparing', 'Ready')"; $w[] = 'd.qr_token IS NULL';
+            $w[] = "COALESCE(d.partner, '') = ''";   // not already with a delivery app or Shiprocket Quick
         }
         if (!empty($f['active'])) {
             $w[] = "o.order_status NOT IN ('Cancelled', 'Rejected', 'Completed', 'Scheduled')";
@@ -206,6 +207,8 @@ if (!function_exists('riderEnsure')) {
             if (in_array($order['order_status'], ['Cancelled', 'Rejected', 'Completed'], true)) throw new Exception('This order is already ' . strtolower($order['order_status']));
             $t = riderTrackingRow($conn, $rid, $orderId);
             if ($t['delivery_status'] === 'Delivered') throw new Exception('This order is already delivered');
+            // a Shiprocket Quick rider (config/quick_delivery.php) is cancelled there, not replaced here
+            if (($t['partner'] ?? '') === 'shiprocket') throw new Exception('A Shiprocket Quick rider has this order. Cancel that rider first (Order details › Delivery).');
             if ($staffId === 0) {
                 if (in_array($t['delivery_status'], ['Picked_Up', 'In_Transit'], true)) throw new Exception('The rider already has the food. Assign another rider instead.');
                 $conn->prepare("UPDATE delivery_tracking SET rider_staff_id = NULL, rider_name = NULL, rider_phone = NULL, assigned_at = NULL, delivery_status = 'Pending' WHERE id = ?")->execute([$t['id']]);
