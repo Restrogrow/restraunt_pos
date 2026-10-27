@@ -3325,7 +3325,8 @@ function showCheckoutModal(cartData) {
     html += '<option value="UPI / NetBanking">UPI / NetBanking</option>';
   }
   if (window.businessQrAvailable) {
-    html += '<option value="QR Payment">Pay Online (Scan QR)</option>';
+    // Nepal: the restaurant's QR is an eSewa / Khalti / Fonepay one, not UPI
+    html += '<option value="QR Payment">' + (window.restaurantCountry === 'Nepal' ? 'eSewa / Khalti (scan QR)' : 'Pay Online (Scan QR)') + '</option>';
   }
   html += '</select></div>';
 

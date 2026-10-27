@@ -84,13 +84,15 @@
   var NEXT_PAY = { Pending: ['Paid', 'Partially Paid', 'Refunded'], Paid: ['Refunded', 'Partially Paid'], 'Partially Paid': ['Paid', 'Refunded'], Refunded: [] };
   var PAY_LABEL = { Paid: 'Paid', 'Partially Paid': 'Part paid', Pending: 'Not paid yet', Refunded: 'Refunded' };
   var METHODS = [['Cash', 'payments'], ['UPI', 'qr_code_2'], ['Card', 'credit_card'], ['Online', 'language'], ['Wallet', 'account_balance_wallet']];
+  // Nepal has no UPI: its wallets are eSewa and Khalti (api/update_payment_status.php accepts both)
+  var METHODS_NP = [['Cash', 'payments'], ['eSewa', 'account_balance_wallet'], ['Khalti', 'account_balance_wallet'], ['Card', 'credit_card'], ['Online', 'language'], ['Wallet', 'account_balance_wallet']];
   window.rgUpdatePayment = function (orderId) {
     var o = (window._rgOrders || {})[orderId];
     if (!o) return;
     var cur = o.payment_status || 'Pending', method = o.payment_method || 'Cash';
     var money = typeof window.formatCurrency === 'function' ? window.formatCurrency(o.total) : '₹' + (+o.total || 0).toFixed(2);
     var statuses = [cur].concat(NEXT_PAY[cur] || []);
-    var mList = METHODS.slice(); if (!mList.some(function (m) { return m[0] === method; })) mList.push([method, 'payments']);
+    var mList = (window.restaurantCountryCode === 'NP' ? METHODS_NP : METHODS).slice(); if (!mList.some(function (m) { return m[0] === method; })) mList.push([method, 'payments']);
     var html = '<div class="rgp">' +
       '<div class="rgp-sum"><div><small>Order</small><b>#' + esc(o.order_number || o.id) + '</b></div><div class="r"><small>Total</small><b>' + esc(money) + '</b></div></div>' +
       '<div class="rgp-l">Paid by</div><div class="rgp-opts" data-g="m">' + mList.map(function (m) { return '<button type="button" data-v="' + esc(m[0]) + '"' + (m[0] === method ? ' class="on"' : '') + '>' + ic(m[1]) + esc(m[0]) + '</button>'; }).join('') + '</div>' +

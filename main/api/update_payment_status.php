@@ -43,7 +43,15 @@ try {
     $status = is_string($_POST['status'] ?? null) ? $_POST['status'] : null;
     // optional: how it was paid (Update payment window); anything else is ignored
     $method = trim((string)($_POST['payment_method'] ?? ''));
-    $methods = ['Cash', 'UPI', 'Card', 'Online', 'Wallet', 'Other'];
+    // the fixed ones, Nepal's wallets, and any method the restaurant added itself (Settings › Payment methods)
+    $methods = ['Cash', 'UPI', 'Card', 'Online', 'Wallet', 'Other', 'eSewa', 'Khalti'];
+    if ($method !== '' && !in_array($method, $methods, true)) {
+        try {
+            $own = $conn->prepare('SELECT COUNT(*) FROM payment_methods WHERE restaurant_id = ? AND method_name = ?');
+            $own->execute([$restaurant_id, $method]);
+            if ((int)$own->fetchColumn() > 0) $methods[] = $method;
+        } catch (PDOException $e) { /* no payment_methods table yet */ }
+    }
     if ($method !== '' && !in_array($method, $methods, true)) {
         echo json_encode(['success' => false, 'message' => 'Invalid payment method']);
         exit();
